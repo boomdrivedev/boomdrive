@@ -14,9 +14,10 @@ mod fakes;
 use boomdrive::flume::{Cli, Reply, Unrun};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    ActSort, At, Carried, Command, CommandSort, Id, Lease, Offer, Outcome, Want,
+    ActSort, At, Carried, Command, CommandSort, ControlPlane, Hello, Id, Lease, Offer, Outcome,
+    Pulled, Report, Reported, Unread, Unsent, Want,
 };
-use fakes::{act, fixture, offer, place_of, printed, Bench, Call, Stub, KEPT};
+use fakes::{act, fixture, offer, place_of, printed, Bench, Call, Stub, KEPT, PART};
 use serde_json::{json, Value};
 use std::fs;
 use std::slice;
@@ -587,6 +588,99 @@ fn a_record_pending_for_no_end_of_the_runners() {
     let entry = carried_entry(&bench, "a");
     assert_eq!(entry["place"], format!("{place}@1793559694"));
     assert!(carried(&bench, "a").listed);
+}
+
+/// A control plane that, as it takes each report, has Flume forget the
+/// record `record`, as Flume forgot a tidied place's record while a send
+/// to crew's state repository took its time on deneb on 2026-11-19.
+struct Forgetting<'a> {
+    plane: &'a mut Fake,
+    flume: &'a fakes::FakeFlume,
+    record: String,
+}
+
+impl ControlPlane for Forgetting<'_> {
+    fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread> {
+        self.plane.pull(hello, report)
+    }
+
+    fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
+        self.flume.tidy(&self.record);
+        self.plane.report(report)
+    }
+
+    fn owns(&self, id: &Id) -> bool {
+        self.plane.owns(id)
+    }
+}
+
+/// The work-into-flume spec's "A record Flume forgot before the confirm":
+/// the pass carries `P@<at>` pending for the runner, Flume forgets the
+/// record while the report is sent and taken, and no `flume confirm` is
+/// run, so nothing is said; the pass after asks nothing more of it
+/// (design Decision 1 of the-runner-confirms-only-what-flume-still-owes).
+#[test]
+fn a_record_flume_forgot_before_the_confirm() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    let mut forgetting = Forgetting {
+        plane: &mut plane,
+        flume: &bench.flume,
+        record: record.clone(),
+    };
+    let (passed, lines) = bench.pass_of(PART, &bench.flume, &mut forgetting, &|| false);
+    assert!(passed.reported);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    assert!(!carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "Flume's listing unread at the confirm":
+/// where Flume's listing cannot be read once the report is taken, nothing
+/// is confirmed that pass, and the next pass confirms the landing.
+#[test]
+fn flumes_listing_unread_at_the_confirm() {
+    let (bench, mut plane, _) = held_for_the_runner();
+    bench.pass_of(
+        PART,
+        &bench.flume,
+        &mut Unlisting {
+            plane: &mut plane,
+            flume: &bench.flume,
+        },
+        &|| false,
+    );
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    bench.flume.listing_as_flume();
+    let (passed, _) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
+}
+
+/// A control plane that, as it takes each report, leaves Flume's listing
+/// unread from then on.
+struct Unlisting<'a> {
+    plane: &'a mut Fake,
+    flume: &'a fakes::FakeFlume,
+}
+
+impl ControlPlane for Unlisting<'_> {
+    fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread> {
+        self.plane.pull(hello, report)
+    }
+
+    fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
+        self.flume
+            .listing(Err(Unrun("flume was ended: signal: 9".into())));
+        self.plane.report(report)
+    }
+
+    fn owns(&self, id: &Id) -> bool {
+        self.plane.owns(id)
+    }
 }
 
 /// The work-into-flume spec's "A confirmation Flume could not run": the
