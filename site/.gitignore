@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+.devenv/
+.devenv.flake.nix
+devenv.local.nix
+.DS_Store

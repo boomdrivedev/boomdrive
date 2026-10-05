@@ -1,0 +1,28 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+
+const notes = (await getCollection("notes", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+const latest = notes[0];
+---
+
+<Base title="Every day the same">
+  <h1>Every day the same, for developers and agents.</h1>
+  <p>
+    We are learning in public how to run a fleet of coding agents, from five
+    agents to five hundred. The <a href="/method/">Method</a> is what we
+    believe so far; the <a href="/notes/">notes</a> are the evidence.
+  </p>
+  {
+    latest ? (
+      <p>
+        Latest: <a href={`/notes/${latest.id}/`}>{latest.data.title}</a>
+      </p>
+    ) : (
+      <p class="muted">The first field note is on its way.</p>
+    )
+  }
+  <p class="muted">[Newsletter signup goes here once the platform is chosen.]</p>
+</Base>

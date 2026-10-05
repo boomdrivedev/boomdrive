@@ -1,0 +1,60 @@
+# Every tool the fleet runs, ours or others'. The Uses page reads this.
+- id: claude-code
+  name: Claude Code
+  url: https://claude.com/claude-code
+  category: harness
+  role: The agent in every pane
+  status: in-use
+- id: herdr
+  name: Herdr
+  url: https://herdr.dev/
+  category: multiplexer
+  role: Workspaces, tabs and panes for the fleet, and the agents' states
+  status: in-use
+- id: worktrunk
+  name: Worktrunk
+  category: worktree-manager
+  role: One worktree per agent; merge hooks run the gates
+  status: in-use
+  serves: [one-agent-one-worktree]
+- id: secretspec
+  name: secretspec
+  category: secrets
+  role: Declares the secrets a repository needs, resolved from the provider at run time
+  status: in-use
+- id: devenv
+  name: devenv
+  url: https://devenv.sh/
+  category: toolchain
+  role: Declares every tool a repository's scripts run
+  status: in-use
+  serves: [every-day-the-same]
+- id: moon
+  name: moon
+  url: https://moonrepo.dev/
+  category: task-graph
+  role: Runs every check, caching by inputs
+  status: in-use
+  serves: [every-day-the-same, never-prove-twice]
+- id: crew
+  name: Crew
+  category: ours
+  role: Teams of agents building one bolt at a time, the operator approving each unit
+  status: in-use
+  ours: true
+  becomes: flywheel-next
+  serves: [intents-and-bolts, two-loops-one-gate]
+- id: pinout
+  name: pinout
+  category: ours
+  role: Answers what a repository holds and what a change affects
+  status: trialing
+  ours: true
+  serves: [know-what-a-change-touches]
+- id: testledger
+  name: testledger
+  category: ours
+  role: Records which checks passed on which inputs
+  status: trialing
+  ours: true
+  serves: [never-prove-twice]

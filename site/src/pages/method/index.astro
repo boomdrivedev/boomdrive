@@ -1,0 +1,24 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+
+const principles = (await getCollection("principles", ({ data }) => data.status !== "retired")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+---
+
+<Base title="The Method" description="The principles we run our agent fleet by, kept current.">
+  <h1>The Method <span class="muted">v0.1</span></h1>
+  <ul class="plain">
+    {
+      principles.map((p) => (
+        <li>
+          <a href={`/method/${p.id}/`}>
+            {p.data.order}. {p.data.title}
+          </a>
+          <div class="muted">{p.data.summary}</div>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

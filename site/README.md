@@ -16,5 +16,20 @@ Working name; the brand and domain are not chosen.
 | `docs/measurement-roadmap.md` | Candidate measurements, by the stage that makes them measurable |
 | `docs/audience-plan.md` | How readers find the site: targets, the weekly field note, channels and the first 90 days |
 
-The site itself (Astro, content as Markdown and YAML in git, hosted on
-Cloudflare) is not scaffolded yet.
+## Running it
+
+Every tool comes from devenv: `devenv shell`, or `devenv shell -- <cmd>`.
+
+```sh
+site-dev     # the site on localhost, drafts included
+prose        # the glossary into Vale's vocabulary, then Vale over src/content
+site-check   # the gate: astro check, prose, then the build
+```
+
+| Path | What |
+|---|---|
+| `src/content.config.ts` | The page types and their schemas |
+| `src/content/` | Principles, notes, the glossary (`terms/`) and the stack (`components/`) |
+| `src/pages/` | Home, the Method, Notes, Uses, About |
+| `.vale.ini`, `styles/Flywheel/` | The house style |
+| `scripts/vocab.ts` | The glossary into Vale's vocabulary |

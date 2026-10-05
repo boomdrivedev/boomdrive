@@ -1,0 +1,51 @@
+---
+import { getCollection, getEntry, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+
+export async function getStaticPaths() {
+  const notes = await getCollection("notes", ({ data }) => !data.draft || import.meta.env.DEV);
+  return notes.map((n) => ({ params: { id: n.id }, props: { n } }));
+}
+const { n } = Astro.props;
+const { Content } = await render(n);
+const principles = await Promise.all(n.data.principles.map((r) => getEntry(r)));
+const newer = n.data.supersededBy ? await getEntry(n.data.supersededBy) : undefined;
+---
+
+<Base title={n.data.title}>
+  {
+    newer && (
+      <p class="panel">
+        A later note supersedes this one: <a href={`/notes/${newer.id}/`}>{newer.data.title}</a>
+      </p>
+    )
+  }
+  <p class="muted">
+    {n.data.date.toISOString().slice(0, 10)} · {n.data.kind} · written against Method v{n.data.methodVersion}
+  </p>
+  <h1>{n.data.title}</h1>
+  <Content />
+  {
+    n.data.artifacts.length > 0 && (
+      <>
+        <h2>Run it yourself</h2>
+        <ul>
+          {n.data.artifacts.map((a) => (
+            <li>
+              <a href={a.url}>{a.kind}</a>: {a.runs}
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+  <p class="muted">
+    Informs:{" "}
+    {principles.map((p, i) => (
+      <>
+        {i > 0 && ", "}
+        <a href={`/method/${p?.id}/`}>{p?.data.title}</a>
+      </>
+    ))}
+  </p>
+</Base>

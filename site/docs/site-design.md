@@ -21,6 +21,9 @@ Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
   [InfoQ](https://www.infoq.com/news/2026/04/cloudflare-emdash-wordpress/),
   [CMSWire on 1.0](https://www.cmswire.com/digital-experience/cloudflare-releases-emdash-1-0-cms-with-decentralized-plugin-registry/),
   [Bitdoze review](https://www.bitdoze.com/emdash-cms-review/).
+- **Vale checks the prose; the schemas check the structure.** Agents' drafts
+  get Vale's findings and fix them before review, so the operator's attention
+  goes to the ideas. See "The house style" below.
 - **Video stays on YouTube**, embedded with a click-to-load player; images are
   validated and optimized by Astro at build time.
 
@@ -161,6 +164,38 @@ hosts: 1
 components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version]", crew: "[sha]", moon: "[version]" }
 repos: [pinout, testledger, flywheel-next, crew]
 ```
+
+## The house style
+
+[Vale](https://docs.vale.sh) lints every page in `src/content/` against
+`.vale.ini` and the rules in `styles/Flywheel/`. The same Vale, pinned in
+`devenv.nix`, runs in the editor, in an agent's worktree and in `site-check`.
+
+| Rule | Level | Binds | What it flags |
+|---|---|---|---|
+| `Vale.Terms` (from the glossary) | error | everything | A glossary term in the wrong form ("Worktree" mid-sentence is fine; "work tree" is not) |
+| `Terms` (generated) | warning | everything | A word the glossary replaces ("test ledger" → testledger, "swarm" → fleet) |
+| `Hype` | warning | everything | revolutionary, seamless, effortless, cutting-edge, supercharge, 10x |
+| `NotXButY` | warning | everything | "It's not X, it's Y" |
+| `SentenceLength` | warning | everything | Sentences over 30 words |
+| `Headings` | warning | everything | Headings not in sentence case |
+| `Exclamation` | warning | everything | Exclamation marks |
+| `Filler` | suggestion | everything | simply, just, really, very, basically, actually, obviously |
+| `Acronyms` | suggestion | everything | An acronym not spelled out on first use |
+| `Absolutes` | suggestion | field notes | always, never, proves, guarantees, impossible, without a cited measurement |
+| `UnsourcedNumber` | suggestion | field notes | A percentage or "3x faster" with no named measurement |
+
+- **The glossary is the one source.** `scripts/vocab.ts` turns
+  `src/content/terms/terms.yaml` into Vale's vocabulary and the `Terms`
+  substitution rule; a term marked `lowercase` (pinout, testledger) stays
+  lowercase even at the start of a sentence.
+- **Rules ratchet.** A rule starts as a suggestion or warning and is promoted
+  to error once it has been quiet for a while; only errors fail `site-check`.
+- **Not yet on:** Vale's spelling check, until the vocabulary has grown past
+  the glossary; packaged styles (Google, Microsoft, write-good, proselint,
+  alex), which need `vale sync` and are tried one at a time.
+- **Structure is not Vale's job.** A required section in a note belongs in its
+  schema or a remark check.
 
 ## Open questions
 

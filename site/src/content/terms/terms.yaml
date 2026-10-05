@@ -1,0 +1,49 @@
+# The glossary: one vocabulary for every page and every agent's draft.
+# scripts/vocab.ts turns it into Vale's vocabulary and substitution rule.
+- id: intent
+  term: intent
+  definition: What someone wants built, captured before anyone decides how.
+  principle: intents-and-bolts
+- id: bolt
+  term: bolt
+  definition: A body of work landed as one, built from units.
+  principle: intents-and-bolts
+- id: unit
+  term: unit
+  definition: One reviewable change inside a bolt.
+  principle: intents-and-bolts
+- id: gate
+  term: gate
+  definition: A named point where work may proceed, such as a merge, a version or a deploy.
+  principle: two-loops-one-gate
+  insteadOf: [checkpoint, quality gate]
+- id: worktree
+  term: worktree
+  definition: A checkout of its own for one agent's work.
+  principle: one-agent-one-worktree
+  insteadOf: [work tree, work-tree]
+- id: fleet
+  term: fleet
+  definition: The agents working at once across our machines.
+  principle: measure-the-fleet
+  insteadOf: [swarm]
+- id: confined-run
+  term: confined run
+  definition: A run of a check that the agent whose work it checks could not reach.
+  principle: trust-belongs-to-the-reader
+- id: operator
+  term: operator
+  definition: The person who decides at the gate.
+  principle: two-loops-one-gate
+- id: testledger
+  term: testledger
+  lowercase: true
+  definition: The open record of whether a check passed on exactly the inputs it read.
+  principle: never-prove-twice
+  insteadOf: [test ledger, TestLedger, Test Ledger]
+- id: pinout
+  term: pinout
+  lowercase: true
+  definition: The open protocol for asking any repository what it holds and what a change affects.
+  principle: know-what-a-change-touches
+  insteadOf: [Pinout, pin-out]

@@ -1,0 +1,23 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+
+const notes = (await getCollection("notes", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+---
+
+<Base title="Field notes" description="Dated findings from our agent fleet.">
+  <h1>Field notes</h1>
+  {notes.length === 0 && <p class="muted">The first note is on its way.</p>}
+  <ul class="plain">
+    {
+      notes.map((n) => (
+        <li>
+          <span class="muted">{n.data.date.toISOString().slice(0, 10)}</span>{" "}
+          <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+        </li>
+      ))
+    }
+  </ul>
+</Base>
