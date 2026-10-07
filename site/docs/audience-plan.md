@@ -46,7 +46,7 @@ note; a missed week is announced, never silent.
 | Channel | What goes there | Cadence | Month-6 target |
 |---|---|---|---|
 | Newsletter and site | Every field note; signup on every page and repository README | Weekly | 5,000 subscribers |
-| Open-source launches | Show HN, Lobsters, r/ClaudeAI, r/ExperiencedDevs for each release of pinout, testledger, hooks and layouts | Every 3 to 4 weeks | 4 launches, 1 on the HN front page |
+| Open-source launches | Show HN, Lobsters, r/ClaudeAI, r/ExperiencedDevs for each release of Crew and of the shell, moon and hook configurations we publish | Every 3 to 4 weeks | 4 launches, 1 on the HN front page |
 | Video | Three-minute fleet recordings on YouTube; clips on X, Bluesky, LinkedIn | Weekly clips, monthly long video | 1,000 YouTube subscribers |
 | Plugin and tool ecosystems | The Claude Code plugin marketplace; Herdr's users and its author; AWS's AI-DLC community | With each release | Listed in 2 marketplaces |
 | Other people's audiences | Measurement posts pitched to The Pragmatic Engineer, Latent Space, Changelog; podcasts; one talk | Monthly pitch | 2 guest appearances |
@@ -62,10 +62,10 @@ in week 5 with four notes banked.
 | Weeks (from) | Write | Ship | Launch and reach |
 |---|---|---|---|
 | 1–2 (Oct 12) | The statement of the Method; drafts of notes 1 and 2 | Domain, site, newsletter; fleet measurement running on our own repositories | An editor on contract; 30 people to send note 1 to personally |
-| 3–4 (Oct 26) | Notes 3 and 4 drafted; first video recorded | pinout v0.1 ready to release | The launch forums chosen and their rules learned |
-| 5–6 (Nov 9) | Note 1 (the statement), note 2 (what our fleet re-proves) | pinout v0.1 | Show HN and Lobsters for pinout; personal emails to the 30 |
-| 7–8 (Nov 23) | Notes 3 and 4 | Claude Code plugin: pinout over MCP | Plugin marketplace listing; first clip series |
-| 9–10 (Dec 7) | Notes 5 and 6 | testledger v0.1 | Show HN for testledger; first guest-post pitch with the re-proof numbers |
+| 3–4 (Oct 26) | Notes 3 and 4 drafted; first video recorded | The shell template (devenv, moon, hooks) ready to release | The launch forums chosen and their rules learned |
+| 5–6 (Nov 9) | Note 1 (the statement), note 2 (what our fleet re-proves) | The shell template | Show HN and Lobsters for the template; personal emails to the 30 |
+| 7–8 (Nov 23) | Notes 3 and 4 | Secrets by declaration: secretspec with a password manager, as a worked example | First clip series |
+| 9–10 (Dec 7) | Notes 5 and 6 | The shared moon cache across our worktrees and CI | First guest-post pitch with the re-proof numbers, before and after |
 | 11–13 (Dec 21) | Notes 7 to 9; the month-3 review | Fleet view, local preview | Herdr community post; Flywheel early-access list opened |
 
 ## Measures and decision points

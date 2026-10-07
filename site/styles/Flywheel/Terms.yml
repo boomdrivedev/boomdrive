@@ -9,8 +9,3 @@ swap:
   'work tree': 'worktree'
   'work-tree': 'worktree'
   'swarm': 'fleet'
-  'test ledger': 'testledger'
-  'TestLedger': 'testledger'
-  'Test Ledger': 'testledger'
-  'Pinout': 'pinout'
-  'pin-out': 'pinout'

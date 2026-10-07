@@ -1,10 +1,10 @@
 [Bb]olt
-[Cc]onfined run
 [Ff]leet
 [Gg]ate
 [Ii]ntent
 [Oo]perator
+[Rr]emote cache
+[Ss]ecret
+[Ss]hell
 [Uu]nit
 [Ww]orktree
-pinout
-testledger

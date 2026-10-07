@@ -40,7 +40,7 @@ About.
 | The Fleet | Live charts of the measurements, and the current fleet context | Always current, rebuilt from data | Month 2 to 3 |
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
 | Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
-| Tools | pinout, testledger, the Claude Code plugin, Crew | Updated per release | Yes |
+| Tools | Crew, and the shell, moon and hook configurations we publish | Updated per release | Yes |
 | About | Who we are, learning in public, how we treat client work | Rarely | Yes |
 
 ## Content model
@@ -97,7 +97,7 @@ category: worktree-manager   # harness | multiplexer | multiplexer-plugin | work
 role: One worktree per agent; merge hooks run the gates
 status: in-use
 since: 2026-05
-serves: [one-agent-one-worktree, every-day-the-same]
+serves: [one-agent-one-worktree]
 alternatives: [git worktree by hand]
 ```
 
@@ -114,16 +114,15 @@ and where it is going, so ideas that are not built yet are shared honestly.
 principle: never-prove-twice
 asOf: 2026-10-05
 today:
-  how: Each worktree replays moon's cache; the merge gate re-runs changed projects' tests
+  how: moon's cache, shared by the worktrees of one repository; CI runs from cold
   components: [moon, worktrunk, crew]
   shortcuts:
-    - A pass in one worktree is invisible to another, and to CI
-    - Flaky checks are retried by hand, not recorded per input set
+    - A pass on one machine is invisible to every other machine, and to CI
+    - Flaky checks are retried by hand, not recorded
 target:
-  how: Gates read a ledger keyed by what each check read, and run only what has not passed
-  delivers: [testledger, pinout]
+  how: A remote cache shared by every machine; agents read it, only CI writes to it
+  delivers: [moon]
   status: designing
-  design: https://github.com/agentplot/blueprints
 ```
 
 - **The Roadmap page** lists every target by status, never by date.
@@ -162,7 +161,7 @@ from: 2026-10-12
 agents: { peak: "[__]", typical: "[__]" }
 hosts: 1
 components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version]", crew: "[sha]", moon: "[version]" }
-repos: [pinout, testledger, flywheel-next, crew]
+repos: [flywheel-next, crew, flywheel-web]
 ```
 
 ## The house style
@@ -174,7 +173,7 @@ repos: [pinout, testledger, flywheel-next, crew]
 | Rule | Level | Binds | What it flags |
 |---|---|---|---|
 | `Vale.Terms` (from the glossary) | error | everything | A glossary term in the wrong form ("Worktree" mid-sentence is fine; "work tree" is not) |
-| `Terms` (generated) | warning | everything | A word the glossary replaces ("test ledger" → testledger, "swarm" → fleet) |
+| `Terms` (generated) | warning | everything | A word the glossary replaces ("work tree" → worktree, "swarm" → fleet) |
 | `Hype` | warning | everything | revolutionary, seamless, effortless, cutting-edge, supercharge, 10x |
 | `NotXButY` | warning | everything | "It's not X, it's Y" |
 | `SentenceLength` | warning | everything | Sentences over 30 words |
@@ -187,8 +186,8 @@ repos: [pinout, testledger, flywheel-next, crew]
 
 - **The glossary is the one source.** `scripts/vocab.ts` turns
   `src/content/terms/terms.yaml` into Vale's vocabulary and the `Terms`
-  substitution rule; a term marked `lowercase` (pinout, testledger) stays
-  lowercase even at the start of a sentence.
+  substitution rule; a term marked `lowercase` stays lowercase even at
+  the start of a sentence.
 - **Rules ratchet.** A rule starts as a suggestion or warning and is promoted
   to error once it has been quiet for a while; only errors fail `site-check`.
 - **Not yet on:** Vale's spelling check, until the vocabulary has grown past

@@ -4,7 +4,7 @@ title: "Two loops, one gate"
 summary: "Design and construction are separate loops, coupled at one gate where a human decides, and agents never approve agents."
 status: draft
 introducedIn: "0.1"
-lastReviewed: 2026-10-05
+lastReviewed: 2026-10-06
 ---
 
 ## How we do it today

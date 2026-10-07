@@ -1,5 +1,9 @@
 # The glossary: one vocabulary for every page and every agent's draft.
 # scripts/vocab.ts turns it into Vale's vocabulary and substitution rule.
+- id: shell
+  term: shell
+  definition: The environment a repository declares and every command runs in, such as devenv, a container image or mise.
+  principle: one-shell
 - id: intent
   term: intent
   definition: What someone wants built, captured before anyone decides how.
@@ -22,28 +26,20 @@
   definition: A checkout of its own for one agent's work.
   principle: one-agent-one-worktree
   insteadOf: [work tree, work-tree]
+- id: remote-cache
+  term: remote cache
+  definition: The task runner's cache shared by every machine; agents read it and only CI writes to it.
+  principle: never-prove-twice
 - id: fleet
   term: fleet
   definition: The agents working at once across our machines.
   principle: measure-the-fleet
   insteadOf: [swarm]
-- id: confined-run
-  term: confined run
-  definition: A run of a check that the agent whose work it checks could not reach.
-  principle: trust-belongs-to-the-reader
 - id: operator
   term: operator
   definition: The person who decides at the gate.
   principle: two-loops-one-gate
-- id: testledger
-  term: testledger
-  lowercase: true
-  definition: The open record of whether a check passed on exactly the inputs it read.
-  principle: never-prove-twice
-  insteadOf: [test ledger, TestLedger, Test Ledger]
-- id: pinout
-  term: pinout
-  lowercase: true
-  definition: The open protocol for asking any repository what it holds and what a change affects.
-  principle: know-what-a-change-touches
-  insteadOf: [Pinout, pin-out]
+- id: secret
+  term: secret
+  definition: A credential a repository declares and the shell resolves from a password manager for one task.
+  principle: secrets-by-declaration

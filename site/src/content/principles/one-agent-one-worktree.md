@@ -4,7 +4,7 @@ title: "One agent, one worktree"
 summary: "Each agent works in its own worktree with its own ports, emulator and dev servers, so nothing it does can disturb another."
 status: draft
 introducedIn: "0.1"
-lastReviewed: 2026-10-05
+lastReviewed: 2026-10-06
 ---
 
 ## How we do it today

@@ -44,14 +44,19 @@ Claude Code's OpenTelemetry export, and hooks that log tool calls.
   compactions per unit; tool-call failure rate.
 - **Flow:** the same kind of unit compared across harnesses and models.
 
-## Stage 2: pinout and testledger released
+## Stage 2: a shared remote cache, and secrets through the shell
 
-- **Proof:** re-proof rate, exact; check minutes avoided; keyed coverage
-  (share of checks with stated inputs); false reuse (audit reruns that
-  disagree); flaky keys; agent passes accepted at the merge gate.
+moon's remote cache shared by every machine, written by CI; secrets resolved
+from a password manager.
+
+- **Proof:** re-proof rate, exact; check minutes avoided; cache hits by source
+  (own worktree, another worktree, remote); declared-input coverage (share of
+  tasks whose inputs are declared and checked); false hits (a sample of cached
+  passes re-run, disagreeing); flaky tasks.
 - **Flow:** time to merge saved.
-- **Quality:** accuracy of "affected" (what pinout said a change affects,
-  against what actually changed).
+- **Health:** commands run outside the declared shell.
+- **Secrets:** secrets resolved per day, by agent and task; secrets found in
+  transcripts or commits (the target is none).
 - **Watch:** proof cost per landed unit.
 
 ## Stage 3: Flywheel Next's design loop and rail
@@ -85,7 +90,7 @@ Claude Code's OpenTelemetry export, and hooks that log tool calls.
 |---|---|---|---|
 | Unit cycle time, by stage | Time from adding a unit to merging it into its bolt, split into construct, awaiting approval, code, verify and merge | Crew's plan and stage changes; unit branch commit times | Waiting for approval likely dominates: the case for the decision inbox |
 | Sent back after "done" | Share of units where code reported done and verify sent the work back | Crew's stage changes | How often agents overclaim: why gates read evidence |
-| Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run logs across worktrees (approximate). Later: testledger keys (exact) | The waste testledger removes; before and after is a strong note |
+| Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run reports across worktrees (task hashes run again rather than replayed). Later: the remote cache's hit records | The waste a shared cache removes; before and after is a strong note |
 
 ```yaml
 # content/measurements/unit-cycle-time.yaml
@@ -101,5 +106,5 @@ collector: collectors/unit-cycle-time
 points: []
 ```
 
-Only our own repositories are measured: pinout, testledger, flywheel-next and
-crew.
+Only our own repositories are measured: flywheel-next, crew and
+flywheel-web.

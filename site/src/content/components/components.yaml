@@ -22,20 +22,28 @@
   category: secrets
   role: Declares the secrets a repository needs, resolved from the provider at run time
   status: in-use
+  serves: [secrets-by-declaration]
+- id: password-manager
+  name: 1Password
+  url: https://1password.com/
+  category: password-manager
+  role: Where secrets are resolved from for operations work
+  status: trialing
+  serves: [secrets-by-declaration]
 - id: devenv
   name: devenv
   url: https://devenv.sh/
   category: toolchain
   role: Declares every tool a repository's scripts run
   status: in-use
-  serves: [every-day-the-same]
+  serves: [one-shell]
 - id: moon
   name: moon
   url: https://moonrepo.dev/
   category: task-graph
   role: Runs every check, caching by inputs
   status: in-use
-  serves: [every-day-the-same, never-prove-twice]
+  serves: [never-prove-twice]
 - id: crew
   name: Crew
   category: ours
@@ -44,17 +52,3 @@
   ours: true
   becomes: flywheel-next
   serves: [intents-and-bolts, two-loops-one-gate]
-- id: pinout
-  name: pinout
-  category: ours
-  role: Answers what a repository holds and what a change affects
-  status: trialing
-  ours: true
-  serves: [know-what-a-change-touches]
-- id: testledger
-  name: testledger
-  category: ours
-  role: Records which checks passed on which inputs
-  status: trialing
-  ours: true
-  serves: [never-prove-twice]
