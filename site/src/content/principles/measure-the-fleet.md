@@ -1,5 +1,5 @@
 ---
-order: 7
+order: 8
 title: "Measure the fleet"
 summary: "A fleet that is not measured cannot be steered: count what lands, what it cost in attention and money, and what came back."
 status: draft

@@ -28,7 +28,7 @@
   insteadOf: [work tree, work-tree]
 - id: remote-cache
   term: remote cache
-  definition: The task runner's cache shared by every machine; agents read it and only CI writes to it.
+  definition: The task runner's cache every machine reads; only the confined executor, which holds its write credential, writes to it.
   principle: never-prove-twice
 - id: fleet
   term: fleet
@@ -43,3 +43,23 @@
   term: secret
   definition: A credential a repository declares and the shell resolves from a password manager for one task.
   principle: secrets-by-declaration
+- id: line
+  term: line
+  definition: A branch that lands work, either the shared line or a bolt's line off it.
+  principle: order-at-landing
+- id: submission
+  term: submission
+  definition: A session's finished head offered to a line, naming what it lands after; the session never merges it itself.
+  principle: one-agent-one-worktree
+- id: candidate
+  term: candidate
+  definition: The line plus every entry ahead of one submission, in order, tested exactly as it would land.
+  principle: order-at-landing
+- id: culprit
+  term: culprit
+  definition: The one submission a failed candidate is attributed to, the newest entry of the first candidate that failed.
+  principle: order-at-landing
+- id: confined-executor
+  term: confined executor
+  definition: The runner that could read nothing beyond a check's declared inputs, and the only writer of the remote cache.
+  principle: never-prove-twice

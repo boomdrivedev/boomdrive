@@ -1,10 +1,15 @@
 [Bb]olt
+[Cc]andidate
+[Cc]onfined executor
+[Cc]ulprit
 [Ff]leet
 [Gg]ate
 [Ii]ntent
+[Ll]ine
 [Oo]perator
 [Rr]emote cache
 [Ss]ecret
 [Ss]hell
+[Ss]ubmission
 [Uu]nit
 [Ww]orktree
