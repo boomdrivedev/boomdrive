@@ -51,7 +51,7 @@ About, and the first page of the Fleet.
 | Home | Leads with scaling the fleet from one agent toward a thousand, beside the animated flywheel, with "Every day the same, for developers and agents" second as the Method's promise; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
 | The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
-| The Fleet | A page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it; the current fleet context | Always current, rebuilt from data | Fleet utilization's page; the rest as measurements arrive |
+| The Fleet | A front page that frames the fleet (flywheels, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
 | Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
 | Tools | Crew, and the shell, moon and hook configurations we publish | Updated per release | Yes |
@@ -142,8 +142,8 @@ Fifteen types; the first five are needed for version 1.
 | ChangeEntry | principle, kind (added, revised, retired), summary, promptedBy | The changelog, and the loop from evidence to method |
 | Practice | principle, asOf, today (how, components, shortcuts), target (how, delivers, status, design link) | Shows honestly how we do it now and where it is going |
 | RoadmapItem | title, status (idea, designing, building, preview, released), principle, delivers, design link, lastUpdated | Everything we know is coming, without dates |
-| FleetContext | id (hash of the stack), date range, agents (peak, typical), hosts, components with versions, repos | The conditions a note was true under |
-| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, statistic, peakOf, points (date, value, context, sample)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`). A point is one value at one date; a series says which statistic of the day's samples its value is, and a peak series names the series it is the peak of |
+| FleetContext | id (hash of the stack), date range, flywheels, hosts, repos, agents (peak, typical), components with versions | The conditions a note was true under, and the frame the Fleet's front page opens with |
+| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, statistic, peakOf, host, flywheel, stage, points (date, value, context, sample)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`). A point is one value at one date; a series says which statistic of the day's samples its value is, a peak series names the series it is the peak of, and a series split by machine, flywheel or stage names which |
 | Video | youtubeId, title, recorded, duration, chapters, note, series | Videos as records, embedded and indexed |
 | Series | title, summary, items (ordered notes and videos) | An arc a reader can follow |
 | Release | component, version, date, launchNote, highlights | Every release is a launch |
@@ -199,12 +199,13 @@ A measurement is a definition plus a collector on a schedule; fleet contexts
 are captured, never written by hand.
 
 1. **Sample, every 5 minutes:** live agents, their repos and states
-   (`herdr agent list`), and the host's footprint beside them: CPU and
-   memory in use and the number of processes, since agents run tests, dev
-   servers and containers. Raw samples stay private on the host.
+   (`herdr agent list`), the host's footprint beside them: CPU and memory
+   in use and the number of processes, since agents run tests, dev servers
+   and containers, and the plan's state: bolts open and units in flight by
+   stage, per flywheel (Crew's plan). Raw samples stay private on the host.
 2. **Collect, nightly:** each collector reads its sources (Crew's plan and
-   stage changes, git timestamps, moon's run logs). A repository allowlist
-   means only our own repositories are read.
+   its run record of merges and landings, git timestamps, moon's run logs).
+   A repository allowlist means only our own repositories are read.
 3. **Snapshot the context, nightly:** component versions, hosts, peak and
    typical agents. A new fleet context is made only when the stack changes,
    keyed by a hash of it.
@@ -258,8 +259,37 @@ Each measurement has one page in The Fleet, at its id. It shows:
   passed off as measured.
 
 Fleet utilization is the first page, and the one Home reads: agents running
-and how many of them are busy, like cores on a machine, with the host's CPU,
-memory and process count beside them (`measurement-roadmap.md`).
+and how many of them are busy, like cores on a machine, with each machine's
+CPU, memory and process count beside them (`measurement-roadmap.md`).
+
+## The Fleet's front page
+
+The Fleet opens on the fleet's day, so a reader sees in one look whether the
+agents were busy, what they were busy on, and what came out.
+
+- **The frame first.** The current fleet context as one line: how many
+  flywheels we operate, on how many machines, over how many repositories,
+  and the agents at peak. Every number beneath is read against it, and a
+  change to it is a new context, marked on every chart's time axis. A
+  flywheel is one loop we operate, with its own plan, teams, signals and
+  state; the glossary carries the term, and it is the word Crew already
+  uses for a partition's loop.
+- **Three measurements on one time axis**, top to bottom: fleet
+  utilization, agents running with busy filled inside; work in flight,
+  units by stage stacked with bolts open as a line; landed, units merged
+  into their bolt and bolts landed on main, as bars. Each carries its
+  headline tile, which links to the measurement's own page.
+- **Host load is per machine, never summed.** CPU, memory and processes
+  are one series per machine; agent counts, work in flight and landed are
+  fleet totals, with the split by machine or by flywheel readable on the
+  page.
+- **Only our own fleet appears.** Flywheels, machines and repositories
+  that carry client work are neither named nor counted, by the site's rule
+  that no measurement comes from client work.
+- **Leverage comes later.** Landed per agent or per hour of attention is
+  not computed across measurements on the page; once landed and
+  utilization have real points it becomes its own measurement with its own
+  collector (`measurement-roadmap.md`, agent-hours per landed unit).
 
 ## The house style
 

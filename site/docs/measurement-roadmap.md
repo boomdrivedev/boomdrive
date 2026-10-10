@@ -1,7 +1,8 @@
 # Measurement roadmap
 
 Candidate measurements, by the stage whose capability makes them measurable.
-Start with fleet utilization, then the three marked ★, and add as each stage
+Start with fleet utilization, work in flight and landed, which the Fleet's
+front page reads together, then the three marked ★, and add as each stage
 arrives; each stage's arrival is a field note, and each measurement's first
 chart is another.
 
@@ -25,9 +26,11 @@ attention. It says whether more agents is working.
 
 Crew, Herdr, git and moon already record this.
 
-- **Flow:** ★ units and bolts landed per week; ★ unit cycle time by stage
-  (construct, awaiting approval, code, verify, merge); work in flight; peak
-  and typical concurrent agents; agent-hours per landed unit.
+- **Flow:** ★ landed (units merged into their bolt and bolts landed on
+  main, by day, by flywheel); ★ work in flight (bolts open, units by stage,
+  repositories with work, by flywheel); ★ unit cycle time by stage
+  (construct, awaiting approval, code, verify, merge); peak and typical
+  concurrent agents; agent-hours per landed unit.
 - **Attention:** approval wait; approvals per landed unit; operator
   interventions per unit (`crew fix`, manual prompts).
 - **Proof:** ★ sent back after "done" (code said done, verify disagreed);
@@ -86,11 +89,13 @@ from a password manager.
   Method's changelog.
 - **Community:** an opt-in benchmark across readers' fleets.
 
-## The first four, defined
+## The first measurements, defined
 
 | Measurement | Definition | Source | What it argues |
 |---|---|---|---|
-| Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count. Each day's value is the median of the day's samples, the day being the host's calendar day with every sample counted; the agent counts also publish the day's peak. The busy share is busy divided by running at a point | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the peak that marks the journey on Home |
+| Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count, one series per machine. Each day's value is the median of the day's samples, the day being the host's calendar day with every sample counted; the agent counts also publish the day's peak. The busy share is busy divided by running at a point | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the peak that marks the journey on Home |
+| Work in flight | Every 5 minutes, from each flywheel's plan: bolts open, units in flight by stage (construct, awaiting approval, code, verify, merge), and repositories with work in flight; each day's value the median of the day's samples, per flywheel and in total | Crew's plan (`crew bolts`) | Where open work sits: a pile at awaiting approval is the attention bottleneck |
+| Landed | Each day, from each flywheel's run record: units merged into their bolt (work finished) and bolts landed on main (work delivered), counted, per flywheel and in total; the headline shows the week's total | Crew's run record (`crew events`) | What the fleet delivers, read against how busy it was; small and lumpy at first, which the week's total absorbs |
 | Unit cycle time, by stage | Time from adding a unit to merging it into its bolt, split into construct, awaiting approval, code, verify and merge | Crew's plan and stage changes; unit branch commit times | Waiting for approval likely dominates: the case for the decision inbox |
 | Sent back after "done" | Share of units where code reported done and verify sent the work back | Crew's stage changes | How often agents overclaim: why gates read evidence |
 | Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run reports across worktrees (task hashes run again rather than replayed). Later: the remote cache's hit records | The waste a shared cache removes; before and after is a strong note |
@@ -124,10 +129,50 @@ series:
   - { name: agents running, peak, unit: agents, statistic: max, peakOf: agents running, points: [] }
   - { name: agents busy, unit: agents, statistic: median, points: [] }
   - { name: agents busy, peak, unit: agents, statistic: max, peakOf: agents busy, points: [] }
-  - { name: cpu, unit: percent, statistic: median, points: [] }
-  - { name: memory, unit: GB, statistic: median, points: [] }
-  - { name: processes, unit: processes, statistic: median, points: [] }
+  - { name: cpu, unit: percent, statistic: median, host: mac-studio, points: [] }
+  - { name: memory, unit: GB, statistic: median, host: mac-studio, points: [] }
+  - { name: processes, unit: processes, statistic: median, host: mac-studio, points: [] }
 ```
+
+```yaml
+# content/measurements/work-in-flight.yaml
+id: work-in-flight
+name: Work in flight
+definitionVersion: 1
+definition: >
+  Every 5 minutes, from each flywheel's plan: the bolts open, the units in
+  flight by stage, and the repositories with work in flight. Each day's
+  value is the median of the day's samples.
+principle: intents-and-bolts
+collector: collectors/work-in-flight
+series:
+  - { name: bolts open, unit: bolts, statistic: median, points: [] }
+  - { name: units in construct, unit: units, statistic: median, stage: construct, points: [] }
+  - { name: units awaiting approval, unit: units, statistic: median, stage: awaiting approval, points: [] }
+  - { name: units in code, unit: units, statistic: median, stage: code, points: [] }
+  - { name: units in verify, unit: units, statistic: median, stage: verify, points: [] }
+  - { name: units in merge, unit: units, statistic: median, stage: merge, points: [] }
+  - { name: repositories with work, unit: repositories, statistic: median, points: [] }
+```
+
+```yaml
+# content/measurements/landed.yaml
+id: landed
+name: Landed
+definitionVersion: 1
+definition: >
+  Each day, from each flywheel's run record: the units merged into their
+  bolt, and the bolts landed on main. Counted, not sampled.
+principle: intents-and-bolts
+collector: collectors/landed
+series:
+  - { name: units merged, unit: units, statistic: count, points: [] }
+  - { name: bolts landed, unit: bolts, statistic: count, points: [] }
+```
+
+A series split by flywheel repeats with `flywheel: <name>` beside the
+total; the page stacks the split and headlines the total. Only our own
+flywheels appear.
 
 ```yaml
 # content/measurements/unit-cycle-time.yaml
