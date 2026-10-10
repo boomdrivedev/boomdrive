@@ -79,9 +79,13 @@ About, and the first page of the Fleet.
   write-up (the claim, what it rules out, today, where it is going, what
   measures it) beside an animated diagram of the idea, in the manner of
   sluice's merge-queue diagram (`agentplot/sluice docs/diagrams/sluice.svg`),
-  which is the diagram for "Order at landing, never at start". A principle
-  without a diagram yet shows its write-up alone; diagrams arrive one per
-  principle.
+  which, as the site's own copy in the site's palette, is the diagram for
+  "Order at landing, never at start". A diagram is one SVG the principle
+  names, carrying its own styles, motion and reduced-motion rule, shown as
+  an image so the page's styles never reach inside it, with alt text that
+  says what it shows. Diagrams arrive one per principle; until a principle
+  has one, its numeral in faint outline holds the diagram's place on a wide
+  screen, and on a phone the write-up stands alone.
 - **Motion never hides content.** Every diagram honours reduced motion. With
   scripts off, Home is the flywheel, the line, the list and the journey, and
   the Method is the principles in order; nothing is reachable only by
@@ -115,7 +119,7 @@ Fifteen types; the first five are needed for version 1.
 
 | Type | Key fields | Why it exists |
 |---|---|---|
-| Principle | order, title, summary, line, status (draft, stable, retired), introducedIn, lastReviewed, related | The Method pages, kept current in place. `summary` is the claim; `line` is the principle in one line, as Home and the statement list it (`method-outline.md` gives each) |
+| Principle | order, title, summary, line, status (draft, stable, retired), introducedIn, lastReviewed, related, diagram (src, alt) | The Method pages, kept current in place. `summary` is the claim; `line` is the principle in one line, as Home and the statement list it (`method-outline.md` gives each); `diagram` names the principle's animated SVG, once it has one |
 | Note | title (the claim), date, kind (finding, how-to, essay, incident), context, methodVersion, principles, measurements, artifacts, openQuestions, video, series, supersededBy | Dated evidence, never rewritten |
 | Component | name, url, category, role, status (trialing, in use, retired), since, serves, alternatives, partOf, ours, repo, becomes | Every tool in the fleet, ours or others' (Worktrunk, secretspec, password managers, Claude Code, Herdr and its plugins, Crew) |
 | Term | term, definition, principle | One vocabulary across pages and agent drafts |
