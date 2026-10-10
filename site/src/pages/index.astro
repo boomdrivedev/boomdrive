@@ -2,99 +2,87 @@
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
 import Flywheel from "../components/Flywheel.astro";
-import Journey from "../components/Journey.astro";
+import Scale from "../components/Scale.astro";
 
-const principles = (await getCollection("principles", ({ data }) => data.status !== "retired" && data.order > 0)).sort(
-  (a, b) => a.data.order - b.data.order,
-);
-const notes = (await getCollection("notes", ({ data }) => !data.draft)).sort(
-  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-);
-const latest = notes[0];
+const notes = (await getCollection("notes", ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+const iso = (d: Date) => d.toISOString().slice(0, 10);
 ---
 
-<Base title="Flywheel" description="Every day the same, for developers and agents: the Method for running a fleet of coding agents, from one agent to a thousand." wide>
+<Base title="Flywheel" description="Scaling a fleet of coding agents from one agent toward a thousand, and the Method that keeps it turning." wide>
   <section class="fold">
     <div class="copy">
-      <p class="eyebrow">Flywheel · the Method</p>
-      <h1>Every day the same, <span>for developers and agents.</span></h1>
+      <p class="eyebrow">Flywheel</p>
+      <h1>From one agent <span>to a thousand.</span></h1>
       <p class="deck">
-        We are learning in public how to run a fleet of coding agents, from one agent to a thousand. The{" "}
-        <a href="/method/">Method</a> is the mental model, the <a href="/notes/">notes</a> are the evidence, and{" "}
-        <a href="/fleet/">the Fleet</a> is the numbers.
+        We run a fleet of coding agents and keep adding to it, to find out how far one team can take it. What holds
+        as the fleet grows becomes the Method; what we measure on the way, we publish.
       </p>
+      <div class="ctas">
+        <a class="cta primary" href="/method/">Read the Method</a>
+        <a class="cta" href="/fleet/fleet-utilization/">Fleet utilization</a>
+      </div>
+      <p class="promise">The Method's promise: every day the same, for developers and agents.</p>
     </div>
     <div class="stage"><Flywheel /></div>
-    <ol class="principles" aria-label="The principles">
-      {
-        principles.map((p) => (
-          <li>
-            <a href={`/method/${p.id}/`}>
-              <span class="no">{String(p.data.order).padStart(2, "0")}</span>
-              <span class="t">{p.data.title}</span>
-              <span class="l">{p.data.line}</span>
-            </a>
-          </li>
-        ))
-      }
-    </ol>
   </section>
 
-  <Journey />
+  <Scale />
 
-  <section class="after">
-    <div class="panel">
-      <p class="eyebrow">Latest field note</p>
-      {
-        latest ? (
-          <p>
-            <a href={`/notes/${latest.id}/`}>{latest.data.title}</a>
-          </p>
-        ) : (
-          <p class="muted">The first field note is on its way.</p>
-        )
-      }
+  <section class="notes" aria-labelledby="notes-title">
+    <div class="notes-head">
+      <h2 id="notes-title">Field notes</h2>
+      <a class="all" href="/notes/">All field notes</a>
     </div>
-    <div class="panel">
-      <p class="eyebrow">Follow along</p>
-      <p class="muted">[Newsletter signup goes here once the platform is chosen.]</p>
-    </div>
+    {
+      notes.length ? (
+        <ul class="plain">
+          {notes.map((n) => (
+            <li>
+              <span class="when">
+                {iso(n.data.date)} · {n.data.kind}
+              </span>
+              <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="muted">The first field note is being written. Each one is dated, cites what it measured, and is never rewritten.</p>
+      )
+    }
+    <p class="signup muted">[Newsletter signup goes here once the platform is chosen.]</p>
   </section>
 </Base>
 
 <style>
-  /* Two columns on a wide screen, the flywheel beside the principles; on a
-     phone the flywheel sits between the line and the list. */
-  .fold {
-    display: grid; gap: 8px 40px; align-items: start;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-    grid-template-areas: "copy stage" "list stage";
-  }
-  .copy { grid-area: copy; }
-  .stage { grid-area: stage; position: sticky; top: 64px; }
-  .principles { grid-area: list; }
-  @media (max-width: 56rem) {
-    .fold { grid-template-columns: 1fr; grid-template-areas: "copy" "stage" "list"; }
-    .stage { position: static; }
-  }
+  /* The line and its calls to action beside the flywheel; on a phone the
+     flywheel follows them. */
+  .fold { display: grid; gap: 16px 40px; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  @media (max-width: 56rem) { .fold { grid-template-columns: 1fr; } }
 
-  h1 { font-size: clamp(2.4rem, 5vw, 3.8rem); line-height: 0.98; margin: 12px 0 18px; }
+  h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 0.95; margin: 12px 0 20px; }
   h1 span { color: var(--brass); }
-  .deck { max-width: 40ch; margin: 0 0 8px; }
+  .deck { max-width: 38ch; margin: 0 0 26px; font-size: 1.1rem; }
 
-  .principles { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--line); }
-  .principles li { border-bottom: 1px solid var(--line-soft); }
-  .principles a {
-    display: grid; grid-template-columns: 2.4rem 1fr; gap: 0 4px; padding: 12px 8px 12px 0;
-    text-decoration: none; border-left: 2px solid transparent; transition: border-color 0.15s, background 0.15s;
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  .cta {
+    font: 500 15px/1 var(--display); text-decoration: none; padding: 13px 20px; border-radius: 8px;
+    border: 1px solid var(--line); color: var(--ink); transition: border-color 0.15s, background 0.15s;
   }
-  .principles a:hover, .principles a:focus-visible { border-left-color: var(--brass); background: rgba(201, 162, 39, 0.05); }
-  .no { grid-row: span 2; padding: 3px 0 0 10px; font: 11px/1.6 var(--mono); letter-spacing: 0.12em; color: var(--brass); }
-  .t { font: 500 1.08rem/1.3 var(--display); color: var(--ink); letter-spacing: -0.01em; }
-  .l { font-size: 15.5px; line-height: 1.45; color: var(--ink-3); }
-  @media (prefers-reduced-motion: reduce) { .principles a { transition: none; } }
+  .cta:hover { border-color: var(--mint); color: var(--ink); }
+  .cta.primary { background: var(--brass); border-color: var(--brass); color: var(--ground); font-weight: 700; }
+  .cta.primary:hover { background: #d8b13a; color: var(--ground); }
+  .cta.primary::after { content: " →"; }
+  @media (prefers-reduced-motion: reduce) { .cta { transition: none; } }
+  .promise { margin: 22px 0 0; font: 11px/1.6 var(--mono); letter-spacing: 0.08em; color: var(--ink-3); }
 
-  .after { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: 56px; }
-  .after .panel { padding: 16px 18px 6px; }
-  .after p { margin: 6px 0 10px; }
+  .notes { margin-top: 64px; max-width: 46rem; }
+  .notes-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .notes h2 { margin: 0; }
+  .all { font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; }
+  .all::after { content: " →"; }
+  .notes li { display: grid; gap: 2px; }
+  .when { font: 11px/1.6 var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+  .signup { font-size: 15px; margin-top: 24px; }
 </style>
