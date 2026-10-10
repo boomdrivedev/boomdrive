@@ -2,6 +2,7 @@
 order: 0
 title: "The statement"
 summary: "Coding agents made writing code cheap; deciding and proving it is now the bottleneck, and a fleet needs conventions the way web applications needed Rails."
+line: "Writing code got cheap; deciding and proving it is the work now."
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-06

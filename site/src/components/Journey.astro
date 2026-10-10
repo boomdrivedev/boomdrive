@@ -1,0 +1,90 @@
+---
+import { getEntry } from "astro:content";
+
+// The journey to a thousand agents: seven marks, each drawn as that many
+// agents. The mark the fleet has reached is lit from the latest collected
+// peak of agents running, and the peak so far is named. A sample is never
+// read here, so until the collector's first point lands nothing is lit.
+
+const marks = [1, 5, 20, 50, 100, 500, 1000];
+const record = await getEntry("measurements", "fleet-utilization");
+const peaks = (record?.data.series.find((s) => s.peakOf === "agents running")?.points ?? []).filter((p) => !p.sample);
+const latest = peaks.at(-1);
+const best = peaks.length ? Math.max(...peaks.map((p) => p.value)) : undefined;
+const reached = latest ? marks.filter((m) => m <= latest.value).length : 0;
+
+// One mark's agents as a grid of dots in a 120-unit square, drawn as one
+// path of zero-length round-capped strokes.
+const box = 120;
+const grid = (n: number) => {
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+  const cell = Math.min(box / cols, 40);
+  const r = Math.min(cell * 0.3, 10);
+  const x0 = (box - cols * cell) / 2 + cell / 2;
+  const y0 = (box - rows * cell) / 2 + cell / 2;
+  const d = Array.from({ length: n }, (_, i) => `M${(x0 + (i % cols) * cell).toFixed(1)},${(y0 + Math.floor(i / cols) * cell).toFixed(1)}h0`).join("");
+  return { d, width: (2 * r).toFixed(2) };
+};
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+---
+
+<section class="journey" aria-labelledby="journey-title">
+  <p class="eyebrow">The journey</p>
+  <h2 id="journey-title">From one agent to a thousand</h2>
+  <p class="why">Each step is a change in how we think and work before it is a change in tools.</p>
+  <ol class="marks">
+    {
+      marks.map((m, i) => {
+        const g = grid(m);
+        const state = i < reached - 1 ? "past" : i === reached - 1 ? "here" : "ahead";
+        return (
+          <li class={state}>
+            <svg viewBox={`0 0 ${box} ${box}`} aria-hidden="true">
+              <path d={g.d} stroke-width={g.width} />
+            </svg>
+            <span class="n">{m.toLocaleString("en")}</span>
+            <span class="u">{m === 1 ? "agent" : "agents"}</span>
+          </li>
+        );
+      })
+    }
+  </ol>
+  {
+    latest && best !== undefined ? (
+      <p class="where">
+        On {iso(latest.date)} the fleet peaked at {latest.value} agents running; the peak so far is {best}.{" "}
+        <a href="/fleet/fleet-utilization/">Fleet utilization</a>
+      </p>
+    ) : (
+      <p class="where">
+        Where the fleet stands lights up here once the collector's first point lands. Until then,{" "}
+        <a href="/fleet/fleet-utilization/">fleet utilization</a> shows the page with samples.
+      </p>
+    )
+  }
+</section>
+
+<style>
+  .journey { margin: 72px 0 0; }
+  .journey h2 { margin: 6px 0 8px; font-size: clamp(1.6rem, 3.6vw, 2.2rem); }
+  .why { margin: 0 0 24px; max-width: 46ch; }
+  .marks {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 12px; grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  @media (max-width: 44rem) { .marks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .marks li {
+    display: grid; justify-items: center; gap: 2px; padding: 14px 8px 12px;
+    border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(9, 28, 31, 0.45);
+  }
+  .marks svg { width: 100%; max-width: 96px; height: auto; margin-bottom: 8px; }
+  .marks path { fill: none; stroke: var(--mint); stroke-opacity: 0.32; stroke-linecap: round; }
+  .marks .past path { stroke: var(--brass); stroke-opacity: 0.7; }
+  .marks .here { border-color: rgba(201, 162, 39, 0.6); background: rgba(201, 162, 39, 0.07); }
+  .marks .here path { stroke: var(--brass); stroke-opacity: 1; }
+  .n { font: 700 1.25rem/1.1 var(--display); color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ahead .n { color: var(--ink-2); }
+  .u { font: 10px/1.5 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .where { margin: 18px 0 0; font: 12.5px/1.6 var(--mono); color: var(--ink-3); }
+</style>

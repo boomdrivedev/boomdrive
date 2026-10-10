@@ -2,6 +2,7 @@
 order: 2
 title: "One agent, one worktree"
 summary: "Each agent works in its own worktree with its own ports, emulator and dev servers, and submits its work to a merge queue rather than merging it, so nothing it does can disturb another."
+line: "Each agent works alone in its own worktree, and submits rather than merges."
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

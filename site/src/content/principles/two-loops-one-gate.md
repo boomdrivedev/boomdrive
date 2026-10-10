@@ -2,6 +2,7 @@
 order: 4
 title: "Two loops, one gate"
 summary: "Design and construction are separate loops, coupled where a human decides, and agents never approve agents; the operator's word comes before the work is tested, never between test and landing."
+line: "Design and construction are separate loops, and a person decides where they meet."
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

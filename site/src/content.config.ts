@@ -12,6 +12,8 @@ const principles = defineCollection({
     order: z.number().int().min(0),
     title: z.string(),
     summary: z.string(),
+    // The principle in one line, as Home lists it beside the flywheel.
+    line: z.string(),
     status: z.enum(["draft", "stable", "retired"]),
     introducedIn: z.string(),
     lastReviewed: z.coerce.date(),

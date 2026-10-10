@@ -1,0 +1,157 @@
+---
+// The flywheel, from agentplot/flywheel's site (site/index.html, the hero's
+// .stage svg): the operator's review on the rim, then intent, then bolts,
+// construction at the core, each ring's ticks turning at its own rate. The
+// geometry and the turning rates are the original's; the ticks are drawn at
+// build time rather than by a script, the view is cropped to the rings, and
+// the labels use the Method's words.
+
+const cx = 450, cy = 330;
+const ticks = (r1: number, r2: number, count: number) =>
+  Array.from({ length: count }, (_, i) => {
+    const a = (i / count) * Math.PI * 2;
+    const f = (n: number) => n.toFixed(2);
+    return `M${f(cx + Math.cos(a) * r1)},${f(cy + Math.sin(a) * r1)}L${f(cx + Math.cos(a) * r2)},${f(cy + Math.sin(a) * r2)}`;
+  }).join("");
+// Labels ride the upper arcs left to right; under the wheel they run left to
+// right too, so they read upright, on an arc one line further out so the
+// letters keep to the same band.
+const arc = (r: number, under = false) => {
+  const u = r + 9;
+  return under ? `M${cx},${cy} m${-u},0 a${u},${u} 0 0,0 ${2 * u},0` : `M${cx},${cy} m${-r},0 a${r},${r} 0 0,1 ${2 * r},0`;
+};
+---
+
+<svg class="flywheel" viewBox="120 0 660 696" role="img" aria-label="The flywheel: four rings turning, the operator's review on the outside, then intent, then bolts, with construction at the core. Spec descends inward; evidence climbs back out; the gate is where the operator's word crosses the rings.">
+  <defs>
+    <marker id="fw-in" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" class="f-rust"></path>
+    </marker>
+    <marker id="fw-out" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" class="f-mint"></path>
+    </marker>
+    <path id="fw-a-rim" d={arc(296)} fill="none"></path>
+    <path id="fw-a-intent" d={arc(226)} fill="none"></path>
+    <path id="fw-a-bolt" d={arc(158)} fill="none"></path>
+    <path id="fw-a-rim-b" d={arc(296, true)} fill="none"></path>
+    <path id="fw-a-intent-b" d={arc(226, true)} fill="none"></path>
+    <path id="fw-a-bolt-b" d={arc(158, true)} fill="none"></path>
+    <g id="fw-bot">
+      <line x1="0" y1="-13" x2="0" y2="-8" class="s-ground" stroke-width="2"></line>
+      <circle cx="0" cy="-14" r="2" class="f-ground"></circle>
+      <rect x="-9" y="-8" width="18" height="15" rx="5" class="f-brass"></rect>
+      <circle cx="-3.5" cy="-1" r="1.8" class="f-ground"></circle>
+      <circle cx="3.5" cy="-1" r="1.8" class="f-ground"></circle>
+    </g>
+    <g id="fw-bot-mint">
+      <line x1="0" y1="-13" x2="0" y2="-8" class="s-ground" stroke-width="2"></line>
+      <circle cx="0" cy="-14" r="2" class="f-ground"></circle>
+      <rect x="-9" y="-8" width="18" height="15" rx="5" class="f-mint"></rect>
+      <circle cx="-3.5" cy="-1" r="1.8" class="f-ground"></circle>
+      <circle cx="3.5" cy="-1" r="1.8" class="f-ground"></circle>
+    </g>
+  </defs>
+
+  <g transform="translate(0,36)">
+    <!-- The rim: the operator's review, the heavy wheel. -->
+    <circle cx="450" cy="330" r="310" fill="none" class="s-mint" stroke-opacity=".22"></circle>
+    <circle cx="450" cy="330" r="282" fill="none" class="s-mint" stroke-opacity=".22"></circle>
+    <g class="spin r-rim"><path d={ticks(282, 310, 96)} class="s-mint" stroke-opacity=".28"></path></g>
+
+    <circle cx="450" cy="330" r="248" fill="none" class="s-brass" stroke-opacity=".35" stroke-dasharray="2 7"></circle>
+    <circle cx="450" cy="330" r="204" fill="none" class="s-brass" stroke-opacity=".5"></circle>
+    <circle cx="450" cy="330" r="176" fill="none" class="s-brass" stroke-opacity=".22" stroke-dasharray="2 7"></circle>
+    <circle cx="450" cy="330" r="138" fill="none" class="s-brass" stroke-opacity=".5"></circle>
+    <circle cx="450" cy="330" r="104" fill="none" class="s-rust" stroke-opacity=".45" stroke-dasharray="2 7"></circle>
+    <circle cx="450" cy="330" r="84" class="f-ground2 s-rust" stroke-opacity=".75" stroke-width="1.5"></circle>
+
+    <g class="spin r-intent"><path d={ticks(204, 216, 24)} class="s-brass" stroke-opacity=".45"></path></g>
+    <g class="spin r-bolt"><path d={ticks(138, 150, 36)} class="s-brass" stroke-opacity=".45"></path></g>
+    <g class="spin r-core"><path d={ticks(84, 94, 48)} class="s-rust" stroke-opacity=".5"></path></g>
+
+    <!-- Inward, spec; outward, evidence. -->
+    <g stroke-width="1.5" fill="none" opacity=".9">
+      <path d="M450 44 L450 118" class="s-rust" marker-end="url(#fw-in)"></path>
+      <path d="M450 148 L450 200" class="s-rust" marker-end="url(#fw-in)"></path>
+      <path d="M450 218 L450 236" class="s-rust" marker-end="url(#fw-in)"></path>
+      <path d="M450 604 L450 540" class="s-mint" marker-end="url(#fw-out)"></path>
+      <path d="M450 510 L450 462" class="s-mint" marker-end="url(#fw-out)"></path>
+      <path d="M450 440 L450 422" class="s-mint" marker-end="url(#fw-out)"></path>
+    </g>
+    <text x="464" y="90" class="f-rust small">SPEC DESCENDS</text>
+    <text x="464" y="588" class="f-mint small">EVIDENCE CLIMBS</text>
+
+    <!-- Where the operator's word crosses the rings. -->
+    <g>
+      <rect x="168" y="316" width="100" height="28" rx="3" class="f-ground s-mint" stroke-opacity=".7"></rect>
+      <text x="218" y="334.5" text-anchor="middle" class="f-mint gate">THE GATE</text>
+      <rect x="632" y="316" width="100" height="28" rx="3" class="f-ground s-mint" stroke-opacity=".7"></rect>
+      <text x="682" y="334.5" text-anchor="middle" class="f-mint gate">THE GATE</text>
+    </g>
+
+    <text class="arc f-mint"><textPath href="#fw-a-rim" startOffset="50%" text-anchor="middle">Review · the operator</textPath></text>
+    <text class="arc f-mint" opacity=".55"><textPath href="#fw-a-rim-b" startOffset="50%" text-anchor="middle">the rim carries the momentum</textPath></text>
+    <text class="arc f-brass"><textPath href="#fw-a-intent" startOffset="50%" text-anchor="middle">Intent · what someone wants</textPath></text>
+    <text class="arc f-brass" opacity=".55"><textPath href="#fw-a-intent-b" startOffset="50%" text-anchor="middle">decisions settled · written down</textPath></text>
+    <text class="arc f-brass"><textPath href="#fw-a-bolt" startOffset="50%" text-anchor="middle">Bolts · landed as one</textPath></text>
+    <text class="arc f-brass" opacity=".55"><textPath href="#fw-a-bolt-b" startOffset="50%" text-anchor="middle">units · one change each</textPath></text>
+
+    <text x="450" y="322" text-anchor="middle" class="f-bone core">CONSTRUCTION</text>
+    <text x="450" y="344" text-anchor="middle" class="f-rust small">CODE · TESTS</text>
+    <text x="450" y="362" text-anchor="middle" class="f-mint small" opacity=".7">MINUTES</text>
+
+    <!-- The agents, riding their rings. -->
+    <g class="spin r-intent"><g transform="translate(450,330)"><g transform="translate(0,-204)"><g class="counter r-intent"><use href="#fw-bot"></use></g></g></g></g>
+    <g class="spin r-bolt">
+      <g transform="translate(450,330)">
+        <g transform="rotate(0) translate(0,-138)"><g class="counter r-bolt"><use href="#fw-bot"></use></g></g>
+        <g transform="rotate(120) translate(0,-138)"><g class="counter r-bolt"><use href="#fw-bot"></use></g></g>
+        <g transform="rotate(240) translate(0,-138)"><g class="counter r-bolt"><use href="#fw-bot"></use></g></g>
+      </g>
+    </g>
+    <g class="spin r-core">
+      <g transform="translate(450,330)">
+        <g transform="rotate(30) translate(0,-84)"><g class="counter r-core"><use href="#fw-bot-mint"></use></g></g>
+        <g transform="rotate(150) translate(0,-84)"><g class="counter r-core"><use href="#fw-bot-mint"></use></g></g>
+        <g transform="rotate(270) translate(0,-84)"><g class="counter r-core"><use href="#fw-bot-mint"></use></g></g>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(450,26)">
+    <rect x="-52" y="-15" width="104" height="30" rx="4" class="f-ground s-bone" stroke-opacity=".8"></rect>
+    <text x="0" y="5" text-anchor="middle" class="f-bone operator">OPERATOR</text>
+  </g>
+</svg>
+
+<style>
+  .flywheel { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--mono); }
+  .f-ground { fill: var(--ground); }
+  .f-ground2 { fill: var(--ground-2); }
+  .f-brass { fill: var(--brass); }
+  .f-mint { fill: var(--mint); }
+  .f-rust { fill: var(--rust); }
+  .f-bone { fill: var(--bone); }
+  .s-ground { stroke: var(--ground); }
+  .s-brass { stroke: var(--brass); }
+  .s-mint { stroke: var(--mint); }
+  .s-rust { stroke: var(--rust); }
+  .s-bone { stroke: var(--bone); }
+  .small { font-size: 10.5px; letter-spacing: 2.4px; }
+  .gate { font-size: 10px; letter-spacing: 1.6px; }
+  .operator { font-size: 11px; letter-spacing: 2px; }
+  .core { font: 700 19px var(--display); letter-spacing: -0.4px; }
+  .arc { font-size: 12.5px; letter-spacing: 0.24em; text-transform: uppercase; }
+  @media (max-width: 640px) { .arc { font-size: 15px; } }
+
+  /* Inner rings turn faster: the gear ratio, literally. */
+  .spin { transform-box: fill-box; transform-origin: center; animation: fw-cw linear infinite; }
+  .counter { transform-box: fill-box; transform-origin: center; animation: fw-ccw linear infinite; }
+  .r-rim { animation-duration: 240s; }
+  .r-intent { animation-duration: 120s; }
+  .r-bolt { animation-duration: 40s; }
+  .r-core { animation-duration: 10s; }
+  @keyframes fw-cw { to { transform: rotate(360deg); } }
+  @keyframes fw-ccw { to { transform: rotate(-360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .counter { animation: none; } }
+</style>
