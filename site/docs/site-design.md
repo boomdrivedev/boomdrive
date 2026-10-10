@@ -121,7 +121,7 @@ Fifteen types; the first five are needed for version 1.
 | Practice | principle, asOf, today (how, components, shortcuts), target (how, delivers, status, design link) | Shows honestly how we do it now and where it is going |
 | RoadmapItem | title, status (idea, designing, building, preview, released), principle, delivers, design link, lastUpdated | Everything we know is coming, without dates |
 | FleetContext | id (hash of the stack), date range, agents (peak, typical), hosts, components with versions, repos | The conditions a note was true under |
-| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, points (date, value, context)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`) |
+| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, statistic, peakOf, points (date, value, context, sample)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`). A point is one value at one date; a series says which statistic of the day's samples its value is, and a peak series names the series it is the peak of |
 | Video | youtubeId, title, recorded, duration, chapters, note, series | Videos as records, embedded and indexed |
 | Series | title, summary, items (ordered notes and videos) | An arc a reader can follow |
 | Release | component, version, date, launchNote, highlights | Every release is a launch |
@@ -211,13 +211,18 @@ repos: [flywheel-next, crew, flywheel-web]
 Each measurement has one page in The Fleet, at its id. It shows:
 
 - **The latest reading as the headline**, with when it was taken, one tile
-  per series.
+  per series; a peak series shows in the tile of the series it is the peak
+  of, as the second number.
 - **The chart:** every series over time, with the fleet context each point
   was true under marked along the time axis, so a change of stack is
-  visible where it happened. A reader can pick a point and read its value,
-  date and context, and switch between a series' own unit and its share
-  where a share means something (busy agents of running agents; a stage's
-  hours of a unit's).
+  visible where it happened. A peak series is the upper edge of its series'
+  band, never a line of its own. A reader can pick a point and read its
+  value, date and context, and switch between a series' own unit and its
+  share where a share means something (busy agents of running agents; a
+  stage's hours of a unit's). A share is computed from the two values shown
+  at that point, busy divided by running, and the page says so beside the
+  switch, so every number on the page can be checked from the table of
+  points under it.
 - **The definition beside the numbers:** the name, the definition in words,
   its version and when each version began, the principle it serves and the
   collector that produces it.
@@ -225,7 +230,10 @@ Each measurement has one page in The Fleet, at its id. It shows:
 - **What it cannot show**, in a sentence, as the audience plan's honest
   numbers ask.
 - A page with no points yet shows the definition and says the first points
-  are coming; a number is never invented.
+  are coming. A point may be flagged a sample so a page's shape can be seen
+  before its collector runs; a sample is marked wherever it appears, Home
+  never reads one, and collected points carry no flag. A number is never
+  passed off as measured.
 
 Fleet utilization is the first page, and the one Home reads: agents running
 and how many of them are busy, like cores on a machine, with the host's CPU,

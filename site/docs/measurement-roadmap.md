@@ -90,14 +90,20 @@ from a password manager.
 
 | Measurement | Definition | Source | What it argues |
 |---|---|---|---|
-| Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count; rolled up to the day as peak and typical | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the count that marks the journey on Home |
+| Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count. Each day's value is the median of the day's samples, the day being the host's calendar day with every sample counted; the agent counts also publish the day's peak. The busy share is busy divided by running at a point | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the peak that marks the journey on Home |
 | Unit cycle time, by stage | Time from adding a unit to merging it into its bolt, split into construct, awaiting approval, code, verify and merge | Crew's plan and stage changes; unit branch commit times | Waiting for approval likely dominates: the case for the decision inbox |
 | Sent back after "done" | Share of units where code reported done and verify sent the work back | Crew's stage changes | How often agents overclaim: why gates read evidence |
 | Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run reports across worktrees (task hashes run again rather than replayed). Later: the remote cache's hit records | The waste a shared cache removes; before and after is a strong note |
 
 A measurement is one definition with one or more series, versioned
 together because they come from the same sample: a stage's hours, or the
-agents and the host's load read at the same instant.
+agents and the host's load read at the same instant. A point is one value at
+one date. A series says which statistic of the day's samples its value is,
+the median unless it says otherwise, and a series that is the day's peak of
+another names it with `peakOf`, so the page draws the pair as one band and
+one tile. Only a quantity whose definition needs a peak carries one: the
+agent counts do, because the journey on Home reads the peak of agents
+running; the host's load does not.
 
 ```yaml
 # content/measurements/fleet-utilization.yaml
@@ -105,18 +111,22 @@ id: fleet-utilization
 name: Fleet utilization
 definitionVersion: 1
 definition: >
-  Every 5 minutes on each fleet host: the agents alive, how many of them are
-  busy (working, as against waiting on the operator or idle), and the host's
-  CPU and memory in use and its process count; rolled up to the day as peak
-  and typical.
+  Every 5 minutes on each fleet host: the agents alive, and how many of them
+  are busy (working, as against waiting on the operator or idle). Beside
+  them, the host's CPU and memory in use and its process count. Each day's
+  value is the median of the day's samples, every sample counted; the agent
+  counts also carry the day's peak. The busy share is busy divided by
+  running at a point.
 principle: measure-the-fleet
 collector: collectors/fleet-utilization
 series:
-  - { name: agents running, unit: agents, points: [] }
-  - { name: agents busy, unit: agents, points: [] }
-  - { name: cpu, unit: percent, points: [] }
-  - { name: memory, unit: GB, points: [] }
-  - { name: processes, unit: processes, points: [] }
+  - { name: agents running, unit: agents, statistic: median, points: [] }
+  - { name: agents running, peak, unit: agents, statistic: max, peakOf: agents running, points: [] }
+  - { name: agents busy, unit: agents, statistic: median, points: [] }
+  - { name: agents busy, peak, unit: agents, statistic: max, peakOf: agents busy, points: [] }
+  - { name: cpu, unit: percent, statistic: median, points: [] }
+  - { name: memory, unit: GB, statistic: median, points: [] }
+  - { name: processes, unit: processes, statistic: median, points: [] }
 ```
 
 ```yaml
