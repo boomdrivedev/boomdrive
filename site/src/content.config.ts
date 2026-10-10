@@ -80,14 +80,24 @@ const components = defineCollection({
   }),
 });
 
-// A day's roll-up of one series: its peak and its typical value. A sample is
-// an illustration, made up to show how the page reads; it is never a
-// measurement, and every place that shows one says so.
+// One value at one date. A sample is an illustration, made up to show how the
+// page reads; it is never a measurement, every place that shows one says so,
+// and Home never reads one.
 const point = z.object({
   date: z.coerce.date(),
-  typical: z.number(),
-  peak: z.number(),
+  value: z.number(),
   sample: z.boolean().default(false),
+});
+
+const series = z.object({
+  name: z.string(),
+  unit: z.string(),
+  // Which statistic of the day's samples the value is.
+  statistic: z.enum(["median", "max"]).default("median"),
+  // A peak series names the series it is the peak of; the page draws the
+  // pair as one band and one tile.
+  peakOf: z.string().optional(),
+  points: z.array(point).default([]),
 });
 
 // The record's file name is its id, so the two cannot disagree.
@@ -107,17 +117,19 @@ const measurements = defineCollection({
     // How the page draws the series; each form checks the series it needs.
     chart: z.enum(["utilization"]),
     series: z
-      .array(
-        z.object({
-          key: z.string(),
-          name: z.string(),
-          unit: z.string(),
-          // The key of the series this one is a share of, where a share means something.
-          shareOf: z.string().optional(),
-          points: z.array(point).default([]),
-        }),
-      )
-      .min(1),
+      .array(series)
+      .min(1)
+      .superRefine((all, ctx) => {
+        const names = all.map((s) => s.name);
+        names.forEach((n, i) => {
+          if (names.indexOf(n) !== i) ctx.addIssue({ code: "custom", message: `two series are named "${n}"` });
+        });
+        for (const s of all) {
+          if (s.peakOf && !names.includes(s.peakOf)) {
+            ctx.addIssue({ code: "custom", message: `"${s.name}" is the peak of "${s.peakOf}", which is not a series` });
+          }
+        }
+      }),
   }),
 });
 

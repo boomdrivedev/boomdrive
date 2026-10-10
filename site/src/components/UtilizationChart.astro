@@ -1,11 +1,12 @@
 ---
 import { type Day, fmt, share, short } from "./utilization";
 
-// Agents like cores: each day's bar is the agents running, the busy ones
-// solid and the rest hollow, with the day's peak as a tick above it. The
-// host's CPU, memory and processes run underneath on the same days, so a
-// column reads as one instant. Drawn at build time; the script only picks a
-// day and switches to busy as a share of running.
+// Agents like cores: each day's bar is the median of agents running, the
+// busy ones solid and the rest hollow. Each count's band rises from its
+// median to the day's peak, the peak its upper edge. The host's CPU, memory
+// and processes run underneath on the same days, so a column reads as one
+// instant. Drawn at build time; the script only picks a day and switches to
+// busy as a share of running.
 
 interface Props {
   days: Day[];
@@ -16,6 +17,7 @@ const n = days.length;
 const W = 760, L = 48, R = 12;
 const band = (W - L - R) / n;
 const bar = Math.min(22, band * 0.62);
+const thin = Math.max(4, bar * 0.34);
 const cx = (i: number) => L + band * (i + 0.5);
 
 // The agents panel.
@@ -33,7 +35,7 @@ const ya = (v: number) => aBottom - (v / aMax) * (aBottom - aTop);
 const aTicks = Array.from({ length: aMax / aStep + 1 }, (_, i) => i * aStep);
 const ys = (pct: number) => aBottom - (pct / 100) * (aBottom - aTop);
 
-// The host's strips, under the agents.
+// The host's strips, under the agents: a median each, no peak.
 const roundUp = (v: number) => {
   const unit = 10 ** Math.floor(Math.log10(v)) / 2;
   return Math.ceil(v / unit) * unit;
@@ -47,12 +49,10 @@ const strips = [
 const drawn = strips.map((s, k) => {
   const top = firstStrip + k * (stripH + stripGap);
   const bottom = top + stripH;
-  const max = s.max || roundUp(Math.max(...days.map((d) => d[s.key].peak)));
+  const max = s.max || roundUp(Math.max(...days.map((d) => d[s.key])));
   const y = (v: number) => bottom - (v / max) * stripH;
-  const line = days.map((d, i) => `${i ? "L" : "M"}${cx(i).toFixed(1)},${y(d[s.key].typical).toFixed(1)}`).join("");
-  const upper = days.map((d, i) => `${cx(i).toFixed(1)},${y(d[s.key].peak).toFixed(1)}`);
-  const lower = days.map((d, i) => `${cx(i).toFixed(1)},${y(d[s.key].typical).toFixed(1)}`).reverse();
-  return { ...s, top, bottom, max, y, line, area: [...upper, ...lower].join(" ") };
+  const line = days.map((d, i) => `${i ? "L" : "M"}${cx(i).toFixed(1)},${y(d[s.key]).toFixed(1)}`).join("");
+  return { ...s, top, bottom, max, y, line };
 });
 const H = drawn[drawn.length - 1].bottom + 30;
 
@@ -61,13 +61,14 @@ const labelled = days.map((_, i) => (n - 1 - i) % 7 === 0);
 const anySample = days.some((d) => d.sample);
 const latest = days[n - 1];
 const summary =
-  `Agents running and busy each day for ${n} days, to ${latest.date}, ` +
-  `with the host's CPU, memory and processes on the same days.` +
+  `Agents running and busy each day for ${n} days, to ${latest.date}, each a median with the day's peak, ` +
+  `and the host's CPU, memory and processes on the same days.` +
   (anySample ? " Every point shown is a sample." : "");
 const title = (d: Day) =>
-  `${d.date}${d.sample ? " (sample)" : ""}: ${d.running.typical} agents running (peak ${d.running.peak}), ` +
-  `${d.busy.typical} busy (${share(d)}%); CPU ${fmt.cpu(d.cpu.typical)}, ` +
-  `memory ${fmt.memory(d.memory.typical)}, ${fmt.processes(d.processes.typical)} processes (typical)`;
+  `${d.date}${d.sample ? " (sample)" : ""}: agents running ${d.running.median}, peak ${d.running.peak}; ` +
+  `busy ${d.busy.median}, peak ${d.busy.peak}; busy share ${share(d, "median")}% of the medians, ` +
+  `${share(d, "peak")}% of the peaks; CPU ${fmt.cpu(d.cpu)}, memory ${fmt.memory(d.memory)}, ` +
+  `${fmt.processes(d.processes)} processes (medians)`;
 ---
 
 <figure class="uchart" data-mode="agents" data-uchart>
@@ -75,18 +76,21 @@ const title = (d: Day) =>
     <ul class="legend agents-only" aria-label="Legend">
       <li><i class="sw busy"></i>busy</li>
       <li><i class="sw idle"></i>running, not busy</li>
-      <li><i class="sw peak"></i>the day's peak</li>
+      <li><i class="sw band"></i>up to the day's peak</li>
+      <li><i class="sw thin"></i>busy, up to its peak</li>
       {anySample && <li><i class="sw hatch"></i>hatched or dashed: a sample</li>}
     </ul>
     <ul class="legend share-only" aria-label="Legend">
-      <li><i class="sw busy"></i>busy, as a share of running</li>
-      {anySample && <li><i class="sw hatch"></i>hatched or dashed: a sample</li>}
+      <li><i class="sw busy"></i>busy ÷ running, of the medians</li>
+      <li><i class="sw peak"></i>of the peaks</li>
+      {anySample && <li><i class="sw hatch"></i>hatched: a sample</li>}
     </ul>
     <div class="modes" role="group" aria-label="Show" hidden>
       <button type="button" data-mode="agents" aria-pressed="true">Agents</button>
       <button type="button" data-mode="share" aria-pressed="false">Busy share</button>
     </div>
   </div>
+  <p class="medians">Each count is the day's median, every 5-minute sample counted.</p>
 
   <div class="scroll">
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} tabindex="0">
@@ -122,15 +126,19 @@ const title = (d: Day) =>
         {
           days.map((d, i) => {
             const x = cx(i) - bar / 2;
-            const busyTop = ya(d.busy.typical);
-            const runTop = ya(d.running.typical);
+            const busyTop = ya(d.busy.median);
+            const runTop = ya(d.running.median);
+            const runPeak = ya(d.running.peak);
+            const busyPeak = ya(d.busy.peak);
             return (
               <g>
-                <line class="stem" x1={cx(i)} x2={cx(i)} y1={runTop} y2={ya(d.running.peak)} />
+                <rect class="band" x={x} y={runPeak} width={bar} height={runTop - runPeak} />
+                <line class="peak" x1={x} x2={x + bar} y1={runPeak} y2={runPeak} />
                 <rect class="idle" x={x + 0.75} y={runTop + 0.75} width={bar - 1.5} height={Math.max(0, busyTop - runTop - 2.5)} rx="2" />
                 <rect class="busy" x={x} y={busyTop} width={bar} height={aBottom - busyTop} rx="2" />
                 {d.sample && <rect fill="url(#u-hatch)" x={x} y={runTop} width={bar} height={aBottom - runTop} rx="2" />}
-                <line class="peak" x1={x - 3} x2={x + bar + 3} y1={ya(d.running.peak)} y2={ya(d.running.peak)} />
+                <rect class="thin" x={cx(i) - thin / 2} y={busyPeak} width={thin} height={Math.max(0, busyTop - busyPeak)} />
+                <line class="thin-peak" x1={cx(i) - thin / 2 - 1.5} x2={cx(i) + thin / 2 + 1.5} y1={busyPeak} y2={busyPeak} />
               </g>
             );
           })
@@ -141,12 +149,14 @@ const title = (d: Day) =>
         {
           days.map((d, i) => {
             const x = cx(i) - bar / 2;
-            const top = ys(share(d));
+            const top = ys(share(d, "median"));
+            const peak = ys(share(d, "peak"));
             return (
               <g>
                 <rect class="capacity" x={x} y={aTop} width={bar} height={aBottom - aTop} rx="2" />
                 <rect class="busy" x={x} y={top} width={bar} height={aBottom - top} rx="2" />
                 {d.sample && <rect fill="url(#u-hatch)" x={x} y={top} width={bar} height={aBottom - top} rx="2" />}
+                <line class="peak" x1={x - 3} x2={x + bar + 3} y1={peak} y2={peak} />
               </g>
             );
           })
@@ -157,15 +167,15 @@ const title = (d: Day) =>
         drawn.map((s) => (
           <g class="strip">
             <text class="cap" x={0} y={s.top - 16}>
-              {s.label} <tspan class="unit">· {s.unit}, typical to peak</tspan>
+              {s.label} <tspan class="unit">· {s.unit}, median</tspan>
             </text>
             <line class="base" x1={L} x2={W - R} y1={s.bottom} y2={s.bottom} />
             <line class="grid" x1={L} x2={W - R} y1={s.top} y2={s.top} />
             <text x={L - 10} y={s.top + 4} text-anchor="end">{s.key === "cpu" ? "100%" : s.max.toLocaleString("en")}</text>
             <text x={L - 10} y={s.bottom + 4} text-anchor="end">0</text>
-            <polygon points={s.area} fill={s.color} class="band" />
-            <path d={s.line} stroke={s.color} class:list={["typical", { dashed: anySample }]} />
-            {days.map((d, i) => <circle cx={cx(i)} cy={s.y(d[s.key].typical)} r="2.6" stroke={s.color} class:list={["dot", { hollow: d.sample }]} fill={s.color} />)}
+            <path d={`${s.line}L${cx(n - 1).toFixed(1)},${s.bottom}L${cx(0).toFixed(1)},${s.bottom}Z`} fill={s.color} class="area" />
+            <path d={s.line} stroke={s.color} class:list={["median", { dashed: anySample }]} />
+            {days.map((d, i) => <circle cx={cx(i)} cy={s.y(d[s.key])} r="2.6" stroke={s.color} class:list={["dot", { hollow: d.sample }]} fill={s.color} />)}
           </g>
         ))
       }
@@ -229,12 +239,15 @@ const title = (d: Day) =>
 
 <style>
   .uchart { margin: 0; min-width: 0; }
-  .head { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .head { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0; padding: 0; font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
   .legend li { display: flex; align-items: center; gap: 7px; }
+  .medians { margin: 6px 0 8px; font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
   .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
   .sw.busy { background: var(--brass); }
   .sw.idle { border: 1.5px solid var(--mint); background: rgba(143, 185, 174, 0.14); }
+  .sw.band { background: rgba(143, 185, 174, 0.16); border-top: 2px solid var(--bone); border-radius: 0; }
+  .sw.thin { width: 5px; background: rgba(201, 162, 39, 0.45); border-top: 2px solid var(--brass); border-radius: 0; }
   .sw.peak { height: 2px; background: var(--bone); }
   .sw.hatch { background: repeating-linear-gradient(45deg, var(--brass) 0 3px, var(--ground) 3px 5px); }
   .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
@@ -260,13 +273,15 @@ const title = (d: Day) =>
 
   svg .busy { fill: var(--brass); }
   svg .idle { fill: rgba(143, 185, 174, 0.14); stroke: var(--mint); stroke-width: 1.5; }
-  svg .capacity { fill: rgba(143, 185, 174, 0.1); }
+  svg .band { fill: rgba(143, 185, 174, 0.16); }
   svg .peak { stroke: var(--bone); stroke-width: 2; stroke-linecap: round; }
-  svg .stem { stroke: var(--bone); stroke-opacity: 0.35; stroke-dasharray: 1 3; }
+  svg .thin { fill: rgba(201, 162, 39, 0.45); }
+  svg .thin-peak { stroke: var(--brass); stroke-width: 2; stroke-linecap: round; }
+  svg .capacity { fill: rgba(143, 185, 174, 0.1); }
 
-  svg .band { fill-opacity: 0.2; }
-  svg .typical { fill: none; stroke-width: 1.6; }
-  svg .typical.dashed { stroke-dasharray: 5 4; }
+  svg .area { fill-opacity: 0.1; }
+  svg .median { fill: none; stroke-width: 1.6; }
+  svg .median.dashed { stroke-dasharray: 5 4; }
   svg .dot.hollow { fill: var(--ground); stroke-width: 1.4; }
 
   svg .cursor { fill: rgba(143, 185, 174, 0.08); opacity: 0; transition: opacity 0.12s; }

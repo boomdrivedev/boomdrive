@@ -3,7 +3,7 @@ import { getCollection, getEntry } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import UtilizationChart from "../../components/UtilizationChart.astro";
 import UtilizationTiles from "../../components/UtilizationTiles.astro";
-import { days as toDays, fmt, keys, share } from "../../components/utilization";
+import { days as toDays, fmt, share } from "../../components/utilization";
 
 export async function getStaticPaths() {
   const measurements = await getCollection("measurements");
@@ -20,6 +20,10 @@ const points = r.series.flatMap((s) => s.points);
 const samples = points.filter((p) => p.sample).length;
 const measured = points.length - samples;
 const days = points.length ? toDays(m.id, r.series) : [];
+// A peak series is read with the series it is the peak of.
+const listed = r.series
+  .filter((s) => !s.peakOf)
+  .map((s) => ({ ...s, peak: r.series.some((p) => p.peakOf === s.name) }));
 
 // Text between backticks is code; everything else is escaped.
 const inline = (s: string) =>
@@ -54,7 +58,7 @@ const inline = (s: string) =>
           <>
             <UtilizationChart days={days} />
             <details class="points">
-              <summary>The points, typical and peak</summary>
+              <summary>The points: median, and the peak where a count has one</summary>
               <div class="scroll">
                 <table>
                   <thead>
@@ -74,14 +78,18 @@ const inline = (s: string) =>
                         <td>
                           {d.date} {d.sample && <span class="sample-chip">sample</span>}
                         </td>
-                        {keys.map((k) => (
-                          <>
-                            <td>
-                              {fmt[k](d[k].typical)} <span class="pk">/ {fmt[k](d[k].peak)}</span>
-                            </td>
-                            {k === "busy" && <td>{share(d)}%</td>}
-                          </>
-                        ))}
+                        <td>
+                          {d.running.median} <span class="pk">/ {d.running.peak}</span>
+                        </td>
+                        <td>
+                          {d.busy.median} <span class="pk">/ {d.busy.peak}</span>
+                        </td>
+                        <td>
+                          {share(d, "median")}% <span class="pk">/ {share(d, "peak")}%</span>
+                        </td>
+                        <td>{fmt.cpu(d.cpu)}</td>
+                        <td>{fmt.memory(d.memory)}</td>
+                        <td>{fmt.processes(d.processes)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -101,10 +109,14 @@ const inline = (s: string) =>
         <dd>{r.definitionVersion}{measured === 0 && " · no point collected under it yet"}</dd>
         <dt>Series</dt>
         <dd>
-          {r.series.map((s, i) => (
+          {listed.map((s, i) => (
             <>
               {i > 0 && ", "}
-              {s.name} <span class="muted">({s.unit})</span>
+              {s.name}{" "}
+              <span class="muted">
+                ({s.unit}, {s.statistic}
+                {s.peak && " and peak"})
+              </span>
             </>
           ))}
         </dd>

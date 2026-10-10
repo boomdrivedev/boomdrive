@@ -2,49 +2,70 @@ import type { CollectionEntry } from "astro:content";
 
 // Fleet utilization's series read as one day at a time: every series is
 // sampled at the same instant, so the chart, the tiles and the table share
-// one list of days.
+// one list of days. The agent counts are a median and its peak; the host's
+// load is a median alone.
 
 type Series = CollectionEntry<"measurements">["data"]["series"][number];
-export type Reading = { typical: number; peak: number };
+export type Banded = { median: number; peak: number };
 export type Day = {
   date: string;
   sample: boolean;
-  running: Reading;
-  busy: Reading;
-  cpu: Reading;
-  memory: Reading;
-  processes: Reading;
+  running: Banded;
+  busy: Banded;
+  cpu: number;
+  memory: number;
+  processes: number;
 };
-export const keys = ["running", "busy", "cpu", "memory", "processes"] as const;
+
+const names = {
+  running: "agents running",
+  busy: "agents busy",
+  cpu: "cpu",
+  memory: "memory",
+  processes: "processes",
+} as const;
 
 export const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export function days(record: string, series: Series[]): Day[] {
-  const byKey = new Map(series.map((s) => [s.key, s]));
-  for (const k of keys) {
-    if (!byKey.has(k)) throw new Error(`${record}: the utilization chart needs a "${k}" series`);
-  }
-  const dates = byKey.get("running")!.points.map((p) => iso(p.date));
-  for (const k of keys) {
-    const own = byKey.get(k)!.points.map((p) => iso(p.date));
-    if (own.join() !== dates.join()) {
-      throw new Error(`${record}: series "${k}" is not on the same dates as "running"`);
+  const find = (name: string, peak: boolean) => {
+    const s = series.find((x) => (peak ? x.peakOf === name : x.name === name));
+    if (!s) throw new Error(`${record}: the utilization chart needs the series "${name}"${peak ? "'s peak" : ""}`);
+    return s;
+  };
+  const used = [
+    find(names.running, false),
+    find(names.running, true),
+    find(names.busy, false),
+    find(names.busy, true),
+    find(names.cpu, false),
+    find(names.memory, false),
+    find(names.processes, false),
+  ];
+  const dates = used[0].points.map((p) => iso(p.date));
+  for (const s of used) {
+    if (s.points.map((p) => iso(p.date)).join() !== dates.join()) {
+      throw new Error(`${record}: series "${s.name}" is not on the same dates as "${names.running}"`);
     }
   }
-  return dates.map((date, i) => {
-    const at = (k: (typeof keys)[number]) => byKey.get(k)!.points[i];
-    const day = { date, sample: keys.some((k) => at(k).sample) } as Day;
-    for (const k of keys) day[k] = { typical: at(k).typical, peak: at(k).peak };
-    return day;
-  });
+  const [rm, rp, bm, bp, cpu, mem, proc] = used;
+  return dates.map((date, i) => ({
+    date,
+    sample: used.some((s) => s.points[i].sample),
+    running: { median: rm.points[i].value, peak: rp.points[i].value },
+    busy: { median: bm.points[i].value, peak: bp.points[i].value },
+    cpu: cpu.points[i].value,
+    memory: mem.points[i].value,
+    processes: proc.points[i].value,
+  }));
 }
 
-// Busy as a share of running, from the day's typical values.
-export const share = (d: Day) => (d.running.typical ? Math.round((100 * d.busy.typical) / d.running.typical) : 0);
+// Busy divided by running, of the two values shown at a point.
+export const share = (d: Day, at: keyof Banded) =>
+  d.running[at] ? Math.round((100 * d.busy[at]) / d.running[at]) : 0;
 
 export const fmt = {
-  running: (v: number) => `${v}`,
-  busy: (v: number) => `${v}`,
+  agents: (v: number) => `${v}`,
   cpu: (v: number) => `${v}%`,
   memory: (v: number) => `${v.toFixed(1)} GB`,
   processes: (v: number) => v.toLocaleString("en"),

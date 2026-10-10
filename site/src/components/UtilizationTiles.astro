@@ -1,15 +1,15 @@
 ---
-import { type Day, fmt, keys, share } from "./utilization";
+import { type Day, fmt, share } from "./utilization";
 
-// The reading as the headline, one tile per series: the latest day, or the
-// day picked on the chart.
+// The reading as the headline: one tile per series, a peak shown as the
+// second number in the tile of the series it is the peak of. The latest day,
+// or the day picked on the chart.
 
 interface Props {
   days: Day[];
 }
 const { days } = Astro.props;
 const d = days[days.length - 1];
-const label = { running: "Agents running", busy: "Agents busy", cpu: "CPU", memory: "Memory", processes: "Processes" };
 ---
 
 <section class="tiles" aria-label="The reading" data-tiles>
@@ -19,27 +19,51 @@ const label = { running: "Agents running", busy: "Agents busy", cpu: "CPU", memo
     <button type="button" class="back" data-back hidden>Back to the latest</button>
   </p>
   <div class="row" aria-live="polite">
-    {
-      keys.map((k) => (
-        <div class:list={["tile", k]} data-k={k}>
-          <span class="name">{label[k]}</span>
-          <span class="value" data-typical>{fmt[k](d[k].typical)}</span>
-          <span class="peak">
-            typical · peak <b data-peak>{fmt[k](d[k].peak)}</b>
-          </span>
-          {k === "busy" && (
-            <span class="peak">
-              <b data-share>{share(d)}%</b> of running
-            </span>
-          )}
-        </div>
-      ))
-    }
+    <div class="tile">
+      <span class="name">Agents running</span>
+      <span class="value" data-v="running.median">{d.running.median}</span>
+      <span class="sub">median · peak <b data-v="running.peak">{d.running.peak}</b></span>
+    </div>
+    <div class="tile busy">
+      <span class="name">Agents busy</span>
+      <span class="value" data-v="busy.median">{d.busy.median}</span>
+      <span class="sub">median · peak <b data-v="busy.peak">{d.busy.peak}</b></span>
+      <span class="sub">
+        <b data-v="share.median">{share(d, "median")}%</b> of running · <b data-v="share.peak">{share(d, "peak")}%</b> at peak
+      </span>
+    </div>
+    <div class="tile">
+      <span class="name">CPU</span>
+      <span class="value" data-v="cpu">{fmt.cpu(d.cpu)}</span>
+      <span class="sub">median</span>
+    </div>
+    <div class="tile">
+      <span class="name">Memory</span>
+      <span class="value" data-v="memory">{fmt.memory(d.memory)}</span>
+      <span class="sub">median</span>
+    </div>
+    <div class="tile">
+      <span class="name">Processes</span>
+      <span class="value" data-v="processes">{fmt.processes(d.processes)}</span>
+      <span class="sub">median</span>
+    </div>
   </div>
 </section>
 
 <script>
   import { fmt, share, type Day } from "./utilization";
+
+  const read: Record<string, (d: Day) => string> = {
+    "running.median": (d) => fmt.agents(d.running.median),
+    "running.peak": (d) => fmt.agents(d.running.peak),
+    "busy.median": (d) => fmt.agents(d.busy.median),
+    "busy.peak": (d) => fmt.agents(d.busy.peak),
+    "share.median": (d) => `${share(d, "median")}%`,
+    "share.peak": (d) => `${share(d, "peak")}%`,
+    cpu: (d) => fmt.cpu(d.cpu),
+    memory: (d) => fmt.memory(d.memory),
+    processes: (d) => fmt.processes(d.processes),
+  };
 
   for (const root of document.querySelectorAll<HTMLElement>("[data-tiles]")) {
     const back = root.querySelector<HTMLButtonElement>("[data-back]")!;
@@ -50,13 +74,7 @@ const label = { running: "Agents running", busy: "Agents busy", cpu: "CPU", memo
       root.querySelector("[data-when]")!.textContent = day.date;
       root.querySelector<HTMLElement>("[data-when-sample]")!.hidden = !day.sample;
       back.hidden = latest;
-      for (const tile of root.querySelectorAll<HTMLElement>("[data-k]")) {
-        const k = tile.dataset.k as keyof typeof fmt;
-        tile.querySelector("[data-typical]")!.textContent = fmt[k](day[k].typical);
-        tile.querySelector("[data-peak]")!.textContent = fmt[k](day[k].peak);
-        const s = tile.querySelector("[data-share]");
-        if (s) s.textContent = `${share(day)}%`;
-      }
+      for (const el of root.querySelectorAll<HTMLElement>("[data-v]")) el.textContent = read[el.dataset.v!](day);
     });
   }
 </script>
@@ -82,6 +100,6 @@ const label = { running: "Agents running", busy: "Agents busy", cpu: "CPU", memo
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .busy .value { color: var(--brass); }
-  .peak { font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
-  .peak b { color: var(--ink-2); font-weight: 500; }
+  .sub { font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
+  .sub b { color: var(--ink-2); font-weight: 500; }
 </style>

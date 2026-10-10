@@ -9,9 +9,11 @@ dimension: health
 definitionVersion: 1
 definition: >
   Every 5 minutes on each fleet host: the agents alive, and how many of them
-  are busy (working, as against waiting on the operator or idle). Beside them,
-  the host's processor and memory in use and its process count. Each day rolls
-  up to its peak and its typical value.
+  are busy (working, as against waiting on the operator or idle). Beside
+  them, the host's CPU and memory in use and its process count. Each day's
+  value is the median of the day's samples, every sample counted; the agent
+  counts also carry the day's peak. The busy share is busy divided by
+  running at a point.
 principle: measure-the-fleet
 source: "`herdr agent list`; the host's process table"
 collector: collectors/fleet-utilization
@@ -23,164 +25,229 @@ cannotShow: >
   productive one.
 chart: utilization
 series:
-  - key: running
-    name: agents running
+  - name: agents running
     unit: agents
+    statistic: median
     points:
-      - { date: 2026-09-12, typical: 4, peak: 5, sample: true }
-      - { date: 2026-09-13, typical: 4, peak: 5, sample: true }
-      - { date: 2026-09-14, typical: 6, peak: 7, sample: true }
-      - { date: 2026-09-15, typical: 4, peak: 6, sample: true }
-      - { date: 2026-09-16, typical: 6, peak: 9, sample: true }
-      - { date: 2026-09-17, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-18, typical: 3, peak: 6, sample: true }
-      - { date: 2026-09-19, typical: 5, peak: 7, sample: true }
-      - { date: 2026-09-20, typical: 4, peak: 6, sample: true }
-      - { date: 2026-09-21, typical: 6, peak: 9, sample: true }
-      - { date: 2026-09-22, typical: 3, peak: 6, sample: true }
-      - { date: 2026-09-23, typical: 6, peak: 7, sample: true }
-      - { date: 2026-09-24, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-25, typical: 4, peak: 6, sample: true }
-      - { date: 2026-09-26, typical: 5, peak: 6, sample: true }
-      - { date: 2026-09-27, typical: 4, peak: 6, sample: true }
-      - { date: 2026-09-28, typical: 6, peak: 9, sample: true }
-      - { date: 2026-09-29, typical: 5, peak: 8, sample: true }
-      - { date: 2026-09-30, typical: 4, peak: 6, sample: true }
-      - { date: 2026-10-01, typical: 6, peak: 8, sample: true }
-      - { date: 2026-10-02, typical: 6, peak: 7, sample: true }
-      - { date: 2026-10-03, typical: 5, peak: 8, sample: true }
-      - { date: 2026-10-04, typical: 5, peak: 6, sample: true }
-      - { date: 2026-10-05, typical: 3, peak: 5, sample: true }
-      - { date: 2026-10-06, typical: 5, peak: 7, sample: true }
-      - { date: 2026-10-07, typical: 5, peak: 6, sample: true }
-      - { date: 2026-10-08, typical: 6, peak: 9, sample: true }
-      - { date: 2026-10-09, typical: 6, peak: 7, sample: true }
-  - key: busy
-    name: agents busy
+      - { date: 2026-09-12, value: 4, sample: true }
+      - { date: 2026-09-13, value: 4, sample: true }
+      - { date: 2026-09-14, value: 6, sample: true }
+      - { date: 2026-09-15, value: 4, sample: true }
+      - { date: 2026-09-16, value: 6, sample: true }
+      - { date: 2026-09-17, value: 3, sample: true }
+      - { date: 2026-09-18, value: 3, sample: true }
+      - { date: 2026-09-19, value: 5, sample: true }
+      - { date: 2026-09-20, value: 4, sample: true }
+      - { date: 2026-09-21, value: 6, sample: true }
+      - { date: 2026-09-22, value: 3, sample: true }
+      - { date: 2026-09-23, value: 6, sample: true }
+      - { date: 2026-09-24, value: 3, sample: true }
+      - { date: 2026-09-25, value: 4, sample: true }
+      - { date: 2026-09-26, value: 5, sample: true }
+      - { date: 2026-09-27, value: 4, sample: true }
+      - { date: 2026-09-28, value: 6, sample: true }
+      - { date: 2026-09-29, value: 5, sample: true }
+      - { date: 2026-09-30, value: 4, sample: true }
+      - { date: 2026-10-01, value: 6, sample: true }
+      - { date: 2026-10-02, value: 6, sample: true }
+      - { date: 2026-10-03, value: 5, sample: true }
+      - { date: 2026-10-04, value: 5, sample: true }
+      - { date: 2026-10-05, value: 3, sample: true }
+      - { date: 2026-10-06, value: 5, sample: true }
+      - { date: 2026-10-07, value: 5, sample: true }
+      - { date: 2026-10-08, value: 6, sample: true }
+      - { date: 2026-10-09, value: 6, sample: true }
+  - name: agents running, peak
     unit: agents
-    shareOf: running
+    statistic: max
+    peakOf: agents running
     points:
-      - { date: 2026-09-12, typical: 2, peak: 3, sample: true }
-      - { date: 2026-09-13, typical: 2, peak: 3, sample: true }
-      - { date: 2026-09-14, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-15, typical: 1, peak: 2, sample: true }
-      - { date: 2026-09-16, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-17, typical: 2, peak: 3, sample: true }
-      - { date: 2026-09-18, typical: 2, peak: 4, sample: true }
-      - { date: 2026-09-19, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-20, typical: 2, peak: 4, sample: true }
-      - { date: 2026-09-21, typical: 3, peak: 6, sample: true }
-      - { date: 2026-09-22, typical: 2, peak: 3, sample: true }
-      - { date: 2026-09-23, typical: 2, peak: 5, sample: true }
-      - { date: 2026-09-24, typical: 2, peak: 4, sample: true }
-      - { date: 2026-09-25, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-26, typical: 3, peak: 6, sample: true }
-      - { date: 2026-09-27, typical: 2, peak: 4, sample: true }
-      - { date: 2026-09-28, typical: 3, peak: 4, sample: true }
-      - { date: 2026-09-29, typical: 2, peak: 4, sample: true }
-      - { date: 2026-09-30, typical: 2, peak: 4, sample: true }
-      - { date: 2026-10-01, typical: 2, peak: 4, sample: true }
-      - { date: 2026-10-02, typical: 3, peak: 4, sample: true }
-      - { date: 2026-10-03, typical: 3, peak: 6, sample: true }
-      - { date: 2026-10-04, typical: 4, peak: 6, sample: true }
-      - { date: 2026-10-05, typical: 1, peak: 2, sample: true }
-      - { date: 2026-10-06, typical: 2, peak: 3, sample: true }
-      - { date: 2026-10-07, typical: 2, peak: 4, sample: true }
-      - { date: 2026-10-08, typical: 3, peak: 4, sample: true }
-      - { date: 2026-10-09, typical: 4, peak: 7, sample: true }
-  - key: cpu
-    name: CPU
+      - { date: 2026-09-12, value: 5, sample: true }
+      - { date: 2026-09-13, value: 5, sample: true }
+      - { date: 2026-09-14, value: 7, sample: true }
+      - { date: 2026-09-15, value: 6, sample: true }
+      - { date: 2026-09-16, value: 9, sample: true }
+      - { date: 2026-09-17, value: 4, sample: true }
+      - { date: 2026-09-18, value: 6, sample: true }
+      - { date: 2026-09-19, value: 7, sample: true }
+      - { date: 2026-09-20, value: 6, sample: true }
+      - { date: 2026-09-21, value: 9, sample: true }
+      - { date: 2026-09-22, value: 6, sample: true }
+      - { date: 2026-09-23, value: 7, sample: true }
+      - { date: 2026-09-24, value: 4, sample: true }
+      - { date: 2026-09-25, value: 6, sample: true }
+      - { date: 2026-09-26, value: 6, sample: true }
+      - { date: 2026-09-27, value: 6, sample: true }
+      - { date: 2026-09-28, value: 9, sample: true }
+      - { date: 2026-09-29, value: 8, sample: true }
+      - { date: 2026-09-30, value: 6, sample: true }
+      - { date: 2026-10-01, value: 8, sample: true }
+      - { date: 2026-10-02, value: 7, sample: true }
+      - { date: 2026-10-03, value: 8, sample: true }
+      - { date: 2026-10-04, value: 6, sample: true }
+      - { date: 2026-10-05, value: 5, sample: true }
+      - { date: 2026-10-06, value: 7, sample: true }
+      - { date: 2026-10-07, value: 6, sample: true }
+      - { date: 2026-10-08, value: 9, sample: true }
+      - { date: 2026-10-09, value: 7, sample: true }
+  - name: agents busy
+    unit: agents
+    statistic: median
+    points:
+      - { date: 2026-09-12, value: 2, sample: true }
+      - { date: 2026-09-13, value: 2, sample: true }
+      - { date: 2026-09-14, value: 3, sample: true }
+      - { date: 2026-09-15, value: 1, sample: true }
+      - { date: 2026-09-16, value: 3, sample: true }
+      - { date: 2026-09-17, value: 2, sample: true }
+      - { date: 2026-09-18, value: 2, sample: true }
+      - { date: 2026-09-19, value: 3, sample: true }
+      - { date: 2026-09-20, value: 2, sample: true }
+      - { date: 2026-09-21, value: 3, sample: true }
+      - { date: 2026-09-22, value: 2, sample: true }
+      - { date: 2026-09-23, value: 2, sample: true }
+      - { date: 2026-09-24, value: 2, sample: true }
+      - { date: 2026-09-25, value: 3, sample: true }
+      - { date: 2026-09-26, value: 3, sample: true }
+      - { date: 2026-09-27, value: 2, sample: true }
+      - { date: 2026-09-28, value: 3, sample: true }
+      - { date: 2026-09-29, value: 2, sample: true }
+      - { date: 2026-09-30, value: 2, sample: true }
+      - { date: 2026-10-01, value: 2, sample: true }
+      - { date: 2026-10-02, value: 3, sample: true }
+      - { date: 2026-10-03, value: 3, sample: true }
+      - { date: 2026-10-04, value: 4, sample: true }
+      - { date: 2026-10-05, value: 1, sample: true }
+      - { date: 2026-10-06, value: 2, sample: true }
+      - { date: 2026-10-07, value: 2, sample: true }
+      - { date: 2026-10-08, value: 3, sample: true }
+      - { date: 2026-10-09, value: 4, sample: true }
+  - name: agents busy, peak
+    unit: agents
+    statistic: max
+    peakOf: agents busy
+    points:
+      - { date: 2026-09-12, value: 3, sample: true }
+      - { date: 2026-09-13, value: 3, sample: true }
+      - { date: 2026-09-14, value: 4, sample: true }
+      - { date: 2026-09-15, value: 2, sample: true }
+      - { date: 2026-09-16, value: 4, sample: true }
+      - { date: 2026-09-17, value: 3, sample: true }
+      - { date: 2026-09-18, value: 4, sample: true }
+      - { date: 2026-09-19, value: 4, sample: true }
+      - { date: 2026-09-20, value: 4, sample: true }
+      - { date: 2026-09-21, value: 6, sample: true }
+      - { date: 2026-09-22, value: 3, sample: true }
+      - { date: 2026-09-23, value: 5, sample: true }
+      - { date: 2026-09-24, value: 4, sample: true }
+      - { date: 2026-09-25, value: 4, sample: true }
+      - { date: 2026-09-26, value: 6, sample: true }
+      - { date: 2026-09-27, value: 4, sample: true }
+      - { date: 2026-09-28, value: 4, sample: true }
+      - { date: 2026-09-29, value: 4, sample: true }
+      - { date: 2026-09-30, value: 4, sample: true }
+      - { date: 2026-10-01, value: 4, sample: true }
+      - { date: 2026-10-02, value: 4, sample: true }
+      - { date: 2026-10-03, value: 6, sample: true }
+      - { date: 2026-10-04, value: 6, sample: true }
+      - { date: 2026-10-05, value: 2, sample: true }
+      - { date: 2026-10-06, value: 3, sample: true }
+      - { date: 2026-10-07, value: 4, sample: true }
+      - { date: 2026-10-08, value: 4, sample: true }
+      - { date: 2026-10-09, value: 7, sample: true }
+  - name: cpu
     unit: percent
+    statistic: median
     points:
-      - { date: 2026-09-12, typical: 25, peak: 64, sample: true }
-      - { date: 2026-09-13, typical: 20, peak: 62, sample: true }
-      - { date: 2026-09-14, typical: 32, peak: 68, sample: true }
-      - { date: 2026-09-15, typical: 16, peak: 51, sample: true }
-      - { date: 2026-09-16, typical: 30, peak: 61, sample: true }
-      - { date: 2026-09-17, typical: 26, peak: 64, sample: true }
-      - { date: 2026-09-18, typical: 20, peak: 57, sample: true }
-      - { date: 2026-09-19, typical: 25, peak: 57, sample: true }
-      - { date: 2026-09-20, typical: 18, peak: 58, sample: true }
-      - { date: 2026-09-21, typical: 28, peak: 67, sample: true }
-      - { date: 2026-09-22, typical: 24, peak: 66, sample: true }
-      - { date: 2026-09-23, typical: 18, peak: 63, sample: true }
-      - { date: 2026-09-24, typical: 24, peak: 52, sample: true }
-      - { date: 2026-09-25, typical: 24, peak: 60, sample: true }
-      - { date: 2026-09-26, typical: 30, peak: 58, sample: true }
-      - { date: 2026-09-27, typical: 21, peak: 66, sample: true }
-      - { date: 2026-09-28, typical: 27, peak: 69, sample: true }
-      - { date: 2026-09-29, typical: 26, peak: 73, sample: true }
-      - { date: 2026-09-30, typical: 27, peak: 62, sample: true }
-      - { date: 2026-10-01, typical: 24, peak: 67, sample: true }
-      - { date: 2026-10-02, typical: 31, peak: 72, sample: true }
-      - { date: 2026-10-03, typical: 32, peak: 79, sample: true }
-      - { date: 2026-10-04, typical: 33, peak: 72, sample: true }
-      - { date: 2026-10-05, typical: 16, peak: 45, sample: true }
-      - { date: 2026-10-06, typical: 21, peak: 61, sample: true }
-      - { date: 2026-10-07, typical: 25, peak: 63, sample: true }
-      - { date: 2026-10-08, typical: 27, peak: 67, sample: true }
-      - { date: 2026-10-09, typical: 32, peak: 62, sample: true }
-  - key: memory
-    name: memory
+      - { date: 2026-09-12, value: 25, sample: true }
+      - { date: 2026-09-13, value: 20, sample: true }
+      - { date: 2026-09-14, value: 32, sample: true }
+      - { date: 2026-09-15, value: 16, sample: true }
+      - { date: 2026-09-16, value: 30, sample: true }
+      - { date: 2026-09-17, value: 26, sample: true }
+      - { date: 2026-09-18, value: 20, sample: true }
+      - { date: 2026-09-19, value: 25, sample: true }
+      - { date: 2026-09-20, value: 18, sample: true }
+      - { date: 2026-09-21, value: 28, sample: true }
+      - { date: 2026-09-22, value: 24, sample: true }
+      - { date: 2026-09-23, value: 18, sample: true }
+      - { date: 2026-09-24, value: 24, sample: true }
+      - { date: 2026-09-25, value: 24, sample: true }
+      - { date: 2026-09-26, value: 30, sample: true }
+      - { date: 2026-09-27, value: 21, sample: true }
+      - { date: 2026-09-28, value: 27, sample: true }
+      - { date: 2026-09-29, value: 26, sample: true }
+      - { date: 2026-09-30, value: 27, sample: true }
+      - { date: 2026-10-01, value: 24, sample: true }
+      - { date: 2026-10-02, value: 31, sample: true }
+      - { date: 2026-10-03, value: 32, sample: true }
+      - { date: 2026-10-04, value: 33, sample: true }
+      - { date: 2026-10-05, value: 16, sample: true }
+      - { date: 2026-10-06, value: 21, sample: true }
+      - { date: 2026-10-07, value: 25, sample: true }
+      - { date: 2026-10-08, value: 27, sample: true }
+      - { date: 2026-10-09, value: 32, sample: true }
+  - name: memory
     unit: GB
+    statistic: median
     points:
-      - { date: 2026-09-12, typical: 18.3, peak: 22.1, sample: true }
-      - { date: 2026-09-13, typical: 17.7, peak: 21.5, sample: true }
-      - { date: 2026-09-14, typical: 20.2, peak: 23.9, sample: true }
-      - { date: 2026-09-15, typical: 16.5, peak: 21.6, sample: true }
-      - { date: 2026-09-16, typical: 20.6, peak: 25.3, sample: true }
-      - { date: 2026-09-17, typical: 15.3, peak: 19.2, sample: true }
-      - { date: 2026-09-18, typical: 16.9, peak: 20.0, sample: true }
-      - { date: 2026-09-19, typical: 19.9, peak: 26.7, sample: true }
-      - { date: 2026-09-20, typical: 15.9, peak: 19.2, sample: true }
-      - { date: 2026-09-21, typical: 19.2, peak: 22.4, sample: true }
-      - { date: 2026-09-22, typical: 16.5, peak: 24.1, sample: true }
-      - { date: 2026-09-23, typical: 18.7, peak: 25.6, sample: true }
-      - { date: 2026-09-24, typical: 14.7, peak: 19.6, sample: true }
-      - { date: 2026-09-25, typical: 16.7, peak: 22.8, sample: true }
-      - { date: 2026-09-26, typical: 17.3, peak: 24.9, sample: true }
-      - { date: 2026-09-27, typical: 18.3, peak: 24.0, sample: true }
-      - { date: 2026-09-28, typical: 19.0, peak: 24.5, sample: true }
-      - { date: 2026-09-29, typical: 17.9, peak: 21.5, sample: true }
-      - { date: 2026-09-30, typical: 16.9, peak: 22.4, sample: true }
-      - { date: 2026-10-01, typical: 19.3, peak: 24.5, sample: true }
-      - { date: 2026-10-02, typical: 20.5, peak: 28.3, sample: true }
-      - { date: 2026-10-03, typical: 18.0, peak: 24.8, sample: true }
-      - { date: 2026-10-04, typical: 20.0, peak: 23.7, sample: true }
-      - { date: 2026-10-05, typical: 16.4, peak: 23.4, sample: true }
-      - { date: 2026-10-06, typical: 17.0, peak: 21.3, sample: true }
-      - { date: 2026-10-07, typical: 17.4, peak: 21.6, sample: true }
-      - { date: 2026-10-08, typical: 18.3, peak: 22.1, sample: true }
-      - { date: 2026-10-09, typical: 19.7, peak: 26.1, sample: true }
-  - key: processes
-    name: processes
+      - { date: 2026-09-12, value: 18.3, sample: true }
+      - { date: 2026-09-13, value: 17.7, sample: true }
+      - { date: 2026-09-14, value: 20.2, sample: true }
+      - { date: 2026-09-15, value: 16.5, sample: true }
+      - { date: 2026-09-16, value: 20.6, sample: true }
+      - { date: 2026-09-17, value: 15.3, sample: true }
+      - { date: 2026-09-18, value: 16.9, sample: true }
+      - { date: 2026-09-19, value: 19.9, sample: true }
+      - { date: 2026-09-20, value: 15.9, sample: true }
+      - { date: 2026-09-21, value: 19.2, sample: true }
+      - { date: 2026-09-22, value: 16.5, sample: true }
+      - { date: 2026-09-23, value: 18.7, sample: true }
+      - { date: 2026-09-24, value: 14.7, sample: true }
+      - { date: 2026-09-25, value: 16.7, sample: true }
+      - { date: 2026-09-26, value: 17.3, sample: true }
+      - { date: 2026-09-27, value: 18.3, sample: true }
+      - { date: 2026-09-28, value: 19.0, sample: true }
+      - { date: 2026-09-29, value: 17.9, sample: true }
+      - { date: 2026-09-30, value: 16.9, sample: true }
+      - { date: 2026-10-01, value: 19.3, sample: true }
+      - { date: 2026-10-02, value: 20.5, sample: true }
+      - { date: 2026-10-03, value: 18.0, sample: true }
+      - { date: 2026-10-04, value: 20.0, sample: true }
+      - { date: 2026-10-05, value: 16.4, sample: true }
+      - { date: 2026-10-06, value: 17.0, sample: true }
+      - { date: 2026-10-07, value: 17.4, sample: true }
+      - { date: 2026-10-08, value: 18.3, sample: true }
+      - { date: 2026-10-09, value: 19.7, sample: true }
+  - name: processes
     unit: processes
+    statistic: median
     points:
-      - { date: 2026-09-12, typical: 781, peak: 1160, sample: true }
-      - { date: 2026-09-13, typical: 779, peak: 1100, sample: true }
-      - { date: 2026-09-14, typical: 851, peak: 1260, sample: true }
-      - { date: 2026-09-15, typical: 791, peak: 1042, sample: true }
-      - { date: 2026-09-16, typical: 871, peak: 1268, sample: true }
-      - { date: 2026-09-17, typical: 737, peak: 1142, sample: true }
-      - { date: 2026-09-18, typical: 703, peak: 1128, sample: true }
-      - { date: 2026-09-19, typical: 808, peak: 1079, sample: true }
-      - { date: 2026-09-20, typical: 724, peak: 898, sample: true }
-      - { date: 2026-09-21, typical: 826, peak: 1183, sample: true }
-      - { date: 2026-09-22, typical: 756, peak: 1020, sample: true }
-      - { date: 2026-09-23, typical: 874, peak: 1295, sample: true }
-      - { date: 2026-09-24, typical: 743, peak: 1072, sample: true }
-      - { date: 2026-09-25, typical: 784, peak: 968, sample: true }
-      - { date: 2026-09-26, typical: 809, peak: 979, sample: true }
-      - { date: 2026-09-27, typical: 772, peak: 925, sample: true }
-      - { date: 2026-09-28, typical: 872, peak: 1173, sample: true }
-      - { date: 2026-09-29, typical: 817, peak: 1013, sample: true }
-      - { date: 2026-09-30, typical: 721, peak: 952, sample: true }
-      - { date: 2026-10-01, typical: 854, peak: 1162, sample: true }
-      - { date: 2026-10-02, typical: 812, peak: 1211, sample: true }
-      - { date: 2026-10-03, typical: 797, peak: 1198, sample: true }
-      - { date: 2026-10-04, typical: 786, peak: 1227, sample: true }
-      - { date: 2026-10-05, typical: 683, peak: 904, sample: true }
-      - { date: 2026-10-06, typical: 767, peak: 1058, sample: true }
-      - { date: 2026-10-07, typical: 818, peak: 1079, sample: true }
-      - { date: 2026-10-08, typical: 806, peak: 1128, sample: true }
-      - { date: 2026-10-09, typical: 816, peak: 1007, sample: true }
+      - { date: 2026-09-12, value: 781, sample: true }
+      - { date: 2026-09-13, value: 779, sample: true }
+      - { date: 2026-09-14, value: 851, sample: true }
+      - { date: 2026-09-15, value: 791, sample: true }
+      - { date: 2026-09-16, value: 871, sample: true }
+      - { date: 2026-09-17, value: 737, sample: true }
+      - { date: 2026-09-18, value: 703, sample: true }
+      - { date: 2026-09-19, value: 808, sample: true }
+      - { date: 2026-09-20, value: 724, sample: true }
+      - { date: 2026-09-21, value: 826, sample: true }
+      - { date: 2026-09-22, value: 756, sample: true }
+      - { date: 2026-09-23, value: 874, sample: true }
+      - { date: 2026-09-24, value: 743, sample: true }
+      - { date: 2026-09-25, value: 784, sample: true }
+      - { date: 2026-09-26, value: 809, sample: true }
+      - { date: 2026-09-27, value: 772, sample: true }
+      - { date: 2026-09-28, value: 872, sample: true }
+      - { date: 2026-09-29, value: 817, sample: true }
+      - { date: 2026-09-30, value: 721, sample: true }
+      - { date: 2026-10-01, value: 854, sample: true }
+      - { date: 2026-10-02, value: 812, sample: true }
+      - { date: 2026-10-03, value: 797, sample: true }
+      - { date: 2026-10-04, value: 786, sample: true }
+      - { date: 2026-10-05, value: 683, sample: true }
+      - { date: 2026-10-06, value: 767, sample: true }
+      - { date: 2026-10-07, value: 818, sample: true }
+      - { date: 2026-10-08, value: 806, sample: true }
+      - { date: 2026-10-09, value: 816, sample: true }
