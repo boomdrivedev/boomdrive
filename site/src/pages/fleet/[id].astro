@@ -1,0 +1,168 @@
+---
+import { getCollection, getEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import UtilizationChart from "../../components/UtilizationChart.astro";
+import UtilizationTiles from "../../components/UtilizationTiles.astro";
+import { days as toDays, fmt, keys, share } from "../../components/utilization";
+
+export async function getStaticPaths() {
+  const measurements = await getCollection("measurements");
+  return measurements.map((m) => ({ params: { id: m.id }, props: { m } }));
+}
+const { m } = Astro.props;
+const r = m.data;
+const principle = await getEntry(r.principle);
+const citedBy = (await getCollection("notes", ({ data }) => !data.draft && data.measurements.some((x) => x.id === m.id))).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+
+const points = r.series.flatMap((s) => s.points);
+const samples = points.filter((p) => p.sample).length;
+const measured = points.length - samples;
+const days = points.length ? toDays(m.id, r.series) : [];
+
+// Text between backticks is code; everything else is escaped.
+const inline = (s: string) =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+---
+
+<Base title={r.name} description={r.summary} wide>
+  <p class="eyebrow">The Fleet · measurement · {r.dimension}</p>
+  <h1>{r.name}</h1>
+  <p class="lede">{r.summary}</p>
+
+  {
+    samples > 0 && measured === 0 && (
+      <p class="sample-notice">
+        <b>Every point on this page is a sample</b>, made up to show how the page will read. None is a measurement; the
+        first collected points will replace them.
+      </p>
+    )
+  }
+  {samples > 0 && measured > 0 && <p class="sample-notice">Points marked as samples are illustrations, not measurements.</p>}
+
+  {points.length === 0 && <p class="panel">No points yet; the first points are coming.</p>}
+  {points.length > 0 && <UtilizationTiles days={days} />}
+
+  <div class="layout">
+    <div class="numbers">
+      {
+        points.length > 0 && (
+          <>
+            <UtilizationChart days={days} />
+            <details class="points">
+              <summary>The points, typical and peak</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Running</th>
+                      <th>Busy</th>
+                      <th>Busy share</th>
+                      <th>CPU</th>
+                      <th>Memory</th>
+                      <th>Processes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...days].reverse().map((d) => (
+                      <tr>
+                        <td>
+                          {d.date} {d.sample && <span class="sample-chip">sample</span>}
+                        </td>
+                        {keys.map((k) => (
+                          <>
+                            <td>
+                              {fmt[k](d[k].typical)} <span class="pk">/ {fmt[k](d[k].peak)}</span>
+                            </td>
+                            {k === "busy" && <td>{share(d)}%</td>}
+                          </>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )
+      }
+    </div>
+
+    <aside>
+      <h2>The definition</h2>
+      <p class="definition" set:html={inline(r.definition)} />
+      <dl>
+        <dt>Version</dt>
+        <dd>{r.definitionVersion}{measured === 0 && " · no point collected under it yet"}</dd>
+        <dt>Series</dt>
+        <dd>
+          {r.series.map((s, i) => (
+            <>
+              {i > 0 && ", "}
+              {s.name} <span class="muted">({s.unit})</span>
+            </>
+          ))}
+        </dd>
+        <dt>Principle</dt>
+        <dd>{principle && <a href={`/method/${principle.id}/`}>{principle.data.title}</a>}</dd>
+        <dt>Source</dt>
+        <dd set:html={inline(r.source)} />
+        <dt>Collector</dt>
+        <dd>
+          <code>{r.collector}</code>
+          {measured === 0 && " · not running yet"}
+        </dd>
+      </dl>
+
+      <h2>What it argues</h2>
+      <p>{r.argues}</p>
+      <h2>What it cannot show</h2>
+      <p>{r.cannotShow}</p>
+
+      <h2>Notes that cite it</h2>
+      {
+        citedBy.length ? (
+          <ul class="plain">
+            {citedBy.map((n) => (
+              <li>
+                <span class="muted">{n.data.date.toISOString().slice(0, 10)}</span> <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="muted">No note cites it yet.</p>
+        )
+      }
+    </aside>
+  </div>
+</Base>
+
+<style>
+  .lede { font: 500 clamp(1.05rem, 2vw, 1.3rem)/1.45 var(--display); letter-spacing: -0.01em; color: var(--ink); max-width: 44ch; margin: 0 0 24px; }
+  .layout { display: grid; gap: 32px 48px; grid-template-columns: minmax(0, 2.2fr) minmax(16rem, 1fr); margin-top: 32px; align-items: start; }
+  @media (max-width: 56rem) { .layout { grid-template-columns: 1fr; } }
+  .numbers { min-width: 0; }
+
+  aside { font-size: 16px; }
+  aside h2 { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 28px 0 8px; }
+  aside h2:first-child { margin-top: 0; }
+  aside p { margin: 0 0 8px; }
+  .definition { border-left: 2px solid var(--brass); padding: 2px 0 2px 14px; color: var(--ink); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 16px 0 0; font: 12.5px/1.6 var(--mono); }
+  dt { color: var(--ink-3); }
+  dd { margin: 0; color: var(--ink-2); }
+
+  .points { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .points summary { cursor: pointer; font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mint); }
+  .points summary:hover { color: var(--brass); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font: 12px/1.5 var(--mono); font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--ink-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap; color: var(--ink-2); }
+  .pk { color: var(--ink-3); }
+</style>

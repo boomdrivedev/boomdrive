@@ -1,0 +1,276 @@
+---
+import { type Day, fmt, share, short } from "./utilization";
+
+// Agents like cores: each day's bar is the agents running, the busy ones
+// solid and the rest hollow, with the day's peak as a tick above it. The
+// host's CPU, memory and processes run underneath on the same days, so a
+// column reads as one instant. Drawn at build time; the script only picks a
+// day and switches to busy as a share of running.
+
+interface Props {
+  days: Day[];
+}
+const { days } = Astro.props;
+const n = days.length;
+
+const W = 760, L = 48, R = 12;
+const band = (W - L - R) / n;
+const bar = Math.min(22, band * 0.62);
+const cx = (i: number) => L + band * (i + 0.5);
+
+// The agents panel.
+const aTop = 40, aBottom = 250;
+const step = (max: number, count: number) => {
+  const raw = max / count;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const f = raw / mag;
+  return Math.max(1, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag);
+};
+const aMaxRaw = Math.max(...days.map((d) => d.running.peak));
+const aStep = step(aMaxRaw, 5);
+const aMax = Math.ceil(aMaxRaw / aStep) * aStep;
+const ya = (v: number) => aBottom - (v / aMax) * (aBottom - aTop);
+const aTicks = Array.from({ length: aMax / aStep + 1 }, (_, i) => i * aStep);
+const ys = (pct: number) => aBottom - (pct / 100) * (aBottom - aTop);
+
+// The host's strips, under the agents.
+const roundUp = (v: number) => {
+  const unit = 10 ** Math.floor(Math.log10(v)) / 2;
+  return Math.ceil(v / unit) * unit;
+};
+const stripH = 72, stripGap = 46, firstStrip = aBottom + 56;
+const strips = [
+  { key: "cpu", label: "CPU", unit: "percent", color: "var(--rust)", max: 100 },
+  { key: "memory", label: "Memory", unit: "GB", color: "var(--mint)", max: 0 },
+  { key: "processes", label: "Processes", unit: "processes", color: "var(--bone)", max: 0 },
+] as const;
+const drawn = strips.map((s, k) => {
+  const top = firstStrip + k * (stripH + stripGap);
+  const bottom = top + stripH;
+  const max = s.max || roundUp(Math.max(...days.map((d) => d[s.key].peak)));
+  const y = (v: number) => bottom - (v / max) * stripH;
+  const line = days.map((d, i) => `${i ? "L" : "M"}${cx(i).toFixed(1)},${y(d[s.key].typical).toFixed(1)}`).join("");
+  const upper = days.map((d, i) => `${cx(i).toFixed(1)},${y(d[s.key].peak).toFixed(1)}`);
+  const lower = days.map((d, i) => `${cx(i).toFixed(1)},${y(d[s.key].typical).toFixed(1)}`).reverse();
+  return { ...s, top, bottom, max, y, line, area: [...upper, ...lower].join(" ") };
+});
+const H = drawn[drawn.length - 1].bottom + 30;
+
+// Label every seventh day, counting back from the latest.
+const labelled = days.map((_, i) => (n - 1 - i) % 7 === 0);
+const anySample = days.some((d) => d.sample);
+const latest = days[n - 1];
+const summary =
+  `Agents running and busy each day for ${n} days, to ${latest.date}, ` +
+  `with the host's CPU, memory and processes on the same days.` +
+  (anySample ? " Every point shown is a sample." : "");
+const title = (d: Day) =>
+  `${d.date}${d.sample ? " (sample)" : ""}: ${d.running.typical} agents running (peak ${d.running.peak}), ` +
+  `${d.busy.typical} busy (${share(d)}%); CPU ${fmt.cpu(d.cpu.typical)}, ` +
+  `memory ${fmt.memory(d.memory.typical)}, ${fmt.processes(d.processes.typical)} processes (typical)`;
+---
+
+<figure class="uchart" data-mode="agents" data-uchart>
+  <div class="head">
+    <ul class="legend agents-only" aria-label="Legend">
+      <li><i class="sw busy"></i>busy</li>
+      <li><i class="sw idle"></i>running, not busy</li>
+      <li><i class="sw peak"></i>the day's peak</li>
+      {anySample && <li><i class="sw hatch"></i>hatched or dashed: a sample</li>}
+    </ul>
+    <ul class="legend share-only" aria-label="Legend">
+      <li><i class="sw busy"></i>busy, as a share of running</li>
+      {anySample && <li><i class="sw hatch"></i>hatched or dashed: a sample</li>}
+    </ul>
+    <div class="modes" role="group" aria-label="Show" hidden>
+      <button type="button" data-mode="agents" aria-pressed="true">Agents</button>
+      <button type="button" data-mode="share" aria-pressed="false">Busy share</button>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} tabindex="0">
+      <defs>
+        <pattern id="u-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="1.8" height="5" fill="var(--ground)" opacity=".7"></rect>
+        </pattern>
+      </defs>
+
+      {days.map((_, i) => <rect class="cursor" data-i={i} x={L + band * i + 1} y={aTop - 8} width={band - 2} height={H - 28 - (aTop - 8)} rx="3" />)}
+
+      <g class="axis">
+        <text class="cap" x={0} y={aTop - 22}>Agents</text>
+        <g class="agents-only">
+          {aTicks.map((t) => (
+            <>
+              <line x1={L} x2={W - R} y1={ya(t)} y2={ya(t)} />
+              <text x={L - 10} y={ya(t) + 4} text-anchor="end">{t}</text>
+            </>
+          ))}
+        </g>
+        <g class="share-only">
+          {[0, 25, 50, 75, 100].map((t) => (
+            <>
+              <line x1={L} x2={W - R} y1={ys(t)} y2={ys(t)} />
+              <text x={L - 10} y={ys(t) + 4} text-anchor="end">{t}%</text>
+            </>
+          ))}
+        </g>
+      </g>
+
+      <g class="agents-only">
+        {
+          days.map((d, i) => {
+            const x = cx(i) - bar / 2;
+            const busyTop = ya(d.busy.typical);
+            const runTop = ya(d.running.typical);
+            return (
+              <g>
+                <line class="stem" x1={cx(i)} x2={cx(i)} y1={runTop} y2={ya(d.running.peak)} />
+                <rect class="idle" x={x + 0.75} y={runTop + 0.75} width={bar - 1.5} height={Math.max(0, busyTop - runTop - 2.5)} rx="2" />
+                <rect class="busy" x={x} y={busyTop} width={bar} height={aBottom - busyTop} rx="2" />
+                {d.sample && <rect fill="url(#u-hatch)" x={x} y={runTop} width={bar} height={aBottom - runTop} rx="2" />}
+                <line class="peak" x1={x - 3} x2={x + bar + 3} y1={ya(d.running.peak)} y2={ya(d.running.peak)} />
+              </g>
+            );
+          })
+        }
+      </g>
+
+      <g class="share-only">
+        {
+          days.map((d, i) => {
+            const x = cx(i) - bar / 2;
+            const top = ys(share(d));
+            return (
+              <g>
+                <rect class="capacity" x={x} y={aTop} width={bar} height={aBottom - aTop} rx="2" />
+                <rect class="busy" x={x} y={top} width={bar} height={aBottom - top} rx="2" />
+                {d.sample && <rect fill="url(#u-hatch)" x={x} y={top} width={bar} height={aBottom - top} rx="2" />}
+              </g>
+            );
+          })
+        }
+      </g>
+
+      {
+        drawn.map((s) => (
+          <g class="strip">
+            <text class="cap" x={0} y={s.top - 16}>
+              {s.label} <tspan class="unit">· {s.unit}, typical to peak</tspan>
+            </text>
+            <line class="base" x1={L} x2={W - R} y1={s.bottom} y2={s.bottom} />
+            <line class="grid" x1={L} x2={W - R} y1={s.top} y2={s.top} />
+            <text x={L - 10} y={s.top + 4} text-anchor="end">{s.key === "cpu" ? "100%" : s.max.toLocaleString("en")}</text>
+            <text x={L - 10} y={s.bottom + 4} text-anchor="end">0</text>
+            <polygon points={s.area} fill={s.color} class="band" />
+            <path d={s.line} stroke={s.color} class:list={["typical", { dashed: anySample }]} />
+            {days.map((d, i) => <circle cx={cx(i)} cy={s.y(d[s.key].typical)} r="2.6" stroke={s.color} class:list={["dot", { hollow: d.sample }]} fill={s.color} />)}
+          </g>
+        ))
+      }
+
+      <g class="axis">
+        {days.map((d, i) => labelled[i] && <text x={cx(i)} y={H - 10} text-anchor="middle">{short(d.date)}</text>)}
+      </g>
+
+      {
+        days.map((d, i) => (
+          <rect class="hit" data-i={i} x={L + band * i} y={aTop - 8} width={band} height={H - 28 - (aTop - 8)}>
+            <title>{title(d)}</title>
+          </rect>
+        ))
+      }
+    </svg>
+  </div>
+  <script type="application/json" data-days set:html={JSON.stringify(days)} />
+</figure>
+
+<script>
+  // Picking a day lights its column and tells the page; the tiles listen.
+  for (const fig of document.querySelectorAll<HTMLElement>("[data-uchart]")) {
+    const days = JSON.parse(fig.querySelector("[data-days]")!.textContent!);
+    const svg = fig.querySelector("svg")!;
+    const cursors = [...fig.querySelectorAll<SVGRectElement>(".cursor")];
+    // A phone scrolls the chart; open it on the latest day.
+    const scroller = fig.querySelector<HTMLElement>(".scroll")!;
+    scroller.scrollLeft = scroller.scrollWidth;
+    let picked = days.length - 1;
+    const pick = (i: number) => {
+      picked = Math.max(0, Math.min(days.length - 1, i));
+      cursors.forEach((c, n) => c.classList.toggle("on", n === picked));
+      document.dispatchEvent(new CustomEvent("fleet:pick", { detail: { day: days[picked], latest: picked === days.length - 1 } }));
+    };
+    for (const hit of fig.querySelectorAll<SVGRectElement>(".hit")) {
+      const i = Number(hit.dataset.i);
+      hit.addEventListener("pointerenter", () => pick(i));
+      hit.addEventListener("click", () => pick(i));
+    }
+    svg.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") pick(picked - 1);
+      else if (e.key === "ArrowRight") pick(picked + 1);
+      else if (e.key === "End") pick(days.length - 1);
+      else if (e.key === "Home") pick(0);
+      else return;
+      e.preventDefault();
+    });
+    document.addEventListener("fleet:latest", () => pick(days.length - 1));
+
+    const modes = fig.querySelector<HTMLElement>(".modes")!;
+    modes.hidden = false;
+    for (const b of modes.querySelectorAll<HTMLButtonElement>("button")) {
+      b.addEventListener("click", () => {
+        fig.dataset.mode = b.dataset.mode;
+        for (const o of modes.querySelectorAll("button")) o.setAttribute("aria-pressed", String(o === b));
+      });
+    }
+  }
+</script>
+
+<style>
+  .uchart { margin: 0; min-width: 0; }
+  .head { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0; padding: 0; font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
+  .legend li { display: flex; align-items: center; gap: 7px; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+  .sw.busy { background: var(--brass); }
+  .sw.idle { border: 1.5px solid var(--mint); background: rgba(143, 185, 174, 0.14); }
+  .sw.peak { height: 2px; background: var(--bone); }
+  .sw.hatch { background: repeating-linear-gradient(45deg, var(--brass) 0 3px, var(--ground) 3px 5px); }
+  .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .modes[hidden] { display: none; }
+  .modes button {
+    all: unset; cursor: pointer; padding: 6px 14px;
+    font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .modes button[aria-pressed="true"] { background: var(--brass); color: var(--ground); }
+  .modes button:focus-visible { outline: 2px solid var(--brass); outline-offset: -2px; }
+
+  .uchart[data-mode="agents"] .share-only, .uchart[data-mode="share"] .agents-only { display: none; }
+
+  /* The chart keeps its proportions; a phone scrolls it, never the page. */
+  .scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+  svg { display: block; width: 100%; min-width: 600px; height: auto; font-family: var(--mono); }
+  svg:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; border-radius: 6px; }
+  svg text { fill: var(--ink-3); font-size: 11px; }
+  svg .cap { fill: var(--mint); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; }
+  svg .cap .unit { fill: var(--ink-3); letter-spacing: 0.06em; text-transform: none; }
+  svg .axis line, svg .grid { stroke: var(--line-soft); }
+  svg .base { stroke: var(--line); }
+
+  svg .busy { fill: var(--brass); }
+  svg .idle { fill: rgba(143, 185, 174, 0.14); stroke: var(--mint); stroke-width: 1.5; }
+  svg .capacity { fill: rgba(143, 185, 174, 0.1); }
+  svg .peak { stroke: var(--bone); stroke-width: 2; stroke-linecap: round; }
+  svg .stem { stroke: var(--bone); stroke-opacity: 0.35; stroke-dasharray: 1 3; }
+
+  svg .band { fill-opacity: 0.2; }
+  svg .typical { fill: none; stroke-width: 1.6; }
+  svg .typical.dashed { stroke-dasharray: 5 4; }
+  svg .dot.hollow { fill: var(--ground); stroke-width: 1.4; }
+
+  svg .cursor { fill: rgba(143, 185, 174, 0.08); opacity: 0; transition: opacity 0.12s; }
+  svg .cursor.on { opacity: 1; }
+  svg .hit { fill: transparent; cursor: crosshair; }
+  @media (prefers-reduced-motion: reduce) { svg .cursor { transition: none; } }
+</style>

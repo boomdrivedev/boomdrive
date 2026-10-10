@@ -1,0 +1,23 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+
+const measurements = await getCollection("measurements");
+---
+
+<Base title="The Fleet" description="The fleet's measurements, each with its definition beside its numbers.">
+  <p class="eyebrow">The Fleet</p>
+  <h1>The fleet, measured</h1>
+  <p>Each measurement has one page: its definition and version beside its numbers, and the notes that cite it.</p>
+  <ul class="plain">
+    {
+      measurements.map((m) => (
+        <li>
+          <a href={`/fleet/${m.id}/`}>{m.data.name}</a>
+          {m.data.series.some((s) => s.points.some((p) => p.sample)) && <span class="sample-chip">samples</span>}
+          <div class="muted">{m.data.summary}</div>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

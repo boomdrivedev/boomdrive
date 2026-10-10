@@ -1,0 +1,87 @@
+---
+import { type Day, fmt, keys, share } from "./utilization";
+
+// The reading as the headline, one tile per series: the latest day, or the
+// day picked on the chart.
+
+interface Props {
+  days: Day[];
+}
+const { days } = Astro.props;
+const d = days[days.length - 1];
+const label = { running: "Agents running", busy: "Agents busy", cpu: "CPU", memory: "Memory", processes: "Processes" };
+---
+
+<section class="tiles" aria-label="The reading" data-tiles>
+  <p class="when">
+    <span data-when-label>Latest reading</span> · <span data-when>{d.date}</span>
+    <span class="sample-chip" data-when-sample hidden={!d.sample}>sample</span>
+    <button type="button" class="back" data-back hidden>Back to the latest</button>
+  </p>
+  <div class="row" aria-live="polite">
+    {
+      keys.map((k) => (
+        <div class:list={["tile", k]} data-k={k}>
+          <span class="name">{label[k]}</span>
+          <span class="value" data-typical>{fmt[k](d[k].typical)}</span>
+          <span class="peak">
+            typical · peak <b data-peak>{fmt[k](d[k].peak)}</b>
+          </span>
+          {k === "busy" && (
+            <span class="peak">
+              <b data-share>{share(d)}%</b> of running
+            </span>
+          )}
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<script>
+  import { fmt, share, type Day } from "./utilization";
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-tiles]")) {
+    const back = root.querySelector<HTMLButtonElement>("[data-back]")!;
+    back.addEventListener("click", () => document.dispatchEvent(new CustomEvent("fleet:latest")));
+    document.addEventListener("fleet:pick", (e) => {
+      const { day, latest } = (e as CustomEvent<{ day: Day; latest: boolean }>).detail;
+      root.querySelector("[data-when-label]")!.textContent = latest ? "Latest reading" : "Picked";
+      root.querySelector("[data-when]")!.textContent = day.date;
+      root.querySelector<HTMLElement>("[data-when-sample]")!.hidden = !day.sample;
+      back.hidden = latest;
+      for (const tile of root.querySelectorAll<HTMLElement>("[data-k]")) {
+        const k = tile.dataset.k as keyof typeof fmt;
+        tile.querySelector("[data-typical]")!.textContent = fmt[k](day[k].typical);
+        tile.querySelector("[data-peak]")!.textContent = fmt[k](day[k].peak);
+        const s = tile.querySelector("[data-share]");
+        if (s) s.textContent = `${share(day)}%`;
+      }
+    });
+  }
+</script>
+
+<style>
+  .tiles { margin: 28px 0 0; }
+  .when { margin: 0 0 10px; font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .back {
+    all: unset; cursor: pointer; color: var(--mint); text-decoration: underline; text-underline-offset: 3px;
+    letter-spacing: 0.08em; text-transform: none;
+  }
+  .back[hidden] { display: none; }
+  .back:hover { color: var(--brass); }
+  .back:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .row {
+    display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .tile { background: var(--panel); padding: 14px 16px 14px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+  .name { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--mint); }
+  .value {
+    font: 700 clamp(1.8rem, 4vw, 2.4rem)/1.1 var(--display); letter-spacing: -0.03em; color: var(--ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .busy .value { color: var(--brass); }
+  .peak { font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
+  .peak b { color: var(--ink-2); font-weight: 500; }
+</style>

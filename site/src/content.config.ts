@@ -2,8 +2,9 @@ import { defineCollection, reference } from "astro:content";
 import { file, glob } from "astro/loaders";
 import { z } from "astro/zod";
 
-// The version-1 types of docs/site-design.md. Every reference is checked at
-// build time, so a note that cites a missing principle fails the build.
+// The types of docs/site-design.md that version 1 needs. Every reference is
+// checked at build time, so a note that cites a missing principle fails the
+// build.
 
 const principles = defineCollection({
   loader: glob({ pattern: "**/*.md", base: "./src/content/principles" }),
@@ -35,6 +36,7 @@ const notes = defineCollection({
     principles: z.array(reference("principles")).min(1),
     artifacts: z.array(artifact).default([]),
     openQuestions: z.array(z.string()).default([]),
+    measurements: z.array(reference("measurements")).default([]),
     supersededBy: reference("notes").optional(),
   }),
 });
@@ -78,4 +80,45 @@ const components = defineCollection({
   }),
 });
 
-export const collections = { principles, notes, terms, components };
+// A day's roll-up of one series: its peak and its typical value. A sample is
+// an illustration, made up to show how the page reads; it is never a
+// measurement, and every place that shows one says so.
+const point = z.object({
+  date: z.coerce.date(),
+  typical: z.number(),
+  peak: z.number(),
+  sample: z.boolean().default(false),
+});
+
+// The record's file name is its id, so the two cannot disagree.
+const measurements = defineCollection({
+  loader: glob({ pattern: "**/*.yaml", base: "./src/content/measurements" }),
+  schema: z.object({
+    name: z.string(),
+    summary: z.string(),
+    dimension: z.enum(["flow", "attention", "proof", "quality", "cost", "health", "design"]),
+    definitionVersion: z.number().int().positive(),
+    definition: z.string(),
+    principle: reference("principles"),
+    source: z.string(),
+    collector: z.string(),
+    argues: z.string(),
+    cannotShow: z.string(),
+    // How the page draws the series; each form checks the series it needs.
+    chart: z.enum(["utilization"]),
+    series: z
+      .array(
+        z.object({
+          key: z.string(),
+          name: z.string(),
+          unit: z.string(),
+          // The key of the series this one is a share of, where a share means something.
+          shareOf: z.string().optional(),
+          points: z.array(point).default([]),
+        }),
+      )
+      .min(1),
+  }),
+});
+
+export const collections = { principles, notes, terms, components, measurements };
