@@ -1,0 +1,101 @@
+<!-- One shell: drawn for the Flywheel site's Method. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 446" width="900" height="446" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">One shell: every command runs in the one shell the repository declares</title>
+<desc id="dsc">Four places where work runs, an agent in its worktree, a laptop, CI and a release, each send the same command, site-check, into the one shell the repository declares. The devenv shell resolves the tools it declares: bun 1.4.2, node 24 and vale 3.24.0. Every place gets back the same verdict with the same tool versions. Partway through, the agent tries npx vale@latest around the shell, and it is refused because it is not declared.</desc>
+<style>
+:root{--bg:#102b2f;--panel:#0d2528;--fg:#ede7da;--muted:#a3b4ae;--rule:#2b4a4d;--accent:#c9a227;--soft:#163a3e;--ok:#8fb9ae;--bad:#e07b4f;--ink:#0d2528}
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}
+.mono,.chipt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.bg{fill:var(--bg)} .t{fill:var(--fg)} .m{fill:var(--muted)} .ok{fill:var(--ok)} .bad{fill:var(--bad)}
+.b{font-weight:600} .h{font-size:17px;font-weight:700} .hd{font-size:12px;letter-spacing:.06em;fill:var(--muted)}
+.sm{font-size:13px} .xs{font-size:11.5px} .mono{font-size:13px} .mono.xs{font-size:11.5px}
+.box{fill:var(--panel);stroke:var(--rule);stroke-width:1.5}
+.queue{fill:var(--soft);stroke:none}
+.track{fill:var(--soft)} .lit{fill:var(--accent)} .lt{fill:var(--ink);font-weight:700}
+.div{stroke:var(--rule);stroke-width:1}
+.wire{stroke:var(--rule);stroke-width:2}
+.lanel{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 5}
+.wall{stroke:var(--bad);stroke-width:3;stroke-linecap:round}
+.dot{fill:var(--accent)} .dotok{fill:var(--ok)}
+.chip{fill:var(--accent)} .chipt{fill:var(--ink);font-size:13px;font-weight:700}
+.refused{fill:var(--panel);stroke:var(--bad);stroke-width:1.5}
+.strike{stroke:var(--bad);stroke-width:1.5;stroke-dasharray:120}
+.badge{fill:var(--accent)} .badget{fill:var(--ink);font-size:12px;font-weight:700}
+@media (prefers-reduced-motion:reduce){*{animation-play-state:paused!important;animation-delay:-13.6s!important}
+.cap{animation:none!important;opacity:1}}
+@keyframes k-bx0{0%{stroke:var(--rule)} 1.2%{stroke:var(--rule)} 2%{stroke:var(--accent)} 16%{stroke:var(--accent)} 16.8%{stroke:var(--ok)} 32%{stroke:var(--ok)} 32.8%{stroke:var(--accent)} 40%{stroke:var(--accent)} 40.8%{stroke:var(--bad)} 46%{stroke:var(--bad)} 46.8%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.bx0{animation:k-bx0 16s linear infinite}@keyframes k-bx1{0%{stroke:var(--rule)} 15.2%{stroke:var(--rule)} 16%{stroke:var(--accent)} 30%{stroke:var(--accent)} 30.8%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.bx1{animation:k-bx1 16s linear infinite}@keyframes k-bx2{0%{stroke:var(--rule)} 45.2%{stroke:var(--rule)} 46%{stroke:var(--accent)} 60%{stroke:var(--accent)} 60.8%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.bx2{animation:k-bx2 16s linear infinite}@keyframes k-bx3{0%{stroke:var(--rule)} 59.2%{stroke:var(--rule)} 60%{stroke:var(--accent)} 74%{stroke:var(--accent)} 74.8%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.bx3{animation:k-bx3 16s linear infinite}@keyframes k-cmd0{0%{opacity:1} 31.2%{opacity:1} 32%{opacity:0} 46%{opacity:0} 46.8%{opacity:1} 100%{opacity:1}}.cmd0{animation:k-cmd0 16s linear infinite}@keyframes k-cmd1{0%{opacity:0} 31.2%{opacity:0} 32%{opacity:1} 46%{opacity:1} 46.8%{opacity:0} 100%{opacity:0}}.cmd1{animation:k-cmd1 16s linear infinite}@keyframes k-lc0{0%{stroke:var(--rule)} 1.2%{stroke:var(--rule)} 2%{stroke:var(--accent)} 13%{stroke:var(--accent)} 13.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.lc0{animation:k-lc0 16s linear infinite}@keyframes k-ld0{0%{transform:translate(-90px,-97px);opacity:0} 2%{transform:translate(-90px,-97px);opacity:0} 2.4%{transform:translate(-90px,-97px);opacity:1} 7%{transform:translate(0px,0px);opacity:1} 7.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.ld0{animation:k-ld0 16s linear infinite}@keyframes k-rc0{0%{stroke:var(--rule)} 11.2%{stroke:var(--rule)} 12%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rc0{animation:k-rc0 16s linear infinite}@keyframes k-rd0{0%{transform:translate(-84px,97px);opacity:0} 12%{transform:translate(-84px,97px);opacity:0} 12.4%{transform:translate(-84px,97px);opacity:1} 16%{transform:translate(0px,0px);opacity:1} 16.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.rd0{animation:k-rd0 16s linear infinite}@keyframes k-ra0{0%{opacity:0} 15.2%{opacity:0} 16%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.ra0{animation:k-ra0 16s linear infinite}@keyframes k-rb0{0%{stroke:var(--rule)} 15.2%{stroke:var(--rule)} 16%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rb0{animation:k-rb0 16s linear infinite}@keyframes k-lc1{0%{stroke:var(--rule)} 15.2%{stroke:var(--rule)} 16%{stroke:var(--accent)} 27%{stroke:var(--accent)} 27.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.lc1{animation:k-lc1 16s linear infinite}@keyframes k-ld1{0%{transform:translate(-90px,-25px);opacity:0} 16%{transform:translate(-90px,-25px);opacity:0} 16.4%{transform:translate(-90px,-25px);opacity:1} 21%{transform:translate(0px,0px);opacity:1} 21.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.ld1{animation:k-ld1 16s linear infinite}@keyframes k-rc1{0%{stroke:var(--rule)} 25.2%{stroke:var(--rule)} 26%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rc1{animation:k-rc1 16s linear infinite}@keyframes k-rd1{0%{transform:translate(-84px,25px);opacity:0} 26%{transform:translate(-84px,25px);opacity:0} 26.4%{transform:translate(-84px,25px);opacity:1} 30%{transform:translate(0px,0px);opacity:1} 30.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.rd1{animation:k-rd1 16s linear infinite}@keyframes k-ra1{0%{opacity:0} 29.2%{opacity:0} 30%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.ra1{animation:k-ra1 16s linear infinite}@keyframes k-rb1{0%{stroke:var(--rule)} 29.2%{stroke:var(--rule)} 30%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rb1{animation:k-rb1 16s linear infinite}@keyframes k-lc2{0%{stroke:var(--rule)} 45.2%{stroke:var(--rule)} 46%{stroke:var(--accent)} 57%{stroke:var(--accent)} 57.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.lc2{animation:k-lc2 16s linear infinite}@keyframes k-ld2{0%{transform:translate(-90px,47px);opacity:0} 46%{transform:translate(-90px,47px);opacity:0} 46.4%{transform:translate(-90px,47px);opacity:1} 51%{transform:translate(0px,0px);opacity:1} 51.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.ld2{animation:k-ld2 16s linear infinite}@keyframes k-rc2{0%{stroke:var(--rule)} 55.2%{stroke:var(--rule)} 56%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rc2{animation:k-rc2 16s linear infinite}@keyframes k-rd2{0%{transform:translate(-84px,-47px);opacity:0} 56%{transform:translate(-84px,-47px);opacity:0} 56.4%{transform:translate(-84px,-47px);opacity:1} 60%{transform:translate(0px,0px);opacity:1} 60.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.rd2{animation:k-rd2 16s linear infinite}@keyframes k-ra2{0%{opacity:0} 59.2%{opacity:0} 60%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.ra2{animation:k-ra2 16s linear infinite}@keyframes k-rb2{0%{stroke:var(--rule)} 59.2%{stroke:var(--rule)} 60%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rb2{animation:k-rb2 16s linear infinite}@keyframes k-lc3{0%{stroke:var(--rule)} 59.2%{stroke:var(--rule)} 60%{stroke:var(--accent)} 71%{stroke:var(--accent)} 71.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.lc3{animation:k-lc3 16s linear infinite}@keyframes k-ld3{0%{transform:translate(-90px,119px);opacity:0} 60%{transform:translate(-90px,119px);opacity:0} 60.4%{transform:translate(-90px,119px);opacity:1} 65%{transform:translate(0px,0px);opacity:1} 65.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.ld3{animation:k-ld3 16s linear infinite}@keyframes k-rc3{0%{stroke:var(--rule)} 69.2%{stroke:var(--rule)} 70%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rc3{animation:k-rc3 16s linear infinite}@keyframes k-rd3{0%{transform:translate(-84px,-119px);opacity:0} 70%{transform:translate(-84px,-119px);opacity:0} 70.4%{transform:translate(-84px,-119px);opacity:1} 74%{transform:translate(0px,0px);opacity:1} 74.6%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.rd3{animation:k-rd3 16s linear infinite}@keyframes k-ra3{0%{opacity:0} 73.2%{opacity:0} 74%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.ra3{animation:k-ra3 16s linear infinite}@keyframes k-rb3{0%{stroke:var(--rule)} 73.2%{stroke:var(--rule)} 74%{stroke:var(--ok)} 96%{stroke:var(--ok)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.rb3{animation:k-rb3 16s linear infinite}@keyframes k-card{0%{stroke:var(--rule)} 5.7%{stroke:var(--rule)} 6.5%{stroke:var(--accent)} 13%{stroke:var(--accent)} 13.8%{stroke:var(--rule)} 19.7%{stroke:var(--rule)} 20.5%{stroke:var(--accent)} 27%{stroke:var(--accent)} 27.8%{stroke:var(--rule)} 49.7%{stroke:var(--rule)} 50.5%{stroke:var(--accent)} 57%{stroke:var(--accent)} 57.8%{stroke:var(--rule)} 63.7%{stroke:var(--rule)} 64.5%{stroke:var(--accent)} 71%{stroke:var(--accent)} 71.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.card{animation:k-card 16s linear infinite}@keyframes k-t0{0%{opacity:0} 6.4%{opacity:0} 7%{opacity:1} 13%{opacity:1} 13.6%{opacity:0} 20.4%{opacity:0} 21%{opacity:1} 27%{opacity:1} 27.6%{opacity:0} 50.4%{opacity:0} 51%{opacity:1} 57%{opacity:1} 57.6%{opacity:0} 64.4%{opacity:0} 65%{opacity:1} 71%{opacity:1} 71.6%{opacity:0} 100%{opacity:0}}.t0{animation:k-t0 16s linear infinite}@keyframes k-t1{0%{opacity:0} 7.4%{opacity:0} 8%{opacity:1} 13%{opacity:1} 13.6%{opacity:0} 21.4%{opacity:0} 22%{opacity:1} 27%{opacity:1} 27.6%{opacity:0} 51.4%{opacity:0} 52%{opacity:1} 57%{opacity:1} 57.6%{opacity:0} 65.4%{opacity:0} 66%{opacity:1} 71%{opacity:1} 71.6%{opacity:0} 100%{opacity:0}}.t1{animation:k-t1 16s linear infinite}@keyframes k-t2{0%{opacity:0} 8.4%{opacity:0} 9%{opacity:1} 13%{opacity:1} 13.6%{opacity:0} 22.4%{opacity:0} 23%{opacity:1} 27%{opacity:1} 27.6%{opacity:0} 52.4%{opacity:0} 53%{opacity:1} 57%{opacity:1} 57.6%{opacity:0} 66.4%{opacity:0} 67%{opacity:1} 71%{opacity:1} 71.6%{opacity:0} 100%{opacity:0}}.t2{animation:k-t2 16s linear infinite}@keyframes k-sg{0%{transform:translate(-250px,0px);opacity:0} 32%{transform:translate(-250px,0px);opacity:0} 32.5%{transform:translate(-250px,0px);opacity:1} 40%{transform:translate(0px,0px);opacity:1} 96%{transform:translate(0px,0px);opacity:1} 96.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(-250px,0px);opacity:0}}.sg{animation:k-sg 16s linear infinite}@keyframes k-sa{0%{opacity:0} 31.6%{opacity:0} 32%{opacity:1} 40%{opacity:1} 40.4%{opacity:0} 100%{opacity:0}}.sa{animation:k-sa 16s linear infinite}@keyframes k-sr{0%{opacity:0} 39.6%{opacity:0} 40%{opacity:1} 96%{opacity:1} 96.4%{opacity:0} 100%{opacity:0}}.sr{animation:k-sr 16s linear infinite}@keyframes k-lane{0%{opacity:0} 31.2%{opacity:0} 32%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.lane{animation:k-lane 16s linear infinite}@keyframes k-wall{0%{opacity:0} 39.2%{opacity:0} 39.6%{opacity:1} 96%{opacity:1} 96.4%{opacity:0} 100%{opacity:0}}.wall{animation:k-wall 16s linear infinite}@keyframes k-nd{0%{opacity:0} 41.2%{opacity:0} 42%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.nd{animation:k-nd 16s linear infinite}@keyframes k-strk{0%{stroke-dashoffset:120} 40.8%{stroke-dashoffset:120} 42.4%{stroke-dashoffset:0} 96.8%{stroke-dashoffset:0} 100%{stroke-dashoffset:120}}.strk{animation:k-strk 16s linear infinite}@keyframes k-same{0%{opacity:0} 74.2%{opacity:0} 75%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.same{animation:k-same 16s linear infinite}@keyframes k-cap1{0%{opacity:0.35} 1.2%{opacity:0.35} 2%{opacity:1} 16%{opacity:1} 16.8%{opacity:0.35} 100%{opacity:0.35}}.cap1{animation:k-cap1 16s linear infinite}@keyframes k-cap2{0%{opacity:0.35} 15.2%{opacity:0.35} 16%{opacity:1} 32%{opacity:1} 32.8%{opacity:0.35} 100%{opacity:0.35}}.cap2{animation:k-cap2 16s linear infinite}@keyframes k-cap3{0%{opacity:0.35} 31.2%{opacity:0.35} 32%{opacity:1} 46%{opacity:1} 46.8%{opacity:0.35} 100%{opacity:0.35}}.cap3{animation:k-cap3 16s linear infinite}@keyframes k-cap4{0%{opacity:0.35} 45.2%{opacity:0.35} 46%{opacity:1} 92%{opacity:1} 92.8%{opacity:0.35} 100%{opacity:0.35}}.cap4{animation:k-cap4 16s linear infinite}</style>
+<rect class="bg" width="900" height="446" rx="10"/>
+<text class="h" x="20" y="32">One shell</text>
+<text class="m sm" x="112" y="32">every command runs in the shell the repository declares</text>
+<text class="hd" x="20" y="62">WHERE WORK RUNS</text>
+<rect class="queue" x="224" y="44" width="384" height="306" rx="8"/>
+<text class="hd" x="238" y="62">THE SHELL THE REPOSITORY DECLARES</text>
+<text class="hd" x="626" y="62">THE ANSWER</text>
+<line class="wire lc0" x1="200" y1="109" x2="290" y2="206"/>
+<line class="wire rc0" x1="542" y1="206" x2="626" y2="109"/>
+<line class="wire lc1" x1="200" y1="181" x2="290" y2="206"/>
+<line class="wire rc1" x1="542" y1="206" x2="626" y2="181"/>
+<line class="wire lc2" x1="200" y1="253" x2="290" y2="206"/>
+<line class="wire rc2" x1="542" y1="206" x2="626" y2="253"/>
+<line class="wire lc3" x1="200" y1="325" x2="290" y2="206"/>
+<line class="wire rc3" x1="542" y1="206" x2="626" y2="325"/>
+<rect class="box bx0" x="20" y="80" width="180" height="58" rx="6"/>
+<text class="t b" x="34" y="104">agent · worktree</text>
+<text class="mono m cmd0" x="34" y="124">$ site-check</text>
+<text class="mono m cmd1" x="34" y="124">$ npx vale@latest</text>
+<rect class="box bx1" x="20" y="152" width="180" height="58" rx="6"/>
+<text class="t b" x="34" y="176">laptop</text>
+<text class="mono m" x="34" y="196">$ site-check</text>
+<rect class="box bx2" x="20" y="224" width="180" height="58" rx="6"/>
+<text class="t b" x="34" y="248">CI</text>
+<text class="mono m" x="34" y="268">$ site-check</text>
+<rect class="box bx3" x="20" y="296" width="180" height="58" rx="6"/>
+<text class="t b" x="34" y="320">release</text>
+<text class="mono m" x="34" y="340">$ site-check</text>
+<line class="lanel lane" x1="200" y1="89" x2="596" y2="89"/>
+<line class="wall" x1="598" y1="74" x2="598" y2="104"/>
+<rect class="box card" x="290" y="118" width="252" height="168" rx="6"/>
+<text class="t b" x="304" y="146">devenv</text>
+<text class="mono xs m" x="528" y="146" text-anchor="end">devenv.nix</text>
+<line class="div" x1="304" y1="158" x2="528" y2="158"/>
+<rect class="track" x="304" y="170" width="224" height="28" rx="4"/>
+<text class="mono t" x="316" y="189">bun</text>
+<text class="mono m" x="516" y="189" text-anchor="end">1.4.2</text>
+<g class="t0"><rect class="lit" x="304" y="170" width="224" height="28" rx="4"/><text class="mono lt" x="316" y="189">bun</text><text class="mono lt" x="516" y="189" text-anchor="end">1.4.2</text></g>
+<rect class="track" x="304" y="206" width="224" height="28" rx="4"/>
+<text class="mono t" x="316" y="225">node</text>
+<text class="mono m" x="516" y="225" text-anchor="end">24</text>
+<g class="t1"><rect class="lit" x="304" y="206" width="224" height="28" rx="4"/><text class="mono lt" x="316" y="225">node</text><text class="mono lt" x="516" y="225" text-anchor="end">24</text></g>
+<rect class="track" x="304" y="242" width="224" height="28" rx="4"/>
+<text class="mono t" x="316" y="261">vale</text>
+<text class="mono m" x="516" y="261" text-anchor="end">3.24.0</text>
+<g class="t2"><rect class="lit" x="304" y="242" width="224" height="28" rx="4"/><text class="mono lt" x="316" y="261">vale</text><text class="mono lt" x="516" y="261" text-anchor="end">3.24.0</text></g>
+<text class="m xs" x="416" y="316" text-anchor="middle">hooks, CI and agents enter the same shell</text>
+<text class="m xs" x="416" y="332" text-anchor="middle">and run only the tools it declares</text>
+<circle class="dot ld0" cx="290" cy="206" r="5"/>
+<circle class="dotok rd0" cx="626" cy="109" r="5"/>
+<circle class="dot ld1" cx="290" cy="206" r="5"/>
+<circle class="dotok rd1" cx="626" cy="181" r="5"/>
+<circle class="dot ld2" cx="290" cy="206" r="5"/>
+<circle class="dotok rd2" cx="626" cy="253" r="5"/>
+<circle class="dot ld3" cx="290" cy="206" r="5"/>
+<circle class="dotok rd3" cx="626" cy="325" r="5"/>
+<g class="sg">
+<g class="sa"><rect class="chip" x="456" y="78" width="134" height="22" rx="4"/><text class="chipt" x="523" y="93" text-anchor="middle">npx vale@latest</text></g>
+<g class="sr"><rect class="refused" x="456" y="78" width="134" height="22" rx="4"/><text class="mono m" x="523" y="93" text-anchor="middle">npx vale@latest</text><line class="strike strk" x1="462" y1="89" x2="584" y2="89"/></g>
+</g>
+<g class="nd"><rect class="queue" x="358" y="78" width="92" height="22"/><text class="sm bad" x="446" y="93" text-anchor="end">not declared</text></g>
+<rect class="box rb0" x="626" y="80" width="254" height="58" rx="6"/>
+<g class="ra0"><text class="mono t" x="640" y="104">site-check</text><text class="sm ok" x="866" y="104" text-anchor="end">passed</text><text class="mono xs m" x="640" y="124">bun 1.4.2 · node 24 · vale 3.24.0</text></g>
+<rect class="box rb1" x="626" y="152" width="254" height="58" rx="6"/>
+<g class="ra1"><text class="mono t" x="640" y="176">site-check</text><text class="sm ok" x="866" y="176" text-anchor="end">passed</text><text class="mono xs m" x="640" y="196">bun 1.4.2 · node 24 · vale 3.24.0</text></g>
+<rect class="box rb2" x="626" y="224" width="254" height="58" rx="6"/>
+<g class="ra2"><text class="mono t" x="640" y="248">site-check</text><text class="sm ok" x="866" y="248" text-anchor="end">passed</text><text class="mono xs m" x="640" y="268">bun 1.4.2 · node 24 · vale 3.24.0</text></g>
+<rect class="box rb3" x="626" y="296" width="254" height="58" rx="6"/>
+<g class="ra3"><text class="mono t" x="640" y="320">site-check</text><text class="sm ok" x="866" y="320" text-anchor="end">passed</text><text class="mono xs m" x="640" y="340">bun 1.4.2 · node 24 · vale 3.24.0</text></g>
+<text class="xs ok same" x="626" y="374">the same tools and the same verdict</text>
+<g class="cap cap1"><circle class="badge" cx="32" cy="412" r="11"/><text class="badget" x="32" y="416" text-anchor="middle">1</text><text class="t sm" x="50" y="408">Every command enters</text><text class="t sm" x="50" y="425">one shell.</text></g>
+<g class="cap cap2"><circle class="badge" cx="250" cy="412" r="11"/><text class="badget" x="250" y="416" text-anchor="middle">2</text><text class="t sm" x="268" y="408">The repository declares</text><text class="t sm" x="268" y="425">its tools and versions.</text></g>
+<g class="cap cap3"><circle class="badge" cx="468" cy="412" r="11"/><text class="badget" x="468" y="416" text-anchor="middle">3</text><text class="t sm" x="486" y="408">A tool outside the</text><text class="t sm" x="486" y="425">declaration doesn&#8217;t run.</text></g>
+<g class="cap cap4"><circle class="badge" cx="686" cy="412" r="11"/><text class="badget" x="686" y="416" text-anchor="middle">4</text><text class="t sm" x="704" y="408">Same tools everywhere,</text><text class="t sm" x="704" y="425">same answer.</text></g>
+</svg>
