@@ -1,7 +1,7 @@
 <!-- One shell: drawn for the Flywheel site's Method. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 446" width="900" height="446" role="img" aria-labelledby="ttl dsc">
 <title id="ttl">One shell: every command runs in the one shell the repository declares</title>
-<desc id="dsc">Four places where work runs, an agent in its worktree, a laptop, CI and a release, each send the same command, site-check, into the one shell the repository declares. The devenv shell resolves the tools it declares: bun 1.4.2, node 24 and vale 3.24.0. Every place gets back the same verdict with the same tool versions. Partway through, the agent tries npx vale@latest around the shell, and it is refused because it is not declared.</desc>
+<desc id="dsc">Four places where work runs: an agent in its worktree, a laptop, CI and a release. Each sends the same command, site-check, into the one shell the repository declares. The devenv shell resolves only the tools it declares, and every place gets back the same verdict from bun 1.4.2, node 24 and vale 3.24.0 alike. Partway through, the agent tries npx vale@latest around the shell, and it is refused because it is not declared.</desc>
 <style>
 :root{--bg:#102b2f;--panel:#0d2528;--fg:#ede7da;--muted:#a3b4ae;--rule:#2b4a4d;--accent:#c9a227;--soft:#163a3e;--ok:#8fb9ae;--bad:#e07b4f;--ink:#0d2528}
 text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}

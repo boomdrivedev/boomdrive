@@ -8,7 +8,7 @@ introducedIn: "0.1"
 lastReviewed: 2026-10-06
 diagram:
   src: /diagrams/one-shell.svg
-  alt: "Four places where work runs, an agent in its worktree, a laptop, CI and a release, each send the same command, site-check, into the one shell the repository declares. The devenv shell resolves the tools it declares: bun 1.4.2, node 24 and vale 3.24.0. Every place gets back the same verdict with the same tool versions. Partway through, the agent tries npx vale@latest around the shell, and it is refused because it is not declared."
+  alt: "Four places where work runs: an agent in its worktree, a laptop, CI and a release. Each sends the same command, site-check, into the one shell the repository declares. The devenv shell resolves only the tools it declares, and every place gets back the same verdict from bun 1.4.2, node 24 and vale 3.24.0 alike. Partway through, the agent tries npx vale@latest around the shell, and it is refused because it is not declared."
 ---
 
 ## How we do it today
