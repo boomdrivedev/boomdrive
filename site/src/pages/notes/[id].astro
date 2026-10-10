@@ -44,7 +44,7 @@ const newer = n.data.supersededBy ? await getEntry(n.data.supersededBy) : undefi
     {principles.map((p, i) => (
       <>
         {i > 0 && ", "}
-        <a href={`/method/${p?.id}/`}>{p?.data.title}</a>
+        <a href={`/method/#${p?.id}`}>{p?.data.title}</a>
       </>
     ))}
   </p>

@@ -121,7 +121,7 @@ const inline = (s: string) =>
           ))}
         </dd>
         <dt>Principle</dt>
-        <dd>{principle && <a href={`/method/${principle.id}/`}>{principle.data.title}</a>}</dd>
+        <dd>{principle && <a href={`/method/#${principle.id}`}>{principle.data.title}</a>}</dd>
         <dt>Source</dt>
         <dd set:html={inline(r.source)} />
         <dt>Collector</dt>

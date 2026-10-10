@@ -11,7 +11,23 @@ const { Content: Statement } = statement ? await render(statement) : { Content: 
 const principles = (await getCollection("principles", ({ data }) => data.status !== "retired" && data.order > 0)).sort(
   (a, b) => a.data.order - b.data.order,
 );
-const scenes = await Promise.all(principles.map(async (p) => ({ p, Content: (await render(p)).Content })));
+const notes = await getCollection("notes", ({ data }) => !data.draft);
+// A principle is a place on this page, never a page of its own. Its idea
+// reads open; how we do it today and where it is going, the notes that cite
+// it and its changes fold beneath, so the reading stays one per screen.
+const scenes = principles.map((p) => {
+  const html = p.rendered?.html ?? "";
+  const cut = html.search(/<h2[\s>]/);
+  return {
+    p,
+    idea: cut < 0 ? html : html.slice(0, cut),
+    practice: cut < 0 ? "" : html.slice(cut),
+    citedBy: notes
+      .filter((n) => n.data.principles.some((r) => r.id === p.id))
+      .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+  };
+});
+const iso = (d: Date) => d.toISOString().slice(0, 10);
 const total = String(principles.length).padStart(2, "0");
 const no = (n: number) => String(n).padStart(2, "0");
 const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")).join(" · ");
@@ -24,7 +40,20 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
     {statement && <p class="claim">{statement.data.summary}</p>}
     <p class="journey">For the journey from one agent to a thousand: <span>{journey}</span></p>
     <div class="statement">{Statement && <Statement />}</div>
-    <p class="hint">Eight principles follow, one at a time.</p>
+    <ol class="toc" aria-label="The principles">
+      {
+        scenes.map(({ p }) => (
+          <li>
+            <a href={`#${p.id}`}>
+              <span class="n">{no(p.data.order)}</span>
+              <span class="t">{p.data.title}</span>
+              <span class="l">{p.data.line}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="hint">Each follows in turn, beside a diagram of its idea.</p>
   </header>
 
   <nav class="rail" aria-label="Principles" data-rail>
@@ -38,19 +67,37 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   </nav>
 
   {
-    scenes.map(({ p, Content }) => (
+    scenes.map(({ p, idea, practice, citedBy }) => (
       <section id={p.id} class="scene" data-scene>
         <div class="text">
           <p class="count" aria-hidden="true">
             <span>{no(p.data.order)}</span> / {total}
           </p>
           <h2>
-            <a href={`/method/${p.id}/`}>{p.data.title}</a>
+            <a href={`#${p.id}`}>{p.data.title}</a>
           </h2>
           <p class="claim">{p.data.summary}</p>
-          <div class="body">
-            <Content />
-          </div>
+          {idea && <div class="body" set:html={idea} />}
+          <details class="more">
+            <summary>Today, where it's going, and its record</summary>
+            <div class="body" set:html={practice} />
+            <h3>Notes that cite it</h3>
+            {citedBy.length ? (
+              <ul class="plain">
+                {citedBy.map((n) => (
+                  <li>
+                    <span class="muted">{iso(n.data.date)}</span> <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p class="muted">No note cites it yet.</p>
+            )}
+            <h3>Changes</h3>
+            <p class="changes">
+              v{p.data.introducedIn}: introduced · reviewed {iso(p.data.lastReviewed)} · {p.data.status}
+            </p>
+          </details>
         </div>
         {p.data.diagram ? (
           <figure class="fig">
@@ -95,11 +142,18 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
 </script>
 
 <style>
-  .opening { max-width: 44rem; padding-bottom: 12vh; }
+  .opening { padding-bottom: 12vh; }
+  .opening > :not(.toc) { max-width: 44rem; }
   .opening h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); margin: 10px 0 18px; }
   .opening .claim { font: 500 clamp(1.15rem, 2.2vw, 1.45rem)/1.4 var(--display); color: var(--ink); letter-spacing: -0.01em; }
   .journey { font: 12px/1.6 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
   .journey span { color: var(--brass); }
+  .toc { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 0 32px; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); max-width: none; }
+  .toc a { display: grid; grid-template-columns: 2.2rem 1fr; padding: 10px 0; border-top: 1px solid var(--line-soft); text-decoration: none; }
+  .toc .n { grid-row: span 2; font: 11px/1.9 var(--mono); color: var(--brass); }
+  .toc .t { font: 500 1rem/1.35 var(--display); color: var(--ink); }
+  .toc .l { font-size: 15px; line-height: 1.45; color: var(--ink-3); }
+  .toc a:hover .t { color: var(--brass); }
   .hint { font: 11px/1.6 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin-top: 40px; }
   .hint::after { content: " ↓"; color: var(--brass); }
 
@@ -136,6 +190,15 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   .scene .claim { font: 500 1.15rem/1.45 var(--display); color: var(--ink); letter-spacing: -0.01em; margin: 0 0 18px; }
   .body :global(h2) { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 28px 0 6px; }
   .body :global(p) { margin: 0 0 12px; }
+  .more { margin-top: 8px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
+  .more summary {
+    cursor: pointer; font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mint);
+  }
+  .more summary:hover { color: var(--brass); }
+  .more[open] summary { margin-bottom: 4px; }
+  .more h3 { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 24px 0 6px; }
+  .more .plain li { padding: 6px 0; }
+  .changes { font: 12.5px/1.6 var(--mono); color: var(--ink-3); margin: 0; }
 
   .fig { margin: 0; position: sticky; top: max(84px, calc(50vh - 14rem)); }
   .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(9, 28, 31, 0.55); }
