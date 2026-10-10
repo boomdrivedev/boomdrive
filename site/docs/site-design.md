@@ -8,6 +8,10 @@ content in git and built with Astro.
 
 Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
 
+- **The site is Flywheel.** The name of the Method's home and of the fleet it
+  measures. MadSwan is the company and stays on the commercial side, and a
+  personal name would make this a blog (`adr/0001-the-site-is-flywheel.md`).
+  The domain is still open.
 - **Content in git** because the writers are us and our agents: a note is a
   pull request, reviewed at the gate, versioned with the Method.
 - **Typed content collections** give every page type a schema; a broken
@@ -27,21 +31,57 @@ Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
 - **Video stays on YouTube**, embedded with a click-to-load player; images are
   validated and optimized by Astro at build time.
 
+## The arc: scaling agents
+
+The site's spine is the journey from one agent to a thousand: 1, 5, 20, 50,
+100, 500, 1,000. The Method is the mental model for working at each step,
+before it is any technology, and "every day the same" is what lets a fleet
+take the next step without the day changing shape. The journey appears in
+two places: Home shows it with where the fleet stands today, read from the
+latest fleet-utilization point, and the statement opens the Method with it.
+Nowhere does the site promise when a step comes.
+
 ## Site map
 
 Eight sections; version 1 launches with Home, the Method, Notes, Tools and
-About.
+About, and the first page of the Fleet.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
-| Home | The line "Every day the same, for developers and agents", the latest note, signup, later a strip of live numbers | Changes with each note | Yes |
-| The Method | The statement and one page per principle, each showing how we do it today and where it is going (`method-outline.md`) | Living: versioned, last-reviewed date, changelog | Yes |
+| Home | The animated flywheel beside the principles, one line each, under the line "Every day the same, for developers and agents"; the journey to a thousand agents with where the fleet stands today; the latest note; signup | Changes with each note and each fleet count | Yes |
+| The Method | The statement and one page per principle, each showing how we do it today and where it is going (`method-outline.md`); read one principle at a time as the reader scrolls, each beside an animated diagram of its idea | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
-| The Fleet | Live charts of the measurements, and the current fleet context | Always current, rebuilt from data | Month 2 to 3 |
+| The Fleet | A page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it; the current fleet context | Always current, rebuilt from data | Fleet utilization's page; the rest as measurements arrive |
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
 | Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
 | Tools | Crew, and the shell, moon and hook configurations we publish | Updated per release | Yes |
 | About | Who we are, learning in public, how we treat client work | Rarely | Yes |
+
+## How Home and the Method read
+
+- **Home opens on the flywheel.** The hero is the animated four-ring
+  flywheel from agentplot/flywheel's site (`site/index.html`: human review
+  on the outside, then intent, then bolts, construction at the core, each
+  ring's ticks turning at its own rate), with the line "Every day the same,
+  for developers and agents". Beside it, the principles, one line each in
+  the Method's order, each a link to its page: two columns on a wide
+  screen, the flywheel above the list on a phone.
+- **The journey is on Home.** A strip of marks, 1 · 5 · 20 · 50 · 100 ·
+  500 · 1,000 agents, with the mark the fleet has reached lit from the
+  latest fleet-utilization point and the peak so far named. It says where
+  we are on the way, never when the next mark comes.
+- **The Method reads one principle at a time.** Scrolling the Method moves
+  through the principles in order, each taking the screen in turn: the
+  write-up (the claim, what it rules out, today, where it is going, what
+  measures it) beside an animated diagram of the idea, in the manner of
+  sluice's merge-queue diagram (`agentplot/sluice docs/diagrams/sluice.svg`),
+  which is the diagram for "Order at landing, never at start". A principle
+  without a diagram yet shows its write-up alone; diagrams arrive one per
+  principle.
+- **Motion never hides content.** Every diagram honours reduced motion. With
+  scripts off, Home is the flywheel, the line, the list and the journey, and
+  the Method is the principles in order; nothing is reachable only by
+  scrolling or clicking.
 
 ## Content model
 
@@ -49,7 +89,7 @@ Principles are the living truth, notes are dated evidence, and measurements
 connect them; every arrow is a typed reference the build checks.
 
 ```
-Note ──cites──▶ Measurement ──charted on──▶ The Fleet page
+Note ──cites──▶ Measurement ──has──▶ its page in The Fleet
   │  └─written under──▶ FleetContext ──lists──▶ Component (+ version)
   ├─informs──▶ Principle ◀──released as── MethodVersion ◀── ChangeEntry ◀─prompted by── Note
   ├─uses──▶ Term (glossary)
@@ -81,7 +121,7 @@ Fifteen types; the first five are needed for version 1.
 | Practice | principle, asOf, today (how, components, shortcuts), target (how, delivers, status, design link) | Shows honestly how we do it now and where it is going |
 | RoadmapItem | title, status (idea, designing, building, preview, released), principle, delivers, design link, lastUpdated | Everything we know is coming, without dates |
 | FleetContext | id (hash of the stack), date range, agents (peak, typical), hosts, components with versions, repos | The conditions a note was true under |
-| Measurement | id, name, definition, definitionVersion, unit, principle, collector, points (date, value, context) | One definition, cited by notes and charted live (`measurement-roadmap.md`) |
+| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, points (date, value, context)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`) |
 | Video | youtubeId, title, recorded, duration, chapters, note, series | Videos as records, embedded and indexed |
 | Series | title, summary, items (ordered notes and videos) | An arc a reader can follow |
 | Release | component, version, date, launchNote, highlights | Every release is a launch |
@@ -137,7 +177,9 @@ A measurement is a definition plus a collector on a schedule; fleet contexts
 are captured, never written by hand.
 
 1. **Sample, every 5 minutes:** live agents, their repos and states
-   (`herdr agent list`). Raw samples stay private on the host.
+   (`herdr agent list`), and the host's footprint beside them: CPU and
+   memory in use and the number of processes, since agents run tests, dev
+   servers and containers. Raw samples stay private on the host.
 2. **Collect, nightly:** each collector reads its sources (Crew's plan and
    stage changes, git timestamps, moon's run logs). A repository allowlist
    means only our own repositories are read.
@@ -163,6 +205,31 @@ hosts: 1
 components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version]", crew: "[sha]", moon: "[version]" }
 repos: [flywheel-next, crew, flywheel-web]
 ```
+
+## A measurement page
+
+Each measurement has one page in The Fleet, at its id. It shows:
+
+- **The latest reading as the headline**, with when it was taken, one tile
+  per series.
+- **The chart:** every series over time, with the fleet context each point
+  was true under marked along the time axis, so a change of stack is
+  visible where it happened. A reader can pick a point and read its value,
+  date and context, and switch between a series' own unit and its share
+  where a share means something (busy agents of running agents; a stage's
+  hours of a unit's).
+- **The definition beside the numbers:** the name, the definition in words,
+  its version and when each version began, the principle it serves and the
+  collector that produces it.
+- **The notes that cite it**, newest first.
+- **What it cannot show**, in a sentence, as the audience plan's honest
+  numbers ask.
+- A page with no points yet shows the definition and says the first points
+  are coming; a number is never invented.
+
+Fleet utilization is the first page, and the one Home reads: agents running
+and how many of them are busy, like cores on a machine, with the host's CPU,
+memory and process count beside them (`measurement-roadmap.md`).
 
 ## The house style
 
@@ -199,6 +266,5 @@ repos: [flywheel-next, crew, flywheel-web]
 ## Open questions
 
 - Is the Method's list of principles right (`method-outline.md`)?
-- Brand and domain: MadSwan, a new name, or Chuck's own name?
+- The domain for Flywheel?
 - Is a log a separate type from a field note, or a kind of note?
-- Which measurement do we collect first? Cycle time needs only Crew's data.

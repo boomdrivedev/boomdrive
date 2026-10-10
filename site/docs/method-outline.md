@@ -11,11 +11,13 @@ has nine pages.
 now the bottleneck, and a fleet needs conventions the way web applications
 needed Rails.
 
-The page carries the mission, every day the same: a check, a gate and an
-answer about the repository are identical whether the work happens in an
-agent's worktree, on a laptop, in CI or in a release. It gives the principles
-one line each, and says what the Method is not: a framework, a vendor, or a
-finished answer.
+The page opens on the journey the Method is for: scaling a fleet from one
+agent to a thousand, 1, 5, 20, 50, 100, 500, 1,000, where each step is a
+change in how you think and work before it is a change in tools. It carries
+the mission, every day the same: a check, a gate and an answer about the
+repository are identical whether the work happens in an agent's worktree, on
+a laptop, in CI or in a release. It gives the principles one line each, and
+says what the Method is not: a framework, a vendor, or a finished answer.
 
 ## 1. One shell
 
@@ -159,7 +161,7 @@ definitions with the numbers.
 - **Today:** collectors over Crew's records, git and moon's run reports, on
   our own repositories.
 - **Target:** a quality board.
-- **Measure:** `measurement-roadmap.md`.
+- **Measure:** fleet utilization first, then `measurement-roadmap.md`.
 
 ## Candidates for later versions
 

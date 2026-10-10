@@ -1,8 +1,9 @@
 # Measurement roadmap
 
 Candidate measurements, by the stage whose capability makes them measurable.
-Start with the three marked ★ and add as each stage arrives; each stage's
-arrival is a field note, and each measurement's first chart is another.
+Start with fleet utilization, then the three marked ★, and add as each stage
+arrives; each stage's arrival is a field note, and each measurement's first
+chart is another.
 
 The same seven dimensions recur in every stage, so the Fleet page grows
 without being reorganized:
@@ -31,8 +32,9 @@ Crew, Herdr, git and moon already record this.
   interventions per unit (`crew fix`, manual prompts).
 - **Proof:** ★ sent back after "done" (code said done, verify disagreed);
   merge-gate refusals per merge; main red rate and time back to green.
-- **Health:** stuck agents (blocked or idle past a threshold); restarts per
-  day.
+- **Health:** ★ fleet utilization (agents running and how many of them are
+  busy, with the host's CPU, memory and process count, over time); stuck
+  agents (blocked or idle past a threshold); restarts per day.
 
 ## Stage 1: instrumented harnesses
 
@@ -84,13 +86,38 @@ from a password manager.
   Method's changelog.
 - **Community:** an opt-in benchmark across readers' fleets.
 
-## The first three, defined
+## The first four, defined
 
 | Measurement | Definition | Source | What it argues |
 |---|---|---|---|
+| Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count; rolled up to the day as peak and typical | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the count that marks the journey on Home |
 | Unit cycle time, by stage | Time from adding a unit to merging it into its bolt, split into construct, awaiting approval, code, verify and merge | Crew's plan and stage changes; unit branch commit times | Waiting for approval likely dominates: the case for the decision inbox |
 | Sent back after "done" | Share of units where code reported done and verify sent the work back | Crew's stage changes | How often agents overclaim: why gates read evidence |
 | Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run reports across worktrees (task hashes run again rather than replayed). Later: the remote cache's hit records | The waste a shared cache removes; before and after is a strong note |
+
+A measurement is one definition with one or more series, versioned
+together because they come from the same sample: a stage's hours, or the
+agents and the host's load read at the same instant.
+
+```yaml
+# content/measurements/fleet-utilization.yaml
+id: fleet-utilization
+name: Fleet utilization
+definitionVersion: 1
+definition: >
+  Every 5 minutes on each fleet host: the agents alive, how many of them are
+  busy (working, as against waiting on the operator or idle), and the host's
+  CPU and memory in use and its process count; rolled up to the day as peak
+  and typical.
+principle: measure-the-fleet
+collector: collectors/fleet-utilization
+series:
+  - { name: agents running, unit: agents, points: [] }
+  - { name: agents busy, unit: agents, points: [] }
+  - { name: cpu, unit: percent, points: [] }
+  - { name: memory, unit: GB, points: [] }
+  - { name: processes, unit: processes, points: [] }
+```
 
 ```yaml
 # content/measurements/unit-cycle-time.yaml
@@ -100,10 +127,14 @@ definitionVersion: 1
 definition: >
   For each unit merged into a bolt, the time from `crew unit add` to merge,
   split into construct, awaiting approval, code, verify and merge.
-unit: hours
 principle: intents-and-bolts
 collector: collectors/unit-cycle-time
-points: []
+series:
+  - { name: construct, unit: hours, points: [] }
+  - { name: awaiting approval, unit: hours, points: [] }
+  - { name: code, unit: hours, points: [] }
+  - { name: verify, unit: hours, points: [] }
+  - { name: merge, unit: hours, points: [] }
 ```
 
 Only our own repositories are measured: flywheel-next, crew and
