@@ -1,11 +1,14 @@
 # The Method: outline
 
-Each principle is sketched the way its page reads: the claim, what it rules
-out, how we do it today, where it is going, and what measures it. The
+Each principle is sketched the way its page reads: its line (the one-line
+form Home and the statement list it by), the claim, what it rules out, how we
+do it today, where it is going, and what measures it. The
 merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md). Version 0.1
 has nine pages.
 
 ## 0. The statement
+
+**Line:** Writing code got cheap; deciding and proving it is the work now.
 
 **Claim:** Coding agents made writing code cheap; deciding and proving it is
 now the bottleneck, and a fleet needs conventions the way web applications
@@ -16,10 +19,12 @@ agent to a thousand, 1, 5, 20, 50, 100, 500, 1,000, where each step is a
 change in how you think and work before it is a change in tools. It carries
 the mission, every day the same: a check, a gate and an answer about the
 repository are identical whether the work happens in an agent's worktree, on
-a laptop, in CI or in a release. It gives the principles one line each, and
-says what the Method is not: a framework, a vendor, or a finished answer.
+a laptop, in CI or in a release. It gives the principles one line each, each
+principle's line, and says what the Method is not: a framework, a vendor, or a finished answer.
 
 ## 1. One shell
+
+**Line:** Every command runs in the one shell the repository declares.
 
 **Claim:** Every command, an agent's, a person's or CI's, runs inside one
 shell the repository declares, so the tools and their versions are the same
@@ -40,6 +45,8 @@ everywhere.
 
 ## 2. One agent, one worktree
 
+**Line:** Each agent works alone in its own worktree, and submits rather than merges.
+
 **Claim:** Each agent works in its own worktree with its own ports, emulator
 and dev servers, and submits its work to a merge queue rather than merging
 it, so nothing it does can disturb another.
@@ -56,6 +63,8 @@ it, so nothing it does can disturb another.
 
 ## 3. Intents and bolts
 
+**Line:** Work is an intent, landed in bolts of small units.
+
 **Claim:** Work is an intent (what someone wants), broken into bolts (a body
 of work landed as one) made of units (one reviewable change each), and small
 units land continuously on the trunk.
@@ -67,6 +76,8 @@ units land continuously on the trunk.
 - **Measure:** unit size; unit cycle time; units per intent.
 
 ## 4. Two loops, one gate
+
+**Line:** Design and construction are separate loops, and a person decides where they meet.
 
 **Claim:** Design (settling what to build) and construction (building it) are
 separate loops, coupled where a human decides, and agents never approve
@@ -84,6 +95,8 @@ test and landing.
 - **Measure:** approval wait; decisions per landed unit; leverage.
 
 ## 5. Order at landing, never at start
+
+**Line:** Work starts at once; the merge queue orders it as it lands.
 
 **Claim:** Dependencies are constraints the merge queue honours when work
 lands, not gates that keep a session from starting; conflicts are found
@@ -107,6 +120,8 @@ cheaply when work is combined, not planned around.
   landings per hour per line.
 
 ## 6. Never prove twice
+
+**Line:** A check that passed on these inputs is not run again.
 
 **Claim:** The task runner's cache, keyed by what each task reads and shared
 across every worktree, agent and CI run, means a check that passed on these
@@ -133,6 +148,8 @@ inputs is not run again.
 
 ## 7. Secrets by declaration
 
+**Line:** An agent gets a secret only through the shell, for the task at hand.
+
 **Claim:** A repository declares the secrets it needs, and an agent gets them
 only through the shell, resolved from a password manager for the task at
 hand, never pasted, stored or printed.
@@ -151,6 +168,8 @@ hand, never pasted, stored or printed.
   transcripts or commits (the target is none).
 
 ## 8. Measure the fleet
+
+**Line:** Count what lands, what it cost and what came back.
 
 **Claim:** A fleet that is not measured cannot be steered: count what lands,
 what it cost in attention and money, and what came back, and publish the

@@ -60,12 +60,16 @@ About, and the first page of the Fleet.
 ## How Home and the Method read
 
 - **Home opens on the flywheel.** The hero is the animated four-ring
-  flywheel from agentplot/flywheel's site (`site/index.html`: human review
-  on the outside, then intent, then bolts, construction at the core, each
-  ring's ticks turning at its own rate), with the line "Every day the same,
-  for developers and agents". Beside it, the principles, one line each in
-  the Method's order, each a link to its page: two columns on a wide
-  screen, the flywheel above the list on a phone.
+  flywheel from agentplot/flywheel's site (`site/index.html`: the
+  operator's review on the outside, then intent, then bolts, construction
+  at the core, each ring's ticks turning at its own rate), with the line
+  "Every day the same, for developers and agents". Its labels speak the
+  Method's words, never the original plugin's tool names: the operator's
+  review on the rim, intent and its settled decisions, bolts and their
+  units, the gate where the operator's word crosses the rings, the operator
+  at the core. Beside it, the principles, each by its `line` in the
+  Method's order, each a link to its page: two columns on a wide screen,
+  the flywheel above the list on a phone.
 - **The journey is on Home.** A strip of marks, 1 · 5 · 20 · 50 · 100 ·
   500 · 1,000 agents, with the mark the fleet has reached lit from the
   latest fleet-utilization point and the peak so far named. It says where
@@ -111,7 +115,7 @@ Fifteen types; the first five are needed for version 1.
 
 | Type | Key fields | Why it exists |
 |---|---|---|
-| Principle | order, title, summary, status (draft, stable, retired), introducedIn, lastReviewed, related | The Method pages, kept current in place |
+| Principle | order, title, summary, line, status (draft, stable, retired), introducedIn, lastReviewed, related | The Method pages, kept current in place. `summary` is the claim; `line` is the principle in one line, as Home and the statement list it (`method-outline.md` gives each) |
 | Note | title (the claim), date, kind (finding, how-to, essay, incident), context, methodVersion, principles, measurements, artifacts, openQuestions, video, series, supersededBy | Dated evidence, never rewritten |
 | Component | name, url, category, role, status (trialing, in use, retired), since, serves, alternatives, partOf, ours, repo, becomes | Every tool in the fleet, ours or others' (Worktrunk, secretspec, password managers, Claude Code, Herdr and its plugins, Crew) |
 | Term | term, definition, principle | One vocabulary across pages and agent drafts |
