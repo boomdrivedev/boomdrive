@@ -4,7 +4,7 @@ Each principle is sketched the way its page reads: its line (the one-line
 form Home and the statement list it by), the claim, what it rules out, how we
 do it today, where it is going, and what measures it. The
 merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md). Version 0.1
-has nine pages.
+has nine principles, read on one page.
 
 ## 0. The statement
 

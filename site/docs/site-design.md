@@ -48,8 +48,8 @@ About, and the first page of the Fleet.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
-| Home | The animated flywheel beside the principles, one line each, under the line "Every day the same, for developers and agents"; the journey to a thousand agents with where the fleet stands today; the latest note; signup | Changes with each note and each fleet count | Yes |
-| The Method | The statement and one page per principle, each showing how we do it today and where it is going (`method-outline.md`); read one principle at a time as the reader scrolls, each beside an animated diagram of its idea | Living: versioned, last-reviewed date, changelog | Yes |
+| Home | Leads with scaling the fleet from one agent toward a thousand, beside the animated flywheel, with "Every day the same, for developers and agents" second as the Method's promise; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
+| The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
 | The Fleet | A page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it; the current fleet context | Always current, rebuilt from data | Fleet utilization's page; the rest as measurements arrive |
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
@@ -59,37 +59,51 @@ About, and the first page of the Fleet.
 
 ## How Home and the Method read
 
-- **Home opens on the flywheel.** The hero is the animated four-ring
+- **Home leads with scaling.** The hero is the animated four-ring
   flywheel from agentplot/flywheel's site (`site/index.html`: the
   operator's review on the outside, then intent, then bolts, construction
-  at the core, each ring's ticks turning at its own rate), with the line
-  "Every day the same, for developers and agents". Its labels speak the
-  Method's words, never the original plugin's tool names: the operator's
-  review on the rim, intent and its settled decisions, bolts and their
-  units, the gate where the operator's word crosses the rings, the operator
-  at the core. Beside it, the principles, each by its `line` in the
-  Method's order, each a link to its page: two columns on a wide screen,
-  the flywheel above the list on a phone.
-- **The journey is on Home.** A strip of marks, 1 · 5 · 20 · 50 · 100 ·
-  500 · 1,000 agents, with the mark the fleet has reached lit from the
-  latest fleet-utilization point and the peak so far named. It says where
-  we are on the way, never when the next mark comes.
-- **The Method reads one principle at a time.** Scrolling the Method moves
-  through the principles in order, each taking the screen in turn: the
-  write-up (the claim, what it rules out, today, where it is going, what
-  measures it) beside an animated diagram of the idea, in the manner of
-  sluice's merge-queue diagram (`agentplot/sluice docs/diagrams/sluice.svg`),
-  which, as the site's own copy in the site's palette, is the diagram for
-  "Order at landing, never at start". A diagram is one SVG the principle
+  at the core, each ring's ticks turning at its own rate) beside one claim:
+  we are scaling a fleet of coding agents from one toward a thousand, and
+  the Method is how. "Every day the same, for developers and agents"
+  follows as the Method's promise, second, never the headline. The hero's
+  labels speak the Method's words, never the original plugin's tool names:
+  the operator's review on the rim, intent and its settled decisions, bolts
+  and their units, the gate where the operator's word crosses the rings,
+  the operator at the core. Home does not list the principles; the Method
+  is read in one place.
+- **The journey is a direction.** One continuous scale from one agent to a
+  thousand, with where the fleet stands lit from the latest peak of agents
+  running, never a row of stations: we do not teach a step for one or five
+  agents, the point is to push the number up. It lights nothing until a
+  collected point exists, and never says when the next number comes.
+- **Home's calls and teaser.** A primary call to action to the Method and a
+  secondary one to fleet utilization; a teaser of the fleet's latest
+  reading, the agent count, that waits for the collector's first point and
+  never reads a sample; and the latest field notes, with a link to all of
+  them.
+- **The Method reads one principle at a time, in one place.** Scrolling
+  the Method moves through the principles in order, each taking the screen
+  in turn: the write-up (the claim, what it rules out, today, where it is
+  going, what measures it) beside an animated diagram of the idea, in the
+  manner of sluice's merge-queue diagram (`agentplot/sluice
+  docs/diagrams/sluice.svg`), which, as the site's own copy in the site's
+  palette, is the diagram for "Order at landing, never at start". A
+  principle is a place on the Method page, `/method/#<id>`, and every link
+  to a principle, from Home, a note or a term, goes there; there is no
+  separate principle page. Its place also holds how we do it today and
+  where it is going, the notes that cite it and its changelog, folded
+  until opened so the reading stays one principle per screen.
+- **Every principle gets a diagram**, and each diagram's idea is agreed
+  with the user before it is drawn. A diagram is one SVG the principle
   names, carrying its own styles, motion and reduced-motion rule, shown as
   an image so the page's styles never reach inside it, with alt text that
-  says what it shows. Diagrams arrive one per principle; until a principle
-  has one, its numeral in faint outline holds the diagram's place on a wide
-  screen, and on a phone the write-up stands alone.
+  says what it shows. Until a principle's diagram is drawn, its numeral in
+  faint outline holds the diagram's place on a wide screen, and on a phone
+  the write-up stands alone.
 - **Motion never hides content.** Every diagram honours reduced motion. With
-  scripts off, Home is the flywheel, the line, the list and the journey, and
-  the Method is the principles in order; nothing is reachable only by
-  scrolling or clicking.
+  scripts off, Home is the flywheel, the claim, the journey, the calls and
+  the notes, and the Method is the principles in order; nothing is
+  reachable only by scrolling or clicking.
 
 ## Content model
 
@@ -154,7 +168,7 @@ A Herdr plugin is a component with `partOf: herdr`; Crew is `ours: true` with
 
 ## Today and where it's going
 
-Every principle page shows two panels, how we do it today with its shortcuts
+Every principle's place on the Method page shows two panels, how we do it today with its shortcuts
 and where it is going, so ideas that are not built yet are shared honestly.
 
 ```yaml
