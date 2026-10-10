@@ -139,6 +139,65 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
     arrive.observe(s);
     current.observe(s);
   }
+
+  // Read, then look: once a principle's write-up has scrolled up past the
+  // middle of the screen, its diagram, still pinned, grows into the room the
+  // text has left and comes to the centre, and the text fades. The diagram
+  // scrolls away with its principle when the next one arrives. Only on a wide
+  // screen and with motion allowed; otherwise the layout stays as it is.
+  const wide = matchMedia("(min-width: 64rem)");
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+  const zoomers = scenes.filter((s) => s.querySelector(".fig img"));
+  const bar = 48;
+  let queued = false;
+  const zoom = () => {
+    queued = false;
+    const on = wide.matches && !still.matches;
+    const vw = document.documentElement.clientWidth;
+    const vh = innerHeight;
+    for (const s of zoomers) {
+      s.classList.toggle("zoom", on);
+      const fig = s.querySelector<HTMLElement>(".fig")!;
+      const img = fig.querySelector("img")!;
+      const text = s.querySelector<HTMLElement>(".text")!;
+      const box = s.getBoundingClientRect();
+      if (!on || box.bottom < -vh || box.top > 2 * vh) {
+        if (!on) {
+          img.style.transform = "";
+          text.style.opacity = "";
+        }
+        continue;
+      }
+      const end = text.lastElementChild!.getBoundingClientRect().bottom;
+      const t = Math.min(1, Math.max(0, (vh * 0.6 - end) / (vh * 0.45)));
+      const e = t * t * (3 - 2 * t);
+      // Where the image sits while its figure is pinned, untransformed.
+      const pin = parseFloat(getComputedStyle(fig).top) || 84;
+      const w = img.offsetWidth;
+      const h = img.offsetHeight;
+      const r = img.getBoundingClientRect();
+      const cx = (r.left + r.right) / 2 - (Number(img.dataset.tx) || 0);
+      const cy = pin + h / 2;
+      const target = Math.min(vw - 96, ((vh - bar - 72) * w) / h, 1600);
+      const k = 1 + e * (target / w - 1);
+      const tx = e * (vw / 2 - cx);
+      const ty = e * (bar + (vh - bar) / 2 - cy);
+      img.dataset.tx = String(tx);
+      img.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(3)})`;
+      text.style.opacity = String(1 - 0.9 * e);
+    }
+  };
+  const later = () => {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(zoom);
+    }
+  };
+  addEventListener("scroll", later, { passive: true });
+  addEventListener("resize", zoom);
+  wide.addEventListener("change", zoom);
+  still.addEventListener("change", zoom);
+  zoom();
 </script>
 
 <style>
@@ -170,7 +229,7 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
 
   .scene {
     display: grid; gap: 32px 56px; align-items: start;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
     min-height: 92vh; padding: 14vh 0 10vh; border-top: 1px solid var(--line-soft);
   }
   @media (max-width: 56rem) { .scene { grid-template-columns: 1fr; min-height: 0; padding: 72px 0 48px; } }
@@ -201,7 +260,13 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   .changes { font: 12.5px/1.6 var(--mono); color: var(--ink-3); margin: 0; }
 
   .fig { margin: 0; position: sticky; top: max(84px, calc(50vh - 14rem)); }
-  .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(9, 28, 31, 0.55); }
+  .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(9, 28, 31, 0.55); transform-origin: center; }
+  /* While a diagram is zoomed it needs the screen the write-up has left: the
+     text column runs on past its end, and the scene leaves room below. */
+  .scene.zoom { padding-bottom: 24vh; }
+  .scene.zoom .text::after { content: ""; display: block; height: 100vh; }
+  .scene.zoom .fig { z-index: 2; }
+  .scene.zoom .fig img { will-change: transform; }
   /* Until a principle has its diagram, its numeral holds the place. */
   .mark {
     display: grid; place-items: center; aspect-ratio: 900 / 446;
