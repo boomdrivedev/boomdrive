@@ -18,6 +18,9 @@ const principles = defineCollection({
     introducedIn: z.string(),
     lastReviewed: z.coerce.date(),
     related: z.array(reference("principles")).default([]),
+    // An animated diagram of the idea, from public/; the Method sets it beside
+    // the write-up, and a principle without one shows its write-up alone.
+    diagram: z.object({ src: z.string(), alt: z.string() }).optional(),
   }),
 });
 

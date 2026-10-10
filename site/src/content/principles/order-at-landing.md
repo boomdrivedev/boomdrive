@@ -7,6 +7,9 @@ status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08
 related: [intents-and-bolts, one-agent-one-worktree]
+diagram:
+  src: /diagrams/order-at-landing.svg
+  alt: "Three agents, each in its own worktree, submit their work and never merge. sluice forms candidates line plus A, line plus A plus B, and line plus A plus B plus C, and tests them at once. Line plus A plus B fails, so B is the one culprit and only agent B is told. A lands as a merge commit; C is re-formed on the line without B, mostly replays from the cache, passes and lands. The line moves only to what passed."
 ---
 
 A unit starts at once. When it depends on another unit, it starts off that unit's branch and names it as work to land after. The queue never lands it first ([sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md), clauses 3 and 6), and waiting on a dependency holds back nobody else (clause 7).

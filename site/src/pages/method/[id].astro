@@ -14,5 +14,17 @@ const { Content } = await render(p);
   <p class="muted">Principle {p.data.order} · {p.data.status} · since v{p.data.introducedIn} · reviewed {p.data.lastReviewed.toISOString().slice(0, 10)}</p>
   <h1>{p.data.title}</h1>
   <p><strong>{p.data.summary}</strong></p>
+  {
+    p.data.diagram && (
+      <figure class="diagram">
+        <img src={p.data.diagram.src} alt={p.data.diagram.alt} width="900" height="446" />
+      </figure>
+    )
+  }
   <Content />
 </Base>
+
+<style>
+  .diagram { margin: 24px 0; }
+  .diagram img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
+</style>

@@ -1,24 +1,174 @@
 ---
-import { getCollection } from "astro:content";
+import { getCollection, getEntry, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
 
-const principles = (await getCollection("principles", ({ data }) => data.status !== "retired")).sort(
+// The Method read one principle at a time: each principle takes the screen
+// in turn, its write-up beside its animated diagram, or alone until it has
+// one. With scripts off it is the principles in order, all of it visible.
+
+const statement = await getEntry("principles", "the-statement");
+const { Content: Statement } = statement ? await render(statement) : { Content: undefined };
+const principles = (await getCollection("principles", ({ data }) => data.status !== "retired" && data.order > 0)).sort(
   (a, b) => a.data.order - b.data.order,
 );
+const scenes = await Promise.all(principles.map(async (p) => ({ p, Content: (await render(p)).Content })));
+const total = String(principles.length).padStart(2, "0");
+const no = (n: number) => String(n).padStart(2, "0");
+const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")).join(" · ");
 ---
 
-<Base title="The Method" description="The principles we run our agent fleet by, kept current.">
-  <h1>The Method <span class="muted">v0.1</span></h1>
-  <ul class="plain">
+<Base title="The Method" description="The principles we run our agent fleet by, read one at a time, each beside a diagram of its idea." wide>
+  <header class="opening">
+    <p class="eyebrow">The Method · v0.1</p>
+    <h1>The Method</h1>
+    {statement && <p class="claim">{statement.data.summary}</p>}
+    <p class="journey">For the journey from one agent to a thousand: <span>{journey}</span></p>
+    <div class="statement">{Statement && <Statement />}</div>
+    <p class="hint">Eight principles follow, one at a time.</p>
+  </header>
+
+  <nav class="rail" aria-label="Principles" data-rail>
     {
-      principles.map((p) => (
-        <li>
-          <a href={`/method/${p.id}/`}>
-            {p.data.order}. {p.data.title}
-          </a>
-          <div class="muted">{p.data.summary}</div>
-        </li>
+      scenes.map(({ p }) => (
+        <a href={`#${p.id}`} title={p.data.title}>
+          {no(p.data.order)}
+        </a>
       ))
     }
-  </ul>
+  </nav>
+
+  {
+    scenes.map(({ p, Content }) => (
+      <section id={p.id} class="scene" data-scene>
+        <div class="text">
+          <p class="count" aria-hidden="true">
+            <span>{no(p.data.order)}</span> / {total}
+          </p>
+          <h2>
+            <a href={`/method/${p.id}/`}>{p.data.title}</a>
+          </h2>
+          <p class="claim">{p.data.summary}</p>
+          <div class="body">
+            <Content />
+          </div>
+        </div>
+        {p.data.diagram ? (
+          <figure class="fig">
+            <img src={p.data.diagram.src} alt={p.data.diagram.alt} width="900" height="446" loading="lazy" />
+          </figure>
+        ) : (
+          <div class="fig mark" aria-hidden="true">
+            {no(p.data.order)}
+          </div>
+        )}
+      </section>
+    ))
+  }
 </Base>
+
+<script>
+  // Light the rail's mark for the principle on screen, and bring each
+  // principle in as it arrives. Without this script nothing is hidden.
+  document.documentElement.classList.add("scrolly");
+  const rail = [...document.querySelectorAll<HTMLAnchorElement>("[data-rail] a")];
+  const scenes = [...document.querySelectorAll<HTMLElement>("[data-scene]")];
+  const arrive = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) if (e.isIntersecting) e.target.classList.add("in");
+    },
+    { rootMargin: "0px 0px -12% 0px" },
+  );
+  const current = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const i = scenes.indexOf(e.target as HTMLElement);
+        rail.forEach((a, n) => a.toggleAttribute("aria-current", n === i));
+      }
+    },
+    { rootMargin: "-45% 0px -50% 0px" },
+  );
+  for (const s of scenes) {
+    arrive.observe(s);
+    current.observe(s);
+  }
+</script>
+
+<style>
+  .opening { max-width: 44rem; padding-bottom: 12vh; }
+  .opening h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); margin: 10px 0 18px; }
+  .opening .claim { font: 500 clamp(1.15rem, 2.2vw, 1.45rem)/1.4 var(--display); color: var(--ink); letter-spacing: -0.01em; }
+  .journey { font: 12px/1.6 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .journey span { color: var(--brass); }
+  .hint { font: 11px/1.6 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin-top: 40px; }
+  .hint::after { content: " ↓"; color: var(--brass); }
+
+  .rail {
+    position: fixed; left: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
+    display: none; flex-direction: column; gap: 6px;
+  }
+  @media (min-width: 80rem) { .rail { display: flex; } }
+  .rail a {
+    font: 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-3); text-decoration: none;
+    padding: 6px 8px; border-left: 2px solid var(--line); transition: color 0.2s, border-color 0.2s;
+  }
+  .rail a:hover, .rail a[aria-current] { color: var(--brass); border-left-color: var(--brass); }
+
+  .scene {
+    display: grid; gap: 32px 56px; align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    min-height: 92vh; padding: 14vh 0 10vh; border-top: 1px solid var(--line-soft);
+  }
+  @media (max-width: 56rem) { .scene { grid-template-columns: 1fr; min-height: 0; padding: 72px 0 48px; } }
+
+  /* The principle's number, drawn in outline; the count after it is quieter. */
+  .count {
+    margin: 0; white-space: nowrap; font: 500 1rem/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .count span {
+    font: 700 clamp(4rem, 9vw, 7rem)/0.9 var(--display); letter-spacing: -0.05em;
+    color: transparent; -webkit-text-stroke: 1.2px var(--brass); margin-right: 8px;
+  }
+  .scene h2 { margin: 18px 0 14px; font-size: clamp(1.7rem, 3.4vw, 2.4rem); }
+  .scene h2 a { color: var(--ink); text-decoration: none; }
+  .scene h2 a:hover { color: var(--brass); }
+  .scene .claim { font: 500 1.15rem/1.45 var(--display); color: var(--ink); letter-spacing: -0.01em; margin: 0 0 18px; }
+  .body :global(h2) { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 28px 0 6px; }
+  .body :global(p) { margin: 0 0 12px; }
+
+  .fig { margin: 0; position: sticky; top: max(84px, calc(50vh - 14rem)); }
+  .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(9, 28, 31, 0.55); }
+  /* Until a principle has its diagram, its numeral holds the place. */
+  .mark {
+    display: grid; place-items: center; aspect-ratio: 900 / 446;
+    font: 700 clamp(8rem, 22vw, 18rem)/1 var(--display); letter-spacing: -0.06em;
+    color: transparent; -webkit-text-stroke: 1px rgba(143, 185, 174, 0.28);
+    border: 1px dashed var(--line-soft); border-radius: 12px;
+  }
+  /* On a phone the diagram comes straight after the claim. */
+  @media (max-width: 56rem) {
+    .scene { row-gap: 0; }
+    .text { display: contents; }
+    .count { order: 1; }
+    .scene h2 { order: 2; }
+    .scene .claim { order: 3; }
+    .fig { order: 4; position: static; margin: 4px 0 20px; }
+    .body { order: 5; }
+    .mark { display: none; }
+  }
+
+  /* Each principle arrives as it reaches the middle of the screen. */
+  :global(html.scrolly) .scene .text > *, :global(html.scrolly) .scene .fig {
+    opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  :global(html.scrolly) .scene.in .text > *, :global(html.scrolly) .scene.in .fig { opacity: 1; transform: none; }
+  :global(html.scrolly) .scene.in .text > :nth-child(2) { transition-delay: 0.06s; }
+  :global(html.scrolly) .scene.in .text > :nth-child(3) { transition-delay: 0.12s; }
+  :global(html.scrolly) .scene.in .text > :nth-child(4) { transition-delay: 0.18s; }
+  :global(html.scrolly) .scene.in .fig { transition-delay: 0.2s; }
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.scrolly) .scene .text > *, :global(html.scrolly) .scene .fig { opacity: 1; transform: none; transition: none; }
+    .rail a { transition: none; }
+  }
+</style>
