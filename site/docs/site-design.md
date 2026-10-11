@@ -276,7 +276,9 @@ Each measurement has one page in The Fleet, at its id. It shows:
   stage's hours of a unit's). A share is computed from the two values shown
   at that point, busy divided by running, and the page says so beside the
   switch, so every number on the page can be checked from the table of
-  points under it.
+  points under it. Where a chart stacks series that are each a median of a
+  split (agents by role), the parts need not sum to the total's median, and
+  the page says so beside the stack; counted series (tokens, landed) do sum.
 - **The definition beside the numbers:** the name, the definition in words,
   its version and when each version began, the principle it serves and the
   collector that produces it.
