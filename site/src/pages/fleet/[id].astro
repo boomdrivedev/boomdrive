@@ -3,7 +3,10 @@ import { getCollection, getEntry } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import UtilizationChart from "../../components/UtilizationChart.astro";
 import UtilizationTiles from "../../components/UtilizationTiles.astro";
+import StackedBars from "../../components/StackedBars.astro";
+import TokensTiles from "../../components/TokensTiles.astro";
 import { days as toDays, fmt, share } from "../../components/utilization";
+import { fmt as amount, iso, lastWeek, model, split, total, type Split } from "../../components/measures";
 
 export async function getStaticPaths() {
   const measurements = await getCollection("measurements");
@@ -19,11 +22,40 @@ const citedBy = (await getCollection("notes", ({ data }) => !data.draft && data.
 const points = r.series.flatMap((s) => s.points);
 const samples = points.filter((p) => p.sample).length;
 const measured = points.length - samples;
-const days = points.length ? toDays(m.id, r.series) : [];
-// A peak series is read with the series it is the peak of.
+
+// Every form reads the dates and the samples from its first series.
+const first = r.series[0].points;
+const dates = first.map((p) => iso(p.date));
+const sampled = dates.map((_, i) => r.series.some((s) => s.points[i]?.sample));
+
+// Fleet utilization: the counts and the host's load as days, and the counts
+// split by role.
+const days = r.chart === "utilization" && points.length ? toDays(m.id, r.series) : [];
+const runByRole = r.chart === "utilization" ? split(r.series, "agents running", "role") : [];
+const busyByRole = r.chart === "utilization" ? split(r.series, "agents busy", "role") : [];
+
+// Tokens by role: the totals, and the spend and the tokens split.
+const tok =
+  r.chart === "tokens" && points.length
+    ? {
+        dollars: total(r.series, "dollars").points.map((p) => p.value),
+        tokens: total(r.series, "tokens").points.map((p) => p.value),
+        byKind: split(r.series, "tokens", "kind"),
+        tokensByRole: split(r.series, "tokens", "role"),
+        tokensByModel: split(r.series, "tokens", "model"),
+        byRole: split(r.series, "dollars", "role"),
+        byModel: split(r.series, "dollars", "model").map((g) => ({ ...g, name: model(g.name) })),
+      }
+    : null;
+const cacheRead = tok?.byKind.find((g) => g.name === "cache read")?.values ?? [];
+const rates = r.chart === "tokens" ? (await getCollection("rates")).sort((a, b) => a.data.model.localeCompare(b.data.model)) : [];
+
+// The definition lists each total once, with the splits beside it; a peak is
+// read with the series it is the peak of.
 const listed = r.series
-  .filter((s) => !s.peakOf)
+  .filter((s) => !s.peakOf && !s.role && !s.model && !s.kind)
   .map((s) => ({ ...s, peak: r.series.some((p) => p.peakOf === s.name) }));
+const splits = (["role", "model", "kind"] as Split[]).filter((by) => r.series.some((s) => s[by]));
 
 // Text between backticks is code; everything else is escaped.
 const inline = (s: string) =>
@@ -49,14 +81,34 @@ const inline = (s: string) =>
   {samples > 0 && measured > 0 && <p class="sample-notice">Points marked as samples are illustrations, not measurements.</p>}
 
   {points.length === 0 && <p class="panel">No points yet; the first points are coming.</p>}
-  {points.length > 0 && <UtilizationTiles days={days} />}
+  {points.length > 0 && r.chart === "utilization" && <UtilizationTiles days={days} />}
+  {
+    tok && (
+      <TokensTiles
+        dates={dates}
+        samples={sampled}
+        dollars={tok.dollars}
+        tokens={tok.tokens}
+        cacheRead={cacheRead}
+        byRole={tok.byRole}
+        byModel={tok.byModel}
+      />
+    )
+  }
 
   <div class="layout">
     <div class="numbers">
       {
-        points.length > 0 && (
+        points.length > 0 && r.chart === "utilization" && (
           <>
             <UtilizationChart days={days} />
+            {runByRole.length > 0 && (
+              <>
+                <StackedBars label="Agents running, by role" dates={dates} samples={sampled} groups={runByRole} format="agents" legend="latest" />
+                <StackedBars label="Agents busy, by role" dates={dates} samples={sampled} groups={busyByRole} format="agents" legend="latest" />
+                <p class="aside-note">Each role's value is its own median of the day, so the roles need not add up to the total's median.</p>
+              </>
+            )}
             <details class="points">
               <summary>The points: median, and the peak where a count has one</summary>
               <div class="scroll">
@@ -96,6 +148,145 @@ const inline = (s: string) =>
                 </table>
               </div>
             </details>
+            {runByRole.length > 0 && (
+              <details class="points">
+                <summary>By role, the latest day: running and busy, median</summary>
+                <div class="scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Role</th>
+                        <th>Running</th>
+                        <th>Busy</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runByRole.map((g, k) => (
+                        <tr>
+                          <td>{g.name}</td>
+                          <td>{g.values[dates.length - 1]}</td>
+                          <td>{busyByRole[k]?.values[dates.length - 1]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </>
+        )
+      }
+      {
+        tok && (
+          <>
+            <StackedBars label="Spend each day, by role" dates={dates} samples={sampled} groups={tok.byRole} format="usd" legend="week" />
+            <StackedBars label="Spend each day, by model" dates={dates} samples={sampled} groups={tok.byModel} format="usd" legend="week" />
+            <StackedBars label="Tokens each day, by kind" dates={dates} samples={sampled} groups={tok.byKind} format="tokens" legend="week" />
+            <details class="points">
+              <summary>The last 7 days, by role and by model</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Tokens</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tok.byRole.map((g, k) => (
+                      <tr>
+                        <td>{g.name}</td>
+                        <td>{amount.tokens(lastWeek(tok.tokensByRole[k].values))}</td>
+                        <td>{amount.usd(lastWeek(g.values))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Tokens</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tok.byModel.map((g, k) => (
+                      <tr>
+                        <td>{g.name}</td>
+                        <td>{amount.tokens(lastWeek(tok.tokensByModel[k].values))}</td>
+                        <td>{amount.usd(lastWeek(g.values))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            <details class="points">
+              <summary>The points: each day's totals</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Tokens</th>
+                      <th>Cache reads</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dates
+                      .map((date, i) => (
+                        <tr>
+                          <td>
+                            {date} {sampled[i] && <span class="sample-chip">sample</span>}
+                          </td>
+                          <td>{amount.tokens(tok.tokens[i])}</td>
+                          <td>{amount.tokens(cacheRead[i] ?? 0)}</td>
+                          <td>{amount.usd(tok.dollars[i])}</td>
+                        </tr>
+                      ))
+                      .reverse()}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            <details class="points">
+              <summary>The rates: list price, dollars per million tokens</summary>
+              {rates.some((x) => x.data.sample) && (
+                <p class="aside-note">
+                  <span class="sample-chip">sample</span> These rates are placeholders until the table is filled from the published
+                  price list.
+                </p>
+              )}
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>From</th>
+                      <th>Input</th>
+                      <th>Output</th>
+                      <th>Cache written</th>
+                      <th>Cache read</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.map((x) => (
+                      <tr>
+                        <td>{x.data.model}</td>
+                        <td>{iso(x.data.from)}</td>
+                        <td>{x.data.input}</td>
+                        <td>{x.data.output}</td>
+                        <td>{x.data.cacheWritten}</td>
+                        <td>{x.data.cacheRead}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           </>
         )
       }
@@ -115,11 +306,20 @@ const inline = (s: string) =>
               {s.name}{" "}
               <span class="muted">
                 ({s.unit}, {s.statistic}
-                {s.peak && " and peak"})
+                {s.peak && " and peak"}
+                {s.host && `, on ${s.host}`})
               </span>
             </>
           ))}
         </dd>
+        {
+          splits.length > 0 && (
+            <>
+              <dt>Split by</dt>
+              <dd>{splits.join(", ")}</dd>
+            </>
+          )
+        }
         <dt>Principle</dt>
         <dd>{principle && <a href={`/method/#${principle.id}`}>{principle.data.title}</a>}</dd>
         <dt>Source</dt>
@@ -177,4 +377,6 @@ const inline = (s: string) =>
   th { text-align: left; font-weight: 500; color: var(--ink-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
   td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap; color: var(--ink-2); }
   .pk { color: var(--ink-3); }
+  .aside-note { margin: 10px 0 0; font: 12px/1.6 var(--mono); color: var(--ink-3); display: flex; gap: 8px; align-items: baseline; }
+  .scroll table + table { margin-top: 18px; }
 </style>

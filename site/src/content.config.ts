@@ -94,14 +94,25 @@ const point = z.object({
   sample: z.boolean().default(false),
 });
 
+// The roles an agent of the fleet plays, as Crew names them.
+export const roles = ["conductor", "team ops", "unit agent", "design", "planner", "dispatcher", "operator"] as const;
+
 const series = z.object({
   name: z.string(),
   unit: z.string(),
-  // Which statistic of the day's samples the value is.
-  statistic: z.enum(["median", "max"]).default("median"),
+  // Which statistic of the day's samples the value is; a sum adds up the day.
+  statistic: z.enum(["median", "max", "sum"]).default("median"),
   // A peak series names the series it is the peak of; the page draws the
   // pair as one band and one tile.
   peakOf: z.string().optional(),
+  // A series split from a total names what it is split by, and the page
+  // stacks the split beside the total.
+  role: z.enum(roles).optional(),
+  model: z.string().optional(),
+  kind: z.enum(["input", "output", "cache written", "cache read"]).optional(),
+  flywheel: z.string().optional(),
+  // A host's own load is read per machine, never summed across machines.
+  host: z.string().optional(),
   points: z.array(point).default([]),
 });
 
@@ -120,7 +131,7 @@ const measurements = defineCollection({
     argues: z.string(),
     cannotShow: z.string(),
     // How the page draws the series; each form checks the series it needs.
-    chart: z.enum(["utilization"]),
+    chart: z.enum(["utilization", "tokens"]),
     series: z
       .array(series)
       .min(1)
@@ -138,4 +149,20 @@ const measurements = defineCollection({
   }),
 });
 
-export const collections = { principles, notes, terms, components, measurements };
+// List prices in dollars per million tokens, each from a date: a point's
+// dollars use the rates in force on its date. A rate not yet taken from the
+// published price list is a sample, and the page says so.
+const rates = defineCollection({
+  loader: file("./src/content/rates/rates.yaml"),
+  schema: z.object({
+    model: z.string(),
+    from: z.coerce.date(),
+    input: z.number().nonnegative(),
+    output: z.number().nonnegative(),
+    cacheWritten: z.number().nonnegative(),
+    cacheRead: z.number().nonnegative(),
+    sample: z.boolean().default(false),
+  }),
+});
+
+export const collections = { principles, notes, terms, components, measurements, rates };

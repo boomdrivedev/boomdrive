@@ -1,0 +1,119 @@
+---
+import { short } from "./utilization";
+import { axis, fmt, lastWeek, type Group } from "./measures";
+
+// A total split one way, one stacked bar a day, drawn at build time. The
+// legend gives each part's latest value (a count read at an instant) or its
+// last seven days (an amount that adds up), with its share.
+
+interface Props {
+  label: string;
+  dates: string[];
+  samples: boolean[];
+  groups: Group[];
+  format: keyof typeof fmt;
+  legend: "latest" | "week";
+}
+const { label, dates, samples, groups, format, legend } = Astro.props;
+const n = dates.length;
+const W = 760, L = 56, R = 12, top = 14, bottom = 196, H = 226;
+const band = (W - L - R) / n;
+const bar = Math.min(20, band * 0.62);
+const cx = (i: number) => L + band * (i + 0.5);
+
+const totals = dates.map((_, i) => groups.reduce((a, g) => a + g.values[i], 0));
+const maxRaw = Math.max(...totals, 1);
+const raw = maxRaw / 4;
+const mag = 10 ** Math.floor(Math.log10(raw));
+const f = raw / mag;
+const step = Math.max(format === "agents" ? 1 : 0, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag);
+const max = Math.ceil(maxRaw / step) * step;
+const y = (v: number) => bottom - (v / max) * (bottom - top);
+const ticks = Array.from({ length: Math.round(max / step) + 1 }, (_, i) => i * step);
+
+const bars = dates.map((date, i) => {
+  let acc = 0;
+  const parts = groups.map((g, k) => {
+    const y0 = y(acc), y1 = y(acc + g.values[i]);
+    acc += g.values[i];
+    return { k, name: g.name, v: g.values[i], y: y1, h: Math.max(0, y0 - y1) };
+  });
+  return { date, i, parts, total: totals[i] };
+});
+const labelled = (i: number) => (n - 1 - i) % 7 === 0;
+
+const read = (g: Group) => (legend === "latest" ? g.values[n - 1] : lastWeek(g.values));
+const whole = groups.reduce((a, g) => a + read(g), 0);
+const when = legend === "latest" ? `on ${dates[n - 1]}` : "over the last 7 days";
+---
+
+<figure class="stack">
+  <figcaption>{label}</figcaption>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${label}. ${groups.map((g) => `${g.name}: ${fmt[format](read(g))}`).join("; ")}, ${when}.`}>
+    {
+      ticks.map((t) => (
+        <g class="grid">
+          <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} />
+          <text x={L - 8} y={y(t) + 4} text-anchor="end">{axis[format](t)}</text>
+        </g>
+      ))
+    }
+    {
+      bars.map((b) => (
+        <g class:list={["day", { sample: samples[b.i] }]}>
+          {b.parts.map((p) => (
+            <rect class={`c${p.k + 1}`} x={cx(b.i) - bar / 2} y={p.y} width={bar} height={p.h}>
+              <title>{`${b.date}${samples[b.i] ? " (sample)" : ""} · ${p.name}: ${fmt[format](p.v)} of ${fmt[format](b.total)}`}</title>
+            </rect>
+          ))}
+        </g>
+      ))
+    }
+    {
+      bars.map(
+        (b) =>
+          labelled(b.i) && (
+            <text class="x" x={cx(b.i)} y={H - 8} text-anchor="middle">
+              {short(b.date)}
+            </text>
+          ),
+      )
+    }
+  </svg>
+  <ul class="legend">
+    {
+      groups.map((g, k) => (
+        <li>
+          <i class={`c${k + 1}`} />
+          <span class="nm">{g.name}</span>
+          <b>{fmt[format](read(g))}</b>
+          <span class="sh">{whole ? Math.round((100 * read(g)) / whole) : 0}%</span>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="when">Legend: {when}{samples.some(Boolean) && <span class="sample-chip">samples</span>}</p>
+</figure>
+
+<style>
+  .stack { margin: 28px 0 0; }
+  figcaption { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--mint); margin-bottom: 8px; }
+  svg { display: block; width: 100%; height: auto; }
+  .grid line { stroke: var(--line-soft); }
+  .grid text, .x { fill: var(--ink-3); font: 11px var(--mono); }
+  .c1 { fill: var(--brass); background: var(--brass); }
+  .c2 { fill: var(--mint); background: var(--mint); }
+  .c3 { fill: var(--rust); background: var(--rust); }
+  .c4 { fill: var(--bone); background: var(--bone); }
+  .c5 { fill: #5d8f9a; background: #5d8f9a; }
+  .c6 { fill: #8a6f2a; background: #8a6f2a; }
+  .c7 { fill: #6f8f6a; background: #6f8f6a; }
+  .day rect { stroke: var(--ground); stroke-width: 0.6; }
+  .day:hover rect { opacity: 0.85; }
+  .legend { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px 20px; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); font: 12px/1.6 var(--mono); }
+  .legend li { display: grid; grid-template-columns: 10px 1fr auto 3.2em; gap: 8px; align-items: center; color: var(--ink-2); }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; }
+  .legend b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .sh { color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+  .when { margin: 6px 0 0; font: 11px/1.6 var(--mono); color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
+</style>

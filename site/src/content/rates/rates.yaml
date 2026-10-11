@@ -1,0 +1,36 @@
+# List prices in dollars per million tokens, dated: a point's dollars use the
+# rates in force on its date, so a price change adds an entry and never
+# changes the definition. These are placeholders, marked sample, until the
+# table is filled from the published price list.
+- id: claude-opus-5-5@2026-09-01
+  model: claude-opus-5-5
+  from: 2026-09-01
+  input: 15
+  output: 75
+  cacheWritten: 18.75
+  cacheRead: 1.5
+  sample: true
+- id: claude-sonnet-5-5@2026-09-01
+  model: claude-sonnet-5-5
+  from: 2026-09-01
+  input: 3
+  output: 15
+  cacheWritten: 3.75
+  cacheRead: 0.3
+  sample: true
+- id: claude-haiku-4-5@2026-09-01
+  model: claude-haiku-4-5
+  from: 2026-09-01
+  input: 1
+  output: 5
+  cacheWritten: 1.25
+  cacheRead: 0.1
+  sample: true
+- id: claude-fable-5-1@2026-09-01
+  model: claude-fable-5-1
+  from: 2026-09-01
+  input: 5
+  output: 25
+  cacheWritten: 6.25
+  cacheRead: 0.5
+  sample: true

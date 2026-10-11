@@ -1,0 +1,76 @@
+---
+import { fmt, lastWeek, type Group } from "./measures";
+
+// What the fleet spent, as the headline: the latest day and the last seven,
+// the tokens behind them, and where the week's spend went.
+
+interface Props {
+  dates: string[];
+  samples: boolean[];
+  dollars: number[];
+  tokens: number[];
+  cacheRead: number[];
+  byRole: Group[];
+  byModel: Group[];
+}
+const { dates, samples, dollars, tokens, cacheRead, byRole, byModel } = Astro.props;
+const n = dates.length;
+const week = lastWeek(dollars);
+const top = (groups: Group[]) => groups.map((g) => ({ name: g.name, v: lastWeek(g.values) })).sort((a, b) => b.v - a.v)[0];
+const role = top(byRole);
+const model = top(byModel);
+const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0);
+---
+
+<section class="tiles" aria-label="The reading">
+  <p class="when">
+    Latest day · {dates[n - 1]}
+    {samples[n - 1] && <span class="sample-chip">sample</span>}
+  </p>
+  <div class="row">
+    <div class="tile spend">
+      <span class="name">Spend</span>
+      <span class="value">{fmt.usd(dollars[n - 1])}</span>
+      <span class="sub">list price, the latest day</span>
+    </div>
+    <div class="tile">
+      <span class="name">Spend, 7 days</span>
+      <span class="value">{fmt.usd(week)}</span>
+      <span class="sub">{dates[Math.max(0, n - 7)]} to {dates[n - 1]}</span>
+    </div>
+    <div class="tile">
+      <span class="name">Tokens</span>
+      <span class="value">{fmt.tokens(tokens[n - 1])}</span>
+      <span class="sub"><b>{pct(cacheRead[n - 1], tokens[n - 1])}%</b> of them cache reads</span>
+    </div>
+    <div class="tile">
+      <span class="name">Largest role</span>
+      <span class="value word">{role.name}</span>
+      <span class="sub"><b>{pct(role.v, week)}%</b> of the week's spend</span>
+    </div>
+    <div class="tile">
+      <span class="name">Largest model</span>
+      <span class="value word">{model.name}</span>
+      <span class="sub"><b>{pct(model.v, week)}%</b> of the week's spend</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tiles { margin: 28px 0 0; }
+  .when { margin: 0 0 10px; font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .row {
+    display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .tile { background: var(--panel); padding: 14px 16px 14px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+  .name { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--mint); }
+  .value {
+    font: 700 clamp(1.8rem, 4vw, 2.4rem)/1.1 var(--display); letter-spacing: -0.03em; color: var(--ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .value.word { font-size: clamp(1.3rem, 2.6vw, 1.6rem); white-space: normal; }
+  .spend .value { color: var(--brass); }
+  .sub { font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
+  .sub b { color: var(--ink-2); font-weight: 500; }
+</style>
