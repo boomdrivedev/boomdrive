@@ -1,0 +1,304 @@
+---
+import Flywheel from "./Flywheel.astro";
+
+// What the Method buys, as one stage playing six scenes on a timer, each a
+// short line, one sentence and a picture, with a rail of their names beside
+// it that lights as it plays: a click jumps, hover or focus pauses, and a
+// button stops it. Reduced motion makes the rail tabs and each picture a
+// still; with scripts off the six stack as a list. The words carry the
+// meaning, so a picture can be decoration (docs/site-design.md, How Home and
+// the Method read).
+
+// Each scene plays once through before the next: its dwell is its loop in
+// scenes.ts, less the fade at the loop's end.
+const items = [
+  {
+    id: "nothing-gets-lost",
+    name: "Nothing gets lost",
+    line: "The filing system for the way you work",
+    sentence:
+      "Close the laptop, come back, and you are where you left off: every idea, decision and piece of work has a place, across every repository you work in.",
+    scene: "flywheel",
+    dwell: 8,
+  },
+  {
+    id: "run-the-fleet",
+    name: "You run the fleet, not the keyboard",
+    line: "A team to manage, not one session",
+    sentence: "Decisions come to you numbered, one word starts a batch, and agents do the work.",
+    scene: "fleet",
+    dwell: 8.4,
+  },
+  {
+    id: "every-day-the-same",
+    name: "Every day the same, for developers and agents",
+    line: "The Method's promise",
+    sentence: "The same check, the same gate and the same answer, in a worktree, on a laptop, in CI and in a release.",
+    scene: "same",
+    dwell: 6.6,
+  },
+  {
+    id: "proof-you-can-trust",
+    name: "Proof you can trust",
+    line: "Checked before it reaches you",
+    sentence: "Work is verified before you see it, and never proved twice.",
+    scene: "proof",
+    dwell: 9.4,
+  },
+  {
+    id: "output-scales-with-input",
+    name: "Output scales with input",
+    line: "Five agents that work like fifty",
+    sentence: "The better you manage what goes in, the more comes out: the Method is what makes five agents work like fifty.",
+    scene: "climb",
+    dwell: 9.4,
+  },
+  {
+    id: "built-for-teams-that-ship",
+    name: "Built for teams that ship",
+    line: "Who this is for",
+    sentence:
+      "For teams that keep a product line stable and mean to reach continuous delivery: agentic coding with the continuous-delivery mindset.",
+    scene: "ship",
+    dwell: 8.4,
+  },
+];
+const nn = (i: number) => String(i + 1).padStart(2, "0");
+---
+
+<section class="benefits" data-benefits aria-label="What the Method buys">
+  <div class="rail" role="tablist" aria-label="What the Method buys" aria-orientation="vertical" hidden data-rail>
+    {
+      items.map((b, i) => (
+        <button
+          type="button"
+          role="tab"
+          id={`tab-${b.id}`}
+          aria-controls={`b-${b.id}`}
+          aria-selected={i === 0 ? "true" : "false"}
+          tabindex={i === 0 ? 0 : -1}
+          data-tab={i}
+          style={`--dwell:${b.dwell}s`}
+        >
+          <span class="n">{nn(i)}</span>
+          <span class="nm">{b.name}</span>
+          <span class="bar" aria-hidden="true"><span /></span>
+        </button>
+      ))
+    }
+    <button type="button" class="toggle" data-toggle aria-pressed="false">Pause</button>
+  </div>
+
+  <ol class="scenes">
+    {
+      items.map((b, i) => (
+        <li class:list={["scene", { on: i === 0 }]} id={`b-${b.id}`} data-scene={b.scene}>
+          <div class:list={["pic", { drawn: b.scene !== "flywheel" }]}>
+            {b.scene === "flywheel" ? <Flywheel /> : <canvas aria-hidden="true" />}
+          </div>
+          <div class="words">
+            <p class="kick">
+              <span>{nn(i)}</span> {b.line}
+            </p>
+            <h3>{b.name}</h3>
+            <p class="sentence">{b.sentence}</p>
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</section>
+
+<script>
+  import type { Palette } from "./scenes";
+
+  type Scenes = typeof import("./scenes");
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-benefits]")) {
+    const rail = root.querySelector<HTMLElement>("[data-rail]")!;
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>("[data-tab]")];
+    const panels = [...root.querySelectorAll<HTMLElement>(".scene")];
+    const toggle = root.querySelector<HTMLButtonElement>("[data-toggle]")!;
+    panels.forEach((p, i) => {
+      p.setAttribute("role", "tabpanel");
+      p.setAttribute("aria-labelledby", tabs[i].id);
+    });
+    rail.hidden = false;
+    root.dataset.ready = "";
+
+    let current = 0;
+    let held = false; // the pointer or focus is on the stage
+    let stopped = false; // the reader pressed Pause
+    let seen = false; // the stage is on screen
+    let mod: Scenes | null = null;
+    let palette: Palette | null = null;
+    const clock = panels.map(() => 0);
+    let last = 0;
+
+    const paused = () => held || stopped || !seen || document.hidden;
+    const sync = () => root.classList.toggle("paused", paused());
+
+    function show(i: number, focus = false) {
+      current = (i + panels.length) % panels.length;
+      tabs.forEach((t, k) => {
+        const on = k === current;
+        t.setAttribute("aria-selected", String(on));
+        t.tabIndex = on ? 0 : -1;
+        t.classList.remove("run");
+      });
+      panels.forEach((p, k) => p.classList.toggle("on", k === current));
+      clock[current] = 0;
+      if (focus) tabs[current].focus();
+      // Restart the active name's bar; its end moves the stage on.
+      void tabs[current].offsetWidth;
+      if (!still.matches) tabs[current].classList.add("run");
+      paint();
+    }
+
+    tabs.forEach((t, i) => {
+      t.addEventListener("click", () => show(i));
+      t.querySelector(".bar span")!.addEventListener("animationend", () => {
+        if (!still.matches && !paused()) show(current + 1);
+      });
+      t.addEventListener("keydown", (e) => {
+        const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+        if (step) show(current + step, true);
+        else if (e.key === "Home") show(0, true);
+        else if (e.key === "End") show(panels.length - 1, true);
+        else return;
+        e.preventDefault();
+      });
+    });
+    toggle.addEventListener("click", () => {
+      stopped = !stopped;
+      toggle.textContent = stopped ? "Play" : "Pause";
+      toggle.setAttribute("aria-pressed", String(stopped));
+      sync();
+    });
+    root.addEventListener("pointerenter", () => ((held = true), sync()));
+    root.addEventListener("pointerleave", () => ((held = root.contains(document.activeElement)), sync()));
+    root.addEventListener("focusin", () => ((held = true), sync()));
+    root.addEventListener("focusout", (e) => ((held = root.contains(e.relatedTarget as Node)), sync()));
+    document.addEventListener("visibilitychange", sync);
+    still.addEventListener("change", () => show(current));
+
+    // The pictures load once the stage is near the screen.
+    new IntersectionObserver(
+      ([e]) => {
+        seen = e.isIntersecting;
+        sync();
+        if (seen && !mod) {
+          import("./scenes").then((m) => {
+            mod = m;
+            const css = getComputedStyle(document.documentElement);
+            const v = (n: string) => css.getPropertyValue(n).trim();
+            palette = {
+              ground: v("--ground"), ground2: v("--ground-2"), brass: v("--brass"), mint: v("--mint"),
+              bone: v("--bone"), rust: v("--rust"), ink3: v("--ink-3"), line: v("--line"),
+            };
+            paint();
+            requestAnimationFrame(frame);
+          });
+        }
+      },
+      { rootMargin: "200px" },
+    ).observe(root);
+
+    // Draw the active scene at its own time: a still at the moment its
+    // reduced-motion picture names.
+    function paint() {
+      if (!mod || !palette) return;
+      const panel = panels[current];
+      const scene = mod.scenes[panel.dataset.scene!];
+      const canvas = panel.querySelector("canvas");
+      if (!scene || !canvas || !canvas.clientWidth) return;
+      const px = Math.round(canvas.clientWidth * (devicePixelRatio || 1));
+      const py = Math.round((px * mod.H) / mod.W);
+      if (canvas.width !== px || canvas.height !== py) ((canvas.width = px), (canvas.height = py));
+      const g = canvas.getContext("2d")!;
+      g.setTransform(px / mod.W, 0, 0, px / mod.W, 0, 0);
+      g.clearRect(0, 0, mod.W, mod.H);
+      scene.draw(g, palette, still.matches ? scene.still : clock[current] % scene.period);
+    }
+    function frame(now: number) {
+      const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
+      last = now;
+      if (!still.matches && !paused()) {
+        clock[current] += dt;
+        paint();
+      }
+      requestAnimationFrame(frame);
+    }
+    addEventListener("resize", paint);
+    show(0);
+  }
+</script>
+
+<style>
+  .benefits { margin: 40px 0 0; }
+
+  /* Scripts off: the six as a list, the flywheel with the first. */
+  .scenes { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
+  .scene { display: grid; gap: 12px 32px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
+  .benefits:not([data-ready]) .pic.drawn { display: none; }
+  .benefits:not([data-ready]) .scene:not(:first-child) { grid-template-columns: 1fr; }
+  .pic { min-width: 0; }
+  .pic canvas { display: block; width: 100%; aspect-ratio: 16 / 10; }
+  .pic :global(.flywheel) { max-height: 24rem; margin: 0 auto; }
+
+  .kick { margin: 0 0 6px; font: 11px/1.6 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--mint); }
+  .kick span { color: var(--brass); margin-right: 6px; }
+  h3 { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.1 var(--display); letter-spacing: -0.02em; margin: 0 0 12px; color: var(--ink); }
+  .sentence { margin: 0; font-size: 1.1rem; color: var(--ink-2); max-width: 36ch; }
+
+  /* Scripts on: the rail beside one stage. */
+  .benefits[data-ready] {
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 0 32px; align-items: start;
+    border: 1px solid var(--line); border-radius: 14px; background: rgba(9, 28, 31, 0.5); padding: 22px 24px;
+  }
+  .benefits[data-ready] .scenes { grid-template-columns: minmax(0, 1fr); }
+  .benefits[data-ready] .scene { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  .benefits[data-ready] .scene { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity 0.5s, visibility 0.5s; }
+  .benefits[data-ready] .scene.on { opacity: 1; visibility: visible; }
+  .scene:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
+
+  .rail { display: grid; gap: 2px; align-content: start; }
+  .rail[hidden] { display: none; }
+  [role="tab"] {
+    all: unset; cursor: pointer; display: grid; grid-template-columns: 2.2em 1fr; gap: 0 4px; padding: 9px 8px 8px; border-radius: 8px;
+    font: 500 14px/1.35 var(--display); color: var(--ink-3);
+  }
+  [role="tab"]:hover { color: var(--ink); background: rgba(237, 231, 218, 0.04); }
+  [role="tab"]:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+  [role="tab"][aria-selected="true"] { color: var(--ink); background: rgba(201, 162, 39, 0.08); }
+  .n { font: 11px/1.9 var(--mono); color: var(--ink-3); }
+  [aria-selected="true"] .n { color: var(--brass); }
+  .bar { grid-column: 2; height: 2px; margin-top: 7px; background: var(--line-soft); border-radius: 1px; overflow: hidden; visibility: hidden; }
+  .bar span { display: block; height: 100%; width: 100%; background: var(--brass); transform-origin: left; transform: scaleX(0); }
+  .run .bar { visibility: visible; }
+  .run .bar span { animation: fill var(--dwell) linear forwards; }
+  .paused .run .bar span { animation-play-state: paused; }
+  @keyframes fill { to { transform: scaleX(1); } }
+  .toggle {
+    all: unset; cursor: pointer; justify-self: start; margin: 10px 0 0 8px; font: 11px/1.6 var(--mono); letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--mint);
+  }
+  .toggle:hover { color: var(--brass); }
+  .toggle:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  /* Reduced motion: tabs and stills, no timer. */
+  @media (prefers-reduced-motion: reduce) {
+    .benefits[data-ready] .scene { transition: none; }
+    .toggle, .bar { display: none; }
+  }
+
+  /* A narrow screen: the names run across above the stage. */
+  @media (max-width: 56rem) {
+    .benefits[data-ready] { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+    .rail { grid-auto-flow: column; grid-auto-columns: minmax(9.5rem, 1fr); overflow-x: auto; margin: 0 -4px 16px; padding-bottom: 4px; }
+    .toggle { align-self: center; margin: 0 8px; }
+    .benefits[data-ready] .scene, .scene { grid-template-columns: minmax(0, 1fr); align-self: start; }
+    .pic :global(.flywheel) { max-height: 18rem; }
+  }
+</style>

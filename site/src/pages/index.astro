@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
-import Flywheel from "../components/Flywheel.astro";
+import Benefits from "../components/Benefits.astro";
 import Scale from "../components/Scale.astro";
 
 const notes = (await getCollection("notes", ({ data }) => !data.draft))
@@ -12,9 +12,9 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 <Base title="Flywheel" description="Scaling a fleet of coding agents from one agent toward a thousand, and the Method that keeps it turning." wide>
   <section class="fold">
-    <div class="copy">
-      <p class="eyebrow">Flywheel</p>
-      <h1>From one agent <span>to a thousand.</span></h1>
+    <p class="eyebrow">Flywheel</p>
+    <h1>From one agent <span>to a thousand.</span></h1>
+    <div class="under">
       <p class="deck">
         We run a fleet of coding agents and keep adding to it, to find out how far one team can take it. What holds
         as the fleet grows becomes the Method; what we measure on the way, we publish.
@@ -23,10 +23,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
         <a class="cta primary" href="/method/">Read the Method</a>
         <a class="cta" href="/fleet/fleet-utilization/">Fleet utilization</a>
       </div>
-      <p class="promise">The Method's promise: every day the same, for developers and agents.</p>
     </div>
-    <div class="stage"><Flywheel /></div>
   </section>
+
+  <Benefits />
 
   <Scale />
 
@@ -56,14 +56,11 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 </Base>
 
 <style>
-  /* The line and its calls to action beside the flywheel; on a phone the
-     flywheel follows them. */
-  .fold { display: grid; gap: 16px 40px; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
-  @media (max-width: 56rem) { .fold { grid-template-columns: 1fr; } }
-
+  /* The headline, then its deck and calls to action side by side. */
+  .under { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px 40px; }
   h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 0.95; margin: 12px 0 20px; }
   h1 span { color: var(--brass); }
-  .deck { max-width: 38ch; margin: 0 0 26px; font-size: 1.1rem; }
+  .deck { max-width: 48ch; margin: 0; font-size: 1.1rem; }
 
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
   .cta {
@@ -75,7 +72,6 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
   .cta.primary:hover { background: #d8b13a; color: var(--ground); }
   .cta.primary::after { content: " →"; }
   @media (prefers-reduced-motion: reduce) { .cta { transition: none; } }
-  .promise { margin: 22px 0 0; font: 11px/1.6 var(--mono); letter-spacing: 0.08em; color: var(--ink-3); }
 
   .notes { margin-top: 64px; max-width: 46rem; }
   .notes-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
