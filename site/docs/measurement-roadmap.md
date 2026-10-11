@@ -36,8 +36,12 @@ Crew, Herdr, git and moon already record this.
 - **Proof:** ★ sent back after "done" (code said done, verify disagreed);
   merge-gate refusals per merge; main red rate and time back to green.
 - **Health:** ★ fleet utilization (agents running and how many of them are
-  busy, with the host's CPU, memory and process count, over time); stuck
-  agents (blocked or idle past a threshold); restarts per day.
+  busy, split by role, with each machine's CPU, memory and process count,
+  over time); stuck agents (blocked or idle past a threshold); restarts per
+  day.
+- **Cost:** ★ tokens by role (tokens by kind and list-price dollars, by
+  role and by model, per day, from Crew's session registry joined to the
+  transcripts' per-message counts; cache reads weighted at their price).
 
 ## Stage 1: instrumented harnesses
 
@@ -96,6 +100,7 @@ from a password manager.
 | Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count, one series per machine. Each day's value is the median of the day's samples, the day being the host's calendar day with every sample counted; the agent counts also publish the day's peak. The busy share is busy divided by running at a point | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the peak that marks the journey on Home |
 | Work in flight | Every 5 minutes, from each flywheel's plan: bolts open, units in flight by stage (construct, awaiting approval, code, verify, merge), and repositories with work in flight; each day's value the median of the day's samples, per flywheel and in total | Crew's plan (`crew bolts`) | Where open work sits: a pile at awaiting approval is the attention bottleneck |
 | Landed | Each day, from each flywheel's run record: units merged into their bolt (work finished) and bolts landed on main (work delivered), counted, per flywheel and in total; the headline shows the week's total | Crew's run record (`crew events`) | What the fleet delivers, read against how busy it was; small and lumpy at first, which the week's total absorbs |
+| Tokens by role | Each day, every session Crew started, joined by its session id to its transcript: tokens by kind (input, output, cache written, cache read) and list-price dollars, by role (conductor, team ops, unit agent, design, planner, dispatcher, operator) and by model, per flywheel and in total | Crew's session registry; the transcripts' per-message usage | What the fleet costs and where: whether the spend sits with the agents that build or the ones that manage, and which model earns its price |
 | Unit cycle time, by stage | Time from adding a unit to merging it into its bolt, split into construct, awaiting approval, code, verify and merge | Crew's plan and stage changes; unit branch commit times | Waiting for approval likely dominates: the case for the decision inbox |
 | Sent back after "done" | Share of units where code reported done and verify sent the work back | Crew's stage changes | How often agents overclaim: why gates read evidence |
 | Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run reports across worktrees (task hashes run again rather than replayed). Later: the remote cache's hit records | The waste a shared cache removes; before and after is a strong note |

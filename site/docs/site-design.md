@@ -48,7 +48,7 @@ About, and the first page of the Fleet.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
-| Home | Leads with scaling the fleet from one agent toward a thousand, beside the animated flywheel, with "Every day the same, for developers and agents" second as the Method's promise; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
+| Home | Leads with scaling the fleet from one agent toward a thousand; the hero is a timed sequence of six benefit scenes, the flywheel first; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
 | The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
 | The Fleet | A front page that frames the fleet (flywheels, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
@@ -59,18 +59,49 @@ About, and the first page of the Fleet.
 
 ## How Home and the Method read
 
-- **Home leads with scaling.** The hero is the animated four-ring
-  flywheel from agentplot/flywheel's site (`site/index.html`: the
-  operator's review on the outside, then intent, then bolts, construction
-  at the core, each ring's ticks turning at its own rate) beside one claim:
-  we are scaling a fleet of coding agents from one toward a thousand, and
-  the Method is how. "Every day the same, for developers and agents"
-  follows as the Method's promise, second, never the headline. The hero's
-  labels speak the Method's words, never the original plugin's tool names:
-  the operator's review on the rim, intent and its settled decisions, bolts
-  and their units, the gate where the operator's word crosses the rings,
-  the operator at the core. Home does not list the principles; the Method
-  is read in one place.
+- **Home leads with scaling, and sells the benefits.** One headline: we
+  are scaling a fleet of coding agents from one toward a thousand, and the
+  Method is how. Under it, the hero is one stage that plays a sequence of
+  benefit scenes on a timer, each a short line, one sentence and a picture,
+  with a rail of the benefit names beside the stage that lights as it
+  plays: click any to jump, hover or focus pauses. Reduced motion turns it
+  into tabs with still pictures; with scripts off the benefits stack as a
+  list. Flywheel is a context-management engine with a low-intensity
+  project-management method, and the scenes say what that buys:
+  1. *Nothing gets lost.* Close the laptop, come back, and you are exactly
+     where you were; every idea, decision and piece of work has a place,
+     across every repository you work in. The filing system for the way
+     you work. The first picture is the flywheel itself.
+  2. *You run the fleet, not the keyboard.* Decisions come to you
+     numbered, one word starts a batch, agents do the work: managing a team
+     instead of one single-threaded session.
+  3. *Every day the same, for developers and agents.* The same check, the
+     same gate, the same answer, in a worktree, on a laptop, in CI, in a
+     release. This is the Method's promise, a scene and never the headline.
+  4. *Proof you can trust.* Work is verified before you see it, and never
+     proved twice.
+  5. *Output scales with input.* The better you manage what goes in, the
+     more comes out; the Method is what makes five agents work like fifty.
+     Its picture is the journey climbing.
+  6. *Built for teams that ship.* For teams that keep a product line
+     stable and mean to reach continuous delivery: agentic coding with the
+     continuous-delivery mindset. The closing scene says who this is for.
+  "You can see it", the fleet measured and everything on the record, is
+  not a scene: it is the Fleet's call to action and its teaser.
+- **The flywheel figure** is the animated four-ring flywheel from
+  agentplot/flywheel's site (`site/index.html`: the operator's review on
+  the outside, then intent, then bolts, construction at the core, each
+  ring's ticks turning at its own rate). Its labels speak the Method's
+  words, never the original plugin's tool names: the operator's review on
+  the rim, intent and its settled decisions, bolts and their units, the
+  gate where the operator's word crosses the rings, the operator at the
+  core. Home does not list the principles; the Method is read in one place.
+- **Scenes are free-form; diagrams stay SVG.** Home's scenes may be drawn
+  with Canvas or WebGL and a motion library, real-world looking without
+  being realistic: things that pile, slide and flow. The Method's diagrams
+  stay SVG, because they explain. Every scene has a still, loads lazily,
+  stays within a size budget, honours reduced motion, and its words carry
+  the meaning, so the picture can be decoration.
 - **The journey is a direction.** One continuous scale from one agent to a
   thousand, with where the fleet stands lit from the latest peak of agents
   running, never a row of stations: we do not teach a step for one or five
