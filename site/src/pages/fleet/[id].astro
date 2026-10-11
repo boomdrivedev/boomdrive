@@ -6,7 +6,7 @@ import UtilizationTiles from "../../components/UtilizationTiles.astro";
 import StackedBars from "../../components/StackedBars.astro";
 import TokensTiles from "../../components/TokensTiles.astro";
 import { days as toDays, fmt, share } from "../../components/utilization";
-import { fmt as amount, iso, lastWeek, model, split, total, type Split } from "../../components/measures";
+import { fmt as amount, iso, lastWeek, model, priced, split, total, type Split } from "../../components/measures";
 
 export async function getStaticPaths() {
   const measurements = await getCollection("measurements");
@@ -49,6 +49,7 @@ const tok =
     : null;
 const cacheRead = tok?.byKind.find((g) => g.name === "cache read")?.values ?? [];
 const rates = r.chart === "tokens" ? (await getCollection("rates")).sort((a, b) => a.data.model.localeCompare(b.data.model)) : [];
+if (r.chart === "tokens") priced(m.id, r.series, rates.map((x) => x.data));
 
 // The definition lists each total once, with the splits beside it; a peak is
 // read with the series it is the peak of.

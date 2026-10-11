@@ -45,3 +45,21 @@ export const axis = {
 export const model = (name: string) => name.replace(/^claude-/, "");
 
 export const lastWeek = (values: number[]) => values.slice(-7).reduce((a, b) => a + b, 0);
+
+// A collected point's dollars need a rate in force on its date: a series of
+// one model needs that model's rate, any other needs the table's first entry.
+// A sample is an illustration and may take the earliest rates.
+export function priced(record: string, series: Series[], rates: { model: string; from: Date }[]) {
+  const since = (model?: string) =>
+    Math.min(...rates.filter((r) => !model || r.model === model).map((r) => r.from.getTime()));
+  for (const s of series.filter((x) => x.unit === "USD")) {
+    const from = since(s.model);
+    for (const p of s.points) {
+      if (!p.sample && !(p.date.getTime() >= from)) {
+        throw new Error(
+          `${record}: "${s.name}" has a collected point on ${iso(p.date)}, before any rate in force${s.model ? ` for ${s.model}` : ""}`,
+        );
+      }
+    }
+  }
+}
