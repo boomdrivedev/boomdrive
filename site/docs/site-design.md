@@ -102,11 +102,17 @@ About, and the first page of the Fleet.
   stay SVG, because they explain. Every scene has a still, loads lazily,
   stays within a size budget, honours reduced motion, and its words carry
   the meaning, so the picture can be decoration.
-- **The journey is a direction.** One continuous scale from one agent to a
-  thousand, with where the fleet stands lit from the latest peak of agents
-  running, never a row of stations: we do not teach a step for one or five
-  agents, the point is to push the number up. It lights nothing until a
-  collected point exists, and never says when the next number comes.
+- **The journey is a direction.** One ruler from one agent to a thousand on
+  a log scale, each tenfold step shaded, never a row of stations: we do not
+  teach a step for one or five agents, the point is to push the number up.
+  It fills solid to the latest collected peak of agents busy and is outlined
+  to the peak of agents running on the same day, so the gap between them is
+  the idle fleet. Beside it, a reading: "Agents at the peak", the number,
+  and "at most N busy at once", styled after Flywheel Next's runway dial
+  (`agentplot/blueprints design/flywheel-next/mockups/rail-and-board.html`),
+  so the site's gauge and the product's gauge read as one family. It fills
+  nothing until a collected point exists, never reads a sample, and never
+  says when the next number comes.
 - **Home's calls and teaser.** A primary call to action to the Method and a
   secondary one to fleet utilization; a teaser of the fleet's latest
   reading, the agent count, that waits for the collector's first point and
