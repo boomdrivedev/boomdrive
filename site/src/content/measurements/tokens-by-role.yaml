@@ -557,331 +557,331 @@ series:
     unit: USD
     statistic: sum
     points:
-      - { date: 2026-09-12, value: 1547.67, sample: true }
-      - { date: 2026-09-13, value: 1919.31, sample: true }
-      - { date: 2026-09-14, value: 1833.97, sample: true }
-      - { date: 2026-09-15, value: 1493.73, sample: true }
-      - { date: 2026-09-16, value: 1748.71, sample: true }
-      - { date: 2026-09-17, value: 1584.87, sample: true }
-      - { date: 2026-09-18, value: 1676.14, sample: true }
-      - { date: 2026-09-19, value: 1861.98, sample: true }
-      - { date: 2026-09-20, value: 1623.01, sample: true }
-      - { date: 2026-09-21, value: 1588.38, sample: true }
-      - { date: 2026-09-22, value: 1544.4, sample: true }
-      - { date: 2026-09-23, value: 1513.95, sample: true }
-      - { date: 2026-09-24, value: 1434.32, sample: true }
-      - { date: 2026-09-25, value: 1561.87, sample: true }
-      - { date: 2026-09-26, value: 2093.35, sample: true }
-      - { date: 2026-09-27, value: 1788.93, sample: true }
-      - { date: 2026-09-28, value: 1394.51, sample: true }
-      - { date: 2026-09-29, value: 2012.6, sample: true }
-      - { date: 2026-09-30, value: 1399.85, sample: true }
-      - { date: 2026-10-01, value: 1840.03, sample: true }
-      - { date: 2026-10-02, value: 1481.04, sample: true }
-      - { date: 2026-10-03, value: 1463.55, sample: true }
-      - { date: 2026-10-04, value: 1447.05, sample: true }
-      - { date: 2026-10-05, value: 1901.38, sample: true }
-      - { date: 2026-10-06, value: 1610.21, sample: true }
-      - { date: 2026-10-07, value: 1643.79, sample: true }
-      - { date: 2026-10-08, value: 1468.51, sample: true }
-      - { date: 2026-10-09, value: 1447.5, sample: true }
+      - { date: 2026-09-12, value: 451.93, sample: true }
+      - { date: 2026-09-13, value: 569.75, sample: true }
+      - { date: 2026-09-14, value: 540.22, sample: true }
+      - { date: 2026-09-15, value: 419.94, sample: true }
+      - { date: 2026-09-16, value: 504.11, sample: true }
+      - { date: 2026-09-17, value: 470.49, sample: true }
+      - { date: 2026-09-18, value: 499.54, sample: true }
+      - { date: 2026-09-19, value: 558.73, sample: true }
+      - { date: 2026-09-20, value: 466.44, sample: true }
+      - { date: 2026-09-21, value: 467.25, sample: true }
+      - { date: 2026-09-22, value: 441.45, sample: true }
+      - { date: 2026-09-23, value: 454.97, sample: true }
+      - { date: 2026-09-24, value: 427.67, sample: true }
+      - { date: 2026-09-25, value: 477.88, sample: true }
+      - { date: 2026-09-26, value: 603.89, sample: true }
+      - { date: 2026-09-27, value: 525.76, sample: true }
+      - { date: 2026-09-28, value: 424.65, sample: true }
+      - { date: 2026-09-29, value: 596.77, sample: true }
+      - { date: 2026-09-30, value: 397.05, sample: true }
+      - { date: 2026-10-01, value: 555.16, sample: true }
+      - { date: 2026-10-02, value: 443.46, sample: true }
+      - { date: 2026-10-03, value: 457, sample: true }
+      - { date: 2026-10-04, value: 447.84, sample: true }
+      - { date: 2026-10-05, value: 538.19, sample: true }
+      - { date: 2026-10-06, value: 476.51, sample: true }
+      - { date: 2026-10-07, value: 494.95, sample: true }
+      - { date: 2026-10-08, value: 458.61, sample: true }
+      - { date: 2026-10-09, value: 482.66, sample: true }
   - name: dollars, conductor
     unit: USD
     statistic: sum
     role: conductor
     points:
-      - { date: 2026-09-12, value: 226.14, sample: true }
-      - { date: 2026-09-13, value: 230.66, sample: true }
-      - { date: 2026-09-14, value: 287.84, sample: true }
-      - { date: 2026-09-15, value: 236.89, sample: true }
-      - { date: 2026-09-16, value: 337.18, sample: true }
-      - { date: 2026-09-17, value: 436.12, sample: true }
-      - { date: 2026-09-18, value: 211.09, sample: true }
-      - { date: 2026-09-19, value: 418.4, sample: true }
-      - { date: 2026-09-20, value: 270.41, sample: true }
-      - { date: 2026-09-21, value: 250.62, sample: true }
-      - { date: 2026-09-22, value: 315.23, sample: true }
-      - { date: 2026-09-23, value: 201.87, sample: true }
-      - { date: 2026-09-24, value: 250.25, sample: true }
-      - { date: 2026-09-25, value: 263.22, sample: true }
-      - { date: 2026-09-26, value: 308.44, sample: true }
-      - { date: 2026-09-27, value: 250.49, sample: true }
-      - { date: 2026-09-28, value: 215.55, sample: true }
-      - { date: 2026-09-29, value: 419.41, sample: true }
-      - { date: 2026-09-30, value: 251.75, sample: true }
-      - { date: 2026-10-01, value: 324.46, sample: true }
-      - { date: 2026-10-02, value: 296.08, sample: true }
-      - { date: 2026-10-03, value: 219.76, sample: true }
-      - { date: 2026-10-04, value: 289.45, sample: true }
-      - { date: 2026-10-05, value: 220.08, sample: true }
-      - { date: 2026-10-06, value: 219.55, sample: true }
-      - { date: 2026-10-07, value: 263.65, sample: true }
-      - { date: 2026-10-08, value: 210.8, sample: true }
-      - { date: 2026-10-09, value: 185.01, sample: true }
+      - { date: 2026-09-12, value: 52.65, sample: true }
+      - { date: 2026-09-13, value: 53.63, sample: true }
+      - { date: 2026-09-14, value: 67.8, sample: true }
+      - { date: 2026-09-15, value: 55.41, sample: true }
+      - { date: 2026-09-16, value: 79.99, sample: true }
+      - { date: 2026-09-17, value: 104.8, sample: true }
+      - { date: 2026-09-18, value: 49.68, sample: true }
+      - { date: 2026-09-19, value: 101.32, sample: true }
+      - { date: 2026-09-20, value: 62.99, sample: true }
+      - { date: 2026-09-21, value: 58.2, sample: true }
+      - { date: 2026-09-22, value: 75.6, sample: true }
+      - { date: 2026-09-23, value: 46.67, sample: true }
+      - { date: 2026-09-24, value: 56.64, sample: true }
+      - { date: 2026-09-25, value: 62.67, sample: true }
+      - { date: 2026-09-26, value: 74.44, sample: true }
+      - { date: 2026-09-27, value: 61.13, sample: true }
+      - { date: 2026-09-28, value: 51.09, sample: true }
+      - { date: 2026-09-29, value: 99.79, sample: true }
+      - { date: 2026-09-30, value: 60.2, sample: true }
+      - { date: 2026-10-01, value: 74.4, sample: true }
+      - { date: 2026-10-02, value: 70.99, sample: true }
+      - { date: 2026-10-03, value: 52.29, sample: true }
+      - { date: 2026-10-04, value: 68.95, sample: true }
+      - { date: 2026-10-05, value: 51.62, sample: true }
+      - { date: 2026-10-06, value: 50.62, sample: true }
+      - { date: 2026-10-07, value: 61.29, sample: true }
+      - { date: 2026-10-08, value: 48.72, sample: true }
+      - { date: 2026-10-09, value: 42.26, sample: true }
   - name: dollars, team ops
     unit: USD
     statistic: sum
     role: team ops
     points:
-      - { date: 2026-09-12, value: 31.17, sample: true }
-      - { date: 2026-09-13, value: 50.1, sample: true }
-      - { date: 2026-09-14, value: 51.94, sample: true }
-      - { date: 2026-09-15, value: 25.26, sample: true }
-      - { date: 2026-09-16, value: 23.41, sample: true }
-      - { date: 2026-09-17, value: 26.41, sample: true }
-      - { date: 2026-09-18, value: 43.87, sample: true }
-      - { date: 2026-09-19, value: 39.74, sample: true }
-      - { date: 2026-09-20, value: 44.92, sample: true }
-      - { date: 2026-09-21, value: 40.74, sample: true }
-      - { date: 2026-09-22, value: 35.01, sample: true }
-      - { date: 2026-09-23, value: 24.16, sample: true }
-      - { date: 2026-09-24, value: 31.97, sample: true }
-      - { date: 2026-09-25, value: 46.3, sample: true }
-      - { date: 2026-09-26, value: 32.74, sample: true }
-      - { date: 2026-09-27, value: 30.95, sample: true }
-      - { date: 2026-09-28, value: 47.49, sample: true }
-      - { date: 2026-09-29, value: 40.78, sample: true }
-      - { date: 2026-09-30, value: 21.37, sample: true }
-      - { date: 2026-10-01, value: 43.03, sample: true }
-      - { date: 2026-10-02, value: 38.78, sample: true }
-      - { date: 2026-10-03, value: 49.05, sample: true }
-      - { date: 2026-10-04, value: 34.14, sample: true }
-      - { date: 2026-10-05, value: 52.11, sample: true }
-      - { date: 2026-10-06, value: 37.01, sample: true }
-      - { date: 2026-10-07, value: 37.68, sample: true }
-      - { date: 2026-10-08, value: 31.27, sample: true }
-      - { date: 2026-10-09, value: 44.79, sample: true }
+      - { date: 2026-09-12, value: 18.16, sample: true }
+      - { date: 2026-09-13, value: 29.77, sample: true }
+      - { date: 2026-09-14, value: 30.87, sample: true }
+      - { date: 2026-09-15, value: 14.73, sample: true }
+      - { date: 2026-09-16, value: 13.62, sample: true }
+      - { date: 2026-09-17, value: 15.66, sample: true }
+      - { date: 2026-09-18, value: 26.22, sample: true }
+      - { date: 2026-09-19, value: 23.38, sample: true }
+      - { date: 2026-09-20, value: 25.98, sample: true }
+      - { date: 2026-09-21, value: 23.81, sample: true }
+      - { date: 2026-09-22, value: 21.01, sample: true }
+      - { date: 2026-09-23, value: 13.8, sample: true }
+      - { date: 2026-09-24, value: 19.12, sample: true }
+      - { date: 2026-09-25, value: 27.65, sample: true }
+      - { date: 2026-09-26, value: 19.61, sample: true }
+      - { date: 2026-09-27, value: 18.05, sample: true }
+      - { date: 2026-09-28, value: 28.02, sample: true }
+      - { date: 2026-09-29, value: 23.68, sample: true }
+      - { date: 2026-09-30, value: 12.21, sample: true }
+      - { date: 2026-10-01, value: 25.43, sample: true }
+      - { date: 2026-10-02, value: 22.36, sample: true }
+      - { date: 2026-10-03, value: 29.36, sample: true }
+      - { date: 2026-10-04, value: 19.63, sample: true }
+      - { date: 2026-10-05, value: 31.09, sample: true }
+      - { date: 2026-10-06, value: 21.15, sample: true }
+      - { date: 2026-10-07, value: 22.21, sample: true }
+      - { date: 2026-10-08, value: 18.01, sample: true }
+      - { date: 2026-10-09, value: 26.59, sample: true }
   - name: dollars, unit agent
     unit: USD
     statistic: sum
     role: unit agent
     points:
-      - { date: 2026-09-12, value: 945.4, sample: true }
-      - { date: 2026-09-13, value: 1243.62, sample: true }
-      - { date: 2026-09-14, value: 1172.26, sample: true }
-      - { date: 2026-09-15, value: 917.77, sample: true }
-      - { date: 2026-09-16, value: 1049.14, sample: true }
-      - { date: 2026-09-17, value: 788.28, sample: true }
-      - { date: 2026-09-18, value: 1093.09, sample: true }
-      - { date: 2026-09-19, value: 1018.64, sample: true }
-      - { date: 2026-09-20, value: 1003.53, sample: true }
-      - { date: 2026-09-21, value: 954.82, sample: true }
-      - { date: 2026-09-22, value: 929.46, sample: true }
-      - { date: 2026-09-23, value: 942.92, sample: true }
-      - { date: 2026-09-24, value: 780.38, sample: true }
-      - { date: 2026-09-25, value: 938.83, sample: true }
-      - { date: 2026-09-26, value: 1336.64, sample: true }
-      - { date: 2026-09-27, value: 1203.24, sample: true }
-      - { date: 2026-09-28, value: 767.16, sample: true }
-      - { date: 2026-09-29, value: 1218.82, sample: true }
-      - { date: 2026-09-30, value: 817.43, sample: true }
-      - { date: 2026-10-01, value: 1050.82, sample: true }
-      - { date: 2026-10-02, value: 868.68, sample: true }
-      - { date: 2026-10-03, value: 750.41, sample: true }
-      - { date: 2026-10-04, value: 745.57, sample: true }
-      - { date: 2026-10-05, value: 1324.99, sample: true }
-      - { date: 2026-10-06, value: 976.35, sample: true }
-      - { date: 2026-10-07, value: 919.07, sample: true }
-      - { date: 2026-10-08, value: 802.06, sample: true }
-      - { date: 2026-10-09, value: 800.13, sample: true }
+      - { date: 2026-09-12, value: 238.95, sample: true }
+      - { date: 2026-09-13, value: 300.58, sample: true }
+      - { date: 2026-09-14, value: 292.78, sample: true }
+      - { date: 2026-09-15, value: 219.45, sample: true }
+      - { date: 2026-09-16, value: 266.37, sample: true }
+      - { date: 2026-09-17, value: 194.05, sample: true }
+      - { date: 2026-09-18, value: 278.82, sample: true }
+      - { date: 2026-09-19, value: 250.14, sample: true }
+      - { date: 2026-09-20, value: 246.06, sample: true }
+      - { date: 2026-09-21, value: 241.09, sample: true }
+      - { date: 2026-09-22, value: 228.22, sample: true }
+      - { date: 2026-09-23, value: 224.09, sample: true }
+      - { date: 2026-09-24, value: 194.83, sample: true }
+      - { date: 2026-09-25, value: 232.26, sample: true }
+      - { date: 2026-09-26, value: 333.3, sample: true }
+      - { date: 2026-09-27, value: 301.79, sample: true }
+      - { date: 2026-09-28, value: 190.4, sample: true }
+      - { date: 2026-09-29, value: 303.96, sample: true }
+      - { date: 2026-09-30, value: 199.86, sample: true }
+      - { date: 2026-10-01, value: 264.02, sample: true }
+      - { date: 2026-10-02, value: 217.66, sample: true }
+      - { date: 2026-10-03, value: 188.72, sample: true }
+      - { date: 2026-10-04, value: 188.52, sample: true }
+      - { date: 2026-10-05, value: 335.25, sample: true }
+      - { date: 2026-10-06, value: 240.37, sample: true }
+      - { date: 2026-10-07, value: 221.64, sample: true }
+      - { date: 2026-10-08, value: 198.52, sample: true }
+      - { date: 2026-10-09, value: 204.49, sample: true }
   - name: dollars, design
     unit: USD
     statistic: sum
     role: design
     points:
-      - { date: 2026-09-12, value: 93.84, sample: true }
-      - { date: 2026-09-13, value: 203.94, sample: true }
-      - { date: 2026-09-14, value: 155.07, sample: true }
-      - { date: 2026-09-15, value: 80.22, sample: true }
-      - { date: 2026-09-16, value: 140.89, sample: true }
-      - { date: 2026-09-17, value: 166.66, sample: true }
-      - { date: 2026-09-18, value: 165.58, sample: true }
-      - { date: 2026-09-19, value: 199.66, sample: true }
-      - { date: 2026-09-20, value: 142.52, sample: true }
-      - { date: 2026-09-21, value: 138.06, sample: true }
-      - { date: 2026-09-22, value: 108.07, sample: true }
-      - { date: 2026-09-23, value: 168.17, sample: true }
-      - { date: 2026-09-24, value: 102.86, sample: true }
-      - { date: 2026-09-25, value: 156.26, sample: true }
-      - { date: 2026-09-26, value: 171.38, sample: true }
-      - { date: 2026-09-27, value: 161.28, sample: true }
-      - { date: 2026-09-28, value: 135.29, sample: true }
-      - { date: 2026-09-29, value: 185.13, sample: true }
-      - { date: 2026-09-30, value: 99.85, sample: true }
-      - { date: 2026-10-01, value: 171.18, sample: true }
-      - { date: 2026-10-02, value: 109.96, sample: true }
-      - { date: 2026-10-03, value: 154.23, sample: true }
-      - { date: 2026-10-04, value: 162.69, sample: true }
-      - { date: 2026-10-05, value: 112.03, sample: true }
-      - { date: 2026-10-06, value: 156.73, sample: true }
-      - { date: 2026-10-07, value: 182.73, sample: true }
-      - { date: 2026-10-08, value: 201.04, sample: true }
-      - { date: 2026-10-09, value: 190.12, sample: true }
+      - { date: 2026-09-12, value: 56.24, sample: true }
+      - { date: 2026-09-13, value: 123.26, sample: true }
+      - { date: 2026-09-14, value: 92.76, sample: true }
+      - { date: 2026-09-15, value: 45.47, sample: true }
+      - { date: 2026-09-16, value: 82.32, sample: true }
+      - { date: 2026-09-17, value: 104.4, sample: true }
+      - { date: 2026-09-18, value: 94.78, sample: true }
+      - { date: 2026-09-19, value: 120.54, sample: true }
+      - { date: 2026-09-20, value: 86.13, sample: true }
+      - { date: 2026-09-21, value: 80.5, sample: true }
+      - { date: 2026-09-22, value: 66.33, sample: true }
+      - { date: 2026-09-23, value: 103.71, sample: true }
+      - { date: 2026-09-24, value: 59.92, sample: true }
+      - { date: 2026-09-25, value: 96.98, sample: true }
+      - { date: 2026-09-26, value: 100.59, sample: true }
+      - { date: 2026-09-27, value: 96.28, sample: true }
+      - { date: 2026-09-28, value: 78.67, sample: true }
+      - { date: 2026-09-29, value: 115.29, sample: true }
+      - { date: 2026-09-30, value: 60.9, sample: true }
+      - { date: 2026-10-01, value: 104.32, sample: true }
+      - { date: 2026-10-02, value: 69.61, sample: true }
+      - { date: 2026-10-03, value: 90.49, sample: true }
+      - { date: 2026-10-04, value: 94.68, sample: true }
+      - { date: 2026-10-05, value: 64.89, sample: true }
+      - { date: 2026-10-06, value: 95.8, sample: true }
+      - { date: 2026-10-07, value: 109.73, sample: true }
+      - { date: 2026-10-08, value: 121.97, sample: true }
+      - { date: 2026-10-09, value: 115.67, sample: true }
   - name: dollars, planner
     unit: USD
     statistic: sum
     role: planner
     points:
-      - { date: 2026-09-12, value: 130.14, sample: true }
-      - { date: 2026-09-13, value: 123.95, sample: true }
-      - { date: 2026-09-14, value: 91.27, sample: true }
-      - { date: 2026-09-15, value: 111.99, sample: true }
-      - { date: 2026-09-16, value: 123.86, sample: true }
-      - { date: 2026-09-17, value: 113.93, sample: true }
-      - { date: 2026-09-18, value: 110.45, sample: true }
-      - { date: 2026-09-19, value: 96.44, sample: true }
-      - { date: 2026-09-20, value: 118.83, sample: true }
-      - { date: 2026-09-21, value: 134.05, sample: true }
-      - { date: 2026-09-22, value: 94.36, sample: true }
-      - { date: 2026-09-23, value: 84.92, sample: true }
-      - { date: 2026-09-24, value: 132.82, sample: true }
-      - { date: 2026-09-25, value: 70.34, sample: true }
-      - { date: 2026-09-26, value: 167.1, sample: true }
-      - { date: 2026-09-27, value: 79.67, sample: true }
-      - { date: 2026-09-28, value: 127.87, sample: true }
-      - { date: 2026-09-29, value: 74.76, sample: true }
-      - { date: 2026-09-30, value: 137.38, sample: true }
-      - { date: 2026-10-01, value: 131.31, sample: true }
-      - { date: 2026-10-02, value: 75.98, sample: true }
-      - { date: 2026-10-03, value: 173.23, sample: true }
-      - { date: 2026-10-04, value: 111.28, sample: true }
-      - { date: 2026-10-05, value: 142.42, sample: true }
-      - { date: 2026-10-06, value: 141.85, sample: true }
-      - { date: 2026-10-07, value: 147.91, sample: true }
-      - { date: 2026-10-08, value: 146.29, sample: true }
-      - { date: 2026-10-09, value: 85.54, sample: true }
+      - { date: 2026-09-12, value: 27.47, sample: true }
+      - { date: 2026-09-13, value: 26.54, sample: true }
+      - { date: 2026-09-14, value: 18.93, sample: true }
+      - { date: 2026-09-15, value: 23.31, sample: true }
+      - { date: 2026-09-16, value: 26.63, sample: true }
+      - { date: 2026-09-17, value: 24.2, sample: true }
+      - { date: 2026-09-18, value: 23.44, sample: true }
+      - { date: 2026-09-19, value: 19.95, sample: true }
+      - { date: 2026-09-20, value: 24.55, sample: true }
+      - { date: 2026-09-21, value: 27.4, sample: true }
+      - { date: 2026-09-22, value: 20.45, sample: true }
+      - { date: 2026-09-23, value: 17.67, sample: true }
+      - { date: 2026-09-24, value: 28.11, sample: true }
+      - { date: 2026-09-25, value: 14.39, sample: true }
+      - { date: 2026-09-26, value: 36.41, sample: true }
+      - { date: 2026-09-27, value: 16.81, sample: true }
+      - { date: 2026-09-28, value: 27.12, sample: true }
+      - { date: 2026-09-29, value: 15.25, sample: true }
+      - { date: 2026-09-30, value: 29.04, sample: true }
+      - { date: 2026-10-01, value: 27.88, sample: true }
+      - { date: 2026-10-02, value: 15.94, sample: true }
+      - { date: 2026-10-03, value: 37.36, sample: true }
+      - { date: 2026-10-04, value: 22.56, sample: true }
+      - { date: 2026-10-05, value: 29.75, sample: true }
+      - { date: 2026-10-06, value: 30.01, sample: true }
+      - { date: 2026-10-07, value: 30.97, sample: true }
+      - { date: 2026-10-08, value: 30.78, sample: true }
+      - { date: 2026-10-09, value: 17.8, sample: true }
   - name: dollars, dispatcher
     unit: USD
     statistic: sum
     role: dispatcher
     points:
-      - { date: 2026-09-12, value: 0.94, sample: true }
+      - { date: 2026-09-12, value: 0.93, sample: true }
       - { date: 2026-09-13, value: 1.41, sample: true }
       - { date: 2026-09-14, value: 0.6, sample: true }
-      - { date: 2026-09-15, value: 1.17, sample: true }
+      - { date: 2026-09-15, value: 1.16, sample: true }
       - { date: 2026-09-16, value: 0.69, sample: true }
-      - { date: 2026-09-17, value: 0.55, sample: true }
-      - { date: 2026-09-18, value: 1.14, sample: true }
+      - { date: 2026-09-17, value: 0.54, sample: true }
+      - { date: 2026-09-18, value: 1.13, sample: true }
       - { date: 2026-09-19, value: 1.06, sample: true }
       - { date: 2026-09-20, value: 0.49, sample: true }
       - { date: 2026-09-21, value: 1.14, sample: true }
-      - { date: 2026-09-22, value: 0.96, sample: true }
+      - { date: 2026-09-22, value: 0.95, sample: true }
       - { date: 2026-09-23, value: 0.66, sample: true }
       - { date: 2026-09-24, value: 0.57, sample: true }
-      - { date: 2026-09-25, value: 0.52, sample: true }
+      - { date: 2026-09-25, value: 0.51, sample: true }
       - { date: 2026-09-26, value: 0.59, sample: true }
       - { date: 2026-09-27, value: 1.28, sample: true }
-      - { date: 2026-09-28, value: 0.92, sample: true }
-      - { date: 2026-09-29, value: 0.68, sample: true }
+      - { date: 2026-09-28, value: 0.91, sample: true }
+      - { date: 2026-09-29, value: 0.69, sample: true }
       - { date: 2026-09-30, value: 1.07, sample: true }
       - { date: 2026-10-01, value: 1.33, sample: true }
-      - { date: 2026-10-02, value: 1.16, sample: true }
-      - { date: 2026-10-03, value: 1.03, sample: true }
+      - { date: 2026-10-02, value: 1.15, sample: true }
+      - { date: 2026-10-03, value: 1.05, sample: true }
       - { date: 2026-10-04, value: 1.32, sample: true }
-      - { date: 2026-10-05, value: 0.68, sample: true }
+      - { date: 2026-10-05, value: 0.69, sample: true }
       - { date: 2026-10-06, value: 1.29, sample: true }
       - { date: 2026-10-07, value: 1.26, sample: true }
-      - { date: 2026-10-08, value: 0.95, sample: true }
-      - { date: 2026-10-09, value: 0.45, sample: true }
+      - { date: 2026-10-08, value: 0.96, sample: true }
+      - { date: 2026-10-09, value: 0.46, sample: true }
   - name: dollars, operator
     unit: USD
     statistic: sum
     role: operator
     points:
-      - { date: 2026-09-12, value: 120.04, sample: true }
-      - { date: 2026-09-13, value: 65.64, sample: true }
-      - { date: 2026-09-14, value: 75, sample: true }
-      - { date: 2026-09-15, value: 120.43, sample: true }
-      - { date: 2026-09-16, value: 73.54, sample: true }
-      - { date: 2026-09-17, value: 52.92, sample: true }
-      - { date: 2026-09-18, value: 50.93, sample: true }
-      - { date: 2026-09-19, value: 88.04, sample: true }
-      - { date: 2026-09-20, value: 42.3, sample: true }
-      - { date: 2026-09-21, value: 68.95, sample: true }
-      - { date: 2026-09-22, value: 61.31, sample: true }
-      - { date: 2026-09-23, value: 91.25, sample: true }
-      - { date: 2026-09-24, value: 135.47, sample: true }
-      - { date: 2026-09-25, value: 86.4, sample: true }
-      - { date: 2026-09-26, value: 76.46, sample: true }
-      - { date: 2026-09-27, value: 62.02, sample: true }
-      - { date: 2026-09-28, value: 100.24, sample: true }
-      - { date: 2026-09-29, value: 73.02, sample: true }
-      - { date: 2026-09-30, value: 70.99, sample: true }
-      - { date: 2026-10-01, value: 117.88, sample: true }
-      - { date: 2026-10-02, value: 90.4, sample: true }
-      - { date: 2026-10-03, value: 115.85, sample: true }
-      - { date: 2026-10-04, value: 102.6, sample: true }
-      - { date: 2026-10-05, value: 49.08, sample: true }
-      - { date: 2026-10-06, value: 77.43, sample: true }
-      - { date: 2026-10-07, value: 91.5, sample: true }
-      - { date: 2026-10-08, value: 76.1, sample: true }
-      - { date: 2026-10-09, value: 141.47, sample: true }
+      - { date: 2026-09-12, value: 57.53, sample: true }
+      - { date: 2026-09-13, value: 34.56, sample: true }
+      - { date: 2026-09-14, value: 36.48, sample: true }
+      - { date: 2026-09-15, value: 60.41, sample: true }
+      - { date: 2026-09-16, value: 34.49, sample: true }
+      - { date: 2026-09-17, value: 26.84, sample: true }
+      - { date: 2026-09-18, value: 25.47, sample: true }
+      - { date: 2026-09-19, value: 42.34, sample: true }
+      - { date: 2026-09-20, value: 20.24, sample: true }
+      - { date: 2026-09-21, value: 35.11, sample: true }
+      - { date: 2026-09-22, value: 28.89, sample: true }
+      - { date: 2026-09-23, value: 48.37, sample: true }
+      - { date: 2026-09-24, value: 68.48, sample: true }
+      - { date: 2026-09-25, value: 43.42, sample: true }
+      - { date: 2026-09-26, value: 38.95, sample: true }
+      - { date: 2026-09-27, value: 30.42, sample: true }
+      - { date: 2026-09-28, value: 48.44, sample: true }
+      - { date: 2026-09-29, value: 38.11, sample: true }
+      - { date: 2026-09-30, value: 33.77, sample: true }
+      - { date: 2026-10-01, value: 57.78, sample: true }
+      - { date: 2026-10-02, value: 45.75, sample: true }
+      - { date: 2026-10-03, value: 57.73, sample: true }
+      - { date: 2026-10-04, value: 52.18, sample: true }
+      - { date: 2026-10-05, value: 24.9, sample: true }
+      - { date: 2026-10-06, value: 37.27, sample: true }
+      - { date: 2026-10-07, value: 47.85, sample: true }
+      - { date: 2026-10-08, value: 39.65, sample: true }
+      - { date: 2026-10-09, value: 75.39, sample: true }
   - name: dollars, claude-opus-5-5
     unit: USD
     statistic: sum
     model: claude-opus-5-5
     points:
-      - { date: 2026-09-12, value: 1325.2, sample: true }
-      - { date: 2026-09-13, value: 1618.89, sample: true }
-      - { date: 2026-09-14, value: 1550.36, sample: true }
-      - { date: 2026-09-15, value: 1283.78, sample: true }
-      - { date: 2026-09-16, value: 1509.22, sample: true }
-      - { date: 2026-09-17, value: 1361.96, sample: true }
-      - { date: 2026-09-18, value: 1417.94, sample: true }
-      - { date: 2026-09-19, value: 1579.75, sample: true }
-      - { date: 2026-09-20, value: 1380.1, sample: true }
-      - { date: 2026-09-21, value: 1351.13, sample: true }
-      - { date: 2026-09-22, value: 1322.85, sample: true }
-      - { date: 2026-09-23, value: 1283.4, sample: true }
-      - { date: 2026-09-24, value: 1222.06, sample: true }
-      - { date: 2026-09-25, value: 1310.13, sample: true }
-      - { date: 2026-09-26, value: 1802.18, sample: true }
-      - { date: 2026-09-27, value: 1526.1, sample: true }
-      - { date: 2026-09-28, value: 1168.68, sample: true }
-      - { date: 2026-09-29, value: 1714.68, sample: true }
-      - { date: 2026-09-30, value: 1210.33, sample: true }
-      - { date: 2026-10-01, value: 1559.89, sample: true }
-      - { date: 2026-10-02, value: 1256.28, sample: true }
-      - { date: 2026-10-03, value: 1227.47, sample: true }
-      - { date: 2026-10-04, value: 1221.15, sample: true }
-      - { date: 2026-10-05, value: 1625.72, sample: true }
-      - { date: 2026-10-06, value: 1368.11, sample: true }
-      - { date: 2026-10-07, value: 1392.13, sample: true }
-      - { date: 2026-10-08, value: 1239.25, sample: true }
-      - { date: 2026-10-09, value: 1194.79, sample: true }
+      - { date: 2026-09-12, value: 281.7, sample: true }
+      - { date: 2026-09-13, value: 335.75, sample: true }
+      - { date: 2026-09-14, value: 327.77, sample: true }
+      - { date: 2026-09-15, value: 263.48, sample: true }
+      - { date: 2026-09-16, value: 322.93, sample: true }
+      - { date: 2026-09-17, value: 288.64, sample: true }
+      - { date: 2026-09-18, value: 304.14, sample: true }
+      - { date: 2026-09-19, value: 332.78, sample: true }
+      - { date: 2026-09-20, value: 287.64, sample: true }
+      - { date: 2026-09-21, value: 286.27, sample: true }
+      - { date: 2026-09-22, value: 278.64, sample: true }
+      - { date: 2026-09-23, value: 263.28, sample: true }
+      - { date: 2026-09-24, value: 256.62, sample: true }
+      - { date: 2026-09-25, value: 276.38, sample: true }
+      - { date: 2026-09-26, value: 383.71, sample: true }
+      - { date: 2026-09-27, value: 325.81, sample: true }
+      - { date: 2026-09-28, value: 246.14, sample: true }
+      - { date: 2026-09-29, value: 363.98, sample: true }
+      - { date: 2026-09-30, value: 253.58, sample: true }
+      - { date: 2026-10-01, value: 329.89, sample: true }
+      - { date: 2026-10-02, value: 268.07, sample: true }
+      - { date: 2026-10-03, value: 261.63, sample: true }
+      - { date: 2026-10-04, value: 259.58, sample: true }
+      - { date: 2026-10-05, value: 346.95, sample: true }
+      - { date: 2026-10-06, value: 286.24, sample: true }
+      - { date: 2026-10-07, value: 288.32, sample: true }
+      - { date: 2026-10-08, value: 260.67, sample: true }
+      - { date: 2026-10-09, value: 256.31, sample: true }
   - name: dollars, claude-sonnet-5-5
     unit: USD
     statistic: sum
     model: claude-sonnet-5-5
     points:
-      - { date: 2026-09-12, value: 156.35, sample: true }
-      - { date: 2026-09-13, value: 208.35, sample: true }
-      - { date: 2026-09-14, value: 206.08, sample: true }
-      - { date: 2026-09-15, value: 148.77, sample: true }
-      - { date: 2026-09-16, value: 170.53, sample: true }
-      - { date: 2026-09-17, value: 150.27, sample: true }
-      - { date: 2026-09-18, value: 183.65, sample: true }
-      - { date: 2026-09-19, value: 187.64, sample: true }
-      - { date: 2026-09-20, value: 178.72, sample: true }
-      - { date: 2026-09-21, value: 167.76, sample: true }
-      - { date: 2026-09-22, value: 164.87, sample: true }
-      - { date: 2026-09-23, value: 148.01, sample: true }
-      - { date: 2026-09-24, value: 139.54, sample: true }
-      - { date: 2026-09-25, value: 171.74, sample: true }
-      - { date: 2026-09-26, value: 210.25, sample: true }
-      - { date: 2026-09-27, value: 188.41, sample: true }
-      - { date: 2026-09-28, value: 148.82, sample: true }
-      - { date: 2026-09-29, value: 212.19, sample: true }
-      - { date: 2026-09-30, value: 134.74, sample: true }
-      - { date: 2026-10-01, value: 186.89, sample: true }
-      - { date: 2026-10-02, value: 159.5, sample: true }
-      - { date: 2026-10-03, value: 148.55, sample: true }
-      - { date: 2026-10-04, value: 140.43, sample: true }
-      - { date: 2026-10-05, value: 218.86, sample: true }
-      - { date: 2026-10-06, value: 164.58, sample: true }
-      - { date: 2026-10-07, value: 161.91, sample: true }
-      - { date: 2026-10-08, value: 138.36, sample: true }
-      - { date: 2026-10-09, value: 147.93, sample: true }
+      - { date: 2026-09-12, value: 83.27, sample: true }
+      - { date: 2026-09-13, value: 108.11, sample: true }
+      - { date: 2026-09-14, value: 109.54, sample: true }
+      - { date: 2026-09-15, value: 76.21, sample: true }
+      - { date: 2026-09-16, value: 91.4, sample: true }
+      - { date: 2026-09-17, value: 79.36, sample: true }
+      - { date: 2026-09-18, value: 99.22, sample: true }
+      - { date: 2026-09-19, value: 98.83, sample: true }
+      - { date: 2026-09-20, value: 92.99, sample: true }
+      - { date: 2026-09-21, value: 89.26, sample: true }
+      - { date: 2026-09-22, value: 87.02, sample: true }
+      - { date: 2026-09-23, value: 75.04, sample: true }
+      - { date: 2026-09-24, value: 73.83, sample: true }
+      - { date: 2026-09-25, value: 90.99, sample: true }
+      - { date: 2026-09-26, value: 111.98, sample: true }
+      - { date: 2026-09-27, value: 100.41, sample: true }
+      - { date: 2026-09-28, value: 78.69, sample: true }
+      - { date: 2026-09-29, value: 112.18, sample: true }
+      - { date: 2026-09-30, value: 70.12, sample: true }
+      - { date: 2026-10-01, value: 99.19, sample: true }
+      - { date: 2026-10-02, value: 84.47, sample: true }
+      - { date: 2026-10-03, value: 79.63, sample: true }
+      - { date: 2026-10-04, value: 74.66, sample: true }
+      - { date: 2026-10-05, value: 117.51, sample: true }
+      - { date: 2026-10-06, value: 85.54, sample: true }
+      - { date: 2026-10-07, value: 83.73, sample: true }
+      - { date: 2026-10-08, value: 72.33, sample: true }
+      - { date: 2026-10-09, value: 79.56, sample: true }
   - name: dollars, claude-haiku-4-5
     unit: USD
     statistic: sum
@@ -891,60 +891,60 @@ series:
       - { date: 2026-09-13, value: 7.67, sample: true }
       - { date: 2026-09-14, value: 7.09, sample: true }
       - { date: 2026-09-15, value: 4.32, sample: true }
-      - { date: 2026-09-16, value: 3.61, sample: true }
-      - { date: 2026-09-17, value: 3.85, sample: true }
-      - { date: 2026-09-18, value: 6.62, sample: true }
-      - { date: 2026-09-19, value: 6.02, sample: true }
-      - { date: 2026-09-20, value: 6.1, sample: true }
+      - { date: 2026-09-16, value: 3.62, sample: true }
+      - { date: 2026-09-17, value: 3.84, sample: true }
+      - { date: 2026-09-18, value: 6.61, sample: true }
+      - { date: 2026-09-19, value: 6.03, sample: true }
+      - { date: 2026-09-20, value: 6.11, sample: true }
       - { date: 2026-09-21, value: 6.23, sample: true }
       - { date: 2026-09-22, value: 5.33, sample: true }
       - { date: 2026-09-23, value: 3.68, sample: true }
-      - { date: 2026-09-24, value: 4.56, sample: true }
+      - { date: 2026-09-24, value: 4.57, sample: true }
       - { date: 2026-09-25, value: 6.3, sample: true }
       - { date: 2026-09-26, value: 4.68, sample: true }
       - { date: 2026-09-27, value: 5.15, sample: true }
-      - { date: 2026-09-28, value: 6.85, sample: true }
-      - { date: 2026-09-29, value: 5.78, sample: true }
+      - { date: 2026-09-28, value: 6.86, sample: true }
+      - { date: 2026-09-29, value: 5.79, sample: true }
       - { date: 2026-09-30, value: 3.74, sample: true }
       - { date: 2026-10-01, value: 6.71, sample: true }
-      - { date: 2026-10-02, value: 6.01, sample: true }
-      - { date: 2026-10-03, value: 7.16, sample: true }
+      - { date: 2026-10-02, value: 5.99, sample: true }
+      - { date: 2026-10-03, value: 7.18, sample: true }
       - { date: 2026-10-04, value: 5.59, sample: true }
-      - { date: 2026-10-05, value: 7.19, sample: true }
-      - { date: 2026-10-06, value: 5.92, sample: true }
+      - { date: 2026-10-05, value: 7.2, sample: true }
+      - { date: 2026-10-06, value: 5.93, sample: true }
       - { date: 2026-10-07, value: 5.97, sample: true }
-      - { date: 2026-10-08, value: 4.86, sample: true }
-      - { date: 2026-10-09, value: 6.05, sample: true }
+      - { date: 2026-10-08, value: 4.87, sample: true }
+      - { date: 2026-10-09, value: 6.07, sample: true }
   - name: dollars, claude-fable-5-1
     unit: USD
     statistic: sum
     model: claude-fable-5-1
     points:
-      - { date: 2026-09-12, value: 61.29, sample: true }
-      - { date: 2026-09-13, value: 84.39, sample: true }
-      - { date: 2026-09-14, value: 70.44, sample: true }
-      - { date: 2026-09-15, value: 56.85, sample: true }
-      - { date: 2026-09-16, value: 65.35, sample: true }
-      - { date: 2026-09-17, value: 68.78, sample: true }
-      - { date: 2026-09-18, value: 67.92, sample: true }
-      - { date: 2026-09-19, value: 88.56, sample: true }
-      - { date: 2026-09-20, value: 58.08, sample: true }
-      - { date: 2026-09-21, value: 63.26, sample: true }
-      - { date: 2026-09-22, value: 51.35, sample: true }
-      - { date: 2026-09-23, value: 78.87, sample: true }
-      - { date: 2026-09-24, value: 68.15, sample: true }
-      - { date: 2026-09-25, value: 73.69, sample: true }
-      - { date: 2026-09-26, value: 76.24, sample: true }
-      - { date: 2026-09-27, value: 69.26, sample: true }
-      - { date: 2026-09-28, value: 70.16, sample: true }
-      - { date: 2026-09-29, value: 79.97, sample: true }
-      - { date: 2026-09-30, value: 51.03, sample: true }
-      - { date: 2026-10-01, value: 86.53, sample: true }
-      - { date: 2026-10-02, value: 59.25, sample: true }
-      - { date: 2026-10-03, value: 80.37, sample: true }
-      - { date: 2026-10-04, value: 79.88, sample: true }
-      - { date: 2026-10-05, value: 49.61, sample: true }
-      - { date: 2026-10-06, value: 71.6, sample: true }
-      - { date: 2026-10-07, value: 83.78, sample: true }
-      - { date: 2026-10-08, value: 86.04, sample: true }
-      - { date: 2026-10-09, value: 98.74, sample: true }
+      - { date: 2026-09-12, value: 82.13, sample: true }
+      - { date: 2026-09-13, value: 118.22, sample: true }
+      - { date: 2026-09-14, value: 95.82, sample: true }
+      - { date: 2026-09-15, value: 75.93, sample: true }
+      - { date: 2026-09-16, value: 86.16, sample: true }
+      - { date: 2026-09-17, value: 98.65, sample: true }
+      - { date: 2026-09-18, value: 89.57, sample: true }
+      - { date: 2026-09-19, value: 121.09, sample: true }
+      - { date: 2026-09-20, value: 79.7, sample: true }
+      - { date: 2026-09-21, value: 85.49, sample: true }
+      - { date: 2026-09-22, value: 70.46, sample: true }
+      - { date: 2026-09-23, value: 112.97, sample: true }
+      - { date: 2026-09-24, value: 92.65, sample: true }
+      - { date: 2026-09-25, value: 104.21, sample: true }
+      - { date: 2026-09-26, value: 103.52, sample: true }
+      - { date: 2026-09-27, value: 94.39, sample: true }
+      - { date: 2026-09-28, value: 92.96, sample: true }
+      - { date: 2026-09-29, value: 114.82, sample: true }
+      - { date: 2026-09-30, value: 69.61, sample: true }
+      - { date: 2026-10-01, value: 119.37, sample: true }
+      - { date: 2026-10-02, value: 84.93, sample: true }
+      - { date: 2026-10-03, value: 108.56, sample: true }
+      - { date: 2026-10-04, value: 108.01, sample: true }
+      - { date: 2026-10-05, value: 66.53, sample: true }
+      - { date: 2026-10-06, value: 98.8, sample: true }
+      - { date: 2026-10-07, value: 116.93, sample: true }
+      - { date: 2026-10-08, value: 120.74, sample: true }
+      - { date: 2026-10-09, value: 140.72, sample: true }

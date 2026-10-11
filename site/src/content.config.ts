@@ -145,22 +145,39 @@ const measurements = defineCollection({
             ctx.addIssue({ code: "custom", message: `"${s.name}" is the peak of "${s.peakOf}", which is not a series` });
           }
         }
+        // A counted total is the sum of each of its splits on every day; a
+        // median's split need not be.
+        for (const t of all.filter((s) => s.statistic === "sum" && !s.role && !s.model && !s.kind)) {
+          for (const by of ["role", "model", "kind"] as const) {
+            const parts = all.filter((s) => s[by] && s.name === `${t.name}, ${s[by]}`);
+            if (!parts.length) continue;
+            t.points.forEach((p, i) => {
+              const sum = parts.reduce((a, s) => a + (s.points[i]?.value ?? 0), 0);
+              if (Math.abs(sum - p.value) > 0.005) {
+                ctx.addIssue({ code: "custom", message: `"${t.name}" by ${by} sums to ${sum}, not ${p.value}, on day ${i + 1}` });
+              }
+            });
+          }
+        }
       }),
   }),
 });
 
 // List prices in dollars per million tokens, each from a date: a point's
-// dollars use the rates in force on its date. A rate not yet taken from the
-// published price list is a sample, and the page says so.
+// dollars use the rates in force on its date. A cache write is priced by its
+// lifetime; a transcript that does not split its writes by lifetime is priced
+// at the 5-minute rate. A rate not yet read from the price list is a sample.
 const rates = defineCollection({
   loader: file("./src/content/rates/rates.yaml"),
   schema: z.object({
     model: z.string(),
     from: z.coerce.date(),
     input: z.number().nonnegative(),
-    output: z.number().nonnegative(),
-    cacheWritten: z.number().nonnegative(),
+    cacheWrite5m: z.number().nonnegative(),
+    cacheWrite1h: z.number().nonnegative(),
     cacheRead: z.number().nonnegative(),
+    output: z.number().nonnegative(),
+    source: z.url(),
     sample: z.boolean().default(false),
   }),
 });

@@ -256,7 +256,7 @@ const inline = (s: string) =>
               <summary>The rates: list price, dollars per million tokens</summary>
               {rates.some((x) => x.data.sample) && (
                 <p class="aside-note">
-                  <span class="sample-chip">sample</span> These rates are placeholders until the table is filled from the published
+                  <span class="sample-chip">sample</span> Some rates are placeholders until the table is filled from the published
                   price list.
                 </p>
               )}
@@ -267,9 +267,10 @@ const inline = (s: string) =>
                       <th>Model</th>
                       <th>From</th>
                       <th>Input</th>
-                      <th>Output</th>
-                      <th>Cache written</th>
+                      <th>Cache write, 5 min</th>
+                      <th>Cache write, 1 h</th>
                       <th>Cache read</th>
+                      <th>Output</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -278,14 +279,27 @@ const inline = (s: string) =>
                         <td>{x.data.model}</td>
                         <td>{iso(x.data.from)}</td>
                         <td>{x.data.input}</td>
-                        <td>{x.data.output}</td>
-                        <td>{x.data.cacheWritten}</td>
+                        <td>{x.data.cacheWrite5m}</td>
+                        <td>{x.data.cacheWrite1h}</td>
                         <td>{x.data.cacheRead}</td>
+                        <td>{x.data.output}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <p class="aside-note">
+                {[...new Set(rates.map((x) => x.data.source))].map((src) => (
+                  <span>
+                    From <a href={src}>the published price list</a>, which gives no effective date: each entry carries the day it
+                    was read.
+                  </span>
+                ))}
+              </p>
+              <p class="aside-note">
+                A cache write is priced by its lifetime. A transcript that does not split its cache writes by lifetime is priced at
+                the 5-minute rate; every sample point is priced that way.
+              </p>
             </details>
           </>
         )
