@@ -1,5 +1,5 @@
 ---
-order: 6
+order: 7
 title: "Never prove twice"
 summary: "The task runner's cache, keyed by what each task reads and shared across every worktree, agent and CI run, means a check that passed on these inputs is not run again."
 status: draft

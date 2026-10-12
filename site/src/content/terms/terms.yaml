@@ -63,3 +63,19 @@
   term: confined executor
   definition: The runner that could read nothing beyond a check's declared inputs, and the only writer of the remote cache.
   principle: never-prove-twice
+- id: capture
+  term: capture
+  definition: One source event as recorded, such as a meeting or a day of a chat channel, holding its provenance and a pointer to the raw material.
+  principle: capture-at-the-source
+- id: signal
+  term: signal
+  definition: One piece of input read from a capture, such as a constraint, an ask or a question; never work on its own.
+  principle: capture-at-the-source
+- id: adapter
+  term: adapter
+  definition: What enumerates a source's events and writes one capture per event, unattended.
+  principle: capture-at-the-source
+- id: curation
+  term: curation
+  definition: The judgment that moves each signal onto an intent, a claim, a chore, or off with a reason.
+  principle: capture-at-the-source

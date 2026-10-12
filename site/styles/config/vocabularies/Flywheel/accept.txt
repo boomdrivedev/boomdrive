@@ -1,7 +1,10 @@
+[Aa]dapter
 [Bb]olt
 [Cc]andidate
+[Cc]apture
 [Cc]onfined executor
 [Cc]ulprit
+[Cc]uration
 [Ff]leet
 [Gg]ate
 [Ii]ntent
@@ -10,6 +13,7 @@
 [Rr]emote cache
 [Ss]ecret
 [Ss]hell
+[Ss]ignal
 [Ss]ubmission
 [Uu]nit
 [Ww]orktree

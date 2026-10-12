@@ -1,5 +1,5 @@
 ---
-order: 7
+order: 8
 title: "Secrets by declaration"
 summary: "A repository declares the secrets it needs, and an agent gets them only through the shell, resolved from a password manager for the task at hand, never pasted, stored or printed."
 status: draft
