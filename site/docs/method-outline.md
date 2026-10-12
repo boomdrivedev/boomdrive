@@ -4,7 +4,7 @@ Each principle is sketched the way its page reads: its line (the one-line
 form Home and the statement list it by), the claim, what it rules out, how we
 do it today, where it is going, and what measures it. The
 merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md). Version 0.1
-has nine principles, read on one page.
+has ten principles, read on one page.
 
 ## 0. The statement
 
@@ -62,6 +62,8 @@ it, so nothing it does can disturb another.
 - **Measure:** collisions per week; time to a working fresh worktree.
 
 ## 3. Capture at the source
+
+**Line:** Work begins as captures, taken unattended where things happen.
 
 **Claim:** Work begins as captures taken where things happen, a meeting, a
 chat, a log, a pull request, by adapters that run unattended, so development
