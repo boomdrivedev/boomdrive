@@ -48,7 +48,7 @@ About, and the first page of the Fleet.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
-| Home | Leads with scaling the fleet from one agent toward a thousand; the hero is a timed sequence of six benefit scenes, the flywheel first; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
+| Home | Leads with scaling the fleet from one agent toward a thousand; the hero is a timed sequence of seven benefit scenes, the flywheel first; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
 | The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
 | The Fleet | A front page that frames the fleet (flywheels, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
@@ -72,22 +72,29 @@ About, and the first page of the Fleet.
      where you were; every idea, decision and piece of work has a place,
      across every repository you work in. The filing system for the way
      you work. The first picture is the flywheel itself.
-  2. *You run the fleet, not the keyboard.* Decisions come to you
+  2. *No tickets to write.* A meeting, a chat, a log or a pull request is
+     captured where it happens, unattended, and its decisions wait beside
+     the work they bear on. Four sources feed adapters, captures pile up
+     and are kept, and a session reads them into signals that land on
+     intents.
+  3. *You run the fleet, not the keyboard.* Decisions come to you
      numbered, one word starts a batch, agents do the work: managing a team
      instead of one single-threaded session.
-  3. *Every day the same, for developers and agents.* The same check, the
+  4. *Every day the same, for developers and agents.* The same check, the
      same gate, the same answer, in a worktree, on a laptop, in CI, in a
      release. This is the Method's promise, a scene and never the headline.
-  4. *Proof you can trust.* Work is verified before you see it, and never
+  5. *Proof you can trust.* Work is verified before you see it, and never
      proved twice.
-  5. *Output scales with input.* The better you manage what goes in, the
+  6. *Output scales with input.* The better you manage what goes in, the
      more comes out; the Method is what makes five agents work like fifty.
      Its picture is the journey climbing.
-  6. *Built for teams that ship.* For teams that keep a product line
+  7. *Built for teams that ship.* For teams that keep a product line
      stable and mean to reach continuous delivery: agentic coding with the
      continuous-delivery mindset. The closing scene says who this is for.
   "You can see it", the fleet measured and everything on the record, is
   not a scene: it is the Fleet's call to action and its teaser.
+  A scene says what the Method buys, in the present tense; where a benefit
+  is not yet built, the principle's place on the Method says so.
 - **The flywheel figure** is the animated four-ring flywheel from
   agentplot/flywheel's site (`site/index.html`: the operator's review on
   the outside, then intent, then bolts, construction at the core, each
