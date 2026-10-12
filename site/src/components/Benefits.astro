@@ -1,11 +1,11 @@
 ---
 import Flywheel from "./Flywheel.astro";
 
-// What the Method buys, as one stage playing six scenes on a timer, each a
+// What the Method buys, as one stage playing seven scenes on a timer, each a
 // short line, one sentence and a picture, with a rail of their names beside
 // it that lights as it plays: a click jumps, hover or focus pauses, and a
 // button stops it. Reduced motion makes the rail tabs and each picture a
-// still; with scripts off the six stack as a list. The words carry the
+// still; with scripts off the seven stack as a list. The words carry the
 // meaning, so a picture can be decoration (docs/site-design.md, How Home and
 // the Method read).
 
@@ -20,6 +20,15 @@ const items = [
       "Close the laptop, come back, and you are where you left off: every idea, decision and piece of work has a place, across every repository you work in.",
     scene: "flywheel",
     dwell: 8,
+  },
+  {
+    id: "no-tickets-to-write",
+    name: "No tickets to write",
+    line: "Captured where it is said",
+    sentence:
+      "A meeting, a chat, a log or a pull request is captured where it happens, unattended, and its decisions wait beside the work they bear on.",
+    scene: "capture",
+    dwell: 9.4,
   },
   {
     id: "run-the-fleet",
@@ -238,7 +247,7 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
 <style>
   .benefits { margin: 40px 0 0; }
 
-  /* Scripts off: the six as a list, the flywheel with the first. */
+  /* Scripts off: the seven as a list, the flywheel with the first. */
   .scenes { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
   .scene { display: grid; gap: 12px 32px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
   .benefits:not([data-ready]) .pic.drawn { display: none; }

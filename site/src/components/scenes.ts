@@ -91,7 +91,70 @@ function bot(g: Ctx, x: number, y: number, p: Palette, alpha = 1) {
   g.restore();
 }
 
-// 2. You run the fleet, not the keyboard: decisions pile up numbered, one
+// 2. No tickets to write: sources speak, an adapter captures each event
+// unattended, and a session reads the captures into signals that move to the
+// intents they bear on.
+const capture: Scene = {
+  period: 10,
+  still: 9,
+  draw(g, p, t) {
+    const out = 1 - seg(t, 9.4, 10);
+    const lanes = [100, 170, 240, 310];
+    const gate = 196, pile = 282, base = 330;
+    label(g, "SOURCES", 40, 52, p.ink3);
+    label(g, "ADAPTERS", gate, 52, p.ink3, "center");
+    label(g, "CAPTURES", pile + 26, 52, p.ink3, "center");
+    label(g, "INTENTS", 600, 52, p.ink3, "right");
+    // Each event is captured where it happened and kept; an adapter lights
+    // as its capture passes.
+    const from = [0, 1, 2, 3, 1, 0], hot = [0, 0, 0, 0];
+    const cards = from.map((j, k) => {
+      const s = 0.3 + k * 0.6;
+      const a = ease(seg(t, s, s + 1)), b = ease(seg(t, s + 1, s + 1.7));
+      hot[j] = Math.max(hot[j], Math.sin(Math.PI * seg(t, s + 0.3, s + 0.9)));
+      return [lerp(lerp(136, gate + 26, a), pile, b), lerp(lanes[j] - 10, base - k * 24, b), seg(t, s, s + 0.3) * out];
+    });
+    ["meeting", "chat", "log", "pull request"].forEach((name, j) => {
+      const y = lanes[j];
+      label(g, name, 40, y + 4, p.ink3);
+      line(g, [[150, y], [gate + 34, y]], p.line, 1, [3, 5]);
+      g.save();
+      g.strokeStyle = p.brass;
+      g.fillStyle = p.brass;
+      g.globalAlpha = 0.18 * hot[j];
+      g.fillRect(gate - 16, y - 16, 32, 32);
+      g.globalAlpha = 0.55 + 0.45 * hot[j];
+      g.lineWidth = 1.5;
+      g.strokeRect(gate - 16, y - 16, 32, 32);
+      g.restore();
+    });
+    const intents = [92, 182, 272];
+    for (const y of intents) {
+      g.save();
+      g.strokeStyle = p.brass;
+      g.globalAlpha = 0.8;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.roundRect(462, y, 150, 56, 6);
+      g.stroke();
+      g.restore();
+    }
+    for (const [x, y, alpha] of cards) block(g, x, y, 52, 20, p.bone, alpha);
+    // A session reads them into signals, and every signal moves.
+    const top = base - 5 * 24;
+    bot(g, pile + 26, top - 26, p, seg(t, 4.6, 5) * out);
+    const to = [0, 1, 2, 0, 2, 1, 0], slot = [0, 0, 0];
+    to.forEach((n, i) => {
+      const s = 5.2 + i * 0.45, m = ease(seg(t, s, s + 0.8));
+      const k = slot[n]++;
+      if (m <= 0) return;
+      const x = lerp(pile + 40, 476 + k * 26, m), y = lerp(top - 30, intents[n] + 30, m) - Math.sin(m * Math.PI) * 30;
+      block(g, x, y, 18, 12, p.mint, out);
+    });
+  },
+};
+
+// 3. You run the fleet, not the keyboard: decisions pile up numbered, one
 // word starts the batch, and the agents work it through.
 const fleet: Scene = {
   period: 9,
@@ -155,7 +218,7 @@ const fleet: Scene = {
   },
 };
 
-// 3. Every day the same: four places, the same check at the same gate, the
+// 4. Every day the same: four places, the same check at the same gate, the
 // same answer.
 const same: Scene = {
   period: 7,
@@ -183,7 +246,7 @@ const same: Scene = {
   },
 };
 
-// 4. Proof you can trust: work is checked before it reaches you; a failure
+// 5. Proof you can trust: work is checked before it reaches you; a failure
 // goes back; work already proved passes without being run again.
 const proof: Scene = {
   period: 10,
@@ -238,7 +301,7 @@ const proof: Scene = {
   },
 };
 
-// 5. Output scales with input: the journey climbing, one agent toward a
+// 6. Output scales with input: the journey climbing, one agent toward a
 // thousand on a log scale, the field filling as it goes.
 const climb: Scene = {
   period: 10,
@@ -277,7 +340,7 @@ const climb: Scene = {
   },
 };
 
-// 6. Built for teams that ship: work merges onto main in a steady stream and
+// 7. Built for teams that ship: work merges onto main in a steady stream and
 // leaves as releases, one after another.
 const ship: Scene = {
   period: 9,
@@ -317,4 +380,4 @@ const ship: Scene = {
   },
 };
 
-export const scenes: Record<string, Scene> = { fleet, same, proof, climb, ship };
+export const scenes: Record<string, Scene> = { capture, fleet, same, proof, climb, ship };
