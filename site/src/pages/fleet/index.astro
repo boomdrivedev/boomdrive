@@ -18,6 +18,7 @@ const record = (id: string) => {
 };
 const fu = record("fleet-utilization"), wf = record("work-in-flight"), ld = record("landed");
 const contexts = (await getCollection("contexts")).sort((a, b) => a.data.from.valueOf() - b.data.from.valueOf());
+if (!contexts.length) throw new Error("the Fleet's front page needs a fleet context in src/content/contexts/contexts.yaml");
 const context = contexts.at(-1)!.data;
 
 // One time axis: every day any of the three has a point. A series without a
