@@ -116,7 +116,8 @@ the median unless it says otherwise, and a series that is the day's peak of
 another names it with `peakOf`, so the page draws the pair as one band and
 one tile. Only a quantity whose definition needs a peak carries one: the
 agent counts do, because the journey on Home reads the peak of agents
-running; the host's load does not.
+running; the host's load does not. A series split from a total is named
+after it, `<total>, <part>`, and says what it is split by.
 
 ```yaml
 # content/measurements/fleet-utilization.yaml
@@ -155,11 +156,14 @@ principle: intents-and-bolts
 collector: collectors/work-in-flight
 series:
   - { name: bolts open, unit: bolts, statistic: median, points: [] }
-  - { name: units in construct, unit: units, statistic: median, stage: construct, points: [] }
-  - { name: units awaiting approval, unit: units, statistic: median, stage: awaiting approval, points: [] }
-  - { name: units in code, unit: units, statistic: median, stage: code, points: [] }
-  - { name: units in verify, unit: units, statistic: median, stage: verify, points: [] }
-  - { name: units in merge, unit: units, statistic: median, stage: merge, points: [] }
+  - { name: "bolts open, madswan", unit: bolts, statistic: median, flywheel: madswan, points: [] }
+  - { name: units in flight, unit: units, statistic: median, points: [] }
+  - { name: "units in flight, construct", unit: units, statistic: median, stage: construct, points: [] }
+  - { name: "units in flight, awaiting approval", unit: units, statistic: median, stage: awaiting approval, points: [] }
+  - { name: "units in flight, code", unit: units, statistic: median, stage: code, points: [] }
+  - { name: "units in flight, verify", unit: units, statistic: median, stage: verify, points: [] }
+  - { name: "units in flight, merge", unit: units, statistic: median, stage: merge, points: [] }
+  - { name: "units in flight, madswan", unit: units, statistic: median, flywheel: madswan, points: [] }
   - { name: repositories with work, unit: repositories, statistic: median, points: [] }
 ```
 
@@ -175,7 +179,9 @@ principle: intents-and-bolts
 collector: collectors/landed
 series:
   - { name: units merged, unit: units, statistic: count, points: [] }
+  - { name: "units merged, madswan", unit: units, statistic: count, flywheel: madswan, points: [] }
   - { name: bolts landed, unit: bolts, statistic: count, points: [] }
+  - { name: "bolts landed, madswan", unit: bolts, statistic: count, flywheel: madswan, points: [] }
 ```
 
 A series split by flywheel repeats with `flywheel: <name>` beside the
