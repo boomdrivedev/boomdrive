@@ -1,0 +1,260 @@
+---
+import { short } from "./utilization";
+import type { Group } from "./measures";
+
+// The fleet's day: utilization, work in flight and landed on one time axis,
+// top to bottom, each beside its headline tile, which links to the
+// measurement's page. Weeks rule all three alike, and a day a new fleet
+// context begins is marked on each. A phone reads the last two weeks at a
+// size it can read, rather than the whole span shrunk.
+
+interface Tile {
+  name: string;
+  href: string;
+  big: string;
+  unit: string;
+  sub: string;
+  sample: boolean;
+}
+interface Props {
+  dates: string[];
+  sampled: boolean[];
+  running: number[];
+  busy: number[];
+  stages: Group[];
+  bolts: number[];
+  merged: number[];
+  landed: number[];
+  marks: string[];
+  tiles: Tile[];
+}
+const { dates, sampled, running, busy, stages, bolts, merged, landed, marks, tiles } = Astro.props;
+const n = dates.length;
+const sum = (vs: number[]) => vs.reduce((a, b) => a + b, 0);
+const inFlight = dates.map((_, i) => sum(stages.map((g) => g.values[i])));
+
+// A count's scale: whole steps of 1, 2 or 5 times a power of ten.
+const nice = (top: number) => {
+  const raw = Math.max(top, 1) / 3;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const f = raw / mag;
+  const step = Math.max(1, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag);
+  const max = Math.ceil(Math.max(top, 1) / step) * step;
+  return { max, ticks: Array.from({ length: Math.round(max / step) + 1 }, (_, i) => i * step) };
+};
+
+const L = 34, R = 6, top = 10;
+const views = [
+  { cls: "wide", W: 760, first: 0 },
+  { cls: "narrow", W: 380, first: Math.max(0, n - 14) },
+].map((v) => {
+  const band = (v.W - L - R) / (n - v.first);
+  const days = Array.from({ length: n - v.first }, (_, k) => v.first + k);
+  return { ...v, band, days, cx: (i: number) => L + band * (i - v.first + 0.5) };
+});
+
+const rows = [
+  { id: "utilization", h: 132, scale: nice(Math.max(...running)), axis: false },
+  { id: "flight", h: 132, scale: nice(Math.max(...inFlight, ...bolts)), axis: false },
+  { id: "landed", h: 132, scale: nice(Math.max(...merged, ...landed)), axis: true },
+].map((r) => {
+  const bottom = r.h - 8;
+  return { ...r, H: r.h + (r.axis ? 20 : 0), bottom, y: (v: number) => bottom - (v / r.scale.max) * (bottom - top) };
+});
+const week = (i: number) => (n - 1 - i) % 7 === 0;
+const marked = (i: number) => i > 0 && marks.includes(dates[i]);
+const tag = (i: number) => `${dates[i]}${sampled[i] ? " (sample)" : ""}`;
+const stageClass = ["s-construct", "s-approval", "s-code", "s-verify", "s-merge"];
+const alt = [
+  `Fleet utilization each day: agents running, with the busy ones filled inside; ${running[n - 1]} running and ${busy[n - 1]} busy on ${dates[n - 1]}.`,
+  `Work in flight each day: units by stage stacked, with bolts open as a line; ${inFlight[n - 1]} units in ${bolts[n - 1]} bolts on ${dates[n - 1]}.`,
+  `Landed each day: units merged into their bolt and bolts landed on main; ${sum(merged.slice(-7))} units and ${sum(landed.slice(-7))} bolts over the last 7 days.`,
+];
+---
+
+<section class="fleetday" aria-label="The fleet's day">
+  {
+    rows.map((r, k) => (
+      <div class:list={["row", `row-${r.id}`]}>
+        <a class="tile" href={tiles[k].href}>
+          <span class="k">{tiles[k].name}</span>
+          <span class="big">{tiles[k].big}</span>
+          <span class="u">{tiles[k].unit}</span>
+          <span class="sub">{tiles[k].sub}</span>
+          {tiles[k].sample && <span class="sample-chip">sample</span>}
+        </a>
+        <div class="plot">
+          {views.map((v) => (
+            <svg class={v.cls} viewBox={`0 0 ${v.W} ${r.H}`} role="img" aria-label={alt[k]}>
+              {r.scale.ticks.map((t) => (
+                <g class="grid">
+                  <line x1={L} x2={v.W - R} y1={r.y(t)} y2={r.y(t)} />
+                  <text x={L - 7} y={r.y(t) + 4} text-anchor="end">
+                    {t}
+                  </text>
+                </g>
+              ))}
+              {v.days.filter(week).map((i) => (
+                <line class="wk" x1={v.cx(i)} x2={v.cx(i)} y1={top - 6} y2={r.bottom} />
+              ))}
+              {v.days.filter(marked).map((i) => (
+                <line class="mark" x1={v.cx(i) - v.band / 2} x2={v.cx(i) - v.band / 2} y1={top - 8} y2={r.bottom + 4} />
+              ))}
+
+              {r.id === "utilization" &&
+                v.days.map((i) => {
+                  const w = Math.min(16, v.band * 0.62), x = v.cx(i) - w / 2;
+                  return (
+                    <g class="day">
+                      <rect class="idle" x={x + 0.75} y={r.y(running[i]) + 0.75} width={w - 1.5} height={Math.max(0, r.y(busy[i]) - r.y(running[i]) - 1.5)} rx="2" />
+                      <rect class="busy" x={x} y={r.y(busy[i])} width={w} height={r.bottom - r.y(busy[i])} rx="2" />
+                      <rect class="hit" x={v.cx(i) - v.band / 2} y={top} width={v.band} height={r.bottom - top}>
+                        <title>{`${tag(i)} · ${running[i]} agents running, ${busy[i]} busy`}</title>
+                      </rect>
+                    </g>
+                  );
+                })}
+
+              {r.id === "flight" && (
+                <>
+                  {v.days.map((i) => {
+                    const w = Math.min(16, v.band * 0.62);
+                    let acc = 0;
+                    return (
+                      <g class="day">
+                        {stages.map((g, s) => {
+                          const y0 = r.y(acc), y1 = r.y((acc += g.values[i]));
+                          return <rect class={stageClass[s]} x={v.cx(i) - w / 2} y={y1} width={w} height={Math.max(0, y0 - y1)} />;
+                        })}
+                        <rect class="hit" x={v.cx(i) - v.band / 2} y={top} width={v.band} height={r.bottom - top}>
+                          <title>
+                            {`${tag(i)} · ${inFlight[i]} units in flight (${stages.map((g) => `${g.name} ${g.values[i]}`).join(", ")}), ${bolts[i]} bolts open`}
+                          </title>
+                        </rect>
+                      </g>
+                    );
+                  })}
+                  <polyline class="bolts" points={v.days.map((i) => `${v.cx(i).toFixed(1)},${r.y(bolts[i]).toFixed(1)}`).join(" ")} />
+                  {v.days.map((i) => (
+                    <circle class="bolt" cx={v.cx(i)} cy={r.y(bolts[i])} r="2.4" />
+                  ))}
+                </>
+              )}
+
+              {r.id === "landed" &&
+                v.days.map((i) => {
+                  const w = Math.min(9, v.band * 0.34);
+                  return (
+                    <g class="day">
+                      <rect class="merged" x={v.cx(i) - w - 1} y={r.y(merged[i])} width={w} height={r.bottom - r.y(merged[i])} rx="1.5" />
+                      <rect class="landed" x={v.cx(i) + 1} y={r.y(landed[i])} width={w} height={r.bottom - r.y(landed[i])} rx="1.5" />
+                      <rect class="hit" x={v.cx(i) - v.band / 2} y={top} width={v.band} height={r.bottom - top}>
+                        <title>{`${tag(i)} · ${merged[i]} units merged, ${landed[i]} bolts landed`}</title>
+                      </rect>
+                    </g>
+                  );
+                })}
+
+              <line class="base" x1={L} x2={v.W - R} y1={r.bottom} y2={r.bottom} />
+              {r.axis &&
+                v.days.filter(week).map((i) => (
+                  <text class="x" x={v.cx(i)} y={r.H - 4} text-anchor="middle">
+                    {short(dates[i])}
+                  </text>
+                ))}
+            </svg>
+          ))}
+          <ul class="legend">
+            {r.id === "utilization" && (
+              <>
+                <li>
+                  <i class="busy" /> busy
+                </li>
+                <li>
+                  <i class="idle" /> running, not busy
+                </li>
+              </>
+            )}
+            {r.id === "flight" && (
+              <>
+                {stages.map((g, s) => (
+                  <li>
+                    <i class={stageClass[s]} /> {g.name}
+                  </li>
+                ))}
+                <li>
+                  <i class="line" /> bolts open
+                </li>
+              </>
+            )}
+            {r.id === "landed" && (
+              <>
+                <li>
+                  <i class="merged" /> units merged
+                </li>
+                <li>
+                  <i class="landed" /> bolts landed
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
+      </div>
+    ))
+  }
+  {marks.some((d) => dates.indexOf(d) > 0) && <p class="note"><i class="mark-key" /> a new fleet context begins</p>}
+</section>
+
+<style>
+  .fleetday { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 14px; background: rgba(9, 28, 31, 0.5); }
+  .row { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 0 24px; padding: 18px 22px; align-items: center; }
+  .row + .row { border-top: 1px solid var(--line-soft); }
+
+  .tile { display: grid; justify-items: start; gap: 1px; color: inherit; text-decoration: none; }
+  .tile .k { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--mint); }
+  .tile:hover .k { color: var(--brass); }
+  .tile .k::after { content: " →"; }
+  .tile .big { font: 700 2.4rem/1.05 var(--display); letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .tile .u { font: 600 13px/1.35 var(--display); color: var(--ink-2); }
+  .tile .sub { margin-top: 4px; font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
+  .tile .sample-chip { margin-top: 6px; }
+
+  .plot { min-width: 0; }
+  svg { display: block; width: 100%; height: auto; font-family: var(--mono); }
+  .narrow { display: none; }
+  .grid line { stroke: var(--line-soft); }
+  .grid text, .x { fill: var(--ink-3); font-size: 11px; }
+  .narrow .grid text, .narrow .x { font-size: 12px; }
+  .wk { stroke: var(--line-soft); stroke-dasharray: 2 4; }
+  .mark { stroke: var(--bone); stroke-width: 1.2; stroke-dasharray: 4 3; }
+  .base { stroke: var(--line); }
+  .hit { fill: transparent; }
+  .day:hover .hit { fill: rgba(143, 185, 174, 0.08); }
+
+  .busy { fill: var(--brass); background: var(--brass); }
+  .idle { fill: rgba(143, 185, 174, 0.14); stroke: var(--mint); stroke-width: 1.5; }
+  .s-construct { fill: #5d8f9a; background: #5d8f9a; }
+  .s-approval { fill: var(--rust); background: var(--rust); }
+  .s-code { fill: var(--mint); background: var(--mint); }
+  .s-verify { fill: var(--bone); background: var(--bone); }
+  .s-merge { fill: var(--brass); background: var(--brass); }
+  .day rect:not(.hit, .idle) { stroke: var(--ground); stroke-width: 0.6; }
+  .bolts { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+  .bolt { fill: var(--ground); stroke: var(--ink); stroke-width: 1.4; }
+  .merged { fill: var(--mint); background: var(--mint); }
+  .landed { fill: var(--brass); background: var(--brass); }
+
+  .legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font: 11.5px/1.6 var(--mono); color: var(--ink-3); }
+  .legend li { display: flex; align-items: center; gap: 7px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+  .legend i.idle { background: rgba(143, 185, 174, 0.14); border: 1.5px solid var(--mint); width: 8px; height: 8px; }
+  .legend i.line { height: 2px; width: 14px; background: var(--ink); border-radius: 1px; }
+  .note { margin: 0; padding: 0 22px 16px; font: 11.5px/1.6 var(--mono); color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
+  .mark-key { width: 0; height: 12px; border-left: 1.5px dashed var(--bone); }
+
+  @media (max-width: 44rem) {
+    .row { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+    .wide { display: none; }
+    .narrow { display: block; }
+  }
+</style>

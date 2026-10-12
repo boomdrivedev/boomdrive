@@ -1,23 +1,263 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "../../layouts/Base.astro";
+import FleetDay from "../../components/FleetDay.astro";
+import { iso, lastWeek, split, total } from "../../components/measures";
+import { fmt as host } from "../../components/utilization";
+
+// The Fleet opens on the fleet's day: the current fleet context as a frame,
+// then utilization, work in flight and landed on one time axis, then each
+// flywheel's share and each machine's load (docs/site-design.md, The Fleet's
+// front page).
 
 const measurements = await getCollection("measurements");
+const record = (id: string) => {
+  const m = measurements.find((x) => x.id === id);
+  if (!m) throw new Error(`the Fleet's front page reads "${id}", which is missing`);
+  return m.data;
+};
+const fu = record("fleet-utilization"), wf = record("work-in-flight"), ld = record("landed");
+const contexts = (await getCollection("contexts")).sort((a, b) => a.data.from.valueOf() - b.data.from.valueOf());
+const context = contexts.at(-1)!.data;
+
+// One time axis: every day any of the three has a point. A series without a
+// point on a day reads as nothing that day.
+const read = [fu, wf, ld].flatMap((r) => r.series);
+const dates = [...new Set(read.flatMap((s) => s.points.map((p) => iso(p.date))))].sort();
+const on = (s: { points: { date: Date; value: number }[] }) => {
+  const by = new Map(s.points.map((p) => [iso(p.date), p.value]));
+  return dates.map((d) => by.get(d) ?? 0);
+};
+const sampled = dates.map((d) => read.some((s) => s.points.some((p) => p.sample && iso(p.date) === d)));
+const marks = contexts.map((c) => iso(c.data.from));
+
+const running = on(total(fu.series, "agents running")), busy = on(total(fu.series, "agents busy"));
+const peak = fu.series.find((s) => s.peakOf === "agents running")?.points.at(-1);
+const stages = split(wf.series, "units in flight", "stage").map((g) => ({ ...g, values: on({ points: wf.series.find((s) => s.stage === g.name)!.points }) }));
+const units = on(total(wf.series, "units in flight")), bolts = on(total(wf.series, "bolts open"));
+const repos = on(total(wf.series, "repositories with work"));
+const merged = on(total(ld.series, "units merged")), landed = on(total(ld.series, "bolts landed"));
+const last = dates.length - 1;
+const lastSample = sampled[last];
+const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0);
+
+const tiles = [
+  {
+    name: "Fleet utilization",
+    href: "/fleet/fleet-utilization/",
+    big: `${running[last]}`,
+    unit: "agents running",
+    sub: `${busy[last]} busy · ${pct(busy[last], running[last])}% busy share`,
+    sample: lastSample,
+  },
+  {
+    name: "Work in flight",
+    href: "/fleet/work-in-flight/",
+    big: `${units[last]}`,
+    unit: "units in flight",
+    sub: `in ${bolts[last]} bolts open · over ${repos[last]} repositories`,
+    sample: lastSample,
+  },
+  {
+    name: "Landed",
+    href: "/fleet/landed/",
+    big: `${lastWeek(merged)}`,
+    unit: "units merged, last 7 days",
+    sub: `${lastWeek(landed)} bolts landed on main`,
+    sample: sampled.slice(-7).some(Boolean),
+  },
+];
+
+// Each flywheel's share: a count read at an instant on the latest day, an
+// amount over the last seven.
+const part = (r: typeof fu, name: string, flywheel: string) =>
+  split(r.series, name, "flywheel").find((g) => g.name === flywheel)?.values ?? [];
+const flywheels = context.flywheels.map((f) => ({
+  ...f,
+  running: part(fu, "agents running", f.name).at(-1),
+  busy: part(fu, "agents busy", f.name).at(-1),
+  bolts: part(wf, "bolts open", f.name).at(-1),
+  units: part(wf, "units in flight", f.name).at(-1),
+  merged: lastWeek(part(ld, "units merged", f.name)),
+  landed: lastWeek(part(ld, "bolts landed", f.name)),
+}));
+
+// A machine's load is its own, never summed with another's.
+const machines = [...new Set(fu.series.filter((s) => s.host).map((s) => s.host!))].map((name) => {
+  const latest = (n: string) => fu.series.find((s) => s.host === name && s.name === n)?.points.at(-1)?.value;
+  return {
+    name,
+    cpu: latest("cpu"),
+    memory: latest("memory"),
+    processes: latest("processes"),
+    flywheels: context.flywheels.filter((f) => f.machine === name).map((f) => f.name),
+  };
+});
+const machineCount = new Set(context.flywheels.map((f) => f.machine)).size;
+
+const points = read.flatMap((s) => s.points);
+const allSamples = points.length > 0 && points.every((p) => p.sample);
+const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 ---
 
-<Base title="The Fleet" description="The fleet's measurements, each with its definition beside its numbers.">
+<Base title="The Fleet" description="The fleet's day: utilization, work in flight and landed on one time axis, framed by the fleet they were measured in." wide>
   <p class="eyebrow">The Fleet</p>
   <h1>The fleet, measured</h1>
-  <p>Each measurement has one page: its definition and version beside its numbers, and the notes that cite it.</p>
-  <ul class="plain">
-    {
-      measurements.map((m) => (
-        <li>
-          <a href={`/fleet/${m.id}/`}>{m.data.name}</a>
-          {m.data.series.some((s) => s.points.some((p) => p.sample)) && <span class="sample-chip">samples</span>}
-          <div class="muted">{m.data.summary}</div>
-        </li>
-      ))
-    }
-  </ul>
+  <p class="lede">Whether the agents were busy, what they were busy on, and what came out, in one look.</p>
+
+  <dl class="frame" aria-label="The fleet context">
+    <div>
+      <dt>Flywheels</dt>
+      <dd>{context.flywheels.length}</dd>
+    </div>
+    <div>
+      <dt>Machines</dt>
+      <dd>{machineCount}</dd>
+    </div>
+    <div>
+      <dt>Repositories</dt>
+      <dd>{context.repositories}</dd>
+    </div>
+    <div>
+      <dt>Agents at peak</dt>
+      <dd>
+        {peak ? peak.value : "—"}
+        {peak?.sample && <span class="sample-chip">sample</span>}
+      </dd>
+    </div>
+  </dl>
+  <p class="frame-note">
+    {list(context.flywheels.map((f) => f.name))} on {list([...new Set(context.flywheels.map((f) => f.machine))])}, {context.source} on {
+      iso(context.from)
+    }. Only our own flywheels, machines and repositories are named or counted.
+  </p>
+
+  {
+    allSamples && (
+      <p class="sample-notice">
+        <b>Every point on this page is a sample</b>, made up to show how the page will read. None is a measurement; the
+        first collected points will replace them.
+      </p>
+    )
+  }
+
+  <FleetDay
+    dates={dates}
+    sampled={sampled}
+    running={running}
+    busy={busy}
+    stages={stages}
+    bolts={bolts}
+    merged={merged}
+    landed={landed}
+    marks={marks}
+    tiles={tiles}
+  />
+
+  <div class="split">
+    <section>
+      <h2>By flywheel</h2>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Flywheel</th>
+              <th>Running</th>
+              <th>Busy</th>
+              <th>Bolts open</th>
+              <th>Units in flight</th>
+              <th>Merged, 7 days</th>
+              <th>Landed, 7 days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              flywheels.map((f) => (
+                <tr>
+                  <td>{f.name}</td>
+                  <td>{f.running ?? "—"}</td>
+                  <td>{f.busy ?? "—"}</td>
+                  <td>{f.bolts ?? "—"}</td>
+                  <td>{f.units ?? "—"}</td>
+                  <td>{f.merged}</td>
+                  <td>{f.landed}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="aside-note">
+        Counts are each flywheel's own median of {dates[last]}, so they need not add up to the fleet's; merged and landed
+        are counted, so they do.
+      </p>
+    </section>
+    <section>
+      <h2>Host load, per machine</h2>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Machine</th>
+              <th>CPU</th>
+              <th>Memory</th>
+              <th>Processes</th>
+              <th>Flywheels</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              machines.map((m) => (
+                <tr>
+                  <td>{m.name}</td>
+                  <td>{m.cpu === undefined ? "—" : host.cpu(m.cpu)}</td>
+                  <td>{m.memory === undefined ? "—" : host.memory(m.memory)}</td>
+                  <td>{m.processes === undefined ? "—" : host.processes(m.processes)}</td>
+                  <td>{m.flywheels.join(", ") || "—"}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="aside-note">Each machine's median of {dates[last]}, never summed across machines.</p>
+    </section>
+  </div>
+
+  <section class="every">
+    <h2>Every measurement</h2>
+    <ul class="plain">
+      {
+        measurements.map((m) => (
+          <li>
+            <a href={`/fleet/${m.id}/`}>{m.data.name}</a>
+            {m.data.series.some((s) => s.points.some((p) => p.sample)) && <span class="sample-chip">samples</span>}
+            <div class="muted">{m.data.summary}</div>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
 </Base>
+
+<style>
+  .lede { font: 500 clamp(1.05rem, 2vw, 1.3rem)/1.45 var(--display); letter-spacing: -0.01em; color: var(--ink); max-width: 44ch; margin: 0 0 24px; }
+
+  .frame { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .frame div { background: var(--ground); padding: 14px 18px; }
+  .frame dt { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  .frame dd { margin: 2px 0 0; font: 700 2rem/1.1 var(--display); letter-spacing: -0.02em; color: var(--brass); font-variant-numeric: tabular-nums; display: flex; gap: 10px; align-items: center; }
+  .frame-note { margin: 10px 0 24px; font: 12px/1.6 var(--mono); color: var(--ink-3); }
+  @media (max-width: 40rem) { .frame { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px 40px; margin-top: 36px; }
+  @media (max-width: 56rem) { .split { grid-template-columns: minmax(0, 1fr); } }
+  h2 { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 0 0 4px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font: 12px/1.5 var(--mono); font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--ink-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap; color: var(--ink-2); }
+  .aside-note { margin: 10px 0 0; font: 12px/1.6 var(--mono); color: var(--ink-3); }
+
+  .every { margin-top: 40px; }
+</style>
