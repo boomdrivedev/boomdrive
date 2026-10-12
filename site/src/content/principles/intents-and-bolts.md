@@ -1,5 +1,5 @@
 ---
-order: 3
+order: 4
 title: "Intents and bolts"
 summary: "Work is an intent broken into bolts made of units, one reviewable change each, and small units land continuously on the trunk."
 line: "Work is an intent, landed in bolts of small units."

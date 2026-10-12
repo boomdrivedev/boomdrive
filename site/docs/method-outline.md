@@ -61,7 +61,33 @@ it, so nothing it does can disturb another.
   clauses 1 and 2).
 - **Measure:** collisions per week; time to a working fresh worktree.
 
-## 3. Intents and bolts
+## 3. Capture at the source
+
+**Claim:** Work begins as captures taken where things happen, a meeting, a
+chat, a log, a pull request, by adapters that run unattended, so development
+is fed by what people and systems say rather than by tickets someone
+remembered to write.
+
+- A capture is one source event with its provenance and a pointer to the raw
+  material, which stays out of version control; capturing an event twice
+  yields one capture ([Flywheel Next statement](https://github.com/agentplot/blueprints/blob/main/design/flywheel-next/requirements.md), clause 111).
+- Capture is one gesture, no more than a sentence (112). Adapters write
+  captures unattended; reading a capture into signals is a session's
+  judgment and never runs unattended (115, 215).
+- Curation moves every signal onto an intent, a claim, a chore, or off with a
+  reason; an unmoved signal is never discarded (116, 118).
+- **Rules out:** work that starts from nobody's record of why; a transcript
+  committed to the repository; asking the operator to classify what they
+  wrote; an adapter that judges; a signal silently dropped.
+- **Today:** findings recorded by hand with Crew's signal command; the first
+  corpus of captures written by hand from meeting transcripts.
+- **Target:** Flywheel Next's adapters (chat, meeting transcript, log or
+  monitor webhook, pull-request conversation, issue tracker, folder drop),
+  writing captures from whichever host declares the source (217g).
+- **Measure:** captures per day by source; unmoved signals by age; time from
+  capture to intent; landed units traced back to a capture.
+
+## 4. Intents and bolts
 
 **Line:** Work is an intent, landed in bolts of small units.
 
@@ -75,7 +101,7 @@ units land continuously on the trunk.
 - **Target:** Flywheel Next tracks intents from capture to landed.
 - **Measure:** unit size; unit cycle time; units per intent.
 
-## 4. Two loops, one gate
+## 5. Two loops, one gate
 
 **Line:** Design and construction are separate loops, and a person decides where they meet.
 
@@ -94,7 +120,7 @@ test and landing.
   statement, clause 4).
 - **Measure:** approval wait; decisions per landed unit; leverage.
 
-## 5. Order at landing, never at start
+## 6. Order at landing, never at start
 
 **Line:** Work starts at once; the merge queue orders it as it lands.
 
@@ -119,7 +145,7 @@ cheaply when work is combined, not planned around.
 - **Measure:** time a unit waits to start; conflicts and culprits per landing;
   landings per hour per line.
 
-## 6. Never prove twice
+## 7. Never prove twice
 
 **Line:** A check that passed on these inputs is not run again.
 
@@ -146,7 +172,7 @@ inputs is not run again.
 - **Measure:** re-proof rate; cache hit rate by source (own worktree, another
   worktree, remote).
 
-## 7. Secrets by declaration
+## 8. Secrets by declaration
 
 **Line:** An agent gets a secret only through the shell, for the task at hand.
 
@@ -167,7 +193,7 @@ hand, never pasted, stored or printed.
 - **Measure:** secrets resolved per day by agent and task; secrets found in
   transcripts or commits (the target is none).
 
-## 8. Measure the fleet
+## 9. Measure the fleet
 
 **Line:** Count what lands, what it cost and what came back.
 

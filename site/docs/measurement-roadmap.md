@@ -68,8 +68,11 @@ from a password manager.
   transcripts or commits (the target is none).
 - **Watch:** proof cost per landed unit.
 
-## Stage 3: Flywheel Next's design loop and rail
+## Stage 3: Flywheel Next's capture, design loop and rail
 
+- **Capture:** captures per day by source and adapter; unmoved signals by
+  age; share of signals moved within a day; landed units traced back to a
+  capture.
 - **Design:** intent lead time (captured to landed); open questions closed per
   week; decisions per intent; decisions reversed later; spec churn after
   approval; units per intent.

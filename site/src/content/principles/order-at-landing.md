@@ -1,5 +1,5 @@
 ---
-order: 5
+order: 6
 title: "Order at landing, never at start"
 summary: "Dependencies are constraints the merge queue honours when work lands, not gates that keep a session from starting; conflicts are found cheaply when work is combined, not planned around."
 line: "Work starts at once; the merge queue orders it as it lands."
