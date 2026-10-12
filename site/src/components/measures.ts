@@ -1,16 +1,18 @@
 import type { CollectionEntry } from "astro:content";
 
 // Reading a measurement's series by what they are split by: a total, and the
-// series beside it that name a role, a model or a kind.
+// series beside it that name a role, a model, a kind, a flywheel or a stage.
 
 type Series = CollectionEntry<"measurements">["data"]["series"][number];
 export type Group = { name: string; values: number[] };
-export type Split = "role" | "model" | "kind";
+export const splits = ["role", "model", "kind", "flywheel", "stage"] as const;
+export type Split = (typeof splits)[number];
+export const isSplit = (s: Series) => splits.some((by) => s[by]);
 
 export const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export function total(series: Series[], name: string): Series {
-  const s = series.find((x) => x.name === name && !x.role && !x.model && !x.kind && !x.peakOf);
+  const s = series.find((x) => x.name === name && !isSplit(x) && !x.peakOf);
   if (!s) throw new Error(`the series "${name}" is missing`);
   return s;
 }
@@ -29,6 +31,7 @@ export function split(series: Series[], name: string, by: Split): Group[] {
 
 export const fmt = {
   agents: (v: number) => `${v}`,
+  count: (v: number) => `${v}`,
   usd: (v: number) => `$${Math.round(v).toLocaleString("en")}`,
   tokens: (v: number) =>
     v >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}K` : `${v}`,
@@ -37,6 +40,7 @@ export const fmt = {
 // A shorter form for an axis.
 export const axis = {
   agents: (v: number) => `${v}`,
+  count: (v: number) => `${v}`,
   usd: (v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 ? 1 : 0)}K` : `$${v}`),
   tokens: (v: number) => (v >= 1e9 ? `${+(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${Math.round(v / 1e6)}M` : fmt.tokens(v)),
 };

@@ -1,0 +1,221 @@
+# Every point here is a sample until the collector runs: `sample: true` marks
+# it, and the page says so wherever it shows one. Collected points are
+# appended without the flag, and the samples are deleted.
+name: Landed
+summary: >
+  What the fleet delivers: the units merged into their bolt and the bolts
+  landed on main, each day.
+dimension: flow
+definitionVersion: 1
+definition: >
+  Each day, from each flywheel's run record: the units merged into their
+  bolt (work finished) and the bolts landed on main (work delivered). Both
+  are counted, not sampled, per flywheel and in total.
+principle: intents-and-bolts
+source: "Crew's run record (`crew events`)"
+collector: collectors/landed
+argues: >
+  What the fleet delivers, read against how busy it was. Small and lumpy at
+  first, which the week's total absorbs.
+cannotShow: >
+  It counts what landed, not what it was worth: a one-line fix and a new
+  feature are one unit each. A landing later reverted still counts on its
+  day.
+chart: landed
+series:
+  - name: units merged
+    unit: units
+    statistic: count
+    points:
+      - { date: 2026-09-12, value: 3, sample: true }
+      - { date: 2026-09-13, value: 3, sample: true }
+      - { date: 2026-09-14, value: 5, sample: true }
+      - { date: 2026-09-15, value: 4, sample: true }
+      - { date: 2026-09-16, value: 4, sample: true }
+      - { date: 2026-09-17, value: 1, sample: true }
+      - { date: 2026-09-18, value: 4, sample: true }
+      - { date: 2026-09-19, value: 0, sample: true }
+      - { date: 2026-09-20, value: 7, sample: true }
+      - { date: 2026-09-21, value: 6, sample: true }
+      - { date: 2026-09-22, value: 3, sample: true }
+      - { date: 2026-09-23, value: 3, sample: true }
+      - { date: 2026-09-24, value: 8, sample: true }
+      - { date: 2026-09-25, value: 8, sample: true }
+      - { date: 2026-09-26, value: 3, sample: true }
+      - { date: 2026-09-27, value: 4, sample: true }
+      - { date: 2026-09-28, value: 4, sample: true }
+      - { date: 2026-09-29, value: 6, sample: true }
+      - { date: 2026-09-30, value: 4, sample: true }
+      - { date: 2026-10-01, value: 5, sample: true }
+      - { date: 2026-10-02, value: 6, sample: true }
+      - { date: 2026-10-03, value: 5, sample: true }
+      - { date: 2026-10-04, value: 5, sample: true }
+      - { date: 2026-10-05, value: 6, sample: true }
+      - { date: 2026-10-06, value: 0, sample: true }
+      - { date: 2026-10-07, value: 3, sample: true }
+      - { date: 2026-10-08, value: 6, sample: true }
+      - { date: 2026-10-09, value: 6, sample: true }
+  - name: units merged, madswan
+    unit: units
+    statistic: count
+    flywheel: madswan
+    points:
+      - { date: 2026-09-12, value: 0, sample: true }
+      - { date: 2026-09-13, value: 3, sample: true }
+      - { date: 2026-09-14, value: 4, sample: true }
+      - { date: 2026-09-15, value: 2, sample: true }
+      - { date: 2026-09-16, value: 3, sample: true }
+      - { date: 2026-09-17, value: 0, sample: true }
+      - { date: 2026-09-18, value: 2, sample: true }
+      - { date: 2026-09-19, value: 0, sample: true }
+      - { date: 2026-09-20, value: 3, sample: true }
+      - { date: 2026-09-21, value: 3, sample: true }
+      - { date: 2026-09-22, value: 0, sample: true }
+      - { date: 2026-09-23, value: 1, sample: true }
+      - { date: 2026-09-24, value: 5, sample: true }
+      - { date: 2026-09-25, value: 4, sample: true }
+      - { date: 2026-09-26, value: 3, sample: true }
+      - { date: 2026-09-27, value: 3, sample: true }
+      - { date: 2026-09-28, value: 2, sample: true }
+      - { date: 2026-09-29, value: 3, sample: true }
+      - { date: 2026-09-30, value: 4, sample: true }
+      - { date: 2026-10-01, value: 2, sample: true }
+      - { date: 2026-10-02, value: 2, sample: true }
+      - { date: 2026-10-03, value: 5, sample: true }
+      - { date: 2026-10-04, value: 5, sample: true }
+      - { date: 2026-10-05, value: 2, sample: true }
+      - { date: 2026-10-06, value: 0, sample: true }
+      - { date: 2026-10-07, value: 3, sample: true }
+      - { date: 2026-10-08, value: 6, sample: true }
+      - { date: 2026-10-09, value: 3, sample: true }
+  - name: units merged, swancloud
+    unit: units
+    statistic: count
+    flywheel: swancloud
+    points:
+      - { date: 2026-09-12, value: 3, sample: true }
+      - { date: 2026-09-13, value: 0, sample: true }
+      - { date: 2026-09-14, value: 1, sample: true }
+      - { date: 2026-09-15, value: 2, sample: true }
+      - { date: 2026-09-16, value: 1, sample: true }
+      - { date: 2026-09-17, value: 1, sample: true }
+      - { date: 2026-09-18, value: 2, sample: true }
+      - { date: 2026-09-19, value: 0, sample: true }
+      - { date: 2026-09-20, value: 4, sample: true }
+      - { date: 2026-09-21, value: 3, sample: true }
+      - { date: 2026-09-22, value: 3, sample: true }
+      - { date: 2026-09-23, value: 2, sample: true }
+      - { date: 2026-09-24, value: 3, sample: true }
+      - { date: 2026-09-25, value: 4, sample: true }
+      - { date: 2026-09-26, value: 0, sample: true }
+      - { date: 2026-09-27, value: 1, sample: true }
+      - { date: 2026-09-28, value: 2, sample: true }
+      - { date: 2026-09-29, value: 3, sample: true }
+      - { date: 2026-09-30, value: 0, sample: true }
+      - { date: 2026-10-01, value: 3, sample: true }
+      - { date: 2026-10-02, value: 4, sample: true }
+      - { date: 2026-10-03, value: 0, sample: true }
+      - { date: 2026-10-04, value: 0, sample: true }
+      - { date: 2026-10-05, value: 4, sample: true }
+      - { date: 2026-10-06, value: 0, sample: true }
+      - { date: 2026-10-07, value: 0, sample: true }
+      - { date: 2026-10-08, value: 0, sample: true }
+      - { date: 2026-10-09, value: 3, sample: true }
+  - name: bolts landed
+    unit: bolts
+    statistic: count
+    points:
+      - { date: 2026-09-12, value: 0, sample: true }
+      - { date: 2026-09-13, value: 1, sample: true }
+      - { date: 2026-09-14, value: 0, sample: true }
+      - { date: 2026-09-15, value: 0, sample: true }
+      - { date: 2026-09-16, value: 1, sample: true }
+      - { date: 2026-09-17, value: 0, sample: true }
+      - { date: 2026-09-18, value: 0, sample: true }
+      - { date: 2026-09-19, value: 0, sample: true }
+      - { date: 2026-09-20, value: 0, sample: true }
+      - { date: 2026-09-21, value: 1, sample: true }
+      - { date: 2026-09-22, value: 1, sample: true }
+      - { date: 2026-09-23, value: 1, sample: true }
+      - { date: 2026-09-24, value: 0, sample: true }
+      - { date: 2026-09-25, value: 0, sample: true }
+      - { date: 2026-09-26, value: 2, sample: true }
+      - { date: 2026-09-27, value: 0, sample: true }
+      - { date: 2026-09-28, value: 1, sample: true }
+      - { date: 2026-09-29, value: 0, sample: true }
+      - { date: 2026-09-30, value: 0, sample: true }
+      - { date: 2026-10-01, value: 1, sample: true }
+      - { date: 2026-10-02, value: 1, sample: true }
+      - { date: 2026-10-03, value: 0, sample: true }
+      - { date: 2026-10-04, value: 0, sample: true }
+      - { date: 2026-10-05, value: 0, sample: true }
+      - { date: 2026-10-06, value: 0, sample: true }
+      - { date: 2026-10-07, value: 1, sample: true }
+      - { date: 2026-10-08, value: 1, sample: true }
+      - { date: 2026-10-09, value: 0, sample: true }
+  - name: bolts landed, madswan
+    unit: bolts
+    statistic: count
+    flywheel: madswan
+    points:
+      - { date: 2026-09-12, value: 0, sample: true }
+      - { date: 2026-09-13, value: 1, sample: true }
+      - { date: 2026-09-14, value: 0, sample: true }
+      - { date: 2026-09-15, value: 0, sample: true }
+      - { date: 2026-09-16, value: 0, sample: true }
+      - { date: 2026-09-17, value: 0, sample: true }
+      - { date: 2026-09-18, value: 0, sample: true }
+      - { date: 2026-09-19, value: 0, sample: true }
+      - { date: 2026-09-20, value: 0, sample: true }
+      - { date: 2026-09-21, value: 0, sample: true }
+      - { date: 2026-09-22, value: 1, sample: true }
+      - { date: 2026-09-23, value: 1, sample: true }
+      - { date: 2026-09-24, value: 0, sample: true }
+      - { date: 2026-09-25, value: 0, sample: true }
+      - { date: 2026-09-26, value: 1, sample: true }
+      - { date: 2026-09-27, value: 0, sample: true }
+      - { date: 2026-09-28, value: 0, sample: true }
+      - { date: 2026-09-29, value: 0, sample: true }
+      - { date: 2026-09-30, value: 0, sample: true }
+      - { date: 2026-10-01, value: 1, sample: true }
+      - { date: 2026-10-02, value: 1, sample: true }
+      - { date: 2026-10-03, value: 0, sample: true }
+      - { date: 2026-10-04, value: 0, sample: true }
+      - { date: 2026-10-05, value: 0, sample: true }
+      - { date: 2026-10-06, value: 0, sample: true }
+      - { date: 2026-10-07, value: 1, sample: true }
+      - { date: 2026-10-08, value: 1, sample: true }
+      - { date: 2026-10-09, value: 0, sample: true }
+  - name: bolts landed, swancloud
+    unit: bolts
+    statistic: count
+    flywheel: swancloud
+    points:
+      - { date: 2026-09-12, value: 0, sample: true }
+      - { date: 2026-09-13, value: 0, sample: true }
+      - { date: 2026-09-14, value: 0, sample: true }
+      - { date: 2026-09-15, value: 0, sample: true }
+      - { date: 2026-09-16, value: 1, sample: true }
+      - { date: 2026-09-17, value: 0, sample: true }
+      - { date: 2026-09-18, value: 0, sample: true }
+      - { date: 2026-09-19, value: 0, sample: true }
+      - { date: 2026-09-20, value: 0, sample: true }
+      - { date: 2026-09-21, value: 1, sample: true }
+      - { date: 2026-09-22, value: 0, sample: true }
+      - { date: 2026-09-23, value: 0, sample: true }
+      - { date: 2026-09-24, value: 0, sample: true }
+      - { date: 2026-09-25, value: 0, sample: true }
+      - { date: 2026-09-26, value: 1, sample: true }
+      - { date: 2026-09-27, value: 0, sample: true }
+      - { date: 2026-09-28, value: 1, sample: true }
+      - { date: 2026-09-29, value: 0, sample: true }
+      - { date: 2026-09-30, value: 0, sample: true }
+      - { date: 2026-10-01, value: 0, sample: true }
+      - { date: 2026-10-02, value: 0, sample: true }
+      - { date: 2026-10-03, value: 0, sample: true }
+      - { date: 2026-10-04, value: 0, sample: true }
+      - { date: 2026-10-05, value: 0, sample: true }
+      - { date: 2026-10-06, value: 0, sample: true }
+      - { date: 2026-10-07, value: 0, sample: true }
+      - { date: 2026-10-08, value: 0, sample: true }
+      - { date: 2026-10-09, value: 0, sample: true }

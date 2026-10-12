@@ -1,0 +1,9 @@
+# The fleet contexts, oldest first: each holds from its date until the next.
+# Only our own flywheels, machines and repositories are named or counted.
+- id: 2026-10-12
+  from: 2026-10-12
+  flywheels:
+    - { name: madswan, machine: mac-studio }
+    - { name: swancloud, machine: mac-studio }
+  repositories: 9
+  source: "read by hand from Crew's team configuration"

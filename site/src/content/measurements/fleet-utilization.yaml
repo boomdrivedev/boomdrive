@@ -617,6 +617,138 @@ series:
       - { date: 2026-10-07, value: 0, sample: true }
       - { date: 2026-10-08, value: 0, sample: true }
       - { date: 2026-10-09, value: 0, sample: true }
+  - name: agents running, madswan
+    unit: agents
+    statistic: median
+    flywheel: madswan
+    points:
+      - { date: 2026-09-12, value: 15, sample: true }
+      - { date: 2026-09-13, value: 16, sample: true }
+      - { date: 2026-09-14, value: 15, sample: true }
+      - { date: 2026-09-15, value: 14, sample: true }
+      - { date: 2026-09-16, value: 12, sample: true }
+      - { date: 2026-09-17, value: 13, sample: true }
+      - { date: 2026-09-18, value: 17, sample: true }
+      - { date: 2026-09-19, value: 14, sample: true }
+      - { date: 2026-09-20, value: 16, sample: true }
+      - { date: 2026-09-21, value: 14, sample: true }
+      - { date: 2026-09-22, value: 13, sample: true }
+      - { date: 2026-09-23, value: 14, sample: true }
+      - { date: 2026-09-24, value: 14, sample: true }
+      - { date: 2026-09-25, value: 18, sample: true }
+      - { date: 2026-09-26, value: 12, sample: true }
+      - { date: 2026-09-27, value: 12, sample: true }
+      - { date: 2026-09-28, value: 14, sample: true }
+      - { date: 2026-09-29, value: 11, sample: true }
+      - { date: 2026-09-30, value: 17, sample: true }
+      - { date: 2026-10-01, value: 19, sample: true }
+      - { date: 2026-10-02, value: 15, sample: true }
+      - { date: 2026-10-03, value: 14, sample: true }
+      - { date: 2026-10-04, value: 14, sample: true }
+      - { date: 2026-10-05, value: 13, sample: true }
+      - { date: 2026-10-06, value: 13, sample: true }
+      - { date: 2026-10-07, value: 17, sample: true }
+      - { date: 2026-10-08, value: 17, sample: true }
+      - { date: 2026-10-09, value: 15, sample: true }
+  - name: agents running, swancloud
+    unit: agents
+    statistic: median
+    flywheel: swancloud
+    points:
+      - { date: 2026-09-12, value: 8, sample: true }
+      - { date: 2026-09-13, value: 8, sample: true }
+      - { date: 2026-09-14, value: 9, sample: true }
+      - { date: 2026-09-15, value: 10, sample: true }
+      - { date: 2026-09-16, value: 9, sample: true }
+      - { date: 2026-09-17, value: 10, sample: true }
+      - { date: 2026-09-18, value: 13, sample: true }
+      - { date: 2026-09-19, value: 10, sample: true }
+      - { date: 2026-09-20, value: 12, sample: true }
+      - { date: 2026-09-21, value: 10, sample: true }
+      - { date: 2026-09-22, value: 7, sample: true }
+      - { date: 2026-09-23, value: 8, sample: true }
+      - { date: 2026-09-24, value: 8, sample: true }
+      - { date: 2026-09-25, value: 9, sample: true }
+      - { date: 2026-09-26, value: 6, sample: true }
+      - { date: 2026-09-27, value: 8, sample: true }
+      - { date: 2026-09-28, value: 6, sample: true }
+      - { date: 2026-09-29, value: 8, sample: true }
+      - { date: 2026-09-30, value: 10, sample: true }
+      - { date: 2026-10-01, value: 9, sample: true }
+      - { date: 2026-10-02, value: 10, sample: true }
+      - { date: 2026-10-03, value: 10, sample: true }
+      - { date: 2026-10-04, value: 7, sample: true }
+      - { date: 2026-10-05, value: 9, sample: true }
+      - { date: 2026-10-06, value: 7, sample: true }
+      - { date: 2026-10-07, value: 7, sample: true }
+      - { date: 2026-10-08, value: 9, sample: true }
+      - { date: 2026-10-09, value: 11, sample: true }
+  - name: agents busy, madswan
+    unit: agents
+    statistic: median
+    flywheel: madswan
+    points:
+      - { date: 2026-09-12, value: 7, sample: true }
+      - { date: 2026-09-13, value: 7, sample: true }
+      - { date: 2026-09-14, value: 8, sample: true }
+      - { date: 2026-09-15, value: 7, sample: true }
+      - { date: 2026-09-16, value: 5, sample: true }
+      - { date: 2026-09-17, value: 6, sample: true }
+      - { date: 2026-09-18, value: 9, sample: true }
+      - { date: 2026-09-19, value: 7, sample: true }
+      - { date: 2026-09-20, value: 8, sample: true }
+      - { date: 2026-09-21, value: 6, sample: true }
+      - { date: 2026-09-22, value: 5, sample: true }
+      - { date: 2026-09-23, value: 6, sample: true }
+      - { date: 2026-09-24, value: 6, sample: true }
+      - { date: 2026-09-25, value: 8, sample: true }
+      - { date: 2026-09-26, value: 5, sample: true }
+      - { date: 2026-09-27, value: 5, sample: true }
+      - { date: 2026-09-28, value: 4, sample: true }
+      - { date: 2026-09-29, value: 5, sample: true }
+      - { date: 2026-09-30, value: 6, sample: true }
+      - { date: 2026-10-01, value: 9, sample: true }
+      - { date: 2026-10-02, value: 7, sample: true }
+      - { date: 2026-10-03, value: 6, sample: true }
+      - { date: 2026-10-04, value: 5, sample: true }
+      - { date: 2026-10-05, value: 6, sample: true }
+      - { date: 2026-10-06, value: 5, sample: true }
+      - { date: 2026-10-07, value: 8, sample: true }
+      - { date: 2026-10-08, value: 7, sample: true }
+      - { date: 2026-10-09, value: 7, sample: true }
+  - name: agents busy, swancloud
+    unit: agents
+    statistic: median
+    flywheel: swancloud
+    points:
+      - { date: 2026-09-12, value: 4, sample: true }
+      - { date: 2026-09-13, value: 3, sample: true }
+      - { date: 2026-09-14, value: 5, sample: true }
+      - { date: 2026-09-15, value: 5, sample: true }
+      - { date: 2026-09-16, value: 3, sample: true }
+      - { date: 2026-09-17, value: 5, sample: true }
+      - { date: 2026-09-18, value: 6, sample: true }
+      - { date: 2026-09-19, value: 5, sample: true }
+      - { date: 2026-09-20, value: 6, sample: true }
+      - { date: 2026-09-21, value: 4, sample: true }
+      - { date: 2026-09-22, value: 2, sample: true }
+      - { date: 2026-09-23, value: 4, sample: true }
+      - { date: 2026-09-24, value: 3, sample: true }
+      - { date: 2026-09-25, value: 4, sample: true }
+      - { date: 2026-09-26, value: 2, sample: true }
+      - { date: 2026-09-27, value: 3, sample: true }
+      - { date: 2026-09-28, value: 2, sample: true }
+      - { date: 2026-09-29, value: 3, sample: true }
+      - { date: 2026-09-30, value: 4, sample: true }
+      - { date: 2026-10-01, value: 5, sample: true }
+      - { date: 2026-10-02, value: 4, sample: true }
+      - { date: 2026-10-03, value: 4, sample: true }
+      - { date: 2026-10-04, value: 3, sample: true }
+      - { date: 2026-10-05, value: 4, sample: true }
+      - { date: 2026-10-06, value: 3, sample: true }
+      - { date: 2026-10-07, value: 4, sample: true }
+      - { date: 2026-10-08, value: 4, sample: true }
+      - { date: 2026-10-09, value: 6, sample: true }
   - name: cpu
     unit: percent
     statistic: median

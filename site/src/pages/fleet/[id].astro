@@ -6,7 +6,7 @@ import UtilizationTiles from "../../components/UtilizationTiles.astro";
 import StackedBars from "../../components/StackedBars.astro";
 import TokensTiles from "../../components/TokensTiles.astro";
 import { days as toDays, fmt, share } from "../../components/utilization";
-import { fmt as amount, iso, lastWeek, model, priced, split, total, type Split } from "../../components/measures";
+import { fmt as amount, iso, isSplit, lastWeek, model, priced, split, splits as splitBy, total } from "../../components/measures";
 
 export async function getStaticPaths() {
   const measurements = await getCollection("measurements");
@@ -33,6 +33,8 @@ const sampled = dates.map((_, i) => r.series.some((s) => s.points[i]?.sample));
 const days = r.chart === "utilization" && points.length ? toDays(m.id, r.series) : [];
 const runByRole = r.chart === "utilization" ? split(r.series, "agents running", "role") : [];
 const busyByRole = r.chart === "utilization" ? split(r.series, "agents busy", "role") : [];
+const runByFlywheel = r.chart === "utilization" ? split(r.series, "agents running", "flywheel") : [];
+const busyByFlywheel = r.chart === "utilization" ? split(r.series, "agents busy", "flywheel") : [];
 
 // Tokens by role: the totals, and the spend and the tokens split.
 const tok =
@@ -48,15 +50,39 @@ const tok =
       }
     : null;
 const cacheRead = tok?.byKind.find((g) => g.name === "cache read")?.values ?? [];
+
+// Work in flight: units by stage and by flywheel, bolts by flywheel.
+const flight =
+  r.chart === "flight" && points.length
+    ? {
+        units: total(r.series, "units in flight").points.map((p) => p.value),
+        bolts: total(r.series, "bolts open").points.map((p) => p.value),
+        repos: total(r.series, "repositories with work").points.map((p) => p.value),
+        byStage: split(r.series, "units in flight", "stage"),
+        unitsByFlywheel: split(r.series, "units in flight", "flywheel"),
+        boltsByFlywheel: split(r.series, "bolts open", "flywheel"),
+      }
+    : null;
+
+// Landed: units merged and bolts landed, each by flywheel.
+const landed =
+  r.chart === "landed" && points.length
+    ? {
+        units: total(r.series, "units merged").points.map((p) => p.value),
+        bolts: total(r.series, "bolts landed").points.map((p) => p.value),
+        unitsByFlywheel: split(r.series, "units merged", "flywheel"),
+        boltsByFlywheel: split(r.series, "bolts landed", "flywheel"),
+      }
+    : null;
 const rates = r.chart === "tokens" ? (await getCollection("rates")).sort((a, b) => a.data.model.localeCompare(b.data.model)) : [];
 if (r.chart === "tokens") priced(m.id, r.series, rates.map((x) => x.data));
 
 // The definition lists each total once, with the splits beside it; a peak is
 // read with the series it is the peak of.
 const listed = r.series
-  .filter((s) => !s.peakOf && !s.role && !s.model && !s.kind)
+  .filter((s) => !s.peakOf && !isSplit(s))
   .map((s) => ({ ...s, peak: r.series.some((p) => p.peakOf === s.name) }));
-const splits = (["role", "model", "kind"] as Split[]).filter((by) => r.series.some((s) => s[by]));
+const splits = splitBy.filter((by) => r.series.some((s) => s[by]));
 
 // Text between backticks is code; everything else is escaped.
 const inline = (s: string) =>
@@ -97,6 +123,49 @@ const inline = (s: string) =>
     )
   }
 
+  {
+    flight && (
+      <dl class="tiles">
+        <div>
+          <dt>Units in flight</dt>
+          <dd>{flight.units.at(-1)}</dd>
+          <p>on {dates.at(-1)}{sampled.at(-1) && <span class="sample-chip">sample</span>}</p>
+        </div>
+        <div>
+          <dt>Bolts open</dt>
+          <dd>{flight.bolts.at(-1)}</dd>
+          <p>over {flight.repos.at(-1)} repositories with work</p>
+        </div>
+        <div>
+          <dt>Awaiting approval</dt>
+          <dd>{flight.byStage.find((g) => g.name === "awaiting approval")?.values.at(-1) ?? "—"}</dd>
+          <p>units waiting on the operator</p>
+        </div>
+      </dl>
+    )
+  }
+  {
+    landed && (
+      <dl class="tiles">
+        <div>
+          <dt>Units merged</dt>
+          <dd>{lastWeek(landed.units)}</dd>
+          <p>over the last 7 days{sampled.slice(-7).some(Boolean) && <span class="sample-chip">samples</span>}</p>
+        </div>
+        <div>
+          <dt>Bolts landed</dt>
+          <dd>{lastWeek(landed.bolts)}</dd>
+          <p>on main, over the last 7 days</p>
+        </div>
+        <div>
+          <dt>Days with a merge</dt>
+          <dd>{landed.units.slice(-7).filter((v) => v > 0).length} of 7</dd>
+          <p>how lumpy the week was</p>
+        </div>
+      </dl>
+    )
+  }
+
   <div class="layout">
     <div class="numbers">
       {
@@ -107,8 +176,16 @@ const inline = (s: string) =>
               <>
                 <StackedBars label="Agents running, by role" dates={dates} samples={sampled} groups={runByRole} format="agents" legend="latest" />
                 <StackedBars label="Agents busy, by role" dates={dates} samples={sampled} groups={busyByRole} format="agents" legend="latest" />
-                <p class="aside-note">Each role's value is its own median of the day, so the roles need not add up to the total's median.</p>
               </>
+            )}
+            {runByFlywheel.length > 0 && (
+              <>
+                <StackedBars label="Agents running, by flywheel" dates={dates} samples={sampled} groups={runByFlywheel} format="agents" legend="latest" />
+                <StackedBars label="Agents busy, by flywheel" dates={dates} samples={sampled} groups={busyByFlywheel} format="agents" legend="latest" />
+              </>
+            )}
+            {(runByRole.length > 0 || runByFlywheel.length > 0) && (
+              <p class="aside-note">Each role's and each flywheel's value is its own median of the day, so the parts need not add up to the total's median.</p>
             )}
             <details class="points">
               <summary>The points: median, and the peak where a count has one</summary>
@@ -305,6 +382,80 @@ const inline = (s: string) =>
           </>
         )
       }
+      {
+        flight && (
+          <>
+            <StackedBars label="Units in flight each day, by stage" dates={dates} samples={sampled} groups={flight.byStage} format="count" legend="latest" />
+            <StackedBars label="Units in flight each day, by flywheel" dates={dates} samples={sampled} groups={flight.unitsByFlywheel} format="count" legend="latest" />
+            <StackedBars label="Bolts open each day, by flywheel" dates={dates} samples={sampled} groups={flight.boltsByFlywheel} format="count" legend="latest" />
+            <p class="aside-note">Each stage's and each flywheel's value is its own median of the day, so the parts need not add up to the total's median.</p>
+            <details class="points">
+              <summary>The points: each day's median</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Units in flight</th>
+                      <th>Bolts open</th>
+                      <th>Repositories with work</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dates
+                      .map((date, i) => (
+                        <tr>
+                          <td>
+                            {date} {sampled[i] && <span class="sample-chip">sample</span>}
+                          </td>
+                          <td>{flight.units[i]}</td>
+                          <td>{flight.bolts[i]}</td>
+                          <td>{flight.repos[i]}</td>
+                        </tr>
+                      ))
+                      .reverse()}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )
+      }
+      {
+        landed && (
+          <>
+            <StackedBars label="Units merged each day, by flywheel" dates={dates} samples={sampled} groups={landed.unitsByFlywheel} format="count" legend="week" />
+            <StackedBars label="Bolts landed each day, by flywheel" dates={dates} samples={sampled} groups={landed.boltsByFlywheel} format="count" legend="week" />
+            <details class="points">
+              <summary>The points: each day's count</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Units merged</th>
+                      <th>Bolts landed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dates
+                      .map((date, i) => (
+                        <tr>
+                          <td>
+                            {date} {sampled[i] && <span class="sample-chip">sample</span>}
+                          </td>
+                          <td>{landed.units[i]}</td>
+                          <td>{landed.bolts[i]}</td>
+                        </tr>
+                      ))
+                      .reverse()}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )
+      }
     </div>
 
     <aside>
@@ -394,4 +545,11 @@ const inline = (s: string) =>
   .pk { color: var(--ink-3); }
   .aside-note { margin: 10px 0 0; font: 12px/1.6 var(--mono); color: var(--ink-3); display: flex; gap: 8px; align-items: baseline; }
   .scroll table + table { margin-top: 18px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .tiles div { background: var(--ground); padding: 14px 18px; }
+  .tiles dt { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  .tiles dd { margin: 2px 0 0; font: 700 2rem/1.1 var(--display); letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .tiles p { margin: 4px 0 0; font: 11.5px/1.5 var(--mono); color: var(--ink-3); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  @media (max-width: 40rem) { .tiles { grid-template-columns: minmax(0, 1fr); } }
 </style>

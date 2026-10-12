@@ -26,7 +26,7 @@ const maxRaw = Math.max(...totals, 1);
 const raw = maxRaw / 4;
 const mag = 10 ** Math.floor(Math.log10(raw));
 const f = raw / mag;
-const step = Math.max(format === "agents" ? 1 : 0, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag);
+const step = Math.max(format === "agents" || format === "count" ? 1 : 0, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag);
 const max = Math.ceil(maxRaw / step) * step;
 const y = (v: number) => bottom - (v / max) * (bottom - top);
 const ticks = Array.from({ length: Math.round(max / step) + 1 }, (_, i) => i * step);

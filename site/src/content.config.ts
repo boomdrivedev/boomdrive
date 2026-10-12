@@ -96,12 +96,15 @@ const point = z.object({
 
 // The roles an agent of the fleet plays, as Crew names them.
 export const roles = ["conductor", "team ops", "unit agent", "design", "planner", "dispatcher", "operator"] as const;
+// The stages a unit passes through in flight, as Crew's plan names them.
+export const stages = ["construct", "awaiting approval", "code", "verify", "merge"] as const;
 
 const series = z.object({
   name: z.string(),
   unit: z.string(),
-  // Which statistic of the day's samples the value is; a sum adds up the day.
-  statistic: z.enum(["median", "max", "sum"]).default("median"),
+  // Which statistic of the day's samples the value is; a sum adds up the
+  // day, and a count counts the day's events.
+  statistic: z.enum(["median", "max", "sum", "count"]).default("median"),
   // A peak series names the series it is the peak of; the page draws the
   // pair as one band and one tile.
   peakOf: z.string().optional(),
@@ -111,6 +114,7 @@ const series = z.object({
   model: z.string().optional(),
   kind: z.enum(["input", "output", "cache written", "cache read"]).optional(),
   flywheel: z.string().optional(),
+  stage: z.enum(stages).optional(),
   // A host's own load is read per machine, never summed across machines.
   host: z.string().optional(),
   points: z.array(point).default([]),
@@ -131,7 +135,7 @@ const measurements = defineCollection({
     argues: z.string(),
     cannotShow: z.string(),
     // How the page draws the series; each form checks the series it needs.
-    chart: z.enum(["utilization", "tokens"]),
+    chart: z.enum(["utilization", "tokens", "flight", "landed"]),
     series: z
       .array(series)
       .min(1)
@@ -145,10 +149,11 @@ const measurements = defineCollection({
             ctx.addIssue({ code: "custom", message: `"${s.name}" is the peak of "${s.peakOf}", which is not a series` });
           }
         }
-        // A counted total is the sum of each of its splits on every day; a
-        // median's split need not be.
-        for (const t of all.filter((s) => s.statistic === "sum" && !s.role && !s.model && !s.kind)) {
-          for (const by of ["role", "model", "kind"] as const) {
+        // A summed or counted total is the sum of each of its splits on every
+        // day; a median's split need not be.
+        const splitBy = ["role", "model", "kind", "flywheel", "stage"] as const;
+        for (const t of all.filter((s) => (s.statistic === "sum" || s.statistic === "count") && !splitBy.some((b) => s[b]))) {
+          for (const by of splitBy) {
             const parts = all.filter((s) => s[by] && s.name === `${t.name}, ${s[by]}`);
             if (!parts.length) continue;
             t.points.forEach((p, i) => {
@@ -182,4 +187,18 @@ const rates = defineCollection({
   }),
 });
 
-export const collections = { principles, notes, terms, components, measurements, rates };
+// The fleet a measurement was taken in: the flywheels we operate, on which
+// machines, over how many repositories, from a date until the next context.
+// Only our own appear; a flywheel, machine or repository that carries client
+// work is neither named nor counted.
+const contexts = defineCollection({
+  loader: file("./src/content/contexts/contexts.yaml"),
+  schema: z.object({
+    from: z.coerce.date(),
+    flywheels: z.array(z.object({ name: z.string(), machine: z.string() })).min(1),
+    repositories: z.number().int().positive(),
+    source: z.string(),
+  }),
+});
+
+export const collections = { principles, notes, terms, components, measurements, rates, contexts };

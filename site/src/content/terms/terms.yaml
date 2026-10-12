@@ -35,6 +35,10 @@
   definition: The agents working at once across our machines.
   principle: measure-the-fleet
   insteadOf: [swarm]
+- id: flywheel
+  term: flywheel
+  definition: One loop we operate, with its own plan, teams, signals and state; Crew's word for a partition's loop.
+  principle: measure-the-fleet
 - id: operator
   term: operator
   definition: The person who decides at the gate.
