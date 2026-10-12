@@ -109,17 +109,23 @@ About, and the first page of the Fleet.
   stay SVG, because they explain. Every scene has a still, loads lazily,
   stays within a size budget, honours reduced motion, and its words carry
   the meaning, so the picture can be decoration.
-- **The journey is a direction.** One ruler from one agent to a thousand on
-  a log scale, each tenfold step shaded, never a row of stations: we do not
-  teach a step for one or five agents, the point is to push the number up.
-  It fills solid to the latest collected peak of agents busy and is outlined
-  to the peak of agents running on the same day, so the gap between them is
-  the idle fleet. Beside it, a reading: "Agents at the peak", the number,
-  and "at most N busy at once", styled after Flywheel Next's runway dial
-  (`agentplot/blueprints design/flywheel-next/mockups/rail-and-board.html`),
-  so the site's gauge and the product's gauge read as one family. It fills
-  nothing until a collected point exists, never reads a sample, and never
-  says when the next number comes.
+- **The journey is a direction.** One dial from one agent to a thousand on
+  a log scale, open at the bottom: a 270-degree horseshoe from bottom left
+  over the top to bottom right, each tenfold step a shaded zone, never a
+  row of stations: we do not teach a step for one or five agents, the
+  point is to push the number up. It fills solid to the latest collected
+  peak of agents busy and is outlined to the peak of agents running on the
+  same day, so the gap between them is the idle fleet, and a pointer marks
+  the reading. The reading sits inside the dial: "Agents at the peak", the
+  number, and "at most N busy at once". Beside the dial, the date it was
+  read, the key, and the Fleet's "You can see it" stand. The dial is one
+  instrument with Flywheel Next's runway (`agentplot/blueprints
+  design/flywheel-next/surfaces.md` S103 and `mockups/rail-and-board.html`):
+  shaded zones under the scale, solid is working, outline is there but
+  waiting, a pointer at the reading, the reading inside, so the site's
+  gauge and the product's read as one family. It fills nothing until a
+  collected point exists, never reads a sample, and never says when the
+  next number comes.
 - **Home's calls and teaser.** A primary call to action to the Method and a
   secondary one to fleet utilization; a teaser of the fleet's latest
   reading, the agent count, that waits for the collector's first point and
