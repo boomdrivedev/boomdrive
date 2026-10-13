@@ -93,9 +93,10 @@ remembered to write.
 
 **Line:** Work is an intent, landed in bolts of small units.
 
-**Claim:** Work is an intent (what someone wants), broken into bolts (a body
-of work landed as one) made of units (one reviewable change each), and small
-units land continuously on the trunk.
+**Claim:** Work is an intent (what someone wants), broken into bolts (each
+one delivery) made of units (one reviewable change each). A unit merges into
+its bolt as it finishes, and the bolt lands on the shared line as one step,
+so the shared line moves only at a landing.
 
 - **Rules out:** long-lived feature branches; a 3,000-line agent pull request;
   work with no stated intent.
@@ -209,6 +210,20 @@ definitions with the numbers.
   our own repositories.
 - **Target:** a quality board.
 - **Measure:** fleet utilization first, then `measurement-roadmap.md`.
+
+## Changelog
+
+Version 0.1 is a draft; a revision within it is an entry here, in the shape
+the site's change entries take (principle, kind, summary, what prompted it).
+
+- **2026-10-12 · intents-and-bolts · revised.** Units merge into their bolt
+  as they finish and the bolt lands on the shared line as one; the claim had
+  said units land continuously on the trunk. Prompted by the operator reading
+  the principle's diagram: "bolts land on main, not units themselves ... the
+  whole point of the bolt is a delivery mechanism", which is how Crew works
+  and what the Flywheel Next statement's glossary says of a work item (merged
+  into the bolt when complete) and of landing (a bolt's line onto the shared
+  line).
 
 ## Candidates for later versions
 

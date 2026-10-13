@@ -1,10 +1,10 @@
 ---
 order: 4
 title: "Intents and bolts"
-summary: "Work is an intent broken into bolts made of units, one reviewable change each, and small units land continuously on the trunk."
+summary: "Work is an intent broken into bolts made of units, one reviewable change each. A unit merges into its bolt as it finishes, and the bolt lands on the shared line as one delivery."
 status: draft
 introducedIn: "0.1"
-lastReviewed: 2026-10-06
+lastReviewed: 2026-10-12
 ---
 
 ## How we do it today
