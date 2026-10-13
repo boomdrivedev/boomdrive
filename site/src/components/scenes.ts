@@ -340,8 +340,8 @@ const climb: Scene = {
   },
 };
 
-// 7. Built for teams that ship: work merges onto main in a steady stream and
-// leaves as releases, one after another.
+// 7. Built for teams that ship: bolts land on main in a steady stream and
+// leave as releases, one after another.
 const ship: Scene = {
   period: 9,
   still: 6.8,
@@ -365,7 +365,7 @@ const ship: Scene = {
       }
       if (r >= 1) shipped++;
     }
-    // Every few units that reach the end leave together as a release.
+    // Every few bolts that reach the end leave together as a release.
     const crates = Math.floor(shipped / 2);
     for (let c = 0; c < crates; c++) {
       const y = 330 - c * 34;

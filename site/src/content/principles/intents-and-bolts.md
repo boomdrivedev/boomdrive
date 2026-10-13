@@ -8,7 +8,7 @@ introducedIn: "0.1"
 lastReviewed: 2026-10-06
 diagram:
   src: /diagrams/intents-and-bolts.svg
-  alt: "An intent, one plain sentence of what someone wants, breaks into two bolts, each a body of work landed as one. Each bolt breaks into three units, one reviewable change each. The units drop onto the trunk one at a time, each a small commit, so the trunk grows in small steps. A bolt shows landed once all its units are on the trunk. Below the trunk, a long-lived feature branch of 3,000 lines, which the principle rules out, keeps taking commits but never lands, and is struck through."
+  alt: "An intent, one plain sentence of what someone wants, breaks into two bolts, each one delivery. Each bolt breaks into three units, one reviewable change each. As each unit finishes, it merges into its bolt's line, a short branch off the shared line, and the shared line does not move. Once all three units are in, the bolt lands on the shared line as one step; then the second bolt does the same. Below, a long-lived feature branch of 3,000 lines, which the principle rules out, keeps taking commits but never lands, and is struck through."
 ---
 
 ## How we do it today
