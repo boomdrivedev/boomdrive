@@ -1,4 +1,5 @@
 ---
+import { url } from "../../lib/url";
 import { getCollection } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import FleetDay from "../../components/FleetDay.astro";
@@ -45,7 +46,7 @@ const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0);
 const tiles = [
   {
     name: "Fleet utilization",
-    href: "/fleet/fleet-utilization/",
+    href: url("/fleet/fleet-utilization/"),
     big: `${running[last]}`,
     unit: "agents running",
     sub: `${busy[last]} busy · ${pct(busy[last], running[last])}% busy share`,
@@ -53,7 +54,7 @@ const tiles = [
   },
   {
     name: "Work in flight",
-    href: "/fleet/work-in-flight/",
+    href: url("/fleet/work-in-flight/"),
     big: `${units[last]}`,
     unit: "units in flight",
     sub: `in ${bolts[last]} bolts open · over ${repos[last]} repositories`,
@@ -61,7 +62,7 @@ const tiles = [
   },
   {
     name: "Landed",
-    href: "/fleet/landed/",
+    href: url("/fleet/landed/"),
     big: `${lastWeek(merged)}`,
     unit: "units merged, last 7 days",
     sub: `${lastWeek(landed)} bolts landed on main`,
@@ -231,7 +232,7 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
       {
         measurements.map((m) => (
           <li>
-            <a href={`/fleet/${m.id}/`}>{m.data.name}</a>
+            <a href={url(`/fleet/${m.id}/`)}>{m.data.name}</a>
             {m.data.series.some((s) => s.points.some((p) => p.sample)) && <span class="sample-chip">samples</span>}
             <div class="muted">{m.data.summary}</div>
           </li>

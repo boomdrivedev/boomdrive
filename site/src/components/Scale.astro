@@ -1,4 +1,5 @@
 ---
+import { url } from "../lib/url";
 import { getEntry } from "astro:content";
 
 // One agent to a thousand as one instrument: a dial open at the bottom, the
@@ -123,7 +124,7 @@ const label = lit
       <div class="stand">
         <p class="label">You can see it</p>
         <p class="call">The fleet measured, and everything on the record.</p>
-        <a class="go" href="/fleet/fleet-utilization/">Fleet utilization</a>
+        <a class="go" href={url("/fleet/fleet-utilization/")}>Fleet utilization</a>
       </div>
     </div>
   </div>

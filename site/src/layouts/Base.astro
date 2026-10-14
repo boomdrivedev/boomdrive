@@ -1,4 +1,5 @@
 ---
+import { url } from "../lib/url";
 import "../styles/site.css";
 
 interface Props {
@@ -10,11 +11,11 @@ interface Props {
 const { title, description, wide = false } = Astro.props;
 const here = Astro.url.pathname;
 const sections = [
-  { href: "/method/", label: "The Method" },
-  { href: "/fleet/", label: "The Fleet" },
-  { href: "/notes/", label: "Notes" },
-  { href: "/uses/", label: "Uses" },
-  { href: "/about/", label: "About" },
+  { href: url("/method/"), label: "The Method" },
+  { href: url("/fleet/"), label: "The Fleet" },
+  { href: url("/notes/"), label: "Notes" },
+  { href: url("/uses/"), label: "Uses" },
+  { href: url("/about/"), label: "About" },
 ];
 ---
 
@@ -29,13 +30,13 @@ const sections = [
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%238FB9AE' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='7.5' fill='none' stroke='%23C9A227' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%23B4552D'/%3E%3C/svg%3E"
     />
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/space-grotesk-latin-700-normal.woff2" />
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/ibm-plex-mono-latin-400-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href={url("/fonts/space-grotesk-latin-700-normal.woff2")} />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href={url("/fonts/ibm-plex-mono-latin-400-normal.woff2")} />
   </head>
   <body class:list={[{ wide }]}>
     <header class="topbar">
       <div class="bar">
-        <a class="mark" href="/">Fly<span>wheel</span></a>
+        <a class="mark" href={url("/")}>Fly<span>wheel</span></a>
         <nav aria-label="Sections">
           {
             sections.map((s) => (

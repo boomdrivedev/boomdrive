@@ -1,4 +1,5 @@
 ---
+import { url } from "../../lib/url";
 import { getCollection, getEntry } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import UtilizationChart from "../../components/UtilizationChart.astro";
@@ -487,7 +488,7 @@ const inline = (s: string) =>
           )
         }
         <dt>Principle</dt>
-        <dd>{principle && <a href={`/method/#${principle.id}`}>{principle.data.title}</a>}</dd>
+        <dd>{principle && <a href={url(`/method/#${principle.id}`)}>{principle.data.title}</a>}</dd>
         <dt>Source</dt>
         <dd set:html={inline(r.source)} />
         <dt>Collector</dt>
@@ -508,7 +509,7 @@ const inline = (s: string) =>
           <ul class="plain">
             {citedBy.map((n) => (
               <li>
-                <span class="muted">{n.data.date.toISOString().slice(0, 10)}</span> <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+                <span class="muted">{n.data.date.toISOString().slice(0, 10)}</span> <a href={url(`/notes/${n.id}/`)}>{n.data.title}</a>
               </li>
             ))}
           </ul>

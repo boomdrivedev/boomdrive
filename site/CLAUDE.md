@@ -16,5 +16,10 @@ fleet's measurements and the tools. `docs/` holds its design and plans; read
   both fail it, and a Vale warning is fixed, not ignored.
 - The glossary in `src/content/terms/terms.yaml` is the one vocabulary; add a
   term there, never in `styles/` (those files are generated).
-- Conventional Commits; stage by explicit paths; local only, never push.
+- Conventional Commits; stage by explicit paths. The repository is public and
+  `main` is the published site: a push to `main` deploys it to GitHub Pages
+  (`.github/workflows/pages.yml`) after `site-check` passes there, so push
+  `main` only when asked.
+- Every internal link goes through `url()` in `src/lib/url.ts`, never a bare
+  root path: the site is served under `/flywheel-web/`.
 - Bare layout: `flywheel-web.git/` beside `main/`.

@@ -1,4 +1,5 @@
 ---
+import { url } from "../lib/url";
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
 import Benefits from "../components/Benefits.astro";
@@ -20,8 +21,8 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
         as the fleet grows becomes the Method; what we measure on the way, we publish.
       </p>
       <div class="ctas">
-        <a class="cta primary" href="/method/">Read the Method</a>
-        <a class="cta" href="/fleet/fleet-utilization/">Fleet utilization</a>
+        <a class="cta primary" href={url("/method/")}>Read the Method</a>
+        <a class="cta" href={url("/fleet/fleet-utilization/")}>Fleet utilization</a>
       </div>
     </div>
   </section>
@@ -33,7 +34,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
   <section class="notes" aria-labelledby="notes-title">
     <div class="notes-head">
       <h2 id="notes-title">Field notes</h2>
-      <a class="all" href="/notes/">All field notes</a>
+      <a class="all" href={url("/notes/")}>All field notes</a>
     </div>
     {
       notes.length ? (
@@ -43,7 +44,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
               <span class="when">
                 {iso(n.data.date)} · {n.data.kind}
               </span>
-              <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+              <a href={url(`/notes/${n.id}/`)}>{n.data.title}</a>
             </li>
           ))}
         </ul>

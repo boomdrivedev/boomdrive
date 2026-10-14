@@ -1,4 +1,5 @@
 ---
+import { url } from "../../lib/url";
 import { getCollection, getEntry, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
 
@@ -16,7 +17,7 @@ const newer = n.data.supersededBy ? await getEntry(n.data.supersededBy) : undefi
   {
     newer && (
       <p class="panel">
-        A later note supersedes this one: <a href={`/notes/${newer.id}/`}>{newer.data.title}</a>
+        A later note supersedes this one: <a href={url(`/notes/${newer.id}/`)}>{newer.data.title}</a>
       </p>
     )
   }
@@ -44,7 +45,7 @@ const newer = n.data.supersededBy ? await getEntry(n.data.supersededBy) : undefi
     {principles.map((p, i) => (
       <>
         {i > 0 && ", "}
-        <a href={`/method/#${p?.id}`}>{p?.data.title}</a>
+        <a href={url(`/method/#${p?.id}`)}>{p?.data.title}</a>
       </>
     ))}
   </p>
