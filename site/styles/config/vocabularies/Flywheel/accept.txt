@@ -8,7 +8,9 @@
 [Ff]leet
 [Ff]lywheel
 [Gg]ate
+[Ii]nbox
 [Ii]ntent
+[Ii]tem
 [Ll]ine
 [Oo]perator
 [Rr]emote cache
@@ -18,3 +20,7 @@
 [Ss]ubmission
 [Uu]nit
 [Ww]orktree
+eddy
+headwater
+millpond
+sluice

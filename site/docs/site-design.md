@@ -54,7 +54,7 @@ About, and the first page of the Fleet.
 | The Fleet | A front page that frames the fleet (flywheels, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
 | Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
-| Tools | Crew, and the shell, moon and hook configurations we publish | Updated per release | Yes |
+| Tools | The hub of the Flywheel family, at `/tools/`: the family's loop drawn, a card per member, and how each tool stands alone and the Method joins them (see "The Tools hub" below). Each tool's own documentation is on its own site; the shell, moon and hook configurations we publish join the hub as each is released | Changes when a member joins the family or its status changes | Yes |
 | About | Who we are, learning in public, how we treat client work | Rarely | Yes |
 
 ## How Home and the Method read
@@ -154,6 +154,45 @@ About, and the first page of the Fleet.
   scripts off, Home is the flywheel, the claim, the journey, the calls and
   the notes, and the Method is the principles in order; nothing is
   reachable only by scrolling or clicking.
+
+## The Tools hub
+
+Flywheel is the umbrella of a family of tools: the Method and its engine,
+then headwater and eddy, which notice, millpond, the inbox, and sluice,
+which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
+and its design book at `agentplot.github.io/blueprints/<book>/`; this site
+holds the hub every family site's footer links to,
+`agentplot.github.io/flywheel-web/tools/`.
+
+- **The family is one list, and it is not ours.** Every member, its line,
+  its place in the loop, its status, its site, its design book and its
+  accent come from `@agentplot/site-theme`'s `family`, which every family
+  site reads. A new member, or a tool that ships, is an edit there, and the
+  hub, the bar and the footer follow.
+- **The hub reads in four parts.** A headline and a lede, with every
+  tool's status read from the list; the family's animated diagram of the
+  loop, drawn by the theme with Flywheel highlighted, since the Method is
+  what the whole loop belongs to; a card per member, Flywheel's spanning
+  the row above the four tools in the loop's order, each with its place in
+  the loop lit, its status, its one line, the principle of the Method it
+  carries, and links to its site and design book; then two columns on how
+  each tool stands alone and how the Method joins them.
+- **Its words are content.** The lede and the two columns live in
+  `src/content/pages/tools.md`, so Vale reads them as it reads every page.
+  They are grounded in the capture design (`agentplot/blueprints
+  design/capture/design.md`): each tool stands alone with its own plugins,
+  the tools meet only at contracts, and moving from one setup to the next
+  changes the host and the curator while the adapters and the inbox stay
+  put.
+- **The family's bar and footer are on every page.** The bar runs above the
+  topbar, its members lined up with the mark, and the footer names each
+  member with its line, status, site and design book. Both wear the
+  flywheel's palette: `site.css` maps it onto the theme's tokens, and the
+  site is dark only, so `<html>` says so. The hub leaves the footer out,
+  since the page is the family.
+- **A status is never overstated.** A member designed and not built is
+  drawn as a ring and says so in words, on the card, in the bar and in the
+  footer, and its site and design book may come before the tool does.
 
 ## Content model
 

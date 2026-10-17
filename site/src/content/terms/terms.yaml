@@ -83,3 +83,33 @@
   term: curation
   definition: The judgment that moves each signal onto an intent, a claim, a chore, or off with a reason.
   principle: capture-at-the-source
+- id: item
+  term: item
+  definition: The unit of work curation makes from one or more signals; it goes to one worktree or into a plan.
+  principle: capture-at-the-source
+- id: inbox
+  term: inbox
+  definition: Where captures, signals, moves and items are kept, as files in a git repository.
+  principle: capture-at-the-source
+# The Flywheel family's tools, named in lowercase as their own sites name
+# them; the one list of the family is @agentplot/site-theme's.
+- id: headwater
+  term: headwater
+  definition: The tool that reports releases and advisories for what a repository declares.
+  principle: capture-at-the-source
+  lowercase: true
+- id: eddy
+  term: eddy
+  definition: The tool that lists recorded meetings across meeting services.
+  principle: capture-at-the-source
+  lowercase: true
+- id: millpond
+  term: millpond
+  definition: The inbox tool, which keeps captures and signals and sends an item to a worktree.
+  principle: capture-at-the-source
+  lowercase: true
+- id: sluice
+  term: sluice
+  definition: The merge queue, which tests a change as merged and lands it.
+  principle: order-at-landing
+  lowercase: true

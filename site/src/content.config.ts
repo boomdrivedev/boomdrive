@@ -201,4 +201,15 @@ const contexts = defineCollection({
   }),
 });
 
-export const collections = { principles, notes, terms, components, measurements, rates, contexts };
+// The words of a page that is laid out by hand, such as the Tools hub, kept
+// here so Vale reads them as it reads every other page. The page places the
+// prose before the first heading as its lede and each section after it.
+const pages = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/content/pages" }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+  }),
+});
+
+export const collections = { principles, notes, terms, components, measurements, rates, contexts, pages };
