@@ -158,8 +158,8 @@ About, and the first page of the Fleet.
 ## The Tools hub
 
 Flywheel is the umbrella of a family of tools: the Method and its engine,
-then headwater and eddy, which notice, millpond, the inbox, and sluice,
-which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
+then headwater and eddy, which notice, millpond, the inbox, sounding,
+which works a question to a conclusion, and sluice, which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
 and its design book at `agentplot.github.io/blueprints/<book>/`; this site
 holds the hub every family site's footer links to,
 `agentplot.github.io/flywheel-web/tools/`.
@@ -173,7 +173,7 @@ holds the hub every family site's footer links to,
   tool's status read from the list; the family's animated diagram of the
   loop, drawn by the theme with Flywheel highlighted, since the Method is
   what the whole loop belongs to; a card per member, Flywheel's spanning
-  the row above the four tools in the loop's order, each with its place in
+  the row above the tools in the loop's order, each with its place in
   the loop lit, its status, its one line, the principle of the Method it
   carries, and links to its site and design book; then two columns on how
   each tool stands alone and how the Method joins them.

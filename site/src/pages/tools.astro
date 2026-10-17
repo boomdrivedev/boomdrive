@@ -28,6 +28,7 @@ const sections = cut < 0 ? [] : named(html.slice(cut)).split(/(?=<h2[\s>])/);
 const places: { id: Place; label: string }[] = [
   { id: "notice", label: "Notice" },
   { id: "inbox", label: "Inbox" },
+  { id: "work", label: "Work" },
   { id: "land", label: "Land" },
 ];
 const placeOf = (p: Place) => places.find((x) => x.id === p)?.label ?? p;
@@ -38,6 +39,9 @@ const serves: Partial<Record<MemberId, string>> = {
   headwater: "capture-at-the-source",
   eddy: "capture-at-the-source",
   millpond: "capture-at-the-source",
+  // A question worked to a conclusion the operator decides, before any
+  // work is planned: the design loop, met by a person at the gate.
+  sounding: "two-loops-one-gate",
   sluice: "order-at-landing",
 };
 const principle = async (id: string) => {
@@ -85,7 +89,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
         <p class:list={["status", { planned: umbrella.status !== "in use" }]}><span class="dot" aria-hidden="true" />{umbrella.status}</p>
       </div>
       <div class="what">
-        <ol class="track all" aria-label="Its place: the whole loop">
+        <ol class="track all" style={`--n:${places.length}`} aria-label="Its place: the whole loop">
           {places.map((p) => <li class="on">{p.label}</li>)}
         </ol>
         <p class="line">{umbrella.line}</p>
@@ -100,7 +104,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
       {
         tools.map(({ m, serves }) => (
           <li class="card" style={`--m:${m.accent.dark}`}>
-            <ol class="track" aria-label={`Its place in the loop: ${placeOf(m.place)}`}>
+            <ol class="track" style={`--n:${places.length}`} aria-label={`Its place in the loop: ${placeOf(m.place)}`}>
               {places.map((p) => (
                 <li class:list={{ on: p.id === m.place }} aria-current={p.id === m.place ? "step" : undefined}>
                   {p.label}
@@ -183,12 +187,12 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   .links a.go { color: var(--brass); }
   .links a.go::after { content: " →"; }
 
-  /* Its place in the loop: three stops, its own lit. */
-  .track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); position: relative; }
-  .track::before { content: ""; position: absolute; left: 4px; right: calc(100% / 3 - 4px); top: 4px; height: 1px; background: var(--line); }
+  /* Its place in the loop: a stop per place, its own lit. */
+  .track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n), 1fr); position: relative; }
+  .track::before { content: ""; position: absolute; left: 4px; right: calc(100% / var(--n) - 4px); top: 4px; height: 1px; background: var(--line); }
   .track.all::before { background: var(--m); }
   .track li {
-    position: relative; padding-top: 16px; font: 9.5px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
+    position: relative; padding-top: 16px; font: 9.5px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--ink-3); opacity: 0.6;
   }
   .track li::before {
@@ -197,6 +201,13 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   }
   .track li.on { color: var(--ink); opacity: 1; }
   .track li.on::before { background: var(--m); box-shadow: 0 0 0 4px color-mix(in oklab, var(--m) 22%, transparent); }
+  /* A card too narrow for every stop's name keeps every stop and names its
+     own place only. */
+  .tools .card { container-type: inline-size; }
+  @container (max-width: 13rem) {
+    .track li:not(.on) { color: transparent; }
+    .track li.on { white-space: nowrap; }
+  }
 
   .umbrella { display: grid; gap: 18px 48px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; padding: 24px 28px 20px; margin-bottom: 16px; }
   .umbrella { border-color: color-mix(in oklab, var(--m) 45%, transparent); background: linear-gradient(135deg, rgba(201, 162, 39, 0.07), transparent 55%), var(--panel); }
@@ -206,7 +217,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   .umbrella .what { padding-top: 6px; }
   @media (max-width: 48rem) { .umbrella { grid-template-columns: 1fr; padding: 20px; } }
 
-  .tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); }
+  .tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
   /* The links sit at the foot of each card, whatever its line's length. */
   .tools .card { display: flex; flex-direction: column; }
   .tools .links { margin-top: auto; }

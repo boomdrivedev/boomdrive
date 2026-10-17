@@ -108,6 +108,11 @@
   definition: The inbox tool, which keeps captures and signals and sends an item to a worktree.
   principle: capture-at-the-source
   lowercase: true
+- id: sounding
+  term: sounding
+  definition: The tool that works one question in one session and ends on a conclusion the operator accepts, sends back or drops.
+  principle: two-loops-one-gate
+  lowercase: true
 - id: sluice
   term: sluice
   definition: The merge queue, which tests a change as merged and lands it.
