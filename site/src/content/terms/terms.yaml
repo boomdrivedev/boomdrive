@@ -108,6 +108,11 @@
   definition: The inbox tool, which keeps captures and signals and sends an item to a worktree.
   principle: capture-at-the-source
   lowercase: true
+- id: flume
+  term: flume
+  definition: The tool that launches one agent in one worktree for an item, runs its stages, and tidies the place once the work lands.
+  principle: one-agent-one-worktree
+  lowercase: true
 - id: sounding
   term: sounding
   definition: The tool that works one question in one session and ends on a conclusion the operator accepts, sends back or drops.

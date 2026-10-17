@@ -21,6 +21,7 @@
 [Uu]nit
 [Ww]orktree
 eddy
+flume
 headwater
 millpond
 sluice

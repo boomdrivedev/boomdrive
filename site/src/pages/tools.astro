@@ -28,6 +28,7 @@ const sections = cut < 0 ? [] : named(html.slice(cut)).split(/(?=<h2[\s>])/);
 const places: { id: Place; label: string }[] = [
   { id: "notice", label: "Notice" },
   { id: "inbox", label: "Inbox" },
+  { id: "launch", label: "Launch" },
   { id: "work", label: "Work" },
   { id: "land", label: "Land" },
 ];
@@ -39,6 +40,8 @@ const serves: Partial<Record<MemberId, string>> = {
   headwater: "capture-at-the-source",
   eddy: "capture-at-the-source",
   millpond: "capture-at-the-source",
+  // A place per launch: one agent in its own worktree, submitting to sluice.
+  flume: "one-agent-one-worktree",
   // A question worked to a conclusion the operator decides, before any
   // work is planned: the design loop, met by a person at the gate.
   sounding: "two-loops-one-gate",
@@ -60,7 +63,9 @@ const tools = await Promise.all(
 const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 const byStatus = (s: Status) => list(tools.filter((t) => t.m.status === s).map((t) => t.m.name));
 const built = byStatus("in use"), designed = byStatus("designed, not built");
-// The headline counts the tools, so a new member changes it too.
+// The headline counts the tools, so a new member changes it too. The cards
+// run in one row up to five, and in two rows beyond.
+const cols = tools.length <= 5 ? tools.length : Math.ceil(tools.length / 2);
 const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"][tools.length] ?? String(tools.length);
 ---
 
@@ -100,7 +105,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
       </div>
     </article>
 
-    <ul class="tools">
+    <ul class="tools" style={`--cols:${cols}`}>
       {
         tools.map(({ m, serves }) => (
           <li class="card" style={`--m:${m.accent.dark}`}>
@@ -204,7 +209,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   /* A card too narrow for every stop's name keeps every stop and names its
      own place only. */
   .tools .card { container-type: inline-size; }
-  @container (max-width: 13rem) {
+  @container (max-width: 15rem) {
     .track li:not(.on) { color: transparent; }
     .track li.on { white-space: nowrap; }
   }
@@ -217,7 +222,11 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   .umbrella .what { padding-top: 6px; }
   @media (max-width: 48rem) { .umbrella { grid-template-columns: 1fr; padding: 20px; } }
 
-  .tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+  /* No narrower than 13rem, and never more than --cols across. */
+  .tools {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(max(13rem, (100% - (var(--cols) - 1) * 16px) / var(--cols)), 1fr));
+  }
   /* The links sit at the foot of each card, whatever its line's length. */
   .tools .card { display: flex; flex-direction: column; }
   .tools .links { margin-top: auto; }
