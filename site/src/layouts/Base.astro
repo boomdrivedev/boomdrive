@@ -1,4 +1,6 @@
 ---
+import FamilyBar from "@agentplot/site-theme/FamilyBar.astro";
+import FamilyFooter from "@agentplot/site-theme/FamilyFooter.astro";
 import { url } from "../lib/url";
 import "../styles/site.css";
 
@@ -7,8 +9,14 @@ interface Props {
   description?: string;
   // Widens the page for numbers set beside prose, such as a measurement.
   wide?: boolean;
+  // The family at the foot of the page; the Tools hub, which is the family,
+  // leaves it out.
+  family?: boolean;
 }
-const { title, description, wide = false } = Astro.props;
+const { title, description, wide = false, family = true } = Astro.props;
+// The family's bar, footer and diagram come from @agentplot/site-theme and
+// wear the flywheel's palette (site.css). The site has one theme, so <html>
+// says dark and the family's tokens never follow a light setting.
 const here = Astro.url.pathname;
 const sections = [
   { href: url("/method/"), label: "The Method" },
@@ -20,7 +28,7 @@ const sections = [
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -34,6 +42,7 @@ const sections = [
     <link rel="preload" as="font" type="font/woff2" crossorigin href={url("/fonts/ibm-plex-mono-latin-400-normal.woff2")} />
   </head>
   <body class:list={[{ wide }]}>
+    <FamilyBar current="flywheel" />
     <header class="topbar">
       <div class="bar">
         <a class="mark" href={url("/")}>Fly<span>wheel</span></a>
@@ -51,6 +60,9 @@ const sections = [
     <main>
       <slot />
     </main>
-    <footer>Learning in public how to run a fleet of coding agents.</footer>
+    <footer>
+      {family && <FamilyFooter current="flywheel" />}
+      <p class="colophon">Learning in public how to run a fleet of coding agents.</p>
+    </footer>
   </body>
 </html>

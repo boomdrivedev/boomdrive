@@ -46,6 +46,24 @@
   color-scheme: dark;
 }
 
+/* The family's tokens (@agentplot/site-theme) take the flywheel's palette, so
+   its bar, footer and diagram wear this ground. Under data-theme, which Base
+   sets, these outrank the tokens' own :root whichever stylesheet loads last. */
+:root[data-theme] {
+  --ap-bg: var(--ground);
+  --ap-bg-2: var(--ground-deep);
+  --ap-bg-3: var(--ground-2);
+  --ap-line: var(--line);
+  --ap-line-soft: var(--line-soft);
+  --ap-fg: var(--bone);
+  --ap-fg-1: var(--bone);
+  --ap-fg-2: var(--ink-2);
+  --ap-fg-3: var(--ink-3);
+  --ap-fg-4: rgba(143, 185, 174, 0.5);
+  --ap-gutter: 16px;
+  --ap-radius: 12px;
+}
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -96,12 +114,23 @@ code { font-family: var(--mono); font-size: 0.85em; background: var(--ground-dee
   color: var(--ink-3); text-decoration: none; white-space: nowrap;
 }
 .topbar nav a:hover, .topbar nav a[aria-current] { color: var(--brass); }
+/* Every section fits one line under the mark on a phone. */
+@media (max-width: 26rem) {
+  .topbar nav { gap: 4px 11px; }
+  .topbar nav a { letter-spacing: 0.08em; }
+}
+
+/* The family bar runs above the topbar, its members lined up with the mark. */
+nav.ap-bar ul { max-width: var(--wide); margin: 0 auto; }
 
 main, footer { max-width: var(--measure); margin: 0 auto; padding: 0 16px; }
 main { padding-top: 40px; }
-.wide main, .wide footer { max-width: var(--wide); }
-footer {
-  padding-top: 64px; padding-bottom: 48px;
+.wide main { max-width: var(--wide); }
+/* The footer spans the topbar's width on every page: the family, which keeps
+   its own 3rem above its rule, then the colophon. */
+footer { max-width: var(--wide); padding-top: 16px; padding-bottom: 48px; }
+.colophon {
+  margin: 28px 0 0;
   font: 11px/1.6 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
 }
 
