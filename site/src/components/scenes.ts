@@ -16,10 +16,6 @@ const clamp = (v: number) => Math.max(0, Math.min(1, v));
 const seg = (t: number, a: number, b: number) => clamp((t - a) / (b - a));
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2);
 const lerp = (a: number, b: number, x: number) => a + (b - a) * x;
-const rand = (i: number) => {
-  const v = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
-  return v - Math.floor(v);
-};
 
 // A block: a rounded tile with a soft shadow and a lit top edge.
 function block(g: Ctx, x: number, y: number, w: number, h: number, fill: string, alpha = 1, tilt = 0) {
@@ -302,46 +298,7 @@ const proof: Scene = {
   },
 };
 
-// 6. Output scales with input: the journey climbing, one agent toward a
-// thousand on a log scale, the field filling as it goes.
-const climb: Scene = {
-  period: 10,
-  still: 7.6,
-  draw(g, p, t) {
-    const x0 = 96, x1 = 600, yAt = (n: number) => 340 - (Math.log10(n) / 3) * 270;
-    [1, 10, 100, 1000].forEach((n) => {
-      line(g, [[x0, yAt(n)], [x1, yAt(n)]], p.line, 1, [2, 6]);
-      label(g, n.toLocaleString("en"), x0 - 14, yAt(n) + 4, p.ink3, "right");
-    });
-    label(g, "AGENTS", x0 - 14, 50, p.ink3, "right");
-    const pr = ease(seg(t, 0.4, 7)) * (1 - seg(t, 9.4, 10));
-    const curve = (u: number) => [lerp(x0, x1, u), yAt(10 ** (3 * u ** 1.15))];
-    // The field under the line: as many dots as agents, near enough.
-    const count = Math.round(10 ** (3 * pr));
-    for (let i = 0; i < Math.min(count, 700); i++) {
-      const u = rand(i) * pr, [cx, cy] = curve(u);
-      const yy = lerp(cy, 340, rand(i + 999) ** 1.6);
-      g.fillStyle = i % 9 ? p.mint : p.brass;
-      g.globalAlpha = 0.7;
-      g.fillRect(cx - 1.6, yy - 1.6, 3.2, 3.2);
-      g.globalAlpha = 1;
-    }
-    const pts: number[][] = [];
-    for (let u = 0; u <= pr; u += 0.01) pts.push(curve(u));
-    line(g, pts, p.brass, 2.5);
-    const [hx, hy] = curve(pr);
-    g.save();
-    g.fillStyle = p.brass;
-    g.shadowColor = p.brass;
-    g.shadowBlur = 18;
-    g.beginPath();
-    g.arc(hx, hy, 6, 0, 7);
-    g.fill();
-    g.restore();
-  },
-};
-
-// 7. Built for teams that ship: bolts land on main in a steady stream and
+// 6. Built for teams that ship: bolts land on main in a steady stream and
 // leave as releases, one after another.
 const ship: Scene = {
   period: 9,
@@ -381,4 +338,4 @@ const ship: Scene = {
   },
 };
 
-export const scenes: Record<string, Scene> = { capture, fleet, same, proof, climb, ship };
+export const scenes: Record<string, Scene> = { capture, fleet, same, proof, ship };

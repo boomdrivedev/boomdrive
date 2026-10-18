@@ -16,15 +16,16 @@ are targets to beat, not forecasts.
 
 ## Positioning
 
-We write for the developer running five agents who will be running fifty next
-year, and for the lead who has to make that safe.
+We write for the developer running more agents than they can follow, and for
+the lead who has to make that safe.
 
 - **Learning in public.** We run a real fleet and report what works and what
   breaks. No golden answer, no hype.
 - **Opinionated.** Every note takes a position.
 - **Proof over claims.** Real numbers from our own fleet in every note.
 - **Tool-neutral.** Works with whichever harness the reader uses.
-- **The frame:** from five agents to five hundred.
+- **The frame:** one person's attention is the limit; running agents is a
+  people and process problem.
 
 ## The weekly field note
 

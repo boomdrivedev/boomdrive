@@ -31,15 +31,15 @@ Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
 - **Video stays on YouTube**, embedded with a click-to-load player; images are
   validated and optimized by Astro at build time.
 
-## The arc: scaling agents
+## The case: one person's attention
 
-The site's spine is the journey from one agent to a thousand: 1, 5, 20, 50,
-100, 500, 1,000. The Method is the mental model for working at each step,
-before it is any technology, and "every day the same" is what lets a fleet
-take the next step without the day changing shape. The journey appears in
-two places: Home shows it with where the fleet stands today, read from the
-latest fleet-utilization point, and the statement opens the Method with it.
-Nowhere does the site promise when a step comes.
+The site's spine is one claim: running a fleet of coding agents is a people
+and process problem. One person can keep only so many agents in mind, and
+going from pane to pane to find the one that needs you is chaos. The Method
+is the process that keeps the work running reliably and brings the
+operator only the decisions, numbered, on one rail. Home opens on this case
+and shows it. The site never frames the fleet by how many agents it
+reaches, and never promises a number.
 
 ## Site map
 
@@ -48,7 +48,7 @@ About, and the first page of the Fleet.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
-| Home | Leads with scaling the fleet from one agent toward a thousand; the hero is a timed sequence of seven benefit scenes, the flywheel first; the journey as one scale with where the fleet stands; a primary call to the Method and a secondary to fleet utilization; a teaser of the fleet's latest reading; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
+| Home | Opens on the case: one person's attention is the limit, and the Method is the process that brings only the decisions to one rail, shown as one person going from agent pane to agent pane beside the same work arriving as decisions on a rail; then what the Method buys, six benefit scenes on a timer, the flywheel first; the fleet's latest reading with the Fleet's call; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
 | The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
 | The Fleet | A front page that frames the fleet (flywheels, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
@@ -59,10 +59,14 @@ About, and the first page of the Fleet.
 
 ## How Home and the Method read
 
-- **Home leads with scaling, and sells the benefits.** One headline: we
-  are scaling a fleet of coding agents from one toward a thousand, and the
-  Method is how. Under it, the hero is one stage that plays a sequence of
-  benefit scenes on a timer, each a short line, one sentence and a picture,
+- **Home opens on the case, then shows what the Method buys.** One
+  headline: agents scale, and your attention doesn't. The deck says it
+  plainly: one person can keep only so many agents in mind, jumping
+  between their panes is chaos, and Flywheel is the process that keeps the
+  work running and brings you only the decisions, on one rail. The
+  attention figure shows it under the calls to action. Then, under "What
+  the Method buys", one stage plays a sequence of benefit scenes on a
+  timer, each a short line, one sentence and a picture,
   with a rail of the benefit names beside the stage that lights as it
   plays: click any to jump, hover or focus pauses. Reduced motion turns it
   into tabs with still pictures; with scripts off the benefits stack as a
@@ -85,16 +89,23 @@ About, and the first page of the Fleet.
      release. This is the Method's promise, a scene and never the headline.
   5. *Proof you can trust.* Work is verified before you see it, and never
      proved twice.
-  6. *Output scales with input.* The better you manage what goes in, the
-     more comes out; the Method is what makes five agents work like fifty.
-     Its picture is the journey climbing.
-  7. *Built for teams that ship.* For teams that keep a product line
+  6. *Built for teams that ship.* For teams that keep a product line
      stable and mean to reach continuous delivery: agentic coding with the
      continuous-delivery mindset. The closing scene says who this is for.
   "You can see it", the fleet measured and everything on the record, is
   not a scene: it is the Fleet's call to action and its teaser.
   A scene says what the Method buys, in the present tense; where a benefit
   is not yet built, the principle's place on the Method says so.
+- **The attention figure** shows the case beside the words. On the left,
+  nine agents in nine panes and the operator's attention, a ring marked
+  "you", going from pane to pane while the panes it is not on ask a
+  question, fail a test or wait for a plan, and wait unseen. On the right,
+  the same agents keep working in a row and only their decisions arrive,
+  numbered, on one rail, and one word answers them. It is a picture of a
+  way of working and holds no measured number. It is inline SVG with CSS
+  keyframes, so it moves with scripts off; reduced motion holds it at one
+  moment, three panes waiting and three decisions on the rail, and a
+  button pauses it.
 - **The flywheel figure** is the animated four-ring flywheel from
   agentplot/flywheel's site (`site/index.html`: the operator's review on
   the outside, then intent, then bolts, construction at the core, each
@@ -109,28 +120,12 @@ About, and the first page of the Fleet.
   stay SVG, because they explain. Every scene has a still, loads lazily,
   stays within a size budget, honours reduced motion, and its words carry
   the meaning, so the picture can be decoration.
-- **The journey is a direction.** One dial from one agent to a thousand on
-  a log scale, open at the bottom: a 270-degree horseshoe from bottom left
-  over the top to bottom right, each tenfold step a shaded zone, never a
-  row of stations: we do not teach a step for one or five agents, the
-  point is to push the number up. It fills solid to the latest collected
-  peak of agents busy and is outlined to the peak of agents running on the
-  same day, so the gap between them is the idle fleet, and a pointer marks
-  the reading. The reading sits inside the dial: "Agents at the peak", the
-  number, and "at most N busy at once". Beside the dial, the date it was
-  read, the key, and the Fleet's "You can see it" stand. The dial is one
-  instrument with Flywheel Next's runway (`agentplot/blueprints
-  design/flywheel-next/surfaces.md` S103 and `mockups/rail-and-board.html`):
-  shaded zones under the scale, solid is working, outline is there but
-  waiting, a pointer at the reading, the reading inside, so the site's
-  gauge and the product's read as one family. It fills nothing until a
-  collected point exists, never reads a sample, and never says when the
-  next number comes.
 - **Home's calls and teaser.** A primary call to action to the Method and a
-  secondary one to fleet utilization; a teaser of the fleet's latest
-  reading, the agent count, that waits for the collector's first point and
-  never reads a sample; and the latest field notes, with a link to all of
-  them.
+  secondary one to fleet utilization, beside the case; the Fleet's "You
+  can see it" beside the fleet's latest reading, agents at the peak and at
+  most how many of them busy at once, which waits for the collector's
+  first point and never reads a sample; and the latest field notes, with a
+  link to all of them.
 - **The Method reads one principle at a time, in one place.** Scrolling
   the Method moves through the principles in order, each taking the screen
   in turn: the write-up (the claim, what it rules out, today, where it is
@@ -151,8 +146,8 @@ About, and the first page of the Fleet.
   faint outline holds the diagram's place on a wide screen, and on a phone
   the write-up stands alone.
 - **Motion never hides content.** Every diagram honours reduced motion. With
-  scripts off, Home is the flywheel, the claim, the journey, the calls and
-  the notes, and the Method is the principles in order; nothing is
+  scripts off, Home is the case and its figure, the calls, the benefits
+  with the flywheel first, the fleet's reading and the notes, and the Method is the principles in order; nothing is
   reachable only by scrolling or clicking.
 
 ## The Tools hub

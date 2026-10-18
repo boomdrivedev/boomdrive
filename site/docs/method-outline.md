@@ -14,9 +14,9 @@ has ten principles, read on one page.
 now the bottleneck, and a fleet needs conventions the way web applications
 needed Rails.
 
-The page opens on the journey the Method is for: scaling a fleet from one
-agent to a thousand, 1, 5, 20, 50, 100, 500, 1,000, where each step is a
-change in how you think and work before it is a change in tools. It carries
+The page opens on the case the Method answers: one person can keep only so
+many agents in mind, so running a fleet is a people and process problem, and
+the Method is the process that brings that person only the decisions. It carries
 the mission, every day the same: a check, a gate and an answer about the
 repository are identical whether the work happens in an agent's worktree, on
 a laptop, in CI or in a release. It gives the principles one line each, each

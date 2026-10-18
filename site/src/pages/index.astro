@@ -2,8 +2,9 @@
 import { url } from "../lib/url";
 import { getCollection } from "astro:content";
 import Base from "../layouts/Base.astro";
+import Attention from "../components/Attention.astro";
 import Benefits from "../components/Benefits.astro";
-import Scale from "../components/Scale.astro";
+import FleetReading from "../components/FleetReading.astro";
 
 const notes = (await getCollection("notes", ({ data }) => !data.draft))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
@@ -11,25 +12,30 @@ const notes = (await getCollection("notes", ({ data }) => !data.draft))
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 ---
 
-<Base title="Flywheel" description="Scaling a fleet of coding agents from one agent toward a thousand, and the Method that keeps it turning." wide>
+<Base title="Flywheel" description="One person can follow only so many coding agents. Flywheel is the process that keeps them working and brings you only the decisions, on one rail." wide>
+  {/* The case first: the limit is one person's attention, and the answer is a
+      process, shown before anything the Method buys. */}
   <section class="fold">
-    <p class="eyebrow">Flywheel</p>
-    <h1>From one agent <span>to a thousand.</span></h1>
+    <p class="eyebrow">A people and process problem</p>
+    <h1>Agents scale. <span>Your attention doesn't.</span></h1>
     <div class="under">
       <p class="deck">
-        We run a fleet of coding agents and keep adding to it, to find out how far one team can take it. What holds
-        as the fleet grows becomes the Method; what we measure on the way, we publish.
+        One person can keep only so many agents in mind, and jumping between their panes to find the one that
+        needs you is chaos. Flywheel is the process that keeps the work running and brings you only the decisions,
+        on one rail.
       </p>
       <div class="ctas">
         <a class="cta primary" href={url("/method/")}>Read the Method</a>
         <a class="cta" href={url("/fleet/fleet-utilization/")}>Fleet utilization</a>
       </div>
     </div>
+    <Attention />
   </section>
 
+  <h2 class="buys">What the Method buys</h2>
   <Benefits />
 
-  <Scale />
+  <FleetReading />
 
   <section class="notes" aria-labelledby="notes-title">
     <div class="notes-head">
@@ -59,9 +65,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 <style>
   /* The headline, then its deck and calls to action side by side. */
   .under { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px 40px; }
-  h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 0.95; margin: 12px 0 20px; }
-  h1 span { color: var(--ap-accent); }
-  .deck { max-width: 48ch; margin: 0; font-size: 1.1rem; }
+  h1 { font-size: clamp(2.5rem, 5.5vw, 4.2rem); line-height: 1; margin: 12px 0 20px; }
+  h1 span { display: block; color: var(--ap-accent); }
+  .deck { max-width: 52ch; margin: 0; font-size: 1.1rem; }
+  .buys { margin: 72px 0 0; }
 
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
   /* The calls to action in the family's pill: the accent filled, or
