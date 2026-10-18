@@ -177,7 +177,8 @@ const fleet: Scene = {
         g.save();
         g.globalAlpha = Math.min(a, fade) * out;
         label(g, `${i + 1}`, x + 14, y + 23, p.ground, "left", 15);
-        g.fillStyle = "rgba(13,37,40,.35)";
+        g.globalAlpha *= 0.35;
+        g.fillStyle = p.ground;
         g.fillRect(x + 32, y + 13, 46, 3);
         g.fillRect(x + 32, y + 20, 32, 3);
         g.restore();

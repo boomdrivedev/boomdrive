@@ -136,8 +136,8 @@ About, and the first page of the Fleet.
   in turn: the write-up (the claim, what it rules out, today, where it is
   going, what measures it) beside an animated diagram of the idea, in the
   manner of sluice's merge-queue diagram (`agentplot/sluice
-  docs/diagrams/sluice.svg`), which, as the site's own copy in the site's
-  palette, is the diagram for "Order at landing, never at start". A
+  docs/diagrams/sluice.svg`), which, as the site's own copy in Flywheel's
+  brass, is the diagram for "Order at landing, never at start". A
   principle is a place on the Method page, `/method/#<id>`, and every link
   to a principle, from Home, a note or a term, goes there; there is no
   separate principle page. Its place also holds how we do it today and
@@ -185,12 +185,15 @@ holds the hub every family site's footer links to,
   the tools meet only at contracts, and moving from one setup to the next
   changes the host and the curator while the adapters and the inbox stay
   put.
-- **The family's bar and footer are on every page.** The bar runs above the
-  topbar, its members lined up with the mark, and the footer names each
-  member with its line, status, site and design book. Both wear the
-  flywheel's palette: `site.css` maps it onto the theme's tokens, and the
-  site is dark only, so `<html>` says so. The hub leaves the footer out,
-  since the page is the family.
+- **The site wears the family's look.** Its page, type and ink are the
+  theme's (`base.css`), and its accent is Flywheel's brass, read from the
+  family's list. Its masthead is a family site's header: the bar, then a
+  row with Flywheel's mark and name, the sections and the repository,
+  folding the sections under a round menu button on a phone. The footer
+  names each member with its line, status, site and design book; the hub
+  leaves it out, since the page is the family. What stays Flywheel's own
+  is the manifesto's scale and the flywheel figure's mint and rust beside
+  the brass. The site is dark only, so `<html>` says so.
 - **A status is never overstated.** A member designed and not built is
   drawn as a ring and says so in words, on the card, in the bar and in the
   footer, and its site and design book may come before the tool does.

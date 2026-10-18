@@ -60,26 +60,29 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
   /* The headline, then its deck and calls to action side by side. */
   .under { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px 40px; }
   h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 0.95; margin: 12px 0 20px; }
-  h1 span { color: var(--brass); }
+  h1 span { color: var(--ap-accent); }
   .deck { max-width: 48ch; margin: 0; font-size: 1.1rem; }
 
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  /* The calls to action in the family's pill: the accent filled, or
+     outlined in the ink, as Starlight's link buttons are. */
   .cta {
-    font: 500 15px/1 var(--display); text-decoration: none; padding: 13px 20px; border-radius: 8px;
-    border: 1px solid var(--line); color: var(--ink); transition: border-color 0.15s, background 0.15s;
+    display: inline-flex; align-items: center; gap: 0.5em; padding: 0.4375rem 1.125rem;
+    border: 1px solid var(--ap-fg-3); border-radius: 999rem;
+    font-size: 0.875rem; line-height: 1.1875; color: var(--ap-fg); text-decoration: none;
   }
-  .cta:hover { border-color: var(--mint); color: var(--ink); }
-  .cta.primary { background: var(--brass); border-color: var(--brass); color: var(--ground); font-weight: 700; }
-  .cta.primary:hover { background: #d8b13a; color: var(--ground); }
-  .cta.primary::after { content: " →"; }
-  @media (prefers-reduced-motion: reduce) { .cta { transition: none; } }
+  .cta:hover { color: var(--ap-fg); border-color: var(--ap-fg); }
+  .cta.primary { background: var(--accent-text); border-color: var(--accent-text); color: var(--ap-bg); }
+  .cta.primary:hover { color: var(--ap-bg); }
+  .cta.primary::after { content: "→"; }
+  @media (min-width: 50rem) { .cta { font-size: 1rem; padding: 0.9375rem 1.25rem; } }
 
   .notes { margin-top: 64px; max-width: 46rem; }
   .notes-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
   .notes h2 { margin: 0; }
-  .all { font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; }
+  .all { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .all::after { content: " →"; }
   .notes li { display: grid; gap: 2px; }
-  .when { font: 11px/1.6 var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+  .when { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.1em; color: var(--ap-fg-3); }
   .signup { font-size: 15px; margin-top: 24px; }
 </style>

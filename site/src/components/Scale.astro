@@ -131,9 +131,9 @@ const label = lit
 </section>
 
 <style>
-  .scale { margin: 64px 0 0; padding: 28px 24px 24px; border: 1px solid var(--line); border-radius: 14px; background: rgba(9, 28, 31, 0.5); }
+  .scale { margin: 64px 0 0; padding: 28px 24px 24px; border: 1px solid var(--ap-line); border-radius: 14px; background: var(--ap-bg-2); }
   .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin-bottom: 8px; }
-  .axis-note { margin: 0; font: 11px/1.6 var(--mono); color: var(--ink-3); }
+  .axis-note { margin: 0; font: 11px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); }
 
   .instrument { display: grid; grid-template-columns: minmax(0, 23rem) minmax(0, 1fr); gap: 16px 48px; align-items: center; }
 
@@ -142,40 +142,40 @@ const label = lit
   .dial { position: relative; width: 100%; max-width: 23rem; margin: 0 auto; container-type: inline-size; }
   svg { display: block; width: 100%; height: auto; overflow: visible; }
   .read { position: absolute; left: 0; right: 0; top: 0; height: var(--h); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.6cqw; pointer-events: none; }
-  .k { font: 2.9cqw/1.5 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-  .num { font: 700 15cqw/1 var(--display); letter-spacing: -0.03em; color: var(--brass); font-variant-numeric: tabular-nums; }
-  .num.none { color: var(--ink-3); }
-  .band { font: 600 4.1cqw/1.3 var(--display); color: var(--ink-2); max-width: 50cqw; }
+  .k { font: 2.9cqw/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .num { font: 700 15cqw/1 var(--ap-font-display); letter-spacing: -0.03em; color: var(--ap-accent); font-variant-numeric: tabular-nums; }
+  .num.none { color: var(--ap-fg-3); }
+  .band { font: 600 4.1cqw/1.3 var(--ap-font-display); color: var(--ap-fg-2); max-width: 50cqw; }
 
   .decade { fill: var(--mint); }
   .d0 { fill-opacity: 0.05; }
   .d1 { fill-opacity: 0.09; }
   .d2 { fill-opacity: 0.13; }
-  .track { fill: none; stroke: var(--line); }
-  .cap { fill: var(--ink-3); font: 10px var(--mono); letter-spacing: 0.04em; }
-  .minor { stroke: var(--ink-3); stroke-opacity: 0.55; }
-  .step { stroke: var(--bone); stroke-opacity: 0.45; }
-  .busy { fill: var(--brass); }
-  .idle { fill: none; stroke: var(--brass); stroke-width: 1.3; }
-  .pointer { fill: var(--brass); }
-  .lab { fill: var(--ink-3); font: 11.5px var(--mono); }
+  .track { fill: none; stroke: var(--ap-line); }
+  .cap { fill: var(--ap-fg-3); font: 10px var(--ap-font-mono); letter-spacing: 0.04em; }
+  .minor { stroke: var(--ap-fg-3); stroke-opacity: 0.55; }
+  .step { stroke: var(--ap-fg); stroke-opacity: 0.45; }
+  .busy { fill: var(--ap-accent); }
+  .idle { fill: none; stroke: var(--ap-accent); stroke-width: 1.3; }
+  .pointer { fill: var(--ap-accent); }
+  .lab { fill: var(--ap-fg-3); font: 11.5px var(--ap-font-mono); }
 
   .side { display: grid; gap: 14px; align-content: center; }
-  .when { margin: 0; font: 11px/1.6 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-  .key { margin: 0; font: 11px/1.6 var(--mono); color: var(--ink-3); display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+  .when { margin: 0; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .key { margin: 0; font: 11px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
   .key i { display: inline-block; width: 14px; height: 9px; border-radius: 2px; }
-  .k-busy { background: var(--brass); }
-  .k-idle { border: 1.3px solid var(--brass); }
+  .k-busy { background: var(--ap-accent); }
+  .k-idle { border: 1.3px solid var(--ap-accent); }
 
   /* Momentum: a slow light runs along the track toward the thousand. */
-  .sweep { fill: none; stroke: var(--brass); stroke-opacity: 0.22; stroke-width: 20; stroke-dasharray: 70 1000; animation: sweep 9s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+  .sweep { fill: none; stroke: var(--ap-accent); stroke-opacity: 0.22; stroke-width: 20; stroke-dasharray: 70 1000; animation: sweep 9s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
   @keyframes sweep { from { stroke-dashoffset: 70; } to { stroke-dashoffset: -1000; } }
   @media (prefers-reduced-motion: reduce) { .sweep { display: none; } }
 
-  .stand { border-top: 1px solid var(--line-soft); padding-top: 14px; }
-  .label { margin: 0 0 4px; font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); }
-  .call { margin: 0 0 10px; font: 500 1.15rem/1.4 var(--display); color: var(--ink); }
-  .go { font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; }
+  .stand { border-top: 1px solid var(--ap-line-soft); padding-top: 14px; }
+  .label { margin: 0 0 4px; font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .call { margin: 0 0 10px; font: 500 1.15rem/1.4 var(--ap-font-display); color: var(--ap-fg); }
+  .go { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .go::after { content: " →"; }
 
   @media (max-width: 40rem) {

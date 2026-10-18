@@ -14,9 +14,9 @@ interface Props {
   family?: boolean;
 }
 const { title, description, wide = false, family = true } = Astro.props;
-// The family's bar, footer and diagram come from @agentplot/site-theme and
-// wear the flywheel's palette (site.css). The site has one theme, so <html>
-// says dark and the family's tokens never follow a light setting.
+// The family's bar, footer and diagram come from @agentplot/site-theme, and
+// so do the page, the type and the ink (site.css). The site has one theme,
+// so <html> says dark and the family's tokens never follow a light setting.
 const here = Astro.url.pathname;
 const sections = [
   { href: url("/method/"), label: "The Method" },
@@ -26,6 +26,21 @@ const sections = [
   { href: url("/uses/"), label: "Uses" },
   { href: url("/about/"), label: "About" },
 ];
+// Flywheel's mark, in the frame every family mark is drawn in (112 by 88):
+// the wheel in the ink, three things riding its rim, and the brass at the
+// hub. The favicon is the same drawing in the ink of the reader's theme.
+const wheel = (ink: string, accent: string, ground: string) =>
+  `<circle cx="62" cy="60" r="36" fill="none" stroke="${ink}" stroke-width="7"/>` +
+  `<g fill="${ink}"><circle cx="62" cy="24" r="9"/><circle cx="93.2" cy="78" r="9"/><circle cx="30.8" cy="78" r="9"/></g>` +
+  `<circle cx="62" cy="60" r="18" fill="${accent}"/><circle cx="62" cy="60" r="5.5" fill="${ground}"/>`;
+const mark = wheel("currentColor", "var(--ap-accent)", "var(--ap-bg)");
+const favicon =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 16 112 88"><style>.i{color:#0e1116}@media (prefers-color-scheme:dark){.i{color:#f2f1ec}}</style>` +
+      `<g class="i">${wheel("currentColor", "#c9a227", "#f7f6f2")}</g></svg>`,
+  );
+const repo = "https://github.com/agentplot/flywheel-web";
 ---
 
 <!doctype html>
@@ -35,29 +50,52 @@ const sections = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title === "Flywheel" ? title : `${title} · Flywheel`}</title>
     {description && <meta name="description" content={description} />}
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%238FB9AE' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='7.5' fill='none' stroke='%23C9A227' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%23B4552D'/%3E%3C/svg%3E"
-    />
-    <link rel="preload" as="font" type="font/woff2" crossorigin href={url("/fonts/space-grotesk-latin-700-normal.woff2")} />
-    <link rel="preload" as="font" type="font/woff2" crossorigin href={url("/fonts/ibm-plex-mono-latin-400-normal.woff2")} />
+    <link rel="icon" href={favicon} />
   </head>
   <body class:list={[{ wide }]}>
-    <FamilyBar current="flywheel" />
-    <header class="topbar">
-      <div class="bar">
-        <a class="mark" href={url("/")}>Fly<span>wheel</span></a>
-        <nav aria-label="Sections">
-          {
-            sections.map((s) => (
-              <a href={s.href} aria-current={here.startsWith(s.href) ? "page" : undefined}>
-                {s.label}
-              </a>
-            ))
-          }
-        </nav>
-      </div>
-    </header>
+    <div class="masthead">
+      <FamilyBar current="flywheel" />
+      <header class="topbar">
+        <div class="row">
+          <a class="title" href={url("/")}>
+            <svg viewBox="6 16 112 88" aria-hidden="true" set:html={mark} />
+            Flywheel
+          </a>
+          <nav class="sections" aria-label="Sections">
+            {
+              sections.map((s) => (
+                <a href={s.href} aria-current={here.startsWith(s.href) ? "page" : undefined}>
+                  {s.label}
+                </a>
+              ))
+            }
+          </nav>
+          <a class="repo" href={repo} aria-label="flywheel-web on GitHub">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+              <path
+                d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8 0 3.2.9.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1 .9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3"
+              ></path>
+            </svg>
+          </a>
+          <details class="menu">
+            <summary aria-label="Sections">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <path d="M4 7h16M4 12h16M4 17h16"></path>
+              </svg>
+            </summary>
+            <nav aria-label="Sections">
+              {
+                sections.map((s) => (
+                  <a href={s.href} aria-current={here.startsWith(s.href) ? "page" : undefined}>
+                    {s.label}
+                  </a>
+                ))
+              }
+            </nav>
+          </details>
+        </div>
+      </header>
+    </div>
     <main>
       <slot />
     </main>

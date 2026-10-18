@@ -243,23 +243,23 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
 </Base>
 
 <style>
-  .lede { font: 500 clamp(1.05rem, 2vw, 1.3rem)/1.45 var(--display); letter-spacing: -0.01em; color: var(--ink); max-width: 44ch; margin: 0 0 24px; }
+  .lede { font: 500 clamp(1.05rem, 2vw, 1.3rem)/1.45 var(--ap-font-display); letter-spacing: -0.01em; color: var(--ap-fg); max-width: 44ch; margin: 0 0 24px; }
 
-  .frame { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  .frame div { background: var(--ground); padding: 14px 18px; }
-  .frame dt { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
-  .frame dd { margin: 2px 0 0; font: 700 2rem/1.1 var(--display); letter-spacing: -0.02em; color: var(--brass); font-variant-numeric: tabular-nums; display: flex; gap: 10px; align-items: center; }
-  .frame-note { margin: 10px 0 24px; font: 12px/1.6 var(--mono); color: var(--ink-3); }
+  .frame { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--ap-line); border: 1px solid var(--ap-line); border-radius: 12px; overflow: hidden; }
+  .frame div { background: var(--ap-bg); padding: 14px 18px; }
+  .frame dt { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .frame dd { margin: 2px 0 0; font: 700 2rem/1.1 var(--ap-font-display); letter-spacing: -0.02em; color: var(--ap-accent); font-variant-numeric: tabular-nums; display: flex; gap: 10px; align-items: center; }
+  .frame-note { margin: 10px 0 24px; font: 12px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); }
   @media (max-width: 40rem) { .frame { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   .split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px 40px; margin-top: 36px; }
   @media (max-width: 56rem) { .split { grid-template-columns: minmax(0, 1fr); } }
-  h2 { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 0 0 4px; }
+  h2 { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 0 0 4px; }
   .scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; font: 12px/1.5 var(--mono); font-variant-numeric: tabular-nums; }
-  th { text-align: left; font-weight: 500; color: var(--ink-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap; color: var(--ink-2); }
-  .aside-note { margin: 10px 0 0; font: 12px/1.6 var(--mono); color: var(--ink-3); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font: 12px/1.5 var(--ap-font-mono); font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--ap-fg-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--ap-line); white-space: nowrap; }
+  td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--ap-line-soft); white-space: nowrap; color: var(--ap-fg-2); }
+  .aside-note { margin: 10px 0 0; font: 12px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); }
 
   .every { margin-top: 40px; }
 </style>

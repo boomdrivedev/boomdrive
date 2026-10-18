@@ -148,63 +148,61 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
 <style>
   .opening { padding-bottom: 40px; }
   h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 0.95; margin: 12px 0 20px; }
-  h1 span { color: var(--brass); }
+  h1 span { color: var(--ap-accent); }
   .under { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px 40px; }
   .deck { max-width: 48ch; }
   .deck :global(p) { margin: 0; font-size: 1.1rem; }
 
   /* The status of every tool, read from the family's list. */
-  .legend { margin: 0; display: grid; grid-template-columns: auto auto; justify-content: start; gap: 6px 14px; font: 12px/1.6 var(--mono); }
+  .legend { margin: 0; display: grid; grid-template-columns: auto auto; justify-content: start; gap: 6px 14px; font: 12px/1.6 var(--ap-font-mono); }
   .legend div { display: contents; }
-  .legend dt { display: flex; align-items: center; gap: 8px; color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; }
-  .legend dd { margin: 0; color: var(--ink); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--m, var(--mint)); flex: none; }
-  .dot.planned, .planned .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--m, var(--mint)); }
-
-  :global(.loop) { box-shadow: 0 24px 60px rgba(9, 28, 31, 0.55); }
+  .legend dt { display: flex; align-items: center; gap: 8px; color: var(--ap-fg-3); letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+  .legend dd { margin: 0; color: var(--ap-fg); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--m, var(--ap-fg-3)); flex: none; }
+  .dot.planned, .planned .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--m, var(--ap-fg-3)); }
 
   .family { margin-top: 72px; }
   .family > h2 { margin: 0 0 20px; }
 
   /* A card per member, ruled in its accent. */
   .card {
-    position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+    position: relative; border: 1px solid var(--ap-line); border-radius: 12px; background: var(--ap-bg-2);
     padding: 18px 20px 16px; transition: border-color 0.2s;
   }
   .card::before {
     content: ""; position: absolute; inset: -1px -1px auto; height: 3px; border-radius: 12px 12px 0 0; background: var(--m);
   }
   .card:hover { border-color: color-mix(in oklab, var(--m) 55%, transparent); }
-  .card h3 { margin: 14px 0 6px; font: 700 1.6rem/1.05 var(--display); letter-spacing: -0.03em; }
-  .card h3 a { color: var(--ink); text-decoration: none; }
+  .card h3 { margin: 14px 0 6px; font: 700 1.6rem/1.05 var(--ap-font-display); letter-spacing: -0.03em; }
+  .card h3 a { color: var(--ap-fg); text-decoration: none; }
   .card h3 a:hover { color: var(--m); }
-  .status { display: flex; align-items: center; gap: 8px; margin: 0; font: 11px/1.6 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-  .line { margin: 12px 0 0; font-size: 16px; line-height: 1.5; color: var(--ink-2); }
+  .status { display: flex; align-items: center; gap: 8px; margin: 0; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .line { margin: 12px 0 0; font-size: 16px; line-height: 1.5; color: var(--ap-fg-2); }
   .serves { display: grid; gap: 2px; margin: 14px 0 0; }
-  .serves span { font: 9.5px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
-  .serves a { font: 500 15px/1.35 var(--display); color: var(--mint); text-decoration: none; }
+  .serves span { font: 9.5px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .serves a { font: 500 15px/1.35 var(--ap-font-display); color: var(--accent-text); text-decoration: none; }
   .serves a::after { content: "\a0→"; color: var(--m); }
-  .serves a:hover { color: var(--ink); }
-  .links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft); }
-  .links a { font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); text-decoration-color: var(--line); }
+  .serves a:hover { color: var(--ap-fg); }
+  .links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--ap-line-soft); }
+  .links a { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); text-decoration-color: var(--ap-line); }
   .links a:hover { color: var(--m); text-decoration-color: currentColor; }
   .links a::after { content: " ↗"; }
-  .links a.go { color: var(--brass); }
+  .links a.go { color: var(--ap-accent); }
   .links a.go::after { content: " →"; }
 
   /* Its place in the loop: a stop per place, its own lit. */
   .track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n), 1fr); position: relative; }
-  .track::before { content: ""; position: absolute; left: 4px; right: calc(100% / var(--n) - 4px); top: 4px; height: 1px; background: var(--line); }
+  .track::before { content: ""; position: absolute; left: 4px; right: calc(100% / var(--n) - 4px); top: 4px; height: 1px; background: var(--ap-line); }
   .track.all::before { background: var(--m); }
   .track li {
-    position: relative; padding-top: 16px; font: 9.5px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--ink-3); opacity: 0.6;
+    position: relative; padding-top: 16px; font: 9.5px/1.4 var(--ap-font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ap-fg-3); opacity: 0.6;
   }
   .track li::before {
     content: ""; position: absolute; left: 0; top: 0; width: 9px; height: 9px; border-radius: 50%;
-    background: var(--ground-2); box-shadow: inset 0 0 0 1px var(--line);
+    background: var(--ap-bg-2); box-shadow: inset 0 0 0 1px var(--ap-line);
   }
-  .track li.on { color: var(--ink); opacity: 1; }
+  .track li.on { color: var(--ap-fg); opacity: 1; }
   .track li.on::before { background: var(--m); box-shadow: 0 0 0 4px color-mix(in oklab, var(--m) 22%, transparent); }
   /* A card too narrow for every stop's name keeps every stop and names its
      own place only. */
@@ -215,10 +213,10 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   }
 
   .umbrella { display: grid; gap: 18px 48px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; padding: 24px 28px 20px; margin-bottom: 16px; }
-  .umbrella { border-color: color-mix(in oklab, var(--m) 45%, transparent); background: linear-gradient(135deg, rgba(201, 162, 39, 0.07), transparent 55%), var(--panel); }
-  .umbrella .place { margin: 0; font: 11px/1.6 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--brass); }
-  .umbrella h3 { font-size: clamp(2.2rem, 4vw, 3rem); margin-top: 10px; color: var(--ink); }
-  .umbrella .line { font: 500 1.2rem/1.4 var(--display); letter-spacing: -0.01em; color: var(--ink); margin-top: 18px; }
+  .umbrella { border-color: color-mix(in oklab, var(--m) 45%, transparent); background: linear-gradient(135deg, color-mix(in oklab, var(--ap-accent) 7%, transparent), transparent 55%), var(--ap-bg-2); }
+  .umbrella .place { margin: 0; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-accent); }
+  .umbrella h3 { font-size: clamp(2.2rem, 4vw, 3rem); margin-top: 10px; color: var(--ap-fg); }
+  .umbrella .line { font: 500 1.2rem/1.4 var(--ap-font-display); letter-spacing: -0.01em; color: var(--ap-fg); margin-top: 18px; }
   .umbrella .what { padding-top: 6px; }
   @media (max-width: 48rem) { .umbrella { grid-template-columns: 1fr; padding: 20px; } }
 
@@ -233,13 +231,13 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   .tools .card > :nth-last-child(2) { margin-bottom: 16px; }
 
   /* Alone, and joined: the two sections of the words, side by side. */
-  .joined { margin-top: 64px; display: grid; gap: 24px 64px; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); border-top: 1px solid var(--line-soft); padding-top: 8px; }
+  .joined { margin-top: 64px; display: grid; gap: 24px 64px; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); border-top: 1px solid var(--ap-line-soft); padding-top: 8px; }
   .col :global(h2) { margin: 32px 0 14px; }
   .col :global(p) { margin: 0 0 14px; }
   .col :global(ul) { list-style: none; margin: 0; padding: 0; }
-  .col :global(li) { padding: 12px 0; border-bottom: 1px solid var(--line-soft); line-height: 1.55; }
+  .col :global(li) { padding: 12px 0; border-bottom: 1px solid var(--ap-line-soft); line-height: 1.55; }
   .col :global(li:first-child) { padding-top: 0; }
-  .col :global(.named) { font: 700 1.05rem/1 var(--display); letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
+  .col :global(.named) { font: 700 1.05rem/1 var(--ap-font-display); letter-spacing: -0.02em; color: var(--ap-fg); white-space: nowrap; }
   .col :global(.named)::before {
     content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--m);
     vertical-align: 0.1em;

@@ -206,51 +206,51 @@ const alt = [
 </section>
 
 <style>
-  .fleetday { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 14px; background: rgba(9, 28, 31, 0.5); }
+  .fleetday { display: grid; gap: 0; border: 1px solid var(--ap-line); border-radius: 14px; background: var(--ap-bg-2); }
   .row { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 0 24px; padding: 18px 22px; align-items: center; }
-  .row + .row { border-top: 1px solid var(--line-soft); }
+  .row + .row { border-top: 1px solid var(--ap-line-soft); }
 
   .tile { display: grid; justify-items: start; gap: 1px; color: inherit; text-decoration: none; }
-  .tile .k { font: 10.5px/1.5 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--mint); }
-  .tile:hover .k { color: var(--brass); }
+  .tile .k { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .tile:hover .k { color: var(--ap-accent); }
   .tile .k::after { content: " →"; }
-  .tile .big { font: 700 2.4rem/1.05 var(--display); letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .tile .u { font: 600 13px/1.35 var(--display); color: var(--ink-2); }
-  .tile .sub { margin-top: 4px; font: 11.5px/1.5 var(--mono); color: var(--ink-3); }
+  .tile .big { font: 700 2.4rem/1.05 var(--ap-font-display); letter-spacing: -0.03em; color: var(--ap-fg); font-variant-numeric: tabular-nums; }
+  .tile .u { font: 600 13px/1.35 var(--ap-font-display); color: var(--ap-fg-2); }
+  .tile .sub { margin-top: 4px; font: 11.5px/1.5 var(--ap-font-mono); color: var(--ap-fg-3); }
   .tile .sample-chip { margin-top: 6px; }
 
   .plot { min-width: 0; }
-  svg { display: block; width: 100%; height: auto; font-family: var(--mono); }
+  svg { display: block; width: 100%; height: auto; font-family: var(--ap-font-mono); }
   .narrow { display: none; }
-  .grid line { stroke: var(--line-soft); }
-  .grid text, .x { fill: var(--ink-3); font-size: 11px; }
+  .grid line { stroke: var(--ap-line-soft); }
+  .grid text, .x { fill: var(--ap-fg-3); font-size: 11px; }
   .narrow .grid text, .narrow .x { font-size: 12px; }
-  .wk { stroke: var(--line-soft); stroke-dasharray: 2 4; }
-  .mark { stroke: var(--bone); stroke-width: 1.2; stroke-dasharray: 4 3; }
-  .base { stroke: var(--line); }
+  .wk { stroke: var(--ap-line-soft); stroke-dasharray: 2 4; }
+  .mark { stroke: var(--ap-fg); stroke-width: 1.2; stroke-dasharray: 4 3; }
+  .base { stroke: var(--ap-line); }
   .hit { fill: transparent; }
-  .day:hover .hit { fill: rgba(143, 185, 174, 0.08); }
+  .day:hover .hit { fill: color-mix(in oklab, var(--mint) 8%, transparent); }
 
-  .busy { fill: var(--brass); background: var(--brass); }
-  .idle { fill: rgba(143, 185, 174, 0.14); stroke: var(--mint); stroke-width: 1.5; }
+  .busy { fill: var(--ap-accent); background: var(--ap-accent); }
+  .idle { fill: color-mix(in oklab, var(--mint) 14%, transparent); stroke: var(--mint); stroke-width: 1.5; }
   .s-construct { fill: #5d8f9a; background: #5d8f9a; }
   .s-approval { fill: var(--rust); background: var(--rust); }
   .s-code { fill: var(--mint); background: var(--mint); }
-  .s-verify { fill: var(--bone); background: var(--bone); }
-  .s-merge { fill: var(--brass); background: var(--brass); }
-  .day rect:not(.hit, .idle) { stroke: var(--ground); stroke-width: 0.6; }
-  .bolts { fill: none; stroke: var(--ink); stroke-width: 1.6; }
-  .bolt { fill: var(--ground); stroke: var(--ink); stroke-width: 1.4; }
+  .s-verify { fill: var(--ap-fg); background: var(--ap-fg); }
+  .s-merge { fill: var(--ap-accent); background: var(--ap-accent); }
+  .day rect:not(.hit, .idle) { stroke: var(--ap-bg); stroke-width: 0.6; }
+  .bolts { fill: none; stroke: var(--ap-fg); stroke-width: 1.6; }
+  .bolt { fill: var(--ap-bg); stroke: var(--ap-fg); stroke-width: 1.4; }
   .merged { fill: var(--mint); background: var(--mint); }
-  .landed { fill: var(--brass); background: var(--brass); }
+  .landed { fill: var(--ap-accent); background: var(--ap-accent); }
 
-  .legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font: 11.5px/1.6 var(--mono); color: var(--ink-3); }
+  .legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font: 11.5px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); }
   .legend li { display: flex; align-items: center; gap: 7px; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
-  .legend i.idle { background: rgba(143, 185, 174, 0.14); border: 1.5px solid var(--mint); width: 8px; height: 8px; }
-  .legend i.line { height: 2px; width: 14px; background: var(--ink); border-radius: 1px; }
-  .note { margin: 0; padding: 0 22px 16px; font: 11.5px/1.6 var(--mono); color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
-  .mark-key { width: 0; height: 12px; border-left: 1.5px dashed var(--bone); }
+  .legend i.idle { background: color-mix(in oklab, var(--mint) 14%, transparent); border: 1.5px solid var(--mint); width: 8px; height: 8px; }
+  .legend i.line { height: 2px; width: 14px; background: var(--ap-fg); border-radius: 1px; }
+  .note { margin: 0; padding: 0 22px 16px; font: 11.5px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); display: flex; gap: 8px; align-items: center; }
+  .mark-key { width: 0; height: 12px; border-left: 1.5px dashed var(--ap-fg); }
 
   @media (max-width: 44rem) {
     .row { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }

@@ -149,13 +149,15 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   const wide = matchMedia("(min-width: 64rem)");
   const still = matchMedia("(prefers-reduced-motion: reduce)");
   const zoomers = scenes.filter((s) => s.querySelector(".fig img"));
-  const bar = 48;
+  // The masthead held at the top of the screen.
+  const masthead = document.querySelector<HTMLElement>(".masthead");
   let queued = false;
   const zoom = () => {
     queued = false;
     const on = wide.matches && !still.matches;
     const vw = document.documentElement.clientWidth;
     const vh = innerHeight;
+    const bar = masthead?.offsetHeight ?? 0;
     for (const s of zoomers) {
       s.classList.toggle("zoom", on);
       const fig = s.querySelector<HTMLElement>(".fig")!;
@@ -205,17 +207,17 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   .opening { padding-bottom: 12vh; }
   .opening > :not(.toc) { max-width: 44rem; }
   .opening h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); margin: 10px 0 18px; }
-  .opening .claim { font: 500 clamp(1.15rem, 2.2vw, 1.45rem)/1.4 var(--display); color: var(--ink); letter-spacing: -0.01em; }
-  .journey { font: 12px/1.6 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
-  .journey span { color: var(--brass); }
+  .opening .claim { font: 500 clamp(1.15rem, 2.2vw, 1.45rem)/1.4 var(--ap-font-display); color: var(--ap-fg); letter-spacing: -0.01em; }
+  .journey { font: 12px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .journey span { color: var(--ap-accent); }
   .toc { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 0 32px; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); max-width: none; }
-  .toc a { display: grid; grid-template-columns: 2.2rem 1fr; padding: 10px 0; border-top: 1px solid var(--line-soft); text-decoration: none; }
-  .toc .n { grid-row: span 2; font: 11px/1.9 var(--mono); color: var(--brass); }
-  .toc .t { font: 500 1rem/1.35 var(--display); color: var(--ink); }
-  .toc .l { font-size: 15px; line-height: 1.45; color: var(--ink-3); }
-  .toc a:hover .t { color: var(--brass); }
-  .hint { font: 11px/1.6 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin-top: 40px; }
-  .hint::after { content: " ↓"; color: var(--brass); }
+  .toc a { display: grid; grid-template-columns: 2.2rem 1fr; padding: 10px 0; border-top: 1px solid var(--ap-line-soft); text-decoration: none; }
+  .toc .n { grid-row: span 2; font: 11px/1.9 var(--ap-font-mono); color: var(--ap-accent); }
+  .toc .t { font: 500 1rem/1.35 var(--ap-font-display); color: var(--ap-fg); }
+  .toc .l { font-size: 15px; line-height: 1.45; color: var(--ap-fg-3); }
+  .toc a:hover .t { color: var(--ap-accent); }
+  .hint { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin-top: 40px; }
+  .hint::after { content: " ↓"; color: var(--ap-accent); }
 
   .rail {
     position: fixed; left: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
@@ -223,45 +225,45 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   }
   @media (min-width: 80rem) { .rail { display: flex; } }
   .rail a {
-    font: 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-3); text-decoration: none;
-    padding: 6px 8px; border-left: 2px solid var(--line); transition: color 0.2s, border-color 0.2s;
+    font: 11px/1 var(--ap-font-mono); letter-spacing: 0.1em; color: var(--ap-fg-3); text-decoration: none;
+    padding: 6px 8px; border-left: 2px solid var(--ap-line); transition: color 0.2s, border-color 0.2s;
   }
-  .rail a:hover, .rail a[aria-current] { color: var(--brass); border-left-color: var(--brass); }
+  .rail a:hover, .rail a[aria-current] { color: var(--ap-accent); border-left-color: var(--ap-accent); }
 
   .scene {
     display: grid; gap: 32px 56px; align-items: start;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
-    min-height: 92vh; padding: 14vh 0 10vh; border-top: 1px solid var(--line-soft);
+    min-height: 92vh; padding: 14vh 0 10vh; border-top: 1px solid var(--ap-line-soft);
   }
   @media (max-width: 56rem) { .scene { grid-template-columns: 1fr; min-height: 0; padding: 72px 0 48px; } }
 
   /* The principle's number, drawn in outline; the count after it is quieter. */
   .count {
-    margin: 0; white-space: nowrap; font: 500 1rem/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-3);
+    margin: 0; white-space: nowrap; font: 500 1rem/1 var(--ap-font-mono); letter-spacing: 0.1em; color: var(--ap-fg-3);
     font-variant-numeric: tabular-nums;
   }
   .count span {
-    font: 700 clamp(4rem, 9vw, 7rem)/0.9 var(--display); letter-spacing: -0.05em;
-    color: transparent; -webkit-text-stroke: 1.2px var(--brass); margin-right: 8px;
+    font: 700 clamp(4rem, 9vw, 7rem)/0.9 var(--ap-font-display); letter-spacing: -0.05em;
+    color: transparent; -webkit-text-stroke: 1.2px var(--ap-accent); margin-right: 8px;
   }
   .scene h2 { margin: 18px 0 14px; font-size: clamp(1.7rem, 3.4vw, 2.4rem); }
-  .scene h2 a { color: var(--ink); text-decoration: none; }
-  .scene h2 a:hover { color: var(--brass); }
-  .scene .claim { font: 500 1.15rem/1.45 var(--display); color: var(--ink); letter-spacing: -0.01em; margin: 0 0 18px; }
-  .body :global(h2) { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 28px 0 6px; }
+  .scene h2 a { color: var(--ap-fg); text-decoration: none; }
+  .scene h2 a:hover { color: var(--ap-accent); }
+  .scene .claim { font: 500 1.15rem/1.45 var(--ap-font-display); color: var(--ap-fg); letter-spacing: -0.01em; margin: 0 0 18px; }
+  .body :global(h2) { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 28px 0 6px; }
   .body :global(p) { margin: 0 0 12px; }
-  .more { margin-top: 8px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
+  .more { margin-top: 8px; border-top: 1px solid var(--ap-line-soft); padding-top: 10px; }
   .more summary {
-    cursor: pointer; font: 11px/1.6 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mint);
+    cursor: pointer; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3);
   }
-  .more summary:hover { color: var(--brass); }
+  .more summary:hover { color: var(--ap-accent); }
   .more[open] summary { margin-bottom: 4px; }
-  .more h3 { font: 10.5px/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--mint); margin: 24px 0 6px; }
+  .more h3 { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 24px 0 6px; }
   .more .plain li { padding: 6px 0; }
-  .changes { font: 12.5px/1.6 var(--mono); color: var(--ink-3); margin: 0; }
+  .changes { font: 12.5px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); margin: 0; }
 
-  .fig { margin: 0; position: sticky; top: max(84px, calc(50vh - 14rem)); }
-  .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(9, 28, 31, 0.55); transform-origin: center; }
+  .fig { margin: 0; position: sticky; top: max(calc(var(--ap-bar-height) + var(--row) + 36px), calc(50vh - 14rem)); }
+  .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--ap-line); transform-origin: center; }
   /* While a diagram is zoomed it needs the screen the write-up has left: the
      text column runs on past its end, and the scene leaves room below. */
   .scene.zoom { padding-bottom: 24vh; }
@@ -271,9 +273,9 @@ const journey = [1, 5, 20, 50, 100, 500, 1000].map((m) => m.toLocaleString("en")
   /* Until a principle has its diagram, its numeral holds the place. */
   .mark {
     display: grid; place-items: center; aspect-ratio: 900 / 446;
-    font: 700 clamp(8rem, 22vw, 18rem)/1 var(--display); letter-spacing: -0.06em;
-    color: transparent; -webkit-text-stroke: 1px rgba(143, 185, 174, 0.28);
-    border: 1px dashed var(--line-soft); border-radius: 12px;
+    font: 700 clamp(8rem, 22vw, 18rem)/1 var(--ap-font-display); letter-spacing: -0.06em;
+    color: transparent; -webkit-text-stroke: 1px color-mix(in oklab, var(--ap-fg-3) 45%, transparent);
+    border: 1px dashed var(--ap-line-soft); border-radius: 12px;
   }
   /* On a phone the diagram comes straight after the claim. */
   @media (max-width: 56rem) {

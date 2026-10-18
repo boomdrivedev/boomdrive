@@ -203,8 +203,8 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
             const css = getComputedStyle(document.documentElement);
             const v = (n: string) => css.getPropertyValue(n).trim();
             palette = {
-              ground: v("--ground"), ground2: v("--ground-2"), brass: v("--brass"), mint: v("--mint"),
-              bone: v("--bone"), rust: v("--rust"), ink3: v("--ink-3"), line: v("--line"),
+              ground: v("--ap-bg"), ground2: v("--ap-bg-2"), brass: v("--ap-accent"), mint: v("--mint"),
+              bone: v("--ap-fg"), rust: v("--rust"), ink3: v("--ap-fg-3"), line: v("--ap-line"),
             };
             paint();
             requestAnimationFrame(frame);
@@ -256,45 +256,45 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
   .pic canvas { display: block; width: 100%; aspect-ratio: 16 / 10; }
   .pic :global(.flywheel) { max-height: 24rem; margin: 0 auto; }
 
-  .kick { margin: 0 0 6px; font: 11px/1.6 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--mint); }
-  .kick span { color: var(--brass); margin-right: 6px; }
-  h3 { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.1 var(--display); letter-spacing: -0.02em; margin: 0 0 12px; color: var(--ink); }
-  .sentence { margin: 0; font-size: 1.1rem; color: var(--ink-2); max-width: 36ch; }
+  .kick { margin: 0 0 6px; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .kick span { color: var(--ap-accent); margin-right: 6px; }
+  h3 { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.1 var(--ap-font-display); letter-spacing: -0.02em; margin: 0 0 12px; color: var(--ap-fg); }
+  .sentence { margin: 0; font-size: 1.1rem; color: var(--ap-fg-2); max-width: 36ch; }
 
   /* Scripts on: the rail beside one stage. */
   .benefits[data-ready] {
     display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 0 32px; align-items: start;
-    border: 1px solid var(--line); border-radius: 14px; background: rgba(9, 28, 31, 0.5); padding: 22px 24px;
+    border: 1px solid var(--ap-line); border-radius: 14px; background: var(--ap-bg-2); padding: 22px 24px;
   }
   .benefits[data-ready] .scenes { grid-template-columns: minmax(0, 1fr); }
   .benefits[data-ready] .scene { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
   .benefits[data-ready] .scene { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity 0.5s, visibility 0.5s; }
   .benefits[data-ready] .scene.on { opacity: 1; visibility: visible; }
-  .scene:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
+  .scene:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 4px; }
 
   .rail { display: grid; gap: 2px; align-content: start; }
   .rail[hidden] { display: none; }
   [role="tab"] {
     all: unset; cursor: pointer; display: grid; grid-template-columns: 2.2em 1fr; gap: 0 4px; padding: 9px 8px 8px; border-radius: 8px;
-    font: 500 14px/1.35 var(--display); color: var(--ink-3);
+    font: 500 14px/1.35 var(--ap-font-display); color: var(--ap-fg-3);
   }
-  [role="tab"]:hover { color: var(--ink); background: rgba(237, 231, 218, 0.04); }
-  [role="tab"]:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
-  [role="tab"][aria-selected="true"] { color: var(--ink); background: rgba(201, 162, 39, 0.08); }
-  .n { font: 11px/1.9 var(--mono); color: var(--ink-3); }
-  [aria-selected="true"] .n { color: var(--brass); }
-  .bar { grid-column: 2; height: 2px; margin-top: 7px; background: var(--line-soft); border-radius: 1px; overflow: hidden; visibility: hidden; }
-  .bar span { display: block; height: 100%; width: 100%; background: var(--brass); transform-origin: left; transform: scaleX(0); }
+  [role="tab"]:hover { color: var(--ap-fg); background: color-mix(in oklab, var(--ap-fg) 3%, transparent); }
+  [role="tab"]:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 1px; }
+  [role="tab"][aria-selected="true"] { color: var(--ap-fg); background: color-mix(in oklab, var(--ap-fg) 6%, transparent); }
+  .n { font: 11px/1.9 var(--ap-font-mono); color: var(--ap-fg-3); }
+  [aria-selected="true"] .n { color: var(--ap-accent); }
+  .bar { grid-column: 2; height: 2px; margin-top: 7px; background: var(--ap-line-soft); border-radius: 1px; overflow: hidden; visibility: hidden; }
+  .bar span { display: block; height: 100%; width: 100%; background: var(--ap-accent); transform-origin: left; transform: scaleX(0); }
   .run .bar { visibility: visible; }
   .run .bar span { animation: fill var(--dwell) linear forwards; }
   .paused .run .bar span { animation-play-state: paused; }
   @keyframes fill { to { transform: scaleX(1); } }
   .toggle {
-    all: unset; cursor: pointer; justify-self: start; margin: 10px 0 0 8px; font: 11px/1.6 var(--mono); letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--mint);
+    all: unset; cursor: pointer; justify-self: start; margin: 10px 0 0 8px; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ap-fg-3);
   }
-  .toggle:hover { color: var(--brass); }
-  .toggle:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .toggle:hover { color: var(--ap-accent); }
+  .toggle:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 2px; }
 
   /* Reduced motion: tabs and stills, no timer. */
   @media (prefers-reduced-motion: reduce) {
