@@ -31,21 +31,22 @@ const sections = [
   { href: url("/about/"), label: "About" },
 ];
 // Flywheel's mark, in the frame every family mark is drawn in (112 by 88):
-// the wheel in the ink, three things riding its rim, and the brass at the
-// hub. The favicon is the same drawing in the ink and gold of the reader's
-// theme, the gold the family's list gives Flywheel.
+// the wheel and three things riding its rim in the accent's lighter tone
+// (--wheel, site.css), and the gold at the hub. The favicon is the same
+// drawing in the same tones by the reader's theme, from the family's list:
+// it cannot read the page's styles.
 const wheel = (ink: string, accent: string, ground: string) =>
   `<circle cx="62" cy="60" r="36" fill="none" stroke="${ink}" stroke-width="7"/>` +
   `<g fill="${ink}"><circle cx="62" cy="24" r="9"/><circle cx="93.2" cy="78" r="9"/><circle cx="30.8" cy="78" r="9"/></g>` +
   `<circle cx="62" cy="60" r="18" fill="${accent}"/><circle cx="62" cy="60" r="5.5" fill="${ground}"/>`;
-const mark = wheel("currentColor", "var(--ap-accent)", "var(--ap-bg)");
+const mark = wheel("var(--wheel)", "var(--ap-accent)", "var(--ap-bg)");
 const gold = member("flywheel").accent;
 const favicon =
   "data:image/svg+xml," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 16 112 88"><style>.i{color:#0e1116;--g:${gold.light};--k:#f7f6f2}` +
-      `@media (prefers-color-scheme:dark){.i{color:#f2f1ec;--g:${gold.dark};--k:#0e1116}}</style>` +
-      `<g class="i">${wheel("currentColor", "var(--g)", "var(--k)")}</g></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 16 112 88"><style>.i{--w:${gold.dark};--g:${gold.light};--k:#f7f6f2}` +
+      `@media (prefers-color-scheme:dark){.i{--w:color-mix(in oklab,${gold.dark} 42%,#f2f1ec);--g:${gold.dark};--k:#0e1116}}</style>` +
+      `<g class="i">${wheel("var(--w)", "var(--g)", "var(--k)")}</g></svg>`,
   );
 const repo = "https://github.com/agentplot/flywheel-web";
 ---
@@ -58,6 +59,7 @@ const repo = "https://github.com/agentplot/flywheel-web";
     <title>{title === "Flywheel" ? title : `${title} · Flywheel`}</title>
     {description && <meta name="description" content={description} />}
     <link rel="icon" href={favicon} />
+    <Fragment set:html={`<style>:root{--gold-bright:${gold.dark}}</style>`} />
   </head>
   <body class:list={[{ wide }]}>
     <div class="masthead">
