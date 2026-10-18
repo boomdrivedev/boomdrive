@@ -15,10 +15,12 @@ const page = await getEntry("pages", "tools");
 if (!page) throw new Error("the Tools hub reads src/content/pages/tools.md, which is missing");
 const html = page.rendered?.html ?? "";
 const cut = html.search(/<h2[\s>]/);
+// A member's accent in both themes; the page's styles pick one.
+const pair = (a: { light: string; dark: string }) => `--m-light:${a.light};--m-dark:${a.dark}`;
 // A tool named in the prose takes its dot and accent, as on its card.
 const named = (h: string) =>
   family.reduce(
-    (out, m) => out.replaceAll(`<strong>${m.name}</strong>`, `<strong class="named" style="--m:${m.accent.dark}">${m.name}</strong>`),
+    (out, m) => out.replaceAll(`<strong>${m.name}</strong>`, `<strong class="named" style="${pair(m.accent)}">${m.name}</strong>`),
     h,
   );
 const lede = cut < 0 ? html : html.slice(0, cut);
@@ -87,7 +89,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   <section class="family" aria-labelledby="family-title">
     <h2 id="family-title">The family</h2>
 
-    <article class="card umbrella" style={`--m:${umbrella.accent.dark}`}>
+    <article class="card umbrella" style={pair(umbrella.accent)}>
       <div class="who">
         <p class="place">The Method and its engine</p>
         <h3>{umbrella.name}</h3>
@@ -108,7 +110,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
     <ul class="tools" style={`--cols:${cols}`}>
       {
         tools.map(({ m, serves }) => (
-          <li class="card" style={`--m:${m.accent.dark}`}>
+          <li class="card" style={pair(m.accent)}>
             <ol class="track" style={`--n:${places.length}`} aria-label={`Its place in the loop: ${placeOf(m.place)}`}>
               {places.map((p) => (
                 <li class:list={{ on: p.id === m.place }} aria-current={p.id === m.place ? "step" : undefined}>
@@ -146,6 +148,12 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
 </Base>
 
 <style>
+  /* A member's accent, in the reader's theme. */
+  .card, :global(.named) { --m: var(--m-dark); }
+  :global(:root[data-theme="light"]) .card, :global(:root[data-theme="light"] .named) { --m: var(--m-light); }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) .card, :global(:root:not([data-theme]) .named) { --m: var(--m-light); }
+  }
   .opening { padding-bottom: 40px; }
   h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 0.95; margin: 12px 0 20px; }
   h1 span { color: var(--ap-accent); }

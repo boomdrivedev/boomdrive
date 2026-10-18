@@ -17,6 +17,19 @@
   /* The masthead's row under the family bar, Starlight's height. */
   --row: 3.5rem;
 }
+/* In the light theme the mint deepens to read on paper, and the accent is
+   its own text colour, as on the Starlight sites. Themes follow the
+   tokens': a data-theme on <html>, or the reader's setting where none is. */
+:root[data-theme="light"] {
+  --mint: #3d7a6c;
+  --accent-text: var(--ap-accent);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --mint: #3d7a6c;
+    --accent-text: var(--ap-accent);
+  }
+}
 @media (min-width: 50rem) {
   :root {
     --row: 4rem;

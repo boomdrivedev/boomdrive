@@ -200,19 +200,26 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
         if (seen && !mod) {
           import("./scenes").then((m) => {
             mod = m;
-            const css = getComputedStyle(document.documentElement);
-            const v = (n: string) => css.getPropertyValue(n).trim();
-            palette = {
-              ground: v("--ap-bg"), ground2: v("--ap-bg-2"), brass: v("--ap-accent"), mint: v("--mint"),
-              bone: v("--ap-fg"), rust: v("--rust"), ink3: v("--ap-fg-3"), line: v("--ap-line"),
-            };
-            paint();
+            read();
             requestAnimationFrame(frame);
           });
         }
       },
       { rootMargin: "200px" },
     ).observe(root);
+
+    // The pictures take the page's colours, again whenever the reader's
+    // theme changes.
+    function read() {
+      const css = getComputedStyle(document.documentElement);
+      const v = (n: string) => css.getPropertyValue(n).trim();
+      palette = {
+        ground: v("--ap-bg"), ground2: v("--ap-bg-2"), brass: v("--ap-accent"), mint: v("--mint"),
+        bone: v("--ap-fg"), rust: v("--rust"), ink3: v("--ap-fg-3"), line: v("--ap-line"),
+      };
+      paint();
+    }
+    matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => mod && read());
 
     // Draw the active scene at its own time: a still at the moment its
     // reduced-motion picture names.

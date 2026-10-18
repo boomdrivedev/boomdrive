@@ -15,8 +15,9 @@ interface Props {
 }
 const { title, description, wide = false, family = true } = Astro.props;
 // The family's bar, footer and diagram come from @agentplot/site-theme, and
-// so do the page, the type and the ink (site.css). The site has one theme,
-// so <html> says dark and the family's tokens never follow a light setting.
+// so do the page, the type and the ink (site.css). <html> sets no theme, so
+// the page follows the reader's setting, light or dark, as every family
+// site does.
 const here = Astro.url.pathname;
 const sections = [
   { href: url("/method/"), label: "The Method" },
@@ -44,7 +45,7 @@ const repo = "https://github.com/agentplot/flywheel-web";
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

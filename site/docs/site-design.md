@@ -193,7 +193,9 @@ holds the hub every family site's footer links to,
   names each member with its line, status, site and design book; the hub
   leaves it out, since the page is the family. What stays Flywheel's own
   is the manifesto's scale and the flywheel figure's mint and rust beside
-  the brass. The site is dark only, so `<html>` says so.
+  the brass. Like every family site it follows the reader's light or dark
+  setting: `<html>` sets no theme, and the figure, the scenes and the
+  diagrams carry both.
 - **A status is never overstated.** A member designed and not built is
   drawn as a ring and says so in words, on the card, in the bar and in the
   footer, and its site and design book may come before the tool does.
