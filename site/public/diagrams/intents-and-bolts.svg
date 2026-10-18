@@ -3,7 +3,7 @@
 <title id="ttl">Intents and bolts: work is an intent, landed in bolts of small units</title>
 <desc id="dsc">An intent, one plain sentence of what someone wants, breaks into two bolts, each one delivery. Each bolt breaks into three units, one reviewable change each. As each unit finishes, it merges into its bolt's line, a short branch off the shared line, and the shared line does not move. Once all three units are in, the bolt lands on the shared line as one step; then the second bolt does the same. Below, a long-lived feature branch of 3,000 lines, which the principle rules out, keeps taking commits but never lands, and is struck through.</desc>
 <style>
-:root{--bg:#102b2f;--panel:#0d2528;--fg:#ede7da;--muted:#a3b4ae;--rule:#2b4a4d;--accent:#c9a227;--soft:#163a3e;--ok:#8fb9ae;--bad:#e07b4f;--ink:#0d2528}
+:root{--bg:#14181f;--panel:#1b2029;--fg:#f2f1ec;--muted:#9a9fab;--rule:#2c323d;--accent:#c9a227;--soft:#232933;--ok:#45c27a;--bad:#f08a7e;--ink:#0e1116}
 text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}
 .mono,.chipt,.pillt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .bg{fill:var(--bg)} .t{fill:var(--fg)} .m{fill:var(--muted)} .ok{fill:var(--ok)} .bad{fill:var(--bad)}

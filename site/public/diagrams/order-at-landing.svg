@@ -1,11 +1,10 @@
 <!-- sluice's merge-queue diagram, from agentplot/sluice docs/diagrams/sluice.svg,
-     recoloured to the flywheel's palette; the drawing and its timing are the original's. -->
+     in sluice's own diagram colours with Flywheel's brass; the drawing and its timing are the original's. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 446" width="900" height="446" role="img" aria-labelledby="ttl dsc">
 <title id="ttl">sluice: a merge queue for agents in worktrees</title>
 <desc id="dsc">Three agents, each in its own worktree, submit their work and never merge. sluice forms candidates line plus A, line plus A plus B, and line plus A plus B plus C, and tests them at once. Line plus A plus B fails, so B is the one culprit and only agent B is told. A lands as a merge commit; C is re-formed on the line without B, mostly replays from the cache, passes and lands. The line moves only to what passed.</desc>
 <style>
-:root{--bg:#102b2f;--panel:#0d2528;--fg:#ede7da;--muted:#a3b4ae;--rule:#2b4a4d;
---accent:#c9a227;--soft:#163a3e;--ok:#8fb9ae;--bad:#e07b4f;--ink:#0d2528}
+:root{--bg:#14181f;--panel:#1b2029;--fg:#f2f1ec;--muted:#9a9fab;--rule:#2c323d;--accent:#c9a227;--soft:#232933;--ok:#45c27a;--bad:#f08a7e;--ink:#0e1116}
 text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}
 .mono,.chipt,.pillt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .bg{fill:var(--bg)} .t{fill:var(--fg)} .m{fill:var(--muted)} .ok{fill:var(--ok)} .bad{fill:var(--bad)}
