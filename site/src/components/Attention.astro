@@ -218,7 +218,7 @@ css += `@media (prefers-reduced-motion:reduce){.attention *{animation-delay:-${S
   }
   .side { display: grid; gap: 10px; min-width: 0; }
   .kick { margin: 0; font: 500 0.75rem/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
-  .after .kick { color: var(--accent-text); }
+  .after .kick { color: var(--ap-accent); }
   .cap { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--ap-fg-2); max-width: 40ch; }
   .turn { align-self: center; color: var(--ap-fg-3); font: 1.5rem/1 var(--ap-font-display); }
   svg { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--ap-font-sans); }
@@ -230,10 +230,12 @@ css += `@media (prefers-reduced-motion:reduce){.attention *{animation-delay:-${S
   .log { fill: var(--ap-line); }
   .state { font-size: 11.5px; fill: var(--ap-fg-3); }
   .wait { opacity: 0; }
-  .wait-edge { fill: none; stroke: var(--ap-warn); stroke-width: 1.5; }
-  .wait-bar { fill: color-mix(in oklab, var(--ap-warn) 16%, var(--ap-bg-3)); }
-  .wait-dot { fill: var(--ap-warn); animation: at-pulse 1.2s ease-in-out infinite; }
-  .wait-text { font-size: 11.5px; font-weight: 600; fill: var(--ap-warn); }
+  /* An agent waiting on you in the family's red, so the gold stays the
+     process's alone. */
+  .wait-edge { fill: none; stroke: var(--ap-bad); stroke-width: 1.5; }
+  .wait-bar { fill: color-mix(in oklab, var(--ap-bad) 14%, var(--ap-bg-3)); }
+  .wait-dot { fill: var(--ap-bad); animation: at-pulse 1.2s ease-in-out infinite; }
+  .wait-text { font-size: 11.5px; font-weight: 600; fill: var(--ap-bad); }
   .ring { animation-name: at-ring; }
   /* You, in the ink; the brass is the process's, on the right. */
   .ring rect:first-child { fill: none; stroke: var(--ap-fg); stroke-width: 2.5; }

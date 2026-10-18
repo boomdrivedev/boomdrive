@@ -1,8 +1,10 @@
 /* Flywheel on the family's look (@agentplot/site-theme): the page, the type,
    the ink and paper are the family's base.css, and the accent is Flywheel's
-   brass, which the family bar sets from the family's list. What is Flywheel's
-   own sits on top: the manifesto's scale, and the flywheel figure's mint and
-   rust beside the brass. */
+   gold, which the family bar sets from the family's list. It is the one gold
+   on every page: the headline, the mark's hub, links, calls and figures all
+   draw it as it is, never a tint of it. What is Flywheel's own sits on top:
+   the manifesto's scale, and the flywheel figure's mint and rust beside the
+   gold. */
 @import "@agentplot/site-theme/base.css";
 
 :root {
@@ -10,24 +12,17 @@
      back out in mint, the construction at the core in rust. */
   --mint: #8fb9ae;
   --rust: #b4552d;
-  /* The accent as text and as a filled button, as the family's Starlight
-     sites draw it (starlight.css's --sl-color-text-accent): lifted toward
-     the ink in the dark theme. */
-  --accent-text: color-mix(in oklab, var(--ap-accent) 42%, var(--ap-fg));
   /* The masthead's row under the family bar, Starlight's height. */
   --row: 3.5rem;
 }
-/* In the light theme the mint deepens to read on paper, and the accent is
-   its own text colour, as on the Starlight sites. Themes follow the
+/* In the light theme the mint deepens to read on paper. Themes follow the
    tokens': a data-theme on <html>, or the reader's setting where none is. */
 :root[data-theme="light"] {
   --mint: #3d7a6c;
-  --accent-text: var(--ap-accent);
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     --mint: #3d7a6c;
-    --accent-text: var(--ap-accent);
   }
 }
 @media (min-width: 50rem) {
@@ -41,7 +36,7 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--ap-bar-height) + 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body { min-height: 100vh; }
 
-a { color: var(--accent-text); text-decoration-thickness: 1px; }
+a { color: var(--ap-accent); text-decoration-thickness: 1px; }
 a:hover { color: var(--ap-fg); }
 
 h1, h2, h3 { margin: 0.2em 0 0.4em; }
@@ -64,14 +59,14 @@ code { background: var(--ap-bg-2); border-radius: var(--ap-radius-sm); padding: 
 .title {
   display: flex; align-items: center; gap: var(--ap-mark-gap); margin-right: auto;
   font: 700 1.25rem/1 var(--ap-font-display); letter-spacing: var(--ap-tracking-display);
-  color: var(--accent-text); text-decoration: none; white-space: nowrap;
+  color: var(--ap-accent); text-decoration: none; white-space: nowrap;
 }
-.title:hover { color: var(--accent-text); }
+.title:hover { color: var(--ap-accent); }
 .title svg { height: var(--ap-mark-height); width: auto; flex: none; }
 .sections { display: flex; gap: 0.25rem 1.5rem; }
 .sections a { font-size: 0.9375rem; color: var(--ap-fg-2); text-decoration: none; white-space: nowrap; }
 .sections a:hover { color: var(--ap-fg); }
-.sections a[aria-current] { color: var(--accent-text); font-weight: 600; }
+.sections a[aria-current] { color: var(--ap-accent); font-weight: 600; }
 .repo { display: flex; color: var(--ap-fg-2); }
 .repo:hover { color: var(--ap-fg); }
 .repo svg { width: 1.25rem; height: 1.25rem; }
@@ -91,7 +86,7 @@ code { background: var(--ap-bg-2); border-radius: var(--ap-radius-sm); padding: 
   background: var(--ap-bg-2); box-shadow: 0 12px 32px rgb(0 0 0 / 0.3);
 }
 .menu nav a { padding: 0.55rem 0.75rem; border-radius: var(--ap-radius-sm); color: var(--ap-fg-1); text-decoration: none; }
-.menu nav a[aria-current] { color: var(--accent-text); font-weight: 600; background: var(--ap-bg-3); }
+.menu nav a[aria-current] { color: var(--ap-accent); font-weight: 600; background: var(--ap-bg-3); }
 @media (max-width: 50rem) {
   .topbar .sections { display: none; }
   .menu { display: block; }
@@ -122,12 +117,12 @@ ul.plain li { padding: 12px 0; border-bottom: 1px solid var(--ap-line-soft); }
    hatching all say so. */
 .sample-chip {
   display: inline-block; font: 500 0.625rem/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--ap-warn); border: 1px dashed currentColor; border-radius: 999rem; padding: 0 7px;
+  color: var(--ap-accent); border: 1px dashed currentColor; border-radius: 999rem; padding: 0 7px;
   vertical-align: 2px;
 }
 .sample-notice {
-  border: 1px dashed color-mix(in oklab, var(--ap-warn) 70%, transparent); border-radius: var(--ap-radius);
-  background: color-mix(in oklab, var(--ap-warn) 7%, transparent);
+  border: 1px dashed color-mix(in oklab, var(--ap-accent) 70%, transparent); border-radius: var(--ap-radius);
+  background: color-mix(in oklab, var(--ap-accent) 7%, transparent);
   padding: 12px 16px; font: 0.8125rem/1.6 var(--ap-font-mono); color: var(--ap-fg);
 }
-.sample-notice b { color: var(--ap-warn); font-weight: 500; }
+.sample-notice b { color: var(--ap-accent); font-weight: 500; }

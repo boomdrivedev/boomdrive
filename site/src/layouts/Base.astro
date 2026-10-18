@@ -1,6 +1,7 @@
 ---
 import FamilyBar from "@agentplot/site-theme/FamilyBar.astro";
 import FamilyFooter from "@agentplot/site-theme/FamilyFooter.astro";
+import { member } from "@agentplot/site-theme";
 import { url } from "../lib/url";
 import "../styles/site.css";
 
@@ -29,17 +30,20 @@ const sections = [
 ];
 // Flywheel's mark, in the frame every family mark is drawn in (112 by 88):
 // the wheel in the ink, three things riding its rim, and the brass at the
-// hub. The favicon is the same drawing in the ink of the reader's theme.
+// hub. The favicon is the same drawing in the ink and gold of the reader's
+// theme, the gold the family's list gives Flywheel.
 const wheel = (ink: string, accent: string, ground: string) =>
   `<circle cx="62" cy="60" r="36" fill="none" stroke="${ink}" stroke-width="7"/>` +
   `<g fill="${ink}"><circle cx="62" cy="24" r="9"/><circle cx="93.2" cy="78" r="9"/><circle cx="30.8" cy="78" r="9"/></g>` +
   `<circle cx="62" cy="60" r="18" fill="${accent}"/><circle cx="62" cy="60" r="5.5" fill="${ground}"/>`;
 const mark = wheel("currentColor", "var(--ap-accent)", "var(--ap-bg)");
+const gold = member("flywheel").accent;
 const favicon =
   "data:image/svg+xml," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 16 112 88"><style>.i{color:#0e1116}@media (prefers-color-scheme:dark){.i{color:#f2f1ec}}</style>` +
-      `<g class="i">${wheel("currentColor", "#c9a227", "#f7f6f2")}</g></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 16 112 88"><style>.i{color:#0e1116;--g:${gold.light};--k:#f7f6f2}` +
+      `@media (prefers-color-scheme:dark){.i{color:#f2f1ec;--g:${gold.dark};--k:#0e1116}}</style>` +
+      `<g class="i">${wheel("currentColor", "var(--g)", "var(--k)")}</g></svg>`,
   );
 const repo = "https://github.com/agentplot/flywheel-web";
 ---

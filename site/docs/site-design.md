@@ -132,7 +132,7 @@ About, and the first page of the Fleet.
   going, what measures it) beside an animated diagram of the idea, in the
   manner of sluice's merge-queue diagram (`agentplot/sluice
   docs/diagrams/sluice.svg`), which, as the site's own copy in Flywheel's
-  brass, is the diagram for "Order at landing, never at start". A
+  gold, is the diagram for "Order at landing, never at start". A
   principle is a place on the Method page, `/method/#<id>`, and every link
   to a principle, from Home, a note or a term, goes there; there is no
   separate principle page. Its place also holds how we do it today and
@@ -182,14 +182,15 @@ holds the hub every family site's footer links to,
   changes the host and the curator while the adapters and the inbox stay
   put.
 - **The site wears the family's look.** Its page, type and ink are the
-  theme's (`base.css`), and its accent is Flywheel's brass, read from the
-  family's list. Its masthead is a family site's header: the bar, then a
-  row with Flywheel's mark and name, the sections and the repository,
-  folding the sections under a round menu button on a phone. The footer
+  theme's (`base.css`), and its accent is Flywheel's gold, read from the
+  family's list and drawn as it is wherever gold appears, never a tint.
+  Its masthead is a family site's header: the bar, then a row with
+  Flywheel's mark and name, the sections and the repository, folding the
+  sections under a round menu button on a phone. The footer
   names each member with its line, status, site and design book; the hub
   leaves it out, since the page is the family. What stays Flywheel's own
   is the manifesto's scale and the flywheel figure's mint and rust beside
-  the brass. Like every family site it follows the reader's light or dark
+  the gold. Like every family site it follows the reader's light or dark
   setting: `<html>` sets no theme, and the figure, the scenes and the
   diagrams carry both.
 - **A status is never overstated.** A member designed and not built is
