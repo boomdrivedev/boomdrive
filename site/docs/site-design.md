@@ -140,9 +140,13 @@ About, and the first page of the Fleet.
   until opened so the reading stays one principle per screen.
 - **Every principle gets a diagram**, and each diagram's idea is agreed
   with the user before it is drawn. A diagram is one SVG the principle
-  names, carrying its own styles, motion and reduced-motion rule, shown as
-  an image so the page's styles never reach inside it, with alt text that
-  says what it shows. Until a principle's diagram is drawn, its numeral in
+  names, carrying its own styles, motion and reduced-motion rule, in the
+  family's diagram colours (`--bg`, `--panel`, `--fg`, `--muted`, `--rule`,
+  `--accent`, `--soft`, `--ok`, `--bad`, `--ink`), with alt text that says
+  what it shows. The page draws it inline (`src/lib/diagram.ts`): its
+  styles are scoped to it, its keyframes and ids are renamed after it, and
+  its colours are mapped onto the page's tokens, so every diagram follows
+  the page's theme as every other figure does. Until a principle's diagram is drawn, its numeral in
   faint outline holds the diagram's place on a wide screen, and on a phone
   the write-up stands alone.
 - **Motion never hides content.** Every diagram honours reduced motion. With

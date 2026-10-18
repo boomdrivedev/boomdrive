@@ -2,6 +2,7 @@
 import { url } from "../../lib/url";
 import { getCollection, getEntry, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
+import { inlineDiagram } from "../../lib/diagram";
 
 // The Method read one principle at a time: each principle takes the screen
 // in turn, its write-up beside its animated diagram, or alone until it has
@@ -23,6 +24,8 @@ const scenes = principles.map((p) => {
     p,
     idea: cut < 0 ? html : html.slice(0, cut),
     practice: cut < 0 ? "" : html.slice(cut),
+    // Drawn into the page, so it takes the page's theme as every figure does.
+    diagram: p.data.diagram ? inlineDiagram(p.data.diagram.src, p.id, p.data.diagram.alt) : "",
     citedBy: notes
       .filter((n) => n.data.principles.some((r) => r.id === p.id))
       .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
@@ -66,7 +69,7 @@ const no = (n: number) => String(n).padStart(2, "0");
   </nav>
 
   {
-    scenes.map(({ p, idea, practice, citedBy }) => (
+    scenes.map(({ p, idea, practice, citedBy, diagram }) => (
       <section id={p.id} class="scene" data-scene>
         <div class="text">
           <p class="count" aria-hidden="true">
@@ -98,9 +101,9 @@ const no = (n: number) => String(n).padStart(2, "0");
             </p>
           </details>
         </div>
-        {p.data.diagram ? (
+        {diagram ? (
           <figure class="fig">
-            <img src={url(p.data.diagram.src)} alt={p.data.diagram.alt} width="900" height="446" loading="lazy" />
+            <div class="dia" set:html={diagram} />
           </figure>
         ) : (
           <div class="fig mark" aria-hidden="true">
@@ -146,7 +149,7 @@ const no = (n: number) => String(n).padStart(2, "0");
   // screen and with motion allowed; otherwise the layout stays as it is.
   const wide = matchMedia("(min-width: 64rem)");
   const still = matchMedia("(prefers-reduced-motion: reduce)");
-  const zoomers = scenes.filter((s) => s.querySelector(".fig img"));
+  const zoomers = scenes.filter((s) => s.querySelector(".fig .dia"));
   // The masthead held at the top of the screen.
   const masthead = document.querySelector<HTMLElement>(".masthead");
   let queued = false;
@@ -159,12 +162,12 @@ const no = (n: number) => String(n).padStart(2, "0");
     for (const s of zoomers) {
       s.classList.toggle("zoom", on);
       const fig = s.querySelector<HTMLElement>(".fig")!;
-      const img = fig.querySelector("img")!;
+      const dia = fig.querySelector<HTMLElement>(".dia")!;
       const text = s.querySelector<HTMLElement>(".text")!;
       const box = s.getBoundingClientRect();
       if (!on || box.bottom < -vh || box.top > 2 * vh) {
         if (!on) {
-          img.style.transform = "";
+          dia.style.transform = "";
           text.style.opacity = "";
         }
         continue;
@@ -172,19 +175,19 @@ const no = (n: number) => String(n).padStart(2, "0");
       const end = text.lastElementChild!.getBoundingClientRect().bottom;
       const t = Math.min(1, Math.max(0, (vh * 0.6 - end) / (vh * 0.45)));
       const e = t * t * (3 - 2 * t);
-      // Where the image sits while its figure is pinned, untransformed.
+      // Where the diagram sits while its figure is pinned, untransformed.
       const pin = parseFloat(getComputedStyle(fig).top) || 84;
-      const w = img.offsetWidth;
-      const h = img.offsetHeight;
-      const r = img.getBoundingClientRect();
-      const cx = (r.left + r.right) / 2 - (Number(img.dataset.tx) || 0);
+      const w = dia.offsetWidth;
+      const h = dia.offsetHeight;
+      const r = dia.getBoundingClientRect();
+      const cx = (r.left + r.right) / 2 - (Number(dia.dataset.tx) || 0);
       const cy = pin + h / 2;
       const target = Math.min(vw - 96, ((vh - bar - 72) * w) / h, 1600);
       const k = 1 + e * (target / w - 1);
       const tx = e * (vw / 2 - cx);
       const ty = e * (bar + (vh - bar) / 2 - cy);
-      img.dataset.tx = String(tx);
-      img.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(3)})`;
+      dia.dataset.tx = String(tx);
+      dia.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(3)})`;
       text.style.opacity = String(1 - 0.9 * e);
     }
   };
@@ -259,13 +262,14 @@ const no = (n: number) => String(n).padStart(2, "0");
   .changes { font: 12.5px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); margin: 0; }
 
   .fig { margin: 0; position: sticky; top: max(calc(var(--ap-bar-height) + var(--row) + 36px), calc(50vh - 14rem)); }
-  .fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--ap-line); transform-origin: center; }
+  .fig .dia { border-radius: 12px; border: 1px solid var(--ap-line); overflow: hidden; transform-origin: center; }
+  .dia :global(svg) { display: block; width: 100%; height: auto; }
   /* While a diagram is zoomed it needs the screen the write-up has left: the
      text column runs on past its end, and the scene leaves room below. */
   .scene.zoom { padding-bottom: 24vh; }
   .scene.zoom .text::after { content: ""; display: block; height: 100vh; }
   .scene.zoom .fig { z-index: 2; }
-  .scene.zoom .fig img { will-change: transform; }
+  .scene.zoom .fig .dia { will-change: transform; }
   /* Until a principle has its diagram, its numeral holds the place. */
   .mark {
     display: grid; place-items: center; aspect-ratio: 900 / 446;
