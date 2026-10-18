@@ -171,7 +171,8 @@ holds the hub every family site's footer links to,
   what the whole loop belongs to; a card per member, Flywheel's spanning
   the row above the tools in the loop's order, each with its place in
   the loop lit, its status, its one line, the principle of the Method it
-  carries, and links to its site and design book; then two columns on how
+  carries, and links to its site and design book (Flywheel's card links
+  the Method instead: its design book is private); then two columns on how
   each tool stands alone and how the Method joins them.
 - **Its words are content.** The lede and the two columns live in
   `src/content/pages/tools.md`, so Vale reads them as it reads every page.

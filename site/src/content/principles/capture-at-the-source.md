@@ -9,7 +9,7 @@ lastReviewed: 2026-10-12
 related: [intents-and-bolts, two-loops-one-gate]
 ---
 
-A capture is one source event as recorded: a meeting, a day of a chat channel, a log run, a forwarded message. It holds where it came from, when, who captured it, and a pointer to the raw material, which stays outside version control. Capturing the same event twice yields one capture ([Flywheel Next statement](https://github.com/agentplot/blueprints/blob/main/design/flywheel-next/requirements.md), clause 111).
+A capture is one source event as recorded: a meeting, a day of a chat channel, a log run, a forwarded message. It holds where it came from, when, who captured it, and a pointer to the raw material, which stays outside version control. Capturing the same event twice yields one capture (Flywheel Next statement, clause 111).
 
 Capture costs no more than a sentence: a forwarded message, a word on the phone, a file dropped in a folder, a key on the page (clause 112). Nobody is asked to classify what they wrote.
 

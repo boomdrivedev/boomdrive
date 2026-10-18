@@ -72,7 +72,7 @@ remembered to write.
 
 - A capture is one source event with its provenance and a pointer to the raw
   material, which stays out of version control; capturing an event twice
-  yields one capture ([Flywheel Next statement](https://github.com/agentplot/blueprints/blob/main/design/flywheel-next/requirements.md), clause 111).
+  yields one capture (Flywheel Next statement, clause 111).
 - Capture is one gesture, no more than a sentence (112). Adapters write
   captures unattended; reading a capture into signals is a session's
   judgment and never runs unattended (115, 215).
