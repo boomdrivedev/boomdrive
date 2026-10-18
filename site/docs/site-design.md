@@ -325,6 +325,18 @@ components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version
 repos: [flywheel-next, crew, flywheel-web]
 ```
 
+## Moving around the Fleet
+
+Every Fleet page carries the Fleet's views as tabs held under the masthead:
+the front page as Overview, then the three measurements it reads top to
+bottom, then every other measurement by name (`src/lib/fleet.ts`), the
+current one underlined in the accent. On a phone the tabs fold into one bar
+naming the current view, which opens to list them all, as a Starlight
+site's "On this page" does. Each page ends on previous and next in the same
+order. The front page stays the overview, the frame, the fleet's day and
+every measurement with what it says, and is never the only way between
+views.
+
 ## A measurement page
 
 Each measurement has one page in The Fleet, at its id. It shows:

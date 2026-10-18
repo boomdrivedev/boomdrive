@@ -1,0 +1,99 @@
+---
+import { fleetViews } from "../lib/fleet";
+
+// The Fleet's views as tabs, held under the masthead on every Fleet page, so
+// any view is one click from any other. On a phone the tabs fold into one
+// bar naming the current view, which opens to list them all, as a Starlight
+// site's "On this page" does; a <details>, so it opens with scripts off.
+
+interface Props {
+  /** "overview", or the measurement's id. */
+  current: string;
+}
+const { current } = Astro.props;
+const views = await fleetViews();
+const here = views.find((v) => v.id === current);
+if (!here) throw new Error(`the Fleet's tabs have no view "${current}"`);
+---
+
+<nav class="fleetnav" aria-label="The Fleet's views">
+  <div class="inner">
+    <ul class="tabs">
+      {
+        views.map((v) => (
+          <li>
+            <a href={v.href} data-label={v.label} aria-current={v.id === current ? "page" : undefined}>
+              {v.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <details class="pick">
+      <summary>
+        <span class="k">The Fleet</span>
+        <span class="cur">{here.label}</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9l6 6 6-6"></path>
+        </svg>
+      </summary>
+      <ul>
+        {
+          views.map((v) => (
+            <li>
+              <a href={v.href} aria-current={v.id === current ? "page" : undefined}>
+                {v.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </details>
+  </div>
+</nav>
+
+<style>
+  /* A jump to a place on the page lands below the tabs too. */
+  :global(html:has(.fleetnav)) { scroll-padding-top: calc(var(--ap-bar-height) + var(--row) + 3rem); }
+  .fleetnav { background: var(--ap-bg); border-bottom: 1px solid var(--ap-line-soft); }
+  .inner { max-width: calc(var(--ap-wide) + 2 * var(--ap-gutter)); margin: 0 auto; padding: 0 var(--ap-gutter); }
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  /* Tabs: the current view underlined in the accent, as the family bar marks
+     its current member. */
+  .tabs { display: flex; gap: 0 1.75rem; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs a {
+    display: flex; flex-direction: column; padding: 0.7rem 0 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    font-size: 0.9375rem; color: var(--ap-fg-2); text-decoration: none; white-space: nowrap;
+  }
+  /* Each tab keeps the width of its bold label, so moving between views
+     never shifts the row. */
+  .tabs a::after { content: attr(data-label); font-weight: 600; height: 0; overflow: hidden; visibility: hidden; }
+  .tabs a:hover { color: var(--ap-fg); }
+  .tabs a[aria-current] { color: var(--ap-fg); font-weight: 600; border-bottom-color: var(--ap-accent); }
+  .tabs a:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: -2px; }
+
+  .pick { display: none; position: relative; }
+  .pick summary {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0; cursor: pointer; list-style: none;
+  }
+  .pick summary::-webkit-details-marker { display: none; }
+  .k { font: 500 0.75rem/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .cur { font-weight: 600; color: var(--ap-fg); }
+  .pick svg { width: 1rem; height: 1rem; margin-left: auto; color: var(--ap-fg-3); transition: transform 0.15s; }
+  .pick[open] svg { transform: rotate(180deg); }
+  .pick ul {
+    position: absolute; left: calc(-1 * var(--ap-gutter) + 0.5rem); right: calc(-1 * var(--ap-gutter) + 0.5rem); top: 100%;
+    display: grid; padding: 0.5rem; border: 1px solid var(--ap-line); border-radius: var(--ap-radius);
+    background: var(--ap-bg-2); box-shadow: 0 12px 32px rgb(0 0 0 / 0.3);
+  }
+  .pick ul a { display: block; padding: 0.55rem 0.75rem; border-radius: var(--ap-radius-sm); color: var(--ap-fg-1); text-decoration: none; }
+  .pick ul a[aria-current] { color: var(--ap-accent); font-weight: 600; background: var(--ap-bg-3); }
+  @media (prefers-reduced-motion: reduce) { .pick svg { transition: none; } }
+
+  @media (max-width: 50rem) {
+    .tabs { display: none; }
+    .pick { display: block; }
+  }
+</style>

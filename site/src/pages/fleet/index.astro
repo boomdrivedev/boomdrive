@@ -3,6 +3,9 @@ import { url } from "../../lib/url";
 import { getCollection } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import FleetDay from "../../components/FleetDay.astro";
+import FleetNav from "../../components/FleetNav.astro";
+import FleetPager from "../../components/FleetPager.astro";
+import { fleetViews } from "../../lib/fleet";
 import { iso, lastWeek, split, total } from "../../components/measures";
 import { fmt as host } from "../../components/utilization";
 
@@ -99,10 +102,13 @@ const machineCount = new Set(context.flywheels.map((f) => f.machine)).size;
 
 const points = read.flatMap((s) => s.points);
 const allSamples = points.length > 0 && points.every((p) => p.sample);
+// Every measurement, in the order the Fleet's tabs give them.
+const every = (await fleetViews()).flatMap((v) => (v.m ? [v.m] : []));
 const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 ---
 
 <Base title="The Fleet" description="The fleet's day: utilization, work in flight and landed on one time axis, framed by the fleet they were measured in." wide>
+  <FleetNav slot="subnav" current="overview" />
   <p class="eyebrow">The Fleet</p>
   <h1>The fleet, measured</h1>
   <p class="lede">Whether the agents were busy, what they were busy on, and what came out, in one look.</p>
@@ -230,7 +236,7 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
     <h2>Every measurement</h2>
     <ul class="plain">
       {
-        measurements.map((m) => (
+        every.map((m) => (
           <li>
             <a href={url(`/fleet/${m.id}/`)}>{m.data.name}</a>
             {m.data.series.some((s) => s.points.some((p) => p.sample)) && <span class="sample-chip">samples</span>}
@@ -240,6 +246,8 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
       }
     </ul>
   </section>
+
+  <FleetPager current="overview" />
 </Base>
 
 <style>

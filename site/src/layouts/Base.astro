@@ -13,6 +13,8 @@ interface Props {
   // The family at the foot of the page; the Tools hub, which is the family,
   // leaves it out.
   family?: boolean;
+  // A section's own navigation joins the masthead through the "subnav" slot,
+  // held at the top with it.
 }
 const { title, description, wide = false, family = true } = Astro.props;
 // The family's bar, footer and diagram come from @agentplot/site-theme, and
@@ -100,6 +102,7 @@ const repo = "https://github.com/agentplot/flywheel-web";
           </details>
         </div>
       </header>
+      <slot name="subnav" />
     </div>
     <main>
       <slot />

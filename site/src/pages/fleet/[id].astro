@@ -6,6 +6,8 @@ import UtilizationChart from "../../components/UtilizationChart.astro";
 import UtilizationTiles from "../../components/UtilizationTiles.astro";
 import StackedBars from "../../components/StackedBars.astro";
 import TokensTiles from "../../components/TokensTiles.astro";
+import FleetNav from "../../components/FleetNav.astro";
+import FleetPager from "../../components/FleetPager.astro";
 import { days as toDays, fmt, share } from "../../components/utilization";
 import { fmt as amount, iso, isSplit, lastWeek, model, priced, split, splits as splitBy, total } from "../../components/measures";
 
@@ -94,7 +96,8 @@ const inline = (s: string) =>
 ---
 
 <Base title={r.name} description={r.summary} wide>
-  <p class="eyebrow">The Fleet · measurement · {r.dimension}</p>
+  <FleetNav slot="subnav" current={m.id} />
+  <p class="eyebrow">Measurement · {r.dimension}</p>
   <h1>{r.name}</h1>
   <p class="lede">{r.summary}</p>
 
@@ -519,6 +522,8 @@ const inline = (s: string) =>
       }
     </aside>
   </div>
+
+  <FleetPager current={m.id} />
 </Base>
 
 <style>
