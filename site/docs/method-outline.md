@@ -2,7 +2,9 @@
 
 Each principle is sketched the way its page reads: its line (the one-line
 form Home and the statement list it by), the claim, what it rules out, how we
-do it today, where it is going, and what measures it. The
+do it today, where it is going, what measures it, and the idea of its
+diagram, agreed with the operator before it is drawn (`site-design.md`,
+Every principle gets a diagram). The
 merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md). Version 0.1
 has ten principles, read on one page.
 
@@ -42,6 +44,7 @@ everywhere.
   that runs the repository knows how to enter it.
 - **Measure:** commands run outside the shell; tools declared in more than one
   place.
+- **Diagram:** drawn, `public/diagrams/one-shell.svg`.
 
 ## 2. One agent, one worktree
 
@@ -60,6 +63,10 @@ it, so nothing it does can disturb another.
   the merge queue performs every merge and landing (sluice statement,
   clauses 1 and 2).
 - **Measure:** collisions per week; time to a working fresh worktree.
+- **Diagram:** three worktrees side by side, each with its own agent, ports,
+  emulator and dev server, working at their own pace. Each submits its head
+  to the line; none merges. One agent reaches into another's server and is
+  refused.
 
 ## 3. Capture at the source
 
@@ -88,6 +95,11 @@ remembered to write.
   writing captures from whichever host declares the source (217g).
 - **Measure:** captures per day by source; unmoved signals by age; time from
   capture to intent; landed units traced back to a capture.
+- **Diagram:** four sources, a meeting, a chat, a log and a pull request, each
+  with an adapter beside it. Events pulse at the sources and flow as captures
+  into one inbox; the same event arriving twice becomes one capture. A reader
+  session turns a capture into signals. A hand-written ticket form is struck
+  through.
 
 ## 4. Intents and bolts
 
@@ -103,6 +115,7 @@ so the shared line moves only at a landing.
 - **Today:** Crew's bolts and units, as OpenSpec changes.
 - **Target:** Flywheel Next tracks intents from capture to landed.
 - **Measure:** unit size; unit cycle time; units per intent.
+- **Diagram:** drawn, `public/diagrams/intents-and-bolts.svg`.
 
 ## 5. Two loops, one gate
 
@@ -122,6 +135,11 @@ test and landing.
   green, and a fix after a failed landing needs no new word (sluice
   statement, clause 4).
 - **Measure:** approval wait; decisions per landed unit; leverage.
+- **Diagram:** two rings turning: the design loop (captures, signals, intents,
+  proposals) and the construction loop (units, merges, bolts, landings),
+  touching where the operator's word is given, at the proposal. A second mark
+  lights at a channel's promotion. Between the test and the landing a stop
+  sign is crossed out: the landing goes on green.
 
 ## 6. Order at landing, never at start
 
@@ -147,6 +165,8 @@ cheaply when work is combined, not planned around.
   only the confined executor.
 - **Measure:** time a unit waits to start; conflicts and culprits per landing;
   landings per hour per line.
+- **Diagram:** drawn, `public/diagrams/order-at-landing.svg`, the site's copy
+  of sluice's merge-queue diagram.
 
 ## 7. Never prove twice
 
@@ -174,6 +194,11 @@ inputs is not run again.
   faithfully as a pass (sluice statement, clauses 15, 16 and 19).
 - **Measure:** re-proof rate; cache hit rate by source (own worktree, another
   worktree, remote).
+- **Diagram:** a cache in the middle. Four places run the same check: a
+  worktree, a second worktree, CI and the merge queue. The first run takes its
+  time and fills the cache; the next three replay in a flash. One input
+  changes and only that check runs again. Beside the cache, the queue's own
+  record keeps a fail the cache never remembers.
 
 ## 8. Secrets by declaration
 
@@ -195,6 +220,11 @@ hand, never pasted, stored or printed.
   revocable.
 - **Measure:** secrets resolved per day by agent and task; secrets found in
   transcripts or commits (the target is none).
+- **Diagram:** a repository's declaration lists the secrets it needs by name.
+  An agent's command runs inside the shell; for that command alone a key
+  appears, resolved from the password manager, and vanishes when the command
+  ends. Nothing reaches a file, the wider environment or the transcript. An
+  agent pasting a token into a file is refused.
 
 ## 9. Measure the fleet
 
@@ -210,6 +240,12 @@ definitions with the numbers.
   our own repositories.
 - **Target:** a quality board.
 - **Measure:** fleet utilization first, then `measurement-roadmap.md`.
+- **Diagram:** collectors read three sources nightly, the plan's record of
+  merges and landings, git and the task runner's run reports, into points. A
+  board grows three series day by day: what landed, what it cost in attention
+  (decisions answered) and in money (tokens by role). Where the stack changed,
+  the axis is marked with the fleet context, and each definition sits beside
+  its numbers.
 
 ## Changelog
 
@@ -224,6 +260,12 @@ the site's change entries take (principle, kind, summary, what prompted it).
   and what the Flywheel Next statement's glossary says of a work item (merged
   into the bolt when complete) and of landing (a bolt's line onto the shared
   line).
+
+- **2026-10-22 · the Method · revised.** Each principle without a diagram
+  (one agent one worktree, capture at the source, two loops one gate, never
+  prove twice, secrets by declaration, measure the fleet) has its diagram's
+  idea written here, agreed with the operator on 2026-10-22 before it is
+  drawn, as `site-design.md` asks.
 
 ## Candidates for later versions
 
