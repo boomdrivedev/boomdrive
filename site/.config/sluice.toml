@@ -1,0 +1,32 @@
+# sluice gates every merge into a bolt and onto main (kit:gate.1): the
+# checks moon tags, in the site's devenv shell (kit:gate.2), the same ones
+# `site-check` runs. main and the bolts live on GitHub: every round fetches
+# them from origin and forms on what it holds, and a landing is a leased
+# push as the host's [forge] app (kit:gate.4), which the Pages workflow
+# then publishes. crew makes each bolt there with `sluice branch create`.
+[tests]
+runner = "moon"
+toolchain = ["devenv", "print-dev-env"]
+
+[[checkout.cache]]
+key = ["bun.lock"]
+paths = ["node_modules"]
+
+[branches."bolt/*"]
+required = ["#check-fast"]
+parallel = 4
+batch = false
+flaky = "fail"
+timeout = "15m"
+remote = "origin"
+
+[branches.main]
+required = ["#check-fast"]
+parallel = 2
+batch = false
+flaky = "fail"
+timeout = "15m"
+remote = "origin"
+
+[branches.main.pull_requests]
+reviews = 0

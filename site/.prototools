@@ -1,0 +1,4 @@
+# The application tools, installed by proto and activated by the devenv
+# shell: moon itself. The system tools, proto among them, and the site's
+# bun, node and Vale are devenv.nix's.
+moon = "2.6.1"

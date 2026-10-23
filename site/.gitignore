@@ -5,3 +5,4 @@ dist/
 .devenv.flake.nix
 devenv.local.nix
 .DS_Store
+.moon/cache/

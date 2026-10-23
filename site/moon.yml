@@ -1,0 +1,35 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The site: every check `site-check` runs, as moon tasks. The types, the
+# prose and the build are the fast layer, which sluice's gate requires on
+# main and on every bolt; a pass replays wherever the inputs are the same.
+language: 'typescript'
+layer: 'application'
+
+tasks:
+  install:
+    command: 'bun install --frozen-lockfile'
+    inputs: ['package.json', 'bun.lock', 'devenv.nix', 'devenv.lock', '.prototools']
+    options: {cache: false}
+  check:
+    command: 'bun run check'
+    inputs: ['src/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', 'devenv.nix', 'devenv.lock', '.prototools']
+    deps: ['~:install']
+    tags: [check-fast]
+  # The glossary is the one source of the vocabulary Vale enforces.
+  vocab:
+    command: 'bun run scripts/vocab.ts'
+    inputs: ['src/content/terms/terms.yaml', 'scripts/vocab.ts', 'package.json', 'bun.lock']
+    outputs: ['styles/config/vocabularies/Flywheel/accept.txt', 'styles/Flywheel/Terms.yml']
+    deps: ['~:install']
+  prose:
+    command: 'vale src/content'
+    inputs: ['src/content/**/*', '.vale.ini', 'styles/**/*', 'devenv.nix', 'devenv.lock', '.prototools']
+    deps: ['~:vocab']
+    tags: [check-fast]
+  build:
+    command: 'bun run build'
+    inputs: ['src/**/*', 'public/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', 'devenv.nix', 'devenv.lock', '.prototools']
+    outputs: ['dist']
+    deps: ['~:install']
+    tags: [check-fast]
