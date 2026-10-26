@@ -16,7 +16,9 @@ text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,san
 .div{stroke:var(--rule);stroke-width:1}
 .wire{stroke:var(--rule);stroke-width:2}
 .dot{fill:var(--accent)} .dotok{fill:var(--ok)} .dotbad{fill:var(--bad)}
-.badge{fill:var(--accent)} .badget{fill:var(--ink);font-size:12px;font-weight:700}</style>
+.badge{fill:var(--accent)} .badget{fill:var(--ink);font-size:12px;font-weight:700}
+.lnk{fill:var(--accent);text-decoration:underline} .hit{fill:var(--bg);fill-opacity:0}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}</style>
 <rect class="bg" width="900" height="470" rx="10"/>
 <text class="h" x="20" y="32">Never prove twice</text>
 <text class="m sm" x="182" y="32">a check that passed on these inputs is not run again</text>
@@ -82,6 +84,6 @@ text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,san
 <g class="cap"><circle class="badge" cx="457.08" cy="404" r="11"/><text class="badget" x="457.08" y="408" text-anchor="middle">3</text><text class="t sm" x="475.08" y="400">One input changes, and only</text><text class="t sm" x="475.08" y="417">its check runs again.</text></g>
 <g class="cap"><circle class="badge" cx="686.62" cy="404" r="11"/><text class="badget" x="686.62" y="408" text-anchor="middle">4</text><text class="t sm" x="704.62" y="400">sluice’s record keeps the fail</text><text class="t sm" x="704.62" y="417">the cache never remembers.</text></g>
 <text class="xs" x="20" y="452"><tspan class="t">moon</tspan><tspan class="m"> declares what each check reads; </tspan><tspan class="t">tailrace</tspan><tspan class="m"> keeps the cache; </tspan><tspan class="t">sluice</tspan><tspan class="m"> tests, lands and records.</tspan></text>
-<text class="m xs" x="774.4" y="452" text-anchor="end">tailrace’s page ↗</text>
-<text class="m xs" x="880" y="452" text-anchor="end">sluice’s page ↗</text>
+<a href="https://agentplot.github.io/tailrace/"><rect class="hit" x="678.67" y="438" width="99.73" height="20"/><text class="lnk xs" x="774.4" y="452" text-anchor="end">tailrace’s page ↗</text></a>
+<a href="https://agentplot.github.io/sluice/"><rect class="hit" x="792.4" y="438" width="91.6" height="20"/><text class="lnk xs" x="880" y="452" text-anchor="end">sluice’s page ↗</text></a>
 </svg>
