@@ -11,6 +11,9 @@ tools:
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08
+diagram:
+  src: /diagrams/two-loops-one-gate.svg
+  alt: "Two rings turn side by side. The design loop carries captures, signals and intents round to a proposal, and the construction loop carries units, merges and bolts round to a landing. The rings touch at the proposal, where the operator's word is given before construction starts. Between the test and the landing, a stop sign is crossed out: sluice lands the bolt on green, with no word. The landing puts a new version on tailrace's beta channel. A second mark lights at the channel's promotion, where the operator's word moves stable to that version."
 ---
 
 ## How we do it today

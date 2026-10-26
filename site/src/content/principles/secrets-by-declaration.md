@@ -9,6 +9,9 @@ tools:
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-06
+diagram:
+  src: /diagrams/secrets-by-declaration.svg
+  alt: "The repository's declaration, secretspec.toml, lists the secrets it needs by name and holds no value. An agent's command, deploy preview, runs inside the shell the repository declares. For that command alone, a key appears, resolved from the password manager, such as 1Password, and it vanishes when the command ends. Nothing reaches a file, the wider environment or the transcript. When the agent pastes a token into a file, it is refused. Here secretspec names each secret and resolves it from the password manager, while sluice gives the run nothing outside its place."
 ---
 
 ## How we do it today

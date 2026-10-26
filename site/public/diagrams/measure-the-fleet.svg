@@ -1,0 +1,149 @@
+<!-- Measure the fleet: drawn for the Flywheel site's Method. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">Measure the fleet: count what lands, what it cost and what came back</title>
+<desc id="dsc">Every night, collectors read three sources into points: the plan's record of merges and landings, git, and moon's run reports. A board grows three series day by day. They are what landed, what it cost in attention as decisions answered, and what it cost in money as tokens by role. Where the stack changed, a mark on the time axis names the new fleet context. Each series has its definition beside its numbers. Crew and sounding keep the records the collectors read.</desc>
+<style>
+:root{--bg:#14181f;--panel:#1b2029;--fg:#f2f1ec;--muted:#9a9fab;--rule:#2c323d;--accent:#c9a227;--soft:#232933;--ok:#45c27a;--bad:#f08a7e;--ink:#0e1116}
+@media (prefers-color-scheme:light){:root{--bg:#ebe9e2;--panel:#fbfaf7;--fg:#0e1116;--muted:#5d6370;--rule:#d5d2c8;--accent:#7d6110;--soft:#e0ddd4;--ok:#1f8a4c;--bad:#c0392b;--ink:#f2f1ec}}
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.bg{fill:var(--bg)} .t{fill:var(--fg)} .m{fill:var(--muted)} .ok{fill:var(--ok)} .bad{fill:var(--bad)} .acc{fill:var(--accent)}
+.b{font-weight:600} .h{font-size:17px;font-weight:700} .hd{font-size:12px;letter-spacing:.06em;fill:var(--muted)}
+.sm{font-size:13px} .xs{font-size:11.5px} .mono{font-size:13px} .mono.xs{font-size:11.5px}
+.box{fill:var(--panel);stroke:var(--rule);stroke-width:1.5}
+.band{fill:var(--soft);stroke:none}
+.div{stroke:var(--rule);stroke-width:1}
+.wire{stroke:var(--rule);stroke-width:2}
+.dot{fill:var(--accent)}
+.badge{fill:var(--accent)} .badget{fill:var(--ink);font-size:12px;font-weight:700}
+.lnk{fill:var(--accent);text-decoration:underline} .hit{fill:var(--bg);fill-opacity:0}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation-play-state:paused!important;animation-delay:-14.4s!important}
+.cap{animation:none!important;opacity:1}}
+.base{stroke:var(--rule);stroke-width:1}
+.axis{stroke:var(--muted);stroke-width:1.5}
+.tk{stroke:var(--muted);stroke-width:1.5}
+.bar{transform-box:fill-box;transform-origin:center bottom}
+.half{fill-opacity:.5}
+.ctx{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:4 4}
+.pin{fill:var(--accent)}
+.def{fill:var(--panel);stroke:var(--rule);stroke-width:1.5}
+@keyframes k-di00{0%{transform:translate(-18px,-74px);opacity:0} 1.6%{transform:translate(-18px,-74px);opacity:0} 2%{transform:translate(-18px,-74px);opacity:1} 4.4%{transform:translate(0px,0px);opacity:1} 5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di00{animation:k-di00 16s linear infinite}@keyframes k-di01{0%{transform:translate(-18px,0px);opacity:0} 2%{transform:translate(-18px,0px);opacity:0} 2.4%{transform:translate(-18px,0px);opacity:1} 4.8%{transform:translate(0px,0px);opacity:1} 5.4%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di01{animation:k-di01 16s linear infinite}@keyframes k-di02{0%{transform:translate(-18px,74px);opacity:0} 2.4%{transform:translate(-18px,74px);opacity:0} 2.8%{transform:translate(-18px,74px);opacity:1} 5.2%{transform:translate(0px,0px);opacity:1} 5.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di02{animation:k-di02 16s linear infinite}@keyframes k-do00{0%{transform:translate(-40px,74px);opacity:0} 5.2%{transform:translate(-40px,74px);opacity:0} 5.6%{transform:translate(-40px,74px);opacity:1} 7.6%{transform:translate(0px,0px);opacity:1} 8.2%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do00{animation:k-do00 16s linear infinite}@keyframes k-do01{0%{transform:translate(-40px,0px);opacity:0} 5.5%{transform:translate(-40px,0px);opacity:0} 5.9%{transform:translate(-40px,0px);opacity:1} 7.9%{transform:translate(0px,0px);opacity:1} 8.5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do01{animation:k-do01 16s linear infinite}@keyframes k-do02{0%{transform:translate(-40px,-74px);opacity:0} 5.8%{transform:translate(-40px,-74px);opacity:0} 6.2%{transform:translate(-40px,-74px);opacity:1} 8.2%{transform:translate(0px,0px);opacity:1} 8.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do02{animation:k-do02 16s linear infinite}@keyframes k-bg0{0%{transform:scaleY(0);fill:var(--accent);opacity:1} 7.8%{transform:scaleY(0);fill:var(--accent);opacity:1} 9.2%{transform:scaleY(1);fill:var(--accent);opacity:1} 10.4%{transform:scaleY(1);fill:var(--ok);opacity:1} 96%{transform:scaleY(1);fill:var(--ok);opacity:1} 96.8%{transform:scaleY(1);fill:var(--ok);opacity:0} 100%{transform:scaleY(0);fill:var(--accent);opacity:0}}.bg0{animation:k-bg0 16s linear infinite}@keyframes k-tk0{0%{stroke:var(--muted)} 7%{stroke:var(--muted)} 7.8%{stroke:var(--accent)} 9.6%{stroke:var(--accent)} 10.4%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.tk0{animation:k-tk0 16s linear infinite}@keyframes k-di10{0%{transform:translate(-18px,-74px);opacity:0} 12.6%{transform:translate(-18px,-74px);opacity:0} 13%{transform:translate(-18px,-74px);opacity:1} 15.4%{transform:translate(0px,0px);opacity:1} 16%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di10{animation:k-di10 16s linear infinite}@keyframes k-di11{0%{transform:translate(-18px,0px);opacity:0} 13%{transform:translate(-18px,0px);opacity:0} 13.4%{transform:translate(-18px,0px);opacity:1} 15.8%{transform:translate(0px,0px);opacity:1} 16.4%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di11{animation:k-di11 16s linear infinite}@keyframes k-di12{0%{transform:translate(-18px,74px);opacity:0} 13.4%{transform:translate(-18px,74px);opacity:0} 13.8%{transform:translate(-18px,74px);opacity:1} 16.2%{transform:translate(0px,0px);opacity:1} 16.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di12{animation:k-di12 16s linear infinite}@keyframes k-do10{0%{transform:translate(-40px,74px);opacity:0} 16.2%{transform:translate(-40px,74px);opacity:0} 16.6%{transform:translate(-40px,74px);opacity:1} 18.6%{transform:translate(0px,0px);opacity:1} 19.2%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do10{animation:k-do10 16s linear infinite}@keyframes k-do11{0%{transform:translate(-40px,0px);opacity:0} 16.5%{transform:translate(-40px,0px);opacity:0} 16.9%{transform:translate(-40px,0px);opacity:1} 18.9%{transform:translate(0px,0px);opacity:1} 19.5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do11{animation:k-do11 16s linear infinite}@keyframes k-do12{0%{transform:translate(-40px,-74px);opacity:0} 16.8%{transform:translate(-40px,-74px);opacity:0} 17.2%{transform:translate(-40px,-74px);opacity:1} 19.2%{transform:translate(0px,0px);opacity:1} 19.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do12{animation:k-do12 16s linear infinite}@keyframes k-bg1{0%{transform:scaleY(0);fill:var(--accent);opacity:1} 18.8%{transform:scaleY(0);fill:var(--accent);opacity:1} 20.2%{transform:scaleY(1);fill:var(--accent);opacity:1} 21.4%{transform:scaleY(1);fill:var(--ok);opacity:1} 96%{transform:scaleY(1);fill:var(--ok);opacity:1} 96.8%{transform:scaleY(1);fill:var(--ok);opacity:0} 100%{transform:scaleY(0);fill:var(--accent);opacity:0}}.bg1{animation:k-bg1 16s linear infinite}@keyframes k-tk1{0%{stroke:var(--muted)} 18%{stroke:var(--muted)} 18.8%{stroke:var(--accent)} 20.6%{stroke:var(--accent)} 21.4%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.tk1{animation:k-tk1 16s linear infinite}@keyframes k-di20{0%{transform:translate(-18px,-74px);opacity:0} 23.6%{transform:translate(-18px,-74px);opacity:0} 24%{transform:translate(-18px,-74px);opacity:1} 26.4%{transform:translate(0px,0px);opacity:1} 27%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di20{animation:k-di20 16s linear infinite}@keyframes k-di21{0%{transform:translate(-18px,0px);opacity:0} 24%{transform:translate(-18px,0px);opacity:0} 24.4%{transform:translate(-18px,0px);opacity:1} 26.8%{transform:translate(0px,0px);opacity:1} 27.4%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di21{animation:k-di21 16s linear infinite}@keyframes k-di22{0%{transform:translate(-18px,74px);opacity:0} 24.4%{transform:translate(-18px,74px);opacity:0} 24.8%{transform:translate(-18px,74px);opacity:1} 27.2%{transform:translate(0px,0px);opacity:1} 27.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di22{animation:k-di22 16s linear infinite}@keyframes k-do20{0%{transform:translate(-40px,74px);opacity:0} 27.2%{transform:translate(-40px,74px);opacity:0} 27.6%{transform:translate(-40px,74px);opacity:1} 29.6%{transform:translate(0px,0px);opacity:1} 30.2%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do20{animation:k-do20 16s linear infinite}@keyframes k-do21{0%{transform:translate(-40px,0px);opacity:0} 27.5%{transform:translate(-40px,0px);opacity:0} 27.9%{transform:translate(-40px,0px);opacity:1} 29.9%{transform:translate(0px,0px);opacity:1} 30.5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do21{animation:k-do21 16s linear infinite}@keyframes k-do22{0%{transform:translate(-40px,-74px);opacity:0} 27.8%{transform:translate(-40px,-74px);opacity:0} 28.2%{transform:translate(-40px,-74px);opacity:1} 30.2%{transform:translate(0px,0px);opacity:1} 30.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do22{animation:k-do22 16s linear infinite}@keyframes k-bg2{0%{transform:scaleY(0);fill:var(--accent);opacity:1} 29.8%{transform:scaleY(0);fill:var(--accent);opacity:1} 31.2%{transform:scaleY(1);fill:var(--accent);opacity:1} 32.4%{transform:scaleY(1);fill:var(--ok);opacity:1} 96%{transform:scaleY(1);fill:var(--ok);opacity:1} 96.8%{transform:scaleY(1);fill:var(--ok);opacity:0} 100%{transform:scaleY(0);fill:var(--accent);opacity:0}}.bg2{animation:k-bg2 16s linear infinite}@keyframes k-tk2{0%{stroke:var(--muted)} 29%{stroke:var(--muted)} 29.8%{stroke:var(--accent)} 31.6%{stroke:var(--accent)} 32.4%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.tk2{animation:k-tk2 16s linear infinite}@keyframes k-di30{0%{transform:translate(-18px,-74px);opacity:0} 41.6%{transform:translate(-18px,-74px);opacity:0} 42%{transform:translate(-18px,-74px);opacity:1} 44.4%{transform:translate(0px,0px);opacity:1} 45%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di30{animation:k-di30 16s linear infinite}@keyframes k-di31{0%{transform:translate(-18px,0px);opacity:0} 42%{transform:translate(-18px,0px);opacity:0} 42.4%{transform:translate(-18px,0px);opacity:1} 44.8%{transform:translate(0px,0px);opacity:1} 45.4%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di31{animation:k-di31 16s linear infinite}@keyframes k-di32{0%{transform:translate(-18px,74px);opacity:0} 42.4%{transform:translate(-18px,74px);opacity:0} 42.8%{transform:translate(-18px,74px);opacity:1} 45.2%{transform:translate(0px,0px);opacity:1} 45.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di32{animation:k-di32 16s linear infinite}@keyframes k-do30{0%{transform:translate(-40px,74px);opacity:0} 45.2%{transform:translate(-40px,74px);opacity:0} 45.6%{transform:translate(-40px,74px);opacity:1} 47.6%{transform:translate(0px,0px);opacity:1} 48.2%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do30{animation:k-do30 16s linear infinite}@keyframes k-do31{0%{transform:translate(-40px,0px);opacity:0} 45.5%{transform:translate(-40px,0px);opacity:0} 45.9%{transform:translate(-40px,0px);opacity:1} 47.9%{transform:translate(0px,0px);opacity:1} 48.5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do31{animation:k-do31 16s linear infinite}@keyframes k-do32{0%{transform:translate(-40px,-74px);opacity:0} 45.8%{transform:translate(-40px,-74px);opacity:0} 46.2%{transform:translate(-40px,-74px);opacity:1} 48.2%{transform:translate(0px,0px);opacity:1} 48.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do32{animation:k-do32 16s linear infinite}@keyframes k-bg3{0%{transform:scaleY(0);fill:var(--accent);opacity:1} 47.8%{transform:scaleY(0);fill:var(--accent);opacity:1} 49.2%{transform:scaleY(1);fill:var(--accent);opacity:1} 50.4%{transform:scaleY(1);fill:var(--ok);opacity:1} 96%{transform:scaleY(1);fill:var(--ok);opacity:1} 96.8%{transform:scaleY(1);fill:var(--ok);opacity:0} 100%{transform:scaleY(0);fill:var(--accent);opacity:0}}.bg3{animation:k-bg3 16s linear infinite}@keyframes k-tk3{0%{stroke:var(--muted)} 47%{stroke:var(--muted)} 47.8%{stroke:var(--accent)} 49.6%{stroke:var(--accent)} 50.4%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.tk3{animation:k-tk3 16s linear infinite}@keyframes k-di40{0%{transform:translate(-18px,-74px);opacity:0} 52.6%{transform:translate(-18px,-74px);opacity:0} 53%{transform:translate(-18px,-74px);opacity:1} 55.4%{transform:translate(0px,0px);opacity:1} 56%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di40{animation:k-di40 16s linear infinite}@keyframes k-di41{0%{transform:translate(-18px,0px);opacity:0} 53%{transform:translate(-18px,0px);opacity:0} 53.4%{transform:translate(-18px,0px);opacity:1} 55.8%{transform:translate(0px,0px);opacity:1} 56.4%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di41{animation:k-di41 16s linear infinite}@keyframes k-di42{0%{transform:translate(-18px,74px);opacity:0} 53.4%{transform:translate(-18px,74px);opacity:0} 53.8%{transform:translate(-18px,74px);opacity:1} 56.2%{transform:translate(0px,0px);opacity:1} 56.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di42{animation:k-di42 16s linear infinite}@keyframes k-do40{0%{transform:translate(-40px,74px);opacity:0} 56.2%{transform:translate(-40px,74px);opacity:0} 56.6%{transform:translate(-40px,74px);opacity:1} 58.6%{transform:translate(0px,0px);opacity:1} 59.2%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do40{animation:k-do40 16s linear infinite}@keyframes k-do41{0%{transform:translate(-40px,0px);opacity:0} 56.5%{transform:translate(-40px,0px);opacity:0} 56.9%{transform:translate(-40px,0px);opacity:1} 58.9%{transform:translate(0px,0px);opacity:1} 59.5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do41{animation:k-do41 16s linear infinite}@keyframes k-do42{0%{transform:translate(-40px,-74px);opacity:0} 56.8%{transform:translate(-40px,-74px);opacity:0} 57.2%{transform:translate(-40px,-74px);opacity:1} 59.2%{transform:translate(0px,0px);opacity:1} 59.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do42{animation:k-do42 16s linear infinite}@keyframes k-bg4{0%{transform:scaleY(0);fill:var(--accent);opacity:1} 58.8%{transform:scaleY(0);fill:var(--accent);opacity:1} 60.2%{transform:scaleY(1);fill:var(--accent);opacity:1} 61.4%{transform:scaleY(1);fill:var(--ok);opacity:1} 96%{transform:scaleY(1);fill:var(--ok);opacity:1} 96.8%{transform:scaleY(1);fill:var(--ok);opacity:0} 100%{transform:scaleY(0);fill:var(--accent);opacity:0}}.bg4{animation:k-bg4 16s linear infinite}@keyframes k-tk4{0%{stroke:var(--muted)} 58%{stroke:var(--muted)} 58.8%{stroke:var(--accent)} 60.6%{stroke:var(--accent)} 61.4%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.tk4{animation:k-tk4 16s linear infinite}@keyframes k-di50{0%{transform:translate(-18px,-74px);opacity:0} 63.6%{transform:translate(-18px,-74px);opacity:0} 64%{transform:translate(-18px,-74px);opacity:1} 66.4%{transform:translate(0px,0px);opacity:1} 67%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di50{animation:k-di50 16s linear infinite}@keyframes k-di51{0%{transform:translate(-18px,0px);opacity:0} 64%{transform:translate(-18px,0px);opacity:0} 64.4%{transform:translate(-18px,0px);opacity:1} 66.8%{transform:translate(0px,0px);opacity:1} 67.4%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di51{animation:k-di51 16s linear infinite}@keyframes k-di52{0%{transform:translate(-18px,74px);opacity:0} 64.4%{transform:translate(-18px,74px);opacity:0} 64.8%{transform:translate(-18px,74px);opacity:1} 67.2%{transform:translate(0px,0px);opacity:1} 67.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.di52{animation:k-di52 16s linear infinite}@keyframes k-do50{0%{transform:translate(-40px,74px);opacity:0} 67.2%{transform:translate(-40px,74px);opacity:0} 67.6%{transform:translate(-40px,74px);opacity:1} 69.6%{transform:translate(0px,0px);opacity:1} 70.2%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do50{animation:k-do50 16s linear infinite}@keyframes k-do51{0%{transform:translate(-40px,0px);opacity:0} 67.5%{transform:translate(-40px,0px);opacity:0} 67.9%{transform:translate(-40px,0px);opacity:1} 69.9%{transform:translate(0px,0px);opacity:1} 70.5%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do51{animation:k-do51 16s linear infinite}@keyframes k-do52{0%{transform:translate(-40px,-74px);opacity:0} 67.8%{transform:translate(-40px,-74px);opacity:0} 68.2%{transform:translate(-40px,-74px);opacity:1} 70.2%{transform:translate(0px,0px);opacity:1} 70.8%{transform:translate(0px,0px);opacity:0} 100%{transform:translate(0px,0px);opacity:0}}.do52{animation:k-do52 16s linear infinite}@keyframes k-bg5{0%{transform:scaleY(0);fill:var(--accent);opacity:1} 69.8%{transform:scaleY(0);fill:var(--accent);opacity:1} 71.2%{transform:scaleY(1);fill:var(--accent);opacity:1} 72.4%{transform:scaleY(1);fill:var(--ok);opacity:1} 96%{transform:scaleY(1);fill:var(--ok);opacity:1} 96.8%{transform:scaleY(1);fill:var(--ok);opacity:0} 100%{transform:scaleY(0);fill:var(--accent);opacity:0}}.bg5{animation:k-bg5 16s linear infinite}@keyframes k-tk5{0%{stroke:var(--muted)} 69%{stroke:var(--muted)} 69.8%{stroke:var(--accent)} 71.6%{stroke:var(--accent)} 72.4%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.tk5{animation:k-tk5 16s linear infinite}@keyframes k-cl{0%{stroke:var(--rule)} 2.8%{stroke:var(--rule)} 3.6%{stroke:var(--accent)} 6.6%{stroke:var(--accent)} 7.4%{stroke:var(--rule)} 13.8%{stroke:var(--rule)} 14.6%{stroke:var(--accent)} 17.6%{stroke:var(--accent)} 18.4%{stroke:var(--rule)} 24.8%{stroke:var(--rule)} 25.6%{stroke:var(--accent)} 28.6%{stroke:var(--accent)} 29.4%{stroke:var(--rule)} 42.8%{stroke:var(--rule)} 43.6%{stroke:var(--accent)} 46.6%{stroke:var(--accent)} 47.4%{stroke:var(--rule)} 53.8%{stroke:var(--rule)} 54.6%{stroke:var(--accent)} 57.6%{stroke:var(--accent)} 58.4%{stroke:var(--rule)} 64.8%{stroke:var(--rule)} 65.6%{stroke:var(--accent)} 68.6%{stroke:var(--accent)} 69.4%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.cl{animation:k-cl 16s linear infinite}@keyframes k-cx{0%{opacity:0} 36.6%{opacity:0} 37.4%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.cx{animation:k-cx 16s linear infinite}@keyframes k-cxl{0%{opacity:0} 37.6%{opacity:0} 38.4%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.cxl{animation:k-cxl 16s linear infinite}@keyframes k-ctb{0%{opacity:0} 38.4%{opacity:0} 39.2%{opacity:1} 96%{opacity:1} 96.8%{opacity:0} 100%{opacity:0}}.ctb{animation:k-ctb 16s linear infinite}@keyframes k-df0{0%{stroke:var(--rule)} 61.2%{stroke:var(--rule)} 62%{stroke:var(--accent)} 96%{stroke:var(--accent)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.df0{animation:k-df0 16s linear infinite}@keyframes k-df1{0%{stroke:var(--rule)} 64.2%{stroke:var(--rule)} 65%{stroke:var(--accent)} 96%{stroke:var(--accent)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.df1{animation:k-df1 16s linear infinite}@keyframes k-df2{0%{stroke:var(--rule)} 67.2%{stroke:var(--rule)} 68%{stroke:var(--accent)} 96%{stroke:var(--accent)} 96.8%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.df2{animation:k-df2 16s linear infinite}@keyframes k-cap1{0%{opacity:1} 13%{opacity:1} 13.8%{opacity:0.35} 99.2%{opacity:0.35} 100%{opacity:1}}.cap1{animation:k-cap1 16s linear infinite}@keyframes k-cap2{0%{opacity:0.35} 12.2%{opacity:0.35} 13%{opacity:1} 36%{opacity:1} 36.8%{opacity:0.35} 100%{opacity:0.35}}.cap2{animation:k-cap2 16s linear infinite}@keyframes k-cap3{0%{opacity:0.35} 35.2%{opacity:0.35} 36%{opacity:1} 60%{opacity:1} 60.8%{opacity:0.35} 100%{opacity:0.35}}.cap3{animation:k-cap3 16s linear infinite}@keyframes k-cap4{0%{opacity:0.35} 59.2%{opacity:0.35} 60%{opacity:1} 96%{opacity:1} 96.8%{opacity:0.35} 100%{opacity:0.35}}.cap4{animation:k-cap4 16s linear infinite}</style>
+<rect class="bg" width="900" height="470" rx="10"/>
+<text class="h" x="20" y="32">Measure the fleet</text>
+<text class="m sm" x="174" y="32">count what lands, what it cost and what came back</text>
+<text class="hd" x="20" y="62">SOURCES</text>
+<text class="hd" x="214" y="62">EVERY NIGHT</text>
+<text class="hd" x="340" y="62">THE BOARD</text>
+<line class="wire" x1="196" y1="120" x2="214" y2="194"/>
+<line class="wire" x1="300" y1="194" x2="340" y2="120"/>
+<line class="wire" x1="196" y1="194" x2="214" y2="194"/>
+<line class="wire" x1="300" y1="194" x2="340" y2="194"/>
+<line class="wire" x1="196" y1="268" x2="214" y2="194"/>
+<line class="wire" x1="300" y1="194" x2="340" y2="268"/>
+<rect class="box" x="20" y="95" width="176" height="50" rx="6"/>
+<text class="t b sm" x="34" y="116">the plan’s record</text>
+<text class="m xs" x="34" y="133">Crew: merges and landings</text>
+<rect class="box" x="20" y="169" width="176" height="50" rx="6"/>
+<text class="t b sm" x="34" y="190">git</text>
+<text class="m xs" x="34" y="207">commits and branches</text>
+<rect class="box" x="20" y="243" width="176" height="50" rx="6"/>
+<text class="t b sm" x="34" y="264">moon’s run reports</text>
+<text class="m xs" x="34" y="281">every task’s run</text>
+<rect class="box cl" x="214" y="150" width="86" height="88" rx="6"/>
+<text class="t b sm" x="257" y="190" text-anchor="middle">collectors</text>
+<text class="m xs" x="257" y="207" text-anchor="middle">read, then</text>
+<text class="m xs" x="257" y="222" text-anchor="middle">write points</text>
+<rect class="box" x="340" y="76" width="540" height="276" rx="6"/>
+<text class="t b sm" x="354" y="112">landed</text>
+<text class="m xs" x="354" y="129">units and bolts</text>
+<line class="base" x1="468" y1="148" x2="660" y2="148"/>
+<rect class="bar bg0" x="474" y="130" width="20" height="18" rx="2"/>
+<rect class="bar bg1" x="506" y="122" width="20" height="26" rx="2"/>
+<rect class="bar bg2" x="538" y="126" width="20" height="22" rx="2"/>
+<rect class="bar bg3" x="570" y="118" width="20" height="30" rx="2"/>
+<rect class="bar bg4" x="602" y="124" width="20" height="24" rx="2"/>
+<rect class="bar bg5" x="634" y="114" width="20" height="34" rx="2"/>
+<rect class="def df0" x="676" y="100" width="190" height="48" rx="5"/>
+<text class="t xs" x="688" y="120">units merged into a bolt,</text>
+<text class="t xs" x="688" y="137">bolts landed on main</text>
+<text class="t b sm" x="354" y="186">attention</text>
+<text class="m xs" x="354" y="203">decisions answered</text>
+<line class="base" x1="468" y1="222" x2="660" y2="222"/>
+<rect class="bar bg0" x="474" y="192" width="20" height="30" rx="2"/>
+<rect class="bar bg1" x="506" y="198" width="20" height="24" rx="2"/>
+<rect class="bar bg2" x="538" y="194" width="20" height="28" rx="2"/>
+<rect class="bar bg3" x="570" y="202" width="20" height="20" rx="2"/>
+<rect class="bar bg4" x="602" y="196" width="20" height="26" rx="2"/>
+<rect class="bar bg5" x="634" y="200" width="20" height="22" rx="2"/>
+<rect class="def df1" x="676" y="174" width="190" height="48" rx="5"/>
+<text class="t xs" x="688" y="194">decisions the operator</text>
+<text class="t xs" x="688" y="211">answered</text>
+<text class="t b sm" x="354" y="260">money</text>
+<text class="m xs" x="354" y="277">tokens by role</text>
+<line class="base" x1="468" y1="296" x2="660" y2="296"/>
+<g class="bar bg0"><rect x="474" y="277" width="20" height="19"/><rect class="half" x="474" y="264" width="20" height="12"/></g>
+<g class="bar bg1"><rect x="506" y="281" width="20" height="15"/><rect class="half" x="506" y="268" width="20" height="12"/></g>
+<g class="bar bg2"><rect x="538" y="274" width="20" height="22"/><rect class="half" x="538" y="260" width="20" height="13"/></g>
+<g class="bar bg3"><rect x="570" y="279" width="20" height="17"/><rect class="half" x="570" y="270" width="20" height="8"/></g>
+<g class="bar bg4"><rect x="602" y="278" width="20" height="18"/><rect class="half" x="602" y="266" width="20" height="11"/></g>
+<g class="bar bg5"><rect x="634" y="281" width="20" height="15"/><rect class="half" x="634" y="268" width="20" height="12"/></g>
+<rect class="def df2" x="676" y="248" width="190" height="48" rx="5"/>
+<text class="t xs" x="688" y="268">tokens by role and model,</text>
+<text class="t xs" x="688" y="285">at list price</text>
+<line class="axis" x1="468" y1="310" x2="660" y2="310"/>
+<line class="tk tk0" x1="484" y1="306" x2="484" y2="314"/>
+<line class="tk tk1" x1="516" y1="306" x2="516" y2="314"/>
+<line class="tk tk2" x1="548" y1="306" x2="548" y2="314"/>
+<line class="tk tk3" x1="580" y1="306" x2="580" y2="314"/>
+<line class="tk tk4" x1="612" y1="306" x2="612" y2="314"/>
+<line class="tk tk5" x1="644" y1="306" x2="644" y2="314"/>
+<text class="m xs" x="354" y="314">each night</text>
+<text class="mono xs m" x="516" y="330" text-anchor="middle">fleet-a</text>
+<text class="mono xs acc ctb" x="612" y="330" text-anchor="middle">fleet-b</text>
+<line class="ctx cx" x1="564" y1="88" x2="564" y2="316"/>
+<circle class="pin cxl" cx="564" cy="310" r="4"/>
+<text class="m xs cxl" x="564" y="345" text-anchor="middle">the stack changed: a new fleet context</text>
+<circle class="dot di00" cx="214" cy="194" r="4.5"/>
+<circle class="dot do00" cx="340" cy="120" r="4.5"/>
+<circle class="dot di01" cx="214" cy="194" r="4.5"/>
+<circle class="dot do01" cx="340" cy="194" r="4.5"/>
+<circle class="dot di02" cx="214" cy="194" r="4.5"/>
+<circle class="dot do02" cx="340" cy="268" r="4.5"/>
+<circle class="dot di10" cx="214" cy="194" r="4.5"/>
+<circle class="dot do10" cx="340" cy="120" r="4.5"/>
+<circle class="dot di11" cx="214" cy="194" r="4.5"/>
+<circle class="dot do11" cx="340" cy="194" r="4.5"/>
+<circle class="dot di12" cx="214" cy="194" r="4.5"/>
+<circle class="dot do12" cx="340" cy="268" r="4.5"/>
+<circle class="dot di20" cx="214" cy="194" r="4.5"/>
+<circle class="dot do20" cx="340" cy="120" r="4.5"/>
+<circle class="dot di21" cx="214" cy="194" r="4.5"/>
+<circle class="dot do21" cx="340" cy="194" r="4.5"/>
+<circle class="dot di22" cx="214" cy="194" r="4.5"/>
+<circle class="dot do22" cx="340" cy="268" r="4.5"/>
+<circle class="dot di30" cx="214" cy="194" r="4.5"/>
+<circle class="dot do30" cx="340" cy="120" r="4.5"/>
+<circle class="dot di31" cx="214" cy="194" r="4.5"/>
+<circle class="dot do31" cx="340" cy="194" r="4.5"/>
+<circle class="dot di32" cx="214" cy="194" r="4.5"/>
+<circle class="dot do32" cx="340" cy="268" r="4.5"/>
+<circle class="dot di40" cx="214" cy="194" r="4.5"/>
+<circle class="dot do40" cx="340" cy="120" r="4.5"/>
+<circle class="dot di41" cx="214" cy="194" r="4.5"/>
+<circle class="dot do41" cx="340" cy="194" r="4.5"/>
+<circle class="dot di42" cx="214" cy="194" r="4.5"/>
+<circle class="dot do42" cx="340" cy="268" r="4.5"/>
+<circle class="dot di50" cx="214" cy="194" r="4.5"/>
+<circle class="dot do50" cx="340" cy="120" r="4.5"/>
+<circle class="dot di51" cx="214" cy="194" r="4.5"/>
+<circle class="dot do51" cx="340" cy="194" r="4.5"/>
+<circle class="dot di52" cx="214" cy="194" r="4.5"/>
+<circle class="dot do52" cx="340" cy="268" r="4.5"/>
+<g class="cap cap1"><circle class="badge" cx="32" cy="404" r="11"/><text class="badget" x="32" y="408" text-anchor="middle">1</text><text class="t sm" x="50" y="400">Collectors read three</text><text class="t sm" x="50" y="417">sources every night.</text></g>
+<g class="cap cap2"><circle class="badge" cx="250" cy="404" r="11"/><text class="badget" x="250" y="408" text-anchor="middle">2</text><text class="t sm" x="268" y="400">Each night adds a point</text><text class="t sm" x="268" y="417">to every series.</text></g>
+<g class="cap cap3"><circle class="badge" cx="468" cy="404" r="11"/><text class="badget" x="468" y="408" text-anchor="middle">3</text><text class="t sm" x="486" y="400">Where the stack changed,</text><text class="t sm" x="486" y="417">the axis names the context.</text></g>
+<g class="cap cap4"><circle class="badge" cx="686" cy="404" r="11"/><text class="badget" x="686" y="408" text-anchor="middle">4</text><text class="t sm" x="704" y="400">Each definition sits</text><text class="t sm" x="704" y="417">beside its numbers.</text></g>
+<text class="xs" x="20" y="452"><tspan class="t">Crew</tspan><tspan class="m"> and </tspan><tspan class="t">sounding</tspan><tspan class="m"> keep the records the collectors read; </tspan><tspan class="t">moon</tspan><tspan class="m"> writes the run reports.</tspan></text>
+<a href="https://agentplot.github.io/sounding/"><rect class="hit" x="774.7" y="438" width="109.3" height="20"/><text class="lnk xs" x="880" y="452" text-anchor="end">sounding’s page ↗</text></a>
+</svg>
