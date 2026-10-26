@@ -11,11 +11,21 @@ commit, submit, merge or push.
    prints the site's address on the place's own port and exits, leaving the
    site up. Run it once: it stays up through a send-back, reloading as the
    change stage works again, and run again it prints the same address.
-2. Give the operator that address first, then the address of each page the
-   task names. `docs/content-brief.md` says where each sort of thing shows and
-   how its look is checked (light and dark, phone width, scripts off, reduced
+2. The first line you show the operator, before anything else, is the
+   preview's address, in this form:
+
+   ```
+   Preview of {{name}} on port <port>: <address>
+   ```
+
+   `<address>` is the line `site-serve` printed, and `<port>` the port in
+   it. The operator opens the preview from this line, and several places
+   may be in preview at once, so it names this one.
+3. Then give the address of each page the task names, under that address.
+   `docs/content-brief.md` says where each sort of thing shows and how its
+   look is checked (light and dark, phone width, scripts off, reduced
    motion); point the operator at the checks that matter for this task.
-3. Ask one thing: does each page now say what the task asked?
+4. Ask one thing: does each page now say what the task asked?
 
 On yes, run `sluice release`, which stops the site, and tell the operator the
 stage can be finished.
