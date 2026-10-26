@@ -9,7 +9,7 @@
 
 - [x] 2.1 Remove the clause citations from `capture-at-the-source.md`, `one-agent-one-worktree.md`, `two-loops-one-gate.md`, `order-at-landing.md` and `never-prove-twice.md` as design.md lists them, closing up each sentence; prove it with `grep -rniE 'clauses? [0-9]' src/` reporting nothing, and with `devenv shell -- vale src/content/principles` reporting no error or warning
 - [x] 2.2 Add `styles/Flywheel/Clauses.yml` as design.md gives it; prove it by writing "clause 4" into a principle's text for a moment and seeing `devenv shell -- vale src/content/principles` report the `Flywheel.Clauses` warning on it, then removing it and seeing Vale report nothing
-- [ ] 2.3 Prove the built site carries no clause number: after `devenv shell -- moon run :build`, `grep -rliE 'clauses? [0-9]' dist` reports nothing
+- [x] 2.3 Prove the built site carries no clause number: after `devenv shell -- moon run :build`, `grep -rliE 'clauses? [0-9]' dist` reports nothing
 
 ## 3. The Tools page
 
