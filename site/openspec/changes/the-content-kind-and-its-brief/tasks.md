@@ -9,7 +9,7 @@
 
 ## 2. The kind and its prompts
 
-- [ ] 2.1 Write `.config/flume.toml` as the design's "The declaration" gives it, with its comment; prove it parses (`python3 -c 'import tomllib;tomllib.load(open(".config/flume.toml","rb"))'`) and that each stage names one agent, the change stage one deliverable `commits`, the preview stage `conversation = true`, `wait = true` and `on_fail = "change"`, and `[profiles] merge_queue = "sluice"` is set
+- [x] 2.1 Write `.config/flume.toml` as the design's "The declaration" gives it, with its comment; prove it parses (`python3 -c 'import tomllib;tomllib.load(open(".config/flume.toml","rb"))'`) and that each stage names one agent, the change stage one deliverable `commits`, the preview stage `conversation = true`, `wait = true` and `on_fail = "change"`, and `[profiles] merge_queue = "sluice"` is set
 - [ ] 2.2 Write `docs/prompts/content-change.md` as the design's "The prompts" says; prove every `{{…}}` part it uses is one of C.2's parts (a grep for `{{` lists only those), that it names no flywheel-web page, and that it asks for no OpenSpec change and never asks to submit, merge or push
 - [ ] 2.3 Write `docs/prompts/content-preview.md` as the design says; prove the same grep for its parts, that it names no flywheel-web page, and that its serve command is the one task 1.2 proved
 - [ ] 2.4 Prove each stage's `prompt` path, resolved from `.config/`, names a file that exists (`test -f .config/../docs/prompts/content-change.md` and the same for preview)

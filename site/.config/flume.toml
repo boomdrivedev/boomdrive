@@ -1,0 +1,28 @@
+# The one kind of work that changes what the site shows: a diagram, a page's
+# words, a figure, a tools strip. change makes it and gets the checks green;
+# preview serves the place's own site and asks the operator whether it now
+# says what the task asked, a no going back to change with their words. The
+# kind and its prompts are the same in every family site; what tailors them
+# here is docs/content-brief.md and the task line. Until flume runs this
+# repository, the same work is a crew chore whose text is the task line and
+# the brief's path.
+[profiles]
+merge_queue = "sluice"
+
+[kinds.content]
+branch = "content"
+lands = true
+
+[[kinds.content.stages]]
+name = "change"
+prompt = "../docs/prompts/content-change.md"
+deliverables = ["commits"]
+agents = [{ program = "claude" }]
+
+[[kinds.content.stages]]
+name = "preview"
+prompt = "../docs/prompts/content-preview.md"
+conversation = true
+wait = true
+agents = [{ beside = "operator" }]
+on_fail = "change"
