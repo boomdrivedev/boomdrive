@@ -1,5 +1,7 @@
 <!-- Never prove twice: drawn for the Flywheel site's Method. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">Never prove twice: a check that passed on these inputs is not run again</title>
+<desc id="dsc">tailrace's cache sits in the middle, and four places run the same three checks around it: sluice's merge queue, a worktree, a second worktree and CI. The queue tests a candidate first, and its checks take their time and pass. sluice records each run, and when the candidate lands, its verdicts fill the cache with one entry for each check. The worktree, the second worktree and CI then replay those checks from the cache in a flash, running nothing. A next candidate changes the Vale configuration, so only the prose check runs again while the other two replay. That run fails. sluice's record keeps the fail; the cache fills only from landings, so it never remembers it. moon declares what each check reads.</desc>
 <style>
 :root{--bg:#14181f;--panel:#1b2029;--fg:#f2f1ec;--muted:#9a9fab;--rule:#2c323d;--accent:#c9a227;--soft:#232933;--ok:#45c27a;--bad:#f08a7e;--ink:#0e1116}
 @media (prefers-color-scheme:light){:root{--bg:#ebe9e2;--panel:#fbfaf7;--fg:#0e1116;--muted:#5d6370;--rule:#d5d2c8;--accent:#7d6110;--soft:#e0ddd4;--ok:#1f8a4c;--bad:#c0392b;--ink:#f2f1ec}}
