@@ -92,9 +92,22 @@ the preview.
 ### Requirement: One preview covers the set
 
 The preview prompt SHALL have its agent bring up the place's own site,
-served in the place, give the operator the address of every page the task
-named, and ask one thing: whether what those pages show now says what the
-task asked.
+served in the place, print the preview's address as the first line it shows
+the operator, naming the place and its port, then give the address of every
+page the task named, and ask one thing: whether what those pages show now
+says what the task asked. The address SHALL be made from the place's port
+alone, so the place's port as sluice reports it gives the address to anyone
+who looks later.
+
+#### Scenario: The address is the first line
+
+- **WHEN** the preview stage's agent has served the site and first speaks to the operator
+- **THEN** the first line it prints is the preview's address, naming the place by its name and giving the place's own port, before any page's address or question
+
+#### Scenario: The address can be found later
+
+- **WHEN** someone reads the place's ports from sluice's view of the place while its site is served
+- **THEN** the `web` port listed is the port in the preview's address, and the address is that port with the site's base path `/flywheel-web/` and nothing else of the place
 
 #### Scenario: The operator says yes
 

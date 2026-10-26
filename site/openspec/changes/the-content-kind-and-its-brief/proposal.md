@@ -22,6 +22,12 @@ design/flume/models/a-repositorys-content-kind.md`.)
   the place and says whether it now says what the task asked; a no goes
   back to change with the operator's words. A failed submission also goes
   back to change.
+- **The preview's address comes first.** The preview stage's agent prints
+  the preview's address as the first line it shows the operator, naming the
+  place and its port, so the operator opens it from the pane beside them.
+  The address is made from the place's port alone, so anyone who later
+  reads the place's port from sluice's view of the place has the address
+  too.
 - **The content brief, written once.** `docs/content-brief.md` holds what a
   change to the site reads first and everything a good page or diagram
   needs: where the agreed ideas are (the outline's Diagram lines, read as
@@ -81,7 +87,8 @@ design/flume/models/a-repositorys-content-kind.md`.)
   never hides content; The house style), `docs/method-outline.md` (each
   principle's Diagram line and The tools each principle names), and
   `agentplot/blueprints design/flume/requirements.md` 19, 20, 23 and C.2 for
-  the declaration's form.
+  the declaration's form, and the content-kind note's paragraph on the
+  preview for its address.
 
 ## Touches
 

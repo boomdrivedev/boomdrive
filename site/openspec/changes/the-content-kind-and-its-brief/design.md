@@ -178,13 +178,26 @@ settle something, such as a diagram with no agreed idea, stop short with
 `{{needs}}`, naming what is needed.
 
 `content-preview.md`: the task was `{{brief}}`. Serve the site with `sluice
-exec {{base}} -- site-serve` (once; it stays up through a send-back), give the
-operator the address of each page the task names, and ask one thing: does each
-now say what the task asked? On yes, run `sluice release` and tell the
+exec {{base}} -- site-serve` (once; it stays up through a send-back). The
+first line the agent shows the operator, before anything else, is the
+preview's address with the place's name and port, in the form `Preview of
+{{name}} on port <port>: <address>`, the port and address being what
+`site-serve` printed. Then it gives the address of each page the task names
+and asks one thing: does each now say what the task asked? On yes, run `sluice release` and tell the
 operator the stage can be finished. On no, write the operator's words down as
 what must change and stop short with them through `{{needs}}`, leaving the
 server up, so the caller starts the change stage again with them. Make no
 edits yourself.
+
+The address comes first because the operator reaches the preview from the
+pane that opened beside them, and the line names the place because several
+places may be in preview at once (`a-repositorys-content-kind.md`, The kind:
+content). The note also puts the address in the place's status. flume's
+status (`requirements.md` 56) gives no field a stage's agent fills, so this
+repository makes the address follow from the place's port alone: sluice's
+view of the place (`sluice --worktree <place>`) lists its `web` port while
+it is held, and that port with `/flywheel-web/` is the address. A field in
+flume's status that carries it is flume's to add.
 
 *Alternative:* the preview agent edits on the spot. Rejected: the preview is
 a conversation with no deliverable, and an edit there would land without the
@@ -251,6 +264,9 @@ change.
   the task parses it as TOML and checks every field against C.2; once flume
   runs here, `flume prompt <place> <stage>` renders each prompt and is the
   real check.
+- [flume's status does not yet carry the preview's address] → the address is
+  made from the place's port alone, which sluice's view of the place lists;
+  the task proves the two agree while the site is served.
 - [The brief drifts from the drawn diagrams] → it points to the outline and
   the SVGs rather than copying them, and is revised in place when a
   convention changes.
