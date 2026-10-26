@@ -14,6 +14,10 @@ const principles = defineCollection({
     summary: z.string(),
     // The principle in one line, as Home lists it beside the flywheel.
     line: z.string(),
+    // The tools that do what the principle says, in the order its strip names
+    // them. Each links the section of its product page that does it, or of its
+    // design book where the page has none; a tool with neither is named alone.
+    tools: z.array(z.object({ name: z.string().min(1), href: z.url().optional() })).default([]),
     status: z.enum(["draft", "stable", "retired"]),
     introducedIn: z.string(),
     lastReviewed: z.coerce.date(),
