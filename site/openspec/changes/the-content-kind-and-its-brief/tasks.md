@@ -26,7 +26,7 @@
 
 ## 5. The generic diagram spec
 
-- [ ] 5.1 Check the drawn diagrams against the generic requirements in this change's `method-diagrams` delta: for each of the six SVGs, its `viewBox` width is 900, it uses only the ten family colour tokens, it carries a reduced-motion rule, and its principle's `alt` equals its `<desc>`; report any that does not as a finding for a later content task, and change no diagram here
+- [x] 5.1 Check the drawn diagrams against the generic requirements in this change's `method-diagrams` delta: for each of the six SVGs, its `viewBox` width is 900, it uses only the ten family colour tokens, it carries a reduced-motion rule, and its principle's `alt` equals its `<desc>`; report any that does not as a finding for a later content task, and change no diagram here
 - [ ] 5.2 Run `openspec validate the-content-kind-and-its-brief --strict` and prove it reports the change valid
 
 ## 6. The gate
