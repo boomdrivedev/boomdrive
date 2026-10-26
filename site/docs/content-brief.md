@@ -78,18 +78,21 @@ with no generator script.
 - **Motion.** CSS keyframes, never SMIL: SMIL ignores reduced motion, and the
   page renames only CSS. Every animation runs on one 16-second linear
   infinite loop, keyframes named `k-` and a short name. The story plays in
-  order, everything holds near the end of the loop (about 83 to 96 per cent),
-  then fades and starts again.
-- **Reduced motion.** The rule every drawn diagram carries pauses each
-  animation at 14.4 seconds, 90 per cent of the loop, inside the hold, where
-  the whole idea shows at once, and lights every caption:
+  order, then everything holds near the end of the loop while the whole idea
+  shows, then fades and starts again. Each diagram's timeline sets its own
+  hold; in both examples it runs from about 82 to 96 per cent.
+- **Reduced motion.** Every drawn diagram carries one rule that pauses each
+  animation at a moment inside its own hold, where the whole idea shows at
+  once, and lights every caption. Both examples pause at 14.4 seconds, 90 per
+  cent of the loop:
 
   ```css
   @media (prefers-reduced-motion:reduce){*{animation-play-state:paused!important;animation-delay:-14.4s!important}
   .cap{animation:none!important;opacity:1}}
   ```
 
-  Anything that is gone at that moment, such as a pulse ring, has a static
+  Another diagram sets `animation-delay` to the held moment its own timeline
+  gives. Anything that is gone at that moment, such as a pulse ring, has a static
   mark drawn beside it so the still frame still says it.
 - **Captions.** Where the story has parts, four numbered captions on accent
   badges along the bottom, each with the class `cap`, lit while its part
