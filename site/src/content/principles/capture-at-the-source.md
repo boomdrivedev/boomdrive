@@ -7,6 +7,9 @@ status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-12
 related: [intents-and-bolts, two-loops-one-gate]
+diagram:
+  src: /diagrams/capture-at-the-source.svg
+  alt: "Each of four sources, a meeting, a chat, a log and a pull request, has an adapter beside it. Events pulse at the sources, and each adapter writes them, unattended, as captures that flow into one inbox. The log's alert is sent twice; both copies carry the same key, and the inbox keeps one capture. A reader session reads the meeting's capture into signals: an ask, a constraint and a question. Below, a hand-written ticket form, which the principle rules out, is struck through."
 ---
 
 A capture is one source event as recorded: a meeting, a day of a chat channel, a log run, a forwarded message. It holds where it came from, when, who captured it, and a pointer to the raw material, which stays outside version control. Capturing the same event twice yields one capture (Flywheel Next statement, clause 111).
