@@ -16,6 +16,13 @@ fleet's measurements and the tools. `docs/` holds its design and plans; read
   both fail it, and a Vale warning is fixed, not ignored.
 - The glossary in `src/content/terms/terms.yaml` is the one vocabulary; add a
   term there, never in `styles/` (those files are generated).
+
+A change to what the site shows (a diagram, a page's words, a figure, a tools
+strip) is content work: it reads `docs/content-brief.md` whole and a one-line
+task naming the pages or diagrams, and runs as the `content` kind in
+`.config/flume.toml` or, until flume runs here, as a crew chore whose text is
+the task and the brief's path. It is not written up as an OpenSpec change.
+
 - Conventional Commits; stage by explicit paths. The repository is public and
   `main` is the published site: every landing on `main` deploys it to GitHub
   Pages (`.github/workflows/pages.yml`) after `site-check` passes there.
