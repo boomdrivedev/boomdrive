@@ -13,7 +13,7 @@
 - [x] 2.2 Write `docs/prompts/content-change.md` as the design's "The prompts" says; prove every `{{…}}` part it uses is one of C.2's parts (a grep for `{{` lists only those), that it names no flywheel-web page, and that it asks for no OpenSpec change and never asks to submit, merge or push
 - [x] 2.3 Write `docs/prompts/content-preview.md` as the design's "The prompts" says, its first instruction after serving being that the first line the agent shows the operator is `Preview of {{name}} on port <port>: <address>`, from what `site-serve` printed, before any page's address or question; prove the same grep for its parts, that it names no flywheel-web page, that its serve command is the one task 1.2 proved, and that the address line comes before the step that gives the pages' addresses
 - [x] 2.4 Prove each stage's `prompt` path, resolved from `.config/`, names a file that exists (`test -f .config/../docs/prompts/content-change.md` and the same for preview)
-- [ ] 2.5 Prove the address can be found later: with the site served by `sluice exec <bolt> -- site-serve`, `sluice --json` in this worktree lists a `web` port equal to the port in the printed address, and the address is `http://127.0.0.1:<that port>/flywheel-web/`; then `sluice release`
+- [x] 2.5 Prove the address can be found later: with the site served by `sluice exec <bolt> -- site-serve`, `sluice --json` in this worktree lists a `web` port equal to the port in the printed address, and the address is `http://127.0.0.1:<that port>/flywheel-web/`; then `sluice release`
 
 ## 3. The content brief
 
