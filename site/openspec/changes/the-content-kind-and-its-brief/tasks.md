@@ -32,5 +32,5 @@
 
 ## 6. The gate
 
-- [ ] 6.1 Run `sluice exec <bolt>` on the committed work and prove the gate's tasks pass
+- [x] 6.1 Run `sluice exec <bolt>` on the committed work and prove the gate's tasks pass
 - [ ] 6.2 Run `site-check` in the devenv shell and prove it passes, with Vale reporting no error or warning
