@@ -3,7 +3,7 @@
 ## 1. Serving the site in a place
 
 - [x] 1.1 Add the `site` process and the `site-serve` and `site-stop` scripts to `devenv.nix` as the design's "Serving the site in a place" says; prove `devenv shell -- site-stop` exits zero in this worktree with nothing served, and `devenv shell -- site-serve` outside `sluice exec` fails with a message naming `SLUICE_PORT_WEB`
-- [ ] 1.2 Add `[checkout] ports = ["web"]` and `[tests] release = "site-stop"` to `.config/sluice.toml`, with a comment saying what each is for; prove `sluice exec <bolt> -- site-serve` prints an address on the worktree's port and exits, and that `curl -sf` on that address answers after the command has ended (where `<bolt>` is this worktree's base branch)
+- [x] 1.2 Add `[checkout] ports = ["web"]` and `[tests] release = "site-stop"` to `.config/sluice.toml`, with a comment saying what each is for; prove `sluice exec <bolt> -- site-serve` prints an address on the worktree's port and exits, and that `curl -sf` on that address answers after the command has ended (where `<bolt>` is this worktree's base branch)
 - [ ] 1.3 Prove release: `sluice release` in this worktree stops the server and the address no longer answers; then in a fresh detached checkout of this branch, `devenv shell -- site-stop` exits zero with no output that fails, as a candidate's release would
 - [ ] 1.4 Prove two places at once: serve from this worktree and from a second worktree of this branch under `sluice exec`, check the two addresses use different ports and both answer, then release both
 
