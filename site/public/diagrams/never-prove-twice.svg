@@ -1,0 +1,87 @@
+<!-- Never prove twice: drawn for the Flywheel site's Method. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470">
+<style>
+:root{--bg:#14181f;--panel:#1b2029;--fg:#f2f1ec;--muted:#9a9fab;--rule:#2c323d;--accent:#c9a227;--soft:#232933;--ok:#45c27a;--bad:#f08a7e;--ink:#0e1116}
+@media (prefers-color-scheme:light){:root{--bg:#ebe9e2;--panel:#fbfaf7;--fg:#0e1116;--muted:#5d6370;--rule:#d5d2c8;--accent:#7d6110;--soft:#e0ddd4;--ok:#1f8a4c;--bad:#c0392b;--ink:#f2f1ec}}
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.bg{fill:var(--bg)} .t{fill:var(--fg)} .m{fill:var(--muted)} .ok{fill:var(--ok)} .bad{fill:var(--bad)} .acc{fill:var(--accent)}
+.b{font-weight:600} .h{font-size:17px;font-weight:700} .hd{font-size:12px;letter-spacing:.06em;fill:var(--muted)}
+.sm{font-size:13px} .xs{font-size:11.5px} .mono{font-size:13px} .mono.xs{font-size:11.5px}
+.box{fill:var(--panel);stroke:var(--rule);stroke-width:1.5}
+.band{fill:var(--soft);stroke:none}
+.ent{fill:var(--panel);stroke:var(--rule);stroke-width:1.5}
+.gap{fill:none;stroke:var(--rule);stroke-width:1.5;stroke-dasharray:4 4}
+.track{fill:var(--soft)} .bar{transform-box:fill-box;transform-origin:left center} .pbar{fill:var(--ok)}
+.div{stroke:var(--rule);stroke-width:1}
+.wire{stroke:var(--rule);stroke-width:2}
+.dot{fill:var(--accent)} .dotok{fill:var(--ok)} .dotbad{fill:var(--bad)}
+.badge{fill:var(--accent)} .badget{fill:var(--ink);font-size:12px;font-weight:700}</style>
+<rect class="bg" width="900" height="470" rx="10"/>
+<text class="h" x="20" y="32">Never prove twice</text>
+<text class="m sm" x="182" y="32">a check that passed on these inputs is not run again</text>
+<rect class="band" x="330" y="44" width="264" height="322" rx="8"/>
+<text class="hd" x="344" y="64">TAILRACE’S CACHE</text>
+<text class="m sm" x="344" y="84">filled by landings</text>
+<line class="wire" x1="300" y1="151" x2="342" y2="113"/>
+<line class="wire" x1="300" y1="173" x2="342" y2="151"/>
+<line class="wire" x1="300" y1="195" x2="342" y2="189"/>
+<line class="wire" x1="582" y1="151" x2="650" y2="111"/>
+<line class="wire" x1="582" y1="151" x2="650" y2="205"/>
+<line class="wire" x1="582" y1="151" x2="650" y2="299"/>
+<line class="wire" x1="160" y1="214" x2="160" y2="238"/>
+<rect class="ent" x="342" y="98" width="240" height="30" rx="4"/>
+<rect class="ent" x="342" y="136" width="240" height="30" rx="4"/>
+<rect class="ent" x="342" y="174" width="240" height="30" rx="4"/>
+<rect class="gap" x="342" y="212" width="240" height="30" rx="4"/>
+<text class="m xs" x="570" y="232" text-anchor="end">a fail never lands here</text>
+<text class="m xs" x="462" y="300" text-anchor="middle">one entry for each check, keyed by</text>
+<text class="m xs" x="462" y="316" text-anchor="middle">the hash of the inputs it read</text>
+<rect class="box" x="20" y="44" width="280" height="170" rx="6"/>
+<text class="t b" x="34" y="68">sluice’s merge queue</text>
+<text class="mono xs t" x="34" y="90">candidate 1</text>
+<line class="div" x1="34" y1="134" x2="286" y2="134"/>
+<text class="mono t" x="34" y="155">check</text>
+<text class="mono xs m" x="84" y="155">3f9a</text>
+<rect class="track" x="124" y="147" width="60" height="8" rx="4"/>
+<text class="mono t" x="34" y="177">prose</text>
+<text class="mono xs m" x="84" y="177">a17c</text>
+<rect class="track" x="124" y="169" width="60" height="8" rx="4"/>
+<text class="mono t" x="34" y="199">build</text>
+<text class="mono xs m" x="84" y="199">5e02</text>
+<rect class="track" x="124" y="191" width="60" height="8" rx="4"/>
+<rect class="box" x="20" y="238" width="280" height="128" rx="6"/>
+<text class="t b" x="34" y="262">sluice’s record</text>
+<text class="m xs" x="34" y="279">every run, pass and fail</text>
+<rect class="box" x="650" y="73" width="230" height="76" rx="6"/>
+<text class="t b" x="664" y="97">worktree a</text>
+<text class="mono xs t" x="664" y="119">check</text>
+<rect class="track" x="664" y="126" width="38" height="6" rx="3"/>
+<text class="mono xs t" x="714" y="119">prose</text>
+<rect class="track" x="714" y="126" width="38" height="6" rx="3"/>
+<text class="mono xs t" x="764" y="119">build</text>
+<rect class="track" x="764" y="126" width="38" height="6" rx="3"/>
+<rect class="box" x="650" y="167" width="230" height="76" rx="6"/>
+<text class="t b" x="664" y="191">worktree b</text>
+<text class="mono xs t" x="664" y="213">check</text>
+<rect class="track" x="664" y="220" width="38" height="6" rx="3"/>
+<text class="mono xs t" x="714" y="213">prose</text>
+<rect class="track" x="714" y="220" width="38" height="6" rx="3"/>
+<text class="mono xs t" x="764" y="213">build</text>
+<rect class="track" x="764" y="220" width="38" height="6" rx="3"/>
+<rect class="box" x="650" y="261" width="230" height="76" rx="6"/>
+<text class="t b" x="664" y="285">CI</text>
+<text class="mono xs t" x="664" y="307">check</text>
+<rect class="track" x="664" y="314" width="38" height="6" rx="3"/>
+<text class="mono xs t" x="714" y="307">prose</text>
+<rect class="track" x="714" y="314" width="38" height="6" rx="3"/>
+<text class="mono xs t" x="764" y="307">build</text>
+<rect class="track" x="764" y="314" width="38" height="6" rx="3"/>
+<g class="cap"><circle class="badge" cx="31" cy="404" r="11"/><text class="badget" x="31" y="408" text-anchor="middle">1</text><text class="t sm" x="49" y="400">The queue’s run takes its time,</text><text class="t sm" x="49" y="417">and its landing fills the cache.</text></g>
+<g class="cap"><circle class="badge" cx="272.76" cy="404" r="11"/><text class="badget" x="272.76" y="408" text-anchor="middle">2</text><text class="t sm" x="290.76" y="400">The next three replay</text><text class="t sm" x="290.76" y="417">in a flash.</text></g>
+<g class="cap"><circle class="badge" cx="457.08" cy="404" r="11"/><text class="badget" x="457.08" y="408" text-anchor="middle">3</text><text class="t sm" x="475.08" y="400">One input changes, and only</text><text class="t sm" x="475.08" y="417">its check runs again.</text></g>
+<g class="cap"><circle class="badge" cx="686.62" cy="404" r="11"/><text class="badget" x="686.62" y="408" text-anchor="middle">4</text><text class="t sm" x="704.62" y="400">sluice’s record keeps the fail</text><text class="t sm" x="704.62" y="417">the cache never remembers.</text></g>
+<text class="xs" x="20" y="452"><tspan class="t">moon</tspan><tspan class="m"> declares what each check reads; </tspan><tspan class="t">tailrace</tspan><tspan class="m"> keeps the cache; </tspan><tspan class="t">sluice</tspan><tspan class="m"> tests, lands and records.</tspan></text>
+<text class="m xs" x="774.4" y="452" text-anchor="end">tailrace’s page ↗</text>
+<text class="m xs" x="880" y="452" text-anchor="end">sluice’s page ↗</text>
+</svg>
