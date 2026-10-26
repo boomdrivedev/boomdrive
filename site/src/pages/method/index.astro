@@ -80,6 +80,12 @@ const no = (n: number) => String(n).padStart(2, "0");
           </h2>
           <p class="claim">{p.data.summary}</p>
           {idea && <div class="body" set:html={idea} />}
+          {p.data.tools.length > 0 && (
+            <p class="tools">
+              <span>In the tools</span>
+              {p.data.tools.map((t) => (t.href ? <a href={t.href}>{t.name}</a> : <span class="name">{t.name}</span>))}
+            </p>
+          )}
           <details class="more">
             <summary>Today, where it's going, and its record</summary>
             <div class="body" set:html={practice} />
@@ -251,6 +257,17 @@ const no = (n: number) => String(n).padStart(2, "0");
   .scene .claim { font: 500 1.15rem/1.45 var(--ap-font-display); color: var(--ap-fg); letter-spacing: -0.01em; margin: 0 0 18px; }
   .body :global(h2) { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 28px 0 6px; }
   .body :global(p) { margin: 0 0 12px; }
+  /* The tools that do what the principle says, in the manner of the Tools
+     card's "In the Method"; a tool with no page of its own is named alone. */
+  .tools { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; margin: 6px 0 18px; }
+  .tools span:first-child {
+    flex-basis: 100%; font: 9.5px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3);
+  }
+  .tools a, .tools .name { font: 500 15px/1.35 var(--ap-font-display); }
+  .tools a { color: var(--accent-text); text-decoration: none; }
+  .tools a::after { content: "\a0↗"; }
+  .tools a:hover { color: var(--ap-fg); }
+  .tools .name { color: var(--ap-fg-2); }
   .more { margin-top: 8px; border-top: 1px solid var(--ap-line-soft); padding-top: 10px; }
   .more summary {
     cursor: pointer; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3);
@@ -286,6 +303,7 @@ const no = (n: number) => String(n).padStart(2, "0");
     .scene .claim { order: 3; }
     .fig { order: 4; position: static; margin: 4px 0 20px; }
     .body { order: 5; }
+    .tools { order: 6; }
     .mark { display: none; }
   }
 

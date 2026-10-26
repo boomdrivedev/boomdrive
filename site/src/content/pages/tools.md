@@ -13,10 +13,11 @@ Each tool does one job and is useful on its own. Flywheel is the Method that joi
 - **flume** launches one agent in one worktree for an item, runs its stages, and tidies the place once the work lands. `/launch` starts one from any session, and each stage ends when its deliverable exists, never when the pane goes quiet.
 - **sounding** works one question in one session, in a worktree of its own, and ends on a conclusion: the answer, its evidence and the work it proposes. `/sound` opens one from any session, and you accept the conclusion, send it back for another round, or drop it.
 - **sluice** tests a change as merged and lands it. It never needs to know where the change came from.
+- **tailrace** carries what the merge queue lands into a store you own and names each piece by its content. It keeps channels and the environments that follow them, and serves consumers in their ecosystem's own form.
 
 ## The Method joins them
 
-The tools meet at contracts, never inside each other. headwater and eddy print captures in one format, and millpond records each event once, whichever host ran the adapter. millpond sends an item to flume, which launches its work in one worktree, and the work lands through sluice. An item that asks a question goes to sounding instead, and its accepted conclusion comes back to millpond as new items.
+The tools meet at contracts, never inside each other. headwater and eddy print captures in one format, and millpond records each event once, whichever host ran the adapter. millpond sends an item to flume, which launches its work in one worktree, and the work lands through sluice. tailrace carries the landing to a channel and to every environment that follows it. An item that asks a question goes to sounding instead, and its accepted conclusion comes back to millpond as new items.
 
 Today the engine that plans across items is Crew, our team runner, which calls millpond and flume as it calls sluice. Flywheel's engine is designed to stand on the same parts as millpond and read the same inboxes.
 

@@ -37,21 +37,25 @@ const places: { id: Place; label: string }[] = [
 const placeOf = (p: Place) => places.find((x) => x.id === p)?.label ?? p;
 
 // The principle of the Method each tool carries; Flywheel carries all of
-// them. A principle that is gone fails the build.
+// them. A principle that is gone, or whose strip does not name the tool,
+// fails the build.
 const serves: Partial<Record<MemberId, string>> = {
   headwater: "capture-at-the-source",
   eddy: "capture-at-the-source",
   millpond: "capture-at-the-source",
   // A place per launch: one agent in its own worktree, submitting to sluice.
   flume: "one-agent-one-worktree",
-  // A question worked to a conclusion the operator decides, before any
-  // work is planned: the design loop, met by a person at the gate.
-  sounding: "two-loops-one-gate",
+  // The one principle whose strip names sounding: what it records is read
+  // by the collectors that measure the fleet.
+  sounding: "measure-the-fleet",
   sluice: "order-at-landing",
 };
-const principle = async (id: string) => {
+const principle = async (tool: string, id: string) => {
   const p = await getEntry("principles", id);
   if (!p) throw new Error(`the Tools hub names the principle "${id}", which is missing`);
+  if (!p.data.tools.some((t) => t.name === tool)) {
+    throw new Error(`the Tools hub has ${tool} carry "${id}", whose strip does not name ${tool}`);
+  }
   return { href: url(`/method/#${id}`), title: p.data.title };
 };
 
@@ -60,7 +64,7 @@ if (!umbrella) throw new Error("the family has no umbrella member");
 const tools = await Promise.all(
   family
     .filter((m) => m.place !== "umbrella")
-    .map(async (m) => ({ m, serves: serves[m.id] ? await principle(serves[m.id]!) : undefined })),
+    .map(async (m) => ({ m, serves: serves[m.id] ? await principle(m.name, serves[m.id]!) : undefined })),
 );
 const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 const byStatus = (s: Status) => list(tools.filter((t) => t.m.status === s).map((t) => t.m.name));

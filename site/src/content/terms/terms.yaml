@@ -123,3 +123,7 @@
   definition: The merge queue, which tests a change as merged and lands it.
   principle: order-at-landing
   lowercase: true
+- id: tailrace
+  term: tailrace
+  definition: The tool that carries what the merge queue lands into a store you own, keeps its channels and the environments that follow them, and serves consumers.
+  lowercase: true
