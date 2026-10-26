@@ -98,7 +98,45 @@ in
     site-check.exec = ''
       bun run check && prose && bun run build
     '';
+    # The site served in a place, for a preview: run as `sluice exec <branch>
+    # -- site-serve`, on the port sluice holds for the worktree. devenv's
+    # process manager keeps it up once the command exits; `sluice release`
+    # runs site-stop.
+    site-serve.exec = ''
+      if [ -z "''${SLUICE_PORT_WEB:-}" ]; then
+        echo "site-serve: SLUICE_PORT_WEB is unset; run it as \`sluice exec <branch> -- site-serve\`" >&2
+        exit 1
+      fi
+      mkdir -p "$DEVENV_STATE"
+      echo "$SLUICE_PORT_WEB" > "$DEVENV_STATE/site-port"
+      devenv up -d site || exit 1
+      for _ in $(seq 120); do
+        if (exec 3<>"/dev/tcp/127.0.0.1/$SLUICE_PORT_WEB") 2>/dev/null; then
+          echo "http://127.0.0.1:$SLUICE_PORT_WEB/flywheel-web/"
+          exit 0
+        fi
+        sleep 0.5
+      done
+      echo "site-serve: nothing answered on port $SLUICE_PORT_WEB after a minute" >&2
+      exit 1
+    '';
+    # Nothing to do where nothing was served, which is every candidate's
+    # release. A port file left by a process manager that is gone (a reboot)
+    # is done once nothing answers on its port.
+    site-stop.exec = ''
+      [ -f "$DEVENV_STATE/site-port" ] || exit 0
+      port="$(cat "$DEVENV_STATE/site-port")"
+      rm -f "$DEVENV_STATE/site-port"
+      devenv processes down 2>/dev/null ||
+        ! (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null
+    '';
   };
+
+  # The dev server site-serve starts, on the port it wrote for the place.
+  processes.site.exec = ''
+    cd "$DEVENV_ROOT"
+    exec bun run dev --host 127.0.0.1 --port "$(cat "$DEVENV_STATE/site-port")"
+  '';
 
   # moon's task archives (.moon/cache/outputs) are a link into the git common
   # dir, so every worktree shares them. The rest of .moon/cache records the
