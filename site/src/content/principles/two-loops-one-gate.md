@@ -3,6 +3,11 @@ order: 5
 title: "Two loops, one gate"
 summary: "Design and construction are separate loops, coupled where a human decides, and agents never approve agents; the operator's word comes before the work is tested, never between test and landing."
 line: "Design and construction are separate loops, and a person decides where they meet."
+tools:
+  - name: tailrace
+    href: https://agentplot.github.io/tailrace/how-it-works/#channels-moved-only-by-proof
+  - name: sluice
+    href: https://agentplot.github.io/sluice/#why
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

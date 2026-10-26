@@ -3,6 +3,9 @@ order: 1
 title: "One shell"
 summary: "Every command, an agent's, a person's or CI's, runs inside one shell the repository declares, so the tools and their versions are the same everywhere."
 line: "Every command runs in the one shell the repository declares."
+tools:
+  - name: sluice
+    href: https://agentplot.github.io/sluice/reference/commands/#sluice-exec
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-06

@@ -3,6 +3,13 @@ order: 3
 title: "Capture at the source"
 summary: "Work begins as captures taken where things happen, a meeting, a chat, a log, a pull request, by adapters that run unattended, so development is fed by what people and systems say rather than by tickets someone remembered to write."
 line: "Work begins as captures, taken unattended where things happen."
+tools:
+  - name: millpond
+    href: https://agentplot.github.io/millpond/
+  - name: headwater
+    href: https://agentplot.github.io/headwater/
+  - name: eddy
+    href: https://agentplot.github.io/eddy/
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-12

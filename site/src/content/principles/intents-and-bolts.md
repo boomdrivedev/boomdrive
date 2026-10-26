@@ -3,6 +3,9 @@ order: 4
 title: "Intents and bolts"
 summary: "Work is an intent broken into bolts made of units, one reviewable change each. A unit merges into its bolt as it finishes, and the bolt lands on the shared line as one delivery."
 line: "Work is an intent, landed in bolts of small units."
+tools:
+  - name: Crew
+  - name: Flywheel Next
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-12
