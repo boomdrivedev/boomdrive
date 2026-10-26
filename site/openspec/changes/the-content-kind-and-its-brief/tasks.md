@@ -16,7 +16,7 @@
 
 ## 3. The content brief
 
-- [ ] 3.1 Write `docs/content-brief.md` with the five parts the design's "The content brief" lists, drawn from the archived diagram designs and the SVGs as they are; prove each diagram convention it states holds in at least one of `capture-at-the-source.svg` and `never-prove-twice.svg` (viewBox width, palette blocks, loop length, reduced-motion rule, `<desc>` equal to the principle's `alt`)
+- [x] 3.1 Write `docs/content-brief.md` with the five parts the design's "The content brief" lists, drawn from the archived diagram designs and the SVGs as they are; prove each diagram convention it states holds in at least one of `capture-at-the-source.svg` and `never-prove-twice.svg` (viewBox width, palette blocks, loop length, reduced-motion rule, `<desc>` equal to the principle's `alt`)
 - [ ] 3.2 Prove every repository path the brief names exists: extract each backticked path and check it with `test -e`, reporting none missing
 - [ ] 3.3 Prove the brief points to `docs/method-outline.md` for each Diagram line and the tools table rather than copying them: no Diagram line's text from the outline appears in the brief
 
