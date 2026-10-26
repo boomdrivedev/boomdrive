@@ -5,7 +5,7 @@ form Home and the statement list it by), the claim, what it rules out, how we
 do it today, where it is going, what measures it, and the idea of its
 diagram, agreed with the operator before it is drawn (`site-design.md`,
 Every principle gets a diagram). The
-merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md). Version 0.1
+merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md); the site shows no clause number, and this outline keeps them. Version 0.1
 has ten principles, read on one page.
 
 ## 0. The statement
@@ -247,6 +247,28 @@ definitions with the numbers.
   the axis is marked with the fleet context, and each definition sits beside
   its numbers.
 
+## The tools each principle names
+
+Each principle's place on the Method shows "In the tools", the tools that do
+what it says, from the `tools` of its record; this table holds the same names
+and addresses, with the clauses behind each, which the site does not show. A
+link lands on the section of the tool's product page that does it, or of its
+design book where the page has none. Crew and Flywheel Next have neither in
+public, so they are named without a link. Each address was checked live on
+2026-10-25.
+
+| Principle | Tools | Link | What it lands on | Clauses behind it |
+|---|---|---|---|---|
+| One shell | sluice | <https://agentplot.github.io/sluice/reference/commands/#sluice-exec> | `sluice exec`: a check runs in the place's own shell, the one the repository declares | — |
+| One agent, one worktree | sluice<br>flume | <https://agentplot.github.io/sluice/decisions/0016/><br><https://agentplot.github.io/flume/> | sluice gives a place its ports on the host and releases what its checks hand off<br>one agent launched in one worktree | sluice 1, 2, 30, 31, I5; record 0016<br>— |
+| Capture at the source | millpond<br>headwater<br>eddy | <https://agentplot.github.io/millpond/><br><https://agentplot.github.io/headwater/><br><https://agentplot.github.io/eddy/> | the inbox records each event once<br>an adapter that writes captures once<br>an adapter that writes captures once | Flywheel Next 111, 112, 115, 116, 118, 215, 217g |
+| Intents and bolts | Crew<br>Flywheel Next | no link<br>no link | bolts and units<br>a bolt lands on the shared line as one | — |
+| Two loops, one gate | tailrace<br>sluice | <https://agentplot.github.io/tailrace/how-it-works/#channels-moved-only-by-proof><br><https://agentplot.github.io/sluice/#why> | the word is a promotion<br>landing is automatic on green | tailrace 97, C.16<br>sluice 4 |
+| Order at landing, never at start | sluice | <https://agentplot.github.io/sluice/#why> | submit, combine, blame one, land | sluice 3, 6, 7, 8, 10 to 12, 17, 18, 20 |
+| Never prove twice | tailrace<br>sluice | <https://agentplot.github.io/tailrace/#one-store-three-jobs><br><https://agentplot.github.io/sluice/reference/state/#the-log> | the build cache in the one store<br>every run logged, a failure exactly like a pass | tailrace 52 to 55, 100, C.11<br>sluice 15, 16, 19, 104, 108; core.7 |
+| Secrets by declaration | sluice | <https://agentplot.github.io/sluice/reference/configuration/#executor-what-the-tests-may-touch> | a run gets the host's shared caches and nothing else outside its place | sluice 35 |
+| Measure the fleet | Crew<br>sounding | no link<br><https://agentplot.github.io/sounding/> | the records the collectors read<br>the records the collectors read | — |
+
 ## Changelog
 
 Version 0.1 is a draft; a revision within it is an entry here, in the shape
@@ -266,6 +288,12 @@ the site's change entries take (principle, kind, summary, what prompted it).
   prove twice, secrets by declaration, measure the fleet) has its diagram's
   idea written here, agreed with the operator on 2026-10-22 before it is
   drawn, as `site-design.md` asks.
+
+- **2026-10-26 · the Method · revised.** Each principle names the tools that
+  do what it says, in a strip on its place that links each tool's own page;
+  the principles' text drops the statements' clause numbers, which this
+  outline keeps. Prompted by the operator on 2026-10-26: "cross-reference
+  these sections to the tools pages as they're being worked on".
 
 ## Candidates for later versions
 

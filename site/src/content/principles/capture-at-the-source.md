@@ -3,6 +3,13 @@ order: 3
 title: "Capture at the source"
 summary: "Work begins as captures taken where things happen, a meeting, a chat, a log, a pull request, by adapters that run unattended, so development is fed by what people and systems say rather than by tickets someone remembered to write."
 line: "Work begins as captures, taken unattended where things happen."
+tools:
+  - name: millpond
+    href: https://agentplot.github.io/millpond/
+  - name: headwater
+    href: https://agentplot.github.io/headwater/
+  - name: eddy
+    href: https://agentplot.github.io/eddy/
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-12
@@ -12,13 +19,13 @@ diagram:
   alt: "Each of four sources, a meeting, a chat, a log and a pull request, has an adapter beside it. Events pulse at the sources, and each adapter writes them, unattended, as captures that flow into one inbox. The log's alert is sent twice; both copies carry the same key, and the inbox keeps one capture. A reader session reads the meeting's capture into signals: an ask, a constraint and a question. Below, a hand-written ticket form, which the principle rules out, is struck through."
 ---
 
-A capture is one source event as recorded: a meeting, a day of a chat channel, a log run, a forwarded message. It holds where it came from, when, who captured it, and a pointer to the raw material, which stays outside version control. Capturing the same event twice yields one capture (Flywheel Next statement, clause 111).
+A capture is one source event as recorded: a meeting, a day of a chat channel, a log run, a forwarded message. It holds where it came from, when, who captured it, and a pointer to the raw material, which stays outside version control. Capturing the same event twice yields one capture.
 
-Capture costs no more than a sentence: a forwarded message, a word on the phone, a file dropped in a folder, a key on the page (clause 112). Nobody is asked to classify what they wrote.
+Capture costs no more than a sentence: a forwarded message, a word on the phone, a file dropped in a folder, a key on the page. Nobody is asked to classify what they wrote.
 
-An adapter is what makes capture automatic. It enumerates a source's events and writes one capture per event, unattended. Reading a capture into signals is judgment, so a session does it and nothing does it unattended (clauses 115 and 215). The adapters cover a chat forward, a meeting transcript, a log or monitor webhook, a pull-request conversation, an issue tracker and a folder drop.
+An adapter is what makes capture automatic. It enumerates a source's events and writes one capture per event, unattended. Reading a capture into signals is judgment, so a session does it and nothing does it unattended. The adapters cover a chat forward, a meeting transcript, a log or monitor webhook, a pull-request conversation, an issue tracker and a folder drop.
 
-Curation then moves every signal. It attaches the signal to an open intent, challenges a standing claim, joins a proposed intent, marks it answered, routes it to a chore, or drops it with a reason. An unmoved signal is never discarded (clauses 116 and 118).
+Curation then moves every signal. It attaches the signal to an open intent, challenges a standing claim, joins a proposed intent, marks it answered, routes it to a chore, or drops it with a reason. An unmoved signal is never discarded.
 
 ## How we do it today
 
@@ -26,4 +33,4 @@ Findings are recorded by hand with Crew's signal command, and the first corpus o
 
 ## Where it's going
 
-Flywheel Next's adapters, each running on whichever host declares its source, writing captures from any machine (clause 217g). A meeting ends and its decisions are already waiting as signals beside the intents they bear on.
+Flywheel Next's adapters, each running on whichever host declares its source, writing captures from any machine. A meeting ends and its decisions are already waiting as signals beside the intents they bear on.

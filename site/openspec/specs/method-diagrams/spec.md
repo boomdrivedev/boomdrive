@@ -169,7 +169,7 @@ with the refusal said in words.
 - **WHEN** the refusal moment plays
 - **THEN** a reach from one agent toward a neighbouring worktree's dev server stops at that worktree's edge, the edge is marked in the refusal colour, and a label says the reach was refused
 
-### Requirement: The worktree diagram's numbered captions tell the story
+### Requirement: Numbered captions tell the story
 
 The diagram SHALL carry four numbered captions under it that say, in order,
 that each agent has its own worktree and environment, that each works at its
@@ -198,7 +198,7 @@ SHALL be the diagram's only reference outside itself.
 - **WHEN** the diagram is at any moment of its cycle, or held still under reduced motion
 - **THEN** the line naming Worktrunk and sluice, and the link, are shown
 
-### Requirement: The worktree diagram takes the family's colours, in the reader's theme
+### Requirement: The family's diagram colours, in the reader's theme
 
 The diagram SHALL take every colour from the family's diagram colours
 (`--bg`, `--panel`, `--fg`, `--muted`, `--rule`, `--accent`, `--soft`, `--ok`,
@@ -215,7 +215,7 @@ Method page it follows the reader's light or dark setting.
 - **WHEN** the SVG file is opened on its own in a browser
 - **THEN** it draws in its own palette, light or dark by the browser's setting
 
-### Requirement: The worktree diagram moves with scripts off
+### Requirement: The diagram moves with scripts off
 
 The diagram's motion SHALL come from its own CSS, needing no script, so it
 plays wherever the page is read with scripts off.
@@ -225,7 +225,7 @@ plays wherever the page is read with scripts off.
 - **WHEN** a reader opens the Method page with scripts turned off
 - **THEN** the diagram is shown and animates as it does with scripts on
 
-### Requirement: The worktree diagram is still under reduced motion
+### Requirement: The diagram is still under reduced motion
 
 Under the reader's reduced-motion setting the diagram SHALL hold one still
 moment that shows the whole idea: at least one head on the line, at least one
@@ -237,7 +237,7 @@ four captions lit.
 - **WHEN** the reader's setting asks for reduced motion
 - **THEN** nothing in the diagram moves, and the still shows each part of the idea named above
 
-### Requirement: The worktree diagram's alt text says what it shows
+### Requirement: Alt text says what the diagram shows
 
 The principle SHALL name its diagram with alt text that says what the diagram
 shows: the three worktrees as places sluice equips and what each holds, the

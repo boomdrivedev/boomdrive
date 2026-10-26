@@ -137,7 +137,13 @@ About, and the first page of the Fleet.
   to a principle, from Home, a note or a term, goes there; there is no
   separate principle page. Its place also holds how we do it today and
   where it is going, the notes that cite it and its changelog, folded
-  until opened so the reading stays one principle per screen.
+  until opened so the reading stays one principle per screen. After the
+  write-up and outside the fold, a strip, "In the tools", names the tools
+  that do what the principle says, each linked to the section of its own
+  product page that does it, or of its design book where the page has
+  none; a tool with neither is named alone. No clause number of any
+  statement appears on the site: a principle says what the tool does, and
+  `method-outline.md` keeps the clauses behind it.
 - **Every principle gets a diagram**, and each diagram's idea is agreed
   with the user before it is drawn. A diagram is one SVG the principle
   names, carrying its own styles, motion and reduced-motion rule, in the
@@ -175,7 +181,8 @@ holds the hub every family site's footer links to,
   what the whole loop belongs to; a card per member, Flywheel's spanning
   the row above the tools in the loop's order, each with its place in
   the loop lit, its status, its one line, the principle of the Method it
-  carries, and links to its site and design book (Flywheel's card links
+  carries, one whose strip names the tool or the build fails, and links
+  to its site and design book (Flywheel's card links
   the Method instead: its design book is private); then two columns on how
   each tool stands alone and how the Method joins them.
 - **Its words are content.** The lede and the two columns live in
@@ -231,7 +238,7 @@ Fifteen types; the first five are needed for version 1.
 
 | Type | Key fields | Why it exists |
 |---|---|---|
-| Principle | order, title, summary, line, status (draft, stable, retired), introducedIn, lastReviewed, related, diagram (src, alt) | The Method pages, kept current in place. `summary` is the claim; `line` is the principle in one line, as Home and the statement list it (`method-outline.md` gives each); `diagram` names the principle's animated SVG, once it has one |
+| Principle | order, title, summary, line, tools (name, href), status (draft, stable, retired), introducedIn, lastReviewed, related, diagram (src, alt) | The Method pages, kept current in place. `summary` is the claim; `line` is the principle in one line, as Home and the statement list it (`method-outline.md` gives each); `tools` names the tools that do what the principle says, each with the full address of the section that does it, so the principle's strip is drawn from its own record and the Tools hub's cards are checked against it; `diagram` names the principle's animated SVG, once it has one |
 | Note | title (the claim), date, kind (finding, how-to, essay, incident), context, methodVersion, principles, measurements, artifacts, openQuestions, video, series, supersededBy | Dated evidence, never rewritten |
 | Component | name, url, category, role, status (trialing, in use, retired), since, serves, alternatives, partOf, ours, repo, becomes | Every tool in the fleet, ours or others' (Worktrunk, secretspec, password managers, Claude Code, Herdr and its plugins, Crew) |
 | Term | term, definition, principle | One vocabulary across pages and agent drafts |
@@ -424,6 +431,7 @@ agents were busy, what they were busy on, and what came out.
 | `Terms` (generated) | warning | everything | A word the glossary replaces ("work tree" → worktree, "swarm" → fleet) |
 | `Hype` | warning | everything | revolutionary, seamless, effortless, cutting-edge, supercharge, 10x |
 | `NotXButY` | warning | everything | "It's not X, it's Y" |
+| `Clauses` | warning | everything | A statement's clause number ("clause 4"), which the outline keeps |
 | `SentenceLength` | warning | everything | Sentences over 30 words |
 | `Headings` | warning | everything | Headings not in sentence case |
 | `Exclamation` | warning | everything | Exclamation marks |
