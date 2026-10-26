@@ -11,6 +11,9 @@ tools:
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08
+diagram:
+  src: /diagrams/one-agent-one-worktree.svg
+  alt: "Three worktrees side by side, each a place sluice equips with a block of ports of its own, on which its emulator and its dev server run. Each worktree has its own agent, and the three agents work at their own pace, so each finishes at a different time. As each agent finishes, it submits its head to sluice's queue, which merges and lands it on the line; no worktree merges its own work. Partway through, the agent in the second worktree reaches into the first worktree's dev server and is refused, because that server is not its own. Worktrunk makes each worktree, and sluice equips it and lands its head."
 ---
 
 ## How we do it today
