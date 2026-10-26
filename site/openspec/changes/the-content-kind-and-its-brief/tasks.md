@@ -22,7 +22,7 @@
 
 ## 4. The repository says so
 
-- [ ] 4.1 Add the content-work paragraph to `CLAUDE.md` as the design's "CLAUDE.md" gives it; prove it names `docs/content-brief.md` and `.config/flume.toml` and that `CLAUDE.md` holds no instruction to propose an OpenSpec change for a page or diagram
+- [x] 4.1 Add the content-work paragraph to `CLAUDE.md` as the design's "CLAUDE.md" gives it; prove it names `docs/content-brief.md` and `.config/flume.toml` and that `CLAUDE.md` holds no instruction to propose an OpenSpec change for a page or diagram
 
 ## 5. The generic diagram spec
 
