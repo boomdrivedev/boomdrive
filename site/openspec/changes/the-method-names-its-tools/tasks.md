@@ -15,7 +15,7 @@
 
 - [x] 3.1 In `src/content/pages/tools.md`, add tailrace's entry after sluice's and the sentence after "…and the work lands through sluice.", both worded as design.md gives them; prove it with `devenv shell -- vale src/content/pages` reporting no error or warning, and by the Tools page in a browser showing both, in light and dark and at 375px wide
 - [x] 3.2 Add the `tailrace` term to `src/content/terms/terms.yaml` after `sluice`, as design.md gives it; prove it with `devenv shell -- moon run :vocab` regenerating `styles/config/vocabularies/Flywheel/accept.txt` with `tailrace` in it, and with `moon run :prose` reporting no error or warning
-- [ ] 3.3 In `src/pages/tools.astro`, make `principle()` take the member's name and throw, with the message design.md gives, when the principle's `tools` does not name it, and map sounding to `measure-the-fleet` with a comment saying why; prove it with `devenv shell -- moon run :build` passing, the Tools page showing sounding's card under "In the Method" as Measure the fleet and the other cards as before, and by mapping flume to `one-shell` for a moment, which makes the build fail naming flume and `one-shell`, then putting it back
+- [x] 3.3 In `src/pages/tools.astro`, make `principle()` take the member's name and throw, with the message design.md gives, when the principle's `tools` does not name it, and map sounding to `measure-the-fleet` with a comment saying why; prove it with `devenv shell -- moon run :build` passing, the Tools page showing sounding's card under "In the Method" as Measure the fleet and the other cards as before, and by mapping flume to `one-shell` for a moment, which makes the build fail naming flume and `one-shell`, then putting it back
 
 ## 4. The docs
 
