@@ -1,0 +1,80 @@
+schema: spec-driven
+
+# Drawn from CLAUDE.md and docs/site-design.md. Edit them together.
+context: |
+  flywheel-web is the content site for the Method: its principles, dated
+  field notes, the fleet's measurements and the Tools hub of the Flywheel
+  family. Astro on bun; every page is content as Markdown or YAML in git
+  under src/content/, each type a collection with a schema in
+  src/content.config.ts, so a broken reference or a missing field fails
+  the build. The repository is public and main is the published site:
+  every landing on main deploys it to GitHub Pages, served under
+  /flywheel-web/.
+
+  The design is docs/site-design.md (read it first): its decisions, the
+  site map, the content model and its types, how Home and the Method read,
+  the Tools hub, the Fleet's pages and the house style. The Method's
+  principles, each with its diagram's agreed idea, are
+  docs/method-outline.md; candidate measurements are
+  docs/measurement-roadmap.md; readers and channels are
+  docs/audience-plan.md; decisions are docs/adr/. CLAUDE.md binds every
+  change.
+
+  Rules every change holds to:
+  - Nothing commercial: no pricing, revenue or product plan. A product
+    appears only as a waitlist.
+  - No client is named, and no measurement or example comes from client
+    work. Measurements read our own repositories only; flywheels, machines
+    and repositories that carry client work are neither named nor counted.
+  - A field note is never rewritten once published; a later note
+    supersedes it. The Method's pages are revised in place, with a version
+    and a changelog entry.
+  - A principle is a place on the Method page, /method/#<id>, never a page
+    of its own, and every link to a principle goes there.
+  - Every principle gets a diagram, and its idea is agreed with the
+    operator before it is drawn. A diagram is one SVG the principle names,
+    in the family's diagram colours, with its own reduced-motion rule and
+    alt text that says what it shows.
+  - Motion never hides content: with scripts off or under reduced motion,
+    nothing is reachable only by scrolling or clicking. The site follows
+    the reader's light or dark setting.
+  - A number is never passed off as measured: a sample point is flagged
+    wherever it appears, and Home never reads one. A tool's status is never
+    overstated.
+  - The family's members, lines, statuses, sites and accents come from
+    @agentplot/site-theme's family, never a list of the site's own.
+  - The glossary, src/content/terms/terms.yaml, is the one vocabulary: a
+    term is added there, never in styles/, whose files scripts/vocab.ts
+    generates. Vale lints src/content/ against styles/Flywheel/; a Vale
+    error fails the checks, and a warning is fixed, never ignored.
+  - Every internal link goes through url() in src/lib/url.ts, never a bare
+    root path.
+  - Every tool comes from devenv.nix, never a global install.
+
+  The checks are site-check in the devenv shell (astro check, the prose,
+  then the build), and the same checks as moon tasks tagged check-fast,
+  devenv shell -- moon run ':#check-fast'. sluice gates every merge into a
+  bolt and onto main on them; main and every bolt/* branch move only
+  through sluice, never pushed by hand. Conventional Commits, staged by
+  explicit paths: git add <paths>, then git commit -m "<subject>" --
+  <paths>.
+
+rules:
+  proposal:
+    - "Name the part of docs/site-design.md or docs/method-outline.md the change carries out. A diagram's proposal cites the idea docs/method-outline.md records as agreed with the operator."
+  specs:
+    - "Requirements use the glossary's words (src/content/terms/terms.yaml) and say what a reader sees. Where the change draws something that moves or has colour, its scenarios cover light and dark, phone width, scripts off and reduced motion."
+  design:
+    - "Name each section of docs/site-design.md the design relies on. Where it departs from a decision there, name the decision and say why."
+    - "A new page type is a collection with a schema in src/content.config.ts, and a reference between types is one the build checks."
+  tasks:
+    - "Each task names how it is proved: site-check or a check-fast moon task, a command and what it reports, or what a browser shows (light and dark, phone width, scripts off, reduced motion) where the page's look is the point."
+    - "A task that writes words under src/content/ proves Vale reports no error or warning on them."
+    - "No task deploys, pushes to main or a bolt/* branch, or is done by hand after the landing. The last task runs site-check in the devenv shell."
+
+operations:
+  apply:
+    guidance:
+      - "Where a task leaves a detail open, decide it from docs/site-design.md, openspec/specs, CLAUDE.md and the code, in that order, hold similar things to the same rule (a new diagram as the drawn ones are made, a new page as its neighbours), and name each choice in your summary. An open detail is not a reason to pause."
+      - "Run site-check in the devenv shell before committing content, and fix every Vale warning in the words you wrote."
+      - "Pause only when the same check still fails after two attempts, or when passing would mean changing a decision in docs/site-design.md, an idea agreed in docs/method-outline.md, or a spec under openspec/specs that the task does not tell you to change."
