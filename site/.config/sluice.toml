@@ -8,10 +8,6 @@
 runner = "moon"
 toolchain = ["devenv", "print-dev-env"]
 
-[[checkout.cache]]
-key = ["bun.lock"]
-paths = ["node_modules"]
-
 [branches."bolt/*"]
 required = ["#check-fast"]
 parallel = 4
