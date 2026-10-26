@@ -21,4 +21,4 @@ Worktrunk, hashed ports, an emulator per worktree, Portless names, servers tethe
 
 Worktree environments declared once and stood up from the declaration.
 
-A session submits its head to a line and does nothing more: it never merges, never lands and never moves a line. The merge queue performs every merge and every landing ([sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md), clauses 1 and 2).
+A session submits its head to a line and does nothing more: it never merges, never lands and never moves a line. The merge queue performs every merge and every landing.

@@ -21,4 +21,4 @@ moon's cache, with archives in the git common directory so worktrees of one repo
 
 A remote cache every machine reads and only the confined executor writes. It alone holds the cache's write credential, and that credential is the boundary, not a setting a runner inspects. A pass proven in a worktree replays when the merge queue tests the candidate it lands in. Testing the combination reruns only what the combination changed.
 
-The cache remembers only passes. So the queue keeps a small record of every run beside it, a fail as faithfully as a pass ([sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md), clauses 15, 16 and 19).
+The cache remembers only passes. So the queue keeps a small record of every run beside it, a fail as faithfully as a pass.

@@ -21,4 +21,4 @@ The operator approves each unit in Crew.
 
 Flywheel's rail, with numbered decisions answerable from anywhere.
 
-The operator's word sits in two places: at the proposal, before construction starts, and at a channel's promotion, before a release reaches anyone. Closing a bolt is its submission to the shared line. Landing on main is automatic once the candidate is green, and a fix after a failed landing resubmits with no new word ([sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md), clause 4). There is never a word between a test and its landing.
+The operator's word sits in two places: at the proposal, before construction starts, and at a channel's promotion, before a release reaches anyone. Closing a bolt is its submission to the shared line. Landing on main is automatic once the candidate is green, and a fix after a failed landing resubmits with no new word. There is never a word between a test and its landing.
