@@ -1,0 +1,127 @@
+<!-- Capture at the source: drawn for the Flywheel site's Method. Adapters write captures, unattended, into one inbox that keeps one capture per key; a reader session reads a capture into signals. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 476" width="900" height="476" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">Capture at the source: work begins as captures, taken unattended where things happen</title>
+<desc id="dsc">Each of four sources, a meeting, a chat, a log and a pull request, has an adapter beside it. Events pulse at the sources, and each adapter writes them, unattended, as captures that flow into one inbox. The log's alert is sent twice; both copies carry the same key, and the inbox keeps one capture. A reader session reads the meeting's capture into signals: an ask, a constraint and a question. Below, a hand-written ticket form, which the principle rules out, is struck through.</desc>
+<style>
+:root{--bg:#14181f;--panel:#1b2029;--fg:#f2f1ec;--muted:#9a9fab;--rule:#2c323d;--accent:#c9a227;--soft:#232933;--ok:#45c27a;--bad:#f08a7e;--ink:#0e1116}
+@media (prefers-color-scheme:light){:root{--bg:#ebe9e2;--panel:#fbfaf7;--fg:#0e1116;--muted:#5d6370;--rule:#d5d2c8;--accent:#7d6110;--soft:#e0ddd4;--ok:#1f8a4c;--bad:#c0392b;--ink:#f2f1ec}}
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.bg{fill:var(--bg)} .t{fill:var(--fg)} .m{fill:var(--muted)} .ok{fill:var(--ok)}
+.b{font-weight:600} .h{font-size:17px;font-weight:700} .hd{font-size:12px;letter-spacing:.06em;fill:var(--muted)}
+.sm{font-size:13px} .xs{font-size:11.5px}
+.box{fill:var(--panel);stroke:var(--rule);stroke-width:1.5}
+.ev{fill:var(--accent)} .ring{fill:none;stroke:var(--accent);stroke-width:1.5}
+.join{stroke:var(--muted);stroke-width:1.5}
+.conn{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:100} .tip{fill:var(--muted)}
+.token{fill:var(--accent)}
+.slot{fill:none;stroke:var(--rule);stroke-width:1.5;stroke-dasharray:4 3}
+.row{fill:var(--panel);stroke:var(--ok);stroke-width:1.5}
+.pick{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:100} .ptip{fill:var(--accent)}
+.sig{fill:var(--panel);stroke:var(--ok);stroke-width:1.5}
+.ghost{opacity:.55} .gcard{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:6 5}
+.gline{stroke:var(--muted);stroke-width:1} .scrawl{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.gstrike{fill:none;stroke:var(--bad);stroke-width:1.5;stroke-dasharray:100}
+.badge{fill:var(--accent)} .badget{fill:var(--ink);font-size:12px;font-weight:700}
+@media (prefers-reduced-motion:reduce){*{animation-play-state:paused!important;animation-delay:-14.4s!important}
+.cap{animation:none!important;opacity:1}}
+@keyframes k-ring1{0%{opacity:0;transform:scale(1)} 1%{opacity:0;transform:scale(1)} 1.4%{opacity:.9;transform:scale(1)} 6%{opacity:0;transform:scale(3.2)} 6.1%{opacity:0;transform:scale(1)} 100%{opacity:0;transform:scale(1)}}.ring1{animation:k-ring1 16s linear infinite}@keyframes k-ring2{0%{opacity:0;transform:scale(1)} 12%{opacity:0;transform:scale(1)} 12.4%{opacity:.9;transform:scale(1)} 17%{opacity:0;transform:scale(3.2)} 17.1%{opacity:0;transform:scale(1)} 100%{opacity:0;transform:scale(1)}}.ring2{animation:k-ring2 16s linear infinite}@keyframes k-ring3{0%{opacity:0;transform:scale(1)} 22%{opacity:0;transform:scale(1)} 22.4%{opacity:.9;transform:scale(1)} 27%{opacity:0;transform:scale(3.2)} 27.1%{opacity:0;transform:scale(1)} 46%{opacity:0;transform:scale(1)} 46.4%{opacity:.9;transform:scale(1)} 51%{opacity:0;transform:scale(3.2)} 51.1%{opacity:0;transform:scale(1)} 100%{opacity:0;transform:scale(1)}}.ring3{animation:k-ring3 16s linear infinite}@keyframes k-ring4{0%{opacity:0;transform:scale(1)} 32%{opacity:0;transform:scale(1)} 32.4%{opacity:.9;transform:scale(1)} 37%{opacity:0;transform:scale(3.2)} 37.1%{opacity:0;transform:scale(1)} 100%{opacity:0;transform:scale(1)}}.ring4{animation:k-ring4 16s linear infinite}@keyframes k-c1{0%{stroke:var(--muted)} 4%{stroke:var(--muted)} 4.6%{stroke:var(--accent)} 10.4%{stroke:var(--accent)} 11.2%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.c1{animation:k-c1 16s linear infinite}@keyframes k-c2{0%{stroke:var(--muted)} 15%{stroke:var(--muted)} 15.6%{stroke:var(--accent)} 21.4%{stroke:var(--accent)} 22.2%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.c2{animation:k-c2 16s linear infinite}@keyframes k-c3{0%{stroke:var(--muted)} 25%{stroke:var(--muted)} 25.6%{stroke:var(--accent)} 31.4%{stroke:var(--accent)} 32.2%{stroke:var(--muted)} 49%{stroke:var(--muted)} 49.6%{stroke:var(--accent)} 55.4%{stroke:var(--accent)} 56.2%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.c3{animation:k-c3 16s linear infinite}@keyframes k-c4{0%{stroke:var(--muted)} 35%{stroke:var(--muted)} 35.6%{stroke:var(--accent)} 41.4%{stroke:var(--accent)} 42.2%{stroke:var(--muted)} 100%{stroke:var(--muted)}}.c4{animation:k-c4 16s linear infinite}@keyframes k-tk1{0%{opacity:0;transform:translate(0px,0px)} 4%{opacity:0;transform:translate(0px,0px)} 5%{opacity:1;transform:translate(10px,0px)} 10%{opacity:1;transform:translate(100px,0px)} 11%{opacity:0;transform:translate(110px,0px)} 11.2%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(0px,0px)}}.tk1{animation:k-tk1 16s linear infinite}@keyframes k-tk2{0%{opacity:0;transform:translate(0px,0px)} 15%{opacity:0;transform:translate(0px,0px)} 16%{opacity:1;transform:translate(10px,0px)} 21%{opacity:1;transform:translate(100px,0px)} 22%{opacity:0;transform:translate(110px,0px)} 22.2%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(0px,0px)}}.tk2{animation:k-tk2 16s linear infinite}@keyframes k-tk3{0%{opacity:0;transform:translate(0px,0px)} 25%{opacity:0;transform:translate(0px,0px)} 26%{opacity:1;transform:translate(10px,0px)} 31%{opacity:1;transform:translate(100px,0px)} 32%{opacity:0;transform:translate(110px,0px)} 32.2%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(0px,0px)}}.tk3{animation:k-tk3 16s linear infinite}@keyframes k-tk4{0%{opacity:0;transform:translate(0px,0px)} 35%{opacity:0;transform:translate(0px,0px)} 36%{opacity:1;transform:translate(10px,0px)} 41%{opacity:1;transform:translate(100px,0px)} 42%{opacity:0;transform:translate(110px,0px)} 42.2%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(0px,0px)}}.tk4{animation:k-tk4 16s linear infinite}@keyframes k-tk3b{0%{opacity:0;transform:translate(0px,0px)} 49%{opacity:0;transform:translate(0px,0px)} 50%{opacity:1;transform:translate(10px,0px)} 55%{opacity:1;transform:translate(100px,0px)} 56%{opacity:0;transform:translate(110px,0px)} 56.2%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(0px,0px)}}.tk3b{animation:k-tk3b 16s linear infinite}@keyframes k-row1{0%{opacity:0} 10.4%{opacity:0} 11.4%{opacity:1} 96%{opacity:1} 97.5%{opacity:0} 100%{opacity:0}}.row1{animation:k-row1 16s linear infinite}@keyframes k-row2{0%{opacity:0} 21.4%{opacity:0} 22.4%{opacity:1} 96%{opacity:1} 97.5%{opacity:0} 100%{opacity:0}}.row2{animation:k-row2 16s linear infinite}@keyframes k-row3{0%{opacity:0} 31.4%{opacity:0} 32.4%{opacity:1} 96%{opacity:1} 97.5%{opacity:0} 100%{opacity:0}}.row3{animation:k-row3 16s linear infinite}@keyframes k-row4{0%{opacity:0} 41.4%{opacity:0} 42.4%{opacity:1} 96%{opacity:1} 97.5%{opacity:0} 100%{opacity:0}}.row4{animation:k-row4 16s linear infinite}@keyframes k-r3f{0%{fill:var(--panel);stroke:var(--ok)} 55%{fill:var(--panel);stroke:var(--ok)} 55.6%{fill:var(--accent);stroke:var(--accent)} 57.5%{fill:var(--accent);stroke:var(--accent)} 58.3%{fill:var(--panel);stroke:var(--ok)} 100%{fill:var(--panel);stroke:var(--ok)}}.r3f{animation:k-r3f 16s linear infinite}@keyframes k-k3{0%{fill:var(--fg);transform:translate(0px,0px)} 55%{fill:var(--fg);transform:translate(0px,0px)} 55.6%{fill:var(--ink);transform:translate(0px,0px)} 56.6%{fill:var(--ink);transform:translate(0px,-8px)} 57.5%{fill:var(--ink);transform:translate(0px,-8px)} 58.3%{fill:var(--fg);transform:translate(0px,-8px)} 97.5%{fill:var(--fg);transform:translate(0px,-8px)} 98%{fill:var(--fg);transform:translate(0px,0px)} 100%{fill:var(--fg);transform:translate(0px,0px)}}.k3{animation:k-k3 16s linear infinite}@keyframes k-tag{0%{opacity:0;fill:var(--ink)} 56.2%{opacity:0;fill:var(--ink)} 57.2%{opacity:1;fill:var(--ink)} 57.5%{opacity:1;fill:var(--ink)} 58.3%{opacity:1;fill:var(--ok)} 97.5%{opacity:1;fill:var(--ok)} 98%{opacity:0;fill:var(--ok)} 100%{opacity:0;fill:var(--ink)}}.tag{animation:k-tag 16s linear infinite}@keyframes k-r1f{0%{stroke:var(--ok);stroke-width:1.5px} 60%{stroke:var(--ok);stroke-width:1.5px} 61%{stroke:var(--accent);stroke-width:2.5px} 97.5%{stroke:var(--accent);stroke-width:2.5px} 98%{stroke:var(--ok);stroke-width:1.5px} 100%{stroke:var(--ok);stroke-width:1.5px}}.r1f{animation:k-r1f 16s linear infinite}@keyframes k-pick{0%{stroke-dashoffset:100;opacity:1} 61.5%{stroke-dashoffset:100;opacity:1} 64%{stroke-dashoffset:0;opacity:1} 96%{stroke-dashoffset:0;opacity:1} 97.5%{stroke-dashoffset:0;opacity:0} 99%{stroke-dashoffset:100;opacity:0} 100%{stroke-dashoffset:100;opacity:1}}.pick{animation:k-pick 16s linear infinite}@keyframes k-ptip{0%{opacity:0} 63.6%{opacity:0} 64.2%{opacity:1} 96%{opacity:1} 97.5%{opacity:0} 100%{opacity:0}}.ptip{animation:k-ptip 16s linear infinite}@keyframes k-sess{0%{stroke:var(--rule)} 64%{stroke:var(--rule)} 65%{stroke:var(--accent)} 96%{stroke:var(--accent)} 97.5%{stroke:var(--rule)} 100%{stroke:var(--rule)}}.sess{animation:k-sess 16s linear infinite}@keyframes k-sig1{0%{opacity:0;transform:translate(-8px,0px)} 66%{opacity:0;transform:translate(-8px,0px)} 67.2%{opacity:1;transform:translate(0px,0px)} 96%{opacity:1;transform:translate(0px,0px)} 97.5%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(-8px,0px)}}.sig1{animation:k-sig1 16s linear infinite}@keyframes k-sig2{0%{opacity:0;transform:translate(-8px,0px)} 70%{opacity:0;transform:translate(-8px,0px)} 71.2%{opacity:1;transform:translate(0px,0px)} 96%{opacity:1;transform:translate(0px,0px)} 97.5%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(-8px,0px)}}.sig2{animation:k-sig2 16s linear infinite}@keyframes k-sig3{0%{opacity:0;transform:translate(-8px,0px)} 74%{opacity:0;transform:translate(-8px,0px)} 75.2%{opacity:1;transform:translate(0px,0px)} 96%{opacity:1;transform:translate(0px,0px)} 97.5%{opacity:0;transform:translate(0px,0px)} 100%{opacity:0;transform:translate(-8px,0px)}}.sig3{animation:k-sig3 16s linear infinite}@keyframes k-gstrike{0%{stroke-dashoffset:100;opacity:1} 78%{stroke-dashoffset:100;opacity:1} 82%{stroke-dashoffset:0;opacity:1} 96%{stroke-dashoffset:0;opacity:1} 97.5%{stroke-dashoffset:0;opacity:0} 99%{stroke-dashoffset:100;opacity:0} 100%{stroke-dashoffset:100;opacity:1}}.gstrike{animation:k-gstrike 16s linear infinite}@keyframes k-cap1{0%{opacity:0.35} 1.2%{opacity:0.35} 2%{opacity:1} 21.2%{opacity:1} 22%{opacity:0.35} 100%{opacity:0.35}}.cap1{animation:k-cap1 16s linear infinite}@keyframes k-cap2{0%{opacity:0.35} 21.2%{opacity:0.35} 22%{opacity:1} 45.2%{opacity:1} 46%{opacity:0.35} 100%{opacity:0.35}}.cap2{animation:k-cap2 16s linear infinite}@keyframes k-cap3{0%{opacity:0.35} 45.2%{opacity:0.35} 46%{opacity:1} 59.2%{opacity:1} 60%{opacity:0.35} 100%{opacity:0.35}}.cap3{animation:k-cap3 16s linear infinite}@keyframes k-cap4{0%{opacity:0.35} 59.2%{opacity:0.35} 60%{opacity:1} 94%{opacity:1} 94.8%{opacity:0.35} 100%{opacity:0.35}}.cap4{animation:k-cap4 16s linear infinite}</style>
+<rect class="bg" width="900" height="476" rx="10"/>
+<text class="h" x="20" y="32">Capture at the source</text>
+<text class="m sm" x="208" y="32">work begins as captures, taken unattended where things happen</text>
+<text class="hd" x="20" y="62">SOURCES</text>
+<text class="hd" x="196" y="62">ADAPTERS</text>
+<text class="hd" x="400" y="62">ONE INBOX</text>
+<text class="hd" x="680" y="62">A READER SESSION</text>
+<rect class="box" x="400" y="72" width="250" height="252" rx="6"/>
+<rect class="box sess" x="680" y="72" width="200" height="252" rx="6"/>
+<text class="t b sm" x="694" y="100">reader session</text>
+<text class="m xs" x="694" y="117">a session, never unattended</text>
+<rect class="box" x="20" y="80" width="160" height="50" rx="6"/>
+<text class="t b sm" x="34" y="102">meeting</text>
+<text class="m xs" x="34" y="118">planning call</text>
+<line class="join" x1="180" y1="105" x2="196" y2="105"/>
+<rect class="box" x="196" y="90" width="110" height="30" rx="5"/>
+<text class="t sm" x="251" y="109.5" text-anchor="middle">adapter</text>
+<path class="conn c1" pathLength="100" d="M306,105 H394"/>
+<polygon class="tip" points="393,100 400,105 393,110"/>
+<rect class="slot" x="412.75" y="84.75" width="224.5" height="40.5" rx="4"/>
+<g transform="translate(180,105)"><circle class="ring ring1" r="5"/></g>
+<circle class="ev" cx="180" cy="105" r="4.5"/>
+<rect class="box" x="20" y="142" width="160" height="50" rx="6"/>
+<text class="t b sm" x="34" y="164">chat</text>
+<text class="m xs" x="34" y="180">#ops</text>
+<line class="join" x1="180" y1="167" x2="196" y2="167"/>
+<rect class="box" x="196" y="152" width="110" height="30" rx="5"/>
+<text class="t sm" x="251" y="171.5" text-anchor="middle">adapter</text>
+<path class="conn c2" pathLength="100" d="M306,167 H394"/>
+<polygon class="tip" points="393,162 400,167 393,172"/>
+<rect class="slot" x="412.75" y="146.75" width="224.5" height="40.5" rx="4"/>
+<g transform="translate(180,167)"><circle class="ring ring2" r="5"/></g>
+<circle class="ev" cx="180" cy="167" r="4.5"/>
+<rect class="box" x="20" y="204" width="160" height="50" rx="6"/>
+<text class="t b sm" x="34" y="226">log</text>
+<text class="m xs" x="34" y="242">export alerts</text>
+<line class="join" x1="180" y1="229" x2="196" y2="229"/>
+<rect class="box" x="196" y="214" width="110" height="30" rx="5"/>
+<text class="t sm" x="251" y="233.5" text-anchor="middle">adapter</text>
+<path class="conn c3" pathLength="100" d="M306,229 H394"/>
+<polygon class="tip" points="393,224 400,229 393,234"/>
+<rect class="slot" x="412.75" y="208.75" width="224.5" height="40.5" rx="4"/>
+<g transform="translate(180,229)"><circle class="ring ring3" r="5"/></g>
+<circle class="ev" cx="180" cy="229" r="4.5"/>
+<rect class="box" x="20" y="266" width="160" height="50" rx="6"/>
+<text class="t b sm" x="34" y="288">pull request</text>
+<text class="m xs" x="34" y="304">#212 conversation</text>
+<line class="join" x1="180" y1="291" x2="196" y2="291"/>
+<rect class="box" x="196" y="276" width="110" height="30" rx="5"/>
+<text class="t sm" x="251" y="295.5" text-anchor="middle">adapter</text>
+<path class="conn c4" pathLength="100" d="M306,291 H394"/>
+<polygon class="tip" points="393,286 400,291 393,296"/>
+<rect class="slot" x="412.75" y="270.75" width="224.5" height="40.5" rx="4"/>
+<g transform="translate(180,291)"><circle class="ring ring4" r="5"/></g>
+<circle class="ev" cx="180" cy="291" r="4.5"/>
+<g class="row1">
+<rect class="row r1f" x="412" y="84.0" width="226" height="42" rx="4"/>
+<text class="t mono xs" x="424" y="109">meeting/planning/2026-10-21</text>
+</g>
+<g class="row2">
+<rect class="row" x="412" y="146.0" width="226" height="42" rx="4"/>
+<text class="t mono xs" x="424" y="171">chat/ops/2026-10-21</text>
+</g>
+<g class="row3">
+<rect class="row r3f" x="412" y="208.0" width="226" height="42" rx="4"/>
+<text class="t mono xs k3" x="424" y="233">log/export-alert/4812</text>
+<text class="xs b tag" x="424" y="243">sent twice · one capture</text>
+</g>
+<g class="row4">
+<rect class="row" x="412" y="270.0" width="226" height="42" rx="4"/>
+<text class="t mono xs" x="424" y="295">pr/212</text>
+</g>
+<path class="pick" pathLength="100" d="M638,105 H674"/>
+<polygon class="ptip" points="673,100 680,105 673,110"/>
+<g class="sig1"><rect class="sig" x="692" y="146" width="176" height="42" rx="4"/><text class="ok b xs" x="703" y="163">ask</text><text class="t xs" x="703" y="179">retry rate-limited exports</text></g>
+<g class="sig2"><rect class="sig" x="692" y="208" width="176" height="42" rx="4"/><text class="ok b xs" x="703" y="225">constraint</text><text class="t xs" x="703" y="241">three retries at most</text></g>
+<g class="sig3"><rect class="sig" x="692" y="270" width="176" height="42" rx="4"/><text class="ok b xs" x="703" y="287">question</text><text class="t xs" x="703" y="303">who owns exports?</text></g>
+<rect class="token tk1" x="300" y="100" width="14" height="10" rx="2.5"/>
+<rect class="token tk2" x="300" y="162" width="14" height="10" rx="2.5"/>
+<rect class="token tk3" x="300" y="224" width="14" height="10" rx="2.5"/>
+<rect class="token tk4" x="300" y="286" width="14" height="10" rx="2.5"/>
+<rect class="token tk3b" x="300" y="224" width="14" height="10" rx="2.5"/>
+<g class="ghost">
+<rect class="gcard" x="20" y="340" width="536" height="60" rx="6"/>
+<line class="gline" x1="68" y1="391" x2="232" y2="391"/>
+<line class="gline" x1="356" y1="391" x2="540" y2="391"/>
+<path class="scrawl" d="M72,386 Q76.5,382.8 81.0,386.8 Q84.5,391.0 88.0,385.4 Q93.5,381.8 99.0,385.4 Q103.0,390.6 107.0,386.8 Q110.0,382.4 113.0,385.4 Q118.0,389.0 123.0,385.4 Q127.5,383.6 132.0,386.8 Q135.5,388.0 139.0,385.4 Q143.5,382.8 148.0,385.4 Q151.5,391.0 155.0,386.8 Q160.5,381.8 166.0,385.4 Q170.0,390.6 174.0,385.4 Q177.0,382.4 180.0,386.8 Q185.0,389.0 190.0,385.4 Q194.5,383.6 196.0,385.4"/>
+<path class="scrawl" d="M360,386 Q364.0,381.0 368.0,386.8 Q371.0,390.2 374.0,385.4 Q379.0,381.4 384.0,385.4 Q388.5,389.6 393.0,386.8 Q396.5,383.0 400.0,385.4 Q404.5,388.4 409.0,385.4 Q412.5,384.0 416.0,386.8 Q421.5,389.2 427.0,385.4 Q431.0,381.0 435.0,385.4 Q438.0,390.2 441.0,386.8 Q446.0,381.4 451.0,385.4 Q455.5,389.6 460.0,385.4 Q463.5,383.0 467.0,386.8 Q471.5,388.4 476.0,385.4 Q479.5,384.0 483.0,385.4 Q488.5,389.2 494.0,386.8 Q498.0,381.0 502.0,385.4 Q505.0,390.2 508.0,385.4 Q513.0,381.4 518.0,386.8 Q522.5,389.6 524.0,385.4"/>
+</g>
+<text class="m b sm" x="34" y="360">New ticket</text>
+<text class="m xs" x="34" y="390">Title</text>
+<text class="m xs" x="250" y="390">What needs doing?</text>
+<text class="m xs" x="572" y="374">a ticket someone remembered to write</text>
+<path class="gstrike" pathLength="100" d="M12,370 H794"/>
+<g class="cap cap1"><circle class="badge" cx="32" cy="442" r="11"/><text class="badget" x="32" y="446" text-anchor="middle">1</text><text class="t sm" x="50" y="438">Events happen at</text><text class="t sm" x="50" y="455">their sources.</text></g>
+<g class="cap cap2"><circle class="badge" cx="250" cy="442" r="11"/><text class="badget" x="250" y="446" text-anchor="middle">2</text><text class="t sm" x="268" y="438">Adapters write captures,</text><text class="t sm" x="268" y="455">unattended.</text></g>
+<g class="cap cap3"><circle class="badge" cx="468" cy="442" r="11"/><text class="badget" x="468" y="446" text-anchor="middle">3</text><text class="t sm" x="486" y="438">The same event twice</text><text class="t sm" x="486" y="455">is one capture.</text></g>
+<g class="cap cap4"><circle class="badge" cx="686" cy="442" r="11"/><text class="badget" x="686" y="446" text-anchor="middle">4</text><text class="t sm" x="704" y="438">A reader session turns</text><text class="t sm" x="704" y="455">a capture into signals.</text></g>
+</svg>

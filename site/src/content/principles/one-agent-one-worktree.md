@@ -3,9 +3,17 @@ order: 2
 title: "One agent, one worktree"
 summary: "Each agent works in its own worktree with its own ports, emulator and dev servers, and submits its work to a merge queue rather than merging it, so nothing it does can disturb another."
 line: "Each agent works alone in its own worktree, and submits rather than merges."
+tools:
+  - name: sluice
+    href: https://agentplot.github.io/sluice/decisions/0016/
+  - name: flume
+    href: https://agentplot.github.io/flume/
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08
+diagram:
+  src: /diagrams/one-agent-one-worktree.svg
+  alt: "Three worktrees side by side, each a place sluice equips with a block of ports of its own, on which its emulator and its dev server run. Each worktree has its own agent, and the three agents work at their own pace, so each finishes at a different time. As each agent finishes, it submits its head to sluice's queue, which merges and lands it on the line; no worktree merges its own work. Partway through, the agent in the second worktree reaches into the first worktree's dev server and is refused, because that server is not its own. Worktrunk makes each worktree, and sluice equips it and lands its head."
 ---
 
 ## How we do it today
@@ -16,4 +24,4 @@ Worktrunk, hashed ports, an emulator per worktree, Portless names, servers tethe
 
 Worktree environments declared once and stood up from the declaration.
 
-A session submits its head to a line and does nothing more: it never merges, never lands and never moves a line. The merge queue performs every merge and every landing ([sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md), clauses 1 and 2).
+A session submits its head to a line and does nothing more: it never merges, never lands and never moves a line. The merge queue performs every merge and every landing.

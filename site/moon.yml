@@ -3,6 +3,8 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 # The site: every check `site-check` runs, as moon tasks. The types, the
 # prose and the build are the fast layer, which sluice's gate requires on
 # main and on every bolt; a pass replays wherever the inputs are the same.
+# The check and the build both write the .astro folder, so they share one
+# mutex and run one after the other, never at once.
 language: 'typescript'
 layer: 'application'
 
@@ -16,6 +18,7 @@ tasks:
     inputs: ['src/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', 'devenv.nix', 'devenv.lock', '.prototools']
     deps: ['~:install']
     tags: [check-fast]
+    options: {mutex: 'astro'}
   # The glossary is the one source of the vocabulary Vale enforces.
   vocab:
     command: 'bun run scripts/vocab.ts'
@@ -33,3 +36,4 @@ tasks:
     outputs: ['dist']
     deps: ['~:install']
     tags: [check-fast]
+    options: {mutex: 'astro'}

@@ -7,6 +7,15 @@
 [tests]
 runner = "moon"
 toolchain = ["devenv", "print-dev-env"]
+# Stops the site a preview served in a place (`sluice exec <branch> --
+# site-serve`); where nothing was served, as after every candidate's checks,
+# it does nothing and succeeds.
+release = "site-stop"
+
+# SLUICE_PORT_WEB, held for each checkout and worktree: the port site-serve
+# serves the place's own site on, so no two places share one.
+[checkout]
+ports = ["web"]
 
 [branches."bolt/*"]
 required = ["#check-fast"]
