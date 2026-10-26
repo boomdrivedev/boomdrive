@@ -19,7 +19,7 @@
 
 ## 4. The docs
 
-- [ ] 4.1 In `docs/method-outline.md`, add "The tools each principle names" before the changelog with design.md's table, change the opening sentence on cited clauses to say the site shows none and the outline keeps them, and add the changelog entry design.md gives; prove it by checking each row's tools and links against the principles' `tools` (every name and address matches) and by the changelog entry reading in the shape of the ones before it
+- [x] 4.1 In `docs/method-outline.md`, add "The tools each principle names" before the changelog with design.md's table, change the opening sentence on cited clauses to say the site shows none and the outline keeps them, and add the changelog entry design.md gives; prove it by checking each row's tools and links against the principles' `tools` (every name and address matches) and by the changelog entry reading in the shape of the ones before it
 - [ ] 4.2 In `docs/site-design.md`, add `tools (name, href)` to the Principle row of "The types", the strip and the no-clause-number rule to "The Method reads one principle at a time", the card's agreement with the strips to "The Tools hub", and the `Clauses` row to the house style table; prove it by `git diff docs/site-design.md` touching only those four places
 
 ## 5. Integration
