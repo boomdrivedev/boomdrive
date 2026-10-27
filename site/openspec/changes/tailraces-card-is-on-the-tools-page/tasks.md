@@ -1,6 +1,6 @@
 ## 1. The family with tailrace
 
-- [ ] 1.1 In `package.json`, move `@agentplot/site-theme` to `github:agentplot/site-theme#v0.1.2`, then run `devenv shell -- bun install` to rewrite `bun.lock`; prove it by `bun.lock`'s site-theme entry naming `#ad9299e`, by `grep -n "'deliver'" node_modules/@agentplot/site-theme/src/family.ts` finding tailrace's place, and by `devenv shell -- moon run :install` passing with the frozen lockfile
+- [x] 1.1 In `package.json`, move `@agentplot/site-theme` to `github:agentplot/site-theme#v0.1.2`, then run `devenv shell -- bun install` to rewrite `bun.lock`; prove it by `bun.lock`'s site-theme entry naming `#ad9299e`, by `grep -n "'deliver'" node_modules/@agentplot/site-theme/src/family.ts` finding tailrace's place, and by `devenv shell -- moon run :install` passing with the frozen lockfile
 
 ## 2. tailrace's card
 
