@@ -50,6 +50,9 @@ const serves: Partial<Record<MemberId, string>> = {
   // by the collectors that measure the fleet.
   sounding: "measure-the-fleet",
   sluice: "order-at-landing",
+  // The word that moves a channel is the second place the operator's word
+  // sits, and moving a channel is what tailrace does at Deliver.
+  tailrace: "two-loops-one-gate",
 };
 const principle = async (tool: string, id: string) => {
   const p = await getEntry("principles", id);
