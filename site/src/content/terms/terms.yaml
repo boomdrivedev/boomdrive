@@ -126,4 +126,5 @@
 - id: tailrace
   term: tailrace
   definition: The tool that carries what the merge queue lands into a store you own, keeps its channels and the environments that follow them, and serves consumers.
+  principle: never-prove-twice
   lowercase: true
