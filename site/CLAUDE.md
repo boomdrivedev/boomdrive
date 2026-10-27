@@ -14,6 +14,9 @@ fleet's measurements and the tools. `docs/` holds its design and plans; read
 - Every tool comes from `devenv.nix`; never a global install. Run
   `site-check` before committing content: Vale's errors and a schema failure
   both fail it, and a Vale warning is fixed, not ignored.
+- After a change to `src/content.config.ts`, restart the dev server
+  (`astro dev stop`, then `bun run dev`) rather than debug the page: Astro
+  7.3.5's dev server stops finishing responses after one.
 - The glossary in `src/content/terms/terms.yaml` is the one vocabulary; add a
   term there, never in `styles/` (those files are generated).
 
