@@ -219,10 +219,12 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
   }
   .track li.on { color: var(--ap-fg); opacity: 1; }
   .track li.on::before { background: var(--m); box-shadow: 0 0 0 4px color-mix(in oklab, var(--m) 22%, transparent); }
-  /* A card too narrow for every stop's name keeps every stop and names its
-     own place only. */
+  /* A card too narrow for every stop's name keeps every stop, evenly spaced
+     within it, and names its own place only. Above 18rem six names stand as
+     far apart as five did above 15rem. */
   .tools .card { container-type: inline-size; }
-  @container (max-width: 15rem) {
+  @container (max-width: 18rem) {
+    .track li { min-width: 0; }
     .track li:not(.on) { color: transparent; }
     .track li.on { white-space: nowrap; }
   }
