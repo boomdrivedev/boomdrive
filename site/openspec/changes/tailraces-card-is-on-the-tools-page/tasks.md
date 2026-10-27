@@ -12,4 +12,4 @@
 
 ## 3. Integration
 
-- [ ] 3.1 Run `site-check` in the devenv shell and `devenv shell -- moon run ':#check-fast'`; both pass, with Vale reporting no error or warning
+- [x] 3.1 Run `site-check` in the devenv shell and `devenv shell -- moon run ':#check-fast'`; both pass, with Vale reporting no error or warning
