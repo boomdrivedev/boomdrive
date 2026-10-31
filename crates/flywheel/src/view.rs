@@ -257,6 +257,31 @@ pub fn move_to(git: &Git, path: &Path, commit: &str) -> Result<(), Words> {
     Ok(())
 }
 
+/// The path the runner last made or moved the view of the clone `bare`
+/// at, where it has.
+pub fn recorded_path(git: &Git, bare: &Path) -> Result<Option<PathBuf>, Words> {
+    let said = git.ask(At::GitDir(bare), ["config", "--local", "--get", PATH])?;
+    Ok(said.map(|said| PathBuf::from(said.strip_suffix('\n').unwrap_or(&said))))
+}
+
+/// Removes the view at `path`, a worktree of the clone `bare` that holds
+/// nothing the forge lacks, then its owner's folder where that leaves it
+/// empty (design 7). git refuses a view that has changed since.
+pub fn remove(git: &Git, bare: &Path, path: &Path) -> Result<(), Words> {
+    git.run(
+        At::GitDir(bare),
+        [
+            OsStr::new("worktree"),
+            OsStr::new("remove"),
+            path.as_os_str(),
+        ],
+    )?;
+    if let Some(owner) = path.parent() {
+        let _ = fs::remove_dir(owner);
+    }
+    Ok(())
+}
+
 /// Records in `bare` that the runner put its view at `path`, at `commit`.
 pub fn record(git: &Git, bare: &Path, path: &Path, commit: &str) -> Result<(), Words> {
     let at = At::GitDir(bare);

@@ -1,14 +1,15 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
-//! settled, its own default branch levelled and its view kept. Each
-//! repository is independent: a failure in one is named and the next is
-//! kept. The pass says each act and each thing it names as one line,
+//! settled, its own default branch levelled and its view kept, then each
+//! dropped repository let go. Each repository is independent: a failure
+//! in one is named and the next is kept. The pass says each act and each thing it names as one line,
 //! `<owner>/<name>: <words>`, and a pass with nothing to say writes
 //! nothing.
 
 use crate::clone::{self, LevelAct};
 use crate::config::{self, Address, Config};
 use crate::git::{Git, Words};
+use crate::lacks;
 use crate::view::{self, ViewAct};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -59,7 +60,67 @@ pub fn pass(git: &Git, data: &Path, config: &Config, say: &mut dyn FnMut(String)
         });
         outcome = outcome.and(kept);
     }
+    for (address, container) in &clones {
+        if config.repositories.contains(address) {
+            continue;
+        }
+        let dropped = let_go(git, container, &mut |words| {
+            say(format!("{address}: {words}"))
+        });
+        outcome = outcome.and(dropped);
+    }
     outcome.and(clear_partials(data, &clones, say))
+}
+
+/// Lets go of the clone in `container`, whose address the configuration
+/// no longer names (design 8). It is never fetched. Once neither it nor
+/// its view holds anything the forge lacks, the view is removed, then
+/// the view's owner folder if empty, then the container, then the
+/// container's owner folder if empty. Until then nothing is touched, and
+/// each thing that holds them is named. A folder at the view's path that
+/// is not the clone's worktree is left as it is.
+fn let_go(git: &Git, container: &Path, say: &mut dyn FnMut(String)) -> Outcome {
+    let bare = clone::bare(container);
+    let read = view::recorded_path(git, &bare).and_then(|view| {
+        let facts = lacks::read(git, &bare, view.as_deref())?;
+        Ok((view, facts))
+    });
+    let (view, facts) = match read {
+        Ok(read) => read,
+        Err(words) => {
+            say(format!("not let go: {words}"));
+            return Outcome::Failed;
+        }
+    };
+    let held = lacks::holdings(&facts);
+    if !held.is_empty() {
+        for holding in held {
+            say(format!("left: held by {holding}"));
+        }
+        return Outcome::Kept;
+    }
+    let view = view.filter(|_| facts.view.is_some());
+    if let Some(view) = &view {
+        if let Err(words) = view::remove(git, &bare, view) {
+            say(format!("view not removed: {words}"));
+            return Outcome::Failed;
+        }
+    }
+    if let Err(error) = fs::remove_dir_all(container) {
+        say(format!(
+            "clone not removed: {}: {error}",
+            container.display()
+        ));
+        return Outcome::Failed;
+    }
+    if let Some(owner) = container.parent() {
+        let _ = fs::remove_dir(owner);
+    }
+    say(match view {
+        Some(_) => "removed: clone and view".to_string(),
+        None => "removed: clone".to_string(),
+    });
+    Outcome::Kept
 }
 
 /// Keeps `address`: makes its clone where it has none (design 4), else
