@@ -48,4 +48,4 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 7. The change's checks
 
-- [ ] 7.1 Run the checks of the projects this change touches. Done when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format root:toolchain root:changes` passes.
+- [x] 7.1 Run the checks of the projects this change touches. Done when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format root:toolchain root:changes` passes.
