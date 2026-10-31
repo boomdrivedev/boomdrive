@@ -10,7 +10,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 - [x] 1.1 `crates/flywheel` gains a library, `src/lib.rs`, beside its binary. The root `Cargo.toml` gains `[workspace.dependencies]` for `serde` 1 (derive) and `toml` 1, which the crate takes. `src/config.rs` reads the configuration as the configuration spec has it: `repositories` required, addresses checked and compared without case, `views` absolute or `~/…` with `~/Code` as the default, `fetch_every` `<n>s|m|h` with `2m` as the default, and unknown keys refused. Every refusal names the file, the line and the key or entry, and never quotes the file's text. It also resolves the file's path and the data directory from an explicit environment (design Decisions 1 to 3; Task notes 1.1). Done when one unit test per configuration scenario other than "The default file", "The file named", "No file", "A repository added while running" and "A file broken while running" passes in `devenv shell -- moon run flywheel:test`.
 - [x] 1.2 README gains "The configuration", with design Decision 2's example as a fenced `toml` block. `crates/flywheel/tests/readme.rs` parses that block with the crate's reader. `crates/flywheel/moon.yml`'s `test` task names `/README.md` among its inputs (Task notes 1.2). Done when `devenv shell -- moon run flywheel:test` passes with the README test.
-- [ ] 1.3 Run this group's checks. Done when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test` passes.
+- [x] 1.3 Run this group's checks. Done when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test` passes.
 
 ## 2. Git and the scratch host
 
