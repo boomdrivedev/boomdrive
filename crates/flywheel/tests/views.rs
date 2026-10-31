@@ -433,3 +433,123 @@ fn an_empty_origin() {
     assert_eq!(head(&scratch, &view), commit);
     assert!(detached(&scratch, &view), "the view is on a branch");
 }
+
+/// A configuration keeping `agentplot/flume` with the views root `~/src`.
+fn in_src() -> String {
+    format!("views = \"~/src\"\n{}", keeping(&["agentplot/flume"]))
+}
+
+/// `agentplot/flume`'s view under the views root `~/src`.
+fn src_view(scratch: &Scratch) -> PathBuf {
+    scratch.home.join("src/agentplot/flume")
+}
+
+/// The worktrees of `agentplot/flume`'s clone other than itself.
+fn worktrees(scratch: &Scratch) -> Vec<String> {
+    let bare = scratch.clone_of("agentplot/flume");
+    scratch
+        .git(&bare, &["worktree", "list", "--porcelain"])
+        .lines()
+        .filter_map(|line| line.strip_prefix("worktree "))
+        .filter(|path| Path::new(path) != bare)
+        .map(str::to_string)
+        .collect()
+}
+
+#[test]
+fn a_new_root_the_old_view_clean() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    scratch.pass(&keeping(&["agentplot/flume"]));
+    let old = view(&scratch);
+
+    let (outcome, lines) = scratch.pass(&in_src());
+
+    let new = src_view(&scratch);
+    let tip = origin.tip("main");
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [
+            format!("agentplot/flume: view removed from {}", old.display()),
+            made(&new, "main", &tip),
+        ]
+    );
+    assert!(!old.exists(), "the old view is left");
+    assert_eq!(entries(&scratch.home.join("Code")), [] as [&str; 0]);
+    assert_eq!(head(&scratch, &new), tip);
+    assert!(detached(&scratch, &new), "the view is on a branch");
+    assert_eq!(worktrees(&scratch), [new.to_string_lossy()]);
+    assert_eq!(
+        scratch.git(
+            &scratch.clone_of("agentplot/flume"),
+            &["config", "flywheel.view"]
+        ),
+        new.to_string_lossy()
+    );
+
+    let (outcome, lines) = scratch.pass(&in_src());
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, Vec::<String>::new());
+}
+
+#[test]
+fn a_new_root_the_old_view_holding_work() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.pass(&keeping(&["agentplot/flume"]));
+    let old = view(&scratch);
+    let put = head(&scratch, &old);
+    std::fs::write(old.join("README"), "mine\n").expect("a change in the view");
+    let new = src_view(&scratch);
+    let left = format!(
+        "agentplot/flume: view left at {}, so none is made at {}: \
+         held by the view's changes in 1 file",
+        old.display(),
+        new.display()
+    );
+
+    for _ in 0..2 {
+        let (outcome, lines) = scratch.pass(&in_src());
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, std::slice::from_ref(&left));
+        assert_eq!(head(&scratch, &old), put);
+        assert_eq!(read(&old.join("README")), "mine\n");
+        assert!(!new.exists(), "a view is made at the new root");
+        assert!(!scratch.home.join("src").exists());
+    }
+}
+
+#[test]
+fn a_new_root_the_old_folder_replaced() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    scratch.pass(&keeping(&["agentplot/flume"]));
+    let old = view(&scratch);
+    std::fs::remove_dir_all(&old).expect("the old view removed");
+    std::fs::create_dir_all(&old).expect("a folder of the user's");
+    std::fs::write(old.join("notes"), "mine\n").expect("a file of the user's");
+
+    let (outcome, lines) = scratch.pass(&in_src());
+
+    let new = src_view(&scratch);
+    let tip = origin.tip("main");
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [made(&new, "main", &tip)]);
+    assert_eq!(entries(&old), ["notes"]);
+    assert_eq!(read(&old.join("notes")), "mine\n");
+    assert_eq!(head(&scratch, &new), tip);
+    assert!(detached(&scratch, &new), "the view is on a branch");
+    assert_eq!(
+        scratch.git(
+            &scratch.clone_of("agentplot/flume"),
+            &["config", "flywheel.view"]
+        ),
+        new.to_string_lossy()
+    );
+
+    let (outcome, lines) = scratch.pass(&in_src());
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, Vec::<String>::new());
+}

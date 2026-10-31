@@ -3,10 +3,13 @@
 //! a branch. It is made where its folder is missing and never over a
 //! folder that is there, and moved only while it stands where the runner
 //! last put it, clean of tracked changes, so a view the user moved or is
-//! working in is left as they have it (`herdr.14`, carried whole).
+//! working in is left as they have it (`herdr.14`, carried whole). When
+//! the views root changes, the old view is removed once it holds nothing
+//! the forge lacks, and the view made at the new path.
 
 use crate::clone;
 use crate::git::{At, Git, Words};
+use crate::lacks::{self, Holding};
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
@@ -100,6 +103,51 @@ pub fn decide(facts: &ViewFacts) -> ViewAct {
     }
 }
 
+/// What stands where the runner last made or moved the view, once the
+/// views root no longer gives that path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Old {
+    /// Nothing, or a folder that is not the clone's worktree.
+    Gone,
+    /// The clone's worktree, holding these, which the forge lacks.
+    View(Vec<Holding>),
+}
+
+/// What becomes of the old view.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OldAct {
+    /// It is forgotten, any folder there left untouched, and the view is
+    /// kept at the new path.
+    Forget,
+    /// It is removed and forgotten, and the view is kept at the new path.
+    Remove,
+    /// It is left and named with what holds it, and no view is made at
+    /// the new path.
+    Hold(Vec<Holding>),
+}
+
+/// Design 7, for a view whose recorded path the views root no longer
+/// gives: removed once it holds nothing the forge lacks (design 8's
+/// removal), left while it holds anything, and forgotten where it is no
+/// longer the clone's worktree.
+pub fn decide_old(old: &Old) -> OldAct {
+    match old {
+        Old::Gone => OldAct::Forget,
+        Old::View(held) if held.is_empty() => OldAct::Remove,
+        Old::View(held) => OldAct::Hold(held.clone()),
+    }
+}
+
+/// Reads what stands at `path`, the old view of the clone `bare`.
+pub fn old(git: &Git, bare: &Path, path: &Path) -> Result<Old, Words> {
+    if !is_worktree_of(git, bare, path)? {
+        return Ok(Old::Gone);
+    }
+    Ok(Old::View(lacks::view_holdings(&lacks::read_view(
+        git, path,
+    )?)))
+}
+
 /// Reads the facts of the view at `path` of the clone `bare`, whose
 /// origin's default branch is `default`.
 pub fn facts(git: &Git, bare: &Path, path: &Path, default: &str) -> Result<ViewFacts, Words> {
@@ -157,7 +205,7 @@ fn stands(git: &Git, bare: &Path, path: &Path) -> Result<Stands, Words> {
 
 /// Whether the folder at `path` is a worktree of the clone `bare`, a
 /// link there not followed.
-pub fn is_view(git: &Git, bare: &Path, path: &Path) -> Result<bool, Words> {
+pub fn is_worktree_of(git: &Git, bare: &Path, path: &Path) -> Result<bool, Words> {
     Ok(matches!(stands(git, bare, path)?, Stands::Worktree(_)))
 }
 
@@ -279,6 +327,12 @@ pub fn remove(git: &Git, bare: &Path, path: &Path) -> Result<(), Words> {
     if let Some(owner) = path.parent() {
         let _ = fs::remove_dir(owner);
     }
+    Ok(())
+}
+
+/// Forgets, in `bare`, the path the runner last put its view at.
+pub fn forget(git: &Git, bare: &Path) -> Result<(), Words> {
+    git.run(At::GitDir(bare), ["config", "--local", "--unset", PATH])?;
     Ok(())
 }
 
@@ -433,5 +487,24 @@ mod tests {
             })
         );
         assert_eq!(read_status(""), None);
+    }
+
+    #[test]
+    fn an_old_view_that_is_gone_is_forgotten() {
+        assert_eq!(decide_old(&Old::Gone), OldAct::Forget);
+    }
+
+    #[test]
+    fn an_old_view_holding_nothing_is_removed() {
+        assert_eq!(decide_old(&Old::View(Vec::new())), OldAct::Remove);
+    }
+
+    #[test]
+    fn an_old_view_holding_work_is_left() {
+        let held = vec![
+            Holding::ViewChanges { count: 1 },
+            Holding::ViewCommits { ahead: 2 },
+        ];
+        assert_eq!(decide_old(&Old::View(held.clone())), OldAct::Hold(held));
     }
 }

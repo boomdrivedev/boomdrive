@@ -10,7 +10,7 @@ use crate::clone::{self, LevelAct};
 use crate::config::{self, Address, Config};
 use crate::git::{Git, Words};
 use crate::lacks;
-use crate::view::{self, ViewAct};
+use crate::view::{self, OldAct, ViewAct};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -212,7 +212,8 @@ fn settle(git: &Git, bare: &Path, say: &mut dyn FnMut(String)) -> Result<Option<
 /// branch is `default` (design 7): makes it where it is missing, names a
 /// folder there that is not the clone's worktree, and moves it while it
 /// stands where the runner last put it. A view made or moved is recorded
-/// in the clone.
+/// in the clone. A view the runner put where the views root no longer
+/// gives is let go of first.
 fn keep_view(
     git: &Git,
     bare: &Path,
@@ -220,6 +221,9 @@ fn keep_view(
     default: &str,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
+    if let Some(outcome) = let_go_of_old_view(git, bare, path, say) {
+        return outcome;
+    }
     let facts = match view::facts(git, bare, path, default) {
         Ok(facts) => facts,
         Err(words) => {
@@ -265,6 +269,60 @@ fn keep_view(
             Outcome::Failed
         }
     }
+}
+
+/// Lets go of the view the clone `bare` records where `path`, the view's
+/// path now, is not that one, the views root having changed (design 7).
+/// The old view is removed while it holds nothing the forge lacks, else
+/// left and named; where it is gone or no longer the clone's worktree,
+/// it is forgotten and any folder there left untouched. Gives the
+/// outcome where no view is to be kept at `path` this pass.
+fn let_go_of_old_view(
+    git: &Git,
+    bare: &Path,
+    path: &Path,
+    say: &mut dyn FnMut(String),
+) -> Option<Outcome> {
+    let read = view::recorded_path(git, bare).and_then(|old| match old {
+        Some(old) if !view::same_path(&old, path) => {
+            let facts = view::old(git, bare, &old)?;
+            Ok(Some((old, facts)))
+        }
+        _ => Ok(None),
+    });
+    let (old, facts) = match read {
+        Ok(Some(read)) => read,
+        Ok(None) => return None,
+        Err(words) => {
+            say(format!("view not read: {words}"));
+            return Some(Outcome::Failed);
+        }
+    };
+    match view::decide_old(&facts) {
+        OldAct::Hold(held) => {
+            for holding in held {
+                say(format!(
+                    "view left at {}, so none is made at {}: held by {holding}",
+                    old.display(),
+                    path.display()
+                ));
+            }
+            return Some(Outcome::Kept);
+        }
+        OldAct::Remove => {
+            if let Err(words) = view::remove(git, bare, &old) {
+                say(format!("view not removed: {words}"));
+                return Some(Outcome::Failed);
+            }
+            say(format!("view removed from {}", old.display()));
+        }
+        OldAct::Forget => {}
+    }
+    if let Err(words) = view::forget(git, bare) {
+        say(format!("view not forgotten: {words}"));
+        return Some(Outcome::Failed);
+    }
+    None
 }
 
 /// A commit as a line gives it, at seven characters.

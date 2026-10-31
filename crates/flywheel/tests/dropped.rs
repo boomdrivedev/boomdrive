@@ -367,3 +367,27 @@ fn left_for_the_user() {
     assert!(scratch.clone_of("agentplot/flume").exists());
     assert!(view.exists());
 }
+
+#[test]
+fn an_old_views_folder_of_the_users_holds_nothing() {
+    let scratch = Scratch::new();
+    let old = kept(&scratch);
+    std::fs::remove_dir_all(&old).expect("the old view removed");
+    std::fs::create_dir_all(&old).expect("a folder of the user's");
+    std::fs::write(old.join("notes"), "mine\n").expect("a file of the user's");
+    let in_src = |addresses: &[&str]| format!("views = \"~/src\"\n{}", keeping(addresses));
+    scratch.pass(&in_src(&["agentplot/flume"]));
+    assert!(scratch.home.join("src/agentplot/flume").is_dir());
+
+    let (outcome, lines) = scratch.pass(&in_src(&[]));
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [REMOVED]);
+    assert!(!scratch.home.join("src/agentplot").exists());
+    assert!(!scratch.container("agentplot/flume").exists());
+    assert_eq!(entries(&old), ["notes"]);
+    assert_eq!(
+        std::fs::read_to_string(old.join("notes")).expect("the user's file"),
+        "mine\n"
+    );
+}

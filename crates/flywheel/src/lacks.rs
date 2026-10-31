@@ -85,7 +85,7 @@ pub struct Facts {
     /// holds that origin's refs do not reach.
     pub refs: Vec<(String, u32)>,
     /// Each worktree of the clone other than its bare repository and its
-    /// view, with whether its folder is there.
+    /// view, with whether its folder is there, as `read` counts one.
     pub worktrees: Vec<(PathBuf, bool)>,
     /// The view, where the folder at its path is the clone's worktree.
     pub view: Option<View>,
@@ -148,7 +148,12 @@ fn counted(name: &str) -> bool {
 
 /// Reads what the clone `bare` holds, and its view at `view` where the
 /// runner made one. A worktree registered at the view's path is the
-/// view's, whatever stands there now.
+/// view's, whatever stands there now. Any other worktree's folder is
+/// there while it is the clone's worktree, or while it is inside the
+/// clone's container, which removing the container would take; a
+/// folder elsewhere that git still registers but that is no longer the
+/// clone's worktree, as an old view's replaced by a folder of the
+/// user's, loses nothing and is never touched.
 pub fn read(git: &Git, bare: &Path, view: Option<&Path>) -> Result<Facts, Words> {
     let at = At::GitDir(bare);
     let mut refs = Vec::new();
@@ -160,18 +165,23 @@ pub fn read(git: &Git, bare: &Path, view: Option<&Path>) -> Result<Facts, Words>
             refs.push((name.to_string(), ahead(git, at, name)?));
         }
     }
-    let worktrees = clone::worktrees(git, bare)?
-        .into_iter()
-        .filter(|worktree| {
-            !worktree.bare && !view.is_some_and(|view| view::same_path(&worktree.path, view))
-        })
-        .map(|worktree| {
-            let there = worktree.path.symlink_metadata().is_ok();
-            (worktree.path, there)
-        })
-        .collect();
+    let container = bare
+        .parent()
+        .map(|container| container.canonicalize().unwrap_or(container.to_path_buf()));
+    let mut worktrees = Vec::new();
+    for worktree in clone::worktrees(git, bare)? {
+        if worktree.bare || view.is_some_and(|view| view::same_path(&worktree.path, view)) {
+            continue;
+        }
+        let inside = container
+            .as_ref()
+            .is_some_and(|container| worktree.path.starts_with(container));
+        let there = worktree.path.symlink_metadata().is_ok()
+            && (inside || view::is_worktree_of(git, bare, &worktree.path)?);
+        worktrees.push((worktree.path, there));
+    }
     let view = match view {
-        Some(path) if view::is_view(git, bare, path)? => Some(read_view(git, path)?),
+        Some(path) if view::is_worktree_of(git, bare, path)? => Some(read_view(git, path)?),
         _ => None,
     };
     Ok(Facts {
