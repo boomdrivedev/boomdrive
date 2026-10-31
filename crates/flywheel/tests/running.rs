@@ -80,18 +80,29 @@ fn every_repository_kept() {
         .expect("flywheel runs");
 
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let views = scratch.home.join("Code");
     assert_eq!(
         stderr(&output),
         format!(
             "{}\n\
              agentplot/flume: cloned from https://github.com/agentplot/flume.git\n\
-             agentplot/sluice: cloned from https://github.com/agentplot/sluice.git\n",
-            started(&scratch, "2 repositories", &file)
+             agentplot/flume: view made at {}, at origin/main {}\n\
+             agentplot/sluice: cloned from https://github.com/agentplot/sluice.git\n\
+             agentplot/sluice: view made at {}, at origin/main {}\n",
+            started(&scratch, "2 repositories", &file),
+            views.join("agentplot/flume").display(),
+            &flume.tip("main")[..7],
+            views.join("agentplot/sluice").display(),
+            &sluice.tip("main")[..7],
         )
     );
     for origin in [flume, sluice] {
         assert_eq!(
             scratch.git(&scratch.clone_of(&origin.address), &["rev-parse", "main"]),
+            origin.tip("main")
+        );
+        assert_eq!(
+            scratch.git(&views.join(&origin.address), &["rev-parse", "HEAD"]),
             origin.tip("main")
         );
     }
@@ -112,7 +123,7 @@ fn a_clone_failed() {
     assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
     let said = stderr(&output);
     let lines: Vec<&str> = said.lines().collect();
-    assert_eq!(lines.len(), 3, "{said}");
+    assert_eq!(lines.len(), 4, "{said}");
     assert!(
         lines[1].starts_with("agentplot/flume: not cloned: "),
         "{said}"
@@ -120,6 +131,10 @@ fn a_clone_failed() {
     assert_eq!(
         lines[2],
         "agentplot/sluice: cloned from https://github.com/agentplot/sluice.git"
+    );
+    assert!(
+        lines[3].starts_with("agentplot/sluice: view made at "),
+        "{said}"
     );
     assert!(!scratch.container("agentplot/flume").exists());
     assert_eq!(

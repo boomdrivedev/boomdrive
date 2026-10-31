@@ -1,14 +1,15 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
-//! settled and its own default branch levelled. Each repository is
-//! independent: a failure in one is named and the next is kept. The pass
-//! says each act and each thing it names as one line,
+//! settled, its own default branch levelled and its view kept. Each
+//! repository is independent: a failure in one is named and the next is
+//! kept. The pass says each act and each thing it names as one line,
 //! `<owner>/<name>: <words>`, and a pass with nothing to say writes
 //! nothing.
 
 use crate::clone::{self, LevelAct};
-use crate::config::{Address, Config};
+use crate::config::{self, Address, Config};
 use crate::git::{Git, Words};
+use crate::view::{self, ViewAct};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -52,7 +53,8 @@ pub fn pass(git: &Git, data: &Path, config: &Config, say: &mut dyn FnMut(String)
             .iter()
             .find(|(kept, _)| kept == address)
             .map(|(_, container)| container.as_path());
-        let kept = keep(git, data, address, found, &mut |words| {
+        let view = config::view_path(config, address);
+        let kept = keep(git, data, address, found, &view, &mut |words| {
             say(format!("{address}: {words}"))
         });
         outcome = outcome.and(kept);
@@ -62,12 +64,14 @@ pub fn pass(git: &Git, data: &Path, config: &Config, say: &mut dyn FnMut(String)
 
 /// Keeps `address`: makes its clone where it has none (design 4), else
 /// fetches the one `found` (design 5), then settles its HEAD on origin's
-/// default branch and levels its own (design 6).
+/// default branch and levels its own (design 6), then keeps its view at
+/// `view` (design 7).
 fn keep(
     git: &Git,
     data: &Path,
     address: &Address,
     found: Option<&Path>,
+    view: &Path,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
     let container = match found {
@@ -99,8 +103,10 @@ fn keep(
             }
         }
     };
-    match settle(git, &clone::bare(&container), say) {
-        Ok(_) => Outcome::Kept,
+    let bare = clone::bare(&container);
+    match settle(git, &bare, say) {
+        Ok(Some(default)) => keep_view(git, &bare, view, &default, say),
+        Ok(None) => Outcome::Kept,
         Err(words) => {
             say(format!("default branch not kept: {words}"));
             Outcome::Failed
@@ -139,6 +145,65 @@ fn settle(git: &Git, bare: &Path, say: &mut dyn FnMut(String)) -> Result<Option<
         )),
     }
     Ok(Some(default))
+}
+
+/// Keeps the view at `path` of the clone `bare`, whose origin's default
+/// branch is `default` (design 7): makes it where it is missing, names a
+/// folder there that is not the clone's worktree, and moves it while it
+/// stands where the runner last put it. A view made or moved is recorded
+/// in the clone.
+fn keep_view(
+    git: &Git,
+    bare: &Path,
+    path: &Path,
+    default: &str,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let facts = match view::facts(git, bare, path, default) {
+        Ok(facts) => facts,
+        Err(words) => {
+            say(format!("view not read: {words}"));
+            return Outcome::Failed;
+        }
+    };
+    let (commit, done) = match view::decide(&facts) {
+        ViewAct::Leave => return Outcome::Kept,
+        ViewAct::Occupied => {
+            say(format!(
+                "left: {} is not a worktree of the clone, so no view is made",
+                path.display()
+            ));
+            return Outcome::Kept;
+        }
+        ViewAct::Make { at, force } => {
+            if let Err(words) = view::make(git, bare, path, &at, force) {
+                say(format!("view not made: {words}"));
+                return Outcome::Failed;
+            }
+            let made = format!(
+                "view made at {}, at origin/{default} {}",
+                path.display(),
+                short(&at)
+            );
+            (at, made)
+        }
+        ViewAct::Move { to } => {
+            if let Err(words) = view::move_to(git, path, &to) {
+                say(format!("view not moved: {words}"));
+                return Outcome::Failed;
+            }
+            let moved = format!("view moved to origin/{default} at {}", short(&to));
+            (to, moved)
+        }
+    };
+    say(done);
+    match view::record(git, bare, path, &commit) {
+        Ok(()) => Outcome::Kept,
+        Err(words) => {
+            say(format!("view not recorded: {words}"));
+            Outcome::Failed
+        }
+    }
 }
 
 /// A commit as a line gives it, at seven characters.

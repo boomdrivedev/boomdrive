@@ -5,6 +5,22 @@
 //! last put it, clean of tracked changes, so a view the user moved or is
 //! working in is left as they have it (`herdr.14`, carried whole).
 
+use crate::clone;
+use crate::git::{At, Git, Words};
+use std::ffi::OsStr;
+use std::fs;
+use std::io;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+
+/// The key in a clone's own git config that records the path its view
+/// was last made or moved at.
+const PATH: &str = "flywheel.view";
+
+/// The ref in a clone that records the commit the runner last put its
+/// view at, which keeps that commit reachable.
+const COMMIT: &str = "refs/flywheel/view";
+
 /// What stands at a view's path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Stands {
@@ -82,6 +98,162 @@ pub fn decide(facts: &ViewFacts) -> ViewAct {
             }
         }
     }
+}
+
+/// Reads the facts of the view at `path` of the clone `bare`, whose
+/// origin's default branch is `default`.
+pub fn facts(git: &Git, bare: &Path, path: &Path, default: &str) -> Result<ViewFacts, Words> {
+    let at = At::GitDir(bare);
+    let commit = |name: &str| -> Result<Option<String>, Words> {
+        let said = git.ask(
+            at,
+            [
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                &format!("{name}^{{commit}}"),
+            ],
+        )?;
+        Ok(said.map(|said| said.trim().to_string()))
+    };
+    Ok(ViewFacts {
+        stands: stands(git, bare, path)?,
+        recorded: commit(COMMIT)?,
+        target: commit(&format!("refs/remotes/origin/{default}"))?,
+    })
+}
+
+/// What stands at `path`. A link there is a folder that is not the
+/// clone's worktree: it is not followed.
+fn stands(git: &Git, bare: &Path, path: &Path) -> Result<Stands, Words> {
+    match fs::symlink_metadata(path) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let real = resolved(path);
+            let registered = clone::worktrees(git, bare)?
+                .iter()
+                .any(|worktree| !worktree.bare && (worktree.path == path || worktree.path == real));
+            return Ok(Stands::Missing { registered });
+        }
+        Ok(metadata) if metadata.is_dir() => {}
+        _ => return Ok(Stands::Other),
+    }
+    if !is_worktree(git, bare, path) {
+        return Ok(Stands::Other);
+    }
+    let said = git.run(
+        At::Dir(path),
+        [
+            "--no-optional-locks",
+            "status",
+            "--porcelain=v2",
+            "--branch",
+            "--untracked-files=no",
+        ],
+    )?;
+    read_status(&said)
+        .map(Stands::Worktree)
+        .ok_or_else(|| Words(format!("git status names no HEAD in {}", path.display())))
+}
+
+/// `path` as git records a worktree's folder: its nearest ancestor that
+/// exists resolved, so a folder that is gone still matches its
+/// registration.
+fn resolved(path: &Path) -> PathBuf {
+    for ancestor in path.ancestors() {
+        if let (Ok(real), Ok(rest)) = (ancestor.canonicalize(), path.strip_prefix(ancestor)) {
+            return real.join(rest);
+        }
+    }
+    path.to_path_buf()
+}
+
+/// Whether the folder `path` is a worktree of the clone `bare`: git
+/// there names `bare` as its common repository (swancloud's own test)
+/// and `path` itself as its top level, each the same folder on disk.
+fn is_worktree(git: &Git, bare: &Path, path: &Path) -> bool {
+    let Ok(said) = git.run(
+        At::Dir(path),
+        [
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+            "--show-toplevel",
+        ],
+    ) else {
+        return false;
+    };
+    let mut lines = said.lines();
+    match (lines.next(), lines.next()) {
+        (Some(common), Some(top)) => same(Path::new(common), bare) && same(Path::new(top), path),
+        _ => false,
+    }
+}
+
+/// Whether `a` and `b` are one folder on disk, however each is spelled.
+fn same(a: &Path, b: &Path) -> bool {
+    match (fs::metadata(a), fs::metadata(b)) {
+        (Ok(a), Ok(b)) => a.dev() == b.dev() && a.ino() == b.ino(),
+        _ => false,
+    }
+}
+
+/// What `status --porcelain=v2 --branch` says in `said`: the HEAD from
+/// its `# branch.` headers, and a change where any other line is.
+fn read_status(said: &str) -> Option<Checkout> {
+    let mut head = None;
+    let mut detached = None;
+    let mut changed = false;
+    for line in said.lines() {
+        if let Some(oid) = line.strip_prefix("# branch.oid ") {
+            head = Some(oid.to_string());
+        } else if let Some(branch) = line.strip_prefix("# branch.head ") {
+            detached = Some(branch == "(detached)");
+        } else if !line.starts_with('#') && !line.is_empty() {
+            changed = true;
+        }
+    }
+    Some(Checkout {
+        detached: detached?,
+        head: head?,
+        changed,
+    })
+}
+
+/// Makes the view at `path`, a worktree of `bare` detached at `commit`,
+/// git making the folders above it. `force` overrides only git's refusal
+/// of a path it still registers as a worktree whose folder is gone,
+/// since no branch is named.
+pub fn make(git: &Git, bare: &Path, path: &Path, commit: &str, force: bool) -> Result<(), Words> {
+    let mut args = vec![
+        OsStr::new("worktree"),
+        OsStr::new("add"),
+        OsStr::new("--quiet"),
+        OsStr::new("--detach"),
+    ];
+    if force {
+        args.push(OsStr::new("--force"));
+    }
+    args.extend([path.as_os_str(), OsStr::new(commit)]);
+    git.run(At::GitDir(bare), args)?;
+    Ok(())
+}
+
+/// Moves the view at `path` to `commit`, detached. Untracked files are
+/// carried across, and git refuses where the commit would overwrite one.
+pub fn move_to(git: &Git, path: &Path, commit: &str) -> Result<(), Words> {
+    git.run(At::Dir(path), ["switch", "--quiet", "--detach", commit])?;
+    Ok(())
+}
+
+/// Records in `bare` that the runner put its view at `path`, at `commit`.
+pub fn record(git: &Git, bare: &Path, path: &Path, commit: &str) -> Result<(), Words> {
+    let at = At::GitDir(bare);
+    git.run(at, ["update-ref", COMMIT, commit])?;
+    git.run(
+        at,
+        [OsStr::new("config"), OsStr::new(PATH), path.as_os_str()],
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -200,5 +372,29 @@ mod tests {
     #[test]
     fn a_tracked_change_is_left() {
         assert_eq!(decide(&facts(checkout(true, "c", true))), ViewAct::Leave);
+    }
+
+    #[test]
+    fn status_read() {
+        let clean = "# branch.oid 1a2b\n# branch.head (detached)\n";
+        assert_eq!(
+            read_status(clean),
+            Some(Checkout {
+                detached: true,
+                head: "1a2b".to_string(),
+                changed: false,
+            })
+        );
+        let changed = "# branch.oid 1a2b\n# branch.head mine\n\
+                       1 .M N... 100644 100644 100644 3c4d 3c4d README\n";
+        assert_eq!(
+            read_status(changed),
+            Some(Checkout {
+                detached: false,
+                head: "1a2b".to_string(),
+                changed: true,
+            })
+        );
+        assert_eq!(read_status(""), None);
     }
 }

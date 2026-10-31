@@ -27,6 +27,25 @@ fn entries(dir: &Path) -> Vec<String> {
     names
 }
 
+/// The line a pass says when it makes `address`'s view under the default
+/// views root, at `origin/main`'s `commit`.
+fn view_made(scratch: &Scratch, address: &str, commit: &str) -> String {
+    format!(
+        "{address}: view made at {}, at origin/main {}",
+        scratch.home.join("Code").join(address).display(),
+        &commit[..7]
+    )
+}
+
+/// The line a pass says when it moves `address`'s view to
+/// `origin/<default>`'s `commit`.
+fn view_moved(address: &str, default: &str, commit: &str) -> String {
+    format!(
+        "{address}: view moved to origin/{default} at {}",
+        &commit[..7]
+    )
+}
+
 #[test]
 fn a_new_repository_is_cloned() {
     let scratch = Scratch::new();
@@ -38,7 +57,10 @@ fn a_new_repository_is_cloned() {
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        ["agentplot/flume: cloned from https://github.com/agentplot/flume.git"]
+        [
+            "agentplot/flume: cloned from https://github.com/agentplot/flume.git".to_string(),
+            view_made(&scratch, "agentplot/flume", &origin.tip("main")),
+        ]
     );
     let container = scratch.container("agentplot/flume");
     let bare = scratch.clone_of("agentplot/flume");
@@ -120,7 +142,10 @@ fn origin_cannot_be_reached() {
     );
     assert_eq!(
         lines[1..],
-        ["agentplot/sluice: cloned from https://github.com/agentplot/sluice.git"]
+        [
+            "agentplot/sluice: cloned from https://github.com/agentplot/sluice.git".to_string(),
+            view_made(&scratch, "agentplot/sluice", &sluice.tip("main")),
+        ]
     );
     assert_eq!(
         entries(&scratch.data().join("repositories/agentplot")),
@@ -139,7 +164,10 @@ fn origin_cannot_be_reached() {
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        ["agentplot/flume: cloned from https://github.com/agentplot/flume.git"]
+        [
+            "agentplot/flume: cloned from https://github.com/agentplot/flume.git".to_string(),
+            view_made(&scratch, "agentplot/flume", &flume.tip("main")),
+        ]
     );
     assert_eq!(
         scratch.git(&scratch.clone_of("agentplot/flume"), &["rev-parse", "main"]),
@@ -193,7 +221,10 @@ fn a_clone_left_unfinished_is_made_again() {
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        ["agentplot/flume: cloned from https://github.com/agentplot/flume.git"]
+        [
+            "agentplot/flume: cloned from https://github.com/agentplot/flume.git".to_string(),
+            view_made(&scratch, "agentplot/flume", &origin.tip("main")),
+        ]
     );
     assert_eq!(
         entries(&scratch.data().join("repositories/agentplot")),
@@ -232,7 +263,14 @@ fn a_clone_is_found_by_its_record_without_case() {
     let (outcome, lines) = scratch.pass(&keeping(&["AgentPlot/Flume"]));
 
     assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(lines, Vec::<String>::new());
+    // A view's path is the address as written (design 7), so where the
+    // file system tells case apart, the view follows the new spelling.
+    assert!(
+        lines
+            .iter()
+            .all(|line| line.starts_with("AgentPlot/Flume: view ")),
+        "{lines:?}"
+    );
     assert_eq!(entries(&scratch.data().join("repositories")), ["agentplot"]);
 }
 
@@ -297,10 +335,13 @@ fn origin_gains_a_commit() {
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        [format!(
-            "agentplot/flume: main moved to origin/main at {}",
-            &commit[..7]
-        )]
+        [
+            format!(
+                "agentplot/flume: main moved to origin/main at {}",
+                &commit[..7]
+            ),
+            view_moved("agentplot/flume", "main", &commit),
+        ]
     );
     assert_eq!(
         scratch.git(
@@ -351,17 +392,20 @@ fn one_fetch_fails() {
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Failed);
-    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert_eq!(lines.len(), 3, "{lines:?}");
     assert!(
         lines[0].starts_with("agentplot/flume: not fetched: "),
         "{lines:?}"
     );
     assert_eq!(
-        lines[1],
-        format!(
-            "agentplot/sluice: main moved to origin/main at {}",
-            &commit[..7]
-        )
+        lines[1..],
+        [
+            format!(
+                "agentplot/sluice: main moved to origin/main at {}",
+                &commit[..7]
+            ),
+            view_moved("agentplot/sluice", "main", &commit),
+        ]
     );
     assert_eq!(
         scratch.git(
@@ -386,10 +430,13 @@ fn behind_origin() {
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        [format!(
-            "agentplot/flume: main moved to origin/main at {}",
-            &second[..7]
-        )]
+        [
+            format!(
+                "agentplot/flume: main moved to origin/main at {}",
+                &second[..7]
+            ),
+            view_moved("agentplot/flume", "main", &second),
+        ]
     );
     let bare = scratch.clone_of("agentplot/flume");
     assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), second);
@@ -418,17 +465,20 @@ fn held_by_a_worktree() {
         ],
     );
     let before = scratch.git(&bare, &["rev-parse", "main"]);
-    origin.commit("main", "README", "two\n");
+    let commit = origin.commit("main", "README", "two\n");
 
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        [format!(
-            "agentplot/flume: main left: checked out in the worktree {}",
-            held.display()
-        )]
+        [
+            format!(
+                "agentplot/flume: main left: checked out in the worktree {}",
+                held.display()
+            ),
+            view_moved("agentplot/flume", "main", &commit),
+        ]
     );
     assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), before);
 }
@@ -470,7 +520,10 @@ fn origin_renames_its_default_branch() {
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
-        ["agentplot/flume: HEAD names trunk, origin's default branch"]
+        [
+            "agentplot/flume: HEAD names trunk, origin's default branch".to_string(),
+            view_moved("agentplot/flume", "trunk", &trunk),
+        ]
     );
     let bare = scratch.clone_of("agentplot/flume");
     assert_eq!(
