@@ -1,7 +1,8 @@
 //! `flywheel` as a host runs it: its version and usage, `run --once`,
-//! `run` until it is stopped, the configuration file it reads, and the
-//! start's checks, the lock on the data directory among them (the running
-//! and configuration specs; design 10).
+//! `run` until it is stopped, the configuration file it reads, the
+//! start's checks, the lock on the data directory among them, and what a
+//! pass says on standard error (the running and configuration specs;
+//! design 9 and 10).
 
 mod common;
 
@@ -207,6 +208,65 @@ fn stopped_while_waiting() {
     let mut rest = String::new();
     said.read_to_string(&mut rest).expect("its standard error");
     assert_eq!(rest, "flywheel: stopped\n");
+}
+
+#[test]
+fn a_quiet_pass() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
+    let file = scratch.configure(&keeping(&["agentplot/flume", "agentplot/sluice"]));
+    let first = scratch
+        .flywheel()
+        .args(["run", "--once"])
+        .output()
+        .expect("flywheel runs");
+    assert_eq!(first.status.code(), Some(0), "{}", stderr(&first));
+
+    let output = scratch
+        .flywheel()
+        .args(["run", "--once"])
+        .output()
+        .expect("flywheel runs");
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(
+        stderr(&output),
+        format!("{}\n", started(&scratch, "2 repositories", &file))
+    );
+}
+
+#[test]
+fn a_view_moved() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    let file = scratch.configure(&keeping(&["agentplot/flume"]));
+    let first = scratch
+        .flywheel()
+        .args(["run", "--once"])
+        .output()
+        .expect("flywheel runs");
+    assert_eq!(first.status.code(), Some(0), "{}", stderr(&first));
+    let later = flume.commit("main", "later", "a later commit\n");
+
+    let output = scratch
+        .flywheel()
+        .args(["run", "--once"])
+        .output()
+        .expect("flywheel runs");
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}\n\
+             agentplot/flume: main moved to origin/main at {}\n\
+             agentplot/flume: view moved to origin/main at {}\n",
+            started(&scratch, "1 repository", &file),
+            &later[..7],
+            &later[..7],
+        )
+    );
 }
 
 #[test]
