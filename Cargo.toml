@@ -12,3 +12,7 @@ edition = "2021"
 # The configuration, read from TOML (design 2).
 serde = { version = "1", features = ["derive"] }
 toml = "1"
+# The tests: a scratch host in a temporary directory, and a signal sent to
+# the runner (design 11, 10).
+tempfile = "3"
+libc = "0.2"
