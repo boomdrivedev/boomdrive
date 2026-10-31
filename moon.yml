@@ -12,9 +12,9 @@ tasks:
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # rustc, cargo, clippy and rustfmt are the build .prototools pins, and
-  # OpenSpec the release devenv.nix pins, on whichever host runs the gate
-  # (core.8). It reads the tools it checks from outside the tree, so it
-  # never replays.
+  # git and OpenSpec the releases devenv.nix pins, on whichever host runs
+  # the gate (core.8). It reads the tools it checks from outside the tree,
+  # so it never replays.
   toolchain:
     command: 'sh check-toolchain.sh'
     tags: [check-fast]
