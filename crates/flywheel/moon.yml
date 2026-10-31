@@ -23,6 +23,6 @@ tasks:
     options: {runFromWorkspaceRoot: true}
   test:
     command: 'cargo test -p flywheel'
-    inputs: ['/crates/flywheel/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/flywheel/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}

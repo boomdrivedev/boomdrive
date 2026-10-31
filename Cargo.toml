@@ -1,4 +1,4 @@
-# flywheel-runner's crates: the binary, for now. Each is a moon project of
+# flywheel-runner's crates: flywheel, its library and binary. Each is a moon project of
 # its own (core.7).
 [workspace]
 resolver = "2"
@@ -7,3 +7,17 @@ members = ["crates/flywheel"]
 [workspace.package]
 version = "0.0.0"
 edition = "2021"
+
+[workspace.dependencies]
+# The command line (design 10).
+clap = { version = "4", features = ["derive"] }
+# The configuration, read from TOML (design 2).
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+# SIGTERM and SIGINT, which stop the runner between repositories
+# (design 10).
+signal-hook = "0.3"
+# The tests: a scratch host in a temporary directory, and a signal sent to
+# the runner (design 11, 10).
+tempfile = "3"
+libc = "0.2"
