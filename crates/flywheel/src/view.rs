@@ -155,6 +155,18 @@ fn stands(git: &Git, bare: &Path, path: &Path) -> Result<Stands, Words> {
         .ok_or_else(|| Words(format!("git status names no HEAD in {}", path.display())))
 }
 
+/// Whether the folder at `path` is a worktree of the clone `bare`, a
+/// link there not followed.
+pub fn is_view(git: &Git, bare: &Path, path: &Path) -> Result<bool, Words> {
+    Ok(matches!(stands(git, bare, path)?, Stands::Worktree(_)))
+}
+
+/// Whether `a` and `b` name one folder: as written, as git records a
+/// worktree's folder, or on disk.
+pub fn same_path(a: &Path, b: &Path) -> bool {
+    a == b || resolved(a) == resolved(b) || same(a, b)
+}
+
 /// `path` as git records a worktree's folder: its nearest ancestor that
 /// exists resolved, so a folder that is gone still matches its
 /// registration.
