@@ -6,3 +6,4 @@ pub mod config;
 pub mod git;
 pub mod pass;
 pub mod run;
+pub mod view;
