@@ -6,7 +6,9 @@ the control plane's work into `flume launch` calls, carrying their
 results back. It reaches the control plane through one interface: crew's
 implementation, which reads and writes records in crew's state
 repository, now, and a hosted control plane's, an outgoing WebSocket,
-later. For now the crate prints its version and nothing more.
+later. Today `flywheel run` keeps the repositories its configuration
+names: a bare clone of each in its data directory, fetched on a timer,
+and a view of each under the views root. It carries no work yet.
 
 ## Rules
 
