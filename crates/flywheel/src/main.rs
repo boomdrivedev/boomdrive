@@ -1,38 +1,49 @@
-//! `flywheel`, the runner on each host. For now it answers `--version`
-//! and nothing else.
+//! `flywheel`, the runner on each host: its command line over the
+//! library (design 10). A usage error prints the usage on standard error
+//! and exits 2.
 
+use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
-/// What `flywheel --version` prints.
-fn version() -> String {
-    format!("flywheel {}", env!("CARGO_PKG_VERSION"))
+/// The runner on each host: keeps the clones of the repositories its
+/// configuration names.
+#[derive(Parser)]
+#[command(name = "flywheel", version)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Keep the configured repositories, a pass at once and then one on
+    /// the timer, until stopped.
+    Run {
+        /// The configuration file, in place of
+        /// `$XDG_CONFIG_HOME/flywheel/config.toml`.
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+        /// Make one pass and exit: 0 where every git call succeeded, 1
+        /// where one failed.
+        #[arg(long)]
+        once: bool,
+    },
 }
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args
-        .iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .as_slice()
-    {
-        ["--version"] | ["-V"] => {
-            println!("{}", version());
-            ExitCode::SUCCESS
-        }
-        _ => {
-            eprintln!("usage: flywheel --version");
-            ExitCode::from(2)
-        }
+    match Cli::parse().command {
+        Command::Run { config, once } => flywheel::run::main(config.as_deref(), once),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::version;
+    use super::Cli;
+    use clap::CommandFactory;
 
     #[test]
-    fn version_names_the_binary_and_the_crate_version() {
-        assert_eq!(version(), format!("flywheel {}", env!("CARGO_PKG_VERSION")));
+    fn the_command_line_is_well_formed() {
+        Cli::command().debug_assert();
     }
 }

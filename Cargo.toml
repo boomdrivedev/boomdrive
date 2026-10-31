@@ -9,6 +9,8 @@ version = "0.0.0"
 edition = "2021"
 
 [workspace.dependencies]
+# The command line (design 10).
+clap = { version = "4", features = ["derive"] }
 # The configuration, read from TOML (design 2).
 serde = { version = "1", features = ["derive"] }
 toml = "1"

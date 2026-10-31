@@ -5,3 +5,4 @@ pub mod clone;
 pub mod config;
 pub mod git;
 pub mod pass;
+pub mod run;
