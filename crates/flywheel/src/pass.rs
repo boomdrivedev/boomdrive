@@ -1,13 +1,14 @@
 //! One pass over the configuration (design 9): each configured
-//! repository in the file's order, its clone made where it has none. Each
-//! repository is independent: a failure in one is named and the next is
-//! kept. The pass says each act and each thing it names as one line,
+//! repository in the file's order, its clone made or fetched, its HEAD
+//! settled and its own default branch levelled. Each repository is
+//! independent: a failure in one is named and the next is kept. The pass
+//! says each act and each thing it names as one line,
 //! `<owner>/<name>: <words>`, and a pass with nothing to say writes
 //! nothing.
 
-use crate::clone;
+use crate::clone::{self, LevelAct};
 use crate::config::{Address, Config};
-use crate::git::Git;
+use crate::git::{Git, Words};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -59,7 +60,9 @@ pub fn pass(git: &Git, data: &Path, config: &Config, say: &mut dyn FnMut(String)
     outcome.and(clear_partials(data, &clones, say))
 }
 
-/// Keeps `address`: makes its clone where it has none (design 4).
+/// Keeps `address`: makes its clone where it has none (design 4), else
+/// fetches the one `found` (design 5), then settles its HEAD on origin's
+/// default branch and levels its own (design 6).
 fn keep(
     git: &Git,
     data: &Path,
@@ -67,26 +70,87 @@ fn keep(
     found: Option<&Path>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    if found.is_some() {
-        return Outcome::Kept;
-    }
-    let container = clone::container(data, address);
-    if container.symlink_metadata().is_ok() {
-        say(format!(
-            "left: {} is not a clone the runner made, so none is made",
-            container.display()
-        ));
-        return Outcome::Kept;
-    }
-    match clone::make(git, data, address) {
-        Ok(_) => {
-            say(format!("cloned from {}", clone::url(address)));
-            Outcome::Kept
+    let container = match found {
+        Some(container) => {
+            if let Err(failure) = clone::fetch(git, &clone::bare(container)) {
+                say(format!("not fetched: {failure}"));
+                return Outcome::Failed;
+            }
+            container.to_path_buf()
         }
-        Err(failure) => {
-            say(format!("not cloned: {failure}"));
+        None => {
+            let container = clone::container(data, address);
+            if container.symlink_metadata().is_ok() {
+                say(format!(
+                    "left: {} is not a clone the runner made, so none is made",
+                    container.display()
+                ));
+                return Outcome::Kept;
+            }
+            match clone::make(git, data, address) {
+                Ok(container) => {
+                    say(format!("cloned from {}", clone::url(address)));
+                    container
+                }
+                Err(failure) => {
+                    say(format!("not cloned: {failure}"));
+                    return Outcome::Failed;
+                }
+            }
+        }
+    };
+    match settle(git, &clone::bare(&container), say) {
+        Ok(_) => Outcome::Kept,
+        Err(words) => {
+            say(format!("default branch not kept: {words}"));
             Outcome::Failed
         }
+    }
+}
+
+/// Settles the clone's HEAD on origin's default branch and levels the
+/// clone's own (design 6). Gives the default, none where origin names
+/// none.
+fn settle(git: &Git, bare: &Path, say: &mut dyn FnMut(String)) -> Result<Option<String>, Words> {
+    let Some(default) = clone::default_of(git, bare)? else {
+        say("origin names no default branch, so it has no view".to_string());
+        return Ok(None);
+    };
+    if clone::settle_head(git, bare, &default)? {
+        say(format!("HEAD names {default}, origin's default branch"));
+    }
+    let facts = clone::level_facts(git, bare, &default)?;
+    match clone::level(&facts) {
+        LevelAct::Level => {}
+        LevelAct::Move => {
+            clone::level_to(git, bare, &default, &facts)?;
+            say(format!(
+                "{default} moved to origin/{default} at {}",
+                short(&facts.origin)
+            ));
+        }
+        LevelAct::Ahead(ahead) => say(format!(
+            "{default} left: {} ahead of origin/{default}",
+            commits(ahead)
+        )),
+        LevelAct::Held(worktree) => say(format!(
+            "{default} left: checked out in the worktree {}",
+            worktree.display()
+        )),
+    }
+    Ok(Some(default))
+}
+
+/// A commit as a line gives it, at seven characters.
+fn short(commit: &str) -> &str {
+    &commit[..commit.len().min(7)]
+}
+
+/// `n` commits, in words.
+fn commits(n: u32) -> String {
+    match n {
+        1 => "1 commit".to_string(),
+        n => format!("{n} commits"),
     }
 }
 

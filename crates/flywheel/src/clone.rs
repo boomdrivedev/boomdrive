@@ -1,8 +1,8 @@
 //! A repository's clone (design 3 to 6): a bare repository in the
 //! runner's data directory, in the bare-container layout Flume reads,
 //! carrying the runner's record of it. It is made whole or not at all,
-//! fetched over https and never by ssh, and its HEAD names origin's
-//! default branch.
+//! fetched over https and never by ssh, its HEAD names origin's default
+//! branch, and its own default branch follows origin's.
 
 use crate::config::Address;
 use crate::git::{self, At, Git, Words};
@@ -272,6 +272,134 @@ pub fn settle_head(git: &Git, bare: &Path, default: &str) -> Result<bool, Words>
     Ok(lacked || pointed)
 }
 
+/// A worktree of a clone, as `worktree list --porcelain` names it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Worktree {
+    /// Its folder.
+    pub path: PathBuf,
+    /// The branch it has checked out, `refs/heads/…`, where it is on one.
+    pub branch: Option<String>,
+    /// Whether it is the bare repository itself.
+    pub bare: bool,
+}
+
+/// The worktrees of `bare`, the bare repository itself first.
+pub fn worktrees(git: &Git, bare: &Path) -> Result<Vec<Worktree>, Words> {
+    let listed = git.run(At::GitDir(bare), ["worktree", "list", "--porcelain", "-z"])?;
+    Ok(read_worktrees(&listed))
+}
+
+/// The worktrees `worktree list --porcelain -z` lists in `listed`: each
+/// field ends in NUL, and each worktree in an empty field.
+fn read_worktrees(listed: &str) -> Vec<Worktree> {
+    let mut worktrees = Vec::new();
+    let mut fields = listed.split('\0').peekable();
+    while fields.peek().is_some() {
+        let mut worktree: Option<Worktree> = None;
+        for field in fields.by_ref() {
+            if field.is_empty() {
+                break;
+            }
+            let (key, value) = field.split_once(' ').unwrap_or((field, ""));
+            match (key, worktree.as_mut()) {
+                ("worktree", _) => {
+                    worktree = Some(Worktree {
+                        path: PathBuf::from(value),
+                        branch: None,
+                        bare: false,
+                    })
+                }
+                ("branch", Some(worktree)) => worktree.branch = Some(value.to_string()),
+                ("bare", Some(worktree)) => worktree.bare = true,
+                _ => {}
+            }
+        }
+        worktrees.extend(worktree);
+    }
+    worktrees
+}
+
+/// What levelling the clone's own default branch reads (design 6).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LevelFacts {
+    /// The commit the clone's own default branch is at.
+    pub own: String,
+    /// The commit origin's is at, as last fetched.
+    pub origin: String,
+    /// How many commits the clone's own holds that origin's does not.
+    pub ahead: u32,
+    /// The worktree whose folder is there that has the branch checked
+    /// out, where one has.
+    pub held_by: Option<PathBuf>,
+}
+
+/// What becomes of the clone's own default branch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LevelAct {
+    /// It is at origin's already.
+    Level,
+    /// It moves to origin's, a fast-forward no worktree holds.
+    Move,
+    /// It is left, holding this many commits origin's lacks.
+    Ahead(u32),
+    /// It is left, checked out in this worktree.
+    Held(PathBuf),
+}
+
+/// Levelling (`herdr.13` as amended 2026-10-26, carried whole): the
+/// clone's own default branch moves to origin's only as a fast-forward
+/// no worktree holds.
+pub fn level(facts: &LevelFacts) -> LevelAct {
+    if facts.own == facts.origin {
+        LevelAct::Level
+    } else if facts.ahead > 0 {
+        LevelAct::Ahead(facts.ahead)
+    } else if let Some(worktree) = &facts.held_by {
+        LevelAct::Held(worktree.clone())
+    } else {
+        LevelAct::Move
+    }
+}
+
+/// Reads levelling's facts for `default` in `bare`.
+pub fn level_facts(git: &Git, bare: &Path, default: &str) -> Result<LevelFacts, Words> {
+    let at = At::GitDir(bare);
+    let own_ref = format!("refs/heads/{default}");
+    let origin_ref = format!("refs/remotes/origin/{default}");
+    let own = git.run(at, ["rev-parse", &own_ref])?.trim().to_string();
+    let origin = git.run(at, ["rev-parse", &origin_ref])?.trim().to_string();
+    let counted = git.run(at, ["rev-list", "--count", &own_ref, "--not", &origin_ref])?;
+    let ahead = counted
+        .trim()
+        .parse()
+        .map_err(|_| Words(format!("rev-list counted {:?}", counted.trim())))?;
+    let held_by = worktrees(git, bare)?
+        .into_iter()
+        .find(|worktree| worktree.branch.as_deref() == Some(&own_ref) && worktree.path.exists())
+        .map(|worktree| worktree.path);
+    Ok(LevelFacts {
+        own,
+        origin,
+        ahead,
+        held_by,
+    })
+}
+
+/// Moves the clone's own `default` to origin's tip, only from where
+/// `facts` read it, so a branch moved since is left.
+pub fn level_to(git: &Git, bare: &Path, default: &str, facts: &LevelFacts) -> Result<(), Words> {
+    git.run(
+        At::GitDir(bare),
+        [
+            "update-ref",
+            &format!("refs/heads/{default}"),
+            &facts.origin,
+            &facts.own,
+        ],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -307,5 +435,66 @@ mod tests {
         for name in ["flume", ".partial", "..partial", ".github", "flume.partial"] {
             assert!(!is_partial(OsStr::new(name)), "{name}");
         }
+    }
+
+    fn facts(own: &str, ahead: u32, held_by: Option<&str>) -> LevelFacts {
+        LevelFacts {
+            own: own.to_string(),
+            origin: "b".to_string(),
+            ahead,
+            held_by: held_by.map(PathBuf::from),
+        }
+    }
+
+    #[test]
+    fn behind_origin_and_held_by_no_worktree_moves() {
+        assert_eq!(level(&facts("a", 0, None)), LevelAct::Move);
+    }
+
+    #[test]
+    fn ahead_of_origin_is_left() {
+        assert_eq!(level(&facts("a", 2, None)), LevelAct::Ahead(2));
+        assert_eq!(level(&facts("a", 1, Some("/w"))), LevelAct::Ahead(1));
+    }
+
+    #[test]
+    fn held_by_a_worktree_is_left() {
+        assert_eq!(
+            level(&facts("a", 0, Some("/w"))),
+            LevelAct::Held(PathBuf::from("/w"))
+        );
+    }
+
+    #[test]
+    fn at_origin_is_level() {
+        assert_eq!(level(&facts("b", 0, Some("/w"))), LevelAct::Level);
+    }
+
+    #[test]
+    fn worktrees_listed() {
+        let listed = "worktree /d/r.git\0bare\0\0\
+                      worktree /w/one\0HEAD 1a2b\0branch refs/heads/main\0\0\
+                      worktree /w/two\0HEAD 3c4d\0detached\0prunable gone\0\0";
+        assert_eq!(
+            read_worktrees(listed),
+            [
+                Worktree {
+                    path: PathBuf::from("/d/r.git"),
+                    branch: None,
+                    bare: true,
+                },
+                Worktree {
+                    path: PathBuf::from("/w/one"),
+                    branch: Some("refs/heads/main".to_string()),
+                    bare: false,
+                },
+                Worktree {
+                    path: PathBuf::from("/w/two"),
+                    branch: None,
+                    bare: false,
+                },
+            ]
+        );
+        assert_eq!(read_worktrees(""), []);
     }
 }
