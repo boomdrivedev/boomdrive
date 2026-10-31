@@ -1,0 +1,9 @@
+# flywheel-runner's crates: the binary, for now. Each is a moon project of
+# its own (core.7).
+[workspace]
+resolver = "2"
+members = ["crates/flywheel"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"

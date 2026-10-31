@@ -1,0 +1,10 @@
+[package]
+name = "flywheel"
+version.workspace = true
+edition.workspace = true
+description = "The runner on each host: keeps the clones its configuration names and carries the control plane's work into flume launches."
+publish = false
+
+[[bin]]
+name = "flywheel"
+path = "src/main.rs"

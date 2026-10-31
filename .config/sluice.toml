@@ -1,0 +1,25 @@
+# sluice gates every merge onto main: the checks moon tags, in
+# flywheel-runner's devenv shell, main on GitHub as the sluice app lands
+# it. The layers are .moon/workspace.yml's.
+[tests]
+runner = "moon"
+toolchain = ["devenv", "print-dev-env"]
+
+[executor]
+kind = "sandbox"
+# Nothing the checks run reaches past the host.
+network = "localhost"
+
+# A replay counts on main only when a sandboxed or confined run recorded a
+# pass for its key: the cache also holds what open shells ran.
+[branches.main]
+required = ["#check-fast"]
+trust = ["confined", "sandbox"]
+parallel = 2
+batch = false
+flaky = "fail"
+timeout = "10m"
+remote = "origin"
+
+[branches.main.pull_requests]
+reviews = 0

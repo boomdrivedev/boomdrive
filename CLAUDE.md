@@ -1,0 +1,46 @@
+# flywheel-runner
+
+The thin runner on each host, one binary named `flywheel`. It keeps the
+clones and views of the repositories its configuration names, and turns
+the control plane's work into `flume launch` calls, carrying their
+results back. It reaches the control plane through one interface: crew's
+implementation, which reads and writes records in crew's state
+repository, now, and a hosted control plane's, an outgoing WebSocket,
+later. For now the crate prints its version and nothing more.
+
+## Rules
+
+The rules are in `docs/architecture/`: `core.md` binds wherever a change
+is made, and an area page, when one exists, binds the paths its
+frontmatter names. The decisions behind them are `docs/adr/`, one MADR
+record each. A design or a commit that relies on a rule cites its id;
+one that departs from a rule says which and why. A rule is sent to
+`core.md` or its area page with an id, the next free number in its area,
+amended in the same commit as the decision that changes it.
+
+## Checks
+
+Every tool runs through the shell, one command at a time:
+`devenv shell -- <command>`. moon runs the checks, tagged by layer
+(`.moon/workspace.yml`); `.config/sluice.toml` says which layers each
+branch requires:
+
+| layer | what | who requires it |
+|---|---|---|
+| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the root's format (treefmt), toolchain, records, specs and open changes | main |
+
+Run suites through sluice, so the agents on this host take turns under
+its bound: once your work is committed, `sluice exec main` for the
+gate's checks, and while iterating `sluice exec main -- moon run
+<project>:<task>`. The projects are those `.moon/workspace.yml` lists:
+`flywheel` (`crates/flywheel`) and `root`. A quick, narrow call, `cargo
+check` or one unit test, is fine to run directly. `devenv shell -- moon
+run :#check-fast` runs the fast layer.
+
+## Commits
+
+Stage by pathspec and commit the paths you wrote: `git add <paths>`, then
+`git commit -m "<subject>" -- <paths>`. Never `-a`, never `add .`.
+Conventional Commits subjects, scope the part of the tree touched.
+
+@docs/architecture/core.md

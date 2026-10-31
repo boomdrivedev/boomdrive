@@ -1,0 +1,10 @@
+# The Rust that rustup runs anywhere in this tree: the version .prototools
+# pins, with the tools the gate runs, installed by the first rustup proxy
+# that runs here where the toolchain lacks them. Without it a tool the
+# pinned toolchain lacks is not installed, or is found further along PATH
+# in rustup's default toolchain, at whatever version that host has (rule
+# core.8). check-toolchain.sh holds the channel to .prototools.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

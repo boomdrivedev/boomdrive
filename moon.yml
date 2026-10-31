@@ -1,0 +1,45 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The workspace as a whole: what spans the tree, each check one task
+# (core.7).
+tasks:
+  # Every formatter treefmt.nix configures, writing nothing it would change
+  # and keeping no cache outside the tree. It reads every tracked file: one
+  # that no formatter claims and no exclude names fails it (core.7).
+  format:
+    command: 'treefmt --ci'
+    inputs: ['/**/*', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # rustc, cargo, clippy and rustfmt are the build .prototools pins, and
+  # OpenSpec the release devenv.nix pins, on whichever host runs the gate
+  # (core.8). It reads the tools it checks from outside the tree, so it
+  # never replays.
+  toolchain:
+    command: 'sh check-toolchain.sh'
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true, cache: false}
+  # No two decision records share a number (check-adrs.sh).
+  adrs:
+    command: 'sh check-adrs.sh'
+    inputs: ['/docs/adr/*.md', '/check-adrs.sh']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # Every spec under openspec/specs passes openspec validate --strict, which
+  # fails a warning as an error, by the openspec devenv.nix pins (core.8).
+  # It sends no usage statistics and asks for no newer release.
+  specs:
+    command: 'openspec validate --specs --strict --no-interactive'
+    env: {OPENSPEC_TELEMETRY: '0', OPENSPEC_NO_UPDATE_CHECK: '1'}
+    inputs: ['/openspec/specs/**/*', '/openspec/config.yaml', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # Every open change under openspec/changes passes the same strict
+  # validation. A MODIFIED block is read against the specs it replaces, so
+  # they are inputs too; the archived changes are not.
+  changes:
+    command: 'openspec validate --changes --strict --no-interactive'
+    env: {OPENSPEC_TELEMETRY: '0', OPENSPEC_NO_UPDATE_CHECK: '1'}
+    inputs: ['/openspec/changes/**/*', '!/openspec/changes/archive/**/*', '/openspec/specs/**/*', '/openspec/config.yaml', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}

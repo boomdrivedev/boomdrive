@@ -1,0 +1,6 @@
+# The application tools, installed by proto and activated by the devenv
+# shell: moon itself, and the Rust toolchain the crate's checks run with
+# (.moon/toolchains.yml reads the pin). The system tools, proto among
+# them, are devenv.nix's.
+moon = "2.6.1"
+rust = "1.98.1"
