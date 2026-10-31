@@ -2,3 +2,4 @@
 //! the repositories its configuration names (design 1).
 
 pub mod config;
+pub mod git;
