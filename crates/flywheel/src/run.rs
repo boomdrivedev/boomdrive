@@ -1,16 +1,70 @@
 //! `flywheel run` (design 10): the start's checks, the lock that keeps
-//! one runner to a data directory, and its passes. The runner opens no
-//! listening socket: every connection it makes is git's, outgoing
-//! (core.3).
+//! one runner to a data directory, and its loop: a pass on the timer,
+//! each landing it is told of kept at once, and its stop. The loop is the
+//! runner's one thread of work, so no two of its git calls touch one
+//! clone at once. The runner opens no listening socket: every connection
+//! it makes is git's, outgoing (core.3).
 
-use crate::config::{self, Config, Env};
+use crate::config::{self, Address, Config, Env};
 use crate::git::Git;
 use crate::pass::{self, Outcome};
+use signal_hook::consts::{SIGINT, SIGTERM};
+use signal_hook::iterator::Signals;
 use std::ffi::OsString;
 use std::fs::{self, File, TryLockError};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::time::Instant;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// What the loop is told between passes.
+pub enum Event {
+    /// A landing on a repository, which is kept at once.
+    Landed(Address),
+    /// The runner is to stop.
+    Stop,
+}
+
+/// Tells the runner of landings, from whatever learns of them.
+#[derive(Clone)]
+pub struct Notices {
+    events: Sender<Event>,
+}
+
+impl Notices {
+    /// Tells the runner of a landing on `address`, which it keeps at once
+    /// between passes, leaving its timer where it was. A runner that has
+    /// stopped is told nothing.
+    pub fn landed(&self, address: Address) {
+        let _ = self.events.send(Event::Landed(address));
+    }
+}
+
+/// Stops the runner: it finishes the git call in hand, keeps no further
+/// repository and says it stopped.
+#[derive(Clone)]
+pub struct Stopper {
+    events: Sender<Event>,
+    stop: Arc<AtomicBool>,
+}
+
+impl Stopper {
+    /// Stops the runner, its pass read between repositories and its wait
+    /// woken.
+    pub fn stop(&self) {
+        self.stop.store(true, Ordering::SeqCst);
+        let _ = self.events.send(Event::Stop);
+    }
+}
+
+/// When the pass after one that began at `last_start` begins:
+/// `fetch_every` after it, or `now` where that is past (design 10).
+pub fn next_pass(last_start: Instant, every: Duration, now: Instant) -> Instant {
+    (last_start + every).max(now)
+}
 
 /// A runner whose start's checks passed, holding the lock on its data
 /// directory until it is dropped.
@@ -20,6 +74,9 @@ pub struct Runner {
     file: PathBuf,
     data: PathBuf,
     config: Config,
+    events: Sender<Event>,
+    waiting: Receiver<Event>,
+    stop: Arc<AtomicBool>,
     _lock: File,
 }
 
@@ -47,14 +104,47 @@ impl Runner {
             )
         })?;
         let lock = lock(&data)?;
+        let (events, waiting) = mpsc::channel();
         Ok(Runner {
             git,
             home: env.home,
             file,
             data,
             config,
+            events,
+            waiting,
+            stop: Arc::new(AtomicBool::new(false)),
             _lock: lock,
         })
+    }
+
+    /// What tells the runner of landings.
+    pub fn notices(&self) -> Notices {
+        Notices {
+            events: self.events.clone(),
+        }
+    }
+
+    /// What stops the runner.
+    pub fn stopper(&self) -> Stopper {
+        Stopper {
+            events: self.events.clone(),
+            stop: Arc::clone(&self.stop),
+        }
+    }
+
+    /// Stops the runner on SIGTERM or SIGINT, from a thread that waits
+    /// for either.
+    pub fn stop_on_signals(&self) -> Result<(), String> {
+        let mut signals = Signals::new([SIGTERM, SIGINT])
+            .map_err(|error| format!("SIGTERM and SIGINT cannot be caught: {error}"))?;
+        let stopper = self.stopper();
+        thread::spawn(move || {
+            for _ in signals.forever() {
+                stopper.stop();
+            }
+        });
+        Ok(())
     }
 
     /// The line the runner starts with: its version, configuration file,
@@ -75,27 +165,58 @@ impl Runner {
 
     /// One pass over the configuration the runner started with.
     pub fn once(&self, say: &mut dyn FnMut(String)) -> Outcome {
-        pass::pass(&self.git, &self.data, &self.config, say)
+        pass::pass(&self.git, &self.data, &self.config, &self.stop, say)
     }
 
-    /// Passes until the process is stopped, each `fetch_every` after the
-    /// start of the one before, the configuration read again for every
-    /// pass after the first. A pass that cannot read it names why and
-    /// keeps nothing.
-    pub fn keep(&self, say: &mut dyn FnMut(String)) -> ! {
+    /// Passes until stopped (design 10): one at once, on the
+    /// configuration the runner started with, then one each `fetch_every`
+    /// after the start of the one before, the configuration read again
+    /// for each. A pass that cannot read it names why and keeps nothing.
+    /// Between passes, each landing it is told of is kept at once.
+    /// Stopped, it keeps no further repository and says so.
+    pub fn keep(&self, say: &mut dyn FnMut(String)) {
         let mut read = Ok(self.config.clone());
         let mut every = self.config.fetch_every;
-        loop {
+        'passes: loop {
             let began = Instant::now();
             match read {
                 Ok(config) => {
                     every = config.fetch_every;
-                    pass::pass(&self.git, &self.data, &config, say);
+                    pass::pass(&self.git, &self.data, &config, &self.stop, say);
                 }
                 Err(why) => say(format!("flywheel: {why}: nothing kept this pass")),
             }
-            std::thread::sleep(every.saturating_sub(began.elapsed()));
+            let due = next_pass(began, every, Instant::now());
+            loop {
+                if self.stop.load(Ordering::SeqCst) {
+                    break 'passes;
+                }
+                let wait = due.saturating_duration_since(Instant::now());
+                match self.waiting.recv_timeout(wait) {
+                    Ok(Event::Landed(address)) => self.landed(&address, say),
+                    Ok(Event::Stop) => break 'passes,
+                    Err(RecvTimeoutError::Timeout) => break,
+                    Err(RecvTimeoutError::Disconnected) => {
+                        unreachable!("the runner holds a sender of its own")
+                    }
+                }
+            }
             read = config::read(&self.file, &self.home);
+        }
+        say("flywheel: stopped".to_string());
+    }
+
+    /// Keeps `address` at once, told of a landing on it, against the
+    /// configuration as it stands: read again, so a repository dropped
+    /// since the last pass is never fetched.
+    fn landed(&self, address: &Address, say: &mut dyn FnMut(String)) {
+        match config::read(&self.file, &self.home) {
+            Ok(config) => {
+                pass::keep_one(&self.git, &self.data, &config, address, say);
+            }
+            Err(why) => say(format!(
+                "flywheel: {why}: nothing kept at the landing on {address}"
+            )),
         }
     }
 }
@@ -123,10 +244,18 @@ fn lock(data: &Path) -> Result<File, String> {
 
 /// `flywheel run`, on the configuration `file` names, else the default
 /// one: starts the runner and says so on standard error, then makes one
-/// pass where `once`, else passes until it is stopped. Exits 2 where the
-/// runner does not start, and 1 where the one pass failed.
+/// pass where `once`, else passes until SIGTERM or SIGINT stops it. Exits
+/// 2 where the runner does not start, 1 where the one pass failed, and 0
+/// otherwise.
 pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
-    let runner = match Runner::start(file, |name| std::env::var_os(name), Git::default()) {
+    let started =
+        Runner::start(file, |name| std::env::var_os(name), Git::default()).and_then(|runner| {
+            if !once {
+                runner.stop_on_signals()?;
+            }
+            Ok(runner)
+        });
+    let runner = match started {
         Ok(runner) => runner,
         Err(why) => {
             eprintln!("flywheel: {why}");
@@ -137,9 +266,30 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
     let mut say = |line: String| eprintln!("{line}");
     if !once {
         runner.keep(&mut say);
+        return ExitCode::SUCCESS;
     }
     match runner.once(&mut say) {
         Outcome::Kept => ExitCode::SUCCESS,
         Outcome::Failed => ExitCode::from(1),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::next_pass;
+    use std::time::{Duration, Instant};
+
+    /// The running spec's "Passes on the timer": with `fetch_every` two
+    /// minutes and a pass begun at 10:00:00, the next begins at 10:02:00,
+    /// or at once when the pass before ends later than that.
+    #[test]
+    fn passes_on_the_timer() {
+        let ten = Instant::now();
+        let every = Duration::from_secs(120);
+        let due = ten + every;
+        assert_eq!(next_pass(ten, every, ten + Duration::from_secs(5)), due);
+        assert_eq!(next_pass(ten, every, due), due);
+        let late = ten + Duration::from_secs(150);
+        assert_eq!(next_pass(ten, every, late), late);
     }
 }

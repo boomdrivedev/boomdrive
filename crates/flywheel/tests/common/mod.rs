@@ -11,6 +11,7 @@ use flywheel::pass::Outcome;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::AtomicBool;
 use tempfile::TempDir;
 
 /// A configuration keeping `addresses`, in order, with every other
@@ -159,10 +160,13 @@ impl Scratch {
         let config = flywheel::config::parse(text, &self.config_file(), &self.home)
             .expect("a configuration");
         let mut lines = Vec::new();
-        let outcome =
-            flywheel::pass::pass(&self.runner_git(), &self.data(), &config, &mut |line| {
-                lines.push(line)
-            });
+        let outcome = flywheel::pass::pass(
+            &self.runner_git(),
+            &self.data(),
+            &config,
+            &AtomicBool::new(false),
+            &mut |line| lines.push(line),
+        );
         (outcome, lines)
     }
 

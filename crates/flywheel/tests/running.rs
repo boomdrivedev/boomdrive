@@ -1,14 +1,16 @@
 //! `flywheel` as a host runs it: its version and usage, `run --once`,
-//! the configuration file it reads, and the start's checks, the lock on
-//! the data directory among them (the running and configuration specs;
-//! design 10).
+//! `run` until it is stopped, the configuration file it reads, and the
+//! start's checks, the lock on the data directory among them (the running
+//! and configuration specs; design 10).
 
 mod common;
 
 use common::{keeping, Scratch};
 use std::fs::File;
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
-use std::process::Output;
+use std::process::{Child, Output, Stdio};
+use std::time::{Duration, Instant};
 
 fn stdout(output: &Output) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned()
@@ -144,6 +146,67 @@ fn a_clone_failed() {
         ),
         sluice.tip("main")
     );
+}
+
+/// `flywheel run` running, killed where a test ends before it stops.
+struct Running(Child);
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+#[test]
+fn stopped_while_waiting() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    let file = scratch.configure(&keeping(&["agentplot/flume"]));
+    let mut running = Running(
+        scratch
+            .flywheel()
+            .arg("run")
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("flywheel runs"),
+    );
+    let mut said = BufReader::new(running.0.stderr.take().expect("its standard error"));
+    let first: Vec<String> = said
+        .by_ref()
+        .lines()
+        .take(3)
+        .map(|line| line.expect("a line"))
+        .collect();
+    assert_eq!(
+        first,
+        [
+            started(&scratch, "1 repository", &file),
+            "agentplot/flume: cloned from https://github.com/agentplot/flume.git".to_string(),
+            format!(
+                "agentplot/flume: view made at {}, at origin/main {}",
+                scratch.home.join("Code/agentplot/flume").display(),
+                &flume.tip("main")[..7]
+            ),
+        ]
+    );
+
+    let pid = libc::pid_t::try_from(running.0.id()).expect("a process id");
+    // SAFETY: kill(2) takes plain integers and touches no memory of ours.
+    assert_eq!(unsafe { libc::kill(pid, libc::SIGTERM) }, 0);
+
+    let deadline = Instant::now() + Duration::from_secs(1);
+    let status = loop {
+        if let Some(status) = running.0.try_wait().expect("its status") {
+            break status;
+        }
+        assert!(Instant::now() < deadline, "not stopped within a second");
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert_eq!(status.code(), Some(0));
+    let mut rest = String::new();
+    said.read_to_string(&mut rest).expect("its standard error");
+    assert_eq!(rest, "flywheel: stopped\n");
 }
 
 #[test]

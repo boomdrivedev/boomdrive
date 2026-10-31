@@ -2,8 +2,9 @@
 //! repository in the file's order, its clone made or fetched, its HEAD
 //! settled, its own default branch levelled and its view kept, then each
 //! dropped repository let go. Each repository is independent: a failure
-//! in one is named and the next is kept. The pass says each act and each thing it names as one line,
-//! `<owner>/<name>: <words>`, and a pass with nothing to say writes
+//! in one is named and the next is kept. A pass stopped keeps no further
+//! repository. The pass says each act and each thing it names as one
+//! line, `<owner>/<name>: <words>`, and a pass with nothing to say writes
 //! nothing.
 
 use crate::clone::{self, LevelAct};
@@ -13,6 +14,7 @@ use crate::lacks;
 use crate::view::{self, OldAct, ViewAct};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Whether every git call of a pass succeeded. Something left and named
 /// by rule, a folder the runner did not make among it, is not a failure.
@@ -36,31 +38,29 @@ impl Outcome {
 }
 
 /// One pass over `config`, the runner's clones kept in `data`, each line
-/// said to `say` as it is said.
-pub fn pass(git: &Git, data: &Path, config: &Config, say: &mut dyn FnMut(String)) -> Outcome {
-    let clones = match clone::find(git, data) {
-        Ok(clones) => clones,
-        Err(error) => {
-            say(format!(
-                "flywheel: {} cannot be read: {error}",
-                clone::repositories(data).display()
-            ));
-            return Outcome::Failed;
-        }
+/// said to `say` as it is said. Once `stop` is set, no further
+/// repository is kept or let go, and the pass ends.
+pub fn pass(
+    git: &Git,
+    data: &Path,
+    config: &Config,
+    stop: &AtomicBool,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let Some(clones) = find(git, data, say) else {
+        return Outcome::Failed;
     };
     let mut outcome = Outcome::Kept;
     for address in &config.repositories {
-        let found = clones
-            .iter()
-            .find(|(kept, _)| kept == address)
-            .map(|(_, container)| container.as_path());
-        let view = config::view_path(config, address);
-        let kept = keep(git, data, address, found, &view, &mut |words| {
-            say(format!("{address}: {words}"))
-        });
-        outcome = outcome.and(kept);
+        if stop.load(Ordering::SeqCst) {
+            return outcome;
+        }
+        outcome = outcome.and(keep_configured(git, data, config, &clones, address, say));
     }
     for (address, container) in &clones {
+        if stop.load(Ordering::SeqCst) {
+            return outcome;
+        }
         if config.repositories.contains(address) {
             continue;
         }
@@ -70,6 +70,63 @@ pub fn pass(git: &Git, data: &Path, config: &Config, say: &mut dyn FnMut(String)
         outcome = outcome.and(dropped);
     }
     outcome.and(clear_partials(data, &clones, say))
+}
+
+/// Keeps `address` alone, just as a pass keeps it, against `config`
+/// (design 9): what a landing told of it runs. An address `config` does
+/// not name is named, and nothing is cloned or fetched for it (core.5).
+pub fn keep_one(
+    git: &Git,
+    data: &Path,
+    config: &Config,
+    address: &Address,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let Some(address) = config.repositories.iter().find(|kept| *kept == address) else {
+        say(format!(
+            "{address}: not kept: the configuration does not name it"
+        ));
+        return Outcome::Kept;
+    };
+    match find(git, data, say) {
+        Some(clones) => keep_configured(git, data, config, &clones, address, say),
+        None => Outcome::Failed,
+    }
+}
+
+/// The runner's clones in `data`, none where they cannot be read, which
+/// is named.
+fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<(Address, PathBuf)>> {
+    match clone::find(git, data) {
+        Ok(clones) => Some(clones),
+        Err(error) => {
+            say(format!(
+                "flywheel: {} cannot be read: {error}",
+                clone::repositories(data).display()
+            ));
+            None
+        }
+    }
+}
+
+/// Keeps `address`, which `config` names, its clone among `clones` where
+/// it has one, each line said with its address.
+fn keep_configured(
+    git: &Git,
+    data: &Path,
+    config: &Config,
+    clones: &[(Address, PathBuf)],
+    address: &Address,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let found = clones
+        .iter()
+        .find(|(kept, _)| kept == address)
+        .map(|(_, container)| container.as_path());
+    let view = config::view_path(config, address);
+    keep(git, data, address, found, &view, &mut |words| {
+        say(format!("{address}: {words}"))
+    })
 }
 
 /// Lets go of the clone in `container`, whose address the configuration
