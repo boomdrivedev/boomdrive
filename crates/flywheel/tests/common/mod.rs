@@ -6,10 +6,22 @@
 
 #![allow(dead_code)]
 
+use flywheel::git::Git;
+use flywheel::pass::Outcome;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::TempDir;
+
+/// A configuration keeping `addresses`, in order, with every other
+/// setting its default.
+pub fn keeping(addresses: &[&str]) -> String {
+    let entries: Vec<String> = addresses
+        .iter()
+        .map(|address| format!("{address:?}"))
+        .collect();
+    format!("repositories = [{}]\n", entries.join(", "))
+}
 
 /// A scratch host, removed when dropped.
 pub struct Scratch {
@@ -102,6 +114,56 @@ impl Scratch {
     /// The runner's binary under the scratch environment.
     pub fn flywheel(&self) -> Command {
         self.command(env!("CARGO_BIN_EXE_flywheel"))
+    }
+
+    /// git as the runner runs it in-process on the scratch host.
+    pub fn runner_git(&self) -> Git {
+        Git::new(self.overlay())
+    }
+
+    /// The runner's configuration file where it reads it by default,
+    /// under `XDG_CONFIG_HOME`.
+    pub fn config_file(&self) -> PathBuf {
+        self.home.join(".config/flywheel/config.toml")
+    }
+
+    /// Writes `text` as the runner's configuration file and gives its
+    /// path.
+    pub fn configure(&self, text: &str) -> PathBuf {
+        let file = self.config_file();
+        std::fs::create_dir_all(file.parent().expect("the file's folder"))
+            .expect("the configuration's folder");
+        std::fs::write(&file, text).expect("the configuration written");
+        file
+    }
+
+    /// The runner's data directory, under `XDG_DATA_HOME`.
+    pub fn data(&self) -> PathBuf {
+        self.home.join(".local/share/flywheel")
+    }
+
+    /// The container of `address`'s clone, `<data>/repositories/<owner>/<name>`.
+    pub fn container(&self, address: &str) -> PathBuf {
+        self.data().join("repositories").join(address)
+    }
+
+    /// The bare clone of `address`, `<container>/<name>.git`.
+    pub fn clone_of(&self, address: &str) -> PathBuf {
+        let name = address.rsplit('/').next().expect("a name");
+        self.container(address).join(format!("{name}.git"))
+    }
+
+    /// One pass in-process over the configuration `text`, read as the
+    /// default file: its outcome and the lines it said.
+    pub fn pass(&self, text: &str) -> (Outcome, Vec<String>) {
+        let config = flywheel::config::parse(text, &self.config_file(), &self.home)
+            .expect("a configuration");
+        let mut lines = Vec::new();
+        let outcome =
+            flywheel::pass::pass(&self.runner_git(), &self.data(), &config, &mut |line| {
+                lines.push(line)
+            });
+        (outcome, lines)
     }
 
     /// git's output from `args` in `dir`, trimmed; panics with git's words

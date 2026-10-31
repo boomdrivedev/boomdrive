@@ -7,7 +7,7 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 
 /// The least git the runner runs with: 2.48, the first whose fetch keeps
 /// origin's HEAD current (`remote.origin.followRemoteHEAD`, design 6).
@@ -68,6 +68,18 @@ impl Git {
         output(self.command(at, args))
     }
 
+    /// git's standard output from `args` at `at` where git answers yes
+    /// (exits 0), none where it answers no (exits 1), as `rev-parse
+    /// --verify --quiet`, `symbolic-ref --quiet` and `config --get`
+    /// answer; its words where it failed otherwise.
+    pub fn ask<I, S>(&self, at: At, args: I) -> Result<Option<String>, Words>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        answer(self.command(at, args))
+    }
+
     /// Refused where git cannot be run or is older than the least the
     /// runner runs with (design 10's start check 3).
     pub fn check_version(&self) -> Result<(), String> {
@@ -110,18 +122,39 @@ impl Git {
 }
 
 /// `command`'s standard output, or its words where it failed.
-fn output(mut command: Command) -> Result<String, Words> {
-    let output = command
-        .output()
-        .map_err(|error| Words(format!("git could not run: {error}")))?;
+fn output(command: Command) -> Result<String, Words> {
+    let output = spawn(command)?;
     if output.status.success() {
         return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
     }
+    Err(failure(&output))
+}
+
+/// `command`'s standard output where it exits 0, none where it exits 1,
+/// or its words where it failed otherwise.
+fn answer(command: Command) -> Result<Option<String>, Words> {
+    let output = spawn(command)?;
+    match output.status.code() {
+        Some(0) => Ok(Some(String::from_utf8_lossy(&output.stdout).into_owned())),
+        Some(1) => Ok(None),
+        _ => Err(failure(&output)),
+    }
+}
+
+/// `command` run to its end, or why it could not run.
+fn spawn(mut command: Command) -> Result<Output, Words> {
+    command
+        .output()
+        .map_err(|error| Words(format!("git could not run: {error}")))
+}
+
+/// The words of a call that failed: its last line on standard error.
+fn failure(output: &Output) -> Words {
     let stderr = String::from_utf8_lossy(&output.stderr);
-    Err(Words(match last_line(&stderr) {
+    Words(match last_line(&stderr) {
         Some(line) => line.to_string(),
         None => format!("git failed ({}) and said nothing", output.status),
-    }))
+    })
 }
 
 /// The last line `text` holds that is not blank, trimmed.
@@ -271,6 +304,16 @@ mod tests {
         assert_eq!(output(saying("warning: kept\\n", 0)), Ok("out\n".into()));
         let silent = output(saying("", 1)).unwrap_err();
         assert!(silent.0.ends_with("and said nothing"), "{silent}");
+    }
+
+    #[test]
+    fn an_answer_is_yes_no_or_a_failure() {
+        assert_eq!(answer(saying("", 0)), Ok(Some("out\n".into())));
+        assert_eq!(answer(saying("", 1)), Ok(None));
+        assert_eq!(
+            answer(saying("fatal: not a git repository\\n", 128)),
+            Err(Words("fatal: not a git repository".into()))
+        );
     }
 
     #[test]
