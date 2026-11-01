@@ -44,7 +44,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 6. A bolt's branch
 
-- [ ] 6.1 A branch command is carried out by `sluice branch create` in the clone, once, with sluice's answer carried as given and the origin commit read from origin. A command for a repository not kept is refused, one whose clone is not made is left untaken, and a command of another sort is refused (design Decision 15; branch-commands spec, every requirement; Task notes 6.1). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of the branch-commands spec.
+- [x] 6.1 A branch command is carried out by `sluice branch create` in the clone, once, with sluice's answer carried as given and the origin commit read from origin. A command for a repository not kept is refused, one whose clone is not made is left untaken, and a command of another sort is refused (design Decision 15; branch-commands spec, every requirement; Task notes 6.1). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of the branch-commands spec.
 - [ ] 6.2 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test` passes.
 
 ## 7. The terminal relay

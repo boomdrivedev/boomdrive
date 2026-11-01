@@ -60,11 +60,11 @@ pub fn url(address: &Address) -> String {
     format!("https://github.com/{address}.git")
 }
 
-/// Why a clone was not made or fetched.
+/// Why a clone was not made or fetched, or its origin not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Failure {
     /// The host's git would reach origin by ssh, at this URL, so nothing
-    /// was fetched (design 5).
+    /// was fetched or read (design 5).
     Ssh(String),
     /// A git call failed, in git's words.
     Git(Words),
@@ -214,12 +214,31 @@ fn io_failure(path: &Path, error: io::Error) -> Failure {
 /// default. No fetch is run where the host's git would reach origin by
 /// ssh.
 pub fn fetch(git: &Git, bare: &Path) -> Result<(), Failure> {
+    not_by_ssh(git, bare)?;
+    git.run(At::GitDir(bare), ["fetch", "--prune", "--quiet", "origin"])?;
+    Ok(())
+}
+
+/// The commit origin's `branch` stands at, as `ls-remote` reads it from
+/// origin now, or none where origin holds no such branch (design Decision
+/// 15). Like a fetch, it never reaches origin by ssh.
+pub fn origin_commit(git: &Git, bare: &Path, branch: &str) -> Result<Option<String>, Failure> {
+    not_by_ssh(git, bare)?;
+    let name = format!("refs/heads/{branch}");
+    let listed = git.run(At::GitDir(bare), ["ls-remote", "origin", &name])?;
+    Ok(listed.lines().find_map(|line| {
+        let (commit, named) = line.split_once('\t')?;
+        (named == name).then(|| commit.to_string())
+    }))
+}
+
+/// Refused where the host's git would reach `bare`'s origin by ssh.
+fn not_by_ssh(git: &Git, bare: &Path) -> Result<(), Failure> {
     let url = git.run(At::GitDir(bare), ["ls-remote", "--get-url", "origin"])?;
     let url = url.trim();
     if git::is_ssh(url) {
         return Err(Failure::Ssh(url.to_string()));
     }
-    git.run(At::GitDir(bare), ["fetch", "--prune", "--quiet", "origin"])?;
     Ok(())
 }
 

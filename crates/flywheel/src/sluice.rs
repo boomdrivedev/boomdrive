@@ -1,10 +1,11 @@
-//! sluice's command line (design Decision 13), the one way the runner
-//! reaches sluice (record 0001). Each call runs in a clone's container,
-//! where sluice finds the repository, and its answer is read by sluice's
-//! exit and kept as sluice gave it (core.1). Of a submission's entry the
-//! runner carries the fields the cloud's copy of a sluice entry holds,
-//! each field's text as sluice printed it, and never a log or where one
-//! is kept (core.11).
+//! sluice's command line (design Decisions 13 and 15), the one way the
+//! runner reaches sluice (record 0001). Each call runs in a clone's
+//! container, where sluice finds the repository, and its answer is read
+//! by sluice's exit and kept as sluice gave it (core.1). Of a
+//! submission's entry the runner carries the fields the cloud's copy of a
+//! sluice entry holds, each field's text as sluice printed it, and never
+//! a log or where one is kept (core.11). Of a branch it makes, the runner
+//! carries sluice's whole answer.
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::Deserialize;
@@ -34,6 +35,17 @@ pub enum Reply {
     Refused(String),
 }
 
+/// sluice's answer to a command whose standard output is carried
+/// whatever its exit (design Decision 15).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Printed {
+    /// Its standard output, as sluice printed it.
+    pub text: String,
+    /// Where sluice exited other than 0, the `message` of its `error`
+    /// answer, as given, or, where it printed none, its standard error.
+    pub refused: Option<String>,
+}
+
 /// Why `sluice` gave no answer at all: it could not be run, or a signal
 /// ended it. Nothing is kept of it, and the next pass asks again.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -50,6 +62,9 @@ pub trait Sluice {
     /// `sluice status <id> --json`, the submission `id` of the repository
     /// whose clone is in `container_dir`.
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun>;
+    /// `sluice branch create <branch> --from <from> --json`, in the
+    /// repository whose clone is in `container_dir`.
+    fn branch(&self, container_dir: &Path, branch: &str, from: &str) -> Result<Printed, Unrun>;
 }
 
 /// sluice's command line, by the program at `program`: `sluice` on the
@@ -66,25 +81,34 @@ impl Cli {
         }
     }
 
-    /// sluice's answer to `args`, run in `dir`.
-    fn run<I, S>(&self, dir: &Path, args: I) -> Result<Reply, Unrun>
+    /// sluice's output from `args`, run in `dir`.
+    fn run<I, S>(&self, dir: &Path, args: I) -> Result<Output, Unrun>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        let output = Command::new(&self.program)
+        Command::new(&self.program)
             .args(args)
             .current_dir(dir)
             .stdin(Stdio::null())
             .output()
-            .map_err(|error| Unrun(format!("sluice could not run: {error}")))?;
-        read(&output)
+            .map_err(|error| Unrun(format!("sluice could not run: {error}")))
     }
 }
 
 impl Sluice for Cli {
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun> {
-        self.run(container_dir, ["status", id, "--json"])
+        read(&self.run(container_dir, ["status", id, "--json"])?)
+    }
+
+    fn branch(&self, container_dir: &Path, branch: &str, from: &str) -> Result<Printed, Unrun> {
+        let args = ["branch", "create", branch, "--from", from, "--json"];
+        let output = self.run(container_dir, args)?;
+        let refused = (exit(&output)? != 0).then(|| refusal(&output));
+        Ok(Printed {
+            text: String::from_utf8_lossy(&output.stdout).into_owned(),
+            refused,
+        })
     }
 }
 
@@ -101,22 +125,37 @@ struct Error {
 
 /// sluice's answer, read by its exit, or none where a signal ended it.
 fn read(output: &Output) -> Result<Reply, Unrun> {
-    let Some(code) = output.status.code() else {
-        return Err(Unrun(format!("sluice was ended: {}", output.status)));
-    };
+    let code = exit(output)?;
     let printed = std::str::from_utf8(&output.stdout).ok();
-    let stderr = || String::from_utf8_lossy(&output.stderr).into_owned();
     Ok(match (code, printed) {
         (0, Some(text)) if serde_json::from_str::<&RawValue>(text).is_ok() => {
             Reply::Given(text.to_string())
         }
-        (0, _) => Reply::Refused(stderr()),
-        (_, Some(text)) => match serde_json::from_str::<Refused>(text) {
-            Ok(refused) => Reply::Refused(refused.error.message),
-            Err(_) => Reply::Refused(stderr()),
-        },
-        _ => Reply::Refused(stderr()),
+        (0, _) => Reply::Refused(stderr(output)),
+        _ => Reply::Refused(refusal(output)),
     })
+}
+
+/// sluice's exit status, or none where a signal ended it.
+fn exit(output: &Output) -> Result<i32, Unrun> {
+    output
+        .status
+        .code()
+        .ok_or_else(|| Unrun(format!("sluice was ended: {}", output.status)))
+}
+
+/// The words of sluice's refusal: the `message` of the `error` answer it
+/// printed, as given, or, where it printed none, its standard error.
+fn refusal(output: &Output) -> String {
+    let printed = std::str::from_utf8(&output.stdout).ok();
+    match printed.and_then(|text| serde_json::from_str::<Refused>(text).ok()) {
+        Some(refused) => refused.error.message,
+        None => stderr(output),
+    }
+}
+
+fn stderr(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
 /// What the runner carries of `answer`, sluice's `status <id> --json`

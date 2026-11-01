@@ -673,8 +673,9 @@ impl Stub {
 /// The stub `sluice`'s program. Each call writes its arguments,
 /// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
 /// It then prints the file `<what>.stdout` names, writes `<what>.stderr`
-/// on standard error, and exits with `<what>.exit`'s status, each where
-/// the test wrote one, `<what>` being its command.
+/// on standard error, runs `<what>.then` by `sh`, and exits with
+/// `<what>.exit`'s status, each where the test wrote one, `<what>` being
+/// its command.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
@@ -684,6 +685,7 @@ pwd -P > "$dir/dir-$n"
 what=$1
 if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
 if [ -e "$dir/$what.stderr" ]; then cat "$dir/$what.stderr" >&2; fi
+if [ -e "$dir/$what.then" ]; then sh "$dir/$what.then" || exit 99; fi
 if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
 exit 0
 "#;
@@ -736,6 +738,12 @@ impl SluiceStub {
     /// `what`, a command, saying `words` on standard error.
     pub fn says(&self, what: &str, words: &str) {
         fs::write(self.dir.path().join(format!("{what}.stderr")), words).expect("its words");
+    }
+
+    /// `what`, a command, running `script` by `sh` once it has printed,
+    /// as sluice changes what it is asked to.
+    pub fn then(&self, what: &str, script: &str) {
+        fs::write(self.dir.path().join(format!("{what}.then")), script).expect("its script");
     }
 
     /// The arguments of every call, in order.

@@ -16,8 +16,9 @@ use crate::run::Notices;
 use crate::sluice::{self, Sluice};
 use crate::{clone, facts, inbox, report};
 use flywheel_control::{
-    Act, ActSort, Acted, Answer, At, Carrying, ControlPlane, Id, Inbox, InboxCarried, InboxFile,
-    Launched, Offer, Outcome, Report, Reported, Unread, Unsent, Want,
+    Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
+    Inbox, InboxCarried, InboxFile, Launched, Offer, Outcome, Report, Reported, Unread, Unsent,
+    Want,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -96,7 +97,8 @@ impl Clones for Configured {
 pub struct Carrier<'a> {
     pub flume: &'a dyn Flume,
     pub sluice: &'a dyn Sluice,
-    /// git, for an inbox read from its clone.
+    /// git, for an inbox read from its clone and a branch read from
+    /// origin.
     pub git: &'a Git,
     pub clones: &'a dyn Clones,
     pub tools: &'a dyn Tools,
@@ -216,7 +218,7 @@ impl Work<'_> {
             Want::Offer(offer) => self.offer(offer, say),
             Want::Act(act) => self.act(act, say),
             Want::Inbox(inbox) => self.inbox(inbox, say),
-            Want::Command(_) => {}
+            Want::Command(command) => self.command(command, say),
         }
     }
 
@@ -512,6 +514,118 @@ impl Work<'_> {
             at: At::now(),
         };
         self.report.answer(&offer.id, offer.lease, answer)
+    }
+
+    /// Carries out or refuses `command` (design Decision 15). A command
+    /// the report holds is left as it stands, under the lease the control
+    /// plane gives now, and its tool is not run again (core.10). A sort
+    /// this binary does not carry is refused, naming its tool.
+    fn command(&mut self, command: &Command, say: &mut dyn FnMut(String)) {
+        if let Some(commanded) = self.report.commands.get_mut(&command.id) {
+            commanded.lease = command.lease;
+            return;
+        }
+        match &command.what {
+            CommandSort::Branch {
+                repository,
+                branch,
+                from,
+            } => self.branch(command, repository, branch, from, say),
+            CommandSort::Other { tool, .. } => {
+                let words = format!("this binary does not carry {tool}'s commands");
+                say(format!("{}: refused: {words}", command.id));
+                self.commanded(command, Outcome::Refused, None, Some(words), None);
+            }
+        }
+    }
+
+    /// Makes `branch` from `from` in `repository` by sluice, in its clone,
+    /// whatever the room (core.9), and carries sluice's answer as given,
+    /// `done` where it exits 0 and `refused` otherwise, with the commit
+    /// origin's `branch` then stands at, read from origin and never from
+    /// sluice's words. A command for a repository the configuration does
+    /// not keep is refused, naming it; one whose clone is not yet made is
+    /// left untaken, for a host keeping the repository to take (core.5).
+    /// Where sluice could not be run, nothing is kept, and the next pass
+    /// carries it out.
+    fn branch(
+        &mut self,
+        command: &Command,
+        repository: &str,
+        branch: &str,
+        from: &str,
+        say: &mut dyn FnMut(String),
+    ) {
+        let id = &command.id;
+        let container = match self.carrier.clones.keeping(repository) {
+            Keeping::Ready(container) => container,
+            Keeping::NotYet => return,
+            Keeping::NotNamed => {
+                let words = format!("this host's configuration does not keep {repository}");
+                say(format!("{id}: refused: {words}"));
+                self.commanded(command, Outcome::Refused, None, Some(words), None);
+                return;
+            }
+        };
+        let what = format!("{id}: branch {branch} from {from} in {repository}");
+        let printed = match self.carrier.sluice.branch(&container, branch, from) {
+            Ok(printed) => printed,
+            Err(sluice::Unrun(words)) => {
+                say(format!("{what}: not carried out: {words}"));
+                self.failed = true;
+                return;
+            }
+        };
+        let bare = clone::bare(&container);
+        let (origin_commit, unread) = match clone::origin_commit(self.carrier.git, &bare, branch) {
+            Ok(commit) => (commit, None),
+            Err(failure) => {
+                self.failed = true;
+                let words = format!("origin's {branch} could not be read: {failure}");
+                (None, Some(words))
+            }
+        };
+        let on_origin = match (&origin_commit, &unread) {
+            (Some(commit), _) => format!("origin holds {branch} at {commit}"),
+            (None, Some(unread)) => unread.clone(),
+            (None, None) => format!("origin holds no {branch}"),
+        };
+        let outcome = match &printed.refused {
+            Some(words) => {
+                say(format!("{what}: refused by sluice: {words}; {on_origin}"));
+                Outcome::Refused
+            }
+            None => {
+                say(format!("{what}: done; {on_origin}"));
+                Outcome::Done
+            }
+        };
+        let words = match (printed.refused, unread) {
+            (Some(refused), Some(unread)) => Some(format!("{refused}; {unread}")),
+            (refused, unread) => refused.or(unread),
+        };
+        self.commanded(command, outcome, Some(printed.text), words, origin_commit);
+    }
+
+    /// Records `command` answered `outcome`, with its tool's `text`, where
+    /// one ran, `words` and `origin_commit`.
+    fn commanded(
+        &mut self,
+        command: &Command,
+        outcome: Outcome,
+        text: Option<String>,
+        words: Option<String>,
+        origin_commit: Option<String>,
+    ) {
+        let commanded = Commanded {
+            lease: command.lease,
+            outcome,
+            text,
+            words,
+            origin_commit,
+            at: At::now(),
+        };
+        self.report.commands.insert(command.id.clone(), commanded);
     }
 
     /// Carries Flume's status of each launch's place (design Decision 12;
