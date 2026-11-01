@@ -26,6 +26,10 @@ in
     ".gitignore"
     # Empty markers that keep OpenSpec's empty directories in the tree.
     "**/.gitkeep"
+    # A tool's own answers, as it printed them: the tests hold the runner
+    # to carry each byte as written, so no formatter may change one
+    # (design Decision 21).
+    "crates/*/tests/fixtures/**"
     # Build outputs and caches.
     "target/**"
     ".devenv/**"
