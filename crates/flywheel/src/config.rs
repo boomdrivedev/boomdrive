@@ -1,11 +1,13 @@
 //! The runner's configuration (design 2): one TOML file naming the
-//! repositories a host keeps by their GitHub address, where their views
-//! are kept and how often they are fetched. A refusal names the file, the
-//! line and the key or entry. It is built from what is wrong and never
-//! from the file's text around it, a value put there by mistake among it
-//! (core.4).
+//! repositories a host keeps by their GitHub address, the root their
+//! views are kept under and how often they are fetched, each key named
+//! for what it holds (core.12). A refusal names the file, the line and the
+//! key or entry. It is built from what is wrong and never from the file's
+//! text around it, a value put there by mistake among it (core.4).
 
+use serde::de::IgnoredAny;
 use serde::{Deserialize, Deserializer};
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -16,16 +18,30 @@ use toml::{Spanned, Value};
 /// The configuration as a pass reads it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
-    /// Where each repository's view is kept, at `<views>/<owner>/<name>`.
-    pub views: PathBuf,
+    /// The root each repository's view is kept under, at
+    /// `<repository_root>/<owner>/<name>`.
+    pub repository_root: PathBuf,
     /// How often every repository is fetched.
-    pub fetch_every: Duration,
+    pub fetch_interval: Duration,
     /// Each repository the host keeps, in the file's order.
     pub repositories: Vec<Address>,
 }
 
-/// The period where the file names none.
-const FETCH_EVERY: Duration = Duration::from_secs(2 * 60);
+/// The fetch interval where the file names none.
+const FETCH_INTERVAL: Duration = Duration::from_secs(2 * 60);
+
+/// Keys the runner does not read that a host's file may hold, each with
+/// what its refusal adds: the key that holds it now (core.12), or whose
+/// configuration it is (core.5).
+const HELD_ELSEWHERE: [(&str, &str); 7] = [
+    ("views", "`repository_root` holds it now"),
+    ("fetch_every", "`fetch_interval` holds it now"),
+    ("stream", "streams are Flume's host configuration"),
+    ("streams", "streams are Flume's host configuration"),
+    ("kind", "kinds are Flume's host configuration"),
+    ("kinds", "kinds are Flume's host configuration"),
+    ("kinds_file", "kinds are Flume's host configuration"),
+];
 
 /// A repository's GitHub address, `owner/name`, kept as written and
 /// compared without case, as GitHub compares it.
@@ -95,14 +111,14 @@ impl fmt::Display for Address {
     }
 }
 
-/// How often repositories are fetched: `<n>s`, `<n>m` or `<n>h`, with `n`
-/// above zero, the form flume's `--stall-after` reads.
+/// How often something is done: `<n>s`, `<n>m` or `<n>h`, with `n` above
+/// zero, the form flume's `--stall-after` reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Period(Duration);
+pub struct Interval(Duration);
 
-impl Period {
-    /// The period `text` writes, or none where it is not one.
-    pub fn parse(text: &str) -> Option<Period> {
+impl Interval {
+    /// The interval `text` writes, or none where it is not one.
+    pub fn parse(text: &str) -> Option<Interval> {
         let (count, unit) = [("s", 1), ("m", 60), ("h", 60 * 60)]
             .into_iter()
             .find_map(|(suffix, unit)| Some((text.strip_suffix(suffix)?, unit)))?;
@@ -110,10 +126,10 @@ impl Period {
             return None;
         }
         let seconds = count.parse::<u64>().ok()?.checked_mul(unit)?;
-        (seconds > 0).then(|| Period(Duration::from_secs(seconds)))
+        (seconds > 0).then(|| Interval(Duration::from_secs(seconds)))
     }
 
-    /// The period as a duration.
+    /// The interval as a duration.
     pub fn duration(self) -> Duration {
         self.0
     }
@@ -125,8 +141,8 @@ impl Period {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct File {
-    views: Option<Spanned<Value>>,
-    fetch_every: Option<Spanned<Value>>,
+    repository_root: Option<Spanned<Value>>,
+    fetch_interval: Option<Spanned<Value>>,
     #[serde(default, deserialize_with = "list")]
     repositories: Option<Spanned<Entries>>,
 }
@@ -159,42 +175,70 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
             + 1
     };
     let refuse = |at: usize, words: String| format!("{}:{}: {words}", file.display(), line(at));
-    let raw: File = toml::from_str(text).map_err(|error| match error.span() {
+    let broken = |error: toml::de::Error| match error.span() {
         Some(span) => refuse(span.start, error.message().to_string()),
         None => format!("{}: {}", file.display(), error.message()),
-    })?;
+    };
 
-    let views = match &raw.views {
+    // Each key held elsewhere is named at once, with where it is held, so
+    // a file written for an earlier runner says all it must change.
+    let keys: BTreeMap<Spanned<String>, IgnoredAny> = toml::from_str(text).map_err(broken)?;
+    let mut held: Vec<(&Spanned<String>, &str)> = keys
+        .keys()
+        .filter_map(|key| {
+            let (_, held) = HELD_ELSEWHERE
+                .iter()
+                .find(|(name, _)| key.get_ref() == name)?;
+            Some((key, *held))
+        })
+        .collect();
+    held.sort_by_key(|(key, _)| key.span().start);
+    if let Some(((first, held_first), rest)) = held.split_first() {
+        let mut words = format!("unknown field `{}`: {held_first}", first.get_ref());
+        for (key, held) in rest {
+            words += &format!(
+                "; unknown field `{}`, on line {}: {held}",
+                key.get_ref(),
+                line(key.span().start)
+            );
+        }
+        return Err(refuse(first.span().start, words));
+    }
+
+    let raw: File = toml::from_str(text).map_err(broken)?;
+
+    let repository_root = match &raw.repository_root {
         None => home.join("Code"),
-        Some(views) => views
+        Some(root) => root
             .get_ref()
             .as_str()
-            .and_then(|root| views_root(root, home))
+            .and_then(|root| root_path(root, home))
             .ok_or_else(|| {
                 refuse(
-                    views.span().start,
+                    root.span().start,
                     format!(
-                        "`views` is {}: a views root is an absolute path or begins with `~/`",
-                        named(views.get_ref())
+                        "`repository_root` is {}: a repository root is an absolute path or \
+                         begins with `~/`",
+                        named(root.get_ref())
                     ),
                 )
             })?,
     };
 
-    let fetch_every = match &raw.fetch_every {
-        None => FETCH_EVERY,
-        Some(period) => period
+    let fetch_interval = match &raw.fetch_interval {
+        None => FETCH_INTERVAL,
+        Some(interval) => interval
             .get_ref()
             .as_str()
-            .and_then(Period::parse)
-            .map(Period::duration)
+            .and_then(Interval::parse)
+            .map(Interval::duration)
             .ok_or_else(|| {
                 refuse(
-                    period.span().start,
+                    interval.span().start,
                     format!(
-                        "`fetch_every` is {}: a period is `<n>s`, `<n>m` or `<n>h`, \
+                        "`fetch_interval` is {}: an interval is `<n>s`, `<n>m` or `<n>h`, \
                          with n above zero",
-                        named(period.get_ref())
+                        named(interval.get_ref())
                     ),
                 )
             })?,
@@ -233,8 +277,8 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
     }
 
     Ok(Config {
-        views,
-        fetch_every,
+        repository_root,
+        fetch_interval,
         repositories: repositories
             .into_iter()
             .map(|(address, _)| address)
@@ -242,9 +286,9 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
     })
 }
 
-/// A views root: an absolute path, or `~/…` beneath `home`. Nothing else
-/// is expanded, so `$HOME/Code` is no root.
-fn views_root(root: &str, home: &Path) -> Option<PathBuf> {
+/// A repository root: an absolute path, or `~/…` beneath `home`. Nothing
+/// else is expanded, so `$HOME/Code` is no root.
+fn root_path(root: &str, home: &Path) -> Option<PathBuf> {
     match root.strip_prefix("~/") {
         Some(beneath) => Some(home.join(beneath)),
         None => Path::new(root).is_absolute().then(|| PathBuf::from(root)),
@@ -260,9 +304,12 @@ fn named(value: &Value) -> String {
     }
 }
 
-/// A repository's view, `<views>/<owner>/<name>` (design 7).
+/// A repository's view, `<repository_root>/<owner>/<name>` (design 7).
 pub fn view_path(config: &Config, address: &Address) -> PathBuf {
-    config.views.join(address.owner()).join(address.name())
+    config
+        .repository_root
+        .join(address.owner())
+        .join(address.name())
 }
 
 /// What the runner reads of its environment: the home, and the XDG base
@@ -358,7 +405,7 @@ mod tests {
     #[test]
     fn no_list() {
         assert_eq!(
-            read("views = \"~/Code\"\n"),
+            read("repository_root = \"~/Code\"\n"),
             Err(format!(
                 "{FILE}: `repositories` is required: the repositories this host keeps, \
                  `repositories = []` for none"
@@ -382,18 +429,20 @@ mod tests {
 
     #[test]
     fn a_home_relative_root() {
-        let config = read("views = \"~/src\"\nrepositories = []\n").unwrap();
-        assert_eq!(config.views, Path::new("/h/src"));
+        let config = read("repository_root = \"~/src\"\nrepositories = []\n").unwrap();
+        assert_eq!(config.repository_root, Path::new("/h/src"));
     }
 
     #[test]
     fn a_relative_root() {
         for (root, named) in [("Code", "\"Code\""), ("$HOME/Code", "\"$HOME/Code\"")] {
             assert_eq!(
-                read(&format!("repositories = []\nviews = \"{root}\"\n")),
+                read(&format!(
+                    "repositories = []\nrepository_root = \"{root}\"\n"
+                )),
                 Err(format!(
-                    "{FILE}:2: `views` is {named}: a views root is an absolute path or \
-                     begins with `~/`"
+                    "{FILE}:2: `repository_root` is {named}: a repository root is an absolute \
+                     path or begins with `~/`"
                 ))
             );
         }
@@ -402,19 +451,21 @@ mod tests {
     #[test]
     fn no_period() {
         assert_eq!(
-            read("repositories = []\n").unwrap().fetch_every,
+            read("repositories = []\n").unwrap().fetch_interval,
             Duration::from_secs(120)
         );
     }
 
     #[test]
     fn a_period_of_nothing() {
-        for period in ["0m", "soon"] {
+        for interval in ["0m", "soon"] {
             assert_eq!(
-                read(&format!("repositories = []\nfetch_every = \"{period}\"\n")),
+                read(&format!(
+                    "repositories = []\nfetch_interval = \"{interval}\"\n"
+                )),
                 Err(format!(
-                    "{FILE}:2: `fetch_every` is \"{period}\": a period is `<n>s`, `<n>m` or \
-                     `<n>h`, with n above zero"
+                    "{FILE}:2: `fetch_interval` is \"{interval}\": an interval is `<n>s`, \
+                     `<n>m` or `<n>h`, with n above zero"
                 ))
             );
         }
@@ -422,11 +473,76 @@ mod tests {
 
     #[test]
     fn a_misspelt_key() {
-        let refusal = read("repositories = []\nview = \"~/Code\"\n").unwrap_err();
+        let refusal = read("repositories = []\nrepositories_root = \"~/Code\"\n").unwrap_err();
         assert!(
-            refusal.starts_with(&format!("{FILE}:2: unknown field `view`")),
+            refusal.starts_with(&format!("{FILE}:2: unknown field `repositories_root`")),
             "{refusal}"
         );
+    }
+
+    #[test]
+    fn a_stream_named() {
+        assert_eq!(
+            read("repositories = []\nstream = \"work\"\n"),
+            Err(format!(
+                "{FILE}:2: unknown field `stream`: streams are Flume's host configuration"
+            ))
+        );
+        assert_eq!(
+            read("repositories = []\n\n[streams]\nwork = 2\n"),
+            Err(format!(
+                "{FILE}:3: unknown field `streams`: streams are Flume's host configuration"
+            ))
+        );
+    }
+
+    #[test]
+    fn a_kinds_file_named() {
+        assert_eq!(
+            read("repositories = []\nkinds = { crew = \"/k/kinds.toml\" }\n"),
+            Err(format!(
+                "{FILE}:2: unknown field `kinds`: kinds are Flume's host configuration"
+            ))
+        );
+        for key in ["kind", "kinds_file"] {
+            assert_eq!(
+                read(&format!("repositories = []\n{key} = \"change\"\n")),
+                Err(format!(
+                    "{FILE}:2: unknown field `{key}`: kinds are Flume's host configuration"
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn a_key_of_before() {
+        assert_eq!(
+            read("views = \"~/Code\"\nfetch_every = \"2m\"\nrepositories = []\n"),
+            Err(format!(
+                "{FILE}:1: unknown field `views`: `repository_root` holds it now; \
+                 unknown field `fetch_every`, on line 2: `fetch_interval` holds it now"
+            ))
+        );
+        assert_eq!(
+            read("repositories = []\nfetch_every = \"2m\"\n"),
+            Err(format!(
+                "{FILE}:2: unknown field `fetch_every`: `fetch_interval` holds it now"
+            ))
+        );
+    }
+
+    #[test]
+    fn a_key_held_elsewhere_is_named_before_what_else_is_wrong() {
+        assert_eq!(
+            read("views = 3\n"),
+            Err(format!(
+                "{FILE}:1: unknown field `views`: `repository_root` holds it now"
+            ))
+        );
+        let refusal =
+            read("repositories = []\nviews = \"~/Code\"\nghp_n0t4r34lt0k3n\n").unwrap_err();
+        assert!(refusal.starts_with(&format!("{FILE}:3: ")), "{refusal}");
+        assert!(!refusal.contains("ghp_n0t4r34lt0k3n"), "{refusal}");
     }
 
     #[test]
@@ -459,10 +575,10 @@ mod tests {
             ))
         );
         assert_eq!(
-            read("repositories = []\nviews = 3\n"),
+            read("repositories = []\nrepository_root = 3\n"),
             Err(format!(
-                "{FILE}:2: `views` is not a string: a views root is an absolute path or \
-                 begins with `~/`"
+                "{FILE}:2: `repository_root` is not a string: a repository root is an \
+                 absolute path or begins with `~/`"
             ))
         );
     }
@@ -471,12 +587,12 @@ mod tests {
     fn a_whole_file() {
         assert_eq!(
             read(
-                "views = \"/srv/views\"\nfetch_every = \"90s\"\n\
+                "repository_root = \"/srv/code\"\nfetch_interval = \"90s\"\n\
                  repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n"
             ),
             Ok(Config {
-                views: PathBuf::from("/srv/views"),
-                fetch_every: Duration::from_secs(90),
+                repository_root: PathBuf::from("/srv/code"),
+                fetch_interval: Duration::from_secs(90),
                 repositories: vec![address("agentplot/flume"), address("afterthought/crew")],
             })
         );
@@ -498,10 +614,10 @@ mod tests {
     }
 
     #[test]
-    fn periods() {
+    fn intervals() {
         for (text, seconds) in [("30s", 30), ("2m", 120), ("1h", 3600)] {
             assert_eq!(
-                Period::parse(text).map(Period::duration),
+                Interval::parse(text).map(Interval::duration),
                 Some(Duration::from_secs(seconds))
             );
         }
@@ -517,7 +633,7 @@ mod tests {
             " 2m",
             "99999999999999999h",
         ] {
-            assert_eq!(Period::parse(bad), None, "{bad}");
+            assert_eq!(Interval::parse(bad), None, "{bad}");
         }
     }
 

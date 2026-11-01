@@ -1,11 +1,11 @@
 //! A repository's view (design 7): a worktree of its clone at
-//! `<views>/<owner>/<name>`, detached at `origin/<default>` and never on
-//! a branch. It is made where its folder is missing and never over a
-//! folder that is there, and moved only while it stands where the runner
-//! last put it, clean of tracked changes, so a view the user moved or is
-//! working in is left as they have it (`herdr.14`, carried whole). When
-//! the views root changes, the old view is removed once it holds nothing
-//! the forge lacks, and the view made at the new path.
+//! `<repository_root>/<owner>/<name>`, detached at `origin/<default>` and
+//! never on a branch. It is made where its folder is missing and never
+//! over a folder that is there, and moved only while it stands where the
+//! runner last put it, clean of tracked changes, so a view the user moved
+//! or is working in is left as they have it (`herdr.14`, carried whole).
+//! When the repository root changes, the old view is removed once it
+//! holds nothing the forge lacks, and the view made at the new path.
 
 use crate::clone;
 use crate::git::{At, Git, Words};
@@ -104,7 +104,7 @@ pub fn decide(facts: &ViewFacts) -> ViewAct {
 }
 
 /// What stands where the runner last made or moved the view, once the
-/// views root no longer gives that path.
+/// repository root no longer gives that path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Old {
     /// Nothing, or a folder that is not the clone's worktree.
@@ -126,7 +126,7 @@ pub enum OldAct {
     Hold(Vec<Holding>),
 }
 
-/// Design 7, for a view whose recorded path the views root no longer
+/// Design 7, for a view whose recorded path the repository root no longer
 /// gives: removed once it holds nothing the forge lacks (design 8's
 /// removal), left while it holds anything, and forgotten where it is no
 /// longer the clone's worktree.

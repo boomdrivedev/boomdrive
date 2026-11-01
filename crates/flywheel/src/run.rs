@@ -61,9 +61,9 @@ impl Stopper {
 }
 
 /// When the pass after one that began at `last_start` begins:
-/// `fetch_every` after it, or `now` where that is past (design 10).
-pub fn next_pass(last_start: Instant, every: Duration, now: Instant) -> Instant {
-    (last_start + every).max(now)
+/// `fetch_interval` after it, or `now` where that is past (design 10).
+pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Instant {
+    (last_start + interval).max(now)
 }
 
 /// A runner whose start's checks passed, holding the lock on its data
@@ -148,18 +148,18 @@ impl Runner {
     }
 
     /// The line the runner starts with: its version, configuration file,
-    /// data directory and views root.
+    /// data directory and repository root.
     pub fn started(&self) -> String {
         let kept = match self.config.repositories.len() {
             1 => "1 repository".to_string(),
             n => format!("{n} repositories"),
         };
         format!(
-            "flywheel {}: keeping {kept} from {}; data {}; views {}",
+            "flywheel {}: keeping {kept} from {}; data {}; repository root {}",
             env!("CARGO_PKG_VERSION"),
             self.file.display(),
             self.data.display(),
-            self.config.views.display()
+            self.config.repository_root.display()
         )
     }
 
@@ -169,24 +169,24 @@ impl Runner {
     }
 
     /// Passes until stopped (design 10): one at once, on the
-    /// configuration the runner started with, then one each `fetch_every`
+    /// configuration the runner started with, then one each `fetch_interval`
     /// after the start of the one before, the configuration read again
     /// for each. A pass that cannot read it names why and keeps nothing.
     /// Between passes, each landing it is told of is kept at once.
     /// Stopped, it keeps no further repository and says so.
     pub fn keep(&self, say: &mut dyn FnMut(String)) {
         let mut read = Ok(self.config.clone());
-        let mut every = self.config.fetch_every;
+        let mut interval = self.config.fetch_interval;
         'passes: loop {
             let began = Instant::now();
             match read {
                 Ok(config) => {
-                    every = config.fetch_every;
+                    interval = config.fetch_interval;
                     pass::pass(&self.git, &self.data, &config, &self.stop, say);
                 }
                 Err(why) => say(format!("flywheel: {why}: nothing kept this pass")),
             }
-            let due = next_pass(began, every, Instant::now());
+            let due = next_pass(began, interval, Instant::now());
             loop {
                 if self.stop.load(Ordering::SeqCst) {
                     break 'passes;
@@ -279,17 +279,17 @@ mod tests {
     use super::next_pass;
     use std::time::{Duration, Instant};
 
-    /// The running spec's "Passes on the timer": with `fetch_every` two
-    /// minutes and a pass begun at 10:00:00, the next begins at 10:02:00,
-    /// or at once when the pass before ends later than that.
+    /// The running spec's "Passes on the timer": with `fetch_interval`
+    /// two minutes and a pass begun at 10:00:00, the next begins at
+    /// 10:02:00, or at once when the pass before ends later than that.
     #[test]
     fn passes_on_the_timer() {
         let ten = Instant::now();
-        let every = Duration::from_secs(120);
-        let due = ten + every;
-        assert_eq!(next_pass(ten, every, ten + Duration::from_secs(5)), due);
-        assert_eq!(next_pass(ten, every, due), due);
+        let interval = Duration::from_secs(120);
+        let due = ten + interval;
+        assert_eq!(next_pass(ten, interval, ten + Duration::from_secs(5)), due);
+        assert_eq!(next_pass(ten, interval, due), due);
         let late = ten + Duration::from_secs(150);
-        assert_eq!(next_pass(ten, every, late), late);
+        assert_eq!(next_pass(ten, interval, late), late);
     }
 }

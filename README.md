@@ -17,30 +17,35 @@ come. From this tree:
 `flywheel` reads one TOML file: the one `--config <file>` names, else
 `$XDG_CONFIG_HOME/flywheel/config.toml`, else
 `~/.config/flywheel/config.toml`. It names the repositories the host
-keeps by their GitHub address, where their views are kept and how often
-they are fetched:
+keeps by their GitHub address, the root their views are kept under and
+how often they are fetched:
 
 ```toml
-# Where each repository's view is kept, at <views>/<owner>/<name>; ~/Code where none is named.
-views = "~/Code"
+# The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
+repository_root = "~/Code"
 # How often every repository is fetched; 2m where none is named.
-fetch_every = "2m"
+fetch_interval = "2m"
 # Each repository this host keeps, by its GitHub address.
 repositories = ["agentplot/flume", "afterthought/crew"]
 ```
 
 `repositories` is required, so a host that keeps none says
 `repositories = []`. Addresses are compared without case, so two that
-differ only in case are refused as one repository named twice. `views`
-is an absolute path or begins with `~/`. `fetch_every` is `<n>s`, `<n>m` or `<n>h`. A key the runner does
-not read is refused, so the file has no place for a credential: the
-host's own git credential helper answers every fetch.
+differ only in case are refused as one repository named twice.
+`repository_root` is an absolute path or begins with `~/`.
+`fetch_interval` is `<n>s`, `<n>m` or `<n>h`. A key the runner does not
+read is refused, so the file has no place for a credential: the host's
+own git credential helper answers every fetch. A file written for an
+earlier runner is refused with what to write instead: `views` is
+`repository_root` now, and `fetch_every` is `fetch_interval`. Nor does
+the file name a stream or a kind: those are each host's Flume
+configuration, and a key naming one is refused, saying so.
 
 ## Running on a host
 
 `flywheel run` is the long-running process a host starts and keeps
 alive. It makes a pass over the configuration at once, then one every
-`fetch_every`, timed from the start of the pass before, and reads the
+`fetch_interval`, timed from the start of the pass before, and reads the
 file again at every pass. A pass that cannot read it names why and
 does nothing else, so a file mid-edit never drops a repository. A pass:
 
@@ -51,8 +56,8 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   the host's own credential helper, never prompting;
 - keeps the clone's own default branch at origin's while that is a
   fast-forward and no worktree holds it;
-- keeps a view of each repository at `<views>/<owner>/<name>`, a
-  worktree of the clone detached at `origin/<default>`. It makes the
+- keeps a view of each repository at `<repository_root>/<owner>/<name>`,
+  a worktree of the clone detached at `origin/<default>`. It makes the
   view where the folder is missing and never over a folder that is
   there, and moves it only while it stands where the runner last put
   it and holds no uncommitted change, so a view you moved or work in is

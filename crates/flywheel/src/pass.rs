@@ -269,8 +269,8 @@ fn settle(git: &Git, bare: &Path, say: &mut dyn FnMut(String)) -> Result<Option<
 /// branch is `default` (design 7): makes it where it is missing, names a
 /// folder there that is not the clone's worktree, and moves it while it
 /// stands where the runner last put it. A view made or moved is recorded
-/// in the clone. A view the runner put where the views root no longer
-/// gives is let go of first.
+/// in the clone. A view the runner put where the repository root no
+/// longer gives is let go of first.
 fn keep_view(
     git: &Git,
     bare: &Path,
@@ -329,11 +329,11 @@ fn keep_view(
 }
 
 /// Lets go of the view the clone `bare` records where `path`, the view's
-/// path now, is not that one, the views root having changed (design 7).
-/// The old view is removed while it holds nothing the forge lacks, else
-/// left and named; where it is gone or no longer the clone's worktree,
-/// it is forgotten and any folder there left untouched. Gives the
-/// outcome where no view is to be kept at `path` this pass.
+/// path now, is not that one, the repository root having changed
+/// (design 7). The old view is removed while it holds nothing the forge
+/// lacks, else left and named; where it is gone or no longer the clone's
+/// worktree, it is forgotten and any folder there left untouched. Gives
+/// the outcome where no view is to be kept at `path` this pass.
 fn let_go_of_old_view(
     git: &Git,
     bare: &Path,

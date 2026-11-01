@@ -29,7 +29,7 @@ pub struct Scratch {
     _dir: TempDir,
     /// The temporary directory, as git names it.
     pub root: PathBuf,
-    /// `HOME`. The views root of a test is inside it.
+    /// `HOME`. The repository root of a test is inside it.
     pub home: PathBuf,
     /// The git configuration, `GIT_CONFIG_GLOBAL`.
     pub gitconfig: PathBuf,

@@ -8,7 +8,7 @@ implementation, which reads and writes records in crew's state
 repository, now, and a hosted control plane's, an outgoing WebSocket,
 later. Today `flywheel run` keeps the repositories its configuration
 names: a bare clone of each in its data directory, fetched on a timer,
-and a view of each under the views root. It carries no work yet.
+and a view of each under the repository root. It carries no work yet.
 
 ## Rules
 

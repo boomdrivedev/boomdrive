@@ -1,7 +1,7 @@
-//! Each kept repository's view under the views root: made where it is
+//! Each kept repository's view under the repository root: made where it is
 //! missing, never over a folder that is there, only ever detached, and
 //! moved only while it stands where the runner last put it (the views
-//! spec; the clones spec's default branch and views root; design 7).
+//! spec; the clones spec's default branch and repository root; design 7).
 
 mod common;
 
@@ -27,7 +27,7 @@ fn entries(dir: &Path) -> Vec<String> {
     names
 }
 
-/// `agentplot/flume`'s view under the default views root.
+/// `agentplot/flume`'s view under the default repository root.
 fn view(scratch: &Scratch) -> PathBuf {
     scratch.home.join("Code/agentplot/flume")
 }
@@ -115,7 +115,7 @@ fn a_view_the_user_deleted() {
     let origin = scratch.origin("agentplot/flume");
     let config = keeping(&["agentplot/flume"]);
     scratch.pass(&config);
-    std::fs::remove_dir_all(scratch.home.join("Code")).expect("the views root removed");
+    std::fs::remove_dir_all(scratch.home.join("Code")).expect("the repository root removed");
 
     let (outcome, lines) = scratch.pass(&config);
 
@@ -335,16 +335,16 @@ fn an_untracked_file() {
 }
 
 #[test]
-fn the_clone_is_not_under_the_views_root() {
+fn the_clone_is_not_under_the_repository_root() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
 
     scratch.pass(&keeping(&["agentplot/flume"]));
 
-    let views = scratch.home.join("Code");
+    let root = scratch.home.join("Code");
     let view = view(&scratch);
-    assert_eq!(entries(&views), ["agentplot"]);
-    assert_eq!(entries(&views.join("agentplot")), ["flume"]);
+    assert_eq!(entries(&root), ["agentplot"]);
+    assert_eq!(entries(&root.join("agentplot")), ["flume"]);
     assert!(
         view.join(".git").is_file(),
         "the view holds a repository of its own"
@@ -362,7 +362,7 @@ fn the_clone_is_not_under_the_views_root() {
     assert!(scratch
         .container("agentplot/flume")
         .starts_with(scratch.data()));
-    assert!(!scratch.data().starts_with(&views));
+    assert!(!scratch.data().starts_with(&root));
 }
 
 #[test]
@@ -434,12 +434,16 @@ fn an_empty_origin() {
     assert!(detached(&scratch, &view), "the view is on a branch");
 }
 
-/// A configuration keeping `agentplot/flume` with the views root `~/src`.
+/// A configuration keeping `agentplot/flume` with the repository root
+/// `~/src`.
 fn in_src() -> String {
-    format!("views = \"~/src\"\n{}", keeping(&["agentplot/flume"]))
+    format!(
+        "repository_root = \"~/src\"\n{}",
+        keeping(&["agentplot/flume"])
+    )
 }
 
-/// `agentplot/flume`'s view under the views root `~/src`.
+/// `agentplot/flume`'s view under the repository root `~/src`.
 fn src_view(scratch: &Scratch) -> PathBuf {
     scratch.home.join("src/agentplot/flume")
 }

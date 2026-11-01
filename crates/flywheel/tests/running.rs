@@ -24,7 +24,7 @@ fn stderr(output: &Output) -> String {
 /// The line `flywheel run` starts with, keeping `kept` from `file`.
 fn started(scratch: &Scratch, kept: &str, file: &Path) -> String {
     format!(
-        "flywheel {}: keeping {kept} from {}; data {}; views {}",
+        "flywheel {}: keeping {kept} from {}; data {}; repository root {}",
         env!("CARGO_PKG_VERSION"),
         file.display(),
         scratch.data().display(),

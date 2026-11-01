@@ -28,7 +28,7 @@ fn entries(dir: &Path) -> Vec<String> {
     names
 }
 
-/// `agentplot/flume`'s view under the default views root.
+/// `agentplot/flume`'s view under the default repository root.
 fn view(scratch: &Scratch) -> PathBuf {
     scratch.home.join("Code/agentplot/flume")
 }
@@ -310,13 +310,13 @@ fn the_owners_last_view() {
 
     scratch.pass(&keeping(&[]));
 
-    let views = scratch.home.join("Code");
+    let root = scratch.home.join("Code");
     assert!(
-        !views.join("agentplot").exists(),
+        !root.join("agentplot").exists(),
         "the owner's folder is left"
     );
-    assert!(views.is_dir(), "the views root is removed");
-    assert_eq!(entries(&views), [] as [&str; 0]);
+    assert!(root.is_dir(), "the repository root is removed");
+    assert_eq!(entries(&root), [] as [&str; 0]);
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn left_for_the_user() {
     assert_eq!(
         stderr,
         format!(
-            "flywheel {}: keeping 0 repositories from {}; data {}; views {}\n{HELD_BY_WIP}\n",
+            "flywheel {}: keeping 0 repositories from {}; data {}; repository root {}\n{HELD_BY_WIP}\n",
             env!("CARGO_PKG_VERSION"),
             file.display(),
             scratch.data().display(),
@@ -375,7 +375,8 @@ fn an_old_views_folder_of_the_users_holds_nothing() {
     std::fs::remove_dir_all(&old).expect("the old view removed");
     std::fs::create_dir_all(&old).expect("a folder of the user's");
     std::fs::write(old.join("notes"), "mine\n").expect("a file of the user's");
-    let in_src = |addresses: &[&str]| format!("views = \"~/src\"\n{}", keeping(addresses));
+    let in_src =
+        |addresses: &[&str]| format!("repository_root = \"~/src\"\n{}", keeping(addresses));
     scratch.pass(&in_src(&["agentplot/flume"]));
     assert!(scratch.home.join("src/agentplot/flume").is_dir());
 
