@@ -3,9 +3,9 @@
 //! part, each answer scripted where a test says, and each call recorded.
 //! The runner's clones and its tools' versions are what a test sets. A
 //! stub `flume` program stands in where a test runs the pass over
-//! Flume's own command line, and a stub `sluice` stands in for sluice's.
-//! Every file lies in the test's own temporary directory, and no test
-//! runs a real Flume or sluice.
+//! Flume's own command line, a stub `sluice` stands in for sluice's, and
+//! a stub `herdr` for herdr's. Every file lies in the test's own
+//! temporary directory, and no test runs a real Flume, sluice or herdr.
 
 #![allow(dead_code)]
 
@@ -16,6 +16,7 @@ use flywheel::hello::Tools;
 use flywheel::report;
 use flywheel::run::{Event, Notices};
 use flywheel::sluice;
+use flywheel::terminal::{self, Relays};
 use flywheel_control::fake::Fake;
 use flywheel_control::{
     ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
@@ -27,6 +28,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
+use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 
 /// The repository every bench keeps with its clone made.
@@ -396,10 +398,16 @@ impl Tools for FakeTools {
     }
 }
 
-/// A host for control passes: a fake Flume, a stub `sluice`, clones and
-/// tools, and a data directory of its own, which keeps [`KEPT`] with its
-/// clone's container made.
+/// A host for control passes: a fake Flume, a stub `sluice`, a stub
+/// `herdr` and the terminals relayed through it, clones and tools, and a
+/// data directory of its own, which keeps [`KEPT`] with its clone's
+/// container made.
 pub struct Bench {
+    /// Dropped first, so every terminal's thread ends before the stubs
+    /// and the data directory go.
+    pub relays: Relays,
+    relay_lines: Arc<Mutex<Vec<String>>>,
+    pub herdr: HerdrStub,
     pub dir: TempDir,
     pub flume: FakeFlume,
     pub sluice: SluiceStub,
@@ -416,7 +424,16 @@ impl Bench {
     pub fn new() -> Bench {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let (events, received) = mpsc::channel();
+        let herdr = HerdrStub::new();
+        let relay_lines = Arc::new(Mutex::new(Vec::new()));
+        let said = Arc::clone(&relay_lines);
+        let relays = Relays::new(terminal::Cli::new(herdr.program()), move |line| {
+            said.lock().expect("the relay's lines").push(line);
+        });
         let bench = Bench {
+            relays,
+            relay_lines,
+            herdr,
             dir,
             flume: FakeFlume::new(),
             sluice: SluiceStub::new(),
@@ -471,6 +488,7 @@ impl Bench {
             tools: &self.tools,
             notices: &self.notices,
             control_dir: &control_dir,
+            relays: &self.relays,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(plane, &mut |line| lines.push(line));
@@ -482,6 +500,11 @@ impl Bench {
         report::read(&self.report_file())
             .expect("the report file reads")
             .expect("the report file is there")
+    }
+
+    /// Each line the terminals said, in order.
+    pub fn relay_lines(&self) -> Vec<String> {
+        self.relay_lines.lock().expect("the relay's lines").clone()
     }
 
     /// Each repository the keeper was told of a landing on since last
@@ -758,5 +781,88 @@ impl SluiceStub {
     pub fn dir_of(&self, n: usize) -> Option<PathBuf> {
         let said = fs::read_to_string(self.dir.path().join(format!("dir-{n}"))).ok()?;
         Some(PathBuf::from(said.trim_end_matches('\n')))
+    }
+}
+
+/// The stub `herdr`'s program. Each call writes its `HERDR_SOCKET_PATH`,
+/// or `unset`, to `socket-<n>`, then its arguments, NUL-terminated, to
+/// `call-<n>`, each whole once there. A `pane read` is counted as
+/// `read-<r>`. Where the test wrote `refuse`, it prints that on standard
+/// error and exits 1, as herdr refuses; otherwise it prints `screen-<s>`
+/// for the greatest `s` up to `r` the test wrote.
+const HERDR: &str = r#"#!/bin/sh
+dir=$(dirname "$0")
+n=1
+while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+printf '%s' "${HERDR_SOCKET_PATH-unset}" > "$dir/socket-$n"
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/writing"
+mv "$dir/writing" "$dir/call-$n"
+[ "$2" = read ] || exit 0
+r=1
+while [ -e "$dir/read-$r" ]; do r=$((r + 1)); done
+: > "$dir/read-$r"
+if [ -e "$dir/refuse" ]; then cat "$dir/refuse" >&2; exit 1; fi
+s=$r
+while [ "$s" -gt 0 ] && [ ! -e "$dir/screen-$s" ]; do s=$((s - 1)); done
+if [ "$s" -gt 0 ]; then cat "$dir/screen-$s"; fi
+exit 0
+"#;
+
+/// A stub `herdr` in a temporary directory of its own. Unscripted, it
+/// prints no screen.
+pub struct HerdrStub {
+    pub dir: TempDir,
+}
+
+impl HerdrStub {
+    pub fn new() -> HerdrStub {
+        let stub = HerdrStub {
+            dir: tempfile::tempdir().expect("a temporary directory"),
+        };
+        let program = stub.program();
+        fs::write(&program, HERDR).expect("the stub");
+        fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
+        stub
+    }
+
+    pub fn program(&self) -> PathBuf {
+        self.dir.path().join("herdr")
+    }
+
+    /// The pane's screen from the `read`th read on, until a later one the
+    /// test wrote.
+    pub fn screen(&self, read: usize, text: &str) {
+        fs::write(self.dir.path().join(format!("screen-{read}")), text).expect("the screen");
+    }
+
+    /// Every read refused from now on, herdr's `error` answer giving
+    /// `message`.
+    pub fn refuse(&self, message: &str) {
+        let answer = json!({ "id": "cli:pane:read", "error": { "code": "pane_not_found", "message": message } });
+        fs::write(self.dir.path().join("refuse"), printed(&answer)).expect("the refusal");
+    }
+
+    /// The arguments of every call, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        (1..)
+            .map_while(|n| fs::read_to_string(self.dir.path().join(format!("call-{n}"))).ok())
+            .map(|call| call.split_terminator('\0').map(str::to_string).collect())
+            .collect()
+    }
+
+    /// The `HERDR_SOCKET_PATH` of every call, in order.
+    pub fn sockets(&self) -> Vec<String> {
+        (1..=self.calls().len())
+            .map(|n| {
+                fs::read_to_string(self.dir.path().join(format!("socket-{n}"))).expect("its socket")
+            })
+            .collect()
+    }
+
+    /// How many reads were made.
+    pub fn reads(&self) -> usize {
+        (1..)
+            .take_while(|r| self.dir.path().join(format!("read-{r}")).exists())
+            .count()
     }
 }

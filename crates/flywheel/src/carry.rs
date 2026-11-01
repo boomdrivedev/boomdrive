@@ -1,9 +1,9 @@
 //! The control pass (design Decision 5). It takes the runner's report,
 //! reads the host once from Flume's status, hands the hello to the pull,
-//! answers each want in the control plane's order, and sends the whole
-//! report. The runner takes only what it was offered, launches only
-//! through Flume's command line, and carries each answer as Flume gave it
-//! (core.1, core.9, core.10). It reaches its control plane only through
+//! answers each want in the control plane's order, opens each terminal
+//! pulled, and sends the whole report. The runner takes only what it was
+//! offered, launches only through Flume's command line, and carries each
+//! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Each
 //! act is said on standard error, one line each, prefixed with its id, and
 //! a pass that changes nothing says nothing.
@@ -14,6 +14,7 @@ use crate::git::Git;
 use crate::hello::{self, Tools};
 use crate::run::Notices;
 use crate::sluice::{self, Sluice};
+use crate::terminal::Relays;
 use crate::{clone, facts, inbox, report};
 use flywheel_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
@@ -108,6 +109,9 @@ pub struct Carrier<'a> {
     /// The runner's control directory, `<data>/control`: its report file
     /// and the folder its briefs pass through.
     pub control_dir: &'a Path,
+    /// The terminals relaying, kept across passes: the pass opens each
+    /// terminal pulled, and closes those on a launch it lets go.
+    pub relays: &'a Relays,
 }
 
 /// What a control pass leaves for the loop.
@@ -188,6 +192,9 @@ impl Carrier<'_> {
         }
         work.carry_statuses(say);
         work.carry_entries(say);
+        for terminal in pulled.terminals {
+            self.relays.open(terminal, &work.report);
+        }
         work.send(plane, say);
         Passed {
             expires: expires(&work.report),
@@ -920,8 +927,10 @@ impl Work<'_> {
         }
     }
 
-    /// Drops `id` from the report, and says whether the report held it.
+    /// Drops `id` from the report, closing every terminal on it, and says
+    /// whether the report held it.
     fn forget(&mut self, id: &Id) -> bool {
+        self.carrier.relays.let_go(id);
         let report = &mut self.report;
         let launch = report.launches.remove(id).is_some();
         let act = report.acts.remove(id).is_some();

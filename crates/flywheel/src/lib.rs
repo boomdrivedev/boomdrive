@@ -15,4 +15,5 @@ pub mod pass;
 pub mod report;
 pub mod run;
 pub mod sluice;
+pub mod terminal;
 pub mod view;

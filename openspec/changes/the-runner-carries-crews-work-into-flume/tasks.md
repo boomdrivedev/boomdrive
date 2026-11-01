@@ -49,7 +49,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 7. The terminal relay
 
-- [ ] 7.1 `crates/flywheel/src/terminal.rs` relays a terminal on a launch held, through herdr's command line, to the pane Flume's status names, on a thread of its own. It closes with its link, its pane or its launch, and keeps nothing (design Decision 16; core.11; terminal-relay spec, every requirement; Task notes 7.1). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of the terminal-relay spec.
+- [x] 7.1 `crates/flywheel/src/terminal.rs` relays a terminal on a launch held, through herdr's command line, to the pane Flume's status names, on a thread of its own. It closes with its link, its pane or its launch, and keeps nothing (design Decision 16; core.11; terminal-relay spec, every requirement; Task notes 7.1). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of the terminal-relay spec.
 - [ ] 7.2 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test` passes.
 
 ## 8. crew's implementation
