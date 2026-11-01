@@ -136,3 +136,75 @@ Each item is one of:
   spec). Source: the user, 2026-11-01, (3). It asks of crew that its
   main-level checkouts come from the runner's clone, not swancloud's
   spaces, and of swancloud that its own containers retire.
+
+## 2. The state directory, and what survives a restart
+
+### What the material settles
+
+- The data directory is `$XDG_DATA_HOME/flywheel`, else
+  `~/.local/share/flywheel` (the clones spec). It holds `lock`; each
+  clone at `repositories/<owner>/<name>/`, in the bare-container layout
+  Flume reads, known as the runner's by the address it records in the
+  clone (`flywheel.address`); `control/report.json`, the runner's
+  report; `control/briefs/`, a launch's brief while Flume reads it; and
+  each implementation's caches, crew's at `control/crew/` (the running,
+  clones and work-into-flume specs; design Decisions 11 and 17).
+- One runner holds a data directory at a time, by an exclusive lock;
+  a second exits 2 and touches nothing (the running spec).
+- Each launch, act and command is carried out once across a restart:
+  the report is written whole, by rename, after every act and command
+  and before the next, and read at start. A launch whose answer was
+  lost is found by its mark `flywheel:<id>` in Flume's listing. A
+  report file lost with the data directory is taken from the control
+  plane, which holds every answer reported. The one window left is an
+  act made after the last report sent and lost with the data directory
+  before the next (core.10; design Decision 11).
+- The configuration file is read at every keeping pass, and the
+  control-plane table at start (the configuration spec).
+
+### Asked
+
+1. **The relay meanwhile** (a follow-up to topic 1's first answer).
+   Today the runner's relay runs herdr directly, and only the unbuilt
+   hosted control plane opens terminals; crew opens none. What happens
+   to it until Flume relays one?
+2. **Upgrades.** Across an upgrade or a rollback, what must hold of the
+   runner's own files: `report.json`, the address recorded in each
+   clone, the commit each view was last put at?
+
+### The user's words
+
+1. "Remove it, build on Flume" (the recommended answer).
+2. "Roll back one release" (the recommended answer).
+
+### What it gives
+
+- **`no-relay-until-flumes`** (requirement). The runner's herdr relay
+  comes out. A terminal the control plane opens is closed at once with
+  words saying the host's Flume relays none, until a change builds the
+  relay over Flume's command (`terminal-through-flumes-seam`). Source:
+  the user, 2026-11-01, (1). Roadmap: a change that removes the relay
+  and its spec's herdr requirements.
+- **`roll-back-one-release`** (rule). A release of the runner never
+  drops, renames or changes the meaning of a field that the release
+  before it reads in a file it keeps (its report, a clone's or a view's
+  record), so a host goes back one release with its data directory as
+  it stands; a file the runner cannot read makes it refuse to start,
+  exit 2, and never is discarded or overwritten. Rules out: a field of
+  `report.json` renamed or removed in one release; a record moved out
+  of a clone's git configuration with no reading of the old place; a
+  report the runner cannot parse replaced by an empty one. Not ruled
+  out: a field added, which the release before ignores; a field the
+  release before no longer reads dropped a release later. Source: the
+  user, 2026-11-01, (2); the cloud's core.67 as the model.
+- **`the-data-directory-holds`** (rule, derived from the material, for
+  the user's review). The data directory holds only the lock, the
+  clones, the runner's report, a launch's brief while Flume reads it,
+  and each implementation's caches; everything in it but the report is
+  made again from origin, Flume and the control plane, and the report
+  is taken from the control plane where it is lost. Rules out: a log
+  file, a terminal's bytes, a credential or a copy of a tool's own
+  records kept there; a brief left after Flume answered (the verify
+  report's "a brief left by a killed launch" is a fix: a start removes
+  the briefs no launch holds). Source: design Decisions 11 and 17;
+  core.11.
