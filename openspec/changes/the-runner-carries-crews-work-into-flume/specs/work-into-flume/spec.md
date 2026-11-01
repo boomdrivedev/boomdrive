@@ -10,8 +10,8 @@ How the runner takes the launches its control plane offers and turns each into o
 
 The runner SHALL hand every pull a hello holding:
 
-- its interface's version, and `flywheel --version`'s text;
-- the first line of `flume --version`, `sluice --version`, `herdr --version` and `git --version`, as each printed it, or the tool named missing;
+- its interface's version, and `flywheel --version`'s text, as the runner's version;
+- each tool's version: the first line of `flume --version`, `sluice --version`, `herdr --version` and `git --version`, as each printed it, or the tool named missing;
 - the address of each repository the configuration names whose clone is made;
 - each lease it holds, by id and number.
 
@@ -27,12 +27,12 @@ The runner SHALL hand every pull a hello holding:
 
 ### Requirement: Every pull carries Flume's host part as Flume printed it
 
-The hello SHALL hold Flume's host part, `running`, `bound`, `room` and `streams`, each as Flume printed it in the pass's one `flume --json status`. It SHALL leave out Flume's `pools`, `addresses`, `bases` and `terminal_kept`.
+The hello's capacity SHALL be Flume's host part, `running`, `bound`, `room` and `streams`, each as Flume printed it in the pass's one `flume --json status`. It SHALL leave out Flume's `pools`, `addresses`, `bases` and `terminal_kept`.
 
 #### Scenario: Streams as Flume printed them
 
 - **WHEN** the stub `flume` prints a listing whose host part holds two streams and a pool named `madswan`
-- **THEN** the hello's Flume part holds the two streams' text as the stub printed it, and the word `madswan` appears nowhere in the hello
+- **THEN** the hello's capacity holds the two streams' text as the stub printed it, and the word `madswan` appears nowhere in the hello
 
 ### Requirement: An offer is taken only for a repository the runner keeps
 
@@ -102,7 +102,7 @@ A launch that names a stream SHALL be launched only while that stream has room, 
 
 ### Requirement: A launch is one `flume launch` naming what the launch gives
 
-The runner SHALL turn a launch into one `flume --json launch --repository <the clone's container>`. It SHALL add `--kinds`, `--kind`, `--name`, `--base`, `--stream`, `--priority`, `--intent`, each `--recipient`, each `--hold`, `--hold-submission`, `--brief-file` and each `--agent` only where the launch gives it, and `--mark flywheel:<id>`. It SHALL add no stream, priority or intent of its own.
+The runner SHALL turn a launch into one `flume --json launch --repository <the clone's container> --kind <kind> --name <name>`. It SHALL add `--base`, `--stream`, `--priority`, `--intent`, each `--recipient`, each `--hold`, `--hold-submission`, `--brief-file` and each `--agent` only where the launch gives it, and `--mark flywheel:<id>`. It SHALL add no stream, priority or intent of its own.
 
 #### Scenario: A unit's launch
 
@@ -113,6 +113,15 @@ The runner SHALL turn a launch into one `flume --json launch --repository <the c
 
 - **WHEN** an offer of `fix` named `b` in `agentplot/flume` gives no stream, priority or intent, and the host has room
 - **THEN** the stub `flume`'s arguments hold no `--stream`, `--priority` or `--intent`
+
+### Requirement: A launch's kind is passed as the launch gives it, and no kinds file
+
+The runner SHALL pass a launch's kind to `--kind` as the launch gives it, a name or an identity `<source>/<name>@<version>`, and SHALL pass no `--kinds`: where a host's kinds come from is its Flume configuration (core.5).
+
+#### Scenario: A kind named by its identity
+
+- **WHEN** an offer `madswan/planner/1` of kind `crew/crew-planner` named `madswan` in `afterthought/madswan-blueprints` is pulled with the agent setting `model=opus`, and its stream has room
+- **THEN** the stub `flume`'s arguments hold `--kind crew/crew-planner` and `--agent model=opus`, and no `--kinds`
 
 ### Requirement: Flume runs with no recipient of the runner's own, and no brief is left
 
@@ -125,7 +134,7 @@ The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset, so a pl
 
 ### Requirement: Every answer is Flume's
 
-The runner SHALL answer a launch `launched`, at the place Flume's answer names, where `flume` exits 0, and an act `done`. Where `flume` exits 1, it SHALL answer `refused` with the `reason` of Flume's `refused` answer as given. On any other exit, or an answer that is not JSON, it SHALL answer `refused` with Flume's standard error as given. Where `flume` cannot be run at all, it SHALL record no answer, name why, and try again at the next pass.
+The runner SHALL answer a launch `launched`, at the place Flume's answer names, where `flume` exits 0, and an act `done`. Where `flume` exits 1, it SHALL answer `refused` with the `reason` of Flume's `refused` answer as given. On any other exit, or an answer that is not JSON, it SHALL answer `refused` with Flume's standard error as given. Where `flume` cannot be run at all, it SHALL keep no answer, name why, and try again at the next pass.
 
 #### Scenario: Flume refuses
 
@@ -139,7 +148,7 @@ The runner SHALL answer a launch `launched`, at the place Flume's answer names, 
 
 ### Requirement: A retry, a drop, a priority and a done are Flume's own commands on the launch's place
 
-The runner SHALL act on the place its record holds for the act's launch, never passing `--force`:
+The runner SHALL act on the place its report holds for the act's launch, never passing `--force`:
 
 - a retry is `flume retry <place>`, with `--stage` and `--words` where the act names them, and `--submission` where it asks for the submission;
 - a drop is `flume drop <place>`;
@@ -156,7 +165,7 @@ The runner SHALL act on the place its record holds for the act's launch, never p
 - **WHEN** an act declares launch `madswan/planner/2` done, and it was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json done P`
 
-### Requirement: A priority or a drop of a launch not yet launched is answered from the record
+### Requirement: A priority or a drop of a launch not yet launched is answered from its report
 
 An act whose launch the runner holds unlaunched SHALL run no command. A priority SHALL be answered `done`, and the launch, when made, SHALL carry the newest priority among its own and its acts', in the control plane's order. A drop SHALL be answered `done`, and the launch SHALL never be made, its answer `done` with words naming the drop.
 
@@ -181,35 +190,35 @@ A retry or a done of a launch the runner holds unlaunched SHALL be answered `ref
 
 #### Scenario: An act on another's launch
 
-- **WHEN** an act names launch `madswan/99`, which the runner's record does not hold
+- **WHEN** an act names launch `madswan/99`, which the runner's report does not hold
 - **THEN** it is answered `refused`, naming `madswan/99`, and no `flume` command is run
 
 ### Requirement: Each launch, act and command is carried out once
 
-The runner SHALL keep its record in `<data>/control/record.json`, written whole by rename after every act and command and before the next, and read at start. A want the record holds settled SHALL be answered from the record and not carried out again. An offer with no answer, whose mark `flywheel:<id>` Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the record file is missing, the runner SHALL take the record the pull gives back.
+The runner SHALL keep its report in `<data>/control/report.json`, written whole by rename after every act and command and before the next, and read at start. A want its report holds settled SHALL be answered from its report and not carried out again. An offer with no answer, whose mark `flywheel:<id>` Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the report file is missing, the runner SHALL take the report the pull gives back.
 
 #### Scenario: A retry not made twice
 
-- **WHEN** a pass retries a place, its report then fails, and the runner starts again from its saved record with the same act pulled
+- **WHEN** a pass retries a place, its report then fails, and the runner starts again from its saved report with the same act pulled
 - **THEN** no second `flume retry` is run, and the act is reported `done`
 
 #### Scenario: A launch found by its mark
 
-- **WHEN** the record file is missing, and an offer `madswan/12` is pulled whose mark `flywheel:madswan/12` Flume's listing holds on place `P`
+- **WHEN** the report file is missing, and an offer `madswan/12` is pulled whose mark `flywheel:madswan/12` Flume's listing holds on place `P`
 - **THEN** it is answered `launched` at `P`, and no `flume launch` is run
 
 ### Requirement: A lease is renewed by every report and let go once refused
 
-Every report SHALL name each lease the runner holds with its work, and so renew it. Where a report's answer refuses an id because its lease is no longer the runner's, the runner SHALL drop it from its record, act on it no more, report it no more, run nothing against its place, and say in one line which place it leaves on the host (core.10).
+Every report SHALL name each lease the runner holds with its work, and so renew it. Where a report's answer refuses an id because its lease is no longer the runner's, the runner SHALL drop it from its report, act on it no more, report it no more, run nothing against its place, and say in one line which place it leaves on the host (core.10).
 
 #### Scenario: A lease refused
 
 - **WHEN** the fake control plane refuses the report of launch `a` at place `P` as no longer this runner's, and later pulls an act on `a`
-- **THEN** `a` leaves the record, a line names `P` as left on the host, the act on `a` is answered `refused`, and no `flume` command names `P`
+- **THEN** `a` leaves the report, a line names `P` as left on the host, the act on `a` is answered `refused`, and no `flume` command names `P`
 
 #### Scenario: Renewed before it lapses
 
-- **WHEN** the runner holds a lease expiring 40 seconds after the end of the pass that took it, and `every` is one minute
+- **WHEN** the runner holds a lease expiring 40 seconds after the end of the pass that took it, and `poll_interval` is one minute
 - **THEN** the next control pass is due no later than 20 seconds after that pass ended
 
 ### Requirement: Flume's status of each place is carried as Flume gave it
@@ -224,7 +233,7 @@ For each launch with a place, the runner SHALL carry `flume --json status --repo
 #### Scenario: Only the host changed
 
 - **WHEN** a pass's listing differs from the last only in its host part
-- **THEN** no `flume status <place>` is run, and the record is unchanged
+- **THEN** no `flume status <place>` is run, and the report is unchanged
 
 ### Requirement: A place the listing no longer holds keeps its last status
 
@@ -246,7 +255,7 @@ The first pass that reads a carried place landed SHALL tell the keeper of a land
 
 ### Requirement: The runner acts only on its own places
 
-The runner SHALL carry and act on only the places its record holds, or whose mark Flume's listing gives as `flywheel:<id>` for an offer it holds. Every other place on the host SHALL be read in the listing and left alone.
+The runner SHALL carry and act on only the places its report holds, or whose mark Flume's listing gives as `flywheel:<id>` for an offer it holds. Every other place on the host SHALL be read in the listing and left alone.
 
 #### Scenario: The user's own place
 

@@ -13,21 +13,21 @@ For a branch command naming `branch` and `from` in a repository the runner keeps
 #### Scenario: No gate for the branch
 
 - **WHEN** the stub `sluice` refuses for want of a `[branches]` table, and the forge holds no `bolt/x`
-- **THEN** the command is answered `refused` with sluice's words, and has no `made`
+- **THEN** the command is answered `refused` with sluice's words, and has no origin commit
 
 ### Requirement: A branch command carries the commit origin's branch stands at
 
-After sluice answers, whichever way, the runner SHALL read `git ls-remote origin refs/heads/<branch>`, and carry the commit origin's branch stands at as the command's `made`, or no `made` where origin holds no such branch. It SHALL read nothing from sluice's words for it.
+After sluice answers, whichever way, the runner SHALL read `git ls-remote origin refs/heads/<branch>`, and carry the commit origin's branch stands at as the command's origin commit, or none where origin holds no such branch. It SHALL read nothing from sluice's words for it.
 
 #### Scenario: A branch made
 
 - **WHEN** a command asks for `bolt/x` from `main` in `afterthought/crew`, and the stub `sluice` exits 0 and the forge then holds `bolt/x` at `C`
-- **THEN** the command is answered `done`, its answer the stub's output as printed, and its `made` `C`
+- **THEN** the command is answered `done`, its answer the stub's output as printed, and its origin commit `C`
 
 #### Scenario: A branch already there
 
 - **WHEN** the forge already holds `bolt/x` at `C`, and the stub `sluice` exits 2 printing `{"error":{"kind":"refused","message":"bolt/x is already there, at C","next":[]}}`
-- **THEN** the command is answered `refused`, its answer that text as printed, and its `made` `C`
+- **THEN** the command is answered `refused`, its answer that text as printed, and its origin commit `C`
 
 ### Requirement: A branch command is taken only where its repository is kept
 
@@ -45,7 +45,7 @@ A branch command for a repository the configuration does not name SHALL be answe
 
 ### Requirement: A command is carried out once
 
-A command the record holds settled SHALL be answered from the record, and its tool SHALL not be run again, across a restart too (core.10).
+A command the runner's report holds settled SHALL be answered from its report, and its tool SHALL not be run again, across a restart too (core.10).
 
 #### Scenario: A command given twice
 

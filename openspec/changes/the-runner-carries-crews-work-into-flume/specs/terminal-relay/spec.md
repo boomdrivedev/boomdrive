@@ -8,11 +8,11 @@ How the runner relays a terminal the control plane opens on a launch, between th
 
 ### Requirement: A terminal opens only on a launch held whose agent's pane Flume names
 
-The runner SHALL open a terminal only where its record holds the terminal's launch under the terminal's lease number, and that launch's carried status names its agent's pane as `clues.shown_at.agent`, in the form `herdr:<pane>@<socket>`. Otherwise it SHALL close the terminal's link at once, with words saying why.
+The runner SHALL open a terminal only where its report holds the terminal's launch under the terminal's lease number, and that launch's carried status names its agent's pane as `clues.shown_at.agent`, in the form `herdr:<pane>@<socket>`. Otherwise it SHALL close the terminal's link at once, with words saying why.
 
 #### Scenario: A launch not held
 
-- **WHEN** a terminal names a launch the runner's record does not hold
+- **WHEN** a terminal names a launch the runner's report does not hold
 - **THEN** its link is closed with words naming the launch, and no `herdr` command is run
 
 #### Scenario: No agent running

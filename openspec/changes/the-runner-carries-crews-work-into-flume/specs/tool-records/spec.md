@@ -40,11 +40,11 @@ The runner SHALL read an entry again at each pass until its `state` is `landed`,
 
 ### Requirement: An inbox is read at each new tip of its branch
 
-For a watch of `branch` in `repository`, the runner SHALL read the tip of `origin/<branch>` in its clone at each control pass. Where the tip moved since the last carried, it SHALL read the files under `inbox/` at that tip through git, and check them whole by weir-signals.
+For an inbox the control plane names on `branch` of `repository`, the runner SHALL read the tip of `origin/<branch>` in its clone at each control pass. Where the tip moved since the last carried, it SHALL read the files under `inbox/` at that tip through git, and check them whole by weir-signals.
 
 #### Scenario: An unchanged tip
 
-- **WHEN** the watched branch's tip has not moved since the last pass
+- **WHEN** the inbox's branch's tip has not moved since the last pass
 - **THEN** no file of it is read again, and the carried inbox is unchanged
 
 ### Requirement: An inbox's records are carried as references
@@ -53,7 +53,7 @@ Where weir takes an inbox's files, the runner SHALL carry the tip's commit, each
 
 #### Scenario: An inbox carried
 
-- **WHEN** a watch names `inbox` in `afterthought/crew`, and the forge's `inbox` branch holds a capture, a signal and an item with a brief written in weir's layout
+- **WHEN** an inbox is named on `inbox` in `afterthought/crew`, and the forge's `inbox` branch holds a capture, a signal and an item with a brief written in weir's layout
 - **THEN** the carried inbox holds the tip's commit, the capture's and signal's files with their text as the tip holds it, the item's record, and the brief as its digest
 
 ### Requirement: An inbox weir refuses keeps what was carried
@@ -62,19 +62,19 @@ Where weir refuses an inbox's files, the runner SHALL carry the tip with weir's 
 
 #### Scenario: An inbox weir refuses
 
-- **WHEN** the watched branch's tip holds a capture file weir cannot read
+- **WHEN** the inbox's branch's tip holds a capture file weir cannot read
 - **THEN** the carried inbox names the tip with weir's words, and the files carried before stand
 
-### Requirement: A watch is answered only for a repository the runner keeps
+### Requirement: An inbox is carried only from a repository the runner keeps
 
-A watch of a repository the configuration does not name SHALL be answered with words naming it, and nothing read. A watch whose clone is not yet made SHALL wait. A watch of a branch origin does not hold SHALL be answered with words naming the branch (core.5).
+An inbox in a repository the configuration does not name SHALL be answered with words naming it, and nothing read. An inbox whose clone is not yet made SHALL wait. An inbox on a branch origin does not hold SHALL be answered with words naming the branch (core.5).
 
 #### Scenario: A repository not kept
 
-- **WHEN** a watch names a repository the configuration does not name
+- **WHEN** an inbox is named in a repository the configuration does not name
 - **THEN** it is answered with words naming the repository, and no git command reads it
 
 #### Scenario: No such branch
 
-- **WHEN** a watch names `inbox` in a kept repository whose origin has no `inbox` branch
+- **WHEN** an inbox is named on `inbox` in a kept repository whose origin has no `inbox` branch
 - **THEN** it is answered with words naming `inbox`
