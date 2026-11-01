@@ -8,3 +8,16 @@ publish = false
 [[bin]]
 name = "flywheel"
 path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+clap.workspace = true
+serde.workspace = true
+signal-hook.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+libc.workspace = true

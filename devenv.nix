@@ -53,6 +53,11 @@ let
     eval "$(${proto}/bin/proto activate bash --export --no-bin --config-mode upwards 2>/dev/null)"
   '';
 
+  # git, which flywheel:test runs (design 11): nixpkgs' build, pinned by
+  # devenv.lock and asserted to be this version where it goes on PATH. Bump
+  # the version with the lock.
+  gitVersion = "2.55.0";
+
   # OpenSpec, which root:specs and root:changes validate with: flume's
   # release, built as nixpkgs builds its older one. Bump the version, then
   # each hash from the mismatch the build reports.
@@ -79,10 +84,13 @@ in
 {
   # The system tools are this file's, pinned by devenv.lock; moon and Rust
   # are .prototools', installed by the flywheel:proto:install task on
-  # entering the shell and activated by enterShell. OpenSpec is the release
-  # pinned above, never the host's (core.8).
+  # entering the shell and activated by enterShell. git and OpenSpec are the
+  # releases pinned above, never the host's (core.8).
   packages = [
-    pkgs.git
+    (
+      assert pkgs.git.version == gitVersion;
+      pkgs.git
+    )
     proto
     openspec
   ];
