@@ -6,7 +6,9 @@
 //! implementation of it, and holds a fake control plane and the cases
 //! every implementation passes.
 
+pub mod fake;
 pub mod report;
+pub mod shared;
 pub mod want;
 
 pub use report::{

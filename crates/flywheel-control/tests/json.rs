@@ -39,7 +39,7 @@ fn launch() -> Launch {
         stream: Some("roles".to_string()),
         priority: Some(-2),
         intent: Some("plan".to_string()),
-        recipients: vec!["role/planner".to_string(), "chuck".to_string()],
+        recipients: vec!["role/planner".to_string(), "operator".to_string()],
         holds: vec![Hold {
             stage: "construct".to_string(),
             words: "wait for the brief".to_string(),
