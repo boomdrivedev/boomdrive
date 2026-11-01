@@ -12,6 +12,7 @@ pub mod hello;
 pub mod inbox;
 pub mod lacks;
 pub mod pass;
+pub mod planes;
 pub mod report;
 pub mod run;
 pub mod sluice;

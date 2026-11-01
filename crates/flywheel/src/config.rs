@@ -1,9 +1,10 @@
 //! The runner's configuration (design 2): one TOML file naming the
 //! repositories a host keeps by their GitHub address, the root their
-//! views are kept under and how often they are fetched, each key named
-//! for what it holds (core.12). A refusal names the file, the line and the
-//! key or entry. It is built from what is wrong and never from the file's
-//! text around it, a value put there by mistake among it (core.4).
+//! views are kept under and how often they are fetched, and the control
+//! plane whose work it carries, each key named for what it holds
+//! (core.12). A refusal names the file, the line and the key or entry. It
+//! is built from what is wrong and never from the file's text around it,
+//! a value put there by mistake among it (core.4).
 
 use serde::de::IgnoredAny;
 use serde::{Deserialize, Deserializer};
@@ -13,10 +14,10 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use toml::{Spanned, Value};
+use toml::{Spanned, Table, Value};
 
 /// The configuration as a pass reads it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Config {
     /// The root each repository's view is kept under, at
     /// `<repository_root>/<owner>/<name>`.
@@ -25,10 +26,31 @@ pub struct Config {
     pub fetch_interval: Duration,
     /// Each repository the host keeps, in the file's order.
     pub repositories: Vec<Address>,
+    /// `[control_plane]`, where the file holds it. Read at every pass, it
+    /// is taken when the runner starts (design Decision 4).
+    pub control_plane: Option<ControlPlaneTable>,
+}
+
+/// `[control_plane]` (design Decision 4): the implementation the runner
+/// opens, how often it makes a control pass, and the implementation's own
+/// table.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ControlPlaneTable {
+    /// `type`: the word of the implementation to open.
+    pub implementation: String,
+    /// How often a control pass is made.
+    pub poll_interval: Duration,
+    /// The table `type` names, `[control_plane.<type>]`, handed whole to
+    /// the implementation, whose keys are its own (core.2): empty where
+    /// the file holds none.
+    pub implementation_table: Table,
 }
 
 /// The fetch interval where the file names none.
 const FETCH_INTERVAL: Duration = Duration::from_secs(2 * 60);
+
+/// The poll interval where `[control_plane]` names none.
+const POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Keys the runner does not read that a host's file may hold, each with
 /// what its refusal adds: the key that holds it now (core.12), or whose
@@ -145,15 +167,26 @@ struct File {
     fetch_interval: Option<Spanned<Value>>,
     #[serde(default, deserialize_with = "list")]
     repositories: Option<Spanned<Entries>>,
+    #[serde(default, deserialize_with = "table")]
+    control_plane: Option<Keys>,
 }
 
 /// `repositories` as written, each entry with where it stands.
 type Entries = Vec<Spanned<Value>>;
 
+/// A table as written, each key and value with where it stands.
+type Keys = BTreeMap<Spanned<String>, Spanned<Value>>;
+
 /// `repositories`, refused by its key where it is not a list.
 fn list<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Spanned<Entries>>, D::Error> {
     Option::deserialize(deserializer)
         .map_err(|_| serde::de::Error::custom("`repositories` is not a list"))
+}
+
+/// `control_plane`, refused by its key where it is not a table.
+fn table<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Keys>, D::Error> {
+    Option::deserialize(deserializer)
+        .map_err(|_| serde::de::Error::custom("`control_plane` is not a table"))
 }
 
 /// Reads the configuration file `file`, with `~` as `home`. A file that
@@ -276,6 +309,17 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
         repositories.push((address, entry));
     }
 
+    let control_plane = match &raw.control_plane {
+        None => None,
+        Some(table) => {
+            let at = keys
+                .keys()
+                .find(|key| key.get_ref() == "control_plane")
+                .map_or(0, |key| key.span().start);
+            Some(control_plane(table, at, &refuse)?)
+        }
+    };
+
     Ok(Config {
         repository_root,
         fetch_interval,
@@ -283,6 +327,97 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
             .into_iter()
             .map(|(address, _)| address)
             .collect(),
+        control_plane,
+    })
+}
+
+/// `[control_plane]` as written in `table`, whose key stands at `at`,
+/// each refusal made by `refuse` (design Decision 4). It holds `type`,
+/// `poll_interval` and the table `type` names, and nothing else.
+fn control_plane(
+    table: &Keys,
+    at: usize,
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<ControlPlaneTable, String> {
+    let find = |name: &str| table.iter().find(|(key, _)| key.get_ref() == name);
+
+    let implementation = match find("type") {
+        None => {
+            return Err(refuse(
+                at,
+                "`type` is required in `[control_plane]`: the word of the control plane's \
+                 implementation"
+                    .to_string(),
+            ))
+        }
+        Some((_, word)) => match word.get_ref().as_str() {
+            Some(word) => word.to_string(),
+            None => {
+                return Err(refuse(
+                    word.span().start,
+                    "`type` is not a string: it is the word of the control plane's \
+                     implementation"
+                        .to_string(),
+                ))
+            }
+        },
+    };
+
+    let poll_interval = match find("poll_interval") {
+        None => POLL_INTERVAL,
+        Some((_, interval)) => interval
+            .get_ref()
+            .as_str()
+            .and_then(Interval::parse)
+            .map(Interval::duration)
+            .ok_or_else(|| {
+                refuse(
+                    interval.span().start,
+                    format!(
+                        "`poll_interval` is {}: an interval is `<n>s`, `<n>m` or `<n>h`, \
+                         with n above zero",
+                        named(interval.get_ref())
+                    ),
+                )
+            })?,
+    };
+
+    let read = ["type", "poll_interval", implementation.as_str()];
+    if let Some((key, _)) = table
+        .iter()
+        .filter(|(key, _)| !read.contains(&key.get_ref().as_str()))
+        .min_by_key(|(key, _)| key.span().start)
+    {
+        return Err(refuse(
+            key.span().start,
+            format!(
+                "unknown field `{}` in `[control_plane]`: it holds `type`, `poll_interval` \
+                 and the table `type` names",
+                key.get_ref()
+            ),
+        ));
+    }
+
+    let implementation_table = match find(&implementation) {
+        None => Table::new(),
+        Some((key, value)) => match value.get_ref() {
+            Value::Table(own) => own.clone(),
+            _ => {
+                return Err(refuse(
+                    key.span().start,
+                    format!(
+                        "`{implementation}` in `[control_plane]` is not a table: it is \
+                         `[control_plane.{implementation}]`, the implementation's own table"
+                    ),
+                ))
+            }
+        },
+    };
+
+    Ok(ControlPlaneTable {
+        implementation,
+        poll_interval,
+        implementation_table,
     })
 }
 
@@ -594,7 +729,161 @@ mod tests {
                 repository_root: PathBuf::from("/srv/code"),
                 fetch_interval: Duration::from_secs(90),
                 repositories: vec![address("agentplot/flume"), address("afterthought/crew")],
+                control_plane: None,
             })
+        );
+    }
+
+    /// Design Decision 4's example of `[control_plane]`.
+    const CONTROL_PLANE: &str = "repositories = []
+
+[control_plane]
+type = \"crew\"
+poll_interval = \"1m\"
+
+[control_plane.crew]
+host = \"deneb\"
+
+[[control_plane.crew.partitions]]
+label = \"madswan\"
+state_repository = \"afterthought/madswan-state\"
+";
+
+    /// The configuration spec's "crew named": the table `type` names is
+    /// handed on whole.
+    #[test]
+    fn the_control_plane_named() {
+        let table = read(CONTROL_PLANE).unwrap().control_plane.unwrap();
+        let own: Table = toml::from_str(
+            "host = \"deneb\"\n\n[[partitions]]\nlabel = \"madswan\"\n\
+             state_repository = \"afterthought/madswan-state\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            table,
+            ControlPlaneTable {
+                implementation: "crew".to_string(),
+                poll_interval: Duration::from_secs(60),
+                implementation_table: own,
+            }
+        );
+    }
+
+    /// The configuration spec's "No control plane".
+    #[test]
+    fn no_control_plane() {
+        assert_eq!(read("repositories = []\n").unwrap().control_plane, None);
+    }
+
+    /// The configuration spec's "No type".
+    #[test]
+    fn no_type() {
+        assert_eq!(
+            read("repositories = []\n\n[control_plane]\npoll_interval = \"30s\"\n"),
+            Err(format!(
+                "{FILE}:3: `type` is required in `[control_plane]`: the word of the control \
+                 plane's implementation"
+            ))
+        );
+        assert_eq!(
+            read("repositories = []\n[control_plane]\ntype = 3\n"),
+            Err(format!(
+                "{FILE}:3: `type` is not a string: it is the word of the control plane's \
+                 implementation"
+            ))
+        );
+    }
+
+    /// The configuration spec's "No poll interval".
+    #[test]
+    fn no_poll_interval() {
+        let table = read("repositories = []\n[control_plane]\ntype = \"crew\"\n")
+            .unwrap()
+            .control_plane
+            .unwrap();
+        assert_eq!(table.poll_interval, Duration::from_secs(60));
+        assert_eq!(table.implementation_table, Table::new());
+    }
+
+    #[test]
+    fn poll_intervals() {
+        for (interval, seconds) in [("30s", 30), ("5m", 300), ("1h", 3600)] {
+            let table = read(&format!(
+                "repositories = []\n[control_plane]\ntype = \"crew\"\n\
+                 poll_interval = \"{interval}\"\n"
+            ))
+            .unwrap()
+            .control_plane
+            .unwrap();
+            assert_eq!(
+                table.poll_interval,
+                Duration::from_secs(seconds),
+                "{interval}"
+            );
+        }
+    }
+
+    /// The configuration spec's "A poll interval of nothing".
+    #[test]
+    fn a_poll_interval_of_nothing() {
+        for (interval, named) in [
+            ("\"0s\"", "\"0s\""),
+            ("\"soon\"", "\"soon\""),
+            ("60", "not a string"),
+        ] {
+            assert_eq!(
+                read(&format!(
+                    "repositories = []\n[control_plane]\ntype = \"crew\"\n\
+                     poll_interval = {interval}\n"
+                )),
+                Err(format!(
+                    "{FILE}:4: `poll_interval` is {named}: an interval is `<n>s`, `<n>m` or \
+                     `<n>h`, with n above zero"
+                ))
+            );
+        }
+    }
+
+    /// `[control_plane]` holds `type`, `poll_interval` and the table
+    /// `type` names, and a key of anything else is refused, its value in
+    /// no output.
+    #[test]
+    fn a_key_the_control_plane_table_does_not_hold() {
+        for (key, line) in [
+            ("token = \"ghp_n0t4r34lt0k3n\"", 4),
+            ("[control_plane.hosted]\ntoken = \"ghp_n0t4r34lt0k3n\"", 4),
+        ] {
+            let refusal = read(&format!(
+                "repositories = []\n[control_plane]\ntype = \"crew\"\n{key}\n"
+            ))
+            .unwrap_err();
+            let name = if key.starts_with('[') {
+                "hosted"
+            } else {
+                "token"
+            };
+            assert_eq!(
+                refusal,
+                format!(
+                    "{FILE}:{line}: unknown field `{name}` in `[control_plane]`: it holds \
+                     `type`, `poll_interval` and the table `type` names"
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn a_control_plane_of_another_kind_is_named_by_its_key() {
+        assert_eq!(
+            read("repositories = []\ncontrol_plane = \"crew\"\n"),
+            Err(format!("{FILE}:2: `control_plane` is not a table"))
+        );
+        assert_eq!(
+            read("repositories = []\n[control_plane]\ntype = \"crew\"\ncrew = 3\n"),
+            Err(format!(
+                "{FILE}:4: `crew` in `[control_plane]` is not a table: it is \
+                 `[control_plane.crew]`, the implementation's own table"
+            ))
         );
     }
 

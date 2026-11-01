@@ -1211,6 +1211,7 @@ mod tests {
                 .iter()
                 .map(|address| Address::parse(address).unwrap())
                 .collect(),
+            control_plane: None,
         }
     }
 

@@ -514,7 +514,7 @@ impl Bench {
             .try_iter()
             .filter_map(|event| match event {
                 Event::Landed(address) => Some(address.to_string()),
-                Event::Stop => None,
+                Event::Wake | Event::Stop => None,
             })
             .collect()
     }

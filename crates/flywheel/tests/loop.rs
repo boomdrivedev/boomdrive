@@ -36,7 +36,7 @@ impl Running {
                 .find(|(key, _)| key.as_os_str() == OsStr::new(name))
                 .map(|(_, value)| value.clone())
         };
-        let runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
         let notices = runner.notices();
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();

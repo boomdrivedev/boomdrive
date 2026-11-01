@@ -17,6 +17,9 @@ clap.workspace = true
 # The one interface the runner reaches its control plane through (design
 # Decision 1; core.2).
 flywheel-control = { path = "../flywheel-control" }
+# crew's implementation of it, which only the list of implementations,
+# src/planes.rs, names (design Decisions 1 and 4; core.2).
+flywheel-crew = { path = "../flywheel-crew" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

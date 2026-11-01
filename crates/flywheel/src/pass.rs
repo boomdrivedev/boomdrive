@@ -28,7 +28,7 @@ pub enum Outcome {
 
 impl Outcome {
     /// Failed where either is.
-    fn and(self, other: Outcome) -> Outcome {
+    pub fn and(self, other: Outcome) -> Outcome {
         if self == Outcome::Failed {
             self
         } else {

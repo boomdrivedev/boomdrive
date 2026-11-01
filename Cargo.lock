@@ -331,6 +331,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "flywheel-control",
+ "flywheel-crew",
  "libc",
  "serde",
  "serde_json",
