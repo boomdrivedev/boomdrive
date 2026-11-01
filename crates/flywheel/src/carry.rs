@@ -14,7 +14,8 @@ use crate::hello::{self, Tools};
 use crate::run::Notices;
 use crate::{facts, report};
 use flywheel_control::{
-    Answer, At, ControlPlane, Id, Offer, Outcome, Report, Unread, Unsent, Want,
+    Act, ActSort, Acted, Answer, At, ControlPlane, Id, Launched, Offer, Outcome, Report, Unread,
+    Unsent, Want,
 };
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -161,6 +162,7 @@ impl Carrier<'_> {
         let report = kept.or(pulled.report).unwrap_or_default();
         let mut work = Work {
             carrier: self,
+            wants: &pulled.wants,
             file,
             saved,
             report,
@@ -187,6 +189,8 @@ impl Carrier<'_> {
 /// host.
 struct Work<'p> {
     carrier: &'p Carrier<'p>,
+    /// What the pull gave, in the control plane's order.
+    wants: &'p [Want],
     file: PathBuf,
     /// The report as the file holds it.
     saved: Report,
@@ -199,8 +203,10 @@ struct Work<'p> {
 
 impl Work<'_> {
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
-        if let Want::Offer(offer) = want {
-            self.offer(offer, say);
+        match want {
+            Want::Offer(offer) => self.offer(offer, say),
+            Want::Act(act) => self.act(act, say),
+            Want::Command(_) | Want::Inbox(_) => {}
         }
     }
 
@@ -220,8 +226,7 @@ impl Work<'_> {
             return;
         };
         let mark = mark(id);
-        if let Some(place) = facts::marked(listing, &mark).and_then(facts::location) {
-            let place = place.to_string();
+        if let Some(place) = facts::marked(listing, &mark).and_then(place_of) {
             say(format!(
                 "{id}: launched at {place}, as its mark {mark} shows"
             ));
@@ -239,6 +244,12 @@ impl Work<'_> {
                 return;
             }
         };
+        if let Some(words) = self.waits(&offer.launch.after) {
+            if self.answer(offer, Outcome::Held, None, Some(words.clone())) {
+                say(format!("{id}: held: {words}"));
+            }
+            return;
+        }
         let stream = offer.launch.stream.as_deref();
         if let Some(words) = self.room.lacks(stream) {
             // A new offer with no room is left for the control plane to
@@ -256,7 +267,7 @@ impl Work<'_> {
     /// Launches `offer` in the clone at `container` (design Decision 9).
     fn launch(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
-        let args = launch_args(offer, container, offer.launch.priority);
+        let args = launch_args(offer, container, self.priority(offer));
         let briefs = self.carrier.control_dir.join("briefs");
         match self.carrier.flume.launch(&args, &briefs) {
             Ok(Reply::Given(text)) => {
@@ -284,6 +295,172 @@ impl Work<'_> {
                 self.failed = true;
             }
         }
+    }
+
+    /// What `after` still waits on, each launch with where it stands, or
+    /// none where every one's place has read landed. The runner reads only
+    /// whether Flume says a place landed (core.1).
+    fn waits(&self, after: &[Id]) -> Option<String> {
+        let waiting: Vec<String> = after
+            .iter()
+            .filter_map(|launch| match self.standing(launch) {
+                Standing::Landed => None,
+                standing => Some(format!("{launch} ({})", standing.words())),
+            })
+            .collect();
+        (!waiting.is_empty()).then(|| format!("waits on {}", waiting.join(", ")))
+    }
+
+    /// Where launch `id` stands, as the report holds it and Flume's status
+    /// reads its place: the pass's listing where it holds the place, else
+    /// the status last carried.
+    fn standing(&self, id: &Id) -> Standing {
+        let Some(launched) = self.report.launches.get(id) else {
+            return Standing::Unlaunched;
+        };
+        let answer = &launched.answer;
+        match answer.outcome {
+            Outcome::Held => Standing::Unlaunched,
+            Outcome::Refused => Standing::Refused(answer.words.clone()),
+            Outcome::Done => Standing::Dropped,
+            Outcome::Launched => match &answer.place_dir {
+                Some(place) if self.landed(launched, place) => Standing::Landed,
+                place => Standing::Launched(place.clone()),
+            },
+        }
+    }
+
+    /// Whether the place at `place` reads landed in the pass's listing,
+    /// where it holds the place, else in the status `launched` carries.
+    fn landed(&self, launched: &Launched, place: &str) -> bool {
+        let listed = self
+            .listing
+            .as_ref()
+            .and_then(|listing| facts::entry(listing, place).cloned());
+        let carried = || {
+            let text = &launched.status.as_ref()?.text;
+            let answer = serde_json::from_str::<Value>(text).ok()?;
+            facts::entry(&answer, place).cloned()
+        };
+        let entry = listed.or_else(carried);
+        matches!(
+            entry.as_ref().and_then(facts::over),
+            Some(facts::Over::Landed(_))
+        )
+    }
+
+    /// The priority `offer` is launched with: the newest an act on it set
+    /// while it was not yet launched, in the control plane's order, else
+    /// its own (crew's teams-cross Decision 6).
+    fn priority(&self, offer: &Offer) -> Option<i64> {
+        let set = self.wants.iter().filter_map(|want| match want {
+            Want::Act(act) if act.launch == offer.id => match act.what {
+                ActSort::Priority(priority) if self.done(&act.id) => Some(priority),
+                _ => None,
+            },
+            _ => None,
+        });
+        set.last().or(offer.launch.priority)
+    }
+
+    /// Whether the report holds act `id` done.
+    fn done(&self, id: &Id) -> bool {
+        self.report
+            .acts
+            .get(id)
+            .is_some_and(|acted| acted.outcome == Outcome::Done)
+    }
+
+    /// Whether the pull offers launch `id`.
+    fn offered(&self, id: &Id) -> bool {
+        self.wants
+            .iter()
+            .any(|want| matches!(want, Want::Offer(offer) if offer.id == *id))
+    }
+
+    /// Carries out or answers `act` on its launch (design Decision 9). An
+    /// act the report holds is left as it stands.
+    fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
+        if self.report.acts.contains_key(&act.id) {
+            return;
+        }
+        let Some(launched) = self.report.launches.get(&act.launch) else {
+            // A launch the pull offers and the runner has not yet taken is
+            // the control plane's to give: its act waits with it.
+            if !self.offered(&act.launch) {
+                let words = format!("{} is no launch of this runner's", act.launch);
+                self.acted(act, Outcome::Refused, Some(words), say);
+            }
+            return;
+        };
+        if launched.answer.outcome == Outcome::Launched {
+            return;
+        }
+        self.act_unlaunched(act, say);
+    }
+
+    /// Answers `act` on a launch the runner holds not yet launched, from
+    /// the report, running no command. A priority is done, and the launch
+    /// carries it when made; a drop is done, and the launch is never made;
+    /// a retry or a done is refused, naming where the launch stands.
+    fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
+        let launched = &self.report.launches[&act.launch];
+        let (lease, answer) = (launched.lease, launched.answer.clone());
+        match act.what {
+            ActSort::Priority(_) => self.acted(act, Outcome::Done, None, say),
+            ActSort::Drop => {
+                self.acted(act, Outcome::Done, None, say);
+                if answer.outcome == Outcome::Held {
+                    let words = format!("dropped by {} before it was launched", act.id);
+                    say(format!("{}: done: {words}", act.launch));
+                    let dropped = Answer {
+                        outcome: Outcome::Done,
+                        place_dir: None,
+                        words: Some(words),
+                        at: At::now(),
+                    };
+                    self.report.answer(&act.launch, lease, dropped);
+                }
+            }
+            ActSort::Retry { .. } | ActSort::Done => {
+                let outcome = match answer.outcome {
+                    Outcome::Held => "held",
+                    Outcome::Done => "done",
+                    Outcome::Refused | Outcome::Launched => "refused",
+                };
+                let why = answer
+                    .words
+                    .map_or(String::new(), |words| format!(": {words}"));
+                let words = format!("{} is {outcome}, not launched{why}", act.launch);
+                self.acted(act, Outcome::Refused, Some(words), say);
+            }
+        }
+    }
+
+    /// Records `act` answered `outcome`, with `words`, and says so.
+    fn acted(
+        &mut self,
+        act: &Act,
+        outcome: Outcome,
+        words: Option<String>,
+        say: &mut dyn FnMut(String),
+    ) {
+        let what = sort(&act.what);
+        match (&outcome, &words) {
+            (Outcome::Refused, Some(words)) => say(format!(
+                "{}: {what} of {}: refused: {words}",
+                act.id, act.launch
+            )),
+            _ => say(format!("{}: {what} of {}: done", act.id, act.launch)),
+        }
+        let acted = Acted {
+            launch: act.launch.clone(),
+            lease: act.lease,
+            outcome,
+            words,
+            at: At::now(),
+        };
+        self.report.acts.insert(act.id.clone(), acted);
     }
 
     /// Gives `offer` the answer `outcome`, at `place_dir`, with `words`.
@@ -333,6 +510,56 @@ impl Work<'_> {
             self.failed = true;
         }
     }
+}
+
+/// Where a launch stands, for what waits on it.
+enum Standing {
+    /// Not answered, or held: not yet launched.
+    Unlaunched,
+    /// Launched, at the place Flume named where it named one, and not
+    /// landed.
+    Launched(Option<String>),
+    Landed,
+    Refused(Option<String>),
+    /// Dropped before it was launched.
+    Dropped,
+}
+
+impl Standing {
+    /// Where it stands, in the runner's own words.
+    fn words(&self) -> String {
+        match self {
+            Standing::Unlaunched => "not yet launched".to_string(),
+            Standing::Launched(Some(place)) => format!("launched at {place}, not landed"),
+            Standing::Launched(None) => "launched, not landed".to_string(),
+            Standing::Landed => "landed".to_string(),
+            Standing::Refused(Some(words)) => format!("refused: {words}"),
+            Standing::Refused(None) => "refused".to_string(),
+            Standing::Dropped => "dropped, so its place will never land".to_string(),
+        }
+    }
+}
+
+/// An act's sort, as its lines name it.
+fn sort(what: &ActSort) -> String {
+    match what {
+        ActSort::Retry { .. } => "retry".to_string(),
+        ActSort::Drop => "drop".to_string(),
+        ActSort::Priority(priority) => format!("priority {priority}"),
+        ActSort::Done => "done".to_string(),
+    }
+}
+
+/// The location of the place whose entry is `entry`: its `place`, or,
+/// for the record Flume keeps of a place tidied while an end of it is
+/// pending, `<location>@<at>`, the location it stood at.
+fn place_of(entry: &Value) -> Option<String> {
+    let named = facts::location(entry)?;
+    let tidied = entry.pointer("/phase/tidied").is_some();
+    let stood = named
+        .rsplit_once('@')
+        .filter(|(_, at)| tidied && !at.is_empty() && at.bytes().all(|byte| byte.is_ascii_digit()));
+    Some(stood.map_or(named, |(location, _)| location).to_string())
 }
 
 /// Room on the host and in each of its streams, as the pass's one
