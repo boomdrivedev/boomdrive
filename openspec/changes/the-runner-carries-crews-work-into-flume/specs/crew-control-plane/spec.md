@@ -2,251 +2,211 @@
 
 ## Purpose
 
-crew's implementation of the control-plane interface, the one part of
-the runner that names crew (core.2). For each partition its
-configuration names, it reads what crew wants of the host from crew's
-records at `<label>/main` of the partition's state repository. It
-writes the runner's answers, and Flume's status of each place, on the
-runner's own branch `<label>/runner/<host>`, in crew's formats
-(crew's `teams-cross-to-flume-as-their-bolts-land` Decision 4, and
-`roles-run-as-flume-kinds` R1 to R4). It pushes no other branch.
+crew's implementation of the control-plane interface, the one crate that names crew. It reads crew's records at one tip of each partition's flywheel branch, `<label>/main`: the requests crew writes, its roles that run as Flume kinds, its asks and its plan. It gives them to the runner as offers and acts, under the lease number 1 with no expiry, since crew addresses each request to one host and never moves it. It writes the runner's answers, and Flume's status of each place, on the runner's own branch, `<label>/runner/<host>`, in crew's formats field for field, and pushes no other branch (core.2, core.10; crew record 0052; crew's `teams-cross-to-flume-as-their-bolts-land` Decision 4 and `roles-run-as-flume-kinds` R1 to R4, as built at crew `9913f249`).
 
 ## ADDED Requirements
 
-### Requirement: crew's implementation is configured per host and partition
+### Requirement: crew's table names the host, the partitions and the kinds files
 
-crew's table SHALL name:
+crew's implementation SHALL open from `[control_plane.crew]`:
 
-- `host`, this host as crew's hosts file names it, with no default;
-- at least one partition, each a `label` once and a `state` repository
-  as `owner/name`;
-- `kinds`, each kinds file a role record may name, by that name.
+- `host`, crew's name for this host, required, with no default;
+- `partitions`, at least one, each a `label` given once and a `state` repository as `owner/name`;
+- `kinds`, each kinds file a role record may name, by that name, as a path.
 
-A missing or malformed key SHALL be refused at start, naming the key.
-A state repository SHALL be reached over https through the host's git
-credential helper, and the table SHALL name no credential.
+A missing or malformed key SHALL be refused, naming the key and the file.
 
-#### Scenario: A partition with no state repository
+#### Scenario: The table read
 
-- **WHEN** crew's table names a partition `madswan` with no `state`
-- **THEN** crew's implementation refuses to open, naming `state` of partition `madswan`
+- **WHEN** the table says `host = "deneb"`, one partition `madswan` with `state = "afterthought/madswan-state"`, and `kinds = { crew = "/k/kinds.toml" }`
+- **THEN** crew's implementation opens for host `deneb`, serving `madswan` from `afterthought/madswan-state`, with crew's kinds file at `/k/kinds.toml`
 
 #### Scenario: No host
 
-- **WHEN** crew's table names no `host`
-- **THEN** crew's implementation refuses to open, naming `host`
+- **WHEN** the table names no `host`
+- **THEN** it is refused, naming `host` and the configuration file
 
-### Requirement: The requests for this host are read from `<label>/main`'s tip
+#### Scenario: A label twice
 
-Each pull SHALL read `requests.rec` at one tip of `<label>/main` for
-each partition. It SHALL give each request whose `Host` is this host,
-in `Request` order, keyed by its partition's label and its number,
-with each field crew's request names:
+- **WHEN** two partitions say `label = "madswan"`
+- **THEN** it is refused, naming `madswan`
 
-- a launch's `After` as the keys of the launches it names;
-- its `Brief` with every line;
-- `Hold: submission` as a held submission;
-- a retry's `Submission` field as a retry of the submission.
+### Requirement: A state repository is reached through the host's own credential helper
 
-#### Scenario: Two hosts' requests
+A state repository SHALL be reached at `https://github.com/<owner>/<name>.git` by the runner's git calls, through the host's git credential helper. crew's table SHALL hold no credential, and a key it does not name SHALL be refused (core.4).
 
-- **WHEN** `madswan/main`'s `requests.rec` holds launch 1 for `deneb` and launch 2 for `alpha`, and this host is `deneb`
-- **THEN** the pull gives launch 1 alone
+#### Scenario: A token in crew's table
+
+- **WHEN** `[control_plane.crew]` says `token = "..."`
+- **THEN** it is refused, naming `token` as a key crew's implementation does not read, and the value appears in no output
+
+### Requirement: crew's records are read at one tip of each partition's flywheel branch
+
+At each pull, for each partition, crew's implementation SHALL read `requests.rec`, `roles.rec`, `asks.rec` and `plan.rec` at one tip of `<label>/main`, through a bare cache at `<data>/control/crew/<owner>/<name>.git`. A file missing at the tip SHALL hold nothing. It SHALL read every `<label>/runner/*` branch the state repository lists, taking its own host's places from the record the runner hands the pull.
+
+#### Scenario: A file missing at the tip
+
+- **WHEN** `madswan/main`'s tip holds `requests.rec` and no `roles.rec`
+- **THEN** the pull gives the requests for this host, and offers no role's run
+
+### Requirement: A partition that cannot be read hides only its own work
+
+A partition whose `<label>/main` cannot be read SHALL give nothing that pass, with its words, while the other partitions give their own. A pull SHALL be unread only when no partition could be read.
+
+#### Scenario: One partition missing
+
+- **WHEN** partition `swancloud`'s state repository has no `swancloud/main` and `madswan`'s holds requests for this host
+- **THEN** the pull gives `madswan`'s requests and names `swancloud/main` as unread
+
+#### Scenario: No partition read
+
+- **WHEN** no partition's state repository can be read
+- **THEN** the pull is unread, naming each
+
+### Requirement: Each request for this host is a want under the lease number 1
+
+crew's implementation SHALL give each `Request` whose `Host` is this host, in `Request` order, as a want with the id `<label>/<Request>` and the lease number 1, with no expiry. It SHALL give none for another host.
+
+#### Scenario: Only this host's requests
+
+- **WHEN** `requests.rec` holds launches for `deneb` and for `vega`, and the host is `deneb`
+- **THEN** the pull gives `deneb`'s alone, in `Request` order, each under lease 1
+
+### Requirement: A launch request is an offer of what it names
+
+A `launch` SHALL be given as an offer whose asks are its `Repo`, `Kind`, `Name`, `Base`, `Stream`, `Priority`, `Intent`, each `Recipient` and `Brief`, each `After` as the launch `<label>/<n>`, and `Hold: submission` as a held submission.
 
 #### Scenario: A launch's every field
 
-- **WHEN** launch 3 for this host names `Repo`, `Kind`, `Name`, `Base`, `Stream`, `Priority`, `Intent`, `Recipient`, a `Brief` over three lines, and `After` 1 and `After` 2
-- **THEN** the pull gives a launch with each of those values, the brief's three lines, and the keys of launches 1 and 2
+- **WHEN** request 12 is a launch for this host naming every field, with a `Brief` over three `+` lines and `After` 10 and 11
+- **THEN** the pull gives an offer `madswan/12`, its brief the three lines joined by newlines, coming after `madswan/10` and `madswan/11`
 
-### Requirement: A request or a partition that cannot be read stops nothing else
+### Requirement: A retry, a drop and a priority are acts on the launch they name
 
-A request it cannot read SHALL be given so the runner refuses it,
-naming the field. A partition whose branch cannot be read SHALL give
-nothing that pass, and every other partition SHALL be read as it
-stands.
+A `retry` SHALL be given as an act on the launch `<label>/<Of>` with its `Stage` and `Words`, asking for the submission where it holds a `Submission` field. A `drop` SHALL be an act dropping `<label>/<Of>`. A `priority` SHALL be an act setting `<label>/<Of>`'s priority to `Priority`.
+
+#### Scenario: A retry of the submission
+
+- **WHEN** request 14 retries `Of: 12` with `Submission: yes`
+- **THEN** the pull gives an act `madswan/14` on `madswan/12` asking for the submission
+
+### Requirement: A request crew's implementation cannot read is refused
+
+A request with a number that is not whole, an `Act` crew's implementation does not know, or a `Hold` other than `submission` SHALL be given as one the runner refuses, with words naming the field. A record with no `Request` number SHALL be left out and named, since it can be given no id.
 
 #### Scenario: An act crew does not write
 
-- **WHEN** request 5 for this host names `Act: rebase`
-- **THEN** the pull gives request 5 so that the runner answers it `refused`, naming `Act`
+- **WHEN** request 15 says `Act: pause`
+- **THEN** the pull gives it as one the runner answers `refused`, with words naming `Act` and `pause`
 
-#### Scenario: One partition unreadable
+### Requirement: The runner's branch is written by weir's write, and only it is pushed
 
-- **WHEN** the configuration names `madswan` and `wldn`, and `wldn/main` does not exist
-- **THEN** the pull gives `madswan`'s requests, and `wldn`'s absence is logged
-
-### Requirement: The runner's branch is written by weir-branch's write
-
-Each report SHALL write `runner.rec`, `answers.rec` and `places.rec` on
-`<label>/runner/<host>` for each partition:
-
-- formed against the branch's tip;
-- each file checked by `recfix --check`;
-- one commit;
-- the branch moved only from that tip, never with force.
-
-Nothing SHALL be written when the files' text is unchanged. The
-branch's first write SHALL hold `runner.rec`, naming the host, the
-runner's version and when it began serving the partition.
-
-#### Scenario: The first pass makes the branch
-
-- **WHEN** the runner reports its first record for `madswan`, which holds no answers
-- **THEN** `madswan/runner/deneb` exists on the state repository with a `runner.rec` naming `deneb`, the runner's version and a `Since`
+At each report, for each partition, crew's implementation SHALL write `<label>/runner/<host>` by weir-branch's write: formed against the branch's tip, each `.rec` file checked by `recfix --check`, one commit, and the branch moved only from that tip by a leased push, never forced. It SHALL write nothing when the files' text equals the tip's. It SHALL push no ref but `<label>/runner/<host>`.
 
 #### Scenario: Nothing changed
 
 - **WHEN** the runner reports the same record twice
-- **THEN** the second report makes no commit on `madswan/runner/deneb`
+- **THEN** the second report makes no commit
 
-### Requirement: No branch but the runner's own is pushed
+#### Scenario: Only the runner's branch
 
-No ref but `<label>/runner/<host>` SHALL be pushed to a state
-repository, and `<label>/main` SHALL never be written.
+- **WHEN** a report has been written
+- **THEN** the state repository's refs are those it held before, with `madswan/runner/deneb` beside them, and every file written passes `recfix --check`
 
-#### Scenario: The flywheel's branch untouched
+### Requirement: The runner's branch holds crew's three files in crew's formats
 
-- **WHEN** a report writes answers and places for `madswan`
-- **THEN** `madswan/main` stands at the commit it stood at before, and the state repository has no new ref but `madswan/runner/deneb`
+crew's implementation SHALL write `runner.rec`, one `Runner` with `Host`, `Version` and `Since`, the first write's time, kept after. It SHALL write `answers.rec`, one `Answer` per request the record holds. It SHALL write `places.rec`, one `Place` per launched request, then one `Run` per role, by `Address`. Each file SHALL open with crew's own descriptor, byte for byte as crew's `runner.py` holds it.
 
-### Requirement: An answer is one record per request read
+#### Scenario: The first report
 
-`answers.rec` SHALL hold one `Answer` record per request the runner
-has read, in `Request` order:
+- **WHEN** the runner first reports for `madswan` on host `deneb`
+- **THEN** the state repository gains `madswan/runner/deneb`, holding `runner.rec` with `Host: deneb`, the runner's version and the time, and `madswan/main`'s tip is unchanged
 
-- `Request`;
-- `Outcome`, one of `held`, `launched`, `done` and `refused`;
-- `Place`, once launched;
-- `Words`, as given;
-- `At`.
+#### Scenario: A place's status as Flume gave it
 
-A held launch, once launched, SHALL be the same record with its new
-outcome.
+- **WHEN** the record carries a place's status as a fixture's text
+- **THEN** `places.rec`'s `Status` for its request is that text, byte for byte, and crew's descriptors open each file byte for byte
 
-#### Scenario: Held, then launched
+### Requirement: A role is wanted while anything is pending for it
 
-- **WHEN** launch 4 is reported `held`, and at a later pass `launched` at a place
-- **THEN** `answers.rec` holds one record of `Request` 4, its `Outcome` `launched` and its `Place` that place
-
-### Requirement: A place is carried with Flume's status as one line
-
-`places.rec` SHALL hold one `Place` record per place launched for a
-request, with `Request`, `Place`, `At` and `Status`, the place's
-object in Flume's status, one line, byte for byte. It SHALL hold one
-`Run` record per role whose run the runner keeps, by `Address`, with
-its `Place`, `At` and `Status`, or `Words` where no run could be
-launched.
-
-#### Scenario: A place's status as Flume printed it
-
-- **WHEN** the runner reports launch 3's place with a status fixture from flume 0.3.6
-- **THEN** `places.rec` on the branch holds a `Place` record of `Request` 3 whose `Status` is that fixture's place object, byte for byte
-
-#### Scenario: A run that could not be launched
-
-- **WHEN** the planner's run of madswan is recorded with Flume's refusal and no place
-- **THEN** `places.rec` holds a `Run` record of `Address` `madswan/planner` with those `Words` and no `Place`
-
-### Requirement: A tidied place's record is kept until its work has left crew's plan
-
-A place Flume no longer lists SHALL keep its last `Place` record until
-the work its request served has left crew's plan at `<label>/main`'s
-tip:
-
-- `unit/<u>` and `chore/<c>` with the plan's `Unit` record of that
-  name;
-- `fix/<bolt>/<name>` with the plan's `Bolt` record of `<bolt>`.
-
-Then it SHALL be let go. Work the plan never holds SHALL keep its last
-record.
-
-#### Scenario: A unit still in the plan
-
-- **WHEN** unit `a`'s place is no longer listed by Flume and the plan still holds `Unit` `a`
-- **THEN** `places.rec` keeps `a`'s record
-
-#### Scenario: The bolt landed
-
-- **WHEN** unit `a`'s place is no longer listed and the plan holds neither `Unit` `a` nor its bolt
-- **THEN** `places.rec` holds no record of `a`'s request, and the report lets that place go
-
-### Requirement: Each role record of this host is a run
-
-For each `Role` record whose `Host` is this host, the pull SHALL give
-a run keyed by its `Address`:
-
-- launched from its `Repository`, `Kind`, `Name`, `Stream`, `Priority`
-  and `Intent`;
-- the kinds file the configuration names for its `Kinds`, or
-  unrunnable where none is named;
-- the agent setting `model=<Model>`.
-
-#### Scenario: The planner's role record
-
-- **WHEN** `madswan/main`'s `roles.rec` holds the planner's record for `deneb`, `Kinds` `crew`, and the configuration names a kinds file for `crew`
-- **THEN** the pull gives a run keyed `madswan/planner`, its launch naming that kinds file, `crew-planner`, `madswan`, its stream, priority 0, intent `madswan-planner` and `model=` its model
-
-#### Scenario: A role record on another host
-
-- **WHEN** `roles.rec` holds the planner's record for `alpha`, and this host is `deneb`
-- **THEN** the pull gives no run of `madswan/planner`
-
-#### Scenario: A role that stands
-
-- **WHEN** `roles.rec` holds no record of madswan's design agent
-- **THEN** the pull gives no run of `madswan/design`
-
-### Requirement: A role's run is wanted while anything is pending for it, read as crew reads it
-
-A role's run SHALL be wanted while anything is pending for the role:
-
-- an `Ask` of the role whose `ask/<Id>` no ended `Turn` of the role
-  took;
-- a place of any host's `places.rec` whose launch names the role's
-  `Address` as `Recipient`, waiting on its caller as crew reads a
-  wait, whose key no ended turn took;
-- a place of a `role/…` launch, landed, whose key no ended turn took.
-
-A host's runner branch that cannot be read SHALL add no waits, and
-every other source SHALL still count.
-
-#### Scenario: A burst
-
-- **WHEN** three asks of madswan's planner are written and no turn has taken them
-- **THEN** the pull gives the planner's run wanted
-
-#### Scenario: An ask during a run
-
-- **WHEN** a turn of the planner that took asks 1 and 2 has ended, and ask 3 was written after it began
-- **THEN** the pull gives the planner's run wanted
+For each `Role` of `roles.rec` whose `Host` is this host, crew's implementation SHALL read what is pending for it as crew's `asks.py` does: each `Ask` of the role, and each place that waits on the role's `Address`, that no `Turn` of the role with `Ended` took. A superseded or open turn SHALL answer nothing.
 
 #### Scenario: Nothing pending
 
-- **WHEN** every ask of the planner was taken by a turn that ended, and no place waits on `madswan/planner`
-- **THEN** the pull gives the planner's run not wanted
-
-#### Scenario: A stage on another host asks the planner
-
-- **WHEN** `madswan/runner/alpha`'s `places.rec` holds request 9's place waiting on its caller with `why` `answer`, and request 9's launch names `madswan/planner` as its `Recipient`
-- **THEN** the pull on deneb, the planner's host, gives the planner's run wanted
+- **WHEN** every ask of `planner` was taken by an ended turn, and no place waits on it
+- **THEN** the pull gives no offer for `planner`
 
 #### Scenario: A superseded turn answers nothing
 
-- **WHEN** a turn of the planner took ask 5 and was superseded, and no ended turn took ask 5
-- **THEN** the pull gives the planner's run wanted
+- **WHEN** the only turn that took an ask of `planner` is superseded
+- **THEN** the ask is pending, and the pull gives an offer of `planner`'s run
 
-#### Scenario: Another host's branch unreadable
+### Requirement: A place waits on a role as crew reads it
 
-- **WHEN** `madswan/runner/alpha`'s `places.rec` is refused by `recfix`, and one ask of the planner is pending
-- **THEN** the pull gives the planner's run wanted, and alpha's branch is logged by name
+A place of any host's `places.rec` SHALL wait on a role where its launch request names the role's `Address` as `Recipient`, and its status waits on its caller with `why` `answer`, `lost` or `past_bound`, with `on_hold` naming no stage, or `stalled`. A `role/…` launch's place that has landed SHALL wait on the role too.
 
-### Requirement: The record is read back from the runner's own branch
+#### Scenario: Another host's place asks the planner
 
-Where the runner holds no record of its own, a pull SHALL give the
-record that `answers.rec` and `places.rec` on `<label>/runner/<host>`
-hold, each request answered there keyed as the pull keys its request.
+- **WHEN** `madswan/runner/vega`'s `places.rec` holds a place whose launch names `madswan/planner` as `Recipient` and whose status waits with `why` `answer`
+- **THEN** the pull gives an offer of `planner`'s run
 
-#### Scenario: A host whose data directory was lost
+#### Scenario: A role's work landed
 
-- **WHEN** `madswan/runner/deneb` answers request 3 `done`, and the runner starts with no record of its own
-- **THEN** the pull's record answers request 3 `done`, under the key the pull gives request 3
+- **WHEN** a `role/planner/x` launch's place reads landed, and no ended turn took it
+- **THEN** the pull gives an offer of `planner`'s run
+
+### Requirement: A role's run is offered while it is wanted and none stands
+
+crew's implementation SHALL offer a run of a wanted role whose latest run has no place reading `live` or `making`, as the launch `<label>/<role>/<k+1>`, where `k` is the highest the record holds of the role. Its asks SHALL be the role's `Repository`, the configured path for its `Kinds`, its `Kind`, `Name`, `Stream`, `Priority` and `Intent`, and the agent setting `model=<Model>`, with no base, brief or recipient.
+
+#### Scenario: A burst of asks
+
+- **WHEN** `asks.rec` holds three asks of `planner` that no ended turn took, and no run of `planner` stands
+- **THEN** the pull gives one offer, `madswan/planner/1`, of kind `crew-planner` named `madswan`, its kinds crew's configured file, its stream the role's, priority 0, intent `madswan-planner` and the agent setting `model=<the role's Model>`
+
+#### Scenario: A run standing
+
+- **WHEN** asks of `planner` are pending and its latest run's carried status reads `live`
+- **THEN** the pull gives no offer for `planner`
+
+#### Scenario: A run waiting for room keeps its id
+
+- **WHEN** an offer of `madswan/planner/3` is left untaken for want of room
+- **THEN** the next pull offers `madswan/planner/3` again; and once the runner records it refused, the pull after offers `madswan/planner/4`
+
+### Requirement: A role whose kinds file is not configured is offered no run
+
+Where the configuration names no kinds file for a role's `Kinds`, crew's implementation SHALL offer no run of the role, and SHALL write the role's `Run` record with words saying so.
+
+#### Scenario: No kinds file
+
+- **WHEN** a role's `Kinds` is `crew` and the configuration's `kinds` names none
+- **THEN** no offer is given for it, and its `Run` record's `Words` say the configuration names no kinds file `crew`
+
+### Requirement: A role's run is declared done once its turn has delivered
+
+Where a role's latest run's carried status waits on its caller with `why` `delivered`, crew's implementation SHALL give one act, `<label>/<role>/<k>/done`, declaring that launch done. A refusal of it SHALL be written as the run's `Words`.
+
+#### Scenario: A turn delivered
+
+- **WHEN** `madswan/planner/2`'s carried status waits on its caller with `why` `delivered`
+- **THEN** the pull gives a done of `madswan/planner/2`, with the id `madswan/planner/2/done`
+
+### Requirement: A launch is let go once its work has left crew's plan
+
+A launch SHALL leave the runner's files, and be named in the report's let-go, once Flume no longer lists its place and its work has left `plan.rec` at `<label>/main`'s tip. `unit/<u>` and `chore/<c>` SHALL leave with the plan's `Unit` record of that name, and `fix/<bolt>/<name>` with its `Bolt` record. `fix/main/…` and `role/…` work SHALL keep its last record. A role's earlier run SHALL go once a later run is recorded and the earlier place is over.
+
+#### Scenario: A unit landed and gone from the plan
+
+- **WHEN** unit `u`'s place is tidied, and `plan.rec` no longer holds `Unit: u`
+- **THEN** its `Place` and `Answer` leave the runner's branch, and the report's let-go names its launch
+
+#### Scenario: A unit still in the plan
+
+- **WHEN** unit `u`'s place is tidied, and `plan.rec` still holds `Unit: u`
+- **THEN** its `Place` stays, with its last status
+
+#### Scenario: A fix of main
+
+- **WHEN** a `fix/main/crew/x` launch's place is tidied
+- **THEN** its `Place` stays
