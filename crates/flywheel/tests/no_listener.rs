@@ -1,6 +1,7 @@
 //! No connection comes in to the runner (the running spec's "No listener
-//! in the code"; design 10; core.3): the crate's sources name no listening
-//! socket, and the workspace's lock names no HTTP or WebSocket server.
+//! in the code"; design 10; core.3): no crate's sources name a listening
+//! socket, the control plane's implementations' among them, and the
+//! workspace's lock names no HTTP or WebSocket server.
 
 use std::path::{Path, PathBuf};
 
@@ -53,14 +54,32 @@ fn packages(lock: &str) -> Vec<&str> {
         .collect()
 }
 
+/// The `src` of every crate under `crates/`.
+fn crates_sources(crates: &Path) -> Vec<PathBuf> {
+    std::fs::read_dir(crates)
+        .expect("crates/")
+        .map(|entry| entry.expect("an entry").path().join("src"))
+        .filter(|src| src.is_dir())
+        .collect()
+}
+
 #[test]
 fn no_listener_in_the_code() {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let files = sources(&crate_dir.join("src"));
-    assert!(!files.is_empty(), "no sources read");
-    for file in files {
-        let text = std::fs::read_to_string(&file).expect("a source");
-        assert_eq!(listeners(&text), Vec::<&str>::new(), "{}", file.display());
+    let dirs = crates_sources(&crate_dir.join(".."));
+    for name in ["flywheel", "flywheel-control", "flywheel-crew"] {
+        assert!(
+            dirs.iter().any(|dir| dir.ends_with(format!("{name}/src"))),
+            "{name}'s sources are not read: {dirs:?}"
+        );
+    }
+    for dir in dirs {
+        let files = sources(&dir);
+        assert!(!files.is_empty(), "no sources read in {}", dir.display());
+        for file in files {
+            let text = std::fs::read_to_string(&file).expect("a source");
+            assert_eq!(listeners(&text), Vec::<&str>::new(), "{}", file.display());
+        }
     }
     let lock = std::fs::read_to_string(crate_dir.join("../../Cargo.lock")).expect("Cargo.lock");
     let names = packages(&lock);
