@@ -169,6 +169,7 @@ The types, each named for what it holds (core.12):
 | `Commanded` | `lease`; `outcome`, `Done` or `Refused`; `text`, the tool's answer as given; `words`; `origin_commit`, the commit the branch stands at on origin, or none; `at` |
 | `InboxCarried` | `tip`; `files`, each path under `inbox/` with its text or digest (Decision 14); `words`; `at` |
 | `Reported` | `let_go`, the ids the control plane carries no more; `refused`, each id whose report was refused because its lease is no longer the runner's, with the control plane's words |
+| `Wake` | what an implementation's opener is handed, to call when its control plane pushes work: the runner then makes a control pass at once (Decision 5) |
 
 An `Id` is a string the control plane gives, unique among what it wants of the host. The runner never reads into it. crew's ids are given in Decision 17. Times are RFC 3339 in UTC to the second. `kind` and `stream` hold Flume's kind and stream as Flume means them, which core.12 allows.
 
@@ -237,7 +238,7 @@ A missing or malformed key is refused, naming the key and the file. Any other ke
 
 The loop stays one thread, so no two of the runner's git calls touch one clone at once. It gains a control timer and one event.
 
-- **When.** A control pass runs at start, after the first keeping pass. After that it runs `poll_interval` after the start of the one before. It runs sooner, by the midpoint between the end of the pass before and the earliest expiry of a lease the runner holds, so a lease is renewed before it lapses. It also runs at once on `Event::Wake`, which an implementation whose control plane pushes may send through `Notices`. crew's never does.
+- **When.** A control pass runs at start, after the first keeping pass. After that it runs `poll_interval` after the start of the one before. It runs sooner, by the midpoint between the end of the pass before and the earliest expiry of a lease the runner holds, so a lease is renewed before it lapses. It also runs at once on `Event::Wake`, which an implementation whose control plane pushes sends by calling the `Wake` its opener is handed. crew's never does.
 - **`flywheel run --once`** makes one keeping pass, then one control pass.
 
 One control pass:
@@ -522,7 +523,7 @@ The hosted control plane's implementation would be a crate of its own, `flywheel
 - its table, `[control_plane.hosted]`, names the control plane's `url`, and the `token_file` the host's token is read from, never the token (core.4; cloud core.24);
 - it keeps one WebSocket it opens and holds, outgoing (core.3; cloud core.37), which ends at the host's Host object (cloud core.13);
 - every message names the protocol version and is checked against that version's schema (cloud core.36). Where that schema lives is left open by cloud record 0022, and that change settles it;
-- a pull is its hello at every reconnect, the hello and the report whole (cloud core.52). It is answered from the messages received since, and the socket's thread sends `Event::Wake` when one arrives;
+- a pull is its hello at every reconnect, the hello and the report whole (cloud core.52). It is answered from the messages received since, and the socket's thread calls the `Wake` its opener was handed when one arrives;
 - a report sends what the server has not acknowledged, each piece under its id (cloud core.38). A refusal under a replaced lease number fills `Reported::refused` (cloud core.39);
 - a terminal's link is a stream of the socket's messages for that terminal's id (cloud record 0016).
 

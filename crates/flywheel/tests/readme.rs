@@ -49,6 +49,7 @@ fn the_readme_control_plane_opens_crews_implementation() {
         &readme,
         Path::new("/nowhere/flywheel"),
         Box::new(|line| panic!("said {line:?} at its opening")),
+        Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }

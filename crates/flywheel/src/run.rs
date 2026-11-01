@@ -14,7 +14,7 @@ use crate::pass::{self, Outcome};
 use crate::planes::{self, Plane};
 use crate::terminal::{self, Relays};
 use crate::{clone, flume, hello, report, sluice};
-use flywheel_control::At;
+use flywheel_control::{At, Wake};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use std::ffi::OsString;
@@ -58,11 +58,17 @@ impl Notices {
     }
 
     /// Wakes the runner for a control pass at once, its control timer
-    /// then timed from that pass's start: what an implementation whose
-    /// control plane pushes sends when it does. A runner carrying no
-    /// control plane's work, or stopped, is woken to nothing.
+    /// then timed from that pass's start. A runner carrying no control
+    /// plane's work, or stopped, is woken to nothing.
     pub fn wake(&self) {
         let _ = self.events.send(Event::Wake);
+    }
+
+    /// What an implementation is handed at its opening, to wake the
+    /// runner when its control plane pushes work.
+    fn waker(&self) -> Wake {
+        let notices = self.clone();
+        Box::new(move || notices.wake())
     }
 }
 
@@ -137,9 +143,9 @@ struct Control {
 
 impl Control {
     /// The control plane `table` names, of the configuration file `file`,
-    /// keeping what it keeps under `data`. An implementation says its
-    /// lines on standard error.
-    fn open(table: &ControlPlaneTable, file: &Path, data: &Path) -> Control {
+    /// keeping what it keeps under `data`, and waking the runner through
+    /// `notices`. An implementation says its lines on standard error.
+    fn open(table: &ControlPlaneTable, file: &Path, data: &Path, notices: &Notices) -> Control {
         let programs = Programs::on_path();
         Control {
             poll_interval: table.poll_interval,
@@ -149,6 +155,7 @@ impl Control {
                 file,
                 data,
                 Box::new(|line| eprintln!("{line}")),
+                notices.waker(),
             ),
             relays: programs.relays(),
             programs,
@@ -200,11 +207,12 @@ impl Runner {
             )
         })?;
         let lock = lock(&data)?;
+        let (events, waiting) = mpsc::channel();
+        let notices = Notices::new(events.clone());
         let control = config
             .control_plane
             .as_ref()
-            .map(|table| Control::open(table, &file, &data));
-        let (events, waiting) = mpsc::channel();
+            .map(|table| Control::open(table, &file, &data, &notices));
         Ok(Runner {
             git,
             home: env.home,
@@ -230,16 +238,22 @@ impl Runner {
         }
     }
 
-    /// Carries `plane`'s work in place of the implementation the
-    /// configuration names, at the poll interval it names, running
-    /// `programs`: how a test runs the loop over a control plane and
-    /// tools of its own. Refused where the configuration names no
-    /// control plane.
-    pub fn carry_for(&mut self, plane: Plane, programs: Programs) -> Result<(), String> {
+    /// Carries the work of the control plane `open` makes, handed the
+    /// runner's wake as an implementation's opener is, in place of the
+    /// implementation the configuration names, at the poll interval it
+    /// names, running `programs`: how a test runs the loop over a control
+    /// plane and tools of its own. Refused where the configuration names
+    /// no control plane.
+    pub fn carry_for(
+        &mut self,
+        open: impl FnOnce(Wake) -> Plane,
+        programs: Programs,
+    ) -> Result<(), String> {
+        let wake = self.notices().waker();
         let Some(control) = &mut self.control else {
             return Err("the configuration names no control plane".to_string());
         };
-        control.plane = Ok(plane);
+        control.plane = Ok(open(wake));
         control.relays = programs.relays();
         control.programs = programs;
         Ok(())

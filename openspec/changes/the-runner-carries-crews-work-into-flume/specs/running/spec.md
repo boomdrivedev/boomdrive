@@ -82,11 +82,11 @@ Where the configuration names a control plane, `flywheel run` SHALL make a contr
 
 ### Requirement: A control pass runs at once when its control plane wakes the runner
 
-`flywheel run` SHALL make a control pass at once when its control plane's implementation wakes it, and SHALL time the next one from that pass's start.
+`flywheel run` SHALL make a control pass at once when its control plane's implementation wakes it, through the wake its opener was handed, and SHALL time the next one from that pass's start.
 
 #### Scenario: Woken by the control plane
 
-- **WHEN** the implementation wakes the runner between two control passes
+- **WHEN** the implementation calls the wake its opener was handed, between two control passes
 - **THEN** a control pass runs at once, and the timer's next pass is `poll_interval` after its start
 
 ### Requirement: A control pass after a broken configuration acts on nothing

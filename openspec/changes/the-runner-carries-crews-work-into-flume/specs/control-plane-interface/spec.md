@@ -72,7 +72,7 @@ A report's answer SHALL name the ids the control plane carries no more, which th
 
 ### Requirement: The configuration chooses the implementation
 
-The runner SHALL open the implementation the configuration's `[control_plane]` `type` names, from the list in `planes.rs`, handing it the table of that name. This binary SHALL carry `crew`. Any other word, `hosted` among them, SHALL be refused at start, naming the words this binary carries. The hosted control plane's implementation SHALL be named and not built.
+The runner SHALL open the implementation the configuration's `[control_plane]` `type` names, from the list in `planes.rs`, handing it the table of that name and a wake, which it calls to wake the runner when its control plane pushes work. This binary SHALL carry `crew`. Any other word, `hosted` among them, SHALL be refused at start, naming the words this binary carries. The hosted control plane's implementation SHALL be named and not built.
 
 #### Scenario: The hosted control plane named
 

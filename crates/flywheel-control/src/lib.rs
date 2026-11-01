@@ -37,6 +37,13 @@ pub trait ControlPlane {
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent>;
 }
 
+/// What an implementation is handed when it is opened, to wake the runner
+/// once its control plane pushes work: each call makes a control pass at
+/// once, the runner's control timer then timed from that pass's start
+/// (design Decision 5). It may be called from any thread. A runner that
+/// has stopped is woken to nothing.
+pub type Wake = Box<dyn Fn() + Send + Sync>;
+
 /// What the runner tells the control plane of its host at every pull
 /// (design Decision 6).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

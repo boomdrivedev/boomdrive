@@ -37,6 +37,7 @@ fn open(text: &str) -> Result<planes::Plane, String> {
         Path::new(FILE),
         Path::new("/nowhere/flywheel"),
         Box::new(|line| panic!("said {line:?} at its opening")),
+        Box::new(|| panic!("woken at its opening")),
     )
 }
 

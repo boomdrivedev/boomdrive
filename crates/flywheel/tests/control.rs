@@ -20,9 +20,9 @@ mod records;
 
 use common::{keeping, Origin, Scratch};
 use fakes::{HerdrStub, SluiceStub, Stub};
-use flywheel::run::{Notices, Programs, Runner, Stopper};
+use flywheel::run::{Programs, Runner, Stopper};
 use flywheel_control::fake::Fake;
-use flywheel_control::{ControlPlane, Hello, Pulled, Report, Reported, Unread, Unsent};
+use flywheel_control::{ControlPlane, Hello, Pulled, Report, Reported, Unread, Unsent, Wake};
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -314,7 +314,9 @@ impl ControlPlane for Told {
 /// The runner's loop over the fake control plane, running in a thread of
 /// the test's, with the stub tools.
 struct Running {
-    notices: Notices,
+    /// The wake the control plane was handed at its opening, as a pushing
+    /// implementation's own thread would hold it.
+    wake: Wake,
     stopper: Stopper,
     lines: Receiver<(Instant, String)>,
     pulls: Receiver<Instant>,
@@ -341,10 +343,17 @@ impl Running {
             fake: Fake::new(),
             pulls: told,
         };
+        let mut handed = None;
         runner
-            .carry_for(Box::new(plane), tools.programs())
+            .carry_for(
+                |wake| {
+                    handed = Some(wake);
+                    Box::new(plane)
+                },
+                tools.programs(),
+            )
             .expect("the configuration names a control plane");
-        let notices = runner.notices();
+        let wake = handed.expect("the control plane is handed the runner's wake");
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
         let thread = thread::spawn(move || {
@@ -353,7 +362,7 @@ impl Running {
             })
         });
         Running {
-            notices,
+            wake,
             stopper,
             lines,
             pulls,
@@ -458,8 +467,9 @@ fn control_passes_on_their_own_timer() {
     assert_eq!(fetched(&scratch), was, "no keeping pass but the first");
 }
 
-/// The running spec's "Woken by the control plane": a control pass runs
-/// at once, and the timer's next is `poll_interval` after its start.
+/// The running spec's "Woken by the control plane": woken through the
+/// wake its control plane was handed at its opening, a control pass runs
+/// at once, and none follows it within the hour's interval.
 #[test]
 fn woken_by_the_control_plane() {
     let scratch = Scratch::new();
@@ -469,7 +479,7 @@ fn woken_by_the_control_plane() {
     running.pull();
 
     let woken = Instant::now();
-    running.notices.wake();
+    (running.wake)();
     let pulled = running.pull();
 
     assert!(
@@ -480,6 +490,38 @@ fn woken_by_the_control_plane() {
     assert!(
         !running.pulled_within(Duration::from_secs(2)),
         "the next control pass is an hour after the woken one"
+    );
+    running.stop();
+}
+
+/// The running spec's "Woken by the control plane", its timer: the pass
+/// after the woken one comes `poll_interval` after the woken pass's start,
+/// not after the start of the pass before it.
+#[test]
+fn the_timer_kept_from_the_woken_pass() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "4s"));
+    let running = Running::start(&scratch);
+    running.pull();
+    thread::sleep(Duration::from_secs(1));
+
+    let woken = Instant::now();
+    (running.wake)();
+    // A pass the timer began before the wake is not the woken one.
+    let mut pulled = running.pull();
+    while pulled < woken {
+        pulled = running.pull();
+    }
+    let next = running.pull();
+
+    // The woken pass began after the wake, and the next no sooner than
+    // four seconds after that; timed from the pass before, it would come
+    // a second sooner.
+    assert!(
+        next - woken >= Duration::from_secs(4),
+        "{:?} from the wake to the pass after the woken one",
+        next - woken
     );
     running.stop();
 }
