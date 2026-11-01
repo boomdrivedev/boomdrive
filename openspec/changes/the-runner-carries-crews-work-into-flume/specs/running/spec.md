@@ -48,7 +48,7 @@
 #### Scenario: A control plane that cannot be read
 
 - **WHEN** `flywheel run --once` runs with crew's control plane and no partition's state repository can be read
-- **THEN** it keeps the repositories, names the control plane as unread, runs no `flume` command, and exits 1
+- **THEN** it keeps the repositories, names the control plane as unread, runs no `flume` command but the hello's `flume --json status` and `flume --version`, and exits 1
 
 ### Requirement: The runner says what it does, one line each
 

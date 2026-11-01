@@ -27,7 +27,7 @@ A pull SHALL give the control plane's wants of the host in the control plane's o
 #### Scenario: A pull that cannot be read
 
 - **WHEN** the fake control plane refuses a pull with the words `no network`
-- **THEN** the control pass names `no network`, runs no `flume` command, and reports nothing
+- **THEN** the control pass names `no network`, runs no `flume` command but the hello's `flume --json status` and `flume --version`, and reports nothing
 
 ### Requirement: Work carries the control plane's ids and leases
 

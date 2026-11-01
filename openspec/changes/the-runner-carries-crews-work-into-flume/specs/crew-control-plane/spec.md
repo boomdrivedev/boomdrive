@@ -249,8 +249,8 @@ crew's implementation SHALL offer a run of a wanted role whose latest run has no
 
 #### Scenario: A run standing
 
-- **WHEN** asks of `planner` are pending and its latest run's carried status reads `live`
-- **THEN** the pull gives no offer for `planner`
+- **WHEN** asks of `planner` are pending and its latest run, `madswan/planner/1`, reads `live` in its carried status
+- **THEN** the pull gives `madswan/planner/1` again, the run the report holds, and offers no new run of `planner`
 
 #### Scenario: A run waiting for room keeps its id
 
