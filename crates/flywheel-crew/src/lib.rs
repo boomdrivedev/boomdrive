@@ -5,3 +5,5 @@
 //! branch beside it, and gives this host's requests and role runs as
 //! wants under the lease number 1. It writes the runner's own branch,
 //! `<label>/runner/<host>`, in crew's formats, and pushes no other.
+
+pub mod config;
