@@ -16,7 +16,7 @@ The runner SHALL keep each configured repository in the bare-container layout un
 
 #### Scenario: The clone is not under the views root
 
-- **WHEN** a pass has cloned `agentplot/flume` with the views root `~/Code`
+- **WHEN** a pass has cloned `agentplot/flume` with the repository root `~/Code`
 - **THEN** nothing of the clone's is under `~/Code` but the view
 
 ### Requirement: A clone that fails leaves nothing
