@@ -240,24 +240,32 @@ fn order<'a>(fields: &mut Vec<(&'a str, &'a str)>, more: &[(&'a str, &'a str)]) 
     fields.sort_by_key(|(name, _)| rank(name));
 }
 
-/// `plan.rec` holding the units `units` and the bolts `bolts`.
+/// `plan.rec` holding the units `units` and the bolts `bolts`, each after
+/// its own descriptor, as crew writes it.
 pub fn plan(units: &[&str], bolts: &[&str]) -> String {
-    let mut records = Vec::new();
-    for bolt in bolts {
-        records.push(rec(&[
-            ("Bolt", bolt),
-            ("Repo", "afterthought/crew"),
-            ("Goal", &format!("{bolt}'s goal")),
-        ]));
-    }
-    for unit in units {
-        records.push(rec(&[
-            ("Unit", unit),
-            ("Repo", "afterthought/crew"),
-            ("Intent", &format!("{unit}'s intent")),
-        ]));
-    }
-    file(PLAN, &records)
+    let (head, unit) = PLAN.split_at(PLAN.find("%rec: Unit").expect("a Unit descriptor"));
+    let bolts: Vec<String> = bolts
+        .iter()
+        .map(|bolt| {
+            rec(&[
+                ("Bolt", bolt),
+                ("Repo", "afterthought/crew"),
+                ("Goal", &format!("{bolt}'s goal")),
+            ])
+        })
+        .collect();
+    let units: Vec<String> = units
+        .iter()
+        .map(|name| {
+            rec(&[
+                ("Unit", name),
+                ("Repo", "afterthought/crew"),
+                ("Intent", &format!("{name}'s intent")),
+            ])
+        })
+        .collect();
+    let head = format!("{}\n", head.trim_end_matches('\n'));
+    format!("{}\n{}", file(&head, &bolts), file(unit, &units))
 }
 
 /// The scratch state repository `afterthought/madswan-state`, removed
