@@ -549,3 +549,23 @@ pub fn status_delivered() -> String {
         .trim_end_matches('\n')
         .to_string()
 }
+
+/// `role`'s record of partition `madswan` on `host`, as crew's
+/// `asks.role_record` writes it.
+pub fn role(role: &str, host: &str) -> String {
+    rec(&[
+        ("Role", role),
+        ("Address", &format!("madswan/{role}")),
+        ("Run", &format!("madswan-{role}")),
+        ("Host", host),
+        ("Repository", "afterthought/blueprints"),
+        ("Kinds", "crew"),
+        ("Kind", &format!("crew-{role}")),
+        ("Name", "madswan"),
+        ("Stream", "madswan-main"),
+        ("Priority", "0"),
+        ("Intent", &format!("madswan-{role}")),
+        ("Model", "claude-fable-5-1"),
+        ("Effort", "xhigh"),
+    ])
+}
