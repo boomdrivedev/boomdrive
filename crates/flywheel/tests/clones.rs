@@ -28,7 +28,7 @@ fn entries(dir: &Path) -> Vec<String> {
 }
 
 /// The line a pass says when it makes `address`'s view under the default
-/// views root, at `origin/main`'s `commit`.
+/// repository root, at `origin/main`'s `commit`.
 fn view_made(scratch: &Scratch, address: &str, commit: &str) -> String {
     format!(
         "{address}: view made at {}, at origin/main {}",

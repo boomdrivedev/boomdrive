@@ -1,8 +1,10 @@
-# flywheel-runner's crates: flywheel, its library and binary. Each is a moon project of
-# its own (core.7).
+# flywheel-runner's crates: flywheel, its library and binary;
+# flywheel-control, the interface the runner reaches its control plane
+# through; and flywheel-crew, crew's implementation of it (design Decision
+# 1). Each is a moon project of its own (core.7).
 [workspace]
 resolver = "2"
-members = ["crates/flywheel"]
+members = ["crates/flywheel", "crates/flywheel-control", "crates/flywheel-crew"]
 
 [workspace.package]
 version = "0.0.0"
@@ -14,6 +16,25 @@ clap = { version = "4", features = ["derive"] }
 # The configuration, read from TOML (design 2).
 serde = { version = "1", features = ["derive"] }
 toml = "1"
+# The control plane's times, RFC 3339 in UTC to the second (design
+# Decision 2).
+time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
+# The runner's report as JSON (design Decision 2), and Flume's answers
+# read as JSON, the host part's fields sliced as Flume printed them
+# (design Decision 6).
+serde_json = { version = "1", features = ["raw_value"] }
+# The inbox's layout and records, read by weir's crate at the revision of
+# weir's main that flume pins, moved by a chore when weir changes (design
+# Decision 14). weir-capture's capture is what a test takes into an inbox
+# by weir's own write (Task notes 5.2), and crew's records are read and
+# written by its recutils reader and writer. weir-branch reads crew's state
+# repository at one tip and writes the runner's branch by weir's write
+# (design Decision 17).
+weir-signals = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
+weir-capture = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
+weir-branch = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
+# The digest an inbox item's brief is carried by (design Decision 14).
+sha2 = "0.10"
 # SIGTERM and SIGINT, which stop the runner between repositories
 # (design 10).
 signal-hook = "0.3"

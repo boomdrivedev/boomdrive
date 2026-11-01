@@ -1,7 +1,11 @@
 # moon runs flywheel-runner's checks: one project per crate, holding its
-# own checks, and the root, holding what spans the tree (core.7). Each
-# check is tagged with its layer, which a branch's policy requires by tag
-# (.config/sluice.toml):
+# own checks, and the root, holding what spans the tree (core.7):
+#   flywheel          the binary and its library
+#   flywheel-control  the interface to the control plane, its fake and
+#                     the cases every implementation passes
+#   flywheel-crew     crew's implementation of the interface
+# Each check is tagged with its layer, which a branch's policy requires by
+# tag (.config/sluice.toml):
 #   check-fast    the crate's format, lint, type check and tests; the
 #                 root's format, toolchain, records, specs and changes.
 #                 main requires it
@@ -12,6 +16,8 @@ $schema: 'https://moonrepo.dev/schemas/workspace.json'
 
 projects:
   flywheel: 'crates/flywheel'
+  flywheel-control: 'crates/flywheel-control'
+  flywheel-crew: 'crates/flywheel-crew'
   root: '.'
 
 # --affected compares against the merge-base with main.

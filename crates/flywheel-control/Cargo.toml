@@ -1,0 +1,16 @@
+[package]
+name = "flywheel-control"
+version.workspace = true
+edition.workspace = true
+description = "The one interface through which the runner reaches its control plane, a fake control plane, and the cases every implementation passes."
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+serde.workspace = true
+time.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

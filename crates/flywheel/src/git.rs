@@ -68,6 +68,20 @@ impl Git {
         output(self.command(at, args))
     }
 
+    /// git's standard output from `args` at `at`, the bytes as git wrote
+    /// them, or its words where it failed.
+    pub fn bytes<I, S>(&self, at: At, args: I) -> Result<Vec<u8>, Words>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let output = spawn(self.command(at, args))?;
+        if output.status.success() {
+            return Ok(output.stdout);
+        }
+        Err(failure(&output))
+    }
+
     /// git's standard output from `args` at `at` where git answers yes
     /// (exits 0), none where it answers no (exits 1), as `rev-parse
     /// --verify --quiet`, `symbolic-ref --quiet` and `config --get`

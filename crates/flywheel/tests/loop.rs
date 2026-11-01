@@ -36,7 +36,7 @@ impl Running {
                 .find(|(key, _)| key.as_os_str() == OsStr::new(name))
                 .map(|(_, value)| value.clone())
         };
-        let runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
         let notices = runner.notices();
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
@@ -80,9 +80,9 @@ impl Running {
     }
 }
 
-/// A configuration keeping `addresses`, fetched `every`.
-fn every(period: &str, addresses: &[&str]) -> String {
-    format!("fetch_every = {period:?}\n{}", keeping(addresses))
+/// A configuration keeping `addresses`, fetched each `interval`.
+fn every(interval: &str, addresses: &[&str]) -> String {
+    format!("fetch_interval = {interval:?}\n{}", keeping(addresses))
 }
 
 /// Writes `text` as the configuration by one rename, so the running
@@ -254,7 +254,7 @@ fn a_file_broken_while_running() {
 
     rewrite(
         &scratch,
-        "fetch_every = \"1s\"\nrepositories = [\"flume\"]\n",
+        "fetch_interval = \"1s\"\nrepositories = [\"flume\"]\n",
     );
     let broken = format!(
         "flywheel: {}:2: `repositories` entry \"flume\": an address is `owner/name`: nothing kept this pass",

@@ -1,0 +1,28 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 1,
+  "branch": "main",
+  "head": "91aff4b74c91b37c374c46b43b35e87b128b0c65",
+  "from": {
+    "agent": "change/the-runner-keeps-its-repositories",
+    "worktree": "pull/1",
+    "head": "change/the-runner-keeps-its-repositories"
+  },
+  "submitted": "2026-10-31T20:07:34Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "0e00e7280074caab4fe6694746db1c872bd67443",
+    "on": "2b8b9ec3326ef2f027ebfe9f246eed4943f1e938",
+    "submissions": [
+      1
+    ]
+  },
+  "result": "passed",
+  "delivered": "2026-10-31T20:08:16Z",
+  "delivered_to": "pull/1",
+  "landed_as": "3e61c31926e3e265212226d30fe3c5934665cc4d",
+  "subject": "change/the-runner-keeps-its-repositories"
+}

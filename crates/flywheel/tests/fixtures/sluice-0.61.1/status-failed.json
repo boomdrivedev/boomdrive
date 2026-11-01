@@ -1,0 +1,47 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 45,
+  "branch": "main",
+  "head": "0d43da70a2ff2bdc4e31fa260252ace4a9ff44b6",
+  "from": {
+    "agent": "fix/live-trust-and-secret-env",
+    "worktree": "pull/38",
+    "head": "fix/live-trust-and-secret-env"
+  },
+  "submitted": "2026-10-29T17:20:05Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "failed",
+  "tested": {
+    "combination": "4c3a3c021325e3f7d03087188f67d038fb850479",
+    "on": "8abbecb3f12e7c92e2aa5b2f597375ceda51617d",
+    "submissions": [
+      45
+    ]
+  },
+  "result": "failed",
+  "failed": [
+    {
+      "task": "flume:tools",
+      "hash": "e0e41e5811489647069b018088b150c920c426e67932fe2206b24c0ad6342f8d",
+      "log": "/Users/chuck/Code/github_agentplot/flume/flume.git/sluice/.logs/main/c41/flume:tools.log",
+      "flaky": {
+        "here": "pass",
+        "at": "2026-10-29T17:53:11Z",
+        "host": "deneb",
+        "other": {
+          "outcome": "fail",
+          "at": "2026-10-29T17:19:43Z",
+          "branch": "main",
+          "combination": "0d43da70a2ff2bdc4e31fa260252ace4a9ff44b6",
+          "host": "deneb",
+          "worktree": "/Users/chuck/Code/github_agentplot/flume/fix-live-trust-and-secret-env"
+        }
+      }
+    }
+  ],
+  "delivered": "2026-10-29T17:53:19Z",
+  "delivered_to": "pull/38",
+  "subject": "fix/live-trust-and-secret-env"
+}

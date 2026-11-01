@@ -1,0 +1,868 @@
+//! What a control pass runs over, faked for its tests (design Decision
+//! 21). Flume is held in memory as the places it stands and its host
+//! part, each answer scripted where a test says, and each call recorded.
+//! The runner's clones and its tools' versions are what a test sets. A
+//! stub `flume` program stands in where a test runs the pass over
+//! Flume's own command line, a stub `sluice` stands in for sluice's, and
+//! a stub `herdr` for herdr's. Every file lies in the test's own
+//! temporary directory, and no test runs a real Flume, sluice or herdr.
+
+#![allow(dead_code)]
+
+use flywheel::carry::{Carrier, Clones, Keeping, Passed};
+use flywheel::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
+use flywheel::git::Git;
+use flywheel::hello::Tools;
+use flywheel::report;
+use flywheel::run::{Event, Notices};
+use flywheel::sluice;
+use flywheel::terminal::{self, Relays};
+use flywheel_control::fake::Fake;
+use flywheel_control::{
+    ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
+};
+use serde_json::{json, Value};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, Receiver};
+use std::sync::{Arc, Mutex};
+use tempfile::TempDir;
+
+/// The repository every bench keeps with its clone made.
+pub const KEPT: &str = "agentplot/flume";
+
+/// A fixture of Flume 0.4.1's, as it printed it.
+pub fn fixture(name: &str) -> String {
+    let file = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/flume-0.4.1")
+        .join(name);
+    fs::read_to_string(file).expect("the fixture")
+}
+
+/// A fixture of sluice 0.61.1's, as it printed it.
+pub fn sluice_fixture(name: &str) -> String {
+    fs::read_to_string(sluice_fixtures().join(name)).expect("the fixture")
+}
+
+/// The directory of sluice 0.61.1's fixtures.
+pub fn sluice_fixtures() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sluice-0.61.1")
+}
+
+/// `value` as Flume prints JSON: on one line, ending in a newline.
+pub fn printed(value: &Value) -> String {
+    serde_json::to_string(value).expect("JSON") + "\n"
+}
+
+/// One call the runner made of Flume.
+// A test records a handful of calls, so a launch's size costs nothing
+// that boxing it would save.
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Call {
+    Launch(LaunchArgs),
+    Act(String, Act),
+    Status,
+    StatusOf(PathBuf, String),
+}
+
+/// Flume in memory.
+#[derive(Default)]
+pub struct FakeFlume {
+    state: RefCell<State>,
+}
+
+#[derive(Default)]
+struct State {
+    /// The entry of each place standing, in Flume's order.
+    places: Vec<Value>,
+    host: Value,
+    /// The listing's whole answer, where a test scripts it.
+    listing: Option<Result<Reply, Unrun>>,
+    /// A launch's answer, by the launch's name.
+    launches: BTreeMap<String, Result<Reply, Unrun>>,
+    /// An act's answer, by its place.
+    acts: BTreeMap<String, Result<Reply, Unrun>>,
+    /// `status <place>`'s answer, by the place.
+    statuses: BTreeMap<String, Result<Reply, Unrun>>,
+    /// Every call left unrun, with these words.
+    unrun: Option<String>,
+    calls: Vec<Call>,
+}
+
+/// A host part with no bound, its one stream `default`, and a pool whose
+/// account is named.
+pub fn unbounded() -> Value {
+    json!({
+        "running": 0, "bound": null, "room": null, "queue": [],
+        "streams": [
+            { "name": "default", "priority": 0, "running": 0, "bound": null, "room": null, "queue": [] }
+        ],
+        "pools": [{ "name": "madswan", "accounts": ["madswan-1"] }],
+        "addresses": [], "bases": [], "terminal_kept": false
+    })
+}
+
+impl FakeFlume {
+    /// A Flume standing no place, on a host with no bound.
+    pub fn new() -> FakeFlume {
+        let flume = FakeFlume::default();
+        flume.state.borrow_mut().host = unbounded();
+        flume
+    }
+
+    /// Stands a place whose entry is `entry`.
+    pub fn stand(&self, entry: Value) {
+        self.state.borrow_mut().places.push(entry);
+    }
+
+    /// The entry of the place at `place`, where one stands.
+    pub fn entry(&self, place: &str) -> Option<Value> {
+        let state = self.state.borrow();
+        state
+            .places
+            .iter()
+            .find(|entry| entry["place"] == place)
+            .cloned()
+    }
+
+    /// Sets the place at `place`'s field `field` to `value`.
+    pub fn set(&self, place: &str, field: &str, value: Value) {
+        let mut state = self.state.borrow_mut();
+        let entry = state
+            .places
+            .iter_mut()
+            .find(|entry| entry["place"] == place)
+            .expect("the place stands");
+        entry[field] = value;
+    }
+
+    /// The place at `place` landed, at commit `c0ffee`, and over.
+    pub fn land(&self, place: &str) {
+        let landed =
+            json!({ "over": { "over": { "landed": { "commit": "c0ffee" } }, "kept": null } });
+        self.set(place, "phase", landed);
+    }
+
+    /// The place at `place` tidied, with nothing pending: no listing holds
+    /// it, and `status <place>` is refused.
+    pub fn tidy(&self, place: &str) {
+        self.state
+            .borrow_mut()
+            .places
+            .retain(|entry| entry["place"] != place);
+    }
+
+    /// The host part, `status.host`.
+    pub fn host(&self, host: Value) {
+        self.state.borrow_mut().host = host;
+    }
+
+    /// The listing answered with `reply`, as a test scripts it whole.
+    pub fn listing(&self, reply: Result<Reply, Unrun>) {
+        self.state.borrow_mut().listing = Some(reply);
+    }
+
+    /// The launch named `name` answered with `reply`.
+    pub fn launch_answers(&self, name: &str, reply: Result<Reply, Unrun>) {
+        self.state
+            .borrow_mut()
+            .launches
+            .insert(name.to_string(), reply);
+    }
+
+    /// An act on the place at `place` answered with `reply`.
+    pub fn act_answers(&self, place: &str, reply: Result<Reply, Unrun>) {
+        self.state
+            .borrow_mut()
+            .acts
+            .insert(place.to_string(), reply);
+    }
+
+    /// `status <place>` answered with `reply`.
+    pub fn status_answers(&self, place: &str, reply: Result<Reply, Unrun>) {
+        self.state
+            .borrow_mut()
+            .statuses
+            .insert(place.to_string(), reply);
+    }
+
+    /// Every call left unrun with `words`, as when `flume` is not there.
+    pub fn unrun(&self, words: &str) {
+        self.state.borrow_mut().unrun = Some(words.to_string());
+    }
+
+    /// Every call answered again.
+    pub fn run(&self) {
+        self.state.borrow_mut().unrun = None;
+    }
+
+    /// Each call made, in order.
+    pub fn calls(&self) -> Vec<Call> {
+        self.state.borrow().calls.clone()
+    }
+
+    /// Each call made, in order, forgotten once given.
+    pub fn take_calls(&self) -> Vec<Call> {
+        std::mem::take(&mut self.state.borrow_mut().calls)
+    }
+
+    /// Each call but the listing: what acts on, launches or reads a place.
+    pub fn commands(&self) -> Vec<Call> {
+        let calls = self.calls();
+        calls
+            .into_iter()
+            .filter(|call| *call != Call::Status)
+            .collect()
+    }
+
+    /// Each act asked, with its place, in order.
+    pub fn acts(&self) -> Vec<(String, Act)> {
+        self.calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Act(place, act) => Some((place, act)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Each launch's arguments, in order.
+    pub fn launches(&self) -> Vec<LaunchArgs> {
+        self.calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Launch(args) => Some(args),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn call(&self, call: Call) -> Option<Unrun> {
+        let mut state = self.state.borrow_mut();
+        state.calls.push(call);
+        state.unrun.clone().map(Unrun)
+    }
+
+    fn listing_now(&self) -> Value {
+        let state = self.state.borrow();
+        json!({ "status": { "places": state.places, "host": state.host } })
+    }
+}
+
+/// The place a launch named `name` stands at in a fake Flume.
+pub fn place_of(name: &str) -> String {
+    format!("/places/{name}")
+}
+
+impl Flume for FakeFlume {
+    fn launch(&self, args: &LaunchArgs, _brief_dir: &Path) -> Result<Reply, Unrun> {
+        if let Some(unrun) = self.call(Call::Launch(args.clone())) {
+            return Err(unrun);
+        }
+        if let Some(reply) = self.state.borrow().launches.get(&args.name) {
+            return reply.clone();
+        }
+        let entry = json!({
+            "place": place_of(&args.name),
+            "repository": args.container_dir,
+            "kind": args.kind,
+            "name": args.name,
+            "mark": args.mark,
+            "phase": "live",
+            "priority": args.priority.unwrap_or(0),
+            "stream": { "name": args.stream.as_deref().unwrap_or("default"), "from": "launch" },
+        });
+        self.stand(entry.clone());
+        Ok(Reply::Given(printed(
+            &json!({ "launched": { "place": entry } }),
+        )))
+    }
+
+    fn act(&self, place: &str, act: &Act) -> Result<Reply, Unrun> {
+        if let Some(unrun) = self.call(Call::Act(place.to_string(), act.clone())) {
+            return Err(unrun);
+        }
+        if let Some(reply) = self.state.borrow().acts.get(place) {
+            return reply.clone();
+        }
+        let word = match act {
+            Act::Retry { .. } => "retry",
+            Act::Drop => "drop",
+            Act::Priority(_) => "priority",
+            Act::Done => "done",
+        };
+        match act {
+            Act::Drop | Act::Done => self.tidy(place),
+            Act::Priority(priority) => self.set(place, "priority", json!(priority)),
+            Act::Retry { .. } => {}
+        }
+        Ok(Reply::Given(printed(
+            &json!({ "acted": { "act": word, "place": place } }),
+        )))
+    }
+
+    fn status(&self) -> Result<Reply, Unrun> {
+        if let Some(unrun) = self.call(Call::Status) {
+            return Err(unrun);
+        }
+        if let Some(reply) = &self.state.borrow().listing {
+            return reply.clone();
+        }
+        Ok(Reply::Given(printed(&self.listing_now())))
+    }
+
+    fn status_of(&self, container_dir: &Path, place: &str) -> Result<Reply, Unrun> {
+        let call = Call::StatusOf(container_dir.to_path_buf(), place.to_string());
+        if let Some(unrun) = self.call(call) {
+            return Err(unrun);
+        }
+        if let Some(reply) = self.state.borrow().statuses.get(place) {
+            return reply.clone();
+        }
+        let host = self.state.borrow().host.clone();
+        match self.entry(place) {
+            Some(entry) => Ok(Reply::Given(printed(
+                &json!({ "status": { "places": [entry], "host": host } }),
+            ))),
+            None => Ok(Reply::Refused(format!(
+                "no place {place} stands on this host"
+            ))),
+        }
+    }
+}
+
+/// The runner's clones, as a test sets them.
+#[derive(Default)]
+pub struct FakeClones {
+    kept: RefCell<Vec<(String, Keeping)>>,
+}
+
+impl FakeClones {
+    /// `address` named, its clone made in `container`.
+    pub fn ready(&self, address: &str, container: &Path) {
+        self.keep(address, Keeping::Ready(container.to_path_buf()));
+    }
+
+    /// `address` named, its clone not yet made.
+    pub fn not_yet(&self, address: &str) {
+        self.keep(address, Keeping::NotYet);
+    }
+
+    fn keep(&self, address: &str, keeping: Keeping) {
+        let mut kept = self.kept.borrow_mut();
+        kept.retain(|(named, _)| !named.eq_ignore_ascii_case(address));
+        kept.push((address.to_string(), keeping));
+    }
+}
+
+impl Clones for FakeClones {
+    fn keeping(&self, address: &str) -> Keeping {
+        let kept = self.kept.borrow();
+        kept.iter()
+            .find(|(named, _)| named.eq_ignore_ascii_case(address))
+            .map_or(Keeping::NotNamed, |(_, keeping)| keeping.clone())
+    }
+
+    fn made(&self) -> Vec<String> {
+        let kept = self.kept.borrow();
+        kept.iter()
+            .filter(|(_, keeping)| matches!(keeping, Keeping::Ready(_)))
+            .map(|(address, _)| address.clone())
+            .collect()
+    }
+}
+
+/// The tools' versions: each `<tool> 1.0.0`, but those a test names
+/// missing.
+#[derive(Default)]
+pub struct FakeTools {
+    missing: RefCell<Vec<String>>,
+}
+
+impl FakeTools {
+    pub fn missing(&self, tool: &str) {
+        self.missing.borrow_mut().push(tool.to_string());
+    }
+}
+
+impl Tools for FakeTools {
+    fn version(&self, tool: &str) -> ToolVersion {
+        if self.missing.borrow().iter().any(|missing| missing == tool) {
+            return ToolVersion::Missing(format!("{tool} could not run: not found"));
+        }
+        ToolVersion::Printed(format!("{tool} 1.0.0"))
+    }
+}
+
+/// A host for control passes: a fake Flume, a stub `sluice`, a stub
+/// `herdr` and the terminals relayed through it, clones and tools, and a
+/// data directory of its own, which keeps [`KEPT`] with its clone's
+/// container made.
+pub struct Bench {
+    /// Dropped first, so every terminal's thread ends before the stubs
+    /// and the data directory go.
+    pub relays: Relays,
+    relay_lines: Arc<Mutex<Vec<String>>>,
+    pub herdr: HerdrStub,
+    pub dir: TempDir,
+    pub flume: FakeFlume,
+    pub sluice: SluiceStub,
+    /// git, for an inbox read from a clone: a test that names an inbox
+    /// sets the scratch host's.
+    pub git: Git,
+    pub clones: FakeClones,
+    pub tools: FakeTools,
+    notices: Notices,
+    events: Receiver<Event>,
+}
+
+impl Bench {
+    pub fn new() -> Bench {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let (events, received) = mpsc::channel();
+        let herdr = HerdrStub::new();
+        let relay_lines = Arc::new(Mutex::new(Vec::new()));
+        let said = Arc::clone(&relay_lines);
+        let relays = Relays::new(terminal::Cli::new(herdr.program()), move |line| {
+            said.lock().expect("the relay's lines").push(line);
+        });
+        let bench = Bench {
+            relays,
+            relay_lines,
+            herdr,
+            dir,
+            flume: FakeFlume::new(),
+            sluice: SluiceStub::new(),
+            git: Git::default(),
+            clones: FakeClones::default(),
+            tools: FakeTools::default(),
+            notices: Notices::new(events),
+            events: received,
+        };
+        let container = bench.container(KEPT);
+        fs::create_dir_all(&container).expect("the clone's container");
+        bench.clones.ready(KEPT, &container);
+        bench
+    }
+
+    /// The data directory.
+    pub fn data(&self) -> PathBuf {
+        self.dir.path().join("data")
+    }
+
+    /// The control directory, `<data>/control`.
+    pub fn control_dir(&self) -> PathBuf {
+        report::control_dir(&self.data())
+    }
+
+    /// The report file.
+    pub fn report_file(&self) -> PathBuf {
+        report::file(&self.control_dir())
+    }
+
+    /// The container `address`'s clone is made in.
+    pub fn container(&self, address: &str) -> PathBuf {
+        self.data().join("repositories").join(address)
+    }
+
+    /// One control pass against `plane` over the fake Flume, and the lines
+    /// it said.
+    pub fn pass(&self, plane: &mut Fake) -> (Passed, Vec<String>) {
+        self.pass_over(&self.flume, plane)
+    }
+
+    /// One control pass against `plane` over `flume`, and the lines it
+    /// said.
+    pub fn pass_over(&self, flume: &dyn Flume, plane: &mut Fake) -> (Passed, Vec<String>) {
+        let control_dir = self.control_dir();
+        let sluice = sluice::Cli::new(self.sluice.program());
+        let carrier = Carrier {
+            flume,
+            sluice: &sluice,
+            git: &self.git,
+            clones: &self.clones,
+            tools: &self.tools,
+            notices: &self.notices,
+            control_dir: &control_dir,
+            relays: &self.relays,
+        };
+        let mut lines = Vec::new();
+        let passed = carrier.pass(plane, &mut |line| lines.push(line));
+        (passed, lines)
+    }
+
+    /// The report the file holds.
+    pub fn report(&self) -> Report {
+        report::read(&self.report_file())
+            .expect("the report file reads")
+            .expect("the report file is there")
+    }
+
+    /// Each line the terminals said, in order.
+    pub fn relay_lines(&self) -> Vec<String> {
+        self.relay_lines.lock().expect("the relay's lines").clone()
+    }
+
+    /// Each repository the keeper was told of a landing on since last
+    /// asked.
+    pub fn landings(&self) -> Vec<String> {
+        self.events
+            .try_iter()
+            .filter_map(|event| match event {
+                Event::Landed(address) => Some(address.to_string()),
+                Event::Wake | Event::Stop => None,
+            })
+            .collect()
+    }
+}
+
+/// An offer `id` of a `change` named `name` in [`KEPT`] under lease 1 with
+/// no expiry, giving nothing more.
+pub fn offer(id: &str, name: &str) -> Offer {
+    Offer {
+        id: Id::new(id),
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        launch: Launch {
+            repository: KEPT.to_string(),
+            kind: "change".to_string(),
+            name: name.to_string(),
+            base: None,
+            brief: None,
+            stream: None,
+            priority: None,
+            intent: None,
+            recipients: Vec::new(),
+            holds: Vec::new(),
+            hold_submission: false,
+            after: Vec::new(),
+            agent_settings: Vec::new(),
+        },
+    }
+}
+
+/// An offer of a launch with every field, design's unit launch: `change`
+/// named `a` in `afterthought/crew` on `bolt/x`.
+pub fn every_field(id: &str) -> Offer {
+    let mut offer = offer(id, "a");
+    offer.launch = Launch {
+        repository: "afterthought/crew".to_string(),
+        kind: "change".to_string(),
+        name: "a".to_string(),
+        base: Some("bolt/x".to_string()),
+        brief: Some("Parse the input.\n\nAs words.".to_string()),
+        stream: Some("madswan".to_string()),
+        priority: Some(4),
+        intent: Some("madswan/x".to_string()),
+        recipients: vec!["madswan/planner".to_string()],
+        holds: vec![Hold {
+            stage: "code".to_string(),
+            words: "the user reads the design".to_string(),
+        }],
+        hold_submission: true,
+        after: Vec::new(),
+        agent_settings: vec![AgentSetting {
+            field: "model".to_string(),
+            value: "opus".to_string(),
+        }],
+    };
+    offer
+}
+
+/// An act `id` on launch `launch`, under lease 1.
+pub fn act(id: &str, launch: &str, what: ActSort) -> Want {
+    Want::Act(flywheel_control::Act {
+        id: Id::new(id),
+        launch: Id::new(launch),
+        lease: 1,
+        what,
+    })
+}
+
+/// The stub's program. Each call writes its arguments, NUL-terminated, to
+/// `call-<n>`, whether `FLUME_RECIPIENT` was set to `recipient-<n>`, and
+/// the brief its `--brief-file` names to `brief-<n>`. It then prints the
+/// fixture `<what>.stdout` names and exits with `<what>.exit`'s status,
+/// each where the test wrote one, `<what>` being its command, or
+/// `status-of` for `status` with a place.
+const STUB: &str = r#"#!/bin/sh
+dir=$(dirname "$0")
+n=1
+while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
+if [ "${FLUME_RECIPIENT+set}" = set ]; then echo set; else echo unset; fi > "$dir/recipient-$n"
+previous=
+for arg in "$@"; do
+  if [ "$previous" = --brief-file ]; then cp "$arg" "$dir/brief-$n"; fi
+  previous=$arg
+done
+what=$2
+if [ "$what" = status ] && [ $# -gt 2 ]; then what=status-of; fi
+if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
+if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
+exit 0
+"#;
+
+/// A stub `flume` in a temporary directory of its own.
+pub struct Stub {
+    pub dir: TempDir,
+}
+
+impl Stub {
+    /// A stub not yet written: its program is not there.
+    pub fn absent() -> Stub {
+        Stub {
+            dir: tempfile::tempdir().expect("a temporary directory"),
+        }
+    }
+
+    /// A stub answering `status` with `status.json`.
+    pub fn new() -> Stub {
+        let stub = Stub::absent();
+        stub.write();
+        stub.answers("status", "status.json", 0);
+        stub
+    }
+
+    /// Writes the stub's program.
+    pub fn write(&self) {
+        let program = self.program();
+        fs::write(&program, STUB).expect("the stub");
+        fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
+    }
+
+    pub fn program(&self) -> PathBuf {
+        self.dir.path().join("flume")
+    }
+
+    /// `what`, a command or `status-of`, answered with the fixture `name`
+    /// and the exit `exit`.
+    pub fn answers(&self, what: &str, name: &str, exit: i32) {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/flume-0.4.1")
+            .join(name);
+        let dir = self.dir.path();
+        fs::write(
+            dir.join(format!("{what}.stdout")),
+            fixture.to_string_lossy().as_bytes(),
+        )
+        .expect("the stub's answer");
+        fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// A file of the stub's, as it wrote it.
+    pub fn read(&self, name: &str) -> Option<String> {
+        fs::read_to_string(self.dir.path().join(name)).ok()
+    }
+
+    /// The arguments of every call, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        (1..)
+            .map_while(|n| self.read(&format!("call-{n}")))
+            .map(|call| call.split_terminator('\0').map(str::to_string).collect())
+            .collect()
+    }
+
+    /// `what`, a command or `status-of`, answered with `text` and the exit
+    /// `exit`.
+    pub fn answers_text(&self, what: &str, text: &str, exit: i32) {
+        let dir = self.dir.path();
+        let file = dir.join(format!("{what}.answer"));
+        fs::write(&file, text).expect("the stub's answer");
+        fs::write(
+            dir.join(format!("{what}.stdout")),
+            file.to_string_lossy().as_bytes(),
+        )
+        .expect("the stub's answer");
+        fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// The number of the first call whose command, after `--json`, is
+    /// `what`, counting from 1.
+    pub fn call_of(&self, what: &str) -> Option<usize> {
+        self.calls()
+            .iter()
+            .position(|call| call.get(1).map(String::as_str) == Some(what))
+            .map(|n| n + 1)
+    }
+}
+
+/// The stub `sluice`'s program. Each call writes its arguments,
+/// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
+/// It then prints the file `<what>.stdout` names, writes `<what>.stderr`
+/// on standard error, runs `<what>.then` by `sh`, and exits with
+/// `<what>.exit`'s status, each where the test wrote one, `<what>` being
+/// its command.
+const SLUICE: &str = r#"#!/bin/sh
+dir=$(dirname "$0")
+n=1
+while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
+pwd -P > "$dir/dir-$n"
+what=$1
+if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
+if [ -e "$dir/$what.stderr" ]; then cat "$dir/$what.stderr" >&2; fi
+if [ -e "$dir/$what.then" ]; then sh "$dir/$what.then" || exit 99; fi
+if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
+exit 0
+"#;
+
+/// A stub `sluice` in a temporary directory of its own. Unscripted, it
+/// prints nothing.
+pub struct SluiceStub {
+    pub dir: TempDir,
+}
+
+impl SluiceStub {
+    pub fn new() -> SluiceStub {
+        let stub = SluiceStub::absent();
+        let program = stub.program();
+        fs::write(&program, SLUICE).expect("the stub");
+        fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
+        stub
+    }
+
+    /// A stub not written: its program is not there.
+    pub fn absent() -> SluiceStub {
+        SluiceStub {
+            dir: tempfile::tempdir().expect("a temporary directory"),
+        }
+    }
+
+    pub fn program(&self) -> PathBuf {
+        self.dir.path().join("sluice")
+    }
+
+    /// `what`, a command, answered with sluice's fixture `name` and the
+    /// exit `exit`.
+    pub fn answers(&self, what: &str, name: &str, exit: i32) {
+        self.answers_text(what, &sluice_fixture(name), exit);
+    }
+
+    /// `what`, a command, answered with `text` and the exit `exit`.
+    pub fn answers_text(&self, what: &str, text: &str, exit: i32) {
+        let dir = self.dir.path();
+        let file = dir.join(format!("{what}.answer"));
+        fs::write(&file, text).expect("the stub's answer");
+        fs::write(
+            dir.join(format!("{what}.stdout")),
+            file.to_string_lossy().as_bytes(),
+        )
+        .expect("the stub's answer");
+        fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// `what`, a command, saying `words` on standard error.
+    pub fn says(&self, what: &str, words: &str) {
+        fs::write(self.dir.path().join(format!("{what}.stderr")), words).expect("its words");
+    }
+
+    /// `what`, a command, running `script` by `sh` once it has printed,
+    /// as sluice changes what it is asked to.
+    pub fn then(&self, what: &str, script: &str) {
+        fs::write(self.dir.path().join(format!("{what}.then")), script).expect("its script");
+    }
+
+    /// The arguments of every call, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        (1..)
+            .map_while(|n| fs::read_to_string(self.dir.path().join(format!("call-{n}"))).ok())
+            .map(|call| call.split_terminator('\0').map(str::to_string).collect())
+            .collect()
+    }
+
+    /// The directory the `n`th call ran in, counting from 1.
+    pub fn dir_of(&self, n: usize) -> Option<PathBuf> {
+        let said = fs::read_to_string(self.dir.path().join(format!("dir-{n}"))).ok()?;
+        Some(PathBuf::from(said.trim_end_matches('\n')))
+    }
+}
+
+/// The stub `herdr`'s program. Each call writes its `HERDR_SOCKET_PATH`,
+/// or `unset`, to `socket-<n>`, then its arguments, NUL-terminated, to
+/// `call-<n>`, each whole once there. A `pane read` is counted as
+/// `read-<r>`. Where the test wrote `refuse`, it prints that on standard
+/// error and exits 1, as herdr refuses; otherwise it prints `screen-<s>`
+/// for the greatest `s` up to `r` the test wrote.
+const HERDR: &str = r#"#!/bin/sh
+dir=$(dirname "$0")
+n=1
+while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+printf '%s' "${HERDR_SOCKET_PATH-unset}" > "$dir/socket-$n"
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/writing"
+mv "$dir/writing" "$dir/call-$n"
+[ "$2" = read ] || exit 0
+r=1
+while [ -e "$dir/read-$r" ]; do r=$((r + 1)); done
+: > "$dir/read-$r"
+if [ -e "$dir/refuse" ]; then cat "$dir/refuse" >&2; exit 1; fi
+s=$r
+while [ "$s" -gt 0 ] && [ ! -e "$dir/screen-$s" ]; do s=$((s - 1)); done
+if [ "$s" -gt 0 ]; then cat "$dir/screen-$s"; fi
+exit 0
+"#;
+
+/// A stub `herdr` in a temporary directory of its own. Unscripted, it
+/// prints no screen.
+pub struct HerdrStub {
+    pub dir: TempDir,
+}
+
+impl HerdrStub {
+    pub fn new() -> HerdrStub {
+        let stub = HerdrStub {
+            dir: tempfile::tempdir().expect("a temporary directory"),
+        };
+        let program = stub.program();
+        fs::write(&program, HERDR).expect("the stub");
+        fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
+        stub
+    }
+
+    pub fn program(&self) -> PathBuf {
+        self.dir.path().join("herdr")
+    }
+
+    /// The pane's screen from the `read`th read on, until a later one the
+    /// test wrote.
+    pub fn screen(&self, read: usize, text: &str) {
+        fs::write(self.dir.path().join(format!("screen-{read}")), text).expect("the screen");
+    }
+
+    /// Every read refused from now on, herdr's `error` answer giving
+    /// `message`.
+    pub fn refuse(&self, message: &str) {
+        let answer = json!({ "id": "cli:pane:read", "error": { "code": "pane_not_found", "message": message } });
+        fs::write(self.dir.path().join("refuse"), printed(&answer)).expect("the refusal");
+    }
+
+    /// The arguments of every call, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        (1..)
+            .map_while(|n| fs::read_to_string(self.dir.path().join(format!("call-{n}"))).ok())
+            .map(|call| call.split_terminator('\0').map(str::to_string).collect())
+            .collect()
+    }
+
+    /// The `HERDR_SOCKET_PATH` of every call, in order.
+    pub fn sockets(&self) -> Vec<String> {
+        (1..=self.calls().len())
+            .map(|n| {
+                fs::read_to_string(self.dir.path().join(format!("socket-{n}"))).expect("its socket")
+            })
+            .collect()
+    }
+
+    /// How many reads were made.
+    pub fn reads(&self) -> usize {
+        (1..)
+            .take_while(|r| self.dir.path().join(format!("read-{r}")).exists())
+            .count()
+    }
+}

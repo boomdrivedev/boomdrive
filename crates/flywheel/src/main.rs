@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 /// The runner on each host: keeps the clones of the repositories its
-/// configuration names.
+/// configuration names, and carries its control plane's work into Flume.
 #[derive(Parser)]
 #[command(name = "flywheel", version)]
 struct Cli {
@@ -18,14 +18,17 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// Keep the configured repositories, a pass at once and then one on
-    /// the timer, until stopped.
+    /// the timer, and carry the control plane's work on a timer of its
+    /// own, until stopped.
     Run {
         /// The configuration file, in place of
         /// `$XDG_CONFIG_HOME/flywheel/config.toml`.
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
-        /// Make one pass and exit: 0 where every git call succeeded, 1
-        /// where one failed.
+        /// Make one keeping pass, then one control pass where the
+        /// configuration names a control plane, and exit: 0 where every
+        /// git call succeeded and the control pass pulled and reported, 1
+        /// otherwise.
         #[arg(long)]
         once: bool,
     },

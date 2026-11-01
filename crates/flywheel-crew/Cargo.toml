@@ -1,0 +1,22 @@
+[package]
+name = "flywheel-crew"
+version.workspace = true
+edition.workspace = true
+description = "crew's implementation of the control-plane interface: crew's records read at one tip of each partition's flywheel branch, and the runner's own branch written in crew's formats."
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+# The interface it implements, and the one crate that names crew (design
+# Decision 1; core.2).
+flywheel-control = { path = "../flywheel-control" }
+serde_json.workspace = true
+time.workspace = true
+toml.workspace = true
+weir-branch.workspace = true
+weir-capture.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
