@@ -9,7 +9,7 @@
 //! a pass that changes nothing says nothing.
 
 use crate::config::{Address, Config};
-use crate::flume::{Flume, LaunchArgs, Reply, Unrun};
+use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
 use crate::hello::{self, Tools};
 use crate::run::Notices;
 use crate::{facts, report};
@@ -389,14 +389,41 @@ impl Work<'_> {
             // the control plane's to give: its act waits with it.
             if !self.offered(&act.launch) {
                 let words = format!("{} is no launch of this runner's", act.launch);
-                self.acted(act, Outcome::Refused, Some(words), say);
+                self.acted(act, Outcome::Refused, Some(words), None, say);
             }
             return;
         };
-        if launched.answer.outcome == Outcome::Launched {
+        if launched.answer.outcome != Outcome::Launched {
+            self.act_unlaunched(act, say);
             return;
         }
-        self.act_unlaunched(act, say);
+        match launched.answer.place_dir.clone() {
+            Some(place) => self.act_on(act, &place, say),
+            None => {
+                let words = format!("{} was launched at no place Flume named", act.launch);
+                self.acted(act, Outcome::Refused, Some(words), None, say);
+            }
+        }
+    }
+
+    /// Carries out `act` as Flume's own command on the place at `place`,
+    /// never forced, its answer Flume's. Where Flume could not be run,
+    /// nothing is kept, and the next pass carries it out.
+    fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
+        match self.carrier.flume.act(place, &flume_act(&act.what)) {
+            Ok(Reply::Given(_)) => self.acted(act, Outcome::Done, None, Some(place), say),
+            Ok(Reply::Refused(words)) => {
+                self.acted(act, Outcome::Refused, Some(words), Some(place), say)
+            }
+            Err(Unrun(words)) => {
+                let what = sort(&act.what);
+                say(format!(
+                    "{}: {what} of {} at {place}: not carried out: {words}",
+                    act.id, act.launch
+                ));
+                self.failed = true;
+            }
+        }
     }
 
     /// Answers `act` on a launch the runner holds not yet launched, from
@@ -407,9 +434,9 @@ impl Work<'_> {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
         match act.what {
-            ActSort::Priority(_) => self.acted(act, Outcome::Done, None, say),
+            ActSort::Priority(_) => self.acted(act, Outcome::Done, None, None, say),
             ActSort::Drop => {
-                self.acted(act, Outcome::Done, None, say);
+                self.acted(act, Outcome::Done, None, None, say);
                 if answer.outcome == Outcome::Held {
                     let words = format!("dropped by {} before it was launched", act.id);
                     say(format!("{}: done: {words}", act.launch));
@@ -432,26 +459,31 @@ impl Work<'_> {
                     .words
                     .map_or(String::new(), |words| format!(": {words}"));
                 let words = format!("{} is {outcome}, not launched{why}", act.launch);
-                self.acted(act, Outcome::Refused, Some(words), say);
+                self.acted(act, Outcome::Refused, Some(words), None, say);
             }
         }
     }
 
-    /// Records `act` answered `outcome`, with `words`, and says so.
+    /// Records `act` answered `outcome`, with `words`, and says so: as
+    /// Flume answered it on the place at `place`, where it ran there, else
+    /// as the runner answered it from the report.
     fn acted(
         &mut self,
         act: &Act,
         outcome: Outcome,
         words: Option<String>,
+        place: Option<&str>,
         say: &mut dyn FnMut(String),
     ) {
         let what = sort(&act.what);
+        let at = place.map_or(String::new(), |place| format!(" at {place}"));
+        let by = if place.is_some() { " by Flume" } else { "" };
         match (&outcome, &words) {
             (Outcome::Refused, Some(words)) => say(format!(
-                "{}: {what} of {}: refused: {words}",
+                "{}: {what} of {}{at}: refused{by}: {words}",
                 act.id, act.launch
             )),
-            _ => say(format!("{}: {what} of {}: done", act.id, act.launch)),
+            _ => say(format!("{}: {what} of {}{at}: done", act.id, act.launch)),
         }
         let acted = Acted {
             launch: act.launch.clone(),
@@ -537,6 +569,24 @@ impl Standing {
             Standing::Refused(None) => "refused".to_string(),
             Standing::Dropped => "dropped, so its place will never land".to_string(),
         }
+    }
+}
+
+/// `what` as Flume's own command of its name.
+fn flume_act(what: &ActSort) -> flume::Act {
+    match what {
+        ActSort::Retry {
+            stage,
+            words,
+            submission,
+        } => flume::Act::Retry {
+            stage: stage.clone(),
+            words: words.clone(),
+            submission: *submission,
+        },
+        ActSort::Drop => flume::Act::Drop,
+        ActSort::Priority(priority) => flume::Act::Priority(*priority),
+        ActSort::Done => flume::Act::Done,
     }
 }
 
