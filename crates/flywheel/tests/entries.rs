@@ -72,7 +72,7 @@ fn an_entry_carried() {
     bench.sluice.answers_text("status", &printed, 0);
     let before = At::now();
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(!passed.failed);
+    assert!(passed.reported);
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(bench.sluice.calls(), [["status", "412", "--json"]]);
     let container = bench.container(KEPT).canonicalize().unwrap();
@@ -271,7 +271,7 @@ fn a_sluice_not_there() {
     submitted(&bench, "1");
     fs::remove_file(bench.sluice.program()).unwrap();
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(passed.reported);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
         lines[0]
@@ -282,6 +282,6 @@ fn a_sluice_not_there() {
     bench.sluice.answers("status", "status-landed.json", 0);
     fs::copy(fakes::SluiceStub::new().program(), bench.sluice.program()).unwrap();
     let (passed, _) = bench.pass(&mut plane);
-    assert!(!passed.failed);
+    assert!(passed.reported);
     assert!(entry(&bench).is_some(), "sluice is asked again");
 }

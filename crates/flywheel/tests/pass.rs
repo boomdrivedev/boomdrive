@@ -233,7 +233,7 @@ fn a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands(
     let (passed, lines) = host.pass(&mut crew);
 
     assert!(
-        !passed.failed,
+        passed.reported,
         "{lines:#?}\n{:#?}",
         crew_said.lock().unwrap()
     );
@@ -287,7 +287,7 @@ fn a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands(
     let (passed, lines) = host.pass(&mut crew);
 
     assert!(
-        !passed.failed,
+        passed.reported,
         "{lines:#?}\n{:#?}",
         crew_said.lock().unwrap()
     );

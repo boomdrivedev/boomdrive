@@ -174,6 +174,40 @@ fn one_control_pass() {
     assert!(runner.contains("Host: deneb"), "{runner}");
 }
 
+/// The running spec's "Flume's status refused": the control pass pulled
+/// and reported, so the tool's refusal is named and no failure. Nothing
+/// is launched, the runner's branch is written, and the run exits 0.
+#[test]
+fn flumes_status_refused() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    let state = state_repository(&scratch);
+    scratch.configure(&carrying("2m", "1m"));
+    let tools = Tools::new();
+    tools.flume.answers_text("status", "", 1);
+
+    let output = once(&scratch, &tools);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stderr(&output)
+            .lines()
+            .any(|line| line.starts_with("flywheel: Flume's status could not be read: ")),
+        "{}",
+        stderr(&output)
+    );
+    assert!(
+        !tools
+            .flume_commands()
+            .iter()
+            .any(|command| command == "launch"),
+        "{:?}",
+        tools.flume_commands()
+    );
+    let runner = scratch.git(&state.bare, &["show", "madswan/runner/deneb:runner.rec"]);
+    assert!(runner.contains("Host: deneb"), "{runner}");
+}
+
 /// The running spec's "A control plane that cannot be read": no
 /// partition's state repository can be read. The runner keeps its
 /// repositories, names the control plane as unread, launches and acts on

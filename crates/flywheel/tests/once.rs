@@ -195,7 +195,7 @@ fn a_report_file_that_does_not_read() {
     fs::write(bench.report_file(), "{ not a report").unwrap();
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(!passed.reported);
     assert_eq!(lines.len(), 1);
     assert!(
         lines[0].ends_with(": nothing carried this pass"),

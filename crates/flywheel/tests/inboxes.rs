@@ -195,7 +195,7 @@ fn an_inbox_carried() {
     let host = Host::new(&scratch, inbox.files());
     let mut plane = Fake::holding(vec![named(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     let tip = host.origin.tip("inbox");
     assert_eq!(
         lines,
@@ -253,7 +253,7 @@ fn an_unchanged_tip() {
     let (git, log) = host.logging_git();
     host.bench.git = git;
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed);
+    assert!(passed.reported);
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(fs::read(host.bench.report_file()).unwrap(), held);
     let calls = fs::read_to_string(log).expect("git was run");
@@ -334,7 +334,7 @@ fn a_repository_not_kept() {
     );
     let mut plane = Fake::holding(vec![named("agentplot/nosuch")]);
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     let words = "this host's configuration does not keep agentplot/nosuch";
     assert_eq!(lines, [format!("inbox/1: not carried: {words}")]);
     let carried = bench.report().inboxes[&Id::new("inbox/1")].clone();
@@ -351,7 +351,7 @@ fn no_such_branch() {
     let host = Host::new(&scratch, &BTreeMap::new());
     let mut plane = Fake::holding(vec![named(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     let words = "origin holds no branch inbox of afterthought/crew";
     assert_eq!(lines, [format!("inbox/1: not carried: {words}")]);
     let carried = host.carried();

@@ -120,8 +120,10 @@ pub struct Passed {
     /// The earliest expiry of a lease the report holds, where one has an
     /// expiry.
     pub expires: Option<At>,
-    /// Whether a call the pass made failed, and was named.
-    pub failed: bool,
+    /// Whether the pass pulled and the control plane took its report,
+    /// which is what `flywheel run --once` asks of a control pass. A tool
+    /// that could not run is named, and does not count against it.
+    pub reported: bool,
 }
 
 impl Carrier<'_> {
@@ -135,12 +137,11 @@ impl Carrier<'_> {
                 say(format!("flywheel: {why}: nothing carried this pass"));
                 return Passed {
                     expires: None,
-                    failed: true,
+                    reported: false,
                 };
             }
         };
         let saved = kept.clone().unwrap_or_default();
-        let mut failed = false;
         let status = self.flume.status();
         let listing = match &status {
             Ok(Reply::Given(text)) => serde_json::from_str::<Value>(text).ok(),
@@ -148,7 +149,6 @@ impl Carrier<'_> {
                 say(format!(
                     "flywheel: Flume's status could not be read: {words}"
                 ));
-                failed = true;
                 None
             }
         };
@@ -166,7 +166,7 @@ impl Carrier<'_> {
                 ));
                 return Passed {
                     expires: expires(&saved),
-                    failed: true,
+                    reported: false,
                 };
             }
         };
@@ -181,7 +181,6 @@ impl Carrier<'_> {
             report,
             room: Room::read(listing.as_ref()),
             listing,
-            failed,
         };
         for want in &pulled.wants {
             work.want(want, say);
@@ -195,10 +194,10 @@ impl Carrier<'_> {
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
-        work.send(plane, say);
+        let reported = work.send(plane, say);
         Passed {
             expires: expires(&work.report),
-            failed: work.failed,
+            reported,
         }
     }
 }
@@ -216,7 +215,6 @@ struct Work<'p> {
     /// The pass's one `flume --json status`, where Flume gave it.
     listing: Option<Value>,
     room: Room,
-    failed: bool,
 }
 
 impl Work<'_> {
@@ -311,7 +309,6 @@ impl Work<'_> {
             }
             Err(Unrun(words)) => {
                 say(format!("{id}: not launched: {words}"));
-                self.failed = true;
             }
         }
     }
@@ -432,7 +429,6 @@ impl Work<'_> {
                     "{}: {what} of {} at {place}: not carried out: {words}",
                     act.id, act.launch
                 ));
-                self.failed = true;
             }
         }
     }
@@ -579,7 +575,6 @@ impl Work<'_> {
             Ok(printed) => printed,
             Err(sluice::Unrun(words)) => {
                 say(format!("{what}: not carried out: {words}"));
-                self.failed = true;
                 return;
             }
         };
@@ -587,7 +582,6 @@ impl Work<'_> {
         let (origin_commit, unread) = match clone::origin_commit(self.carrier.git, &bare, branch) {
             Ok(commit) => (commit, None),
             Err(failure) => {
-                self.failed = true;
                 let words = format!("origin's {branch} could not be read: {failure}");
                 (None, Some(words))
             }
@@ -683,7 +677,6 @@ impl Work<'_> {
                     say(format!(
                         "{id}: Flume's status of {place} could not be read: {words}"
                     ));
-                    self.failed = true;
                 }
             }
             let now = carried_entry(&self.report.launches[id], &place);
@@ -747,7 +740,6 @@ impl Work<'_> {
                     say(format!(
                         "{id}: sluice's entry {submission} could not be read: {words}"
                     ));
-                    self.failed = true;
                     continue;
                 }
             };
@@ -813,7 +805,6 @@ impl Work<'_> {
                 say(format!(
                     "{id}: the inbox on {branch} of {repository} could not be read: {words}"
                 ));
-                self.failed = true;
             }
         }
     }
@@ -870,26 +861,27 @@ impl Work<'_> {
             }
             Err(why) => {
                 say(format!("flywheel: {why}"));
-                self.failed = true;
                 false
             }
         }
     }
 
-    /// Sends the whole report, which renews every lease it names; one not
-    /// sent is kept in the file, to be sent at the next pass.
-    fn send(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) {
+    /// Sends the whole report, which renews every lease it names, and
+    /// says whether the control plane took it; one not sent is kept in the
+    /// file, to be sent at the next pass.
+    fn send(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
         self.save(say);
         match plane.report(&self.report) {
             Ok(reported) => {
                 self.reported(&reported, say);
                 self.save(say);
+                true
             }
             Err(Unsent(words)) => {
                 say(format!(
                     "flywheel: the report could not be sent: {words}: it is sent at the next pass"
                 ));
-                self.failed = true;
+                false
             }
         }
     }

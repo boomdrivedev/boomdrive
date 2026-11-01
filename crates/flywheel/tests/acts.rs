@@ -179,7 +179,7 @@ fn an_act_flume_could_not_run() {
         .flume
         .act_answers(&p, Err(Unrun("flume could not run: gone".into())));
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(passed.reported);
     assert!(!bench.report().acts.contains_key(&Id::new("a/drop")));
     assert!(lines.contains(&format!(
         "a/drop: drop of a at {p}: not carried out: flume could not run: gone"

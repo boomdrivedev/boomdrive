@@ -78,7 +78,8 @@ succeeded and 1 when one failed. A repository left by rule, for a
 folder of the user's or work the forge lacks, is not a failure. Where
 the configuration names a control plane, `--once` makes one control
 pass after the keeping pass, and exits 1 too when that pass did not
-pull and report.
+pull and report. A tool that pass could not run or read is named, and
+is not a failure.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or

@@ -95,7 +95,7 @@ fn no_gate_for_the_branch() {
         .answers("branch", "branch-ungated.json", 2);
     let mut plane = Fake::holding(vec![bolt_in(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     let commanded = commanded(&host.bench);
     assert_eq!(commanded.outcome, Outcome::Refused);
     assert_eq!(
@@ -127,7 +127,7 @@ fn a_branch_made() {
     host.makes_the_branch_at(&main);
     let mut plane = Fake::holding(vec![bolt_in(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     assert_eq!(
         host.bench.sluice.calls(),
         [["branch", "create", "bolt/x", "--from", "main", "--json"]]
@@ -161,7 +161,7 @@ fn a_branch_already_there() {
     host.bench.sluice.answers_text("branch", &printed, 2);
     let mut plane = Fake::holding(vec![bolt_in(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     let commanded = commanded(&host.bench);
     assert_eq!(commanded.outcome, Outcome::Refused);
     assert_eq!(commanded.text, Some(printed));
@@ -202,7 +202,7 @@ fn a_clone_not_yet_made() {
     bench.clones.not_yet(CREW);
     let mut plane = Fake::holding(vec![bolt_in(CREW)]);
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     assert!(lines.is_empty(), "{lines:?}");
     let sent = plane.reports().last().expect("a report sent");
     assert!(sent.commands.is_empty(), "{sent:?}");
@@ -227,7 +227,7 @@ fn a_command_given_twice() {
     let first = commanded(&host.bench);
     let mut restarted = Fake::holding(vec![bolt_in(CREW)]);
     let (passed, lines) = host.bench.pass(&mut restarted);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     assert!(lines.is_empty(), "{lines:?}");
     assert_eq!(host.bench.sluice.calls().len(), 1);
     assert_eq!(commanded(&host.bench), first);
@@ -298,7 +298,7 @@ fn a_command_sluice_could_not_run_waits_for_the_next_pass() {
     let present = std::mem::replace(&mut host.bench.sluice, SluiceStub::absent());
     let mut plane = Fake::holding(vec![bolt_in(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(passed.reported);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
         lines[0].starts_with(&format!(
@@ -312,6 +312,6 @@ fn a_command_sluice_could_not_run_waits_for_the_next_pass() {
     host.bench.sluice.answers("branch", "branch-made.json", 0);
     host.makes_the_branch_at(&host.origin.tip("main"));
     let (passed, lines) = host.bench.pass(&mut plane);
-    assert!(!passed.failed, "{lines:?}");
+    assert!(passed.reported, "{lines:?}");
     assert_eq!(commanded(&host.bench).outcome, Outcome::Done);
 }

@@ -23,7 +23,7 @@
 
 ### Requirement: flywheel run --once makes one pass
 
-`flywheel run --once` SHALL make one keeping pass, just as a pass of `flywheel run`, then, where the configuration names a control plane, one control pass, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and the control pass both pulled and reported, and 1 otherwise. Something left and named as the specs say, and not because a git call failed, SHALL not be a failure: an offer left untaken for want of room among it.
+`flywheel run --once` SHALL make one keeping pass, just as a pass of `flywheel run`, then, where the configuration names a control plane, one control pass, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and the control pass both pulled and reported, and 1 otherwise. Something left and named as the specs say, and not because a git call of the keeping pass failed, SHALL not be a failure: an offer left untaken for want of room, and a tool the control pass could not run or read, among it.
 
 #### Scenario: Every repository kept
 
@@ -44,6 +44,11 @@
 
 - **WHEN** `flywheel run --once` runs with crew's control plane over a scratch state repository holding a launch for this host, and a stub `flume` that launches it
 - **THEN** it keeps the repositories, launches once, writes the runner's branch, and exits 0
+
+#### Scenario: Flume's status refused
+
+- **WHEN** `flywheel run --once` runs with crew's control plane over a scratch state repository holding a launch for this host, and a stub `flume` that refuses its status
+- **THEN** it names Flume's status as unread, launches nothing, writes the runner's branch, and exits 0
 
 #### Scenario: A control plane that cannot be read
 

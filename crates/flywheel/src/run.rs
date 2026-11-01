@@ -299,7 +299,7 @@ impl Runner {
             None => Outcome::Kept,
             Some(Control { plane: Err(_), .. }) => Outcome::Failed,
             Some(_) => match self.carry(Ok(self.config.clone()), say) {
-                Some(Passed { failed: false, .. }) => Outcome::Kept,
+                Some(Passed { reported: true, .. }) => Outcome::Kept,
                 _ => Outcome::Failed,
             },
         };
@@ -411,7 +411,7 @@ impl Runner {
             say(format!("flywheel: {why}: nothing carried this pass"));
             Some(Passed {
                 expires: None,
-                failed: true,
+                reported: false,
             })
         };
         let config = match read {

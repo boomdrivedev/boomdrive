@@ -302,7 +302,7 @@ fn flume_is_not_there() {
     let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/16", "d"))]);
     let flume = Cli::new(stub.program());
     let (passed, lines) = bench.pass_over(&flume, &mut plane);
-    assert!(passed.failed);
+    assert!(passed.reported);
     assert_eq!(outcome(&bench, "madswan/16"), None);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
@@ -314,7 +314,7 @@ fn flume_is_not_there() {
     stub.answers("status", "status.json", 0);
     stub.answers("launch", "launch.json", 0);
     let (passed, _) = bench.pass_over(&flume, &mut plane);
-    assert!(!passed.failed);
+    assert!(passed.reported);
     assert_eq!(outcome(&bench, "madswan/16"), Some(Outcome::Launched));
 }
 
@@ -329,7 +329,7 @@ fn a_launch_flume_could_not_run() {
     );
     let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/17", "e"))]);
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(passed.reported);
     assert_eq!(
         lines,
         ["madswan/17: not launched: flume was ended: signal: 9"]
@@ -346,7 +346,7 @@ fn a_pull_that_cannot_be_read() {
     let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/1", "a"))]);
     plane.refuse_pulls("no network");
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(!passed.reported);
     assert_eq!(
         lines,
         ["flywheel: the control plane could not be read: no network: nothing carried this pass"]
@@ -381,7 +381,7 @@ fn a_report_not_sent() {
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
     plane.refuse_reports("offline");
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(!passed.reported);
     assert_eq!(plane.reports(), [] as [Report; 0]);
     assert!(lines.contains(
         &"flywheel: the report could not be sent: offline: it is sent at the next pass".to_string()

@@ -170,7 +170,7 @@ fn a_status_flume_could_not_run() {
         Err(Unrun("flume was ended: signal: 9".into())),
     );
     let (passed, lines) = bench.pass(&mut plane);
-    assert!(passed.failed);
+    assert!(passed.reported);
     assert_eq!(
         lines,
         [format!(
@@ -252,6 +252,6 @@ fn a_quiet_pass() {
     for _ in 0..2 {
         let (passed, lines) = bench.pass(&mut plane);
         assert_eq!(lines, [] as [String; 0]);
-        assert!(!passed.failed);
+        assert!(passed.reported);
     }
 }
