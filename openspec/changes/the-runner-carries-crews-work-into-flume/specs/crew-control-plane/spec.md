@@ -55,7 +55,7 @@ At each pull, for each partition, crew's implementation SHALL read `requests.rec
 
 ### Requirement: A partition that cannot be read hides only its own work
 
-A partition whose `<label>/main` cannot be read SHALL give nothing that pass, with its words, while the other partitions give their own. A pull SHALL be unread only when no partition could be read.
+A partition whose `<label>/main` cannot be read SHALL give nothing that pass, with its words, while the other partitions give their own. A pull SHALL be unread only when no partition could be read. A report SHALL write each partition's runner branch it can, with its let-go, name each it could not, and be unsent only when it wrote none.
 
 #### Scenario: One partition missing
 
@@ -66,6 +66,11 @@ A partition whose `<label>/main` cannot be read SHALL give nothing that pass, wi
 
 - **WHEN** no partition's state repository can be read
 - **THEN** the pull is unread, naming each
+
+#### Scenario: One partition missing at a report
+
+- **WHEN** partition `swancloud`'s state repository has no `swancloud/main`, and `madswan`'s unit `u` is tidied and gone from its plan
+- **THEN** the report writes `madswan/runner/deneb`, its let-go names `u`'s launch, and it names `swancloud/runner/deneb` as not written
 
 ### Requirement: Each request for this host is a want under the lease number 1
 

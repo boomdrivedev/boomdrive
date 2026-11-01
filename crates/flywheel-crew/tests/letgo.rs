@@ -143,6 +143,52 @@ fn a_unit_landed_and_gone_from_the_plan() {
     assert!(pulled.wants.is_empty(), "{:?}", pulled.wants);
 }
 
+/// The crew-control-plane spec's "One partition missing at a report":
+/// `swancloud/main` unread, `madswan`'s branch is written all the same,
+/// its let-go given, and `swancloud`'s branch named as not written.
+#[test]
+fn one_partition_missing_at_a_report() {
+    let state = State::new();
+    state.make("afterthought/swancloud-state");
+    main_with(&state, "unit/u", &plan(&[], &["b"]), false);
+    let (mut crew, said) = state.crew_serving(
+        "deneb",
+        &[
+            ("swancloud", "afterthought/swancloud-state"),
+            ("madswan", "afterthought/madswan-state"),
+        ],
+    );
+    assert_eq!(
+        let_go(&mut crew, &report(false)),
+        ["madswan/12", "madswan/13"]
+    );
+    let answers = state.file(BRANCH, "answers.rec").unwrap();
+    assert!(!answers.contains("Request:"), "{answers}");
+    assert!(
+        said.holds(&[
+            "crew: swancloud/main has not been read",
+            "swancloud/runner/deneb is not written"
+        ]),
+        "{:?}",
+        said.lines()
+    );
+}
+
+/// With no partition's `<label>/main` read, nothing is written and the
+/// report is unsent, naming each.
+#[test]
+fn a_report_before_any_partition_is_read() {
+    let state = State::new();
+    let (mut crew, _) = state.crew("deneb");
+    let unsent = crew.report(&report(false)).unwrap_err();
+    assert!(
+        unsent.0.contains("madswan/main has not been read"),
+        "{}",
+        unsent.0
+    );
+    assert_eq!(state.tip(BRANCH), None);
+}
+
 #[test]
 fn a_unit_gone_from_the_plan_is_still_given_while_the_runner_holds_it() {
     let state = State::new();

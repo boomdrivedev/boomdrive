@@ -739,14 +739,17 @@ impl ControlPlane for Crew {
         let host = self.config.host.clone();
         let mut reported = Reported::default();
         let mut unsent = Vec::new();
+        let mut branches_written = 0;
         let partitions = self.config.partitions.clone();
         for partition in &partitions {
             let label = &partition.label;
             let (Some(main), Some(version)) = (self.mains.get(label), self.version.clone()) else {
-                unsent.push(format!(
+                let words = format!(
                     "{label}/main has not been read, so {} is not written",
                     runner_branch(label, &host)
-                ));
+                );
+                (self.say)(format!("crew: {words}"));
+                unsent.push(words);
                 continue;
             };
             let gone = write::let_go(label, &host, main, report);
@@ -789,6 +792,7 @@ impl ControlPlane for Crew {
                         (self.say)(format!("crew: {}: {what}", runner_branch(label, &host)));
                     }
                     reported.let_go.extend(gone);
+                    branches_written += 1;
                 }
                 Err(why) => {
                     let words = format!(
@@ -800,9 +804,11 @@ impl ControlPlane for Crew {
                 }
             }
         }
-        match unsent.is_empty() {
-            true => Ok(reported),
-            false => Err(Unsent(unsent.join("; "))),
+        // A partition not written hides only its own work, which the
+        // runner's next report carries again: the others' let-go stands.
+        match branches_written == 0 && !unsent.is_empty() {
+            true => Err(Unsent(unsent.join("; "))),
+            false => Ok(reported),
         }
     }
 }
