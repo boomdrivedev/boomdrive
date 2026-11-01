@@ -74,4 +74,4 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 10. The change's checks
 
-- [ ] 10.1 Run the checks of the moon projects this change touches. True when `devenv shell -- moon run flywheel-control:format flywheel-control:lint flywheel-control:typecheck flywheel-control:test flywheel-crew:format flywheel-crew:lint flywheel-crew:typecheck flywheel-crew:test flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format root:toolchain root:adrs root:specs root:changes` passes.
+- [x] 10.1 Run the checks of the moon projects this change touches. True when `devenv shell -- moon run flywheel-control:format flywheel-control:lint flywheel-control:typecheck flywheel-control:test flywheel-crew:format flywheel-crew:lint flywheel-crew:typecheck flywheel-crew:test flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format root:toolchain root:adrs root:specs root:changes` passes.
