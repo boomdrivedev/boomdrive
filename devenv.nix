@@ -58,6 +58,11 @@ let
   # the version with the lock.
   gitVersion = "2.55.0";
 
+  # recutils, whose recfix weir-branch runs on every record file it writes,
+  # and so flywheel-crew:test runs (design Decision 21): nixpkgs' build,
+  # pinned by devenv.lock and asserted to be this version as git is.
+  recutilsVersion = "1.9";
+
   # OpenSpec, which root:specs and root:changes validate with: flume's
   # release, built as nixpkgs builds its older one. Bump the version, then
   # each hash from the mismatch the build reports.
@@ -84,12 +89,16 @@ in
 {
   # The system tools are this file's, pinned by devenv.lock; moon and Rust
   # are .prototools', installed by the flywheel:proto:install task on
-  # entering the shell and activated by enterShell. git and OpenSpec are the
-  # releases pinned above, never the host's (core.8).
+  # entering the shell and activated by enterShell. git, recutils and
+  # OpenSpec are the releases pinned above, never the host's (core.8).
   packages = [
     (
       assert pkgs.git.version == gitVersion;
       pkgs.git
+    )
+    (
+      assert pkgs.recutils.version == recutilsVersion;
+      pkgs.recutils
     )
     proto
     openspec

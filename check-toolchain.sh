@@ -1,10 +1,10 @@
 #!/bin/sh
 # Every tool the gate runs is the version the tree pins, on every host
 # (rule core.8): rustc, cargo, clippy and rustfmt the build .prototools
-# pins, which rust-toolchain.toml names too, and git and OpenSpec the
-# releases devenv.nix pins. A tool found outside its pin, a runner's rustup
-# default say, fails here rather than holding the tree to another
-# version's rules.
+# pins, which rust-toolchain.toml names too, and git, recutils and
+# OpenSpec the releases devenv.nix pins. A tool found outside its pin, a
+# runner's rustup default say, fails here rather than holding the tree to
+# another version's rules.
 set -eu
 
 fail() {
@@ -52,4 +52,5 @@ release() {
   esac
 }
 release git "$(pinned gitVersion)" git --version
+release recutils "$(pinned recutilsVersion)" recfix --version
 release openspec "$(pinned openspecVersion)" openspec --version

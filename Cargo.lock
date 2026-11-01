@@ -352,6 +352,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "flywheel-crew"
+version = "0.0.0"
+dependencies = [
+ "flywheel-control",
+ "serde_json",
+ "tempfile",
+ "time",
+ "toml",
+ "weir-branch",
+ "weir-capture",
+]
+
+[[package]]
 name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1143,6 +1156,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23f0c9c52aa7cd7d77769a4cfe2a9adb1b331f489a41d912ce14513d5ab995c6"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "weir-branch"
+version = "0.0.0"
+source = "git+https://github.com/agentplot/weir?rev=0b6eb5abb806a51fec128b01f97c4dcff6170219#0b6eb5abb806a51fec128b01f97c4dcff6170219"
+dependencies = [
+ "tempfile",
+ "time",
 ]
 
 [[package]]
