@@ -10,15 +10,17 @@
 
 use crate::config::{Address, Config};
 use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
+use crate::git::Git;
 use crate::hello::{self, Tools};
 use crate::run::Notices;
 use crate::sluice::{self, Sluice};
-use crate::{facts, report};
+use crate::{clone, facts, inbox, report};
 use flywheel_control::{
-    Act, ActSort, Acted, Answer, At, Carrying, ControlPlane, Id, Launched, Offer, Outcome, Report,
-    Reported, Unread, Unsent, Want,
+    Act, ActSort, Acted, Answer, At, Carrying, ControlPlane, Id, Inbox, InboxCarried, InboxFile,
+    Launched, Offer, Outcome, Report, Reported, Unread, Unsent, Want,
 };
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -94,6 +96,8 @@ impl Clones for Configured {
 pub struct Carrier<'a> {
     pub flume: &'a dyn Flume,
     pub sluice: &'a dyn Sluice,
+    /// git, for an inbox read from its clone.
+    pub git: &'a Git,
     pub clones: &'a dyn Clones,
     pub tools: &'a dyn Tools,
     /// Told of each landing the pass reads, so its repository is kept at
@@ -211,7 +215,8 @@ impl Work<'_> {
         match want {
             Want::Offer(offer) => self.offer(offer, say),
             Want::Act(act) => self.act(act, say),
-            Want::Command(_) | Want::Inbox(_) => {}
+            Want::Inbox(inbox) => self.inbox(inbox, say),
+            Want::Command(_) => {}
         }
     }
 
@@ -631,6 +636,89 @@ impl Work<'_> {
                 ));
             }
         }
+    }
+
+    /// Carries the inbox `inbox` names (design Decision 14; core.5,
+    /// core.11). An inbox in a repository the configuration does not keep
+    /// is answered with words naming it, and nothing of it read; one whose
+    /// clone is not yet made waits; one on a branch origin does not hold
+    /// is answered with words naming the branch. Otherwise its branch's
+    /// tip in the clone is read, and, where it moved since the tip last
+    /// carried, its files: where weir takes them they are carried, each
+    /// brief by its digest, and where weir refuses them the tip is carried
+    /// with weir's words, and the files carried before stand.
+    fn inbox(&mut self, inbox: &Inbox, say: &mut dyn FnMut(String)) {
+        let (id, repository, branch) = (&inbox.id, &inbox.repository, &inbox.branch);
+        let container = match self.carrier.clones.keeping(repository) {
+            Keeping::Ready(container) => container,
+            Keeping::NotYet => return,
+            Keeping::NotNamed => {
+                let words = format!("this host's configuration does not keep {repository}");
+                if self.carry_inbox(id, None, BTreeMap::new(), Some(words.clone())) {
+                    say(format!("{id}: not carried: {words}"));
+                }
+                return;
+            }
+        };
+        let held = self.report.inboxes.get(id);
+        let tip = held.and_then(|carried| carried.tip.clone());
+        let files = held
+            .map(|carried| carried.files.clone())
+            .unwrap_or_default();
+        let bare = clone::bare(&container);
+        match inbox::read(self.carrier.git, &bare, branch, tip.as_deref()) {
+            Ok(inbox::Read::Unmoved) => {}
+            Ok(inbox::Read::NoBranch) => {
+                let words = format!("origin holds no branch {branch} of {repository}");
+                if self.carry_inbox(id, None, BTreeMap::new(), Some(words.clone())) {
+                    say(format!("{id}: not carried: {words}"));
+                }
+            }
+            Ok(inbox::Read::Taken { tip, files }) => {
+                let line = format!("{id}: the inbox on {branch} of {repository} carried at {tip}");
+                if self.carry_inbox(id, Some(tip), files, None) {
+                    say(line);
+                }
+            }
+            Ok(inbox::Read::Refused { tip, words }) => {
+                let line = format!(
+                    "{id}: the inbox on {branch} of {repository} at {tip} is refused by weir: {words}"
+                );
+                if self.carry_inbox(id, Some(tip), files, Some(words)) {
+                    say(line);
+                }
+            }
+            Err(words) => {
+                say(format!(
+                    "{id}: the inbox on {branch} of {repository} could not be read: {words}"
+                ));
+                self.failed = true;
+            }
+        }
+    }
+
+    /// Carries inbox `id` as read at `tip`, holding `files`, with `words`,
+    /// its `at` moving only where one of them changes, and says whether
+    /// the report changed.
+    fn carry_inbox(
+        &mut self,
+        id: &Id,
+        tip: Option<String>,
+        files: BTreeMap<String, InboxFile>,
+        words: Option<String>,
+    ) -> bool {
+        let held = self.report.inboxes.get(id);
+        if held.is_some_and(|held| held.tip == tip && held.files == files && held.words == words) {
+            return false;
+        }
+        let carried = InboxCarried {
+            tip,
+            files,
+            words,
+            at: At::now(),
+        };
+        self.report.inboxes.insert(id.clone(), carried);
+        true
     }
 
     /// Marks the status or entry carried for launch `id` as its tool's

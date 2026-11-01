@@ -22,6 +22,14 @@ time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
 # read as JSON, the host part's fields sliced as Flume printed them
 # (design Decision 6).
 serde_json = { version = "1", features = ["raw_value"] }
+# The inbox's layout and records, read by weir's crate at the revision of
+# weir's main that flume pins, moved by a chore when weir changes (design
+# Decision 14). weir-capture's capture is what a test takes into an inbox
+# by weir's own write (Task notes 5.2).
+weir-signals = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
+weir-capture = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
+# The digest an inbox item's brief is carried by (design Decision 14).
+sha2 = "0.10"
 # SIGTERM and SIGINT, which stop the runner between repositories
 # (design 10).
 signal-hook = "0.3"

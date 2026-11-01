@@ -11,6 +11,7 @@
 
 use flywheel::carry::{Carrier, Clones, Keeping, Passed};
 use flywheel::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
+use flywheel::git::Git;
 use flywheel::hello::Tools;
 use flywheel::report;
 use flywheel::run::{Event, Notices};
@@ -402,6 +403,9 @@ pub struct Bench {
     pub dir: TempDir,
     pub flume: FakeFlume,
     pub sluice: SluiceStub,
+    /// git, for an inbox read from a clone: a test that names an inbox
+    /// sets the scratch host's.
+    pub git: Git,
     pub clones: FakeClones,
     pub tools: FakeTools,
     notices: Notices,
@@ -416,6 +420,7 @@ impl Bench {
             dir,
             flume: FakeFlume::new(),
             sluice: SluiceStub::new(),
+            git: Git::default(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
             notices: Notices::new(events),
@@ -461,6 +466,7 @@ impl Bench {
         let carrier = Carrier {
             flume,
             sluice: &sluice,
+            git: &self.git,
             clones: &self.clones,
             tools: &self.tools,
             notices: &self.notices,

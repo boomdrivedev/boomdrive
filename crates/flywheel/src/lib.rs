@@ -9,6 +9,7 @@ pub mod facts;
 pub mod flume;
 pub mod git;
 pub mod hello;
+pub mod inbox;
 pub mod lacks;
 pub mod pass;
 pub mod report;
