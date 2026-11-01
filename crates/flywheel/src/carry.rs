@@ -14,8 +14,8 @@ use crate::hello::{self, Tools};
 use crate::run::Notices;
 use crate::{facts, report};
 use flywheel_control::{
-    Act, ActSort, Acted, Answer, At, ControlPlane, Id, Launched, Offer, Outcome, Report, Reported,
-    Unread, Unsent, Want,
+    Act, ActSort, Acted, Answer, At, Carrying, ControlPlane, Id, Launched, Offer, Outcome, Report,
+    Reported, Unread, Unsent, Want,
 };
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -178,6 +178,7 @@ impl Carrier<'_> {
                 break;
             }
         }
+        work.carry_statuses(say);
         work.send(plane, say);
         Passed {
             expires: expires(&work.report),
@@ -338,16 +339,8 @@ impl Work<'_> {
             .listing
             .as_ref()
             .and_then(|listing| facts::entry(listing, place).cloned());
-        let carried = || {
-            let text = &launched.status.as_ref()?.text;
-            let answer = serde_json::from_str::<Value>(text).ok()?;
-            facts::entry(&answer, place).cloned()
-        };
-        let entry = listed.or_else(carried);
-        matches!(
-            entry.as_ref().and_then(facts::over),
-            Some(facts::Over::Landed(_))
-        )
+        let entry = listed.or_else(|| carried_entry(launched, place));
+        reads_landed(entry.as_ref())
     }
 
     /// The priority `offer` is launched with: the newest an act on it set
@@ -513,6 +506,79 @@ impl Work<'_> {
         self.report.answer(&offer.id, offer.lease, answer)
     }
 
+    /// Carries Flume's status of each launch's place (design Decision 12;
+    /// core.11): `flume --json status --repository <container> <place>`'s
+    /// whole answer, as the one line Flume printed. The pass's listing
+    /// decides when it is read again: only where the place's entry there
+    /// differs, as JSON, from its entry in the answer carried. A place the
+    /// listing no longer holds is asked for once a pass, and where Flume
+    /// refuses, the last status carried stands, not listed. The first
+    /// status carried that reads the place landed tells the keeper, so the
+    /// repository is fetched at once. Only the places the report holds are
+    /// read, and only for launches the pull gives, whose repositories it
+    /// names.
+    fn carry_statuses(&mut self, say: &mut dyn FnMut(String)) {
+        let Some(listing) = self.listing.take() else {
+            return;
+        };
+        let offers = self.wants.iter().filter_map(|want| match want {
+            Want::Offer(offer) => Some(offer),
+            _ => None,
+        });
+        for offer in offers {
+            let id = &offer.id;
+            let Some(launched) = self.report.launches.get(id) else {
+                continue;
+            };
+            let (Outcome::Launched, Some(place)) =
+                (launched.answer.outcome, launched.answer.place_dir.clone())
+            else {
+                continue;
+            };
+            let Keeping::Ready(container) = self.carrier.clones.keeping(&offer.launch.repository)
+            else {
+                continue;
+            };
+            let was = carried_entry(launched, &place);
+            let listed = facts::entry(&listing, &place);
+            if listed.is_some() && listed == was.as_ref() {
+                self.relist(id, true);
+                continue;
+            }
+            match self.carrier.flume.status_of(&container, &place) {
+                Ok(Reply::Given(text)) => {
+                    let line = text.strip_suffix('\n').unwrap_or(&text);
+                    self.report
+                        .carry(id, Carrying::Status, line, listed.is_some(), At::now());
+                }
+                Ok(Reply::Refused(_)) => self.relist(id, listed.is_some()),
+                Err(Unrun(words)) => {
+                    say(format!(
+                        "{id}: Flume's status of {place} could not be read: {words}"
+                    ));
+                    self.failed = true;
+                }
+            }
+            let now = carried_entry(&self.report.launches[id], &place);
+            if !reads_landed(was.as_ref()) && reads_landed(now.as_ref()) {
+                if let Ok(address) = Address::parse(&offer.launch.repository) {
+                    self.carrier.notices.landed(address);
+                }
+            }
+        }
+        self.listing = Some(listing);
+    }
+
+    /// Marks the status carried for launch `id` as the listing holds its
+    /// place or not, its text and time as they stand.
+    fn relist(&mut self, id: &Id, listed: bool) {
+        let carried = self.report.launches.get(id).and_then(|l| l.status.as_ref());
+        if let Some(text) = carried.map(|carried| carried.text.clone()) {
+            self.report
+                .carry(id, Carrying::Status, &text, listed, At::now());
+        }
+    }
+
     /// Saves the report where it changed since the file was last written,
     /// and says whether the file holds it.
     fn save(&mut self, say: &mut dyn FnMut(String)) -> bool {
@@ -592,6 +658,18 @@ impl Work<'_> {
         let inbox = report.inboxes.remove(id).is_some();
         launch || act || command || inbox
     }
+}
+
+/// The entry of the place at `place` in the status `launched` carries.
+fn carried_entry(launched: &Launched, place: &str) -> Option<Value> {
+    let text = &launched.status.as_ref()?.text;
+    let answer = serde_json::from_str::<Value>(text).ok()?;
+    facts::entry(&answer, place).cloned()
+}
+
+/// Whether a place's entry, where there is one, reads landed.
+fn reads_landed(entry: Option<&Value>) -> bool {
+    matches!(entry.and_then(facts::over), Some(facts::Over::Landed(_)))
 }
 
 /// Where a launch stands, for what waits on it.

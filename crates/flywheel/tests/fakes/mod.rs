@@ -204,6 +204,17 @@ impl FakeFlume {
             .collect()
     }
 
+    /// Each act asked, with its place, in order.
+    pub fn acts(&self) -> Vec<(String, Act)> {
+        self.calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Act(place, act) => Some((place, act)),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Each launch's arguments, in order.
     pub fn launches(&self) -> Vec<LaunchArgs> {
         self.calls()
@@ -608,6 +619,20 @@ impl Stub {
             .map_while(|n| self.read(&format!("call-{n}")))
             .map(|call| call.split_terminator('\0').map(str::to_string).collect())
             .collect()
+    }
+
+    /// `what`, a command or `status-of`, answered with `text` and the exit
+    /// `exit`.
+    pub fn answers_text(&self, what: &str, text: &str, exit: i32) {
+        let dir = self.dir.path();
+        let file = dir.join(format!("{what}.answer"));
+        fs::write(&file, text).expect("the stub's answer");
+        fs::write(
+            dir.join(format!("{what}.stdout")),
+            file.to_string_lossy().as_bytes(),
+        )
+        .expect("the stub's answer");
+        fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
     }
 
     /// The number of the first call whose command, after `--json`, is

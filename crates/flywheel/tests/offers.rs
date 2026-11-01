@@ -390,6 +390,7 @@ fn a_report_not_sent() {
     assert_eq!(held.launches[&id("a")].answer.outcome, Outcome::Launched);
     plane.take_reports();
     bench.pass(&mut plane);
-    assert_eq!(plane.reports(), [held]);
+    let reported = &plane.reports()[0].launches[&id("a")];
+    assert_eq!(reported.answer, held.launches[&id("a")].answer);
     assert_eq!(bench.flume.launches().len(), 1);
 }

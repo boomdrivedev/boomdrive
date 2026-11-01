@@ -193,7 +193,8 @@ fn a_priority_of_a_held_launch() {
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(acted(&bench, "b/priority"), (Outcome::Done, None));
     assert!(lines.contains(&"b/priority: priority 7 of b: done".to_string()));
-    assert_eq!(bench.flume.commands().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.launches().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.acts(), []);
     bench.flume.land(&place_of("a"));
     bench.pass(&mut plane);
     let launches = bench.flume.launches();
@@ -250,7 +251,8 @@ fn a_retry_or_a_done_of_a_held_launch() {
         (Outcome::Refused, Some(words.clone()))
     );
     assert_eq!(acted(&bench, "b/done"), (Outcome::Refused, Some(words)));
-    assert_eq!(bench.flume.commands().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.launches().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.acts(), []);
 }
 
 /// A retry of a launch dropped before it was launched is refused, naming

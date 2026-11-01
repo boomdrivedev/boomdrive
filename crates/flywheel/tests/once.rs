@@ -9,7 +9,7 @@
 
 mod fakes;
 
-use fakes::{act, fixture, offer, place_of, Bench, Call, FakeFlume};
+use fakes::{act, fixture, offer, place_of, Bench, FakeFlume};
 use flywheel::facts;
 use flywheel::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
 use flywheel_control::fake::Fake;
@@ -27,18 +27,6 @@ fn retry() -> ActSort {
     }
 }
 
-/// Each act Flume was asked to carry out, by its place.
-fn acts(flume: &FakeFlume) -> Vec<(String, Act)> {
-    flume
-        .calls()
-        .into_iter()
-        .filter_map(|call| match call {
-            Call::Act(place, act) => Some((place, act)),
-            _ => None,
-        })
-        .collect()
-}
-
 /// The work-into-flume spec's "A retry not made twice": a pass retries a
 /// place and its report then fails, and the runner starts again from its
 /// saved report with the same act pulled.
@@ -53,14 +41,14 @@ fn a_retry_not_made_twice() {
     ]);
     plane.refuse_reports("the state repository cannot be pushed");
     bench.pass(&mut plane);
-    assert_eq!(acts(&bench.flume).len(), 1);
+    assert_eq!(bench.flume.acts().len(), 1);
     assert_eq!(
         bench.report().acts[&Id::new("madswan/20")].outcome,
         Outcome::Done
     );
     plane.take_reports();
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(acts(&bench.flume).len(), 1, "no second retry");
+    assert_eq!(bench.flume.acts().len(), 1, "no second retry");
     assert_eq!(lines, [] as [String; 0]);
     let reported = plane.reports().last().unwrap();
     assert_eq!(reported.acts[&Id::new("madswan/20")].outcome, Outcome::Done);
@@ -188,10 +176,10 @@ fn an_act_the_control_plane_holds_is_not_made_twice() {
         act("a/retry", "a", retry()),
     ]);
     bench.pass(&mut plane);
-    assert_eq!(acts(&bench.flume).len(), 1);
+    assert_eq!(bench.flume.acts().len(), 1);
     fs::remove_file(bench.report_file()).unwrap();
     bench.pass(&mut plane);
-    assert_eq!(acts(&bench.flume).len(), 1, "no second retry");
+    assert_eq!(bench.flume.acts().len(), 1, "no second retry");
     assert_eq!(bench.flume.launches().len(), 1, "no second launch");
     let report = bench.report();
     assert_eq!(report.acts[&Id::new("a/retry")].outcome, Outcome::Done);
