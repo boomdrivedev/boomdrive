@@ -208,3 +208,91 @@ Each item is one of:
   report's "a brief left by a killed launch" is a fix: a start removes
   the briefs no launch holds). Source: design Decisions 11 and 17;
   core.11.
+
+## 3. Enrolment, identity and credentials on a host
+
+### What the material settles
+
+- No token, key or credential is in this repository, and the runner
+  reads each from the host when it runs (core.4). The configuration
+  refuses any key it does not read, `token` among them, and never
+  echoes a value (the configuration spec).
+- Every fetch and push reaches the forge over https through the host's
+  own git credential helper, with `GIT_TERMINAL_PROMPT=0`; a host whose
+  git rewrites https to ssh is named and not fetched (the clones spec).
+  crew's state repositories are reached the same way (the crew spec).
+- On the cloud's side: a host is enrolled by a token issued from the
+  console for the install command a person runs, and the new host's
+  first connection raises its rail item; the console never enrols a
+  host or upgrades its runner itself (cloud record 0040, core.96). The
+  runner acts as a principal of its own, issued by the control plane,
+  never with a member's credential; a host's token is minted at its
+  enrolment (cloud core.24, record 0018), and one module of the Worker
+  verifies it (core.21). A host's signing identity, and every
+  certificate issued on it, is an event in the chain (cloud core.43;
+  record 0023: a host signs "with a certificate for its own
+  principal"). Each host belongs to exactly one Account and has one
+  Host object (cloud core.13, core.14). The control plane keeps no
+  customer credential: a forge token is minted short-lived at its use,
+  or stays on the host (cloud core.58).
+- The hosted implementation, as named and unbuilt, reads `url` and a
+  `token_file` from `[control_plane.hosted]`, never the token (design
+  Decision 20).
+
+### Asked
+
+1. **Host identity.** A bearer token at rest, a key pair made on the
+   host, or the OS keychain?
+2. **Enrolment.** `flywheel enroll`, a token the installer places, or
+   enrolment left to swancloud?
+3. **Two accounts on one machine** (madswan's and Willdan's work, say):
+   one runner with an enrolment per partition, a runner per account, or
+   one account per machine?
+4. **Forge credentials** under the cloud: the host's own credential
+   helper only, or a token the cloud mints for one command?
+
+### The user's words
+
+1. "Key pair made on the host" (the recommended answer).
+2. "`flywheel enroll`" (the recommended answer).
+3. "One runner, one enrolment each" (the recommended answer).
+4. "The thing is, though, I'm running a Sluice GitHub app right now to
+   push and pull from GitHub. We need to reconcile with what I'm
+   currently doing" (taken up below).
+
+### What it gives
+
+- **`host-key-never-leaves`** (rule). A host's identity with a hosted
+  control plane is a key pair the runner makes on the host at
+  enrolment; the private key never leaves the host, in a message, a
+  log, a report or a file outside the runner's own, and every
+  connection proves the key is held, the control plane certifying it
+  for short times. Rules out: a bearer token the runner keeps and
+  presents as the host's lasting identity; the private key sent at
+  enrolment or read from the configuration; a key printed or logged.
+  Not ruled out: a short-lived certificate or session the control
+  plane issues on the key; the key made in a hardware key store where
+  the host has one. Source: the user, 2026-11-01, (1); cloud record
+  0023 and core.43.
+- **`enrol-by-command`** (requirement). `flywheel enroll` reads the
+  one-time enrolment token from standard input, never from an argument
+  or the environment, makes the host's key pair, registers its public
+  key over the runner's own outgoing connection, and writes the key and
+  what the control plane certified under the runner's own directory,
+  in files only the host's user may read; it never writes the
+  configuration. Source: the user, 2026-11-01, (2); cloud record 0040.
+- **`one-runner-one-enrolment-per-partition`** (requirement). One
+  runner serves a machine, with one data directory and one clone per
+  repository. Each partition its configuration names is one enrolment,
+  with its own key, its own connection and its own Host object. Source:
+  the user, 2026-11-01, (3).
+- **`a-partition-sees-only-its-own`** (rule). What the runner sends
+  over one partition's connection names only that partition's
+  repositories, leases, places and commands: no repository, stream
+  name, place or answer of another partition's reaches it. Rules out:
+  one hello listing every repository the host keeps sent to every
+  partition; a place launched for one partition carried in another's
+  report. Not ruled out: the host's room as Flume gives it, which every
+  partition reads. Source: the user, 2026-11-01, (3); cloud core.33.
+  It asks that a partition say which repositories are its own (open,
+  topic 5).
