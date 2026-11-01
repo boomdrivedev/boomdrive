@@ -1,0 +1,51 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 291,
+  "branch": "main",
+  "head": "4480899ef7e43922145534dc0b9e09b5d30ed105",
+  "from": {
+    "agent": "small-fixes-after-the-deliveries",
+    "worktree": "pull/149",
+    "head": "small-fixes-after-the-deliveries"
+  },
+  "submitted": "2026-10-29T14:11:21Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "withdrawn",
+  "tested": {
+    "combination": "dd4424c73b904df14efbe191aba0a6ae86623567",
+    "on": "8b64012481b2b39812340adc291ab273bba6fd88",
+    "submissions": [
+      291
+    ]
+  },
+  "result": "failed",
+  "failed": [
+    {
+      "task": "cli:test",
+      "hash": "ac52c612a1fb27a96a0e1b72b709852ef4267f1a3e53b5bbc43ded025ce0f2d1",
+      "log": "/Users/chuck/Code/github_agentplot/sluice/sluice.git/sluice/.logs/main/c143/cli:test.log",
+      "flaky": {
+        "here": "pass",
+        "at": "2026-10-29T15:29:18Z",
+        "host": "deneb",
+        "other": {
+          "outcome": "fail",
+          "at": "2026-10-29T14:54:24Z",
+          "branch": "main",
+          "combination": "01cd2fc56e2c947392f198d3dd43082fd5967d6b",
+          "host": "deneb",
+          "log": "/Users/chuck/Code/github_agentplot/sluice/sluice.git/sluice/.logs/main/c144/cli:test.log"
+        }
+      }
+    }
+  ],
+  "withdrawn": {
+    "by": "resubmission",
+    "at": "2026-10-29T16:06:28Z"
+  },
+  "delivered": "2026-10-29T15:29:36Z",
+  "delivered_to": "pull/149",
+  "subject": "small-fixes-after-the-deliveries"
+}

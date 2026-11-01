@@ -12,6 +12,7 @@ use crate::config::{Address, Config};
 use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
 use crate::hello::{self, Tools};
 use crate::run::Notices;
+use crate::sluice::{self, Sluice};
 use crate::{facts, report};
 use flywheel_control::{
     Act, ActSort, Acted, Answer, At, Carrying, ControlPlane, Id, Launched, Offer, Outcome, Report,
@@ -92,6 +93,7 @@ impl Clones for Configured {
 /// What a control pass runs over.
 pub struct Carrier<'a> {
     pub flume: &'a dyn Flume,
+    pub sluice: &'a dyn Sluice,
     pub clones: &'a dyn Clones,
     pub tools: &'a dyn Tools,
     /// Told of each landing the pass reads, so its repository is kept at
@@ -179,6 +181,7 @@ impl Carrier<'_> {
             }
         }
         work.carry_statuses(say);
+        work.carry_entries(say);
         work.send(plane, say);
         Passed {
             expires: expires(&work.report),
@@ -521,11 +524,7 @@ impl Work<'_> {
         let Some(listing) = self.listing.take() else {
             return;
         };
-        let offers = self.wants.iter().filter_map(|want| match want {
-            Want::Offer(offer) => Some(offer),
-            _ => None,
-        });
-        for offer in offers {
+        for offer in offers(self.wants) {
             let id = &offer.id;
             let Some(launched) = self.report.launches.get(id) else {
                 continue;
@@ -542,7 +541,7 @@ impl Work<'_> {
             let was = carried_entry(launched, &place);
             let listed = facts::entry(&listing, &place);
             if listed.is_some() && listed == was.as_ref() {
-                self.relist(id, true);
+                self.relist(id, Carrying::Status, true);
                 continue;
             }
             match self.carrier.flume.status_of(&container, &place) {
@@ -551,7 +550,9 @@ impl Work<'_> {
                     self.report
                         .carry(id, Carrying::Status, line, listed.is_some(), At::now());
                 }
-                Ok(Reply::Refused(_)) => self.relist(id, listed.is_some()),
+                Ok(Reply::Refused(_)) => {
+                    self.relist(id, Carrying::Status, listed.is_some());
+                }
                 Err(Unrun(words)) => {
                     say(format!(
                         "{id}: Flume's status of {place} could not be read: {words}"
@@ -569,13 +570,81 @@ impl Work<'_> {
         self.listing = Some(listing);
     }
 
-    /// Marks the status carried for launch `id` as the listing holds its
-    /// place or not, its text and time as they stand.
-    fn relist(&mut self, id: &Id, listed: bool) {
-        let carried = self.report.launches.get(id).and_then(|l| l.status.as_ref());
-        if let Some(text) = carried.map(|carried| carried.text.clone()) {
-            self.report
-                .carry(id, Carrying::Status, &text, listed, At::now());
+    /// Carries sluice's entry of each launch's submission (design
+    /// Decision 13; core.11): of `sluice status <id> --json`, run in the
+    /// launch's clone, the fields the cloud's copy of an entry holds, each
+    /// as sluice printed it, and no log. The entry is the one the status
+    /// carried for the launch names; a launch whose status names none runs
+    /// no sluice. An entry is read again at each pass until its state is
+    /// final, and carried anew only when what is carried of it changes.
+    /// Where sluice refuses, the entry last carried stands, not listed.
+    /// Only the launches the pull gives are read, whose repositories it
+    /// names.
+    fn carry_entries(&mut self, say: &mut dyn FnMut(String)) {
+        for offer in offers(self.wants) {
+            let id = &offer.id;
+            let Some(launched) = self.report.launches.get(id) else {
+                continue;
+            };
+            let (Outcome::Launched, Some(place)) = (
+                launched.answer.outcome,
+                launched.answer.place_dir.as_deref(),
+            ) else {
+                continue;
+            };
+            let entry = carried_entry(launched, place);
+            let Some(submission) = entry.as_ref().and_then(facts::submission_id) else {
+                continue;
+            };
+            let held = launched.entry.as_ref().map(|carried| carried.text.as_str());
+            if held.is_some_and(|text| {
+                sluice::id_of(text).as_deref() == Some(submission) && sluice::is_final(text)
+            }) {
+                continue;
+            }
+            let submission = submission.to_string();
+            let Keeping::Ready(container) = self.carrier.clones.keeping(&offer.launch.repository)
+            else {
+                continue;
+            };
+            let refused = match self.carrier.sluice.entry(&container, &submission) {
+                Ok(sluice::Reply::Given(answer)) => match sluice::carried(&answer) {
+                    Some(text) => {
+                        self.report
+                            .carry(id, Carrying::Entry, &text, true, At::now());
+                        continue;
+                    }
+                    None => "sluice's answer is no submission".to_string(),
+                },
+                Ok(sluice::Reply::Refused(words)) => words,
+                Err(sluice::Unrun(words)) => {
+                    say(format!(
+                        "{id}: sluice's entry {submission} could not be read: {words}"
+                    ));
+                    self.failed = true;
+                    continue;
+                }
+            };
+            if self.relist(id, Carrying::Entry, false) {
+                say(format!(
+                    "{id}: sluice's entry {submission} is refused: {refused}"
+                ));
+            }
+        }
+    }
+
+    /// Marks the status or entry carried for launch `id` as its tool's
+    /// last listing holds it or not, its text and time as they stand, and
+    /// says whether the report changed.
+    fn relist(&mut self, id: &Id, what: Carrying, listed: bool) -> bool {
+        let launched = self.report.launches.get(id);
+        let carried = launched.and_then(|launched| match what {
+            Carrying::Status => launched.status.as_ref(),
+            Carrying::Entry => launched.entry.as_ref(),
+        });
+        match carried.map(|carried| carried.text.clone()) {
+            Some(text) => self.report.carry(id, what, &text, listed, At::now()),
+            None => false,
         }
     }
 
@@ -658,6 +727,14 @@ impl Work<'_> {
         let inbox = report.inboxes.remove(id).is_some();
         launch || act || command || inbox
     }
+}
+
+/// The offers among `wants`, in the control plane's order.
+fn offers(wants: &[Want]) -> impl Iterator<Item = &Offer> {
+    wants.iter().filter_map(|want| match want {
+        Want::Offer(offer) => Some(offer),
+        _ => None,
+    })
 }
 
 /// The entry of the place at `place` in the status `launched` carries.

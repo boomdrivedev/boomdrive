@@ -3,8 +3,9 @@
 //! part, each answer scripted where a test says, and each call recorded.
 //! The runner's clones and its tools' versions are what a test sets. A
 //! stub `flume` program stands in where a test runs the pass over
-//! Flume's own command line. Every file lies in the test's own temporary
-//! directory, and no test runs a real Flume.
+//! Flume's own command line, and a stub `sluice` stands in for sluice's.
+//! Every file lies in the test's own temporary directory, and no test
+//! runs a real Flume or sluice.
 
 #![allow(dead_code)]
 
@@ -13,6 +14,7 @@ use flywheel::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
 use flywheel::hello::Tools;
 use flywheel::report;
 use flywheel::run::{Event, Notices};
+use flywheel::sluice;
 use flywheel_control::fake::Fake;
 use flywheel_control::{
     ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
@@ -35,6 +37,16 @@ pub fn fixture(name: &str) -> String {
         .join("tests/fixtures/flume-0.4.1")
         .join(name);
     fs::read_to_string(file).expect("the fixture")
+}
+
+/// A fixture of sluice 0.61.1's, as it printed it.
+pub fn sluice_fixture(name: &str) -> String {
+    fs::read_to_string(sluice_fixtures().join(name)).expect("the fixture")
+}
+
+/// The directory of sluice 0.61.1's fixtures.
+pub fn sluice_fixtures() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sluice-0.61.1")
 }
 
 /// `value` as Flume prints JSON: on one line, ending in a newline.
@@ -383,11 +395,13 @@ impl Tools for FakeTools {
     }
 }
 
-/// A host for control passes: a fake Flume, clones and tools, and a data
-/// directory of its own, which keeps [`KEPT`] with its clone made.
+/// A host for control passes: a fake Flume, a stub `sluice`, clones and
+/// tools, and a data directory of its own, which keeps [`KEPT`] with its
+/// clone's container made.
 pub struct Bench {
     pub dir: TempDir,
     pub flume: FakeFlume,
+    pub sluice: SluiceStub,
     pub clones: FakeClones,
     pub tools: FakeTools,
     notices: Notices,
@@ -401,12 +415,15 @@ impl Bench {
         let bench = Bench {
             dir,
             flume: FakeFlume::new(),
+            sluice: SluiceStub::new(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
             notices: Notices::new(events),
             events: received,
         };
-        bench.clones.ready(KEPT, &bench.container(KEPT));
+        let container = bench.container(KEPT);
+        fs::create_dir_all(&container).expect("the clone's container");
+        bench.clones.ready(KEPT, &container);
         bench
     }
 
@@ -440,8 +457,10 @@ impl Bench {
     /// said.
     pub fn pass_over(&self, flume: &dyn Flume, plane: &mut Fake) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
+        let sluice = sluice::Cli::new(self.sluice.program());
         let carrier = Carrier {
             flume,
+            sluice: &sluice,
             clones: &self.clones,
             tools: &self.tools,
             notices: &self.notices,
@@ -642,5 +661,88 @@ impl Stub {
             .iter()
             .position(|call| call.get(1).map(String::as_str) == Some(what))
             .map(|n| n + 1)
+    }
+}
+
+/// The stub `sluice`'s program. Each call writes its arguments,
+/// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
+/// It then prints the file `<what>.stdout` names, writes `<what>.stderr`
+/// on standard error, and exits with `<what>.exit`'s status, each where
+/// the test wrote one, `<what>` being its command.
+const SLUICE: &str = r#"#!/bin/sh
+dir=$(dirname "$0")
+n=1
+while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
+pwd -P > "$dir/dir-$n"
+what=$1
+if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
+if [ -e "$dir/$what.stderr" ]; then cat "$dir/$what.stderr" >&2; fi
+if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
+exit 0
+"#;
+
+/// A stub `sluice` in a temporary directory of its own. Unscripted, it
+/// prints nothing.
+pub struct SluiceStub {
+    pub dir: TempDir,
+}
+
+impl SluiceStub {
+    pub fn new() -> SluiceStub {
+        let stub = SluiceStub::absent();
+        let program = stub.program();
+        fs::write(&program, SLUICE).expect("the stub");
+        fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
+        stub
+    }
+
+    /// A stub not written: its program is not there.
+    pub fn absent() -> SluiceStub {
+        SluiceStub {
+            dir: tempfile::tempdir().expect("a temporary directory"),
+        }
+    }
+
+    pub fn program(&self) -> PathBuf {
+        self.dir.path().join("sluice")
+    }
+
+    /// `what`, a command, answered with sluice's fixture `name` and the
+    /// exit `exit`.
+    pub fn answers(&self, what: &str, name: &str, exit: i32) {
+        self.answers_text(what, &sluice_fixture(name), exit);
+    }
+
+    /// `what`, a command, answered with `text` and the exit `exit`.
+    pub fn answers_text(&self, what: &str, text: &str, exit: i32) {
+        let dir = self.dir.path();
+        let file = dir.join(format!("{what}.answer"));
+        fs::write(&file, text).expect("the stub's answer");
+        fs::write(
+            dir.join(format!("{what}.stdout")),
+            file.to_string_lossy().as_bytes(),
+        )
+        .expect("the stub's answer");
+        fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// `what`, a command, saying `words` on standard error.
+    pub fn says(&self, what: &str, words: &str) {
+        fs::write(self.dir.path().join(format!("{what}.stderr")), words).expect("its words");
+    }
+
+    /// The arguments of every call, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        (1..)
+            .map_while(|n| fs::read_to_string(self.dir.path().join(format!("call-{n}"))).ok())
+            .map(|call| call.split_terminator('\0').map(str::to_string).collect())
+            .collect()
+    }
+
+    /// The directory the `n`th call ran in, counting from 1.
+    pub fn dir_of(&self, n: usize) -> Option<PathBuf> {
+        let said = fs::read_to_string(self.dir.path().join(format!("dir-{n}"))).ok()?;
+        Some(PathBuf::from(said.trim_end_matches('\n')))
     }
 }
