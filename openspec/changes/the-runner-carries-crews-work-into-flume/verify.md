@@ -1,65 +1,64 @@
 # Verify: the-runner-carries-crews-work-into-flume
 
-The work on `change/the-runner-carries-crews-work-into-flume`, read at 9fa3ae2, falls short, and the change is not archived. Every task is ticked. Every check task 10.1 names passes, and so does the gate run fresh through sluice. The change has 83 requirements and 150 scenarios. Of the scenarios, 144 are proved by a test that asserts their outcome. Three are contradicted by the code and its tests on purpose, and three are proved only in part. Archiving the change as written breaks `root:specs` on main. Two further requirements are not met in the code.
-
-## What falls short
-
-1. **Archiving breaks `root:specs`.** The configuration delta's MODIFIED "The configuration holds nothing the runner does not read" has 736 characters of requirement text. openspec warns above 500, and `--strict` makes that warning an error. `root:changes` validates the delta with `openspec validate --changes --strict`, which does not apply the length rule, so it passes. A trial archive on a copy of `openspec/` merged every delta cleanly. `openspec validate --specs --strict` then failed `spec/configuration`, its `requirements[4]` "Requirement text is very long (>500 characters)". The landed requirement is two sentences; the change's bulleted refusals of streams, kinds and keys of before make it long. Its text is to be shortened. One way is to move the refusals into a requirement of their own, whose scenarios already exist ("A stream named", "A kinds file named", "A key of before").
-
-2. **Three scenarios say what the code and its tests do not.** Each is a deliberate choice in the code or the interface, so either the scenario's THEN or the code moves:
-   - control-plane-interface "A pull that cannot be read" and running "A control plane that cannot be read" both say no `flume` command runs. Design Decision 5, step 2, reads `flume --json status` and each tool's `--version` for the hello before the pull (`src/carry.rs:144`, `src/hello.rs`). `offers::a_pull_that_cannot_be_read` asserts that `flume --json status` ran (`[Call::Status]`). `control::a_control_plane_that_cannot_be_read` allows `status` and `--version`. The spec and the design disagree.
-   - crew-control-plane "A run standing" says the pull gives no offer for `planner`. `crew/roles::a_run_standing` asserts the pull gives `madswan/planner/1`. That is the standing run given again as a settled want, as the shared case "a settled want is still given" requires (`crew/src/roles.rs:307-313`). The scenario means no new run of `planner`.
-
-3. **`flywheel run --once` exits 1 where the running spec says 0.** The spec says it exits 0 when every git call of the keeping pass succeeded and the control pass both pulled and reported, and 1 otherwise. `Runner::once` (`src/run.rs:296-307`) exits 1 whenever the control pass is marked failed. `src/carry.rs` marks it failed in more cases than a pull or report that did not happen:
-   - a launch or act Flume could not run (`:314`, `:435`);
-   - Flume's status could not be read (`:151`);
-   - sluice could not run (`:582`, `:750`);
-   - origin's branch could not be read (`:590`);
-   - a place's status or an inbox could not be read (`:686`, `:816`);
-   - the report could not be saved (`:873`).
-
-   `offers::flume_is_not_there` asserts the pass failed although it pulled and reported. `Runner::once`'s doc comment and README's lines 76 to 81 say what the spec says. `src/main.rs:27-28`'s help still says "0 where every git call succeeded, 1 where one failed", with no word of the control pass. The spec, the code and the help text are to agree.
-
-4. **One partition never read withholds every partition's let-go.** crew's `report` (`crew/src/lib.rs:738-806`) pushes a partition whose `<label>/main` has not been read onto `unsent`, and goes on to write the others. It then returns `Err(Unsent)` for the whole call, dropping the `let_go` it computed for the partitions it wrote. Take "One partition missing", with `swancloud/main` unreadable and `madswan` read:
-   - every report writes `madswan/runner/<host>`, yet comes back `Unsent`;
-   - the runner keeps the launches crew has already removed from `madswan`'s branch;
-   - every control pass is marked failed for as long as `swancloud` stays unread.
-
-   That contradicts "A partition that cannot be read hides only its own work" and "A launch is let go once its work has left crew's plan". No test reports with one partition unread; `crew/read::one_partition_missing` only pulls.
-
-5. **No implementation can wake the runner.** The running spec's "A control pass runs at once when its control plane wakes the runner" is met by the loop, which acts on `Event::Wake` (`src/run.rs:361-366`). But `planes::Opener` (`src/planes.rs:20-21`) hands an implementation no `Notices`, and `Control::open` runs before the event channel exists (`src/run.rs:206-207`). Design Decision 5 says an implementation "may send through `Notices`"; none can. `control::woken_by_the_control_plane` calls `notices.wake()` itself, and with an hour's interval it cannot tell a timer kept from the woken pass's start from one kept from the pass before. crew never wakes, so nothing breaks today. Either the opener carries a way to wake the runner, or the spec says the requirement waits for an implementation that pushes.
+The work on `change/the-runner-carries-crews-work-into-flume`, read at 1f03046, holds, and the change is archived. Every task is ticked. Every check task 11.6 names passes, and so does the gate run fresh through sluice. The change has 84 requirements and 152 scenarios, and every scenario is met. For 151 of them a test asserts the outcome. One test asserts part of its scenario, and the rest holds by reading the code. A trial archive merges every delta, and every spec then passes `openspec validate --specs --strict`, which is what `root:specs` runs on main.
 
 ## Tasks
 
-All 39 tasks of `tasks.md`, groups 1 to 10, are ticked `[x]`, and none is open. Each group's closing task names the checks that ran it. Those checks pass at 9fa3ae2 (below).
+All 45 tasks of `tasks.md`, groups 1 to 11, are ticked `[x]`, and none is open. Each group's closing task names the checks that ran it, and those checks pass at 1f03046 (below).
 
 What the tasks build stands in the tree:
-- `crates/flywheel-control` and `crates/flywheel-crew` are members of the cargo workspace and moon projects of their own in `.moon/workspace.yml`, with `language: 'rust'`.
-- Each crate has the tasks format, lint, typecheck and test, each tagged `check-fast` and naming `/devenv.nix`, `/devenv.lock` and `/.prototools` among its inputs. `flywheel-crew`'s name `/crates/flywheel-control/**/*` too, and `flywheel`'s name both new crates' sources and `/README.md` for its README test.
-- `devenv.nix` pins recutils at 1.9, asserted against `pkgs.recutils.version` as git is, and `check-toolchain.sh` checks `recfix --version` against it.
+- `crates/flywheel-control` and `crates/flywheel-crew` are members of the cargo workspace. Each is a moon project of its own in `.moon/workspace.yml`, with `language: 'rust'`.
+- Each crate has the tasks format, lint, typecheck and test, each tagged `check-fast`. Each names `/devenv.nix`, `/devenv.lock` and `/.prototools` among its inputs. `flywheel-crew`'s tasks also name `/crates/flywheel-control/**/*`. `flywheel`'s name both new crates' sources, and `/README.md` for its README test.
+- `devenv.nix` pins recutils at 1.9, asserted against `pkgs.recutils.version` as git is. `check-toolchain.sh` checks `recfix --version` against it.
 - `treefmt.nix` excludes `crates/*/tests/fixtures/**` by name, with its reason.
 - `Cargo.toml` takes weir-branch, weir-capture and weir-signals at `0b6eb5abb806a51fec128b01f97c4dcff6170219`.
-- `docs/architecture/core.md` holds core.5 amended and core.12, and `docs/adr/0002` holds the decision, both in 22d7630 beside the design.
-- README carries the `[control_plane]` table in a fenced `toml` block, the runner's branch, and that kinds and streams are Flume's host configuration. CLAUDE.md's opening paragraph says what the runner now carries.
+- `docs/architecture/core.md` holds core.5 amended and core.12. `docs/adr/0002` holds the decision. Both came in 22d7630, beside the design.
+- README carries the `[control_plane]` table in a fenced `toml` block and names the runner's branch. It says kinds and streams are Flume's host configuration, and what `--once` exits on. CLAUDE.md's opening paragraph says what the runner now carries.
+- Group 11 makes the specs, the code and the help agree:
+  - The configuration's refusals of a stream, a kind and a key of before are now a requirement of their own.
+  - The scenarios of an unread pull allow the hello's Flume reads, and a standing run is given again.
+  - `Passed.reported` decides `--once`'s exit.
+  - crew's report writes each partition it can.
+  - Every opener is handed a `Wake`.
 
-The tree touches only what the proposal's Touches names, beside the change itself and its record.
+The branch touches only what the proposal's Touches names, beside the change itself and its record, `docs/adr/0002`. `main` stands at 3e61c31, the branch's merge base.
 
 ## Checks
 
 Run through sluice, so its sandbox and `network = "localhost"` applied:
 
-- `sluice exec main -- moon run flywheel-control:format flywheel-control:lint flywheel-control:typecheck flywheel-control:test flywheel-crew:format flywheel-crew:lint flywheel-crew:typecheck flywheel-crew:test flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format root:toolchain root:adrs root:specs root:changes`, task 10.1's command, passed: 17 tasks, 14 of them replayed from moon's cache.
-- `sluice exec main`, the gate, then ran every `check-fast` task afresh and passed all 17. It recorded their results under 9fa3ae2. There were 438 tests, none failed and none ignored. `root:toolchain` reported rustc, cargo, clippy and rustfmt at 1.98.1, git at 2.55.0, recutils at 1.9 and openspec at 1.14.3. `root:changes` validated this change under `--strict`.
+- `sluice exec main`, the gate, ran every `check-fast` task afresh and passed all 17. It recorded their results under 1f03046.
+  - 442 tests ran. None failed and none was ignored.
+  - `root:toolchain` reported rustc, cargo, clippy and rustfmt at 1.98.1, git at 2.55.0, recutils at 1.9 and openspec at 1.14.3.
+  - `root:changes` validated this change under `--strict`.
+- `sluice exec main -- moon run flywheel-control:format flywheel-control:lint flywheel-control:typecheck flywheel-control:test flywheel-crew:format flywheel-crew:lint flywheel-crew:typecheck flywheel-crew:test flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format root:toolchain root:adrs root:specs root:changes`, task 11.6's command, passed 17 tasks.
 
-moon warned that the sandbox could not write its output archives or shared cache. The tasks' results were unaffected.
+moon warned that the sandbox could not write its output archives or its shared cache, so each task ran again rather than replaying. The tasks' results were unaffected.
+
+Each test the group-11 tasks name ran and passed in the gate:
+- `control::flumes_status_refused`
+- `control::woken_by_the_control_plane`
+- `control::the_timer_kept_from_the_woken_pass`
+- `crew/letgo::one_partition_missing_at_a_report`
+- `crew/letgo::a_report_before_any_partition_is_read`
 
 ## Trial archive
 
-`openspec archive the-runner-carries-crews-work-into-flume --yes`, run with the pinned openspec on a copy of `openspec/` in a scratch directory, applied every delta: + 71, ~ 12, → 3. It created branch-commands, control-plane-interface, crew-control-plane, terminal-relay, tool-records and work-into-flume. It updated clones, configuration, running and views, and the three RENAMED headers each found their requirement. `openspec validate --specs --strict` then passed nine of the ten specs and failed configuration (finding 1). The archive also warned, without blocking, that the Why section passes 1000 characters and that the change has more than 10 deltas.
+`openspec archive the-runner-carries-crews-work-into-flume --yes` was run with the pinned openspec 1.14.3 on a copy of `openspec/` in a scratch directory. It applied every delta: + 72, ~ 12, → 3.
+- It created branch-commands, control-plane-interface, crew-control-plane, terminal-relay, tool-records and work-into-flume.
+- It updated clones, configuration, running and views. The three RENAMED headers each found their requirement.
+
+`openspec validate --specs --strict` then passed all ten specs. In the merged configuration spec, "The configuration holds nothing the runner does not read" holds its two scenarios. "A refused stream, kind or key of before says where it is held" holds "A stream named", "A kinds file named" and "A key of before". The longest merged requirement has 491 characters of text, within openspec's 500.
+
+The archive warned, without blocking, that the Why section passes 1000 characters and that the change has more than 10 deltas.
 
 ## Scenarios
 
-Each scenario's test was read against its WHEN and THEN. A test named `x::y` is the function `y` in `crates/flywheel/tests/x.rs`, and `src/m.rs::y` a unit test of that module of `crates/flywheel`. `crew/` and `control/` mark the same in `crates/flywheel-crew` and `crates/flywheel-control`. A note marks each scenario not met or met only in part.
+Each scenario's test was read against its WHEN and THEN. Test names are given as `x::y`:
+- `x::y` is the function `y` in `crates/flywheel/tests/x.rs`.
+- `src/m.rs::y` is a unit test in that module of `crates/flywheel`.
+- `crew/x::y` and `crew/src/m.rs::y` are the same in `crates/flywheel-crew`.
+- `control/x::y` is the function `y` in `crates/flywheel-control/tests/x.rs`.
 
 ### branch-commands (5 requirements, 7 scenarios)
 
@@ -80,7 +79,7 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | A new repository is cloned | `clones::a_new_repository_is_cloned` |  |
 | The clone is not under the views root | `views::the_clone_is_not_under_the_repository_root` |  |
 
-### configuration (7 requirements, 20 scenarios)
+### configuration (8 requirements, 20 scenarios)
 
 | Scenario | Proved by | Note |
 |---|---|---|
@@ -111,7 +110,7 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 |---|---|---|
 | Only crew's crate names crew | `rules::only_crews_crate_names_crew` |  |
 | Wants in order | `control/fake::wants_in_order` |  |
-| A pull that cannot be read | `offers::a_pull_that_cannot_be_read`, `control/fake::a_pull_that_cannot_be_read` | **Not met as written** (finding 2) |
+| A pull that cannot be read | `offers::a_pull_that_cannot_be_read`, `control/fake::a_pull_that_cannot_be_read` | The only Flume call is the hello's `status` |
 | An offer's lease kept with its answer | `offers::an_offers_lease_kept_with_its_answer` |  |
 | An offer with every field | `control/fake::an_offer_with_every_field` |  |
 | A report sent twice | `control/fake::a_report_sent_twice` |  |
@@ -121,7 +120,7 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | The fake control plane passes | `control/fake::shared_wants_in_order`, `control/fake::shared_a_report_comes_back`, `control/fake::shared_a_report_twice`, `control/fake::shared_a_settled_want_is_given` |  |
 | crew's implementation passes | `crew/shared::shared_wants_in_order`, `crew/shared::shared_a_report_comes_back`, `crew/shared::shared_a_report_twice`, `crew/shared::shared_a_settled_want_is_given` |  |
 
-### crew-control-plane (21 requirements, 38 scenarios)
+### crew-control-plane (21 requirements, 39 scenarios)
 
 | Scenario | Proved by | Note |
 |---|---|---|
@@ -133,6 +132,7 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | A file missing at the tip | `crew/read::a_file_missing_at_the_tip` |  |
 | One partition missing | `crew/read::one_partition_missing` |  |
 | No partition read | `crew/read::no_partition_read` |  |
+| One partition missing at a report | `crew/letgo::one_partition_missing_at_a_report` | `crew/letgo::a_report_before_any_partition_is_read` proves the unsent half of the requirement |
 | Only this host's requests | `crew/read::only_this_hosts_requests` |  |
 | A kit named by its name alone | `crew/claims::a_kit_named_by_its_name_alone` |  |
 | A repository not kept | `crew/claims::a_repository_not_kept` |  |
@@ -147,7 +147,7 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | A launch's every field | `crew/read::a_launchs_every_field` |  |
 | A kit's launch naming no stream | `crew/read::a_kits_launch_naming_no_stream` |  |
 | A retry of the submission | `crew/read::a_retry_of_the_submission` |  |
-| An act crew does not write | `crew/read::an_act_crew_does_not_write` | Partial: asserts the want; the runner's refusal is `after::an_act_on_anothers_launch` |
+| An act crew does not write | `crew/read::an_act_crew_does_not_write`, `after::an_act_on_anothers_launch` | crew gives the want, its launch naming `Act` and `pause`; the runner refuses it as no launch of its own |
 | Nothing changed | `crew/write::nothing_changed` |  |
 | Only the runner's branch | `crew/write::only_the_runners_branch` |  |
 | The first report | `crew/write::the_first_report` |  |
@@ -157,14 +157,14 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | Another host's place asks the planner | `crew/roles::another_hosts_place_asks_the_planner` |  |
 | A role's work landed | `crew/roles::a_roles_work_landed` |  |
 | A burst of asks | `crew/roles::a_burst_of_asks` |  |
-| A run standing | `crew/roles::a_run_standing` | **Not met as written** (finding 2) |
+| A run standing | `crew/roles::a_run_standing` |  |
 | A run waiting for room keeps its id | `crew/roles::a_run_waiting_for_room_keeps_its_id` |  |
 | A turn delivered | `crew/roles::a_turn_delivered` |  |
 | A unit landed and gone from the plan | `crew/letgo::a_unit_landed_and_gone_from_the_plan` |  |
-| A unit still in the plan | `crew/letgo::a_unit_still_in_the_plan` | Partial: asserts the `Place` stays, not its last `Status` |
+| A unit still in the plan | `crew/letgo::a_unit_still_in_the_plan` | The test asserts the `Place` stays. Its last `Status` holds by reading: `crew/src/write.rs:163-169` writes it from the report's carried status whatever `listed` says |
 | A fix of main | `crew/letgo::a_fix_of_main` |  |
 
-### running (6 requirements, 13 scenarios)
+### running (6 requirements, 14 scenarios)
 
 | Scenario | Proved by | Note |
 |---|---|---|
@@ -175,11 +175,12 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | A clone failed | `running::a_clone_failed` |  |
 | Left for the user | `dropped::left_for_the_user` |  |
 | One control pass | `control::one_control_pass` |  |
-| A control plane that cannot be read | `control::a_control_plane_that_cannot_be_read` | **Not met as written** (finding 2) |
+| Flume's status refused | `control::flumes_status_refused` |  |
+| A control plane that cannot be read | `control::a_control_plane_that_cannot_be_read` | Only `status` and `--version` are allowed of Flume |
 | A quiet pass | `running::a_quiet_pass` |  |
 | A view moved | `running::a_view_moved` |  |
 | On the control timer | `src/run.rs::on_the_control_timer` | Exact times in the unit test; `control::control_passes_on_their_own_timer` runs the loop |
-| Woken by the control plane | `control::woken_by_the_control_plane` | Partial: the test wakes the runner itself (finding 5) |
+| Woken by the control plane | `control::woken_by_the_control_plane`, `control::the_timer_kept_from_the_woken_pass` | Woken through the `Wake` handed to the plane's opener by `Runner::carry_for` |
 | The configuration broken while running | `control::the_configuration_broken_while_running` |  |
 
 ### terminal-relay (4 requirements, 7 scenarios)
@@ -242,7 +243,7 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | A kind named by its identity | `offers::a_kind_named_by_its_identity` |  |
 | A launch's environment and brief | `offers::a_launchs_environment_and_brief` |  |
 | Flume refuses | `offers::flume_refuses` |  |
-| Flume is not there | `offers::flume_is_not_there` |  |
+| Flume is not there | `offers::flume_is_not_there` | The pass still pulls and reports |
 | A retry with words | `acts::a_retry_with_words` |  |
 | A done | `acts::a_done` |  |
 | A priority of a held launch | `after::a_priority_of_a_held_launch` |  |
@@ -261,39 +262,43 @@ Each scenario's test was read against its WHEN and THEN. A test named `x::y` is 
 | A launch said | `statuses::a_launch_said` |  |
 | A quiet pass | `statuses::a_quiet_pass` |  |
 
-Every test reaches no network and runs no real Flume, sluice or herdr (design Decision 21). git runs under the scratch host of `crates/flywheel/tests/common`, each state repository is a bare repository the test makes, and each tool is a fake behind a trait or a stub program in the test's own temporary directory.
+No test reaches the network or runs a real Flume, sluice or herdr (design Decision 21). git runs under the scratch host of `crates/flywheel/tests/common`, and each state repository is a bare repository the test makes. Each tool is a fake behind a trait or a stub program in the test's own temporary directory. `pass::a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands` runs one control pass end to end (task 9.3).
 
 ## Requirements read in the code
 
 Beyond the scenarios, these hold by reading:
-- **The launch.** `flume --json launch` names `--repository`, `--kind`, `--name`, then each flag only where the launch gives it, and `--mark flywheel:<id>`. No source passes `--kinds`, and none passes `--force` to Flume; the one `--force` is git's `worktree add` in `src/view.rs`, on main before this change. Every `flume` call runs with `FLUME_RECIPIENT` unset, and the brief's file is removed once Flume answers.
-- **Room.** Room is counted down within a pass, for the stream and the host. `null` is unbounded, a stream with a queue has none, and an unlisted stream is launched so that Flume's refusal is the answer.
+- **The launch.** `flume --json launch` names `--repository`, `--kind` and `--name`, then each flag only where the launch gives it, and `--mark flywheel:<id>`. No source passes `--kinds`, and none passes `--force` to Flume. The one `--force` is git's `worktree add` in `src/view.rs`, on main before this change. Every `flume` call runs with `FLUME_RECIPIENT` unset, and the brief's file is removed once Flume answers.
+- **Room.** Room is counted down within a pass, for the stream and for the host. `null` is unbounded, and a stream with a queue has no room. An unlisted stream is launched, so that Flume's refusal is the answer.
 - **Statuses.** A place's status is read again only when its listing entry differs as a JSON value. The hello slices Flume's host part and leaves out `pools`, `addresses`, `bases` and `terminal_kept`.
 - **Leases.** The next control pass is due by the midpoint between the end of the pass and the earliest expiry (`src/carry.rs::next_due`).
-- **crew's records.** crew's four descriptors in `crew/src/write.rs` equal the four string constants of crew's `plugin/lib/runner.py` at `9913f249`, byte for byte. Every lease crew gives is number 1 with no expiry. The runner's branch is written by weir-branch's write: `recfix --check` on each file, one commit, and a push of `<label>/runner/<host>` alone, leased and never forced.
+- **`--once`'s exit.** `Runner::once` fails the control pass only in four cases: its control plane was not opened, the runner's clones could not be read, the pull was unread, or the report was unsent (`Passed.reported`). A tool the pass could not run or read is said and is no failure (`src/carry.rs`). `--once`'s help in `src/main.rs`, `Runner::once`'s doc comment and README's `--once` paragraph say what the running spec says.
+- **The wake.** `Runner::start` makes the event channel before it opens the control plane. `planes::Opener` hands each implementation a `flywheel_control::Wake` onto it, and crew's opener drops it. In the loop, `Event::Wake` sets the control pass due at once. The next pass is timed from that pass's `began` (`src/run.rs:357-379`).
+- **crew's report.** It writes each partition's runner branch it can, with that partition's let-go. It says each it could not, whether its main went unread or its write failed, and is `Unsent` only where it wrote none (`crew/src/lib.rs:738-813`).
+- **crew's records.** crew's four descriptors in `crew/src/write.rs` equal the four string constants of crew's `plugin/lib/runner.py` at `9913f249`, byte for byte. Every lease crew gives is number 1, with no expiry. The runner's branch is written by weir-branch's write: `recfix --check` on each file, one commit, and a push of `<label>/runner/<host>` alone, leased and never forced.
 - **The name-order reclaim.** A withdrawn launch is claimed again no sooner than `pulls + place`, its place counted from 1 among the claimants seen (`crew/src/lib.rs:583-593`).
 
 ## Rules
 
-- **core.1.** Work starts only as an offer's `flume launch`, an act's Flume command or a command's `sluice branch create`. Each result is carried as the tool gave it, and the runner judges only whether a place has landed.
-- **core.2.** Of `crates/flywheel/src` and all of `crates/flywheel-control`, only `src/planes.rs` names `flywheel_crew`, which `rules.rs` holds, reading the tree as Task notes 9.2 has it. `flywheel-control` depends on no implementation.
-- **core.3.** `no_listener` reads every crate's sources and `Cargo.lock`, and finds no listener. Every connection is git's or the tools' own.
+- **core.1.** Work starts only as an offer's `flume launch`, an act's Flume command or a command's `sluice branch create`. Each result is carried as the tool gave it. The only judgement the runner makes is whether a place has landed.
+- **core.2.** Of `crates/flywheel/src` and all of `crates/flywheel-control`, only `src/planes.rs` names `flywheel_crew`, which `rules::only_crews_crate_names_crew` holds. `flywheel-control` depends on no implementation, and its `Wake` names none.
+- **core.3.** `no_listener` reads every crate's sources and `Cargo.lock`, and finds no listener. Every connection is git's or the tools' own. A wake is a call within the process.
 - **core.4.** Neither table holds a credential. `token` is refused in the runner's configuration and in crew's table, and its value is never printed. `ghp_n0t4r34lt0k3n` in the configuration tests is a stand-in that proves a value is never echoed, as before.
-- **core.5.** No key names a stream or a kind, and no `--kinds` is passed. The amended detail is in 22d7630 with the design.
+- **core.5.** No key names a stream or a kind, and no `--kinds` is passed. The refusals say they are Flume's host configuration. The amended detail is in 22d7630, with the design.
 - **core.6.** Nothing commercial appears in the diff.
 - **core.7.** The three crates are moon projects of their own, one task per check. `root:format` passed over every tracked file, with Flume's and sluice's fixtures excluded by name.
 - **core.8.** recutils joins git and openspec among the pins `check-toolchain.sh` checks.
-- **core.9, core.10, core.11, core.12.** These are held by the room, lease, once-only, tool-records, terminal-relay and configuration scenarios above, with the exceptions findings 3 and 4 name.
+- **core.9, core.10, core.11, core.12.** These are held by the room, lease, once-only, tool-records, terminal-relay and configuration scenarios above. `Wake` and `Passed.reported` each name what they hold.
 
 ## Observations
 
-None of these holds the change back on its own. Each was read in the code and not run, and the code stage may weigh them while it is there:
-- **A refused lease's offer, given again, is taken again.** The runner keeps no record of the ids a report refused. An offer given again under a refused lease is found by its mark and answered launched (`src/carry.rs:247-253`), and an act on it waits rather than being refused. `control/fake` keeps offering a refused id, and `leases::a_lease_refused` takes the offer out of the pull.
-- **Held words for a place Flume dropped.** An offer waiting on a launch whose place Flume dropped after the launch reads "launched at P, not landed" (`src/carry.rs:340-349`). Only a drop before the launch reads "dropped".
-- **A lapsed lease makes control passes run back to back.** A past expiry leaves no time (`src/carry.rs::left`), so `src/carry.rs::next_due` falls to the end of the pass. A failed pull keeps the saved report's expiries, so a control plane whose leases expire would see the runner pass back to back while it is unreachable. crew's leases never expire.
+None of these holds the change back. Each was read in the code and not run:
+- **A refused lease's offer, given again, is taken again.** The runner keeps no record of the ids a report refused. An offer given again under a refused lease is found by its mark and answered launched (`src/carry.rs:245-251`), and an act on it waits rather than being refused. `control/fake` keeps offering a refused id. `leases::a_lease_refused` takes the offer out of the pull.
+- **Held words for a place Flume dropped.** An offer may wait on a launch whose place Flume dropped after the launch. It reads "launched at P, not landed" (`src/carry.rs:973`). Only a drop before the launch reads "dropped".
+- **A lapsed lease makes control passes run back to back.** A past expiry leaves no time (`src/carry.rs::left`), so `src/carry.rs::next_due` falls to the end of the pass. A failed pull keeps the saved report's expiries. A control plane whose leases expire would see the runner pass back to back while it is unreachable. crew's leases never expire.
 - **A brief left by a killed launch.** A runner killed while `flume launch` runs leaves the brief's file (`src/flume.rs:127-140`). After a restart the launch is found by its mark, and the file stays.
-- **A failed `git ls-remote` settles a branch command.** It settles the command with no origin commit and words naming the failure (`src/carry.rs:587-614`), and origin is not read again.
+- **A failed `git ls-remote` settles a branch command.** It settles the command with no origin commit and words naming the failure (`src/carry.rs:582-608`). Origin is not read again.
 - **A launch request crew cannot read is never let go.** Such a request naming this host is given as an act the runner refuses (`crew/src/read.rs:419`). `let_go` lets an act go only by its `Of`, so the answer stays in `answers.rec`.
-- **A claim stranded by a narrowed configuration.** A claim stays on the runner's branch, and every other runner reads it as an answer, when the runner's configuration stops keeping the claimed launch's repository (`crew/src/lib.rs:308-310`).
+- **A claim stranded by a narrowed configuration.** The runner's configuration may stop keeping a claimed launch's repository. The claim then stays on the runner's branch, and every other runner reads it as an answer (`crew/src/lib.rs:308-310`).
+- **A partition not written is said by crew alone.** Where one partition's branch is written and another's is not, crew's report comes back `Reported`. The partition not written is named on crew's own line, prefixed `crew:`, and the runner's line says nothing of it. Its work is carried again by the next whole report.
 - **Refusals inside `[control_plane]`.** `kinds` or `stream` written directly under `[control_plane]` gets the plain unknown-key refusal, without "Flume's host configuration" (`src/config.rs:385-399`). At the top level, and in crew's table, the words are given.
 - **Old wording.** "No views setting" and "The clone is not under the views root" keep the old name in their titles. The views spec's Purpose, which no delta touches, still says "under the views root".
