@@ -164,6 +164,7 @@ impl Carrier<'_> {
             file,
             saved,
             report,
+            room: Room::read(listing.as_ref()),
             listing,
             failed,
         };
@@ -192,6 +193,7 @@ struct Work<'p> {
     report: Report,
     /// The pass's one `flume --json status`, where Flume gave it.
     listing: Option<Value>,
+    room: Room,
     failed: bool,
 }
 
@@ -237,6 +239,17 @@ impl Work<'_> {
                 return;
             }
         };
+        let stream = offer.launch.stream.as_deref();
+        if let Some(words) = self.room.lacks(stream) {
+            // A new offer with no room is left for the control plane to
+            // give where it will; one already held stays held.
+            if self.report.launches.contains_key(id)
+                && self.answer(offer, Outcome::Held, None, Some(words.clone()))
+            {
+                say(format!("{id}: held: {words}"));
+            }
+            return;
+        }
         self.launch(offer, &container, say);
     }
 
@@ -259,6 +272,7 @@ impl Work<'_> {
                         "{id}: launched, though Flume's answer names no place"
                     )),
                 }
+                self.room.take(offer.launch.stream.as_deref());
                 self.answer(offer, Outcome::Launched, place, None);
             }
             Ok(Reply::Refused(words)) => {
@@ -318,6 +332,71 @@ impl Work<'_> {
             ));
             self.failed = true;
         }
+    }
+}
+
+/// Room on the host and in each of its streams, as the pass's one
+/// `flume --json status` gives it, counted down as the pass launches
+/// (design Decision 8; core.9). Room is Flume's: the runner reads it and
+/// adds no bound of its own.
+struct Room {
+    host: Option<facts::Room>,
+    streams: Vec<facts::StreamRoom>,
+}
+
+impl Room {
+    fn read(listing: Option<&Value>) -> Room {
+        Room {
+            host: listing.and_then(facts::host_room),
+            streams: listing.map(facts::streams).unwrap_or_default(),
+        }
+    }
+
+    /// Why a launch running in `stream`, or naming none, has no room, or
+    /// none where it has room. The host has room while its room is
+    /// unbounded or above zero. A stream Flume lists has room while the
+    /// host has, its own room is unbounded or above zero, and no place
+    /// waits in its queue. A stream Flume does not list is no room
+    /// question: Flume's refusal of it is the launch's answer. A launch
+    /// naming no stream runs in the one Flume's host configuration gives
+    /// it, which its status does not say, so it is judged by the host's
+    /// room alone.
+    fn lacks(&self, stream: Option<&str>) -> Option<String> {
+        if !open(self.host) {
+            return Some("waits for room on this host".to_string());
+        }
+        let listed = stream.and_then(|name| self.streams.iter().find(|s| s.name == name))?;
+        if open(listed.room) && listed.queue_empty == Some(true) {
+            return None;
+        }
+        Some(format!("waits for room in the stream {}", listed.name))
+    }
+
+    /// Counts one launch against the host's room and `stream`'s, where
+    /// each is a number.
+    fn take(&mut self, stream: Option<&str>) {
+        count_down(&mut self.host);
+        if let Some(listed) =
+            stream.and_then(|name| self.streams.iter_mut().find(|s| s.name == name))
+        {
+            count_down(&mut listed.room);
+        }
+    }
+}
+
+/// Whether `room`, as Flume gives it, is unbounded or above zero. A room
+/// Flume's status does not give as either is none.
+fn open(room: Option<facts::Room>) -> bool {
+    match room {
+        Some(facts::Room::Unbounded) => true,
+        Some(facts::Room::Count(count)) => count > 0,
+        None => false,
+    }
+}
+
+fn count_down(room: &mut Option<facts::Room>) {
+    if let Some(facts::Room::Count(count)) = room {
+        *count -= 1;
     }
 }
 
