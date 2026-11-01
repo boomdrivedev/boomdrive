@@ -353,14 +353,14 @@ impl Work<'_> {
     /// while it was not yet launched, in the control plane's order, else
     /// its own (crew's teams-cross Decision 6).
     fn priority(&self, offer: &Offer) -> Option<i64> {
-        let set = self.wants.iter().filter_map(|want| match want {
+        let mut set = self.wants.iter().filter_map(|want| match want {
             Want::Act(act) if act.launch == offer.id => match act.what {
                 ActSort::Priority(priority) if self.done(&act.id) => Some(priority),
                 _ => None,
             },
             _ => None,
         });
-        set.last().or(offer.launch.priority)
+        set.next_back().or(offer.launch.priority)
     }
 
     /// Whether the report holds act `id` done.
