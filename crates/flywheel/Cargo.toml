@@ -14,6 +14,9 @@ path = "src/lib.rs"
 
 [dependencies]
 clap.workspace = true
+# The one interface the runner reaches its control plane through (design
+# Decision 1; core.2).
+flywheel-control = { path = "../flywheel-control" }
 serde.workspace = true
 serde_json.workspace = true
 signal-hook.workspace = true

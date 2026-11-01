@@ -1,28 +1,28 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # The binary, flywheel. Each check is one task, in the fast layer
-# (core.7).
+# (core.7). Each builds flywheel-control too, so takes its sources.
 language: 'rust'
 layer: 'application'
 
 tasks:
   format:
     command: 'cargo fmt --check -p flywheel'
-    inputs: ['/crates/flywheel/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/flywheel/**/*', '/crates/flywheel-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   lint:
     command: 'cargo clippy -p flywheel --all-targets --all-features -- -D warnings'
-    inputs: ['/crates/flywheel/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/flywheel/**/*', '/crates/flywheel-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   typecheck:
     command: 'cargo check -p flywheel --all-targets --all-features'
-    inputs: ['/crates/flywheel/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/flywheel/**/*', '/crates/flywheel-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   test:
     command: 'cargo test -p flywheel'
-    inputs: ['/crates/flywheel/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/flywheel/**/*', '/crates/flywheel-control/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}

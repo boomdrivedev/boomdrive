@@ -35,6 +35,11 @@ pub struct Notices {
 }
 
 impl Notices {
+    /// Notices sent on `events`, to the loop that holds their receiver.
+    pub fn new(events: Sender<Event>) -> Notices {
+        Notices { events }
+    }
+
     /// Tells the runner of a landing on `address`, which it keeps at once
     /// between passes, leaving its timer where it was. A runner that has
     /// stopped is told nothing.
@@ -120,9 +125,7 @@ impl Runner {
 
     /// What tells the runner of landings.
     pub fn notices(&self) -> Notices {
-        Notices {
-            events: self.events.clone(),
-        }
+        Notices::new(self.events.clone())
     }
 
     /// What stops the runner.
