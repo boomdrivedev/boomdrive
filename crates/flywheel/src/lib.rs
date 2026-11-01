@@ -3,6 +3,7 @@
 
 pub mod clone;
 pub mod config;
+pub mod facts;
 pub mod flume;
 pub mod git;
 pub mod lacks;
