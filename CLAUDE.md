@@ -3,12 +3,17 @@
 The thin runner on each host, one binary named `flywheel`. It keeps the
 clones and views of the repositories its configuration names, and turns
 the control plane's work into `flume launch` calls, carrying their
-results back. It reaches the control plane through one interface: crew's
-implementation, which reads and writes records in crew's state
-repository, now, and a hosted control plane's, an outgoing WebSocket,
-later. Today `flywheel run` keeps the repositories its configuration
-names: a bare clone of each in its data directory, fetched on a timer,
-and a view of each under the repository root. It carries no work yet.
+results back. It reaches the control plane through one interface,
+`crates/flywheel-control`: crew's implementation, `crates/flywheel-crew`,
+which reads and writes records in crew's state repository, now, and a
+hosted control plane's, an outgoing WebSocket, later. `flywheel run`
+keeps the repositories its configuration names: a bare clone of each in
+its data directory, fetched on a timer, and a view of each under the
+repository root. Where the configuration names a control plane, it
+makes control passes on a timer of their own: it takes each launch
+offered under a lease while its Flume stream has room, carries out each
+act and command once, and carries Flume's, sluice's and the inbox's
+records back as the tools gave them.
 
 ## Rules
 
@@ -35,9 +40,11 @@ Run suites through sluice, so the agents on this host take turns under
 its bound: once your work is committed, `sluice exec main` for the
 gate's checks, and while iterating `sluice exec main -- moon run
 <project>:<task>`. The projects are those `.moon/workspace.yml` lists:
-`flywheel` (`crates/flywheel`) and `root`. A quick, narrow call, `cargo
-check` or one unit test, is fine to run directly. `devenv shell -- moon
-run :#check-fast` runs the fast layer.
+`flywheel` (`crates/flywheel`), `flywheel-control`
+(`crates/flywheel-control`), `flywheel-crew` (`crates/flywheel-crew`) and
+`root`. A quick, narrow call, `cargo check` or one unit test, is fine to
+run directly. `devenv shell -- moon run :#check-fast` runs the fast
+layer.
 
 ## Commits
 
