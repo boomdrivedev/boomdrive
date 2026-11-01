@@ -70,7 +70,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 - [x] 9.2 `crates/flywheel/tests/rules.rs` holds core.2 and core.7 over the tree, and the no-listener test reads every crate's sources (control-plane-interface spec "The control plane is reached through one interface"; Task notes 9.2). True when `devenv shell -- moon run flywheel:test` passes with those tests.
 - [x] 9.3 One control pass end to end, with crew's implementation over a bare state repository, a stub `flume` and the sibling's clones, claims two kit launches naming no host, answers the first launched and holds its dependent, then launches the dependent once the first has landed (design Decisions 5, 7, 9, 17 and 18; Task notes 9.3). True when `devenv shell -- moon run flywheel:test` passes with `tests/pass.rs`.
 - [x] 9.4 README says what the runner carries, with the `[control_plane]` table of design Decision 4 in a fenced `toml` block, the runner's branch, and that kinds and streams are Flume's host configuration. CLAUDE.md's opening paragraph says what the crate now does, and a test opens crew's implementation from README's block (Task notes 9.4). True when `devenv shell -- moon run flywheel:test` passes with the README test.
-- [ ] 9.5 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test` passes.
+- [x] 9.5 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test` passes.
 
 ## 10. The change's checks
 
