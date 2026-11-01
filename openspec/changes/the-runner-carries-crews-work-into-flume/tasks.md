@@ -23,7 +23,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 - [x] 3.1 `crates/flywheel/src/flume.rs` runs Flume's command line as design Decision 9 has it: `--kind` as the launch gives it and never `--kinds`, every other launch flag only where the launch gives it, `--json` first, `FLUME_RECIPIENT` unset, the brief's file removed once Flume answers, and each answer read by Flume's exit. Fixtures of Flume's own answers are captured into `crates/flywheel/tests/fixtures/flume-<version>/` with a README saying where, when and from what each was read. `treefmt.nix` excludes them by name, with its reason (core.5, core.7; Task notes 3.1). True when `devenv shell -- moon run flywheel:test root:format` passes with the stub tests of Task notes 3.1.
 - [x] 3.2 `crates/flywheel/src/facts.rs` reads each fact of design Decisions 6, 8, 12, 13 and 16 from Flume's status, each guarded so that a field absent or of another type reads as none. It slices a place's entry and the host part's fields as Flume printed them (Task notes 3.2). True when `devenv shell -- moon run flywheel:test` passes with a test over every fixture of 3.1.
-- [ ] 3.3 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format` passes.
+- [x] 3.3 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format` passes.
 
 ## 4. Leased work into Flume
 
