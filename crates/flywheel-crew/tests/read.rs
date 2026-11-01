@@ -416,6 +416,28 @@ fn no_partition_read() {
     assert!(unread.0.contains("swancloud/main"), "{unread}");
 }
 
+/// git's words on a state repository it cannot reach run over several
+/// lines; crew's implementation says them, and gives them to the runner
+/// to say, on one line, each of git's lines kept.
+#[test]
+fn a_state_repository_that_cannot_be_reached_is_named_on_one_line() {
+    let state = State::new();
+    let (mut crew, said) = state.crew_serving("deneb", &[("swancloud", "afterthought/nowhere")]);
+    let unread = crew
+        .pull(&kept(), &Report::default())
+        .expect_err("an unread pull");
+    assert!(!unread.0.contains('\n'), "{unread}");
+    assert!(
+        unread
+            .0
+            .contains("does not appear to be a git repository; "),
+        "{unread}"
+    );
+    for line in said.lines() {
+        assert!(!line.contains('\n'), "{line}");
+    }
+}
+
 #[test]
 fn a_partition_read_again_once_it_can_be() {
     let state = State::new();

@@ -298,7 +298,7 @@ where
     F: FnMut(&read::RunnerFiles) -> Result<Texts, String>,
 {
     let branch = store.branch(&runner_branch(label, host));
-    let tip = weir_branch::read(&branch).map_err(|failure| failure.to_string())?;
+    let tip = weir_branch::read(&branch).map_err(|failure| read::one_line(&failure.to_string()))?;
     let old = files_at(tip.as_ref())?;
     let Some(changed) = what(&old, &form(&old)?) else {
         return Ok(None);
@@ -323,7 +323,7 @@ where
             .map(|(path, text)| (path.to_string(), text.clone()))
             .collect::<Files>())
     })
-    .map_err(|error| error.to_string())?;
+    .map_err(|error| read::one_line(&error.to_string()))?;
     Ok(match written {
         Written::Landed(_) => Some(what),
         Written::Nothing(_) => None,

@@ -126,7 +126,7 @@ impl Store {
     pub fn main(&self, label: &str) -> Result<Main, String> {
         let name = format!("{label}/main");
         let tip = weir_branch::read(&self.branch(&name))
-            .map_err(|failure| failure.to_string())?
+            .map_err(|failure| one_line(&failure.to_string()))?
             .ok_or_else(|| format!("the state repository holds no {name}"))?;
         let file = |path: &str| -> Result<Sets, String> {
             let text = tip
@@ -216,8 +216,8 @@ impl Store {
         host: &str,
     ) -> Result<Option<(Tip, RunnerFiles)>, String> {
         let name = runner_branch(label, host);
-        let Some(tip) =
-            weir_branch::read(&self.branch(&name)).map_err(|failure| failure.to_string())?
+        let Some(tip) = weir_branch::read(&self.branch(&name))
+            .map_err(|failure| one_line(&failure.to_string()))?
         else {
             return Ok(None);
         };
@@ -264,6 +264,18 @@ pub fn runner_branch(label: &str, host: &str) -> String {
 /// A commit's first seven characters, as crew names a tip.
 pub fn short(commit: &str) -> &str {
     &commit[..commit.len().min(7)]
+}
+
+/// What weir said of a read or a write, git's words among it, on one
+/// line: each of its lines that holds anything, trimmed, joined by `; `.
+/// So every line crew's implementation says, and every refusal it gives
+/// the runner to say, is one line.
+pub fn one_line(said: &str) -> String {
+    said.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 /// A runner's files read as crew's `runner.host_read` reads them: one
