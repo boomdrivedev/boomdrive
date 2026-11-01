@@ -66,12 +66,7 @@ The configuration SHALL set how often every kept repository is fetched with `fet
 
 ### Requirement: The configuration holds nothing the runner does not read
 
-The configuration SHALL be refused, naming the key, when it holds any key this spec does not name. In particular:
-
-- no key SHALL hold a token, key or credential: git's own credential helper on the host answers for every fetch (core.4);
-- no key SHALL name a stream: streams, and the stream a repository's launches run in, are each host's Flume configuration, and a refusal of `stream` or `streams` SHALL say so (core.5);
-- no key SHALL name a kind, a kinds file or a kind's source: where a host's kinds come from is its Flume configuration, and a refusal of `kind`, `kinds` or `kinds_file` SHALL say so (core.5);
-- a refusal of `views` or `fetch_every` SHALL name the key that holds it, `repository_root` or `fetch_interval` (core.12).
+The configuration SHALL be refused, naming the key, when it holds any key this spec does not name. In particular, no key SHALL hold a token, key or credential: git's own credential helper on the host answers for every fetch (core.4).
 
 #### Scenario: A misspelt key
 
@@ -82,6 +77,12 @@ The configuration SHALL be refused, naming the key, when it holds any key this s
 
 - **WHEN** the configuration says `token = "..."`
 - **THEN** it is refused, naming `token` as a key the runner does not read, and the value appears in no output
+
+## ADDED Requirements
+
+### Requirement: A refused stream, kind or key of before says where it is held
+
+No key SHALL name a stream, a kind, a kinds file or a kind's source: streams, the stream a repository's launches run in, and where a host's kinds come from are each host's Flume configuration (core.5). A refusal of `stream` or `streams` SHALL say streams are, and one of `kind`, `kinds` or `kinds_file` that kinds are. A refusal of `views` or `fetch_every` SHALL name the key that holds it now, `repository_root` or `fetch_interval` (core.12).
 
 #### Scenario: A stream named
 
@@ -97,8 +98,6 @@ The configuration SHALL be refused, naming the key, when it holds any key this s
 
 - **WHEN** the configuration says `views = "~/Code"` and `fetch_every = "2m"`
 - **THEN** it is refused, naming `views` as held by `repository_root` and `fetch_every` as held by `fetch_interval`
-
-## ADDED Requirements
 
 ### Requirement: The configuration may name the control plane
 
