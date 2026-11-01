@@ -14,11 +14,12 @@ use crate::hello::{self, Tools};
 use crate::run::Notices;
 use crate::{facts, report};
 use flywheel_control::{
-    Act, ActSort, Acted, Answer, At, ControlPlane, Id, Launched, Offer, Outcome, Report, Unread,
-    Unsent, Want,
+    Act, ActSort, Acted, Answer, At, ControlPlane, Id, Launched, Offer, Outcome, Report, Reported,
+    Unread, Unsent, Want,
 };
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 /// How the runner keeps the repository a launch names.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -535,12 +536,61 @@ impl Work<'_> {
     /// sent is kept in the file, to be sent at the next pass.
     fn send(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) {
         self.save(say);
-        if let Err(Unsent(words)) = plane.report(&self.report) {
-            say(format!(
-                "flywheel: the report could not be sent: {words}: it is sent at the next pass"
-            ));
-            self.failed = true;
+        match plane.report(&self.report) {
+            Ok(reported) => {
+                self.reported(&reported, say);
+                self.save(say);
+            }
+            Err(Unsent(words)) => {
+                say(format!(
+                    "flywheel: the report could not be sent: {words}: it is sent at the next pass"
+                ));
+                self.failed = true;
+            }
         }
+    }
+
+    /// Takes the control plane's answer to a report (design Decision 11).
+    /// What it carries no more leaves the report. What it refused, its
+    /// lease no longer the runner's, leaves the report too, so the runner
+    /// neither acts on it nor reports it again; its place is left on the
+    /// host as Flume holds it, and named, and nothing of it is removed
+    /// (core.10).
+    fn reported(&mut self, reported: &Reported, say: &mut dyn FnMut(String)) {
+        for id in &reported.let_go {
+            if self.forget(id) {
+                say(format!("{id}: let go by the control plane"));
+            }
+        }
+        for (id, words) in &reported.refused {
+            let place = self
+                .report
+                .launches
+                .get(id)
+                .and_then(|launched| launched.answer.place_dir.clone());
+            if !self.forget(id) {
+                continue;
+            }
+            match place {
+                Some(place) => say(format!(
+                    "{id}: let go, its lease no longer this runner's: {words}: \
+                     its place {place} is left on this host as Flume holds it"
+                )),
+                None => say(format!(
+                    "{id}: let go, its lease no longer this runner's: {words}"
+                )),
+            }
+        }
+    }
+
+    /// Drops `id` from the report, and says whether the report held it.
+    fn forget(&mut self, id: &Id) -> bool {
+        let report = &mut self.report;
+        let launch = report.launches.remove(id).is_some();
+        let act = report.acts.remove(id).is_some();
+        let command = report.commands.remove(id).is_some();
+        let inbox = report.inboxes.remove(id).is_some();
+        launch || act || command || inbox
     }
 }
 
@@ -714,6 +764,33 @@ fn launch_args(offer: &Offer, container: &Path, priority: Option<i64>) -> Launch
     }
 }
 
+/// When the control pass after one that began at `began` and ended at
+/// `ended` is due (design Decision 5): `poll_interval` after `began`, or
+/// sooner, by the midpoint between `ended` and the earliest expiry of a
+/// lease the runner holds, `left` after `ended`, so the lease is renewed
+/// before it lapses; and never before `ended`.
+pub fn next_due(
+    began: Instant,
+    ended: Instant,
+    poll_interval: Duration,
+    left: Option<Duration>,
+) -> Instant {
+    let polled = began + poll_interval;
+    let due = match left {
+        Some(left) => polled.min(ended + left / 2),
+        None => polled,
+    };
+    due.max(ended)
+}
+
+/// How long after `now` a lease expiring at `expires` has left: none
+/// where it has lapsed.
+pub fn left(expires: At, now: At) -> Duration {
+    (expires.time() - now.time())
+        .try_into()
+        .unwrap_or(Duration::ZERO)
+}
+
 /// The earliest expiry of a lease `report` holds.
 fn expires(report: &Report) -> Option<At> {
     let launches = report.launches.values().map(|launched| launched.lease);
@@ -728,6 +805,37 @@ fn expires(report: &Report) -> Option<At> {
 mod tests {
     use super::*;
     use std::path::Path;
+
+    /// The work-into-flume spec's "Renewed before it lapses": a lease
+    /// expiring 40 seconds after the end of the pass that took it, with
+    /// `poll_interval` one minute, has the next pass due no later than 20
+    /// seconds after that pass ended.
+    #[test]
+    fn renewed_before_it_lapses() {
+        let began = Instant::now();
+        let ended = began + Duration::from_secs(5);
+        let minute = Duration::from_secs(60);
+        let due = next_due(began, ended, minute, Some(Duration::from_secs(40)));
+        assert_eq!(due, ended + Duration::from_secs(20));
+        assert_eq!(next_due(began, ended, minute, None), began + minute);
+        let far = Some(Duration::from_secs(600));
+        assert_eq!(next_due(began, ended, minute, far), began + minute);
+        let lapsed = Some(Duration::ZERO);
+        assert_eq!(next_due(began, ended, minute, lapsed), ended);
+        let slow = began + Duration::from_secs(90);
+        assert_eq!(next_due(began, slow, minute, None), slow);
+    }
+
+    #[test]
+    fn a_leases_time_left() {
+        let at = |text| At::parse(text).unwrap();
+        let now = at("2026-11-01T10:00:00Z");
+        assert_eq!(
+            left(at("2026-11-01T10:00:40Z"), now),
+            Duration::from_secs(40)
+        );
+        assert_eq!(left(at("2026-11-01T09:59:00Z"), now), Duration::ZERO);
+    }
 
     fn config(repositories: &[&str]) -> Config {
         Config {
