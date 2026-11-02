@@ -1133,7 +1133,8 @@ display only.
 
 Every item above that is a rule is in `docs/architecture/core.md` as
 core.13 to core.41, and every decision is a record, 0003 to 0014,
-proposed until the user has read each as a record and said yes; core.5,
+proposed until the user has read each as a record and said yes, 0012 and
+0014 accepted on 2026-11-02 by the user's approval on Pending You; core.5,
 core.6, core.10 and core.11 keep their statements and gain details, and
 record 0001's "private for now" is superseded by record 0012. The
 requirements go to the specs through the changes below.

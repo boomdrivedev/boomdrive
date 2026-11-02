@@ -1,7 +1,7 @@
 ---
 number: 12
 title: The runner is open source, and installs as one verified release, by the control plane or by hand
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner is open source, and installs as one verified release, by the control plane or by hand
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record. Once accepted, it supersedes record 0001's "It is private for now".
+Status: accepted by the user on 2026-11-02, approving on Pending You the card that asked to open the repository publicly from a fresh history; proposed on 2026-11-01 from the user's words in the constitution interview. It supersedes record 0001's "It is private for now".
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on installing and upgrading; record 0001; agentplot/flywheel-cloud `design/research/awesome-lists-disposition.md`, rows S8, F9 and F51; self_update, sigstore-rust, GitHub's artifact attestations and dist (cargo-dist), each public; agentplot/flywheel-cloud's rule core.96, cited by id; the running spec.
