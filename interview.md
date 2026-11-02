@@ -625,3 +625,83 @@ another rail item."
   reading of the runner's branch and is cleared by hand, until the
   cloud's expiring leases replace crew. Source: the user, 2026-11-01,
   (2).
+
+## 6. Failure and offline behaviour
+
+### What the material settles
+
+- A git call that fails is named with git's words and never stops the
+  runner; every other repository is still kept, and the failed one is
+  tried again at the next pass. A clone that fails leaves nothing
+  (the clones and running specs).
+- A configuration that cannot be read keeps, removes and acts on
+  nothing until it reads again; it is never taken to name no
+  repository (the configuration and running specs).
+- A pull that cannot be read acts on nothing that pass; a report that
+  cannot be sent is kept and sent at the next pass; the repositories
+  are kept all the same. A tool that cannot be run or read is named,
+  and the work waiting on it is tried again (the control-plane and
+  work-into-flume specs).
+- A start that finds the host broken (no `HOME`, no configuration, git
+  missing or older than 2.48, the data directory held) exits 2 having
+  touched nothing, and the service manager's throttle keeps it from
+  spinning (the running spec).
+- A lease lost is let go: the runner acts on it no more, reports it no
+  more and removes nothing, leaving the place as Flume holds it and
+  naming it (core.10). In the cloud, a lease not renewed ends at its
+  expiry and its work returns to the board (cloud core.39), and the
+  Host object tells a Flywheel when its host goes quiet (cloud core.13).
+- Known as built: a lapsed lease makes control passes run back to back
+  while the control plane cannot be reached (the verify report's
+  observations).
+
+### Asked
+
+1. **A lost lease's live place.** A host offline past a lease's expiry
+   comes back to a refused report, while its place still runs and may
+   land through sluice, and another host may have launched the same
+   work. Left, the cloud sending a drop; the runner holding its
+   submission; or the runner dropping it?
+2. **Rules drawn from the material**, each kept or not: no launch past
+   its lease; backoff, never back to back; no act it cannot record;
+   presence is the cloud's.
+
+### The user's words
+
+1. "Left; the cloud sends a drop" (the recommended answer).
+2. All four kept.
+
+### What it gives
+
+- **`a-stray-place-is-dropped-by-command`** (requirement). A place the
+  runner let go stays as Flume holds it, named, until the control plane
+  sends a command, under a lease of its own, that drops it by its
+  address; the runner carries that command as Flume's `drop`. core.10
+  stands: the lost lease's work is not acted on, and the command is
+  new work. Its details gain, as not ruled out, a command under a
+  lease of its own that drops a place the runner let go. Source: the
+  user, 2026-11-01, (1). Asks of the cloud: the command, sent when a
+  lapsed lease's work goes to another host.
+- **`no-launch-past-its-lease`** (rule). An offer whose lease has
+  expired by the runner's clock is not launched, acted on or claimed
+  until a pull gives it again under a live lease. Rules out: an offer
+  launched from a saved report while the control plane cannot be
+  reached and its expiry has passed. Source: the user, 2026-11-01, (2);
+  core.9.
+- **`backoff-never-back-to-back`** (rule). A control plane that cannot
+  be reached is tried again on a bounded backoff with jitter, from
+  seconds up to `poll_interval`, and never pass after pass; a lease
+  already lapsed sets no pass due at once. Rules out: the back-to-back
+  passes the verify report names (`src/carry.rs::next_due` falling to
+  the end of the pass); a reconnect loop with no wait. Source: the
+  user, 2026-11-01, (2).
+- **`no-act-it-cannot-record`** (rule). A pass whose report cannot be
+  saved carries out no further act or command that pass, so nothing is
+  done that a restart would do again. Rules out: a second act after
+  the report's write failed. Source: the user, 2026-11-01, (2); core.10.
+- **`presence-is-the-clouds`** (rule). The runner raises no alarm of its
+  own about being offline: it says one line when its control plane
+  becomes unreachable and one when it returns, and the Host object tells
+  the Flywheel that its host is quiet. Rules out: a notification, a
+  mail or an inbox item the runner sends about its own reach; a line
+  per failed try. Source: the user, 2026-11-01, (2); cloud core.13.
