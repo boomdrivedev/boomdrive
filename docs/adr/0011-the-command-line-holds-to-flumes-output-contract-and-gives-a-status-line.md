@@ -1,7 +1,7 @@
 ---
 number: 11
 title: The command line holds to Flume's output contract, its lines carry their time, and it gives a status line
-status: accepted
+status: proposed
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,10 +9,10 @@ decision-makers:
 
 # The command line holds to Flume's output contract, its lines carry their time, and it gives a status line
 
-Status: accepted by the user on 2026-11-01, in the constitution interview.
+Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01, its topics on the command line and on what stays private; the running and work-into-flume specs; Flume's README and statement on its JSON form, refusals and exits, and sluice's on its own; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its page 8 and notes on the unit line; rule core.3.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on the command line and on what stays private; the running and work-into-flume specs; Flume's README and statement on its JSON form, refusals and exits, and sluice's on its own; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its page 8 and notes on the unit line; rule core.3.
 
 ## Context and problem statement
 

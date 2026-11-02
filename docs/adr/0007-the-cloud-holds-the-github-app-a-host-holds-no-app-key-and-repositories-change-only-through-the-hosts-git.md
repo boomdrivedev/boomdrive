@@ -1,7 +1,7 @@
 ---
 number: 7
 title: The cloud holds the GitHub App, a host holds no App key, and a repository changes only through the host's git
-status: accepted
+status: proposed
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,10 +9,10 @@ decision-makers:
 
 # The cloud holds the GitHub App, a host holds no App key, and a repository changes only through the host's git
 
-Status: accepted by the user on 2026-11-01, in the constitution interview.
+Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01, its topic on enrolment, identity and credentials; sluice record 0019; agentplot/flywheel-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/flywheel-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on enrolment, identity and credentials; sluice record 0019; agentplot/flywheel-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/flywheel-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
 
 ## Context and problem statement
 

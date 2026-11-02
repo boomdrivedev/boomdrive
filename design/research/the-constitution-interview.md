@@ -241,8 +241,8 @@ Each item is one of:
   enrolment (cloud core.24, record 0018), and one module of the Worker
   verifies it (core.21). A host's signing identity, and every
   certificate issued on it, is an event in the chain (cloud core.43;
-  record 0023: a host signs "with a certificate for its own
-  principal"). Each host belongs to exactly one Account and has one
+  record 0023, which has a host sign as its own principal, under a
+  certificate). Each host belongs to exactly one Account and has one
   Host object (cloud core.13, core.14). The control plane keeps no
   customer credential: a forge token is minted short-lived at its use,
   or stays on the host (cloud core.58).
@@ -256,7 +256,7 @@ Each item is one of:
    host, or the OS keychain?
 2. **Enrolment.** `flywheel enroll`, a token the installer places, or
    enrolment left to swancloud?
-3. **Two accounts on one machine** (madswan's and Willdan's work, say):
+3. **Two accounts on one machine** (one person's own work and an employer's, say):
    one runner with an enrolment per partition, a runner per account, or
    one account per machine?
 4. **Forge credentials** under the cloud: the host's own credential
@@ -538,14 +538,11 @@ Each item is one of:
    level with nix, then any configs managed by the Flywheel Cloud would
    stop being managed by nix. That would be desirable"
 
-The pack agrees (agentplot/strategy,
-`commercial/river-driver/flywheel-cloud/collaboration-ui-and-agents.md`,
-first run 3 and 4): "Connect first host — the one manual step: single
-install command with short-lived enrollment token (or Nix flake
-module)", then a rail seeded with starter items, "clone repos, install
-Flume and Sluice, check toolchain, run a first small task", each
-approved and done by the host; "Adding a second host later is just
-another rail item."
+The pack agrees (agentplot/strategy, its first run's items 3 and 4,
+cited and not quoted, since it is private): one install command with a
+short-lived enrolment token, or a Nix flake module, then a rail seeded
+with setup items that the host does once each is approved, a second
+host being one more rail item.
 
 ### What it gives
 
@@ -610,10 +607,9 @@ another rail item."
   again in the name order of the hosts (the crew spec). crew's leases
   never expire, so a claim never moves: a runner that claims and then
   sleeps or stops holds the launch (design, *Risks*).
-- crew's partitions today: madswan and swancloud on
-  `afterthought/crew-state`, main level on deneb; wldn on
-  `WilldanGroup/crew-state`, main level on chuck-herdr-alpha (crew's
-  plans; the crew and swancloud notes).
+- crew's partitions today: three, over two state repositories, each
+  with a main-level host of the operator's (crew's plans; the crew and
+  swancloud notes).
 
 ### Asked
 
@@ -861,8 +857,8 @@ another rail item."
   binaries. Agents' hooks call Flume by its absolute path, so a
   Flume upgrade keeps the old path while its agents live (the flume
   notes).
-- On deneb, `~/.config/flywheel/` already holds an older `flywheel`
-  tool's App keys and env file, under the same binary name (the crew
+- On one of the operator's hosts, the runner's configuration directory
+  already holds an older `flywheel` tool's App keys and env file, under the same binary name (the crew
   and swancloud notes).
 
 ### Asked
@@ -1035,8 +1031,8 @@ another avenue"
   copied into a public repository, and the cloud cites the pack only
   where it lives (cloud core.48); no public repository holds a price,
   plan or limit (cloud core.99).
-- As it stands, the tree names the operator's hosts (`deneb` in 22
-  files), partitions (`madswan` in 34) and swancloud (14); cites the
+- As it stands, the tree names the operator's hosts (in 22 files),
+  partitions (in 34) and swancloud (14); cites the
   private flywheel-cloud (15 files), its ledger and its records with
   short quotes; and its Flume fixtures hold the operator's home paths
   and Flume's whole status of scratch places.
@@ -1090,7 +1086,8 @@ display only.
   tests, fixtures or docs: tests use neutral names, and a tool's answer
   captured as a fixture is captured on a scratch host with its paths
   made neutral. Rules out: a quote of the cloud's records, ledger or
-  pack; `deneb`, `madswan` or a home path in a test or a fixture. Not
+  pack; a real host's or partition's name, or a home path, in a test or
+  a fixture. Not
   ruled out: a public repository's text, cited or quoted; the ids of a
   private one's records and rules. Source: the user, 2026-11-01, (1);
   cloud core.48.
@@ -1135,7 +1132,8 @@ display only.
 ## Where it went
 
 Every item above that is a rule is in `docs/architecture/core.md` as
-core.13 to core.41, and every decision is a record, 0003 to 0014; core.5,
+core.13 to core.41, and every decision is a record, 0003 to 0014,
+proposed until the user has read each as a record and said yes; core.5,
 core.6, core.10 and core.11 keep their statements and gain details, and
 record 0001's "private for now" is superseded by record 0012. The
 requirements go to the specs through the changes below.
@@ -1251,3 +1249,56 @@ In the order they can land, each citing the rules it brings the tree to.
   and upgrades a fleet of hosts it manages.
 - **`content-the-board-reads`**: which of the board's fields that carry
   a repository's or a terminal's text go up, field by field.
+
+## The agent's own choices
+
+What the written rules decided, or what is cheap to change later, chosen
+by the agent and recorded as its own, each with the path not taken.
+
+- **Ids by name in these notes**, a number given only when a rule or a
+  record was written, against main as it then stood. Not taken: numbers
+  as each item was heard, which a landing on main would have renumbered.
+- **The OTLP export beside health**, which the user left to the agent
+  ("you tell me what's better"): record 0013. Not taken: health by the
+  protocol alone.
+- **One record for each topic, the rules grouped by subject** in
+  `core.md`. Not taken: a record for each rule; a record proposed and
+  accepted topic by topic as the interview ran.
+- **The commands' names**: `enroll`, `forge-token`, `check`, `status`,
+  `line`, `setup`. Not taken: other words; each is cheap to change
+  before its change is built.
+- **The allowed list's first draft from the board spike's reads**,
+  which the user pointed to. Not taken: the cloud's domain model's copy
+  of a place, older than the spike.
+- **These notes cleaned of private names and of quotes of private
+  repositories** before they took their place here (core.41). Not taken:
+  keeping them as heard, at the root of the tree.
+
+## Findings about other repositories
+
+Read while preparing the interview, and not yet in the repository each
+concerns; each is for that repository's `_open.md` or the orchestrator.
+
+- **crew.** Its kinds file and the archived `roles-run-as-flume-kinds`
+  still say the runner launches a role's run with `--kinds <crew's
+  kinds file>`, where the runner passes `--kind <source>/<name>` (core.5);
+  every role's run is refused until Flume's kind sources are built. Its
+  rules still say repositories are registered in crew and the runner
+  always names `--stream`. It reads `held` only as waiting on an After,
+  while the runner writes it for a claim too. It takes Flume's
+  `repository`, the runner's clone, as a kit's folder and lands from it
+  (core.14 allows it). It expects the runner to report a place's
+  addresses, which neither side carries. It refuses its bolt commands
+  until a runner's branch exists, so its upgrade, its hosts' file and
+  the runner's deploy go together. Its public README and specs name
+  this repository, its rule ids and the operator's hosts and
+  partitions.
+- **swancloud.** Nothing of the runner is on its main: no package,
+  service unit, configuration or doctor row. Its planned Flume pin is
+  below the runner's floor, and its planned fetch unit treats the
+  runner's fetches as ssh, where the runner fetches over https only.
+- **Flume.** Its status gives a place's pane only in a display field,
+  `clues.shown_at.agent`. A host with no multiplexer watch moves places
+  only when a Flume command runs. Its status carries an agent's whole
+  prompt, screen, dialog and last words, which a hosted report leaves
+  out (core.27).

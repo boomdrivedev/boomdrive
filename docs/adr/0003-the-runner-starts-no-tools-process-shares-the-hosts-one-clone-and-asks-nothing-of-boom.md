@@ -1,7 +1,7 @@
 ---
 number: 3
 title: The runner starts no tool's process, shares the host's one clone, and asks nothing of Boom for a launch
-status: accepted
+status: proposed
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,10 +9,10 @@ decision-makers:
 
 # The runner starts no tool's process, shares the host's one clone, and asks nothing of Boom for a launch
 
-Status: accepted by the user on 2026-11-01, in the constitution interview.
+Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01, its topic on what the runner owns; flume's statement, clauses 1, 70 and 119 to 120, and flume record 0020; sluice's statement, clauses 104 to 106, and sluice record 0026; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its assumption 7; rules core.1 and core.5.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on what the runner owns; flume's statement, clauses 1, 70 and 119 to 120, and flume record 0020; sluice's statement, clauses 104 to 106, and sluice record 0026; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its assumption 7; rules core.1 and core.5.
 
 ## Context and problem statement
 

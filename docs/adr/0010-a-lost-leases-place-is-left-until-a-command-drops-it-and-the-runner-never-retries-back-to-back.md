@@ -1,7 +1,7 @@
 ---
 number: 10
 title: A lost lease's place is left until a command drops it, and the runner never retries back to back
-status: accepted
+status: proposed
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,10 +9,10 @@ decision-makers:
 
 # A lost lease's place is left until a command drops it, and the runner never retries back to back
 
-Status: accepted by the user on 2026-11-01, in the constitution interview.
+Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01, its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/flywheel-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/flywheel-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
 
 ## Context and problem statement
 

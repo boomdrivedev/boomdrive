@@ -1,7 +1,7 @@
 ---
 number: 5
 title: The runner's files roll back one release, and its data directory is made again from origin, Flume and the control plane
-status: accepted
+status: proposed
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,10 +9,10 @@ decision-makers:
 
 # The runner's files roll back one release, and its data directory is made again from origin, Flume and the control plane
 
-Status: accepted by the user on 2026-11-01, in the constitution interview.
+Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01, its topic on the state directory; the clones, running and work-into-flume specs; the design of `the-runner-carries-crews-work-into-flume`, Decisions 11 and 17, and its verify report's observations; agentplot/flywheel-cloud's rule core.67, cited by id, as the model; rules core.10 and core.11.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on the state directory; the clones, running and work-into-flume specs; the design of `the-runner-carries-crews-work-into-flume`, Decisions 11 and 17, and its verify report's observations; agentplot/flywheel-cloud's rule core.67, cited by id, as the model; rules core.10 and core.11.
 
 ## Context and problem statement
 

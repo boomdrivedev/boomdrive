@@ -1,7 +1,7 @@
 ---
 number: 9
 title: A host is set up through each tool's own commands, and its repositories follow its Flywheels
-status: accepted
+status: proposed
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,10 +9,10 @@ decision-makers:
 
 # A host is set up through each tool's own commands, and its repositories follow its Flywheels
 
-Status: accepted by the user on 2026-11-01, in the constitution interview.
+Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01, its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/flywheel-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/flywheel-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
 
 ## Context and problem statement
 
