@@ -456,3 +456,90 @@ Each item is one of:
   holds, its acts, commands and reports among them, until resumed; a
   drain survives a restart. Source: (2), the option's own words.
 - Upgrade is taken up with installing (topic 8), and setup below.
+
+### Asked, on setup
+
+3. **How setup works.** By Flume's own commands, or by the runner
+   writing Flume's files?
+4. **Setup's reach.** Kind sources only; kind sources and streams; or
+   anything in Flume's host file? The question said streams stay with
+   "whoever keeps the host".
+5. **What setup covers**, once the user had said a host is set up by
+   the New Host Wizard: the runner's configuration; Flume's streams;
+   Flume's kind sources; installing the tools?
+6. **Hosts swancloud's nix keeps.** Setup refuses what nix keeps;
+   swancloud stops keeping it; or swancloud drives setup?
+
+### The user's words
+
+3. "By Flume's own commands" (the recommended answer).
+4. "Why would you recommend and say something like, "Whoever keeps the
+   host"? If I understand correctly (and we've already talked about
+   this, or maybe it was a different agent), you would be adding the
+   start of the host via the New Host Wizard through the cloud setup.
+   You'd get one quick install command to run and then, in theory, the
+   host would get configured either through a wizard in the TUI or
+   through setup from the cloud that gets pushed down"
+5. All four, and: "I assume the list of repositories is going to be
+   interesting from an ordering perspective because Boom also points at
+   repositories. A flywheel instance points at repositories but a host
+   could serve multiple flywheel instances. I imagine a host gets its
+   repository list inferred from the flywheels it's servicing, not from
+   some kind of initial setup. I think we could probably have a similar
+   concept for kinds. You probably would assign the kinds to the
+   flywheel and those would have to get pushed down to any host"
+6. "If the tools support multiple levels of config, and the Flywheel
+   Cloud manages one level while we can set defaults at a different
+   level with nix, then any configs managed by the Flywheel Cloud would
+   stop being managed by nix. That would be desirable"
+
+The pack agrees (agentplot/strategy,
+`commercial/river-driver/flywheel-cloud/collaboration-ui-and-agents.md`,
+first run 3 and 4): "Connect first host — the one manual step: single
+install command with short-lived enrollment token (or Nix flake
+module)", then a rail seeded with starter items, "clone repos, install
+Flume and Sluice, check toolchain, run a first small task", each
+approved and done by the host; "Adding a second host later is just
+another rail item."
+
+### What it gives
+
+- **`setup-by-the-tools-own-commands`** (rule). Setup configures a
+  host only through each tool's own command line, the runner's own
+  included, and never by writing a tool's files: Flume's streams and
+  kind sources by Flume's commands. Rules out: the runner writing a
+  file under Flume's or sluice's configuration directory; a setup step
+  with no tool command behind it. Source: the user, 2026-11-01, (3),
+  (5). Asks of Flume: commands that declare and remove a stream and a
+  kind source.
+- **`a-host-is-set-up-by-the-wizard`** (requirement). A host is added
+  by one install command carrying a short-lived enrolment token
+  (`enrol-by-command`); after it, the host is configured either by a
+  wizard in the runner's terminal interface on the host or by setup the
+  control plane sends down, and both run the same tool commands. Setup
+  covers the runner's own configuration, Flume's streams and kind
+  sources, and installing the tools at the versions the runner is
+  checked against. Source: the user, 2026-11-01, (4), (5); the pack's
+  first run.
+- **`a-flywheels-repositories-are-the-hosts`** (requirement, amending
+  core.5 and record 0002's first point: confirm below). Under a
+  hosted control plane, the repositories a host keeps are inferred
+  from the Flywheels it serves, as the control plane gives them, and
+  not from its initial setup. Source: the user, 2026-11-01, (5).
+- **`a-flywheels-kinds-reach-its-hosts`** (requirement). Kinds are
+  assigned to a Flywheel, and setup pushes the Flywheel's kind sources
+  down to every host that serves it, by Flume's own commands. Source:
+  the user, 2026-11-01, (5).
+- **`a-managed-level-of-configuration`** (requirement, and an ask of
+  each tool). The runner's configuration, and each tool's, has a level
+  the control plane manages, apart from the host's own defaults (nix's
+  or hand-written); what the managed level holds wins, and nix stops
+  writing what the cloud manages. Rules out: setup refused on a host
+  because nix keeps its defaults; nix and the cloud writing one file.
+  Source: the user, 2026-11-01, (6). Asks of Flume and sluice: a
+  managed level of their own (Flume's layers are on their way:
+  `an-agents-program-settings-come-from-flumes-layers`).
+- **open: `boom-and-the-order-of-repositories`.** Boom also points at
+  repositories, and a host may serve several Flywheels; in what order
+  a host takes up a Flywheel's repositories, and whether Boom's are
+  among them. Source: the user, 2026-11-01, (5).
