@@ -1119,3 +1119,11 @@ display only.
   a person's `statusLine` lay it out; the runner draws nothing in a
   session itself. Source: the user, 2026-11-01, topic 7 (1); the
   spike's page 8.
+- **`flume-asks-boom`** (rule, under topic 1). The runner passes a
+  launch as its control plane gave it and reads nothing of Boom for
+  it: what a unit works under is Flume's to ask Boom at the launch, as
+  Boom's design has it. Rules out: the runner running `boom query`
+  before a launch, or adding anything to a launch's brief. Source: the
+  user, 2026-11-01, on the board spike's assumption 7; core.1. An ask
+  of Flume: the step at a launch that asks Boom for the standing
+  claims.
