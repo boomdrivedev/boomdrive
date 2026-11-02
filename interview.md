@@ -883,3 +883,16 @@ another rail item."
   in the hello and by `check`, and work goes on. Rules out: work taken
   with a tool below its floor; a tool's version judged by anything but
   its own `--version`. Source: the user, 2026-11-01, (3).
+- **F51 kept** (a design note for the change that builds the install).
+  The one install is built by dist (cargo-dist): the release workflow
+  builds each platform's binaries and publishes the shell installer
+  beside them, attestations included; the launchd agent and the systemd
+  user unit are two templates of our own, which the install fills in.
+  Source: the awesome-lists row F51, kept by the user, 2026-11-01.
+- **S8 kept** (the user's words in (1)). The repository is made public:
+  a record says so, superseding record 0001's "private for now", and
+  core.6 already holds nothing commercial. It asks of the cloud that
+  the runner protocol's schema, which its record 0046 keeps in the
+  private `packages/runner-protocol`, be somewhere a public runner can
+  build against (the disposition's note 4; the cloud's D5 re-read).
+  Source: the awesome-lists row S8; the user, 2026-11-01, (1).
