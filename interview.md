@@ -294,8 +294,8 @@ Each item is one of:
   partition; a place launched for one partition carried in another's
   report. Not ruled out: the host's room as Flume gives it, which every
   partition reads. Source: the user, 2026-11-01, (3); cloud core.33.
-  It asks that a partition say which repositories are its own (open,
-  topic 5).
+  A partition's repositories are those of the Flywheels it serves
+  (topic 5).
 
 ### Asked, on forge credentials
 
@@ -350,13 +350,13 @@ Each item is one of:
   ask). The App is installed on the repositories the customer chooses,
   and uninstalling it ends the cloud's reach. Source: the user,
   2026-11-01, (6).
-- **`hosts-are-granted-repositories`** (requirement, the cloud's and
-  the runner's). The customer maps repositories to hosts, and the cloud
-  mints a token for a host only for a repository mapped to it. The
-  runner names a repository its configuration keeps that the cloud
-  gives it no token for, and fetches it not. Source: the user,
-  2026-11-01, (6). How the mapping meets the configuration's own list
-  is taken up in topic 5.
+- **`a-token-only-for-a-served-repository`** (requirement, the
+  cloud's and the runner's). The cloud mints a token for a host only
+  for a repository of a Flywheel that host serves, so the customer
+  controls which hosts work with which repositories by which Flywheels
+  each host serves. The runner names a repository it keeps that the
+  cloud gives it no token for, and fetches it not. Source: the user,
+  2026-11-01, (6), as topic 5's (1) settles it.
 - **`a-tool-asks-the-runner-for-a-token`** (requirement). A tool on a
   cloud host that needs a forge identity of its own, sluice to land
   among them, asks for it by a credential command, `flywheel
@@ -521,11 +521,12 @@ another rail item."
   sources, and installing the tools at the versions the runner is
   checked against. Source: the user, 2026-11-01, (4), (5); the pack's
   first run.
-- **`a-flywheels-repositories-are-the-hosts`** (requirement, amending
-  core.5 and record 0002's first point: confirm below). Under a
+- **`a-flywheels-repositories-are-the-hosts`** (requirement). Under a
   hosted control plane, the repositories a host keeps are inferred
-  from the Flywheels it serves, as the control plane gives them, and
-  not from its initial setup. Source: the user, 2026-11-01, (5).
+  from the Flywheels it serves, and not set at its initial setup; the
+  cloud writes them into the runner's managed level of configuration,
+  so the configuration still names every repository kept (core.5,
+  topic 5). Source: the user, 2026-11-01, (5).
 - **`a-flywheels-kinds-reach-its-hosts`** (requirement). Kinds are
   assigned to a Flywheel, and setup pushes the Flywheel's kind sources
   down to every host that serves it, by Flume's own commands. Source:
@@ -543,3 +544,84 @@ another rail item."
   repositories, and a host may serve several Flywheels; in what order
   a host takes up a Flywheel's repositories, and whether Boom's are
   among them. Source: the user, 2026-11-01, (5).
+
+## 5. Several hosts and partitions
+
+### What the material settles
+
+- Partitions stay in the runner's configuration (the user's ruling);
+  each is one enrolment with its own key, connection and Host object,
+  and what goes over it names only its own (topic 3).
+- The runner never chooses where work runs: the control plane offers
+  each lease, and the runner takes or leaves only what it is offered,
+  while its stream has room (core.1, core.9). In the cloud, a Flywheel
+  balances work across hosts by Flume's points (cloud record 0013), and
+  a host is in exactly one Account (cloud core.14).
+- Any host that keeps a bolt's repository may take its branch command;
+  it waits while none can (cloud core.19).
+- Under crew, a request naming a host is that host's; a kit's launch
+  naming none is claimed on the runner's own branch and given once no
+  other runner's branch answers it; two claims both withdraw and claim
+  again in the name order of the hosts (the crew spec). crew's leases
+  never expire, so a claim never moves: a runner that claims and then
+  sleeps or stops holds the launch (design, *Risks*).
+- crew's partitions today: madswan and swancloud on
+  `afterthought/crew-state`, main level on deneb; wldn on
+  `WilldanGroup/crew-state`, main level on chuck-herdr-alpha (crew's
+  plans; the crew and swancloud notes).
+
+### Asked
+
+1. **Repositories.** Under the cloud a host's repositories are inferred
+   from the Flywheels it serves, and (from topic 3) the customer maps
+   repositories to hosts, while core.5 and record 0002 say the
+   configuration names them. How is core.5 amended?
+2. **Stale claims.** A crew claim never moves. Should a stale one
+   lapse, crew's implementation being temporary?
+
+### The user's words
+
+1. "Both can be true at the same time and you have to be careful with
+   your words because you said it is inferred from the flywheels it
+   serves. You then said that the customer maps repositories to hosts.
+   Maybe you got that from something I said but the former supersedes
+   the latter. The idea is that the host repositories are inferred from
+   the flywheel and it's just the difference. You have to think about
+   it as open source tools that could be configured by hand or a
+   simplified cloud management interface that handles the
+   configuration for you"
+2. "No, crew is temporary" (the recommended answer).
+
+### What it gives
+
+- **`configured-by-hand-or-managed`** (rule). The runner, as each open
+  tool, is configured by its own configuration alone, which a person
+  can write by hand; a hosted control plane is a management interface
+  that writes the same configuration's managed level for the user
+  (`a-managed-level-of-configuration`), and the runner does nothing
+  under the cloud that a configuration written by hand could not ask
+  of it. Rules out: a setting the runner takes only from a control
+  plane's message and that no key of its configuration holds; a
+  behavior that turns on which control plane wrote a key. Not ruled
+  out: the work a control plane offers, which is no configuration.
+  Source: the user, 2026-11-01, (1).
+- **`a-hosts-repositories-follow-its-flywheels`** (requirement). Under
+  the hosted control plane, the repositories a host keeps are those of
+  the Flywheels it serves: setup writes them into the runner's managed
+  level, and a repository leaves it when no Flywheel the host serves
+  holds it, then going by the let-go rules as they stand. Under crew,
+  the configuration names them by hand. There is no separate mapping
+  of repositories to hosts. Source: the user, 2026-11-01, (1).
+- **core.5 stands, its details amended.** "The configuration names the
+  repositories" holds, the managed level being part of it. What its
+  details rule out narrows to a clone made because work named a
+  repository the configuration does not name, and a repository added
+  because work named it; what they allow gains the managed level
+  written by setup from the Flywheels the host serves. Record 0002's
+  first point, and the cloud's ledger item 3.b, read the same. Source:
+  the user, 2026-11-01, (1); cloud record 0007.
+- **`a-claim-never-moves`** (requirement, kept as built). A crew claim
+  stands until its runner answers it; a stranded one shows in crew's
+  reading of the runner's branch and is cleared by hand, until the
+  cloud's expiring leases replace crew. Source: the user, 2026-11-01,
+  (2).
