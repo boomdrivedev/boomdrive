@@ -373,3 +373,86 @@ Each item is one of:
   cloud host reaches the forge, for a branch it pushes or a `gh` call
   it makes, with no credential of the host user's. Flume's and the
   cloud's, the runner's only if a token comes through it.
+
+## 4. Control planes: crew today, the cloud next
+
+### What the material settles
+
+- One interface, `flywheel-control`'s `ControlPlane`: a pull, which
+  takes the runner's hello and whole report and gives the control
+  plane's wants in its order (offers under leases, acts, commands,
+  inboxes) and the terminals to open; and a report, which takes the
+  whole report and gives what is let go and what is refused. Ids are
+  the control plane's and never read into. A second report of one
+  report changes nothing. Every implementation passes the shared cases
+  (the control-plane-interface spec; core.2).
+- One `[control_plane]` table, its `type` the implementation's word and
+  `poll_interval` its timer; the table `type` names is handed whole to
+  the implementation (the configuration spec; the user's ruling).
+- Leases: every report names each lease's number and so renews it; a
+  report refused for a lease no longer the runner's lets the work go,
+  acts on it no more, reports it no more and removes nothing. A control
+  pass runs before the earliest lease would lapse, and at once when the
+  implementation wakes the runner (core.9, core.10; the running and
+  work-into-flume specs).
+- crew gives every launch lease number 1 with no expiry, wakes no one,
+  and a kit's launch naming no host is claimed on the runner's branch
+  (the crew spec).
+- The hosted implementation keeps one outgoing WebSocket ending at the
+  host's Host object; every message names a protocol version, checked
+  against that version's schema, and the cloud accepts the current
+  version and the one before; every offer, lease, renewal, command and
+  event has an id, and a second delivery changes nothing; a lease not
+  renewed ends at its expiry by the object's alarm and a result under
+  it is refused; a hello at every reconnect carries the runner's full
+  state, and the cloud never asks again on a schedule (cloud core.36 to
+  core.39, core.52; records 0022, 0026; design Decision 20).
+- Commands built: a bolt's branch by `sluice branch create`; any other
+  sort is refused, naming its tool (the branch-commands spec). The
+  domain model also lists `boom accept` and its siblings, millpond's
+  moves, submitting a bolt to the default branch, cloning a repository,
+  and the controls cancel, drain, upgrade and setup, none of them
+  defined.
+
+### Asked
+
+1. **crew's future.** One `[control_plane]` with one `type` means a
+   runner serves one control plane at a time. Once the hosted control
+   plane serves the operator's own work, what becomes of crew's
+   implementation?
+2. **Commands.** Which does the runner carry: tools' commands plus
+   drain; also upgrade and setup; also clone?
+
+### The user's words
+
+1. "Removed once the cloud serves you" (the recommended answer).
+2. "Also upgrade and setup".
+
+### What it gives
+
+- **`crew-until-the-cloud`** (requirement). crew's implementation stays,
+  held to the shared cases, until the operator's own partitions run on
+  the hosted control plane, and one change then removes it. Until
+  then, a change to crew's records or its readings (`asks.py`) is a
+  chore of this repository's. Source: the user, 2026-11-01, (1).
+- **`one-control-plane-per-runner`** (rule, derived, for review). A
+  runner serves the one control plane its `[control_plane]` `type`
+  names, and every partition it serves is that control plane's. Rules
+  out: two implementations opened by one runner; a partition naming a
+  `type` of its own. Source: the user's ruling on the configuration's
+  names; (1).
+- **`a-command-is-a-tools-or-the-runners-own`** (rule). Every command
+  the runner carries runs one tool's own command line once, under its
+  lease, its answer carried as the tool gave it; or it is one of the
+  runner's own: drain (take no new offer, carry on with what it holds),
+  resume, upgrade (install a release of itself) and setup (configure
+  the host's Flume). No command adds a repository for the host to keep
+  (core.5). Rules out: a command the runner carries by a library call
+  into a tool; a clone made on a command; a command of the runner's
+  own beyond these four, but by a decision recorded with it. Source:
+  the user, 2026-11-01, (2).
+- **`drain-takes-nothing-new`** (requirement). A drained runner takes
+  no new offer and claims nothing, and carries on with every lease it
+  holds, its acts, commands and reports among them, until resumed; a
+  drain survives a restart. Source: (2), the option's own words.
+- Upgrade is taken up with installing (topic 8), and setup below.
