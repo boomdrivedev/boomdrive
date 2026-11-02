@@ -479,6 +479,16 @@ Each item is one of:
   no new offer and claims nothing, and carries on with every lease it
   holds, its acts, commands and reports among them, until resumed; a
   drain survives a restart. Source: (2), the option's own words.
+- **`pings-and-resend`** (rule). The runner keeps its socket to a
+  hosted control plane alive with the WebSocket protocol's own pings,
+  never an application message, so an idle socket wakes no object;
+  after every reconnect it sends its whole hello and resends, each by
+  its id, what the control plane has not acknowledged. Rules out: a
+  heartbeat in the protocol's schema; a report dropped with a socket
+  and never sent again; a resend under a new id. Source: the
+  awesome-lists row F49 (tokio-tungstenite with backon; protocol
+  pings), kept by the user, 2026-11-01; cloud core.38, core.50 and
+  core.52.
 - Upgrade is taken up with installing (topic 8), and setup below.
 
 ### Asked, on setup
