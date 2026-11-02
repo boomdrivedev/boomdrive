@@ -855,11 +855,17 @@ another rail item."
   Actions' runners are, so that people can run it on their own hosts.
   Source: the user, 2026-11-01, (1); the awesome-lists row S8, taken
   up below.
-- **`releases-are-signed`** (rule). Every release of the runner is
-  signed, and an install or an upgrade verifies the signature before it
-  runs a byte of the release. Rules out: an unsigned release published;
-  an installer or `upgrade` that runs what it fetched before verifying
-  it. Source: the user, 2026-11-01, (1); F9, taken up below.
+- **`releases-are-signed`** (rule). Every release of the runner, and
+  of each tool its install brings, carries a provenance attestation of
+  the release workflow that built it, and an install or an `upgrade`
+  runs a release only once it has verified that provenance against that
+  workflow's identity; a failed check keeps the running binary. Rules
+  out: a release published with no attestation; an installer or
+  `upgrade` that runs what it fetched before the check; a check against
+  a key of our own in place of the workflow's identity. Source: the
+  user, 2026-11-01, (1); the awesome-lists row F9 (self_update checking
+  GitHub's artifact attestations with sigstore-verify), kept by the
+  user, 2026-11-01.
 - **`one-install-for-the-host`** (requirement). One `curl` install puts
   a host's whole set in place: the runner, and the Flume and sluice
   releases it was checked against, each verified, installed together
