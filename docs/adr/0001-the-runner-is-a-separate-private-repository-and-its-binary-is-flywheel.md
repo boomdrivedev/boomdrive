@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner is a separate private repository, and its binary is flywheel
 
-Status: accepted by the user on 2026-10-31.
+Status: accepted by the user on 2026-10-31. Its "It is private for now" is superseded by record 0012: the runner is open source.
 
 Deciders: the user, on 2026-10-31.
 Sources: flume's `docs/adr/0001` as the model for the form; flume and sluice, whose scaffolding this repository copies.
