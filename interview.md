@@ -277,10 +277,22 @@ Each item is one of:
 - **`enrol-by-command`** (requirement). `flywheel enroll` reads the
   one-time enrolment token from standard input, never from an argument
   or the environment, makes the host's key pair, registers its public
-  key over the runner's own outgoing connection, and writes the key and
-  what the control plane certified under the runner's own directory,
-  in files only the host's user may read; it never writes the
-  configuration. Source: the user, 2026-11-01, (2); cloud record 0040.
+  key over the runner's own outgoing connection, and keeps the key in
+  the host's own credential store (`the-host-key-in-the-hosts-store`);
+  it never writes the configuration. Source: the user, 2026-11-01, (2);
+  cloud record 0040.
+- **`the-host-key-in-the-hosts-store`** (rule, beside core.4). The
+  host's key is kept only in the host's own credential store: the macOS
+  keychain the runner's launchd agent opens in the user's session, and
+  an encrypted systemd credential on Linux; never in a file readable in
+  the clear. A host with neither store is refused at `enroll`, naming
+  what it lacks. Rules out: the key, or a token standing for it, in a
+  file under the data or configuration directory; a clear-text
+  fallback. Not ruled out: what the control plane certified on the key,
+  which is no secret, kept beside the runner's files. Source: the
+  awesome-lists row F10 (the keyring crate; systemd's
+  `LoadCredentialEncrypted=`), kept by the user, 2026-11-01, with no
+  clear-text fallback.
 - **`one-runner-one-enrolment-per-partition`** (requirement). One
   runner serves a machine, with one data directory and one clone per
   repository. Each partition its configuration names is one enrolment,
