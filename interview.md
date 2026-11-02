@@ -973,3 +973,49 @@ another avenue"
   install and the host's level of configuration, or images enrolled
   at first boot). Source: the user, 2026-11-01: "we'll need to decide
   how to do that".
+
+## 9. Telemetry
+
+### What the material settles
+
+- The runner sends nothing today but its control plane's pull and
+  report and git's fetches and pushes; it writes its lines on standard
+  error, which the service manager keeps (the running spec). No
+  repository content, task log, raw material or terminal byte goes in a
+  report, the runner's data or its log (core.11).
+- Flume has no telemetry, and turns OpenSpec's off; sluice's is opt-in,
+  sent by OTLP to a collector on `localhost:4318`, scrubbed (the flume
+  and sluice notes).
+- The cloud's logs, traces and metrics stay within Cloudflare, written
+  through one module that takes only an allowed set of fields, and
+  sending any to another service is a decision of its own (cloud
+  core.59, core.60).
+
+### Asked
+
+1. **Telemetry**, for 10,000 hosts and fleets later: nothing by
+   default, with opt-in OTLP to the host's own collector; also health
+   to the control plane through the protocol; or nothing at all?
+
+### The user's words
+
+1. "Health to the control plane". The option read "also" of the first:
+   nothing else by default, and opt-in OTLP to a collector the host
+   names.
+
+### What it gives
+
+- **`health-through-the-protocol`** (requirement). The runner sends its
+  control plane its health in the protocol's own messages: pass
+  durations, failures by kind, reconnects, its tools' versions, so the
+  console can show a fleet's health. Source: the user, 2026-11-01, (1).
+- **`nothing-leaves-but-the-protocol`** (rule). Nothing leaves a host
+  from the runner but its control plane's protocol and git's calls,
+  and an OTLP export to a collector the host's configuration names:
+  no telemetry SDK, crash reporter or update ping to anyone else. What
+  goes as health or by OTLP holds only allowed fields, ids, names,
+  statuses, times, counts and digests, never a tool's text. Rules out:
+  a vendor's SDK linked; a crash report sent; an export with no
+  collector named; a log line's words or a path in a metric. Source:
+  the user, 2026-11-01, (1); core.11; sluice's opt-in OTLP and the
+  cloud's core.59 as the models.
