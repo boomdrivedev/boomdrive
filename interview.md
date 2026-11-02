@@ -920,3 +920,34 @@ another rail item."
   private `packages/runner-protocol`, be somewhere a public runner can
   build against (the disposition's note 4; the cloud's D5 re-read).
   Source: the awesome-lists row S8; the user, 2026-11-01, (1).
+
+### The user's words, after
+
+"I told you not to focus on my nix installation, and that's true. Still
+I think we should support, in addition to a control-plane-driven
+installation, manual installations that I could do with my nix. Maybe
+we even have nix flakes that people can use to manage their configs.
+Ultimately we're going to need to plan for fleets of hosts managed for
+enterprises and we'll need to decide how to do that. That would be yet
+another avenue"
+
+### What it gives
+
+- **`installed-by-the-control-plane-or-by-hand`** (requirement). A host
+  is installed either by the control plane's one install and setup
+  (`one-install-for-the-host`, `a-host-is-set-up-by-the-wizard`), or by
+  hand; this repository publishes a nix flake, its packages and a
+  module, that people use to install the runner and its tools and to
+  manage their host's level of configuration. Both routes install the
+  same verified releases and write the same configuration, the host's
+  level by hand or by nix, the managed level by the control plane
+  (`a-managed-level-of-configuration`). Rules out: a setting or a
+  behavior only one route can reach; a flake that builds what the
+  release workflow did not attest. Source: the user, 2026-11-01.
+- **open: `fleets-of-hosts`.** How an enterprise installs, enrols,
+  configures and upgrades a fleet of hosts it manages, a third avenue
+  beside the control plane's install and the hand-made one (for
+  example a fleet enrolment token, its device management pushing the
+  install and the host's level of configuration, or images enrolled
+  at first boot). Source: the user, 2026-11-01: "we'll need to decide
+  how to do that".
