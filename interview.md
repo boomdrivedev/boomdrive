@@ -1131,3 +1131,123 @@ display only.
   user, 2026-11-01, on the board spike's assumption 7; core.1. An ask
   of Flume: the step at a launch that asks Boom for the standing
   claims.
+
+## Where it went
+
+Every item above that is a rule is in `docs/architecture/core.md` as
+core.13 to core.41, and every decision is a record, 0003 to 0014; core.5,
+core.6, core.10 and core.11 keep their statements and gain details, and
+record 0001's "private for now" is superseded by record 0012. The
+requirements go to the specs through the changes below.
+`docs/architecture/_open.md` names the code that stands against a rule.
+
+| item | where |
+|---|---|
+| `no-tool-daemon`, `the-hosts-one-clone`, `flume-asks-boom` | core.13, core.14, core.15; record 0003 |
+| `terminal-through-flumes-seam`, `a-relayed-hand-is-a-persons`, `no-relay-until-flumes`, `a-terminal-leaves-only-encrypted` | core.29, core.30; record 0004 |
+| `roll-back-one-release`, `the-data-directory-holds` | core.36, core.35; record 0005 |
+| `host-key-never-leaves`, `enrol-by-command`, `the-host-key-in-the-hosts-store`, `one-runner-one-enrolment-per-partition`, `a-partition-sees-only-its-own` | core.31, core.32, core.26; record 0006 |
+| `no-app-key-on-a-host`, `the-cloud-never-uses-a-token`, `the-customer-picks-the-repositories`, `a-token-only-for-a-served-repository`, `a-tool-asks-the-runner-for-a-token`, `writes-through-the-hosts-git` | core.33, core.34; record 0007 |
+| `crew-until-the-cloud`, `one-control-plane-per-runner`, `a-command-is-a-tools-or-the-runners-own`, `drain-takes-nothing-new`, `pings-and-resend`, `a-local-command-reaches-the-runner-by-file` | core.16, core.19, core.20, core.21; record 0008 |
+| `setup-by-the-tools-own-commands`, `a-host-is-set-up-by-the-wizard`, `a-managed-level-of-configuration`, `configured-by-hand-or-managed`, `a-flywheels-repositories-are-the-hosts`, `a-hosts-repositories-follow-its-flywheels`, `a-flywheels-kinds-reach-its-hosts` | core.17, core.18, core.5's details; record 0009 |
+| `a-stray-place-is-dropped-by-command`, `no-launch-past-its-lease`, `backoff-never-back-to-back`, `no-act-it-cannot-record`, `presence-is-the-clouds`, `a-claim-never-moves` | core.22 to core.25, core.10's details; record 0010 |
+| `the-runners-commands`, `a-status-line`, `flumes-output-contract`, `a-line-carries-its-time` | core.39, core.40; record 0011 |
+| `the-runner-is-open-source`, `releases-are-signed`, `one-install-for-the-host`, `installed-by-the-control-plane-or-by-hand`, `a-floor-for-each-tool`; F51 | core.37, core.38; record 0012 |
+| `health-through-the-protocol`, `nothing-leaves-but-the-protocol` | core.28; record 0013 |
+| `no-private-text-or-names`, `opens-with-a-fresh-history`, `the-cloud-gets-an-allowed-list` | core.41, core.27, core.6's and core.11's details; record 0014 |
+
+## The roadmap's changes
+
+In the order they can land, each citing the rules it brings the tree to.
+
+1. **`the-runner-opens-as-a-public-repository`** (core.41, core.6;
+   records 0012, 0014). The scrub: neutral host and partition names in
+   tests and specs, Flume's and sluice's fixtures captured again on a
+   scratch host with neutral paths, no private repository's text in the
+   specs, the archived changes, the records or README; then the public
+   repository from a fresh history, this one kept as its archive. These
+   notes stay here and are not carried over.
+2. **`the-relay-waits-for-flumes`** (core.29; record 0004). The herdr
+   relay and the terminal-relay spec's herdr requirements removed; a
+   terminal closed at once with words saying the host's Flume relays
+   none; the hello no longer runs `herdr --version`.
+3. **`the-runner-keeps-time-and-backs-off`** (core.22 to core.24,
+   core.35, core.40; record 0010). A bounded backoff with jitter, no
+   pass due at once for a lapsed lease, one line when the control plane
+   becomes unreachable and one when it returns, no launch past a
+   lease's expiry, each line timed, and a start that removes briefs no
+   launch holds.
+4. **`the-runner-answers-on-its-command-line`** (core.20, core.38,
+   core.39; record 0011). `status [--json]`, `check`, `drain` and
+   `resume` by a file in the data directory, `flywheel line` for the
+   status line, Flume's output contract, and each tool's floor named
+   and held.
+5. **`the-runner-installs-as-one-verified-release`** (core.37, core.38;
+   record 0012). The release workflow by dist with provenance
+   attestations; the one `curl` install bringing the runner, Flume and
+   sluice and writing the launchd or systemd unit from our own
+   templates; `upgrade` by self_update with sigstore-verify, beside,
+   switch and restart; the nix flake's packages and module.
+6. **`the-runner-has-a-managed-level`** (core.17, core.18; record
+   0009). The configuration's two levels, `setup` and the terminal
+   wizard running each tool's own commands. It waits on Flume's
+   commands for streams and kind sources, and Flume's own levels.
+7. **`the-runner-dials-the-hosted-control-plane`** (the cloud roadmap's
+   1.15; core.19, core.21, core.26 to core.28, core.31 to core.33;
+   records 0006 to 0008, 0013, 0014). `flywheel-hosted`: `enroll`, the
+   host's key in the credential store, one enrolment and hello per
+   partition, the socket with pings and resend, the allowed list of
+   Flume's status, health messages and the opt-in OTLP export, forge
+   tokens and `forge-token`, and the commands drain, resume, upgrade,
+   setup and a stray place's drop. It waits on the protocol's schema
+   being where a public runner can build against it.
+8. **`a-terminal-encrypted-end-to-end`** (core.29, core.30; record
+   0004). The runner's half by HPKE over Flume's relay command, with
+   the cloud's change 5.5. It waits on Flume's relay command.
+9. **`crew-leaves-the-runner`** (record 0008). `flywheel-crew` removed
+   once the operator's own partitions run on the hosted control plane.
+
+## What it asks of others
+
+- **Flume:** a command that relays a place's terminal through its seam,
+  and clause 107 counting a relayed person as a person (record 0004);
+  commands that declare and remove a stream and a kind source, and a
+  managed level of its configuration (record 0009);
+  `a-host-declares-where-its-kinds-come-from` built; the step at a
+  launch that asks Boom for the standing claims (record 0003); and,
+  from the design before, a way to read the stream a launch naming none
+  would run in.
+- **sluice:** an identity that runs a command for its token, as git
+  runs a credential helper (record 0007); a managed level of its
+  configuration (record 0009); its statement's drivers row read with
+  Flume as the driver of a submission (record 0003).
+- **crew:** its main-level checkouts from the runner's clone (record
+  0003); R1 read as a kind's identity, and a claim's `held` read as a
+  claim; its public README and specs scrubbed of private names (record
+  0014).
+- **swancloud:** its own containers and spaces' clones retired (record
+  0003); the runner installed by the flake's module, nix writing only
+  the host's level (records 0009, 0012); an older tool's files under the
+  runner's configuration directory removed before the runner is
+  installed.
+- **The cloud:** the command that drops a stray place when a lapsed
+  lease's work goes to another host (record 0010); its own rules that
+  it never uses a token it minted, that the customer picks the
+  repositories, and that a token is minted only for a repository of a
+  Flywheel the host serves (record 0007); the runner protocol's schema
+  where a public runner can build against it, its record 0046 and D5
+  re-read (record 0012); the copy of a place as the allowed list, field
+  by field (record 0014); health messages (record 0013); setup, upgrade
+  and drain as rail items and the New Host Wizard (records 0008, 0009).
+
+## Still open
+
+- **`a-places-forge-identity`**: how an agent in a place on a cloud host
+  reaches the forge, for a branch it pushes or a `gh` call, with no
+  credential of the host user's.
+- **`boom-and-the-order-of-repositories`**: in what order a host takes
+  up a Flywheel's repositories, and whether Boom's are among them.
+- **`fleets-of-hosts`**: how an enterprise installs, enrols, configures
+  and upgrades a fleet of hosts it manages.
+- **`content-the-board-reads`**: which of the board's fields that carry
+  a repository's or a terminal's text go up, field by field.
