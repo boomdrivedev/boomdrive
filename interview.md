@@ -296,3 +296,80 @@ Each item is one of:
   partition reads. Source: the user, 2026-11-01, (3); cloud core.33.
   It asks that a partition say which repositories are its own (open,
   topic 5).
+
+### Asked, on forge credentials
+
+5. **The runner's own forge identity.** sluice mints installation
+   tokens from the App key the host's `[forge]` names and gives them
+   only to its own git calls (sluice record 0019). The runner's own
+   forge calls are its fetches and crew's runner branch, through the
+   host's helper today. Options put: an App of the runner's own as
+   sluice has; sluice's App with narrowed tokens; the host's helper,
+   with every guarded write a tool's.
+6. **The cloud holds the App and sends short tokens down.** Which
+   mitigations of the cloud's reach into a customer's repositories are
+   rules: tokens narrowed per call and kept in memory; every mint an
+   event on the chain; the cloud never using one; the customer picking
+   the repositories?
+7. **sluice's token under the cloud**, with no App key on the host: a
+   credential command; a token in each call's environment; or sluice
+   keeping its own App?
+
+### The user's words
+
+5. "None of this feels right. Do we really want to be distributing
+   GitHub app keys and IDs to everybody's hosts in a sort of
+   self-hosted setup? I forget exactly why I switched loose to use the
+   GitHub app, but maybe it was for unattended running. It seems like
+   we need a cleaner design and maybe the cloud should have the app and
+   send short tokens down. You seem concerned that it lets the cloud
+   have access to the repos and I don't know if there are any
+   mitigating strategies for that"
+6. "The cloud never uses one, Customer picks repos, Maybe the customer
+   also has to map permissions from repos to hosts so they can have
+   control over which hosts can work with which repos"
+7. "A credential command" (the recommended answer).
+
+### What it gives
+
+- **`no-app-key-on-a-host`** (rule). Under a hosted control plane, no
+  GitHub App key or App id is on a host for the runner or a tool to
+  mint with: the cloud holds the App, and a host's forge calls are made
+  with short-lived tokens the cloud mints and sends down the runner's
+  own connection. Rules out: an App's private key file named in the
+  runner's configuration or installed with it; the runner minting an
+  installation token. Not ruled out: crew's hosts, which have no cloud,
+  keeping sluice's App and the host's own credential helper as today;
+  a token never written to a file or a log (core.4). Source: the user,
+  2026-11-01, (5) and (6).
+- **`the-cloud-never-uses-a-token`** (rule for the cloud, its ask). No
+  cloud code makes a forge call with an installation token it minted:
+  a token goes only into a message to a runner. Source: the user,
+  2026-11-01, (6); with cloud core.3 and core.4.
+- **`the-customer-picks-the-repositories`** (rule for the cloud, its
+  ask). The App is installed on the repositories the customer chooses,
+  and uninstalling it ends the cloud's reach. Source: the user,
+  2026-11-01, (6).
+- **`hosts-are-granted-repositories`** (requirement, the cloud's and
+  the runner's). The customer maps repositories to hosts, and the cloud
+  mints a token for a host only for a repository mapped to it. The
+  runner names a repository its configuration keeps that the cloud
+  gives it no token for, and fetches it not. Source: the user,
+  2026-11-01, (6). How the mapping meets the configuration's own list
+  is taken up in topic 5.
+- **`a-tool-asks-the-runner-for-a-token`** (requirement). A tool on a
+  cloud host that needs a forge identity of its own, sluice to land
+  among them, asks for it by a credential command, `flywheel
+  forge-token`, which reaches the cloud over its own outgoing
+  connection with the host's key and gives the token on standard
+  output only; it opens no socket and keeps nothing. Source: the user,
+  2026-11-01, (7). An ask of sluice: an identity that runs a command
+  for its token, as git runs a credential helper, naming no control
+  plane (cloud core.47).
+- Not taken: tokens narrowed per call, and every mint an event on the
+  chain; neither was chosen, and neither is a rule (core.4 still rules
+  out a token written or logged).
+- **open: `a-places-forge-identity`.** How an agent in a place on a
+  cloud host reaches the forge, for a branch it pushes or a `gh` call
+  it makes, with no credential of the host user's. Flume's and the
+  cloud's, the runner's only if a token comes through it.
