@@ -705,3 +705,87 @@ another rail item."
   the Flywheel that its host is quiet. Rules out: a notification, a
   mail or an inbox item the runner sends about its own reach; a line
   per failed try. Source: the user, 2026-11-01, (2); cloud core.13.
+
+## 7. The command line, its output and exit codes
+
+### What the material settles
+
+- `flywheel --version` and `-V` print `flywheel <version>` and exit 0;
+  no command, or one it does not know, prints the usage on standard
+  error and exits 2 (the running spec).
+- `flywheel run [--config <file>] [--once]`: `run` keeps going until
+  SIGTERM or SIGINT and exits 0; `--once` exits 0 when every git call
+  succeeded and the control pass pulled and reported, else 1; either
+  exits 2 having touched nothing when the host is broken (the running
+  spec).
+- The runner writes one line on standard error for each thing it does
+  or names, prefixed `<owner>/<name>:`, `<id>:` or `flywheel:`, and a
+  quiet pass writes nothing; it says when it starts, with its version,
+  configuration file, data directory and repository root, and when it
+  stops (the running and work-into-flume specs).
+- From this interview: `flywheel enroll`, reading the one-time token on
+  standard input (topic 3); `flywheel forge-token`, a credential
+  command answering on standard output (topic 3); a setup wizard in the
+  runner's terminal interface (topic 4).
+- The family's tools: Flume prints one JSON form that only ever gains
+  fields, a refusal as `{"refused":{"refusal":{"reason":…}}}`, exits 0
+  answered, 1 refused, 2 usage; sluice prints `{"error":{"kind",
+  "message","next"}}`, exits 2 refused, 1 not found, 3 internal, 64
+  usage (the flume and sluice notes).
+
+### Asked
+
+1. **Local commands**, beside `run`, `enroll`, `forge-token` and the
+   setup wizard: status; drain and resume; check; upgrade? A local
+   command reaches a running runner only through a file in its data
+   directory, read at its next pass, since the runner opens no socket.
+2. **The output contract**: Flume's; sluice's; or words only?
+3. **The running runner's lines**: words with a time; JSON lines; or
+   as now?
+
+### The user's words
+
+1. All four, and: "I've been wondering if there should be a Claude Code
+   status line concept as well"
+2. "Flume's contract" (the recommended answer).
+3. "Words with a time" (the recommended answer).
+
+### What it gives
+
+- **`the-runners-commands`** (requirement). Beside `run`, the runner
+  has `enroll`, `forge-token`, `setup` (its wizard), `status`, `drain`,
+  `resume`, `check` and `upgrade`. `status [--json]` is read-only and
+  needs no lock: the repositories kept and their clones, the leases
+  held, what it launched and where, whether it is drained, and its last
+  pass's time and outcome. `check` reads the configuration, the tools
+  and their versions, the reach of origin and of the control plane and
+  the enrolment, changes nothing, and exits 0 or names what is wrong.
+  `drain`, `resume` and `upgrade` are the control plane's commands of
+  the same names, given on the host. Source: the user, 2026-11-01, (1).
+- **`a-local-command-reaches-the-runner-by-file`** (rule). A command
+  given on the host reaches a running runner only through a file in its
+  data directory, which the runner reads at its next pass; no command
+  opens or connects to a socket of the runner's (core.3). Rules out: a
+  Unix socket, a named pipe served by the runner, a signal other than
+  SIGTERM and SIGINT carrying meaning. Not ruled out: the runner woken
+  sooner by the file's change, read by polling or a file watch. Source:
+  core.3; (1).
+- **`a-status-line`** (requirement, its form to design). The runner
+  gives a one-line status for Claude Code's status line on the host,
+  `flywheel status --line` say: short, read-only, from the data
+  directory alone, with no network call, fast enough for a status line
+  run at every prompt. Source: the user, 2026-11-01, (1).
+- **`flumes-output-contract`** (rule). Every command of the runner's
+  that answers takes `--json`, and its JSON within a version only ever
+  gains fields; a refusal is `{"refused":{"refusal":{"reason":…}}}` on
+  standard output; it exits 0 answered, 1 refused, and 2 for a usage
+  error or a host that must be fixed. Rules out: a field renamed or
+  removed within a version; an exit code of another meaning; a refusal
+  only in words when `--json` was asked. Not ruled out: `run`'s lines,
+  which stay words on standard error. Source: the user, 2026-11-01,
+  (2); Flume's contract as the model.
+- **`a-line-carries-its-time`** (rule). Each line the running runner
+  writes starts with its time, RFC 3339 in UTC to the second, then its
+  subject, `<owner>/<name>:`, `<id>:` or `flywheel:`, and its words.
+  Rules out: a line with no time; a time in local time. Source: the
+  user, 2026-11-01, (3).
