@@ -116,6 +116,18 @@ Each item is one of:
   as a caller. Source: the user, 2026-11-01, (1). An ask of Flume:
   clause 107 says so, and Flume gives a command that relays a place's
   terminal through its seam, the screen out and keys in.
+- **`a-terminal-leaves-only-encrypted`** (rule). A terminal leaves the
+  host only encrypted end to end to the browser that opened it: the
+  runner makes a key pair for each terminal, signs its share with the
+  host's key (`host-key-never-leaves`), accepts the browser's share
+  only when a key certified to a member signed it, and never sends a
+  pane's bytes in the clear, whatever fails; the Host object passes
+  only ciphertext. Rules out: a screen or a key sent under the socket's
+  TLS alone; a terminal opened on an unsigned or uncertified share; a
+  fallback to the clear when the exchange fails. Source: the
+  awesome-lists rows S6 (the user's ruling there, 2026-11-01) and F15
+  (HPKE, rust-hpke on the runner's side), kept by the user,
+  2026-11-01; cloud record 0016 and core.18.
 - **`no-tool-daemon`** (rule). The runner starts, keeps and stops no
   tool's long-running process and runs no tool's housekeeping of its
   own accord: sluice's driver (`sluice run`), the multiplexer's server
