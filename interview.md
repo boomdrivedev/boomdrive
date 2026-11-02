@@ -209,8 +209,7 @@ Each item is one of:
   out: a field added, which the release before ignores; a field the
   release before no longer reads dropped a release later. Source: the
   user, 2026-11-01, (2); the cloud's core.67 as the model.
-- **`the-data-directory-holds`** (rule, derived from the material, for
-  the user's review). The data directory holds only the lock, the
+- **`the-data-directory-holds`** (rule, kept by the user at the review). The data directory holds only the lock, the
   clones, the runner's report, a launch's brief while Flume reads it,
   and each implementation's caches; everything in it but the report is
   made again from origin, Flume and the control plane, and the report
@@ -471,7 +470,7 @@ Each item is one of:
   the hosted control plane, and one change then removes it. Until
   then, a change to crew's records or its readings (`asks.py`) is a
   chore of this repository's. Source: the user, 2026-11-01, (1).
-- **`one-control-plane-per-runner`** (rule, derived, for review). A
+- **`one-control-plane-per-runner`** (rule, kept by the user at the review). A
   runner serves the one control plane its `[control_plane]` `type`
   names, and every partition it serves is that control plane's. Rules
   out: two implementations opened by one runner; a partition naming a
@@ -808,7 +807,8 @@ another rail item."
   the enrolment, changes nothing, and exits 0 or names what is wrong.
   `drain`, `resume` and `upgrade` are the control plane's commands of
   the same names, given on the host. Source: the user, 2026-11-01, (1).
-- **`a-local-command-reaches-the-runner-by-file`** (rule). A command
+- **`a-local-command-reaches-the-runner-by-file`** (rule, kept by the user
+  at the review). A command
   given on the host reaches a running runner only through a file in its
   data directory, which the runner reads at its next pass; no command
   opens or connects to a socket of the runner's (core.3). Rules out: a
@@ -999,9 +999,13 @@ another avenue"
 
 ### The user's words
 
-1. "Health to the control plane". The option read "also" of the first:
-   nothing else by default, and opt-in OTLP to a collector the host
-   names.
+1. "Health to the control plane". Asked at the review whether that
+   also allows an opt-in OTLP export: "the way you asked about health,
+   i assumed it was not OTLP and that it was protocol. you tell me
+   what's better though". Recommended, and taken: both, the OTLP
+   export off unless the host names a collector, since that is how an
+   enterprise watches a fleet in its own observability, as sluice
+   already does.
 
 ### What it gives
 
