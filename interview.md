@@ -1019,3 +1019,103 @@ another avenue"
   collector named; a log line's words or a path in a metric. Source:
   the user, 2026-11-01, (1); core.11; sluice's opt-in OTLP and the
   cloud's core.59 as the models.
+
+## 10. What stays private
+
+### What the material settles
+
+- The repository is to be public (topic 8; S8). Nothing commercial, no
+  pricing, tier or customer, is in it (core.6), and no credential
+  (core.4).
+- No file of the cloud's repository and no text of the context pack is
+  copied into a public repository, and the cloud cites the pack only
+  where it lives (cloud core.48); no public repository holds a price,
+  plan or limit (cloud core.99).
+- As it stands, the tree names the operator's hosts (`deneb` in 22
+  files), partitions (`madswan` in 34) and swancloud (14); cites the
+  private flywheel-cloud (15 files), its ledger and its records with
+  short quotes; and its Flume fixtures hold the operator's home paths
+  and Flume's whole status of scratch places.
+- What goes up: Flume's status of each place is carried whole, as
+  Flume printed it (core.11's "not ruled out"). That status holds the
+  agent's whole prompt (`agent.printed`, the brief among it), its
+  `screen`, `dialog` and `last_words`, the change's `tasks[].text`,
+  the caller's words and home paths; core.11 allows a field left out
+  that holds content the cloud may not hold, and the cloud holds no
+  repository content (cloud core.4). The domain model's copy of a
+  place names what the cloud copies and never copies (its section 8).
+
+### Asked
+
+1. **Going public.** The tree names the operator's hosts, partitions
+   and swancloud, quotes the private cloud, and its fixtures hold home
+   paths. A rule now and a fresh public history; the rule and the
+   history kept; or the history rewritten?
+2. **Flume's status up to the cloud.** An allowed list, the cloud's
+   copy of a place; a deny list; or whole to both?
+
+### The user's words
+
+1. "Rule now, fresh public history" (the recommended answer).
+2. "recommended, but also look at the artifacts from this session:
+   df5b9e66-c6f1-4595-8ba7-be237a9a3e89. it covers details of what we
+   would show in cloud and a claude code mod/status line"
+
+That session is the spike `research/board-shows-flume-sluice-and-timber`
+of 2026-11-01, in agentplot/flywheel-next (`spike/NOTES.md` and its
+eight pages). Under each drawing, *reads* names the fields the board is
+drawn from. Of Flume's status of a place, the unit card reads: `place`,
+`branch`, `base`, `stream {name, from}`, `priority`, `agent.account
+{pool, name, from}`; `stages[] {name, state, starts, end {head, words,
+needs, made}, group}`; `ends[] {of, stage, start, state, end {words,
+needs, group}, deliveries[], pending_for}`; `waiting_on {act, why}`;
+`submission {submits, send_backs}`; the pane's address
+(`clues.shown_at.agent`, for the terminal); and of the host,
+`host.streams[] {running, bound}`. Page 8 proposes the unit line, one
+shape for the board inside each agent's terminal: each tool writes its
+own token in the family key's marks (`flume line` among them), and a
+mod, herdr's rows and a person's own `statusLine` only lay them out,
+display only.
+
+### What it gives
+
+- **`no-private-text-or-names`** (rule). No text of a private
+  repository is copied into this one, which cites a private one by its
+  repository and an id at most; and no host, partition, state
+  repository, person's path or account of anyone's is in its code,
+  tests, fixtures or docs: tests use neutral names, and a tool's answer
+  captured as a fixture is captured on a scratch host with its paths
+  made neutral. Rules out: a quote of the cloud's records, ledger or
+  pack; `deneb`, `madswan` or a home path in a test or a fixture. Not
+  ruled out: a public repository's text, cited or quoted; the ids of a
+  private one's records and rules. Source: the user, 2026-11-01, (1);
+  cloud core.48.
+- **`opens-with-a-fresh-history`** (requirement). A change scrubs the
+  tree to that rule, and the public repository starts from a fresh
+  history, this one kept private as its archive. Source: the user,
+  2026-11-01, (1).
+- **`the-cloud-gets-an-allowed-list`** (rule, replacing core.11's
+  "Flume's status of a place as Flume printed it" for a hosted control
+  plane). To a hosted control plane, the runner carries of Flume's
+  status of a place only the fields the cloud's copy of a place names,
+  each as Flume printed it, and leaves out the rest: the agent's
+  prompt, its screen, dialog and last words, the change's task text
+  and every path but the place's own. The list is the copy's schema,
+  in the runner protocol; the board spike's *reads* are its first
+  draft, an agent's question to a person (its waiting and end words)
+  among them. crew's state repository, the operator's own, takes the
+  status whole as now. Rules out: a field carried to the cloud because
+  Flume printed it. Source: the user, 2026-11-01, (2); the spike's
+  reads; cloud core.4.
+- **open: `content-the-board-reads`.** The spike's reads hold fields
+  that carry text from a repository or a terminal: a group's title from
+  `tasks.md`, an end's words, the dialog behind `why: dialog`. Which go
+  up, field by field, is the copy's schema to settle in the change that
+  builds the hosted implementation.
+- **`a-status-line`**, its form now: the runner writes its own token in
+  the family key's marks, `flywheel line` beside `flume line`, from its
+  data directory alone: the host's reach, the leases held, a drain,
+  the unit a place's launch is. A mod in Claude Code, herdr's rows and
+  a person's `statusLine` lay it out; the runner draws nothing in a
+  session itself. Source: the user, 2026-11-01, topic 7 (1); the
+  spike's page 8.
