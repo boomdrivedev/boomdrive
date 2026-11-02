@@ -378,6 +378,18 @@ Each item is one of:
   2026-11-01, (7). An ask of sluice: an identity that runs a command
   for its token, as git runs a credential helper, naming no control
   plane (cloud core.47).
+- **`writes-through-the-hosts-git`** (rule). The runner changes a
+  repository, by a clone, a fetch, a worktree, a ref moved or a push,
+  only through the host's own `git` command, so the host's credential
+  helpers and git configuration apply, and a helper set for one call
+  (`a-tool-asks-the-runner-for-a-token`) is git's own; a library may
+  only read. Rules out: a write, a fetch or a push made through gix,
+  libgit2 or another library; a library's object written into a clone.
+  Not ruled out: gix reading refs, objects or a worktree's state.
+  Source: the awesome-lists row F52 (gix for reads, the `git` command
+  for writes; gitoxide's `crate-status.md`), kept by the user,
+  2026-11-01. Holds as built: the runner and weir-branch run `git` for
+  every call.
 - Not taken: tokens narrowed per call, and every mint an event on the
   chain; neither was chosen, and neither is a rule (core.4 still rules
   out a token written or logged).
