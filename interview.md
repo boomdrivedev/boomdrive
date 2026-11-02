@@ -789,3 +789,91 @@ another rail item."
   subject, `<owner>/<name>:`, `<id>:` or `flywheel:`, and its words.
   Rules out: a line with no time; a time in local time. Source: the
   user, 2026-11-01, (3).
+
+## 8. Installing and upgrading
+
+### What the material settles
+
+- swancloud installs the runner on the operator's hosts, writes its
+  configuration, and keeps `flywheel run` alive under the host's
+  service manager: launchd's `KeepAlive` on a Mac, `Restart=always` in
+  a systemd user unit on a box; exit 2 means the host needs fixing
+  (README; crew record 0052 part 4; the first change's design 10).
+  Nothing of the runner is on swancloud's main yet, and this
+  repository has no tags or releases (the swancloud notes).
+- A customer's host is added by one install command carrying a
+  short-lived enrolment token, or a Nix flake module (the pack's first
+  run; topic 3); setup installs the tools at the versions the runner is
+  checked against, and upgrade is a command of the runner's own, from
+  the control plane or on the host (topics 4 and 7); the cloud accepts
+  the protocol's current version and the one before (cloud core.36);
+  a release rolls back one release with the data directory as it
+  stands (topic 2).
+- The console never upgrades a runner itself: an upgrade is a rail item
+  a member answers (cloud core.96).
+- Flume ships release archives; sluice ships by nix and release
+  binaries. Agents' hooks call Flume by its absolute path, so a
+  Flume upgrade keeps the old path while its agents live (the flume
+  notes).
+- On deneb, `~/.config/flywheel/` already holds an older `flywheel`
+  tool's App keys and env file, under the same binary name (the crew
+  and swancloud notes).
+
+### Asked
+
+1. **Releases**, the repository being taken as private: signed from the
+   cloud's domain; private GitHub releases; or public binaries only?
+2. **Installing**, for the people who will use it, not the operator's
+   hosts: one `curl` install for everything; one per tool; or package
+   managers?
+3. **Tool versions** outside what a release was checked against: named,
+   with a floor; exact pins; or named only?
+
+### The user's words
+
+1. "We've already agreed that the runner needed to be open source. I
+   was told it had to be if people were going to use it, and that's
+   what other systems like GitHub Actions do: they have open-source
+   runners. I do think we need signed releases, though, since that's
+   what we're trying to sell with Timber and Sluice"
+2. "Think about the fucking 10,000 people we want to use this, not me.
+   [...] How would they do it? We could try to be in package managers
+   but I don't know that. It sounds like it's going to be tough to start
+   managing fucking multiple operating systems and installing all the
+   different packages. [...] Would it be easier to just do `curl`
+   installs? I'm really not sure how happy I am that you pushed me to
+   have all of the tools as individual installs. It just seems like a
+   lot to fucking manage"; then, of the recommendations put again:
+   "Your recommendations are fine. We have to assume people might
+   already have Git and a multiplexer installed"
+3. "Your recommendations are fine" (named, with a floor).
+
+### What it gives
+
+- **`the-runner-is-open-source`** (requirement, superseding record
+  0001's "private for now"). The runner is open source, as GitHub
+  Actions' runners are, so that people can run it on their own hosts.
+  Source: the user, 2026-11-01, (1); the awesome-lists row S8, taken
+  up below.
+- **`releases-are-signed`** (rule). Every release of the runner is
+  signed, and an install or an upgrade verifies the signature before it
+  runs a byte of the release. Rules out: an unsigned release published;
+  an installer or `upgrade` that runs what it fetched before verifying
+  it. Source: the user, 2026-11-01, (1); F9, taken up below.
+- **`one-install-for-the-host`** (requirement). One `curl` install puts
+  a host's whole set in place: the runner, and the Flume and sluice
+  releases it was checked against, each verified, installed together
+  under the user's home, with the service unit written (launchd on a
+  Mac, a systemd user unit on Linux) and `flywheel enroll` run. An
+  upgrade is the same again: fetched, verified, installed beside the
+  old, switched, and restarted by the service manager, places running
+  on in Flume. git and the multiplexer are the host's own, found on it
+  and never installed. Source: the user, 2026-11-01, (2).
+- **`a-floor-for-each-tool`** (rule). Each release names the least
+  version of each tool it runs with, git and the multiplexer among
+  them, and the versions it was checked against; below a floor the
+  runner takes no work that needs the tool, saying so, and keeps its
+  repositories; above what it was checked against, the version is named
+  in the hello and by `check`, and work goes on. Rules out: work taken
+  with a tool below its floor; a tool's version judged by anything but
+  its own `--version`. Source: the user, 2026-11-01, (3).
