@@ -6,14 +6,16 @@ the control plane's work into `flume launch` calls, carrying their
 results back. It reaches the control plane through one interface,
 `crates/flywheel-control`: crew's implementation, `crates/flywheel-crew`,
 which reads and writes records in crew's state repository, now, and a
-hosted control plane's, an outgoing WebSocket, later. `flywheel run`
-keeps the repositories its configuration names: a bare clone of each in
-its data directory, fetched on a timer, and a view of each under the
-repository root. Where the configuration names a control plane, it
-makes control passes on a timer of their own: it takes each launch
-offered under a lease while its Flume stream has room, carries out each
-act and command once, and carries Flume's, sluice's and the inbox's
-records back as the tools gave them.
+hosted control plane's, an outgoing WebSocket, later. The hosted
+implementation's crate, `crates/flywheel-hosted`, holds the runner's
+protocol with it already, one JSON Schema per version under `protocol/`.
+`flywheel run` keeps the repositories its configuration names: a bare
+clone of each in its data directory, fetched on a timer, and a view of
+each under the repository root. Where the configuration names a control
+plane, it makes control passes on a timer of their own: it takes each
+launch offered under a lease while its Flume stream has room, carries
+out each act and command once, and carries Flume's, sluice's and the
+inbox's records back as the tools gave them.
 
 ## Rules
 
@@ -41,10 +43,10 @@ its bound: once your work is committed, `sluice exec main` for the
 gate's checks, and while iterating `sluice exec main -- moon run
 <project>:<task>`. The projects are those `.moon/workspace.yml` lists:
 `flywheel` (`crates/flywheel`), `flywheel-control`
-(`crates/flywheel-control`), `flywheel-crew` (`crates/flywheel-crew`) and
-`root`. A quick, narrow call, `cargo check` or one unit test, is fine to
-run directly. `devenv shell -- moon run :#check-fast` runs the fast
-layer.
+(`crates/flywheel-control`), `flywheel-crew` (`crates/flywheel-crew`),
+`flywheel-hosted` (`crates/flywheel-hosted`) and `root`. A quick, narrow
+call, `cargo check` or one unit test, is fine to run directly. `devenv
+shell -- moon run :#check-fast` runs the fast layer.
 
 ## Commits
 

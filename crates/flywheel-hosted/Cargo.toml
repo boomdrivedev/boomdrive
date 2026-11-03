@@ -1,0 +1,19 @@
+[package]
+name = "flywheel-hosted"
+version.workspace = true
+edition.workspace = true
+description = "The hosted control plane's implementation of the control-plane interface, and the one crate that holds the runner's protocol with it: one JSON Schema per version, and the runner's types for its messages."
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+# The interface whose shapes the protocol's messages carry, and the one
+# crate of the tree's it depends on (design Decision 1; core.2, core.42).
+flywheel-control = { path = "../flywheel-control" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+jsonschema.workspace = true

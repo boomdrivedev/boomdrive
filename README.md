@@ -6,8 +6,9 @@ the control plane's work into `flume launch` calls, carrying their
 results back. It reaches the control plane through one interface,
 `crates/flywheel-control`. crew's implementation, `crates/flywheel-crew`,
 reads and writes records in crew's state repository. A hosted control
-plane's, an outgoing WebSocket, is named and not yet built. From this
-tree:
+plane's, an outgoing WebSocket, is not yet built: its crate,
+`crates/flywheel-hosted`, holds the runner's protocol with it, one JSON
+Schema per version under `protocol/`. From this tree:
 
     devenv shell -- cargo run -p flywheel -- --version
 
@@ -166,4 +167,7 @@ repository's launches run in, and where its kinds come from.
 
 The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
-in the devenv shell: `devenv shell -- moon run :#check-fast`.
+in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
+is a moon project of its own, `flywheel`, `flywheel-control`,
+`flywheel-crew` and `flywheel-hosted`, beside `root`, which holds what
+spans the tree.
