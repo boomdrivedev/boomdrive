@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/flywheel-runner/main/crates/flywheel-hosted/protocol/v1/wants.schema.json",
+  "description": "What the control plane wants of the host, as the interface's Want writes it, and pulled, which gives it.",
+  "$defs": {
+    "pulled": {
+      "description": "The whole of what the control plane wants, in its order, and the runner's report as the control plane holds it: given at every connection in answer to the hello, and with a report of null whenever the wants change.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wants",
+        "report"
+      ],
+      "properties": {
+        "wants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/want"
+          }
+        },
+        "report": {
+          "oneOf": [
+            {
+              "$ref": "report.schema.json#/$defs/report"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "want": {
+      "description": "One thing the control plane wants of the host.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "offer"
+          ],
+          "properties": {
+            "offer": {
+              "$ref": "#/$defs/offer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "act"
+          ],
+          "properties": {
+            "act": {
+              "$ref": "#/$defs/act"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "command"
+          ],
+          "properties": {
+            "command": {
+              "$ref": "#/$defs/command"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "inbox"
+          ],
+          "properties": {
+            "inbox": {
+              "$ref": "#/$defs/inbox"
+            }
+          }
+        }
+      ]
+    },
+    "offer": {
+      "description": "A launch offered under a lease.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lease",
+        "launch"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "launch": {
+          "$ref": "#/$defs/launch"
+        }
+      }
+    },
+    "launch": {
+      "description": "What Flume is to be given for one place.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "kind",
+        "name",
+        "base",
+        "brief",
+        "stream",
+        "priority",
+        "intent",
+        "recipients",
+        "holds",
+        "hold_submission",
+        "after",
+        "agent_settings"
+      ],
+      "properties": {
+        "repository": {
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "kind": {
+          "description": "Flume's kind, a name or an identity <source>/<name>@<version>, as the control plane gives it.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "base": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "brief": {
+          "description": "The brief's whole text.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stream": {
+          "description": "Flume's stream the place runs in, where the launch names one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "priority": {
+          "oneOf": [
+            {
+              "$ref": "shared.schema.json#/$defs/signed_integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "intent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipients": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "holds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hold"
+          }
+        },
+        "hold_submission": {
+          "type": "boolean"
+        },
+        "after": {
+          "description": "The launches this one comes after, by id.",
+          "type": "array",
+          "items": {
+            "$ref": "shared.schema.json#/$defs/id"
+          }
+        },
+        "agent_settings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agent_setting"
+          }
+        }
+      }
+    },
+    "hold": {
+      "description": "A stage the place holds at, with the words it holds there.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "words"
+      ],
+      "properties": {
+        "stage": {
+          "type": "string"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
+    },
+    "agent_setting": {
+      "description": "One of the agent's settings: a field and its value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "value"
+      ],
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "act": {
+      "description": "An act on a launch's place, under the launch's lease number.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "launch",
+        "lease",
+        "what"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "launch": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease_number"
+        },
+        "what": {
+          "$ref": "#/$defs/act_sort"
+        }
+      }
+    },
+    "act_sort": {
+      "description": "What an act asks of its launch's place.",
+      "oneOf": [
+        {
+          "enum": [
+            "drop",
+            "done"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "retry"
+          ],
+          "properties": {
+            "retry": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "stage",
+                "words",
+                "submission"
+              ],
+              "properties": {
+                "stage": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "words": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "submission": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "priority"
+          ],
+          "properties": {
+            "priority": {
+              "$ref": "shared.schema.json#/$defs/signed_integer"
+            }
+          }
+        }
+      ]
+    },
+    "command": {
+      "description": "A command, under a lease of its own.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lease",
+        "what"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "what": {
+          "$ref": "#/$defs/command_sort"
+        }
+      }
+    },
+    "command_sort": {
+      "description": "What a command asks of the host: a branch made from another, or a sort this release of the runner may not carry, naming its tool, which the runner refuses naming that tool.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "branch"
+          ],
+          "properties": {
+            "branch": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "repository",
+                "branch",
+                "from"
+              ],
+              "properties": {
+                "repository": {
+                  "$ref": "shared.schema.json#/$defs/repository"
+                },
+                "branch": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "other"
+          ],
+          "properties": {
+            "other": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "tool",
+                "words"
+              ],
+              "properties": {
+                "tool": {
+                  "type": "string"
+                },
+                "words": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "inbox": {
+      "description": "An inbox to carry: the one kept on branch of repository.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "repository",
+        "branch"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "repository": {
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "branch": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

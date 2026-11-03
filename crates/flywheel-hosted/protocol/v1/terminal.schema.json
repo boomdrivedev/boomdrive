@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/flywheel-runner/main/crates/flywheel-hosted/protocol/v1/terminal.schema.json",
+  "description": "A terminal on a launch's agent, encrypted end to end between the runner and the browser that opened it: each end's key share signed, every frame of its bytes sealed and placed by its offset in its direction's stream.",
+  "$defs": {
+    "share": {
+      "description": "An end's key share for one terminal: the suite both ends use, the end's public key for this terminal alone, its signature by the end's signing key, and the certificate the control plane issued on that signing key.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suite",
+        "key",
+        "signature",
+        "certificate"
+      ],
+      "properties": {
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "$ref": "shared.schema.json#/$defs/bytes"
+        },
+        "signature": {
+          "$ref": "shared.schema.json#/$defs/bytes"
+        },
+        "certificate": {
+          "$ref": "shared.schema.json#/$defs/bytes"
+        }
+      }
+    },
+    "offset": {
+      "description": "The place of a frame's first byte in its direction's stream, counted from 0 at the terminal's opening.",
+      "$ref": "shared.schema.json#/$defs/unsigned_integer"
+    },
+    "terminal_open": {
+      "description": "The control plane opens a terminal on a launch's agent, under the launch's lease number, with the browser's share.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "launch",
+        "lease",
+        "share"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "launch": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease_number"
+        },
+        "share": {
+          "$ref": "#/$defs/share"
+        }
+      }
+    },
+    "terminal_opened": {
+      "description": "The runner opened the terminal, with its share.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "share"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "share": {
+          "$ref": "#/$defs/share"
+        }
+      }
+    },
+    "terminal_output": {
+      "description": "A frame of the pane's bytes, sealed, and whether it is a redraw of the pane's present screen, which the browser draws after clearing its terminal.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "offset",
+        "redraw",
+        "sealed"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "offset": {
+          "$ref": "#/$defs/offset"
+        },
+        "redraw": {
+          "type": "boolean"
+        },
+        "sealed": {
+          "$ref": "shared.schema.json#/$defs/bytes"
+        }
+      }
+    },
+    "terminal_input": {
+      "description": "A frame of the person's keys, sealed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "offset",
+        "sealed"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "offset": {
+          "$ref": "#/$defs/offset"
+        },
+        "sealed": {
+          "$ref": "shared.schema.json#/$defs/bytes"
+        }
+      }
+    },
+    "terminal_resume": {
+      "description": "A browser whose socket dropped, its keys still held, says the offset it has every byte up to.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "seen"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "seen": {
+          "$ref": "#/$defs/offset"
+        }
+      }
+    },
+    "terminal_close": {
+      "description": "The browser's end closes the terminal.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        }
+      }
+    },
+    "terminal_closed": {
+      "description": "The runner closed the terminal, with words saying why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal",
+        "words"
+      ],
+      "properties": {
+        "terminal": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

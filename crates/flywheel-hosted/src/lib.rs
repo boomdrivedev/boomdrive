@@ -5,3 +5,5 @@
 //! It holds the protocol now. It implements no `ControlPlane` until the
 //! change that builds the hosted implementation, and `planes.rs` lists it
 //! from then.
+
+pub mod protocol;

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/flywheel-runner/main/crates/flywheel-hosted/protocol/v1/from-runner.schema.json",
+  "description": "A message a runner sends its control plane, in version 1: the version, the message's own id, and a body of one kind a runner sends.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "id",
+    "body"
+  ],
+  "properties": {
+    "protocol_version": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "shared.schema.json#/$defs/message_id"
+    },
+    "body": {
+      "$ref": "#/$defs/body"
+    }
+  },
+  "$defs": {
+    "body": {
+      "description": "One kind a runner sends, by its name.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hello"
+          ],
+          "properties": {
+            "hello": {
+              "$ref": "hello.schema.json#/$defs/hello"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "report"
+          ],
+          "properties": {
+            "report": {
+              "$ref": "report.schema.json#/$defs/report"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal_opened"
+          ],
+          "properties": {
+            "terminal_opened": {
+              "$ref": "terminal.schema.json#/$defs/terminal_opened"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal_output"
+          ],
+          "properties": {
+            "terminal_output": {
+              "$ref": "terminal.schema.json#/$defs/terminal_output"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal_closed"
+          ],
+          "properties": {
+            "terminal_closed": {
+              "$ref": "terminal.schema.json#/$defs/terminal_closed"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "message_refused"
+          ],
+          "properties": {
+            "message_refused": {
+              "$ref": "shared.schema.json#/$defs/message_refused"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
