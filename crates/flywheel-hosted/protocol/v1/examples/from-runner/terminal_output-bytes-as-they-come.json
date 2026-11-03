@@ -1,0 +1,12 @@
+{
+  "protocol_version": 1,
+  "id": "runner:22",
+  "body": {
+    "terminal_output": {
+      "terminal": "terminal-1",
+      "offset": 1024,
+      "redraw": false,
+      "sealed": "w2ZcjoItybhiGiBb5w52Yye4CIPf_ZQC"
+    }
+  }
+}

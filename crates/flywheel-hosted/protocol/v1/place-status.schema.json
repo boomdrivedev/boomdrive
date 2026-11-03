@@ -1,0 +1,1267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/flywheel-runner/main/crates/flywheel-hosted/protocol/v1/place-status.schema.json",
+  "description": "The copy of a Flume place's status, flume status --json's one place cut to the fields the cloud keeps: its ids, states, times and counts, what it made, its pane's address, and the words a person reads to follow or answer it. Every value is as Flume 0.4.1 printed it. It holds no agent's last words, screen, printed command, notes, settings or mode, no task's text, no readiness, no group's title, no teardown's words, no end's report, no verdict's words, and no path but the place's own.",
+  "$defs": {
+    "place_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "place",
+        "kind",
+        "version",
+        "declared",
+        "name",
+        "mark",
+        "branch",
+        "base",
+        "head",
+        "lands",
+        "delivered",
+        "stalled",
+        "priority",
+        "current",
+        "recipients",
+        "stream",
+        "intent",
+        "phase",
+        "stages",
+        "ends",
+        "holds",
+        "hold_words",
+        "waiting_on",
+        "submission",
+        "agent",
+        "clues",
+        "tasks"
+      ],
+      "properties": {
+        "place": {
+          "description": "The place's own path.",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "declared": {
+          "enum": [
+            "launch",
+            "repository",
+            "flume"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "mark": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lands": {
+          "type": "boolean"
+        },
+        "delivered": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "stalled": {
+          "type": "boolean"
+        },
+        "priority": {
+          "$ref": "shared.schema.json#/$defs/signed_integer"
+        },
+        "current": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipients": {
+          "description": "Addresses.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stream": {
+          "$ref": "#/$defs/stream"
+        },
+        "intent": {
+          "$ref": "#/$defs/intent"
+        },
+        "phase": {
+          "$ref": "#/$defs/phase"
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        },
+        "ends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/end_record"
+          }
+        },
+        "holds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hold"
+          }
+        },
+        "hold_words": {
+          "description": "Each stage's hold words, by the stage's name.",
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "waiting_on": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/waiting_on"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "submission": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/submission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "agent": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/agent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clues": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/clues"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tasks": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/task"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "seconds": {
+      "description": "A time as Flume printed it: Unix seconds by the host's clock.",
+      "$ref": "shared.schema.json#/$defs/unsigned_integer"
+    },
+    "stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "from"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "from": {
+          "enum": [
+            "launch",
+            "intent",
+            "host-repository-kind",
+            "host-repository",
+            "host-kind",
+            "default"
+          ]
+        }
+      }
+    },
+    "intent": {
+      "description": "The place's intent, without the repository's path.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "from",
+            "name",
+            "digest"
+          ],
+          "properties": {
+            "from": {
+              "const": "launch"
+            },
+            "name": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "from",
+            "base",
+            "digest"
+          ],
+          "properties": {
+            "from": {
+              "const": "base"
+            },
+            "base": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "phase": {
+      "oneOf": [
+        {
+          "const": "live"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "making"
+          ],
+          "properties": {
+            "making": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "by"
+              ],
+              "properties": {
+                "by": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "over"
+          ],
+          "properties": {
+            "over": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "over",
+                "kept"
+              ],
+              "properties": {
+                "over": {
+                  "$ref": "#/$defs/over"
+                },
+                "kept": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/kept"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gone"
+          ],
+          "properties": {
+            "gone": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "over"
+              ],
+              "properties": {
+                "over": {
+                  "$ref": "#/$defs/over"
+                },
+                "at": {
+                  "$ref": "#/$defs/seconds"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tidied"
+          ],
+          "properties": {
+            "tidied": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "over",
+                "at",
+                "pending_for"
+              ],
+              "properties": {
+                "over": {
+                  "$ref": "#/$defs/over"
+                },
+                "at": {
+                  "$ref": "#/$defs/seconds"
+                },
+                "pending_for": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "over": {
+      "description": "How the place ended.",
+      "oneOf": [
+        {
+          "enum": [
+            "dropped",
+            "done"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "landed"
+          ],
+          "properties": {
+            "landed": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "commit"
+              ],
+              "properties": {
+                "commit": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "kept": {
+      "description": "What keeps an over place from removal: its variant, with a teardown's step and a live agent's identity, never a teardown's words or an unreadable's reason.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "holds"
+          ],
+          "properties": {
+            "holds": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "teardown"
+          ],
+          "properties": {
+            "teardown": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "step"
+              ],
+              "properties": {
+                "step": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "agent_live"
+          ],
+          "properties": {
+            "agent_live": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "identity"
+              ],
+              "properties": {
+                "identity": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unreadable"
+          ],
+          "properties": {
+            "unreadable": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "stage_state": {
+      "enum": [
+        "not_reached",
+        "on_hold",
+        "waiting_on_readiness",
+        "waiting_for_room",
+        "refused",
+        "starting",
+        "started",
+        "begun",
+        "never_begun",
+        "stuck",
+        "lost",
+        "stopped",
+        "delivered",
+        "repeating",
+        "ended_short",
+        "finished"
+      ]
+    },
+    "stage": {
+      "description": "One of the place's stages: its name, state, starts and end, and, for a stage that repeats per task group, where its group stands, without the group's title.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "state",
+        "starts",
+        "end"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/stage_state"
+        },
+        "starts": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "end": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/end"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "group": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "place",
+            "of",
+            "number"
+          ],
+          "properties": {
+            "place": {
+              "$ref": "shared.schema.json#/$defs/unsigned_integer"
+            },
+            "of": {
+              "$ref": "shared.schema.json#/$defs/unsigned_integer"
+            },
+            "number": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "end": {
+      "description": "A stage's end: its head, its words, what it needs, its commits and what it made, never its agent's last words, its screen or its report's path.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "head",
+        "words",
+        "needs",
+        "commits",
+        "made"
+      ],
+      "properties": {
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "needs": {
+          "enum": [
+            "needs_answer",
+            "found_work",
+            null
+          ]
+        },
+        "commits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "made": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/made"
+          }
+        }
+      }
+    },
+    "made": {
+      "description": "A thing the stage made, carried whole as the run wrote it: a line of text, or an object naming the thing with fields of the run's own.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "end_record": {
+      "description": "An end Flume holds for the place's recipients: a stage's, a submission's or a stall's, with when Flume read it, its deliveries and whom it is pending for.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "of",
+            "stage",
+            "start",
+            "state",
+            "end",
+            "read_at",
+            "deliveries",
+            "pending_for"
+          ],
+          "properties": {
+            "of": {
+              "const": "stage"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "start": {
+              "$ref": "shared.schema.json#/$defs/unsigned_integer"
+            },
+            "state": {
+              "$ref": "#/$defs/stage_state"
+            },
+            "end": {
+              "$ref": "#/$defs/end"
+            },
+            "read_at": {
+              "$ref": "#/$defs/seconds"
+            },
+            "deliveries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/delivery"
+              }
+            },
+            "pending_for": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "of",
+            "submit",
+            "verdict",
+            "read_at",
+            "deliveries",
+            "pending_for"
+          ],
+          "properties": {
+            "of": {
+              "const": "submission"
+            },
+            "submit": {
+              "$ref": "shared.schema.json#/$defs/unsigned_integer"
+            },
+            "verdict": {
+              "$ref": "#/$defs/verdict"
+            },
+            "read_at": {
+              "$ref": "#/$defs/seconds"
+            },
+            "deliveries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/delivery"
+              }
+            },
+            "pending_for": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "of",
+            "read_at",
+            "deliveries",
+            "pending_for"
+          ],
+          "properties": {
+            "of": {
+              "const": "stall"
+            },
+            "read_at": {
+              "$ref": "#/$defs/seconds"
+            },
+            "deliveries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/delivery"
+              }
+            },
+            "pending_for": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recipient",
+        "at",
+        "by"
+      ],
+      "properties": {
+        "recipient": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/seconds"
+        },
+        "by": {
+          "enum": [
+            "notice",
+            "wait",
+            "inbox"
+          ]
+        }
+      }
+    },
+    "verdict": {
+      "description": "A submission's verdict: its variant, with a landing's commit and what it removed, never a verdict's words, reason or files.",
+      "oneOf": [
+        {
+          "const": "withdrawn"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "landed"
+          ],
+          "properties": {
+            "landed": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "commit",
+                "place_removed",
+                "branch_removed"
+              ],
+              "properties": {
+                "commit": {
+                  "type": "string"
+                },
+                "place_removed": {
+                  "type": "boolean"
+                },
+                "branch_removed": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "failed"
+          ],
+          "properties": {
+            "failed": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conflict"
+          ],
+          "properties": {
+            "conflict": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "refused"
+          ],
+          "properties": {
+            "refused": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "hold": {
+      "description": "A hold on a stage or on the submission, with its words where it has them.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "on",
+            "stage",
+            "since"
+          ],
+          "properties": {
+            "on": {
+              "const": "stage"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "since": {
+              "$ref": "#/$defs/seconds"
+            },
+            "words": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "on",
+            "since"
+          ],
+          "properties": {
+            "on": {
+              "const": "submission"
+            },
+            "since": {
+              "$ref": "#/$defs/seconds"
+            },
+            "words": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "waiting_on": {
+      "description": "The move the place waits on its caller for, with a question's or a hold's words.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "act",
+        "stage",
+        "why",
+        "since",
+        "words"
+      ],
+      "properties": {
+        "act": {
+          "enum": [
+            "retry",
+            "stop",
+            "drop",
+            "done",
+            "finish",
+            "tell",
+            "needs",
+            "priority",
+            "hold",
+            "answer"
+          ]
+        },
+        "stage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "enum": [
+            "on_hold",
+            "answer",
+            "lost",
+            "never_begun",
+            "dialog",
+            "unready",
+            "refused",
+            "stopped",
+            "past_bound",
+            "submission",
+            "delivered"
+          ]
+        },
+        "since": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/seconds"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "submission": {
+      "description": "Where the place's submission stands.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "held",
+        "submits",
+        "send_backs",
+        "waiting",
+        "verdict",
+        "read"
+      ],
+      "properties": {
+        "held": {
+          "type": "boolean"
+        },
+        "submits": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "send_backs": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "waiting": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verdict": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verdict"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "read": {
+          "$ref": "#/$defs/submission_read"
+        },
+        "request": {
+          "type": "string"
+        }
+      }
+    },
+    "submission_read": {
+      "description": "What Flume read of the submission from the merge queue: none, the submission found, or that it could not read it, without its reason.",
+      "oneOf": [
+        {
+          "const": "none"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "found"
+          ],
+          "properties": {
+            "found": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "submission"
+              ],
+              "properties": {
+                "submission": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "branch",
+                    "target",
+                    "state"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "string"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "$ref": "#/$defs/submission_state"
+                    },
+                    "request": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "could_not_read"
+          ],
+          "properties": {
+            "could_not_read": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "submission_state": {
+      "description": "A submission's state in the merge queue: its variant, with a landing's commit, never a failure's words or a conflict's files.",
+      "oneOf": [
+        {
+          "enum": [
+            "waiting",
+            "under_test",
+            "withdrawn"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "landed"
+          ],
+          "properties": {
+            "landed": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "commit"
+              ],
+              "properties": {
+                "commit": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "failed"
+          ],
+          "properties": {
+            "failed": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conflict"
+          ],
+          "properties": {
+            "conflict": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "reading": {
+      "description": "A yes or no the agent's own record may not give.",
+      "enum": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    "agent": {
+      "description": "The place's live agent: who and where it is and what it is doing, never its screen, printed command, last words, notes, settings or mode.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "stage",
+        "program",
+        "account",
+        "state",
+        "started",
+        "asking",
+        "own_work",
+        "past_limit"
+      ],
+      "properties": {
+        "identity": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "account": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "pool",
+                "name",
+                "from"
+              ],
+              "properties": {
+                "pool": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "from": {
+                  "enum": [
+                    "affinity",
+                    "strategy"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "working",
+            "waiting",
+            "asking",
+            "stopped",
+            "unknown"
+          ]
+        },
+        "started": {
+          "$ref": "#/$defs/reading"
+        },
+        "asking": {
+          "$ref": "#/$defs/reading"
+        },
+        "own_work": {
+          "$ref": "#/$defs/reading"
+        },
+        "past_limit": {
+          "type": "boolean"
+        }
+      }
+    },
+    "clues": {
+      "description": "Where the terminal shows the place's live agent: its pane's address, as Flume printed it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shown_at"
+      ],
+      "properties": {
+        "shown_at": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "agent"
+          ],
+          "properties": {
+            "agent": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "task": {
+      "description": "One task of the place's change: whether it is ticked and its group, never its text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ticked",
+        "group"
+      ],
+      "properties": {
+        "ticked": {
+          "type": "boolean"
+        },
+        "group": {
+          "oneOf": [
+            {
+              "$ref": "shared.schema.json#/$defs/unsigned_integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

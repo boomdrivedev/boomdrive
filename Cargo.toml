@@ -1,10 +1,16 @@
 # flywheel-runner's crates: flywheel, its library and binary;
 # flywheel-control, the interface the runner reaches its control plane
-# through; and flywheel-crew, crew's implementation of it (design Decision
-# 1). Each is a moon project of its own (core.7).
+# through; flywheel-crew, crew's implementation of it (design Decision 1);
+# and flywheel-hosted, the hosted control plane's, which holds the runner's
+# protocol (core.42). Each is a moon project of its own (core.7).
 [workspace]
 resolver = "2"
-members = ["crates/flywheel", "crates/flywheel-control", "crates/flywheel-crew"]
+members = [
+  "crates/flywheel",
+  "crates/flywheel-control",
+  "crates/flywheel-crew",
+  "crates/flywheel-hosted",
+]
 
 [workspace.package]
 version = "0.0.0"
@@ -42,3 +48,7 @@ signal-hook = "0.3"
 # the runner (design 11, 10).
 tempfile = "3"
 libc = "0.2"
+# The protocol's tests: each message and type checked against its
+# version's JSON Schema, with no default features, so that no reference is
+# fetched over the network or from a file (core.42).
+jsonschema = { version = "0.60", default-features = false }

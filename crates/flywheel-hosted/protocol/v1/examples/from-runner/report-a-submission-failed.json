@@ -1,0 +1,59 @@
+{
+  "protocol_version": 1,
+  "id": "runner:18",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-8": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--lexer",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": null,
+          "entry": {
+            "copy": {
+              "id": 45,
+              "branch": "main",
+              "head": "cc4fca631c8ae8919c9328e6f87cc2298998bbf3",
+              "state": "failed",
+              "failed": [
+                {
+                  "task": "app:test",
+                  "hash": "71eb00441669d8d81b5214ee1ecfa5ee1da023934f708353ed003fe9ea7b01f6",
+                  "flaky": {
+                    "here": "pass",
+                    "at": "2026-11-01T09:53:11Z",
+                    "host": "runner-a",
+                    "other": {
+                      "outcome": "fail",
+                      "at": "2026-11-01T09:19:43Z",
+                      "branch": "main",
+                      "combination": "d002775da6fc1a2ebfdc23c8f6243f9fa11c48cf",
+                      "host": "runner-a"
+                    }
+                  }
+                },
+                {
+                  "task": "app:lint",
+                  "hash": "365ce5ddbc44f7988ad7e3f5d81af932b2117de94731bd43b23147c91cd38a53",
+                  "system": "aarch64-darwin"
+                }
+              ]
+            },
+            "at": "2026-11-01T10:06:00Z",
+            "listed": true
+          }
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {}
+    }
+  }
+}

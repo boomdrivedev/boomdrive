@@ -28,7 +28,8 @@ in
     "**/.gitkeep"
     # A tool's own answers, as it printed them: the tests hold the runner
     # to carry each byte as written, so no formatter may change one
-    # (design Decision 21).
+    # (design Decision 21). jsonfmt owns every other JSON file, the tree's
+    # own.
     "crates/*/tests/fixtures/**"
     # Build outputs and caches.
     "target/**"
@@ -59,6 +60,12 @@ in
   # .prototools is TOML under a name with no extension.
   programs.taplo.enable = true;
   settings.formatter.taplo.includes = [ ".prototools" ];
+
+  # The tree's own JSON, the protocol's schema and its examples among it,
+  # written by hand and read by the public. The tests compare JSON as
+  # values, never as bytes, so its layout changes nothing they hold.
+  programs.jsonfmt.enable = true;
+
   programs.yamlfmt.enable = true;
   programs.yamlfmt.settings.formatter = {
     type = "basic";

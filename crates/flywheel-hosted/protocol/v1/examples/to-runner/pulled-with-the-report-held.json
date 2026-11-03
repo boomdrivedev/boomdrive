@@ -1,0 +1,55 @@
+{
+  "protocol_version": 1,
+  "id": "plane:2",
+  "body": {
+    "pulled": {
+      "wants": [
+        {
+          "offer": {
+            "id": "offer-1",
+            "lease": {
+              "number": 2,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "launch": {
+              "repository": "example/app",
+              "kind": "fix",
+              "name": "parser",
+              "base": "main",
+              "brief": null,
+              "stream": null,
+              "priority": null,
+              "intent": null,
+              "recipients": [],
+              "holds": [],
+              "hold_submission": false,
+              "after": [],
+              "agent_settings": []
+            }
+          }
+        }
+      ],
+      "report": {
+        "launches": {
+          "offer-1": {
+            "lease": {
+              "number": 2,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "answer": {
+              "outcome": "launched",
+              "place_dir": "/home/runner/places/fix--parser",
+              "words": null,
+              "at": "2026-11-01T10:00:00Z"
+            },
+            "status": null,
+            "entry": null
+          }
+        },
+        "acts": {},
+        "commands": {},
+        "inboxes": {}
+      }
+    }
+  }
+}

@@ -4,6 +4,8 @@
 #   flywheel-control  the interface to the control plane, its fake and
 #                     the cases every implementation passes
 #   flywheel-crew     crew's implementation of the interface
+#   flywheel-hosted   the hosted control plane's implementation, which
+#                     holds the runner's protocol
 # Each check is tagged with its layer, which a branch's policy requires by
 # tag (.config/sluice.toml):
 #   check-fast    the crate's format, lint, type check and tests; the
@@ -18,6 +20,7 @@ projects:
   flywheel: 'crates/flywheel'
   flywheel-control: 'crates/flywheel-control'
   flywheel-crew: 'crates/flywheel-crew'
+  flywheel-hosted: 'crates/flywheel-hosted'
   root: '.'
 
 # --affected compares against the merge-base with main.
