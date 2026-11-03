@@ -1,3 +1,9 @@
+# Runner protocol
+
+## Purpose
+
+The runner's protocol with a hosted control plane, as JSON Schema of draft 2020-12 in the hosted implementation's crate, one directory per version, which the cloud pins by revision. Each end checks every message it is sent against its version. It covers where each version lives; the envelope, its ids and its two directions; the closed objects; the interface's shapes it carries; the copies of Flume's and sluice's answers; the terminal's key exchange and frames; what version 1 leaves out; and the runner's types, tested against it (core.42; record 0015; flywheel-cloud records 0016, 0049 and 0056).
+
 ## ADDED Requirements
 
 ### Requirement: Each version of the protocol is JSON Schema in the hosted implementation's crate

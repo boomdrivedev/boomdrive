@@ -52,7 +52,7 @@ This change is the cloud roadmap's item 1.16, 3 points, with its research notes 
 
 ### Modified Capabilities
 
-- `control-plane-interface`: the one-interface requirement gains a scenario. The protocol is held in the hosted implementation's crate alone, which no other crate depends on.
+- `control-plane-interface`: a requirement of its own holds the protocol in the hosted implementation's crate alone, which depends on the interface alone and which no other crate depends on.
 
 ## Impact
 
