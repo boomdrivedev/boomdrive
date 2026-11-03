@@ -155,3 +155,92 @@ fn a_rows_log() {
     });
     refused(&validator, &logged, "an entry's failed row holding its log");
 }
+
+/// The runner-protocol spec's "A frame with no offset": every frame
+/// carries its place in its direction's stream.
+#[test]
+fn a_frame_with_no_offset() {
+    let name = "terminal_output.json";
+    let unplaced = altered("from-runner", name, |output| {
+        let frame = output["body"]["terminal_output"].as_object_mut().unwrap();
+        frame.remove("offset");
+    });
+    refused(
+        &from_runner(),
+        &unplaced,
+        "a terminal_output with no offset",
+    );
+}
+
+/// The runner-protocol spec's "A frame in the clear": a frame carries its
+/// bytes only sealed, in base64url (core.30).
+#[test]
+fn a_frame_in_the_clear() {
+    let frames = [
+        (
+            from_runner(),
+            "from-runner",
+            "terminal_output.json",
+            "terminal_output",
+        ),
+        (
+            to_runner(),
+            "to-runner",
+            "terminal_input.json",
+            "terminal_input",
+        ),
+    ];
+    for (validator, direction, name, kind) in frames {
+        passes(&validator, &example(direction, name), name);
+        let clear = altered(direction, name, |message| {
+            let frame = message["body"][kind].as_object_mut().unwrap();
+            frame.remove("sealed");
+            frame.insert("text".to_string(), json!("cargo test\r\n"));
+        });
+        refused(
+            &validator,
+            &clear,
+            &format!("a {kind} carrying its bytes as text"),
+        );
+        let beside = altered(direction, name, |message| {
+            message["body"][kind]["bytes"] = json!("Y2FyZ28gdGVzdA");
+        });
+        refused(
+            &validator,
+            &beside,
+            &format!("a {kind} carrying bytes beside its sealed"),
+        );
+        for unsealed in ["cargo test", "Y2FyZ28gdGVzdA==", "Y2FyZ28+dGVzdA", "Y"] {
+            let wrong = altered(direction, name, |message| {
+                message["body"][kind]["sealed"] = json!(unsealed);
+            });
+            refused(
+                &validator,
+                &wrong,
+                &format!("a {kind} whose sealed is {unsealed:?}, not base64url"),
+            );
+        }
+    }
+}
+
+/// The runner-protocol spec's "An unsigned share": a share holds its
+/// signature and its signing key's certificate (core.30).
+#[test]
+fn an_unsigned_share() {
+    let validator = to_runner();
+    let name = "terminal_open.json";
+    passes(&validator, &example("to-runner", name), name);
+    for field in ["signature", "certificate"] {
+        let unsigned = altered("to-runner", name, |open| {
+            let share = open["body"]["terminal_open"]["share"]
+                .as_object_mut()
+                .unwrap();
+            share.remove(field);
+        });
+        refused(
+            &validator,
+            &unsigned,
+            &format!("a terminal_open whose share has no {field}"),
+        );
+    }
+}

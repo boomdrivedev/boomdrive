@@ -31,3 +31,37 @@ fn a_message_refused() {
         assert!(body["message"].is_string() && body["words"].is_string());
     }
 }
+
+/// The runner-protocol spec's "A terminal's messages": an example of each
+/// terminal kind, and of a frame with and without a redraw, passes its
+/// direction's envelope (design Decision 10).
+#[test]
+fn a_terminals_messages() {
+    let from = from_runner();
+    for name in [
+        "terminal_opened.json",
+        "terminal_output.json",
+        "terminal_output-bytes-as-they-come.json",
+        "terminal_output-a-redraw-after-a-resume.json",
+        "terminal_closed.json",
+    ] {
+        passes(&from, &example("from-runner", name), name);
+    }
+    let to = to_runner();
+    for name in [
+        "terminal_open.json",
+        "terminal_input.json",
+        "terminal_resume.json",
+        "terminal_close.json",
+    ] {
+        passes(&to, &example("to-runner", name), name);
+    }
+    let redraws: Vec<bool> = [
+        "terminal_output-bytes-as-they-come.json",
+        "terminal_output-a-redraw-after-a-resume.json",
+    ]
+    .iter()
+    .map(|name| example("from-runner", name)["body"]["terminal_output"]["redraw"] == true)
+    .collect();
+    assert_eq!(redraws, [false, true], "a frame without and with a redraw");
+}
