@@ -22,7 +22,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 - [x] 2.3 `place-status.schema.json`, `submission-entry.schema.json` and the host part's copy hold the copies of design Decisions 7 to 9, with the place-status examples cut from Flume 0.4.1's places (runner-protocol spec: "A place's status is carried as its copy", "The host's capacity is Flume's host part as values, its streams without their queues" and "sluice's entry is carried as its copy"; Task notes 2.3). True when `devenv shell -- moon run flywheel-hosted:test` passes with the copies' field-list tests and a test per scenario of those requirements.
 - [x] 2.4 `terminal.schema.json` holds the key share and the terminal's messages of design Decision 10, with an example of each (runner-protocol spec: "A terminal's frames are sealed end to end and carry their offsets"; Task notes 2.4). True when `devenv shell -- moon run flywheel-hosted:test` passes with a test per scenario of that requirement.
 - [x] 2.5 `crates/flywheel-hosted/protocol/README.md` says what design Decision 2 lists for it (Task notes 2.5). True when `devenv shell -- moon run root:format` passes, the README excluded as prose.
-- [ ] 2.6 Run this group's checks. True when `devenv shell -- moon run flywheel-hosted:format flywheel-hosted:lint flywheel-hosted:typecheck flywheel-hosted:test root:format` passes.
+- [x] 2.6 Run this group's checks. True when `devenv shell -- moon run flywheel-hosted:format flywheel-hosted:lint flywheel-hosted:typecheck flywheel-hosted:test root:format` passes.
 
 ## 3. The runner's types
 
