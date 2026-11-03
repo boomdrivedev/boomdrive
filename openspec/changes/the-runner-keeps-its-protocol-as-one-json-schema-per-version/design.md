@@ -482,7 +482,7 @@ Add `flywheel-hosted: 'crates/flywheel-hosted'` to `.moon/workspace.yml`, with i
 **1.2** In `crates/flywheel/tests/rules.rs`:
 
 - `the_crates_depend_as_decision_1_has_them` gains `("flywheel-hosted", {"flywheel-control"})`, and its doc comment names it;
-- a new test, for the control-plane-interface spec's scenario "Only the hosted implementation's crate holds the protocol", reads every file under `crates/` outside `crates/flywheel-hosted`, `planes.rs` aside. It checks that none names `flywheel_hosted` or `flywheel-hosted`, that no file name ends `.schema.json`, and that no crate depends on `flywheel-hosted`.
+- a new test, for the control-plane-interface spec's scenario "Only the hosted implementation's crate holds the protocol", reads every file under `crates/` outside `crates/flywheel-hosted`, `planes.rs` and the test's own file aside, and `crates/flywheel/moon.yml` with its input `/crates/flywheel-hosted/**/*` taken out. Those two hold the crate to the rule, so they name it. It checks that none names `flywheel_hosted` or `flywheel-hosted`, that no file name ends `.schema.json`, and that no crate depends on `flywheel-hosted`. The names are written whole in the test, not built from parts: built names would hide the test's own mention of the crate instead of excepting it by name.
 
 `crates/flywheel/moon.yml`'s `test` task takes `/crates/flywheel-hosted/**/*` among its inputs, since the rules tests read it.
 

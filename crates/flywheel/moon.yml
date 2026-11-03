@@ -2,7 +2,8 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # The binary, flywheel. Each check is one task, in the fast layer
 # (core.7). Each builds flywheel-control and flywheel-crew too, so takes
-# their sources.
+# their sources; and the tests of the tree's rules read the hosted
+# implementation's crate too, so test takes its files.
 language: 'rust'
 layer: 'application'
 
@@ -24,6 +25,6 @@ tasks:
     options: {runFromWorkspaceRoot: true}
   test:
     command: 'cargo test -p flywheel'
-    inputs: ['/crates/flywheel/**/*', '/crates/flywheel-control/**/*', '/crates/flywheel-crew/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/flywheel/**/*', '/crates/flywheel-control/**/*', '/crates/flywheel-crew/**/*', '/crates/flywheel-hosted/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
