@@ -4,7 +4,8 @@
 
 mod common;
 
-use common::{example, from_runner, passes, refused, to_runner};
+use common::{example, examples, from_runner, passes, refused, to_runner};
+use flywheel_hosted::protocol::v1::{FromRunner, Message, ToRunner};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -12,6 +13,151 @@ fn altered(direction: &str, name: &str, alter: impl FnOnce(&mut Value)) -> Value
     let mut value = example(direction, name);
     alter(&mut value);
     value
+}
+
+/// The runner-protocol spec's "A message with no id": every message
+/// carries an id of its own, of 1 to 128 letters, digits and `._:/-`.
+#[test]
+fn a_message_with_no_id() {
+    let validator = from_runner();
+    let name = "hello.json";
+    passes(&validator, &example("from-runner", name), name);
+    let unnamed = altered("from-runner", name, |hello| {
+        hello.as_object_mut().unwrap().remove("id");
+    });
+    refused(&validator, &unnamed, "a hello with no id");
+    for (what, id) in [
+        ("an empty id", "".to_string()),
+        ("an id holding a space", "runner 1".to_string()),
+        ("an id of 129 characters", "r".repeat(129)),
+    ] {
+        let wrong = altered("from-runner", name, |hello| hello["id"] = json!(id));
+        refused(&validator, &wrong, &format!("a hello with {what}"));
+    }
+}
+
+/// The runner-protocol spec's "A message of another version": every
+/// message of version 1 names it.
+#[test]
+fn a_message_of_another_version() {
+    let validator = from_runner();
+    for version in [json!(2), json!(0), json!("1")] {
+        let other = altered("from-runner", "hello.json", |hello| {
+            hello["protocol_version"] = version.clone();
+        });
+        refused(
+            &validator,
+            &other,
+            &format!("a hello naming protocol_version {version}"),
+        );
+    }
+}
+
+/// The runner-protocol spec's "A body of two kinds, or of none": a body
+/// holds exactly one kind version 1 has.
+#[test]
+fn a_body_of_two_kinds_or_of_none() {
+    let validator = from_runner();
+    let report = example("from-runner", "report.json")["body"]["report"].clone();
+    let two = altered("from-runner", "hello.json", |hello| {
+        hello["body"]["report"] = report;
+    });
+    refused(&validator, &two, "a body holding both hello and report");
+    let empty = altered("from-runner", "hello.json", |hello| {
+        hello["body"] = json!({});
+    });
+    refused(&validator, &empty, "an empty body");
+    let bodiless = altered("from-runner", "hello.json", |hello| {
+        hello.as_object_mut().unwrap().remove("body");
+    });
+    refused(&validator, &bodiless, "a message with no body");
+    let unknown = altered("from-runner", "hello.json", |hello| {
+        let body = hello["body"].as_object_mut().unwrap();
+        let hello = body.remove("hello").unwrap();
+        body.insert("goodbye".to_string(), hello);
+    });
+    refused(
+        &validator,
+        &unknown,
+        "a body of goodbye, a kind version 1 lacks",
+    );
+}
+
+/// The runner-protocol spec's "A body of the other direction": each
+/// direction's envelope takes its own kinds alone, so each example of a
+/// kind one direction alone sends is refused as the other's.
+#[test]
+fn a_body_of_the_other_direction() {
+    refused(
+        &from_runner(),
+        &example("to-runner", "pulled.json"),
+        "a pulled as a runner's message",
+    );
+    refused(
+        &to_runner(),
+        &example("from-runner", "hello.json"),
+        "a hello as a control plane's message",
+    );
+    let directions = [
+        ("to-runner", from_runner(), "a runner's"),
+        ("from-runner", to_runner(), "a control plane's"),
+    ];
+    for (direction, other, whose) in directions {
+        for (name, value) in examples(direction) {
+            if value["body"].get("message_refused").is_some() {
+                continue;
+            }
+            refused(
+                &other,
+                &value,
+                &format!("{direction}/{name} as {whose} message"),
+            );
+        }
+    }
+}
+
+/// The runner-protocol spec's "A field the version does not name": every
+/// object version 1 names is closed, at every depth. The runner's types
+/// read no such field of version 1's own objects either.
+#[test]
+fn a_field_the_version_does_not_name() {
+    let from = from_runner();
+    let to = to_runner();
+    let enveloped = altered("from-runner", "hello.json", |hello| {
+        hello["sent_at"] = json!("2026-11-01T10:00:00Z");
+    });
+    refused(&from, &enveloped, "a field the envelope does not name");
+    assert!(
+        serde_json::from_value::<Message<FromRunner>>(enveloped).is_err(),
+        "the runner's types read a field the envelope does not name"
+    );
+    let launched = altered("to-runner", "pulled.json", |pulled| {
+        pulled["body"]["pulled"]["wants"][0]["offer"]["launch"]["kinds_file"] = json!("kinds.toml");
+    });
+    refused(&to, &launched, "a field a launch does not name");
+    let leased = altered("to-runner", "pulled.json", |pulled| {
+        pulled["body"]["pulled"]["wants"][0]["offer"]["lease"]["renewed"] =
+            json!("2026-11-01T10:00:00Z");
+    });
+    refused(&to, &leased, "a field a lease does not name");
+    let name = "report-a-live-agent-with-its-pane.json";
+    passes(&from, &example("from-runner", name), name);
+    let copied = altered("from-runner", name, |report| {
+        copy(report)["added_after"] = json!(true);
+    });
+    refused(
+        &from,
+        &copied,
+        "a field a place's status copy does not name",
+    );
+    let shared = altered("to-runner", "terminal_open.json", |open| {
+        open["body"]["terminal_open"]["share"]["nonce"] = json!("AAAA");
+    });
+    refused(&to, &shared, "a field a key share does not name");
+    assert!(
+        serde_json::from_value::<Message<ToRunner>>(shared).is_err(),
+        "the runner's types read a field a key share does not name"
+    );
 }
 
 /// The runner-protocol spec's "An act's outcome": an act or a command is
