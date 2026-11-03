@@ -112,9 +112,9 @@ Version 1 is these files, each a JSON Schema of draft 2020-12, named for what it
 |---|---|
 | `from-runner.schema.json` | the envelope of every message a runner sends |
 | `to-runner.schema.json` | the envelope of every message a control plane sends |
-| `shared.schema.json` | `$defs` both directions use: an id, a message's id, a time, a lease, a lease's number, a repository's address, a commit, a digest, bytes in base64url |
+| `shared.schema.json` | `$defs` both directions use: an id, a message's id, a time, an integer signed and unsigned, a lease, a lease's number, a repository's address, a commit, a digest, bytes in base64url, and `message_refused` |
 | `hello.schema.json` | the hello, a tool's version, and the copy of Flume's host part (Decision 8) |
-| `wants.schema.json` | a want: an offer with its launch, an act, a command, an inbox |
+| `wants.schema.json` | a want: an offer with its launch, an act, a command, an inbox; and `pulled` |
 | `report.schema.json` | the runner's report as version 1 carries it, and `reported` |
 | `place-status.schema.json` | the copy of a Flume place's status (Decision 7) |
 | `submission-entry.schema.json` | the copy of a sluice entry (Decision 9) |
@@ -159,11 +159,11 @@ Alternatives:
 
 - **Closed.** Every object the schema names lists its fields and takes no other: `additionalProperties: false`, at every depth (core.42). The schema extends no object through `allOf`, so the closure needs no `unevaluatedProperties`.
   - A **map**, keyed by ids, paths or tools' names, constrains its keys with `propertyNames` and its values with a closed definition. Such maps are a hello's `tool_versions` and `leases`, a report's parts by id, an inbox's files by path, and a reported's `refused`.
-  - The **one value carried whole**, of any form, is a sluice row's `flaky` (Decision 9).
+  - The **values carried whole**, of any form, are a sluice row's `flaky` (Decision 9) and a thing an end made (Decision 7), each as its tool printed it.
 - **Required.** Every field the interface's serde types always write is required, `null` where the interface writes none. The schema refuses a missing field that serde would read as none, so the two ends agree on what a message holds.
 - **A time** of the runner's or a control plane's is RFC 3339 in UTC to the second, `YYYY-MM-DDTHH:MM:SSZ`, by pattern. `format: date-time` is not used, since validators treat it as an annotation by default and would disagree. A time inside a copy is the tool's, as it printed it: Flume's are Unix seconds, and sluice's are its own strings.
 - **An integer** is between 0 and 2^53 − 1, or between −(2^53 − 1) and 2^53 − 1 where it may be negative, such as a launch's priority. The Worker's JavaScript then reads it exactly. A lease's number is 1 or more.
-- **Bytes** are base64url without padding, by pattern: a key, a signature and a sealed frame.
+- **Bytes** are base64url without padding, by pattern: a key, a signature, a certificate and a sealed frame.
 - **A repository's address** is `owner/name`. **A commit** is 40 or 64 lowercase hex digits. **A digest** is `sha256:` and 64 hex digits, as an inbox's brief is carried.
 
 Alternatives:
@@ -241,12 +241,13 @@ The copy is `flume status --json <place>`'s one place, `status.places[0]`, cut t
 | a kept (`phase.over.kept`) | its variant alone, but `teardown`'s `step` and `agent_live`'s `identity`; never a teardown's `words` or an unreadable's `reason` |
 | `stages[]` | `name`, `state`, `starts`, `end` (as an end), and `group`'s `place`, `of` and `number`; never `group.title` (a task group's title), `refused_part`, `refused_setting` or `conversation` |
 | `ends[]` | `of`, `stage`, `start`, `submit`, `state`, `read_at`, `pending_for`, `deliveries` (each `recipient`, `at`, `by`), `end` (as an end), and `verdict` (as a verdict) |
-| an end (`stages[].end`, `ends[].end`) | `head`, `words` (an end's words), `needs`, `commits`, `made`; never `last_words`, `screen` or `report` (a path other than the place's own) |
+| an end (`stages[].end`, `ends[].end`) | `head`, `words` (an end's words), `needs`, `commits`, `made` (each thing as the run wrote it, a line of text or an object naming the thing, carried whole); never `last_words`, `screen` or `report` (a path other than the place's own) |
 | a verdict (`ends[].verdict`, `submission.verdict`) | its variant: `landed` with `commit`, `place_removed` and `branch_removed`; `failed`, `conflict` or `refused`, each with no field; `"withdrawn"`; never a verdict's `words`, `reason` or `files` |
 | `holds[]` | `on`, `stage`, `since`, `words` (a hold's words) |
 | `hold_words` | whole: each stage's hold words |
 | `waiting_on` | `act`, `stage`, `why`, `since`, `words` (a question's or a hold's) |
-| `submission` | `held`, `submits`, `send_backs`, `waiting`, `waiting_since`, `verdict` (as a verdict), and `read`: `"none"`, `found` with its submission's `id`, `branch`, `target`, `request` and `state`, or `could_not_read` with no field |
+| `submission` | `held`, `submits`, `send_backs`, `waiting`, `request`, `verdict` (as a verdict), and `read`: `"none"`, `found` with its submission's `id`, `branch`, `target`, `request` and `state`, or `could_not_read` with no field |
+| a submission's state (`submission.read.found.submission.state`) | its variant: `"waiting"`, `"under_test"` or `"withdrawn"`; `landed` with `commit`; `failed` or `conflict`, each with no field; never a failure's `words` or a conflict's `files` or `base` |
 | `agent` | `identity`, `stage`, `program`, `account` (`pool`, `name`, `from`), `state`, `started`, `asking`, `own_work`, `past_limit`; never `screen`, `printed`, `last_words`, `notes`, `settings` or `mode` |
 | `clues` | `shown_at`'s `agent`, the pane's address (cloud core.108; core.29 "Not ruled out"); never `title`, `display_agent`, `stage`, `state` or `shown_at`'s `place` and `base` |
 | `tasks[]` | `ticked` and `group` alone, never `text` (cloud core.108: a task's text never) |
@@ -255,7 +256,9 @@ Left out whole:
 
 - `repository`, a path other than the place's own (core.27);
 - `readiness`, whose steps' words are tools' output;
-- `cannot_read`, Flume's words;
+- `cannot_read`, `failures` and `refused_acts`, Flume's words;
+- `moves`, whose accounts are Flume's bookkeeping, `unsettled`, and `role`;
+- a stage's `quiet_from` and a stall's `since` and `waiting`, of `ends[]`;
 - anything Flume adds after 0.4.1.
 
 A field above is optional where Flume prints it only for some places, such as `stages[].group`, `ends[].submit` and `ends[].verdict`. It is `null` where Flume prints `null`.
@@ -266,6 +269,7 @@ Alternatives:
 
 - **The whole status, with the cloud dropping what it does not keep.** Ruled out by core.27 and cloud record 0049.
 - **Only the top-level fields named, each carried whole.** Not taken: `agent`, `stages[].end` and `phase.over.kept` hold text the cloud may not keep, beside fields it does.
+- **A made thing closed to its `name`.** Not taken: Flume carries each thing's fields as the run wrote them, so a closed thing would refuse a report holding a thing with a field of its own. What a place made is the cloud's to keep (cloud core.108).
 - **Leaving the copy to 1.15**, as record 0014 had it. Not taken: record 0049 and record 0056 make it version 1's (*What wave 0 settles*).
 
 ### 8. The hello, and the copy of Flume's host part
@@ -307,7 +311,7 @@ Cloud record 0016 puts the key exchange in the protocol's first version, and cor
   - `suite`, the scheme both ends use;
   - `key`, the end's public key for this terminal alone;
   - `signature`, by the end's signing key;
-  - `certificate`, which the control plane issued on that signing key: a member's short-lived key for the browser (cloud core.23), the host's key for the runner (core.31).
+  - `certificate`, in base64url, which the control plane issued on that signing key: a member's short-lived key for the browser (cloud core.23), the host's key for the runner (core.31).
 
   The runner takes the browser's share only where its signature checks against a key certified to a member. It never opens a terminal on a share that fails, and never falls back to the clear (core.30). The signature is over the UTF-8 bytes of `flywheel-runner.v1 terminal share`, then, each after a NUL byte, the end (`browser` or `runner`), the terminal's id, the launch's id, the suite, and the key's bytes. A share therefore binds its terminal, its launch and its end, so a share is never taken for another terminal or reflected back.
 - **The suite is named, not fixed.** `suite` is a string the two ends agree. The cloud relays it and cannot read what it names. The change that builds the runner's half with the browser's (1.15 and 5.5) chooses the scheme (cloud record 0016: HPKE, or ECDH with HKDF and AES-GCM), and names it in the README, without a new version.
@@ -354,7 +358,7 @@ The runner's types for every message are serde types in `flywheel_hosted::protoc
 - **The interface's own types**, wherever version 1 carries a shape as the interface writes it (Decision 6). These are `flywheel_control`'s `Want`, `Lease`, `Id`, `At`, `Answer`, `ToolVersion`, `Acted`, `Commanded` and `InboxCarried`. They are used, never redefined.
 - **Version 1's form of a type** where the wire differs, named as the interface names the thing it carries, so that the module's path says which form a reader holds. These are `v1::Hello`, `v1::Capacity`, `v1::HostPart`, `v1::Report`, `v1::Launched`, `v1::Carried`, `v1::Pulled` and `v1::Reported`. A copy, and each of `HostPart`'s fields, is a `Box<serde_json::value::RawValue>`, so a value goes up as the tool printed it, never re-serialised (core.27).
 - **The terminal's types**: `Share`, and one struct for each terminal message.
-- **`VERSION`**, `1`, and **`FILES`**, each schema file's name and text by `include_str!`. The tests build their validators from `FILES`, and 1.15's runtime check (core.42) reads the same files.
+- **`VERSION`**, `1`; **`ADDRESS`**, the address each file's `$id` is under; and **`FILES`**, each schema file's name and text by `include_str!`. The tests build their validators from `FILES`, and 1.15's runtime check (core.42) reads the same files.
 
 Nothing here converts the interface's values into version 1's or back. That cutting is 1.15's, with the socket.
 

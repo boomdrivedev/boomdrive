@@ -49,7 +49,7 @@ A runner SHALL send only `hello`, `report`, `terminal_opened`, `terminal_output`
 
 ### Requirement: A message holds only what its version names
 
-Every object version 1 names SHALL take only the fields it names, at every depth, but a sluice row's `flaky`, which is carried as sluice printed it. Every field the interface's types always write SHALL be required. A time of the runner's or the control plane's SHALL be RFC 3339 in UTC to the second. An integer SHALL be within 2^53 − 1 of zero, and a lease's number SHALL be 1 or more (core.42).
+Every object version 1 names SHALL take only the fields it names, at every depth, but a sluice row's `flaky` and a thing a stage's end made, each carried as its tool printed it. Every field the interface's types always write SHALL be required. A time of the runner's or the control plane's SHALL be RFC 3339 in UTC to the second. An integer SHALL be within 2^53 − 1 of zero, and a lease's number SHALL be 1 or more (core.42).
 
 #### Scenario: A field the version does not name
 
