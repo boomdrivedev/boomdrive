@@ -1,0 +1,25 @@
+{
+  "protocol_version": 1,
+  "id": "runner:2",
+  "body": {
+    "hello": {
+      "interface_version": 1,
+      "runner_version": "flywheel 0.1.0",
+      "tool_versions": {
+        "flume": {
+          "missing": "flume is not on PATH"
+        },
+        "git": {
+          "printed": "git version 2.48.1"
+        }
+      },
+      "repositories": [
+        "example/app"
+      ],
+      "capacity": {
+        "missing": "flume is not on PATH"
+      },
+      "leases": {}
+    }
+  }
+}

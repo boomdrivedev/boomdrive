@@ -1,0 +1,15 @@
+{
+  "protocol_version": 1,
+  "id": "plane:3",
+  "body": {
+    "reported": {
+      "report": "runner:3",
+      "let_go": [
+        "act-1"
+      ],
+      "refused": {
+        "offer-2": "lease 1 of offer-2 is replaced by lease 2"
+      }
+    }
+  }
+}
