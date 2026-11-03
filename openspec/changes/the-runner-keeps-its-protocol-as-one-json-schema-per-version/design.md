@@ -263,6 +263,8 @@ Left out whole:
 
 A field above is optional where Flume prints it only for some places, such as `stages[].group`, `ends[].submit` and `ends[].verdict`. It is `null` where Flume prints `null`.
 
+A value Flume prints from a set of its own, a stage's state, an agent's state or reading, a wait's act and why, and each variant above, names that set as Flume 0.4.1 has it (unchanged at 0.5.0). A commit or a digest in the copy is a string, as Flume's own types hold it, not version 1's forms of Decision 4, so a value Flume prints that the forms would not take never fails a report whole.
+
 1.15 cuts each status to this list. Whether it walks the schema itself or a list of its own is 1.15's choice. This change holds the list to the schema in a test (Decision 14).
 
 Alternatives:
