@@ -71,7 +71,9 @@ pub const FILES: &[(&str, &str)] = &[
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Message<Body> {
-    /// [`VERSION`], in every message of version 1.
+    /// [`VERSION`], in every message of version 1. The type reads any
+    /// number: a message naming another is refused by its check against
+    /// the schema, which comes before it is read (core.42).
     pub protocol_version: u32,
     pub id: MessageId,
     pub body: Body,
