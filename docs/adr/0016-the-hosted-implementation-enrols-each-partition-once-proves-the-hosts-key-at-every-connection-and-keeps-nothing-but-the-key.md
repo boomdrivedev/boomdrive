@@ -48,15 +48,22 @@ For a partition's repositories:
 1. Named in each partition's own table, from those the configuration keeps.
 2. Every kept repository to every partition.
 
+For a copy that fails its check before it goes:
+
+1. That launch's status or entry goes up `null`, or the host part `missing`, with a line naming the schema's path.
+2. The last copy that passed goes up again.
+3. The whole report is held back.
+
 ## Decision outcome
 
-Option 1 each time: one request, a signed statement at the upgrade, Ed25519, `systemd-creds` read by the runner, and each partition naming its repositories. core.26, core.31 and core.32 hold it, their details amended in this record's commit.
+Option 1 each time: one request, a signed statement at the upgrade, Ed25519, `systemd-creds` read by the runner, each partition naming its repositories, and a failing copy sent as `null`. core.26, core.31 and core.32 hold it, their details amended in this record's commit.
 
 - **One request enrols a partition.** `flywheel enroll <label>` makes the key in memory, and sends `POST runner/enrol` under the control plane's `url`, the token as its bearer. The `enrol` message's signature is over a fixed context, the control plane's origin, the token's digest and the key. The key is kept only once the control plane answers `enrolled`. Option 2 opens a socket for one exchange, before any Host object exists. Option 3 is not what record 0006 chose.
 - **Every connection is a signed statement.** The upgrade of `runner/connect` carries the key, the runner's time, a nonce and a signature over a fixed context. The control plane takes it within five minutes of its own clock, and only once for each nonce. It finds the enrolment by the key, so the host keeps no host id, certificate or file. The statement is good once, for minutes, and is no kept bearer (core.31). Option 2 lets the Host object hold a socket not yet proved, where the cloud's one seam proves a credential first (cloud core.21). Option 3 adds a header naming an algorithm, where one signature form, a context then NUL-separated fields, serves enrolment, the connection and a terminal's share. Option 4 needs a client certificate authority at the cloud's edge.
 - **Ed25519.** It has one encoding and no curve parameters, and WebCrypto verifies it in the Worker and in the browser.
 - **`systemd-creds`, read by the runner.** The credential is bound to the host and the user, and to the host's TPM where it has one. Decrypting it through the tool's own command line at each connection lets a partition enrolled while the runner runs be dialed with no restart. It also needs no service unit to name each partition's credential. Option 2 is F10's, and would tie every enrolment to the unit the install writes. Option 3 has no store on a headless host.
 - **Each partition names its repositories.** `[[control_plane.hosted.partitions]]` holds a `label` and `repositories`. The hello of each partition names only its own, and a want for another partition's repository is not given to the runner. What the host keeps is still the configuration's top-level `repositories` (core.5). Option 2 is ruled out by core.26.
+- **A copy that fails goes up `null`.** Each place's status, sluice entry and host part is cut by walking version 1's own schema, and checked against it before it goes. One that fails goes up `null`, or `missing` for the host part, with one line naming the launch and the schema's path, never a value (core.11). So a value Flume adds to one of its sets costs one launch's copy, not the report that renews every lease. Option 2 would show an old state as the present one, and option 3 would let every lease lapse.
 - **Each partition's ids are its own.** Every id a partition's control plane gives reaches the runner as `<label>/<id>`, so two control planes' ids never meet in the runner's report.
 
 ### Consequences
