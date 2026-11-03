@@ -33,4 +33,4 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 4. The change's checks
 
-- [ ] 4.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run flywheel-hosted:format flywheel-hosted:lint flywheel-hosted:typecheck flywheel-hosted:test flywheel:test root:format root:adrs root:specs root:changes` passes.
+- [x] 4.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run flywheel-hosted:format flywheel-hosted:lint flywheel-hosted:typecheck flywheel-hosted:test flywheel:test root:format root:adrs root:specs root:changes` passes.
