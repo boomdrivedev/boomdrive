@@ -1,7 +1,7 @@
 //! Each kept repository's clone, made whole or not at all in the
 //! runner's data directory, fetched over https, its HEAD on origin's
-//! default branch and its own default branch levelled (the clones spec;
-//! design 3 to 6).
+//! default branch and no branch of its own moved (the clones spec;
+//! design 3 to 6; core.14).
 
 mod common;
 
@@ -333,16 +333,7 @@ fn origin_gains_a_commit() {
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(
-        lines,
-        [
-            format!(
-                "agentplot/flume: main moved to origin/main at {}",
-                &commit[..7]
-            ),
-            view_moved("agentplot/flume", "main", &commit),
-        ]
-    );
+    assert_eq!(lines, [view_moved("agentplot/flume", "main", &commit)]);
     assert_eq!(
         scratch.git(
             &scratch.clone_of("agentplot/flume"),
@@ -392,20 +383,14 @@ fn one_fetch_fails() {
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Failed);
-    assert_eq!(lines.len(), 3, "{lines:?}");
+    assert_eq!(lines.len(), 2, "{lines:?}");
     assert!(
         lines[0].starts_with("agentplot/flume: not fetched: "),
         "{lines:?}"
     );
     assert_eq!(
         lines[1..],
-        [
-            format!(
-                "agentplot/sluice: main moved to origin/main at {}",
-                &commit[..7]
-            ),
-            view_moved("agentplot/sluice", "main", &commit),
-        ]
+        [view_moved("agentplot/sluice", "main", &commit)]
     );
     assert_eq!(
         scratch.git(
@@ -422,71 +407,63 @@ fn behind_origin() {
     let origin = scratch.origin("agentplot/flume");
     let config = keeping(&["agentplot/flume"]);
     scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    let before = scratch.git(&bare, &["rev-parse", "main"]);
     origin.commit("main", "README", "two\n");
     let second = origin.commit("main", "README", "three\n");
 
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(
-        lines,
-        [
-            format!(
-                "agentplot/flume: main moved to origin/main at {}",
-                &second[..7]
-            ),
-            view_moved("agentplot/flume", "main", &second),
-        ]
-    );
-    let bare = scratch.clone_of("agentplot/flume");
-    assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), second);
+    assert_eq!(lines, [view_moved("agentplot/flume", "main", &second)]);
+    assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), before);
     assert_eq!(
         scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main"]),
         second
     );
 }
 
+/// The clone's `main` guarded as sluice guards a branch it keeps, and
+/// behind origin's: the runner tries no write to it, so nothing is
+/// refused, and the view still follows origin.
 #[test]
-fn held_by_a_worktree() {
+fn sluice_keeps_the_default_branch() {
     let scratch = Scratch::new();
     let origin = scratch.origin("agentplot/flume");
     let config = keeping(&["agentplot/flume"]);
     scratch.pass(&config);
     let bare = scratch.clone_of("agentplot/flume");
-    let held = scratch.root.join("held");
-    scratch.git(
-        &bare,
-        &[
-            "worktree",
-            "add",
-            "--quiet",
-            &held.to_string_lossy(),
-            "main",
-        ],
-    );
+    let refused = scratch.guard(&bare, "main", false);
     let before = scratch.git(&bare, &["rev-parse", "main"]);
     let commit = origin.commit("main", "README", "two\n");
 
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [view_moved("agentplot/flume", "main", &commit)]);
     assert_eq!(
-        lines,
-        [
-            format!(
-                "agentplot/flume: main left: checked out in the worktree {}",
-                held.display()
-            ),
-            view_moved("agentplot/flume", "main", &commit),
-        ]
+        std::fs::read_to_string(&refused).expect("the guard's file"),
+        "",
+        "the runner wrote to the guarded branch"
     );
     assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), before);
+    assert!(
+        !scratch.holds(&bare, &["update-ref", "refs/heads/main", &commit]),
+        "the guard lets a move through"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&refused)
+            .expect("the guard's file")
+            .lines()
+            .count(),
+        1
+    );
 }
 
 #[test]
 fn ahead_of_origin() {
     let scratch = Scratch::new();
-    scratch.origin("agentplot/flume");
+    let origin = scratch.origin("agentplot/flume");
     let config = keeping(&["agentplot/flume"]);
     scratch.pass(&config);
     let bare = scratch.clone_of("agentplot/flume");
@@ -495,14 +472,12 @@ fn ahead_of_origin() {
         &["commit-tree", "-p", "main", "-m", "ahead", "main^{tree}"],
     );
     scratch.git(&bare, &["update-ref", "refs/heads/main", &ahead]);
+    let commit = origin.commit("main", "README", "two\n");
 
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(
-        lines,
-        ["agentplot/flume: main left: 1 commit ahead of origin/main"]
-    );
+    assert_eq!(lines, [view_moved("agentplot/flume", "main", &commit)]);
     assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), ahead);
 }
 
@@ -531,4 +506,48 @@ fn origin_renames_its_default_branch() {
         "refs/heads/trunk"
     );
     assert_eq!(scratch.git(&bare, &["rev-parse", "trunk"]), trunk);
+}
+
+/// origin's new default branch cannot be made in the clone, a hook
+/// refusing it: HEAD is named as not settled and fails the pass, and the
+/// view is still kept at origin's tip, as is the next repository.
+#[test]
+fn a_head_that_cannot_be_settled() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    let sluice = scratch.origin("agentplot/sluice");
+    let config = keeping(&["agentplot/flume", "agentplot/sluice"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    let refused = scratch.guard(&bare, "trunk", true);
+    let trunk = origin.commit("trunk", "trunk", "one\n");
+    origin.point_head("trunk");
+    let landed = sluice.commit("main", "README", "two\n");
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Failed);
+    assert_eq!(lines.len(), 3, "{lines:?}");
+    assert!(
+        lines[0].starts_with("agentplot/flume: HEAD not settled on trunk: "),
+        "{lines:?}"
+    );
+    assert_eq!(
+        lines[1..],
+        [
+            view_moved("agentplot/flume", "trunk", &trunk),
+            view_moved("agentplot/sluice", "main", &landed),
+        ]
+    );
+    assert!(!scratch.holds(
+        &bare,
+        &["rev-parse", "--verify", "--quiet", "refs/heads/trunk"]
+    ));
+    assert_eq!(
+        std::fs::read_to_string(&refused)
+            .expect("the guard's file")
+            .lines()
+            .count(),
+        1
+    );
 }

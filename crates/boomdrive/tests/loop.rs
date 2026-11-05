@@ -110,13 +110,14 @@ fn cloned(scratch: &Scratch, address: &str, commit: &str) -> [String; 2] {
     ]
 }
 
-/// The lines said when origin's `main` of `address` moved to `commit`,
-/// the clone's own and the view following.
-fn moved(address: &str, commit: &str) -> [String; 2] {
-    [
-        format!("{address}: main moved to origin/main at {}", &commit[..7]),
-        format!("{address}: view moved to origin/main at {}", &commit[..7]),
-    ]
+/// The lines said when origin's `main` of `address` moved to `commit`:
+/// the view following, and nothing of the clone's own `main`, which the
+/// runner never moves (core.14).
+fn moved(address: &str, commit: &str) -> [String; 1] {
+    [format!(
+        "{address}: view moved to origin/main at {}",
+        &commit[..7]
+    )]
 }
 
 /// The commit origin's `main` stood at when `address`'s clone was last
@@ -145,7 +146,7 @@ fn told_between_passes() {
     running.notices.landed(address("agentplot/flume"));
 
     let lines = moved("agentplot/flume", &landed);
-    assert_eq!(running.until(&lines[1]), lines);
+    assert_eq!(running.until(&lines[0]), lines);
     assert_eq!(running.stop(), ["boomdrive: stopped"]);
     assert_eq!(
         scratch.git(
@@ -191,8 +192,8 @@ fn a_failure_does_not_stop_it() {
     std::fs::rename(&flume.bare, &away).expect("the forge's flume taken away");
     let kept = sluice.commit("main", "later", "kept while flume fails\n");
     let lines = moved("agentplot/sluice", &kept);
-    let said = running.until(&lines[1]);
-    let (failed, rest) = said.split_at(said.len() - 2);
+    let said = running.until(&lines[0]);
+    let (failed, rest) = said.split_at(said.len() - 1);
     assert_eq!(rest, lines);
     assert!(!failed.is_empty(), "{said:#?}");
     for line in failed {
@@ -205,8 +206,8 @@ fn a_failure_does_not_stop_it() {
     std::fs::rename(&away, &flume.bare).expect("the forge's flume back");
     let again = flume.commit("main", "again", "fetched again\n");
     let lines = moved("agentplot/flume", &again);
-    let said = running.until(&lines[1]);
-    let (failed, rest) = said.split_at(said.len() - 2);
+    let said = running.until(&lines[0]);
+    let (failed, rest) = said.split_at(said.len() - 1);
     assert_eq!(rest, lines);
     for line in failed {
         assert!(
@@ -298,8 +299,8 @@ fn a_file_broken_while_running() {
 
     rewrite(&scratch, &every("1s", &["agentplot/flume"]));
     let lines = moved("agentplot/flume", &later);
-    let said = running.until(&lines[1]);
-    let (passed, rest) = said.split_at(said.len() - 2);
+    let said = running.until(&lines[0]);
+    let (passed, rest) = said.split_at(said.len() - 1);
     assert_eq!(rest, lines);
     assert!(passed.iter().all(|line| *line == broken), "{said:#?}");
     assert_eq!(

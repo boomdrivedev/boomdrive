@@ -260,10 +260,8 @@ fn a_view_moved() {
         stderr(&output),
         format!(
             "{}\n\
-             agentplot/flume: main moved to origin/main at {}\n\
              agentplot/flume: view moved to origin/main at {}\n",
             started(&scratch, "1 repository", &file),
-            &later[..7],
             &later[..7],
         )
     );

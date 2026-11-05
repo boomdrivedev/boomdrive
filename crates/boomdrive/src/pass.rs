@@ -1,6 +1,6 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
-//! settled, its own default branch levelled and its view kept, then each
+//! settled and its view kept, then each
 //! dropped repository let go, then, where the configuration asks, each
 //! owner's VS Code workspace kept (core.43). Where it asks, a removed
 //! view's owner folder that then holds only a workspace no kept owner has
@@ -10,10 +10,10 @@
 //! each act and each thing it names as one line, `<owner>/<name>:
 //! <words>`, and a pass with nothing to say writes nothing.
 
-use crate::clone::{self, LevelAct};
+use crate::clone;
 use crate::code_workspace::{self, Act, Wanted};
 use crate::config::{self, Address, Config};
-use crate::git::{Git, Words};
+use crate::git::Git;
 use crate::lacks;
 use crate::view::{self, OldAct, ViewAct};
 use std::fs;
@@ -330,8 +330,7 @@ fn take_workspace(
 
 /// Keeps `address`: makes its clone where it has none (design 4), else
 /// fetches the one `found` (design 5), then settles its HEAD on origin's
-/// default branch and levels its own (design 6), then keeps its view at
-/// `view` (design 7). A view the runner put where the repository root no
+/// default branch (design 6), then keeps its view at `view` (design 7). A view the runner put where the repository root no
 /// longer gives is let go of first, its owner's workspace with it where
 /// none of `workspaces` is that one (design Decision 7). Each line of the
 /// repository's says its address.
@@ -374,56 +373,52 @@ fn keep(
         }
     };
     let bare = clone::bare(&container);
-    let settled = settle(git, &bare, &mut |words| say(format!("{address}: {words}")));
-    let default = match settled {
+    let default = match clone::default_of(git, &bare) {
         Ok(Some(default)) => default,
-        Ok(None) => return Outcome::Kept,
+        Ok(None) => {
+            say(format!(
+                "{address}: origin names no default branch, so it has no view"
+            ));
+            return Outcome::Kept;
+        }
         Err(words) => {
-            say(format!("{address}: default branch not kept: {words}"));
+            say(format!("{address}: default branch not read: {words}"));
             return Outcome::Failed;
         }
     };
+    let settled = settle(git, &bare, &default, &mut |words| {
+        say(format!("{address}: {words}"))
+    });
     match let_go_of_old_view(git, address, &bare, view, workspaces, say) {
-        ControlFlow::Break(outcome) => outcome,
+        ControlFlow::Break(outcome) => settled.and(outcome),
         ControlFlow::Continue(outcome) => {
-            outcome.and(keep_view(git, &bare, view, &default, &mut |words| {
-                say(format!("{address}: {words}"))
-            }))
+            settled
+                .and(outcome)
+                .and(keep_view(git, &bare, view, &default, &mut |words| {
+                    say(format!("{address}: {words}"))
+                }))
         }
     }
 }
 
-/// Settles the clone's HEAD on origin's default branch and levels the
-/// clone's own (design 6). Gives the default, none where origin names
-/// none.
-fn settle(git: &Git, bare: &Path, say: &mut dyn FnMut(String)) -> Result<Option<String>, Words> {
-    let Some(default) = clone::default_of(git, bare)? else {
-        say("origin names no default branch, so it has no view".to_string());
-        return Ok(None);
-    };
-    if clone::settle_head(git, bare, &default)? {
-        say(format!("HEAD names {default}, origin's default branch"));
-    }
-    let facts = clone::level_facts(git, bare, &default)?;
-    match clone::level(&facts) {
-        LevelAct::Level => {}
-        LevelAct::Move => {
-            clone::level_to(git, bare, &default, &facts)?;
-            say(format!(
-                "{default} moved to origin/{default} at {}",
-                short(&facts.origin)
-            ));
+/// Settles the clone's HEAD on `default`, origin's default branch, making
+/// that branch where the clone lacks it (design 6). No branch the clone
+/// has is moved: each is read at origin's tracking ref, and a branch
+/// sluice keeps is its copy (core.14). A HEAD that cannot be settled is
+/// named and fails the pass, and the view is still kept, since it reads
+/// only `origin/<default>`.
+fn settle(git: &Git, bare: &Path, default: &str, say: &mut dyn FnMut(String)) -> Outcome {
+    match clone::settle_head(git, bare, default) {
+        Ok(true) => {
+            say(format!("HEAD names {default}, origin's default branch"));
+            Outcome::Kept
         }
-        LevelAct::Ahead(ahead) => say(format!(
-            "{default} left: {} ahead of origin/{default}",
-            commits(ahead)
-        )),
-        LevelAct::Held(worktree) => say(format!(
-            "{default} left: checked out in the worktree {}",
-            worktree.display()
-        )),
+        Ok(false) => Outcome::Kept,
+        Err(words) => {
+            say(format!("HEAD not settled on {default}: {words}"));
+            Outcome::Failed
+        }
     }
-    Ok(Some(default))
 }
 
 /// Keeps the view at `path` of the clone `bare`, whose origin's default
@@ -554,14 +549,6 @@ fn let_go_of_old_view(
 /// A commit as a line gives it, at seven characters.
 fn short(commit: &str) -> &str {
     &commit[..commit.len().min(7)]
-}
-
-/// `n` commits, in words.
-fn commits(n: u32) -> String {
-    match n {
-        1 => "1 commit".to_string(),
-        n => format!("{n} commits"),
-    }
 }
 
 /// Removes each `.<name>.partial` folder an earlier run left in `data`,
