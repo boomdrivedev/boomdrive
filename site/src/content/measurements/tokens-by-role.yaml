@@ -12,7 +12,7 @@ definition: >
   transcript. Its tokens are counted by kind (input, output, cache written,
   cache read) and priced in list-price dollars. Both are split by role
   (conductor, team ops, unit agent, design, planner, dispatcher, operator) and
-  by model, per flywheel and in total. Dollars come from a dated rate table
+  by model, per drive and in total. Dollars come from a dated rate table
   the site keeps, at the rates in force on the point's date; a price change
   dates the table, never the definition.
 principle: measure-the-fleet

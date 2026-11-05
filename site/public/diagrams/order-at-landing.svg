@@ -1,5 +1,5 @@
 <!-- sluice's merge-queue diagram, from agentplot/sluice docs/diagrams/sluice.svg,
-     in sluice's own diagram colours with Flywheel's brass; the drawing and its timing are the original's. -->
+     in sluice's own diagram colours with Boomdrive's brass; the drawing and its timing are the original's. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 446" width="900" height="446" role="img" aria-labelledby="ttl dsc">
 <title id="ttl">sluice: a merge queue for agents in worktrees</title>
 <desc id="dsc">Three agents, each in its own worktree, submit their work and never merge. sluice forms candidates line plus A, line plus A plus B, and line plus A plus B plus C, and tests them at once. Line plus A plus B fails, so B is the one culprit and only agent B is told. A lands as a merge commit; C is re-formed on the line without B, mostly replays from the cache, passes and lands. The line moves only to what passed.</desc>

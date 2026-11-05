@@ -1,12 +1,12 @@
-/* Flywheel on the family's look (@agentplot/site-theme): the page, the type,
-   the ink and paper are the family's base.css, and the accent is Flywheel's
-   brass, which the family bar sets from the family's list. What is Flywheel's
-   own sits on top: the manifesto's scale, and the flywheel figure's mint and
+/* Boomdrive on the family's look (@agentplot/site-theme): the page, the type,
+   the ink and paper are the family's base.css, and the accent is Boomdrive's
+   brass, which the family bar sets from the family's list. What is Boomdrive's
+   own sits on top: the manifesto's scale, and the drive figure's mint and
    rust beside the brass. */
 @import "@agentplot/site-theme/base.css";
 
 :root {
-  /* The flywheel figure's own colours: the operator's rim and what climbs
+  /* The drive figure's own colours: the operator's rim and what climbs
      back out in mint, the construction at the core in rust. */
   --mint: #8fb9ae;
   --rust: #b4552d;
@@ -23,7 +23,7 @@
 }
 /* In the light theme the mint deepens to read on paper, and the accent is
    its own text colour, as on the Starlight sites; the mark's wheel takes
-   Flywheel's brighter gold (--gold-bright, the dark theme's, which Base
+   Boomdrive's brighter gold (--gold-bright, the dark theme's, which Base
    reads from the family's list), so its hub still stands apart. Themes
    follow the tokens': a data-theme on <html>, or the reader's setting
    where none is. */

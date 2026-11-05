@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-flywheel-web is the content site for the Method: principles, field notes, the
+boomdrive-web is the content site for the Method: principles, field notes, the
 fleet's measurements and the tools. `docs/` holds its design and plans; read
 `docs/site-design.md` first.
 
@@ -34,5 +34,6 @@ the task and the brief's path. It is not written up as an OpenSpec change.
   `devenv shell -- moon run ':#check-fast'`; nothing is pushed to them by
   hand.
 - Every internal link goes through `url()` in `src/lib/url.ts`, never a bare
-  root path: the site is served under `/flywheel-web/`.
-- Bare layout: `flywheel-web.git/` beside `main/`.
+  root path: the site is served under `/boomdrive-web/`, its repository's
+  name, agentplot/boomdrive-web (`docs/adr/0002-flywheel-is-renamed-boomdrive.md`).
+- Bare layout: `boomdrive-web.git/` beside `main/`.

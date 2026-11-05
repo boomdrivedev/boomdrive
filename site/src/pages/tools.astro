@@ -5,7 +5,7 @@ import { family, type MemberId, type Place, type Status } from "@agentplot/site-
 import Family from "@agentplot/site-theme/Family.astro";
 import Base from "../layouts/Base.astro";
 
-// The Flywheel family's hub, where every family site's footer links: the
+// The Boomdrive family's hub, where every family site's footer links: the
 // loop drawn, a card per member of the family's one list
 // (@agentplot/site-theme), then how the tools stand alone and how the Method
 // joins them. The words are src/content/pages/tools.md: its opening is the
@@ -37,7 +37,7 @@ const places: { id: Place; label: string }[] = [
 ];
 const placeOf = (p: Place) => places.find((x) => x.id === p)?.label ?? p;
 
-// The principle of the Method each tool carries; Flywheel carries all of
+// The principle of the Method each tool carries; Boomdrive carries all of
 // them. A principle that is gone, or whose strip does not name the tool,
 // fails the build.
 const serves: Partial<Record<MemberId, string>> = {
@@ -50,8 +50,10 @@ const serves: Partial<Record<MemberId, string>> = {
   // by the collectors that measure the fleet.
   sounding: "measure-the-fleet",
   sluice: "order-at-landing",
-  // The principle tailrace's own line states, build once and promote with
-  // proof, and whose strip it heads.
+  // The principle timber's own line states, build once and promote with
+  // proof, and whose strip it heads. The theme's tag names it tailrace, so
+  // the strip does too until the site takes the tag that renames it
+  // (docs/adr/0002-flywheel-is-renamed-boomdrive.md).
   tailrace: "never-prove-twice",
 };
 const principle = async (tool: string, id: string) => {
@@ -81,7 +83,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
 
 <Base title={page.data.title} description={page.data.description} wide family={false}>
   <header class="opening">
-    <p class="eyebrow">Tools · the Flywheel family</p>
+    <p class="eyebrow">Tools · the Boomdrive family</p>
     <h1>{counted} tools, <span>one loop.</span></h1>
     <div class="under">
       <div class="deck" set:html={lede} />

@@ -1,11 +1,11 @@
 import type { CollectionEntry } from "astro:content";
 
 // Reading a measurement's series by what they are split by: a total, and the
-// series beside it that name a role, a model, a kind, a flywheel or a stage.
+// series beside it that name a role, a model, a kind, a drive or a stage.
 
 type Series = CollectionEntry<"measurements">["data"]["series"][number];
 export type Group = { name: string; values: number[] };
-export const splits = ["role", "model", "kind", "flywheel", "stage"] as const;
+export const splits = ["role", "model", "kind", "drive", "stage"] as const;
 export type Split = (typeof splits)[number];
 export const isSplit = (s: Series) => splits.some((by) => s[by]);
 

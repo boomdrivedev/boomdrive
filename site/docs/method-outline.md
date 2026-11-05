@@ -79,7 +79,7 @@ remembered to write.
 
 - A capture is one source event with its provenance and a pointer to the raw
   material, which stays out of version control; capturing an event twice
-  yields one capture (Flywheel Next statement, clause 111).
+  yields one capture (flywheel-next's statement, clause 111).
 - Capture is one gesture, no more than a sentence (112). Adapters write
   captures unattended; reading a capture into signals is a session's
   judgment and never runs unattended (115, 215).
@@ -90,7 +90,7 @@ remembered to write.
   wrote; an adapter that judges; a signal silently dropped.
 - **Today:** findings recorded by hand with Crew's signal command; the first
   corpus of captures written by hand from meeting transcripts.
-- **Target:** Flywheel Next's adapters (chat, meeting transcript, log or
+- **Target:** Boomdrive's adapters (chat, meeting transcript, log or
   monitor webhook, pull-request conversation, issue tracker, folder drop),
   writing captures from whichever host declares the source (217g).
 - **Measure:** captures per day by source; unmoved signals by age; time from
@@ -113,7 +113,7 @@ so the shared line moves only at a landing.
 - **Rules out:** long-lived feature branches; a 3,000-line agent pull request;
   work with no stated intent.
 - **Today:** Crew's bolts and units, as OpenSpec changes.
-- **Target:** Flywheel Next tracks intents from capture to landed.
+- **Target:** Boomdrive tracks intents from capture to landed.
 - **Measure:** unit size; unit cycle time; units per intent.
 - **Diagram:** drawn, `public/diagrams/intents-and-bolts.svg`.
 
@@ -129,7 +129,7 @@ test and landing.
 - **Rules out:** designing and building in one conversation; an agent
   approving its own work; approvals scattered through a session.
 - **Today:** the operator approves each unit in Crew.
-- **Target:** Flywheel's rail, with numbered decisions answerable from
+- **Target:** Boomdrive's rail, with numbered decisions answerable from
   anywhere. The word sits at the proposal and at a channel's promotion;
   closing a bolt submits it to the shared line, landing is automatic on
   green, and a fix after a failed landing needs no new word (sluice
@@ -253,19 +253,19 @@ Each principle's place on the Method shows "In the tools", the tools that do
 what it says, from the `tools` of its record; this table holds the same names
 and addresses, with the clauses behind each, which the site does not show. A
 link lands on the section of the tool's product page that does it, or of its
-design book where the page has none. Crew and Flywheel Next have neither in
+design book where the page has none. Crew and Boomdrive have neither in
 public, so they are named without a link. Each address was checked live on
-2026-10-25.
+2026-10-25, and timber's again on 2026-11-04.
 
 | Principle | Tools | Link | What it lands on | Clauses behind it |
 |---|---|---|---|---|
 | One shell | sluice | <https://agentplot.github.io/sluice/reference/commands/#sluice-exec> | `sluice exec`: a check runs in the place's own shell, the one the repository declares | — |
 | One agent, one worktree | sluice<br>flume | <https://agentplot.github.io/sluice/decisions/0016/><br><https://agentplot.github.io/flume/> | sluice gives a place its ports on the host and releases what its checks hand off<br>one agent launched in one worktree | sluice 1, 2, 30, 31, I5; record 0016<br>— |
-| Capture at the source | millpond<br>headwater<br>eddy | <https://agentplot.github.io/millpond/><br><https://agentplot.github.io/headwater/><br><https://agentplot.github.io/eddy/> | the inbox records each event once<br>an adapter that writes captures once<br>an adapter that writes captures once | Flywheel Next 111, 112, 115, 116, 118, 215, 217g |
-| Intents and bolts | Crew<br>Flywheel Next | no link<br>no link | bolts and units<br>a bolt lands on the shared line as one | — |
-| Two loops, one gate | tailrace<br>sluice | <https://agentplot.github.io/tailrace/how-it-works/#channels-moved-only-by-proof><br><https://agentplot.github.io/sluice/#why> | the word is a promotion<br>landing is automatic on green | tailrace 97, C.16<br>sluice 4 |
+| Capture at the source | millpond<br>headwater<br>eddy | <https://agentplot.github.io/millpond/><br><https://agentplot.github.io/headwater/><br><https://agentplot.github.io/eddy/> | the inbox records each event once<br>an adapter that writes captures once<br>an adapter that writes captures once | flywheel-next 111, 112, 115, 116, 118, 215, 217g |
+| Intents and bolts | Crew<br>Boomdrive | no link<br>no link | bolts and units<br>a bolt lands on the shared line as one | — |
+| Two loops, one gate | timber<br>sluice | <https://agentplot.github.io/timber/how-it-works/#channels-moved-only-by-proof><br><https://agentplot.github.io/sluice/#why> | the word is a promotion<br>landing is automatic on green | timber 97, C.16<br>sluice 4 |
 | Order at landing, never at start | sluice | <https://agentplot.github.io/sluice/#why> | submit, combine, blame one, land | sluice 3, 6, 7, 8, 10 to 12, 17, 18, 20 |
-| Never prove twice | tailrace<br>sluice | <https://agentplot.github.io/tailrace/#one-store-three-jobs><br><https://agentplot.github.io/sluice/reference/state/#the-log> | the build cache in the one store<br>every run logged, a failure exactly like a pass | tailrace 52 to 55, 100, C.11<br>sluice 15, 16, 19, 104, 108; core.7 |
+| Never prove twice | timber<br>sluice | <https://agentplot.github.io/timber/#one-store-three-jobs><br><https://agentplot.github.io/sluice/reference/state/#the-log> | the build cache in the one store<br>every run logged, a failure exactly like a pass | timber 52 to 55, 100, C.11<br>sluice 15, 16, 19, 104, 108; core.7 |
 | Secrets by declaration | sluice | <https://agentplot.github.io/sluice/reference/configuration/#executor-what-the-tests-may-touch> | a run gets the host's shared caches and nothing else outside its place | sluice 35 |
 | Measure the fleet | Crew<br>sounding | no link<br><https://agentplot.github.io/sounding/> | the records the collectors read<br>the records the collectors read | — |
 
@@ -294,6 +294,16 @@ the site's change entries take (principle, kind, summary, what prompted it).
   the principles' text drops the statements' clause numbers, which this
   outline keeps. Prompted by the operator on 2026-10-26: "cross-reference
   these sections to the tools pages as they're being worked on".
+
+- **2026-11-04 · the Method · revised.** Names only; no claim or idea
+  changes. Flywheel and Flywheel Next are Boomdrive, tailrace is timber,
+  and the glossary's flywheel, one loop we operate, is a drive, in the
+  principles' words, their tool strips and their diagrams; Never prove
+  twice's strip names timber once the site takes the theme's tag that
+  renames it. Prompted by the
+  operator's rename (`adr/0002-flywheel-is-renamed-boomdrive.md`): "the
+  ecosystem, the org, the branding, the cloud and the opensource runner
+  tool are all boomdrive".
 
 ## Candidates for later versions
 

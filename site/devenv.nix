@@ -112,7 +112,7 @@ in
       devenv up -d site || exit 1
       for _ in $(seq 120); do
         if (exec 3<>"/dev/tcp/127.0.0.1/$SLUICE_PORT_WEB") 2>/dev/null; then
-          echo "http://127.0.0.1:$SLUICE_PORT_WEB/flywheel-web/"
+          echo "http://127.0.0.1:$SLUICE_PORT_WEB/boomdrive-web/"
           exit 0
         fi
         sleep 0.5
@@ -165,7 +165,7 @@ in
   # enterShell activates them. A task, not part of enterShell: the script
   # `devenv print-dev-env` prints holds enterShell and none of the tasks, so
   # a check run sourcing it never installs.
-  tasks."flywheel-web:proto:install" = {
+  tasks."boomdrive-web:proto:install" = {
     exec = ''
       ${protoHome}
       ${proto}/bin/proto install --config-mode upwards

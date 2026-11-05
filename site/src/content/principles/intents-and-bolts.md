@@ -5,7 +5,7 @@ summary: "Work is an intent broken into bolts made of units, one reviewable chan
 line: "Work is an intent, landed in bolts of small units."
 tools:
   - name: Crew
-  - name: Flywheel Next
+  - name: Boomdrive
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-12
@@ -20,4 +20,4 @@ Crew's bolts and units, as OpenSpec changes.
 
 ## Where it's going
 
-Flywheel Next tracks intents from capture to landed.
+Boomdrive tracks intents from capture to landed.

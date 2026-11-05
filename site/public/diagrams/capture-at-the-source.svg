@@ -1,4 +1,4 @@
-<!-- Capture at the source: drawn for the Flywheel site's Method. Adapters write captures, unattended, into one inbox that keeps one capture per key; a reader session reads a capture into signals. -->
+<!-- Capture at the source: drawn for the Boomdrive site's Method. Adapters write captures, unattended, into one inbox that keeps one capture per key; a reader session reads a capture into signals. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 476" width="900" height="476" role="img" aria-labelledby="ttl dsc">
 <title id="ttl">Capture at the source: work begins as captures, taken unattended where things happen</title>
 <desc id="dsc">Each of four sources, a meeting, a chat, a log and a pull request, has an adapter beside it. Events pulse at the sources, and each adapter writes them, unattended, as captures that flow into one inbox. The log's alert is sent twice; both copies carry the same key, and the inbox keeps one capture. A reader session reads the meeting's capture into signals: an ask, a constraint and a question. Below, a hand-written ticket form, which the principle rules out, is struck through.</desc>

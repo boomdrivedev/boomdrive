@@ -8,7 +8,7 @@ from a real agent fleet, and turning every open-source release into a launch.
 Subscribers are the number that matters; everything else feeds them. These
 are targets to beat, not forecasts.
 
-| By | Subscribers | GitHub stars (all tools) | Fleet-setup enquiries | Flywheel early-access requests |
+| By | Subscribers | GitHub stars (all tools) | Fleet-setup enquiries | Boomdrive early-access requests |
 |---|---|---|---|---|
 | Month 3 (Jan 2027) | 1,500 | 500 | 3 | 100 |
 | Month 6 (Apr 2027) | 5,000 | 2,000 | 10 | 500 |
@@ -67,7 +67,7 @@ in week 5 with four notes banked.
 | 5–6 (Nov 9) | Note 1 (the statement), note 2 (what our fleet re-proves) | The shell template | Show HN and Lobsters for the template; personal emails to the 30 |
 | 7–8 (Nov 23) | Notes 3 and 4 | Secrets by declaration: secretspec with a password manager, as a worked example | First clip series |
 | 9–10 (Dec 7) | Notes 5 and 6 | The shared moon cache across our worktrees and CI | First guest-post pitch with the re-proof numbers, before and after |
-| 11–13 (Dec 21) | Notes 7 to 9; the month-3 review | Fleet view, local preview | Herdr community post; Flywheel early-access list opened |
+| 11–13 (Dec 21) | Notes 7 to 9; the month-3 review | Fleet view, local preview | Herdr community post; Boomdrive early-access list opened |
 
 ## Measures and decision points
 

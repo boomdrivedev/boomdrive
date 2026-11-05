@@ -8,9 +8,9 @@ summary: >
 dimension: flow
 definitionVersion: 1
 definition: >
-  Each day, from each flywheel's run record: the units merged into their
+  Each day, from each drive's run record: the units merged into their
   bolt (work finished) and the bolts landed on main (work delivered). Both
-  are counted, not sampled, per flywheel and in total.
+  are counted, not sampled, per drive and in total.
 principle: intents-and-bolts
 source: "Crew's run record (`crew events`)"
 collector: collectors/landed
@@ -58,7 +58,7 @@ series:
   - name: units merged, madswan
     unit: units
     statistic: count
-    flywheel: madswan
+    drive: madswan
     points:
       - { date: 2026-09-12, value: 0, sample: true }
       - { date: 2026-09-13, value: 3, sample: true }
@@ -91,7 +91,7 @@ series:
   - name: units merged, swancloud
     unit: units
     statistic: count
-    flywheel: swancloud
+    drive: swancloud
     points:
       - { date: 2026-09-12, value: 3, sample: true }
       - { date: 2026-09-13, value: 0, sample: true }
@@ -156,7 +156,7 @@ series:
   - name: bolts landed, madswan
     unit: bolts
     statistic: count
-    flywheel: madswan
+    drive: madswan
     points:
       - { date: 2026-09-12, value: 0, sample: true }
       - { date: 2026-09-13, value: 1, sample: true }
@@ -189,7 +189,7 @@ series:
   - name: bolts landed, swancloud
     unit: bolts
     statistic: count
-    flywheel: swancloud
+    drive: swancloud
     points:
       - { date: 2026-09-12, value: 0, sample: true }
       - { date: 2026-09-13, value: 0, sample: true }

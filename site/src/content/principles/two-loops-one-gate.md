@@ -4,8 +4,8 @@ title: "Two loops, one gate"
 summary: "Design and construction are separate loops, coupled where a human decides, and agents never approve agents; the operator's word comes before the work is tested, never between test and landing."
 line: "Design and construction are separate loops, and a person decides where they meet."
 tools:
-  - name: tailrace
-    href: https://agentplot.github.io/tailrace/how-it-works/#channels-moved-only-by-proof
+  - name: timber
+    href: https://agentplot.github.io/timber/how-it-works/#channels-moved-only-by-proof
   - name: sluice
     href: https://agentplot.github.io/sluice/#why
 status: draft
@@ -13,7 +13,7 @@ introducedIn: "0.1"
 lastReviewed: 2026-10-08
 diagram:
   src: /diagrams/two-loops-one-gate.svg
-  alt: "Two rings turn side by side. The design loop carries captures, signals and intents round to a proposal, and the construction loop carries units, merges and bolts round to a landing. The rings touch at the proposal, where the operator's word is given before construction starts. Between the test and the landing, a stop sign is crossed out: sluice lands the bolt on green, with no word. The landing puts a new version on tailrace's beta channel. A second mark lights at the channel's promotion, where the operator's word moves stable to that version."
+  alt: "Two rings turn side by side. The design loop carries captures, signals and intents round to a proposal, and the construction loop carries units, merges and bolts round to a landing. The rings touch at the proposal, where the operator's word is given before construction starts. Between the test and the landing, a stop sign is crossed out: sluice lands the bolt on green, with no word. The landing puts a new version on timber's beta channel. A second mark lights at the channel's promotion, where the operator's word moves stable to that version."
 ---
 
 ## How we do it today
@@ -22,6 +22,6 @@ The operator approves each unit in Crew.
 
 ## Where it's going
 
-Flywheel's rail, with numbered decisions answerable from anywhere.
+Boomdrive's rail, with numbered decisions answerable from anywhere.
 
 The operator's word sits in two places: at the proposal, before construction starts, and at a channel's promotion, before a release reaches anyone. Closing a bolt is its submission to the shared line. Landing on main is automatic once the candidate is green, and a fix after a failed landing resubmits with no new word. There is never a word between a test and its landing.

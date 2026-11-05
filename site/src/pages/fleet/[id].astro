@@ -36,8 +36,8 @@ const sampled = dates.map((_, i) => r.series.some((s) => s.points[i]?.sample));
 const days = r.chart === "utilization" && points.length ? toDays(m.id, r.series) : [];
 const runByRole = r.chart === "utilization" ? split(r.series, "agents running", "role") : [];
 const busyByRole = r.chart === "utilization" ? split(r.series, "agents busy", "role") : [];
-const runByFlywheel = r.chart === "utilization" ? split(r.series, "agents running", "flywheel") : [];
-const busyByFlywheel = r.chart === "utilization" ? split(r.series, "agents busy", "flywheel") : [];
+const runByDrive = r.chart === "utilization" ? split(r.series, "agents running", "drive") : [];
+const busyByDrive = r.chart === "utilization" ? split(r.series, "agents busy", "drive") : [];
 
 // Tokens by role: the totals, and the spend and the tokens split.
 const tok =
@@ -54,7 +54,7 @@ const tok =
     : null;
 const cacheRead = tok?.byKind.find((g) => g.name === "cache read")?.values ?? [];
 
-// Work in flight: units by stage and by flywheel, bolts by flywheel.
+// Work in flight: units by stage and by drive, bolts by drive.
 const flight =
   r.chart === "flight" && points.length
     ? {
@@ -62,19 +62,19 @@ const flight =
         bolts: total(r.series, "bolts open").points.map((p) => p.value),
         repos: total(r.series, "repositories with work").points.map((p) => p.value),
         byStage: split(r.series, "units in flight", "stage"),
-        unitsByFlywheel: split(r.series, "units in flight", "flywheel"),
-        boltsByFlywheel: split(r.series, "bolts open", "flywheel"),
+        unitsByDrive: split(r.series, "units in flight", "drive"),
+        boltsByDrive: split(r.series, "bolts open", "drive"),
       }
     : null;
 
-// Landed: units merged and bolts landed, each by flywheel.
+// Landed: units merged and bolts landed, each by drive.
 const landed =
   r.chart === "landed" && points.length
     ? {
         units: total(r.series, "units merged").points.map((p) => p.value),
         bolts: total(r.series, "bolts landed").points.map((p) => p.value),
-        unitsByFlywheel: split(r.series, "units merged", "flywheel"),
-        boltsByFlywheel: split(r.series, "bolts landed", "flywheel"),
+        unitsByDrive: split(r.series, "units merged", "drive"),
+        boltsByDrive: split(r.series, "bolts landed", "drive"),
       }
     : null;
 const rates = r.chart === "tokens" ? (await getCollection("rates")).sort((a, b) => a.data.model.localeCompare(b.data.model)) : [];
@@ -182,14 +182,14 @@ const inline = (s: string) =>
                 <StackedBars label="Agents busy, by role" dates={dates} samples={sampled} groups={busyByRole} format="agents" legend="latest" />
               </>
             )}
-            {runByFlywheel.length > 0 && (
+            {runByDrive.length > 0 && (
               <>
-                <StackedBars label="Agents running, by flywheel" dates={dates} samples={sampled} groups={runByFlywheel} format="agents" legend="latest" />
-                <StackedBars label="Agents busy, by flywheel" dates={dates} samples={sampled} groups={busyByFlywheel} format="agents" legend="latest" />
+                <StackedBars label="Agents running, by drive" dates={dates} samples={sampled} groups={runByDrive} format="agents" legend="latest" />
+                <StackedBars label="Agents busy, by drive" dates={dates} samples={sampled} groups={busyByDrive} format="agents" legend="latest" />
               </>
             )}
-            {(runByRole.length > 0 || runByFlywheel.length > 0) && (
-              <p class="aside-note">Each role's and each flywheel's value is its own median of the day, so the parts need not add up to the total's median.</p>
+            {(runByRole.length > 0 || runByDrive.length > 0) && (
+              <p class="aside-note">Each role's and each drive's value is its own median of the day, so the parts need not add up to the total's median.</p>
             )}
             <details class="points">
               <summary>The points: median, and the peak where a count has one</summary>
@@ -390,9 +390,9 @@ const inline = (s: string) =>
         flight && (
           <>
             <StackedBars label="Units in flight each day, by stage" dates={dates} samples={sampled} groups={flight.byStage} format="count" legend="latest" />
-            <StackedBars label="Units in flight each day, by flywheel" dates={dates} samples={sampled} groups={flight.unitsByFlywheel} format="count" legend="latest" />
-            <StackedBars label="Bolts open each day, by flywheel" dates={dates} samples={sampled} groups={flight.boltsByFlywheel} format="count" legend="latest" />
-            <p class="aside-note">Each stage's and each flywheel's value is its own median of the day, so the parts need not add up to the total's median.</p>
+            <StackedBars label="Units in flight each day, by drive" dates={dates} samples={sampled} groups={flight.unitsByDrive} format="count" legend="latest" />
+            <StackedBars label="Bolts open each day, by drive" dates={dates} samples={sampled} groups={flight.boltsByDrive} format="count" legend="latest" />
+            <p class="aside-note">Each stage's and each drive's value is its own median of the day, so the parts need not add up to the total's median.</p>
             <details class="points">
               <summary>The points: each day's median</summary>
               <div class="scroll">
@@ -428,8 +428,8 @@ const inline = (s: string) =>
       {
         landed && (
           <>
-            <StackedBars label="Units merged each day, by flywheel" dates={dates} samples={sampled} groups={landed.unitsByFlywheel} format="count" legend="week" />
-            <StackedBars label="Bolts landed each day, by flywheel" dates={dates} samples={sampled} groups={landed.boltsByFlywheel} format="count" legend="week" />
+            <StackedBars label="Units merged each day, by drive" dates={dates} samples={sampled} groups={landed.unitsByDrive} format="count" legend="week" />
+            <StackedBars label="Bolts landed each day, by drive" dates={dates} samples={sampled} groups={landed.boltsByDrive} format="count" legend="week" />
             <details class="points">
               <summary>The points: each day's count</summary>
               <div class="scroll">

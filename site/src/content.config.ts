@@ -12,7 +12,7 @@ const principles = defineCollection({
     order: z.number().int().min(0),
     title: z.string(),
     summary: z.string(),
-    // The principle in one line, as Home lists it beside the flywheel.
+    // The principle in one line, as Home lists it beside the drive figure.
     line: z.string(),
     // The tools that do what the principle says, in the order its strip names
     // them. Each links the section of its product page that does it, or of its
@@ -117,7 +117,7 @@ const series = z.object({
   role: z.enum(roles).optional(),
   model: z.string().optional(),
   kind: z.enum(["input", "output", "cache written", "cache read"]).optional(),
-  flywheel: z.string().optional(),
+  drive: z.string().optional(),
   stage: z.enum(stages).optional(),
   // A host's own load is read per machine, never summed across machines.
   host: z.string().optional(),
@@ -155,7 +155,7 @@ const measurements = defineCollection({
         }
         // A summed or counted total is the sum of each of its splits on every
         // day; a median's split need not be.
-        const splitBy = ["role", "model", "kind", "flywheel", "stage"] as const;
+        const splitBy = ["role", "model", "kind", "drive", "stage"] as const;
         for (const t of all.filter((s) => (s.statistic === "sum" || s.statistic === "count") && !splitBy.some((b) => s[b]))) {
           for (const by of splitBy) {
             const parts = all.filter((s) => s[by] && s.name === `${t.name}, ${s[by]}`);
@@ -191,15 +191,15 @@ const rates = defineCollection({
   }),
 });
 
-// The fleet a measurement was taken in: the flywheels we operate, on which
+// The fleet a measurement was taken in: the drives we operate, on which
 // machines, over how many repositories, from a date until the next context.
-// Only our own appear; a flywheel, machine or repository that carries client
+// Only our own appear; a drive, machine or repository that carries client
 // work is neither named nor counted.
 const contexts = defineCollection({
   loader: file("./src/content/contexts/contexts.yaml"),
   schema: z.object({
     from: z.coerce.date(),
-    flywheels: z.array(z.object({ name: z.string(), machine: z.string() })).min(1),
+    drives: z.array(z.object({ name: z.string(), machine: z.string() })).min(1),
     repositories: z.number().int().positive(),
     source: z.string(),
   }),

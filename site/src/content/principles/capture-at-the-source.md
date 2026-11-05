@@ -33,4 +33,4 @@ Findings are recorded by hand with Crew's signal command, and the first corpus o
 
 ## Where it's going
 
-Flywheel Next's adapters, each running on whichever host declares its source, writing captures from any machine. A meeting ends and its decisions are already waiting as signals beside the intents they bear on.
+Boomdrive's adapters, each running on whichever host declares its source, writing captures from any machine. A meeting ends and its decisions are already waiting as signals beside the intents they bear on.

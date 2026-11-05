@@ -1,11 +1,12 @@
-# flywheel-web
+# boomdrive-web
 
 The site where we learn in public how to run a fleet of coding agents, from
 five agents to five hundred: a handbook with a lab notebook attached. The
 Method is kept current, field notes are dated and age honestly, and live fleet
 numbers show what is happening now.
 
-Working name; the brand and domain are not chosen.
+The site and the brand are Boomdrive
+(`docs/adr/0002-flywheel-is-renamed-boomdrive.md`); the domain is not chosen.
 
 ## What is here
 
@@ -31,5 +32,5 @@ site-check   # the gate: astro check, prose, then the build
 | `src/content.config.ts` | The page types and their schemas |
 | `src/content/` | Principles, notes, the glossary (`terms/`) and the stack (`components/`) |
 | `src/pages/` | Home, the Method, Notes, Uses, About |
-| `.vale.ini`, `styles/Flywheel/` | The house style |
+| `.vale.ini`, `styles/Boomdrive/` | The house style |
 | `scripts/vocab.ts` | The glossary into Vale's vocabulary |

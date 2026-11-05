@@ -1,4 +1,4 @@
-<!-- Intents and bolts: drawn for the Flywheel site's Method. Units merge into their bolt's line; the bolt lands on the shared line as one. -->
+<!-- Intents and bolts: drawn for the Boomdrive site's Method. Units merge into their bolt's line; the bolt lands on the shared line as one. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 476" width="900" height="476" role="img" aria-labelledby="ttl dsc">
 <title id="ttl">Intents and bolts: work is an intent, landed in bolts of small units</title>
 <desc id="dsc">An intent, one plain sentence of what someone wants, breaks into two bolts, each one delivery. Each bolt breaks into three units, one reviewable change each. As each unit finishes, it merges into its bolt's line, a short branch off the shared line, and the shared line does not move. Once all three units are in, the bolt lands on the shared line as one step; then the second bolt does the same. Below, a long-lived feature branch of 3,000 lines, which the principle rules out, keeps taking commits but never lands, and is struck through.</desc>

@@ -1,6 +1,6 @@
 # The site is Flywheel
 
-- Status: accepted
+- Status: superseded by [0002](0002-flywheel-is-renamed-boomdrive.md)
 - Date: 2026-10-09
 
 ## Context and problem statement
