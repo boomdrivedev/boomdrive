@@ -146,7 +146,7 @@ repositories = ["example/service", "example/app"]
 - **`url`** is the control plane's address. It is required. It is `https://`, or `http://` only to a loopback address, `127.0.0.1`, `[::1]` or `localhost`, which is how the tests reach their fake. It holds no user, query or fragment, and may hold a path, under which the protocol's two paths go (Decision 12).
 - **`partitions`** are each one enrolment (record 0006), at least one:
   - `label` is the host's own name for the partition. It names the partition's key in the store, prefixes its ids (Decision 8), and starts its lines. It is 1 to 32 lowercase letters, digits and `-`, starting with a letter, given once.
-  - `repositories` are the addresses, `owner/name`, that this partition is served: the ones its hello names and whose work it is given (Decision 8). It may be empty. Two partitions may name one repository, which the host keeps in its one clone (core.14).
+  - `repositories` are the addresses, `owner/name`, that this partition is served: the ones its hello names and whose work it is given (Decision 8). It is required, and may be empty. Two partitions may name one repository, which the host keeps in its one clone (core.14).
 - **Any other key is refused**, naming it, as crew's table refuses one. A `token`, `token_file` or `key` is refused as a key the hosted implementation does not read, with words saying the host's key is in its credential store and made by `flywheel enroll`. The value appears in no output (core.4).
 
 What the host keeps is still the configuration's top-level `repositories` (core.5). A partition's `repositories` says which of them the partition is served, and a repository it names that the host does not keep is never in its hello. An offer for such a repository reaches the runner, which refuses it as one this host does not keep (the archived Decision 7), as it would from crew.
@@ -167,7 +167,7 @@ It is kept only in the host's own credential store (core.32; F10):
 
 - **On macOS**, in the user's login keychain, through keyring v4's macOS store, as a generic password whose service is `flywheel` and whose account is `<label>@<the url's host>`. The runner's launchd agent runs in the user's session, so it reads the keychain.
 - **On Linux**, as a user-scoped encrypted systemd credential, which needs systemd 256 or later (record 0006).
-  - `flywheel enroll` encrypts the key with `systemd-creds encrypt --user --name=<name>`, reading it on standard input. It writes the credential to `$XDG_CONFIG_HOME/credstore.encrypted/<name>`, the user's encrypted credential store, which the user's service manager searches.
+  - `flywheel enroll` encrypts the key with `systemd-creds encrypt --user --name=<name>`, reading it on standard input, and `systemd-creds` writes the credential to `$XDG_CONFIG_HOME/credstore.encrypted/<name>` (`$HOME/.config` where `XDG_CONFIG_HOME` is unset), the user's encrypted credential store, which the user's service manager searches. The runner makes that directory, the user's alone, where it is missing.
   - The runner decrypts it with `systemd-creds decrypt --user --name=<name>` at each connection, reading the key from standard output into memory.
   - `<name>` is `flywheel.<label>.<the url's host>`.
   - The credential is bound to the host's own key, and to its TPM where it has one, and only this user on this host can decrypt it.
@@ -525,7 +525,7 @@ Until the install lands, a host is installed by hand: the runner built or fetche
 - **A report file lost while a partition is unreachable.** The pass that rebuilds the report from the pull takes back only the reachable partitions' parts. Launches are found again by their marks, but an act or a command of the unreachable partition, carried out since its last report, may be carried out again.
 - **Clock skew past five minutes** refuses every connection. The line carries the control plane's words, which say so.
 - **No end-to-end run of the binary over a live socket.** The binary's wiring is tested without a server, and the hosted implementation against its fake. They meet through the interface, which crew's implementation and the fake already hold to (core.2).
-- **New dependencies**: tokio, tokio-tungstenite, rustls, backon, ed25519-dalek, ureq, keyring, uuid and rpassword, and `jsonschema` at run time. Each is pinned by `Cargo.lock` (core.8). The gate's sandbox reaches only the loopback address, so they must be in cargo's cache before it runs.
+- **New dependencies**: tokio, tokio-tungstenite, rustls, backon, ed25519-dalek with getrandom and zeroize, ureq with rustls-platform-verifier, keyring-core and keyring v4's macOS store, url, uuid, base64, gethostname and rpassword, and `jsonschema` at run time. Each is pinned by `Cargo.lock` (core.8). The gate's sandbox reaches only the loopback address, so they must be in cargo's cache before it runs.
 
 ## Migration Plan
 
@@ -575,23 +575,23 @@ Examples: `from-runner/enrol.json`, `to-runner/enrolled.json`, `to-runner/enrol_
 
 **3.2** `key.rs`:
 
-- `trait Store { fn read(&self, partition) -> Result<Option<SigningKey>, String>; fn write(&self, partition, &SigningKey) -> Result<(), String>; }`;
-- `Keychain`, by keyring v4's macOS store, under `cfg(target_os = "macos")`;
-- `SystemdCreds`, running `systemd-creds` from `PATH` or a program given, under `cfg(target_os = "linux")`;
+- `trait Store { fn read(&self, name: &KeyName) -> Result<Option<SigningKey>, String>; fn write(&self, name: &KeyName, &SigningKey) -> Result<(), String>; }`, where `KeyName` is a label and the `url`'s host, which `Table::key_name` gives, and an `Arc` of a store is a store;
+- `Keychain`, over a keyring-core store: `Keychain::login()`, keyring v4's macOS store, under `cfg(target_os = "macos")`, and `Keychain::over(store)` on every platform;
+- `SystemdCreds::open(program, credstore_dir)`, refused below systemd 256 by the program's own `--version`, and `SystemdCreds::for_user()`, `systemd-creds` from `PATH` and the user's credential store;
 - `Memory`, for tests;
 - `store_for_host()`, giving the host's store or why there is none.
 
-`SystemdCreds` is built on every platform, since it only runs a program, so its tests run on any host over a stub. `store_for_host()` alone chooses by the platform, and `Keychain` is built only on macOS.
+`SystemdCreds` and `Keychain::over` are built on every platform, so their tests run on any host, over a stub and over keyring's mock. `store_for_host()` alone chooses by the platform, and `Keychain::login()` is built only on macOS.
 
 The key's bytes pass to `systemd-creds` on standard input and come back on standard output. They never go in an argument, and are never written to a file of the runner's. `SigningKey` is zeroized on drop (ed25519-dalek's `zeroize` feature). The name forms are Decision 3's.
 
-**3.3** `enrolment.rs`: `enrol(table, label, token, store, say) -> Result<Enrolled, Refusal>`, where `Refusal` holds the words and whether the host must be fixed, which gives the exit.
+**3.3** `enrolment.rs`: `enrol(table, label, token, store, machine) -> Result<Enrolled, Refusal>`, where `store` finds the host's store, and is called once the partition is found and before the token is checked, so a store refused makes no request; and `Refusal` holds the words and `host_to_fix`, whether the host must be fixed, which gives the exit. It says nothing beyond its answer, which the binary prints.
 
 - The `POST` is made by ureq with rustls.
 - The answer is checked by the `check` module before it is read.
 - The signature context is a function shared with Decision 5's, each built from its fields by one `context(label: &str, fields: &[&[u8]])`.
 
-`flywheel_hosted::enrol(table: &toml::Table, file: &Path, label: &str, token: &str, say: Say)` is what `planes.rs` lists.
+`flywheel_hosted::enrol(table: &toml::Table, file: &Path, label: &str, token: &str)` is what `planes.rs` lists. It finds the store by `store_for_host()`, and the machine's name by gethostname.
 
 A test builds the enrolment's and the connection's contexts from the README's fixed key, token, origin, time and nonce, and compares them with the README's worked bytes, read from the README itself.
 
@@ -643,7 +643,7 @@ A `$ref` is resolved among `FILES` by its file and its JSON pointer. A definitio
 ```rust
 pub struct Entry { pub word: &'static str, pub open: Opener, pub enrol: Option<Enroller> }
 pub const PLANES: [Entry; 2] = [ /* crew, hosted */ ];
-pub fn enrol(word, table, file, label, token, say) -> Result<Enrolled, Refusal>;
+pub fn enrol(word, table, file, label, token) -> Result<Enrolled, Refusal>;
 ```
 
 `Opener` gains `poll_interval: Duration`. `run.rs`'s `Control::open` passes `table.poll_interval`. `Enrolled` and `Refusal` are the binary's own plain types, a host id and words with whether the host must be fixed, which the hosted crate's are mapped into in `planes.rs`.
