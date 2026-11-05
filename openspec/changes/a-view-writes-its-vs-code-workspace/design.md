@@ -80,7 +80,7 @@ Alternative: **the views that stand.** Not taken: a failed fetch or clone would 
 `src/code_workspace.rs` reads what stands at an owner's workspace path, decides, and writes:
 
 - **Nothing there:** a new file, `{"folders": [...], "settings": {}}`.
-- **A regular file holding a JSON object:** where the object's `folders` equal the wanted ones, as JSON values, nothing is done. Otherwise `folders` is set where it stands, or added where the file has none, and every other member is kept as it was, in its order.
+- **A regular file holding a JSON object:** where the object's `folders` equal the wanted ones, as JSON values, nothing is done. Otherwise `folders` is set where it stands, or added as the first member where the file has none, where VS Code puts it, and every other member is kept as it was, in its order.
 - **Anything else** is left (Decision 5).
 
 The JSON is read and written by `serde_json`'s `Value`, with its `preserve_order` feature, so an object's members keep their order. The `boomdrive` crate takes the feature on its own dependency, `serde_json = { workspace = true, features = ["preserve_order"] }`. Its `indexmap` is already in `Cargo.lock`. Cargo unifies the feature across a build of `boomdrive`, so `boomdrive-control` and `boomdrive-crew` take it there too. That changes nothing they print: read 2026-11-05, every `serde_json::Value` in those crates' sources and in `boomdrive`'s is only read, and none is written back as text. The tests' fakes print `json!` values, which now keep the order they are written in. No test compares such a print with a literal: the JSON literals compared as text are sluice's entries in `src/sluice.rs`, which are cut from the answer's own text and keep its order already.
@@ -91,7 +91,7 @@ A file is written as VS Code writes one:
 - whole, to `.<owner>.code-workspace.partial` beside it, then renamed over it, so VS Code never reads half a file;
 - with the old file's permissions set on the new one, where there was an old file.
 
-A partial file left by a write cut short is written over at the next write.
+A partial file left by a write cut short is written over at the next write. The owner's folder is made where it is missing, as when none of the owner's views stands, since the owner still has its workspace (Decision 3).
 
 Alternatives:
 
