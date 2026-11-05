@@ -52,14 +52,14 @@ pub fn main(file: Option<&Path>, json: bool, label: &str) -> ExitCode {
 
 /// Enrols the partition `label` of the control plane the configuration
 /// `file` names, else the default one, in the environment `var` gives,
-/// with the token `token` gives. A configuration that cannot be read, or
-/// names no control plane, is refused as the host's to fix, before the
-/// token is asked for.
+/// with the token `token` gives, or words saying why it could not be
+/// read. A configuration that cannot be read, or names no control plane,
+/// is refused as the host's to fix, before the token is asked for.
 pub fn enroll(
     file: Option<&Path>,
     label: &str,
     var: impl Fn(&str) -> Option<OsString>,
-    token: impl FnOnce() -> Result<String, Refusal>,
+    token: impl FnOnce() -> Result<String, String>,
 ) -> Result<Enrolled, Refusal> {
     let env = Env::read(var).map_err(host)?;
     let file = config::config_path(file, &env);
@@ -82,8 +82,8 @@ pub fn enroll(
 /// The one-time token: asked for on standard error and read without echo
 /// where standard input is a terminal, and otherwise standard input's
 /// first line, its line ending left off.
-fn read_token(label: &str) -> Result<String, Refusal> {
-    let unread = |e: std::io::Error| host(format!("the enrolment token could not be read: {e}"));
+fn read_token(label: &str) -> Result<String, String> {
+    let unread = |e: std::io::Error| format!("the enrolment token could not be read: {e}");
     if std::io::stdin().is_terminal() {
         eprint!("{label}'s enrolment token: ");
         std::io::stderr().flush().map_err(unread)?;

@@ -33,6 +33,17 @@ fn table(url: &str) -> Table {
     .expect("the table read")
 }
 
+/// The token `token`, given when it is asked for.
+fn given(token: &str) -> impl FnOnce() -> Result<String, String> + '_ {
+    move || Ok(token.to_string())
+}
+
+/// A token that is never asked for: nothing is sent, so no token is
+/// read.
+fn never_asked() -> Result<String, String> {
+    panic!("the token was asked for")
+}
+
 /// A store in memory, shared with the test.
 fn memory() -> (Arc<Memory>, impl FnOnce() -> Result<Box<dyn Store>, String>) {
     let memory = Arc::new(Memory::default());
@@ -55,7 +66,7 @@ fn a_partition_enrolled() {
     let table = table(&fake.url());
     let (memory, store) = memory();
 
-    let enrolled = enrol(&table, "home", TOKEN, store, "host-a");
+    let enrolled = enrol(&table, "home", given(TOKEN), store, "host-a");
 
     assert_eq!(
         enrolled,
@@ -104,7 +115,7 @@ fn a_lapsed_token() {
     fake.refuse_token(TOKEN, "the token has lapsed");
     let (memory, store) = memory();
 
-    let refusal = enrol(&table(&fake.url()), "home", TOKEN, store, "host-a");
+    let refusal = enrol(&table(&fake.url()), "home", given(TOKEN), store, "host-a");
 
     assert_eq!(
         refusal,
@@ -127,10 +138,10 @@ fn a_spent_token() {
     fake.issue("home", TOKEN, "h-1");
     let table = table(&fake.url());
     let (_, store) = memory();
-    enrol(&table, "home", TOKEN, store, "host-a").expect("the first enrolment");
+    enrol(&table, "home", given(TOKEN), store, "host-a").expect("the first enrolment");
     let (memory, store) = memory();
 
-    let refusal = enrol(&table, "home", TOKEN, store, "host-a").expect_err("a token spent");
+    let refusal = enrol(&table, "home", given(TOKEN), store, "host-a").expect_err("a token spent");
 
     assert_eq!(refusal.words, "the token was spent");
     assert!(!refusal.host_to_fix);
@@ -151,7 +162,7 @@ fn an_old_systemd_makes_no_request() {
     let refusal = enrol(
         &table(&fake.url()),
         "home",
-        TOKEN,
+        never_asked,
         || {
             SystemdCreds::open(program, credstore_dir)
                 .map(|store| Box::new(store) as Box<dyn Store>)
@@ -173,7 +184,7 @@ fn an_old_systemd_makes_no_request() {
 fn an_unknown_label() {
     let fake = Fake::start();
     let (_, store) = memory();
-    let refusal = enrol(&table(&fake.url()), "garden", TOKEN, store, "host-a");
+    let refusal = enrol(&table(&fake.url()), "garden", never_asked, store, "host-a");
     assert_eq!(
         refusal,
         Err(Refusal {
@@ -190,7 +201,7 @@ fn an_empty_token_or_one_no_header_carries() {
     let fake = Fake::start();
     for token in ["", "two words", "line\nbreak"] {
         let (memory, store) = memory();
-        let refusal = enrol(&table(&fake.url()), "home", token, store, "host-a")
+        let refusal = enrol(&table(&fake.url()), "home", given(token), store, "host-a")
             .expect_err("the token is refused");
         assert!(refusal.host_to_fix, "{token:?}");
         assert!(
@@ -208,7 +219,8 @@ fn nothing_listening() {
     let url = loopback_with_nothing_on_it();
     let (memory, store) = memory();
 
-    let refusal = enrol(&table(&url), "home", TOKEN, store, "host-a").expect_err("unreachable");
+    let refusal =
+        enrol(&table(&url), "home", given(TOKEN), store, "host-a").expect_err("unreachable");
 
     assert!(
         !refusal.host_to_fix,
@@ -239,7 +251,7 @@ fn the_enrolments_message_refused() {
     );
     let (memory, store) = memory();
 
-    let refusal = enrol(&table(&fake.url()), "home", TOKEN, store, "host-a");
+    let refusal = enrol(&table(&fake.url()), "home", given(TOKEN), store, "host-a");
 
     assert_eq!(
         refusal,
@@ -266,8 +278,8 @@ fn an_answer_that_fails_version_1() {
     );
     let (memory, store) = memory();
 
-    let refusal =
-        enrol(&table(&fake.url()), "home", TOKEN, store, "host-a").expect_err("refused whole");
+    let refusal = enrol(&table(&fake.url()), "home", given(TOKEN), store, "host-a")
+        .expect_err("refused whole");
 
     assert!(!refusal.host_to_fix);
     assert!(
@@ -294,7 +306,7 @@ fn an_answer_of_another_kind() {
     );
     let (memory, store) = memory();
 
-    let refusal = enrol(&table(&fake.url()), "home", TOKEN, store, "host-a");
+    let refusal = enrol(&table(&fake.url()), "home", given(TOKEN), store, "host-a");
 
     assert_eq!(
         refusal,
@@ -329,7 +341,7 @@ fn a_key_enrolled_and_not_kept() {
     let refusal = enrol(
         &table(&fake.url()),
         "home",
-        TOKEN,
+        given(TOKEN),
         || Ok(Box::new(Refusing) as Box<dyn Store>),
         "host-a",
     )

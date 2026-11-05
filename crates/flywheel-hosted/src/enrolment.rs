@@ -58,14 +58,16 @@ impl Refusal {
     }
 }
 
-/// Enrols the partition `label` of `table` with the one-time `token`,
-/// naming the host `machine`, its key kept in the store `store` finds.
-/// Nothing is sent before the partition, the store and the token are
-/// found good, and the store is as it was unless `enrolled` answers.
+/// Enrols the partition `label` of `table` with the one-time token
+/// `token` gives, or words saying why it could not be read, naming the
+/// host `machine`, its key kept in the store `store` finds. The token is
+/// asked for only once the partition and the store are found, and nothing
+/// is sent before the token is found good; the store is as it was unless
+/// `enrolled` answers.
 pub fn enrol(
     table: &Table,
     label: &str,
-    token: &str,
+    token: impl FnOnce() -> Result<String, String>,
     store: impl FnOnce() -> Result<Box<dyn Store>, String>,
     machine: &str,
 ) -> Result<Enrolled, Refusal> {
@@ -81,6 +83,8 @@ pub fn enrol(
         )));
     }
     let store = store().map_err(Refusal::host)?;
+    let token = token().map_err(Refusal::host)?;
+    let token = token.as_str();
     if token.is_empty() {
         return Err(Refusal::host(
             "the enrolment token is empty: give the partition's one-time token on standard input"

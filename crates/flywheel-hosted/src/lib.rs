@@ -24,13 +24,14 @@ use std::path::Path;
 use table::Table;
 
 /// Enrols the partition `label` of the hosted table, `table`, of the
-/// configuration file `file`, with its one-time `token`, keeping its key
-/// in the host's own credential store (design Decision 4; core.32).
+/// configuration file `file`, with the one-time token `token` gives once
+/// the partition and the store are found, keeping its key in the host's
+/// own credential store (design Decision 4; core.32).
 pub fn enrol(
     table: &toml::Table,
     file: &Path,
     label: &str,
-    token: &str,
+    token: impl FnOnce() -> Result<String, String>,
 ) -> Result<Enrolled, Refusal> {
     let table = Table::read(table, file).map_err(Refusal::host)?;
     enrolment::enrol(&table, label, token, key::store_for_host, &machine())

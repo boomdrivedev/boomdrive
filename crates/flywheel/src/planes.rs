@@ -31,9 +31,19 @@ pub type Opener = fn(
 ) -> Result<Plane, String>;
 
 /// Enrols the partition `label` of an implementation's own table, of the
-/// configuration file `file`, with its one-time `token`.
-pub type Enroller =
-    fn(table: &toml::Table, file: &Path, label: &str, token: &str) -> Result<Enrolled, Refusal>;
+/// configuration file `file`, with the one-time token `token` gives, or
+/// words saying why it could not be read. The implementation asks for the
+/// token only once it has found what it refuses before it.
+pub type Enroller = fn(
+    table: &toml::Table,
+    file: &Path,
+    label: &str,
+    token: Token<'_>,
+) -> Result<Enrolled, Refusal>;
+
+/// What gives an enrolment's one-time token when it is asked for, or
+/// words saying why it could not be read.
+pub type Token<'a> = Box<dyn FnOnce() -> Result<String, String> + 'a>;
 
 /// An implementation this binary carries.
 pub struct Entry {
@@ -115,7 +125,7 @@ fn hosted_enrol(
     table: &toml::Table,
     file: &Path,
     label: &str,
-    token: &str,
+    token: Token<'_>,
 ) -> Result<Enrolled, Refusal> {
     flywheel_hosted::enrol(table, file, label, token)
         .map(|enrolled| Enrolled {
@@ -167,15 +177,16 @@ pub fn open(
 
 /// Enrols the partition `label` of the implementation whose word is
 /// `word`, from its own table, `table`, of the configuration file `file`,
-/// with the one-time token `token` gives (design Decision 4). A word this
-/// binary does not carry, or one whose implementation enrols nothing, is
-/// refused as the host's to fix before the token is asked for.
+/// with the one-time token `token` gives, or words saying why it could
+/// not be read (design Decision 4). A word this binary does not carry, or
+/// one whose implementation enrols nothing, is refused as the host's to
+/// fix before the token is asked for.
 pub fn enrol(
     word: &str,
     table: &toml::Table,
     file: &Path,
     label: &str,
-    token: impl FnOnce() -> Result<String, Refusal>,
+    token: impl FnOnce() -> Result<String, String>,
 ) -> Result<Enrolled, Refusal> {
     let host = |words| Refusal {
         words,
@@ -190,5 +201,5 @@ pub fn enrol(
             listed(PLANES.iter().filter(|entry| entry.enrol.is_some()))
         )));
     };
-    enroller(table, file, label, &token()?)
+    enroller(table, file, label, Box::new(token))
 }
