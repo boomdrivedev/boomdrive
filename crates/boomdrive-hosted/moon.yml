@@ -1,0 +1,31 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The hosted control plane's implementation, boomdrive-hosted, which holds
+# the runner's protocol. Each check is one task, in the fast layer
+# (core.7). Each builds boomdrive-control too, so takes its sources. Its
+# tests cut Flume's and sluice's answers kept as the binary's fixtures, so
+# its test task takes them too.
+language: 'rust'
+layer: 'library'
+
+tasks:
+  format:
+    command: 'cargo fmt --check -p boomdrive-hosted'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  lint:
+    command: 'cargo clippy -p boomdrive-hosted --all-targets --all-features -- -D warnings'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  typecheck:
+    command: 'cargo check -p boomdrive-hosted --all-targets --all-features'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  test:
+    command: 'cargo test -p boomdrive-hosted'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}

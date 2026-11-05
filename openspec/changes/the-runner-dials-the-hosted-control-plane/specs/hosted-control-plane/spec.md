@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The hosted control plane's implementation of the control-plane interface, in `crates/flywheel-hosted`, the one crate that names the runner's protocol with it. It enrols each partition once, with a key made on the host and kept only in its credential store. It keeps one outgoing WebSocket for each partition, proved at its upgrade, kept by pings and tried again on a bounded backoff. It carries each partition's own wants down and its own part of the report up, of each tool's answer only version 1's copy, and checks every message both ways (core.2, core.3, core.21 to core.23, core.26, core.27, core.31, core.32, core.42; records 0004, 0006, 0008 and 0016; flywheel-cloud records 0047, 0049 and 0056).
+The hosted control plane's implementation of the control-plane interface, in `crates/boomdrive-hosted`, the one crate that names the runner's protocol with it. It enrolls each partition once, with a key made on the host and kept only in its credential store. It keeps one outgoing WebSocket for each partition, proved at its upgrade, kept by pings and tried again on a bounded backoff. It carries each partition's own wants down and its own part of the report up, of each tool's answer only version 1's copy, and checks every message both ways (core.2, core.3, core.21 to core.23, core.26, core.27, core.31, core.32, core.42; records 0004, 0006, 0008 and 0017; boomdrive-cloud records 0047, 0049 and 0056).
 
 ## ADDED Requirements
 
@@ -23,54 +23,54 @@ The hosted implementation SHALL open from `[control_plane.hosted]`: `url`, requi
 #### Scenario: A token in the table
 
 - **WHEN** the table says `token = "..."`, or `token_file = "/h/token"`
-- **THEN** it is refused, naming the key as one the hosted implementation does not read and saying the host's key is made by `flywheel enroll`, and the value appears in no output
+- **THEN** it is refused, naming the key as one the hosted implementation does not read and saying the host's key is made by `boomdrive enroll`, and the value appears in no output
 
 #### Scenario: A label twice
 
 - **WHEN** two partitions say `label = "home"`
 - **THEN** it is refused, naming `home`
 
-### Requirement: A partition is enrolled once by flywheel enroll
+### Requirement: A partition is enrolled once by boomdrive enroll
 
-`flywheel enroll <label>` SHALL read the token from standard input, make an Ed25519 key in memory, and send one `POST runner/enrol` under `url`, the token its bearer and its body an `enrol`. It SHALL keep the key only once `enrolled` answers, print `enrolled` or the refusal's words as given, and write no configuration and nothing in the data directory (core.31, core.39; record 0006).
+`boomdrive enroll <label>` SHALL read the token from standard input, make an Ed25519 key in memory, and send one `POST runner/enroll` under `url`, the token its bearer and its body an `enroll`. It SHALL keep the key only once `enrolled` answers, print `enrolled` or the refusal's words as given, and write no configuration and nothing in the data directory (core.31, core.39; record 0006).
 
 #### Scenario: A partition enrolled
 
-- **WHEN** partition `home` is enrolled with a token, and the fake control plane takes the `enrol` and answers `enrolled` with host `h-1`
-- **THEN** the request bore the token, its `enrol` passed version 1 and its signature checked, the key is in the store under `home`, and the enrolment names host `h-1`
+- **WHEN** partition `home` is enrolled with a token, and the fake control plane takes the `enroll` and answers `enrolled` with host `h-1`
+- **THEN** the request bore the token, its `enroll` passed version 1 and its signature checked, the key is in the store under `home`, and the enrollment names host `h-1`
 
 #### Scenario: A lapsed token
 
-- **WHEN** the fake control plane answers `enrol_refused` with the words `the token has lapsed`
-- **THEN** the enrolment is refused with `the token has lapsed`, as the control plane's refusal and not the host's to fix, and the store is as it was
+- **WHEN** the fake control plane answers `enroll_refused` with the words `the token has lapsed`
+- **THEN** the enrollment is refused with `the token has lapsed`, as the control plane's refusal and not the host's to fix, and the store is as it was
 
 #### Scenario: The answer as JSON
 
-- **WHEN** `flywheel enroll --json home` is given a token and `url` names a loopback port with nothing on it
+- **WHEN** `boomdrive enroll --json home` is given a token and `url` names a loopback port with nothing on it
 - **THEN** standard output is one object, `{"refused":{"refusal":{"reason":…}}}`, its reason naming the control plane as unreachable, and it exits 1
 
 #### Scenario: The token never shown
 
-- **WHEN** `flywheel enroll home` is given the token `secret-enrolment-token`, and `url` names a loopback port with nothing on it
-- **THEN** neither standard output nor standard error holds `secret-enrolment-token`
+- **WHEN** `boomdrive enroll home` is given the token `secret-enrollment-token`, and `url` names a loopback port with nothing on it
+- **THEN** neither standard output nor standard error holds `secret-enrollment-token`
 
-### Requirement: flywheel enroll refuses what it cannot enrol
+### Requirement: boomdrive enroll refuses what it cannot enroll
 
-`flywheel enroll` SHALL be refused, exiting 2 before any request, where the configuration names no control plane whose implementation enrols, where its table has no partition of the label, where the token is empty, and where the host has no credential store. A control plane that cannot be reached SHALL be refused with exit 1, and no key written.
+`boomdrive enroll` SHALL be refused, exiting 2 before any request, where the configuration names no control plane whose implementation enrolls, where its table has no partition of the label, where the token is empty, and where the host has no credential store. A control plane that cannot be reached SHALL be refused with exit 1, and no key written.
 
 #### Scenario: crew's control plane
 
-- **WHEN** `flywheel enroll home` runs with `type = "crew"`
-- **THEN** it is refused naming crew's control plane as one that enrols nothing, and exits 2
+- **WHEN** `boomdrive enroll home` runs with `type = "crew"`
+- **THEN** it is refused naming crew's control plane as one that enrolls nothing, and exits 2
 
 #### Scenario: An unknown label
 
-- **WHEN** `flywheel enroll garden` runs with a table naming `home` and `work`
+- **WHEN** `boomdrive enroll garden` runs with a table naming `home` and `work`
 - **THEN** it is refused naming `garden`, and exits 2
 
 #### Scenario: Nothing listening
 
-- **WHEN** `flywheel enroll home` is given a token and `url` names a loopback port with nothing on it
+- **WHEN** `boomdrive enroll home` is given a token and `url` names a loopback port with nothing on it
 - **THEN** it is refused naming the control plane as unreachable, exits 1, and writes no key
 
 ### Requirement: The host's key is kept only in its credential store
@@ -80,30 +80,30 @@ Each partition's key SHALL be kept only in the macOS keychain, or as a user-scop
 #### Scenario: Kept by systemd-creds
 
 - **WHEN** partition `home` is enrolled into the `systemd-creds` store, its program a stub reporting version 256
-- **THEN** the stub is run as `encrypt --user --name=flywheel.home.<the url's host>`, the key's bytes reach it only on standard input, and no argument holds them
+- **THEN** the stub is run as `encrypt --user --name=boomdrive.home.<the url's host>`, the key's bytes reach it only on standard input, and no argument holds them
 
 #### Scenario: An old systemd
 
 - **WHEN** the `systemd-creds` store is asked for, its program a stub whose `--version` reports 255
-- **THEN** it is refused naming systemd 256 as the least it takes, as the host's to fix, and an enrolment over it makes no request
+- **THEN** it is refused naming systemd 256 as the least it takes, as the host's to fix, and an enrollment over it makes no request
 
 ### Requirement: Every connection proves the host's key
 
-Each upgrade of `runner/connect` SHALL ask for `flywheel-runner.v1` and carry `Authorization: FlywheelHost` with the key, the time, a nonce and a signature over the README's context, made afresh for each attempt. The runner SHALL keep nothing of enrolment but the key. A key or a subprotocol refused SHALL be said once and tried again at the backoff's cap (core.31, core.35).
+Each upgrade of `runner/connect` SHALL ask for `boomdrive.v1` and carry `Authorization: BoomdriveHost` with the key, the time, a nonce and a signature over the README's context, made afresh for each attempt. The runner SHALL keep nothing of enrollment but the key. A key or a subprotocol refused SHALL be said once and tried again at the backoff's cap (core.31, core.35).
 
 #### Scenario: A connection proved
 
 - **WHEN** partition `home` dials the fake control plane twice
-- **THEN** each upgrade asks for `flywheel-runner.v1`, its signature checks over its context with `home`'s key, and the two nonces differ
+- **THEN** each upgrade asks for `boomdrive.v1`, its signature checks over its context with `home`'s key, and the two nonces differ
 
 #### Scenario: A key refused
 
 - **WHEN** the fake control plane refuses `home`'s key three times
-- **THEN** one line names `home`, the fake's words and `flywheel enroll home`
+- **THEN** one line names `home`, the fake's words and `boomdrive enroll home`
 
 ### Requirement: Each partition keeps one outgoing connection, its whole hello first
 
-Each partition SHALL keep one WebSocket it opens, sending its whole hello first at every connection, and its hello again whenever it changes. It SHALL keep the socket alive with WebSocket pings, never a message of the protocol's, and count it lost when a pong has not come by the next ping (core.3, core.21; flywheel-cloud core.50).
+Each partition SHALL keep one WebSocket it opens, sending its whole hello first at every connection, and its hello again whenever it changes. It SHALL keep the socket alive with WebSocket pings, never a message of the protocol's, and count it lost when a pong has not come by the next ping (core.3, core.21; boomdrive-cloud core.50).
 
 #### Scenario: The hello first
 
@@ -168,7 +168,7 @@ Each partition's hello SHALL name only the repositories its table names, of thos
 
 ### Requirement: A report goes to each partition, answered by its id
 
-A report SHALL send each live partition its part as `report` under a new message id, and wait up to 10 seconds for its `reported`. It SHALL be unsent only when no partition answered. After a reconnect, a partition SHALL send its last `report` no `reported` answered again under the same id, after its hello, unless a newer one was sent (core.21; flywheel-cloud core.38).
+A report SHALL send each live partition its part as `report` under a new message id, and wait up to 10 seconds for its `reported`. It SHALL be unsent only when no partition answered. After a reconnect, a partition SHALL send its last `report` no `reported` answered again under the same id, after its hello, unless a newer one was sent (core.21; boomdrive-cloud core.38).
 
 #### Scenario: A lease refused
 
@@ -196,17 +196,17 @@ Each place's status, sluice entry and host part SHALL go up cut to version 1's c
 
 ### Requirement: Every message the runner is sent is checked before it is read
 
-Every message a connection receives SHALL be checked against `to-runner.schema.json` before it is read. One that fails SHALL be answered with `message_refused` naming it, with words naming the schema's path, and nothing else done with it, as SHALL an `enrolled` or `enrol_refused`, which only `runner/enrol` takes. One whose id cannot be read SHALL close the connection, which is tried again on the backoff (core.42).
+Every message a connection receives SHALL be checked against `to-runner.schema.json` before it is read. One that fails SHALL be answered with `message_refused` naming it, with words naming the schema's path, and nothing else done with it, as SHALL an `enrolled` or `enroll_refused`, which only `runner/enroll` takes. One whose id cannot be read SHALL close the connection, which is tried again on the backoff (core.42).
 
 #### Scenario: A pulled with a field unnamed
 
 - **WHEN** the fake control plane sends a `pulled` whose launch holds a field version 1 does not name
 - **THEN** the runner answers `message_refused` naming that message, and the pull gives none of its wants
 
-#### Scenario: An enrolment's answer on the socket
+#### Scenario: An enrollment's answer on the socket
 
 - **WHEN** the fake control plane sends `enrolled` on `home`'s connection
-- **THEN** the runner answers `message_refused` naming it, its words naming `runner/enrol`
+- **THEN** the runner answers `message_refused` naming it, its words naming `runner/enroll`
 
 ### Requirement: A terminal the control plane opens is closed at once
 

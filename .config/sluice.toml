@@ -1,5 +1,5 @@
 # sluice gates every merge onto main: the checks moon tags, in
-# flywheel-runner's devenv shell, main on GitHub as the sluice app lands
+# boomdrive's devenv shell, main on GitHub as the sluice app lands
 # it. The layers are .moon/workspace.yml's.
 [tests]
 runner = "moon"

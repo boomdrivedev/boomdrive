@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on telemetry; sluice's README on its opt-in OTLP export; Flume's, which sends none; agentplot/flywheel-cloud's rules core.59 and core.60, cited by id; rule core.11.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on telemetry; sluice's README on its opt-in OTLP export; Flume's, which sends none; agentplot/boomdrive-cloud's rules core.59 and core.60, cited by id; rule core.11.
 
 ## Context and problem statement
 

@@ -1,0 +1,129 @@
+{
+  "protocol_version": 1,
+  "id": "runner:14",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-4": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--slow-gate",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/fix--slow-gate",
+              "kind": "fix",
+              "version": 1,
+              "declared": "flume",
+              "name": "slow-gate",
+              "mark": "boomdrive:offer-4",
+              "branch": "fix/slow-gate",
+              "base": "main",
+              "head": "c7d17b336f0b434ee6f83979fffec88d03de2e3f",
+              "lands": true,
+              "delivered": true,
+              "stalled": false,
+              "priority": 0,
+              "current": "code",
+              "recipients": [
+                "example/planner"
+              ],
+              "stream": {
+                "name": "wide",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "17850c6f94f94e0b8ad7cece2dc917834c822d2a944b2aa7d0b50027717831b2"
+              },
+              "phase": "live",
+              "stages": [
+                {
+                  "name": "code",
+                  "state": "delivered",
+                  "starts": 1,
+                  "end": {
+                    "head": "c7d17b336f0b434ee6f83979fffec88d03de2e3f",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  }
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "code",
+                  "start": 1,
+                  "state": "delivered",
+                  "end": {
+                    "head": "c7d17b336f0b434ee6f83979fffec88d03de2e3f",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1793559697,
+                  "deliveries": [],
+                  "pending_for": [
+                    "example/planner"
+                  ]
+                }
+              ],
+              "holds": [],
+              "hold_words": {},
+              "waiting_on": null,
+              "submission": {
+                "held": false,
+                "submits": 1,
+                "send_backs": 0,
+                "waiting": null,
+                "verdict": null,
+                "read": {
+                  "found": {
+                    "submission": {
+                      "id": "3",
+                      "branch": "fix/slow-gate",
+                      "target": "main",
+                      "state": "under_test"
+                    }
+                  }
+                }
+              },
+              "agent": null,
+              "clues": {
+                "shown_at": {
+                  "agent": null
+                }
+              },
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": {
+            "copy": {
+              "id": 3,
+              "branch": "main",
+              "head": "1bdf3789f8240c07ef4bb59dd6575b2df53cdf03",
+              "state": "testing"
+            },
+            "at": "2026-11-01T10:06:00Z",
+            "listed": true
+          }
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {}
+    }
+  }
+}

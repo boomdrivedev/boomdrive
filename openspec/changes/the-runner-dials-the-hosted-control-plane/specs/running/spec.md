@@ -2,9 +2,9 @@
 
 ## MODIFIED Requirements
 
-### Requirement: flywheel run makes control passes on a timer of their own
+### Requirement: boomdrive run makes control passes on a timer of their own
 
-Where the configuration names a control plane, `flywheel run` SHALL make a control pass after its first keeping pass, and the next `poll_interval` after the start of the one before. After a pass that reported, it SHALL make it sooner, by the midpoint between that pass's end and the earliest expiry of a lease it holds not yet lapsed. A lapsed lease, or a pass that did not report, SHALL hasten none. Control and keeping passes SHALL run on the one loop, one at a time (core.22).
+Where the configuration names a control plane, `boomdrive run` SHALL make a control pass after its first keeping pass, and the next `poll_interval` after the start of the one before. After a pass that reported, it SHALL make it sooner, by the midpoint between that pass's end and the earliest expiry of a lease it holds not yet lapsed. A lapsed lease, or a pass that did not report, SHALL hasten none. Control and keeping passes SHALL run on the one loop, one at a time (core.22).
 
 #### Scenario: On the control timer
 

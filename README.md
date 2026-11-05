@@ -1,23 +1,23 @@
-# flywheel-runner
+# Boomdrive
 
-The runner on each host, one binary named `flywheel`. It keeps the
+The runner on each host, one binary named `boomdrive`. It keeps the
 clones and views of the repositories its configuration names, and turns
 the control plane's work into `flume launch` calls, carrying their
 results back. It reaches the control plane through one interface,
-`crates/flywheel-control`, and carries two implementations of it.
-crew's, `crates/flywheel-crew`, reads and writes records in crew's state
-repository. A hosted control plane's, `crates/flywheel-hosted`, keeps one
+`crates/boomdrive-control`, and carries two implementations of it.
+crew's, `crates/boomdrive-crew`, reads and writes records in crew's state
+repository. A hosted control plane's, `crates/boomdrive-hosted`, keeps one
 outgoing WebSocket for each partition the host is enrolled in, and holds
 the runner's protocol with it, one JSON Schema per version under
 `protocol/`. From this tree:
 
-    devenv shell -- cargo run -p flywheel -- --version
+    devenv shell -- cargo run -p boomdrive -- --version
 
 ## The configuration
 
-`flywheel` reads one TOML file: the one `--config <file>` names, else
-`$XDG_CONFIG_HOME/flywheel/config.toml`, else
-`~/.config/flywheel/config.toml`. It names the repositories the host
+`boomdrive` reads one TOML file: the one `--config <file>` names, else
+`$XDG_CONFIG_HOME/boomdrive/config.toml`, else
+`~/.config/boomdrive/config.toml`. It names the repositories the host
 keeps by their GitHub address, the root their views are kept under and
 how often they are fetched:
 
@@ -44,14 +44,14 @@ configuration, and a key naming one is refused, saying so.
 
 ## Running on a host
 
-`flywheel run` is the long-running process a host starts and keeps
+`boomdrive run` is the long-running process a host starts and keeps
 alive. It makes a pass over the configuration at once, then one every
 `fetch_interval`, timed from the start of the pass before, and reads the
 file again at every pass. A pass that cannot read it names why and
 does nothing else, so a file mid-edit never drops a repository. A pass:
 
 - clones each repository the configuration names into the runner's data
-  directory, `$XDG_DATA_HOME/flywheel`, else `~/.local/share/flywheel`,
+  directory, `$XDG_DATA_HOME/boomdrive`, else `~/.local/share/boomdrive`,
   at `repositories/<owner>/<name>/<name>.git`, in the bare-container
   layout flume reads; or fetches the clone it has, over https through
   the host's own credential helper, never prompting;
@@ -75,7 +75,7 @@ stops on SIGTERM or SIGINT before the next repository it would keep,
 and exits 0. It opens no listening socket: every connection it makes is
 outgoing.
 
-`flywheel run --once` makes one pass and exits, 0 when every git call
+`boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed. A repository left by rule, for a
 folder of the user's or work the forge lacks, is not a failure. Where
 the configuration names a control plane, `--once` makes one control
@@ -88,7 +88,7 @@ Either form refuses to start, exiting 2 and touching nothing, when
 older than 2.48, or another runner holds the data directory: one runner
 keeps a data directory at a time.
 
-The host's service manager keeps `flywheel run` alive: launchd's
+The host's service manager keeps `boomdrive run` alive: launchd's
 `KeepAlive` on a Mac, `Restart=always` in a systemd user unit on a box.
 An exit 2 means the host needs fixing, and the service manager's
 throttle keeps it from spinning.
@@ -135,7 +135,7 @@ A control pass:
   keeps, once each launch it comes after has landed and while its
   stream has room as Flume's status gives it. Each becomes one
   `flume launch`, naming its kind, stream, priority and intent only as
-  the launch gives them, marked `flywheel:<id>`;
+  the launch gives them, marked `boomdrive:<id>`;
 - carries out each retry, drop, priority or done as Flume's own command
   on the launch's place, and each bolt's branch by
   `sluice branch create` in the clone;
@@ -149,6 +149,18 @@ runner's report is kept at `<data>/control/report.json`, and a launch
 whose answer was lost is found by its mark. An offer, an act or a
 command whose lease has lapsed by the runner's clock waits until a pull
 gives it under a live lease.
+
+## A host from before the rename
+
+The runner was named `flywheel` until record 0016 renamed it. A host
+where a runner of that name ran keeps what it made: where
+`$XDG_DATA_HOME/boomdrive` is not there and `$XDG_DATA_HOME/flywheel`
+is, that is the data directory, and it is never moved, since its clones
+hold places and views. A clone recording itself under `flywheel` has
+its records carried over to `boomdrive` the first time a pass finds it,
+and a launch marked `flywheel:<id>` is found by that mark. The
+configuration is the host's own, and is read only where the new name
+puts it.
 
 crew's table names `host`, this host as crew's hosts file names it, and
 each partition served: its `label`, and its `state_repository` as
@@ -191,19 +203,19 @@ repositories = ["afterthought/crew", "agentplot/flume"]
 
 `url` is the control plane's address: `https://`, or `http://` to a
 loopback address alone, with no user, query or fragment. It may hold a
-path, under which the runner enrols at `runner/enrol` and connects at
-`runner/connect`. Each partition is one enrolment, with a key of its
+path, under which the runner enrolls at `runner/enroll` and connects at
+`runner/connect`. Each partition is one enrollment, with a key of its
 own. Its `label` is the host's own name for it, 1 to 32 lowercase
 letters, digits and `-`, starting with a letter. Its
 `repositories` are those it is served, which may be none: only those the
 host keeps go in its hello, and two partitions may name one repository,
 which the host keeps in its one clone. The table holds no token and no
 key, and one that names either is refused, saying the key is made by
-`flywheel enroll`.
+`boomdrive enroll`.
 
 Each partition is enrolled once:
 
-    flywheel enroll [--config <file>] [--json] <label>
+    boomdrive enroll [--config <file>] [--json] <label>
 
 It reads the partition's one-time token from standard input, asking for
 it without echo where that is a terminal, and never from an argument or
@@ -219,7 +231,7 @@ at its next try. It answers `<label>: enrolled as host <host>`, or with
 `--json` `{"enrolled":{"partition":"<label>","host":"<host>"}}`, and
 exits 0. A refusal is its words on standard error, or with `--json`
 `{"refused":{"refusal":{"reason":"<words>"}}}`, and exits 1 where the
-control plane refused the enrolment or could not be reached, and 2
+control plane refused the enrollment or could not be reached, and 2
 where the host must be fixed first: its configuration, its credential
 store or the token.
 
@@ -230,7 +242,7 @@ wait drawn at random, up to a cap that doubles from one second to
 `poll_interval`. Its first message is the partition's whole hello,
 naming only that partition's repositories and leases, and each id its
 control plane gives is the runner's as `<label>/<id>`, so a launch's
-mark is `flywheel:<label>/<id>`. A pull gives each reached partition's
+mark is `boomdrive:<label>/<id>`. A pull gives each reached partition's
 work, and the control plane's work wakes the runner when it comes. A
 report goes to each partition as its own part, answered by its id, and
 one unanswered is sent again under that id after a reconnect. Of each
@@ -249,6 +261,6 @@ Flume relays none.
 The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
-is a moon project of its own, `flywheel`, `flywheel-control`,
-`flywheel-crew` and `flywheel-hosted`, beside `root`, which holds what
+is a moon project of its own, `boomdrive`, `boomdrive-control`,
+`boomdrive-crew` and `boomdrive-hosted`, beside `root`, which holds what
 spans the tree.

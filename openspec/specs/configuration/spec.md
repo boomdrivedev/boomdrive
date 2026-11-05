@@ -7,21 +7,21 @@ The runner's configuration on a host is one TOML file. It names the repositories
 
 ### Requirement: The configuration is one file the runner reads
 
-The runner SHALL read its configuration from the file `--config <file>` names. Where none is named, it SHALL read `$XDG_CONFIG_HOME/flywheel/config.toml`, or `~/.config/flywheel/config.toml` where `XDG_CONFIG_HOME` is unset or empty. A file that does not exist or is not valid TOML SHALL be refused. The refusal SHALL name the file, the line and what is wrong, and SHALL never quote the file's text.
+The runner SHALL read its configuration from the file `--config <file>` names. Where none is named, it SHALL read `$XDG_CONFIG_HOME/boomdrive/config.toml`, or `~/.config/boomdrive/config.toml` where `XDG_CONFIG_HOME` is unset or empty. A file that does not exist or is not valid TOML SHALL be refused. The refusal SHALL name the file, the line and what is wrong, and SHALL never quote the file's text.
 
 #### Scenario: The default file
 
-- **WHEN** `flywheel run --once` runs with no `--config`, `XDG_CONFIG_HOME` unset and `HOME` set to `/h`
-- **THEN** it reads `/h/.config/flywheel/config.toml`
+- **WHEN** `boomdrive run --once` runs with no `--config`, `XDG_CONFIG_HOME` unset and `HOME` set to `/h`
+- **THEN** it reads `/h/.config/boomdrive/config.toml`
 
 #### Scenario: The file named
 
-- **WHEN** `flywheel run --once --config /etc/flywheel.toml` runs with `XDG_CONFIG_HOME` set
-- **THEN** it reads `/etc/flywheel.toml` and no other file
+- **WHEN** `boomdrive run --once --config /etc/boomdrive.toml` runs with `XDG_CONFIG_HOME` set
+- **THEN** it reads `/etc/boomdrive.toml` and no other file
 
 #### Scenario: No file
 
-- **WHEN** `flywheel run` starts and the configuration file does not exist
+- **WHEN** `boomdrive run` starts and the configuration file does not exist
 - **THEN** it exits 2 naming the path it looked for, and makes, fetches, moves and removes nothing
 
 ### Requirement: The configuration names each repository by its forge address
@@ -145,7 +145,7 @@ The configuration MAY hold a `[control_plane]` table. In it, `type`, the word of
 #### Scenario: No control plane
 
 - **WHEN** the configuration holds no `[control_plane]`
-- **THEN** `flywheel run --once` keeps the repositories and runs no `flume` command
+- **THEN** `boomdrive run --once` keeps the repositories and runs no `flume` command
 
 ### Requirement: How often the control plane is polled is a setting with a default
 

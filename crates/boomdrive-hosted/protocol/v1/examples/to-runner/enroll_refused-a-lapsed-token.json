@@ -1,0 +1,10 @@
+{
+  "protocol_version": 1,
+  "id": "plane:1",
+  "body": {
+    "enroll_refused": {
+      "enroll": "runner:1",
+      "words": "this enrollment token lapsed at 2026-11-04T00:00:00Z; issue a new one"
+    }
+  }
+}

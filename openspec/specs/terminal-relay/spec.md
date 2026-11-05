@@ -1,7 +1,7 @@
 # terminal-relay Specification
 
 ## Purpose
-How the runner relays a terminal the control plane opens on a launch, between the control plane's link and the herdr pane where the launch's agent runs. It reaches the pane through herdr's command line, and over no connection but the runner's own outgoing one. Nothing of the terminal is kept (core.3, core.11; flywheel-cloud record 0016 and core.18; ledger item N1.b).
+How the runner relays a terminal the control plane opens on a launch, between the control plane's link and the herdr pane where the launch's agent runs. It reaches the pane through herdr's command line, and over no connection but the runner's own outgoing one. Nothing of the terminal is kept (core.3, core.11; boomdrive-cloud record 0016 and core.18; ledger item N1.b).
 
 ## Requirements
 

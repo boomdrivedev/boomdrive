@@ -1,0 +1,97 @@
+{
+  "protocol_version": 1,
+  "id": "runner:12",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-2": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--held",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/fix--held",
+              "kind": "fix",
+              "version": 1,
+              "declared": "flume",
+              "name": "held",
+              "mark": "boomdrive:offer-2",
+              "branch": "fix/held",
+              "base": "main",
+              "head": "58480408f0a5596289c1989e4845dc64b7b46171",
+              "lands": true,
+              "delivered": null,
+              "stalled": false,
+              "priority": 0,
+              "current": null,
+              "recipients": [
+                "example/planner"
+              ],
+              "stream": {
+                "name": "wide",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "17850c6f94f94e0b8ad7cece2dc917834c822d2a944b2aa7d0b50027717831b2"
+              },
+              "phase": "live",
+              "stages": [
+                {
+                  "name": "code",
+                  "state": "on_hold",
+                  "starts": 0,
+                  "end": null
+                }
+              ],
+              "ends": [],
+              "holds": [
+                {
+                  "on": "stage",
+                  "stage": "code",
+                  "since": 1793559845,
+                  "words": "the user reads the brief first"
+                }
+              ],
+              "hold_words": {
+                "code": "the user reads the brief first"
+              },
+              "waiting_on": {
+                "act": "retry",
+                "stage": "code",
+                "why": "on_hold",
+                "since": 1793559845,
+                "words": "the user reads the brief first"
+              },
+              "submission": {
+                "held": false,
+                "submits": 0,
+                "send_backs": 0,
+                "waiting": null,
+                "verdict": null,
+                "read": "none"
+              },
+              "agent": null,
+              "clues": null,
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": null
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {}
+    }
+  }
+}
