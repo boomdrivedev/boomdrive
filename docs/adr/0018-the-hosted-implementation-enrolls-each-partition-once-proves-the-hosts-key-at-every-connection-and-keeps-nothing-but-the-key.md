@@ -1,5 +1,5 @@
 ---
-number: 17
+number: 18
 title: The hosted implementation enrolls each partition once, proves the host's key at every connection, and keeps nothing but the key
 status: proposed
 date: 2026-11-03

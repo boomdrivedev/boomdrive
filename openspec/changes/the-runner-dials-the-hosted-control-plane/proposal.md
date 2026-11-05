@@ -45,7 +45,7 @@ Leases from a hosted control plane expire, where crew's never do. That makes thr
   - a lapsed lease, or a pass that could not report, sets no pass sooner than `poll_interval` (core.22);
   - the unread control plane is said once until it is read again (core.23);
   - an offer, an act or a command whose lease has lapsed by the runner's clock is not carried out (core.24).
-- **Record 0017 and the details of core.26, core.31 and core.32**, in this change's commit beside its design: how enrollment and each connection prove the key, where the key is kept, and that each partition names its repositories.
+- **Record 0018 and the details of core.26, core.31 and core.32**, in this change's commit beside its design: how enrollment and each connection prove the key, where the key is kept, and that each partition names its repositories.
 
 ## Capabilities
 
@@ -70,7 +70,7 @@ Leases from a hosted control plane expire, where crew's never do. That makes thr
 
 ## Impact
 
-- `docs/adr/` gains record 0017. `docs/architecture/core.md` amends the details of core.26, core.31 and core.32. Both are in this change's commit, beside its design.
+- `docs/adr/` gains record 0018. `docs/architecture/core.md` amends the details of core.26, core.31 and core.32. Both are in this change's commit, beside its design.
 - `crates/boomdrive-hosted` implements `ControlPlane`, and holds the table, the key's stores, enrollment, the connection, the cut and the checks.
   - Its dependencies gain tokio, tokio-tungstenite with rustls, ed25519-dalek, ureq with rustls, keyring-core and keyring v4's macOS store, url, uuid, base64 and gethostname.
   - `jsonschema` becomes a dependency of its own, still with no default features.
@@ -90,7 +90,7 @@ Leases from a hosted control plane expire, where crew's never do. That makes thr
 ## Touches
 
 ```
-docs/adr/0017-the-hosted-implementation-enrolls-each-partition-once-proves-the-hosts-key-at-every-connection-and-keeps-nothing-but-the-key.md
+docs/adr/0018-the-hosted-implementation-enrolls-each-partition-once-proves-the-hosts-key-at-every-connection-and-keeps-nothing-but-the-key.md
 docs/architecture/core.md
 Cargo.toml
 Cargo.lock

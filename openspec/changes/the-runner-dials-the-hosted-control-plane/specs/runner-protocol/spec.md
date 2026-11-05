@@ -20,7 +20,7 @@ A runner SHALL send only `enroll`, `hello`, `report`, `terminal_opened`, `termin
 
 ### Requirement: An enrollment is one enroll, answered by enrolled or enroll_refused
 
-An `enroll` SHALL hold `key`, 32 bytes, `signature`, 64 bytes, each in base64url, and `machine`, the host's name. An `enrolled` SHALL hold `host`, the control plane's id for the host. An `enroll_refused` SHALL hold `enroll`, the `enroll` message's id, and `words`. None SHALL hold a token: the token is the request's bearer (core.4, core.31; record 0017).
+An `enroll` SHALL hold `key`, 32 bytes, `signature`, 64 bytes, each in base64url, and `machine`, the host's name. An `enrolled` SHALL hold `host`, the control plane's id for the host. An `enroll_refused` SHALL hold `enroll`, the `enroll` message's id, and `words`. None SHALL hold a token: the token is the request's bearer (core.4, core.31; record 0018).
 
 #### Scenario: Enrollment's examples
 
@@ -34,7 +34,7 @@ An `enroll` SHALL hold `key`, 32 bytes, `signature`, 64 bytes, each in base64url
 
 ### Requirement: The README names the two paths and the signatures' contexts
 
-The protocol's README SHALL name `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the `BoomdriveHost` header, and the bytes each signature of enrollment and of a connection is made over, with a worked example of each. The hosted implementation SHALL make each signature over exactly those bytes (record 0017).
+The protocol's README SHALL name `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the `BoomdriveHost` header, and the bytes each signature of enrollment and of a connection is made over, with a worked example of each. The hosted implementation SHALL make each signature over exactly those bytes (record 0018).
 
 #### Scenario: The README's worked contexts
 

@@ -1,6 +1,6 @@
 //! The README's worked contexts (the runner-protocol spec's "The README
 //! names the two paths and the signatures' contexts"; design Decisions 4
-//! and 5; record 0017): the enrollment's and the connection's contexts,
+//! and 5; record 0018): the enrollment's and the connection's contexts,
 //! signatures and header, made from the README's fixed key, token,
 //! origin, time and nonce, are the README's worked bytes, read from the
 //! README itself, so the two cannot differ.

@@ -478,7 +478,7 @@ Every test stays inside the gate. It reaches no network beyond the loopback addr
 - **core.26**: Decision 8.
 - **core.28**: what leaves is the protocol's two paths. `machine` is a name, and nothing else of the host goes.
 - **core.29** and **core.30**: Decision 11.
-- **core.31** and **core.32**: Decisions 3 to 5, their details amended in this change's commit (record 0017).
+- **core.31** and **core.32**: Decisions 3 to 5, their details amended in this change's commit (record 0018).
 - **core.35**: nothing of the hosted implementation's is in the data directory.
 - **core.36**: the report file is unchanged.
 - **core.39**: `boomdrive enroll`'s `--json`, refusal and exits.

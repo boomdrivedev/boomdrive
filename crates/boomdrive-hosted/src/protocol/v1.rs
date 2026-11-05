@@ -153,7 +153,7 @@ pub enum ToRunner {
 /// A partition's enrollment, the body of the runner's one request to
 /// `runner/enroll`: the partition's public key, made on the host, signed
 /// over the enrollment's context. The token is the request's bearer, and
-/// no message holds it (core.4, core.31; record 0017).
+/// no message holds it (core.4, core.31; record 0018).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Enroll {
