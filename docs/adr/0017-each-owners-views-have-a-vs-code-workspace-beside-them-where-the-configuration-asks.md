@@ -11,7 +11,7 @@ decision-makers:
 
 Status: proposed on 2026-11-05 by the construct stage of the change `a-view-writes-its-vs-code-workspace`. That the runner may write VS Code workspaces for its views, as an option, is the user's decision, in their words below. Where the files go, what they list and how they are kept are the stage's choices, made on the written rules. The record is accepted when the user says yes to it.
 
-Deciders: the user, for the option; the construct stage, for its form.
+Deciders: the user, for the option, and on 2026-11-05 for the hosts turning it on now and their views retiring; the construct stage, for its form.
 Sources: the user's words of 2026-11-04 and 2026-11-05 in the brief of the change `a-view-writes-its-vs-code-workspace`; afterthought/swancloud's rule herdr.14 and its record 0031, cited by id; record 0009; rules core.2, core.5, core.12, core.14, core.17, core.35 and core.42; the views and configuration specs.
 
 ## Context and problem statement
@@ -20,7 +20,7 @@ The user browses code in VS Code through one workspace file per context, which l
 
 The runner keeps each repository's view, at `<repository_root>/<owner>/<name>` (the views spec), from the repositories its configuration names. A workspace kept anywhere else is a second list beside the runner's, which can name a repository the host no longer keeps or miss one it does. Under a hosted control plane the hosts' configuration does not know the list at all: the managed level holds it (record 0009).
 
-The user, 2026-11-04: "I don't know if we should build it as a feature into Boom Drive, where we automatically generate VS Code workspaces that point to your view. Maybe it's an option that goes in." On 2026-11-05 they asked for it to be rushed.
+The user, 2026-11-04: "I don't know if we should build it as a feature into Boom Drive, where we automatically generate VS Code workspaces that point to your view. Maybe it's an option that goes in." On 2026-11-05 they asked for it to be rushed, and later that day, in madswan-design's pane: "We need to turn it on and then deprecate the views. The code views are going away. We have the Boom Drive one now that replaces it".
 
 ## Considered options
 
@@ -61,7 +61,7 @@ Listing only the views that stand would move the window's folders whenever a clo
 - The runner writes, into the user's code folder, a file that VS Code also writes, and owns only its `folders`. The file is in no view, no clone's container and not the data directory (core.14, core.35).
 - A window manager's rules match the owner's name. A person who wants another title keeps a workspace of their own elsewhere.
 - A changed repository root starts each owner's workspace afresh at the new root. The old one, with its settings, goes when the old owner's folder is removed.
-- While crew is the control plane, the hosts' configuration keeps writing its spaces' workspaces under its own views, and leaves the option off. Once the runner keeps a context's repositories and views, the host asks for the option, and the hosts' module retires. That is the hosts' change.
+- The hosts ask for the option now, with crew still the control plane, and the hosts' own views and the workspaces their configuration writes beside them retire (the user, 2026-11-05). The runner's workspaces replace them only once every repository a host's view lists is one the runner keeps, so no window a person opens is lost. That is the hosts' change.
 - No message of the protocol changes, and no control plane's implementation reads the key (core.2, core.42). Under a hosted control plane, the managed level may set it as it sets the repositories (core.17, record 0009).
 
 Rule: core.43.
