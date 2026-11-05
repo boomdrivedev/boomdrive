@@ -9,7 +9,7 @@ The runner and sluice both moved that ref.
 - **The runner.** The clones spec's "The clone's own default branch follows origin's" moved the clone's `refs/heads/<default>` to `origin/<default>` after each fetch. It carried afterthought/swancloud's herdr.13 as amended 2026-10-26, so that whatever reads a host's default branch reads origin's. core.14 said the runner alone moves the clone's default branch.
 - **sluice, clause 124.** For a branch whose policy names a remote, the host's own ref of that name is sluice's copy. sluice levels it to each landing it reads, writes it at no other time, and refuses and logs any other hand's write. Since sluice's record 0069, a copy that lags decides nothing, which was the cause herdr.13's amendment worked around.
 
-The user, 2026-11-05: "The direction I expect is that sluice owns the host's copy, and the runner reads `refs/remotes/origin/<default>`, after its fetch, everywhere it now reads the clone's own default branch: views, places, launches, and the facts it records. It then stops moving that ref, at least where sluice keeps the branch."
+The orchestrator's brief, 2026-11-05: "The direction I expect is that sluice owns the host's copy, and the runner reads `refs/remotes/origin/<default>`, after its fetch, everywhere it now reads the clone's own default branch: views, places, launches, and the facts it records. It then stops moving that ref, at least where sluice keeps the branch."
 
 ## What Changes
 

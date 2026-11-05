@@ -9,10 +9,10 @@ decision-makers:
 
 # The runner moves no branch of its clone and reads each at origin's tracking ref, since the clone's own ref of a branch sluice keeps is sluice's copy
 
-Status: proposed on 2026-11-05 by the code stage of the fix `the-runner-reads-origin-not-sluices-copy`. The direction is the user's, in their words below. That levelling goes everywhere, and not only where sluice keeps the branch, is the stage's choice, made on sluice's statement and this repository's rules. The record is accepted when the user says yes to it.
+Status: proposed on 2026-11-05 by the code stage of the fix `the-runner-reads-origin-not-sluices-copy`. The direction is the orchestrator's, in its brief's words below; the user has not ruled on it yet. That levelling goes everywhere, and not only where sluice keeps the branch, is the stage's choice, made on sluice's statement and this repository's rules. The record is accepted when the user says yes to it.
 
-Deciders: the user, for the direction; the code stage, for how far it goes.
-Sources: the user's brief of the fix `the-runner-reads-origin-not-sluices-copy`, 2026-11-05; sluice's statement, clause 124 and its scenario S58, sluice record 0069, and its `crates/sluice/src/protect.rs`; Flume's statement, clause 9 and section C.1, and its `base_revision` and `history.head`; afterthought/swancloud's rule herdr.13 as amended 2026-10-26, cited by id (core.41); Decision 6 of the archived change `the-runner-keeps-its-repositories`; record 0003; rules core.1, core.14 and core.34; the clones spec.
+Deciders: the orchestrator's brief, for the direction; the code stage, for how far it goes; the user, at the fix's review.
+Sources: the orchestrator's brief of the fix `the-runner-reads-origin-not-sluices-copy`, 2026-11-05; sluice's statement, clause 124 and its scenario S58, sluice record 0069, and its `crates/sluice/src/protect.rs`; Flume's statement, clause 9 and section C.1, and its `base_revision` and `history.head`; afterthought/swancloud's rule herdr.13 as amended 2026-10-26, cited by id (core.41); Decision 6 of the archived change `the-runner-keeps-its-repositories`; record 0003; rules core.1, core.14 and core.34; the clones spec.
 
 ## Context and problem statement
 
@@ -24,7 +24,7 @@ The two tools' statements disagree about who moves that ref.
 - **sluice, clause 124.** For a branch whose policy names a remote, the remote's revision is the branch. The host's own ref of that name is sluice's copy. sluice levels it to each landing it reads, writes it at no other time, and reads nothing from it. A write to the copy by any other hand is refused and logged with the command and both revisions. S58 has this case: a tool that moves the copy to the remote's revision by hand is refused. Which remote a branch is on is now read from every revision of it the host holds, and a copy that lags decides nothing (record 0069). That is the cause the amendment worked around.
 - **core.14** said the runner alone fetches the clone and moves its default branch and its view.
 
-The user, 2026-11-05: "The direction I expect is that sluice owns the host's copy, and the runner reads `refs/remotes/origin/<default>`, after its fetch, everywhere it now reads the clone's own default branch: views, places, launches, and the facts it records. It then stops moving that ref, at least where sluice keeps the branch."
+The orchestrator's brief, 2026-11-05: "The direction I expect is that sluice owns the host's copy, and the runner reads `refs/remotes/origin/<default>`, after its fetch, everywhere it now reads the clone's own default branch: views, places, launches, and the facts it records. It then stops moving that ref, at least where sluice keeps the branch."
 
 ## What reads the clone's own default branch
 
