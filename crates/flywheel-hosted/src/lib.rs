@@ -3,18 +3,22 @@
 //! that holds the runner's protocol with it: one JSON Schema per version,
 //! under `protocol/`, and the runner's types for its messages (core.42).
 //! It holds the hosted table, the host's key and its stores, a
-//! partition's enrolment, each partition's connection and the checks of
-//! version 1's messages. It implements no `ControlPlane` yet, and
-//! `planes.rs` lists it once it does.
+//! partition's enrolment, each partition's connection, the cut of each
+//! tool's answer to its copy, the checks of version 1's messages, and
+//! `Hosted`, the `ControlPlane` over every partition's connection, which
+//! [`open`] opens.
 
 pub mod check;
 pub mod connection;
+pub mod copy;
 pub mod enrolment;
 pub mod key;
+pub mod plane;
 pub mod protocol;
 pub mod table;
 
 pub use enrolment::{Enrolled, Refusal};
+pub use plane::{open, Hosted};
 
 use std::path::Path;
 use table::Table;

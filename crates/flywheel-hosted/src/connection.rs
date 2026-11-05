@@ -8,7 +8,12 @@
 //! pong has not come by the next ping. A connection lost, refused or not
 //! made is tried again on a backoff with jitter whose cap stops at
 //! `poll_interval`, and its reach is said once each way. Every message it
-//! is sent is checked against version 1 before it is read.
+//! is sent is checked against version 1 before it is read, and every
+//! message it sends is checked before it is sent. A report goes under a
+//! message id of its own, and the last one no `reported` answered is sent
+//! again under that id after the hello of every connection (core.21). A
+//! terminal the control plane opens is closed at once (design Decision
+//! 11).
 //!
 //! Its task runs on the hosted implementation's runtime, and the runner's
 //! loop reaches it through [`Connection`] alone. It keeps nothing of
@@ -18,7 +23,7 @@
 use crate::check;
 use crate::key::{self, KeyName, Store};
 use crate::protocol::v1::{
-    Hello, Message, MessageId, Pulled, Report, ToRunner, SUBPROTOCOL, VERSION,
+    Hello, Message, MessageId, Pulled, Report, Reported, ToRunner, SUBPROTOCOL, VERSION,
 };
 use crate::table::Table;
 use flywheel_control::Want;
@@ -60,6 +65,10 @@ const WORDS_LENGTH: usize = 300;
 /// How many of the messages a connection sent it remembers the kinds of,
 /// to name one the control plane refuses.
 const KINDS_KEPT: usize = 32;
+
+/// The words every `terminal_open` is closed with (record 0004).
+pub const NO_TERMINAL: &str =
+    "this host's Flume relays no terminal, so the runner closes it at once";
 
 /// Where a connection says its lines, one each, from its runtime's
 /// threads.
@@ -122,6 +131,16 @@ impl Dial {
 pub struct Read {
     pub wants: Vec<Want>,
     pub report: Option<Report>,
+}
+
+/// The control plane's answer to a report.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Answered {
+    /// A `reported` naming it.
+    Reported(Reported),
+    /// A `message_refused` naming it, with the control plane's words: it
+    /// is not sent again.
+    Refused(String),
 }
 
 /// Where a partition's connection stands.
@@ -200,6 +219,14 @@ struct State {
     reached: Option<bool>,
     /// The refusals said since the control plane was last reached.
     said: Vec<Refusal>,
+    /// The last report handed, by its message's id, with the message
+    /// whole: sent at once on a live connection, and again under its id
+    /// after the hello of every connection, until the control plane
+    /// answers it or a newer one is handed, since a report is whole.
+    report: Option<(MessageId, Value)>,
+    /// Each answer to a report not yet taken, by the report's id, in the
+    /// order they came.
+    answers: Vec<(MessageId, Answered)>,
 }
 
 #[derive(Default)]
@@ -225,6 +252,8 @@ impl Shared {
 enum Command {
     /// A new hello was handed.
     Hello,
+    /// A new report was handed.
+    Report,
     /// Close the connection, with a normal close.
     Close,
 }
@@ -265,11 +294,10 @@ impl Connection {
     /// then not handed.
     pub fn hand(&self, hello: &Hello) -> Result<(), String> {
         let hello = serde_json::to_value(hello)
-            .map_err(|e| format!("`{}`'s hello could not be written: {e}", self.label))?;
-        if let Some(words) = check::failure(check::from_runner(), &envelope("hello", &hello).1) {
+            .map_err(|e| format!("the hello could not be written: {e}"))?;
+        if let Some(words) = failure(check::hello(), "hello", &hello) {
             return Err(format!(
-                "`{}`'s hello fails version 1's check, so is not sent: {words}",
-                self.label
+                "the hello fails version 1's check, so it is not sent: {words}"
             ));
         }
         let changed = self.shared.change(|state| {
@@ -286,6 +314,60 @@ impl Connection {
             let _ = self.commands.send(Command::Hello);
         }
         Ok(())
+    }
+
+    /// Whether the connection has taken a `pulled` since its hello, and so
+    /// takes a report.
+    pub fn live(&self) -> bool {
+        self.shared.lock().phase == Phase::Live
+    }
+
+    /// Hands the connection the partition's report, version 1's body of a
+    /// `report`, under a new message id, which it gives: sent at once on a
+    /// live connection, and again under that id after the hello of every
+    /// connection until it is answered or another is handed. A report that
+    /// fails version 1 is not handed, and why is given.
+    pub fn report(&self, report: &Value) -> Result<MessageId, String> {
+        if let Some(words) = failure(check::report(), "report", report) {
+            return Err(format!(
+                "the report fails version 1's check, so it is not sent: {words}"
+            ));
+        }
+        let (id, message) = envelope("report", report);
+        let id = MessageId::new(id);
+        self.shared
+            .change(|state| state.report = Some((id.clone(), message)));
+        let _ = self.commands.send(Command::Report);
+        Ok(id)
+    }
+
+    /// The control plane's answer to the report `id`, waiting up to
+    /// `patience` for it; none where none came.
+    pub fn answer(&self, id: &MessageId, patience: Duration) -> Option<Answered> {
+        let deadline = std::time::Instant::now() + patience;
+        let mut state = self.shared.lock();
+        loop {
+            if let Some(at) = state.answers.iter().position(|(report, _)| report == id) {
+                return Some(state.answers.remove(at).1);
+            }
+            let left = deadline.saturating_duration_since(std::time::Instant::now());
+            if left.is_zero() {
+                return None;
+            }
+            state = self
+                .shared
+                .changed
+                .wait_timeout(state, left)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+    }
+
+    /// Each answer to a report that came since the answers were last
+    /// taken and was not waited for, by the report's id, in the order they
+    /// came.
+    pub fn answers(&self) -> Vec<(MessageId, Answered)> {
+        std::mem::take(&mut self.shared.lock().answers)
     }
 
     /// What the connection has taken since its hello, waiting up to
@@ -394,6 +476,17 @@ fn drawn(cap: Duration) -> Duration {
     Duration::from_millis(u64::try_from(random % millis + 1).unwrap_or(u64::MAX))
 }
 
+/// Why a message of `kind` holding `body` fails version 1: checked first
+/// against `definition`, the body's own, so the words name the path deep
+/// in the message, and then whole against `from-runner.schema.json`.
+fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Option<String> {
+    let deep = check::failure(definition, body).map(|words| match words.strip_prefix("/ ") {
+        Some(rest) => format!("/body/{kind} {rest}"),
+        None => format!("/body/{kind}{words}"),
+    });
+    deep.or_else(|| check::failure(check::from_runner(), &envelope(kind, body).1))
+}
+
 /// A message of version 1 of `kind` holding `body`, under a new id of
 /// its own, a UUID of version 7, time-ordered and random, so that no id
 /// is given twice (design Decision 7).
@@ -423,7 +516,7 @@ async fn run(dial: Dial, shared: Arc<Shared>, mut commands: mpsc::UnboundedRecei
             break;
         }
         match commands.recv().await {
-            Some(Command::Hello) => {}
+            Some(Command::Hello | Command::Report) => {}
             Some(Command::Close) | None => return,
         }
     }
@@ -444,7 +537,7 @@ async fn run(dial: Dial, shared: Arc<Shared>, mut commands: mpsc::UnboundedRecei
             tokio::select! {
                 () = tokio::time::sleep_until(until) => break,
                 command = commands.recv() => match command {
-                    Some(Command::Hello) => {}
+                    Some(Command::Hello | Command::Report) => {}
                     Some(Command::Close) | None => return,
                 },
             }
@@ -513,7 +606,7 @@ async fn attempt(
         tokio::select! {
             connected = &mut connecting => break connected,
             command = commands.recv() => match command {
-                Some(Command::Hello) => {}
+                Some(Command::Hello | Command::Report) => {}
                 Some(Command::Close) | None => return Ended::Closed,
             },
         }
@@ -585,12 +678,34 @@ impl Kinds {
 struct Sender {
     sink: SplitSink<Socket, Frame>,
     kinds: Kinds,
+    label: String,
+    say: Say,
 }
 
 impl Sender {
     /// Sends a message of `kind` holding `body`, under a new id.
     async fn send(&mut self, kind: &'static str, body: &Value) -> Result<(), Failure> {
         let (id, message) = envelope(kind, body);
+        self.send_message(id, kind, &message).await
+    }
+
+    /// Sends `message`, of `kind`, under its own id, `id`, once it passes
+    /// `from-runner.schema.json`. One that fails is the runner's fault: it
+    /// is not sent, and one line names its kind and the path (design
+    /// Decision 9).
+    async fn send_message(
+        &mut self,
+        id: String,
+        kind: &'static str,
+        message: &Value,
+    ) -> Result<(), Failure> {
+        if let Some(words) = check::failure(check::from_runner(), message) {
+            (self.say)(format!(
+                "{}: the runner's {kind} fails version 1's check, so it is not sent: {words}",
+                self.label
+            ));
+            return Ok(());
+        }
         self.sink
             .send(Frame::text(message.to_string()))
             .await
@@ -653,9 +768,17 @@ async fn serve(
     let mut sender = Sender {
         sink,
         kinds: Kinds::default(),
+        label: label.clone(),
+        say: dial.say.clone(),
     };
     let mut sent = shared.lock().hello.clone().unwrap_or_default();
     if let Err(failure) = sender.send("hello", &sent).await {
+        return Ended::Failed(failure);
+    }
+    // The report no `reported` answered, sent again after the hello under
+    // its own id (core.21).
+    let mut report_sent = None;
+    if let Err(failure) = send_report(shared, &mut sender, &mut report_sent).await {
         return Ended::Failed(failure);
     }
     let mut pings = tokio::time::interval_at(Instant::now() + PING_INTERVAL, PING_INTERVAL);
@@ -700,12 +823,32 @@ async fn serve(
                         reached(dial, shared, pulled, first);
                         first = false;
                     }
-                    ToRunner::MessageRefused(refusal) => (dial.say)(format!(
-                        "{label}: the control plane refused the runner's {} {}: {}",
-                        sender.kinds.of(&refusal.message),
-                        refusal.message,
-                        one_line(&refusal.words)
-                    )),
+                    ToRunner::Reported(reported) => {
+                        let report = reported.report.clone();
+                        answered(shared, report, Answered::Reported(reported));
+                    }
+                    ToRunner::MessageRefused(refusal) => {
+                        let kind = sender.kinds.of(&refusal.message);
+                        (dial.say)(format!(
+                            "{label}: the control plane refused the runner's {kind} {}: {}",
+                            refusal.message,
+                            one_line(&refusal.words)
+                        ));
+                        let held = shared
+                            .lock()
+                            .report
+                            .as_ref()
+                            .is_some_and(|(id, _)| *id == refusal.message);
+                        if kind == "report" || held {
+                            answered(shared, refusal.message, Answered::Refused(refusal.words));
+                        }
+                    }
+                    ToRunner::TerminalOpen(open) => {
+                        let body = json!({ "terminal": open.terminal, "words": NO_TERMINAL });
+                        if let Err(failure) = sender.send("terminal_closed", &body).await {
+                            return Ended::Failed(failure);
+                        }
+                    }
                     ToRunner::Enrolled(_) | ToRunner::EnrolRefused(_) => {
                         let words = "an enrolment's answer is taken on `runner/enrol` alone, \
                                      never on `runner/connect`";
@@ -738,6 +881,11 @@ async fn serve(
                         sent = hello;
                     }
                 }
+                Some(Command::Report) => {
+                    if let Err(failure) = send_report(shared, &mut sender, &mut report_sent).await {
+                        return Ended::Failed(failure);
+                    }
+                }
                 Some(Command::Close) | None => {
                     let close = CloseFrame {
                         code: CloseCode::Normal,
@@ -753,6 +901,38 @@ async fn serve(
             }
         }
     }
+}
+
+/// Sends the report handed last, where it is not `sent` on this
+/// connection already, which it then is.
+async fn send_report(
+    shared: &Shared,
+    sender: &mut Sender,
+    sent: &mut Option<MessageId>,
+) -> Result<(), Failure> {
+    let Some((id, message)) = shared.lock().report.clone() else {
+        return Ok(());
+    };
+    if sent.as_ref() == Some(&id) {
+        return Ok(());
+    }
+    sender
+        .send_message(id.as_str().to_string(), "report", &message)
+        .await?;
+    *sent = Some(id);
+    Ok(())
+}
+
+/// The control plane answered the report `report` with `answer`, which the
+/// runner's loop takes; that report, where it is the last handed, is not
+/// sent again.
+fn answered(shared: &Shared, report: MessageId, answer: Answered) {
+    shared.change(|state| {
+        if state.report.as_ref().is_some_and(|(id, _)| *id == report) {
+            state.report = None;
+        }
+        state.answers.push((report, answer));
+    });
 }
 
 /// Refuses the control plane's message `id` with `words`: one line, and

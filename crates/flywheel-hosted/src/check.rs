@@ -74,6 +74,41 @@ pub fn message_id() -> &'static Validator {
     VALIDATOR.get_or_init(|| validator("shared.schema.json#/$defs/message_id"))
 }
 
+/// The validator of a hello's body, `hello.schema.json`'s `hello`, whose
+/// failure names the path deep in it.
+pub fn hello() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator("hello.schema.json#/$defs/hello"))
+}
+
+/// The validator of a report's body, `report.schema.json`'s `report`,
+/// whose failure names the path deep in it.
+pub fn report() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator("report.schema.json#/$defs/report"))
+}
+
+/// The validator of a place's status as its copy, `place-status.schema.json`'s
+/// `place_status`.
+pub fn place_status() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::PLACE_STATUS))
+}
+
+/// The validator of sluice's entry as its copy,
+/// `submission-entry.schema.json`'s `submission_entry`.
+pub fn submission_entry() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::SUBMISSION_ENTRY))
+}
+
+/// The validator of Flume's host part as its copy, `hello.schema.json`'s
+/// `host_part`.
+pub fn host_part() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::HOST_PART))
+}
+
 /// Why `value` fails `validator`: its first error's path in the value and
 /// in the schema, and no value; or none, where it passes.
 pub fn failure(validator: &Validator, value: &Value) -> Option<String> {
