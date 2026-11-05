@@ -27,5 +27,5 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 4. The change's checks
 
-- [ ] 4.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test root:format root:adrs root:specs root:changes` passes.
-- [ ] 4.2 The spec deltas archive into specs that pass openspec's strict check, each requirement's text within openspec's 500 characters. True when, after `openspec archive a-view-writes-its-vs-code-workspace --yes` on a copy of `openspec/` with the pinned openspec, `openspec validate --specs --strict` passes all 11 specs there, and `devenv shell -- moon run root:specs root:changes` passes on the tree.
+- [x] 4.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test root:format root:adrs root:specs root:changes` passes.
+- [x] 4.2 The spec deltas archive into specs that pass openspec's strict check, each requirement's text within openspec's 500 characters. True when, after `openspec archive a-view-writes-its-vs-code-workspace --yes` on a copy of `openspec/` with the pinned openspec, `openspec validate --specs --strict` passes all 11 specs there, and `devenv shell -- moon run root:specs root:changes` passes on the tree.
