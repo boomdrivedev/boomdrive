@@ -4,8 +4,10 @@
 //! by tokio-tungstenite's handshake. It checks every message it is sent
 //! against version 1, verifies the enrolment's and each connection's
 //! signature over its context, built here from the protocol's README and
-//! not from the crate's code, and records what it took, in order. A test
-//! sets each partition's wants and the report it holds, and can make it
+//! not from the crate's code, and records what it took, in order. It holds
+//! each partition's last report as a control plane does, but for what it
+//! lets go or refuses. A test sets each partition's wants and the report
+//! it holds, and can make it
 //! refuse a token, a key or the subprotocol, drop a connection, answer no
 //! ping, withhold or delay a `reported`, and send any message. A test on
 //! tokio's paused clock waits on what the fake takes without blocking its
@@ -386,7 +388,7 @@ impl Fake {
     }
 
     /// Sets the report `partition`'s control plane holds, which each
-    /// `pulled` answering a hello gives.
+    /// `pulled` answering a hello gives, until it takes another.
     pub fn set_report(&self, partition: &str, report: Value) {
         self.shared
             .lock()
@@ -394,6 +396,17 @@ impl Fake {
             .entry(partition.to_string())
             .or_default()
             .report = report;
+    }
+
+    /// The report `partition`'s control plane holds: the last it took, but
+    /// for what it let go or refused, or the one a test set.
+    pub fn held(&self, partition: &str) -> Value {
+        let state = self.shared.lock();
+        state
+            .partitions
+            .get(partition)
+            .map(|set| set.report.clone())
+            .unwrap_or(Value::Null)
     }
 
     /// Answers each of `partition`'s reports letting go of `let_go` and
@@ -981,6 +994,19 @@ fn answer_message(
         }
         Some("report") => {
             let set = state.partitions.get(partition).cloned().unwrap_or_default();
+            let mut held = message["body"]["report"].clone();
+            for id in set.let_go.iter().chain(set.refused.keys()) {
+                for part in ["launches", "acts", "commands", "inboxes"] {
+                    if let Some(entries) = held[part].as_object_mut() {
+                        entries.remove(id);
+                    }
+                }
+            }
+            state
+                .partitions
+                .entry(partition.to_string())
+                .or_default()
+                .report = held;
             if set.withhold {
                 return;
             }

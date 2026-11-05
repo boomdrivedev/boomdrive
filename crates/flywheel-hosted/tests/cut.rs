@@ -1,0 +1,171 @@
+//! What goes up is version 1's copy (the hosted-control-plane spec's
+//! "What goes up is version 1's copy, checked before it goes", its
+//! scenario "Flume's places cut"; design Decisions 9 and 14): each place
+//! of Flume 0.4.1's fixtures, each entry of sluice 0.61.1's and Flume's
+//! host part, cut by walking version 1's schema, passes its definition
+//! and holds nothing version 1 leaves out. The fixtures are the
+//! binary's, read where they are kept.
+
+mod common;
+
+use common::{definition, errors, validator};
+use flywheel_control::HostPart;
+use flywheel_hosted::copy;
+use serde_json::{json, Value};
+use std::path::{Path, PathBuf};
+
+/// The fields of a place's status no copy holds (the runner-protocol
+/// spec's "A place's status is carried as its copy").
+const LEFT_OUT: &[&str] = &["last_words", "screen", "printed", "readiness", "repository"];
+
+/// The directory of one tool's fixtures, `flume-0.4.1` or
+/// `sluice-0.61.1`.
+fn fixtures(tool: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../flywheel/tests/fixtures")
+        .join(tool)
+}
+
+/// Each fixture of `tool` whose name starts with `status`, by its name,
+/// with its text as the tool printed it.
+fn statuses(tool: &str) -> Vec<(String, String)> {
+    let dir = fixtures(tool);
+    let mut found: Vec<(String, String)> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| {
+            let name = path.file_name().unwrap().to_string_lossy();
+            name.starts_with("status") && name.ends_with(".json")
+        })
+        .map(|path| {
+            let name = path.file_name().unwrap().to_string_lossy().into_owned();
+            (name, std::fs::read_to_string(&path).unwrap())
+        })
+        .collect();
+    found.sort();
+    found
+}
+
+/// Each place's status as `flume --json status <place>` gives it, by the
+/// fixture and the place's name: a fixture of one place as Flume printed
+/// it, and each place of a fixture of many as the answer of one.
+fn places() -> Vec<(String, String)> {
+    let mut places = Vec::new();
+    for (name, text) in statuses("flume-0.4.1") {
+        let answer: Value = serde_json::from_str(&text).unwrap();
+        let Some(each) = answer.pointer("/status/places").and_then(Value::as_array) else {
+            continue;
+        };
+        if each.len() == 1 {
+            places.push((name, text));
+            continue;
+        }
+        for place in each {
+            let one = json!({ "status": { "places": [place] } }).to_string();
+            places.push((format!("{name}, {}", place["name"]), one));
+        }
+    }
+    places
+}
+
+/// Each path of `value` at which a key of `names` is held.
+fn held(value: &Value, names: &[&str], at: &str, found: &mut Vec<String>) {
+    match value {
+        Value::Object(fields) => {
+            for (key, field) in fields {
+                let path = format!("{at}/{key}");
+                if names.contains(&key.as_str()) {
+                    found.push(path.clone());
+                }
+                held(field, names, &path, found);
+            }
+        }
+        Value::Array(items) => {
+            for (n, item) in items.iter().enumerate() {
+                held(item, names, &format!("{at}/{n}"), found);
+            }
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn flumes_places_cut() {
+    let validator = validator(&definition("place-status.schema.json", "place_status"));
+    let places = places();
+    assert!(places.len() >= 15, "Flume's fixtures hold {}", places.len());
+    for (name, text) in places {
+        let copy = copy::place_status(&text).unwrap_or_else(|words| panic!("{name}: {words}"));
+        let refused = errors(&validator, &copy);
+        assert!(refused.is_empty(), "{name}'s copy is refused: {refused:#?}");
+        let mut found = Vec::new();
+        held(&copy, LEFT_OUT, "", &mut found);
+        for task in copy["tasks"].as_array().into_iter().flatten() {
+            if task.get("text").is_some() {
+                found.push("/tasks/*/text".to_string());
+            }
+        }
+        assert!(found.is_empty(), "{name}'s copy holds {found:?}");
+    }
+}
+
+#[test]
+fn a_status_cut_keeps_each_value_as_flume_printed_it() {
+    let text = std::fs::read_to_string(fixtures("flume-0.4.1").join("status-code.json")).unwrap();
+    let printed: Value = serde_json::from_str(&text).unwrap();
+    let place = &printed["status"]["places"][0];
+    let copy = copy::place_status(&text).expect("a copy");
+    for (key, value) in copy.as_object().unwrap() {
+        if !value.is_object() && !value.is_array() {
+            assert_eq!(value, &place[key], "{key}");
+        }
+    }
+    assert_eq!(copy["phase"], place["phase"]);
+    assert_eq!(copy["submission"], place["submission"]);
+}
+
+#[test]
+fn sluices_entries_cut() {
+    let validator = validator(&definition(
+        "submission-entry.schema.json",
+        "submission_entry",
+    ));
+    let mut cut = 0;
+    for (name, text) in statuses("sluice-0.61.1") {
+        let entry: Value = serde_json::from_str(&text).unwrap();
+        if entry.get("error").is_some() {
+            continue;
+        }
+        let copy = copy::submission_entry(&text).unwrap_or_else(|words| panic!("{name}: {words}"));
+        let refused = errors(&validator, &copy);
+        assert!(refused.is_empty(), "{name}'s copy is refused: {refused:#?}");
+        for row in copy["failed"].as_array().into_iter().flatten() {
+            assert!(row.get("log").is_none(), "{name}'s copy holds a row's log");
+        }
+        assert_eq!(copy["state"], entry["state"], "{name}");
+        cut += 1;
+    }
+    assert_eq!(cut, 3, "sluice's entries cut");
+}
+
+#[test]
+fn flumes_host_part_cut() {
+    let validator = validator(&definition("hello.schema.json", "host_part"));
+    for name in ["status.json", "status-bounded.json"] {
+        let text = std::fs::read_to_string(fixtures("flume-0.4.1").join(name)).unwrap();
+        let host = &serde_json::from_str::<Value>(&text).unwrap()["status"]["host"];
+        let part = HostPart {
+            running: host["running"].to_string(),
+            bound: host["bound"].to_string(),
+            room: host["room"].to_string(),
+            streams: host["streams"].to_string(),
+        };
+        let copy = copy::host_part(&part).unwrap_or_else(|words| panic!("{name}: {words}"));
+        let refused = errors(&validator, &copy);
+        assert!(refused.is_empty(), "{name}'s copy is refused: {refused:#?}");
+        let mut queues = Vec::new();
+        held(&copy, &["queue"], "", &mut queues);
+        assert!(queues.is_empty(), "{name}'s copy holds {queues:?}");
+        assert_eq!(copy["room"], host["room"], "{name}");
+    }
+}
