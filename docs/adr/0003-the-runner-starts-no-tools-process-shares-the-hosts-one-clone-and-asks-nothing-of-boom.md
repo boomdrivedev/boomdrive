@@ -52,6 +52,6 @@ Option 1 each time, the user's choice.
 ### Consequences
 
 - crew's main-level checkouts come from the runner's clone rather than from swancloud's spaces, and swancloud's own containers retire. Both are asks of theirs.
-- sluice's statement, which still lists flywheel among its drivers, is read as Flume being the driver of a submission.
+- sluice's statement, which still lists Boomdrive among its drivers, is read as Flume being the driver of a submission.
 - Flume gains the step at a launch that asks Boom for the standing claims. Until it has one, a launch carries what its control plane wrote.
 - The spike's assumption 7 is read with this record: the runner composes no brief.

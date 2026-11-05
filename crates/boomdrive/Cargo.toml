@@ -1,0 +1,33 @@
+[package]
+name = "boomdrive"
+version.workspace = true
+edition.workspace = true
+description = "The runner on each host: keeps the clones its configuration names and carries the control plane's work into flume launches."
+publish = false
+
+[[bin]]
+name = "boomdrive"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+clap.workspace = true
+# The one interface the runner reaches its control plane through (design
+# Decision 1; core.2).
+boomdrive-control = { path = "../boomdrive-control" }
+# crew's implementation of it, which only the list of implementations,
+# src/planes.rs, names (design Decisions 1 and 4; core.2).
+boomdrive-crew = { path = "../boomdrive-crew" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+signal-hook.workspace = true
+toml.workspace = true
+weir-signals.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+libc.workspace = true
+weir-capture.workspace = true

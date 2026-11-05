@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on enrolment, identity and credentials; sluice record 0019; agentplot/flywheel-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/flywheel-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; sluice record 0019; agentplot/boomdrive-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
 
 ## Context and problem statement
 
@@ -37,8 +37,8 @@ Option 4, the user's choice, with two of the mitigations.
 
 - **No App key on a host.** Under a hosted control plane, no GitHub App key or App id is on a host for the runner or a tool to mint with. The cloud holds the App, and a host's forge calls are made with short-lived tokens the cloud mints and sends down the runner's own connection (core.33).
 - **The cloud never uses a token, and the customer picks the repositories.** These are the user's mitigations, and both are the cloud's to hold: no cloud code makes a forge call with a token it minted, and the App is installed only on the repositories the customer chooses.
-- **A token only for a served repository.** The cloud mints a token for a host only for a repository of a Flywheel the host serves (record 0009). The user said a mapping of repositories to hosts is superseded by that: the customer controls which hosts work with which repositories by which Flywheels each host serves.
-- **A tool asks the runner.** A tool on a cloud host that needs a forge identity of its own, sluice to land among them, gets its token from a credential command, `flywheel forge-token`. That command reaches the cloud over its own outgoing connection with the host's key, and gives the token on standard output only.
+- **A token only for a served repository.** The cloud mints a token for a host only for a repository of a drive the host serves (record 0009). The user said a mapping of repositories to hosts is superseded by that: the customer controls which hosts work with which repositories by which drives each host serves.
+- **A tool asks the runner.** A tool on a cloud host that needs a forge identity of its own, sluice to land among them, gets its token from a credential command, `boomdrive forge-token`. That command reaches the cloud over its own outgoing connection with the host's key, and gives the token on standard output only.
 - **Writes through the host's git**, F52 kept. The runner changes a repository only through the host's own `git` command, by a clone, a fetch, a worktree, a moved ref or a push, so the host's helpers and configuration apply, a helper set for one call among them. A library may only read (core.34).
 
 Not taken: tokens narrowed for each call, and every mint as an event on the chain. core.4 still rules out a token written to a file or a log.

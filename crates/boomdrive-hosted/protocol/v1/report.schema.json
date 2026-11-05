@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v1/report.schema.json",
+  "description": "The runner's report as version 1 carries it, the interface's Report but that a place's status and sluice's entry go up as their copies, and reported, the control plane's answer to it.",
+  "$defs": {
+    "report": {
+      "description": "The runner's whole report, each part by the id of the want it answers. It renews every lease it names.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "launches",
+        "acts",
+        "commands",
+        "inboxes"
+      ],
+      "properties": {
+        "launches": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/launched"
+          }
+        },
+        "acts": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/acted"
+          }
+        },
+        "commands": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/commanded"
+          }
+        },
+        "inboxes": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/inbox_carried"
+          }
+        }
+      }
+    },
+    "launched": {
+      "description": "A launch the runner answered, with its place's status and its submission's entry as their copies.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lease",
+        "answer",
+        "status",
+        "entry"
+      ],
+      "properties": {
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "answer": {
+          "$ref": "#/$defs/answer"
+        },
+        "status": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/carried_status"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "entry": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/carried_entry"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "answer": {
+      "description": "The runner's answer to an offer.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "place_dir",
+        "words",
+        "at"
+      ],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "held",
+            "launched",
+            "done",
+            "refused"
+          ]
+        },
+        "place_dir": {
+          "description": "The place Flume made, as Flume's answer names it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        }
+      }
+    },
+    "carried_status": {
+      "description": "Flume's status of a launch's place, carried as its copy, with when the runner first read it as it now stands and whether Flume's last listing held it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "copy",
+        "at",
+        "listed"
+      ],
+      "properties": {
+        "copy": {
+          "$ref": "place-status.schema.json#/$defs/place_status"
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        },
+        "listed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "carried_entry": {
+      "description": "sluice's entry of a launch's submission, carried as its copy, with when the runner first read it as it now stands and whether sluice's last listing held it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "copy",
+        "at",
+        "listed"
+      ],
+      "properties": {
+        "copy": {
+          "$ref": "submission-entry.schema.json#/$defs/submission_entry"
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        },
+        "listed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "done_or_refused": {
+      "description": "How the runner answered an act or a command.",
+      "enum": [
+        "done",
+        "refused"
+      ]
+    },
+    "acted": {
+      "description": "An act the runner carried out or refused.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "launch",
+        "lease",
+        "outcome",
+        "words",
+        "at"
+      ],
+      "properties": {
+        "launch": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease_number"
+        },
+        "outcome": {
+          "$ref": "#/$defs/done_or_refused"
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        }
+      }
+    },
+    "commanded": {
+      "description": "A command the runner carried out or refused.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lease",
+        "outcome",
+        "text",
+        "words",
+        "origin_commit",
+        "at"
+      ],
+      "properties": {
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "outcome": {
+          "$ref": "#/$defs/done_or_refused"
+        },
+        "text": {
+          "description": "The tool's answer as given, where a tool ran.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "origin_commit": {
+          "description": "The commit the branch stands at on origin, or null where origin holds no such branch.",
+          "oneOf": [
+            {
+              "$ref": "shared.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        }
+      }
+    },
+    "inbox_carried": {
+      "description": "An inbox as the runner last carried it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tip",
+        "files",
+        "words",
+        "at"
+      ],
+      "properties": {
+        "tip": {
+          "description": "The commit of the branch's tip it was read at, where one was read.",
+          "oneOf": [
+            {
+              "$ref": "shared.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "files": {
+          "description": "Each file under inbox/ by its path.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^inbox/"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/inbox_file"
+          }
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        }
+      }
+    },
+    "inbox_file": {
+      "description": "A file of an inbox, carried as the tip holds it or by its digest.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "digest"
+          ],
+          "properties": {
+            "digest": {
+              "$ref": "shared.schema.json#/$defs/digest"
+            }
+          }
+        }
+      ]
+    },
+    "reported": {
+      "description": "The control plane's answer to a report: the report message it answers, by that message's id, the ids it carries no more, and each id whose report it refused, its lease no longer the runner's, with its words.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report",
+        "let_go",
+        "refused"
+      ],
+      "properties": {
+        "report": {
+          "$ref": "shared.schema.json#/$defs/message_id"
+        },
+        "let_go": {
+          "type": "array",
+          "items": {
+            "$ref": "shared.schema.json#/$defs/id"
+          }
+        },
+        "refused": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

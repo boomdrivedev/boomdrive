@@ -1,13 +1,13 @@
 # runner-protocol Specification
 
 ## Purpose
-The runner's protocol with a hosted control plane, as JSON Schema of draft 2020-12 in the hosted implementation's crate, one directory per version, which the cloud pins by revision. Each end checks every message it is sent against its version. It covers where each version lives; the envelope, its ids and its two directions; the closed objects; the interface's shapes it carries; the copies of Flume's and sluice's answers; the terminal's key exchange and frames; what version 1 leaves out; and the runner's types, tested against it (core.42; record 0015; flywheel-cloud records 0016, 0049 and 0056).
+The runner's protocol with a hosted control plane, as JSON Schema of draft 2020-12 in the hosted implementation's crate, one directory per version, which the cloud pins by revision. Each end checks every message it is sent against its version. It covers where each version lives; the envelope, its ids and its two directions; the closed objects; the interface's shapes it carries; the copies of Flume's and sluice's answers; the terminal's key exchange and frames; what version 1 leaves out; and the runner's types, tested against it (core.42; record 0015; boomdrive-cloud records 0016, 0049 and 0056).
 
 ## Requirements
 
 ### Requirement: Each version of the protocol is JSON Schema in the hosted implementation's crate
 
-The runner's protocol with a hosted control plane SHALL be JSON Schema of draft 2020-12, one directory per version under `crates/flywheel-hosted/protocol/`, version 1 at `v1/`. Each schema file SHALL name its own address under the version's directory as its `$id`. Every `$ref` SHALL resolve among the version's own files, and no check SHALL fetch a file. The crate's `FILES` SHALL hold every schema file of the version, and nothing else (core.42; flywheel-cloud record 0056).
+The runner's protocol with a hosted control plane SHALL be JSON Schema of draft 2020-12, one directory per version under `crates/boomdrive-hosted/protocol/`, version 1 at `v1/`. Each schema file SHALL name its own address under the version's directory as its `$id`. Every `$ref` SHALL resolve among the version's own files, and no check SHALL fetch a file. The crate's `FILES` SHALL hold every schema file of the version, and nothing else (core.42; boomdrive-cloud record 0056).
 
 #### Scenario: Each file is a schema of its draft
 
@@ -26,7 +26,7 @@ The runner's protocol with a hosted control plane SHALL be JSON Schema of draft 
 
 ### Requirement: Every message names its version, carries an id of its own and holds one body
 
-Every message SHALL be an object of `protocol_version`, which is 1, `id`, its sender's id for it, and `body`, which holds exactly one kind. A message's id SHALL be 1 to 128 letters, digits and `._:/-` (flywheel-cloud core.36, core.38; core.21).
+Every message SHALL be an object of `protocol_version`, which is 1, `id`, its sender's id for it, and `body`, which holds exactly one kind. A message's id SHALL be 1 to 128 letters, digits and `._:/-` (boomdrive-cloud core.36, core.38; core.21).
 
 #### Scenario: A message with no id
 
@@ -73,11 +73,11 @@ Every object version 1 names SHALL take only the fields it names, at every depth
 
 ### Requirement: The messages carry the interface's shapes
 
-Version 1 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `flywheel-control`'s serde types write them, and its `Hello` and `Report` but for their copies. An acted's and a commanded's outcome SHALL be `done` or `refused` (flywheel-cloud record 0056).
+Version 1 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, and its `Hello` and `Report` but for their copies. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056).
 
 #### Scenario: The interface's values pass
 
-- **WHEN** one value of each want, act and command sort, a lease with an expiry and one without, a launch with every field and one with none, each tool version, an acted, a commanded and an inbox carried are written by `flywheel-control`'s types and checked against their definitions in version 1
+- **WHEN** one value of each want, act and command sort, a lease with an expiry and one without, a launch with every field and one with none, each tool version, an acted, a commanded and an inbox carried are written by `boomdrive-control`'s types and checked against their definitions in version 1
 - **THEN** each passes
 
 #### Scenario: An act's outcome
@@ -87,7 +87,7 @@ Version 1 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Ans
 
 ### Requirement: A place's status is carried as its copy
 
-A place's status SHALL be carried as the copy of `flume status --json`'s place, holding only the fields design Decision 7 names, each as Flume printed it. It SHALL hold no agent's last words, screen, printed output, notes, settings or mode; no task's text; no readiness; no group's title; no teardown's words; no end's report; no verdict's words; and no path but the place's own (core.27; flywheel-cloud core.108, record 0049).
+A place's status SHALL be carried as the copy of `flume status --json`'s place, holding only the fields design Decision 7 names, each as Flume printed it. It SHALL hold no agent's last words, screen, printed output, notes, settings or mode; no task's text; no readiness; no group's title; no teardown's words; no end's report; no verdict's words; and no path but the place's own (core.27; boomdrive-cloud core.108, record 0049).
 
 #### Scenario: The copy's fields are the list
 
@@ -134,7 +134,7 @@ A submission's entry SHALL be carried as an object of sluice's `id`, `branch`, `
 
 ### Requirement: A report is answered by its id, and a failing message is refused whole
 
-A control plane's `reported` SHALL name the `report` message it answers by that message's id, with the ids it lets go and the ids it refused with its words. Either end's `message_refused` SHALL name the message that failed its check by its id, with words (flywheel-cloud core.36; core.42).
+A control plane's `reported` SHALL name the `report` message it answers by that message's id, with the ids it lets go and the ids it refused with its words. Either end's `message_refused` SHALL name the message that failed its check by its id, with words (boomdrive-cloud core.36; core.42).
 
 #### Scenario: A reported with no report named
 
@@ -148,7 +148,7 @@ A control plane's `reported` SHALL name the `report` message it answers by that 
 
 ### Requirement: A terminal's frames are sealed end to end and carry their offsets
 
-A terminal SHALL open on the browser's key share and answer with the runner's, each share holding its suite, its key, its signature and its signing key's certificate. Every frame of a terminal's bytes SHALL carry them only sealed, in base64url, with its offset in its direction's stream. A resume SHALL name the offset its browser has seen, and a frame of the runner's SHALL say whether it is a redraw (core.30; flywheel-cloud record 0016; research rows S6 and F54).
+A terminal SHALL open on the browser's key share and answer with the runner's, each share holding its suite, its key, its signature and its signing key's certificate. Every frame of a terminal's bytes SHALL carry them only sealed, in base64url, with its offset in its direction's stream. A resume SHALL name the offset its browser has seen, and a frame of the runner's SHALL say whether it is a redraw (core.30; boomdrive-cloud record 0016; research rows S6 and F54).
 
 #### Scenario: A frame with no offset
 
@@ -172,7 +172,7 @@ A terminal SHALL open on the browser's key share and answer with the runner's, e
 
 ### Requirement: Version 1 names no grant and no credential
 
-No field of version 1 SHALL be named `grant`, `role`, `permission`, `token`, `credential`, `secret` or `password`. A connection's account, and what it may do, SHALL come from its enrolment, never from a message (core.4; flywheel-cloud records 0047 and 0065).
+No field of version 1 SHALL be named `grant`, `role`, `permission`, `token`, `credential`, `secret` or `password`. A connection's account, and what it may do, SHALL come from its enrollment, never from a message (core.4; boomdrive-cloud records 0047 and 0065).
 
 #### Scenario: Every name read
 
@@ -181,7 +181,7 @@ No field of version 1 SHALL be named `grant`, `role`, `permission`, `token`, `cr
 
 ### Requirement: The runner's types write and read only what the schema takes
 
-`flywheel_hosted::protocol::v1` SHALL hold a type for every message of version 1, using the interface's own types wherever version 1 carries a shape as the interface writes it. Every example of version 1 SHALL read into its direction's type and write back to an equal value that passes the schema. Every kind SHALL have an example (research row F50).
+`boomdrive_hosted::protocol::v1` SHALL hold a type for every message of version 1, using the interface's own types wherever version 1 carries a shape as the interface writes it. Every example of version 1 SHALL read into its direction's type and write back to an equal value that passes the schema. Every kind SHALL have an example (research row F50).
 
 #### Scenario: Every example read and written back
 

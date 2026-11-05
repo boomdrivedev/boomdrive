@@ -1,7 +1,7 @@
 # crew-control-plane Specification
 
 ## Purpose
-crew's implementation of the control-plane interface, the one crate that names crew. It reads crew's records at one tip of each partition's flywheel branch, `<label>/main`: the requests crew writes, its roles that run as Flume kinds, its asks and its plan. It gives them to the runner as offers and acts under the lease number 1 with no expiry, since crew never moves work once a host's runner holds it. A request naming a host is that host's runner's. A launch naming none, a kit's work, is taken by a runner whose configuration keeps its repository, which claims it on its own branch and gives it only once no other runner's branch answers it. It writes the runner's answers, and Flume's status of each place, on the runner's own branch, `<label>/runner/<host>`, in crew's formats field for field, and pushes no other branch. It names no kinds file: a role's kind is given as its identity, which the host's Flume resolves (core.2, core.5, core.10; crew record 0052; crew's `teams-cross-to-flume-as-their-bolts-land` Decision 4 and `roles-run-as-flume-kinds` R1 to R4, as built at crew `9913f249`; crew's `the-team-machinery-leaves` Decision 4).
+crew's implementation of the control-plane interface, the one crate that names crew. It reads crew's records at one tip of each partition's drive branch, `<label>/main`: the requests crew writes, its roles that run as Flume kinds, its asks and its plan. It gives them to the runner as offers and acts under the lease number 1 with no expiry, since crew never moves work once a host's runner holds it. A request naming a host is that host's runner's. A launch naming none, a kit's work, is taken by a runner whose configuration keeps its repository, which claims it on its own branch and gives it only once no other runner's branch answers it. It writes the runner's answers, and Flume's status of each place, on the runner's own branch, `<label>/runner/<host>`, in crew's formats field for field, and pushes no other branch. It names no kinds file: a role's kind is given as its identity, which the host's Flume resolves (core.2, core.5, core.10; crew record 0052; crew's `teams-cross-to-flume-as-their-bolts-land` Decision 4 and `roles-run-as-flume-kinds` R1 to R4, as built at crew `9913f249`; crew's `the-team-machinery-leaves` Decision 4).
 
 ## Requirements
 
@@ -43,7 +43,7 @@ A state repository SHALL be reached at `https://github.com/<owner>/<name>.git` b
 - **WHEN** `[control_plane.crew]` says `token = "..."`
 - **THEN** it is refused, naming `token` as a key crew's implementation does not read, and the value appears in no output
 
-### Requirement: crew's records are read at one tip of each partition's flywheel branch
+### Requirement: crew's records are read at one tip of each partition's drive branch
 
 At each pull, for each partition, crew's implementation SHALL read `requests.rec`, `roles.rec`, `asks.rec` and `plan.rec` at one tip of `<label>/main`, through a bare cache at `<data>/control/crew/<owner>/<name>.git`. A file missing at the tip SHALL hold nothing. It SHALL read every `<label>/runner/*` branch the state repository lists, taking its own host's answers and places from the report the runner hands the pull.
 

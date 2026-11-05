@@ -1,7 +1,7 @@
 # branch-commands Specification
 
 ## Purpose
-How the runner makes a bolt's branch when its control plane sends that command: by sluice, in the runner's clone of the bolt's repository, under the command's lease. Any host that keeps the repository may take the command. A branch already there counts as made, read as a fact from git and not from sluice's words. It is the first of the tool commands a control plane sends (core.1, core.10; flywheel-cloud record 0017 and core.19; the domain model's Command card).
+How the runner makes a bolt's branch when its control plane sends that command: by sluice, in the runner's clone of the bolt's repository, under the command's lease. Any host that keeps the repository may take the command. A branch already there counts as made, read as a fact from git and not from sluice's words. It is the first of the tool commands a control plane sends (core.1, core.10; boomdrive-cloud record 0017 and core.19; the domain model's Command card).
 
 ## Requirements
 

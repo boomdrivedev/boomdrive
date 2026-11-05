@@ -127,6 +127,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "boomdrive"
+version = "0.0.0"
+dependencies = [
+ "boomdrive-control",
+ "boomdrive-crew",
+ "clap",
+ "libc",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "signal-hook",
+ "tempfile",
+ "toml",
+ "weir-capture",
+ "weir-signals",
+]
+
+[[package]]
+name = "boomdrive-control"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "time",
+]
+
+[[package]]
+name = "boomdrive-crew"
+version = "0.0.0"
+dependencies = [
+ "boomdrive-control",
+ "serde_json",
+ "tempfile",
+ "time",
+ "toml",
+ "weir-branch",
+ "weir-capture",
+]
+
+[[package]]
+name = "boomdrive-hosted"
+version = "0.0.0"
+dependencies = [
+ "boomdrive-control",
+ "jsonschema",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "borrow-or-share"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -323,56 +373,6 @@ dependencies = [
  "borrow-or-share",
  "ref-cast",
  "serde",
-]
-
-[[package]]
-name = "flywheel"
-version = "0.0.0"
-dependencies = [
- "clap",
- "flywheel-control",
- "flywheel-crew",
- "libc",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "signal-hook",
- "tempfile",
- "toml",
- "weir-capture",
- "weir-signals",
-]
-
-[[package]]
-name = "flywheel-control"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
- "time",
-]
-
-[[package]]
-name = "flywheel-crew"
-version = "0.0.0"
-dependencies = [
- "flywheel-control",
- "serde_json",
- "tempfile",
- "time",
- "toml",
- "weir-branch",
- "weir-capture",
-]
-
-[[package]]
-name = "flywheel-hosted"
-version = "0.0.0"
-dependencies = [
- "flywheel-control",
- "jsonschema",
- "serde",
- "serde_json",
 ]
 
 [[package]]

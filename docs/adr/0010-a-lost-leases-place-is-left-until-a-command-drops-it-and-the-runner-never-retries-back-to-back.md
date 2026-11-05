@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/flywheel-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
 
 ## Context and problem statement
 
@@ -32,7 +32,7 @@ Then four rules drawn from the material, each kept or not: no launch past its le
 - **No launch past its lease**, kept. An offer whose lease has expired by the runner's clock is not launched, acted on or claimed until a pull gives it again under a live lease (core.24).
 - **A backoff, never back to back**, kept. A control plane that cannot be reached is tried again on a bounded backoff with jitter, from seconds up to `poll_interval`, and a lease already lapsed sets no pass due at once (core.22).
 - **No act the runner cannot record**, kept. A pass whose report cannot be saved carries out no further act or command that pass (core.25). This holds as built.
-- **Presence is the cloud's**, kept. The runner raises no alarm of its own about being offline. It says one line when its control plane becomes unreachable and one when it returns, and the Host object tells the Flywheel (core.23).
+- **Presence is the cloud's**, kept. The runner raises no alarm of its own about being offline. It says one line when its control plane becomes unreachable and one when it returns, and the Host object tells the drive (core.23).
 
 ### Consequences
 

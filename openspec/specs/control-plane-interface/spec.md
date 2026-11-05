@@ -1,18 +1,18 @@
 # control-plane-interface Specification
 
 ## Purpose
-The one interface through which the runner reaches its control plane, by a pull and a report. It covers what passes over it: the host's hello, launches offered under leases, acts on a launch, commands, inboxes to carry, terminals, and the runner's report. It also covers how the configuration chooses the implementation, and the cases every implementation passes. crew's implementation is built now. A hosted control plane's is named and left unbuilt, and the interface carries the cloud's runner contract so that it can take crew's place. Nothing that passes over it names a kinds file or a kind's source: a launch names its kind, and where the host's kinds come from is its Flume configuration (core.2, core.5, core.12; record 0002; flywheel-cloud records 0005, 0009, 0017 and 0022).
+The one interface through which the runner reaches its control plane, by a pull and a report. It covers what passes over it: the host's hello, launches offered under leases, acts on a launch, commands, inboxes to carry, terminals, and the runner's report. It also covers how the configuration chooses the implementation, and the cases every implementation passes. crew's implementation is built now. A hosted control plane's is named and left unbuilt, and the interface carries the cloud's runner contract so that it can take crew's place. Nothing that passes over it names a kinds file or a kind's source: a launch names its kind, and where the host's kinds come from is its Flume configuration (core.2, core.5, core.12; record 0002; boomdrive-cloud records 0005, 0009, 0017 and 0022).
 
 ## Requirements
 
 ### Requirement: The control plane is reached through one interface
 
-The runner SHALL reach its control plane only through `flywheel-control`'s `ControlPlane` interface: a pull, which takes the runner's hello and report, and a report, which takes the runner's report. No code outside an implementation SHALL name crew, its records or a hosted control plane's protocol. The one list of implementations, `crates/flywheel/src/planes.rs`, SHALL name each by its word and its opener alone (core.2).
+The runner SHALL reach its control plane only through `boomdrive-control`'s `ControlPlane` interface: a pull, which takes the runner's hello and report, and a report, which takes the runner's report. No code outside an implementation SHALL name crew, its records or a hosted control plane's protocol. The one list of implementations, `crates/boomdrive/src/planes.rs`, SHALL name each by its word and its opener alone (core.2).
 
 #### Scenario: Only crew's crate names crew
 
-- **WHEN** the sources of `crates/flywheel` and `crates/flywheel-control` are read
-- **THEN** no file names `flywheel_crew` but `crates/flywheel/src/planes.rs`, and `flywheel-control` depends on no implementation
+- **WHEN** the sources of `crates/boomdrive` and `crates/boomdrive-control` are read
+- **THEN** no file names `boomdrive_crew` but `crates/boomdrive/src/planes.rs`, and `boomdrive-control` depends on no implementation
 
 ### Requirement: A pull gives what the control plane wants, in its order
 
@@ -80,23 +80,23 @@ The runner SHALL open the implementation the configuration's `[control_plane]` `
 
 ### Requirement: Every implementation passes the shared cases
 
-`flywheel-control` SHALL hold the cases every implementation passes, each over a harness that makes a control plane holding given wants: the wants given in order; a reported answer and status coming back in the next pull's report; a second report of one report changing nothing; and a settled want still given, which the runner answers from its report. The fake control plane and crew's implementation SHALL each run them.
+`boomdrive-control` SHALL hold the cases every implementation passes, each over a harness that makes a control plane holding given wants: the wants given in order; a reported answer and status coming back in the next pull's report; a second report of one report changing nothing; and a settled want still given, which the runner answers from its report. The fake control plane and crew's implementation SHALL each run them.
 
 #### Scenario: The fake control plane passes
 
-- **WHEN** `flywheel-control`'s tests run the shared cases over the fake control plane
+- **WHEN** `boomdrive-control`'s tests run the shared cases over the fake control plane
 - **THEN** every case passes
 
 #### Scenario: crew's implementation passes
 
-- **WHEN** `flywheel-crew`'s tests run the shared cases over a bare state repository holding crew's records
+- **WHEN** `boomdrive-crew`'s tests run the shared cases over a bare state repository holding crew's records
 - **THEN** every case passes
 
 ### Requirement: The protocol is held in the hosted implementation's crate alone
 
-The runner protocol's files and types SHALL be held in the hosted implementation's crate, `crates/flywheel-hosted`, alone. It SHALL depend on no crate of the tree's but `flywheel-control`, and no crate SHALL depend on it (core.2, core.42).
+The runner protocol's files and types SHALL be held in the hosted implementation's crate, `crates/boomdrive-hosted`, alone. It SHALL depend on no crate of the tree's but `boomdrive-control`, and no crate SHALL depend on it (core.2, core.42).
 
 #### Scenario: Only the hosted implementation's crate holds the protocol
 
-- **WHEN** the manifests and files of every crate but `crates/flywheel-hosted` are read
-- **THEN** no file names `flywheel_hosted` or `flywheel-hosted` but `crates/flywheel/src/planes.rs` and the two that hold the crate to this rule, `crates/flywheel/tests/rules.rs` and `crates/flywheel/moon.yml`, which names it only as its test task's input, no file's name ends `.schema.json`, no crate depends on `flywheel-hosted`, and `flywheel-hosted` depends on `flywheel-control` alone of the tree's crates
+- **WHEN** the manifests and files of every crate but `crates/boomdrive-hosted` are read
+- **THEN** no file names `boomdrive_hosted` or `boomdrive-hosted` but `crates/boomdrive/src/planes.rs` and the two that hold the crate to this rule, `crates/boomdrive/tests/rules.rs` and `crates/boomdrive/moon.yml`, which names it only as its test task's input, no file's name ends `.schema.json`, no crate depends on `boomdrive-hosted`, and `boomdrive-hosted` depends on `boomdrive-control` alone of the tree's crates

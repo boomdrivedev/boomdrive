@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on what stays private; record 0012; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, the fields its drawings read; agentplot/flywheel-cloud's rules core.4 and core.48, cited by id; rules core.6 and core.11.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on what stays private; record 0012; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, the fields its drawings read; agentplot/boomdrive-cloud's rules core.4 and core.48, cited by id; rules core.6 and core.11.
 
 ## Context and problem statement
 

@@ -1,7 +1,7 @@
 # work-into-flume Specification
 
 ## Purpose
-How the runner takes the launches its control plane offers and turns each into one `flume launch` in its clone of the launch's repository. It takes them only under their leases, and only while the Flume stream each runs in has room. It turns each act on a launch into Flume's own command on the launch's place, and carries out each act once. It carries back each answer, the host's capacity, and Flume's status of every place it launched, as Flume gave them, under each launch's lease number. It decides nothing the control plane or Flume decides, and reaches Flume only through Flume's command line (core.1, core.9 to core.11; flywheel-cloud records 0003, 0009; ledger item c-flume.a).
+How the runner takes the launches its control plane offers and turns each into one `flume launch` in its clone of the launch's repository. It takes them only under their leases, and only while the Flume stream each runs in has room. It turns each act on a launch into Flume's own command on the launch's place, and carries out each act once. It carries back each answer, the host's capacity, and Flume's status of every place it launched, as Flume gave them, under each launch's lease number. It decides nothing the control plane or Flume decides, and reaches Flume only through Flume's command line (core.1, core.9 to core.11; boomdrive-cloud records 0003, 0009; ledger item c-flume.a).
 
 ## Requirements
 
@@ -9,7 +9,7 @@ How the runner takes the launches its control plane offers and turns each into o
 
 The runner SHALL hand every pull a hello holding:
 
-- its interface's version, and `flywheel --version`'s text, as the runner's version;
+- its interface's version, and `boomdrive --version`'s text, as the runner's version;
 - each tool's version: the first line of `flume --version`, `sluice --version`, `herdr --version` and `git --version`, as each printed it, or the tool named missing;
 - the address of each repository the configuration names whose clone is made;
 - each lease it holds, by id and number.
@@ -101,12 +101,12 @@ A launch that names a stream SHALL be launched only while that stream has room, 
 
 ### Requirement: A launch is one `flume launch` naming what the launch gives
 
-The runner SHALL turn a launch into one `flume --json launch --repository <the clone's container> --kind <kind> --name <name>`. It SHALL add `--base`, `--stream`, `--priority`, `--intent`, each `--recipient`, each `--hold`, `--hold-submission`, `--brief-file` and each `--agent` only where the launch gives it, and `--mark flywheel:<id>`. It SHALL add no stream, priority or intent of its own.
+The runner SHALL turn a launch into one `flume --json launch --repository <the clone's container> --kind <kind> --name <name>`. It SHALL add `--base`, `--stream`, `--priority`, `--intent`, each `--recipient`, each `--hold`, `--hold-submission`, `--brief-file` and each `--agent` only where the launch gives it, and `--mark boomdrive:<id>`. It SHALL add no stream, priority or intent of its own.
 
 #### Scenario: A unit's launch
 
 - **WHEN** an offer `madswan/12` of `change` named `a` in `afterthought/crew` on `bolt/x` is pulled, with stream `madswan`, priority 4, intent `madswan/x`, recipient `madswan/planner` and a brief, its clone is made, and its stream has room
-- **THEN** the stub `flume` is run once as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream madswan --priority 4 --intent madswan/x --recipient madswan/planner --brief-file <a file holding the brief> --mark flywheel:madswan/12`
+- **THEN** the stub `flume` is run once as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream madswan --priority 4 --intent madswan/x --recipient madswan/planner --brief-file <a file holding the brief> --mark boomdrive:madswan/12`
 
 #### Scenario: A launch naming no stream, priority or intent
 
@@ -194,7 +194,7 @@ A retry or a done of a launch the runner holds unlaunched SHALL be answered `ref
 
 ### Requirement: Each launch, act and command is carried out once
 
-The runner SHALL keep its report in `<data>/control/report.json`, written whole by rename after every act and command and before the next, and read at start. A want its report holds settled SHALL be answered from its report and not carried out again. An offer with no answer, whose mark `flywheel:<id>` Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the report file is missing, the runner SHALL take the report the pull gives back.
+The runner SHALL keep its report in `<data>/control/report.json`, written whole by rename after every act and command and before the next, and read at start. A want its report holds settled SHALL be answered from its report and not carried out again. An offer with no answer, whose mark `boomdrive:<id>`, or `flywheel:<id>` as a runner marked it before the rename (record 0016), Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the report file is missing, the runner SHALL take the report the pull gives back.
 
 #### Scenario: A retry not made twice
 
@@ -203,8 +203,13 @@ The runner SHALL keep its report in `<data>/control/report.json`, written whole 
 
 #### Scenario: A launch found by its mark
 
-- **WHEN** the report file is missing, and an offer `madswan/12` is pulled whose mark `flywheel:madswan/12` Flume's listing holds on place `P`
+- **WHEN** the report file is missing, and an offer `madswan/12` is pulled whose mark `boomdrive:madswan/12` Flume's listing holds on place `P`
 - **THEN** it is answered `launched` at `P`, and no `flume launch` is run
+
+#### Scenario: A launch found by its mark from before the rename
+
+- **WHEN** an offer `scratch/4` is pulled with no answer, and Flume's listing holds the mark `flywheel:scratch/4` on place `P`
+- **THEN** it is answered `launched` at `P`, the line naming the mark `flywheel:scratch/4`, and no `flume launch` is run
 
 ### Requirement: A lease is renewed by every report and let go once refused
 
@@ -254,7 +259,7 @@ The first pass that reads a carried place landed SHALL tell the keeper of a land
 
 ### Requirement: The runner acts only on its own places
 
-The runner SHALL carry and act on only the places its report holds, or whose mark Flume's listing gives as `flywheel:<id>` for an offer it holds. Every other place on the host SHALL be read in the listing and left alone.
+The runner SHALL carry and act on only the places its report holds, or whose mark Flume's listing gives as `boomdrive:<id>`, or `flywheel:<id>` from before the rename, for an offer it holds. Every other place on the host SHALL be read in the listing and left alone.
 
 #### Scenario: The user's own place
 
