@@ -154,6 +154,49 @@ impl Scratch {
         self.container(address).join(format!("{name}.git"))
     }
 
+    /// Guards `branch` in the bare clone `bare` as sluice's protection
+    /// guards a branch it keeps, by a stand-in `reference-transaction`
+    /// hook (sluice's 124): it refuses every write that moves or deletes
+    /// the branch where it stands, and, where `creations`, every write
+    /// that makes it too. Each write it refuses is a line of the file it
+    /// gives, `<old> <new> <ref>`, which it makes empty.
+    pub fn guard(&self, bare: &Path, branch: &str, creations: bool) -> PathBuf {
+        let refused = self.root.join(format!("refused-{branch}"));
+        std::fs::write(&refused, "").expect("the guard's file");
+        let stands = if creations {
+            ""
+        } else {
+            "  git rev-parse --verify --quiet \"$name\" >/dev/null || continue\n"
+        };
+        let hook = bare.join("hooks/reference-transaction");
+        std::fs::create_dir_all(hook.parent().expect("the hooks folder"))
+            .expect("the hooks folder");
+        std::fs::write(
+            &hook,
+            format!(
+                "#!/bin/sh\n\
+                 [ \"$1\" = prepared ] || exit 0\n\
+                 refused=0\n\
+                 while read -r old new name; do\n\
+                 \x20 [ \"$name\" = refs/heads/{branch} ] || continue\n\
+                 {stands}\
+                 \x20 echo \"$old $new $name\" >> '{}'\n\
+                 \x20 refused=1\n\
+                 done\n\
+                 [ $refused = 0 ] || echo 'refs/heads/{branch} is guarded' >&2\n\
+                 exit $refused\n",
+                refused.display()
+            ),
+        )
+        .expect("the hook written");
+        let mut permissions = std::fs::metadata(&hook)
+            .expect("the hook's metadata")
+            .permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+        std::fs::set_permissions(&hook, permissions).expect("the hook made runnable");
+        refused
+    }
+
     /// One pass in-process over the configuration `text`, read as the
     /// default file: its outcome and the lines it said.
     pub fn pass(&self, text: &str) -> (Outcome, Vec<String>) {

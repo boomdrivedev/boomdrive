@@ -1,7 +1,8 @@
 //! Each kept repository's view under the repository root: made where it is
 //! missing, never over a folder that is there, only ever detached, and
-//! moved only while it stands where the runner last put it (the views
-//! spec; the clones spec's default branch and repository root; design 7).
+//! moved only while it stands where the runner last put it, whatever
+//! guards the clone's own default branch (the views spec; the clones
+//! spec's default branch and repository root; design 7; core.14).
 //! An old root's owner folder goes with its workspace (core.43).
 
 mod common;
@@ -57,13 +58,11 @@ fn made(path: &Path, default: &str, commit: &str) -> String {
     )
 }
 
-/// The lines a pass says when origin's `main` moved to `commit` and the
-/// clone's own followed, and, where `view`, the view with it.
+/// The lines a pass says when origin's `main` moved to `commit`: the
+/// view's move, where `view`, and nothing of the clone's own `main`,
+/// which the runner never moves (core.14).
 fn moved(commit: &str, view: bool) -> Vec<String> {
-    let mut lines = vec![format!(
-        "agentplot/flume: main moved to origin/main at {}",
-        &commit[..7]
-    )];
+    let mut lines = Vec::new();
     if view {
         lines.push(format!(
             "agentplot/flume: view moved to origin/main at {}",
@@ -549,6 +548,55 @@ fn a_new_root_the_old_view_clean() {
     let (outcome, lines) = scratch.pass(&in_src());
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(lines, Vec::<String>::new());
+}
+
+/// A clone made before the rename, whose `main` is guarded as sluice
+/// guards a branch it keeps and lags origin's, under a repository root
+/// that has changed: the old view is removed and the new one made at
+/// origin's tip, and nothing is written to the guarded branch.
+#[test]
+fn a_new_root_while_sluice_keeps_the_default_branch() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    scratch.pass(&keeping(&["agentplot/flume"]));
+    let old = view(&scratch);
+    let bare = scratch.clone_of("agentplot/flume");
+    let put = scratch.git(&bare, &["rev-parse", "refs/boomdrive/view"]);
+    scratch.git(
+        &bare,
+        &[
+            "config",
+            "--local",
+            "--rename-section",
+            "boomdrive",
+            "flywheel",
+        ],
+    );
+    scratch.git(&bare, &["update-ref", "refs/flywheel/view", &put]);
+    scratch.git(&bare, &["update-ref", "-d", "refs/boomdrive/view"]);
+    let refused = scratch.guard(&bare, "main", false);
+    let tip = origin.commit("main", "README", "two\n");
+
+    let (outcome, lines) = scratch.pass(&in_src());
+
+    let new = src_view(&scratch);
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [
+            format!("agentplot/flume: view removed from {}", old.display()),
+            made(&new, "main", &tip),
+        ]
+    );
+    assert!(!old.exists(), "the old view is left");
+    assert_eq!(head(&scratch, &new), tip);
+    assert_eq!(worktrees(&scratch), [new.to_string_lossy()]);
+    assert_eq!(scratch.git(&bare, &["rev-parse", "main"]), put);
+    assert_eq!(
+        std::fs::read_to_string(&refused).expect("the guard's file"),
+        "",
+        "the runner wrote to the guarded branch"
+    );
 }
 
 #[test]

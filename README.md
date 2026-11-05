@@ -68,8 +68,10 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   at `repositories/<owner>/<name>/<name>.git`, in the bare-container
   layout flume reads; or fetches the clone it has, over https through
   the host's own credential helper, never prompting;
-- keeps the clone's own default branch at origin's while that is a
-  fast-forward and no worktree holds it;
+- points the clone's HEAD at origin's default branch, making that
+  branch at origin's tip where the clone lacks it. It moves no branch
+  of the clone: it reads each at `origin/<branch>`, and the clone's own
+  ref of a branch sluice keeps is sluice's copy, which sluice levels;
 - keeps a view of each repository at `<repository_root>/<owner>/<name>`,
   a worktree of the clone detached at `origin/<default>`. It makes the
   view where the folder is missing and never over a folder that is
