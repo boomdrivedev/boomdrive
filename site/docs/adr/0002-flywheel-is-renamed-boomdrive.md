@@ -45,12 +45,22 @@ The names, and where each lands here:
 
 | Was | Is | Where |
 |---|---|---|
-| Flywheel, the site, the brand, the ecosystem and the family of tools | Boomdrive | The site's title and name, Home, the Tools hub, the principles, the Method outline, the site design, the diagrams' notes |
+| Flywheel, the site, the brand, the ecosystem and the family of tools | Boomdrive | The site's title and name, Home, the Tools hub, the principles, the Method outline, the site design, the diagrams' notes, and `boomdrive`, the id the site passes `@agentplot/site-theme` |
 | Flywheel Next, the engine the site names as coming | Boomdrive | The principles' tool strips and where each is going, the Uses page's `becomes` for Crew, the measurement roadmap's third stage |
 | agentplot/flywheel-web | agentplot/boomdrive-web | `package.json`, the base path `/boomdrive-web/` GitHub Pages serves the site under, the masthead's repository link, `site-serve`'s address, devenv's task, the bare layout |
 | Crew's flywheel, one loop we operate | drive, plural drives | The glossary, the fleet context's `drives`, a series' `drive` split, the Fleet's pages, the measurements' definitions |
-| tailrace | timber, at `agentplot.github.io/timber/` | The glossary, the tool strips, the Tools hub's words, the diagrams and the command they show, `timber promote` |
+| tailrace | timber, at `agentplot.github.io/timber/` | The glossary, the tool strips, the Tools hub's words, the diagrams and the command they show, `timber promote`, and `timber`, the id the site passes the theme |
 | `styles/Flywheel/`, Vale's style and vocabulary | `styles/Boomdrive/` | `.vale.ini`, `scripts/vocab.ts`, `moon.yml` |
+
+The theme's names come with its tag: `@agentplot/site-theme` v0.1.3
+renames its members `boomdrive` and `timber`, and the site pins it, so
+Never prove twice's strip names timber as the card the theme draws does,
+and the bar, the footer, the family's diagram and the Tools hub's cards say
+Boomdrive and timber. Translating the theme's names in the hub instead would
+let a card and its principle's strip disagree, which the hub's check is
+there to refuse. The site's rename landed before that tag, because GitHub
+Pages already served it at `/boomdrive-web/` and its links broke until the
+base path changed.
 
 Chosen option for the figure: "The drive figure", in
 `src/components/Drive.astro`, because what it draws is one drive's loop:
@@ -73,17 +83,6 @@ What keeps its name:
   unchanged, and only the word for what a series is split by is new.
 - boom, and anything third-party that says flywheel; the site names
   neither.
-- What the site takes from `@agentplot/site-theme`'s family, at the tag
-  it pins, keeps the theme's names until the site takes the tag of the
-  theme that renames them: the ids it passes the theme (`flywheel`,
-  `tailrace`), and tailrace in Never prove twice's strip, which the Tools
-  hub's build holds to the card the theme draws. The bar, the footer, the
-  family's diagram and the Tools hub's cards say Flywheel and tailrace
-  until then. The site lands without waiting for that tag, because GitHub
-  Pages already serves it at `/boomdrive-web/` and its links break until
-  the base path changes. Translating the theme's names in the hub would
-  let a card and its principle's strip disagree, which the hub's check is
-  there to refuse.
 
 ### Consequences
 

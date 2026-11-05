@@ -51,10 +51,8 @@ const serves: Partial<Record<MemberId, string>> = {
   sounding: "measure-the-fleet",
   sluice: "order-at-landing",
   // The principle timber's own line states, build once and promote with
-  // proof, and whose strip it heads. The theme's tag names it tailrace, so
-  // the strip does too until the site takes the tag that renames it
-  // (docs/adr/0002-flywheel-is-renamed-boomdrive.md).
-  tailrace: "never-prove-twice",
+  // proof, and whose strip it heads.
+  timber: "never-prove-twice",
 };
 const principle = async (tool: string, id: string) => {
   const p = await getEntry("principles", id);
@@ -94,7 +92,7 @@ const counted = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
     </div>
   </header>
 
-  <Family highlight="flywheel" class="loop" />
+  <Family highlight="boomdrive" class="loop" />
 
   <section class="family" aria-labelledby="family-title">
     <h2 id="family-title">The family</h2>

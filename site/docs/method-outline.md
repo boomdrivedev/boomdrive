@@ -305,6 +305,11 @@ the site's change entries take (principle, kind, summary, what prompted it).
   ecosystem, the org, the branding, the cloud and the opensource runner
   tool are all boomdrive".
 
+- **2026-11-04 · never-prove-twice · revised.** Names only: its strip names
+  timber, as the card the Tools hub draws for it does. Prompted by the site
+  taking `@agentplot/site-theme` v0.1.3, whose family carries the
+  operator's rename of tailrace.
+
 ## Candidates for later versions
 
 - **Attention is the scarce resource.** Design the fleet around the human's
