@@ -10,7 +10,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 1. The setting
 
 - [x] 1.1 `src/config.rs` reads `code_workspaces`: false where it is absent, and a value that is not `true` or `false` refused, naming the key and the value (configuration spec: "Whether each owner's views have a VS Code workspace is a setting"; design Decision 2; Task notes 1.1). True when `devenv shell -- moon run boomdrive:test` passes with a unit test for each of that requirement's scenarios "No workspaces setting" and "Workspaces asked for in words", and `a_whole_file` reading the key.
-- [ ] 1.2 README's configuration example sets `code_workspaces = true`, and its words say what the key asks for (Task notes 1.2). True when `devenv shell -- moon run boomdrive:test` passes with `the_readme_configuration_reads` asserting the key is read as true.
+- [x] 1.2 README's configuration example sets `code_workspaces = true`, and its words say what the key asks for (Task notes 1.2). True when `devenv shell -- moon run boomdrive:test` passes with `the_readme_configuration_reads` asserting the key is read as true.
 - [ ] 1.3 Run this group's checks. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test` passes.
 
 ## 2. Each owner's workspace

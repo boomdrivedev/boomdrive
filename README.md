@@ -17,14 +17,17 @@ Schema per version under `protocol/`. From this tree:
 `boomdrive` reads one TOML file: the one `--config <file>` names, else
 `$XDG_CONFIG_HOME/boomdrive/config.toml`, else
 `~/.config/boomdrive/config.toml`. It names the repositories the host
-keeps by their GitHub address, the root their views are kept under and
-how often they are fetched:
+keeps by their GitHub address, the root their views are kept under, how
+often they are fetched and whether each owner's views have a VS Code
+workspace:
 
 ```toml
 # The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
 repository_root = "~/Code"
 # How often every repository is fetched; 2m where none is named.
 fetch_interval = "2m"
+# Whether each owner's views have a VS Code workspace, <repository_root>/<owner>/<owner>.code-workspace; false where none is named.
+code_workspaces = true
 # Each repository this host keeps, by its GitHub address.
 repositories = ["agentplot/flume", "afterthought/crew"]
 ```
@@ -40,6 +43,16 @@ earlier runner is refused with what to write instead: `views` is
 `repository_root` now, and `fetch_every` is `fetch_interval`. Nor does
 the file name a stream or a kind: those are each host's Flume
 configuration, and a key naming one is refused, saying so.
+
+`code_workspaces = true` asks for one VS Code workspace for each owner
+of the kept repositories, beside the owner's views, so VS Code titles
+its window `— <owner> (Workspace)`. Its `folders` are the owner's kept
+repositories, in the file's order, set at every pass; the rest of the
+file, the settings VS Code writes into it, is kept. A file there the
+runner cannot read as a JSON object, one with comments in it say, is
+left as it is and named at every pass. `code_workspaces` is `true` or
+`false`, and where it is absent or `false` the runner writes and removes
+no workspace.
 
 ## Running on a host
 
