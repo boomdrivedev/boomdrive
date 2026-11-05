@@ -55,6 +55,7 @@ Cargo.lock
 crates/boomdrive/Cargo.toml
 crates/boomdrive/src/lib.rs
 crates/boomdrive/src/config.rs
+crates/boomdrive/src/carry.rs
 crates/boomdrive/src/code_workspace.rs
 crates/boomdrive/src/pass.rs
 crates/boomdrive/src/view.rs
