@@ -1,9 +1,11 @@
 //! What every test of the protocol checks with: validators built from
 //! version 1's files alone, each under its `$id`, with every other
 //! address refused, so that nothing is fetched (core.42; design Decision
-//! 14), and the version's examples.
+//! 14), the version's examples, and the fake hosted control plane.
 
 #![allow(dead_code)]
+
+pub mod fake;
 
 use boomdrive_hosted::protocol::v1::{ADDRESS, FILES};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};

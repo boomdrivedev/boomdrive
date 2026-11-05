@@ -1,6 +1,7 @@
 //! `boomdrive`, the runner on each host: it keeps the clones and views of
-//! the repositories its configuration names (design 1), and carries its
-//! control plane's work into Flume (design Decision 5).
+//! the repositories its configuration names (design 1), carries its
+//! control plane's work into Flume (design Decision 5), and enrolls each
+//! partition of its control plane once (`boomdrive enroll`).
 
 /// The runner's name before it was renamed `boomdrive` (record 0016): the
 /// name of the data directory, of the clone's records and of the mark a
@@ -12,6 +13,7 @@ pub mod carry;
 pub mod clone;
 pub mod code_workspace;
 pub mod config;
+pub mod enroll;
 pub mod facts;
 pub mod flume;
 pub mod git;

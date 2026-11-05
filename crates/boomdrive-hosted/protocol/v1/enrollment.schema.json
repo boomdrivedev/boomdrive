@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v1/enrollment.schema.json",
+  "description": "A partition's enrollment: the runner's enroll, the body of its one request to the control plane's runner/enroll, and the control plane's answer, enrolled or enroll_refused. The one-time token is the request's bearer, and no message holds it.",
+  "$defs": {
+    "enroll": {
+      "description": "The runner registers a partition's public key, made on the host, with the control plane that issued the token the request bears.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "signature",
+        "machine"
+      ],
+      "properties": {
+        "key": {
+          "description": "The partition's Ed25519 public key, 32 bytes.",
+          "$ref": "shared.schema.json#/$defs/bytes",
+          "minLength": 43,
+          "maxLength": 43
+        },
+        "signature": {
+          "description": "The key's Ed25519 signature, 64 bytes, over the enrollment's context, which names the control plane's origin, the token's digest and the key.",
+          "$ref": "shared.schema.json#/$defs/bytes",
+          "minLength": 86,
+          "maxLength": 86
+        },
+        "machine": {
+          "description": "The host's name, as its operating system gives it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "enrolled": {
+      "description": "The control plane took the key: the partition is enrolled as the host it names.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host"
+      ],
+      "properties": {
+        "host": {
+          "$ref": "shared.schema.json#/$defs/id"
+        }
+      }
+    },
+    "enroll_refused": {
+      "description": "The control plane took no key: the enroll, by its message's id, with words saying why, such as a token lapsed or spent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enroll",
+        "words"
+      ],
+      "properties": {
+        "enroll": {
+          "$ref": "shared.schema.json#/$defs/message_id"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

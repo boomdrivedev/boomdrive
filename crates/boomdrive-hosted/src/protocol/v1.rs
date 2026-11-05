@@ -22,6 +22,11 @@ use std::fmt;
 /// `protocol_version`.
 pub const VERSION: u32 = 1;
 
+/// This version's name: the subprotocol a socket's upgrade asks for, and
+/// the start of every context a key signs (the protocol's README, *The
+/// paths* and *The signatures*).
+pub const SUBPROTOCOL: &str = "boomdrive.v1";
+
 /// The address each file's `$id` is under: its own among the repository's
 /// raw files at `main`. No check fetches it.
 pub const ADDRESS: &str = "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v1/";
@@ -39,6 +44,10 @@ pub const FILES: &[(&str, &str)] = &[
     (
         "shared.schema.json",
         include_str!("../../protocol/v1/shared.schema.json"),
+    ),
+    (
+        "enrollment.schema.json",
+        include_str!("../../protocol/v1/enrollment.schema.json"),
     ),
     (
         "hello.schema.json",
@@ -117,6 +126,7 @@ impl fmt::Display for MessageId {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FromRunner {
+    Enroll(Enroll),
     Hello(Hello),
     Report(Report),
     TerminalOpened(TerminalOpened),
@@ -129,6 +139,8 @@ pub enum FromRunner {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToRunner {
+    Enrolled(Enrolled),
+    EnrollRefused(EnrollRefused),
     Pulled(Pulled),
     Reported(Reported),
     TerminalOpen(TerminalOpen),
@@ -136,6 +148,41 @@ pub enum ToRunner {
     TerminalInput(TerminalInput),
     TerminalClose(TerminalClose),
     MessageRefused(MessageRefused),
+}
+
+/// A partition's enrollment, the body of the runner's one request to
+/// `runner/enroll`: the partition's public key, made on the host, signed
+/// over the enrollment's context. The token is the request's bearer, and
+/// no message holds it (core.4, core.31; record 0018).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Enroll {
+    /// The partition's Ed25519 public key, 32 bytes in base64url without
+    /// padding.
+    pub key: String,
+    /// The key's signature over the enrollment's context, 64 bytes in
+    /// base64url without padding.
+    pub signature: String,
+    /// The host's name, as its operating system gives it.
+    pub machine: String,
+}
+
+/// The control plane took the partition's key.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Enrolled {
+    /// The control plane's id for the host, which the runner shows and
+    /// keeps nowhere: the control plane finds the enrollment by its key.
+    pub host: String,
+}
+
+/// The control plane took no key, with words saying why.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EnrollRefused {
+    /// The `enroll` message it answers, by that message's id.
+    pub enroll: MessageId,
+    pub words: String,
 }
 
 /// The interface's hello as version 1 carries it, its capacity's printed

@@ -9,7 +9,7 @@
       "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
     },
     "id": {
-      "description": "An id the control plane gave: an offer's, an act's, a command's, an inbox's or a terminal's. The runner never reads into it.",
+      "description": "An id the control plane gave: an offer's, an act's, a command's, an inbox's, a terminal's or a host's. The runner never reads into it.",
       "type": "string",
       "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
     },
