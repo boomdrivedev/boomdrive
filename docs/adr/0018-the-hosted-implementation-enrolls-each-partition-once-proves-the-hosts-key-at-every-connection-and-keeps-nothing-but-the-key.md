@@ -1,7 +1,7 @@
 ---
 number: 18
 title: The hosted implementation enrolls each partition once, proves the host's key at every connection, and keeps nothing but the key
-status: proposed
+status: accepted
 date: 2026-11-03
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The hosted implementation enrolls each partition once, proves the host's key at every connection, and keeps nothing but the key
 
-Status: proposed on 2026-11-03 by the construct stage of the change `the-runner-dials-the-hosted-control-plane`, as the choices that change makes on rules already written; accepted when the user approves the change in its review.
+Status: accepted by the user on 2026-11-05, on the change's guided review in the Plannotator Inbox ("Release it now; my deep review covers it"). Proposed on 2026-11-03 by the construct stage of the change `the-runner-dials-the-hosted-control-plane`, as the choices that change makes on rules already written.
 
 Deciders: the construct stage, on the written rules; the user, at the change's review.
 Sources: records 0004, 0006, 0008, 0010, 0012 and 0015; rules core.2, core.4, core.5, core.19, core.21, core.22, core.26, core.31, core.32, core.35 and core.42; agentplot/boomdrive-cloud's records 0047, 0049, 0056 and 0059, its rules core.21, core.38 and core.50, its roadmap's item 1.15 and ruling D5, and its research rows F10, F49 and F51 (`design/research/awesome-lists-disposition.md`), cited by id; systemd's `systemd-creds(1)` and `systemd.exec(5)`, on user-scoped credentials and the user's credential store; the change's design, Decisions 1 to 13.
