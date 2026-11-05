@@ -46,7 +46,7 @@ For Boom's claims:
 Option 1 each time, the user's choice.
 
 - **No tool's process.** The runner starts, keeps and stops no tool's long-running process, and runs no tool's housekeeping of its own accord. sluice's driver, the multiplexer's server and any settle loop are the host's service manager's (core.13).
-- **The host's one clone.** The runner's clone is the host's one clone of the repository. Flume, sluice and what a launch runs may work in its container. The runner alone fetches it and moves its default branch and its view, and it never removes, moves or rewrites what another tool made there (core.14).
+- **The host's one clone.** The runner's clone is the host's one clone of the repository. Flume, sluice and what a launch runs may work in its container. The runner alone fetches it and moves its view. It moves no branch of the clone and reads each at origin's tracking ref (record 0018), and it never removes, moves or rewrites what another tool made there (core.14).
 - **Flume asks Boom.** The runner passes a launch as its control plane gave it and reads nothing of Boom for it (core.15).
 
 ### Consequences
