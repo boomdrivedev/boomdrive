@@ -1,38 +1,16 @@
 # Verify: the-runner-dials-the-hosted-control-plane
 
-The work on `change/the-runner-dials-the-hosted-control-plane`, read at 6857999, meets its change, but it cannot land as it stands, so the change is not archived. It goes back to its code stage for one fault, below.
+The work on `change/the-runner-dials-the-hosted-control-plane`, read at b6e7358, meets its change and can land on `main` as it stands at 00bda37, so the change is archived with this report.
 
 - Every task is ticked.
 - Every check passes on the branch, and so does the gate run through sluice.
 - The change has 23 requirements and 49 scenarios, and a test asserts the outcome of every scenario.
 - A trial archive merges the five deltas into 12 specs that pass `openspec validate --specs --strict`.
-
-## What fails
-
-**Two records numbered 0017.** `main` has moved past the branch: it stands at 00bda37, after #1 (`a-view-writes-its-vs-code-workspace`), #8 and #9. #1 landed its own record 0017, `docs/adr/0017-each-owners-views-have-a-vs-code-workspace-beside-them-where-the-configuration-asks.md`. Its core.43, now on `main`, cites it as "record 0017". This change adds a different record under the same number, `docs/adr/0017-the-hosted-implementation-enrolls-each-partition-once-proves-the-hosts-key-at-every-connection-and-keeps-nothing-but-the-key.md`.
-
-- `git merge-tree` of the branch and `origin/main` merges with no textual conflict.
-- `check-adrs.sh`, the task `root:adrs` of `check-fast` that `main` requires, fails on that merged tree: `check-adrs: 0017 is the number of docs/adr/0017-each-owners-views-… docs/adr/0017-the-hosted-implementation-…`, and `the later of each takes the next free number, from 0018`.
-- With both on `main`, "record 0017" in this change's text would name two decisions. The change's own record is the later one, since #1 has landed, so it takes 0018.
-
-What the code stage owes:
-
-1. Take `main` as it stands, by a merge with no rebase, as task 8.2 took it.
-2. Renumber this change's record to 0018: its file name, its frontmatter `number: 17`, and every place the change cites it as record 0017:
-   - `docs/architecture/core.md`, the details of core.26, core.31 and core.32;
-   - the change's `proposal.md` (three places, the Touches path among them), `design.md` (*Rules relied on*, core.31 and core.32) and `tasks.md` (8.1);
-   - `specs/hosted-control-plane/spec.md`, its Purpose;
-   - `specs/runner-protocol/spec.md`, both requirements;
-   - `crates/boomdrive-hosted/src/protocol/v1.rs` and `crates/boomdrive-hosted/tests/signatures.rs`, a comment each.
-
-   Some citations of 0017 name the cloud's own record and stay as they are: `boomdrive-cloud record 0017` in core.1's details, `cloud record 0017` in `crates/boomdrive-control/src/want.rs` and record 0002, and the cloud's records listed in records 0002 and 0008.
-3. Run the gate on the merge, `sluice exec main`. It has not been run on the merged tree, beyond `check-adrs.sh` above.
-
-No rule id collides: this change adds no rule, and #1's core.43 is the only rule `main` gained.
+- The change's record is 0018, and `main`'s records and this change's each have a number of their own.
 
 ## Tasks
 
-All 29 tasks of `tasks.md`, groups 1 to 8, are ticked `[x]`, and none is open. What they build is in the tree, as Task notes name it:
+All 30 tasks of `tasks.md`, groups 1 to 8, are ticked `[x]`, and none is open. What they build is in the tree, as Task notes name it:
 
 - **The control pass** (group 1). `next_due` takes `reported` and the time left to the earliest lease not yet lapsed. `Reach` says the unread line once and the read-again line once. `offer`, `act` and `command` leave work under a lease lapsed by the pass's one clock.
 - **Version 1** (group 2). `enrollment.schema.json` holds `enroll`, `enrolled` and `enroll_refused`, each closed. The envelopes take them in their directions, `FILES` lists the file, and `v1.rs` has the three types. The README names both paths, the `BoomdriveHost` header and each context's worked bytes.
@@ -40,15 +18,16 @@ All 29 tasks of `tasks.md`, groups 1 to 8, are ticked `[x]`, and none is open. W
 - **The connection** (group 4). `connection.rs` has the upgrade on `boomdrive.v1` with a fresh statement, the whole hello first and again when it changes, pings every 30 seconds, and the full-jitter backoff capped at `poll_interval`. It says its reach once each way, checks every message both ways, and closes with 1007 on a message whose id cannot be read.
 - **The implementation** (group 5). These are `plane.rs`'s `Hosted`, `copy.rs`'s cut walked from the schema, and `check.rs`'s validators built from `FILES` with no retriever.
 - **The binary** (group 6). These are `planes.rs`'s `Entry` list of `crew` and `hosted`, with `planes::enroll`, `enroll.rs` and `Command::Enroll`, the rules tests and `moon.yml`, and the README and CLAUDE.md.
-- **The names** (group 8). No line the change adds holds `flywheel`, `tailrace`, `enrol` not followed by `l`, or `enrolment`, but tasks 8.1's and 8.2's own words. CLAUDE.md holds both the family section and the hosted implementation.
+- **The names** (group 8). No line the change adds holds `flywheel`, `tailrace`, `enrol` not followed by `l`, or `enrolment`, but tasks 8.1's, 8.2's and this report's own words. CLAUDE.md holds both the family section and the hosted implementation.
+- **The record's number** (task 8.3). ec499cf merges `main` at 00bda37, after #1, #8 and #9, with no rebase and no conflict. b6e7358 moves the change's record to `docs/adr/0018-the-hosted-implementation-enrolls-each-partition-once-proves-the-hosts-key-at-every-connection-and-keeps-nothing-but-the-key.md`, `number: 18`. It is cited as record 0018 in core.26's, core.31's and core.32's details, the proposal, the design, task 8.1, the hosted-control-plane spec's Purpose, both runner-protocol requirements, and the comments of `protocol/v1.rs` and `tests/signatures.rs`. A grep for 0017 finds #1's record and core.43's citation of it, the cloud's record 0017 (core.1's details, records 0002 and 0008, `want.rs`, the branch-commands and control-plane-interface specs, the constitution interview), and task 8.3's own words, and nothing else.
 
 ## Checks
 
-All were run through sluice, so its sandbox applied.
-
-- **The gate.** `devenv shell -- sluice exec main` passed all 21 `check-fast` tasks at 6857999, against `main` at 00bda37, and recorded its result under 6857999. Every test passed, with none failed or ignored.
-- **Task 7.2.** On a copy of `openspec/`, the pinned openspec 1.14.3 archived the change: 18 requirements added and 5 modified across five specs. `openspec validate --specs --strict` then passed all 12 specs.
-- **Task 8.1's and 8.2's grep** found nothing outside `tasks.md`.
+- **The gate.** `devenv shell -- sluice exec main` passed all 21 `check-fast` tasks at b6e7358, whose tree holds `main` at 00bda37, and recorded its result under b6e7358. Its 631 tests passed, with none failed or ignored.
+- **Records.** `check-adrs.sh`, the task `root:adrs`, finds 18 records, each with a number of its own.
+- **Task 7.2.** On a copy of `openspec/`, the pinned openspec 1.14.3 validated the change strictly and archived it: 18 requirements added and 5 modified across five specs. `openspec validate --specs --strict` then passed all 12 specs.
+- **Task 8.1's, 8.2's and 8.3's greps** found nothing outside the words named above.
+- **Scenarios.** Every scenario of the five deltas has its row below, and every test a row names is a function in the tree. Of the files these rows name, the merge of `main` changed only `carry.rs`, where #1 adds `code_workspaces: false` to its tests' `Config`, and b6e7358 only two comments.
 
 ## Requirements and scenarios
 
