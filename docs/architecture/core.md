@@ -8,8 +8,7 @@ plane's work into `flume launch` calls, carrying their results back.
 Every decision about what work there is, where it runs and how it is
 carried through is the control plane's or flume's. There are no area
 pages yet; a rule that binds only one part of the tree moves to an area
-page when that part exists. Code that stands against a rule is named in
-`_open.md` until the change that brings it to the rule.
+page when that part exists.
 
 ## Rules
 

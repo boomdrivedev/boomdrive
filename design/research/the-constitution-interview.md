@@ -1137,7 +1137,6 @@ proposed until the user has read each as a record and said yes; core.5,
 core.6, core.10 and core.11 keep their statements and gain details, and
 record 0001's "private for now" is superseded by record 0012. The
 requirements go to the specs through the changes below.
-`docs/architecture/_open.md` names the code that stands against a rule.
 
 | item | where |
 |---|---|
@@ -1277,7 +1276,7 @@ by the agent and recorded as its own, each with the path not taken.
 ## Findings about other repositories
 
 Read while preparing the interview, and not yet in the repository each
-concerns; each is for that repository's `_open.md` or the orchestrator.
+concerns; each is for the orchestrator.
 
 - **crew.** Its kinds file and the archived `roles-run-as-flume-kinds`
   still say the runner launches a role's run with `--kinds <crew's
