@@ -28,6 +28,30 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "enrolled"
+          ],
+          "properties": {
+            "enrolled": {
+              "$ref": "enrolment.schema.json#/$defs/enrolled"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enrol_refused"
+          ],
+          "properties": {
+            "enrol_refused": {
+              "$ref": "enrolment.schema.json#/$defs/enrol_refused"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
             "pulled"
           ],
           "properties": {

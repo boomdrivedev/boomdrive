@@ -41,6 +41,10 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../protocol/v1/shared.schema.json"),
     ),
     (
+        "enrolment.schema.json",
+        include_str!("../../protocol/v1/enrolment.schema.json"),
+    ),
+    (
         "hello.schema.json",
         include_str!("../../protocol/v1/hello.schema.json"),
     ),
@@ -117,6 +121,7 @@ impl fmt::Display for MessageId {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FromRunner {
+    Enrol(Enrol),
     Hello(Hello),
     Report(Report),
     TerminalOpened(TerminalOpened),
@@ -129,6 +134,8 @@ pub enum FromRunner {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToRunner {
+    Enrolled(Enrolled),
+    EnrolRefused(EnrolRefused),
     Pulled(Pulled),
     Reported(Reported),
     TerminalOpen(TerminalOpen),
@@ -136,6 +143,41 @@ pub enum ToRunner {
     TerminalInput(TerminalInput),
     TerminalClose(TerminalClose),
     MessageRefused(MessageRefused),
+}
+
+/// A partition's enrolment, the body of the runner's one request to
+/// `runner/enrol`: the partition's public key, made on the host, signed
+/// over the enrolment's context. The token is the request's bearer, and
+/// no message holds it (core.4, core.31; record 0016).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Enrol {
+    /// The partition's Ed25519 public key, 32 bytes in base64url without
+    /// padding.
+    pub key: String,
+    /// The key's signature over the enrolment's context, 64 bytes in
+    /// base64url without padding.
+    pub signature: String,
+    /// The host's name, as its operating system gives it.
+    pub machine: String,
+}
+
+/// The control plane took the partition's key.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Enrolled {
+    /// The control plane's id for the host, which the runner shows and
+    /// keeps nowhere: the control plane finds the enrolment by its key.
+    pub host: String,
+}
+
+/// The control plane took no key, with words saying why.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EnrolRefused {
+    /// The `enrol` message it answers, by that message's id.
+    pub enrol: MessageId,
+    pub words: String,
 }
 
 /// The interface's hello as version 1 carries it, its capacity's printed

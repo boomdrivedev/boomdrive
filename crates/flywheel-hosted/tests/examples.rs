@@ -6,7 +6,7 @@
 mod common;
 
 use common::{example, examples, from_runner, passes, to_runner, version_dir};
-use flywheel_hosted::protocol::v1::{FromRunner, Message, ToRunner};
+use flywheel_hosted::protocol::v1::{FromRunner, Message, MessageId, ToRunner};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -15,7 +15,8 @@ use std::collections::BTreeSet;
 
 /// Every kind a runner sends, and every kind a control plane sends
 /// (design Decision 5).
-const FROM_RUNNER: [&str; 6] = [
+const FROM_RUNNER: [&str; 7] = [
+    "enrol",
     "hello",
     "report",
     "terminal_opened",
@@ -23,7 +24,9 @@ const FROM_RUNNER: [&str; 6] = [
     "terminal_closed",
     "message_refused",
 ];
-const TO_RUNNER: [&str; 7] = [
+const TO_RUNNER: [&str; 9] = [
+    "enrolled",
+    "enrol_refused",
     "pulled",
     "reported",
     "terminal_open",
@@ -114,6 +117,44 @@ fn a_message_refused() {
         let body = &refusal["body"]["message_refused"];
         assert!(body["message"].is_string() && body["words"].is_string());
     }
+}
+
+/// The runner-protocol spec's "Enrolment's examples": the examples of
+/// `enrol`, `enrolled` and `enrol_refused` each pass their direction's
+/// envelope, read into their direction's type as their own kind, and
+/// write back equal (design Decision 12).
+#[test]
+fn enrolments_examples() {
+    let value = example("from-runner", "enrol.json");
+    passes(&from_runner(), &value, "enrol.json");
+    let enrol: Message<FromRunner> = serde_json::from_value(value.clone()).unwrap();
+    let FromRunner::Enrol(body) = &enrol.body else {
+        panic!("enrol.json reads as {:?}", enrol.body);
+    };
+    assert_eq!(body.machine, "host-a");
+    assert_eq!(serde_json::to_value(&enrol).unwrap(), value, "enrol.json");
+    let value = example("to-runner", "enrolled.json");
+    passes(&to_runner(), &value, "enrolled.json");
+    let enrolled: Message<ToRunner> = serde_json::from_value(value.clone()).unwrap();
+    let ToRunner::Enrolled(body) = &enrolled.body else {
+        panic!("enrolled.json reads as {:?}", enrolled.body);
+    };
+    assert_eq!(body.host, "host-1");
+    assert_eq!(
+        serde_json::to_value(&enrolled).unwrap(),
+        value,
+        "enrolled.json"
+    );
+    let name = "enrol_refused-a-lapsed-token.json";
+    let value = example("to-runner", name);
+    passes(&to_runner(), &value, name);
+    let refused: Message<ToRunner> = serde_json::from_value(value.clone()).unwrap();
+    let ToRunner::EnrolRefused(body) = &refused.body else {
+        panic!("{name} reads as {:?}", refused.body);
+    };
+    assert_eq!(body.enrol, enrol.id, "{name} answers enrol.json by its id");
+    assert_eq!(body.enrol, MessageId::new("runner:1"));
+    assert_eq!(serde_json::to_value(&refused).unwrap(), value, "{name}");
 }
 
 /// The runner-protocol spec's "A terminal's messages": an example of each

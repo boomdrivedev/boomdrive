@@ -1,0 +1,11 @@
+{
+  "protocol_version": 1,
+  "id": "runner:1",
+  "body": {
+    "enrol": {
+      "key": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "signature": "D0O_tRT3KXSeiTu7nv0wYNBET4MFg0wamT06d-vuh1OoCRBW_T2fYCI8Ysqd0LccwkOaRVvtNwjQSN4T5qUjCw",
+      "machine": "host-a"
+    }
+  }
+}
