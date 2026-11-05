@@ -21,7 +21,9 @@ boomdrive-control = { path = "../boomdrive-control" }
 # src/planes.rs, names (design Decisions 1 and 4; core.2).
 boomdrive-crew = { path = "../boomdrive-crew" }
 serde.workspace = true
-serde_json.workspace = true
+# Each owner's VS Code workspace is read and written with its members in
+# their order (design Decision 4).
+serde_json = { workspace = true, features = ["preserve_order"] }
 sha2.workspace = true
 signal-hook.workspace = true
 toml.workspace = true
