@@ -16,4 +16,4 @@ Build the groups in order. Each group stands on the ones before it, and ends gre
 ## 2. The change's checks
 
 - [x] 2.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test root:format root:adrs root:specs root:changes` passes.
-- [ ] 2.2 The spec delta archives into specs that pass openspec's strict check. True when, after `openspec archive the-runner-reads-origin-not-sluices-copy --yes`, `devenv shell -- moon run root:specs root:changes` passes on the tree.
+- [x] 2.2 The spec delta archives into specs that pass openspec's strict check. True when, after `openspec archive the-runner-reads-origin-not-sluices-copy --yes`, `devenv shell -- moon run root:specs root:changes` passes on the tree.

@@ -95,7 +95,7 @@ At every pass, the runner SHALL fetch each kept repository from origin, pruning 
 
 ### Requirement: A repository is fetched when the runner is told of its landing
 
-When the running runner is told that a kept repository has had a landing, it SHALL fetch that repository and keep its default branch and its view at once, without waiting for the next pass and without fetching any other repository. A landing told of a repository the configuration does not name SHALL clone and fetch nothing, and SHALL be named.
+When the running runner is told that a kept repository has had a landing, it SHALL fetch that repository, settle its HEAD and keep its view at once, without waiting for the next pass and without fetching any other repository. A landing told of a repository the configuration does not name SHALL clone and fetch nothing, and SHALL be named.
 
 #### Scenario: Told between passes
 
@@ -109,36 +109,17 @@ When the running runner is told that a kept repository has had a landing, it SHA
 
 ### Requirement: The default branch is origin's
 
-A clone's default branch SHALL be the branch origin names as its HEAD. Every fetch SHALL keep the clone's `refs/remotes/origin/HEAD` current, and the clone's own HEAD SHALL name the same branch. A repository whose origin names no default branch, or has none, SHALL be named. It gets no view until origin has one and is tried again at the next pass.
+A clone's default branch SHALL be the branch origin names as its HEAD. Every fetch SHALL keep the clone's `refs/remotes/origin/HEAD` current, and the clone's own HEAD SHALL name the same branch. Where the clone lacks that branch, the runner SHALL make it at origin's tip, so HEAD names a commit. A repository whose origin names no default branch, or has none, SHALL be named. It gets no view until origin has one and is tried again at the next pass.
 
 #### Scenario: Origin's default is not main
 
 - **WHEN** origin's HEAD names `trunk`
-- **THEN** the clone's HEAD names `refs/heads/trunk` and its view is detached at `origin/trunk`
+- **THEN** the clone's HEAD names `refs/heads/trunk`, the clone's `trunk` is made at `origin/trunk`, and its view is detached at `origin/trunk`
 
 #### Scenario: An empty origin
 
 - **WHEN** origin of a configured repository has no branch
 - **THEN** the pass names it as having no default branch, makes no view, and the pass after origin gains one makes the view
-
-### Requirement: The clone's own default branch follows origin's
-
-After each fetch, the runner SHALL move the clone's own default branch to `origin/<default>` when that move is a fast-forward and no worktree has the branch checked out. A default branch that holds commits origin lacks, or that a worktree holds, SHALL be left where it is and named.
-
-#### Scenario: Behind origin
-
-- **WHEN** origin's `main` moves two commits ahead of the clone's `main` and no worktree holds `main`
-- **THEN** after the next pass the clone's `main` is `origin/main`
-
-#### Scenario: Held by a worktree
-
-- **WHEN** a worktree of the clone has `main` checked out and origin's `main` moves ahead
-- **THEN** the clone's `main` is left where it was and named as held by that worktree
-
-#### Scenario: Ahead of origin
-
-- **WHEN** the clone's `main` holds a commit origin's `main` lacks
-- **THEN** it is left where it is and named with how many commits it is ahead
 
 ### Requirement: A dropped repository is no longer fetched
 
@@ -196,3 +177,36 @@ A clone or view SHALL hold work the forge lacks when it has any of these. A comm
 
 - **WHEN** `agentplot/flume` is dropped while its view holds only files its `.gitignore` ignores
 - **THEN** after the next pass its view and its container are gone
+
+### Requirement: The runner moves no branch of the clone
+
+The runner SHALL read every branch of a kept repository at origin's tracking ref, `refs/remotes/origin/<branch>`, as its last fetch left it. It SHALL NOT move or delete any branch of the clone, its default branch among them, whether or not sluice keeps it: the clone's own ref of a branch sluice keeps is sluice's copy, which sluice levels. A pass SHALL say nothing of the clone's own branches.
+
+#### Scenario: Behind origin
+
+- **WHEN** origin's `main` moves two commits ahead of the clone's `main`
+- **THEN** after the next pass the clone's `main` is where it was, the pass says nothing of it, and the view is moved to `origin/main`
+
+#### Scenario: Sluice keeps the branch
+
+- **WHEN** the clone's `main` is guarded as sluice's protection guards a branch it keeps, refusing any write that moves it, and origin's `main` moves ahead of it
+- **THEN** the pass writes nothing to the clone's `main`, so nothing is refused, it fails nothing, and the view is moved to `origin/main`
+
+#### Scenario: Ahead of origin
+
+- **WHEN** the clone's `main` holds a commit origin's `main` lacks, and origin's `main` moves on
+- **THEN** the clone's `main` is left where it is, the pass says nothing of it, and the view is moved to `origin/main`
+
+#### Scenario: A new repository root while sluice keeps the branch
+
+- **WHEN** a clone made before the rename has its `main` guarded as sluice guards a branch it keeps and behind origin's, its view is clean under the old repository root, and the repository root changes
+- **THEN** the pass removes the old view, makes the view under the new root at `origin/main`, writes nothing to the clone's `main`, and fails nothing
+
+### Requirement: A HEAD that cannot be settled leaves the view kept
+
+Where the runner cannot point the clone's HEAD at origin's default branch, or cannot make that branch where the clone lacks it, it SHALL name the repository with git's words, and the pass SHALL fail. It SHALL still keep the repository's view at `origin/<default>`, and every repository after it in the same pass.
+
+#### Scenario: A new default the clone refuses
+
+- **WHEN** origin's HEAD moves to a new branch `trunk`, and the clone refuses any write that makes its own `trunk`
+- **THEN** the pass names `HEAD not settled on trunk` with git's words and fails, and the view is moved to `origin/trunk`
