@@ -1,5 +1,5 @@
 ---
-number: 18
+number: 19
 title: The runner moves no branch of its clone and reads each at origin's tracking ref, since the clone's own ref of a branch sluice keeps is sluice's copy
 status: proposed
 date: 2026-11-05

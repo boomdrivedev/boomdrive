@@ -69,6 +69,6 @@ Where the runner cannot point the clone's HEAD at origin's default branch, or ca
 
 ### Requirement: The clone's own default branch follows origin's
 
-**Reason**: Where sluice keeps the branch, the clone's own ref of it is sluice's copy, which sluice alone writes and which its protection guards (sluice's clause 124). Moving it refused the pass. Every reader of the runner's reads `origin/<default>`, so the move served none of them (record 0018; core.14).
+**Reason**: Where sluice keeps the branch, the clone's own ref of it is sluice's copy, which sluice alone writes and which its protection guards (sluice's clause 124). Moving it refused the pass. Every reader of the runner's reads `origin/<default>`, so the move served none of them (record 0019; core.14).
 
 **Migration**: Nothing on a host moves. A clone's own default branch stays where the last levelling put it, and sluice levels it where it keeps the branch. A reader of the host's default branch reads `origin/<default>` after a fetch.

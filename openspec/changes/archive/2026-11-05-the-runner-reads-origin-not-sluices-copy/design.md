@@ -83,7 +83,7 @@ Every test runs on the scratch host (`tests/common`), with neutral names and pat
 
 ### Rules departed from
 
-None. core.14 is amended by record 0018, which departs from herdr.13 as amended 2026-10-26.
+None. core.14 is amended by record 0019, which departs from herdr.13 as amended 2026-10-26.
 
 ## What this change asks of others
 

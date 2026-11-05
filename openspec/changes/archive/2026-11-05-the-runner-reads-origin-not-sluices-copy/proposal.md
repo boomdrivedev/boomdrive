@@ -13,7 +13,7 @@ The user, 2026-11-05: "The direction I expect is that sluice owns the host's cop
 
 ## What Changes
 
-- **Rule core.14 and record 0018**, in this change's commit beside its design. The runner alone fetches the clone and moves its view. It reads every branch at origin's tracking ref, and moves no branch of the clone, whose own ref of a branch sluice keeps is sluice's copy.
+- **Rule core.14 and record 0019**, in this change's commit beside its design. The runner alone fetches the clone and moves its view. It reads every branch at origin's tracking ref, and moves no branch of the clone, whose own ref of a branch sluice keeps is sluice's copy.
 - **Levelling goes.** A pass no longer moves the clone's own default branch, and says no `<default> moved to origin/<default>` or `<default> left` line. This holds everywhere, not only where sluice keeps the branch.
 - **HEAD stays origin's.** A pass still points the clone's HEAD at origin's default branch, and makes that branch at origin's tip where the clone lacks it. sluice's protection passes a creation.
 - **A HEAD that cannot be settled fails no other step.** Its failure is named with git's words and fails the pass. The repository's view is still kept, at `origin/<default>`, and so is every repository after it.
@@ -31,7 +31,7 @@ None.
 
 ## Impact
 
-- `docs/architecture/core.md` amends core.14. `docs/adr/` gains record 0018, and record 0003's line on the host's one clone cites it.
+- `docs/architecture/core.md` amends core.14. `docs/adr/` gains record 0019, and record 0003's line on the host's one clone cites it.
 - `crates/boomdrive`:
   - `src/clone.rs` loses levelling: `LevelFacts`, `LevelAct`, `level`, `level_facts` and `level_to`;
   - `src/pass.rs` settles HEAD and keeps the view, and a HEAD that cannot be settled no longer stops the view;
@@ -48,7 +48,7 @@ None.
 ```
 docs/architecture/core.md
 docs/adr/0003-the-runner-starts-no-tools-process-shares-the-hosts-one-clone-and-asks-nothing-of-boom.md
-docs/adr/0018-the-runner-moves-no-branch-of-its-clone-and-reads-each-at-origins-tracking-ref.md
+docs/adr/0019-the-runner-moves-no-branch-of-its-clone-and-reads-each-at-origins-tracking-ref.md
 crates/boomdrive/src/clone.rs
 crates/boomdrive/src/pass.rs
 crates/boomdrive/tests/clones.rs
