@@ -173,7 +173,7 @@ It is kept only in the host's own credential store (core.32; F10):
   - The credential is bound to the host's own key, and to its TPM where it has one, and only this user on this host can decrypt it.
 - **Elsewhere, or with neither store**, `flywheel enroll` is refused before any request, naming what the host lacks, and exits 2. On Linux that is `systemd-creds` missing, or older than 256 by its own `--version`. Nothing falls back to a file (core.32).
 
-The store is read again at every connection attempt, never cached across one. A partition enrolled, or enrolled again, while the runner runs is dialed with its new key at its next attempt, with no restart. A key that cannot be read is said once, naming the partition and the store's words, and is tried again at the backoff's cap (Decision 6).
+The store is read again at every connection attempt, never cached across one. A partition enrolled, or enrolled again, while the runner runs is dialed with its new key at its next attempt, with no restart. A key that cannot be read is said once, naming the partition and the store's words, and is tried again at the backoff's cap (Decision 6). A host with neither store opens the hosted implementation all the same: each partition's key is then unread, with words naming what the host lacks, so each partition says so once and the runner keeps its repositories.
 
 The key is named by the `url`'s host as well as the label, so a host moved from one control plane to another, a staging one and then production, keeps a key for each and never presents one to the other.
 
@@ -292,13 +292,14 @@ The interface's two calls map onto version 1's messages, in 1.16's order (its De
   3. For a partition whose connection is being attempted, it waits up to 10 seconds for the attempt's first `pulled`. A partition in its backoff's wait is not waited for.
   4. It gives the wants of every partition read, in the table's order of partitions and each in its control plane's order, under the partition's ids (Decision 8).
   5. It is `Unread` only when no partition was read, naming each with why.
-  6. Its `report` is each read partition's report as its control plane held it at the connection's first `pulled`, where the control plane gave one.
+  6. Its `report` is each read partition's report as its control plane holds it: the partition's part of the last report the control plane answered with `reported`, as the runner handed it, but what it let go or refused; or, before any, the report the control plane gave at the connection's first `pulled`, where it gave one (*A report taken back*).
   7. Its `terminals` are none (Decision 11).
 - **`report(report)`**:
   1. For each partition with a live connection, it sends that partition's part of the report, cut to version 1 (Decision 9), as `report` under a new message id.
   2. It waits up to 10 seconds for each `reported` naming its message.
   3. It gives `Reported` with every answered partition's `let_go` and `refused`, under the partition's ids, and those of any `reported` that came late since the last call.
   4. It is `Unsent` only when no partition answered. A partition that did not answer is named in a line.
+  5. Each partition's part that `reported` answered is what its control plane now holds, which the next pull gives (the pull's step 6).
 - **A report not answered** is held by its connection, with its message id. After a reconnect, the connection sends the hello, then that report again under the same id (core.21). It is dropped once a newer report is sent, since a report is whole. A `report` the control plane refused with `message_refused` is not sent again (1.16's Decision 5). The pass's next report goes.
 - **The wake.** A connection that takes a `pulled` calls the `Wake` its opener was handed, so the runner makes a control pass at once (the running spec). The first `pulled` of each connection wakes it too.
 - **Message ids** are UUIDs of version 7, time-ordered and random, so no id is given twice on an enrolment, across reconnects and restarts (cloud core.38). An id is kept only on a resend.
@@ -311,6 +312,7 @@ Alternatives:
 
 - **`report` returning as soon as it has sent**, with `reported` read at the next call. Not taken: a refused lease would then be acted on for one pass more (core.10).
 - **A pull that waits for every partition.** Not taken: one unreachable partition would hold every other's work (core.26's partitions are apart), as crew's implementation lets one partition's state repository fail alone.
+- **A pull's report only as the control plane gave it at the connection's first `pulled`.** Not taken: a live connection takes no `pulled` with a report again, so a report answered since would not come back at the next pull, as the shared case "a report comes back" asks of every implementation.
 
 ### 8. Each partition's own ids, repositories and leases
 
@@ -360,7 +362,9 @@ A value that fits no branch is not cut, and fails the check below.
 
 So a Flume that adds a value to one of its sets fails one launch's status, not the report that renews every lease.
 
-**Every message the runner sends** is checked whole against `from-runner.schema.json` before it is sent. One that fails is a fault of the runner's: it is not sent, a line names its kind and the path, and the call gives `Unsent`, or `Unread` for a hello.
+**Every message the runner sends** is checked whole against `from-runner.schema.json` before it is sent. One that fails is a fault of the runner's: it is not sent, a line names its kind and the path, and the call gives `Unsent`, or `Unread` for a hello. A hello or a report is checked first against its body's own definition, so the line names the path deep in it, such as `/body/report/launches/l-1/lease/number`, where the envelope's `oneOf` names `/body` alone.
+
+The lines of a launch's copy start with the launch's id, `<label>/<id>`, and the host part's with `hosted:`, being no partition's.
 
 Because every object of version 1 is closed, it is the check that holds core.27 and the cloud's core.108, at both ends. The cut only makes the copy that passes.
 
@@ -437,6 +441,7 @@ Every test stays inside the gate. It reaches no network beyond the loopback addr
   - it accepts the upgrade on `runner/connect` with tokio-tungstenite's handshake, and answers `runner/enrol` with HTTP written by hand;
   - it checks every message the runner sends against `from-runner.schema.json`, and verifies the enrolment's and the connection's signatures over their contexts;
   - it holds wants a test sets, answers `hello` with `pulled` and each `report` with `reported`, and records what it took;
+  - it holds each partition's last report as a control plane does, but what it lets go or refuses, and gives it in each `pulled` answering a hello;
   - a test can make it refuse a key, a subprotocol or a token, drop a connection, withhold a `reported`, send a message that fails its check, and open a terminal.
 
   It is test code. No crate's `src` names a listener, and the lock names no HTTP or WebSocket server crate (the running spec's "No listener in the code").
@@ -628,22 +633,22 @@ A test builds the enrolment's and the connection's contexts from the README's fi
 
 **4.2** `check.rs`: one `Validator` for each direction's envelope, and one for each copy's definition, built once with `jsonschema::options()`, each file a resource under its `$id`, with no retriever. Errors give their `instance_path` and `schema_path`, never the instance.
 
-**5.1** `copy.rs`: `cut(definition: &Value, value: &Value, files) -> Option<Value>`, walking as Decision 9 has it. A `oneOf` branch is chosen by:
+**5.1** `copy.rs`: `cut(reference: &str, value: &Value) -> Value`, where `reference` is `<file>#<pointer>` among `FILES`, walking as Decision 9 has it. A `oneOf` branch is chosen by:
 
-- `const` against a string;
-- `required: [key]` against a one-key object;
-- `type: "null"` against null.
+- `const` or `enum` against the value;
+- against an object, every key the branch requires present and every `const` its properties name held;
+- `type`, `null` among it, against the value.
 
-A `$ref` is resolved among `FILES` by its file and its JSON pointer. A definition with no `properties`, or `true`, keeps the value. `None` is a value that fits no branch.
+A `$ref` is resolved among `FILES` by its file and its JSON pointer. A closed object keeps only what it names, and an open one, or a definition with no `properties`, keeps the rest whole. A value that fits no branch is kept whole, so the check names its path. `place_status(text)`, `submission_entry(text)` and `host_part(&HostPart)` give each copy cut and checked against its definition, or words naming the path. `check.rs` holds the three copies' validators, and the hello's and the report's bodies', beside the envelopes'.
 
-**5.2** `plane.rs`: `Hosted` and `open`, as Decision 1 gives the opener's arguments with `poll_interval`.
+**5.2** `plane.rs`: `Hosted` and `open`, as Decision 1 gives the opener's arguments with `poll_interval`. `open(table, file, poll_interval, say, wake)` finds the host's store, and `Hosted::new(table, store, poll_interval, say, wake)` takes one, as the tests do with a store in memory. The opener's `say` is one `Mutex` shared by every partition's connection.
 
 - Pull and report as Decision 7.
 - Ids as Decision 8, by `<label>/` and the first `/`, since a label holds none.
 - Copies as Decision 9.
 - Terminals as Decision 11.
 
-**5.3** `tests/shared.rs` runs `flywheel_control::shared`'s cases over `Hosted` against the fake, its harness making a fake control plane holding the given wants for one partition.
+**5.3** `tests/shared.rs` runs `flywheel_control::shared`'s cases over `Hosted` against the fake, its harness making a fake control plane holding the given wants for one partition, and seeing the report the fake holds.
 
 **6.1** `planes.rs`:
 
