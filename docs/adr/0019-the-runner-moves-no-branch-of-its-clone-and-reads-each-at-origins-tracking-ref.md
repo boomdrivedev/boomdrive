@@ -1,7 +1,7 @@
 ---
 number: 19
 title: The runner moves no branch of its clone and reads each at origin's tracking ref, since the clone's own ref of a branch sluice keeps is sluice's copy
-status: proposed
+status: accepted
 date: 2026-11-05
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner moves no branch of its clone and reads each at origin's tracking ref, since the clone's own ref of a branch sluice keeps is sluice's copy
 
-Status: proposed on 2026-11-05 by the code stage of the fix `the-runner-reads-origin-not-sluices-copy`. The direction is the orchestrator's, in its brief's words below; the user has not ruled on it yet. That levelling goes everywhere, and not only where sluice keeps the branch, is the stage's choice, made on sluice's statement and this repository's rules. The record is accepted when the user says yes to it.
+Status: accepted by the user on 2026-11-05, on the fix's guided review in the Plannotator Inbox ("Accept and release it, and launch the two follow-ups"). Proposed on 2026-11-05 by the code stage of the fix `the-runner-reads-origin-not-sluices-copy`. The direction is the orchestrator's, in its brief's words below; the user has not ruled on it yet. That levelling goes everywhere, and not only where sluice keeps the branch, is the stage's choice, made on sluice's statement and this repository's rules.
 
 Deciders: the orchestrator's brief, for the direction; the code stage, for how far it goes; the user, at the fix's review.
 Sources: the orchestrator's brief of the fix `the-runner-reads-origin-not-sluices-copy`, 2026-11-05; sluice's statement, clause 124 and its scenario S58, sluice record 0069, and its `crates/sluice/src/protect.rs`; Flume's statement, clause 9 and section C.1, and its `base_revision` and `history.head`; afterthought/swancloud's rule herdr.13 as amended 2026-10-26, cited by id (core.41); Decision 6 of the archived change `the-runner-keeps-its-repositories`; record 0003; rules core.1, core.14 and core.34; the clones spec.
