@@ -11,10 +11,10 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 1. The control pass under leases that lapse
 
-- [ ] 1.1 A control pass is hastened only by a lease not yet lapsed, and only after a pass that reported. `_open.md` no longer names core.22 (running spec: "flywheel run makes control passes on a timer of their own"; work-into-flume spec: "Renewed before it lapses"; design Decision 13; Task notes 1.1). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of that requirement.
-- [ ] 1.2 An unread control plane is said once until it is read again, and its return once. `_open.md` no longer names core.23 (running spec: "A control plane that cannot be read is said once until it is read again"; design Decision 13; Task notes 1.2). True when `devenv shell -- moon run flywheel:test` passes with that requirement's scenario.
-- [ ] 1.3 An offer, an act and a command whose lease has lapsed by the pass's clock wait for a live lease (work-into-flume spec: "Work under a lapsed lease waits for a live one"; design Decision 13; Task notes 1.3). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of that requirement.
-- [ ] 1.4 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format` passes.
+- [x] 1.1 A control pass is hastened only by a lease not yet lapsed, and only after a pass that reported. `_open.md` no longer names core.22 (running spec: "flywheel run makes control passes on a timer of their own"; work-into-flume spec: "Renewed before it lapses"; design Decision 13; Task notes 1.1). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of that requirement.
+- [x] 1.2 An unread control plane is said once until it is read again, and its return once. `_open.md` no longer names core.23 (running spec: "A control plane that cannot be read is said once until it is read again"; design Decision 13; Task notes 1.2). True when `devenv shell -- moon run flywheel:test` passes with that requirement's scenario.
+- [x] 1.3 An offer, an act and a command whose lease has lapsed by the pass's clock wait for a live lease (work-into-flume spec: "Work under a lapsed lease waits for a live one"; design Decision 13; Task notes 1.3). True when `devenv shell -- moon run flywheel:test` passes with a test per scenario of that requirement.
+- [x] 1.4 Run this group's checks. True when `devenv shell -- moon run flywheel:format flywheel:lint flywheel:typecheck flywheel:test root:format` passes.
 
 ## 2. Version 1 gains enrolment
 
