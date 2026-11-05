@@ -1,13 +1,15 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
 //! settled, its own default branch levelled and its view kept, then each
-//! dropped repository let go. Each repository is independent: a failure
-//! in one is named and the next is kept. A pass stopped keeps no further
-//! repository. The pass says each act and each thing it names as one
-//! line, `<owner>/<name>: <words>`, and a pass with nothing to say writes
-//! nothing.
+//! dropped repository let go, then, where the configuration asks, each
+//! owner's VS Code workspace kept (core.43). Each repository is
+//! independent: a failure in one is named and the next is kept. A pass
+//! stopped keeps no further repository and no workspace. The pass says
+//! each act and each thing it names as one line, `<owner>/<name>:
+//! <words>`, and a pass with nothing to say writes nothing.
 
 use crate::clone::{self, LevelAct};
+use crate::code_workspace::{self, Act, Wanted};
 use crate::config::{self, Address, Config};
 use crate::git::{Git, Words};
 use crate::lacks;
@@ -16,11 +18,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Whether every git call of a pass succeeded. Something left and named
-/// by rule, a folder the runner did not make among it, is not a failure.
+/// Whether every git call of a pass succeeded, and every workspace it
+/// kept was read and written. Something left and named by rule, a folder
+/// the runner did not make or a workspace it cannot read among it, is not
+/// a failure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
-    /// Every call succeeded.
+    /// Every call, read and write succeeded.
     Kept,
     /// At least one failed, and was named.
     Failed,
@@ -39,7 +43,7 @@ impl Outcome {
 
 /// One pass over `config`, the runner's clones kept in `data`, each line
 /// said to `say` as it is said. Once `stop` is set, no further
-/// repository is kept or let go, and the pass ends.
+/// repository is kept or let go, no workspace is kept, and the pass ends.
 pub fn pass(
     git: &Git,
     data: &Path,
@@ -68,6 +72,9 @@ pub fn pass(
             say(format!("{address}: {words}"))
         });
         outcome = outcome.and(dropped);
+    }
+    if config.code_workspaces && !stop.load(Ordering::SeqCst) {
+        outcome = outcome.and(keep_workspaces(config, say));
     }
     outcome.and(clear_partials(data, &clones, say))
 }
@@ -127,6 +134,52 @@ fn keep_configured(
     keep(git, data, address, found, &view, &mut |words| {
         say(format!("{address}: {words}"))
     })
+}
+
+/// Keeps each owner's VS Code workspace `config` wants (design Decisions
+/// 4 to 6; core.43): made, its folders set, or left as it is and named.
+/// A workspace whose folders are the wanted ones says nothing. One that
+/// cannot be read or written is named, and fails the pass.
+fn keep_workspaces(config: &Config, say: &mut dyn FnMut(String)) -> Outcome {
+    let mut outcome = Outcome::Kept;
+    for wanted in code_workspace::wanted(config) {
+        outcome = outcome.and(keep_workspace(&wanted, say));
+    }
+    outcome
+}
+
+/// Keeps the one workspace `wanted` names, as `keep_workspaces` does.
+fn keep_workspace(wanted: &Wanted, say: &mut dyn FnMut(String)) -> Outcome {
+    let file = wanted.file.display();
+    let stands = match code_workspace::stands(&wanted.file) {
+        Ok(stands) => stands,
+        Err(error) => {
+            say(format!("boomdrive: workspace not read at {file}: {error}"));
+            return Outcome::Failed;
+        }
+    };
+    match code_workspace::decide(&stands, &wanted.folders) {
+        Act::Leave => Outcome::Kept,
+        Act::Name(wrong) => {
+            say(format!("boomdrive: workspace left at {file}: {wrong}"));
+            Outcome::Kept
+        }
+        Act::Write(text) => match code_workspace::write(&wanted.file, &text) {
+            Ok(()) => {
+                say(format!(
+                    "boomdrive: workspace written at {file}: {}",
+                    wanted.folders.join(", ")
+                ));
+                Outcome::Kept
+            }
+            Err(error) => {
+                say(format!(
+                    "boomdrive: workspace not written at {file}: {error}"
+                ));
+                Outcome::Failed
+            }
+        },
+    }
 }
 
 /// Lets go of the clone in `container`, whose address the configuration

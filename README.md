@@ -78,7 +78,11 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 - lets go of each repository the configuration no longer names. It is
   never fetched again, and its clone and view are removed once neither
   holds work the forge lacks; until then they are left, and named at
-  every pass.
+  every pass;
+- where `code_workspaces` is true, keeps each owner's VS Code workspace
+  at `<repository_root>/<owner>/<owner>.code-workspace`, writing it only
+  when its `folders` are not the owner's kept repositories, whole and
+  renamed over the old one.
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
@@ -88,8 +92,10 @@ and exits 0. It opens no listening socket: every connection it makes is
 outgoing.
 
 `boomdrive run --once` makes one pass and exits, 0 when every git call
-succeeded and 1 when one failed. A repository left by rule, for a
-folder of the user's or work the forge lacks, is not a failure. Where
+succeeded and 1 when one failed, or a workspace could not be read or
+written. A repository left by rule, for a folder of the user's or work
+the forge lacks, is not a failure, nor is a workspace left because the
+runner cannot read it. Where
 the configuration names a control plane, `--once` makes one control
 pass after the keeping pass, and exits 1 too when that pass did not
 pull and report. A tool that pass could not run or read is named, and
