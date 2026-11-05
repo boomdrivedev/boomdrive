@@ -1,11 +1,15 @@
-//! `flywheel run` carrying a control plane's work (design Decisions 4 and
-//! 5): `--once` makes one keeping pass and one control pass, and the loop
-//! makes control passes on a timer of their own, at once when the control
-//! plane wakes it, and none that acts while the configuration does not
-//! read (the running spec's "flywheel run --once makes one pass",
+//! `flywheel run` carrying a control plane's work (design Decisions 4, 5
+//! and 13): `--once` makes one keeping pass and one control pass, and the
+//! loop makes control passes on a timer of their own, hastened by no
+//! lapsed lease and after no pass that did not report, at once when the
+//! control plane wakes it, and none that acts while the configuration
+//! does not read, saying the control plane unread once until it is read
+//! again (the running spec's "flywheel run --once makes one pass",
 //! "flywheel run makes control passes on a timer of their own", "A
-//! control pass runs at once when its control plane wakes the runner" and
-//! "A control pass after a broken configuration acts on nothing"; the
+//! control pass runs at once when its control plane wakes the runner", "A
+//! control pass after a broken configuration acts on nothing" and "A
+//! control plane that cannot be read is said once until it is read
+//! again"; the
 //! configuration spec's "The configuration may name the control plane"
 //! and "The control-plane table is read when the runner starts"). The
 //! binary runs under the scratch host with stub `flume`, `sluice` and
@@ -20,9 +24,13 @@ mod records;
 
 use common::{keeping, Origin, Scratch};
 use fakes::{HerdrStub, SluiceStub, Stub};
+use flywheel::report;
 use flywheel::run::{Programs, Runner, Stopper};
 use flywheel_control::fake::Fake;
-use flywheel_control::{ControlPlane, Hello, Pulled, Report, Reported, Unread, Unsent, Wake};
+use flywheel_control::{
+    Answer, At, ControlPlane, Hello, Id, Lease, Outcome, Pulled, Report, Reported, Unread, Unsent,
+    Wake,
+};
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -231,11 +239,6 @@ fn a_control_plane_that_cannot_be_read() {
         .filter(|line| line.starts_with("flywheel: the control plane could not be read: "))
         .collect();
     assert_eq!(unread.len(), 1, "{said}");
-    assert!(
-        unread[0].ends_with(": nothing carried this pass"),
-        "{}",
-        unread[0]
-    );
     for command in tools.flume_commands() {
         assert!(
             ["status", "--version"].contains(&command.as_str()),
@@ -297,12 +300,19 @@ fn the_hosted_control_plane_named() {
 /// The fake control plane, telling the test when each pull is made.
 struct Told {
     fake: Fake,
+    /// How many pulls are still refused, with `no network`, before the
+    /// fake is asked.
+    unread: usize,
     pulls: Sender<Instant>,
 }
 
 impl ControlPlane for Told {
     fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread> {
         let _ = self.pulls.send(Instant::now());
+        if self.unread > 0 {
+            self.unread -= 1;
+            return Err(Unread("no network".to_string()));
+        }
         self.fake.pull(hello, report)
     }
 
@@ -329,6 +339,12 @@ impl Running {
     /// file, which names crew's implementation, and carries the fake
     /// control plane's work in its place.
     fn start(scratch: &Scratch) -> Running {
+        Running::over(scratch, Fake::new(), 0)
+    }
+
+    /// Starts the runner as [`Running::start`] does, carrying `fake`'s
+    /// work, its first `unread` pulls refused with `no network`.
+    fn over(scratch: &Scratch, fake: Fake, unread: usize) -> Running {
         let overlay = scratch.overlay();
         let var = |name: &str| {
             overlay
@@ -340,7 +356,8 @@ impl Running {
         let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
         let (told, pulls) = mpsc::channel();
         let plane = Told {
-            fake: Fake::new(),
+            fake,
+            unread,
             pulls: told,
         };
         let mut handed = None;
@@ -591,4 +608,118 @@ fn a_quiet_control_pass_says_nothing() {
     let (_, said) = running.until("flywheel: stopped");
     running.thread.join().expect("the loop ends");
     assert_eq!(said, Vec::<String>::new());
+}
+
+/// The running spec's "A lapsed lease", over the loop: the report file
+/// holds a launch under a lease that lapsed, and the control plane cannot
+/// be reached, so the next control pass comes `poll_interval` after the
+/// one before, never back to back.
+#[test]
+fn a_lapsed_lease_sets_no_pass_sooner() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "2s"));
+    holding(
+        &scratch,
+        At::from(At::now().time() - Duration::from_secs(60)),
+    );
+    let mut fake = Fake::new();
+    fake.refuse_pulls("no network");
+    let running = Running::over(&scratch, fake, 0);
+
+    let first = running.pull();
+    let second = running.pull();
+
+    // A pull comes partway into its pass; passes two seconds apart hold
+    // their pulls more than a second apart, where back to back they come
+    // within the pass's own time.
+    assert!(
+        second - first >= Duration::from_secs(1),
+        "{:?} between control passes",
+        second - first
+    );
+    running.stop();
+}
+
+/// The running spec's "A pass that did not report", over the loop: the
+/// report file holds a launch under a lease that lapses in seconds, and
+/// the control plane takes no report, so no pass is made sooner than
+/// `poll_interval`, an hour.
+#[test]
+fn a_pass_that_did_not_report_sets_no_pass_sooner() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1h"));
+    holding(
+        &scratch,
+        At::from(At::now().time() + Duration::from_secs(5)),
+    );
+    let mut fake = Fake::new();
+    fake.refuse_reports("no network");
+    let running = Running::over(&scratch, fake, 0);
+
+    running.pull();
+
+    // Hastened by the lease, the next pass would come within half the
+    // time it has left, two and a half seconds.
+    assert!(
+        !running.pulled_within(Duration::from_secs(4)),
+        "a pass that did not report hastens none"
+    );
+    running.stop();
+}
+
+/// The running spec's "Three passes unread, then read": the control
+/// plane refuses three pulls in a row with `no network`, then gives the
+/// fourth. One line names it unread, and one, at the fourth pass, says it
+/// is read again; the passes after say nothing of it.
+#[test]
+fn three_passes_unread_then_read() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let running = Running::over(&scratch, Fake::new(), 3);
+
+    let (read_again, said) = running.until("flywheel: the control plane is read again");
+    let pulls: Vec<Instant> = (0..4).map(|_| running.pull()).collect();
+    let reach: Vec<&String> = said
+        .iter()
+        .filter(|line| line.starts_with("flywheel: the control plane"))
+        .collect();
+    assert_eq!(
+        reach,
+        ["flywheel: the control plane could not be read: no network"]
+    );
+    assert!(read_again >= pulls[3], "said at the fourth pass");
+    assert!(
+        running.pulls.try_iter().all(|fifth| fifth > read_again),
+        "said before the fifth pass"
+    );
+
+    running.pull();
+    running.pull();
+    running.stopper.stop();
+    let (_, after) = running.until("flywheel: stopped");
+    running.thread.join().expect("the loop ends");
+    assert_eq!(after, Vec::<String>::new());
+}
+
+/// Writes the runner's report file on the scratch host, holding launch
+/// `held` at a place under lease 1, expiring at `expires`.
+fn holding(scratch: &Scratch, expires: At) {
+    let mut held = Report::default();
+    let lease = Lease {
+        number: 1,
+        expires: Some(expires),
+    };
+    let answer = Answer {
+        outcome: Outcome::Launched,
+        place_dir: Some("/places/held".to_string()),
+        words: None,
+        at: At::now(),
+    };
+    held.answer(&Id::new("held"), lease, answer);
+    let control_dir = report::control_dir(&scratch.data());
+    std::fs::create_dir_all(&control_dir).expect("the control directory");
+    report::save(&report::file(&control_dir), &held).expect("the report saved");
 }

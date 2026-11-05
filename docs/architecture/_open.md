@@ -10,14 +10,6 @@ here; this page is deleted once it is empty.
   takes the relay out until Flume relays one. The change: the relay
   removed, a terminal closed with words saying the host's Flume relays
   none.
-- **core.22.** `crates/flywheel/src/carry.rs::next_due` falls to the end
-  of the pass once a lease has lapsed, so control passes run back to
-  back while the control plane cannot be reached (the verify report of
-  the-runner-carries-crews-work-into-flume). The change: a bounded
-  backoff with jitter.
-- **core.23.** `crates/flywheel/src/carry.rs` says the control plane
-  could not be read at every pass that cannot read it. The change: one
-  line when it becomes unreachable and one when it returns.
 - **core.40.** Every line the running runner writes, in `run.rs`,
   `pass.rs` and `carry.rs`, has no time. The change: each line starts
   with its time.

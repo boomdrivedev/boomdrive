@@ -120,8 +120,10 @@ own. The table is read when the runner starts, so a change to it takes
 effect when the runner starts again.
 
 A control pass runs after the first keeping pass, then each
-`poll_interval` after the start of the one before, sooner where a lease
-would lapse first, and at once when the control plane wakes the runner.
+`poll_interval` after the start of the one before, sooner, after a pass
+that reported, where a lease not yet lapsed would lapse first, and at
+once when the control plane wakes the runner. The runner says once that
+its control plane could not be read, and once that it is read again.
 A control pass:
 
 - reads `flume --json status` once, and hands the control plane the
@@ -143,7 +145,9 @@ A control pass:
 
 Each launch, act and command is carried out once, across a restart: the
 runner's report is kept at `<data>/control/report.json`, and a launch
-whose answer was lost is found by its mark.
+whose answer was lost is found by its mark. An offer, an act or a
+command whose lease has lapsed by the runner's clock waits until a pull
+gives it under a live lease.
 
 crew's table names `host`, this host as crew's hosts file names it, and
 each partition served: its `label`, and its `state_repository` as

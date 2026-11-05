@@ -349,7 +349,7 @@ fn a_pull_that_cannot_be_read() {
     assert!(!passed.reported);
     assert_eq!(
         lines,
-        ["flywheel: the control plane could not be read: no network: nothing carried this pass"]
+        ["flywheel: the control plane could not be read: no network"]
     );
     assert_eq!(bench.flume.calls(), [Call::Status]);
     assert_eq!(plane.reports(), [] as [Report; 0]);

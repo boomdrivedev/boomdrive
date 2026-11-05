@@ -4,9 +4,10 @@
 //! pulled, and sends the whole report. The runner takes only what it was
 //! offered, launches only through Flume's command line, and carries each
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
-//! `ControlPlane` (core.2), and acts on no place it did not launch. Each
-//! act is said on standard error, one line each, prefixed with its id, and
-//! a pass that changes nothing says nothing.
+//! `ControlPlane` (core.2), and acts on no place it did not launch. Work
+//! under a lease that has lapsed by the pass's clock waits for a live one
+//! (core.24). Each act is said on standard error, one line each, prefixed
+//! with its id, and a pass that changes nothing says nothing.
 
 use crate::config::{Address, Config};
 use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
@@ -18,10 +19,11 @@ use crate::terminal::Relays;
 use crate::{clone, facts, inbox, report};
 use flywheel_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
-    Inbox, InboxCarried, InboxFile, Launched, Offer, Outcome, Report, Reported, Unread, Unsent,
-    Want,
+    Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Report, Reported, Unread,
+    Unsent, Want,
 };
 use serde_json::Value;
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -112,13 +114,43 @@ pub struct Carrier<'a> {
     /// The terminals relaying, kept across passes: the pass opens each
     /// terminal pulled, and closes those on a launch it lets go.
     pub relays: &'a Relays,
+    /// Whether the last pull was read, kept across passes.
+    pub reach: &'a Reach,
+}
+
+/// Whether the control plane's last pull was read, kept across control
+/// passes, so its reach is said once each way: when a pull first cannot
+/// be read, with the pull's words, and when one is next read, and at no
+/// pass between (design Decision 13; core.23). The first pull is said
+/// unread as one after a pull that was read.
+#[derive(Debug, Default)]
+pub struct Reach {
+    unread: Cell<bool>,
+}
+
+impl Reach {
+    /// Takes a pull that could not be read, with the pull's `words`.
+    fn unread(&self, words: &str, say: &mut dyn FnMut(String)) {
+        if !self.unread.replace(true) {
+            say(format!(
+                "flywheel: the control plane could not be read: {words}"
+            ));
+        }
+    }
+
+    /// Takes a pull that was read.
+    fn read(&self, say: &mut dyn FnMut(String)) {
+        if self.unread.replace(false) {
+            say("flywheel: the control plane is read again".to_string());
+        }
+    }
 }
 
 /// What a control pass leaves for the loop.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Passed {
-    /// The earliest expiry of a lease the report holds, where one has an
-    /// expiry.
+    /// The earliest expiry of a lease the report holds not yet lapsed at
+    /// the pass's end, where one has an expiry.
     pub expires: Option<At>,
     /// Whether the pass pulled and the control plane took its report,
     /// which is what `flywheel run --once` asks of a control pass. A tool
@@ -126,10 +158,24 @@ pub struct Passed {
     pub reported: bool,
 }
 
+impl Passed {
+    /// When the control pass after this one, which began at `began` and
+    /// ended at `ended`, is due, each `poll_interval`, by the clock as it
+    /// reads now: [`next_due`], with the time left of the earliest lease
+    /// not yet lapsed.
+    pub fn next_due(&self, began: Instant, ended: Instant, poll_interval: Duration) -> Instant {
+        let left = self.expires.and_then(|expires| left(expires, At::now()));
+        next_due(began, ended, poll_interval, left, self.reported)
+    }
+}
+
 impl Carrier<'_> {
     /// One control pass against `plane`, each line said to `say` as it is
     /// said.
     pub fn pass(&self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> Passed {
+        // The pass's clock, read once, by which the work under each lease
+        // is judged (core.24).
+        let now = At::now();
         let file = report::file(self.control_dir);
         let kept = match report::read(&file) {
             Ok(kept) => kept,
@@ -161,15 +207,14 @@ impl Carrier<'_> {
         let pulled = match plane.pull(&hello, &saved) {
             Ok(pulled) => pulled,
             Err(Unread(words)) => {
-                say(format!(
-                    "flywheel: the control plane could not be read: {words}: nothing carried this pass"
-                ));
+                self.reach.unread(&words, say);
                 return Passed {
-                    expires: expires(&saved),
+                    expires: expires(&saved, At::now()),
                     reported: false,
                 };
             }
         };
+        self.reach.read(say);
         // A report file lost with the data directory is taken from the
         // control plane, which holds every answer the runner reported.
         let report = kept.or(pulled.report).unwrap_or_default();
@@ -181,6 +226,7 @@ impl Carrier<'_> {
             report,
             room: Room::read(listing.as_ref()),
             listing,
+            now,
         };
         for want in &pulled.wants {
             work.want(want, say);
@@ -196,7 +242,7 @@ impl Carrier<'_> {
         }
         let reported = work.send(plane, say);
         Passed {
-            expires: expires(&work.report),
+            expires: expires(&work.report, At::now()),
             reported,
         }
     }
@@ -215,6 +261,8 @@ struct Work<'p> {
     /// The pass's one `flume --json status`, where Flume gave it.
     listing: Option<Value>,
     room: Room,
+    /// The pass's clock, read once at its start.
+    now: At,
 }
 
 impl Work<'_> {
@@ -227,7 +275,10 @@ impl Work<'_> {
         }
     }
 
-    /// Takes, leaves or refuses `offer` (design Decision 7).
+    /// Takes, leaves or refuses `offer` (design Decision 7). An offer
+    /// whose lease has lapsed is left unanswered, and one already answered
+    /// keeps its answer, until a pull gives it under a live lease (design
+    /// Decision 13; core.24).
     fn offer(&mut self, offer: &Offer, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
         if let Some(launched) = self.report.launches.get_mut(id) {
@@ -236,6 +287,9 @@ impl Work<'_> {
             if launched.answer.outcome != Outcome::Held {
                 return;
             }
+        }
+        if lapsed(offer.lease, self.now) {
+            return;
         }
         // Without Flume's listing no mark can be read, so nothing is
         // launched.
@@ -387,7 +441,9 @@ impl Work<'_> {
     }
 
     /// Carries out or answers `act` on its launch (design Decision 9). An
-    /// act the report holds is left as it stands.
+    /// act the report holds is left as it stands, and one whose launch's
+    /// lease in the report has lapsed is left untaken (design Decision 13;
+    /// core.24).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -401,6 +457,9 @@ impl Work<'_> {
             }
             return;
         };
+        if lapsed(launched.lease, self.now) {
+            return;
+        }
         if launched.answer.outcome != Outcome::Launched {
             self.act_unlaunched(act, say);
             return;
@@ -521,11 +580,15 @@ impl Work<'_> {
 
     /// Carries out or refuses `command` (design Decision 15). A command
     /// the report holds is left as it stands, under the lease the control
-    /// plane gives now, and its tool is not run again (core.10). A sort
-    /// this binary does not carry is refused, naming its tool.
+    /// plane gives now, and its tool is not run again (core.10). One whose
+    /// lease has lapsed is left untaken (design Decision 13; core.24). A
+    /// sort this binary does not carry is refused, naming its tool.
     fn command(&mut self, command: &Command, say: &mut dyn FnMut(String)) {
         if let Some(commanded) = self.report.commands.get_mut(&command.id) {
             commanded.lease = command.lease;
+            return;
+        }
+        if lapsed(command.lease, self.now) {
             return;
         }
         match &command.what {
@@ -1123,38 +1186,50 @@ fn launch_args(offer: &Offer, container: &Path, priority: Option<i64>) -> Launch
 }
 
 /// When the control pass after one that began at `began` and ended at
-/// `ended` is due (design Decision 5): `poll_interval` after `began`, or
-/// sooner, by the midpoint between `ended` and the earliest expiry of a
-/// lease the runner holds, `left` after `ended`, so the lease is renewed
-/// before it lapses; and never before `ended`.
+/// `ended` is due (design Decisions 5 and 13; core.22): `poll_interval`
+/// after `began`, or, after a pass that `reported`, sooner, by the
+/// midpoint between `ended` and the earliest expiry of a lease the runner
+/// holds not yet lapsed, `left` after `ended`, so the lease is renewed
+/// before it lapses; and never before `ended`. A lapsed lease, or a pass
+/// that did not report, hastens none: while the control plane cannot be
+/// reached, a pass sooner renews nothing.
 pub fn next_due(
     began: Instant,
     ended: Instant,
     poll_interval: Duration,
     left: Option<Duration>,
+    reported: bool,
 ) -> Instant {
     let polled = began + poll_interval;
     let due = match left {
-        Some(left) => polled.min(ended + left / 2),
-        None => polled,
+        Some(left) if reported => polled.min(ended + left / 2),
+        _ => polled,
     };
     due.max(ended)
 }
 
-/// How long after `now` a lease expiring at `expires` has left: none
-/// where it has lapsed.
-pub fn left(expires: At, now: At) -> Duration {
-    (expires.time() - now.time())
-        .try_into()
-        .unwrap_or(Duration::ZERO)
+/// How long after `now` a lease expiring at `expires` has left, or none
+/// where it has lapsed by `now`.
+pub fn left(expires: At, now: At) -> Option<Duration> {
+    Duration::try_from(expires.time() - now.time())
+        .ok()
+        .filter(|left| !left.is_zero())
 }
 
-/// The earliest expiry of a lease `report` holds.
-fn expires(report: &Report) -> Option<At> {
+/// Whether `lease` has lapsed by `now`: it has an expiry, and `now` is
+/// not before it. `At` drops a second's fraction, so an expiry `now`
+/// equals has passed.
+fn lapsed(lease: Lease, now: At) -> bool {
+    lease.expires.is_some_and(|expires| expires <= now)
+}
+
+/// The earliest expiry of a lease `report` holds not yet lapsed at `now`.
+fn expires(report: &Report, now: At) -> Option<At> {
     let launches = report.launches.values().map(|launched| launched.lease);
     let commands = report.commands.values().map(|commanded| commanded.lease);
     launches
         .chain(commands)
+        .filter(|lease| !lapsed(*lease, now))
         .filter_map(|lease| lease.expires)
         .min()
 }
@@ -1163,6 +1238,10 @@ fn expires(report: &Report) -> Option<At> {
 mod tests {
     use super::*;
     use std::path::Path;
+
+    fn at(text: &str) -> At {
+        At::parse(text).unwrap()
+    }
 
     /// The work-into-flume spec's "Renewed before it lapses": a lease
     /// expiring 40 seconds after the end of the pass that took it, with
@@ -1173,26 +1252,80 @@ mod tests {
         let began = Instant::now();
         let ended = began + Duration::from_secs(5);
         let minute = Duration::from_secs(60);
-        let due = next_due(began, ended, minute, Some(Duration::from_secs(40)));
+        let due = next_due(began, ended, minute, Some(Duration::from_secs(40)), true);
         assert_eq!(due, ended + Duration::from_secs(20));
-        assert_eq!(next_due(began, ended, minute, None), began + minute);
+        assert_eq!(next_due(began, ended, minute, None, true), began + minute);
         let far = Some(Duration::from_secs(600));
-        assert_eq!(next_due(began, ended, minute, far), began + minute);
-        let lapsed = Some(Duration::ZERO);
-        assert_eq!(next_due(began, ended, minute, lapsed), ended);
+        assert_eq!(next_due(began, ended, minute, far, true), began + minute);
         let slow = began + Duration::from_secs(90);
-        assert_eq!(next_due(began, slow, minute, None), slow);
+        assert_eq!(next_due(began, slow, minute, None, true), slow);
     }
 
+    /// The running spec's "A lapsed lease": with `poll_interval` one
+    /// minute, a lease that lapsed before a pass that began at 10:00:00,
+    /// and the control plane unreachable, the next pass begins at
+    /// 10:01:00, and none between. A lapsed lease has no time left, so it
+    /// hastens no pass, whether the pass reported or not.
     #[test]
-    fn a_leases_time_left() {
-        let at = |text| At::parse(text).unwrap();
-        let now = at("2026-11-01T10:00:00Z");
+    fn a_lapsed_lease() {
+        let ten = at("2026-11-01T10:00:00Z");
+        let lapsed = left(at("2026-11-01T09:59:00Z"), ten);
+        assert_eq!(lapsed, None);
+        assert_eq!(left(ten, ten), None, "an expiry of now has passed");
+        let began = Instant::now();
+        let ended = began + Duration::from_secs(5);
+        let minute = Duration::from_secs(60);
         assert_eq!(
-            left(at("2026-11-01T10:00:40Z"), now),
-            Duration::from_secs(40)
+            next_due(began, ended, minute, lapsed, false),
+            began + minute
         );
-        assert_eq!(left(at("2026-11-01T09:59:00Z"), now), Duration::ZERO);
+        assert_eq!(next_due(began, ended, minute, lapsed, true), began + minute);
+    }
+
+    /// The running spec's "A pass that did not report": with
+    /// `poll_interval` one minute, a lease expiring 40 seconds after a
+    /// pass that began at 10:00:00, and that pass's report not sent, the
+    /// next pass begins at 10:01:00.
+    #[test]
+    fn a_pass_that_did_not_report() {
+        let ten = at("2026-11-01T10:00:00Z");
+        let left = left(at("2026-11-01T10:00:40Z"), ten);
+        assert_eq!(left, Some(Duration::from_secs(40)));
+        let began = Instant::now();
+        let ended = began + Duration::from_secs(5);
+        let minute = Duration::from_secs(60);
+        assert_eq!(next_due(began, ended, minute, left, false), began + minute);
+    }
+
+    /// A lease has lapsed once the clock reads its expiry, and a lease
+    /// with no expiry never lapses; only leases not yet lapsed give the
+    /// earliest expiry.
+    #[test]
+    fn a_lease_lapsed_by_the_clock() {
+        let ten = at("2026-11-01T10:00:00Z");
+        let lease = |expires: Option<&str>| Lease {
+            number: 1,
+            expires: expires.map(at),
+        };
+        assert!(lapsed(lease(Some("2026-11-01T09:59:00Z")), ten));
+        assert!(lapsed(lease(Some("2026-11-01T10:00:00Z")), ten));
+        assert!(!lapsed(lease(Some("2026-11-01T10:00:01Z")), ten));
+        assert!(!lapsed(lease(None), ten));
+        let mut report = Report::default();
+        let answer = Answer {
+            outcome: Outcome::Launched,
+            place_dir: None,
+            words: None,
+            at: ten,
+        };
+        for (id, expires) in [
+            ("a", Some("2026-11-01T09:59:00Z")),
+            ("b", Some("2026-11-01T10:05:00Z")),
+            ("c", None),
+        ] {
+            report.answer(&Id::new(id), lease(expires), answer.clone());
+        }
+        assert_eq!(expires(&report, ten), Some(at("2026-11-01T10:05:00Z")));
     }
 
     fn config(repositories: &[&str]) -> Config {

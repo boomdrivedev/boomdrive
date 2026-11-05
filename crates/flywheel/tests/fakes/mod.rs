@@ -9,7 +9,7 @@
 
 #![allow(dead_code)]
 
-use flywheel::carry::{Carrier, Clones, Keeping, Passed};
+use flywheel::carry::{Carrier, Clones, Keeping, Passed, Reach};
 use flywheel::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
 use flywheel::git::Git;
 use flywheel::hello::Tools;
@@ -416,6 +416,9 @@ pub struct Bench {
     pub git: Git,
     pub clones: FakeClones,
     pub tools: FakeTools,
+    /// Whether the last pull was read, kept across the bench's passes as
+    /// the loop keeps it.
+    reach: Reach,
     notices: Notices,
     events: Receiver<Event>,
 }
@@ -440,6 +443,7 @@ impl Bench {
             git: Git::default(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
+            reach: Reach::default(),
             notices: Notices::new(events),
             events: received,
         };
@@ -489,6 +493,7 @@ impl Bench {
             notices: &self.notices,
             control_dir: &control_dir,
             relays: &self.relays,
+            reach: &self.reach,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(plane, &mut |line| lines.push(line));

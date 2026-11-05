@@ -19,7 +19,7 @@ mod records;
 
 use common::{keeping, Scratch};
 use fakes::{fixture, printed, FakeTools, HerdrStub, SluiceStub, Stub};
-use flywheel::carry::{Carrier, Configured, Passed};
+use flywheel::carry::{Carrier, Configured, Passed, Reach};
 use flywheel::run::Notices;
 use flywheel::terminal::{self, Relays};
 use flywheel::{clone, config, facts, flume, report, sluice};
@@ -147,6 +147,7 @@ impl Host {
         let notices = Notices::new(events);
         let control_dir = report::control_dir(&data);
         let relays = Relays::new(terminal::Cli::new(self.herdr.program()), |_| {});
+        let reach = Reach::default();
         let carrier = Carrier {
             flume: &flume,
             sluice: &sluice,
@@ -156,6 +157,7 @@ impl Host {
             notices: &notices,
             control_dir: &control_dir,
             relays: &relays,
+            reach: &reach,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(crew, &mut |line| lines.push(line));
