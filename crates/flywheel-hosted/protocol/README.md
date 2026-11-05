@@ -2,8 +2,9 @@
 
 The messages between a Flywheel runner and a hosted control plane, as
 JSON Schema of draft 2020-12, one directory per version. The runner
-speaks it over one outgoing WebSocket, which it opens and keeps; no
-connection ever comes in to a host. Both ends check every message they
+enrols each partition by one outgoing request, and speaks it over one
+outgoing WebSocket for each, which it opens and keeps; no connection
+ever comes in to a host. Both ends check every message they
 are sent against the version before reading it, and refuse one that
 fails whole.
 
@@ -31,6 +32,7 @@ the connection before any message.
 | `from-runner.schema.json` | the envelope of every message a runner sends |
 | `to-runner.schema.json` | the envelope of every message a control plane sends |
 | `shared.schema.json` | what both directions use: ids, a time, integers, a lease, a repository's address, a commit, a digest, bytes, and `message_refused` |
+| `enrolment.schema.json` | `enrol`, and its answers `enrolled` and `enrol_refused` |
 | `hello.schema.json` | the hello, a tool's version, and the copy of Flume's host part |
 | `wants.schema.json` | a want, an offer with its launch, an act, a command, an inbox, and `pulled` |
 | `report.schema.json` | the runner's report and `reported` |
@@ -74,6 +76,9 @@ alike, so a validator in either language refuses the same strings.
 
 | kind | sent by | holds |
 |---|---|---|
+| `enrol` | the runner, as the body of `POST runner/enrol` | a partition's public key, its signature over the enrolment's context, and the machine's name |
+| `enrolled` | the control plane, answering `enrol` | its id for the host |
+| `enrol_refused` | the control plane, answering `enrol` | the `enrol` message, by id, with words |
 | `hello` | the runner | the host's interface and runner versions, its tools' versions, the repositories it keeps for this control plane, its capacity, and the leases it holds |
 | `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, and each inbox it carried |
 | `pulled` | the control plane | the whole of what it wants, in its order, and the runner's report as it holds it, or `null` |
@@ -87,7 +92,7 @@ alike, so a validator in either language refuses the same strings.
 | `terminal_close` | the control plane | the terminal, closed from the browser's end |
 | `terminal_closed` | the runner | the terminal, closed by the runner, with its words |
 
-Their order:
+On the socket, their order:
 
 1. At every connection the runner's first message is its whole `hello`.
    The control plane answers it with `pulled`, holding the runner's
@@ -110,9 +115,190 @@ the whole report, so a second delivery of either changes nothing. The
 socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
-Version 1 has no message for enrolment, for the proof at each
-connection that the host's key is held, for a forge token, for health,
-or for the runner's own commands. The changes that build them add them.
+Version 1 has no message for a forge token, for health, for the
+runner's own commands, or for a terminal's certificate. The changes
+that build them add them.
+
+## The paths
+
+Two paths go under the control plane's address, the `url` of the
+runner's `[control_plane.hosted]` table, which gains a `/` where it
+ends without one:
+
+| path | how | the kinds it takes |
+|---|---|---|
+| `runner/enrol` | one HTTPS `POST` | the runner's `enrol`, answered by the control plane's `enrolled`, `enrol_refused` or `message_refused` |
+| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `flywheel-runner.v1` | every other kind, each direction's its own |
+
+Under the `url` `https://control.example/flywheel`, they are
+`https://control.example/flywheel/runner/enrol` and
+`wss://control.example/flywheel/runner/connect`. A `url` is `https`,
+or `http` only to a loopback address, as a test's control plane is,
+whose socket is then `ws`.
+
+The schema checks a message's form, not the path it came by: a control
+plane refuses an `enrol` on the socket, and any other kind on
+`runner/enrol`, by its path.
+
+## The signatures
+
+Each partition's key is an Ed25519 key pair the runner makes on the
+host, whose private key never leaves it. It signs a context: the UTF-8
+bytes of `flywheel-runner.v1`, a space and the context's name, then
+each of the context's fields after a NUL byte, with nothing after the
+last. A signature is Ed25519's as RFC 8032 gives it, 64 bytes, over the
+context's bytes themselves, never a digest of them.
+
+Every field names what the signature binds, so a signature made for
+one context, one control plane or one token is never taken for
+another. The contexts are an enrolment's (`enrol`), a connection's
+(`connect`), and a terminal's share (`terminal share`, under *A
+terminal*).
+
+A field that names the control plane is its `url`'s origin: the scheme,
+`://` and the host, then `:` and the port where the port is not the
+scheme's own, all lowercased, with no path and no `/` after it. The
+origin of `https://control.example/flywheel` is
+`https://control.example`.
+
+## Enrolment
+
+A partition is enrolled once, by `flywheel enroll <label>`, with a
+one-time token the control plane issued. The runner makes the
+partition's key in memory, and sends one request:
+
+```text
+POST <url>/runner/enrol
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"protocol_version":1,"id":"<the message's id>","body":{"enrol":{"key":"…","signature":"…","machine":"…"}}}
+```
+
+- **`key`** is the partition's public key, 32 bytes, 43 characters in
+  base64url.
+- **`signature`** is the key's, 64 bytes, 86 characters in base64url.
+- **`machine`** is the host's name, as its operating system gives it.
+
+The token is the request's bearer alone: no message holds it.
+
+**What its signature is made over**: the context `enrol`, whose fields
+are the control plane's origin; `sha256:` and the lowercase hex of the
+SHA-256 digest of the token's bytes, as the bearer carries them; and
+the key's 32 bytes. It binds the key to this control plane and this
+token, so no key is registered by one who does not hold it, and no
+signature is taken with another token.
+
+**The answer** is a message of version 1, which the runner checks
+against `to-runner.schema.json` before it reads it:
+
+- `200`, with `enrolled`, holding `host`, the control plane's id for
+  the host;
+- `401` or `403`, with `enrol_refused`, holding `enrol`, the request's
+  message id, and `words`, such as that the token has lapsed or was
+  spent;
+- `400`, with `message_refused`, the request having failed the control
+  plane's check.
+
+The runner keeps the key in the host's credential store only once
+`enrolled` has come. It keeps nothing else of enrolment, no host id and
+no certificate: the control plane finds the enrolment by the key
+itself. A request sent again with the same message id and the same key,
+its answer lost, is answered `enrolled` again, not refused as a spent
+token.
+
+### The enrolment's worked bytes
+
+From the secret key of RFC 8032's test 1, published there for tests and
+so no host's, and a token that is this README's own:
+
+```text
+secret key   9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+public key   d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+token        example-enrolment-token
+url          https://control.example/flywheel
+address      https://control.example/flywheel/runner/enrol
+origin       https://control.example
+digest       sha256:2dcdc5456ae029721aedf7fd62aa0fd5aff126e96a56b67a7f3f4dd8f9e64352
+context      666c79776865656c2d72756e6e65722e763120656e726f6c0068747470733a2f
+             2f636f6e74726f6c2e6578616d706c65007368613235363a3264636463353435
+             3661653032393732316165646637666436326161306664356166663132366539
+             36613536623637613766336634646438663965363433353200d75a980182b10a
+             b7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+signature    0f43bfb514f729749e893bbb9efd3060d0444f8305834c1a993d3a77ebee8753
+             a8091056fd3d9f60223c62ca9dd0b71cc2439a455bed3708d048de13e6a5230b
+```
+
+Read as text, the context's 153 bytes are `flywheel-runner.v1 enrol`,
+a NUL, the origin, a NUL, the digest, a NUL and the public key's bytes.
+In
+base64url, as `examples/from-runner/enrol.json` carries them, the key
+is `11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo` and the signature
+`D0O_tRT3KXSeiTu7nv0wYNBET4MFg0wamT06d-vuh1OoCRBW_T2fYCI8Ysqd0LccwkOaRVvtNwjQSN4T5qUjCw`.
+
+## The connection's proof
+
+Every upgrade of `runner/connect` proves the partition's key is held,
+by a statement signed for that attempt alone, in its `Authorization`
+header:
+
+```text
+GET <url>/runner/connect
+Sec-WebSocket-Protocol: flywheel-runner.v1
+Authorization: FlywheelHost <key>.<time>.<nonce>.<signature>
+```
+
+- **`<key>`** is the partition's public key in base64url.
+- **`<time>`** is the runner's clock in Unix seconds, as decimal
+  digits.
+- **`<nonce>`** is 16 random bytes in base64url.
+- **`<signature>`** is the key's, in base64url.
+
+**What its signature is made over**: the context `connect`, whose
+fields are the control plane's origin; the key's 32 bytes; `<time>`'s
+digits, as the header carries them; and the nonce's 16 bytes.
+
+The control plane takes the upgrade only where the key is one it
+enrolled and has not revoked, the signature checks, `<time>` is within
+300 seconds of its own clock, and it has not seen `<nonce>` with that
+key within that window. It finds the enrolment by the key itself. The
+runner signs a new statement for every attempt, and keeps none.
+
+It refuses the upgrade:
+
+- with `401` or `403` where it does not take the key: the partition is
+  enrolled again with a new token;
+- without `flywheel-runner.v1` where it does not speak the version,
+  which the runner takes as a refusal.
+
+### The connection's worked bytes
+
+From the same key, at 2026-11-04T00:00:00Z, with a nonce of the bytes
+0 to 15:
+
+```text
+secret key   9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+public key   d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+url          https://control.example/flywheel
+address      wss://control.example/flywheel/runner/connect
+origin       https://control.example
+time         1793750400
+nonce        000102030405060708090a0b0c0d0e0f
+context      666c79776865656c2d72756e6e65722e763120636f6e6e656374006874747073
+             3a2f2f636f6e74726f6c2e6578616d706c6500d75a980182b10ab7d54bfed3c9
+             64073a0ee172f3daa62325af021a68f707511a00313739333735303430300000
+             0102030405060708090a0b0c0d0e0f
+signature    4eea3865d375068bcec3506c24d68ec7ba3078fb9e28ca153f3ef8fa6c355917
+             bea6ed07df249af4f4599c615bbf0c0215f18840be2e0169fc3a256273bd7f03
+```
+
+Read as text, the context's 111 bytes are `flywheel-runner.v1 connect`,
+a NUL, the origin, a NUL, the public key's bytes, a NUL, the time's
+digits, a NUL and the nonce's bytes. Its header is:
+
+```text
+Authorization: FlywheelHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.Tuo4ZdN1BovOw1BsJNaOx7owePueKMoVPz74-mw1WRe-pu0H3ySa9PRZnGFbvwwCFfGIQL4uAWn8OiVic71_Aw
+```
 
 ## The copies
 
@@ -152,10 +338,10 @@ them, and neither end keeps them.
   runner takes the browser's share only where its signature checks
   against a key certified to a member, and never falls back to the
   clear.
-- **What a signature is made over**: the UTF-8 bytes of
-  `flywheel-runner.v1 terminal share`, then, each after a NUL byte, the
-  end (`browser` or `runner`), the terminal's id, the launch's id, the
-  suite, and the key's bytes. A share is therefore never taken for
+- **What a signature is made over**: the context `terminal share`
+  (*The signatures*), whose fields are the end (`browser` or
+  `runner`), the terminal's id, the launch's id, the suite, and the
+  key's bytes. A share is therefore never taken for
   another terminal or reflected back to its own end.
 - **The suite** is a name the two ends agree; the control plane relays
   it. The change that builds both halves of a terminal chooses it and
