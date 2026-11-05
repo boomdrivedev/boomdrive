@@ -35,7 +35,7 @@ For core.5: a host keeps the repositories of the drives it serves plus any of it
 ## Decision outcome
 
 - **Through each tool's own commands**, the user's choice. Setup configures a host only through each tool's command line, the runner's own included, and never writes a tool's files. Flume's streams and kind sources are set through Flume's commands (core.18).
-- **The wizard.** A host is added by one install command carrying its enrollment token. It is then configured by a wizard in the runner's terminal interface on the host, or by setup the control plane sends down, and both run the same tool commands. Setup covers all four: the runner's configuration, Flume's streams, Flume's kind sources, and installing the tools.
+- **The wizard.** A host is added by one install command carrying its enrollment token. It is then configured by a wizard in the runner's terminal interface on the host, or by setup the control plane sends down, and both run the same tool commands. Setup covers all four: the runner's configuration, Flume's streams, Flume's kind sources, and installing the tools: the host's, never a repository's pins (the amendment of 2026-11-05 below).
 - **A managed level.** In the user's words, "If the tools support multiple levels of config, and the Flywheel Cloud manages one level while we can set defaults at a different level with nix, then any configs managed by the Flywheel Cloud would stop being managed by nix." The runner's configuration, and each tool's, has a level the control plane manages, apart from the host's own defaults. What the managed level holds wins.
 - **Configured by hand, or managed.** In the user's words, "think about it as open source tools that could be configured by hand or a simplified cloud management interface that handles the configuration for you." The runner is configured by its own configuration alone, which a person can write by hand, and under the cloud it does nothing that a configuration written by hand could not ask of it (core.17).
 - **A host's repositories follow its drives.** Under the hosted control plane, a host keeps the repositories of the drives it serves. Setup writes them into the managed level, and a repository leaves it when no drive the host serves holds it, then goes by the let-go rules as they stand. Under crew, the configuration names them by hand. There is no separate mapping of repositories to hosts.
@@ -48,3 +48,26 @@ core.5 stands: the configuration names every repository kept, its managed level 
 - Flume is asked for commands that declare and remove a stream and a kind source, and for a managed level of its own. sluice is asked for the same.
 - On a nix host, nix writes the host's level of defaults and stops writing what the control plane manages.
 - In what order a host takes up a drive's repositories, and whether Boom's repositories are among them, is still open.
+
+## Amendment, 2026-11-05: setup installs the host's tools, never a repository's pins
+
+Status: accepted by the user on 2026-11-05, on their approval of flume's cross-tool design `a-places-readiness-is-one-design-across-the-tools`, whose decision 7 words this amendment.
+
+Deciders: the user, 2026-11-05, who approved the design's words for this record. How they read beside record 0012 is the writing agent's.
+Sources: agentplot/flume's change `a-places-readiness-is-one-design-across-the-tools`, its decisions 1, 6 and 7 and its finding 11; flume's record 0036; the statements' clauses on agentplot/blueprints main at 9f1f0fd, sluice's clause 147 (`sluice equip`) among them; record 0012; rules core.14 and core.37.
+
+### Context and problem statement
+
+The decision above has setup cover "installing the tools", and says neither whose tools nor which. On 2026-11-05 a Flume place launched on a fresh clone the runner had made failed its readiness, because nothing had installed what its repository's `.prototools` pins. flume's design gives each part of a place's readiness one owner across the tools: the repository declares the tools it needs, sluice equips a working copy with them (`sluice equip`, sluice clause 147), and flume asks sluice to equip each place at its launch (flume record 0036). The runner's clone and view are never worked in, and the runner readies nothing.
+
+### Decision outcome
+
+- **The host's tools, never a repository's pins.** In decision 7's words, this record's "installing the tools" says "the host's tools (the runner, flume, sluice and herdr), never a repository's pins, which flume's places are equipped with by sluice". Setup installs no tool a repository pins, in its `.prototools`, its toolchain or its runner's setup.
+- **Record 0012 stands** on which of the host's tools are installed: the one install brings the runner, Flume and sluice, at the versions the release was checked against, and herdr, the host's multiplexer, is found on the host and never installed.
+
+Nothing else of the decision above changes. core.37's details are amended in this record's commit to rule out a repository's pins brought by an install or by setup, and record 0012's lines on the install cite this amendment.
+
+### Consequences
+
+- The runner runs nothing in a clone or a view to make it ready (core.14), and its setup, when built, has no step that reads a repository's pins.
+- A repository's pins are its own to install: in a place by sluice's equip, and for a person's or an agent's shell by the repository's own devenv task, as this repository's `boomdrive:proto:install` does.
