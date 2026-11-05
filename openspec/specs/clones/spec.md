@@ -19,14 +19,18 @@ The runner SHALL keep each configured repository in the bare-container layout un
 - **WHEN** a pass has cloned `agentplot/flume` with the repository root `~/Code`
 - **THEN** nothing of the clone's is under `~/Code` but the view
 
-### Requirement: What a runner kept before the rename is carried over
+### Requirement: A data directory from before the rename is kept
 
-Where `$XDG_DATA_HOME/boomdrive`, or `~/.local/share/boomdrive`, is not there and the data directory a runner kept before it was renamed, `flywheel` beside it, is, the runner SHALL keep that one as its data directory, and SHALL NOT move it (record 0016; core.14, core.36). A clone whose bare repository records its address under `flywheel.address` and none under `boomdrive.address` SHALL have its records carried over before it is read: its `refs/flywheel/view` moved to `refs/boomdrive/view`, then its git config's section `flywheel` renamed `boomdrive`. It SHALL then be the runner's clone as it was, its view where it stands.
+Where `$XDG_DATA_HOME/boomdrive`, or `~/.local/share/boomdrive`, is not there and the data directory a runner kept before it was renamed, `flywheel` beside it, is, the runner SHALL keep that one as its data directory, and SHALL NOT move it (record 0016; core.14, core.36).
 
 #### Scenario: A data directory from before the rename
 
 - **WHEN** the runner starts with `XDG_DATA_HOME` set to `/x/data`, `/x/data/flywheel` a directory and `/x/data/boomdrive` not there
 - **THEN** its data directory is `/x/data/flywheel`, and once `/x/data/boomdrive` is there it is that one
+
+### Requirement: A clone's records from before the rename are carried over
+
+A clone whose bare repository records its address under `flywheel.address` and none under `boomdrive.address` SHALL have its records carried over before it is read: its `refs/flywheel/view` moved to `refs/boomdrive/view`, then its git config's section `flywheel` renamed `boomdrive` (record 0016; core.36). It SHALL then be the runner's clone as it was, its view where it stands.
 
 #### Scenario: A clone made before the rename
 

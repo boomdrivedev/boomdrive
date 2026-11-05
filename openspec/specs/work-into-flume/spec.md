@@ -194,7 +194,7 @@ A retry or a done of a launch the runner holds unlaunched SHALL be answered `ref
 
 ### Requirement: Each launch, act and command is carried out once
 
-The runner SHALL keep its report in `<data>/control/report.json`, written whole by rename after every act and command and before the next, and read at start. A want its report holds settled SHALL be answered from its report and not carried out again. An offer with no answer, whose mark `boomdrive:<id>`, or `flywheel:<id>` as a runner marked it before the rename (record 0016), Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the report file is missing, the runner SHALL take the report the pull gives back.
+The runner SHALL keep its report in `<data>/control/report.json`, written whole by rename after every act and command and before the next, and read at start. A want its report holds settled SHALL be answered from its report and not carried out again. An offer with no answer, whose mark `boomdrive:<id>` Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the report file is missing, the runner SHALL take the report the pull gives back.
 
 #### Scenario: A retry not made twice
 
@@ -205,6 +205,10 @@ The runner SHALL keep its report in `<data>/control/report.json`, written whole 
 
 - **WHEN** the report file is missing, and an offer `madswan/12` is pulled whose mark `boomdrive:madswan/12` Flume's listing holds on place `P`
 - **THEN** it is answered `launched` at `P`, and no `flume launch` is run
+
+### Requirement: A launch marked before the rename is found by its old mark
+
+An offer with no answer, whose place Flume's listing marks `flywheel:<id>`, as a runner marked it before it was renamed, SHALL be answered `launched` at that place and not launched again, just as one marked `boomdrive:<id>` (record 0016; core.10).
 
 #### Scenario: A launch found by its mark from before the rename
 
