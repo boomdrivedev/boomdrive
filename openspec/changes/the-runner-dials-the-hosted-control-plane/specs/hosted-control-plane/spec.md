@@ -126,7 +126,7 @@ A connection lost, refused or not made SHALL be tried again after a wait drawn a
 
 ### Requirement: A partition's reach is said once each way
 
-A partition SHALL say one line when its connection is lost or cannot be made, `<label>: the control plane is unreachable: <why>`, and one when a connection takes its first `pulled`, `<label>: the control plane is reached`, and nothing for the attempts between (core.23).
+A partition SHALL say one line when its connection is lost or cannot be made, `<label>: the control plane is unreachable: <why>`, and one when a connection takes its first `pulled`, `<label>: the control plane is reached`, and nothing for the attempts between but a refusal of its key or subprotocol, said once (core.23).
 
 #### Scenario: An outage
 
@@ -196,12 +196,17 @@ Each place's status, sluice entry and host part SHALL go up cut to version 1's c
 
 ### Requirement: Every message the runner is sent is checked before it is read
 
-Every message a connection receives SHALL be checked against `to-runner.schema.json` before it is read. One that fails SHALL be answered with `message_refused` naming it, with words naming the schema's path, and nothing else done with it. One whose id cannot be read SHALL close the connection, which is tried again on the backoff (core.42).
+Every message a connection receives SHALL be checked against `to-runner.schema.json` before it is read. One that fails SHALL be answered with `message_refused` naming it, with words naming the schema's path, and nothing else done with it, as SHALL an `enrolled` or `enrol_refused`, which only `runner/enrol` takes. One whose id cannot be read SHALL close the connection, which is tried again on the backoff (core.42).
 
 #### Scenario: A pulled with a field unnamed
 
 - **WHEN** the fake control plane sends a `pulled` whose launch holds a field version 1 does not name
 - **THEN** the runner answers `message_refused` naming that message, and the pull gives none of its wants
+
+#### Scenario: An enrolment's answer on the socket
+
+- **WHEN** the fake control plane sends `enrolled` on `home`'s connection
+- **THEN** the runner answers `message_refused` naming it, its words naming `runner/enrol`
 
 ### Requirement: A terminal the control plane opens is closed at once
 

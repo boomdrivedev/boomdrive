@@ -72,7 +72,7 @@ Leases from a hosted control plane expire, where crew's never do. That makes thr
 
 - `docs/adr/` gains record 0016. `docs/architecture/core.md` amends the details of core.26, core.31 and core.32. Both are in this change's commit, beside its design.
 - `crates/flywheel-hosted` implements `ControlPlane`, and holds the table, the key's stores, enrolment, the connection, the cut and the checks.
-  - Its dependencies gain tokio, tokio-tungstenite with rustls, backon, ed25519-dalek, ureq with rustls, keyring-core and keyring v4's macOS store, url, uuid, base64 and gethostname.
+  - Its dependencies gain tokio, tokio-tungstenite with rustls, ed25519-dalek, ureq with rustls, keyring-core and keyring v4's macOS store, url, uuid, base64 and gethostname.
   - `jsonschema` becomes a dependency of its own, still with no default features.
   - None of them serves HTTP or WebSockets (core.3).
 - `crates/flywheel-hosted/protocol/v1/` gains `enrolment.schema.json` and its examples; `from-runner.schema.json`, `to-runner.schema.json` and the README change.

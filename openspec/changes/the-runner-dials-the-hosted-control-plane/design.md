@@ -266,17 +266,21 @@ Alternatives:
 
 ### 6. One connection per partition, kept by pings and tried again on a backoff
 
-Each partition has one socket, opened by tokio-tungstenite over rustls, which verifies the control plane's certificate against the host's own roots (record 0008; F49):
+Each partition has one socket, opened by tokio-tungstenite over rustls, which verifies the control plane's certificate against the host's own roots, as `rustls-native-certs` loads them (record 0008; F49):
 
-- **Opened only with a hello.** The first message at every connection is the partition's whole hello (core.21), so a connection is first attempted once the first pull has handed one (Decision 7).
+- **Opened only with a hello.** The first message at every connection is the partition's whole hello (core.21), so a connection is first attempted once the first pull has handed one (Decision 7). A hello handed that differs from the one sent goes at once. One handed while another waits to go replaces it, since a hello is whole.
 - **Pings.** The runner sends a WebSocket ping every 30 seconds. A connection whose pong has not come by the next ping is counted lost. No application message is a heartbeat (core.21). The cloud's Host object answers pings without waking (its core.50, F12).
-- **A backoff.** A connection lost or refused is tried again after a wait drawn at random from zero up to a cap. The cap starts at one second, doubles at each failed attempt, and stops at `poll_interval` (core.22; backon's exponential backoff with full jitter). It goes back to one second once a connection has taken its first `pulled`. A partition with no key, or whose key was refused, waits at the cap.
+- **A backoff.** A connection lost or refused is tried again after a wait drawn at random, in whole milliseconds, from above zero up to a cap. The cap starts at one second, doubles at each failed attempt, and stops at `poll_interval` (core.22; full jitter). It goes back to one second once a connection has taken its first `pulled`. A refusal waits the cap's stop, `poll_interval`: a partition with no key, or whose key could not be read or was refused, or whose control plane does not speak the subprotocol.
 - **The reach.** A partition says one line when its connection is lost or cannot be made, `<label>: the control plane is unreachable: <why>`, and one when a connection takes its first `pulled` again, `<label>: the control plane is reached`. Nothing is said for each failed attempt in between (core.23). The first connection after start says it is reached.
+- **A refusal said once.** A refusal is the host's to fix, so the line is said again, once, when a refusal first comes in an outage already said: a key revoked while the socket was up is said, and not again while it lasts (Decisions 3 and 5).
 - **Closed** with a normal close when the implementation is dropped, at the runner's stop and at the end of `run --once`.
 
 Each line goes through the `say` the opener was handed, which the runner writes on standard error.
 
-Alternative: a fixed retry at `poll_interval`. Not taken: a laptop that wakes would wait up to a minute to dial, and core.22 asks for a backoff with jitter.
+Alternatives:
+
+- **A fixed retry at `poll_interval`.** Not taken: a laptop that wakes would wait up to a minute to dial, and core.22 asks for a backoff with jitter.
+- **backon's exponential backoff with its jitter.** Not taken: its jitter adds up to the whole delay on top of it, so a wait at the cap could reach twice `poll_interval` (core.22). The doubling cap and its draw are a few lines of the connection's own.
 
 ### 7. The interface over the socket
 
@@ -371,8 +375,9 @@ Alternatives:
 The implementation builds validators once, from version 1's `FILES` alone, each under its `$id`, with nothing fetched (core.42). `jsonschema` becomes a dependency of the crate's own, still with no default features.
 
 - **Each message** a connection receives is checked against `to-runner.schema.json` before it is read into a type.
-  - One that fails is answered with `message_refused`, naming its id, with words naming the schema's path that failed and never a value, and nothing else is done with it.
-  - A message whose id cannot be read, being no JSON object or holding no valid `id`, cannot be named. The connection closes with WebSocket code 1007 and is tried again on the backoff.
+  - One that fails is answered with `message_refused`, naming its id, with words naming the schema's path that failed and never a value, and nothing else is done with it. One line names its id and the paths.
+  - A message whose id cannot be read, being no JSON object, a binary frame or holding no valid `id`, cannot be named. The connection closes with WebSocket code 1007 and is tried again on the backoff.
+  - An `enrolled` or `enrol_refused` on the socket passes the schema, which checks a message's form and not its path. The runner refuses it with `message_refused`, its words saying an enrolment's answer is taken on `runner/enrol` alone, as a control plane refuses an `enrol` on the socket.
 - **A `message_refused` from the control plane** names one of the runner's messages. The runner says one line naming the message's kind and the control plane's words. A refused `report` counts as unanswered, and is not sent again.
 - **`enrolled`, `enrol_refused` and `message_refused`** answering an enrolment are checked against the same schema (Decision 4).
 
@@ -438,6 +443,7 @@ Every test stays inside the gate. It reaches no network beyond the loopback addr
 - **The shared cases**, `flywheel-control`'s, run over the hosted implementation against the fake, as they run over the fake control plane and crew's.
 - **Each requirement of the hosted-control-plane spec** has its test over the fake: the table's refusals; enrolment and its refusals; the key's stores; the proof; pings and the backoff; the reach; partitions and their ids; the cut and the check; the checks both ways; terminals closed; the wake.
   - The backoff is tested with tokio's paused clock: no two attempts back to back, none waiting past `poll_interval`.
+  - A test on the paused clock holds it still while a connection is live, by a blocking task, which stops tokio moving the clock on as the runtime idles, and moves it by `advance`. Otherwise the clock runs through the pings while a message crosses the loopback in the host's own time. The fake's `until` waits without blocking the test's runtime.
   - The cut is tested over Flume 0.4.1's fixtures in `crates/flywheel/tests/fixtures/`: each fixture's place cut passes the schema and holds no field 1.16's refusals name.
   - The Linux store is tested with a stub `systemd-creds`. The macOS store is tested with keyring's own mock store.
 - **The binary's own**, in `crates/flywheel/tests/`, each with no server listening:
@@ -525,7 +531,7 @@ Until the install lands, a host is installed by hand: the runner built or fetche
 - **A report file lost while a partition is unreachable.** The pass that rebuilds the report from the pull takes back only the reachable partitions' parts. Launches are found again by their marks, but an act or a command of the unreachable partition, carried out since its last report, may be carried out again.
 - **Clock skew past five minutes** refuses every connection. The line carries the control plane's words, which say so.
 - **No end-to-end run of the binary over a live socket.** The binary's wiring is tested without a server, and the hosted implementation against its fake. They meet through the interface, which crew's implementation and the fake already hold to (core.2).
-- **New dependencies**: tokio, tokio-tungstenite, rustls, backon, ed25519-dalek with getrandom and zeroize, ureq with rustls-platform-verifier, keyring-core and keyring v4's macOS store, url, uuid, base64, gethostname and rpassword, and `jsonschema` at run time. Each is pinned by `Cargo.lock` (core.8). The gate's sandbox reaches only the loopback address, so they must be in cargo's cache before it runs.
+- **New dependencies**: tokio, tokio-tungstenite with rustls-native-certs, ed25519-dalek with getrandom and zeroize, ureq with rustls-platform-verifier, keyring-core and keyring v4's macOS store, url, uuid, base64, gethostname and rpassword, and `jsonschema` at run time. Each is pinned by `Cargo.lock` (core.8). The gate's sandbox reaches only the loopback address, so they must be in cargo's cache before it runs.
 
 ## Migration Plan
 
@@ -611,12 +617,13 @@ A test builds the enrolment's and the connection's contexts from the README's fi
 
 `flywheel:test`'s no-listener test reads every crate's `src` and the lock, so it stands; the fake's crates are tokio and tokio-tungstenite, neither a server crate of its list.
 
-**4.1** `connection.rs`: one task per partition on the implementation's runtime.
+**4.1** `connection.rs`: `Connection::open(runtime, Dial)` spawns one task per partition on the runtime it is handed, `Dial::new(table, label, store, poll_interval, say, wake)` naming what it dials.
 
-- Its state is the last hello handed, the last `pulled`, the report held unanswered with its id, the late `reported`s, and whether it is reached.
+- Its state is the last hello handed, its phase (unhanded, attempting, live or waiting), the last `pulled` and the report held at the first, why it is unreached and whether it is reached. 5.2 adds the report held unanswered with its id, and the late `reported`s.
+- `hand(hello)` refuses a hello that fails version 1, and `read(patience)` gives the wants of the last `pulled`, waiting only while an attempt is made. `close()` sends a normal close and gives the task to wait on.
 - The upgrade is built as an `http::Request` with the two headers.
-- Pings are `tokio::time::interval(30s)`, the lost connection being one whose `Pong` has not come by the next tick.
-- The backoff is backon's `ExponentialBuilder` with `with_min_delay(1s)`, `with_max_delay(poll_interval)`, `with_jitter()` and no limit on attempts.
+- Pings are `tokio::time::interval_at(now + 30s, 30s)`, the lost connection being one whose `Pong` has not come by the next tick.
+- The backoff is the connection's own: the cap doubling from one second to `poll_interval`, and the wait drawn up to it by getrandom.
 - The runtime is a multi-thread runtime of two workers, made by `open`. `Drop` sends each socket a close, waits at most a second, and shuts the runtime down.
 
 **4.2** `check.rs`: one `Validator` for each direction's envelope, and one for each copy's definition, built once with `jsonschema::options()`, each file a resource under its `$id`, with no retriever. Errors give their `instance_path` and `schema_path`, never the instance.
