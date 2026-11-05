@@ -341,11 +341,12 @@ fn pings_are_taken() {
 }
 
 #[test]
-fn a_fake_down_takes_nothing() {
+fn a_fake_down_answers_nothing() {
     let fake = Fake::start();
     let key = home_key();
     fake.enrolled("home", &key.verifying_key());
     fake.down(true);
     assert!(block_on(dial(&fake, &statement(&fake, &key))).is_err());
-    assert!(fake.taken().is_empty());
+    let taken = fake.taken();
+    assert!(matches!(taken[..], [Taken::Unanswered]), "{taken:#?}");
 }

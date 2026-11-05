@@ -6,8 +6,10 @@
 //! signature over its context, built here from the protocol's README and
 //! not from the crate's code, and records what it took, in order. A test
 //! sets each partition's wants and the report it holds, and can make it
-//! refuse a token, a key or the subprotocol, drop a connection, withhold
-//! or delay a `reported`, and send any message.
+//! refuse a token, a key or the subprotocol, drop a connection, answer no
+//! ping, withhold or delay a `reported`, and send any message. A test on
+//! tokio's paused clock waits on what the fake takes without blocking its
+//! runtime, by [`Fake::until`].
 
 use super::from_runner;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -22,7 +24,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::{http, Message as Frame};
 
@@ -76,8 +78,14 @@ pub enum Taken {
     },
     /// A WebSocket ping a partition's connection sent.
     Ping { partition: String },
-    /// A partition's connection closed by the runner, or lost.
-    Closed { partition: String },
+    /// A partition's connection closed by the runner, with the code of its
+    /// close where it sent one, or lost.
+    Closed {
+        partition: String,
+        code: Option<u16>,
+    },
+    /// A connection the fake closed before any byte, being down.
+    Unanswered,
 }
 
 impl Taken {
@@ -135,6 +143,8 @@ impl Default for Partition {
 enum Out {
     Send(Value),
     Drop,
+    /// Reads no frame, and so answers no ping, or reads them again.
+    Deaf(bool),
 }
 
 /// A partition's live connection.
@@ -192,6 +202,8 @@ impl State {
 struct Shared {
     state: Mutex<State>,
     changed: Condvar,
+    /// Bumped at each thing taken, for a test that waits on its runtime.
+    taken: watch::Sender<u64>,
     validator: Validator,
     origin: String,
 }
@@ -205,6 +217,7 @@ impl Shared {
     fn take(&self, taken: Taken) {
         self.lock().taken.push(taken);
         self.changed.notify_all();
+        self.taken.send_modify(|count| *count += 1);
     }
 
     /// Why `message` fails version 1, where it does: each error's path
@@ -244,6 +257,7 @@ impl Fake {
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
             changed: Condvar::new(),
+            taken: watch::Sender::new(0),
             validator: from_runner(),
             origin: format!("http://127.0.0.1:{port}"),
         });
@@ -414,6 +428,14 @@ impl Fake {
             .delay = delay;
     }
 
+    /// Reads no frame of `partition`'s live connection, and so answers
+    /// none of its pings, or reads them again.
+    pub fn deaf(&self, partition: &str, deaf: bool) {
+        if let Some(live) = self.shared.lock().connections.get(partition) {
+            let _ = live.sender.send(Out::Deaf(deaf));
+        }
+    }
+
     /// Drops `partition`'s live connection, with no close.
     pub fn drop_connection(&self, partition: &str) {
         if let Some(live) = self.shared.lock().connections.remove(partition) {
@@ -473,6 +495,37 @@ impl Fake {
                 .0;
         }
     }
+
+    /// What the fake took, once `until` holds of it, waited on without
+    /// blocking the test's runtime, so tokio's paused clock runs while it
+    /// waits; or the test fails, naming `what`, after ten seconds of the
+    /// host's own clock.
+    pub async fn until(&self, what: &str, until: impl Fn(&[Taken]) -> bool) -> Vec<Taken> {
+        let deadline = Instant::now() + PATIENCE;
+        let mut changes = self.shared.taken.subscribe();
+        // A watch of the host's clock, so a wait that nothing ends fails.
+        let shared = self.shared.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(PATIENCE);
+            shared.taken.send_modify(|_| {});
+        });
+        loop {
+            {
+                let state = self.shared.lock();
+                if until(&state.taken) {
+                    return state.taken.clone();
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "the fake did not see {what}: {:#?}",
+                    state.taken
+                );
+            }
+            // A change after the look above is not missed: the receiver
+            // has not seen it, so `changed` ends at once.
+            let _ = changes.changed().await;
+        }
+    }
 }
 
 impl Drop for Fake {
@@ -522,7 +575,9 @@ fn now() -> u64 {
 /// Serves one connection: an upgrade of `runner/connect`, or a request
 /// to `runner/enrol`.
 async fn serve(stream: TcpStream, shared: Arc<Shared>) {
-    if shared.lock().down {
+    let down = shared.lock().down;
+    if down {
+        shared.take(Taken::Unanswered);
         return;
     }
     match request_line(&stream).await {
@@ -850,15 +905,21 @@ async fn connect(stream: TcpStream, shared: Arc<Shared>) {
     shared.changed.notify_all();
 
     let (mut sink, mut frames) = socket.split();
+    let mut deaf = false;
     loop {
         tokio::select! {
-            frame = frames.next() => match frame {
+            frame = frames.next(), if !deaf => match frame {
                 Some(Ok(Frame::Text(text))) => {
                     answer_message(&shared, &partition, text.as_str(), &sender);
                 }
                 Some(Ok(Frame::Ping(_))) => shared.take(Taken::Ping { partition: partition.clone() }),
-                Some(Ok(Frame::Close(_))) | Some(Err(_)) | None => {
-                    shared.take(Taken::Closed { partition: partition.clone() });
+                Some(Ok(Frame::Close(close))) => {
+                    let code = close.map(|close| u16::from(close.code));
+                    shared.take(Taken::Closed { partition: partition.clone(), code });
+                    break;
+                }
+                Some(Err(_)) | None => {
+                    shared.take(Taken::Closed { partition: partition.clone(), code: None });
                     break;
                 }
                 Some(Ok(_)) => {}
@@ -869,6 +930,7 @@ async fn connect(stream: TcpStream, shared: Arc<Shared>) {
                         break;
                     }
                 }
+                Some(Out::Deaf(now)) => deaf = now,
                 Some(Out::Drop) | None => break,
             },
         }
