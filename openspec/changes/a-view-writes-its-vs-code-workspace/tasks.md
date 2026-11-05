@@ -22,7 +22,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 3. A workspace goes with its owner's folder
 
-- [ ] 3.1 A view removed, by a dropped repository's let-go or by a changed root, takes its owner's workspace and folder as design Decision 7 has it, and leaves them where `code_workspaces` is off (Task notes 3.1). True when, in `devenv shell -- moon run boomdrive:test`, `tests/dropped.rs` proves the views spec's "The owner's last view, with its workspace", "An owner still kept keeps its workspace" and "A workspace not asked for", and `tests/views.rs` its "A new root, the old owner's workspace", with "The owner's last view" and "The owner's folder holds more" still passing.
+- [x] 3.1 A view removed, by a dropped repository's let-go or by a changed root, takes its owner's workspace and folder as design Decision 7 has it, and leaves them where `code_workspaces` is off (Task notes 3.1). True when, in `devenv shell -- moon run boomdrive:test`, `tests/dropped.rs` proves the views spec's "The owner's last view, with its workspace", "An owner still kept keeps its workspace" and "A workspace not asked for", and `tests/views.rs` its "A new root, the old owner's workspace", with "The owner's last view" and "The owner's folder holds more" still passing.
 - [ ] 3.2 Run this group's checks. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test` passes.
 
 ## 4. The change's checks

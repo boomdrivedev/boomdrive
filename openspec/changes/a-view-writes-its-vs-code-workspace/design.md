@@ -125,19 +125,20 @@ The lines, each said to `say`:
 - `boomdrive: workspace written at <file>: <path>, <path>, …`, naming each folder's path;
 - `boomdrive: workspace left at <file>: <what is wrong>`, where what is wrong is one of: `it is a link`; `it is not a file`; `it is not a JSON object`; `it is not JSON the runner reads: <serde_json's error>`;
 - `boomdrive: workspace not written at <file>: <the error>`, and `boomdrive: workspace not read at <file>: <the error>`;
-- `boomdrive: workspace removed from <file>, with its folder` (Decision 7).
+- `boomdrive: workspace removed from <file>, with its folder` (Decision 7);
+- `boomdrive: workspace not removed from <file>: <the error>`, and `boomdrive: workspace removed from <file>, but not its folder: <the error>`, each of which fails the pass, as a write that fails does.
 
 A workspace whose folders are already the wanted ones says nothing, so a quiet pass stays silent (the running spec).
 
 ### 7. A workspace goes with its owner's folder
 
-When `view::remove` has removed a view, and `code_workspaces` is true, the folder the view stood in is looked at. Where it then holds only `<folder name>.code-workspace`, with or without its partial file, and that file is not the workspace of an owner the configuration keeps now, the runner removes both and then the folder. Where the option is off, the folder is left as it is now: it is removed only when empty.
+When `view::remove` has removed a view, and `code_workspaces` is true, the folder the view stood in is looked at. Where it then holds only `<folder name>.code-workspace`, a regular file, with or without its partial file, and that file is not the workspace of an owner the configuration keeps now, the runner removes both and then the folder. Where the option is off, the folder is left as it is now: it is removed only when empty. A link or a folder at the workspace's path is left, as Decision 5 leaves it.
 
 - **A dropped owner.** When an owner's last kept repository is dropped and its view removed, its workspace and folder go.
 - **A changed root.** The old root's owner folder goes with its workspace, once its last old view is removed. The workspace at the new root is made at the end of the same pass, afresh.
 - **A dropped repository of an owner still kept.** Its workspace stays, even where the removal leaves the folder holding only that file, since it is the kept owner's workspace now. That happens when the owner's other views do not stand, as for an origin with no branch.
 
-`view::remove` gives the pass the folder it left. The pass, which holds the configuration, decides and removes. `let_go` and `let_go_of_old_view` take the configuration's wanted workspace paths for it.
+`view::remove` gives the pass the folder it left. The pass, which holds the configuration, decides and removes. `let_go` and `let_go_of_old_view` take the configuration's wanted workspace paths for it. Each name in the folder, and the kept owners' files, compare as `view::same_path` compares paths: as written, resolved, or as one file on disk. So where the file system ignores case, a folder left by an owner written in another case still finds its workspace, and a kept owner's workspace is still found to be that one.
 
 Alternative: **never remove a workspace.** Not taken: an owner's folder would stay for good after its last view went, with a workspace naming folders that are gone.
 

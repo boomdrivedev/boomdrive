@@ -6,6 +6,7 @@
 //! named, never with the file's text (core.11).
 
 use crate::config::Config;
+use crate::view;
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
 use serde_json::{json, Serializer, Value};
@@ -162,6 +163,31 @@ pub fn partial(path: &Path) -> PathBuf {
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default();
     path.with_file_name(format!(".{name}.partial"))
+}
+
+/// The workspace an owner's `folder` holds, `<folder's name>.code-workspace`,
+/// where it is a regular file and the folder holds nothing else but its
+/// partial file (design Decision 7). Each entry is compared as
+/// `view::same_path` compares, so an owner written in another case finds
+/// its file where the file system ignores case. None where the folder
+/// holds anything else, or cannot be read.
+pub fn alone_in(folder: &Path) -> Option<PathBuf> {
+    let file = folder.join(file_name(folder.file_name()?.to_str()?));
+    let partial = partial(&file);
+    let mut found = false;
+    for entry in fs::read_dir(folder).ok()? {
+        let entry = entry.ok()?;
+        if !entry.file_type().ok()?.is_file() {
+            return None;
+        }
+        let path = entry.path();
+        if view::same_path(&path, &file) {
+            found = true;
+        } else if !view::same_path(&path, &partial) {
+            return None;
+        }
+    }
+    found.then_some(file)
 }
 
 /// Writes `text` as the workspace at `path`, whole, to its partial file,
@@ -457,5 +483,39 @@ mod tests {
             dir.path().join("Code/o/.o.code-workspace.partial")
         );
         assert!(!partial(&path).exists());
+    }
+
+    #[test]
+    fn a_workspace_alone_in_its_owners_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("o");
+        let file = folder.join("o.code-workspace");
+        fs::create_dir(&folder).unwrap();
+        assert_eq!(alone_in(&folder), None, "an empty folder");
+        fs::write(partial(&file), "half a fi").unwrap();
+        assert_eq!(alone_in(&folder), None, "only the partial file");
+        fs::write(&file, "{}").unwrap();
+        assert_eq!(
+            alone_in(&folder),
+            Some(file.clone()),
+            "with its partial file"
+        );
+        fs::remove_file(partial(&file)).unwrap();
+        assert_eq!(alone_in(&folder), Some(file.clone()));
+        fs::write(folder.join("notes"), "mine\n").unwrap();
+        assert_eq!(alone_in(&folder), None, "beside a file of the user's");
+        fs::remove_file(folder.join("notes")).unwrap();
+        fs::create_dir(folder.join("flume")).unwrap();
+        assert_eq!(alone_in(&folder), None, "beside a folder");
+        fs::remove_dir(folder.join("flume")).unwrap();
+        fs::remove_file(&file).unwrap();
+        fs::write(folder.join("other.code-workspace"), "{}").unwrap();
+        assert_eq!(alone_in(&folder), None, "another owner's name");
+        fs::remove_file(folder.join("other.code-workspace")).unwrap();
+        let elsewhere = dir.path().join("elsewhere.json");
+        fs::write(&elsewhere, "{}").unwrap();
+        std::os::unix::fs::symlink(&elsewhere, &file).unwrap();
+        assert_eq!(alone_in(&folder), None, "a link");
+        assert_eq!(alone_in(&dir.path().join("gone")), None, "no folder");
     }
 }
