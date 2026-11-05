@@ -1,13 +1,14 @@
 //! A repository the configuration drops: never fetched again, its clone
 //! and view removed once neither holds work the forge lacks, and left
 //! and named until then (the clones spec's dropped repository and the
-//! work the forge lacks; the views spec's owner folder; the running
-//! spec's "Left for the user"; design 8).
+//! work the forge lacks; the views spec's owner folder, its workspace
+//! with it; the running spec's "Left for the user"; design 8; core.43).
 
 mod common;
 
 use boomdrive::pass::Outcome;
 use common::{keeping, Scratch};
+use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
 /// The names of the entries in `dir`, sorted; none where it is missing.
@@ -31,6 +32,31 @@ fn entries(dir: &Path) -> Vec<String> {
 /// `agentplot/flume`'s view under the default repository root.
 fn view(scratch: &Scratch) -> PathBuf {
     scratch.home.join("Code/agentplot/flume")
+}
+
+/// A configuration keeping `addresses`, in order, that asks for the
+/// workspaces.
+fn asking(addresses: &[&str]) -> String {
+    format!("code_workspaces = true\n{}", keeping(addresses))
+}
+
+/// `agentplot`'s workspace under the default repository root.
+fn workspace(scratch: &Scratch) -> PathBuf {
+    scratch.home.join("Code/agentplot/agentplot.code-workspace")
+}
+
+/// The JSON the file at `path` holds.
+fn json(path: &Path) -> Value {
+    serde_json::from_slice(&std::fs::read(path).expect("the workspace")).expect("JSON")
+}
+
+/// The line a pass says when it removes the workspace `file` with its
+/// folder.
+fn taken(file: &Path) -> String {
+    format!(
+        "boomdrive: workspace removed from {}, with its folder",
+        file.display()
+    )
 }
 
 /// The commit HEAD is at in `dir`.
@@ -391,4 +417,98 @@ fn an_old_views_folder_of_the_users_holds_nothing() {
         std::fs::read_to_string(old.join("notes")).expect("the user's file"),
         "mine\n"
     );
+}
+
+#[test]
+fn the_owners_last_view_with_its_workspace() {
+    for partial in [false, true] {
+        let scratch = Scratch::new();
+        scratch.origin("agentplot/flume");
+        let (outcome, _) = scratch.pass(&asking(&["agentplot/flume"]));
+        assert_eq!(outcome, Outcome::Kept);
+        let owner = scratch.home.join("Code/agentplot");
+        let file = workspace(&scratch);
+        if partial {
+            std::fs::write(owner.join(".agentplot.code-workspace.partial"), "half a fi")
+                .expect("a partial file left");
+        }
+        assert!(file.is_file(), "no workspace is written");
+
+        let (outcome, lines) = scratch.pass(&asking(&[]));
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, [taken(&file), REMOVED.to_string()], "{partial}");
+        assert!(!owner.exists(), "the owner's folder is left");
+        assert_eq!(entries(&scratch.home.join("Code")), [] as [&str; 0]);
+        assert_gone(&scratch);
+
+        let (outcome, lines) = scratch.pass(&asking(&[]));
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, Vec::<String>::new());
+    }
+}
+
+#[test]
+fn an_owner_still_kept_keeps_its_workspace() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.empty_origin("agentplot/empty");
+    scratch.pass(&asking(&["agentplot/flume", "agentplot/empty"]));
+    let owner = scratch.home.join("Code/agentplot");
+    let file = workspace(&scratch);
+    std::fs::write(
+        &file,
+        "{\n\t\"folders\": [{\"path\": \"flume\"}, {\"path\": \"empty\"}],\n\
+         \t\"settings\": {\"editor.tabSize\": 2},\n\
+         \t\"extensions\": {\"recommendations\": [\"a.b\"]}\n}\n",
+    )
+    .expect("the user's settings");
+
+    let (outcome, lines) = scratch.pass(&asking(&["agentplot/empty"]));
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [
+            "agentplot/empty: origin names no default branch, so it has no view".to_string(),
+            REMOVED.to_string(),
+            format!("boomdrive: workspace written at {}: empty", file.display()),
+        ]
+    );
+    assert_eq!(entries(&owner), ["agentplot.code-workspace"]);
+    let value = json(&file);
+    assert_eq!(
+        value
+            .as_object()
+            .expect("an object")
+            .keys()
+            .collect::<Vec<_>>(),
+        ["folders", "settings", "extensions"]
+    );
+    assert_eq!(
+        value,
+        json!({
+            "folders": [{"path": "empty"}],
+            "settings": {"editor.tabSize": 2},
+            "extensions": {"recommendations": ["a.b"]},
+        })
+    );
+}
+
+#[test]
+fn a_workspace_not_asked_for() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.pass(&asking(&["agentplot/flume"]));
+    let owner = scratch.home.join("Code/agentplot");
+    let file = workspace(&scratch);
+    let bytes = std::fs::read(&file).expect("the workspace");
+
+    let (outcome, lines) = scratch.pass(&keeping(&[]));
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [REMOVED]);
+    assert!(!view(&scratch).exists(), "the view is left");
+    assert_eq!(entries(&owner), ["agentplot.code-workspace"]);
+    assert_eq!(std::fs::read(&file).expect("the workspace"), bytes);
 }

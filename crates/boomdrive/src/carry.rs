@@ -1343,6 +1343,7 @@ mod tests {
         Config {
             repository_root: PathBuf::from("/code"),
             fetch_interval: std::time::Duration::from_secs(120),
+            code_workspaces: false,
             repositories: repositories
                 .iter()
                 .map(|address| Address::parse(address).unwrap())

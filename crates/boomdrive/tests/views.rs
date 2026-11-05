@@ -2,11 +2,13 @@
 //! missing, never over a folder that is there, only ever detached, and
 //! moved only while it stands where the runner last put it (the views
 //! spec; the clones spec's default branch and repository root; design 7).
+//! An old root's owner folder goes with its workspace (core.43).
 
 mod common;
 
 use boomdrive::pass::Outcome;
 use common::{keeping, Scratch};
+use serde_json::json;
 use std::path::{Path, PathBuf};
 
 /// The names of the entries in `dir`, sorted; none where it is missing.
@@ -606,6 +608,55 @@ fn a_new_root_the_old_folder_replaced() {
     );
 
     let (outcome, lines) = scratch.pass(&in_src());
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, Vec::<String>::new());
+}
+
+#[test]
+fn a_new_root_the_old_owners_workspace() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    let asking = |root: &str| {
+        format!(
+            "code_workspaces = true\nrepository_root = \"{root}\"\n{}",
+            keeping(&["agentplot/flume"])
+        )
+    };
+    scratch.pass(&asking("~/Code"));
+    let old = view(&scratch);
+    let owner = scratch.home.join("Code/agentplot");
+    let file = owner.join("agentplot.code-workspace");
+    assert_eq!(entries(&owner), ["agentplot.code-workspace", "flume"]);
+
+    let (outcome, lines) = scratch.pass(&asking("~/src"));
+
+    let new = src_view(&scratch);
+    let tip = origin.tip("main");
+    let new_file = scratch.home.join("src/agentplot/agentplot.code-workspace");
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [
+            format!("agentplot/flume: view removed from {}", old.display()),
+            format!(
+                "boomdrive: workspace removed from {}, with its folder",
+                file.display()
+            ),
+            made(&new, "main", &tip),
+            format!(
+                "boomdrive: workspace written at {}: flume",
+                new_file.display()
+            ),
+        ]
+    );
+    assert!(!owner.exists(), "the old owner's folder is left");
+    assert_eq!(entries(&scratch.home.join("Code")), [] as [&str; 0]);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&read(&new_file)).expect("JSON"),
+        json!({"folders": [{"path": "flume"}], "settings": {}})
+    );
+
+    let (outcome, lines) = scratch.pass(&asking("~/src"));
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(lines, Vec::<String>::new());
 }
