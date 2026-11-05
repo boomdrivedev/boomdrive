@@ -106,7 +106,7 @@ who looks later.
 #### Scenario: The address can be found later
 
 - **WHEN** someone reads the place's ports from sluice's view of the place while its site is served
-- **THEN** the `web` port listed is the port in the preview's address, and the address is that port with the site's base path `/flywheel-web/` and nothing else of the place
+- **THEN** the `web` port listed is the port in the preview's address, and the address is that port with the site's base path `/boomdrive-web/` and nothing else of the place
 
 #### Scenario: The operator says yes
 
@@ -128,7 +128,7 @@ and releasing a place where nothing was served SHALL do nothing and succeed.
 #### Scenario: Serving in a place
 
 - **WHEN** an agent runs `sluice exec <base> -- site-serve` in a place
-- **THEN** the command prints the site's address on the place's own port, under the site's base path `/flywheel-web/`, exits, and the address keeps serving the place's working tree
+- **THEN** the command prints the site's address on the place's own port, under the site's base path `/boomdrive-web/`, exits, and the address keeps serving the place's working tree
 
 #### Scenario: Two places at once
 

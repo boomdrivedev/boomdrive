@@ -8,10 +8,10 @@ summary: >
 dimension: flow
 definitionVersion: 1
 definition: >
-  Every 5 minutes, from each flywheel's plan: the bolts open, the units in
+  Every 5 minutes, from each drive's plan: the bolts open, the units in
   flight by stage (construct, awaiting approval, code, verify, merge), and
   the repositories with work in flight. Each day's value is the median of
-  the day's samples, per flywheel and in total.
+  the day's samples, per drive and in total.
 principle: intents-and-bolts
 source: "Crew's plan (`crew bolts`)"
 collector: collectors/work-in-flight
@@ -59,7 +59,7 @@ series:
   - name: bolts open, madswan
     unit: bolts
     statistic: median
-    flywheel: madswan
+    drive: madswan
     points:
       - { date: 2026-09-12, value: 3, sample: true }
       - { date: 2026-09-13, value: 3, sample: true }
@@ -92,7 +92,7 @@ series:
   - name: bolts open, swancloud
     unit: bolts
     statistic: median
-    flywheel: swancloud
+    drive: swancloud
     points:
       - { date: 2026-09-12, value: 3, sample: true }
       - { date: 2026-09-13, value: 1, sample: true }
@@ -322,7 +322,7 @@ series:
   - name: units in flight, madswan
     unit: units
     statistic: median
-    flywheel: madswan
+    drive: madswan
     points:
       - { date: 2026-09-12, value: 9, sample: true }
       - { date: 2026-09-13, value: 6, sample: true }
@@ -355,7 +355,7 @@ series:
   - name: units in flight, swancloud
     unit: units
     statistic: median
-    flywheel: swancloud
+    drive: swancloud
     points:
       - { date: 2026-09-12, value: 8, sample: true }
       - { date: 2026-09-13, value: 3, sample: true }

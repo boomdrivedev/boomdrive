@@ -23,7 +23,7 @@ tasks:
   vocab:
     command: 'bun run scripts/vocab.ts'
     inputs: ['src/content/terms/terms.yaml', 'scripts/vocab.ts', 'package.json', 'bun.lock']
-    outputs: ['styles/config/vocabularies/Flywheel/accept.txt', 'styles/Flywheel/Terms.yml']
+    outputs: ['styles/config/vocabularies/Boomdrive/accept.txt', 'styles/Boomdrive/Terms.yml']
     deps: ['~:install']
   prose:
     command: 'vale src/content'

@@ -74,7 +74,7 @@ function tick(g: Ctx, x: number, y: number, fill: string, p: number) {
   g.restore();
 }
 
-// A small agent: the flywheel's bot.
+// A small agent: the drive's bot.
 function bot(g: Ctx, x: number, y: number, p: Palette, alpha = 1) {
   block(g, x - 11, y - 9, 22, 18, p.brass, alpha);
   g.save();

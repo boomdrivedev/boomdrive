@@ -1,5 +1,5 @@
 ---
-import Flywheel from "./Flywheel.astro";
+import Drive from "./Drive.astro";
 
 // What the Method buys, as one stage playing six scenes on a timer, each a
 // short line, one sentence and a picture, with a rail of their names beside
@@ -18,7 +18,7 @@ const items = [
     line: "The filing system for the way you work",
     sentence:
       "Close the laptop, come back, and you are where you left off: every idea, decision and piece of work has a place, across every repository you work in.",
-    scene: "flywheel",
+    scene: "drive",
     dwell: 8,
   },
   {
@@ -94,8 +94,8 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
     {
       items.map((b, i) => (
         <li class:list={["scene", { on: i === 0 }]} id={`b-${b.id}`} data-scene={b.scene}>
-          <div class:list={["pic", { drawn: b.scene !== "flywheel" }]}>
-            {b.scene === "flywheel" ? <Flywheel /> : <canvas aria-hidden="true" />}
+          <div class:list={["pic", { drawn: b.scene !== "drive" }]}>
+            {b.scene === "drive" ? <Drive /> : <canvas aria-hidden="true" />}
           </div>
           <div class="words">
             <p class="kick">
@@ -246,14 +246,14 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
 <style>
   .benefits { margin: 40px 0 0; }
 
-  /* Scripts off: the six as a list, the flywheel with the first. */
+  /* Scripts off: the six as a list, the drive with the first. */
   .scenes { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
   .scene { display: grid; gap: 12px 32px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
   .benefits:not([data-ready]) .pic.drawn { display: none; }
   .benefits:not([data-ready]) .scene:not(:first-child) { grid-template-columns: 1fr; }
   .pic { min-width: 0; }
   .pic canvas { display: block; width: 100%; aspect-ratio: 16 / 10; }
-  .pic :global(.flywheel) { max-height: 24rem; margin: 0 auto; }
+  .pic :global(.drive) { max-height: 24rem; margin: 0 auto; }
 
   .kick { margin: 0 0 6px; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
   .kick span { color: var(--ap-accent); margin-right: 6px; }
@@ -307,6 +307,6 @@ const nn = (i: number) => String(i + 1).padStart(2, "0");
     .rail { grid-auto-flow: column; grid-auto-columns: minmax(9.5rem, 1fr); overflow-x: auto; margin: 0 -4px 16px; padding-bottom: 4px; }
     .toggle { align-self: center; margin: 0 8px; }
     .benefits[data-ready] .scene, .scene { grid-template-columns: minmax(0, 1fr); align-self: start; }
-    .pic :global(.flywheel) { max-height: 18rem; }
+    .pic :global(.drive) { max-height: 18rem; }
   }
 </style>

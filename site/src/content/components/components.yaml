@@ -50,5 +50,5 @@
   role: Teams of agents building one bolt at a time, the operator approving each unit
   status: in-use
   ours: true
-  becomes: flywheel-next
+  becomes: boomdrive
   serves: [intents-and-bolts, two-loops-one-gate]

@@ -27,8 +27,8 @@ attention. It says whether more agents is working.
 Crew, Herdr, git and moon already record this.
 
 - **Flow:** ★ landed (units merged into their bolt and bolts landed on
-  main, by day, by flywheel); ★ work in flight (bolts open, units by stage,
-  repositories with work, by flywheel); ★ unit cycle time by stage
+  main, by day, by drive); ★ work in flight (bolts open, units by stage,
+  repositories with work, by drive); ★ unit cycle time by stage
   (construct, awaiting approval, code, verify, merge); peak and typical
   concurrent agents; agent-hours per landed unit.
 - **Attention:** approval wait; approvals per landed unit; operator
@@ -68,7 +68,7 @@ from a password manager.
   transcripts or commits (the target is none).
 - **Watch:** proof cost per landed unit.
 
-## Stage 3: Flywheel Next's capture, design loop and rail
+## Stage 3: Boomdrive's capture, design loop and rail
 
 - **Capture:** captures per day by source and adapter; unmoved signals by
   age; share of signals moved within a day; landed units traced back to a
@@ -101,9 +101,9 @@ from a password manager.
 | Measurement | Definition | Source | What it argues |
 |---|---|---|---|
 | Fleet utilization | Every 5 minutes on each fleet host, the agents alive and how many are busy (working, as against waiting on the operator or idle), with the host's CPU and memory in use and its process count, one series per machine. Each day's value is the median of the day's samples, the day being the host's calendar day with every sample counted; the agent counts also publish the day's peak. The busy share is busy divided by running at a point | `herdr agent list`; the host's process table | Idle agents are waste, like idle cores: the case for keeping the fleet fed, and the peak that marks the journey on Home |
-| Work in flight | Every 5 minutes, from each flywheel's plan: bolts open, units in flight by stage (construct, awaiting approval, code, verify, merge), and repositories with work in flight; each day's value the median of the day's samples, per flywheel and in total | Crew's plan (`crew bolts`) | Where open work sits: a pile at awaiting approval is the attention bottleneck |
-| Landed | Each day, from each flywheel's run record: units merged into their bolt (work finished) and bolts landed on main (work delivered), counted, per flywheel and in total; the headline shows the week's total | Crew's run record (`crew events`) | What the fleet delivers, read against how busy it was; small and lumpy at first, which the week's total absorbs |
-| Tokens by role | Each day, every session Crew started, joined by its session id to its transcript: tokens by kind (input, output, cache written, cache read) and list-price dollars, by role (conductor, team ops, unit agent, design, planner, dispatcher, operator) and by model, per flywheel and in total. Dollars come from a dated rate table the site keeps (base input, 5-minute and 1-hour cache writes, cache reads, output, per model), at the rates in force on the point's date; a price change dates the table, never the definition. A transcript that does not split cache writes by lifetime is priced at the 5-minute rate, and the page says so. A collected point needs a rate in force on its date, or the build fails; a sample point may be priced at the table's earliest rates, since it is an illustration | `crew usage --json` over Crew's session registry and the transcripts' per-message usage | What the fleet costs and where: whether the spend sits with the agents that build or the ones that manage, and which model earns its price |
+| Work in flight | Every 5 minutes, from each drive's plan: bolts open, units in flight by stage (construct, awaiting approval, code, verify, merge), and repositories with work in flight; each day's value the median of the day's samples, per drive and in total | Crew's plan (`crew bolts`) | Where open work sits: a pile at awaiting approval is the attention bottleneck |
+| Landed | Each day, from each drive's run record: units merged into their bolt (work finished) and bolts landed on main (work delivered), counted, per drive and in total; the headline shows the week's total | Crew's run record (`crew events`) | What the fleet delivers, read against how busy it was; small and lumpy at first, which the week's total absorbs |
+| Tokens by role | Each day, every session Crew started, joined by its session id to its transcript: tokens by kind (input, output, cache written, cache read) and list-price dollars, by role (conductor, team ops, unit agent, design, planner, dispatcher, operator) and by model, per drive and in total. Dollars come from a dated rate table the site keeps (base input, 5-minute and 1-hour cache writes, cache reads, output, per model), at the rates in force on the point's date; a price change dates the table, never the definition. A transcript that does not split cache writes by lifetime is priced at the 5-minute rate, and the page says so. A collected point needs a rate in force on its date, or the build fails; a sample point may be priced at the table's earliest rates, since it is an illustration | `crew usage --json` over Crew's session registry and the transcripts' per-message usage | What the fleet costs and where: whether the spend sits with the agents that build or the ones that manage, and which model earns its price |
 | Unit cycle time, by stage | Time from adding a unit to merging it into its bolt, split into construct, awaiting approval, code, verify and merge | Crew's plan and stage changes; unit branch commit times | Waiting for approval likely dominates: the case for the decision inbox |
 | Sent back after "done" | Share of units where code reported done and verify sent the work back | Crew's stage changes | How often agents overclaim: why gates read evidence |
 | Re-proof rate | Share of check runs whose exact inputs had already passed elsewhere in the fleet | Now: moon's run reports across worktrees (task hashes run again rather than replayed). Later: the remote cache's hit records | The waste a shared cache removes; before and after is a strong note |
@@ -149,21 +149,21 @@ id: work-in-flight
 name: Work in flight
 definitionVersion: 1
 definition: >
-  Every 5 minutes, from each flywheel's plan: the bolts open, the units in
+  Every 5 minutes, from each drive's plan: the bolts open, the units in
   flight by stage, and the repositories with work in flight. Each day's
   value is the median of the day's samples.
 principle: intents-and-bolts
 collector: collectors/work-in-flight
 series:
   - { name: bolts open, unit: bolts, statistic: median, points: [] }
-  - { name: "bolts open, madswan", unit: bolts, statistic: median, flywheel: madswan, points: [] }
+  - { name: "bolts open, madswan", unit: bolts, statistic: median, drive: madswan, points: [] }
   - { name: units in flight, unit: units, statistic: median, points: [] }
   - { name: "units in flight, construct", unit: units, statistic: median, stage: construct, points: [] }
   - { name: "units in flight, awaiting approval", unit: units, statistic: median, stage: awaiting approval, points: [] }
   - { name: "units in flight, code", unit: units, statistic: median, stage: code, points: [] }
   - { name: "units in flight, verify", unit: units, statistic: median, stage: verify, points: [] }
   - { name: "units in flight, merge", unit: units, statistic: median, stage: merge, points: [] }
-  - { name: "units in flight, madswan", unit: units, statistic: median, flywheel: madswan, points: [] }
+  - { name: "units in flight, madswan", unit: units, statistic: median, drive: madswan, points: [] }
   - { name: repositories with work, unit: repositories, statistic: median, points: [] }
 ```
 
@@ -173,20 +173,20 @@ id: landed
 name: Landed
 definitionVersion: 1
 definition: >
-  Each day, from each flywheel's run record: the units merged into their
+  Each day, from each drive's run record: the units merged into their
   bolt, and the bolts landed on main. Counted, not sampled.
 principle: intents-and-bolts
 collector: collectors/landed
 series:
   - { name: units merged, unit: units, statistic: count, points: [] }
-  - { name: "units merged, madswan", unit: units, statistic: count, flywheel: madswan, points: [] }
+  - { name: "units merged, madswan", unit: units, statistic: count, drive: madswan, points: [] }
   - { name: bolts landed, unit: bolts, statistic: count, points: [] }
-  - { name: "bolts landed, madswan", unit: bolts, statistic: count, flywheel: madswan, points: [] }
+  - { name: "bolts landed, madswan", unit: bolts, statistic: count, drive: madswan, points: [] }
 ```
 
-A series split by flywheel repeats with `flywheel: <name>` beside the
+A series split by drive repeats with `drive: <name>` beside the
 total; the page stacks the split and headlines the total. Only our own
-flywheels appear.
+drives appear.
 
 ```yaml
 # content/measurements/unit-cycle-time.yaml
@@ -207,4 +207,4 @@ series:
 ```
 
 Only our own repositories are measured: flywheel-next, crew and
-flywheel-web.
+boomdrive-web.

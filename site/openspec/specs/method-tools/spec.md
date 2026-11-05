@@ -12,12 +12,12 @@ Each principle's place on the Method page SHALL show a strip labelled "In the to
 #### Scenario: A principle with tools
 
 - **WHEN** a reader reaches "Never prove twice" on the Method page
-- **THEN** its place shows "In the tools" followed by tailrace, then sluice
+- **THEN** its place shows "In the tools" followed by timber, then sluice
 
 #### Scenario: The tools each principle names
 
 - **WHEN** the Method page is built
-- **THEN** the strips name: One shell, sluice; One agent, one worktree, sluice and flume; Capture at the source, millpond, headwater and eddy; Intents and bolts, Crew and Flywheel Next; Two loops, one gate, tailrace and sluice; Order at landing, never at start, sluice; Never prove twice, tailrace and sluice; Secrets by declaration, sluice; Measure the fleet, Crew and sounding
+- **THEN** the strips name: One shell, sluice; One agent, one worktree, sluice and flume; Capture at the source, millpond, headwater and eddy; Intents and bolts, Crew and Boomdrive; Two loops, one gate, timber and sluice; Order at landing, never at start, sluice; Never prove twice, timber and sluice; Secrets by declaration, sluice; Measure the fleet, Crew and sounding
 
 #### Scenario: The strip is the principle's own data
 
@@ -41,7 +41,7 @@ Each tool on a strip that has a public product page SHALL link to the page, and 
 #### Scenario: A tool with no public page
 
 - **WHEN** a reader looks at "Intents and bolts"
-- **THEN** Crew and Flywheel Next are named in its strip as plain words, with no link
+- **THEN** Crew and Boomdrive are named in its strip as plain words, with no link
 
 #### Scenario: Every link answers
 

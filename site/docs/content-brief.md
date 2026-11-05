@@ -18,7 +18,7 @@ place when a convention changes. Read it whole before editing anything.
 - `src/content/terms/terms.yaml`: the one vocabulary. Words on the site use
   its terms in its forms; a new term is added there, never in `styles/`,
   whose files `scripts/vocab.ts` generates from it.
-- `.vale.ini` and `styles/Flywheel/`: the house style Vale holds
+- `.vale.ini` and `styles/Boomdrive/`: the house style Vale holds
   `src/content/` to. An error fails the checks, and a warning on words you
   wrote is fixed, never left.
 - `CLAUDE.md`: the rules every change holds to. Nothing commercial; no client
@@ -177,7 +177,7 @@ pause button, only where the site design asks for one.
 **Lands as** the component and the page under `src/pages/` that sets it.
 
 **Examples.** `src/components/Attention.astro` and
-`src/components/Flywheel.astro`.
+`src/components/Drive.astro`.
 
 ### A tools strip
 

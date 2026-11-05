@@ -11,7 +11,7 @@ import { fmt as host } from "../../components/utilization";
 
 // The Fleet opens on the fleet's day: the current fleet context as a frame,
 // then utilization, work in flight and landed on one time axis, then each
-// flywheel's share and each machine's load (docs/site-design.md, The Fleet's
+// drive's share and each machine's load (docs/site-design.md, The Fleet's
 // front page).
 
 const measurements = await getCollection("measurements");
@@ -73,11 +73,11 @@ const tiles = [
   },
 ];
 
-// Each flywheel's share: a count read at an instant on the latest day, an
+// Each drive's share: a count read at an instant on the latest day, an
 // amount over the last seven.
-const part = (r: typeof fu, name: string, flywheel: string) =>
-  split(r.series, name, "flywheel").find((g) => g.name === flywheel)?.values ?? [];
-const flywheels = context.flywheels.map((f) => ({
+const part = (r: typeof fu, name: string, drive: string) =>
+  split(r.series, name, "drive").find((g) => g.name === drive)?.values ?? [];
+const drives = context.drives.map((f) => ({
   ...f,
   running: part(fu, "agents running", f.name).at(-1),
   busy: part(fu, "agents busy", f.name).at(-1),
@@ -95,10 +95,10 @@ const machines = [...new Set(fu.series.filter((s) => s.host).map((s) => s.host!)
     cpu: latest("cpu"),
     memory: latest("memory"),
     processes: latest("processes"),
-    flywheels: context.flywheels.filter((f) => f.machine === name).map((f) => f.name),
+    drives: context.drives.filter((f) => f.machine === name).map((f) => f.name),
   };
 });
-const machineCount = new Set(context.flywheels.map((f) => f.machine)).size;
+const machineCount = new Set(context.drives.map((f) => f.machine)).size;
 
 const points = read.flatMap((s) => s.points);
 const allSamples = points.length > 0 && points.every((p) => p.sample);
@@ -115,8 +115,8 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
 
   <dl class="frame" aria-label="The fleet context">
     <div>
-      <dt>Flywheels</dt>
-      <dd>{context.flywheels.length}</dd>
+      <dt>Drives</dt>
+      <dd>{context.drives.length}</dd>
     </div>
     <div>
       <dt>Machines</dt>
@@ -135,9 +135,9 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
     </div>
   </dl>
   <p class="frame-note">
-    {list(context.flywheels.map((f) => f.name))} on {list([...new Set(context.flywheels.map((f) => f.machine))])}, {context.source} on {
+    {list(context.drives.map((f) => f.name))} on {list([...new Set(context.drives.map((f) => f.machine))])}, {context.source} on {
       iso(context.from)
-    }. Only our own flywheels, machines and repositories are named or counted.
+    }. Only our own drives, machines and repositories are named or counted.
   </p>
 
   {
@@ -164,12 +164,12 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
 
   <div class="split">
     <section>
-      <h2>By flywheel</h2>
+      <h2>By drive</h2>
       <div class="scroll">
         <table>
           <thead>
             <tr>
-              <th>Flywheel</th>
+              <th>Drive</th>
               <th>Running</th>
               <th>Busy</th>
               <th>Bolts open</th>
@@ -180,7 +180,7 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
           </thead>
           <tbody>
             {
-              flywheels.map((f) => (
+              drives.map((f) => (
                 <tr>
                   <td>{f.name}</td>
                   <td>{f.running ?? "—"}</td>
@@ -196,7 +196,7 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
         </table>
       </div>
       <p class="aside-note">
-        Counts are each flywheel's own median of {dates[last]}, so they need not add up to the fleet's; merged and landed
+        Counts are each drive's own median of {dates[last]}, so they need not add up to the fleet's; merged and landed
         are counted, so they do.
       </p>
     </section>
@@ -210,7 +210,7 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
               <th>CPU</th>
               <th>Memory</th>
               <th>Processes</th>
-              <th>Flywheels</th>
+              <th>Drives</th>
             </tr>
           </thead>
           <tbody>
@@ -221,7 +221,7 @@ const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
                   <td>{m.cpu === undefined ? "—" : host.cpu(m.cpu)}</td>
                   <td>{m.memory === undefined ? "—" : host.memory(m.memory)}</td>
                   <td>{m.processes === undefined ? "—" : host.processes(m.processes)}</td>
-                  <td>{m.flywheels.join(", ") || "—"}</td>
+                  <td>{m.drives.join(", ") || "—"}</td>
                 </tr>
               ))
             }

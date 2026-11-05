@@ -5,7 +5,7 @@ summary: "The task runner's cache, keyed by what each task reads and shared acro
 line: "A check that passed on these inputs is not run again."
 tools:
   - name: tailrace
-    href: https://agentplot.github.io/tailrace/#one-store-three-jobs
+    href: https://agentplot.github.io/timber/#one-store-three-jobs
   - name: sluice
     href: https://agentplot.github.io/sluice/reference/state/#the-log
 status: draft
@@ -13,7 +13,7 @@ introducedIn: "0.1"
 lastReviewed: 2026-10-08
 diagram:
   src: /diagrams/never-prove-twice.svg
-  alt: "tailrace's cache sits in the middle, and four places run the same three checks around it: sluice's merge queue, a worktree, a second worktree and CI. The queue tests a candidate first, and its checks take their time and pass. sluice records each run, and when the candidate lands, its verdicts fill the cache with one entry for each check. The worktree, the second worktree and CI then replay those checks from the cache in a flash, running nothing. A next candidate changes the Vale configuration, so only the prose check runs again while the other two replay. That run fails. sluice's record keeps the fail; the cache fills only from landings, so it never remembers it. moon declares what each check reads."
+  alt: "timber's cache sits in the middle, and four places run the same three checks around it: sluice's merge queue, a worktree, a second worktree and CI. The queue tests a candidate first, and its checks take their time and pass. sluice records each run, and when the candidate lands, its verdicts fill the cache with one entry for each check. The worktree, the second worktree and CI then replay those checks from the cache in a flash, running nothing. A next candidate changes the Vale configuration, so only the prose check runs again while the other two replay. That run fails. sluice's record keeps the fail; the cache fills only from landings, so it never remembers it. moon declares what each check reads."
 ---
 
 ## How we do it today

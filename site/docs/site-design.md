@@ -8,10 +8,11 @@ content in git and built with Astro.
 
 Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
 
-- **The site is Flywheel.** The name of the Method's home and of the fleet it
-  measures. MadSwan is the company and stays on the commercial side, and a
-  personal name would make this a blog (`adr/0001-the-site-is-flywheel.md`).
-  The domain is still open.
+- **The site is Boomdrive.** The name of the Method's home, of the fleet it
+  measures and of the ecosystem (`adr/0002-flywheel-is-renamed-boomdrive.md`).
+  MadSwan is the company and stays on the commercial side, and a personal
+  name would make this a blog (`adr/0001-the-site-is-flywheel.md`). The
+  domain is still open.
 - **Content in git** because the writers are us and our agents: a note is a
   pull request, reviewed at the gate, versioned with the Method.
 - **Typed content collections** give every page type a schema; a broken
@@ -48,13 +49,13 @@ About, and the first page of the Fleet.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
-| Home | Opens on the case: one person's attention is the limit, and the Method is the process that brings only the decisions to one rail, shown as one person going from agent pane to agent pane beside the same work arriving as decisions on a rail; then what the Method buys, six benefit scenes on a timer, the flywheel first; the fleet's latest reading with the Fleet's call; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
+| Home | Opens on the case: one person's attention is the limit, and the Method is the process that brings only the decisions to one rail, shown as one person going from agent pane to agent pane beside the same work arriving as decisions on a rail; then what the Method buys, six benefit scenes on a timer, the drive figure first; the fleet's latest reading with the Fleet's call; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
 | The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
 | Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
-| The Fleet | A front page that frames the fleet (flywheels, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
+| The Fleet | A front page that frames the fleet (drives, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
 | Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
-| Tools | The hub of the Flywheel family, at `/tools/`: the family's loop drawn, a card per member, and how each tool stands alone and the Method joins them (see "The Tools hub" below). Each tool's own documentation is on its own site; the shell, moon and hook configurations we publish join the hub as each is released | Changes when a member joins the family or its status changes | Yes |
+| Tools | The hub of the Boomdrive family, at `/tools/`: the family's loop drawn, a card per member, and how each tool stands alone and the Method joins them (see "The Tools hub" below). Each tool's own documentation is on its own site; the shell, moon and hook configurations we publish join the hub as each is released | Changes when a member joins the family or its status changes | Yes |
 | About | Who we are, learning in public, how we treat client work | Rarely | Yes |
 
 ## How Home and the Method read
@@ -62,7 +63,7 @@ About, and the first page of the Fleet.
 - **Home opens on the case, then shows what the Method buys.** One
   headline: agents scale, and your attention doesn't. The deck says it
   plainly: one person can keep only so many agents in mind, jumping
-  between their panes is chaos, and Flywheel is the process that keeps the
+  between their panes is chaos, and Boomdrive is the process that keeps the
   work running and brings you only the decisions, on one rail. The
   attention figure shows it under the calls to action. Then, under "What
   the Method buys", one stage plays a sequence of benefit scenes on a
@@ -70,12 +71,12 @@ About, and the first page of the Fleet.
   with a rail of the benefit names beside the stage that lights as it
   plays: click any to jump, hover or focus pauses. Reduced motion turns it
   into tabs with still pictures; with scripts off the benefits stack as a
-  list. Flywheel is a context-management engine with a low-intensity
+  list. Boomdrive is a context-management engine with a low-intensity
   project-management method, and the scenes say what that buys:
   1. *Nothing gets lost.* Close the laptop, come back, and you are exactly
      where you were; every idea, decision and piece of work has a place,
      across every repository you work in. The filing system for the way
-     you work. The first picture is the flywheel itself.
+     you work. The first picture is the drive figure.
   2. *No tickets to write.* A meeting, a chat, a log or a pull request is
      captured where it happens, unattended, and its decisions wait beside
      the work they bear on. Four sources feed adapters, captures pile up
@@ -106,10 +107,11 @@ About, and the first page of the Fleet.
   keyframes, so it moves with scripts off; reduced motion holds it at one
   moment, three panes waiting and three decisions on the rail, and a
   button pauses it.
-- **The flywheel figure** is the animated four-ring flywheel from
-  agentplot/flywheel's site (`site/index.html`: the operator's review on
-  the outside, then intent, then bolts, construction at the core, each
-  ring's ticks turning at its own rate). Its labels speak the Method's
+- **The drive figure** draws one drive's loop: the animated four-ring
+  flywheel from the archived agentplot/flywheel's site (`site/index.html`:
+  the operator's review on the outside, then intent, then bolts,
+  construction at the core, each ring's ticks turning at its own rate),
+  in `src/components/Drive.astro`. Its labels speak the Method's
   words, never the original plugin's tool names: the operator's review on
   the rim, intent and its settled decisions, bolts and their units, the
   gate where the operator's word crosses the rings, the operator at the
@@ -131,7 +133,7 @@ About, and the first page of the Fleet.
   in turn: the write-up (the claim, what it rules out, today, where it is
   going, what measures it) beside an animated diagram of the idea, in the
   manner of sluice's merge-queue diagram (`agentplot/sluice
-  docs/diagrams/sluice.svg`), which, as the site's own copy in Flywheel's
+  docs/diagrams/sluice.svg`), which, as the site's own copy in Boomdrive's
   brass, is the diagram for "Order at landing, never at start". A
   principle is a place on the Method page, `/method/#<id>`, and every link
   to a principle, from Home, a note or a term, goes there; there is no
@@ -157,18 +159,18 @@ About, and the first page of the Fleet.
   the write-up stands alone.
 - **Motion never hides content.** Every diagram honours reduced motion. With
   scripts off, Home is the case and its figure, the calls, the benefits
-  with the flywheel first, the fleet's reading and the notes, and the Method is the principles in order; nothing is
+  with the drive figure first, the fleet's reading and the notes, and the Method is the principles in order; nothing is
   reachable only by scrolling or clicking.
 
 ## The Tools hub
 
-Flywheel is the umbrella of a family of tools: the Method and its engine,
+Boomdrive is the umbrella of a family of tools: the Method and its engine,
 then headwater and eddy, which notice, millpond, the inbox, flume, which
 launches an item's work in a worktree, sounding, which works a question
 to a conclusion, and sluice, which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
 and its design book at `agentplot.github.io/blueprints/<book>/`; this site
 holds the hub every family site's footer links to,
-`agentplot.github.io/flywheel-web/tools/`.
+`agentplot.github.io/boomdrive-web/tools/`.
 
 - **The family is one list, and it is not ours.** Every member, its line,
   its place in the loop, its status, its site, its design book and its
@@ -177,12 +179,12 @@ holds the hub every family site's footer links to,
   hub, the bar and the footer follow.
 - **The hub reads in four parts.** A headline and a lede, with every
   tool's status read from the list; the family's animated diagram of the
-  loop, drawn by the theme with Flywheel highlighted, since the Method is
-  what the whole loop belongs to; a card per member, Flywheel's spanning
+  loop, drawn by the theme with Boomdrive highlighted, since the Method is
+  what the whole loop belongs to; a card per member, Boomdrive's spanning
   the row above the tools in the loop's order, each with its place in
   the loop lit, its status, its one line, the principle of the Method it
   carries, one whose strip names the tool or the build fails, and links
-  to its site and design book (Flywheel's card links
+  to its site and design book (Boomdrive's card links
   the Method instead: its design book is private); then two columns on how
   each tool stands alone and how the Method joins them.
 - **Its words are content.** The lede and the two columns live in
@@ -193,16 +195,16 @@ holds the hub every family site's footer links to,
   changes the host and the curator while the adapters and the inbox stay
   put.
 - **The site wears the family's look.** Its page, type and ink are the
-  theme's (`base.css`), and its accent is Flywheel's brass, read from the
+  theme's (`base.css`), and its accent is Boomdrive's brass, read from the
   family's list, in two tones: links, the name, the mark's wheel and the
   primary call take its lighter tone, as a Starlight site draws link text,
   and the gold itself is kept for the mark's hub, the headline's highlight
   and the figures. Its masthead is a family site's header: the bar, then a
-  row with Flywheel's mark and name, the sections and the repository,
+  row with Boomdrive's mark and name, the sections and the repository,
   folding the sections under a round menu button on a phone. The footer
   names each member with its line, status, site and design book; the hub
-  leaves it out, since the page is the family. What stays Flywheel's own
-  is the manifesto's scale and the flywheel figure's mint and rust beside
+  leaves it out, since the page is the family. What stays Boomdrive's own
+  is the manifesto's scale and the drive figure's mint and rust beside
   the brass. Like every family site it follows the reader's light or dark
   setting: `<html>` sets no theme, and the figure, the scenes and the
   diagrams carry both.
@@ -247,8 +249,8 @@ Fifteen types; the first five are needed for version 1.
 | ChangeEntry | principle, kind (added, revised, retired), summary, promptedBy | The changelog, and the loop from evidence to method |
 | Practice | principle, asOf, today (how, components, shortcuts), target (how, delivers, status, design link) | Shows honestly how we do it now and where it is going |
 | RoadmapItem | title, status (idea, designing, building, preview, released), principle, delivers, design link, lastUpdated | Everything we know is coming, without dates |
-| FleetContext | id, from (it holds until the next context), flywheels (name, machine), repositories, source; later the components with versions a note's stack names | The frame the Fleet's front page opens with, and the conditions a note was true under. Read from Crew's team configuration, by hand or by a collector, naming its source and date, and never a sample. Repositories counts the kits the teams build in and the blueprints they plan from, never a state repository. Agents at peak is read from fleet utilization, never stored |
-| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, statistic, peakOf, host, flywheel, stage, points (date, value, context, sample)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`). A point is one value at one date; a series says which statistic of the day's samples its value is, a peak series names the series it is the peak of, and a series split by machine, flywheel or stage names which |
+| FleetContext | id, from (it holds until the next context), drives (name, machine), repositories, source; later the components with versions a note's stack names | The frame the Fleet's front page opens with, and the conditions a note was true under. Read from Crew's team configuration, by hand or by a collector, naming its source and date, and never a sample. Repositories counts the kits the teams build in and the blueprints they plan from, never a state repository. Agents at peak is read from fleet utilization, never stored |
+| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, statistic, peakOf, host, drive, stage, points (date, value, context, sample)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`). A point is one value at one date; a series says which statistic of the day's samples its value is, a peak series names the series it is the peak of, and a series split by machine, drive or stage names which |
 | Video | youtubeId, title, recorded, duration, chapters, note, series | Videos as records, embedded and indexed |
 | Series | title, summary, items (ordered notes and videos) | An arc a reader can follow |
 | Release | component, version, date, launchNote, highlights | Every release is a launch |
@@ -269,7 +271,7 @@ alternatives: [git worktree by hand]
 ```
 
 A Herdr plugin is a component with `partOf: herdr`; Crew is `ours: true` with
-`becomes: flywheel-next`. A secrets component never records what it holds.
+`becomes: boomdrive`. A secrets component never records what it holds.
 
 ## Today and where it's going
 
@@ -307,7 +309,7 @@ are captured, never written by hand.
    (`herdr agent list`), the host's footprint beside them: CPU and memory
    in use and the number of processes, since agents run tests, dev servers
    and containers, and the plan's state: bolts open and units in flight by
-   stage, per flywheel (Crew's plan). Raw samples stay private on the host.
+   stage, per drive (Crew's plan). Raw samples stay private on the host.
 2. **Collect, nightly:** each collector reads its sources (Crew's plan and
    its run record of merges and landings, git timestamps, moon's run logs).
    A repository allowlist means only our own repositories are read.
@@ -321,7 +323,7 @@ are captured, never written by hand.
    definition version; old points keep theirs, so charts never mix
    definitions silently.
 
-The collectors start as a launchd job on the fleet host and become a Flywheel
+The collectors start as a launchd job on the fleet host and become a Boomdrive
 job later.
 
 ```yaml
@@ -331,7 +333,7 @@ from: 2026-10-12
 agents: { peak: "[__]", typical: "[__]" }
 hosts: 1
 components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version]", crew: "[sha]", moon: "[version]" }
-repos: [flywheel-next, crew, flywheel-web]
+repos: [flywheel-next, crew, boomdrive-web]
 ```
 
 ## Moving around the Fleet
@@ -367,7 +369,7 @@ Each measurement has one page in The Fleet, at its id. It shows:
   the page says so beside the stack; counted series (tokens, landed) do sum.
 - **A split is named after its total:** a series split from a total is
   named `<total>, <part>` (`units in flight, construct`; `bolts open,
-  madswan`) and says what it is split by: machine, flywheel, stage, role,
+  madswan`) and says what it is split by: machine, drive, stage, role,
   model or kind. A counted or summed total equals the sum of its splits on
   every day, and the build refuses one that does not.
 - **The definition beside the numbers:** the name, the definition in words,
@@ -392,10 +394,10 @@ The Fleet opens on the fleet's day, so a reader sees in one look whether the
 agents were busy, what they were busy on, and what came out.
 
 - **The frame first.** The current fleet context as one line: how many
-  flywheels we operate, on how many machines, over how many repositories,
+  drives we operate, on how many machines, over how many repositories,
   and the agents at peak. Every number beneath is read against it, and a
   change to it is a new context, marked on every chart's time axis. A
-  flywheel is one loop we operate, with its own plan, teams, signals and
+  drive is one loop we operate, with its own plan, teams, signals and
   state; the glossary carries the term, and it is the word Crew already
   uses for a partition's loop. When any point on the page is a sample, a
   notice says so right under the frame.
@@ -404,14 +406,14 @@ agents were busy, what they were busy on, and what came out.
   units by stage stacked with bolts open as a line; landed, units merged
   into their bolt and bolts landed on main, as bars. Each carries its
   headline tile, which links to the measurement's own page. Under the
-  rows, the totals by flywheel as a table, then host load per machine,
+  rows, the totals by drive as a table, then host load per machine,
   then every measurement with a link to its page. A phone shows the last
   14 days.
 - **Host load is per machine, never summed.** CPU, memory and processes
   are one series per machine; agent counts, work in flight and landed are
-  fleet totals, with the split by machine or by flywheel readable on the
+  fleet totals, with the split by machine or by drive readable on the
   page.
-- **Only our own fleet appears.** Flywheels, machines and repositories
+- **Only our own fleet appears.** Drives, machines and repositories
   that carry client work are neither named nor counted, by the site's rule
   that no measurement comes from client work.
 - **Leverage comes later.** Landed per agent or per hour of attention is
@@ -422,7 +424,7 @@ agents were busy, what they were busy on, and what came out.
 ## The house style
 
 [Vale](https://docs.vale.sh) lints every page in `src/content/` against
-`.vale.ini` and the rules in `styles/Flywheel/`. The same Vale, pinned in
+`.vale.ini` and the rules in `styles/Boomdrive/`. The same Vale, pinned in
 `devenv.nix`, runs in the editor, in an agent's worktree and in `site-check`.
 
 | Rule | Level | Binds | What it flags |
@@ -455,5 +457,5 @@ agents were busy, what they were busy on, and what came out.
 ## Open questions
 
 - Is the Method's list of principles right (`method-outline.md`)?
-- The domain for Flywheel?
+- The domain for Boomdrive?
 - Is a log a separate type from a field note, or a kind of note?
