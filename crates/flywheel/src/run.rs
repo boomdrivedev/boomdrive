@@ -156,6 +156,7 @@ impl Control {
                 &table.implementation_table,
                 file,
                 data,
+                table.poll_interval,
                 Box::new(|line| eprintln!("{line}")),
                 notices.waker(),
             ),

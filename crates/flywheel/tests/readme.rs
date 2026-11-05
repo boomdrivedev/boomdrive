@@ -48,6 +48,7 @@ fn the_readme_control_plane_opens_crews_implementation() {
         &table.implementation_table,
         &readme,
         Path::new("/nowhere/flywheel"),
+        table.poll_interval,
         Box::new(|line| panic!("said {line:?} at its opening")),
         Box::new(|| panic!("woken at its opening")),
     );

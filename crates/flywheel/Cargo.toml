@@ -17,9 +17,14 @@ clap.workspace = true
 # The one interface the runner reaches its control plane through (design
 # Decision 1; core.2).
 flywheel-control = { path = "../flywheel-control" }
-# crew's implementation of it, which only the list of implementations,
-# src/planes.rs, names (design Decisions 1 and 4; core.2).
+# crew's implementation of it, and the hosted control plane's, which only
+# the list of implementations, src/planes.rs, names (design Decisions 1
+# and 4; core.2).
 flywheel-crew = { path = "../flywheel-crew" }
+flywheel-hosted = { path = "../flywheel-hosted" }
+# `flywheel enroll`'s token, read without echo where standard input is a
+# terminal (design Decision 4).
+rpassword.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

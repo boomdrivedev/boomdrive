@@ -32,11 +32,30 @@ enum Command {
         #[arg(long)]
         once: bool,
     },
+    /// Enrol a partition of the configuration's control plane once, with
+    /// its one-time token read from standard input, keeping the key made
+    /// for it in the host's credential store.
+    Enroll {
+        /// The configuration file, in place of
+        /// `$XDG_CONFIG_HOME/flywheel/config.toml`.
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+        /// Answer as one JSON object on standard output.
+        #[arg(long)]
+        json: bool,
+        /// The partition's label, as its control-plane table names it.
+        label: String,
+    },
 }
 
 fn main() -> ExitCode {
     match Cli::parse().command {
         Command::Run { config, once } => flywheel::run::main(config.as_deref(), once),
+        Command::Enroll {
+            config,
+            json,
+            label,
+        } => flywheel::enroll::main(config.as_deref(), json, &label),
     }
 }
 

@@ -12,10 +12,11 @@
 //! again"; the
 //! configuration spec's "The configuration may name the control plane"
 //! and "The control-plane table is read when the runner starts"). The
-//! binary runs under the scratch host with stub `flume`, `sluice` and
-//! `herdr` first on its `PATH`, and crew's implementation reaches the
-//! scratch forge's state repository through the scratch git
-//! configuration. The loop runs in-process over the fake control plane.
+//! binary runs under the scratch host with stub `flume`, `sluice`,
+//! `herdr` and `systemd-creds` first on its `PATH`, crew's implementation
+//! reaches the scratch forge's state repository through the scratch git
+//! configuration, and the hosted implementation a loopback port with
+//! nothing on it. The loop runs in-process over the fake control plane.
 
 mod common;
 mod fakes;
@@ -23,7 +24,7 @@ mod fakes;
 mod records;
 
 use common::{keeping, Origin, Scratch};
-use fakes::{HerdrStub, SluiceStub, Stub};
+use fakes::{CredsStub, HerdrStub, SluiceStub, Stub};
 use flywheel::report;
 use flywheel::run::{Programs, Runner, Stopper};
 use flywheel_control::fake::Fake;
@@ -61,11 +62,13 @@ fn carrying(fetch_interval: &str, poll_interval: &str) -> String {
     )
 }
 
-/// Stub `flume`, `sluice` and `herdr`, each in a directory of its own.
+/// Stub `flume`, `sluice`, `herdr` and `systemd-creds`, each in a
+/// directory of its own.
 struct Tools {
     flume: Stub,
     sluice: SluiceStub,
     herdr: HerdrStub,
+    creds: CredsStub,
 }
 
 impl Tools {
@@ -74,6 +77,7 @@ impl Tools {
             flume: Stub::new(),
             sluice: SluiceStub::new(),
             herdr: HerdrStub::new(),
+            creds: CredsStub::new(),
         }
     }
 
@@ -85,11 +89,16 @@ impl Tools {
         }
     }
 
-    /// The test's `PATH` with the stubs first, so no real Flume, sluice or
-    /// herdr runs.
+    /// The test's `PATH` with the stubs first, so no real Flume, sluice,
+    /// herdr or `systemd-creds` runs.
     fn path(&self) -> OsString {
-        let stubs = [&self.flume.dir, &self.sluice.dir, &self.herdr.dir]
-            .map(|dir| dir.path().to_path_buf());
+        let stubs = [
+            &self.flume.dir,
+            &self.sluice.dir,
+            &self.herdr.dir,
+            &self.creds.dir,
+        ]
+        .map(|dir| dir.path().to_path_buf());
         let rest = std::env::var_os("PATH").unwrap_or_default();
         std::env::join_paths(stubs.iter().cloned().chain(std::env::split_paths(&rest)))
             .expect("a PATH")
@@ -266,16 +275,53 @@ fn no_control_plane() {
     assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
 }
 
-/// The control-plane-interface spec's "The hosted control plane named":
-/// the runner names `hosted` as a control plane this binary does not
-/// carry and names `crew`, runs no control pass, and keeps its
-/// repositories. Its control pass did not pull, so `--once` exits 1.
+/// The control-plane-interface spec's "The hosted control plane named",
+/// and design Decision 14's `run --once` under a hosted control plane
+/// that cannot be reached: the runner opens the hosted implementation
+/// with its table, names no word as one this binary does not carry, keeps
+/// its repositories and says the control plane unread once. Its control
+/// pass did not pull, so `--once` exits 1. The partition's key is read
+/// from no store: the scratch host's `HOME` holds no keychain, and the
+/// stub `systemd-creds` keeps no credential, so nothing is dialed.
 #[test]
 fn the_hosted_control_plane_named() {
     let scratch = Scratch::new();
     scratch.origin(KEPT);
+    scratch.configure(&format!(
+        "{}[control_plane]\ntype = \"hosted\"\n\n\
+         [control_plane.hosted]\nurl = {:?}\n\n\
+         [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = [{KEPT:?}]\n",
+        keeping(&[KEPT]),
+        loopback_with_nothing_on_it()
+    ));
+    let tools = Tools::new();
+
+    let output = once(&scratch, &tools);
+
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    let said = stderr(&output);
+    assert!(!said.contains("does not carry"), "{said}");
+    assert!(!said.contains("no control pass runs"), "{said}");
+    let unread: Vec<&str> = said
+        .lines()
+        .filter(|line| line.starts_with("flywheel: the control plane could not be read: "))
+        .collect();
+    assert_eq!(unread.len(), 1, "{said}");
+    assert!(unread[0].contains("home"), "{said}");
+    assert!(scratch.home.join("Code").join(KEPT).exists());
+    assert!(!tools.creds.kept_or_read(), "{:?}", tools.creds.calls());
+}
+
+/// The control-plane-interface spec's "A word not carried": the runner
+/// names `elsewhere` as a control plane this binary does not carry and
+/// names `crew` and `hosted`, runs no control pass, and keeps its
+/// repositories. Its control pass did not pull, so `--once` exits 1.
+#[test]
+fn a_word_not_carried() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
     let file = scratch.configure(&format!(
-        "{}[control_plane]\ntype = \"hosted\"\n",
+        "{}[control_plane]\ntype = \"elsewhere\"\n",
         keeping(&[KEPT])
     ));
     let tools = Tools::new();
@@ -284,8 +330,8 @@ fn the_hosted_control_plane_named() {
 
     assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
     let named = format!(
-        "flywheel: {}: `type` is \"hosted\", a control plane this binary does not carry: \
-         it carries `crew`: no control pass runs",
+        "flywheel: {}: `type` is \"elsewhere\", a control plane this binary does not carry: \
+         it carries `crew`, `hosted`: no control pass runs",
         file.display()
     );
     assert!(
@@ -295,6 +341,14 @@ fn the_hosted_control_plane_named() {
     );
     assert!(scratch.home.join("Code").join(KEPT).exists());
     assert_eq!(tools.flume.calls(), Vec::<Vec<String>>::new());
+}
+
+/// A loopback address with nothing listening on it.
+fn loopback_with_nothing_on_it() -> String {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    let port = listener.local_addr().expect("its address").port();
+    drop(listener);
+    format!("http://127.0.0.1:{port}/flywheel")
 }
 
 /// The fake control plane, telling the test when each pull is made.

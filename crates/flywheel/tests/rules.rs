@@ -3,8 +3,10 @@
 //! names it, and the crates depend on each other as design Decision 1 has
 //! them (the control-plane-interface spec's "Only crew's crate names
 //! crew"); the hosted implementation's crate is the one that holds the
-//! runner's protocol, and no crate depends on it (its "Only the hosted
-//! implementation's crate holds the protocol"). core.7: every crate is a
+//! runner's protocol, only the binary's crate depends on it, and
+//! `planes.rs` is the one file of the binary's sources that names it (its
+//! "The protocol is held in the hosted implementation's crate alone").
+//! core.7: every crate is a
 //! moon project of its own, its language declared, whose check-fast tasks
 //! format, lint, type-check and test it, one task per check, each taking
 //! the sources of every crate it builds. core.3's test, `no_listener.rs`,
@@ -243,7 +245,7 @@ fn the_crates_depend_as_decision_1_has_them() {
         BTreeMap::from([
             (
                 "flywheel".to_string(),
-                set(&["flywheel-control", "flywheel-crew"])
+                set(&["flywheel-control", "flywheel-crew", "flywheel-hosted"])
             ),
             ("flywheel-control".to_string(), set(&[])),
             ("flywheel-crew".to_string(), set(&["flywheel-control"])),
@@ -261,53 +263,62 @@ fn the_crates_depend_as_decision_1_has_them() {
 }
 
 /// core.2 and core.42, the control-plane-interface spec's "Only the
-/// hosted implementation's crate holds the protocol": of every file under
-/// `crates/` outside `crates/flywheel-hosted`, none names it but
-/// `planes.rs`, which lists the implementations, and the two that hold it
-/// to these rules: this test, and the binary's `moon.yml`, whose test
-/// task takes its files, as one input and nowhere else. None is a JSON
-/// Schema, and no crate depends on it, which depends on `flywheel-control`
-/// alone of the tree's crates.
+/// hosted implementation's crate holds the protocol": no file of
+/// `crates/flywheel/src` but `planes.rs`, which opens it, and none of
+/// `crates/flywheel-control` or `crates/flywheel-crew`, names it; no file
+/// under `crates/` outside `crates/flywheel-hosted` is a JSON Schema;
+/// only the binary's crate depends on it, which depends on
+/// `flywheel-control` alone of the tree's crates.
 #[test]
 fn only_the_hosted_implementations_crate_holds_the_protocol() {
     let root = root();
     let hosted = root.join("crates/flywheel-hosted");
-    let rules = root.join("crates/flywheel/tests/rules.rs");
-    let moon = root.join("crates/flywheel/moon.yml");
-    let excepted = [root.join("crates/flywheel/src/planes.rs"), rules];
-    let read: Vec<PathBuf> = files(&root.join("crates"))
+    let planes = root.join("crates/flywheel/src/planes.rs");
+    let read: Vec<PathBuf> = files(&root.join("crates/flywheel/src"))
         .into_iter()
-        .filter(|file| !file.starts_with(&hosted) && !excepted.contains(file))
+        .filter(|file| *file != planes)
+        .chain(files(&root.join("crates/flywheel-control")))
+        .chain(files(&root.join("crates/flywheel-crew")))
         .collect();
-    assert!(read.len() > 50, "{read:?}");
-    assert!(read.contains(&moon), "{} is not read", moon.display());
+    assert!(read.len() > 30, "{read:?}");
     for file in read {
+        let text = String::from_utf8_lossy(&std::fs::read(&file).expect("a file")).into_owned();
+        for named in ["flywheel_hosted", "flywheel-hosted"] {
+            assert!(!text.contains(named), "{} names {named}", file.display());
+        }
+    }
+    let listed: Vec<PathBuf> = files(&root.join("crates"))
+        .into_iter()
+        .filter(|file| !file.starts_with(&hosted))
+        .collect();
+    for file in listed {
         let name = file.file_name().unwrap().to_string_lossy();
         assert!(
             !name.ends_with(".schema.json"),
             "{} is a JSON Schema outside the hosted implementation's crate",
             file.display()
         );
-        let mut text = String::from_utf8_lossy(&std::fs::read(&file).expect("a file")).into_owned();
-        if file == moon {
-            text = text.replace("'/crates/flywheel-hosted/**/*'", "");
-        }
-        for named in ["flywheel_hosted", "flywheel-hosted"] {
-            assert!(!text.contains(named), "{} names {named}", file.display());
-        }
     }
+    let planes = std::fs::read_to_string(planes).expect("planes.rs");
+    assert!(
+        planes.contains("flywheel_hosted::open"),
+        "planes.rs opens the hosted implementation"
+    );
     for name in crates() {
         let dependencies = path_dependencies(&name);
-        if name == "flywheel-hosted" {
-            assert_eq!(
+        match name.as_str() {
+            "flywheel-hosted" => assert_eq!(
                 dependencies,
                 BTreeSet::from(["flywheel-control".to_string()])
-            );
-        } else {
-            assert!(
+            ),
+            "flywheel" => assert!(
+                dependencies.contains("flywheel-hosted"),
+                "flywheel does not depend on flywheel-hosted"
+            ),
+            _ => assert!(
                 !dependencies.contains("flywheel-hosted"),
                 "{name} depends on flywheel-hosted"
-            );
+            ),
         }
     }
 }
@@ -424,7 +435,8 @@ fn moons_files_are_read() {
         BTreeSet::from([
             "flywheel".to_string(),
             "flywheel-control".to_string(),
-            "flywheel-crew".to_string()
+            "flywheel-crew".to_string(),
+            "flywheel-hosted".to_string()
         ])
     );
 }

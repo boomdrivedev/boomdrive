@@ -94,3 +94,6 @@ futures-util = { version = "0.3", default-features = false, features = [
   "sink",
   "std",
 ] }
+# `flywheel enroll`'s one-time token, read without echo where standard
+# input is a terminal (design Decision 4; core.4).
+rpassword = "7"

@@ -2,8 +2,12 @@
 //! 4; the configuration spec's "The configuration may name the control
 //! plane"; the control-plane-interface spec's "The configuration chooses
 //! the implementation"): `planes.rs` opens the one its `type` names,
-//! handing it the table of that name, and refuses a word this binary does
-//! not carry, naming those it does.
+//! handing it the table of that name and the `poll_interval`, enrols a
+//! partition of the one that enrols, and refuses a word this binary does
+//! not carry, naming those it does. The hosted implementation is opened
+//! here only with a table it refuses, before it looks for the host's
+//! credential store; `control.rs` opens it in the binary, under a
+//! scratch host (design Decision 14).
 
 use flywheel::config;
 use flywheel::planes::{self, PLANES};
@@ -36,6 +40,7 @@ fn open(text: &str) -> Result<planes::Plane, String> {
         &table.implementation_table,
         Path::new(FILE),
         Path::new("/nowhere/flywheel"),
+        table.poll_interval,
         Box::new(|line| panic!("said {line:?} at its opening")),
         Box::new(|| panic!("woken at its opening")),
     )
@@ -71,28 +76,85 @@ fn the_table_is_the_implementations() {
     );
 }
 
-/// The control-plane-interface spec's "The hosted control plane named":
-/// `hosted` is refused, naming `crew`, the one this binary carries.
+/// The hosted table is the hosted implementation's own to refuse: a
+/// token in it is named as a key it does not read, its value in no
+/// output (the hosted-control-plane spec's "A token in the table").
 #[test]
-fn the_hosted_control_plane_named() {
+fn the_hosted_table_is_the_hosted_implementations() {
     let refusal = open(
         "repositories = []\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
-         url = \"wss://flywheel.invalid/host\"\n",
+         url = \"https://control.example\"\ntoken = \"n0t-a-r34l-t0k3n\"\n\n\
+         [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = []\n",
     )
     .err()
     .unwrap();
+    assert!(refusal.contains("`token`"), "{refusal}");
+    assert!(refusal.contains("flywheel enroll"), "{refusal}");
+    assert!(!refusal.contains("n0t-a-r34l-t0k3n"), "{refusal}");
+}
+
+/// The control-plane-interface spec's "A word not carried": `elsewhere`
+/// is refused, naming `crew` and `hosted`, the words this binary carries.
+#[test]
+fn a_word_not_carried() {
+    let refusal = open("repositories = []\n[control_plane]\ntype = \"elsewhere\"\n")
+        .err()
+        .unwrap();
     assert_eq!(
         refusal,
         format!(
-            "{FILE}: `type` is \"hosted\", a control plane this binary does not carry: \
-             it carries `crew`"
+            "{FILE}: `type` is \"elsewhere\", a control plane this binary does not carry: \
+             it carries `crew`, `hosted`"
         )
     );
 }
 
-/// The list holds each implementation's word once, `crew` among them.
+/// The list holds each implementation's word once, `crew` and `hosted`,
+/// and an enrolment for `hosted` alone.
 #[test]
 fn the_list() {
-    let words: Vec<&str> = PLANES.iter().map(|(word, _)| *word).collect();
-    assert_eq!(words, ["crew"]);
+    let words: Vec<(&str, bool)> = PLANES
+        .iter()
+        .map(|entry| (entry.word, entry.enrol.is_some()))
+        .collect();
+    assert_eq!(words, [("crew", false), ("hosted", true)]);
+}
+
+/// The hosted-control-plane spec's "crew's control plane": crew's
+/// implementation enrols nothing, and is refused as the host's to fix
+/// before the token is asked for, naming `hosted`, which enrols.
+#[test]
+fn crews_control_plane_enrols_nothing() {
+    let refusal = planes::enrol("crew", &toml::Table::new(), Path::new(FILE), "home", || {
+        panic!("the token asked for")
+    })
+    .unwrap_err();
+    assert_eq!(
+        refusal.words,
+        format!(
+            "{FILE}: `type` is \"crew\", a control plane that enrols nothing: `flywheel enroll` \
+             enrols a partition of `hosted`"
+        )
+    );
+    assert!(refusal.host_to_fix);
+}
+
+/// A word not carried is refused at enrolment too, naming the words this
+/// binary carries, before the token is asked for.
+#[test]
+fn a_word_not_carried_enrols_nothing() {
+    let refusal = planes::enrol(
+        "elsewhere",
+        &toml::Table::new(),
+        Path::new(FILE),
+        "home",
+        || panic!("the token asked for"),
+    )
+    .unwrap_err();
+    assert!(
+        refusal.words.ends_with("it carries `crew`, `hosted`"),
+        "{}",
+        refusal.words
+    );
+    assert!(refusal.host_to_fix);
 }

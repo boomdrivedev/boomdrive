@@ -3,9 +3,11 @@
 //! part, each answer scripted where a test says, and each call recorded.
 //! The runner's clones and its tools' versions are what a test sets. A
 //! stub `flume` program stands in where a test runs the pass over
-//! Flume's own command line, a stub `sluice` stands in for sluice's, and
-//! a stub `herdr` for herdr's. Every file lies in the test's own
-//! temporary directory, and no test runs a real Flume, sluice or herdr.
+//! Flume's own command line, a stub `sluice` stands in for sluice's, a
+//! stub `herdr` for herdr's, and a stub `systemd-creds` for the host's
+//! credential store. Every file lies in the test's own temporary
+//! directory, and no test runs a real Flume, sluice, herdr or
+//! `systemd-creds`.
 
 #![allow(dead_code)]
 
@@ -869,5 +871,59 @@ impl HerdrStub {
         (1..)
             .take_while(|r| self.dir.path().join(format!("read-{r}")).exists())
             .count()
+    }
+}
+
+/// The stub `systemd-creds`'s program, which says it is systemd 256's and
+/// keeps nothing: each call writes its arguments, NUL-terminated, to
+/// `call-<n>`, and every call but `--version` is refused. It stands
+/// first on a binary's `PATH` wherever the hosted implementation may look
+/// for the host's credential store, so that on Linux no real
+/// `systemd-creds` runs, and a test sees that no key was kept (design
+/// Decision 14). On macOS the store is the keychain, which the scratch
+/// host's own `HOME` holds none of.
+const SYSTEMD_CREDS: &str = r#"#!/bin/sh
+dir=$(dirname "$0")
+n=1
+while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
+mv "$dir/call-$n.part" "$dir/call-$n"
+if [ "$1" = "--version" ]; then
+  printf 'systemd 256 (256-stub)\n'
+  exit 0
+fi
+echo "the stub keeps no credential" >&2
+exit 1
+"#;
+
+/// A stub `systemd-creds` in a temporary directory of its own.
+pub struct CredsStub {
+    pub dir: TempDir,
+}
+
+impl CredsStub {
+    pub fn new() -> CredsStub {
+        let stub = CredsStub {
+            dir: tempfile::tempdir().expect("a temporary directory"),
+        };
+        let program = stub.dir.path().join("systemd-creds");
+        fs::write(&program, SYSTEMD_CREDS).expect("the stub");
+        fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
+        stub
+    }
+
+    /// The arguments of every call, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        (1..)
+            .map_while(|n| fs::read_to_string(self.dir.path().join(format!("call-{n}"))).ok())
+            .map(|call| call.split_terminator('\0').map(str::to_string).collect())
+            .collect()
+    }
+
+    /// Whether any call but `--version` was made: a key kept or read.
+    pub fn kept_or_read(&self) -> bool {
+        self.calls()
+            .iter()
+            .any(|call| call.first().map(String::as_str) != Some("--version"))
     }
 }
