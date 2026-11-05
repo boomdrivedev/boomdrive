@@ -1,7 +1,7 @@
 # tool-records Specification
 
 ## Purpose
-What the runner carries back of sluice and of an inbox. For sluice, it carries each submission's entry: its state and verdict rows, read from sluice's own answer, never its logs or heads. For an inbox the control plane names, it carries the inbox's records as references, never raw material. Each is carried as the tool gave it, through the tool's command line or weir's record formats, and nothing of a repository's content is carried (core.11; flywheel-cloud core.4 and core.28; ledger items c-sluice.a and c-inbox.a).
+What the runner carries back of sluice and of an inbox. For sluice, it carries each submission's entry: its state and verdict rows, read from sluice's own answer, never its logs or heads. For an inbox the control plane names, it carries the inbox's records as references, never raw material. Each is carried as the tool gave it, through the tool's command line or weir's record formats, and nothing of a repository's content is carried (core.11; boomdrive-cloud core.4 and core.28; ledger items c-sluice.a and c-inbox.a).
 
 ## Requirements
 

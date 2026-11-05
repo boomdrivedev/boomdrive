@@ -1,0 +1,28 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The control-plane interface, boomdrive-control. Each check is one task,
+# in the fast layer (core.7).
+language: 'rust'
+layer: 'library'
+
+tasks:
+  format:
+    command: 'cargo fmt --check -p boomdrive-control'
+    inputs: ['/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  lint:
+    command: 'cargo clippy -p boomdrive-control --all-targets --all-features -- -D warnings'
+    inputs: ['/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  typecheck:
+    command: 'cargo check -p boomdrive-control --all-targets --all-features'
+    inputs: ['/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  test:
+    command: 'cargo test -p boomdrive-control'
+    inputs: ['/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}

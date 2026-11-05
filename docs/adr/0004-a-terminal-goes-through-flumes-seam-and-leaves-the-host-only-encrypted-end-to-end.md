@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on what the runner owns and on the state directory; flume's statement, clause 107 and its actors table, and flume's terminal seam, `crates/flume-seams/src/terminal.rs`; agentplot/flywheel-cloud's record 0016 and rule core.18, cited by id; agentplot/flywheel-cloud `design/research/awesome-lists-disposition.md`, rows S6 and F15; the terminal-relay spec; rule core.11.
+Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on what the runner owns and on the state directory; flume's statement, clause 107 and its actors table, and flume's terminal seam, `crates/flume-seams/src/terminal.rs`; agentplot/boomdrive-cloud's record 0016 and rule core.18, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, rows S6 and F15; the terminal-relay spec; rule core.11.
 
 ## Context and problem statement
 

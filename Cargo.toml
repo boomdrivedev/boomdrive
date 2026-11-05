@@ -1,15 +1,15 @@
-# flywheel-runner's crates: flywheel, its library and binary;
-# flywheel-control, the interface the runner reaches its control plane
-# through; flywheel-crew, crew's implementation of it (design Decision 1);
-# and flywheel-hosted, the hosted control plane's, which holds the runner's
+# boomdrive's crates: boomdrive, its library and binary;
+# boomdrive-control, the interface the runner reaches its control plane
+# through; boomdrive-crew, crew's implementation of it (design Decision 1);
+# and boomdrive-hosted, the hosted control plane's, which holds the runner's
 # protocol (core.42). Each is a moon project of its own (core.7).
 [workspace]
 resolver = "2"
 members = [
-  "crates/flywheel",
-  "crates/flywheel-control",
-  "crates/flywheel-crew",
-  "crates/flywheel-hosted",
+  "crates/boomdrive",
+  "crates/boomdrive-control",
+  "crates/boomdrive-crew",
+  "crates/boomdrive-hosted",
 ]
 
 [workspace.package]

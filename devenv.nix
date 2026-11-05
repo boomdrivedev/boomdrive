@@ -53,13 +53,13 @@ let
     eval "$(${proto}/bin/proto activate bash --export --no-bin --config-mode upwards 2>/dev/null)"
   '';
 
-  # git, which flywheel:test runs (design 11): nixpkgs' build, pinned by
+  # git, which boomdrive:test runs (design 11): nixpkgs' build, pinned by
   # devenv.lock and asserted to be this version where it goes on PATH. Bump
   # the version with the lock.
   gitVersion = "2.55.0";
 
   # recutils, whose recfix weir-branch runs on every record file it writes,
-  # and so flywheel-crew:test runs (design Decision 21): nixpkgs' build,
+  # and so boomdrive-crew:test runs (design Decision 21): nixpkgs' build,
   # pinned by devenv.lock and asserted to be this version as git is.
   recutilsVersion = "1.9";
 
@@ -88,7 +88,7 @@ let
 in
 {
   # The system tools are this file's, pinned by devenv.lock; moon and Rust
-  # are .prototools', installed by the flywheel:proto:install task on
+  # are .prototools', installed by the boomdrive:proto:install task on
   # entering the shell and activated by enterShell. git, recutils and
   # OpenSpec are the releases pinned above, never the host's (core.8).
   packages = [
@@ -144,7 +144,7 @@ in
   # A task, not part of enterShell: the script `devenv print-dev-env` prints
   # holds enterShell and none of the tasks, so a check run sourcing it never
   # installs.
-  tasks."flywheel:proto:install" = {
+  tasks."boomdrive:proto:install" = {
     exec = ''
       cd "$(${lib.getExe pkgs.git} rev-parse --show-toplevel)"
       ${pkgs.rustup}/bin/rustup toolchain install

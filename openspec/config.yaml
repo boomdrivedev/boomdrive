@@ -1,8 +1,8 @@
 schema: spec-driven
 
 context: |
-  flywheel-runner is the thin runner on each host, one binary in Rust
-  named `flywheel`. It keeps the clones and views of the repositories its
+  Boomdrive is the thin runner on each host, one binary in Rust
+  named `boomdrive`. It keeps the clones and views of the repositories its
   configuration names, and turns the control plane's work into
   `flume launch` calls, carrying their results back. It reaches the
   control plane through one interface with two implementations: crew's,

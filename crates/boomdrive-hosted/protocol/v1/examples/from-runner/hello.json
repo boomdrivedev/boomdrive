@@ -1,0 +1,63 @@
+{
+  "protocol_version": 1,
+  "id": "runner:1",
+  "body": {
+    "hello": {
+      "interface_version": 1,
+      "runner_version": "boomdrive 0.1.0",
+      "tool_versions": {
+        "flume": {
+          "printed": "flume 0.4.1"
+        },
+        "git": {
+          "printed": "git version 2.48.1"
+        },
+        "herdr": {
+          "missing": "herdr is not on PATH"
+        },
+        "sluice": {
+          "printed": "sluice 0.61.1"
+        }
+      },
+      "repositories": [
+        "example/app",
+        "example/tools"
+      ],
+      "capacity": {
+        "printed": {
+          "running": 3,
+          "bound": 4,
+          "room": 1,
+          "streams": [
+            {
+              "name": "wide",
+              "priority": 5,
+              "running": 2,
+              "bound": 3,
+              "room": 1
+            },
+            {
+              "name": "default",
+              "priority": 0,
+              "running": 1,
+              "bound": null,
+              "room": null
+            },
+            {
+              "name": "work",
+              "priority": 0,
+              "running": 0,
+              "bound": 1,
+              "room": 1
+            }
+          ]
+        }
+      },
+      "leases": {
+        "command-1": 1,
+        "offer-1": 2,
+        "offer-2": 1
+      }
+    }
+  }
+}
