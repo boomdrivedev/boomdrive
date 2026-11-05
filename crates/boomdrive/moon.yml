@@ -1,26 +1,25 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # The binary, boomdrive. Each check is one task, in the fast layer
-# (core.7). Each builds boomdrive-control and boomdrive-crew too, so takes
-# their sources; and the tests of the tree's rules read the hosted
-# implementation's crate too, so test takes its files.
+# (core.7). Each builds boomdrive-control, boomdrive-crew and
+# boomdrive-hosted too, so takes their sources.
 language: 'rust'
 layer: 'application'
 
 tasks:
   format:
     command: 'cargo fmt --check -p boomdrive'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   lint:
     command: 'cargo clippy -p boomdrive --all-targets --all-features -- -D warnings'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   typecheck:
     command: 'cargo check -p boomdrive --all-targets --all-features'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   test:

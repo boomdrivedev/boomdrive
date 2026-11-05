@@ -48,7 +48,52 @@ signal-hook = "0.3"
 # the runner (design 11, 10).
 tempfile = "3"
 libc = "0.2"
-# The protocol's tests: each message and type checked against its
-# version's JSON Schema, with no default features, so that no reference is
-# fetched over the network or from a file (core.42).
+# Each message checked against its version's JSON Schema, by the hosted
+# implementation and the protocol's tests, with no default features, so
+# that no reference is fetched over the network or from a file (core.42).
 jsonschema = { version = "0.60", default-features = false }
+# The hosted implementation (design Decisions 2 to 5): the table's `url`
+# parsed as WHATWG has it; each partition's Ed25519 key, zeroized on drop,
+# made from the operating system's randomness, its bytes and signatures in
+# base64url; each message's id a UUID of version 7; and the host's name,
+# which an enrollment carries.
+url = "2"
+ed25519-dalek = "2"
+getrandom = "0.3"
+zeroize = "1"
+base64 = "0.22"
+uuid = { version = "1", features = ["v7"] }
+gethostname = "1"
+# The enrollment's one request, over rustls, its certificate verified
+# against the host's own roots (design Decision 4; record 0008). It serves
+# nothing (core.3).
+ureq = { version = "3", default-features = false, features = [
+  "rustls",
+  "platform-verifier",
+] }
+# The host's key in the macOS keychain, by keyring v4's macOS store, and
+# keyring's mock store, which a test keeps it in (design Decisions 3 and
+# 14; core.32).
+keyring-core = "1"
+apple-native-keyring-store = { version = "1", features = ["keychain"] }
+# Each partition's one outgoing socket, on the hosted implementation's
+# runtime of its own, over rustls with the host's own roots (design
+# Decisions 1 and 6; record 0008), and the fake hosted control plane, test
+# code alone, on the loopback address (design Decision 14). Neither
+# serves HTTP or WebSockets in the runner's sources (core.3).
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "net",
+  "io-util",
+  "time",
+  "sync",
+  "macros",
+] }
+tokio-tungstenite = { version = "0.30", features = ["rustls-tls-native-roots"] }
+futures-util = { version = "0.3", default-features = false, features = [
+  "sink",
+  "std",
+] }
+# `boomdrive enroll`'s one-time token, read without echo where standard
+# input is a terminal (design Decision 4; core.4).
+rpassword = "7"

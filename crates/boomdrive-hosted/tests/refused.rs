@@ -116,6 +116,80 @@ fn a_body_of_the_other_direction() {
     }
 }
 
+/// The runner-protocol spec's "Enrollment's kinds in the other direction":
+/// an `enroll` is a runner's alone, and `enrolled` and `enroll_refused` a
+/// control plane's alone, so each is refused as the other's.
+#[test]
+fn enrollments_kinds_in_the_other_direction() {
+    let enroll = example("from-runner", "enroll.json");
+    passes(&from_runner(), &enroll, "enroll.json");
+    refused(
+        &to_runner(),
+        &enroll,
+        "an enroll as a control plane's message",
+    );
+    for name in ["enrolled.json", "enroll_refused-a-lapsed-token.json"] {
+        let answer = example("to-runner", name);
+        passes(&to_runner(), &answer, name);
+        refused(
+            &from_runner(),
+            &answer,
+            &format!("{name} as a runner's message"),
+        );
+    }
+}
+
+/// The runner-protocol spec's "An enroll unsigned, or holding a token": an
+/// `enroll` holds the key's signature, the key is 32 bytes and the
+/// signature 64, and no `enroll` holds a token, which is the request's
+/// bearer (core.4, core.31). The runner's types read no token either.
+#[test]
+fn an_enroll_unsigned_or_holding_a_token() {
+    let validator = from_runner();
+    let name = "enroll.json";
+    passes(&validator, &example("from-runner", name), name);
+    let enrolling = |alter: &dyn Fn(&mut Value)| {
+        altered("from-runner", name, |message| {
+            alter(&mut message["body"]["enroll"]);
+        })
+    };
+    let unsigned = enrolling(&|enroll| {
+        enroll.as_object_mut().unwrap().remove("signature");
+    });
+    refused(&validator, &unsigned, "an enroll with no signature");
+    let key = example("from-runner", name)["body"]["enroll"]["key"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for (what, wrong) in [
+        ("31 bytes", key[..42].to_string()),
+        ("33 bytes", format!("{key}AA")[..44].to_string()),
+        ("64 bytes", "A".repeat(86)),
+        ("not base64url", format!("{}+", &key[..42])),
+    ] {
+        let short = enrolling(&|enroll| enroll["key"] = json!(wrong));
+        refused(
+            &validator,
+            &short,
+            &format!("an enroll whose key is {what}"),
+        );
+    }
+    let short = enrolling(&|enroll| enroll["signature"] = json!(key));
+    refused(
+        &validator,
+        &short,
+        "an enroll whose signature is 32 bytes, not 64",
+    );
+    let nameless = enrolling(&|enroll| enroll["machine"] = json!(""));
+    refused(&validator, &nameless, "an enroll whose machine is empty");
+    let holding = enrolling(&|enroll| enroll["token"] = json!("example-enrollment-token"));
+    refused(&validator, &holding, "an enroll holding a token");
+    assert!(
+        serde_json::from_value::<Message<FromRunner>>(holding).is_err(),
+        "the runner's types read an enroll holding a token"
+    );
+}
+
 /// The runner-protocol spec's "A field the version does not name": every
 /// object version 1 names is closed, at every depth. The runner's types
 /// read no such field of version 1's own objects either.

@@ -28,6 +28,18 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "enroll"
+          ],
+          "properties": {
+            "enroll": {
+              "$ref": "enrollment.schema.json#/$defs/enroll"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
             "hello"
           ],
           "properties": {

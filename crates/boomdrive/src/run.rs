@@ -7,14 +7,14 @@
 //! clone at once. The runner opens no listening socket: every connection
 //! it makes is outgoing (core.3).
 
-use crate::carry::{self, Carrier, Configured, Passed};
+use crate::carry::{Carrier, Configured, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env};
 use crate::git::Git;
 use crate::pass::{self, Outcome};
 use crate::planes::{self, Plane};
 use crate::terminal::{self, Relays};
 use crate::{clone, flume, hello, report, sluice};
-use boomdrive_control::{At, Wake};
+use boomdrive_control::Wake;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use std::ffi::OsString;
@@ -139,6 +139,8 @@ struct Control {
     programs: Programs,
     /// The terminals relaying, kept across control passes.
     relays: Relays,
+    /// Whether the last pull was read, kept across control passes.
+    reach: Reach,
 }
 
 impl Control {
@@ -154,11 +156,13 @@ impl Control {
                 &table.implementation_table,
                 file,
                 data,
+                table.poll_interval,
                 Box::new(|line| eprintln!("{line}")),
                 notices.waker(),
             ),
             relays: programs.relays(),
             programs,
+            reach: Reach::default(),
         }
     }
 }
@@ -326,10 +330,11 @@ impl Runner {
     /// configuration read again for each. A pass that cannot read it
     /// names why and keeps nothing. Where the runner carries a control
     /// plane's work, a control pass follows the first keeping pass, then
-    /// one each `poll_interval` after the start of the one before, sooner
-    /// before a lease lapses, and at once when the control plane wakes the
-    /// runner. Between passes, each landing it is told of is kept at
-    /// once. Stopped, it keeps no further repository and says so.
+    /// one each `poll_interval` after the start of the one before, sooner,
+    /// after a pass that reported, before a lease not yet lapsed lapses,
+    /// and at once when the control plane wakes the runner. Between
+    /// passes, each landing it is told of is kept at once. Stopped, it
+    /// keeps no further repository and says so.
     pub fn keep(&mut self, say: &mut dyn FnMut(String)) {
         let mut started = Some(self.config.clone());
         let mut fetch_interval = self.config.fetch_interval;
@@ -357,12 +362,9 @@ impl Runner {
             if carry_due.is_some_and(|due| Instant::now() >= due) {
                 let began = Instant::now();
                 let read = config::read(&self.file, &self.home);
-                carry_due = self.carry(read, say).map(|passed| {
-                    let left = passed
-                        .expires
-                        .map(|expires| carry::left(expires, At::now()));
-                    carry::next_due(began, Instant::now(), self.poll_interval(), left)
-                });
+                carry_due = self
+                    .carry(read, say)
+                    .map(|passed| passed.next_due(began, Instant::now(), self.poll_interval()));
             }
             loop {
                 if self.stop.load(Ordering::SeqCst) {
@@ -416,6 +418,7 @@ impl Runner {
             plane: Ok(plane),
             programs,
             relays,
+            reach,
             ..
         }) = &mut self.control
         else {
@@ -456,6 +459,7 @@ impl Runner {
             notices: &notices,
             control_dir: &control_dir,
             relays,
+            reach,
         };
         Some(carrier.pass(plane.as_mut(), say))
     }
@@ -562,11 +566,17 @@ mod tests {
         let ten = Instant::now();
         let ended = ten + Duration::from_secs(5);
         let minute = Duration::from_secs(60);
-        let control = next_due(ten, ended, minute, None);
+        let control = next_due(ten, ended, minute, None, true);
         let keeping = next_pass(ten, 2 * minute, ended);
         assert_eq!(control, ten + minute);
         assert_eq!(keeping, ten + 2 * minute);
-        let next_control = next_due(control, control + Duration::from_secs(5), minute, None);
+        let next_control = next_due(
+            control,
+            control + Duration::from_secs(5),
+            minute,
+            None,
+            true,
+        );
         assert_eq!(
             next_control, keeping,
             "the second control pass is due with the keeping pass"

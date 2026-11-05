@@ -14,6 +14,34 @@ doctest = false
 boomdrive-control = { path = "../boomdrive-control" }
 serde.workspace = true
 serde_json.workspace = true
+# The hosted table, read from the configuration's TOML (design Decision 2).
+toml.workspace = true
+url.workspace = true
+# Every message checked against version 1 before it is read or sent
+# (design Decisions 9 and 10).
+jsonschema.workspace = true
+# The host's key, its stores and its signatures (design Decision 3).
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+zeroize.workspace = true
+sha2.workspace = true
+base64.workspace = true
+keyring-core.workspace = true
+# Enrollment's one request (design Decision 4).
+ureq.workspace = true
+uuid.workspace = true
+gethostname.workspace = true
+# Each partition's one outgoing socket, proved at its upgrade, kept by
+# pings and tried again on a backoff (design Decisions 5 and 6).
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store.workspace = true
 
 [dev-dependencies]
-jsonschema.workspace = true
+tempfile.workspace = true
+# The backoff and the pings, tested on tokio's paused clock (design
+# Decision 14).
+tokio = { workspace = true, features = ["test-util"] }

@@ -17,7 +17,7 @@ mod fakes;
 #[path = "../../boomdrive-crew/tests/common/mod.rs"]
 mod records;
 
-use boomdrive::carry::{Carrier, Configured, Passed};
+use boomdrive::carry::{Carrier, Configured, Passed, Reach};
 use boomdrive::run::Notices;
 use boomdrive::terminal::{self, Relays};
 use boomdrive::{clone, config, facts, flume, report, sluice};
@@ -147,6 +147,7 @@ impl Host {
         let notices = Notices::new(events);
         let control_dir = report::control_dir(&data);
         let relays = Relays::new(terminal::Cli::new(self.herdr.program()), |_| {});
+        let reach = Reach::default();
         let carrier = Carrier {
             flume: &flume,
             sluice: &sluice,
@@ -156,6 +157,7 @@ impl Host {
             notices: &notices,
             control_dir: &control_dir,
             relays: &relays,
+            reach: &reach,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(crew, &mut |line| lines.push(line));
