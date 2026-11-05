@@ -27,6 +27,7 @@ fn the_readme_configuration_reads() {
     let (text, readme) = readme();
     let config = config::parse(toml_block(&text), &readme, Path::new("/h")).unwrap();
     assert!(!config.repositories.is_empty());
+    assert!(config.code_workspaces);
     assert_eq!(config.control_plane, None);
 }
 

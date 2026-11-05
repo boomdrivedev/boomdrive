@@ -314,8 +314,10 @@ pub fn recorded_path(git: &Git, bare: &Path) -> Result<Option<PathBuf>, Words> {
 
 /// Removes the view at `path`, a worktree of the clone `bare` that holds
 /// nothing the forge lacks, then its owner's folder where that leaves it
-/// empty (design 7). git refuses a view that has changed since.
-pub fn remove(git: &Git, bare: &Path, path: &Path) -> Result<(), Words> {
+/// empty (design 7). git refuses a view that has changed since. Gives the
+/// owner's folder where it is left standing, for the pass to look at for
+/// a workspace no kept owner has (core.43).
+pub fn remove(git: &Git, bare: &Path, path: &Path) -> Result<Option<PathBuf>, Words> {
     git.run(
         At::GitDir(bare),
         [
@@ -324,10 +326,13 @@ pub fn remove(git: &Git, bare: &Path, path: &Path) -> Result<(), Words> {
             path.as_os_str(),
         ],
     )?;
-    if let Some(owner) = path.parent() {
-        let _ = fs::remove_dir(owner);
+    let Some(owner) = path.parent() else {
+        return Ok(None);
+    };
+    match fs::remove_dir(owner) {
+        Ok(()) => Ok(None),
+        Err(_) => Ok(Some(owner.to_path_buf())),
     }
-    Ok(())
 }
 
 /// Forgets, in `bare`, the path the runner last put its view at.

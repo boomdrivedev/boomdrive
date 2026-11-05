@@ -1,8 +1,8 @@
 //! The library's loop, run in a thread on the scratch host: a landing it
 //! is told of between passes, a failure that does not stop it, and the
-//! configuration read again at every pass (the running spec, the clones
-//! spec's landings and the configuration spec's reading while running;
-//! design 10).
+//! configuration read again at every pass, `code_workspaces` among it
+//! (the running spec, the clones spec's landings and the configuration
+//! spec's reading while running; design 10).
 
 mod common;
 
@@ -241,6 +241,35 @@ fn a_repository_added_while_running() {
         Some("boomdrive: stopped")
     );
     assert!(scratch.home.join("Code/agentplot/sluice").exists());
+}
+
+#[test]
+fn workspaces_asked_for_while_running() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    scratch.configure(&every("1s", &["agentplot/flume"]));
+    let running = Running::start(&scratch);
+    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
+    let file = scratch.home.join("Code/agentplot/agentplot.code-workspace");
+    assert!(!file.exists(), "a workspace not asked for");
+
+    rewrite(
+        &scratch,
+        &format!(
+            "code_workspaces = true\n{}",
+            every("1s", &["agentplot/flume"])
+        ),
+    );
+
+    let written = format!("boomdrive: workspace written at {}: flume", file.display());
+    assert_eq!(running.until(&written), [written.as_str()]);
+    assert_eq!(
+        running.stop().last().map(String::as_str),
+        Some("boomdrive: stopped")
+    );
+    let workspace: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&file).expect("the workspace")).expect("JSON");
+    assert_eq!(workspace["folders"], serde_json::json!([{"path": "flume"}]));
 }
 
 #[test]

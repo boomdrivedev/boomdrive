@@ -1,7 +1,8 @@
 //! The runner's configuration (design 2): one TOML file naming the
 //! repositories a host keeps by their GitHub address, the root their
-//! views are kept under and how often they are fetched, and the control
-//! plane whose work it carries, each key named for what it holds
+//! views are kept under, how often they are fetched, whether each owner's
+//! views have a VS Code workspace, and the control plane whose work it
+//! carries, each key named for what it holds
 //! (core.12). A refusal names the file, the line and the key or entry. It
 //! is built from what is wrong and never from the file's text around it,
 //! a value put there by mistake among it (core.4).
@@ -24,6 +25,11 @@ pub struct Config {
     pub repository_root: PathBuf,
     /// How often every repository is fetched.
     pub fetch_interval: Duration,
+    /// Whether each owner of the kept repositories has a VS Code
+    /// workspace beside its views,
+    /// `<repository_root>/<owner>/<owner>.code-workspace` (core.43): false
+    /// where the file names none.
+    pub code_workspaces: bool,
     /// Each repository the host keeps, in the file's order.
     pub repositories: Vec<Address>,
     /// `[control_plane]`, where the file holds it. Read at every pass, it
@@ -165,6 +171,7 @@ impl Interval {
 struct File {
     repository_root: Option<Spanned<Value>>,
     fetch_interval: Option<Spanned<Value>>,
+    code_workspaces: Option<Spanned<Value>>,
     #[serde(default, deserialize_with = "list")]
     repositories: Option<Spanned<Entries>>,
     #[serde(default, deserialize_with = "table")]
@@ -277,6 +284,19 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
             })?,
     };
 
+    let code_workspaces = match &raw.code_workspaces {
+        None => false,
+        Some(asked) => asked.get_ref().as_bool().ok_or_else(|| {
+            refuse(
+                asked.span().start,
+                format!(
+                    "`code_workspaces` is {}: it is `true` or `false`",
+                    named(asked.get_ref())
+                ),
+            )
+        })?,
+    };
+
     let entries = raw.repositories.ok_or_else(|| {
         format!(
             "{}: `repositories` is required: the repositories this host keeps, \
@@ -323,6 +343,7 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
     Ok(Config {
         repository_root,
         fetch_interval,
+        code_workspaces,
         repositories: repositories
             .into_iter()
             .map(|(address, _)| address)
@@ -601,6 +622,29 @@ mod tests {
         );
     }
 
+    /// The configuration spec's "No workspaces setting".
+    #[test]
+    fn no_workspaces_setting() {
+        let config = read("repositories = [\"agentplot/flume\"]\n").unwrap();
+        assert!(!config.code_workspaces);
+        let config = read("code_workspaces = false\nrepositories = []\n").unwrap();
+        assert!(!config.code_workspaces);
+    }
+
+    /// The configuration spec's "Workspaces asked for in words", and a
+    /// number refused alike.
+    #[test]
+    fn workspaces_asked_for_in_words() {
+        for (value, named) in [("\"yes\"", "\"yes\""), ("1", "not a string")] {
+            assert_eq!(
+                read(&format!("repositories = []\ncode_workspaces = {value}\n")),
+                Err(format!(
+                    "{FILE}:2: `code_workspaces` is {named}: it is `true` or `false`"
+                ))
+            );
+        }
+    }
+
     #[test]
     fn a_period_of_nothing() {
         for interval in ["0m", "soon"] {
@@ -733,11 +777,13 @@ mod tests {
         assert_eq!(
             read(
                 "repository_root = \"/srv/code\"\nfetch_interval = \"90s\"\n\
+                 code_workspaces = true\n\
                  repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n"
             ),
             Ok(Config {
                 repository_root: PathBuf::from("/srv/code"),
                 fetch_interval: Duration::from_secs(90),
+                code_workspaces: true,
                 repositories: vec![address("agentplot/flume"), address("afterthought/crew")],
                 control_plane: None,
             })

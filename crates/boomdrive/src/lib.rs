@@ -10,6 +10,7 @@ pub const BEFORE_RENAME: &str = "flywheel";
 
 pub mod carry;
 pub mod clone;
+pub mod code_workspace;
 pub mod config;
 pub mod facts;
 pub mod flume;
