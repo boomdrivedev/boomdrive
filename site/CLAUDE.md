@@ -37,3 +37,9 @@ the task and the brief's path. It is not written up as an OpenSpec change.
   root path: the site is served under `/boomdrive-web/`, its repository's
   name, agentplot/boomdrive-web (`docs/adr/0002-flywheel-is-renamed-boomdrive.md`).
 - Bare layout: `boomdrive-web.git/` beside `main/`.
+
+**Specs.** `openspec/specs/` changes only through an OpenSpec change: a
+proposal, a delta spec, and tasks, validated with `openspec validate --strict`
+and archived with `openspec archive`, so the spec reconciles. This holds for a
+fix or a chore too. Where the work changes a requirement, it carries that
+change in the same branch. Never edit a spec file directly.
