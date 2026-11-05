@@ -4,11 +4,18 @@ The thin runner on each host, one binary named `flywheel`. It keeps the
 clones and views of the repositories its configuration names, and turns
 the control plane's work into `flume launch` calls, carrying their
 results back. It reaches the control plane through one interface,
-`crates/flywheel-control`: crew's implementation, `crates/flywheel-crew`,
-which reads and writes records in crew's state repository, now, and a
-hosted control plane's, an outgoing WebSocket, later. The hosted
-implementation's crate, `crates/flywheel-hosted`, holds the runner's
-protocol with it already, one JSON Schema per version under `protocol/`.
+`crates/flywheel-control`, and carries two implementations of it:
+crew's, `crates/flywheel-crew`, which reads and writes records in crew's
+state repository, and a hosted control plane's, `crates/flywheel-hosted`,
+which keeps one outgoing WebSocket for each partition the host is
+enrolled in, and holds the runner's protocol with it, one JSON Schema per
+version under `protocol/`. The hosted table, `[control_plane.hosted]`,
+names the control plane's `url` and its partitions, each a `label` and
+the `repositories` it is served, and holds no token or key.
+`flywheel enroll <label>` enrols a partition once: it reads the
+one-time token from standard input, makes the partition's key on the
+host and keeps it only in the host's credential store, the macOS
+keychain or `systemd-creds`.
 `flywheel run` keeps the repositories its configuration names: a bare
 clone of each in its data directory, fetched on a timer, and a view of
 each under the repository root. Where the configuration names a control

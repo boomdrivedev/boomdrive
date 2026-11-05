@@ -1,6 +1,7 @@
 //! README's examples are what the runner reads (task 1.2, Task notes
-//! 9.4): its configuration, and with it its `[control_plane]` table,
-//! which opens crew's implementation.
+//! 9.4, task 6.4): its configuration, and with it its `[control_plane]`
+//! table, which opens crew's implementation, and its hosted table, which
+//! the hosted implementation reads.
 
 use flywheel::{config, planes};
 use std::path::{Path, PathBuf};
@@ -53,4 +54,52 @@ fn the_readme_control_plane_opens_crews_implementation() {
         Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
+}
+
+/// The block under "Dialing the hosted control plane", written after the
+/// configuration's, is a table the hosted implementation reads, each of
+/// its partitions served repositories the host keeps. Its enrolment of a
+/// label it lacks is refused naming its partitions, before any credential
+/// store is looked for or any request made.
+#[test]
+fn the_readme_hosted_table_reads() {
+    let (text, readme) = readme();
+    let (_, dialing) = text
+        .split_once("\n## Dialing the hosted control plane\n")
+        .expect("README says how the runner dials the hosted control plane");
+    let file = format!("{}\n{}", toml_block(&text), toml_block(dialing));
+    let config = config::parse(&file, &readme, Path::new("/h")).unwrap();
+    let table = config.control_plane.expect("a control plane named");
+    assert_eq!(table.implementation, "hosted");
+    assert_eq!(table.poll_interval, Duration::from_secs(60));
+    let kept: Vec<String> = config
+        .repositories
+        .iter()
+        .map(|address| format!("{}/{}", address.owner(), address.name()))
+        .collect();
+    let partitions = table.implementation_table["partitions"]
+        .as_array()
+        .expect("partitions");
+    for partition in partitions {
+        for repository in partition["repositories"].as_array().expect("repositories") {
+            let repository = repository.as_str().expect("an address");
+            assert!(
+                kept.iter().any(|address| address == repository),
+                "{repository}"
+            );
+        }
+    }
+    let refusal = planes::enrol(
+        &table.implementation,
+        &table.implementation_table,
+        &readme,
+        "garden",
+        || Ok(String::new()),
+    )
+    .unwrap_err();
+    assert_eq!(
+        refusal.words,
+        "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
+    );
+    assert!(refusal.host_to_fix);
 }

@@ -4,11 +4,12 @@ The runner on each host, one binary named `flywheel`. It keeps the
 clones and views of the repositories its configuration names, and turns
 the control plane's work into `flume launch` calls, carrying their
 results back. It reaches the control plane through one interface,
-`crates/flywheel-control`. crew's implementation, `crates/flywheel-crew`,
-reads and writes records in crew's state repository. A hosted control
-plane's, an outgoing WebSocket, is not yet built: its crate,
-`crates/flywheel-hosted`, holds the runner's protocol with it, one JSON
-Schema per version under `protocol/`. From this tree:
+`crates/flywheel-control`, and carries two implementations of it.
+crew's, `crates/flywheel-crew`, reads and writes records in crew's state
+repository. A hosted control plane's, `crates/flywheel-hosted`, keeps one
+outgoing WebSocket for each partition the host is enrolled in, and holds
+the runner's protocol with it, one JSON Schema per version under
+`protocol/`. From this tree:
 
     devenv shell -- cargo run -p flywheel -- --version
 
@@ -111,9 +112,9 @@ state_repository = "afterthought/madswan-state"
 ```
 
 `type` names the implementation, and is required. This binary carries
-`crew`. Any other word, `hosted` among them, is named at start with the
-word it carries, and no control pass runs, though the repositories are
-kept all the same. `poll_interval` is how often a control pass is made,
+`crew` and `hosted`. Any other word is named at start with the words it
+carries, and no control pass runs, though the repositories are kept all
+the same. `poll_interval` is how often a control pass is made,
 written as `fetch_interval` is; `1m` where none is named. The table
 `type` names is handed whole to the implementation, whose keys are its
 own. The table is read when the runner starts, so a change to it takes
@@ -166,6 +167,82 @@ identity `<source>/<name>@<version>`, and names no kinds file, kind
 source or lock. It names a stream only where the launch does. The
 host's Flume configuration declares its streams, the stream each
 repository's launches run in, and where its kinds come from.
+
+## Dialing the hosted control plane
+
+With `type = "hosted"`, the runner dials a hosted control plane:
+
+```toml
+[control_plane]
+type = "hosted"
+poll_interval = "1m"
+
+[control_plane.hosted]
+url = "https://control.example"
+
+[[control_plane.hosted.partitions]]
+label = "home"
+repositories = ["agentplot/flume"]
+
+[[control_plane.hosted.partitions]]
+label = "work"
+repositories = ["afterthought/crew", "agentplot/flume"]
+```
+
+`url` is the control plane's address: `https://`, or `http://` to a
+loopback address alone, with no user, query or fragment. It may hold a
+path, under which the runner enrols at `runner/enrol` and connects at
+`runner/connect`. Each partition is one enrolment, with a key of its
+own. Its `label` is the host's own name for it, 1 to 32 lowercase
+letters, digits and `-`, starting with a letter. Its
+`repositories` are those it is served, which may be none: only those the
+host keeps go in its hello, and two partitions may name one repository,
+which the host keeps in its one clone. The table holds no token and no
+key, and one that names either is refused, saying the key is made by
+`flywheel enroll`.
+
+Each partition is enrolled once:
+
+    flywheel enroll [--config <file>] [--json] <label>
+
+It reads the partition's one-time token from standard input, asking for
+it without echo where that is a terminal, and never from an argument or
+the environment. It makes the partition's Ed25519 key on the host, and
+registers its public key with the control plane by one request bearing
+the token. The key is kept only once the control plane has enrolled it,
+and only in the host's credential store: the login keychain on a Mac, or
+on Linux a user's credential encrypted by `systemd-creds` of systemd 256
+or later. It never leaves the host, and no file holds it in the clear.
+`enroll` writes no configuration and nothing in the data directory, and
+takes no lock, so a running runner dials a partition enrolled beside it
+at its next try. It answers `<label>: enrolled as host <host>`, or with
+`--json` `{"enrolled":{"partition":"<label>","host":"<host>"}}`, and
+exits 0. A refusal is its words on standard error, or with `--json`
+`{"refused":{"refusal":{"reason":"<words>"}}}`, and exits 1 where the
+control plane refused the enrolment or could not be reached, and 2
+where the host must be fixed first: its configuration, its credential
+store or the token.
+
+Each partition keeps one outgoing WebSocket, its key proved at every
+connection by a statement it signs afresh. The socket is kept by the
+WebSocket protocol's own pings, and one lost is tried again after a
+wait drawn at random, up to a cap that doubles from one second to
+`poll_interval`. Its first message is the partition's whole hello,
+naming only that partition's repositories and leases, and each id its
+control plane gives is the runner's as `<label>/<id>`, so a launch's
+mark is `flywheel:<label>/<id>`. A pull gives each reached partition's
+work, and the control plane's work wakes the runner when it comes. A
+report goes to each partition as its own part, answered by its id, and
+one unanswered is sent again under that id after a reconnect. Of each
+tool's answer only the copy the protocol's version names goes up,
+checked against it before it goes: a place's status or entry that fails
+goes up as `null`, and the host part as `missing`, with a line naming
+the schema's path, never a value. Every message the
+control plane sends is checked before it is read. A partition says one
+line when its control plane becomes unreachable, `<label>: the control
+plane is unreachable: <why>`, and one when it is reached again. A
+terminal the control plane opens is closed at once, since this host's
+Flume relays none.
 
 ## Rules and checks
 
