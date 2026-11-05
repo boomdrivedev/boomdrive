@@ -31,12 +31,17 @@ keyring-core.workspace = true
 ureq.workspace = true
 uuid.workspace = true
 gethostname.workspace = true
+# Each partition's one outgoing socket, proved at its upgrade, kept by
+# pings and tried again on a backoff (design Decisions 5 and 6).
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
-tokio.workspace = true
-tokio-tungstenite.workspace = true
-futures-util.workspace = true
+# The backoff and the pings, tested on tokio's paused clock (design
+# Decision 14).
+tokio = { workspace = true, features = ["test-util"] }

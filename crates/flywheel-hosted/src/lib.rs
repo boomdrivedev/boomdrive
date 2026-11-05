@@ -3,11 +3,12 @@
 //! that holds the runner's protocol with it: one JSON Schema per version,
 //! under `protocol/`, and the runner's types for its messages (core.42).
 //! It holds the hosted table, the host's key and its stores, a
-//! partition's enrolment and the checks of version 1's messages. It
-//! implements no `ControlPlane` yet, and `planes.rs` lists it once it
-//! does.
+//! partition's enrolment, each partition's connection and the checks of
+//! version 1's messages. It implements no `ControlPlane` yet, and
+//! `planes.rs` lists it once it does.
 
 pub mod check;
+pub mod connection;
 pub mod enrolment;
 pub mod key;
 pub mod protocol;

@@ -76,8 +76,11 @@ ureq = { version = "3", default-features = false, features = [
 # 14; core.32).
 keyring-core = "1"
 apple-native-keyring-store = { version = "1", features = ["keychain"] }
-# The fake hosted control plane, test code alone, on the loopback address
-# (design Decision 14).
+# Each partition's one outgoing socket, on the hosted implementation's
+# runtime of its own, over rustls with the host's own roots (design
+# Decisions 1 and 6; record 0008), and the fake hosted control plane, test
+# code alone, on the loopback address (design Decision 14). Neither
+# serves HTTP or WebSockets in the runner's sources (core.3).
 tokio = { version = "1", features = [
   "rt-multi-thread",
   "net",
@@ -86,7 +89,7 @@ tokio = { version = "1", features = [
   "sync",
   "macros",
 ] }
-tokio-tungstenite = "0.30"
+tokio-tungstenite = { version = "0.30", features = ["rustls-tls-native-roots"] }
 futures-util = { version = "0.3", default-features = false, features = [
   "sink",
   "std",

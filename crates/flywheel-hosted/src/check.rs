@@ -66,6 +66,14 @@ pub fn to_runner() -> &'static Validator {
     VALIDATOR.get_or_init(|| validator("to-runner.schema.json"))
 }
 
+/// The validator of a message's own id, `shared.schema.json`'s
+/// `message_id`, by which a message that fails its envelope is still
+/// named in its refusal.
+pub fn message_id() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator("shared.schema.json#/$defs/message_id"))
+}
+
 /// Why `value` fails `validator`: its first error's path in the value and
 /// in the schema, and no value; or none, where it passes.
 pub fn failure(validator: &Validator, value: &Value) -> Option<String> {

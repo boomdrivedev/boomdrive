@@ -138,7 +138,8 @@ whose socket is then `ws`.
 
 The schema checks a message's form, not the path it came by: a control
 plane refuses an `enrol` on the socket, and any other kind on
-`runner/enrol`, by its path.
+`runner/enrol`, by its path, and a runner refuses an `enrolled` or
+`enrol_refused` on the socket with `message_refused`.
 
 ## The signatures
 
