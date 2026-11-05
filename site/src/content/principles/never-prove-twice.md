@@ -4,7 +4,7 @@ title: "Never prove twice"
 summary: "The task runner's cache, keyed by what each task reads and shared across every worktree, agent and CI run, means a check that passed on these inputs is not run again."
 line: "A check that passed on these inputs is not run again."
 tools:
-  - name: tailrace
+  - name: timber
     href: https://agentplot.github.io/timber/#one-store-three-jobs
   - name: sluice
     href: https://agentplot.github.io/sluice/reference/state/#the-log

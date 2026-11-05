@@ -40,7 +40,7 @@ const wheel = (ink: string, accent: string, ground: string) =>
   `<g fill="${ink}"><circle cx="62" cy="24" r="9"/><circle cx="93.2" cy="78" r="9"/><circle cx="30.8" cy="78" r="9"/></g>` +
   `<circle cx="62" cy="60" r="18" fill="${accent}"/><circle cx="62" cy="60" r="5.5" fill="${ground}"/>`;
 const mark = wheel("var(--wheel)", "var(--ap-accent)", "var(--ap-bg)");
-const gold = member("flywheel").accent;
+const gold = member("boomdrive").accent;
 const favicon =
   "data:image/svg+xml," +
   encodeURIComponent(
@@ -63,7 +63,7 @@ const repo = "https://github.com/agentplot/boomdrive-web";
   </head>
   <body class:list={[{ wide }]}>
     <div class="masthead">
-      <FamilyBar current="flywheel" />
+      <FamilyBar current="boomdrive" />
       <header class="topbar">
         <div class="row">
           <a class="site-title" href={url("/")}>
@@ -110,7 +110,7 @@ const repo = "https://github.com/agentplot/boomdrive-web";
       <slot />
     </main>
     <footer>
-      {family && <FamilyFooter current="flywheel" />}
+      {family && <FamilyFooter current="boomdrive" />}
       <p class="colophon">Learning in public how to run a fleet of coding agents.</p>
     </footer>
   </body>
