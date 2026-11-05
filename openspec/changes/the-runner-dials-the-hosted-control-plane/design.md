@@ -459,7 +459,7 @@ Every test stays inside the gate. It reaches no network beyond the loopback addr
   - the timer and the line of Decision 13 over the fake control plane of `flywheel-control`;
   - a lapsed lease's offer, act and command, over the same fake.
 
-  The binary's tests use a loopback port with nothing on it, and an empty data directory and `HOME` of the test's own, so no keychain is reached: an enrolment that is refused writes no key.
+  The binary's tests use a loopback port with nothing on it, an empty data directory and `HOME` of the test's own, and a stub `systemd-creds` first on `PATH` that keeps no credential, so no keychain or credential is reached: on macOS a `HOME` of the test's own holds no default keychain, so a key read there fails before any dial, and an enrolment that is refused writes no key. The in-process tests of `planes.rs` open the hosted implementation only with a table it refuses, before it looks for the host's store.
 - **The rules tests** hold the binary to depending on `flywheel-hosted` and naming it only in `planes.rs` among its sources. No file outside the crate is a JSON Schema, and none of `flywheel-control` or `flywheel-crew` names it (control-plane-interface spec).
 
 ### Rules relied on
@@ -596,13 +596,13 @@ Examples: `from-runner/enrol.json`, `to-runner/enrolled.json`, `to-runner/enrol_
 
 The key's bytes pass to `systemd-creds` on standard input and come back on standard output. They never go in an argument, and are never written to a file of the runner's. `SigningKey` is zeroized on drop (ed25519-dalek's `zeroize` feature). The name forms are Decision 3's.
 
-**3.3** `enrolment.rs`: `enrol(table, label, token, store, machine) -> Result<Enrolled, Refusal>`, where `store` finds the host's store, and is called once the partition is found and before the token is checked, so a store refused makes no request; and `Refusal` holds the words and `host_to_fix`, whether the host must be fixed, which gives the exit. It says nothing beyond its answer, which the binary prints.
+**3.3** `enrolment.rs`: `enrol(table, label, token, store, machine) -> Result<Enrolled, Refusal>`, where `store` finds the host's store, and is called once the partition is found, so a store refused makes no request; `token` gives the token, or words saying why it could not be read, and is called once the store is found, so a terminal is asked for the token only after the configuration and the store (Decision 4's order); and `Refusal` holds the words and `host_to_fix`, whether the host must be fixed, which gives the exit. It says nothing beyond its answer, which the binary prints.
 
 - The `POST` is made by ureq with rustls.
 - The answer is checked by the `check` module before it is read.
 - The signature context is a function shared with Decision 5's, each built from its fields by one `context(label: &str, fields: &[&[u8]])`.
 
-`flywheel_hosted::enrol(table: &toml::Table, file: &Path, label: &str, token: &str)` is what `planes.rs` lists. It finds the store by `store_for_host()`, and the machine's name by gethostname.
+`flywheel_hosted::enrol(table: &toml::Table, file: &Path, label: &str, token: impl FnOnce() -> Result<String, String>)` is what `planes.rs` lists. It finds the store by `store_for_host()`, and the machine's name by gethostname.
 
 A test builds the enrolment's and the connection's contexts from the README's fixed key, token, origin, time and nonce, and compares them with the README's worked bytes, read from the README itself.
 
@@ -655,10 +655,10 @@ A `$ref` is resolved among `FILES` by its file and its JSON pointer. A closed ob
 ```rust
 pub struct Entry { pub word: &'static str, pub open: Opener, pub enrol: Option<Enroller> }
 pub const PLANES: [Entry; 2] = [ /* crew, hosted */ ];
-pub fn enrol(word, table, file, label, token) -> Result<Enrolled, Refusal>;
+pub fn enrol(word, table, file, label, token: impl FnOnce() -> Result<String, String>) -> Result<Enrolled, Refusal>;
 ```
 
-`Opener` gains `poll_interval: Duration`. `run.rs`'s `Control::open` passes `table.poll_interval`. `Enrolled` and `Refusal` are the binary's own plain types, a host id and words with whether the host must be fixed, which the hosted crate's are mapped into in `planes.rs`.
+`Opener` gains `poll_interval: Duration`. `run.rs`'s `Control::open` passes `table.poll_interval`. `Enroller` takes the token as a boxed `FnOnce`, which `planes::enrol` hands on uncalled: a word not carried, or one whose implementation enrols nothing, is refused before the token is asked for, and the implementation asks for it once its partition and store are found. `Enrolled` and `Refusal` are the binary's own plain types, a host id and words with whether the host must be fixed, which the hosted crate's are mapped into in `planes.rs`.
 
 **6.2** `src/enroll.rs` and `Command::Enroll { config, json, label }` in `main.rs`.
 
@@ -673,6 +673,6 @@ The binary's tests are in `tests/enroll.rs` (Decision 14).
 - `the_crates_depend_as_decision_1_has_them` gains `flywheel`'s dependency on it;
 - `only_the_hosted_implementations_crate_holds_the_protocol` reads `crates/flywheel/src` but `planes.rs`, `crates/flywheel-control` and `crates/flywheel-crew` for the names, and every file under `crates/` outside the hosted crate for `.schema.json`. `flywheel`'s `Cargo.toml` is the one manifest that names it.
 
-Every task of `crates/flywheel/moon.yml` that builds the binary, its lint, typecheck and test, takes `/crates/flywheel-hosted/**/*` among its inputs, as the rules test `each_task_takes_the_sources_of_every_crate_it_builds` asks. `flywheel-hosted/moon.yml`'s test task takes `/crates/flywheel/tests/fixtures/**/*`, which its cut's tests read.
+Every task of `crates/flywheel/moon.yml` that builds the binary, its format, lint, typecheck and test, takes `/crates/flywheel-hosted/**/*` among its inputs, as the rules test `each_task_takes_the_sources_of_every_crate_it_builds` asks. `flywheel-hosted/moon.yml`'s test task takes `/crates/flywheel/tests/fixtures/**/*`, which its cut's tests read.
 
 **6.4** README and CLAUDE.md: the hosted implementation built, its table, `flywheel enroll`, and the control plane reached through an outgoing WebSocket now, no longer later.
