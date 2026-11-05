@@ -22,6 +22,11 @@ use std::fmt;
 /// `protocol_version`.
 pub const VERSION: u32 = 1;
 
+/// This version's name: the subprotocol a socket's upgrade asks for, and
+/// the start of every context a key signs (the protocol's README, *The
+/// paths* and *The signatures*).
+pub const SUBPROTOCOL: &str = "flywheel-runner.v1";
+
 /// The address each file's `$id` is under: its own among the repository's
 /// raw files at `main`. No check fetches it.
 pub const ADDRESS: &str = "https://raw.githubusercontent.com/agentplot/flywheel-runner/main/crates/flywheel-hosted/protocol/v1/";

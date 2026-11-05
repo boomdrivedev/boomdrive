@@ -14,6 +14,29 @@ doctest = false
 flywheel-control = { path = "../flywheel-control" }
 serde.workspace = true
 serde_json.workspace = true
+# The hosted table, read from the configuration's TOML (design Decision 2).
+toml.workspace = true
+url.workspace = true
+# Every message checked against version 1 before it is read or sent
+# (design Decisions 9 and 10).
+jsonschema.workspace = true
+# The host's key, its stores and its signatures (design Decision 3).
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+zeroize.workspace = true
+sha2.workspace = true
+base64.workspace = true
+keyring-core.workspace = true
+# Enrolment's one request (design Decision 4).
+ureq.workspace = true
+uuid.workspace = true
+gethostname.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store.workspace = true
 
 [dev-dependencies]
-jsonschema.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
