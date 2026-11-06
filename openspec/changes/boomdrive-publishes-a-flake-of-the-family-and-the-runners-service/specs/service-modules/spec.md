@@ -1,5 +1,9 @@
 # Service modules
 
+## Purpose
+
+The flake's nix-darwin and NixOS modules for the runner's service: their options, which are the runner's file under its own names, the file they render and link, the launchd agent and systemd user unit they keep and restart, the tools they put on `PATH`, and what they leave to the host, its credentials and enrollment among them (core.46; record 0020).
+
 ## ADDED Requirements
 
 ### Requirement: The options are the runner's file

@@ -6,19 +6,27 @@ The user's idea, 2026-11-05, in the brief's words: Boomdrive publishes a public 
 
 The same day, reading that configuration's design for retiring its views, the user wrote: "I think I would like to see this combined with the Boom Drive flake. I haven't seen that design yet so I don't know if someone forgot about it". That design turns on `code_workspaces` and widens the runner's repositories in the host's own copy of the runner's file. The user wants those settings to come through this flake's module.
 
-Record 0012 already says this repository publishes a flake. Nothing builds it yet. A host that runs the runner today packages it, writes its file, keeps its service and restarts it, all in its own configuration.
+Reading this change's design, the user ruled how the set reaches a host: "the whole point of the flake is to distribute all of the binaries so it should be the runner, flume, and sluice"; "I have a Cachix open-source binary cache that we can use to publish the binaries so that people don't have to rebuild them"; and "Let's set up publishing to cachix". So the flake distributes built binaries of the runner, Flume and sluice through the user's Cachix cache, and a host that trusts it compiles nothing.
+
+Record 0012 already says this repository publishes a flake. Nothing builds it yet. A host that runs the runner today packages it, compiles it, writes its file, keeps its service and restarts it, all in its own configuration.
 
 ## What Changes
 
-- **Record 0020 and rules core.44, core.45 and core.46**, with core.7 and core.37 amended, in this change's commit beside its design.
-- **A flake at the root, the rest under `nix/`,** as one moon project, `nix`, with its own format, lint, type check and test in the fast layer.
+- **Record 0020 and rules core.44 to core.47**, with core.7 and core.37 amended, in this change's commit beside its design.
+- **A flake at the root, the rest under `nix/`,** as one moon project, `nix`, with its own format, lint, type check and test in the fast layer. It owns the flake's workflow too.
 - **The package set.**
   - The runner, built from this tree.
-  - Flume and sluice, each built from source at a release tag, from sluice's own flake and from a recipe of this flake's for Flume until Flume publishes one.
+  - Flume and sluice, each from the source of a release tag, sluice's through its own flake and Flume's through a recipe of this flake's until Flume publishes one.
   - The two tools' herdr plugins, from the same tags.
   - Each package reports its tag's version, on four systems.
   - A tool's version moves by its input. A package is replaced through the modules' options.
-- **The set is proven in the gate.** The shell gives the runner's tests the set's Flume and sluice, built from the same lock, by path. The tests run each, check its version against its tag, and read the answers a scratch host gives with the runner's own readers.
+- **The binaries, through the family's cache.**
+  - A workflow, `.github/workflows/cache.yml`, builds every package for each of the four systems on GitHub's hosted runners, and pushes them to `boomdrive` on Cachix. It runs at each push to `main` and each tag `v*`, the runner's package among them.
+  - The flake's `nixConfig` names the cache and its key as a substituter.
+  - A host whose nix trusts the cache substitutes the set. A host that does not builds the same paths from source.
+  - The modules' packages are the flake's own, made with its own nixpkgs, so they are the paths the cache holds.
+  - The push's token is the GitHub Actions secret `CACHIX_AUTH_TOKEN`, which the user adds.
+- **The set is proven in the gate.** The shell gives the runner's tests the set's Flume and sluice, from the same lock, by path, substituted from the cache. The tests run each, check its version against its tag, and read the answers a scratch host gives with the runner's own readers.
 - **Two modules, one set of options, `services.boomdrive`.**
   - nix-darwin: a launchd agent of the primary user's login.
   - NixOS: a systemd user unit of a named user, lingering.
@@ -26,13 +34,14 @@ Record 0012 already says this repository publishes a flake. Nothing builds it ye
   - The file is rendered in Nix, named by the service as `--config`, and linked at the runner's own path. A changed file or package restarts the runner.
   - The runner and the set's Flume and sluice go in the system profile, and the service's `PATH` is the user's profiles, then the system's.
   - A key named for a credential fails evaluation. Enrollment stays `boomdrive enroll <label>` on the host.
-- **The README** gains how to install with nix, and **CLAUDE.md** names the new project.
+- **The README** gains how to install with nix and trust the cache, and **CLAUDE.md** names the new project.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `family-packages`: the flake's package set, how each tool is built and versioned, how a set is proven, and how a host overrides one.
+- `family-packages`: the flake's package set, how each tool's package is made and versioned, how a set is proven, and how a host overrides one.
+- `binary-cache`: the family's cache, the workflow that builds and pushes the set to it, the flake's `nixConfig`, and what a host that trusts it, or does not, gets.
 - `service-modules`: the nix-darwin and NixOS modules, their options, the file they write, the service they keep and what they leave to the host.
 
 ### Modified Capabilities
@@ -41,23 +50,25 @@ None. The runner's own behaviour, its file and its command line do not change.
 
 ## Impact
 
-- `docs/architecture/core.md` gains core.44 to core.46 and amends core.7 and core.37, and `docs/adr/` gains record 0020, in this change's commit.
-- New: `flake.nix`, `flake.lock`, and `nix/`, holding the packages, the modules, their tests and the project's `moon.yml`.
+- `docs/architecture/core.md` gains core.44 to core.47 and amends core.7 and core.37, and `docs/adr/` gains record 0020, in this change's commit.
+- New: `flake.nix`, `flake.lock`, `.github/workflows/cache.yml`, and `nix/`, holding the packages, the modules, their tests and the project's `moon.yml`.
 - `.moon/workspace.yml` lists the `nix` project.
-- `devenv.nix` pins nix, nixfmt and statix for the project's tasks, fetches the flake's inputs from its lock for the gate, and gives the set's Flume and sluice to the runner's tests by path, never on `PATH`.
+- `devenv.nix` pins nix, nixfmt, statix and actionlint for the project's tasks, fetches the flake's inputs from its lock for the gate, pulls from the family's cache, and gives the set's Flume and sluice to the runner's tests by path, never on `PATH`.
 - `check-toolchain.sh` holds the new pins. `treefmt.nix` excludes the rendered files the tests compare byte for byte.
 - `crates/boomdrive/tests/` gains a test of the set's tools, and one reading each file the modules render. `crates/boomdrive/moon.yml`'s test reads those files and the lock.
 - `README.md` and `CLAUDE.md`.
-- Outside this repository: Flume is asked for a flake of its own; sluice and timber to carry each release's version in the tagged tree; and a host's configuration imports the modules, with options named as here, in place of its own (design, What this change asks of others).
+- On GitHub: the user adds the environment `cachix` and its secret `CACHIX_AUTH_TOKEN` (design, After deploy).
+- Outside this repository: Flume is asked for a flake of its own; sluice and timber to carry each release's version in the tagged tree; the family to push each tool's own binaries to the same cache, as recommended; and a host's configuration to import the modules, with options named as here, and to trust the cache (design, What this change asks of others).
 
 ## Touches
 
 ```
 docs/architecture/core.md
-docs/adr/0020-boomdrive-publishes-a-flake-of-the-familys-host-tools-at-their-release-tags-and-modules-for-the-runners-service.md
+docs/adr/0020-boomdrive-publishes-a-flake-of-the-familys-host-tools-their-binaries-in-the-familys-cache-and-modules-for-the-runners-service.md
 flake.nix
 flake.lock
 nix/**
+.github/workflows/cache.yml
 .moon/workspace.yml
 devenv.nix
 devenv.lock

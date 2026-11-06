@@ -1,5 +1,9 @@
 # Family packages
 
+## Purpose
+
+The flake's package set: the runner at this tree, and Flume, sluice and their herdr plugins at release tags, each a derivation of the source the flake's lock names by its hash, for four systems. It covers what the set holds, how each package is made and versioned, the runner's git crates' hashes, how a set is proven by the runner's tests with the set's own binaries, and how a host overrides a tool (core.44, core.45; record 0020).
+
 ## ADDED Requirements
 
 ### Requirement: The flake gives the family's host tools as packages
@@ -25,9 +29,9 @@ Each tool of the set but the runner SHALL be named in `flake.nix` by a release t
 - **WHEN** `flake.nix` names sluice's tag `v0.68.0` and the lock locks `v0.67.0`
 - **THEN** the flake's type check fails, naming sluice, `v0.68.0` and `v0.67.0`
 
-### Requirement: Each tool is built from its release tag's source
+### Requirement: Each package is made from its release tag's source
 
-The runner's package SHALL be built from this tree's crates, `Cargo.toml` and `Cargo.lock`. Flume's and sluice's SHALL each be built from the source the lock names by its hash, at the tool's release tag, sluice's through sluice's own flake. Each package's version SHALL be its tag's without the `v`. A tool's version SHALL be read from its tagged tree where the tree carries it, and from the flake's tag where it does not.
+Each package SHALL be a derivation of the source the lock names by its hash: the runner's of this tree's crates, `Cargo.toml` and `Cargo.lock`, and Flume's and sluice's of the tool's release tag, sluice's through sluice's own flake. Each package's version SHALL be its tag's without the `v`, read from its tagged tree where the tree carries it, and from the flake's tag where it does not.
 
 #### Scenario: Flume at its tag
 
@@ -47,7 +51,16 @@ The runner's package SHALL be built from this tree's crates, `Cargo.toml` and `C
 #### Scenario: An overridden input
 
 - **WHEN** the flake's outputs are evaluated with Flume's input replaced by a tree whose `Cargo.toml` says `9.9.9`
-- **THEN** the `flume` package is built from that tree, its version `9.9.9`
+- **THEN** the `flume` package is made from that tree, its version `9.9.9`
+
+### Requirement: The runner's git crates are hashed at the revision the lock names
+
+Each git package of `Cargo.lock` SHALL have one entry among the runner's package's fixed hashes, holding the revision its hash was taken at. The flake's test SHALL fail where a git package has no entry, an entry names no git package, or an entry's revision is not the one `Cargo.lock` names.
+
+#### Scenario: weir moved without its hash
+
+- **WHEN** `Cargo.lock` names weir's git crates at a revision other than the one their entry holds
+- **THEN** the flake's test fails, naming the crate and both revisions
 
 ### Requirement: A tool's herdr plugin is the tool's, at the tool's tag
 
@@ -60,7 +73,7 @@ Each herdr plugin package SHALL be its tool's `plugins/herdr` folder, taken from
 
 ### Requirement: The set is the one the runner's tests pass with
 
-The gate SHALL run the set's own Flume and sluice, built from the flake's lock and given to the runner's tests by their paths. Those tests SHALL check each program's version against its tag, and read the answers a scratch host gives with the runner's own readers. No test of the set SHALL run a Flume or a sluice found on the host's `PATH`.
+The gate SHALL run the set's own Flume and sluice, the flake's packages of its lock, given to the runner's tests by their paths. Those tests SHALL check each program's version against its tag, and read the answers a scratch host gives with the runner's own readers. No test of the set SHALL run a Flume or a sluice found on the host's `PATH`.
 
 #### Scenario: Each tool's version
 
