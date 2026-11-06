@@ -189,12 +189,13 @@ Alternatives:
   - **The cache's token** is a token of the cache's own with write access to `boomdrive`. It is kept in 1Password, in the item `CACHIX_AUTH_TOKEN` of the vault `GitHub-Actions`, its field `credential`, the vault and item the family's workflows read their Cachix token from. Step 4 names it once, as `op://GitHub-Actions/CACHIX_AUTH_TOKEN/credential`, and only steps 5, 6 and 8 are given it.
   - **The service account's token** is a 1Password service account's, which may read that vault alone. It is the one secret of the repository's environment `cachix`, `OP_SERVICE_ACCOUNT_TOKEN`, given to steps 3 and 4 alone. The environment's deployment rule admits only `main` and tags `v*`, so a run on any other ref is refused it. The job names `environment: cachix`.
   - The user makes the token, the service account, the secret and the environment (After deploy). Neither token is ever in the tree, an option, a log or the store (core.4).
-- **Hardening.** `permissions` is `contents: read`. Each action is pinned by its commit, with its tag in a comment. `concurrency` is one run for each ref at a time, never cancelling one in flight, so every commit of `main` is pushed.
+- **Hardening.** `permissions` is `contents: read`. Each action is pinned by its commit, with its tag in a comment. `concurrency` is one run for each ref at a time, never cancelling one in flight, so every commit of `main` is pushed. The checkout keeps no credential (`persist-credentials: false`), and step 4 exports nothing into later steps' environment (`export-env: false`). Every `run` step is bash with `pipefail`, so a failing `nix eval` in a pipe fails the build. `install-nix-action` is given the run's own `GITHUB_TOKEN`, which `permissions` holds to reading, so nix fetches the lock's GitHub inputs as the repository, not as an anonymous runner.
 
 Alternatives:
 
 - **The cache's token as the environment's secret, `CACHIX_AUTH_TOKEN`.** Not taken: the user ruled the workflow reads it from 1Password through a service account (The user's rulings, 2), so the token is kept and turned over in one place.
 - **A signing key of the user's own beside the token, `CACHIX_SIGNING_KEY`.** Not taken: Cachix signs what is pushed with the cache's own key (The user's rulings, 1).
+- **No token for nix's fetches.** Not taken: GitHub limits an anonymous caller's API requests by address, which hosted runners share, and nix fetches each GitHub input of the lock through that API.
 - **Pushing every path a job builds**, cachix-action's default. Not taken: it pushes the toolchains and build inputs too, which no host substitutes.
 - **Building in the gate, on the host that lands.** Not taken: the gate runs on one system, in a sandbox with no nix daemon (Decision 14).
 - **Runners of the user's own hosts.** Not taken: GitHub's hosted runners give every system the flake gives to a public repository, and no host of a person's stands in the path of a public build.
