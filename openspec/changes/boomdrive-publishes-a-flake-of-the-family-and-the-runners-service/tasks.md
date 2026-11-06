@@ -46,7 +46,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 - [x] 6.1 `nixosModules.default` declares the unit, the lingering user and the tools (design Decisions 10 and 11; Task notes 6.1). True when `devenv shell -- moon run nix:test` proves the service-modules spec's "The unit", "A hosted control plane on an old systemd", "The set's tools", "A host's own tools", "The user's profile first", and "A host under crew" on NixOS.
 - [x] 6.2 `nix/modules/activate.sh keep` starts and restarts the unit, run by the module's user activation after its link (design Decision 10; Task notes 5.2). True when `devenv shell -- moon run nix:test` proves "Not running on NixOS", "Nothing changed on NixOS", "A new file on NixOS" and "Another user's activation", and that the user activation runs `link`, then `keep` with the unit's own command line.
-- [ ] 6.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:format` passes.
+- [x] 6.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:format` passes.
 
 ## 7. The binary cache
 
