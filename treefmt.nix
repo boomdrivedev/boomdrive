@@ -31,6 +31,10 @@ in
     # (design Decision 21). jsonfmt owns every other JSON file, the tree's
     # own.
     "crates/*/tests/fixtures/**"
+    # The files the flake's modules render, as the renderer wrote them:
+    # nix:test holds the renderer to each byte, so no formatter may change
+    # one (design Decision 9).
+    "nix/tests/files/**"
     # Build outputs and caches.
     "target/**"
     ".devenv/**"
