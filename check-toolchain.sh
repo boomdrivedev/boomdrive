@@ -1,8 +1,9 @@
 #!/bin/sh
 # Every tool the gate runs is the version the tree pins, on every host
 # (rule core.8): rustc, cargo, clippy and rustfmt the build .prototools
-# pins, which rust-toolchain.toml names too, and git, recutils and
-# OpenSpec the releases devenv.nix pins. A tool found outside its pin, a
+# pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec
+# and the nix project's nix, nixfmt, statix, deadnix and actionlint the
+# releases devenv.nix pins. A tool found outside its pin, a
 # runner's rustup default say, fails here rather than holding the tree to
 # another version's rules.
 set -eu
@@ -54,3 +55,16 @@ release() {
 release git "$(pinned gitVersion)" git --version
 release recutils "$(pinned recutilsVersion)" recfix --version
 release openspec "$(pinned openspecVersion)" openspec --version
+release nix "$(pinned nixVersion)" nix --version
+release nixfmt "$(pinned nixfmtVersion)" nixfmt --version
+release deadnix "$(pinned deadnixVersion)" deadnix --version
+release actionlint "$(pinned actionlintVersion)" actionlint --version
+
+# statix answers no --version: its version is the name of the store path
+# its program is in.
+version=$(pinned statixVersion)
+statix=$(command -v statix) || fail "statix is not on PATH"
+case $(readlink -f "$statix") in
+/nix/store/*-statix-"$version"/bin/statix) echo "statix is $version" ;;
+*) fail "statix is not $version: $(readlink -f "$statix")" ;;
+esac

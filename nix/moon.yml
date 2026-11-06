@@ -1,0 +1,36 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The flake: flake.nix and flake.lock at the root, everything else of it
+# under nix/ (record 0020, design Decision 1). Each check is one task, in
+# the fast layer (core.7), run from the workspace root by the tools
+# devenv.nix pins (core.8). None builds: the type check and the test
+# evaluate against the store read-only, in the gate's sandbox with no
+# network and no nix daemon (design Decision 14).
+language: 'nix'
+
+tasks:
+  # nixfmt over the flake's own files; treefmt's root:format runs the same
+  # nixfmt over every .nix file of the tree.
+  format:
+    script: 'nixfmt --check flake.nix $(find nix -name "*.nix" | sort)'
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  lint:
+    script: 'statix check flake.nix && statix check nix && deadnix --fail flake.nix nix'
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/.github/workflows/**/*']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # Every package of every system evaluates, each module in a system of its
+  # platform, and each tag in flake.nix is the lock's.
+  typecheck:
+    command: 'sh nix/check.sh typecheck'
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # The evaluated tests of the change's specs, under nix/tests.
+  test:
+    command: 'sh nix/check.sh test'
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/README.md']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
