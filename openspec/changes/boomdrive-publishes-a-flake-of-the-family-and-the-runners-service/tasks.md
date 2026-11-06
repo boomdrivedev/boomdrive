@@ -33,7 +33,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 4. The file
 
 - [x] 4.1 `nix/modules/toml.nix` renders `settings`, and `nix/tests/files/empty.toml`, `crew.toml` and `hosted.toml` hold the three texts. `treefmt.nix` excludes `nix/tests/files/**`, saying why (design Decision 9; Task notes 4.1). True when `devenv shell -- moon run nix:test root:format` passes, `nix:test` proving the service-modules spec's "Only repositories", "A host under crew" and "A host under a hosted control plane" over `options.nix` evaluated alone.
-- [ ] 4.2 `nix/modules/options.nix` declares `services.boomdrive`, its packages the flake's own, and refuses a credential's key (design Decisions 8 and 12; Task notes 4.2). `crates/boomdrive/tests/module_files.rs` reads each rendered file. True when `devenv shell -- moon run nix:test boomdrive:test` passes, `nix:test` proving "A token in the hosted table" and `boomdrive:test` proving "The runner reads each file".
+- [x] 4.2 `nix/modules/options.nix` declares `services.boomdrive`, its packages the flake's own, and refuses a credential's key (design Decisions 8 and 12; Task notes 4.2). `crates/boomdrive/tests/module_files.rs` reads each rendered file. True when `devenv shell -- moon run nix:test boomdrive:test` passes, `nix:test` proving "A token in the hosted table" and `boomdrive:test` proving "The runner reads each file".
 - [ ] 4.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test boomdrive:test root:format` passes.
 
 ## 5. The nix-darwin module
