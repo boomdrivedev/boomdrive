@@ -53,7 +53,7 @@ The first set is Flume `v0.10.0` and sluice `v0.68.0`, each the newest release o
 
 **Goals:**
 
-- `nix profile install github:agentplot/boomdrive` gives the runner, and a host's configuration gets the runner, Flume and sluice at versions the runner's tests passed with.
+- `nix profile add github:agentplot/boomdrive` gives the runner (`nix profile install` on a nix older than the pinned 2.34, which keeps `install` as a deprecated alias), and a host's configuration gets the runner, Flume and sluice at versions the runner's tests passed with.
 - A host whose nix trusts the family's cache substitutes every package of the set and compiles nothing. A host that does not trust it builds the same packages from source.
 - A host's configuration that imports a module and sets `services.boomdrive` gets the runner's file, its service, its restarts and its tools, and carries none of its own.
 - Every option is the runner's file in Nix, under the file's own names.
@@ -149,7 +149,7 @@ The set reaches a host as binaries from `boomdrive` on Cachix, served at `https:
   };
   ```
 
-  nix reads it for a command run on the flake itself, `nix profile install github:agentplot/boomdrive` or `nix run`. It applies once the person accepts it at nix's prompt or has `accept-flake-config`, and its substituter only for a trusted user, or where the daemon's `trusted-substituters` names it.
+  nix reads it for a command run on the flake itself, `nix profile add github:agentplot/boomdrive` or `nix run`. It applies once the person accepts it at nix's prompt or has `accept-flake-config`, and its substituter only for a trusted user, or where the daemon's `trusted-substituters` names it.
 - **A host's configuration names it itself.** nix reads no input's `nixConfig` when it builds a host's system. So a host that imports the modules and wants the binaries adds the same two lines to its own nix settings: `nix.settings.extra-substituters` and `nix.settings.extra-trusted-public-keys`, or its nix's own configuration where nix-darwin does not manage nix. The README gives the lines, and a gate test holds them to `nixConfig`'s. The modules add neither, since which caches a host trusts is the host's (Decision 13).
 - **The modules' packages are the flake's own.** Each module's `package` and `tools` default to the flake's own `packages.<system>`, made with the flake's locked nixpkgs and never with the host's `pkgs`. So they are the paths the cache holds, whatever nixpkgs the host runs. A host that makes the flake's `nixpkgs` follow its own changes every derivation, and the cache holds none of them. The README says to leave it.
 - **A host that does not trust the cache builds the set.** nix substitutes nothing whose signature it cannot check against a key the host trusts. A host whose nix does not trust the cache, or whose person declines the prompt, builds the same derivations from the locked source and gets the same store paths. So does a host whose path the cache no longer holds. Nothing is lost by distrust but time.
