@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The family's binary cache, `boomdrive` on Cachix, through which the set reaches a host as binaries. It covers the flake's `nixConfig`, the workflow that builds every package of every system on GitHub's hosted runners and pushes it at each push to `main` and each tag, the push's token, and what a host that trusts the cache, or does not, gets (core.47; record 0020).
+The family's binary cache, `boomdrive` on Cachix, through which the set reaches a host as binaries. It covers the flake's `nixConfig`, the workflow that builds every package of every system on GitHub's hosted runners and pushes it at each push to `main` and each tag, the push's token, loaded from 1Password, and what a host that trusts the cache, or does not, gets (core.47; record 0020).
 
 ## ADDED Requirements
 
@@ -46,11 +46,16 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 
 ### Requirement: The push's token is the workflow's alone
 
-The workflow SHALL read the cache's auth token only from the secret `CACHIX_AUTH_TOKEN` of the repository's environment `cachix`, which admits `main` and tags `v*` alone. A job SHALL fail before it builds, naming the secret, where the token is empty. No file of the tree, option, store path or log SHALL hold the token.
+The workflow SHALL read the cache's auth token only from 1Password, through a service account whose token is the secret `OP_SERVICE_ACCOUNT_TOKEN` of the repository's environment `cachix`, which admits `main` and tags `v*` alone. A job SHALL fail before it builds, naming what is missing, where either token is empty. No file of the tree, option, store path or log SHALL hold either token.
+
+#### Scenario: No service account token
+
+- **WHEN** the workflow runs and the environment gives no `OP_SERVICE_ACCOUNT_TOKEN`
+- **THEN** each job fails before it builds, naming `OP_SERVICE_ACCOUNT_TOKEN`
 
 #### Scenario: No token
 
-- **WHEN** the workflow runs and `CACHIX_AUTH_TOKEN` is not set
+- **WHEN** the workflow runs and the `CACHIX_AUTH_TOKEN` it loads from 1Password is empty
 - **THEN** each job fails before it builds, naming `CACHIX_AUTH_TOKEN`
 
 ### Requirement: A host substitutes the set, or builds the same paths

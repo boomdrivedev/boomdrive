@@ -12,8 +12,9 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 1. The flake and its project
 
 - [x] 1.1 `flake.nix` holds the `nixConfig` and inputs of Task notes 1.1 and outputs with no package yet, and `flake.lock` locks them. `nix/moon.yml` declares the `nix` project, `language: 'nix'`, with `format`, `lint`, `typecheck` and `test` tagged `check-fast`. `.moon/workspace.yml` lists it. `devenv.nix` pins nix, nixfmt, statix and actionlint, and `check-toolchain.sh` holds them (design Decisions 1 and 14; Task notes 1.3). True when `devenv shell -- moon run nix:format nix:lint root:toolchain root:format` passes.
-- [ ] 1.2 `nix/inputs.nix` gives the lock's inputs, `devenv.nix` sets `BOOMDRIVE_FLAKE_INPUTS` from it, and `nix/check.sh` evaluates `nix/tests` against a read-only store with no network (design Decision 14; Task notes 1.2 and 1.4). True when `devenv shell -- moon run nix:typecheck nix:test` passes, `nix/tests` holding one case that evaluates the flake's outputs.
+- [ ] 1.2 `nix/inputs.nix` gives the lock's inputs, `devenv.nix` sets `BOOMDRIVE_FLAKE_INPUTS` from it, and `nix/check.sh` evaluates `nix/tests` against no store, with no network and no nix daemon (design Decision 14; Task notes 1.2 and 1.4). True when `devenv shell -- moon run nix:typecheck nix:test` passes, `nix/tests` holding one case that evaluates the flake's outputs.
 - [ ] 1.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:toolchain root:format` passes.
+- [x] 1.4 The change carries the user's rulings of 2026-11-06: the cache `boomdrive`, signed by Cachix's own key; its token loaded from 1Password through a service account; the user's steps as commands; and sluice `v0.68.0` in the first set (design, The user's rulings and After deploy). The proposal, the design, the binary-cache and family-packages specs, record 0020, accepted, and core.47 say so, and devenv's own push waits on the user (design, The user's to rule on). True when `devenv shell -- moon run root:format root:adrs root:changes` passes.
 
 ## 2. The package set
 
@@ -26,7 +27,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 3. The set proven
 
-- [ ] 3.1 `devenv.nix` gives the set's Flume and sluice by path, on no `PATH`, from the flake's own packages, and pulls from the family's cache (design Decision 6; Task notes 3.1). `crates/boomdrive/tests/family.rs` runs them on a scratch host (Task notes 3.2). The set's tags are Flume `v0.10.0` and sluice `v0.67.0`, or the newest release of each the test passes with, as design Decision 6 says. True when `devenv shell -- moon run boomdrive:test` proves the family-packages spec's "Each tool's version", "Flume's status of a scratch host", "A submission sluice has no record of" and "Not the host's tools".
+- [ ] 3.1 `devenv.nix` gives the set's Flume and sluice by path, on no `PATH`, from the flake's own packages, and pulls from the family's cache (design Decision 6; Task notes 3.1). `crates/boomdrive/tests/family.rs` runs them on a scratch host (Task notes 3.2). The set's tags are Flume `v0.10.0` and sluice `v0.68.0`, or the newest release of each the test passes with, as design Decision 6 says. True when `devenv shell -- moon run boomdrive:test` proves the family-packages spec's "Each tool's version", "Flume's status of a scratch host", "A submission sluice has no record of" and "Not the host's tools".
 - [ ] 3.2 Run this group's checks. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test nix:typecheck nix:test` passes.
 
 ## 4. The file
@@ -50,7 +51,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 7. The binary cache
 
 - [ ] 7.1 The flake's `nixConfig` and the modules' packages hold to the cache (design Decision 4; Task notes 7.1). True when `devenv shell -- moon run nix:test` proves the binary-cache spec's "The flake's nixConfig", "A host's own nixpkgs" and "The host's trust", on nix-darwin and on NixOS.
-- [ ] 7.2 `.github/workflows/cache.yml` builds and pushes every package of every system (design Decision 5; Task notes 7.2). True when `devenv shell -- moon run nix:lint nix:test root:format` passes, `nix:lint` running actionlint on the workflow, and `nix:test` proving over the workflow's text "Each system has its job" and "A branch's push", and that the job names `environment: cachix`, `fail-fast: false` and `skipPush: true`, and fails naming `CACHIX_AUTH_TOKEN` before its build step and pushes only after it, as "The runner is pushed with its tools", "A package that does not build" and "No token" need.
+- [ ] 7.2 `.github/workflows/cache.yml` builds and pushes every package of every system (design Decision 5; Task notes 7.2). True when `devenv shell -- moon run nix:lint nix:test root:format` passes, `nix:lint` running actionlint on the workflow, and `nix:test` proving over the workflow's text "Each system has its job" and "A branch's push", and that the job names `environment: cachix`, `fail-fast: false` and `skipPush: true`, loads the cache's token from 1Password by `1password/load-secrets-action`, fails naming `OP_SERVICE_ACCOUNT_TOKEN` and then `CACHIX_AUTH_TOKEN` before its build step, and pushes only after it, as "The runner is pushed with its tools", "A package that does not build", "No service account token" and "No token" need.
 - [ ] 7.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:format` passes.
 
 ## 8. The README and the project's notes

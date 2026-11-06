@@ -40,8 +40,8 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 
 #### Scenario: sluice through its own flake
 
-- **WHEN** the lock names sluice's tag `v0.67.0`, whose tree says `0.0.0`
-- **THEN** the `sluice` package is sluice's flake's, its version `0.67.0`, and its build is given `0.67.0` as sluice's release build is
+- **WHEN** the lock names sluice's tag `v0.68.0`, whose tree says `0.0.0`
+- **THEN** the `sluice` package is sluice's flake's, its version `0.68.0`, and its build is given `0.68.0` as sluice's release build is
 
 #### Scenario: The runner from this tree
 

@@ -6,7 +6,7 @@ The user's idea, 2026-11-05, in the brief's words: Boomdrive publishes a public 
 
 The same day, reading that configuration's design for retiring its views, the user wrote: "I think I would like to see this combined with the Boom Drive flake. I haven't seen that design yet so I don't know if someone forgot about it". That design turns on `code_workspaces` and widens the runner's repositories in the host's own copy of the runner's file. The user wants those settings to come through this flake's module.
 
-Reading this change's design, the user ruled how the set reaches a host: "the whole point of the flake is to distribute all of the binaries so it should be the runner, flume, and sluice"; "I have a Cachix open-source binary cache that we can use to publish the binaries so that people don't have to rebuild them"; and "Let's set up publishing to cachix". So the flake distributes built binaries of the runner, Flume and sluice through the user's Cachix cache, and a host that trusts it compiles nothing.
+Reading this change's design, the user ruled how the set reaches a host: "the whole point of the flake is to distribute all of the binaries so it should be the runner, flume, and sluice"; "I have a Cachix open-source binary cache that we can use to publish the binaries so that people don't have to rebuild them"; and "Let's set up publishing to cachix". So the flake distributes built binaries of the runner, Flume and sluice through the user's Cachix cache, and a host that trusts it compiles nothing. Approving the design on 2026-11-06, the user named the cache `boomdrive`, signed by Cachix's own key ("the token is all the workflow needs"), and ruled that the workflow reads its token from 1Password: "Configure the GitHub Actions to use a service account token from 1Password to read the variable".
 
 Record 0012 already says this repository publishes a flake. Nothing builds it yet. A host that runs the runner today packages it, compiles it, writes its file, keeps its service and restarts it, all in its own configuration.
 
@@ -25,7 +25,7 @@ Record 0012 already says this repository publishes a flake. Nothing builds it ye
   - The flake's `nixConfig` names the cache and its key as a substituter.
   - A host whose nix trusts the cache substitutes the set. A host that does not builds the same paths from source.
   - The modules' packages are the flake's own, made with its own nixpkgs, so they are the paths the cache holds.
-  - The push's token is the GitHub Actions secret `CACHIX_AUTH_TOKEN`, which the user adds.
+  - The push's token is kept in 1Password and loaded by the workflow through a service account, whose token is the one GitHub secret, `OP_SERVICE_ACCOUNT_TOKEN` of the environment `cachix`. Cachix signs what is pushed with the cache's own key.
 - **The set is proven in the gate.** The shell gives the runner's tests the set's Flume and sluice, from the same lock, by path, substituted from the cache. The tests run each, check its version against its tag, and read the answers a scratch host gives with the runner's own readers.
 - **Two modules, one set of options, `services.boomdrive`.**
   - nix-darwin: a launchd agent of the primary user's login.
@@ -53,11 +53,11 @@ None. The runner's own behaviour, its file and its command line do not change.
 - `docs/architecture/core.md` gains core.44 to core.47 and amends core.7 and core.37, and `docs/adr/` gains record 0020, in this change's commit.
 - New: `flake.nix`, `flake.lock`, `.github/workflows/cache.yml`, and `nix/`, holding the packages, the modules, their tests and the project's `moon.yml`.
 - `.moon/workspace.yml` lists the `nix` project.
-- `devenv.nix` pins nix, nixfmt, statix and actionlint for the project's tasks, fetches the flake's inputs from its lock for the gate, pulls from the family's cache, and gives the set's Flume and sluice to the runner's tests by path, never on `PATH`.
+- `devenv.nix` pins nix, nixfmt, statix, deadnix and actionlint for the project's tasks, fetches the flake's inputs from its lock for the gate, pulls from the family's cache, and gives the set's Flume and sluice to the runner's tests by path, never on `PATH`.
 - `check-toolchain.sh` holds the new pins. `treefmt.nix` excludes the rendered files the tests compare byte for byte.
 - `crates/boomdrive/tests/` gains a test of the set's tools, and one reading each file the modules render. `crates/boomdrive/moon.yml`'s test reads those files and the lock.
 - `README.md` and `CLAUDE.md`.
-- On GitHub: the user adds the environment `cachix` and its secret `CACHIX_AUTH_TOKEN` (design, After deploy).
+- On GitHub and in 1Password: the user makes the environment `cachix`, the cache's token in the vault `GitHub-Actions`, and a service account whose token is the environment's secret `OP_SERVICE_ACCOUNT_TOKEN`, by the commands of the design's After deploy.
 - Outside this repository: Flume is asked for a flake of its own; sluice and timber to carry each release's version in the tagged tree; the family to push each tool's own binaries to the same cache, as recommended; and a host's configuration to import the modules, with options named as here, and to trust the cache (design, What this change asks of others).
 
 ## Touches
