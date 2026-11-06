@@ -88,8 +88,16 @@
           flume-herdr-plugin = pluginOf tools.flume;
           sluice-herdr-plugin = pluginOf tools.sluice;
         };
+      packages = lib.genAttrs systems packagesOf;
     in
     {
-      packages = lib.genAttrs systems packagesOf;
+      inherit packages;
+
+      # The runner's service, its options the runner's file (record 0020,
+      # core.46), its packages the flake's own above.
+      darwinModules = rec {
+        boomdrive = import ./nix/modules/darwin.nix { inherit packages; };
+        default = boomdrive;
+      };
     };
 }

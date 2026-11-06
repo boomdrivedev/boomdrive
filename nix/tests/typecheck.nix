@@ -1,5 +1,6 @@
-# nix:typecheck: everything the flake gives evaluates, and each tag in
-# flake.nix is the lock's (design Decision 14).
+# nix:typecheck: everything the flake gives evaluates, each module in a
+# system of its platform, and each tag in flake.nix is the lock's (design
+# Decision 14).
 t:
 let
   inherit (t) lib outputs systems;
@@ -72,4 +73,10 @@ in
   ) systems;
 
   "Each tag is the lock's" = tags t.flake.inputs t.lock;
+
+  # The nix-darwin module in a minimal system of its platform, whose
+  # derivation throws on a failed assertion.
+  "The nix-darwin module" =
+    t.expect (builtins.tryEval (t.darwinSystem { }).system.drvPath).success
+      "a nix-darwin system with services.boomdrive enabled does not evaluate";
 }
