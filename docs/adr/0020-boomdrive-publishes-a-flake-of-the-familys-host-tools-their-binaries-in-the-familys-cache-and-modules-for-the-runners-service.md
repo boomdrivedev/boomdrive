@@ -68,3 +68,22 @@ home-manager's options would bring home-manager into every host that imports the
 - A host's configuration imports the modules in place of its own, trusts the cache in its own nix settings, and drops its own package of the runner.
 
 Rules: core.44, core.45, core.46 and core.47; core.7 and core.37 amended.
+
+## Amendment, 2026-11-06: the nix-darwin agent waits for the Nix store
+
+Status: accepted on 2026-11-06. The fix `the-darwin-agent-waits-for-the-store` asks, in its brief, that the agent wait for the store; its code stage chose the form, on the written rules.
+
+Deciders: the fix's brief, for the wait; the fix's code stage, for its form.
+Sources: the fix's brief, 2026-11-06; nix-darwin's `modules/launchd/default.nix` and `modules/system/launchd.nix`, and nixpkgs' `nixos/lib/utils.nix`, each at this flake's lock; the change `the-darwin-agent-waits-for-the-store`, its design; rules core.13 and core.46.
+
+### Context and problem statement
+
+The module set the agent's `ProgramArguments` to the runner's store path, with `RunAtLoad` and `KeepAlive`. nix-darwin puts `/bin/wait4path /nix/store` in front of a job's program only where the job is declared with `command` or `script`. At boot, launchd can start the agent before macOS has mounted the Nix store's volume. The exec then fails, and launchd may never try it again, so the runner stays down until it is loaded by hand. A host's configuration cannot wrap the job from outside, since the module owns it.
+
+### Decision outcome
+
+- **The agent is declared with nix-darwin's `command`.** launchd runs `/bin/sh -c '/bin/wait4path /nix/store && exec <package>/bin/boomdrive run --config <file>'`. The shell's `exec` hands the job's process to the runner, so a stop's signal reaches the runner alone, and `AbandonProcessGroup` still leaves a `flume launch` in flight. The plist still names the package and the file, so nix-darwin reloads the agent when either changes and leaves it running when neither does.
+- **Not taken: the same shell written into the module's own `ProgramArguments`.** It gives the same plist and the same signals, but copies nix-darwin's wrapper into the module, and the copy would not follow a change nix-darwin makes to how a job waits. The tests read the program launchd gets, so a lock that changes nix-darwin's wrapper fails the gate where it no longer waits for the store and then `exec`s.
+- **The NixOS unit is unchanged.** NixOS mounts the store in its first stage, before systemd, which runs from the store, starts.
+
+Nothing else of the decision above changes. core.46 is amended in this amendment's commit: the modules start the runner only once the host's Nix store is mounted.
