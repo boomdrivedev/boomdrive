@@ -163,7 +163,9 @@ A control pass:
 - carries back Flume's status of each place, sluice's entry of each
   submission and each inbox the control plane names, each as the tool
   gave it, and never a log; and relays a terminal on a launch's agent
-  through herdr, keeping nothing of it.
+  through herdr, keeping nothing of it. A place is followed to its end,
+  over or tidied, even once the configuration no longer names its
+  repository: Flume is then asked for it by its location alone.
 
 Each launch, act and command is carried out once, across a restart: the
 runner's report is kept at `<data>/control/report.json`, and a launch

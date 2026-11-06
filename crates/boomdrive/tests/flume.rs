@@ -233,7 +233,7 @@ fn a_kind_named_by_its_identity_is_passed_whole() {
         cli.act("/p", &act).expect("flume answers");
     }
     cli.status().expect("flume answers");
-    cli.status_of(Path::new("/d/c"), "/p")
+    cli.status_of(Some(Path::new("/d/c")), "/p")
         .expect("flume answers");
     let calls = stub.calls();
     let kind = calls[0]
@@ -317,9 +317,12 @@ fn status_and_one_places_status() {
     stub.answers(Some("status-answer.json"), None, 0);
     let one = fs::read_to_string(fixture("status-answer.json")).expect("the fixture");
     assert_eq!(
-        cli.status_of(Path::new("/d/repositories/a/b"), "/places/P"),
-        Ok(Reply::Given(one))
+        cli.status_of(Some(Path::new("/d/repositories/a/b")), "/places/P"),
+        Ok(Reply::Given(one.clone()))
     );
+    // A place whose repository the runner keeps no more, by its location
+    // alone (record 0021).
+    assert_eq!(cli.status_of(None, "/places/P"), Ok(Reply::Given(one)));
     assert_eq!(
         stub.calls(),
         [
@@ -331,6 +334,7 @@ fn status_and_one_places_status() {
                 "/d/repositories/a/b",
                 "/places/P"
             ]),
+            argv(&["--json", "status", "/places/P"]),
         ]
     );
 }
@@ -349,7 +353,7 @@ fn flume_runs_with_no_recipient_of_the_runners_own() {
     .expect("flume answers");
     cli.act("/p", &Act::Done).expect("flume answers");
     cli.status().expect("flume answers");
-    cli.status_of(Path::new("/d/c"), "/p")
+    cli.status_of(Some(Path::new("/d/c")), "/p")
         .expect("flume answers");
     for n in 1..=4 {
         assert_eq!(
@@ -410,7 +414,7 @@ fn exit_one_is_refused_with_flumes_reason() {
         );
     }
     stub.answers(Some("status-gone.json"), None, 1);
-    let Ok(Reply::Refused(words)) = cli.status_of(Path::new("/d/c"), "/p") else {
+    let Ok(Reply::Refused(words)) = cli.status_of(Some(Path::new("/d/c")), "/p") else {
         panic!("the status of a place gone is not refused");
     };
     assert!(words.starts_with("no place /private/tmp/"), "{words}");

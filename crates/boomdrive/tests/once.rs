@@ -77,7 +77,7 @@ impl Flume for Watching<'_> {
         self.flume.status()
     }
 
-    fn status_of(&self, container_dir: &Path, place: &str) -> Result<Reply, Unrun> {
+    fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {
         self.flume.status_of(container_dir, place)
     }
 }

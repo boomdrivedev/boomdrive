@@ -197,6 +197,89 @@ fn a_landing_told_once() {
     assert_eq!(bench.landings(), [] as [String; 0]);
 }
 
+/// The work-into-flume spec's "A place whose repository the runner keeps
+/// no more": a launch's place is followed to its end after the
+/// configuration drops its repository, asked for by its location alone,
+/// its landing and its tidied record carried, and no keeper told (record
+/// 0020).
+#[test]
+fn a_place_whose_repository_the_runner_keeps_no_more() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    bench.clones.drop_named(KEPT);
+    bench.flume.take_calls();
+    let place = place_of("a");
+    bench.flume.land(&place);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    let asked: Vec<Call> = bench
+        .flume
+        .take_calls()
+        .into_iter()
+        .filter(|call| matches!(call, Call::StatusOf(..)))
+        .collect();
+    assert_eq!(asked, [Call::StatusOf(None, place.clone())]);
+    let landed: Value = serde_json::from_str(&carried(&bench, "a").text).unwrap();
+    assert_eq!(
+        landed["status"]["places"][0]["phase"]["over"]["over"],
+        json!({ "landed": { "commit": "c0ffee" } })
+    );
+    assert_eq!(bench.landings(), [] as [String; 0], "no keeper told");
+
+    bench.flume.tidy_pending(&place, 1793559694);
+    bench.pass(&mut plane);
+    let tidied = carried(&bench, "a");
+    let tidied: Value = serde_json::from_str(&tidied.text).unwrap();
+    let entry = &tidied["status"]["places"][0];
+    assert_eq!(entry["place"], format!("{place}@1793559694"));
+    assert_eq!(
+        entry["phase"]["tidied"]["over"],
+        json!({ "landed": { "commit": "c0ffee" } })
+    );
+    assert!(carried(&bench, "a").listed);
+    assert_eq!(
+        bench.report().launches[&Id::new("a")].answer.place_dir,
+        Some(place)
+    );
+}
+
+/// The work-into-flume spec's "A place found tidied by its mark": an
+/// offer in a repository the runner keeps no more, whose place Flume's
+/// listing holds tidied with its landing under the runner's mark, is
+/// answered launched at its location, and Flume's own answer for it is
+/// carried, asked for by its location alone (record 0021).
+#[test]
+fn a_place_found_tidied_by_its_mark() {
+    let bench = Bench::new();
+    let stub = Stub::new();
+    stub.answers("status-of", "status-tidied.json", 0);
+    let flume = Cli::new(stub.program());
+    let mut gate = offer("scratch/5", "gate");
+    gate.launch.repository = "example/old-kit".to_string();
+    let mut plane = Fake::holding(vec![Want::Offer(gate)]);
+    let (_, lines) = bench.pass_over(&flume, &mut plane);
+    let launched = &bench.report().launches[&Id::new("scratch/5")];
+    let location = launched.answer.place_dir.clone().expect("a place");
+    assert!(location.ends_with("/fix--gate"), "{location}");
+    assert_eq!(
+        lines,
+        [format!(
+            "scratch/5: launched at {location}, as its mark flywheel:scratch/5 shows"
+        )]
+    );
+    let call = stub
+        .calls()
+        .into_iter()
+        .find(|call| call.len() > 2 && call[1] == "status");
+    assert_eq!(call.unwrap(), ["--json", "status", &location]);
+    let status = carried(&bench, "scratch/5");
+    let printed = fixture("status-tidied.json");
+    assert_eq!(status.text, printed.strip_suffix('\n').unwrap());
+    assert!(status.listed);
+    assert_eq!(bench.landings(), [] as [String; 0], "no keeper told");
+}
+
 /// The work-into-flume spec's "The user's own place": a place with no
 /// mark, and one marked for a launch the runner does not hold, are read
 /// in the listing and left alone.

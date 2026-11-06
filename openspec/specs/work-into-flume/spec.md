@@ -231,7 +231,7 @@ Every report SHALL name each lease the runner holds with its work, and so renew 
 
 ### Requirement: Flume's status of each place is carried as Flume gave it
 
-For each launch with a place, the runner SHALL carry `flume --json status --repository <container> <place>`'s whole answer as Flume printed it, on one line, under the launch's lease number. It SHALL ask for that answer again, and move its time, only when the place's entry in the pass's listing differs, as a JSON value, from the entry inside the carried answer.
+For each launch with a place, the runner SHALL carry Flume's status of the place as Flume printed it, on one line, under the launch's lease number: where it keeps the launch's repository with its clone made, `flume --json status --repository <container> <place>`'s whole answer. It SHALL ask for that answer again, and move its time, only when the place's entry in the pass's listing differs, as a JSON value, from the entry inside the carried answer.
 
 #### Scenario: The status byte for byte
 
@@ -254,12 +254,17 @@ A place the pass's listing no longer holds SHALL be asked for once a pass by its
 
 ### Requirement: A landing is told to the keeper once
 
-The first pass that reads a carried place landed SHALL tell the keeper of a landing on its repository, so the clone and its view are fetched at once.
+The first pass that reads a carried place landed SHALL tell the keeper of a landing on its repository, so the clone and its view are fetched at once. A landing in a repository the configuration does not name, or whose clone is not yet made, SHALL be told to no keeper.
 
 #### Scenario: A landing told once
 
 - **WHEN** a carried place's status first reads landed
 - **THEN** the keeper is told of a landing on its repository once, and not at later passes
+
+#### Scenario: A landing in a repository not kept
+
+- **WHEN** a carried place whose repository the configuration no longer names first reads landed
+- **THEN** its status is carried, and the keeper is told nothing
 
 ### Requirement: The runner acts only on its own places
 
@@ -302,3 +307,17 @@ By the runner's clock at the start of a control pass, an offer whose lease has e
 
 - **WHEN** the fake control plane gives a branch command under a lease that has expired
 - **THEN** no `sluice` command is run, and the command has no answer in the report
+
+### Requirement: A place is followed to its end whether or not its repository is kept
+
+The runner SHALL follow the place of each launch the pull gives through its end, over or tidied, whether or not the configuration still names the launch's repository. Where it does not keep that repository with its clone made, the carried status SHALL be `flume --json status <place>`'s, asked by the place's location alone. A place's entry SHALL be the one standing at its location, else Flume's record of it tidied, `<location>@<at>`.
+
+#### Scenario: A place whose repository the runner keeps no more
+
+- **WHEN** the report holds launch `a` launched at `P` in `example/kit`, the configuration no longer names `example/kit`, the pull still gives `a`, and `P` lands, then is tidied while an end of it is pending
+- **THEN** each time, `flume --json status P` is run with no `--repository`, and its answer is carried: first `P` landed, then its record `P@<at>` tidied and landed
+
+#### Scenario: A place found tidied by its mark
+
+- **WHEN** an offer `a` in a repository the configuration does not name is pulled, and Flume's listing holds the record `P@<at>`, tidied and landed, marked `flywheel:a`
+- **THEN** `a` is answered `launched` at `P`, and the carried status is `flume --json status P`'s answer, naming `P@<at>`

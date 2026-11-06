@@ -68,7 +68,8 @@ pub enum Call {
     Launch(LaunchArgs),
     Act(String, Act),
     Status,
-    StatusOf(PathBuf, String),
+    /// `status <place>`, in the clone's container where one was named.
+    StatusOf(Option<PathBuf>, String),
 }
 
 /// Flume in memory.
@@ -121,13 +122,20 @@ impl FakeFlume {
         self.state.borrow_mut().places.push(entry);
     }
 
-    /// The entry of the place at `place`, where one stands.
+    /// The entry of the place at `place`, where one stands, else the
+    /// record Flume keeps of it tidied, `<place>@<at>`.
     pub fn entry(&self, place: &str) -> Option<Value> {
         let state = self.state.borrow();
-        state
-            .places
-            .iter()
-            .find(|entry| entry["place"] == place)
+        let tidied = format!("{place}@");
+        let standing = state.places.iter().find(|entry| entry["place"] == place);
+        standing
+            .or_else(|| {
+                state.places.iter().find(|entry| {
+                    entry["place"]
+                        .as_str()
+                        .is_some_and(|named| named.starts_with(&tidied))
+                })
+            })
             .cloned()
     }
 
@@ -147,6 +155,19 @@ impl FakeFlume {
         let landed =
             json!({ "over": { "over": { "landed": { "commit": "c0ffee" } }, "kept": null } });
         self.set(place, "phase", landed);
+    }
+
+    /// The place at `place`, landed at commit `c0ffee`, tidied at `at`
+    /// while an end of it is pending for `scratch/planner`: Flume keeps its
+    /// record as `<place>@<at>`, and answers `status <place>` with it.
+    pub fn tidy_pending(&self, place: &str, at: u64) {
+        let tidied = json!({ "tidied": {
+            "over": { "landed": { "commit": "c0ffee" } },
+            "at": at,
+            "pending_for": ["scratch/planner"],
+        } });
+        self.set(place, "phase", tidied);
+        self.set(place, "place", json!(format!("{place}@{at}")));
     }
 
     /// The place at `place` tidied, with nothing pending: no listing holds
@@ -317,8 +338,8 @@ impl Flume for FakeFlume {
         Ok(Reply::Given(printed(&self.listing_now())))
     }
 
-    fn status_of(&self, container_dir: &Path, place: &str) -> Result<Reply, Unrun> {
-        let call = Call::StatusOf(container_dir.to_path_buf(), place.to_string());
+    fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {
+        let call = Call::StatusOf(container_dir.map(Path::to_path_buf), place.to_string());
         if let Some(unrun) = self.call(call) {
             return Err(unrun);
         }
@@ -352,6 +373,12 @@ impl FakeClones {
     /// `address` named, its clone not yet made.
     pub fn not_yet(&self, address: &str) {
         self.keep(address, Keeping::NotYet);
+    }
+
+    /// `address` named no more, as a configuration that drops it.
+    pub fn drop_named(&self, address: &str) {
+        let mut kept = self.kept.borrow_mut();
+        kept.retain(|(named, _)| !named.eq_ignore_ascii_case(address));
     }
 
     fn keep(&self, address: &str, keeping: Keeping) {

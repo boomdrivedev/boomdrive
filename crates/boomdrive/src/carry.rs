@@ -697,15 +697,17 @@ impl Work<'_> {
 
     /// Carries Flume's status of each launch's place (design Decision 12;
     /// core.11): `flume --json status --repository <container> <place>`'s
-    /// whole answer, as the one line Flume printed. The pass's listing
-    /// decides when it is read again: only where the place's entry there
-    /// differs, as JSON, from its entry in the answer carried. A place the
-    /// listing no longer holds is asked for once a pass, and where Flume
-    /// refuses, the last status carried stands, not listed. The first
-    /// status carried that reads the place landed tells the keeper, so the
-    /// repository is fetched at once. Only the places the report holds are
-    /// read, and only for launches the pull gives, whose repositories it
-    /// names.
+    /// whole answer, as the one line Flume printed. A place is followed to
+    /// its end whether or not the configuration still keeps its
+    /// repository: one it no longer keeps is asked for by its location
+    /// alone (record 0021). The pass's listing decides when it is read
+    /// again: only where the place's entry there differs, as JSON, from its
+    /// entry in the answer carried. A place the listing no longer holds is
+    /// asked for once a pass, and where Flume refuses, the last status
+    /// carried stands, not listed. The first status carried that reads the
+    /// place landed tells the keeper, where it keeps the repository, so it
+    /// is fetched at once. Only the places the report holds are read, and
+    /// only for launches the pull gives, whose repositories it names.
     fn carry_statuses(&mut self, say: &mut dyn FnMut(String)) {
         let Some(listing) = self.listing.take() else {
             return;
@@ -720,9 +722,9 @@ impl Work<'_> {
             else {
                 continue;
             };
-            let Keeping::Ready(container) = self.carrier.clones.keeping(&offer.launch.repository)
-            else {
-                continue;
+            let container = match self.carrier.clones.keeping(&offer.launch.repository) {
+                Keeping::Ready(container) => Some(container),
+                Keeping::NotYet | Keeping::NotNamed => None,
             };
             let was = carried_entry(launched, &place);
             let listed = facts::entry(&listing, &place);
@@ -730,7 +732,7 @@ impl Work<'_> {
                 self.relist(id, Carrying::Status, true);
                 continue;
             }
-            match self.carrier.flume.status_of(&container, &place) {
+            match self.carrier.flume.status_of(container.as_deref(), &place) {
                 Ok(Reply::Given(text)) => {
                     let line = text.strip_suffix('\n').unwrap_or(&text);
                     self.report
@@ -746,7 +748,7 @@ impl Work<'_> {
                 }
             }
             let now = carried_entry(&self.report.launches[id], &place);
-            if !reads_landed(was.as_ref()) && reads_landed(now.as_ref()) {
+            if container.is_some() && !reads_landed(was.as_ref()) && reads_landed(now.as_ref()) {
                 if let Ok(address) = Address::parse(&offer.launch.repository) {
                     self.carrier.notices.landed(address);
                 }
