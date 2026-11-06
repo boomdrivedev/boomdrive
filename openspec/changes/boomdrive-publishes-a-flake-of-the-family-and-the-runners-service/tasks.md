@@ -18,12 +18,12 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 2. The package set
 
-- [ ] 2.1 `packages.<system>.boomdrive` and `default` make the runner from this tree, its git crates' hashes in `nix/packages/git-crates.nix` beside their revisions (design Decision 3; Task notes 2.1). True when `devenv shell -- moon run nix:typecheck nix:test` passes, proving the family-packages spec's "The runner from this tree" and "weir moved without its hash", the latter over a `Cargo.lock` whose weir revision differs.
-- [ ] 2.2 `packages.<system>.flume` makes Flume at its tag (design Decision 3; Task notes 2.2). True when `devenv shell -- moon run nix:test` proves the family-packages spec's "Flume at its tag" and "An overridden input".
-- [ ] 2.3 `packages.<system>.sluice` is sluice's flake's, at its tag's version (design Decision 3; Task notes 2.3). True when `devenv shell -- moon run nix:test` proves the family-packages spec's "sluice through its own flake".
-- [ ] 2.4 `flume-herdr-plugin` and `sluice-herdr-plugin` are their tools' plugins (design Decision 3; Task notes 2.4). True when `devenv shell -- moon run nix:test` proves the family-packages spec's "Flume's plugin moves with Flume", and the same of sluice's.
-- [ ] 2.5 `nix:typecheck` fails where a tag in `flake.nix` is not the lock's (Task notes 2.5). True when `devenv shell -- moon run nix:typecheck nix:test` passes, `nix:typecheck` proving "Every system's packages" and "No tool of the host's own", and `nix:test` proving "A tag moved without the lock" over a lock that differs.
-- [ ] 2.6 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test` passes.
+- [x] 2.1 `packages.<system>.boomdrive` and `default` make the runner from this tree, its git crates' hashes in `nix/packages/git-crates.nix` beside their revisions (design Decision 3; Task notes 2.1). True when `devenv shell -- moon run nix:typecheck nix:test` passes, proving the family-packages spec's "The runner from this tree" and "weir moved without its hash", the latter over a `Cargo.lock` whose weir revision differs.
+- [x] 2.2 `packages.<system>.flume` makes Flume at its tag (design Decision 3; Task notes 2.2). True when `devenv shell -- moon run nix:test` proves the family-packages spec's "Flume at its tag" and "An overridden input".
+- [x] 2.3 `packages.<system>.sluice` is sluice's flake's, at its tag's version (design Decision 3; Task notes 2.3). True when `devenv shell -- moon run nix:test` proves the family-packages spec's "sluice through its own flake".
+- [x] 2.4 `flume-herdr-plugin` and `sluice-herdr-plugin` are their tools' plugins (design Decision 3; Task notes 2.4). True when `devenv shell -- moon run nix:test` proves the family-packages spec's "Flume's plugin moves with Flume", and the same of sluice's.
+- [x] 2.5 `nix:typecheck` fails where a tag in `flake.nix` is not the lock's (Task notes 2.5). True when `devenv shell -- moon run nix:typecheck nix:test` passes, `nix:typecheck` proving "Every system's packages" and "No tool of the host's own", and `nix:test` proving "A tag moved without the lock" over a lock that differs.
+- [x] 2.6 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test` passes.
 
 ## 3. The set proven
 
