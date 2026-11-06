@@ -88,8 +88,9 @@ pub trait Flume {
     fn act(&self, place: &str, act: &Act) -> Result<Reply, Unrun>;
     /// Every place and the host's part, `flume --json status`.
     fn status(&self) -> Result<Reply, Unrun>;
-    /// The place at `place` in the repository at `container_dir`.
-    fn status_of(&self, container_dir: &Path, place: &str) -> Result<Reply, Unrun>;
+    /// The place at `place`, in the repository at `container_dir` where
+    /// the runner keeps its clone, else by its location alone.
+    fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun>;
 }
 
 /// Flume's command line, by the program at `program`: `flume` on the
@@ -148,13 +149,13 @@ impl Flume for Cli {
         self.run(vec!["status".into()])
     }
 
-    fn status_of(&self, container_dir: &Path, place: &str) -> Result<Reply, Unrun> {
-        self.run(vec![
-            "status".into(),
-            "--repository".into(),
-            container_dir.into(),
-            place.into(),
-        ])
+    fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {
+        let mut args: Vec<OsString> = vec!["status".into()];
+        if let Some(container_dir) = container_dir {
+            args.extend(["--repository".into(), container_dir.into()]);
+        }
+        args.push(place.into());
+        self.run(args)
     }
 }
 
