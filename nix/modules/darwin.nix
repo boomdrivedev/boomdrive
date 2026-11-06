@@ -2,10 +2,10 @@
 # launchd agent of the primary user's login (design Decision 10), since
 # nix-darwin installs user agents for that user alone, with the runner and
 # its tools in the system profile and the service's PATH the profiles'
-# (design Decision 11). The agent runs `boomdrive run --config` with the
-# file rendered from `settings` (design Decision 9), so nix-darwin reloads
-# it when the package or the file changes, and leaves it running when
-# neither does. The activation links the file at the runner's own path,
+# (design Decision 11). Once the Nix store is mounted, the agent runs
+# `boomdrive run --config` with the file rendered from `settings` (design
+# Decision 9), so nix-darwin reloads it when the package or the file
+# changes, and leaves it running when neither does. The activation links the file at the runner's own path,
 # as the primary user, for the commands a person runs by hand.
 { packages }:
 {
@@ -60,27 +60,33 @@ in
 
     environment.systemPackages = [ cfg.package ] ++ cfg.tools;
 
-    launchd.user.agents.boomdrive.serviceConfig = {
-      ProgramArguments = [
+    launchd.user.agents.boomdrive = {
+      # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store
+      # && exec <command>'`, so an agent loaded at boot before the store's
+      # volume is mounted waits for it, and the runner then holds the job's
+      # own process, which a stop's signal reaches.
+      command = lib.escapeShellArgs [
         "${cfg.package}/bin/boomdrive"
         "run"
         "--config"
         "${file}"
       ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      # An exit 2 is tried again no more than twice a minute.
-      ThrottleInterval = 30;
-      ProcessType = "Interactive";
-      # A stop ends the runner alone: a `flume launch` in flight runs to
-      # its end.
-      AbandonProcessGroup = true;
-      EnvironmentVariables = {
-        HOME = home;
-        PATH = lib.concatStringsSep ":" path;
+      serviceConfig = {
+        RunAtLoad = true;
+        KeepAlive = true;
+        # An exit 2 is tried again no more than twice a minute.
+        ThrottleInterval = 30;
+        ProcessType = "Interactive";
+        # A stop ends the runner alone: a `flume launch` in flight runs to
+        # its end.
+        AbandonProcessGroup = true;
+        EnvironmentVariables = {
+          HOME = home;
+          PATH = lib.concatStringsSep ":" path;
+        };
+        StandardOutPath = cfg.logFile;
+        StandardErrorPath = cfg.logFile;
       };
-      StandardOutPath = cfg.logFile;
-      StandardErrorPath = cfg.logFile;
     };
 
     # Activation runs as root, with root's HOME, so the link is made as the

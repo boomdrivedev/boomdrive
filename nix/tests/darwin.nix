@@ -11,7 +11,42 @@ let
   base = t.darwinSystem { };
   agentOf = evaluated: evaluated.config.launchd.user.agents.boomdrive.serviceConfig;
   agent = agentOf base;
-  fileOf = evaluated: lib.elemAt (agentOf evaluated).ProgramArguments 3;
+
+  # The agent's program, which launchd runs as the job's process.
+  programOf = evaluated: (agentOf evaluated).ProgramArguments;
+  # What the shell runs first: it waits for the store's volume, then hands
+  # the job's process to the command, so a stop's signal reaches it.
+  wait = "/bin/wait4path /nix/store && exec ";
+  waits =
+    evaluated:
+    let
+      program = programOf evaluated;
+    in
+    lib.length program == 3
+    &&
+      lib.take 2 program == [
+        "/bin/sh"
+        "-c"
+      ]
+    && lib.hasPrefix wait (lib.elemAt program 2);
+  # The command's words: store paths and plain words, which the shell
+  # reads unquoted.
+  commandOf = evaluated: lib.splitString " " (lib.removePrefix wait (lib.last (programOf evaluated)));
+  # The word after `--config`, or "" where there is none.
+  fileOf =
+    evaluated:
+    let
+      command = commandOf evaluated;
+      at = lib.lists.findFirstIndex (word: word == "--config") null command;
+    in
+    if at == null || at + 1 >= lib.length command then "" else lib.elemAt command (at + 1);
+  # The plist nix-darwin installs, which it reloads the agent for where it
+  # differs from the one loaded.
+  plistOf = evaluated: evaluated.config.environment.userLaunchAgents."org.nixos.boomdrive.plist".text;
+  # The program of `evaluated` with `new` read as `old`.
+  readAs =
+    old: new: evaluated:
+    map (lib.replaceStrings [ new ] [ old ]) (programOf evaluated);
 
   # The module's file holding `text`, byte for byte.
   writes =
@@ -38,8 +73,14 @@ let
   saysNoHome = words: lib.hasInfix words (toString (t.failures noHome));
 
   newFile = t.darwinSystem { services.boomdrive.settings.fetch_interval = "5m"; };
-  arguments = agent.ProgramArguments;
-  newArguments = (agentOf newFile).ProgramArguments;
+  # Another build of the runner, in a folder of its own.
+  newPackage = t.darwinSystem (
+    { pkgs, ... }:
+    {
+      services.boomdrive.package = pkgs.writeTextDir "bin/boomdrive" "";
+    }
+  );
+  otherPackage = newPackage.config.services.boomdrive.package.outPath;
 
   own = t.darwinSystem { services.boomdrive.tools = [ ]; };
 
@@ -67,12 +108,17 @@ in
   "The agent" =
     t.expect (t.failures base == [ ]) "the system fails: ${toString (t.failures base)}"
     ++ holds "Label" "org.nixos.boomdrive"
-    ++ holds "ProgramArguments" [
-      "${set.boomdrive}/bin/boomdrive"
-      "run"
-      "--config"
-      (fileOf base)
-    ]
+    ++
+      t.expect
+        (
+          commandOf base == [
+            "${set.boomdrive}/bin/boomdrive"
+            "run"
+            "--config"
+            (fileOf base)
+          ]
+        )
+        "the agent runs ${builtins.toJSON (commandOf base)}, not the set's boomdrive run --config with the file"
     ++ t.expect (writes base (builtins.readFile ./files/empty.toml)) "the agent's --config is not the file of nix/tests/files/empty.toml"
     ++ holds "RunAtLoad" true
     ++ holds "KeepAlive" true
@@ -94,6 +140,17 @@ in
     ++ holds "StandardOutPath" "/Users/alice/Library/Logs/boomdrive.log"
     ++ holds "StandardErrorPath" "/Users/alice/Library/Logs/boomdrive.log";
 
+  "The agent waits for the Nix store" =
+    lib.concatMap
+      (
+        evaluated:
+        t.expect (waits evaluated) "the agent's program does not wait for /nix/store, then exec its command: ${builtins.toJSON (programOf evaluated)}"
+      )
+      [
+        base
+        crew
+      ];
+
   "No home for the primary user" =
     t.expect (t.failures noHome != [ ]) "the module evaluates for a primary user with no home"
     ++
@@ -107,12 +164,22 @@ in
         ];
 
   "A new file on nix-darwin" =
-    t.expect (
-      lib.take 3 arguments == lib.take 3 newArguments && lib.drop 4 arguments == lib.drop 4 newArguments
-    ) "the agents' arguments differ beside the file: ${toString arguments} and ${toString newArguments}"
+    t.expect (readAs (fileOf base) (fileOf newFile) newFile == programOf base)
+      "the agents' programs differ beside the file: ${builtins.toJSON (programOf base)} and ${builtins.toJSON (programOf newFile)}"
     ++ t.expect (
       fileOf base != fileOf newFile
-    ) "the agents' arguments name one file for two fetch_interval";
+    ) "the agents' programs name one file for two fetch_interval"
+    ++ t.expect (plistOf base != plistOf newFile) "the agents' plists are one for two files";
+
+  "A new package on nix-darwin" =
+    t.expect (readAs set.boomdrive.outPath otherPackage newPackage == programOf base)
+      "the agents' programs differ beside the package: ${builtins.toJSON (programOf base)} and ${builtins.toJSON (programOf newPackage)}"
+    ++ t.expect (programOf base != programOf newPackage) "the agents' programs name one package for two"
+    ++ t.expect (plistOf base != plistOf newPackage) "the agents' plists are one for two packages";
+
+  "Nothing else changed on nix-darwin" = t.expect (
+    plistOf base == plistOf own
+  ) "the agent's plist changes with services.boomdrive.tools";
 
   "The set's tools on nix-darwin" =
     installs base "runner" set.boomdrive
