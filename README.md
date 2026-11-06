@@ -114,6 +114,178 @@ The host's service manager keeps `boomdrive run` alive: launchd's
 An exit 2 means the host needs fixing, and the service manager's
 throttle keeps it from spinning.
 
+## Installing with nix
+
+The flake at this repository's root, `github:agentplot/boomdrive`,
+gives the family's host tools pinned together: the runner from this
+tree, Flume and sluice each at a release tag, and each tool's herdr
+plugin from its tag, for `aarch64-darwin`, `aarch64-linux` and
+`x86_64-linux`. Each reports its tag's version, and the set is the one
+the runner's tests pass with. nixpkgs builds nothing for an Intel Mac,
+so the flake gives it nothing. herdr and git are the host's own.
+
+To put the runner, Flume and sluice in your profile:
+
+    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice
+
+An older nix spells it `nix profile install`. nix asks whether to
+accept the flake's `nixConfig`, which names the family's cache,
+`boomdrive` on Cachix, and its key: answer `y`, and `y` again to keep
+the answer, and the binaries come from the cache. nix uses a
+substituter a flake names only for a trusted user, or where its
+daemon's `trusted-substituters` names it, so anyone else trusts the
+cache in the host's nix settings, as below.
+
+A host's configuration takes the flake as an input, and nix reads no
+input's `nixConfig`. So a host that wants the binaries trusts the
+family's cache in its own nix settings:
+
+```nix
+nix.settings.extra-substituters = [ "https://boomdrive.cachix.org" ];
+nix.settings.extra-trusted-public-keys = [ "boomdrive.cachix.org-1:vHLgmasPg2jKqkvPXWOOrYzspoGL2xxsW4fAuHBtiag=" ];
+```
+
+Where nix-darwin does not manage nix, the same two settings go in nix's
+own `nix.conf`. Leave the flake's `nixpkgs` its own: the packages are
+made with it, so they are the store paths the cache holds. A host that
+makes it follow its own, `inputs.boomdrive.inputs.nixpkgs.follows`,
+changes every one of them, and builds them all.
+
+A host that trusts no cache, or declines nix's question, gets the same
+packages, built from the source the flake's lock names, at the same
+store paths. So does a host whose path the cache no longer holds.
+Distrust costs only the time to build.
+
+The flake at `main` moves with each change that lands, and its cache
+run pushes that commit's binaries. To stay on one set, pin a tag,
+`github:agentplot/boomdrive/<tag>`, or a commit of `main` whose `cache`
+run passed:
+
+    gh run list --repo agentplot/boomdrive --workflow cache.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha'
+
+A host's configuration imports its platform's module,
+`darwinModules.default` for nix-darwin or `nixosModules.default` for
+NixOS, and writes the runner's file as `services.boomdrive.settings`,
+each key as the file names it:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nix-darwin = {
+      url = "github:nix-darwin/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    boomdrive.url = "github:agentplot/boomdrive";
+  };
+
+  outputs =
+    { nix-darwin, boomdrive, ... }:
+    {
+      darwinConfigurations.host-a = nix-darwin.lib.darwinSystem {
+        modules = [
+          boomdrive.darwinModules.default
+          {
+            # The rest of the host's configuration, system.primaryUser among it.
+            services.boomdrive = {
+              enable = true;
+              settings = {
+                repository_root = "~/Code";
+                code_workspaces = true;
+                repositories = [ "agentplot/flume" "agentplot/sluice" ];
+                control_plane = {
+                  type = "crew";
+                  crew = { host = "host-a"; partitions = [ { label = "home"; state_repository = "example/state"; } ]; };
+                };
+              };
+            };
+          }
+        ];
+      };
+    };
+}
+```
+
+On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
+login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
+`~/Library/Logs/boomdrive.log` where none is named. On NixOS it is the
+systemd user unit `boomdrive.service` of `services.boomdrive.user`, who
+lingers, so it runs from boot. The file is written into the store, the
+service runs `boomdrive run --config <that file>`, and each switch
+links `~/.config/boomdrive/config.toml` to it, so a command run by hand
+reads it too. A file of your own there is moved once to
+`config.toml.before-nix`. A switch that changes the file or the runner
+restarts it. A key of `settings` named for a credential, `token`, `key`,
+`secret` or `password`, or one ending in `_token`, `_key`, `_secret` or
+`_password`, fails evaluation, since every user reads the store.
+
+The module puts the runner and the set's Flume and sluice in the system
+profile, and the runner's `PATH` is the user's profiles, then the
+system's, so the runner, the agents Flume launches and your shell run
+one copy of each tool. A host that installs its own Flume and sluice
+says so:
+
+```nix
+services.boomdrive.tools = [ ];
+```
+
+`tools` may name the host's own packages instead, and
+`services.boomdrive.package` replaces the runner.
+
+Under a hosted control plane, enroll each partition after the switch,
+on the host, as the service's user, the token on standard input:
+
+    boomdrive enroll home
+
+No option holds a token or a key. On NixOS, a hosted control plane
+needs systemd 256, whose `systemd-creds` keeps the key, and evaluation
+fails on an older one.
+
+The runner refuses to start below git 2.48, and says so in its log. A
+Mac whose only git is Apple's, where that is older, puts a newer one in
+a profile, as `environment.systemPackages = [ pkgs.git ];` does.
+
+The set gives each tool's herdr plugin, `flume-herdr-plugin` and
+`sluice-herdr-plugin`, at its tool's tag. herdr's own command links
+one. Build it to a link of your own, which keeps nix's garbage
+collector from it, and link that:
+
+    nix build github:agentplot/boomdrive#flume-herdr-plugin --out-link ~/.local/state/herdr-plugins/flume
+    herdr plugin link ~/.local/state/herdr-plugins/flume
+
+A tool's version moves by its input, and an override is the host's
+own: its paths are not the cache's, so the host builds them, and the
+runner's floors judge it, not this repository's tests. On the command
+line:
+
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.10.1
+
+In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
+version is its tagged tree's. Its git crates are fetched by the hashes
+the flake holds for the tag it names, in
+`nix/packages/flume-git-crates.nix`, so a tag whose weir differs fails
+to build, and needs a package of the host's own in `tools`. sluice's
+tagged tree says `0.0.0`, and the set gives sluice the version of the
+tag `flake.nix` names, so an overridden sluice is given its own version
+beside it:
+
+```nix
+# In the host's flake's inputs:
+boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.69.0";
+```
+
+```nix
+# In its configuration:
+services.boomdrive.tools = [
+  boomdrive.packages.aarch64-darwin.flume
+  (boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
+    __intentionallyOverridingVersion = true;
+    version = "0.69.0";
+    env = old.env // { SLUICE_VERSION = "0.69.0"; };
+  }))
+];
+```
+
 ## Carrying the control plane's work
 
 With a `[control_plane]` table, the runner carries its control plane's
@@ -283,5 +455,6 @@ The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
-`boomdrive-crew` and `boomdrive-hosted`, beside `root`, which holds what
-spans the tree.
+`boomdrive-crew` and `boomdrive-hosted`, beside `nix`, which holds the
+flake, its modules and the cache's workflow, and `root`, which holds
+what spans the tree.

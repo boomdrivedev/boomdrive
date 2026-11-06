@@ -1,7 +1,8 @@
 # The binary-cache spec over the flake and the modules (design Decision 4):
-# `nixConfig` names the family's cache alone, and each module, in a system
-# whose `pkgs` carries an overlay of the host's own, installs the flake's
-# own packages and adds nothing of the cache's to the host's nix settings.
+# `nixConfig` names the family's cache alone, the README's install with
+# nix gives a host the same two lines, and each module, in a system whose
+# `pkgs` carries an overlay of the host's own, installs the flake's own
+# packages and adds nothing of the cache's to the host's nix settings.
 t:
 let
   inherit (t) lib;
@@ -9,6 +10,18 @@ let
   # The family's cache, as design Decision 4 names it.
   substituter = "https://boomdrive.cachix.org";
   key = "boomdrive.cachix.org-1:vHLgmasPg2jKqkvPXWOOrYzspoGL2xxsW4fAuHBtiag=";
+
+  # The README's **Installing with nix**, up to the next section, and each
+  # nix block in it. A host copies the block that trusts the cache, so one
+  # block holds each substituter and key nixConfig names, as nix strings.
+  installing = lib.findFirst (lib.hasPrefix "Installing with nix\n") null (
+    lib.splitString "\n## " (builtins.readFile ../../README.md)
+  );
+  nixBlocks = map (block: lib.head (lib.splitString "```" block)) (
+    lib.drop 1 (lib.splitString "```nix\n" (toString installing))
+  );
+  named = t.flake.nixConfig.extra-substituters ++ t.flake.nixConfig.extra-trusted-public-keys;
+  trusts = block: lib.all (value: lib.hasInfix ''"${value}"'' block) named;
 
   # The host's own packages under the set's names, so a module that took
   # its packages from the host's `pkgs` would install these.
@@ -93,6 +106,12 @@ in
       extra-trusted-public-keys = [ key ];
     }
   ) "nixConfig is ${builtins.toJSON t.flake.nixConfig}, not ${substituter} and ${key} alone";
+
+  "The README's lines" =
+    t.expect (installing != null) "the README has no section ## Installing with nix"
+    ++
+      t.expect (installing == null || lib.any trusts nixBlocks)
+        "no nix block of the README's Installing with nix names ${lib.concatStringsSep " and " named}, as nixConfig does";
 }
 // onEach "A host's own nixpkgs" ownNixpkgs
 // onEach "The host's trust" trust
