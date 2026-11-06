@@ -61,5 +61,5 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 ## 9. The change's checks
 
-- [ ] 9.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test root:format root:toolchain root:adrs root:specs root:changes` passes.
-- [ ] 9.2 The spec deltas archive into specs that pass openspec's strict check, each requirement's text within openspec's 500 characters. True when, after `openspec archive boomdrive-publishes-a-flake-of-the-family-and-the-runners-service --yes` on a copy of `openspec/` with the pinned openspec, `openspec validate --specs --strict` passes all 15 specs there, and `devenv shell -- moon run root:specs root:changes` passes on the tree.
+- [x] 9.1 Run the checks of every moon project this change touches. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test root:format root:toolchain root:adrs root:specs root:changes` passes.
+- [x] 9.2 The spec deltas archive into specs that pass openspec's strict check, each requirement's text within openspec's 500 characters. True when, after `openspec archive boomdrive-publishes-a-flake-of-the-family-and-the-runners-service --yes` on a copy of `openspec/` with the pinned openspec, `openspec validate --specs --strict` passes all 15 specs there, and `devenv shell -- moon run root:specs root:changes` passes on the tree.
