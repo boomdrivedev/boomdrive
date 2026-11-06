@@ -136,6 +136,12 @@ in
     openspec
   ];
 
+  # The flake's inputs as flake.lock locks them, fetched by this shell
+  # outside the gate's sandbox and given to the nix project's checks by
+  # their store paths, which they read with no network and no nix daemon
+  # (design Decision 14).
+  env.BOOMDRIVE_FLAKE_INPUTS = builtins.toJSON (import ./nix/inputs.nix { }).paths;
+
   # moon's task archives (.moon/cache/outputs) are a link into the git common
   # dir, so every worktree shares them. The rest of .moon/cache records the
   # checkout's absolute paths and stays its own.
