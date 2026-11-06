@@ -250,6 +250,73 @@ fn a_repository_not_kept() {
     assert!(said.lines().is_empty(), "{:?}", said.lines());
 }
 
+/// The crew-control-plane spec's "A launch answered before its repository
+/// left the hello": a kit's launch this host's branch answers, whose
+/// `Repo` the hello no longer names, is given still, its `Repo` as
+/// written, and an act on it with it; one no runner answers is given
+/// nothing (record 0021).
+#[test]
+fn a_launch_answered_before_its_repository_left_the_hello() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            kit("old-kit"),
+            launch(21, None, "unit/a", "old-kit", "b", &[]),
+            act(22, "retry", None, "unit/a", 20, &[]),
+        ],
+    );
+    answering(&state, "deneb", &[launched(20)]);
+    let (mut deneb, said) = state.crew("deneb");
+    // The hello names the repository under its new name alone, and the
+    // host has no room.
+    let pulled = pull(&mut deneb, &hello(&["example/new-kit"], "0"));
+    assert_eq!(ids(&pulled), ["madswan/20", "madswan/22"]);
+    let Want::Offer(offer) = want(&pulled, "madswan/20") else {
+        panic!("not an offer")
+    };
+    assert_eq!(offer.launch.repository, "old-kit");
+    assert_eq!(state.commits("madswan/runner/deneb"), 1, "nothing written");
+    assert!(said.lines().is_empty(), "{:?}", said.lines());
+}
+
+/// A launch the runner's report answers is given whatever the hello
+/// names, its `Repo` an address no longer kept, or a name two kept
+/// addresses share (record 0021).
+#[test]
+fn a_launch_the_report_answers_is_given_whatever_the_hello_names() {
+    use boomdrive_control::{Answer, At, ControlPlane, Id, Launched, Outcome, Report};
+    let mut report = Report::default();
+    report.launches.insert(
+        Id::new("madswan/20"),
+        Launched {
+            lease: boomdrive_crew::read::LEASE,
+            answer: Answer {
+                outcome: Outcome::Launched,
+                place_dir: Some("/places/change--a".to_string()),
+                words: None,
+                at: At::parse("2026-11-01T10:00:00Z").unwrap(),
+            },
+            status: None,
+            entry: None,
+        },
+    );
+    for (repo, kept) in [
+        ("example/old-kit", vec!["example/new-kit"]),
+        ("crew", vec![CREW, "agentplot/crew"]),
+    ] {
+        let state = State::new();
+        main_holding(&state, &[kit(repo)]);
+        let (mut deneb, _) = state.crew("deneb");
+        let pulled = deneb.pull(&hello(&kept, "4"), &report).unwrap();
+        let Want::Offer(offer) = want(&pulled, "madswan/20") else {
+            panic!("not an offer")
+        };
+        assert_eq!(offer.launch.repository, repo);
+        assert_eq!(state.tip("madswan/runner/deneb"), None, "nothing written");
+    }
+}
+
 #[test]
 fn a_claim_waiting_for_its_streams_room() {
     use boomdrive_control::{ControlPlane, Report};

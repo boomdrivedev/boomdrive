@@ -307,6 +307,19 @@ impl Crew {
                         };
                         let address = match read::kept(repo, &hello.repositories) {
                             Kept::Address(address) => address,
+                            // A launch the runner answered is given while
+                            // it holds it, its Repo as written, so its
+                            // place is followed to its end though the
+                            // runner keeps the repository no more (record
+                            // 0021).
+                            _ if pulling.reported(request.number)
+                                || pulling.branch_answers(request.number, false) =>
+                            {
+                                if let Ok(want) = read::want(&label, request, None) {
+                                    given.insert(request.number, want);
+                                }
+                                continue;
+                            }
                             Kept::No => continue,
                             Kept::Shared(addresses) => {
                                 lines.say(format!(
