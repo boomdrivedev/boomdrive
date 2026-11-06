@@ -312,10 +312,10 @@ nix-darwin reloads the agent when its plist changes, which is when the package o
 - `unitConfig.ConditionUser` the user, so no other user's manager runs it;
 - `Restart=always`, `RestartSec=30s` and `StartLimitIntervalSec=0`, as launchd's `KeepAlive` and throttle;
 - `KillMode=process`, as `AbandonProcessGroup`;
-- `Environment` `PATH` alone; the user's manager gives `HOME` and `XDG_RUNTIME_DIR`;
+- `Environment` `PATH` alone of the module's own; the user's manager gives `HOME` and `XDG_RUNTIME_DIR`, and the system's `systemd.globalEnvironment` what it gives every unit;
 - `users.users.<user>.linger = true`, so the runner runs from boot on a host no one logs into.
 
-NixOS restarts no changed user unit. So `system.userActivationScripts.boomdrive` runs `activate.sh keep` for the user, after linking. That compares the running runner's command line, by `ps`, with the unit's, and starts the unit where it is not running, restarts it where they differ, and does nothing where they are one. It is `systemctl --user --no-block`, since it runs inside the user's `nixos-activation.service`. Any other user's activation does nothing. Evaluation fails where the user is not in `users.users`, or where `settings` names a hosted control plane on a systemd older than 256 (record 0018).
+NixOS restarts no changed user unit. So `system.userActivationScripts.boomdrive` runs `activate.sh keep` for the user, after linking. That compares the command line of the unit's main process, by `systemctl show` and `ps`, with the unit's, and starts the unit where it has none, restarts it where they differ, and does nothing where they are one, so a new package restarts it as a new file does. It is `systemctl --user --no-block`, since it runs inside the user's `nixos-activation.service`. Any other user's activation does nothing. Evaluation fails where the user is not in `users.users`, or where `settings` names a hosted control plane on a systemd older than 256 (record 0018).
 
 The runner reads its file again at every pass, so most changes would take effect without a restart. A restart on every change is still taken, since `[control_plane]` is read only at start and the restart is what a host would do by hand.
 

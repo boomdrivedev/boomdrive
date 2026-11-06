@@ -99,5 +99,9 @@
         boomdrive = import ./nix/modules/darwin.nix { inherit packages; };
         default = boomdrive;
       };
+      nixosModules = rec {
+        boomdrive = import ./nix/modules/nixos.nix { inherit packages; };
+        default = boomdrive;
+      };
     };
 }
