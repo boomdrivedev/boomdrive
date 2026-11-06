@@ -26,8 +26,8 @@ None.
 
 ### Modified Capabilities
 
-- `work-into-flume`: a place's status is carried whether or not the configuration still keeps its repository, by its location alone where it does not; a landing in a repository not kept is told to no keeper.
-- `crew-control-plane`: a launch the runner's report or branch answers is given whatever the hello names.
+- `work-into-flume`: a place is followed to its end whether or not the configuration still keeps its repository, asked for by its location alone where it does not; a landing in a repository not kept is told to no keeper.
+- `crew-control-plane`: a launch the runner's report or branch answers is given whatever the hello names, and a launch naming no host is given nothing only where the runner has not answered it.
 
 ## Impact
 

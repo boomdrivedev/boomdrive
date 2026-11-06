@@ -50,7 +50,7 @@ Option 2 would have the runner read work its control plane no longer gives. Whic
 ### Consequences
 
 - core.5's "Not ruled out" gains a place the runner launched, followed in Flume's status by its location after the configuration drops its repository, citing this record. No clone or view of that repository is made, fetched or kept for it.
-- The work-into-flume spec's "Flume's status of each place is carried as Flume gave it" and "A landing is told to the keeper once", and the crew-control-plane spec's "A launch naming no host is given only where this runner keeps its repository", carry this. That is the OpenSpec change `the-runner-follows-each-place-it-launched-to-its-end`.
+- The work-into-flume spec gains "A place is followed to its end whether or not its repository is kept", and its "Flume's status of each place is carried as Flume gave it" and "A landing is told to the keeper once" are amended. The crew-control-plane spec gains "A launch the runner answered is given whatever the hello names", and its "A launch naming no host is given only where this runner keeps its repository" is amended. That is the OpenSpec change `the-runner-follows-each-place-it-launched-to-its-end`.
 - `Flume::status_of` takes the clone's container where the runner keeps one, and none where it does not.
 - sluice's entry of a submission is read only in a kept clone, as before. A place whose repository the runner no longer keeps carries its landing in Flume's status alone, which is what crew reads first (`flume_facts`).
 - On the host, the first pass of this release carries the tidied place's record, with its landing and its commit, to the runner's branch.

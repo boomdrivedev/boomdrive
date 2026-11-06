@@ -9,7 +9,7 @@ Build the groups in order. Each group stands on the ones before it, and ends gre
 ## 1. Every place the runner launched is followed to its end
 
 - [x] 1.1 A pass carries the status of a place whose repository the configuration no longer keeps, asked for by its location alone, through its landing and its tidied record, and tells no keeper of the landing (design Decisions 1 and 2; Task notes 1.1). True when `devenv shell -- moon run boomdrive:test` passes with `tests/statuses.rs` proving the work-into-flume spec's "A place whose repository the runner keeps no more", "A place found tidied by its mark" and "A landing in a repository not kept", and `tests/flume.rs` the call with and without a container.
-- [x] 1.2 crew's implementation gives a launch the runner answered whatever the hello names (design Decision 3; Task notes 1.2). True when `devenv shell -- moon run boomdrive-crew:test` passes with `tests/claims.rs` proving the crew-control-plane spec's "A launch answered before its repository left the hello".
+- [x] 1.2 crew's implementation gives a launch the runner answered whatever the hello names (design Decision 3; Task notes 1.2). True when `devenv shell -- moon run boomdrive-crew:test` passes with `tests/claims.rs` proving the crew-control-plane spec's "A launch answered before its repository left the hello" and "An answered launch whose name two kept addresses share".
 - [x] 1.3 README says a place is followed to its end. True when `devenv shell -- moon run root:format` passes.
 - [x] 1.4 Run this group's checks. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test boomdrive-crew:format boomdrive-crew:lint boomdrive-crew:typecheck boomdrive-crew:test` passes.
 
