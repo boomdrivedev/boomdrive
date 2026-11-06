@@ -53,7 +53,7 @@ The first set is Flume `v0.10.0` and sluice `v0.68.0`, each the newest release o
 
 **Goals:**
 
-- `nix profile add github:agentplot/boomdrive` gives the runner (`nix profile install` on a nix older than the pinned 2.34, which keeps `install` as a deprecated alias), and a host's configuration gets the runner, Flume and sluice at versions the runner's tests passed with.
+- `nix profile add github:agentplot/boomdrive` gives the runner (`nix profile install` on a nix with no `add`; the pinned 2.34 keeps `install` as a deprecated alias), and a host's configuration gets the runner, Flume and sluice at versions the runner's tests passed with.
 - A host whose nix trusts the family's cache substitutes every package of the set and compiles nothing. A host that does not trust it builds the same packages from source.
 - A host's configuration that imports a module and sets `services.boomdrive` gets the runner's file, its service, its restarts and its tools, and carries none of its own.
 - Every option is the runner's file in Nix, under the file's own names.
