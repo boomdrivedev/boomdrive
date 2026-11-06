@@ -52,7 +52,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 
 - [x] 7.1 The flake's `nixConfig` and the modules' packages hold to the cache (design Decision 4; Task notes 7.1). True when `devenv shell -- moon run nix:test` proves the binary-cache spec's "The flake's nixConfig", "A host's own nixpkgs" and "The host's trust", on nix-darwin and on NixOS.
 - [x] 7.2 `.github/workflows/cache.yml` builds and pushes every package of every system (design Decision 5; Task notes 7.2). True when `devenv shell -- moon run nix:lint nix:test root:format` passes, `nix:lint` running actionlint on the workflow, and `nix:test` proving over the workflow's text "Each system has its job" and "A branch's push", and that the job names `environment: cachix`, `fail-fast: false` and `skipPush: true`, loads the cache's token from 1Password by `1password/load-secrets-action`, fails naming `OP_SERVICE_ACCOUNT_TOKEN` and then `CACHIX_AUTH_TOKEN` before its build step, and pushes only after it, as "The runner is pushed with its tools", "A package that does not build", "No service account token" and "No token" need.
-- [ ] 7.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:format` passes.
+- [x] 7.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:format` passes.
 
 ## 8. The README and the project's notes
 
