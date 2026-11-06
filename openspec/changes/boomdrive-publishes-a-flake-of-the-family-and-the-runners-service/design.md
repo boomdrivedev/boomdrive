@@ -41,6 +41,7 @@ The user approved this design on 2026-11-06 ("Approve: start its code"), and rul
 1. **The cache is `boomdrive`, signed by Cachix's own key.** "The token is all the workflow needs." Against the cache's name they wrote `{ cachix.push = "boomdrive"; }` (Decision 4, and The user's to rule on).
 2. **The token comes from 1Password.** "Configure the GitHub Actions to use a service account token from 1Password to read the variable" (Decision 5).
 3. **The user's steps are commands.** "Send as CLI commands" (After deploy).
+4. **The set gives three systems.** Asked on 2026-11-05 whether the set leaves out `x86_64-darwin`, which nixpkgs 26.11 refuses, they answered "Leave it out: three systems" (Decision 2).
 
 The first set is Flume `v0.10.0` and sluice `v0.68.0`, each the newest release on 2026-11-05, held there only if the runner's tests pass with them (Decision 6).
 
