@@ -22,8 +22,12 @@ tasks:
     inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
+  # The set's tests (tests/family.rs) run the programs the devenv shell
+  # gives by their paths, made from flake.lock's inputs, so the lock and
+  # the paths are inputs too; nix/tests/files holds the files the flake's
+  # modules render, which the runner's tests read.
   test:
     command: 'cargo test -p boomdrive'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
