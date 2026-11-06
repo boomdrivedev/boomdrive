@@ -22,7 +22,7 @@ None.
 
 ### Modified Capabilities
 
-- `service-modules`: on nix-darwin the agent runs behind `/bin/wait4path /nix/store`, handing its process to the runner; a new package, like a new file, changes the agent, and a change to `tools` does not.
+- `service-modules`: a new requirement, that on nix-darwin the agent runs behind `/bin/wait4path /nix/store`, handing its process to the runner; and a new package, like a new file, changes the agent, while a change to `tools` does not.
 
 ## Impact
 

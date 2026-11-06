@@ -1,25 +1,17 @@
 # Service modules
 
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: On nix-darwin the runner is a launchd agent of the primary user's login
+### Requirement: On nix-darwin the agent waits for the Nix store
 
-With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `<package>/bin/boomdrive run --config <the file>` behind `/bin/wait4path /nix/store`, the shell handing its process to the runner by `exec`, so an agent loaded before the Nix store's volume is mounted waits for it, and a stop's signal reaches the runner. It SHALL start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, have only `HOME` and `PATH` in its environment, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
-
-#### Scenario: The agent
-
-- **WHEN** the module is enabled for the primary user `alice`, whose home is `/Users/alice`
-- **THEN** the agent runs the package's `boomdrive run --config` with the file, `RunAtLoad`, `KeepAlive`, `ThrottleInterval` 30, `ProcessType` `Interactive` and `AbandonProcessGroup`, with `HOME` `/Users/alice`, and logs to `/Users/alice/Library/Logs/boomdrive.log`
+The nix-darwin module's agent SHALL run its command behind `/bin/wait4path /nix/store`, the shell handing its process to the runner by `exec`, so an agent loaded before the Nix store's volume is mounted waits for it, and a stop's signal reaches the runner.
 
 #### Scenario: The agent waits for the Nix store
 
 - **WHEN** the module is enabled, with no `settings` or with a crew control plane's
 - **THEN** the agent's program is `/bin/sh -c` with a line that runs `/bin/wait4path /nix/store`, then `exec`s the package's `boomdrive run --config` with the file
 
-#### Scenario: No home for the primary user
-
-- **WHEN** the module is enabled and `users.users.alice.home` is not set
-- **THEN** evaluation fails, naming the primary user and the option
+## MODIFIED Requirements
 
 ### Requirement: A changed file or package restarts the runner, and nothing else does
 
