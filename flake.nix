@@ -44,19 +44,52 @@
   };
 
   outputs =
-    { nixpkgs, ... }:
+    inputs@{ nixpkgs, rust-overlay, ... }:
     let
-      # The systems sluice's flake builds, each with its job in the cache's
-      # workflow.
+      inherit (nixpkgs) lib;
+      # The systems sluice's flake builds that nixpkgs builds for, each with
+      # its job in the cache's workflow: nixpkgs 26.11 refuses
+      # x86_64-darwin (design Decision 2).
       systems = [
         "aarch64-darwin"
-        "x86_64-darwin"
         "aarch64-linux"
         "x86_64-linux"
       ];
-      forAll = nixpkgs.lib.genAttrs systems;
+      tagOf = import ./nix/packages/tag.nix { inherit lib; };
+
+      # The set for one system (design Decisions 2 and 3), made with the
+      # flake's own nixpkgs, so its paths are the ones the family's cache
+      # holds (design Decision 4). herdr and git are the host's own.
+      packagesOf =
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ rust-overlay.overlays.default ];
+          };
+          tools = {
+            boomdrive = pkgs.callPackage ./nix/packages/boomdrive.nix { platforms = systems; };
+            flume = pkgs.callPackage ./nix/packages/flume.nix {
+              src = inputs.flume;
+              platforms = systems;
+            };
+            sluice = import ./nix/packages/sluice.nix {
+              inherit lib;
+              package = inputs.sluice.packages.${system}.default;
+              src = inputs.sluice;
+              tag = tagOf (import ./flake.nix).inputs.sluice.url;
+            };
+          };
+          pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
+        in
+        tools
+        // {
+          default = tools.boomdrive;
+          flume-herdr-plugin = pluginOf tools.flume;
+          sluice-herdr-plugin = pluginOf tools.sluice;
+        };
     in
     {
-      packages = forAll (_: { });
+      packages = lib.genAttrs systems packagesOf;
     };
 }

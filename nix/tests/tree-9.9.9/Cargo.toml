@@ -1,0 +1,4 @@
+# A tool's tree whose Cargo.toml says 9.9.9: the input the cases of an
+# overridden input put in place of a tool's (nix/tests/packages.nix).
+[workspace.package]
+version = "9.9.9"

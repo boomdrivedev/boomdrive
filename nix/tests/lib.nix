@@ -5,6 +5,7 @@
 let
   inherit ((import ../inputs.nix { inherit paths; })) inputs;
   flake = import ../../flake.nix;
+  lock = builtins.fromJSON (builtins.readFile ../../flake.lock);
   outputs = flake.outputs (inputs // { inherit self; });
   # The tree by its path, never copied: the checks write nothing.
   self = outputs // {
@@ -22,10 +23,19 @@ in
     ;
   inherit (inputs.nixpkgs) lib;
 
-  # The systems the flake gives, sluice's flake's four.
+  # flake.lock, which the inputs are read from.
+  inherit lock;
+
+  # The version of a tool of the set, its tag in the lock without the v.
+  lockedVersion =
+    name:
+    inputs.nixpkgs.lib.removePrefix "v"
+      lock.nodes.${lock.nodes.${lock.root}.inputs.${name}}.original.ref;
+
+  # The systems the flake gives: sluice's flake's, less x86_64-darwin,
+  # which nixpkgs 26.11 refuses.
   systems = [
     "aarch64-darwin"
-    "x86_64-darwin"
     "aarch64-linux"
     "x86_64-linux"
   ];
