@@ -68,12 +68,22 @@ With `services.boomdrive.enable`, the NixOS module SHALL declare `systemd.user.s
 
 ### Requirement: A changed file or package restarts the runner, and nothing else does
 
-On nix-darwin, the agent's arguments SHALL name the package and the file, so nix-darwin reloads the agent when either changes and leaves it running when neither does. On NixOS, the module's user activation SHALL, for the service's user alone, start the unit where it is not running, restart it where the running runner's command line is not the unit's, and do nothing else.
+On nix-darwin, the agent's program SHALL name the package and the file, so nix-darwin, which reloads an agent whose plist changed, reloads it when either changes and leaves it running when neither does. On NixOS, the module's user activation SHALL, for the service's user alone, start the unit where it is not running, restart it where the running runner's command line is not the unit's, and do nothing else.
 
 #### Scenario: A new file on nix-darwin
 
 - **WHEN** two configurations differ only in `settings.fetch_interval`
-- **THEN** their agents' arguments differ, in the file alone
+- **THEN** their agents' programs differ, in the file alone, and their plists differ
+
+#### Scenario: A new package on nix-darwin
+
+- **WHEN** two configurations differ only in `package`
+- **THEN** their agents' programs differ, in the package alone, and their plists differ
+
+#### Scenario: Nothing else changed on nix-darwin
+
+- **WHEN** two configurations differ only in `tools`
+- **THEN** their agents' plists are the same, byte for byte
 
 #### Scenario: Not running on NixOS
 
@@ -137,3 +147,12 @@ Each module SHALL put `package` and each of `tools` in the system profile. `tool
 
 - **WHEN** the module is enabled for `alice`
 - **THEN** the service's `PATH` names `/etc/profiles/per-user/alice/bin` and `alice`'s `~/.nix-profile/bin` before the system profile's `bin`, and holds no package's own folder
+
+### Requirement: On nix-darwin the agent waits for the Nix store
+
+The nix-darwin module's agent SHALL run its command behind `/bin/wait4path /nix/store`, the shell handing its process to the runner by `exec`, so an agent loaded before the Nix store's volume is mounted waits for it, and a stop's signal reaches the runner.
+
+#### Scenario: The agent waits for the Nix store
+
+- **WHEN** the module is enabled, with no `settings` or with a crew control plane's
+- **THEN** the agent's program is `/bin/sh -c` with a line that runs `/bin/wait4path /nix/store`, then `exec`s the package's `boomdrive run --config` with the file
