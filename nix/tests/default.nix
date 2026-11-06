@@ -23,5 +23,6 @@ in
     // import ./darwin.nix t
     // import ./nixos.nix t
     // import ./cache.nix t
+    // import ./workflow.nix t
   );
 }

@@ -16,8 +16,10 @@ tasks:
     inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
+  # statix and deadnix over the flake's own files, and actionlint over the
+  # cache's workflow, which the project owns.
   lint:
-    script: 'statix check flake.nix && statix check nix && deadnix --fail flake.nix nix'
+    script: 'statix check flake.nix && statix check nix && deadnix --fail flake.nix nix && actionlint .github/workflows/cache.yml'
     inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/.github/workflows/**/*']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
