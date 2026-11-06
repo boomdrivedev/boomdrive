@@ -1,6 +1,7 @@
-# sluice gates every merge onto main: the checks moon tags, in
-# boomdrive's devenv shell, main on GitHub as the sluice app lands
-# it. The layers are .moon/workspace.yml's.
+# sluice gates every merge onto main and into a bolt: the checks moon
+# tags, in boomdrive's devenv shell, main on GitHub as the sluice app lands
+# it. A bolt is made on GitHub with `sluice branch create` and lands into
+# main by sluice, through main's gate. The layers are .moon/workspace.yml's.
 [tests]
 runner = "moon"
 toolchain = ["devenv", "print-dev-env"]
@@ -9,6 +10,18 @@ toolchain = ["devenv", "print-dev-env"]
 kind = "sandbox"
 # Nothing the checks run reaches past the host.
 network = "localhost"
+
+# A bolt is held to main's bar: its replay counts only when a sandboxed or
+# confined run recorded a pass for its key, since the cache also holds what
+# open shells ran.
+[branches."bolt/*"]
+required = ["#check-fast"]
+trust = ["confined", "sandbox"]
+parallel = 2
+batch = false
+flaky = "fail"
+timeout = "10m"
+remote = "origin"
 
 # A replay counts on main only when a sandboxed or confined run recorded a
 # pass for its key: the cache also holds what open shells ran.
