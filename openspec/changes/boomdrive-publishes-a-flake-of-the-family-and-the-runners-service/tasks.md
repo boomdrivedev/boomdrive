@@ -28,7 +28,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 3. The set proven
 
 - [x] 3.1 `devenv.nix` gives the set's Flume and sluice by path, on no `PATH`, from the flake's own packages, and pulls from the family's cache (design Decision 6; Task notes 3.1). `crates/boomdrive/tests/family.rs` runs them on a scratch host (Task notes 3.2). The set's tags are Flume `v0.10.0` and sluice `v0.68.0`, or the newest release of each the test passes with, as design Decision 6 says. True when `devenv shell -- moon run boomdrive:test` proves the family-packages spec's "Each tool's version", "Flume's status of a scratch host", "A submission sluice has no record of" and "Not the host's tools".
-- [ ] 3.2 Run this group's checks. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test nix:typecheck nix:test` passes.
+- [x] 3.2 Run this group's checks. True when `devenv shell -- moon run boomdrive:format boomdrive:lint boomdrive:typecheck boomdrive:test nix:typecheck nix:test` passes.
 
 ## 4. The file
 
