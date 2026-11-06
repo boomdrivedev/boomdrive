@@ -57,7 +57,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 8. The README and the project's notes
 
 - [x] 8.1 README gains **Installing with nix** (Task notes 8.1). True when `devenv shell -- moon run boomdrive:test nix:test` passes, `tests/readme.rs` reading the README's TOML as before, and `nix:test` proving the binary-cache spec's "The README's lines".
-- [ ] 8.2 `CLAUDE.md` names the `nix` project and what it owns, and `openspec/config.yaml` names the flake and the family's cache in its stack (Task notes 8.2). True when `devenv shell -- moon run root:format root:specs root:changes` passes.
+- [x] 8.2 `CLAUDE.md` names the `nix` project and what it owns, and `openspec/config.yaml` names the flake and the family's cache in its stack (Task notes 8.2). True when `devenv shell -- moon run root:format root:specs root:changes` passes.
 
 ## 9. The change's checks
 
