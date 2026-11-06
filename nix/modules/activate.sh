@@ -1,7 +1,9 @@
 #!/bin/sh
-# The modules' activation, run as the service's user (design Decision 9):
+# The modules' activation, run as the service's user (design Decisions 9
+# and 10):
 #
 #   activate.sh link <file>
+#   activate.sh keep <user> <program> <argument>...
 #
 # links ~/.config/boomdrive/config.toml to the module's file, so
 # `boomdrive enroll` and `boomdrive run --once` run by hand read what the
@@ -10,10 +12,19 @@
 # named. Where config.toml.before-nix is there already, it changes neither,
 # names both and fails: the service reads its own --config either way. It
 # says a line only where it moved or linked something.
+#
+# keep is NixOS's step, since NixOS restarts no changed user unit: run by
+# <user>, it starts boomdrive.service where it is not running, restarts it
+# where the running runner's command line, by ps, is not <program>
+# <argument>..., the unit's own, and does nothing where they are one. Run
+# by any other user, it does nothing. It waits for no job, since it runs
+# inside the user's nixos-activation.service, and says a line only where
+# it started or restarted the unit.
 set -eu
 
 usage() {
   echo "usage: activate.sh link <file>" >&2
+  echo "       activate.sh keep <user> <program> <argument>..." >&2
   exit 2
 }
 
@@ -39,10 +50,36 @@ link() {
   echo "boomdrive: linked $target to $file"
 }
 
+keep() {
+  user=$1
+  shift
+  unit=boomdrive.service
+
+  if [ "$(id -un)" != "$user" ]; then
+    return
+  fi
+  pid=$(systemctl --user show --property=MainPID --value "$unit")
+  if [ -z "$pid" ] || [ "$pid" = 0 ]; then
+    systemctl --user --no-block start "$unit"
+    echo "boomdrive: started $unit"
+    return
+  fi
+  running=$(ps -ww -o args= -p "$pid")
+  if [ "$running" != "$*" ]; then
+    systemctl --user --no-block restart "$unit"
+    echo "boomdrive: restarted $unit, which ran $running"
+  fi
+}
+
 case ${1:-} in
 link)
   [ $# -eq 2 ] || usage
   link "$2"
+  ;;
+keep)
+  [ $# -ge 3 ] || usage
+  shift
+  keep "$@"
   ;;
 *) usage ;;
 esac

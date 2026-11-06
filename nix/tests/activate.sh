@@ -3,9 +3,12 @@
 # nix/check.sh test runs beside the evaluated ones: each runs
 # nix/modules/activate.sh by sh in a scratch folder of its own, with a
 # scratch HOME, the module's file in a store of its own, and stubs of
-# systemctl and ps first on PATH that record their calls. It prints each
-# failure as one line, nix: <case>: <what>, and nothing where every case
-# holds.
+# systemctl and ps first on PATH that record their calls, and of id. The
+# stubs answer from the case's folder: id the user running it, alice
+# unless `user` says another; systemctl's show the unit's MainPID, 0
+# unless `MainPID` says another; and ps the command line in `args`. It
+# prints each failure as one line, nix: <case>: <what>, and nothing where
+# every case holds.
 set -eu
 
 activate=$(cd "$(dirname "$0")/../modules" && pwd)/activate.sh
@@ -22,12 +25,27 @@ fresh() {
   target=$home/.config/boomdrive/config.toml
   aside=$target.before-nix
   calls=$dir/calls
+  program=$dir/store/boomdrive/bin/boomdrive
   mkdir -p "$home" "$dir/store" "$dir/bin"
   echo 'repositories = []' >"$file"
-  for tool in systemctl ps; do
-    printf '#!/bin/sh\necho "%s $*" >>"%s"\n' "$tool" "$calls" >"$dir/bin/$tool"
-    chmod +x "$dir/bin/$tool"
-  done
+  echo alice >"$dir/user"
+  echo 0 >"$dir/MainPID"
+  : >"$dir/args"
+  cat >"$dir/bin/systemctl" <<STUB
+#!/bin/sh
+echo "systemctl \$*" >>"$calls"
+case " \$* " in *" show "*) cat "$dir/MainPID" ;; esac
+STUB
+  cat >"$dir/bin/ps" <<STUB
+#!/bin/sh
+echo "ps \$*" >>"$calls"
+cat "$dir/args"
+STUB
+  cat >"$dir/bin/id" <<STUB
+#!/bin/sh
+cat "$dir/user"
+STUB
+  chmod +x "$dir/bin/systemctl" "$dir/bin/ps" "$dir/bin/id"
 }
 
 # activate.sh with `$@` in the case's folder: its status, output and
@@ -63,9 +81,24 @@ names() {
   case $1 in *"$2"*"$3"*) ;; *) return 1 ;; esac
 }
 
+# The stubs' calls, on one line.
+called() {
+  if [ -e "$calls" ]; then
+    paste -s -d ';' "$calls"
+  fi
+}
+
 # What every link holds to: it calls neither systemctl nor ps.
 quiet() {
-  expect "$1" "link called $(cat "$calls" 2>/dev/null)" missing "$calls"
+  expect "$1" "link called $(called)" missing "$calls"
+}
+
+# systemctl was asked to `$1` the unit, without waiting for the job.
+asked() {
+  grep -qx "systemctl --user --no-block $1 boomdrive.service" "$calls" 2>/dev/null
+}
+unasked() {
+  ! asked "$1"
 }
 
 named="An empty home"
@@ -137,3 +170,59 @@ expect "$named" "link's refusal \"$err\" names not both paths" \
   names "$err" "$target" "$aside"
 expect "$named" "link says \"$out\"" [ -z "$out" ]
 quiet "$named"
+
+named="Not running on NixOS"
+fresh
+run keep alice "$program" run --config "$file"
+expect "$named" "keep exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "keep did not start the unit: $(called)" asked start
+expect "$named" "keep restarted the unit" unasked restart
+expect "$named" "keep says \"$out\", not that it started the unit" \
+  [ "$out" = "boomdrive: started boomdrive.service" ]
+
+named="Nothing changed on NixOS"
+fresh
+echo 4242 >"$dir/MainPID"
+echo "$program run --config $file" >"$dir/args"
+run keep alice "$program" run --config "$file"
+expect "$named" "keep exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "keep read no command line of the unit's process 4242: $(called)" \
+  grep -q '^ps .*-p 4242$' "$calls"
+expect "$named" "keep started the unit" unasked start
+expect "$named" "keep restarted the unit" unasked restart
+expect "$named" "keep says \"$out$err\"" [ -z "$out$err" ]
+
+named="A new file on NixOS"
+fresh
+echo 4242 >"$dir/MainPID"
+echo "$program run --config $dir/store/another.toml" >"$dir/args"
+run keep alice "$program" run --config "$file"
+expect "$named" "keep exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "keep did not restart the unit: $(called)" asked restart
+expect "$named" "keep started the unit" unasked start
+expect "$named" "keep says \"$out\", not that it restarted the unit and what it ran" \
+  [ "$out" = "boomdrive: restarted boomdrive.service, which ran $program run --config $dir/store/another.toml" ]
+
+named="A new package on NixOS"
+fresh
+echo 4242 >"$dir/MainPID"
+echo "$dir/store/older/bin/boomdrive run --config $file" >"$dir/args"
+run keep alice "$program" run --config "$file"
+expect "$named" "keep exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "keep did not restart the unit: $(called)" asked restart
+expect "$named" "keep started the unit" unasked start
+
+named="Another user's activation"
+fresh
+echo bob >"$dir/user"
+run keep alice "$program" run --config "$file"
+expect "$named" "keep exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "keep called $(called)" missing "$calls"
+expect "$named" "keep says \"$out$err\"" [ -z "$out$err" ]
+expect "$named" "keep made something in the home" missing "$home/.config"
+
+named="keep's usage"
+fresh
+run keep alice
+expect "$named" "keep with no program exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "keep with no program called $(called)" missing "$calls"
