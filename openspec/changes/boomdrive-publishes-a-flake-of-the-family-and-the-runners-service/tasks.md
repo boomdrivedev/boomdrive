@@ -39,7 +39,7 @@ Build the groups in order. Each group stands on the ones before it, is one sessi
 ## 5. The nix-darwin module
 
 - [x] 5.1 `darwinModules.default` declares the agent and the tools (design Decisions 10 and 11; Task notes 5.1). True when `devenv shell -- moon run nix:test` proves the service-modules spec's "The agent", "No home for the primary user", "A new file on nix-darwin", "The set's tools", "A host's own tools", "The user's profile first", and "A host under crew" on nix-darwin.
-- [ ] 5.2 `nix/modules/activate.sh link` makes the link, run by the module's `postActivation` as the primary user (design Decision 9; Task notes 5.2). True when `devenv shell -- moon run nix:test root:format` passes, `nix:test` proving "An empty home", "A person's own file" and "Already linked", and that the module's activation runs it as the primary user with the module's file.
+- [x] 5.2 `nix/modules/activate.sh link` makes the link, run by the module's `postActivation` as the primary user (design Decision 9; Task notes 5.2). True when `devenv shell -- moon run nix:test root:format` passes, `nix:test` proving "An empty home", "A person's own file" and "Already linked", and that the module's activation runs it as the primary user with the module's file.
 - [ ] 5.3 Run this group's checks. True when `devenv shell -- moon run nix:format nix:lint nix:typecheck nix:test root:format` passes.
 
 ## 6. The NixOS module

@@ -283,12 +283,13 @@ Alternatives:
 
 - **Rendered in Nix.** `nix/modules/toml.nix` renders `settings` at evaluation: strings, booleans, integers, lists of strings, tables and lists of tables. It refuses any other value, naming its path. Top-level keys come before tables, each sorted by name. The first line is `# Written by the boomdrive flake's module from services.boomdrive.settings; a change goes there.` So the gate compares the text without a build, and one `settings` gives one text on both platforms.
 - **In the store.** The text is `pkgs.writeText "boomdrive-config.toml"`. The service runs `boomdrive run --config <that file>`, so the service reads exactly what the module wrote, and a changed file changes the service (Decision 10).
-- **Linked at the runner's own path.** The activation links the user's `~/.config/boomdrive/config.toml` to the same file, so `boomdrive enroll <label>` and `boomdrive run --once` run by hand read it. A link there is replaced. A file or folder that is no link is moved once to `config.toml.before-nix`, and the activation names both paths. A shell with another `XDG_CONFIG_HOME` passes `--config`.
+- **Linked at the runner's own path.** The activation links the user's `~/.config/boomdrive/config.toml` to the same file, so `boomdrive enroll <label>` and `boomdrive run --once` run by hand read it. A link there is replaced. A file or folder that is no link is moved once to `config.toml.before-nix`, and the activation names both paths. Where `config.toml.before-nix` is there already, it changes neither, names both, and fails the link alone, so the rest of the activation goes on: the service reads its own `--config` either way. A shell with another `XDG_CONFIG_HOME` passes `--config`.
 - **The host's level.** It is the level nix writes under record 0009. Once a control plane writes a managed level, that level is its own file.
 
 Alternatives:
 
 - **A real file written at activation, at 0600**, as a host's configuration writes it today. Not taken: it needs a writer of its own on each platform, and a restart that compares what it wrote. The file holds no secret (Decision 12), so a link into the store, readable by every user, hides nothing.
+- **A second file moved over the first one aside, or to a name of its own.** Not taken: the first would be lost, or the names would pile up unseen.
 - **No link, and `--config` on every command run by hand.** Not taken: `boomdrive enroll` would read another file, or none.
 - **`pkgs.formats.toml`.** Not taken: its text is a build's output, which the gate cannot read without building.
 

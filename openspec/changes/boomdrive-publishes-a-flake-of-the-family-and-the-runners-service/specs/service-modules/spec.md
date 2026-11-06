@@ -110,6 +110,11 @@ Each module's activation SHALL link the service's user's `~/.config/boomdrive/co
 - **WHEN** the activation finds a file at `~/.config/boomdrive/config.toml` that is no link
 - **THEN** it moves it to `config.toml.before-nix`, links the module's file, and names both paths
 
+#### Scenario: A file moved aside before
+
+- **WHEN** the activation finds a file at `~/.config/boomdrive/config.toml` that is no link, and one at `config.toml.before-nix`
+- **THEN** it changes neither, names both paths, and fails the link alone
+
 #### Scenario: Already linked
 
 - **WHEN** the activation finds the link to the module's file

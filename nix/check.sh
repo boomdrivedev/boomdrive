@@ -6,7 +6,9 @@
 # shell fetched them (BOOMDRIVE_FLAKE_INPUTS) as plain files, and needs
 # neither the network nor the nix daemon, which the gate's sandbox denies.
 # Its configuration, caches and state are a scratch folder's, never the
-# host's or the home's. Each failure is one line, nix: <case>: <what>.
+# host's or the home's. The test also runs the activation's cases,
+# nix/tests/activate.sh, by sh in scratch folders. Each failure is one
+# line, nix: <case>: <what>.
 set -eu
 
 case ${1:-} in
@@ -39,6 +41,10 @@ failures=$(nix eval --raw --offline --read-only --impure \
   --store 'dummy://?store=/boomdrive-check/store' \
   --extra-experimental-features nix-command \
   --file nix/tests "$check")
+if [ "$check" = test ]; then
+  activation=$(sh nix/tests/activate.sh)
+  failures=$(printf '%s\n%s\n' "$failures" "$activation" | sed '/^$/d')
+fi
 
 if [ -n "$failures" ]; then
   printf '%s\n' "$failures"

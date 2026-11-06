@@ -5,7 +5,8 @@
 # (design Decision 11). The agent runs `boomdrive run --config` with the
 # file rendered from `settings` (design Decision 9), so nix-darwin reloads
 # it when the package or the file changes, and leaves it running when
-# neither does.
+# neither does. The activation links the file at the runner's own path,
+# as the primary user, for the commands a person runs by hand.
 { packages }:
 {
   config,
@@ -81,5 +82,13 @@ in
       StandardOutPath = cfg.logFile;
       StandardErrorPath = cfg.logFile;
     };
+
+    # Activation runs as root, with root's HOME, so the link is made as the
+    # primary user under their own home. A link that fails says why and
+    # stops nothing else: the agent reads its own --config either way.
+    system.activationScripts.postActivation.text = ''
+      sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+        /bin/sh ${./activate.sh} link ${file} || true
+    '';
   };
 }

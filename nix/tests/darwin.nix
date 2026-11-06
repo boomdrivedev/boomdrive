@@ -54,6 +54,14 @@ let
       "the agent's PATH does not name ${entry} before /run/current-system/sw/bin: ${agent.EnvironmentVariables.PATH}";
 
   crew = t.darwinSystem { services.boomdrive.settings = settings.crew; };
+
+  # Compared as text: a regular expression may not hold a store path.
+  activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
+  # As the primary user, under their home, with the module's file.
+  link = builtins.unsafeDiscardStringContext ''
+    sudo --user=alice -- /usr/bin/env HOME=/Users/alice \
+      /bin/sh ${../modules/activate.sh} link ${fileOf base} || true
+  '';
 in
 {
   "The agent" =
@@ -126,4 +134,7 @@ in
   "A host under crew on nix-darwin" =
     t.expect (t.failures crew == [ ]) "crew's settings fail: ${toString (t.failures crew)}"
     ++ t.expect (writes crew (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
+
+  "The activation links the file on nix-darwin" =
+    t.expect (lib.hasInfix link activation) "the activation runs no `${link}`: ${activation}";
 }
