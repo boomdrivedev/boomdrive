@@ -2,18 +2,18 @@
 
 ## Purpose
 
-The flake's package set: the runner at this tree, and Flume, sluice and their herdr plugins at release tags, each a derivation of the source the flake's lock names by its hash, for four systems. It covers what the set holds, how each package is made and versioned, the runner's git crates' hashes, how a set is proven by the runner's tests with the set's own binaries, and how a host overrides a tool (core.44, core.45; record 0020).
+The flake's package set: the runner at this tree, and Flume, sluice and their herdr plugins at release tags, each a derivation of the source the flake's lock names by its hash, for `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`. It covers what the set holds, how each package is made and versioned, the runner's git crates' hashes, how a set is proven by the runner's tests with the set's own binaries, and how a host overrides a tool (core.44, core.45; record 0020).
 
 ## ADDED Requirements
 
 ### Requirement: The flake gives the family's host tools as packages
 
-The flake SHALL give, for each of `aarch64-darwin`, `x86_64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `flume`, `sluice`, `flume-herdr-plugin` and `sluice-herdr-plugin`, with `default` the runner's. It SHALL give no package of herdr or of git, which are the host's own, and none of a tool a repository pins.
+The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `flume`, `sluice`, `flume-herdr-plugin` and `sluice-herdr-plugin`, with `default` the runner's. It SHALL give no package of herdr or of git, which are the host's own, and none of a tool a repository pins.
 
 #### Scenario: Every system's packages
 
-- **WHEN** the flake's outputs are evaluated for each of the four systems
-- **THEN** each gives the five packages and `default`, each a derivation, and `default` is `boomdrive`
+- **WHEN** the flake's outputs are evaluated for each of the three systems
+- **THEN** each gives the five packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
 
 #### Scenario: No tool of the host's own
 

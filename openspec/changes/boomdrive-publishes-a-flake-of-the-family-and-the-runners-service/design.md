@@ -18,8 +18,9 @@ What stands:
   - Flume (`v0.10.0`) publishes no flake. Its tag names a release commit with the version written into `Cargo.toml` (`set-version.sh`), so its tagged tree says `0.10.0`. Its release archives are built by cargo, for three systems: no `x86_64-darwin`.
   - Each tool's herdr plugin is `plugins/herdr` in its tree: Flume's manifest takes Flume's version, and sluice's keeps its own.
   - No release of the family carries an attestation. No tool pushes its binaries to a cache: their workflows only read devenv's.
+- **nixpkgs and `x86_64-darwin`.** nixpkgs 26.11, which `nixos-unstable` is, has dropped `x86_64-darwin`: importing it for that system fails, unless its configuration sets `allowDeprecatedx86_64Darwin = "force"`, which nixpkgs says "is not expected to function", with no binaries built for it. Its 26.05 branch keeps the platform until the end of 2026. So sluice's and timber's `x86_64-darwin` packages evaluate only while their own locked nixpkgs predates 26.11.
 - **The family's cache.** No file of the family names a cache of its own. Cachix's public API, read 2026-11-05, gives a public cache `boomdrive`, at `https://boomdrive.cachix.org`, signed by `boomdrive.cachix.org-1:vHLgmasPg2jKqkvPXWOOrYzspoGL2xxsW4fAuHBtiag=`, Cachix's own key for it. A token of the cache's own, with write access, is made on the cache's settings page, `https://app.cachix.org/cache/boomdrive/settings?binaryCacheSettingsTab=authtokens`, which has no command line.
-- **GitHub's hosted runners**, read 2026-11-05: `ubuntu-24.04`, `ubuntu-24.04-arm` (arm64, for public repositories), `macos-15` (arm64) and `macos-15-intel`, GitHub's last Intel image, kept until fall 2027. `cachix/cachix-action` (v17) takes the cache's `name`, an `authToken`, a `signingKey` for a cache signed by a key of its owner's, and `skipPush`. `1password/load-secrets-action` (v5.0.1) reads each `op://<vault>/<item>/<field>` its step's `env` names with the service account token `OP_SERVICE_ACCOUNT_TOKEN`, and gives it as the step's output, masked in the log.
+- **GitHub's hosted runners**, read 2026-11-05: `ubuntu-24.04`, `ubuntu-24.04-arm` (arm64, for public repositories), and `macos-15` (arm64). `cachix/cachix-action` (v17) takes the cache's `name`, an `authToken`, a `signingKey` for a cache signed by a key of its owner's, and `skipPush`. `1password/load-secrets-action` (v5.0.1) reads each `op://<vault>/<item>/<field>` its step's `env` names with the service account token `OP_SERVICE_ACCOUNT_TOKEN`, and gives it as the step's output, masked in the log.
 - **devenv's own Cachix push**, in the devenv `devenv.lock` pins, read 2026-11-05. `cachix.push = "<cache>"` starts a push daemon at every entry to the shell, `devenv print-dev-env` among them, and queues every path the shell realises, on whichever host enters it with a write token in `CACHIX_AUTH_TOKEN`, SecretSpec or `cachix authtoken`'s file. It also adds the cache to `cachix.pull`. devenv's documentation suggests a push be turned on where wanted, in the untracked `devenv.local.nix`, since "you'll likely not want every user to push to the cache".
 - **A host's configuration**, read 2026-11-05. Its runner's module, its check and its package are what a working module needs:
   - a launchd agent of the user's login through home-manager, `boomdrive run`, `RunAtLoad`, `KeepAlive`, `ThrottleInterval` 30, `ProcessType` `Interactive` and `AbandonProcessGroup`, so a `flume launch` in flight outlives a restart, with `HOME` and the profiles' `PATH` alone in its environment, and a log file;
@@ -79,8 +80,10 @@ nix/inputs.nix              the lock's inputs, located or fetched, for the shell
 nix/packages/boomdrive.nix  the runner
 nix/packages/git-crates.nix the runner's git crates: each one's revision and hash
 nix/packages/flume.nix      Flume, until Flume publishes a flake
+nix/packages/flume-git-crates.nix Flume's git crates at its tag: each one's revision and hash
 nix/packages/sluice.nix     sluice's flake's package, given its tag's version
 nix/packages/herdr-plugin.nix
+nix/packages/tag.nix        the tag a flake URL names
 nix/modules/options.nix     services.boomdrive, shared by both modules
 nix/modules/toml.nix        the file's text
 nix/modules/darwin.nix
@@ -99,7 +102,7 @@ Alternatives:
 
 ### 2. What the set holds
 
-`packages.<system>`, for the four systems sluice's flake builds:
+`packages.<system>`, for `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the systems sluice's flake builds that the flake's nixpkgs builds for:
 
 | package | what | from |
 |---|---|---|
@@ -111,13 +114,18 @@ Alternatives:
 
 These are the host's tools of record 0009's amendment: the runner, Flume, sluice and herdr's plugins of theirs. herdr and git are the host's own (record 0012). timber, weir and boom are not in it: the runner and Flume run none of them on a host. weir is in the runner's `Cargo.lock` as a library.
 
+Alternatives:
+
+- **`x86_64-darwin` too, from nixpkgs 26.05.** Not taken: sluice's `nixpkgs` follows this flake's one `nixpkgs`, so its package would need its flake called a second time, and 26.05 keeps the platform only until the end of 2026.
+- **`x86_64-darwin` from `nixos-unstable` with `allowDeprecatedx86_64Darwin = "force"`.** Not taken: nixpkgs builds no binary for it and says it "is not expected to function", so the workflow's job would build every toolchain from source, unsupported.
+
 ### 3. How each package is made
 
 Each package is a derivation of the source the flake's lock names by its hash: the runner at this tree, Flume and sluice each at a release tag. The cache holds those derivations' outputs and nothing else (Decision 4), so a binary a host substitutes and one it builds are one store path (core.44).
 
 - **The runner** is built from this tree, as sluice's flake builds sluice. That means `rustPlatform` from rust-overlay at the Rust `.prototools` names, `cargoBuildFlags = [ "-p" "boomdrive" ]`, and the check phase off, since the gate runs its tests. Its source is `Cargo.toml`, `Cargo.lock` and `crates/` alone, by `lib.fileset`. Its crates are fetched by `Cargo.lock`'s own checksums. Its git crates, weir's, are fetched by their locked revision under `outputHashes`. Each hash is kept in `nix/packages/git-crates.nix` beside the revision it was taken at, and a test holds that revision to `Cargo.lock`'s (Task notes 2.1). Its version is `Cargo.toml`'s.
 - **sluice** is sluice's flake's `packages.default`, with `nixpkgs` and `rust-overlay` following this flake's. Its tagged tree says `0.0.0`, so the package is given its tag's version as sluice's release build is: `version` and `env.SLUICE_VERSION`. Where sluice's tree carries a version other than `0.0.0`, that is read instead, and nothing is given. The tag is read from `flake.nix`'s own input URL, so one string names it.
-- **Flume** publishes no flake. A recipe here builds its tag the way sluice's flake builds sluice: rust-overlay at the Rust its own `.prototools` names, `-p flume --bin flume`, `Cargo.lock`'s checksums. Its version is its tagged tree's `Cargo.toml`. The recipe is a bridge, and goes when Flume publishes a flake (What this change asks of others).
+- **Flume** publishes no flake. A recipe here builds its tag the way sluice's flake builds sluice: rust-overlay at the Rust its own `.prototools` names, `-p flume --bin flume`, `Cargo.lock`'s checksums. Its git crates, weir's, are fetched as the runner's are, each hash kept in `nix/packages/flume-git-crates.nix` beside its revision, and the same test holds them to the tag's `Cargo.lock`, so Flume's tag moves with them. Its version is its tagged tree's `Cargo.toml`. The recipe is a bridge, and goes when Flume publishes a flake (What this change asks of others).
 - **The herdr plugins** are `plugins/herdr` of each tool's package's source, copied whole, with the tool's version, so a plugin and its tool are one release. Nothing in them is rewritten. A plugin's scripts find the tool on the user's `PATH`, where the module puts it (Decision 11).
 
 Alternatives:
@@ -130,7 +138,7 @@ Alternatives:
 
 The set reaches a host as binaries from `boomdrive` on Cachix, served at `https://boomdrive.cachix.org` and signed by `boomdrive.cachix.org-1:vHLgmasPg2jKqkvPXWOOrYzspoGL2xxsW4fAuHBtiag=`, Cachix's own key for it, so the push needs the cache's token alone and no signing key (The user's rulings, 1; core.47).
 
-- **What it holds.** Each package of each of the four systems, with its runtime closure, as this repository's workflow builds them (Decision 5). This repository pushes nothing else to it.
+- **What it holds.** Each package of each system the flake gives, with its runtime closure, as this repository's workflow builds them (Decision 5). This repository pushes nothing else to it.
 - **The flake names it.** `flake.nix` holds:
 
   ```nix
@@ -163,7 +171,6 @@ Alternatives:
   | `x86_64-linux` | `ubuntu-24.04` |
   | `aarch64-linux` | `ubuntu-24.04-arm` |
   | `aarch64-darwin` | `macos-15` |
-  | `x86_64-darwin` | `macos-15-intel` |
 
 - **What each job does.**
   1. Checks out the commit.
@@ -176,7 +183,7 @@ Alternatives:
   8. Pushes that list with `cachix push boomdrive`, each path with its runtime closure.
 
   A package that fails to build fails the job at step 7, and nothing of that system is pushed.
-- **The runner's package is built and pushed with the rest.** It is `packages.<system>.boomdrive` and `default`, built in step 7 beside Flume's and sluice's, on all four systems, at the push of `main` that lands each change. A host substitutes the runner as it does the other two.
+- **The runner's package is built and pushed with the rest.** It is `packages.<system>.boomdrive` and `default`, built in step 7 beside Flume's and sluice's, on every system, at the push of `main` that lands each change. A host substitutes the runner as it does the other two.
 - **The tokens.** The workflow holds no Cachix token as a GitHub secret (The user's rulings, 2).
   - **The cache's token** is a token of the cache's own with write access to `boomdrive`. It is kept in 1Password, in the item `CACHIX_AUTH_TOKEN` of the vault `GitHub-Actions`, its field `credential`, the vault and item the family's workflows read their Cachix token from. Step 4 names it once, as `op://GitHub-Actions/CACHIX_AUTH_TOKEN/credential`, and only steps 5, 6 and 8 are given it.
   - **The service account's token** is a 1Password service account's, which may read that vault alone. It is the one secret of the repository's environment `cachix`, `OP_SERVICE_ACCOUNT_TOKEN`, given to steps 3 and 4 alone. The environment's deployment rule admits only `main` and tags `v*`, so a run on any other ref is refused it. The job names `environment: cachix`.
@@ -189,7 +196,7 @@ Alternatives:
 - **A signing key of the user's own beside the token, `CACHIX_SIGNING_KEY`.** Not taken: Cachix signs what is pushed with the cache's own key (The user's rulings, 1).
 - **Pushing every path a job builds**, cachix-action's default. Not taken: it pushes the toolchains and build inputs too, which no host substitutes.
 - **Building in the gate, on the host that lands.** Not taken: the gate runs on one system, in a sandbox with no nix daemon (Decision 14).
-- **Runners of the user's own hosts.** Not taken: GitHub's hosted runners give all four systems to a public repository, and no host of a person's stands in the path of a public build.
+- **Runners of the user's own hosts.** Not taken: GitHub's hosted runners give every system the flake gives to a public repository, and no host of a person's stands in the path of a public build.
 - **Each pushed path also attested by the workflow**, `actions/attest-build-provenance` on its NAR. Not taken: nix checks a substitute by the cache's signature alone, so no install would ever check the attestation. Record 0012's releases carry theirs.
 
 ### 6. How a set is proven
@@ -352,10 +359,10 @@ The `nix` project's tasks run in the gate's sandbox, with no network and no nix 
 - **The tasks read no store.** `nix/check.sh` runs the pinned nix as `nix eval --offline --read-only --impure --store 'dummy://?store=/boomdrive-check/store' --extra-experimental-features nix-command`, its configuration, caches and state under the task's scratch folder. It evaluates `nix/tests`, which reads each input's source as plain files at the path `BOOMDRIVE_FLAKE_INPUTS` gives it, and calls `flake.nix`'s `outputs` with them and `self` as this tree, as flake-compat does. Every path is computed under the dummy store's own directory and never written, so a test compares paths with each other, never with `/nix/store`'s.
 - **`nix:format`**: `nixfmt --check` on `flake.nix` and `nix/`.
 - **`nix:lint`**: `statix check` and `deadnix --fail` on the same files, and `actionlint` on `.github/workflows/cache.yml`.
-- **`nix:typecheck`**: every package of the four systems evaluates to a derivation, each module evaluates in a minimal system of its platform, and each input's tag in `flake.nix` is the lock's.
+- **`nix:typecheck`**: every package of every system the flake gives evaluates to a derivation, each module evaluates in a minimal system of its platform, and each input's tag in `flake.nix` is the lock's.
 - **`nix:test`**: the evaluated tests of the three specs, the rendered files compared byte for byte with `nix/tests/files`, `activate.sh`'s cases run by `sh` against stub `systemctl` and `ps` in a scratch folder, and the workflow's and README's text held to the flake's systems and `nixConfig`.
 - **`boomdrive:test`** gains `family.rs` (Decision 6) and `module_files.rs`, which reads each file under `nix/tests/files` with `config::read`.
-- **The runner's package.** The gate evaluates it on the four systems, and its crates are the ones `boomdrive:test` compiles. The one thing its nix build adds is the git crates' hash, and `nix:test` holds each to the revision `Cargo.lock` names, so a weir bump without its hash fails before it lands. The workflow builds the package on the four systems at the push of `main` that lands the change, before anything of a system is pushed (Decision 5). A host that pins a tag, or a commit of `main` whose workflow passed, takes a runner built already.
+- **The runner's package.** The gate evaluates it on every system the flake gives, and its crates are the ones `boomdrive:test` compiles. The one thing its nix build adds is the git crates' hash, and `nix:test` holds each to the revision `Cargo.lock` names, so a weir bump without its hash fails before it lands. The workflow builds the package on every system at the push of `main` that lands the change, before anything of a system is pushed (Decision 5). A host that pins a tag, or a commit of `main` whose workflow passed, takes a runner built already.
 - **Pins.** nix, nixfmt, statix, deadnix and actionlint are `devenv.nix`'s, asserted to their versions as git is (core.8), and `check-toolchain.sh` holds them. statix answers no `--version`, so the check reads its version from the name of the store path its program is in. `treefmt.nix` excludes `nix/tests/files/**`, which the tests compare byte for byte, as it excludes the tools' fixtures. yamlfmt already owns the workflow.
 
 Alternatives:
@@ -363,7 +370,7 @@ Alternatives:
 - **`nix flake check` in the gate.** Not taken: the sandbox has no daemon, and a flake's evaluation copies its source into the store.
 - **The host's store, opened read-only**, `local?read-only=true`. Not taken: it opens the store's database immutable, which misses each path still in its write-ahead log, as the inputs the shell has just fetched are (Context).
 - **The executor opened for nix.** Not taken: it would open the network to every check. sluice's executor has no allowance for the daemon's socket alone.
-- **The runner's package built by the shell, as Flume's and sluice's are.** Not taken: the shell would build it again at every entry after an edit to a crate, compiling the runner twice, and on the landing host's system alone. The workflow builds it on all four.
+- **The runner's package built by the shell, as Flume's and sluice's are.** Not taken: the shell would build it again at every entry after an edit to a crate, compiling the runner twice, and on the landing host's system alone. The workflow builds it on every system.
 
 ### Rules relied on
 
@@ -386,8 +393,9 @@ None. core.37's details are amended by record 0020: a store path a host's nix su
 
 Each is told to the orchestrator, not done here.
 
-- **Flume**: publish a flake whose `packages.default` builds `flume` at its tag, as sluice's and timber's do. This flake then takes it from there, and `nix/packages/flume.nix` goes.
+- **Flume**: publish a flake whose `packages.default` builds `flume` at its tag, as sluice's and timber's do. This flake then takes it from there, and `nix/packages/flume.nix` and `nix/packages/flume-git-crates.nix` go.
 - **sluice and timber**: carry each release's version in the tagged tree, as Flume's release commit does, so a pure build of a tag reports it. This flake then stops giving sluice its version.
+- **sluice and timber, on `x86_64-darwin`**: drop it from their flakes' systems, as this flake gives none, since nixpkgs 26.11 refuses it and their packages for it stop evaluating once their locks reach it (Decision 2).
 - **The family, on pushing binaries from each tool's own repository.** Recommended: yes, to the one family cache, `boomdrive`, once a tool carries its version in its tagged tree and publishes a flake. Each tool's release workflow pushes its own flake's `packages` at each tag. This flake then takes each tool's package as the tool's flake gives it, without making its `nixpkgs` follow this flake's, so a host substitutes the very paths the tool's own release pushed. This workflow then builds and pushes only the runner and what a tool did not push. One cache keeps one key for a host to trust, and each tool's build keeps one owner. Until then this workflow builds and pushes all three: a tool's own push now would be paths this flake does not name.
 - **A host's configuration, and its change that retires its views once the runner's workspaces stand:**
   - import `darwinModules.default` and set `services.boomdrive` with the options of Decision 8, `settings.code_workspaces` and `settings.repositories` among them, in place of its runner's module and package;
@@ -403,7 +411,7 @@ Each is told to the orchestrator, not done here.
 - **The service account reads its whole vault.** Its token reads every item of `GitHub-Actions`, not only the cache's. The environment gives it to two steps of one job, and to no run of another ref.
 - **The runner's package is first built after it lands.** A change that breaks only its nix build on one system fails that system's job at the landing push, which pushes nothing of it. A host pinned to that commit builds it and fails, keeping its running generation. A host that pins a tag, or a commit whose workflow passed, never meets it.
 - **The cache's storage is bounded.** Cachix drops the paths least recently fetched. A host pinned to an old commit builds what was dropped.
-- **`macos-15-intel` is GitHub's last Intel image**, kept until fall 2027. After it, `x86_64-darwin` is built on `aarch64-darwin` under Rosetta, or left out, in a later change.
+- **An Intel Mac gets no package of the set.** nixpkgs 26.11 builds nothing for `x86_64-darwin`, so the flake gives it none. A host there installs the tools as it does today, and nix-darwin's module does not evaluate for it.
 - **A host that makes the flake's `nixpkgs` follow its own builds everything.** Its paths are not the cache's. The README says to leave it.
 - **sluice's version is given here** until its tree carries it. A host that overrides sluice's input must give its version too.
 - **The first set may stop short of the newest release** where the runner cannot read a newer answer. The build names what the newer one printed, for a change to the runner's readers.
@@ -469,7 +477,7 @@ Each step is the user's, run in this order on a Mac signed in to `gh` as an admi
      gh secret set OP_SERVICE_ACCOUNT_TOKEN --env cachix --repo agentplot/boomdrive
    ```
 
-6. After the landing push, the run of `cache` on `main` passes on all four systems:
+6. After the landing push, the run of `cache` on `main` passes on every system:
 
    ```sh
    gh run watch --repo agentplot/boomdrive --exit-status \
@@ -509,9 +517,9 @@ inputs = {
 
 **1.4** `nix/check.sh typecheck` and `nix/check.sh test`. Each runs the pinned nix as Decision 14 says, on the attribute of `nix/tests` its argument names, with `NIX_CONF_DIR`, `NIX_USER_CONF_FILES` and the four `XDG_` folders under the task's scratch folder and `NIX_CONFIG` unset, so nix reads no configuration of the host's and writes nothing in the home. It fails, naming the variable, where `BOOMDRIVE_FLAKE_INPUTS` is unset. It reads `flake.nix`'s own `inputs` and `nixConfig` by importing the file, as an attribute set. It prints each failure the evaluation returns as one line, `nix: <test>: <what>`, and exits 1 where there is one. A test returns a list of failures, empty when it holds, never an assertion that stops the rest.
 
-**2.1** `nix/packages/git-crates.nix` is an attribute set of each of `Cargo.lock`'s git packages, by `<name>-<version>`, to `{ rev; hash; }`. `nix/packages/boomdrive.nix` gives `cargoLock = { lockFile = ../../Cargo.lock; outputHashes = mapAttrs (_: c: c.hash) gitCrates; }`. A test reads `Cargo.lock` with `builtins.fromTOML`, and fails where a git package has no entry, an entry has no package, or an entry's `rev` is not the `#<rev>` of the package's `source`, naming the package and both revisions. `meta.mainProgram = "boomdrive"`. Platforms are the four.
+**2.1** `nix/packages/git-crates.nix` is an attribute set of each of `Cargo.lock`'s git packages, by `<name>-<version>`, to `{ rev; hash; }`. `nix/packages/boomdrive.nix` gives `cargoLock = { lockFile = ../../Cargo.lock; outputHashes = mapAttrs (_: c: c.hash) gitCrates; }`. A test reads `Cargo.lock` with `builtins.fromTOML`, and fails where a git package has no entry, an entry has no package, or an entry's `rev` is not the `#<rev>` of the package's `source`, naming the package and both revisions. `meta.mainProgram = "boomdrive"`. Platforms are the flake's three.
 
-**2.2** `nix/packages/flume.nix` takes the source and builds as sluice's flake does, reading Rust's version from the source's `.prototools` and the package's from its `Cargo.toml`. `cargoBuildFlags = [ "-p" "flume" "--bin" "flume" ]`, `doCheck = false`.
+**2.2** `nix/packages/flume.nix` takes the source and builds as sluice's flake does, reading Rust's version from the source's `.prototools` and the package's from its `Cargo.toml`. `cargoBuildFlags = [ "-p" "flume" "--bin" "flume" ]`, `doCheck = false`. Its `outputHashes` are `nix/packages/flume-git-crates.nix`'s, of the shape of 2.1's, held by 2.1's test to the tag's `Cargo.lock`. The overridden input is `nix/tests/tree-9.9.9`, a tree holding only a `Cargo.toml`, and the case reads the package's source and version, never its derivation, since the tree has no crates.
 
 **2.3** `nix/packages/sluice.nix` takes sluice's package and its source. Where the source's `Cargo.toml` workspace version is `0.0.0`, it gives `overrideAttrs` `version` and `env.SLUICE_VERSION`, from the tag in `flake.nix`'s sluice URL without its `v`. Otherwise it gives the package unchanged.
 
@@ -538,7 +546,7 @@ inputs = {
 - The README's **Installing with nix** holds that substituter and that key, each as a string of its nix block, read with `builtins.readFile`.
 - Each module is evaluated in its test system with `nixpkgs.overlays` holding one overlay that adds a package, so the host's `pkgs` differs from the flake's. `environment.systemPackages` holds the `outPath`s of the flake's own `packages.<system>` `boomdrive`, `flume` and `sluice`, and `nix.settings.substituters` and `nix.settings.trusted-public-keys` name nothing of the cache's.
 
-**7.2** `.github/workflows/cache.yml`, laid out by yamlfmt and linted by actionlint. `on.push.branches: [main]`, `on.push.tags: ['v*']` and `on.workflow_dispatch`. `permissions: contents: read`. `concurrency: { group: cache-${{ github.ref }}, cancel-in-progress: false }`. One job, `build`, `environment: cachix`, `strategy.fail-fast: false`, its `matrix.include` the four `{ system, runner }` of Decision 5, `runs-on: ${{ matrix.runner }}`. Its steps are Decision 5's eight, the actions `actions/checkout`, `cachix/install-nix-action`, `1password/load-secrets-action` (v5.0.1, `id: cachix-token`) and `cachix/cachix-action` (v17, `name: boomdrive`, `authToken: ${{ steps.cachix-token.outputs.CACHIX_AUTH_TOKEN }}`, `skipPush: true`), each pinned by its commit with its tag in a comment. Step 3 is given `OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}` through `env`, and fails with `::error::OP_SERVICE_ACCOUNT_TOKEN is not set in the cachix environment`. Step 4's `env` is the same `OP_SERVICE_ACCOUNT_TOKEN` and `CACHIX_AUTH_TOKEN: op://GitHub-Actions/CACHIX_AUTH_TOKEN/credential`, the only place the workflow names the vault and the item. Step 5 is given the output through `env` and fails with `::error::CACHIX_AUTH_TOKEN loaded from 1Password is empty`. Step 8 is given it as `CACHIX_AUTH_TOKEN`. No step echoes either token, and no other step is given one. A `nix:test` case reads the file's text and fails where a system the flake's `packages` gives has no `system: <system>` line, or the file names a system the flake does not give, or it names a cache other than `nixConfig`'s.
+**7.2** `.github/workflows/cache.yml`, laid out by yamlfmt and linted by actionlint. `on.push.branches: [main]`, `on.push.tags: ['v*']` and `on.workflow_dispatch`. `permissions: contents: read`. `concurrency: { group: cache-${{ github.ref }}, cancel-in-progress: false }`. One job, `build`, `environment: cachix`, `strategy.fail-fast: false`, its `matrix.include` the three `{ system, runner }` of Decision 5, `runs-on: ${{ matrix.runner }}`. Its steps are Decision 5's eight, the actions `actions/checkout`, `cachix/install-nix-action`, `1password/load-secrets-action` (v5.0.1, `id: cachix-token`) and `cachix/cachix-action` (v17, `name: boomdrive`, `authToken: ${{ steps.cachix-token.outputs.CACHIX_AUTH_TOKEN }}`, `skipPush: true`), each pinned by its commit with its tag in a comment. Step 3 is given `OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}` through `env`, and fails with `::error::OP_SERVICE_ACCOUNT_TOKEN is not set in the cachix environment`. Step 4's `env` is the same `OP_SERVICE_ACCOUNT_TOKEN` and `CACHIX_AUTH_TOKEN: op://GitHub-Actions/CACHIX_AUTH_TOKEN/credential`, the only place the workflow names the vault and the item. Step 5 is given the output through `env` and fails with `::error::CACHIX_AUTH_TOKEN loaded from 1Password is empty`. Step 8 is given it as `CACHIX_AUTH_TOKEN`. No step echoes either token, and no other step is given one. A `nix:test` case reads the file's text and fails where a system the flake's `packages` gives has no `system: <system>` line, or the file names a system the flake does not give, or it names a cache other than `nixConfig`'s.
 
 **8.1** README gains **Installing with nix**, after **Running on a host**:
 - the profile install, and nix's prompt to accept the flake's `nixConfig`;

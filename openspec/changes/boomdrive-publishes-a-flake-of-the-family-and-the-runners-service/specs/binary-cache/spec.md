@@ -27,7 +27,7 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 #### Scenario: Each system has its job
 
 - **WHEN** the workflow is read beside the flake's packages
-- **THEN** it has one job for each system the flake gives, `x86_64-linux` on `ubuntu-24.04`, `aarch64-linux` on `ubuntu-24.04-arm`, `aarch64-darwin` on `macos-15` and `x86_64-darwin` on `macos-15-intel`, and none for another
+- **THEN** it has one job for each system the flake gives, `x86_64-linux` on `ubuntu-24.04`, `aarch64-linux` on `ubuntu-24.04-arm`, and `aarch64-darwin` on `macos-15`, and none for another
 
 #### Scenario: The runner is pushed with its tools
 

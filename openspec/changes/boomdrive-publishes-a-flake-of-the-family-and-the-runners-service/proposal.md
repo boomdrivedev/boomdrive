@@ -18,10 +18,10 @@ Record 0012 already says this repository publishes a flake. Nothing builds it ye
   - The runner, built from this tree.
   - Flume and sluice, each from the source of a release tag, sluice's through its own flake and Flume's through a recipe of this flake's until Flume publishes one.
   - The two tools' herdr plugins, from the same tags.
-  - Each package reports its tag's version, on four systems.
+  - Each package reports its tag's version, on `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`. nixpkgs 26.11 builds nothing for `x86_64-darwin`, so the set gives it none.
   - A tool's version moves by its input. A package is replaced through the modules' options.
 - **The binaries, through the family's cache.**
-  - A workflow, `.github/workflows/cache.yml`, builds every package for each of the four systems on GitHub's hosted runners, and pushes them to `boomdrive` on Cachix. It runs at each push to `main` and each tag `v*`, the runner's package among them.
+  - A workflow, `.github/workflows/cache.yml`, builds every package for each system on GitHub's hosted runners, and pushes them to `boomdrive` on Cachix. It runs at each push to `main` and each tag `v*`, the runner's package among them.
   - The flake's `nixConfig` names the cache and its key as a substituter.
   - A host whose nix trusts the cache substitutes the set. A host that does not builds the same paths from source.
   - The modules' packages are the flake's own, made with its own nixpkgs, so they are the paths the cache holds.
