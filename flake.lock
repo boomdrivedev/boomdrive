@@ -1,0 +1,112 @@
+{
+  "nodes": {
+    "flume": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793916004,
+        "narHash": "sha256-Y7YqB+/tN6qLdxouIXwq7ZYw31NihEqvyDWLXiw0ASY=",
+        "owner": "agentplot",
+        "repo": "flume",
+        "rev": "448dd92e6ef810fefaf34e5e8de98de57b4b70bb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agentplot",
+        "ref": "v0.10.0",
+        "repo": "flume",
+        "type": "github"
+      }
+    },
+    "nix-darwin": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793418699,
+        "narHash": "sha256-+RpTlcdh9KqZ+ZiLkNSTvibQWm935EcIdBzRPCTFsrQ=",
+        "owner": "nix-darwin",
+        "repo": "nix-darwin",
+        "rev": "ff0e21a414d4547183396da1b44a66f2577b65e9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-darwin",
+        "repo": "nix-darwin",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1793726008,
+        "narHash": "sha256-jQp1wKvbwWdLBASTXkSi/VYmDJ5AbBi1WvcMt9HWJC8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "1d060086d60cb76a40cf37109f979d88a5bd6396",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flume": "flume",
+        "nix-darwin": "nix-darwin",
+        "nixpkgs": "nixpkgs",
+        "rust-overlay": "rust-overlay",
+        "sluice": "sluice"
+      }
+    },
+    "rust-overlay": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793870170,
+        "narHash": "sha256-0psEeQjs1g9oWQ6eVVGlCom+X3/uHyr6jSMyHVU57u8=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "19e0e6c951a7a8a7d3232c64e58d26b89df44c60",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "sluice": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793923753,
+        "narHash": "sha256-+CD1OFpuo2B7VcLNKQ8ShH9KgQaRp/huakC12ZNKeA8=",
+        "owner": "agentplot",
+        "repo": "sluice",
+        "rev": "c7ee329de628dfc281ad7c49ce5255c5b4414c70",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agentplot",
+        "ref": "v0.68.0",
+        "repo": "sluice",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

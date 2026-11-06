@@ -1,0 +1,16 @@
+# Written by the boomdrive flake's module from services.boomdrive.settings; a change goes there.
+repositories = ["agentplot/flume"]
+
+[control_plane]
+type = "hosted"
+
+[control_plane.hosted]
+url = "https://control.example"
+
+[[control_plane.hosted.partitions]]
+label = "home"
+repositories = ["agentplot/flume"]
+
+[[control_plane.hosted.partitions]]
+label = "work"
+repositories = []

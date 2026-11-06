@@ -63,6 +63,37 @@ let
   # pinned by devenv.lock and asserted to be this version as git is.
   recutilsVersion = "1.9";
 
+  # The nix project's tools (record 0020, design Decision 14): the nix its
+  # type check and test evaluate with, nixfmt its format runs, and statix,
+  # deadnix and actionlint its lint runs. nixpkgs' builds, pinned by
+  # devenv.lock and asserted to be these versions as git is. treefmt.nix's
+  # nixfmt and deadnix are the same packages.
+  nixVersion = "2.34.8";
+  nixfmtVersion = "1.5.0";
+  statixVersion = "0.5.8-unstable-2026-07-17";
+  deadnixVersion = "1.3.2";
+  actionlintVersion = "1.7.12";
+
+  # The flake's inputs as flake.lock locks them, fetched by this shell
+  # outside the gate's sandbox (design Decision 14).
+  flakeInputs = import ./nix/inputs.nix { };
+
+  # The set the runner's tests prove (record 0020, core.45, design
+  # Decision 6): the flake's own packages for this shell's system, its
+  # outputs called with the lock's inputs as nix/tests calls them, so they
+  # are the paths the family's cache holds.
+  set =
+    let
+      outputs = (import ./flake.nix).outputs (flakeInputs.inputs // { inherit self; });
+      self = outputs // {
+        outPath = toString ./.;
+        inherit (flakeInputs) inputs;
+        inherit outputs;
+        _type = "flake";
+      };
+    in
+    outputs.packages.${pkgs.stdenv.hostPlatform.system};
+
   # OpenSpec, which root:specs and root:changes validate with: flume's
   # release, built as nixpkgs builds its older one. Bump the version, then
   # each hash from the mismatch the build reports.
@@ -89,8 +120,9 @@ in
 {
   # The system tools are this file's, pinned by devenv.lock; moon and Rust
   # are .prototools', installed by the boomdrive:proto:install task on
-  # entering the shell and activated by enterShell. git, recutils and
-  # OpenSpec are the releases pinned above, never the host's (core.8).
+  # entering the shell and activated by enterShell. git, recutils,
+  # OpenSpec and the nix project's tools are the releases pinned above,
+  # never the host's (core.8).
   packages = [
     (
       assert pkgs.git.version == gitVersion;
@@ -100,9 +132,46 @@ in
       assert pkgs.recutils.version == recutilsVersion;
       pkgs.recutils
     )
+    (
+      assert pkgs.nix.version == nixVersion;
+      pkgs.nix
+    )
+    (
+      assert pkgs.nixfmt.version == nixfmtVersion;
+      pkgs.nixfmt
+    )
+    (
+      assert pkgs.statix.version == statixVersion;
+      pkgs.statix
+    )
+    (
+      assert pkgs.deadnix.version == deadnixVersion;
+      pkgs.deadnix
+    )
+    (
+      assert pkgs.actionlint.version == actionlintVersion;
+      pkgs.actionlint
+    )
     proto
     openspec
   ];
+
+  # The flake's inputs as flake.lock locks them, fetched by this shell
+  # outside the gate's sandbox and given to the nix project's checks by
+  # their store paths, which they read with no network and no nix daemon
+  # (design Decision 14).
+  env.BOOMDRIVE_FLAKE_INPUTS = builtins.toJSON flakeInputs.paths;
+
+  # The set's Flume and sluice, given to the runner's tests by their paths
+  # (crates/boomdrive/tests/family.rs) and on no PATH, so a shell's `sluice
+  # exec` still runs the host's sluice (design Decision 6). The shell
+  # substitutes them from the family's cache where the host's nix trusts
+  # it, and builds them where it does not. It pushes nothing: the cache's
+  # workflow alone pushes (core.47), until the user rules on devenv's own
+  # push (design, The user's to rule on).
+  env.BOOMDRIVE_SET_FLUME = lib.getExe set.flume;
+  env.BOOMDRIVE_SET_SLUICE = lib.getExe set.sluice;
+  cachix.pull = [ "boomdrive" ];
 
   # moon's task archives (.moon/cache/outputs) are a link into the git common
   # dir, so every worktree shares them. The rest of .moon/cache records the

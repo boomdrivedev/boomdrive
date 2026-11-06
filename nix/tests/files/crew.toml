@@ -1,0 +1,15 @@
+# Written by the boomdrive flake's module from services.boomdrive.settings; a change goes there.
+code_workspaces = true
+fetch_interval = "2m"
+repositories = ["agentplot/flume", "agentplot/sluice"]
+repository_root = "~/Code"
+
+[control_plane]
+type = "crew"
+
+[control_plane.crew]
+host = "host-a"
+
+[[control_plane.crew.partitions]]
+label = "home"
+state_repository = "example/state"

@@ -1,0 +1,111 @@
+# The workflow `cache` (record 0020, core.47, design Decision 5): every
+# package the flake gives, the runner's among them, built for each system on
+# GitHub's hosted runner of that system and pushed to the family's cache,
+# boomdrive on Cachix, at each push to main, each tag v*, and by hand. main
+# holds only what the gate passed. The cache's token is read from 1Password
+# through a service account whose token is the one secret of the
+# environment cachix, which admits main and tags v* alone. The nix
+# project's test holds this file to the flake (nix/tests/workflow.nix).
+name: cache
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run for each ref at a time, none cancelled, so every commit of main
+# is pushed.
+concurrency:
+  group: cache-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build (${{ matrix.system }})
+    environment: cachix
+    strategy:
+      # One system's failure leaves the others' pushes.
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the service account's token
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          if [ -z "$OP_SERVICE_ACCOUNT_TOKEN" ]; then
+            echo "::error::OP_SERVICE_ACCOUNT_TOKEN is not set in the cachix environment"
+            exit 1
+          fi
+
+      # The one place the workflow names the vault and the item. The token
+      # is the step's output, masked in the log, and in no step's
+      # environment but those given it.
+      - name: Load the cache's token from 1Password
+        id: cachix-token
+        uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
+        with:
+          export-env: false
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CACHIX_AUTH_TOKEN: op://GitHub-Actions/CACHIX_AUTH_TOKEN/credential
+
+      - name: Check the cache's token
+        env:
+          CACHIX_AUTH_TOKEN: ${{ steps.cachix-token.outputs.CACHIX_AUTH_TOKEN }}
+        run: |
+          if [ -z "$CACHIX_AUTH_TOKEN" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN loaded from 1Password is empty"
+            exit 1
+          fi
+
+      # Substitutes what the cache holds, and pushes nothing of its own
+      # accord: the last step pushes the set alone.
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: boomdrive
+          authToken: ${{ steps.cachix-token.outputs.CACHIX_AUTH_TOKEN }}
+          skipPush: true
+
+      # A package that fails to build fails the job here, and nothing of
+      # the system is pushed.
+      - name: Build every package of ${{ matrix.system }}
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          names=$(nix eval --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
+          installables=()
+          for name in $names; do
+            installables+=(".#packages.$SYSTEM.$name")
+          done
+          nix build --no-link --print-out-paths "${installables[@]}" >"$RUNNER_TEMP/paths"
+
+      - name: Push them to the family's cache
+        env:
+          CACHIX_AUTH_TOKEN: ${{ steps.cachix-token.outputs.CACHIX_AUTH_TOKEN }}
+        run: cachix push boomdrive <"$RUNNER_TEMP/paths"
