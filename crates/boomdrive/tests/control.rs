@@ -452,7 +452,7 @@ struct Running {
     lines: Receiver<(Instant, String)>,
     pulls: Receiver<Instant>,
     thread: JoinHandle<()>,
-    _tools: Tools,
+    tools: Tools,
 }
 
 impl Running {
@@ -505,7 +505,7 @@ impl Running {
             lines,
             pulls,
             thread,
-            _tools: tools,
+            tools,
         }
     }
 
@@ -538,9 +538,25 @@ impl Running {
         panic!("{line:?} not said in time; said: {said:#?}");
     }
 
-    fn stop(self) {
+    /// Waits until the stub `flume` has been asked `settles` settles;
+    /// panics where it is not in time.
+    fn settled(&self, settles: usize) {
+        let deadline = Instant::now() + PATIENCE;
+        while self::settles(&self.tools) < settles {
+            assert!(
+                Instant::now() < deadline,
+                "{settles} settles not run in time: {:?}",
+                self.tools.flume_commands()
+            );
+            thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    /// Stops the runner, and gives its tools.
+    fn stop(self) -> Tools {
         self.stopper.stop();
         self.thread.join().expect("the loop ends");
+        self.tools
     }
 }
 
@@ -603,6 +619,73 @@ fn control_passes_on_their_own_timer() {
     );
     running.stop();
     assert_eq!(fetched(&scratch), was, "no keeping pass but the first");
+}
+
+/// The running spec's "Passes back to back share one settle": the first
+/// keeping pass and the first control pass run back to back, and one
+/// settle follows them, on the shorter interval, after every other
+/// `flume` command of the control pass; no other runs before the next
+/// turn, an hour on.
+#[test]
+fn passes_back_to_back_share_one_settle() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1h"));
+    let running = Running::start(&scratch);
+    running.pull();
+    running.settled(1);
+    thread::sleep(Duration::from_millis(500));
+
+    let calls = running.tools.flume.calls();
+    assert_eq!(settles(&running.tools), 1, "{calls:?}");
+    assert_eq!(
+        calls.last(),
+        Some(&words(&["--json", "settle", "--every", "3600s"])),
+        "{calls:?}"
+    );
+    running.stop();
+}
+
+/// The running spec's "Each control pass ends with a settle": with
+/// `poll_interval` a second, each control pass's `flume` commands, from
+/// its read of Flume's status, end with one settle on the shorter
+/// interval, before the next control pass reads Flume's status.
+#[test]
+fn each_control_pass_ends_with_a_settle() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let running = Running::start(&scratch);
+    for _ in 0..3 {
+        running.pull();
+    }
+    let tools = running.stop();
+
+    let calls = tools.flume.calls();
+    let starts: Vec<usize> = calls
+        .iter()
+        .enumerate()
+        .filter(|(_, call)| *call == &words(&["--json", "status"]))
+        .map(|(n, _)| n)
+        .collect();
+    assert!(starts.len() >= 3, "three control passes: {calls:?}");
+    assert_eq!(
+        starts[0], 0,
+        "a flume command before the first pass: {calls:?}"
+    );
+    let settle = words(&["--json", "settle", "--every", "1s"]);
+    for pass in starts.windows(2) {
+        let group = &calls[pass[0]..pass[1]];
+        assert_eq!(group.last(), Some(&settle), "{group:?} in {calls:?}");
+        assert_eq!(
+            group
+                .iter()
+                .filter(|call| call.get(1).map(String::as_str) == Some("settle"))
+                .count(),
+            1,
+            "{group:?} in {calls:?}"
+        );
+    }
 }
 
 /// The running spec's "Woken by the control plane": woken through the

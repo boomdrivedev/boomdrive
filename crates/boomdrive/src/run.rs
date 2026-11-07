@@ -380,16 +380,20 @@ impl Runner {
     /// plane's work, a control pass follows the first keeping pass, then
     /// one each `poll_interval` after the start of the one before, sooner,
     /// after a pass that reported, before a lease not yet lapsed lapses,
-    /// and at once when the control plane wakes the runner. Between
-    /// passes, each landing it is told of is kept at once. Stopped, it
-    /// keeps no further repository and says so.
+    /// and at once when the control plane wakes the runner. Each turn
+    /// that ran a pass, keeping, control or both, ends with one settle of
+    /// every place, before the runner waits (record 0029). Between passes,
+    /// each landing it is told of is kept at once. Stopped, it keeps no
+    /// further repository, begins no settle, and says so.
     pub fn keep(&mut self, say: &mut dyn FnMut(String)) {
         let mut started = Some(self.config.clone());
         let mut fetch_interval = self.config.fetch_interval;
         let mut keep_due = Instant::now();
         let mut carry_due = self.carries().then(Instant::now);
         'passes: loop {
+            let mut passed = false;
             if Instant::now() >= keep_due {
+                passed = true;
                 let began = Instant::now();
                 let read = match started.take() {
                     Some(config) => Ok(config),
@@ -408,6 +412,7 @@ impl Runner {
                 break 'passes;
             }
             if carry_due.is_some_and(|due| Instant::now() >= due) {
+                passed = true;
                 let began = Instant::now();
                 let read = config::read(&self.file, &self.home);
                 let poll_interval = self.poll_interval();
@@ -417,6 +422,15 @@ impl Runner {
                 carry_due = self
                     .carry(read, &due, say)
                     .map(|passed| passed.next_due(began, Instant::now(), poll_interval));
+            }
+            if self.stop.load(Ordering::SeqCst) {
+                break 'passes;
+            }
+            // A keeping pass and a control pass run back to back share
+            // one settle, after both, so no launch waits behind a settle
+            // of every place (record 0029).
+            if passed {
+                self.settle(fetch_interval, say);
             }
             loop {
                 if self.stop.load(Ordering::SeqCst) {
