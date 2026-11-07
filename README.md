@@ -263,7 +263,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.10.1
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.17.2
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version is its tagged tree's. Its git crates are fetched by the hashes
@@ -276,7 +276,7 @@ beside it:
 
 ```nix
 # In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.69.0";
+boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.75.0";
 ```
 
 ```nix
@@ -285,8 +285,8 @@ services.boomdrive.tools = [
   boomdrive.packages.aarch64-darwin.flume
   (boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
     __intentionallyOverridingVersion = true;
-    version = "0.69.0";
-    env = old.env // { SLUICE_VERSION = "0.69.0"; };
+    version = "0.75.0";
+    env = old.env // { SLUICE_VERSION = "0.75.0"; };
   }))
 ];
 ```

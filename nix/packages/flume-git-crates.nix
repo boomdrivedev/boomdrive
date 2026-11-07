@@ -5,8 +5,12 @@
 # entry's revision is not the tag's Cargo.lock's. It goes with flume.nix,
 # once Flume publishes a flake.
 {
+  "weir-capture-0.0.0" = {
+    rev = "5562af52cb7e065e7de7109135dfd7eecb1d61c5";
+    hash = "sha256-2DFTZKoYQiYKggsaZTqWCWtcJpux7x9prTEaomLXk9k=";
+  };
   "weir-kinds-0.0.0" = {
-    rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219";
-    hash = "sha256-1PWzNpKz0dUIDpscpC84/kGMkLAmFwhhZTwve4mkVps=";
+    rev = "5562af52cb7e065e7de7109135dfd7eecb1d61c5";
+    hash = "sha256-2DFTZKoYQiYKggsaZTqWCWtcJpux7x9prTEaomLXk9k=";
   };
 }
