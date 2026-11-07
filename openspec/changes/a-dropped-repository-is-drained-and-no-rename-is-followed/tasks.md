@@ -41,7 +41,7 @@ Build the groups in order: each stands on the ones before it. A task is true onc
 
 ## 6. The hosted implementation sends no drained repository
 
-- [ ] 6.1 No partition's hello names a repository drained, and no report a launch's repository (design Decision 3; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane a_repository_draining_goes_up_in_no_hello -- --exact` passes, proving the hosted-control-plane spec's "A repository drained goes up in no hello".
+- [x] 6.1 No partition's hello names a repository drained, and no report a launch's repository (design Decision 3; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane a_repository_draining_goes_up_in_no_hello -- --exact` passes, proving the hosted-control-plane spec's "A repository drained goes up in no hello".
 
 ## 7. The README and the specs
 
