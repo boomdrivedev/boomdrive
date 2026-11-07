@@ -189,7 +189,10 @@ impl Control {
 pub struct Runner {
     git: Git,
     home: PathBuf,
+    /// The managed layer's file.
     file: PathBuf,
+    /// The local layer's file, read over it (design Decision 1).
+    local: PathBuf,
     data: PathBuf,
     config: Config,
     /// The control plane the configuration names, none where it names
@@ -206,10 +209,10 @@ pub struct Runner {
 
 impl Runner {
     /// Starts a runner on the configuration `file` names, else the
-    /// default one, in the environment `var` gives. The start's checks
-    /// run in design 10's order, and the first that fails refuses with
-    /// why, having touched nothing: `HOME` is set, the configuration
-    /// reads, git is 2.48 or later, the data directory is there or can be
+    /// default one, with the local layer over it, in the environment
+    /// `var` gives. The start's checks run in design 10's order, and the
+    /// first that fails refuses with why, having touched nothing: `HOME`
+    /// is set, the configuration reads, git is 2.48 or later, the data directory is there or can be
     /// made, and no other runner holds it. Then the control plane the
     /// configuration names is opened; one that cannot be is named by
     /// [`Runner::unopened`], and the runner keeps its repositories all
@@ -221,7 +224,8 @@ impl Runner {
     ) -> Result<Runner, String> {
         let env = Env::read(var)?;
         let file = config::config_path(file, &env);
-        let config = config::read(&file, &env.home)?;
+        let local = config::local_path(&env);
+        let config = config::read_layers(&file, &local, &env.home)?;
         git.check_version()?;
         let data = config::data_dir(&env);
         fs::create_dir_all(&data).map_err(|error| {
@@ -241,6 +245,7 @@ impl Runner {
             git,
             home: env.home,
             file,
+            local,
             data,
             config,
             control,
@@ -311,8 +316,9 @@ impl Runner {
         Ok(())
     }
 
-    /// The line the runner starts with: its version, configuration file,
-    /// data directory and repository root.
+    /// The line the runner starts with: its version, the repositories
+    /// both layers keep, its configuration file, data directory and
+    /// repository root.
     pub fn started(&self) -> String {
         let kept = match self.config.repositories.len() {
             1 => "1 repository".to_string(),
@@ -367,7 +373,7 @@ impl Runner {
                 let began = Instant::now();
                 let read = match started.take() {
                     Some(config) => Ok(config),
-                    None => config::read(&self.file, &self.home),
+                    None => self.read(),
                 };
                 match read {
                     Ok(config) => {
@@ -383,7 +389,7 @@ impl Runner {
             }
             if carry_due.is_some_and(|due| Instant::now() >= due) {
                 let began = Instant::now();
-                let read = config::read(&self.file, &self.home);
+                let read = self.read();
                 let poll_interval = self.poll_interval();
                 let notices = self.notices();
                 notices.begin_pass();
@@ -415,6 +421,12 @@ impl Runner {
             }
         }
         say("boomdrive: stopped".to_string());
+    }
+
+    /// The configuration as it stands, both its layers read again (design
+    /// Decision 8).
+    fn read(&self) -> Result<Config, String> {
+        config::read_layers(&self.file, &self.local, &self.home)
     }
 
     /// Whether the runner carries a control plane's work: the
@@ -497,7 +509,7 @@ impl Runner {
     /// configuration as it stands: read again, so a repository dropped
     /// since the last pass is never fetched.
     fn landed(&self, address: &Address, say: &mut dyn FnMut(String)) {
-        match config::read(&self.file, &self.home) {
+        match self.read() {
             Ok(config) => {
                 pass::keep_one(&self.git, &self.data, &config, address, say);
             }

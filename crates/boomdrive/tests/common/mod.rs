@@ -138,6 +138,21 @@ impl Scratch {
         file
     }
 
+    /// The runner's local layer, `config.local.toml` beside the default
+    /// file, where it reads it whatever `--config` names.
+    pub fn local_file(&self) -> PathBuf {
+        self.home.join(".config/boomdrive/config.local.toml")
+    }
+
+    /// Writes `text` as the runner's local layer and gives its path.
+    pub fn configure_local(&self, text: &str) -> PathBuf {
+        let file = self.local_file();
+        std::fs::create_dir_all(file.parent().expect("the file's folder"))
+            .expect("the configuration's folder");
+        std::fs::write(&file, text).expect("the local layer written");
+        file
+    }
+
     /// The runner's data directory, under `XDG_DATA_HOME`.
     pub fn data(&self) -> PathBuf {
         self.home.join(".local/share/boomdrive")
