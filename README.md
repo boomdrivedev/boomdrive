@@ -335,9 +335,12 @@ A control pass:
   `flume launch`, naming its kind, stream, priority and intent only as
   the launch gives them, marked `boomdrive:<id>`;
 - carries out each retry, drop, priority or done as Flume's own command
-  on the launch's place, once every launch the pull offers is taken, so
-  no launch waits behind an act; and each bolt's branch by
-  `sluice branch create` in the clone, where the pull puts it;
+  on the launch's place, once every launch the pull offers is taken,
+  and, once the next pass is due, no further act after its first, so no
+  launch waits behind an act. A place Flume's listing does not hold is
+  first asked of `flume --json status <place>`, which settles nothing,
+  and Flume's refusal of it is the act's answer. Each bolt's branch is
+  made by `sluice branch create` in the clone, where the pull puts it;
 - carries back Flume's status of each place, sluice's entry of each
   submission and each inbox the control plane names, each as the tool
   gave it, and never a log; and relays a terminal on a launch's agent

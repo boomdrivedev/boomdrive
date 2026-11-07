@@ -1,9 +1,12 @@
 //! The control pass (design Decision 5). It takes the runner's report,
 //! reads the host once from Flume's status, hands the hello to the pull,
 //! answers each want in the control plane's order, but carries out an
-//! act on a place only once every launch the pull offers is taken
-//! (record 0002; core.49), opens each terminal pulled, and sends the
-//! whole report. The runner takes only what it was
+//! act on a place only once every launch the pull offers is taken, and
+//! none but the first once the next pass is due (record 0002; core.50),
+//! opens each terminal pulled, and sends the whole report. An act on a
+//! place the listing does not hold reads Flume's status of the place
+//! first, and takes Flume's refusal of it as its answer (record 0010;
+//! core.51). The runner takes only what it was
 //! offered, launches only through Flume's command line, and carries each
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
@@ -26,7 +29,7 @@ use boomdrive_control::{
 };
 use serde_json::Value;
 use std::cell::Cell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -118,6 +121,12 @@ pub struct Carrier<'a> {
     pub relays: &'a Relays,
     /// Whether the last pull was read, kept across passes.
     pub reach: &'a Reach,
+    /// Whether the next control pass is due, by the control timer or
+    /// because the control plane woke the runner. Once it is, the pass
+    /// carries out no further act on a place, after its first, and
+    /// leaves the rest to that pass, whose launches go ahead of them
+    /// (core.50).
+    pub due: &'a dyn Fn() -> bool,
 }
 
 /// Whether the control plane's last pull was read, kept across control
@@ -230,6 +239,8 @@ impl Carrier<'_> {
             listing,
             now,
             round: Round::Wants,
+            acts_run: 0,
+            left: BTreeSet::new(),
         };
         'carrying: for round in [Round::Wants, Round::OnPlaces] {
             work.round = round;
@@ -240,6 +251,16 @@ impl Carrier<'_> {
                     break 'carrying;
                 }
             }
+        }
+        match work.left.len() {
+            0 => {}
+            1 => say(
+                "boomdrive: the next control pass is due, so 1 act on a place waits for it"
+                    .to_string(),
+            ),
+            n => say(format!(
+                "boomdrive: the next control pass is due, so {n} acts on places wait for it"
+            )),
         }
         work.carry_statuses(say);
         work.carry_entries(say);
@@ -270,14 +291,21 @@ struct Work<'p> {
     /// The pass's clock, read once at its start.
     now: At,
     round: Round,
+    /// How many acts the pass has run Flume's command for on their places.
+    acts_run: usize,
+    /// The acts on places left for the next pass, which is due.
+    left: BTreeSet<Id>,
 }
 
 /// The pass's two rounds over the pull's wants, each in the control
 /// plane's order, so that no launch waits behind an act on a place
-/// (record 0002; core.49). An act on a place moves no room and lifts no
+/// (record 0002; core.50). An act on a place moves no room and lifts no
 /// hold within the pass, which read both from its one listing, so taking
-/// it second changes no answer; an act Flume refuses because its place no
-/// longer stands costs the pass its answer alone (record 0010; core.10).
+/// it second changes no answer. The second round ends its acts on places
+/// once the next pass is due, after the first, so no launch the next pull
+/// offers waits behind them either. An act Flume refuses because its place
+/// no longer stands costs the pass the reading of Flume's refusal alone
+/// (record 0010; core.51).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Round {
     /// Every want: each offer, inbox and command, and each act answered
@@ -476,9 +504,8 @@ impl Work<'_> {
     /// Carries out or answers `act` on its launch (design Decision 9). An
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
-    /// core.24). One that runs Flume's command on its launch's place is
-    /// carried out in the pass's second round alone, after every launch
-    /// the pull offers (core.49).
+    /// core.24). One on its launch's place is carried out in the pass's
+    /// second round alone, after every launch the pull offers (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -509,23 +536,53 @@ impl Work<'_> {
         }
     }
 
-    /// Carries out `act` as Flume's own command on the place at `place`,
-    /// never forced, its answer Flume's. Where Flume could not be run,
-    /// nothing is kept, and the next pass carries it out.
+    /// Carries out `act` on the place at `place`, its answer Flume's. A
+    /// place the pass's listing does not hold is first asked of Flume's
+    /// status, which settles nothing: where Flume refuses it, that refusal
+    /// is the act's answer, as Flume gave it, and the act's command is not
+    /// run (core.51). Otherwise the act is Flume's own command on the
+    /// place, never forced; once the next pass is due, the pass runs none
+    /// but its first, and leaves the act for that pass (core.50). Where
+    /// Flume could not be run, nothing is kept, and the next pass carries
+    /// it out.
     fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
+        let unrun = |words: String, say: &mut dyn FnMut(String)| {
+            let what = sort(&act.what);
+            say(format!(
+                "{}: {what} of {} at {place}: not carried out: {words}",
+                act.id, act.launch
+            ));
+        };
+        if !self.listed(place) {
+            match self.carrier.flume.status_of(None, place) {
+                Ok(Reply::Given(_)) => {}
+                Ok(Reply::Refused(words)) => {
+                    self.acted(act, Outcome::Refused, Some(words), Some(place), say);
+                    return;
+                }
+                Err(Unrun(words)) => return unrun(words, say),
+            }
+        }
+        if self.acts_run > 0 && (self.carrier.due)() {
+            self.left.insert(act.id.clone());
+            return;
+        }
+        self.acts_run += 1;
         match self.carrier.flume.act(place, &flume_act(&act.what)) {
             Ok(Reply::Given(_)) => self.acted(act, Outcome::Done, None, Some(place), say),
             Ok(Reply::Refused(words)) => {
                 self.acted(act, Outcome::Refused, Some(words), Some(place), say)
             }
-            Err(Unrun(words)) => {
-                let what = sort(&act.what);
-                say(format!(
-                    "{}: {what} of {} at {place}: not carried out: {words}",
-                    act.id, act.launch
-                ));
-            }
+            Err(Unrun(words)) => unrun(words, say),
         }
+    }
+
+    /// Whether the pass's listing holds the place at `place`, standing or
+    /// as the record Flume keeps of it tidied.
+    fn listed(&self, place: &str) -> bool {
+        self.listing
+            .as_ref()
+            .is_some_and(|listing| facts::entry(listing, place).is_some())
     }
 
     /// Answers `act` on a launch the runner holds not yet launched, from

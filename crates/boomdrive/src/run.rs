@@ -38,16 +38,21 @@ pub enum Event {
 }
 
 /// Tells the runner of landings, and wakes it for its control plane,
-/// from whatever learns of them.
+/// from whatever learns of them. Its clones share one wake, which the
+/// control pass under way reads (core.50).
 #[derive(Clone)]
 pub struct Notices {
     events: Sender<Event>,
+    woken: Arc<AtomicBool>,
 }
 
 impl Notices {
     /// Notices sent on `events`, to the loop that holds their receiver.
     pub fn new(events: Sender<Event>) -> Notices {
-        Notices { events }
+        Notices {
+            events,
+            woken: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     /// Tells the runner of a landing on `address`, which it keeps at once
@@ -61,7 +66,19 @@ impl Notices {
     /// then timed from that pass's start. A runner carrying no control
     /// plane's work, or stopped, is woken to nothing.
     pub fn wake(&self) {
+        self.woken.store(true, Ordering::SeqCst);
         let _ = self.events.send(Event::Wake);
+    }
+
+    /// Whether the control plane woke the runner since the control pass
+    /// under way began, so the next one is due at once.
+    pub fn woken(&self) -> bool {
+        self.woken.load(Ordering::SeqCst)
+    }
+
+    /// Takes the wake that a control pass beginning now answers.
+    fn begin_pass(&self) {
+        self.woken.store(false, Ordering::SeqCst);
     }
 
     /// What an implementation is handed at its opening, to wake the
@@ -179,6 +196,9 @@ pub struct Runner {
     /// none.
     control: Option<Control>,
     events: Sender<Event>,
+    /// The runner's one set of notices, whose wake each control pass
+    /// reads.
+    notices: Notices,
     waiting: Receiver<Event>,
     stop: Arc<AtomicBool>,
     _lock: File,
@@ -225,6 +245,7 @@ impl Runner {
             config,
             control,
             events,
+            notices,
             waiting,
             stop: Arc::new(AtomicBool::new(false)),
             _lock: lock,
@@ -265,7 +286,7 @@ impl Runner {
 
     /// What tells the runner of landings, and wakes it.
     pub fn notices(&self) -> Notices {
-        Notices::new(self.events.clone())
+        self.notices.clone()
     }
 
     /// What stops the runner.
@@ -316,7 +337,8 @@ impl Runner {
         let carried = match &self.control {
             None => Outcome::Kept,
             Some(Control { plane: Err(_), .. }) => Outcome::Failed,
-            Some(_) => match self.carry(Ok(self.config.clone()), say) {
+            // No control pass follows, so none is ever due.
+            Some(_) => match self.carry(Ok(self.config.clone()), &|| false, say) {
                 Some(Passed { reported: true, .. }) => Outcome::Kept,
                 _ => Outcome::Failed,
             },
@@ -362,9 +384,13 @@ impl Runner {
             if carry_due.is_some_and(|due| Instant::now() >= due) {
                 let began = Instant::now();
                 let read = config::read(&self.file, &self.home);
+                let poll_interval = self.poll_interval();
+                let notices = self.notices();
+                notices.begin_pass();
+                let due = move || began.elapsed() >= poll_interval || notices.woken();
                 carry_due = self
-                    .carry(read, say)
-                    .map(|passed| passed.next_due(began, Instant::now(), self.poll_interval()));
+                    .carry(read, &due, say)
+                    .map(|passed| passed.next_due(began, Instant::now(), poll_interval));
             }
             loop {
                 if self.stop.load(Ordering::SeqCst) {
@@ -407,11 +433,13 @@ impl Runner {
 
     /// One control pass against the configuration as `read` gives it
     /// (design Decision 5), none where the runner carries no control
-    /// plane's work. A configuration that did not read is named, and
-    /// nothing is carried until it reads again.
+    /// plane's work, `due` saying whether the next is due. A
+    /// configuration that did not read is named, and nothing is carried
+    /// until it reads again.
     fn carry(
         &mut self,
         read: Result<Config, String>,
+        due: &dyn Fn() -> bool,
         say: &mut dyn FnMut(String),
     ) -> Option<Passed> {
         let Some(Control {
@@ -448,7 +476,7 @@ impl Runner {
         let flume = flume::Cli::new(&programs.flume);
         let sluice = sluice::Cli::new(&programs.sluice);
         let tools = programs.tools();
-        let notices = Notices::new(self.events.clone());
+        let notices = self.notices.clone();
         let control_dir = report::control_dir(&self.data);
         let carrier = Carrier {
             flume: &flume,
@@ -460,6 +488,7 @@ impl Runner {
             control_dir: &control_dir,
             relays,
             reach,
+            due,
         };
         Some(carrier.pass(plane.as_mut(), say))
     }
@@ -538,9 +567,26 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::next_pass;
+    use super::{next_pass, Event, Notices};
     use crate::carry::next_due;
+    use std::sync::mpsc;
     use std::time::{Duration, Instant};
+
+    /// A wake is read by the control pass under way, through every clone
+    /// of the runner's notices, until the next pass begins (core.50); the
+    /// loop is woken all the same.
+    #[test]
+    fn a_wake_is_read_by_the_pass_under_way() {
+        let (events, waiting) = mpsc::channel();
+        let notices = Notices::new(events);
+        let opener = notices.clone();
+        assert!(!notices.woken());
+        opener.wake();
+        assert!(notices.woken());
+        assert!(matches!(waiting.try_recv(), Ok(Event::Wake)));
+        notices.begin_pass();
+        assert!(!opener.woken());
+    }
 
     /// The running spec's "Passes on the timer": with `fetch_interval`
     /// two minutes and a pass begun at 10:00:00, the next begins at
