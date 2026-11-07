@@ -9,9 +9,9 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The interface serves parts
 
-- [ ] 1.1 `boomdrive-control` gains `Part`, a label and a `Box<dyn ControlPlane + Send>`, and `ControlPlane::owns`. The fake owns every id, or, made by `Fake::owning("<label>/")`, those under that prefix alone. Every `ControlPlane` the tree implements says `owns`: crew's an id `ids::named` reads as one of its partitions', the hosted's an id under one of its partitions' `<label>/`, and each test's own control plane, `tests/control.rs`'s `Told` among them, the ids it gives. `shared.rs` gains the case `each_id_given_is_owned`, every want a control plane gives owned by it (design Decision 1). True when `devenv shell -- cargo test -p boomdrive-control --test fake shared_each_id_given_is_owned` passes.
-- [ ] 1.2 crew's implementation runs the case, proving the control-plane-interface spec's "crew's implementation passes". True when `devenv shell -- cargo test -p boomdrive-crew --test shared shared_each_id_given_is_owned` passes.
-- [ ] 1.3 The hosted implementation runs the case, proving the spec's "The hosted implementation passes". True when `devenv shell -- cargo test -p boomdrive-hosted --test shared each_id_given_is_owned` passes.
+- [x] 1.1 `boomdrive-control` gains `Part`, a label and a `Box<dyn ControlPlane + Send>`, and `ControlPlane::owns`. The fake owns every id, or, made by `Fake::owning("<label>/")`, those under that prefix alone. Every `ControlPlane` the tree implements says `owns`: crew's an id `ids::named` reads as one of its partitions', the hosted's an id under one of its partitions' `<label>/`, and each test's own control plane, `tests/control.rs`'s `Told` among them, the ids it gives. `shared.rs` gains the case `each_id_given_is_owned`, every want a control plane gives owned by it (design Decision 1). True when `devenv shell -- cargo test -p boomdrive-control --test fake shared_each_id_given_is_owned` passes.
+- [x] 1.2 crew's implementation runs the case, proving the control-plane-interface spec's "crew's implementation passes". True when `devenv shell -- cargo test -p boomdrive-crew --test shared shared_each_id_given_is_owned` passes.
+- [x] 1.3 The hosted implementation runs the case, proving the spec's "The hosted implementation passes". True when `devenv shell -- cargo test -p boomdrive-hosted --test shared each_id_given_is_owned` passes.
 
 ## 2. crew's implementation gives a part for each partition
 

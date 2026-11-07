@@ -824,4 +824,12 @@ impl ControlPlane for Crew {
             false => Ok(reported),
         }
     }
+
+    /// An id `ids::named` reads as one of its partitions'.
+    fn owns(&self, id: &Id) -> bool {
+        self.config
+            .partitions
+            .iter()
+            .any(|partition| ids::named(&partition.label, id).is_some())
+    }
 }

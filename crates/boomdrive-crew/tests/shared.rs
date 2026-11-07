@@ -137,3 +137,8 @@ fn shared_a_report_twice() {
 fn shared_a_settled_want_is_given() {
     shared::a_settled_want_is_given(&mut Crews::default());
 }
+
+#[test]
+fn shared_each_id_given_is_owned() {
+    shared::each_id_given_is_owned(&mut Crews::default());
+}

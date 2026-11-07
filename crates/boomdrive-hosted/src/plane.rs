@@ -305,6 +305,13 @@ impl ControlPlane for Hosted {
         }
         Ok(reported)
     }
+
+    /// An id under one of its partitions' prefixes, `<label>/`.
+    fn owns(&self, id: &Id) -> bool {
+        self.partitions
+            .iter()
+            .any(|partition| partition.unprefixed(id).is_some())
+    }
 }
 
 impl Drop for Hosted {

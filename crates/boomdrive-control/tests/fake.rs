@@ -48,6 +48,22 @@ fn shared_a_settled_want_is_given() {
     shared::a_settled_want_is_given(&mut Fakes);
 }
 
+#[test]
+fn shared_each_id_given_is_owned() {
+    shared::each_id_given_is_owned(&mut Fakes);
+}
+
+/// A fake made owning a prefix owns the ids under it alone, and one made
+/// otherwise owns every id.
+#[test]
+fn a_fake_owns_its_prefix_alone() {
+    let home = Fake::owning("home/");
+    assert!(home.owns(&Id::new("home/1")));
+    assert!(!home.owns(&Id::new("work/1")));
+    assert!(!home.owns(&Id::new("homeward/1")));
+    assert!(Fake::new().owns(&Id::new("work/1")));
+}
+
 fn at(text: &str) -> At {
     At::parse(text).unwrap()
 }

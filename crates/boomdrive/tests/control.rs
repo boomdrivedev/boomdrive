@@ -373,6 +373,10 @@ impl ControlPlane for Told {
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
         self.fake.report(report)
     }
+
+    fn owns(&self, id: &Id) -> bool {
+        self.fake.owns(id)
+    }
 }
 
 /// The runner's loop over the fake control plane, running in a thread of
