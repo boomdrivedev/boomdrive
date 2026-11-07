@@ -1,7 +1,7 @@
 ---
 number: 12
 title: The runner is open source, and installs as one verified release, by the control plane or by hand
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner is open source, and installs as one verified release, by the control plane or by hand
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record. Once accepted, it supersedes record 0001's "It is private for now".
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. It supersedes record 0001's "It is private for now".
 
 Amended in part by record 0023, accepted on 2026-11-06: herdr, with the family's herdr plugins, and Ghostty are installed with the set, each replaceable or dropped through the modules' options.
 
