@@ -11,8 +11,8 @@ Build the groups in order: each stands on the ones before it. A task is true onc
 
 ## 2. What has ended, and what holds a repository
 
-- [ ] 2.1 `facts::ended` reads a place's entry ended where its phase is `tidied` or `gone` (design Decision 2). True when `devenv shell -- cargo test -p boomdrive --lib facts::tests::a_place_that_has_ended -- --exact` passes, reading `tidied` and `gone` ended and `live`, `over` and a delivered wait not.
-- [ ] 2.2 `report::holding` gives each launch of a report, with its place, that holds an address (design Decision 2). True when `devenv shell -- cargo test -p boomdrive --lib report::tests::the_places_that_hold_a_repository -- --exact` passes, giving a launched place not ended, of the address, and none ended, not listed, of another address, held or refused, or recording no repository.
+- [x] 2.1 `facts::ended` reads a place's entry ended where its phase is `tidied` or `gone` (design Decision 2). True when `devenv shell -- cargo test -p boomdrive --lib facts::tests::a_place_that_has_ended -- --exact` passes, reading `tidied` and `gone` ended and `live`, `over` and a delivered wait not.
+- [x] 2.2 `report::holding` gives each launch of a report, with its place, that holds an address (design Decision 2). True when `devenv shell -- cargo test -p boomdrive --lib report::tests::the_places_that_hold_a_repository -- --exact` passes, giving a launched place not ended, of the address, and none ended, not listed, of another address, held or refused, or recording no repository.
 
 ## 3. The control pass drains, and follows a place only through its clone
 
