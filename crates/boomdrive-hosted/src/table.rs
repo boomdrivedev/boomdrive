@@ -20,6 +20,11 @@ const TABLE: &str = "[control_plane.hosted]";
 const KEYS: [&str; 2] = ["url", "partitions"];
 const PARTITION_KEYS: [&str; 2] = ["label", "repositories"];
 
+/// The keys of this table the runner's local layer may set, each taken
+/// whole over the managed layer's (record 0009 as amended 2026-11-06 and
+/// 2026-11-07; core.17).
+pub const LOCAL_KEYS: [&str; 1] = ["partitions"];
+
 /// The keys a credential would be put under, each refused with where the
 /// host's key is.
 const CREDENTIALS: [&str; 3] = ["token", "token_file", "key"];

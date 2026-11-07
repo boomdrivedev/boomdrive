@@ -335,12 +335,21 @@ fn no_home() {
     assert_eq!(stderr(&output), "boomdrive: HOME is not set\n");
 }
 
+/// The configuration spec's "The default file": with no `--config` and
+/// `XDG_CONFIG_HOME` unset, the managed layer is `config.toml` and the
+/// local layer `config.local.toml`, both under `~/.config/boomdrive`.
 #[test]
 fn the_default_file() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
     let file = scratch.configure(&keeping(&["agentplot/flume"]));
     assert_eq!(file, scratch.home.join(".config/boomdrive/config.toml"));
+    let local = scratch.configure_local(&keeping(&["agentplot/sluice"]));
+    assert_eq!(
+        local,
+        scratch.home.join(".config/boomdrive/config.local.toml")
+    );
 
     let output = scratch
         .boomdrive()
@@ -352,16 +361,22 @@ fn the_default_file() {
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     assert_eq!(
         stderr(&output).lines().next(),
-        Some(started(&scratch, "1 repository", &file).as_str())
+        Some(started(&scratch, "2 repositories", &file).as_str())
     );
     assert!(scratch.clone_of("agentplot/flume").exists());
+    assert!(scratch.clone_of("agentplot/sluice").exists());
 }
 
+/// The configuration spec's "The file named": the managed layer is the
+/// file `--config` names, and the local layer is still the one in the
+/// runner's own configuration directory, the default file there unread.
 #[test]
 fn the_file_named() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
     scratch.configure("repositories = [\"flume\"]\n");
+    scratch.configure_local(&keeping(&["agentplot/sluice"]));
     let named = scratch.root.join("boomdrive.toml");
     std::fs::write(&named, keeping(&["agentplot/flume"])).expect("the file named");
 
@@ -375,9 +390,39 @@ fn the_file_named() {
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     assert_eq!(
         stderr(&output).lines().next(),
-        Some(started(&scratch, "1 repository", &named).as_str())
+        Some(started(&scratch, "2 repositories", &named).as_str())
     );
     assert!(scratch.clone_of("agentplot/flume").exists());
+    assert!(scratch.clone_of("agentplot/sluice").exists());
+}
+
+/// The configuration spec's "No local file": the managed layer's
+/// repositories alone are kept, and nothing is said of a local layer.
+#[test]
+fn no_local_file() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    let file = scratch.configure(&keeping(&["agentplot/flume"]));
+    assert!(!scratch.local_file().exists());
+
+    let output = scratch
+        .boomdrive()
+        .args(["run", "--once"])
+        .output()
+        .expect("boomdrive runs");
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}\n\
+             agentplot/flume: cloned from https://github.com/agentplot/flume.git\n\
+             agentplot/flume: view made at {}, at origin/main {}\n",
+            started(&scratch, "1 repository", &file),
+            scratch.home.join("Code/agentplot/flume").display(),
+            &flume.tip("main")[..7],
+        )
+    );
 }
 
 #[test]

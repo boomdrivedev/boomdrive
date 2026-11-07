@@ -8,7 +8,7 @@
 //! it makes is outgoing (core.3).
 
 use crate::carry::{Carrier, Configured, Passed, Reach};
-use crate::config::{self, Address, Config, ControlPlaneTable, Env};
+use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
 use crate::git::Git;
 use crate::pass::{self, Outcome};
 use crate::planes::{self, Plane};
@@ -189,9 +189,15 @@ impl Control {
 pub struct Runner {
     git: Git,
     home: PathBuf,
+    /// The managed layer's file.
     file: PathBuf,
+    /// The local layer's file, read over it (design Decision 1).
+    local: PathBuf,
     data: PathBuf,
     config: Config,
+    /// How the local layer was read, as last said: none said at the
+    /// start (design Decision 7).
+    said_local: LocalLayer,
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
@@ -206,10 +212,10 @@ pub struct Runner {
 
 impl Runner {
     /// Starts a runner on the configuration `file` names, else the
-    /// default one, in the environment `var` gives. The start's checks
-    /// run in design 10's order, and the first that fails refuses with
-    /// why, having touched nothing: `HOME` is set, the configuration
-    /// reads, git is 2.48 or later, the data directory is there or can be
+    /// default one, with the local layer over it, in the environment
+    /// `var` gives. The start's checks run in design 10's order, and the
+    /// first that fails refuses with why, having touched nothing: `HOME`
+    /// is set, the configuration reads, git is 2.48 or later, the data directory is there or can be
     /// made, and no other runner holds it. Then the control plane the
     /// configuration names is opened; one that cannot be is named by
     /// [`Runner::unopened`], and the runner keeps its repositories all
@@ -221,7 +227,8 @@ impl Runner {
     ) -> Result<Runner, String> {
         let env = Env::read(var)?;
         let file = config::config_path(file, &env);
-        let config = config::read(&file, &env.home)?;
+        let local = config::local_path(&env);
+        let config = config::read_layers(&file, &local, &env.home)?;
         git.check_version()?;
         let data = config::data_dir(&env);
         fs::create_dir_all(&data).map_err(|error| {
@@ -241,8 +248,10 @@ impl Runner {
             git,
             home: env.home,
             file,
+            local,
             data,
             config,
+            said_local: LocalLayer::NoFile,
             control,
             events,
             notices,
@@ -311,8 +320,9 @@ impl Runner {
         Ok(())
     }
 
-    /// The line the runner starts with: its version, configuration file,
-    /// data directory and repository root.
+    /// The line the runner starts with: its version, the repositories
+    /// both layers keep, its configuration file, data directory and
+    /// repository root.
     pub fn started(&self) -> String {
         let kept = match self.config.repositories.len() {
             1 => "1 repository".to_string(),
@@ -328,11 +338,14 @@ impl Runner {
     }
 
     /// One keeping pass over the configuration the runner started with,
-    /// then, where it names a control plane, one control pass (design
-    /// Decision 5): failed where a git call of the keeping pass failed,
+    /// saying how it read the local layer as a running runner's first
+    /// pass does, then, where it names a control plane, one control pass
+    /// (design Decision 5): failed where a git call of the keeping pass failed,
     /// or the control pass did not pull and report, its control plane
     /// unopened among it.
     pub fn once(&mut self, say: &mut dyn FnMut(String)) -> Outcome {
+        let local = self.config.local.clone();
+        self.say_local(&local, say);
         let kept = pass::pass(&self.git, &self.data, &self.config, &self.stop, say);
         let carried = match &self.control {
             None => Outcome::Kept,
@@ -349,8 +362,10 @@ impl Runner {
     /// Passes until stopped (design 10 and Decision 5). A keeping pass is
     /// made at once, on the configuration the runner started with, then
     /// one each `fetch_interval` after the start of the one before, the
-    /// configuration read again for each. A pass that cannot read it
-    /// names why and keeps nothing. Where the runner carries a control
+    /// configuration read again for each, its local layer over its
+    /// managed one, and how it read the local layer said where that
+    /// differs from the last one said. A pass that cannot read it names
+    /// why and keeps nothing. Where the runner carries a control
     /// plane's work, a control pass follows the first keeping pass, then
     /// one each `poll_interval` after the start of the one before, sooner,
     /// after a pass that reported, before a lease not yet lapsed lapses,
@@ -367,10 +382,11 @@ impl Runner {
                 let began = Instant::now();
                 let read = match started.take() {
                     Some(config) => Ok(config),
-                    None => config::read(&self.file, &self.home),
+                    None => self.read(),
                 };
                 match read {
                     Ok(config) => {
+                        self.say_local(&config.local, say);
                         fetch_interval = config.fetch_interval;
                         pass::pass(&self.git, &self.data, &config, &self.stop, say);
                     }
@@ -383,7 +399,7 @@ impl Runner {
             }
             if carry_due.is_some_and(|due| Instant::now() >= due) {
                 let began = Instant::now();
-                let read = config::read(&self.file, &self.home);
+                let read = self.read();
                 let poll_interval = self.poll_interval();
                 let notices = self.notices();
                 notices.begin_pass();
@@ -415,6 +431,22 @@ impl Runner {
             }
         }
         say("boomdrive: stopped".to_string());
+    }
+
+    /// Says how a keeping pass read the local layer, `read`, where it
+    /// differs from the last one said, once each way (design Decision 7;
+    /// core.23 as the model).
+    fn say_local(&mut self, read: &LocalLayer, say: &mut dyn FnMut(String)) {
+        if *read != self.said_local {
+            say(local_line(&self.local, read));
+            self.said_local = read.clone();
+        }
+    }
+
+    /// The configuration as it stands, both its layers read again (design
+    /// Decision 8).
+    fn read(&self) -> Result<Config, String> {
+        config::read_layers(&self.file, &self.local, &self.home)
     }
 
     /// Whether the runner carries a control plane's work: the
@@ -497,13 +529,46 @@ impl Runner {
     /// configuration as it stands: read again, so a repository dropped
     /// since the last pass is never fetched.
     fn landed(&self, address: &Address, say: &mut dyn FnMut(String)) {
-        match config::read(&self.file, &self.home) {
+        match self.read() {
             Ok(config) => {
                 pass::keep_one(&self.git, &self.data, &config, address, say);
             }
             Err(why) => say(format!(
                 "boomdrive: {why}: nothing kept at the landing on {address}"
             )),
+        }
+    }
+}
+
+/// The line saying how the local layer, the file `file`, was read (design
+/// Decision 7): taken, with each key passed over and its pin; not taken,
+/// with each key it may not set or its fault; or gone.
+fn local_line(file: &Path, read: &LocalLayer) -> String {
+    let file = file.display();
+    match read {
+        LocalLayer::NoFile => format!("boomdrive: {file}: gone, the managed layer read alone"),
+        LocalLayer::Taken { passed_over } => {
+            let mut line = format!("boomdrive: {file}: taken");
+            for pinned in passed_over {
+                line += &format!("; `{}` passed over, pinned by `{}`", pinned.key, pinned.pin);
+            }
+            line
+        }
+        LocalLayer::NotTaken { keys, fault } => {
+            let why = match fault {
+                Some(fault) => fault.clone(),
+                None => {
+                    let named: Vec<String> = keys.iter().map(|key| format!("`{key}`")).collect();
+                    match named.as_slice() {
+                        [one] => format!("{one} is a key the local layer does not set"),
+                        _ => format!("{} are keys the local layer does not set", named.join(", ")),
+                    }
+                }
+            };
+            format!(
+                "boomdrive: {file}: not taken, the managed layer read alone and nothing let go: \
+                 {why}"
+            )
         }
     }
 }

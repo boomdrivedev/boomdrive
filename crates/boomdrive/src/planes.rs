@@ -45,6 +45,11 @@ pub type Enroller = fn(
 /// words saying why it could not be read.
 pub type Token<'a> = Box<dyn FnOnce() -> Result<String, String> + 'a>;
 
+/// Reads an implementation's own table, `[control_plane.<type>]`, of the
+/// configuration file `file`, opening nothing and asking nothing of the
+/// host: words saying what it refuses, or nothing.
+pub type Reader = fn(table: &toml::Table, file: &Path) -> Result<(), String>;
+
 /// An implementation this binary carries.
 pub struct Entry {
     /// The word `[control_plane]`'s `type` names it by.
@@ -52,6 +57,12 @@ pub struct Entry {
     pub open: Opener,
     /// Its enrollment, none where its partitions enroll nothing.
     pub enroll: Option<Enroller>,
+    /// The keys of its table the runner's local layer may set, each taken
+    /// whole (record 0009 as amended 2026-11-07; core.17).
+    pub local_keys: &'static [&'static str],
+    /// Its own reading of its table, which a local layer's table must
+    /// pass to be taken.
+    pub read: Reader,
 }
 
 /// Each implementation this binary carries, by its word.
@@ -60,11 +71,15 @@ pub const PLANES: [Entry; 2] = [
         word: "crew",
         open: crew,
         enroll: None,
+        local_keys: &boomdrive_crew::config::LOCAL_KEYS,
+        read: crew_read,
     },
     Entry {
         word: "hosted",
         open: hosted,
         enroll: Some(hosted_enroll),
+        local_keys: &boomdrive_hosted::table::LOCAL_KEYS,
+        read: hosted_read,
     },
 ];
 
@@ -97,6 +112,16 @@ fn crew(
     _wake: Wake,
 ) -> Result<Plane, String> {
     Ok(Box::new(boomdrive_crew::open(table, file, data_dir, say)?))
+}
+
+/// crew's reading of its table.
+fn crew_read(table: &toml::Table, file: &Path) -> Result<(), String> {
+    boomdrive_crew::config::read(table, file).map(drop)
+}
+
+/// The hosted implementation's reading of its table.
+fn hosted_read(table: &toml::Table, file: &Path) -> Result<(), String> {
+    boomdrive_hosted::table::Table::read(table, file).map(drop)
 }
 
 /// The hosted control plane's implementation, whose connections' backoff
@@ -137,19 +162,21 @@ fn hosted_enroll(
         })
 }
 
+/// The entry whose word is `word`, none where this binary carries none.
+pub fn carried(word: &str) -> Option<&'static Entry> {
+    PLANES.iter().find(|entry| entry.word == word)
+}
+
 /// The entry whose word is `word`, or why there is none, naming the
 /// words this binary carries.
 fn entry(word: &str, file: &Path) -> Result<&'static Entry, String> {
-    PLANES
-        .iter()
-        .find(|entry| entry.word == word)
-        .ok_or_else(|| {
-            format!(
-                "{}: `type` is {word:?}, a control plane this binary does not carry: it carries {}",
-                file.display(),
-                listed(PLANES.iter())
-            )
-        })
+    carried(word).ok_or_else(|| {
+        format!(
+            "{}: `type` is {word:?}, a control plane this binary does not carry: it carries {}",
+            file.display(),
+            listed(PLANES.iter())
+        )
+    })
 }
 
 /// Each entry's word, quoted, joined by commas.

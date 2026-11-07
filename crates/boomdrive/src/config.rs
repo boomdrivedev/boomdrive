@@ -1,12 +1,25 @@
-//! The runner's configuration (design 2): one TOML file naming the
-//! repositories a host keeps by their GitHub address, the root their
-//! views are kept under, how often they are fetched, whether each owner's
-//! views have a VS Code workspace, and the control plane whose work it
-//! carries, each key named for what it holds
-//! (core.12). A refusal names the file, the line and the key or entry. It
-//! is built from what is wrong and never from the file's text around it,
-//! a value put there by mistake among it (core.4).
+//! The runner's configuration (design 2): TOML naming the repositories a
+//! host keeps by their GitHub address, the root their views are kept
+//! under, how often they are fetched, whether each owner's views have a
+//! VS Code workspace, and the control plane whose work it carries, each
+//! key named for what it holds (core.12). A refusal names the file, the
+//! line and the key or entry. It is built from what is wrong and never
+//! from the file's text around it, a value put there by mistake among it
+//! (core.4).
+//!
+//! The configuration has two layers, in Flume's words (record 0009 as
+//! amended 2026-11-06 and 2026-11-07; core.17): the managed layer, the
+//! file `--config` names or `config.toml`, and the local layer,
+//! `config.local.toml` in the runner's own configuration directory, read
+//! over it. The local layer sets only `repositories`, which add to the
+//! managed layer's, and in a control plane's table the keys its
+//! implementation lists, each replacing the managed layer's whole; a key
+//! the managed layer's `pin` holds is passed over. A local file that sets
+//! any other key, is not TOML, or holds a value the runner's reading or
+//! the implementation's refuses, is not taken at all, and the managed
+//! layer is read alone.
 
+use crate::planes;
 use serde::de::IgnoredAny;
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
@@ -35,6 +48,34 @@ pub struct Config {
     /// `[control_plane]`, where the file holds it. Read at every pass, it
     /// is taken when the runner starts (design Decision 4).
     pub control_plane: Option<ControlPlaneTable>,
+    /// How the local layer was read: none where there is no local file.
+    pub local: LocalLayer,
+}
+
+/// How the local layer was read (design Decision 4), in the words of
+/// Flume's own reading of its layers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LocalLayer {
+    /// There is no local file: the managed layer is read alone.
+    NoFile,
+    /// The local layer was read over the managed one, each key the
+    /// managed layer's `pin` holds passed over.
+    Taken { passed_over: Vec<PinnedKey> },
+    /// The local file was not taken, and the managed layer is read
+    /// alone: it sets each of `keys`, which the local layer may not set,
+    /// each by its dotted path, or it holds `fault`, which names the file.
+    NotTaken {
+        keys: Vec<String>,
+        fault: Option<String>,
+    },
+}
+
+/// A key the local layer sets that the managed layer's `pin` holds, passed
+/// over: the key by its dotted path, and the pin holding it as written.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PinnedKey {
+    pub key: String,
+    pub pin: String,
 }
 
 /// `[control_plane]` (design Decision 4): the implementation the runner
@@ -176,6 +217,16 @@ struct File {
     repositories: Option<Spanned<Entries>>,
     #[serde(default, deserialize_with = "table")]
     control_plane: Option<Keys>,
+    #[serde(default, deserialize_with = "pin_list")]
+    pin: Option<Spanned<Entries>>,
+}
+
+/// A local layer's `repositories` as written, each entry with where it
+/// stands. Every other key it may set is read from its table.
+#[derive(Deserialize)]
+struct LocalFile {
+    #[serde(default, deserialize_with = "list")]
+    repositories: Option<Spanned<Entries>>,
 }
 
 /// `repositories` as written, each entry with where it stands.
@@ -196,8 +247,55 @@ fn table<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Keys>, D::
         .map_err(|_| serde::de::Error::custom("`control_plane` is not a table"))
 }
 
-/// Reads the configuration file `file`, with `~` as `home`. A file that
-/// cannot be read is refused, naming it.
+/// `pin`, refused by its key where it is not a list.
+fn pin_list<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Spanned<Entries>>, D::Error> {
+    Option::deserialize(deserializer)
+        .map_err(|_| serde::de::Error::custom("`pin` is not a list of dotted keys"))
+}
+
+/// A pin of the managed layer's (design Decision 6): its words as written,
+/// and the path of keys they name.
+struct Pin {
+    written: String,
+    path: Vec<String>,
+}
+
+/// A file's text, for its refusals: each names the file, and the line
+/// where it has one.
+struct Source<'a> {
+    text: &'a str,
+    file: &'a Path,
+}
+
+impl Source<'_> {
+    /// The line the byte `at` stands on.
+    fn line(&self, at: usize) -> usize {
+        self.text.as_bytes()[..at.min(self.text.len())]
+            .iter()
+            .filter(|&&b| b == b'\n')
+            .count()
+            + 1
+    }
+
+    /// `words`, of what stands at `at`.
+    fn refuse(&self, at: usize, words: String) -> String {
+        format!("{}:{}: {words}", self.file.display(), self.line(at))
+    }
+
+    /// TOML's `error`, by its message and never the text it quotes.
+    fn broken(&self, error: toml::de::Error) -> String {
+        match error.span() {
+            Some(span) => self.refuse(span.start, error.message().to_string()),
+            None => format!("{}: {}", self.file.display(), error.message()),
+        }
+    }
+}
+
+/// Reads the configuration file `file` alone, with `~` as `home`: the
+/// managed layer with no local one over it, as the modules' files are
+/// read. A file that cannot be read is refused, naming it.
 pub fn read(file: &Path, home: &Path) -> Result<Config, String> {
     let text =
         std::fs::read_to_string(file).map_err(|error| format!("{}: {error}", file.display()))?;
@@ -205,20 +303,347 @@ pub fn read(file: &Path, home: &Path) -> Result<Config, String> {
 }
 
 /// Reads the configuration in `text`, the file `file`'s, with `~` as
-/// `home`.
+/// `home`, as the managed layer with no local one over it.
 pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
-    let line = |at: usize| {
-        text.as_bytes()[..at.min(text.len())]
-            .iter()
-            .filter(|&&b| b == b'\n')
-            .count()
-            + 1
+    parse_managed(text, file, home).map(|(config, _)| config)
+}
+
+/// The local layer's file, `config.local.toml`, in the directory of the
+/// default configuration file, whatever `--config` names (design Decision
+/// 1): `$XDG_CONFIG_HOME/boomdrive/`, else `~/.config/boomdrive/`.
+pub fn local_path(env: &Env) -> PathBuf {
+    config_path(None, env).with_file_name("config.local.toml")
+}
+
+/// Reads the managed layer, the file `managed`, and the local layer, the
+/// file `local`, over it, with `~` as `home` (design Decision 4). A managed
+/// file that cannot be read is refused, naming it; a local file that does
+/// not exist is no local layer, and one that cannot be read is not taken.
+pub fn read_layers(managed: &Path, local: &Path, home: &Path) -> Result<Config, String> {
+    let text = std::fs::read_to_string(managed)
+        .map_err(|error| format!("{}: {error}", managed.display()))?;
+    match std::fs::read_to_string(local) {
+        Ok(over) => parse_layers(&text, managed, Some(&over), local, home),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            parse_layers(&text, managed, None, local, home)
+        }
+        Err(error) => {
+            let alone = parse(&text, managed, home)?;
+            Ok(not_taken(
+                alone,
+                vec![],
+                Some(format!("{}: {error}", local.display())),
+            ))
+        }
+    }
+}
+
+/// Reads the managed layer in `managed`, the file `managed_file`'s, and
+/// the local layer in `local`, the file `local_file`'s, over it, none
+/// where there is no local file, with `~` as `home` (design Decisions 3
+/// and 4). A fault of the managed layer, a pin of nothing among it,
+/// refuses the configuration; a local layer at fault is not taken, and
+/// the managed layer is read alone.
+pub fn parse_layers(
+    managed: &str,
+    managed_file: &Path,
+    local: Option<&str>,
+    local_file: &Path,
+    home: &Path,
+) -> Result<Config, String> {
+    let (alone, pins) = parse_managed(managed, managed_file, home)?;
+    Ok(match local {
+        None => alone,
+        Some(local) => over(alone, &pins, local, local_file),
+    })
+}
+
+/// `alone`, the managed layer's configuration, its local layer not taken
+/// for `keys` or `fault`.
+fn not_taken(alone: Config, keys: Vec<String>, fault: Option<String>) -> Config {
+    Config {
+        local: LocalLayer::NotTaken { keys, fault },
+        ..alone
+    }
+}
+
+/// The configuration `alone`, the managed layer's, whose pins are `pins`,
+/// with the local layer `text`, the file `file`'s, read over it (design
+/// Decision 4, steps 3 to 6): not taken where it is not TOML, sets a key
+/// it may not, or holds a value the runner's reading or the
+/// implementation's refuses; else each unit a pin holds passed over, its
+/// repositories added and each unit of a control plane's table set in
+/// place.
+fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
+    let source = Source { text, file };
+    let table: Table = match toml::from_str(text) {
+        Ok(table) => table,
+        Err(error) => return not_taken(alone, vec![], Some(source.broken(error))),
     };
-    let refuse = |at: usize, words: String| format!("{}:{}: {words}", file.display(), line(at));
-    let broken = |error: toml::de::Error| match error.span() {
-        Some(span) => refuse(span.start, error.message().to_string()),
-        None => format!("{}: {}", file.display(), error.message()),
-    };
+    let found = LocalUnits::of(&table, file);
+    if !found.keys.is_empty() || found.fault.is_some() {
+        return not_taken(alone, found.keys, found.fault);
+    }
+
+    let mut merged = alone.clone();
+    let mut passed_over = Vec::new();
+    let mut set_in: Option<&'static planes::Entry> = None;
+    for (path, value) in found.units {
+        if let Some(pin) = pins.iter().find(|pin| path.starts_with(&pin.path)) {
+            passed_over.push(PinnedKey {
+                key: dotted(&path),
+                pin: pin.written.clone(),
+            });
+            continue;
+        }
+        let refused = |words: String| format!("{}: `{}` {words}", file.display(), dotted(&path));
+        match path.as_slice() {
+            [repositories] if repositories == "repositories" => {
+                let entries = match toml::from_str::<LocalFile>(text) {
+                    Ok(LocalFile {
+                        repositories: Some(entries),
+                    }) => entries,
+                    Ok(LocalFile { repositories: None }) => continue,
+                    Err(error) => return not_taken(alone, vec![], Some(source.broken(error))),
+                };
+                let added = match addresses(entries.get_ref(), &source) {
+                    Ok(added) => added,
+                    Err(fault) => return not_taken(alone, vec![], Some(fault)),
+                };
+                for address in added {
+                    if !merged.repositories.contains(&address) {
+                        merged.repositories.push(address);
+                    }
+                }
+            }
+            [_, word, key] => {
+                let Some(plane) = merged.control_plane.as_mut() else {
+                    let fault = refused(
+                        "is set, but the managed layer names no `[control_plane]`".to_string(),
+                    );
+                    return not_taken(alone, vec![], Some(fault));
+                };
+                if plane.implementation != *word {
+                    let fault = refused(format!(
+                        "is set, but the managed layer's `[control_plane]` names the type {:?}",
+                        plane.implementation
+                    ));
+                    return not_taken(alone, vec![], Some(fault));
+                }
+                plane.implementation_table.insert(key.clone(), value);
+                set_in = planes::carried(word);
+            }
+            _ => unreachable!("every unit is a key of the local layer's"),
+        }
+    }
+
+    // The implementation's own reading of its table, as the local layer
+    // leaves it: a fault the managed layer's table has alone is not the
+    // local layer's, and the implementation names it at its opening.
+    if let (Some(entry), Some(plane), Some(managed)) =
+        (set_in, &merged.control_plane, &alone.control_plane)
+    {
+        if let Err(fault) = (entry.read)(&plane.implementation_table, file) {
+            if (entry.read)(&managed.implementation_table, file).err() != Some(fault.clone()) {
+                return not_taken(alone, vec![], Some(fault));
+            }
+        }
+    }
+
+    Config {
+        local: LocalLayer::Taken { passed_over },
+        ..merged
+    }
+}
+
+/// Each key the local layer may set, by its path (design Decision 2):
+/// `repositories`, and `control_plane.<type>.<key>` for each key each
+/// implementation this binary carries lists.
+fn local_keys() -> Vec<Vec<&'static str>> {
+    let mut keys = vec![vec!["repositories"]];
+    for entry in &planes::PLANES {
+        for key in entry.local_keys {
+            keys.push(vec!["control_plane", entry.word, key]);
+        }
+    }
+    keys
+}
+
+/// Whether `path` is a key the local layer may set.
+fn is_local_key(path: &[String]) -> bool {
+    local_keys().iter().any(|key| key.as_slice() == path)
+}
+
+/// Whether `path` is a table holding a key the local layer may set.
+fn leads_to_local_key(path: &[String]) -> bool {
+    local_keys().iter().any(|key| {
+        key.len() > path.len() && key.iter().zip(path).all(|(word, segment)| word == segment)
+    })
+}
+
+/// `path` as a dotted key in TOML's spelling.
+fn dotted(path: &[String]) -> String {
+    path.iter()
+        .map(|segment| quoted(segment))
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+/// A key as TOML spells it: bare where it can be, else quoted.
+fn quoted(segment: &str) -> String {
+    let bare = !segment.is_empty()
+        && segment
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if bare {
+        segment.to_string()
+    } else {
+        format!("{segment:?}")
+    }
+}
+
+/// What a local layer's table holds (design Decision 4, step 4): each
+/// unit it sets, by its path; each key it may not set, named once by its
+/// dotted path, the shortest holding no key it may set; and its fault, a
+/// table holding a key it may set that is no table.
+#[derive(Default)]
+struct LocalUnits {
+    units: Vec<(Vec<String>, Value)>,
+    keys: Vec<String>,
+    fault: Option<String>,
+}
+
+impl LocalUnits {
+    /// The units, keys and fault of the local layer's `table`, the file
+    /// `file`'s.
+    fn of(table: &Table, file: &Path) -> LocalUnits {
+        let mut found = LocalUnits::default();
+        found.walk(table, &mut vec![], file);
+        found
+    }
+
+    /// Walks `table` at `path`, each table holding a key the local layer
+    /// may set walked further.
+    fn walk(&mut self, table: &Table, path: &mut Vec<String>, file: &Path) {
+        for (name, value) in table {
+            path.push(name.clone());
+            match value {
+                _ if is_local_key(path) => self.units.push((path.clone(), value.clone())),
+                Value::Table(inner) if leads_to_local_key(path) => self.walk(inner, path, file),
+                _ if leads_to_local_key(path) => {
+                    self.fault.get_or_insert_with(|| {
+                        format!("{}: `{}` is not a table", file.display(), dotted(path))
+                    });
+                }
+                _ => {
+                    let key = dotted(path);
+                    if !self.keys.contains(&key) {
+                        self.keys.push(key);
+                    }
+                }
+            }
+            path.pop();
+        }
+    }
+}
+
+/// The path the dotted key `key` names in TOML's spelling, read by parsing
+/// `<key> = 0` as a document; none where that is not one key.
+fn key_path(key: &str) -> Option<Vec<String>> {
+    let mut table: Table = format!("{key} = 0").parse().ok()?;
+    let mut path = vec![];
+    loop {
+        if table.len() != 1 {
+            return None;
+        }
+        let (name, value) = table.into_iter().next()?;
+        path.push(name);
+        match value {
+            Value::Table(inner) => table = inner,
+            Value::Integer(0) => return Some(path),
+            _ => return None,
+        }
+    }
+}
+
+/// The managed layer's pins as written in `entries` (design Decision 6):
+/// each a dotted key naming a key the local layer may set or a table
+/// holding one, and any other refused, naming it.
+fn pins(entries: &Entries, source: &Source<'_>) -> Result<Vec<Pin>, String> {
+    let mut pins = Vec::new();
+    for entry in entries {
+        let at = entry.span().start;
+        let Some(text) = entry.get_ref().as_str() else {
+            return Err(source.refuse(
+                at,
+                "`pin` entry is not a string: a pin is a dotted key".to_string(),
+            ));
+        };
+        let Some(path) = key_path(text) else {
+            return Err(source.refuse(at, format!("`pin` entry {text:?} is not a dotted key")));
+        };
+        if !is_local_key(&path) && !leads_to_local_key(&path) {
+            let listed: Vec<String> = local_keys()
+                .iter()
+                .map(|key| format!("`{}`", key.join(".")))
+                .collect();
+            return Err(source.refuse(
+                at,
+                format!(
+                    "`pin` entry {text:?} names no key a local layer may set: those are {}, \
+                     and a table holding one",
+                    listed.join(", ")
+                ),
+            ));
+        }
+        pins.push(Pin {
+            written: text.to_string(),
+            path,
+        });
+    }
+    Ok(pins)
+}
+
+/// The addresses `entries` write, in their order, or the first fault: an
+/// entry that is no address, or two that are one repository (design 2).
+fn addresses(entries: &Entries, source: &Source<'_>) -> Result<Vec<Address>, String> {
+    let mut repositories: Vec<(Address, &Spanned<Value>)> = Vec::new();
+    for entry in entries {
+        let at = entry.span().start;
+        let Some(text) = entry.get_ref().as_str() else {
+            return Err(source.refuse(
+                at,
+                "`repositories` entry is not a string: an address is `owner/name`".to_string(),
+            ));
+        };
+        let address = Address::parse(text)
+            .map_err(|rule| source.refuse(at, format!("`repositories` entry {text:?}: {rule}")))?;
+        if let Some((_, first)) = repositories.iter().find(|(kept, _)| *kept == address) {
+            return Err(source.refuse(
+                at,
+                format!(
+                    "`repositories` entries {}, on line {}, and {text:?} are one repository: \
+                     GitHub compares addresses without case",
+                    named(first.get_ref()),
+                    source.line(first.span().start),
+                ),
+            ));
+        }
+        repositories.push((address, entry));
+    }
+    Ok(repositories
+        .into_iter()
+        .map(|(address, _)| address)
+        .collect())
+}
+
+/// Reads the managed layer in `text`, the file `file`'s, with `~` as
+/// `home`: its configuration, and its pins.
+fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pin>), String> {
+    let source = Source { text, file };
+    let line = |at: usize| source.line(at);
+    let refuse = |at: usize, words: String| source.refuse(at, words);
+    let broken = |error: toml::de::Error| source.broken(error);
 
     // Each key held elsewhere is named at once, with where it is held, so
     // a file written for an earlier runner says all it must change.
@@ -304,30 +729,7 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
             file.display()
         )
     })?;
-    let mut repositories: Vec<(Address, &Spanned<Value>)> = Vec::new();
-    for entry in entries.get_ref() {
-        let at = entry.span().start;
-        let Some(text) = entry.get_ref().as_str() else {
-            return Err(refuse(
-                at,
-                "`repositories` entry is not a string: an address is `owner/name`".to_string(),
-            ));
-        };
-        let address = Address::parse(text)
-            .map_err(|rule| refuse(at, format!("`repositories` entry {text:?}: {rule}")))?;
-        if let Some((_, first)) = repositories.iter().find(|(kept, _)| *kept == address) {
-            return Err(refuse(
-                at,
-                format!(
-                    "`repositories` entries {}, on line {}, and {text:?} are one repository: \
-                     GitHub compares addresses without case",
-                    named(first.get_ref()),
-                    line(first.span().start),
-                ),
-            ));
-        }
-        repositories.push((address, entry));
-    }
+    let repositories = addresses(entries.get_ref(), &source)?;
 
     let control_plane = match &raw.control_plane {
         None => None,
@@ -340,16 +742,22 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
         }
     };
 
-    Ok(Config {
-        repository_root,
-        fetch_interval,
-        code_workspaces,
-        repositories: repositories
-            .into_iter()
-            .map(|(address, _)| address)
-            .collect(),
-        control_plane,
-    })
+    let pins = match &raw.pin {
+        None => Vec::new(),
+        Some(entries) => pins(entries.get_ref(), &source)?,
+    };
+
+    Ok((
+        Config {
+            repository_root,
+            fetch_interval,
+            code_workspaces,
+            repositories,
+            control_plane,
+            local: LocalLayer::NoFile,
+        },
+        pins,
+    ))
 }
 
 /// `[control_plane]` as written in `table`, whose key stands at `at`,
@@ -786,6 +1194,7 @@ mod tests {
                 code_workspaces: true,
                 repositories: vec![address("agentplot/flume"), address("afterthought/crew")],
                 control_plane: None,
+                local: LocalLayer::NoFile,
             })
         );
     }
@@ -1030,6 +1439,479 @@ state_repository = \"afterthought/madswan-state\"
         assert_eq!(data_dir(&env), before, "only the one from before is there");
         std::fs::create_dir(&now).unwrap();
         assert_eq!(data_dir(&env), now, "both are there");
+    }
+
+    const LOCAL: &str = "/c/config.local.toml";
+
+    /// The managed layer `managed` with the local layer `local` over it.
+    fn layers(managed: &str, local: Option<&str>) -> Result<Config, String> {
+        parse_layers(
+            managed,
+            Path::new(FILE),
+            local,
+            Path::new(LOCAL),
+            Path::new("/h"),
+        )
+    }
+
+    /// The repositories `config` keeps, as written.
+    fn kept(config: &Config) -> Vec<String> {
+        config
+            .repositories
+            .iter()
+            .map(ToString::to_string)
+            .collect()
+    }
+
+    /// The hosted table's partitions' labels, as `config` hands them on.
+    fn hosted_labels(config: &Config) -> Vec<String> {
+        let table = &config.control_plane.as_ref().unwrap().implementation_table;
+        table["partitions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|partition| partition["label"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    /// The local layer not taken for `keys` and no fault.
+    fn for_keys(keys: &[&str]) -> LocalLayer {
+        LocalLayer::NotTaken {
+            keys: keys.iter().map(ToString::to_string).collect(),
+            fault: None,
+        }
+    }
+
+    /// The local layer's fault, where it was not taken for one.
+    fn fault_of(config: &Config) -> String {
+        match &config.local {
+            LocalLayer::NotTaken {
+                keys,
+                fault: Some(fault),
+            } if keys.is_empty() => fault.clone(),
+            other => panic!("not taken for a fault: {other:?}"),
+        }
+    }
+
+    /// A managed layer naming the hosted control plane at an address, and
+    /// `partitions` as its partitions' labels, with `top` above it.
+    fn hosted(top: &str, partitions: &[&str]) -> String {
+        let mut text = format!(
+            "{top}repositories = [\"agentplot/flume\"]\n\n[control_plane]\ntype = \"hosted\"\n\n\
+             [control_plane.hosted]\nurl = \"https://control.example\"\n"
+        );
+        for label in partitions {
+            text += &format!(
+                "\n[[control_plane.hosted.partitions]]\nlabel = \"{label}\"\nrepositories = []\n"
+            );
+        }
+        text
+    }
+
+    /// A local layer naming `partitions` as the hosted partitions' labels,
+    /// with `top` above them.
+    fn hosted_local(top: &str, partitions: &[&str]) -> String {
+        let mut text = top.to_string();
+        for label in partitions {
+            text += &format!(
+                "\n[[control_plane.hosted.partitions]]\nlabel = \"{label}\"\nrepositories = []\n"
+            );
+        }
+        text
+    }
+
+    /// The configuration spec's "No local file".
+    #[test]
+    fn no_local_file() {
+        let config = layers("repositories = [\"agentplot/flume\"]\n", None).unwrap();
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+        assert_eq!(config.local, LocalLayer::NoFile);
+        assert_eq!(
+            config,
+            read("repositories = [\"agentplot/flume\"]\n").unwrap()
+        );
+    }
+
+    /// The configuration spec's "The local layer's repositories".
+    #[test]
+    fn the_local_layers_repositories() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("repositories = [\"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(kept(&config), ["agentplot/flume", "agentplot/sluice"]);
+        assert_eq!(
+            config.local,
+            LocalLayer::Taken {
+                passed_over: vec![]
+            }
+        );
+    }
+
+    /// The configuration spec's "A repository both layers name": kept
+    /// once, as the managed layer spells it, and neither layer refused.
+    #[test]
+    fn a_repository_both_layers_name() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("repositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(kept(&config), ["agentplot/flume", "agentplot/sluice"]);
+        assert!(matches!(config.local, LocalLayer::Taken { .. }));
+    }
+
+    /// The configuration spec's "The local layer's partitions": the
+    /// hosted table holds the managed layer's `url` and the local layer's
+    /// partitions alone.
+    #[test]
+    fn the_local_layers_partitions() {
+        let config = layers(&hosted("", &["home"]), Some(&hosted_local("", &["work"]))).unwrap();
+        assert_eq!(hosted_labels(&config), ["work"]);
+        let table = &config.control_plane.as_ref().unwrap().implementation_table;
+        assert_eq!(table["url"].as_str(), Some("https://control.example"));
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+        assert!(matches!(config.local, LocalLayer::Taken { .. }));
+    }
+
+    /// A managed hosted table naming no partitions, the local layer
+    /// naming them, is taken: the implementation reads the table as the
+    /// local layer leaves it.
+    #[test]
+    fn partitions_named_in_the_local_layer_alone() {
+        let config = layers(&hosted("", &[]), Some(&hosted_local("", &["work"]))).unwrap();
+        assert_eq!(hosted_labels(&config), ["work"]);
+        assert!(matches!(config.local, LocalLayer::Taken { .. }));
+    }
+
+    #[test]
+    fn the_local_layers_file() {
+        let env = |config: Option<&str>| Env {
+            home: PathBuf::from("/h"),
+            config_home: config.map(PathBuf::from),
+            data_home: None,
+        };
+        assert_eq!(
+            local_path(&env(Some("/x"))),
+            Path::new("/x/boomdrive/config.local.toml")
+        );
+        assert_eq!(
+            local_path(&env(None)),
+            Path::new("/h/.config/boomdrive/config.local.toml")
+        );
+        for unusable in ["", "relative"] {
+            assert_eq!(
+                local_path(&env(Some(unusable))),
+                Path::new("/h/.config/boomdrive/config.local.toml"),
+                "{unusable:?}"
+            );
+        }
+    }
+
+    /// The configuration spec's "A root in the local layer".
+    #[test]
+    fn a_root_in_the_local_layer() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("repository_root = \"~/src\"\nrepositories = [\"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["repository_root"]));
+        assert_eq!(config.repository_root, Path::new("/h/Code"));
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// The configuration spec's "A control plane named in the local
+    /// layer", and a key of an implementation's table it does not list.
+    #[test]
+    fn a_control_plane_named_in_the_local_layer() {
+        let config = layers(
+            "repositories = []\n",
+            Some("repositories = []\n\n[control_plane]\ntype = \"hosted\"\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["control_plane.type"]));
+        assert_eq!(config.control_plane, None);
+
+        let config = layers(
+            &hosted("", &["home"]),
+            Some("[control_plane.hosted]\nurl = \"https://elsewhere.example\"\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["control_plane.hosted.url"]));
+
+        let config = layers(
+            "repositories = []\n",
+            Some("pin = [\"repositories\"]\n\n[streams]\nwork = 2\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["pin", "streams"]));
+    }
+
+    /// The configuration spec's "A token in the local layer": named by
+    /// its key, its value in no output.
+    #[test]
+    fn a_token_in_the_local_layer() {
+        let config = layers(
+            "repositories = []\n",
+            Some("token = \"ghp_n0t4r34lt0k3n\"\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["token"]));
+        assert!(
+            !format!("{config:?}").contains("ghp_n0t4r34lt0k3n"),
+            "{config:?}"
+        );
+    }
+
+    /// The configuration spec's "A local file that is not TOML": named by
+    /// its file and line, and never quoted.
+    #[test]
+    fn a_local_file_that_is_not_toml() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("repositories = [\n"),
+        )
+        .unwrap();
+        let fault = fault_of(&config);
+        assert!(fault.starts_with(&format!("{LOCAL}:")), "{fault}");
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+
+        let config = layers(
+            "repositories = []\n",
+            Some("repositories = []\nghp_n0t4r34lt0k3n\n"),
+        )
+        .unwrap();
+        let fault = fault_of(&config);
+        assert!(fault.starts_with(&format!("{LOCAL}:2: ")), "{fault}");
+        assert!(!fault.contains("ghp_n0t4r34lt0k3n"), "{fault}");
+    }
+
+    /// The configuration spec's "A local address out of form".
+    #[test]
+    fn a_local_address_out_of_form() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("repositories = [\"sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!("{LOCAL}:1: `repositories` entry \"sluice\": an address is `owner/name`")
+        );
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// A local layer naming two entries that are one repository is not
+    /// taken, as a managed one naming them is refused.
+    #[test]
+    fn a_local_layer_naming_one_repository_twice() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("repositories = [\n  \"agentplot/sluice\",\n  \"AgentPlot/Sluice\",\n]\n"),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:3: `repositories` entries \"agentplot/sluice\", on line 2, and \
+                 \"AgentPlot/Sluice\" are one repository: GitHub compares addresses without case"
+            )
+        );
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// The configuration spec's "A partition the implementation refuses":
+    /// the hosted implementation's reading names the label, and the
+    /// managed layer's table is handed on.
+    #[test]
+    fn a_partition_the_implementation_refuses() {
+        let config = layers(&hosted("", &["home"]), Some(&hosted_local("", &["Home"]))).unwrap();
+        let fault = fault_of(&config);
+        assert!(
+            fault.starts_with(&format!(
+                "{LOCAL}: [control_plane.hosted]: `partitions` entry 1's `label` is \"Home\""
+            )),
+            "{fault}"
+        );
+        assert_eq!(hosted_labels(&config), ["home"]);
+    }
+
+    /// A fault of the managed layer's own table, which the local layer
+    /// does not make, is the implementation's to name at its opening: the
+    /// local layer is taken.
+    #[test]
+    fn a_fault_of_the_managed_table_alone() {
+        let managed = hosted("", &["home"]).replace("https://control.example", "ftp://x");
+        let config = layers(&managed, Some(&hosted_local("", &["work"]))).unwrap();
+        assert!(matches!(config.local, LocalLayer::Taken { .. }));
+        assert_eq!(hosted_labels(&config), ["work"]);
+    }
+
+    /// A local layer naming the hosted partitions where the managed
+    /// layer's control plane is crew's, or where it names none, is not
+    /// taken.
+    #[test]
+    fn partitions_of_a_control_plane_the_managed_layer_does_not_name() {
+        let config = layers(CONTROL_PLANE, Some(&hosted_local("", &["work"]))).unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}: `control_plane.hosted.partitions` is set, but the managed layer's \
+                 `[control_plane]` names the type \"crew\""
+            )
+        );
+        assert_eq!(
+            config.control_plane.unwrap().implementation_table["host"].as_str(),
+            Some("deneb")
+        );
+
+        let config = layers("repositories = []\n", Some(&hosted_local("", &["work"]))).unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}: `control_plane.hosted.partitions` is set, but the managed layer names \
+                 no `[control_plane]`"
+            )
+        );
+        assert_eq!(config.control_plane, None);
+    }
+
+    /// A table the local layer may set a key in that is no table is its
+    /// fault.
+    #[test]
+    fn a_local_table_of_another_kind() {
+        let config = layers("repositories = []\n", Some("control_plane = 3\n")).unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!("{LOCAL}: `control_plane` is not a table")
+        );
+    }
+
+    /// The configuration spec's "Repositories pinned".
+    #[test]
+    fn repositories_pinned() {
+        let config = layers(
+            "pin = [\"repositories\"]\nrepositories = [\"agentplot/flume\"]\n",
+            Some("repositories = [\"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+        assert_eq!(
+            config.local,
+            LocalLayer::Taken {
+                passed_over: vec![PinnedKey {
+                    key: "repositories".to_string(),
+                    pin: "repositories".to_string(),
+                }]
+            }
+        );
+    }
+
+    /// The configuration spec's "A table pinned".
+    #[test]
+    fn a_table_pinned() {
+        let config = layers(
+            &hosted("pin = [\"control_plane\"]\n", &["home"])
+                .replace("[\"agentplot/flume\"]", "[]"),
+            Some(&hosted_local(
+                "repositories = [\"agentplot/sluice\"]\n",
+                &["work"],
+            )),
+        )
+        .unwrap();
+        assert_eq!(kept(&config), ["agentplot/sluice"]);
+        assert_eq!(hosted_labels(&config), ["home"]);
+        assert_eq!(
+            config.local,
+            LocalLayer::Taken {
+                passed_over: vec![PinnedKey {
+                    key: "control_plane.hosted.partitions".to_string(),
+                    pin: "control_plane".to_string(),
+                }]
+            }
+        );
+    }
+
+    /// A pin in TOML's quoted spelling holds the key it names.
+    #[test]
+    fn a_pin_quoted() {
+        let config = layers(
+            &hosted(
+                "pin = [\"control_plane.\\\"hosted\\\".partitions\"]\n",
+                &["home"],
+            ),
+            Some(&hosted_local("", &["work"])),
+        )
+        .unwrap();
+        assert_eq!(hosted_labels(&config), ["home"]);
+    }
+
+    /// The configuration spec's "A pin of nothing", and a pin of a word
+    /// this binary does not carry.
+    #[test]
+    fn a_pin_of_nothing() {
+        for (pin, line) in [("repository_root", 1), ("control_plane.elsewhere", 1)] {
+            let managed = format!("pin = [\"{pin}\"]\nrepositories = []\n");
+            for refusal in [
+                layers(&managed, None).unwrap_err(),
+                read(&managed).unwrap_err(),
+            ] {
+                assert_eq!(
+                    refusal,
+                    format!(
+                        "{FILE}:{line}: `pin` entry \"{pin}\" names no key a local layer may set: \
+                         those are `repositories`, `control_plane.crew.partitions`, \
+                         `control_plane.hosted.partitions`, and a table holding one"
+                    )
+                );
+            }
+        }
+    }
+
+    /// A `pin` that is no list of strings, or an entry that is no dotted
+    /// key, is the managed layer's fault.
+    #[test]
+    fn a_pin_of_another_kind() {
+        assert_eq!(
+            read("repositories = []\npin = \"repositories\"\n"),
+            Err(format!("{FILE}:2: `pin` is not a list of dotted keys"))
+        );
+        assert_eq!(
+            read("repositories = []\npin = [3]\n"),
+            Err(format!(
+                "{FILE}:2: `pin` entry is not a string: a pin is a dotted key"
+            ))
+        );
+        assert_eq!(
+            read("repositories = []\npin = [\"a b\"]\n"),
+            Err(format!("{FILE}:2: `pin` entry \"a b\" is not a dotted key"))
+        );
+    }
+
+    /// `pin` set in the local layer is a key it may not set.
+    #[test]
+    fn a_pin_in_the_local_layer() {
+        let config = layers(
+            "repositories = [\"agentplot/flume\"]\n",
+            Some("pin = [\"repositories\"]\nrepositories = [\"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["pin"]));
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// A managed layer at fault refuses the configuration before the
+    /// local layer is read.
+    #[test]
+    fn a_managed_layer_at_fault() {
+        assert_eq!(
+            layers("repositories = [\"flume\"]\n", Some("repositories = []\n")),
+            Err(format!(
+                "{FILE}:1: `repositories` entry \"flume\": an address is `owner/name`"
+            ))
+        );
     }
 
     #[test]

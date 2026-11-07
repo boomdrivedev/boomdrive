@@ -1468,6 +1468,7 @@ mod tests {
                 .map(|address| Address::parse(address).unwrap())
                 .collect(),
             control_plane: None,
+            local: crate::config::LocalLayer::NoFile,
         }
     }
 
