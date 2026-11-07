@@ -6,6 +6,8 @@ The runner's file names the repositories a host keeps in one flat list, `reposit
 
 Record 0017, revised on the user's note on its card the same day ("Per recent discussion with designer agent, this becomes one workspace per boomdrive drive"), moves the workspaces from owners to drives. Where the configuration asks, there is one workspace per drive at the repository root, `<repository_root>/<drive>.code-workspace`. It lists exactly that drive's kept repositories and goes with its drive (core.43, as accepted with the record).
 
+The runner reads a local layer, `config.local.toml`, over its managed one, and the local layer sets the repositories a control plane writes, which add to the managed layer's (record 0009 as amended 2026-11-06 and 2026-11-07; core.17). With the repositories under drives, it sets each drive's.
+
 An owner is not a drive. One owner's repositories can belong to two drives, so a workspace per owner gathers into one window work the user does not open together (record 0028's context).
 
 ## What Changes
@@ -26,6 +28,12 @@ An owner is not a drive. One owner's repositories can belong to two drives, so a
   - Once a drive has left the configuration and no clone the runner holds records it, the runner removes the drive's workspace.
   - It removes no other workspace.
 - **No workspace in an owner's folder.** A removed view takes its owner's folder only when that folder is then empty. A workspace an earlier runner kept per owner is left as it is, with its folder.
+- **The local layer sets each drive's `repositories`**, `accounts.<account>.drives.<drive>.repositories`, in place of the flat `repositories`:
+  - a drive both layers name keeps the managed layer's repositories, then the local layer's it does not name;
+  - a drive or an account only the local layer names is declared by it, after the managed layer's;
+  - a local layer naming a repository the managed layer keeps in another drive, or a drive the managed layer holds under another account, is not taken, and nor is one setting any other key of an account or a drive, or the flat list;
+  - the managed layer's `pin` names `accounts`, an account, a drive or a drive's `repositories`;
+  - while a local layer stands not taken, no drive's workspace is set or removed.
 - **The modules' `settings` name `accounts`** in place of `repositories`, rendered always. A host's `settings` that still names `repositories` fails evaluation, saying `accounts` holds it now.
 
 ## Capabilities
@@ -36,22 +44,22 @@ None.
 
 ### Modified Capabilities
 
-- `configuration`: `accounts` in place of `repositories`, with its drives, names and refusals; `code_workspaces` asks for a workspace per drive.
+- `configuration`: `accounts` in place of `repositories`, with its drives, names and refusals; `code_workspaces` asks for a workspace per drive; the local layer sets each drive's `repositories`, adding to the managed layer's drive by drive.
 - `views`: one workspace per drive at the repository root, set at every pass and removed with its drive. A removed view's owner folder is taken only when empty.
 - `service-modules`: `settings` holds `accounts`, rendered always, and the flat list of before fails evaluation.
 
 ## Impact
 
 - `crates/boomdrive`:
-  - `src/config.rs` reads the accounts and their drives, and gives every drive's repositories in order;
+  - `src/config.rs` reads the accounts and their drives, and gives every drive's repositories in order; it reads the local layer's drives over the managed layer's;
   - `src/code_workspace.rs` gives each drive's workspace;
   - `src/clone.rs` and `src/pass.rs` record each kept repository's drive in its clone, keep each drive's workspace, and remove a departed drive's;
   - `src/pass.rs` and `src/view.rs` lose the owner's workspace taken with its folder;
   - `src/carry.rs` and `src/run.rs` read the kept repositories through the configuration's accessor;
   - tests under `crates/boomdrive/tests/`, their configuration texts among them.
 - `nix/`: the options declare `settings.accounts` in place of `settings.repositories`, with an assertion for the flat list. The module's test settings and their files under `nix/tests/files` name accounts.
-- `README.md`: the configuration's example and words, the hosted section's example and the nix example.
-- `docs/adr/0028-…` and `docs/adr/0017-…` gain an amendment each, and core.43's details follow the second, in this change's commit: the runner's file's keys, and how a drive's workspace goes with its drive.
+- `README.md`: the configuration's example and words, the local layer's example and words, the hosted section's example and the nix example.
+- `docs/adr/0028-…` and `docs/adr/0017-…` gain an amendment each, and core.43's details follow the second, in this change's commit: the runner's file's keys, and how a drive's workspace goes with its drive. Record 0028 gains a second amendment, the local layer's accounts, and core.17's details follow it.
 - Nothing else changes:
   - no control plane's table, implementation, interface or protocol message (core.2, core.42);
   - no crate, tool or tracked file type (core.7, core.8);
@@ -84,6 +92,7 @@ crates/boomdrive/tests/control.rs
 crates/boomdrive/tests/enroll.rs
 crates/boomdrive/tests/readme.rs
 crates/boomdrive/tests/module_files.rs
+crates/boomdrive/tests/local_layer.rs
 nix/modules/options.nix
 nix/tests/settings.nix
 nix/tests/file.nix

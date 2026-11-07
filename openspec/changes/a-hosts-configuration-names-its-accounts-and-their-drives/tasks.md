@@ -18,6 +18,12 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
   - no refusal quoting a value.
 - [x] 1.3 An account's and a drive's name is 1 to 32 lower-case letters, digits and `-`, starting with a letter, and a drive's name is given once across the accounts. A repository is named once on the host, in one drive or in two, each refusal naming both entries and their drives (design Decisions 3 and 4). Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with a unit test for each of the configuration spec's "One drive in two accounts", "A name out of form", "An address with no owner", "One repository twice" and "One repository in two drives", each refusal naming the file's line.
 
+- [ ] 1.4 Record 0028 gains "Amendment, 2026-11-07: the local layer's accounts", the writing agent's, holding design Decision 13 with each path not taken, and core.17's details gain what it rules out and allows. Done when `sluice exec main -- moon run root:format` passes.
+- [ ] 1.5 The local layer sets each drive's `repositories` in place of the flat list (design Decision 13). `config::local_keys` gives `accounts.<account>.drives.<drive>.repositories` as a pattern beside each implementation's keys, so a pin may name `accounts`, an account, a drive or a drive's `repositories`, and the flat `repositories` is a key the local layer may not set. `config::over` adds each drive's units through `add_drives`, after its pins are passed over, and `LocalFile` and the flat list's `addresses` are gone. A pass removes no departed drive's workspace while the local layer is not taken. Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with:
+  - the local layer tests of `the-runner-reads-a-local-layer-over-its-managed-one` naming their repositories under drives;
+  - a unit test for each of the configuration spec's "The local layer's repositories", "A drive only the local layer names", "A repository both layers name", "A repository the managed layer keeps in another drive", "A drive the managed layer holds under another account", "A key in a local drive", "A flat list in the local layer", "A local address out of form" and "Repositories pinned";
+  - a local layer naming one drive under two accounts, or a name out of form, not taken; a drive pinned; and a pin of the flat `repositories` refused as a pin of nothing.
+
 ## 2. The modules render accounts
 
 - [x] 2.1 `nix/modules/options.nix` declares `settings.accounts` in place of `settings.repositories`, as design Decision 11 has it:
@@ -45,9 +51,13 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
   Its nix example sets `settings.accounts`. Its owner's-workspace words are gone (design Decision 12). Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_configuration_reads` asserting the example's drives and their repositories.
 
+- [ ] 3.2 README's local layer section says that the local layer sets each drive's `repositories`, that a drive both layers name keeps both layers' repositories and one only the local layer names is declared by it, and what is not taken. Its example adds to the drive `home` and declares the drive `garden`. Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_local_layer_reads` asserting the example adds to `home` and declares `garden`.
+
 ## 4. The tests name their repositories under drives
 
 - [x] 4.1 `tests/common/mod.rs`'s `keeping` writes its addresses under the account `own`'s drive `home`, and a helper beside it writes several drives, each with its addresses. Every configuration text of the crate's integration tests names its repositories under a drive: `planes.rs`, `running.rs`, `loop.rs`, `control.rs` and `enroll.rs`, and the helpers of `dropped.rs`, `views.rs` and `code_workspaces.rs`. Each test asserts what it asserted before, its owners' workspaces among them, since the workspaces move in group 5. Done when `sluice exec main -- moon run boomdrive:test` passes.
+
+- [ ] 4.2 `tests/local_layer.rs` names its layers' repositories under drives: its pin is `accounts`, said passed over with each drive's `repositories`, and "A local file broken while running" keeps `agentplot/sluice` in the local layer's drive `work`, whose workspace stands unchanged at the root while the local layer is not taken. Done when `devenv shell -- cargo test -p boomdrive --test local_layer` passes.
 
 ## 5. One workspace per drive
 

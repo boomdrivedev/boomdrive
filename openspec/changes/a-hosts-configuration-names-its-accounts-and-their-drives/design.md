@@ -2,7 +2,7 @@
 
 ## Context
 
-The runner reads one TOML file (the configuration spec). Today it names the repositories a host keeps in one list, `repositories`, and `code_workspaces = true` asks for one VS Code workspace per owner, `<repository_root>/<owner>/<owner>.code-workspace` (the views spec; record 0017 as first accepted).
+The runner reads its configuration in two layers of TOML (the configuration spec; record 0009 as amended 2026-11-06 and 2026-11-07): the managed layer, the file `--config` names or `config.toml`, and the local layer, `config.local.toml` in the runner's own configuration directory, read over it. The managed layer names the repositories a host keeps in one list, `repositories`. The local layer sets `repositories`, which add to the managed layer's, and a control plane's `partitions`, and the managed layer's `pin` holds keys against it. `code_workspaces = true` asks for one VS Code workspace per owner, `<repository_root>/<owner>/<owner>.code-workspace` (the views spec; record 0017 as first accepted).
 
 Record 0028, accepted 2026-11-07, names a host's work by accounts and drives. An account is what a runner enrolls with a control plane. A drive is one account's body of work: its repositories, one Flume stream named after it and one branch of the account's crew state. The runner's file names its accounts, each account's drives and each drive's repositories, and still no stream or kind (core.5). Record 0017, revised the same day, makes the workspace one per drive, at the repository root under the drive's name (core.43).
 
@@ -16,6 +16,7 @@ The rules this design relies on:
 - **core.4** and **core.11**: no refusal quotes the file's text.
 - **core.41**: neutral names in tests and fixtures.
 - **core.46**: the modules' options are the file's keys, by the file's names.
+- **core.17**: the local layer sets only the keys the runner lists for it, its repositories adding to the managed layer's, and the managed layer may pin.
 
 This design departs from no rule. core.43's details name the moved case of Decision 8 among what the rule does not rule out, with record 0017's amendment.
 
@@ -26,6 +27,7 @@ This design departs from no rule. core.43's details name the moved case of Decis
 - The file names accounts, drives and repositories, and the runner keeps every drive's repositories as it keeps them today.
 - One workspace per drive where asked, which goes with its drive.
 - The modules' `settings` render the new file.
+- The local layer sets each drive's repositories, which add to the managed layer's drive by drive.
 
 **Non-Goals**
 
@@ -169,20 +171,42 @@ The test settings and their files under `nix/tests/files` use neutral names (cor
 
 README's configuration example names one account with two drives and says what each level is. Its words on `code_workspaces` say one workspace per drive at the root, titled `— <drive> (Workspace)`, which goes with its drive. Its nix example sets `settings.accounts`. Its hosted section's example is read after the configuration's block, as `tests/readme.rs` reads it, and needs only the configuration's block to keep `agentplot/flume` and `afterthought/crew`.
 
+### 13. The local layer sets each drive's repositories
+
+The key the local layer may set in place of the flat `repositories` is each drive's, `accounts.<account>.drives.<drive>.repositories`, one unit taken whole for each drive. `config::local_keys` gives it as a pattern whose account and drive are any name, beside each implementation's `control_plane.<type>.<key>`. An account or a drive of the local layer holds no other key: any other is a key the local layer may not set, named by its path, as `accounts.own.drives.home.stream`, and the local file is not taken. So is a flat `repositories`.
+
+The units of the accounts are added to the managed layer's accounts, in the local file's order, after its pins are passed over:
+
+- **A drive both layers name** under one account keeps the managed layer's repositories, in their order, then each of the local layer's the managed layer does not name. A repository both name in that drive is kept once, as the managed layer spells it.
+- **A drive or an account only the local layer names** is declared by it, after the managed layer's, so a control plane can add the drives of a host it serves to a host whose Nix names none of them.
+- **A repository is still in one drive on the host, and a drive's name is given once** (Decisions 3 and 4). A local layer that names a repository the managed layer keeps in another drive, or a drive the managed layer holds under another account, is not taken. So is one that names a repository twice, or a drive under two accounts, or a name out of form. Each fault names the local file and its line, in the words the managed layer's refusal uses.
+
+The managed layer's `pin` may name `accounts`, an account, an account's `drives`, a drive, or a drive's `repositories`, each holding every drive's `repositories` under it. A pin of the flat `repositories` is a pin of nothing, the managed layer's fault.
+
+While the local layer is not taken, a pass sets no workspace and removes none, a departed drive's among them (Decision 8). The drive the local layer could not be read for may be the one a departed drive's workspace belongs to.
+
+Not taken:
+
+- **The local layer setting a drive's `repositories` only where the managed layer declares the drive.** A control plane could then add no drive Nix does not name, which record 0009's amendment of 2026-11-06 has it do.
+- **A repository the local layer names in another drive moved there.** A control plane's write would move work out of the drive Nix gave it, and the drive's stream with it.
+- **Each layer's drives kept apart, a drive both name twice.** A drive's name is its stream's and its workspace's, given once on the host (record 0028).
+
+Record 0028 gains an amendment of 2026-11-07 holding these choices, the writing agent's, made within records 0009 and 0028 as accepted. core.17's details gain what they rule out and allow.
+
 ## Risks / Trade-offs
 
 - **Every host's file must be rewritten when its runner upgrades.** The refusal names `accounts`, and the runner keeps and removes nothing meanwhile. Hosts configured by Nix take the modules at the same commit as the runner. afterthought/swancloud passes deneb's accounts and drives once the modules land (record 0028's consequences).
 - **Sibling changes of the flake bolt touch the same files:**
-  - `the-runner-reads-a-local-layer-over-its-managed-one` has a local layer add `repositories` to the managed layer's (core.17). Once both land, the key the local layer adds is `accounts`, its drives' repositories added to the managed layer's. Whichever change lands second carries that.
   - `a-dropped-repository-is-drained-and-no-rename-is-followed` changes the pass's let-go. Decision 8's sweep reads the clones standing at the pass's end, whatever kept them.
   - `the-flake-configures-each-tool-by-its-own-module` edits `nix/modules/options.nix` and README.
+- **A control plane's local layer naming a drive Nix holds elsewhere is not taken whole.** Its other drives wait with it until it is mended, as any local layer at fault does, and the line naming the fault says which drive or repository.
 - **A drive's workspace can outlive it** where a runner is stopped mid-pass, where its repositories' clones were never made, or where the drive left while `code_workspaces` was off. The file is left for the person, as an owner's workspace of before is.
 - **A drive keeping no repository has a workspace with no folders.** core.43 gives each drive of the configuration one workspace. An empty window is the honest picture of an empty drive, and the workspace is ready when the drive gains its first repository.
 
 ## Migration Plan
 
 1. The change lands with the modules' `settings.accounts` in the same tree, so a host built from one commit renders a file its runner reads.
-2. A host's file is rewritten by its owner: by afterthought/swancloud through the modules, or by hand.
+2. A host's file is rewritten by its owner: by afterthought/swancloud through the modules, or by hand. A local layer naming the flat `repositories` is not taken until it is rewritten under its drives, and meanwhile the pass lets go of nothing (Decision 13).
 3. At the first pass after it, each kept repository's clone records its drive. Each drive's workspace is written at the root where asked. The per-owner workspaces of before are left, for the person to remove.
 
-Rollback: the runner of before refuses `accounts` as a key it does not read, so a host rolled back must restore its flat list too.
+Rollback: the runner of before refuses `accounts` as a key it does not read, so a host rolled back must restore its flat list too, in its managed layer and its local layer alike.
