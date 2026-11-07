@@ -13,7 +13,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 2. Flume's settle, as the runner asks it
 
 - [x] 2.1 `src/settle.rs` gives the bound, its argument and what the runner says of its settles: `bound`, `every` and `Settles::heard` (design Decisions 2 and 3; Task notes 2.1), proving the running spec's "A refusal said once until Flume settles again" and "A settle with no answer". True when `devenv shell -- cargo test -p boomdrive --lib settle::` passes.
-- [ ] 2.2 `flume::Cli::settle_every` runs `flume --json settle --every <n>s` and reads its answer by Flume's exit, over the fixture `tests/fixtures/flume-0.17.1/settled.json` read from the set's Flume on a scratch host, with its `README.md` (design Decisions 6 and 7; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test flume a_settle_as_the_hosts_watch` passes.
+- [x] 2.2 `flume::Cli::settle_every` runs `flume --json settle --every <n>s` and reads its answer by Flume's exit, over the fixture `tests/fixtures/flume-0.17.1/settled.json` read from the set's Flume on a scratch host, with its `README.md` (design Decisions 6 and 7; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test flume a_settle_as_the_hosts_watch` passes.
 - [ ] 2.3 The set's Flume keeps the runner's watch on a scratch host, proving the family-packages spec's "The set's Flume keeps the runner's watch" (design Decision 7). True when `devenv shell -- cargo test -p boomdrive --test family the_sets_flume_keeps_the_runners_watch` passes.
 
 ## 3. Each turn of passes ends with a settle
