@@ -17,8 +17,9 @@ in
 
   # What no formatter owns, each with its reason (core.7).
   settings.excludes = [
-    # Prose: the docs, the records and the README; no formatter here
-    # rewraps prose.
+    # Prose: the docs, the records, the README, and OpenSpec's Claude Code
+    # skills and commands as the pinned openspec writes them (record
+    # 0022); no formatter here rewraps prose.
     "*.md"
     # Written by cargo and devenv in their own layouts.
     "*.lock"
