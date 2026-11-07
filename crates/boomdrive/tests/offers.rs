@@ -540,8 +540,10 @@ fn a_mark_in_a_repository_not_kept() {
 
 /// The work-into-flume spec's "A repository drained": a new offer there is
 /// refused, but one whose place Flume's listing holds under its mark is
-/// answered launched at it, and a branch command or an inbox there is
-/// answered as one in a repository not kept.
+/// answered launched at it, and an inbox there is answered as one in a
+/// repository not kept. A branch command there is refused naming sluice,
+/// as every command is (core.52), and nothing of the repository is read
+/// for it.
 #[test]
 fn a_repository_drained() {
     let (bench, mut plane) = draining();
@@ -589,10 +591,11 @@ fn a_repository_drained() {
         (Outcome::Launched, Some(place_of("c")))
     );
     assert_eq!(report.launches[&id("c")].repository.as_deref(), Some(KIT));
+    let refused = "this binary does not carry sluice's commands";
     let command = &report.commands[&id("branch/1")];
     assert_eq!(
         (command.outcome, command.words.as_deref(), &command.text),
-        (Outcome::Refused, Some(words), &None)
+        (Outcome::Refused, Some(refused), &None)
     );
     let carried = &report.inboxes[&id("inbox/1")];
     assert_eq!(
@@ -602,7 +605,7 @@ fn a_repository_drained() {
     assert!(bench.flume.launches().is_empty(), "nothing is launched");
     assert!(lines.contains(&format!("b: refused: {words}")), "{lines:?}");
     assert!(
-        lines.contains(&format!("branch/1: refused: {words}")),
+        lines.contains(&format!("branch/1: refused: {refused}")),
         "{lines:?}"
     );
     assert!(

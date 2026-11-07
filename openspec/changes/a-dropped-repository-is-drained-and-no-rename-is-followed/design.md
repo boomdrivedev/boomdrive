@@ -72,7 +72,7 @@ Alternatives:
 5. An offer in a drained repository is refused with the words a repository not kept gets: nothing more is launched there.
 6. `NotYet` waits, and the rest is as now.
 
-`branch` and `inbox` read `Dropped` as `NotNamed`. An act on a launched place is carried out as now, by its location: a drop is how a person ends a place sooner.
+`inbox` reads `Dropped` as `NotNamed`. A command reads no repository: `Work::command` refuses every command, naming its tool, a branch command's being sluice (core.52). An act on a launched place is carried out as now, by its location: a drop is how a person ends a place sooner.
 
 Alternatives:
 
