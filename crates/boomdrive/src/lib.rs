@@ -20,6 +20,7 @@ pub mod git;
 pub mod hello;
 pub mod inbox;
 pub mod lacks;
+pub mod locks;
 pub mod pass;
 pub mod planes;
 pub mod report;
