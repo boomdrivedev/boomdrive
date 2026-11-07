@@ -16,11 +16,25 @@
     repositories = {
       agentplot = {
         stream = "agentplot";
-        names = [ "agentplot" "agentplot-kit" "blueprints" "boomdrive" "boomdrive-cloud" "flume" "sluice" "timber" "weir" ];
+        names = [
+          "agentplot"
+          "agentplot-kit"
+          "blueprints"
+          "boomdrive"
+          "boomdrive-cloud"
+          "flume"
+          "sluice"
+          "timber"
+          "weir"
+        ];
       };
       afterthought = {
         stream = "afterthought";
-        names = [ "blueprints" "crew" "swancloud" ];
+        names = [
+          "blueprints"
+          "crew"
+          "swancloud"
+        ];
       };
       madswan-dev = {
         stream = "madswan";
@@ -55,22 +69,40 @@
         agents = 4;
         priority = 11;
         pool = "madswan";
-        labels.operation = { reserve = 1; keep_free = 0; };
-        labels.planning = { reserve = 2; keep_free = 0; };
+        labels.operation = {
+          reserve = 1;
+          keep_free = 0;
+        };
+        labels.planning = {
+          reserve = 2;
+          keep_free = 0;
+        };
       };
       afterthought = {
         agents = 4;
         priority = 11;
         pool = "madswan";
-        labels.operation = { reserve = 1; keep_free = 1; };
-        labels.planning = { reserve = 2; keep_free = 0; };
+        labels.operation = {
+          reserve = 1;
+          keep_free = 1;
+        };
+        labels.planning = {
+          reserve = 2;
+          keep_free = 0;
+        };
       };
       madswan = {
         agents = 4;
         priority = 10;
         pool = "madswan";
-        labels.operation = { reserve = 1; keep_free = 0; };
-        labels.planning = { reserve = 2; keep_free = 0; };
+        labels.operation = {
+          reserve = 1;
+          keep_free = 0;
+        };
+        labels.planning = {
+          reserve = 2;
+          keep_free = 0;
+        };
       };
     };
 
@@ -78,36 +110,65 @@
       strategy = "most-left";
       threshold = 90;
       # Flume reads each account's usage itself: no reading is written for it.
-      accounts = map (name: {
-        inherit name;
-        program = "claude";
-        env = {
-          CLAUDE_CONFIG_DIR = "~/.claude-sub-${name}";
-          HONCHO_CONFIG_DIR = "~/.honcho-business";
-          CLAUDE_CODE_CERT_STORE = "bundled,system";
-          PATH = "${pkgs.claude-code}/bin:$PATH";
-        };
-      }) [ "cswanberg" "amadden" "admin" ];
+      accounts =
+        map
+          (name: {
+            inherit name;
+            program = "claude";
+            env = {
+              CLAUDE_CONFIG_DIR = "~/.claude-sub-${name}";
+              HONCHO_CONFIG_DIR = "~/.honcho-business";
+              CLAUDE_CODE_CERT_STORE = "bundled,system";
+              PATH = "${pkgs.claude-code}/bin:$PATH";
+            };
+          })
+          [
+            "cswanberg"
+            "amadden"
+            "admin"
+          ];
     };
 
     kinds = {
       fix.label = "operation";
-      change.agents = { mode = "full"; instructions = "Before anything else, read ~/.config/flume/capture.md …"; };
-      research.agents = { mode = "full"; instructions = "…"; };
+      change.agents = {
+        mode = "full";
+        instructions = "Before anything else, read ~/.config/flume/capture.md …";
+      };
+      research.agents = {
+        mode = "full";
+        instructions = "…";
+      };
     };
   };
 
   # sluice's host settings, each key named as its file names it. A key's
   # file is named by its path; no key is in the store.
   services.sluice.settings = {
-    runs = { cores = 12; max = 3; reserved = 1; };
+    runs = {
+      cores = 12;
+      max = 3;
+      reserved = 1;
+    };
     caches = [
-      { dir = "~/Library/Caches/sccache"; env.RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache"; }
-      { dir = "~/.moon/cache/shared"; env.MOON_CACHE_SHARED_WORKTREE_CACHE = "true"; }
+      {
+        dir = "~/Library/Caches/sccache";
+        env.RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache";
+      }
+      {
+        dir = "~/.moon/cache/shared";
+        env.MOON_CACHE_SHARED_WORKTREE_CACHE = "true";
+      }
     ];
     peers.name = "deneb";
-    forge = { app_id = 0; key = "~/.config/sluice/app.pem"; };
-    signing = { key = "<path of the signing key>"; signer = "sessions"; };
+    forge = {
+      app_id = 0;
+      key = "~/.config/sluice/app.pem";
+    };
+    signing = {
+      key = "<path of the signing key>";
+      signer = "sessions";
+    };
   };
 
   # crew's host file, the fleet's every partition, written once. The
@@ -115,10 +176,37 @@
   services.crew = {
     host = "deneb";
     settings.partitions = [
-      { label = "agentplot"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "agentplot/blueprints" ]; session = "agentplot"; }
-      { label = "madswan"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "afterthought/blueprints" "agentplot/blueprints" ]; session = "madswan"; }
-      { label = "afterthought"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "afterthought/blueprints" ]; session = "afterthought"; }
-      { label = "wldn"; machine = "chuck-herdr-alpha"; state = "WilldanGroup/crew-state"; blueprints = [ "WilldanGroup/willdan-blueprints" ]; session = "wldn-2"; }
+      {
+        label = "agentplot";
+        machine = "deneb";
+        state = "afterthought/crew-state";
+        blueprints = [ "agentplot/blueprints" ];
+        session = "agentplot";
+      }
+      {
+        label = "madswan";
+        machine = "deneb";
+        state = "afterthought/crew-state";
+        blueprints = [
+          "afterthought/blueprints"
+          "agentplot/blueprints"
+        ];
+        session = "madswan";
+      }
+      {
+        label = "afterthought";
+        machine = "deneb";
+        state = "afterthought/crew-state";
+        blueprints = [ "afterthought/blueprints" ];
+        session = "afterthought";
+      }
+      {
+        label = "wldn";
+        machine = "chuck-herdr-alpha";
+        state = "WilldanGroup/crew-state";
+        blueprints = [ "WilldanGroup/willdan-blueprints" ];
+        session = "wldn-2";
+      }
     ];
   };
 }
