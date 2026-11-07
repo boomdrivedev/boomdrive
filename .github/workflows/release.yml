@@ -1,4 +1,4 @@
-# The workflow `release` (record 0023, core.48): at each push to main, the
+# The workflow `release` (record 0024, core.48): at each push to main, the
 # next version git-cliff finds in the commits since the newest v* tag
 # (cliff.toml), asked through release.sh. Where it is not tagged yet, a
 # GitHub release of its tag, made on the commit pushed, with git-cliff's

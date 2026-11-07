@@ -34,7 +34,7 @@ on Cachix, at each push to `main` and each tag `v*` (record 0020,
 core.44 to core.47).
 
 Boomdrive's versions are git-cliff's, from its Conventional Commits
-(`cliff.toml`; record 0023, core.48). At each push to `main`, the
+(`cliff.toml`; record 0024, core.48). At each push to `main`, the
 workflow `.github/workflows/release.yml` asks `release.sh` for the next
 version since the newest tag `v*`, and where it is new publishes a
 GitHub release of its tag on the commit pushed, with git-cliff's notes,

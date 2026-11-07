@@ -45,7 +45,7 @@ tasks:
     options: {runFromWorkspaceRoot: true}
   # Every commit since the newest release tag is a Conventional Commit
   # (check-commits.sh, .versionrc), since git-cliff releases from them
-  # (record 0023, core.48). It reads the history, outside any input, so it
+  # (record 0024, core.48). It reads the history, outside any input, so it
   # never replays.
   commits:
     command: 'sh check-commits.sh'
