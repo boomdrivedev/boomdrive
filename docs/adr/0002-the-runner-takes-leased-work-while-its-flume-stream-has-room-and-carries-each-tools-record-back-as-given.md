@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below: a pull's launches go ahead of its acts on places. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, twice: a pull's launches go ahead of its acts on places, and a launch waits on no act of the pass before its own. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud at `24baa4e`: its records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022; its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39; and `design/domain-model.html`, with its Launch, Command and Host cards, its copies of a Flume place, a sluice entry, the inbox and a host's capacity (section 8), "One launch, start to finish" (section 10) and its ledger (section 13). Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -91,4 +91,40 @@ Not taken:
 - **Option 2.** An act's answer is Flume's (core.1, core.11). The runner would judge, from Flume's status, what Flume decides of its own command.
 - **Option 3.** A drop of a held launch is answered from the report. Where the pull gives it ahead of the launch, and the launch's After lands that pass, the launch would be made and then dropped, where the control plane's order never makes it. Which work runs is the control plane's (core.1).
 
-core.49 holds it, and core.1's details allow it. The work-into-flume spec gains it through the chore `a-launch-goes-ahead-of-other-acts`.
+core.50 holds it, and core.1's details allow it. The work-into-flume spec gains it through the chore `a-launch-goes-ahead-of-other-acts`.
+
+## Amendment, 2026-11-07: a launch waits on no act of the pass before its own
+
+Status: the code stage's own choice, on the brief of the chore `a-launch-waits-on-no-other-act`, 2026-11-07. It moves when an act on a place runs, across passes, and changes no answer the runner gives, so it is cheap to change and is not asked.
+
+The brief: "Boomdrive's runner answers a pull's acts in seconds: no partition's acts hold another partition's launches, within a partition launches go ahead of other acts, and an act Flume refuses because its place no longer stands costs no more than reading the refusal, as records 0002 and 0010 say."
+
+### Context
+
+The amendment above keeps a pull's launches ahead of its own acts on places. A launch the next pull offers still waits for every act of the pass under way. On deneb on 2026-11-07, one pass carried out some 180 acts of one partition's on places, most of them refused, at about 30 seconds each. Another partition's launches 63 and 64, asked at 13:48:54Z, waited through that pass and most of the next, while that partition's stream ran none of its four agents. Flume settles every place on the host before it acts, where no caller keeps watch (Flume's clause 119), so even an act Flume carries out takes it that long there.
+
+Record 0026, on main, gives each partition's work time of its own, and names this chore its first step within a partition.
+
+### Considered options
+
+1. Carry out every act of the pull in its pass, as the amendment above does.
+2. Once the next control pass is due, by the control timer or by the control plane's wake, run no further act's command in the pass but its first, and leave the rest to that pass, whose launches go first.
+3. Carry out acts on places apart from the pass, on a thread of their own.
+4. Run each partition's pass apart from the others' (record 0026).
+
+### Decision outcome
+
+Option 2.
+
+- **Once the next pass is due**, the second round runs no act's command but its first, and leaves each act after it to the next pass, whose pull gives it again. Every pass runs at least one, so the acts get through.
+- **The next pass's launches go first**, so a launch the next pull offers, in any partition, waits on no act of the pass before but the one in hand.
+- **Due is the loop's own.** The next pass is due `poll_interval` after this one began, or once the control plane has woken the runner since it began. `boomdrive run --once` makes no next pass, so its pass carries out every act.
+- **No answer changes.** Each act is carried out once, the acts in the control plane's order among themselves, each answered by Flume. A pass reports what it carried out at its end, so its answers reach the control plane sooner than a pass of every act would bring them.
+
+Not taken:
+
+- **Option 1.** One pass of many acts on places holds every partition's next pull, and the answers of all of them, until its end.
+- **Option 3.** Two lines of work would share the report and the pass's room, and an act carried out once across restarts would need a record of its own of being under way (core.10, core.25).
+- **Option 4.** That is record 0026's own change. While the partitions share one pass, option 2 keeps a backlog of acts from holding any partition's launches.
+
+core.50 holds it. The work-into-flume spec gains it through the chore `a-launch-waits-on-no-other-act`.

@@ -158,6 +158,7 @@ impl Host {
             control_dir: &control_dir,
             relays: &relays,
             reach: &reach,
+            due: &|| false,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(crew, &mut |line| lines.push(line));

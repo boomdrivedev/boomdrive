@@ -529,9 +529,20 @@ impl Bench {
         self.pass_over(&self.flume, plane)
     }
 
-    /// One control pass against `plane` over `flume`, and the lines it
-    /// said.
+    /// One control pass against `plane` over `flume`, the next pass never
+    /// due, and the lines it said.
     pub fn pass_over(&self, flume: &dyn Flume, plane: &mut Fake) -> (Passed, Vec<String>) {
+        self.pass_due(flume, plane, &|| false)
+    }
+
+    /// One control pass against `plane` over `flume`, the next pass due
+    /// once `due` says so, and the lines it said.
+    pub fn pass_due(
+        &self,
+        flume: &dyn Flume,
+        plane: &mut Fake,
+        due: &dyn Fn() -> bool,
+    ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
         let sluice = sluice::Cli::new(self.sluice.program());
         let carrier = Carrier {
@@ -544,6 +555,7 @@ impl Bench {
             control_dir: &control_dir,
             relays: &self.relays,
             reach: &self.reach,
+            due,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(plane, &mut |line| lines.push(line));
