@@ -333,29 +333,36 @@ A control pass:
   keeps, once each launch it comes after has landed and while its
   stream has room as Flume's status gives it. Each becomes one
   `flume launch`, naming its kind, stream, priority and intent only as
-  the launch gives them, marked `boomdrive:<id>`;
+  the launch gives them, marked `boomdrive:<id>`. A bolt is a launch
+  like any other, of a kind that lands with no stages, whose branch
+  sluice makes at Flume's asking, and its units are launches on that
+  branch;
 - carries out each retry, drop, priority or done as Flume's own command
   on the launch's place, once every launch the pull offers is taken,
   and, once the next pass is due, no further act after its first, so no
   launch waits behind an act. A place Flume's listing does not hold is
   first asked of `flume --json status <place>`, which settles nothing,
-  and Flume's refusal of it is the act's answer. Each bolt's branch is
-  made by `sluice branch create` in the clone, where the pull puts it;
+  and Flume's refusal of it is the act's answer. A bolt's send is a
+  retry naming its submission, `flume retry <place> --submission`,
+  whose answer is Flume's;
+- refuses every command, naming its tool, `this binary does not carry
+  <tool>'s commands`, a branch command's being sluice, and runs nothing
+  for it;
 - carries back Flume's status of each place, sluice's entry of each
   submission and each inbox the control plane names, each as the tool
   gave it, and never a log; and relays a terminal on a launch's agent
   through herdr, keeping nothing of it. A place is followed to its end,
   over or tidied, even once the configuration no longer names its
   repository: Flume is then asked for it by its location alone. Where
-  the pass ran a command, Flume's status is read again before the
-  places' are carried, so a place tidied meanwhile is carried from
+  the pass ran a launch or an act, Flume's status is read again before
+  the places' are carried, so a place tidied meanwhile is carried from
   Flume's record of it, `<location>@<at>`.
 
-Each launch, act and command is carried out once, across a restart: the
-runner's report is kept at `<data>/control/report.json`, and a launch
-whose answer was lost is found by its mark. An offer, an act or a
-command whose lease has lapsed by the runner's clock waits until a pull
-gives it under a live lease.
+Each launch and act is carried out once, and each command answered
+once, across a restart: the runner's report is kept at
+`<data>/control/report.json`, and a launch whose answer was lost is
+found by its mark. An offer, an act or a command whose lease has lapsed
+by the runner's clock waits until a pull gives it under a live lease.
 
 ## A host from before the rename
 
