@@ -18,7 +18,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 3. The configuration reads its two layers
 
-- [ ] 3.1 The configuration reads a local layer over its managed one (design Decisions 1, 3 and 4):
+- [x] 3.1 The configuration reads a local layer over its managed one (design Decisions 1, 3 and 4):
   - `config::local_path(&Env)` gives `config.local.toml` in the default file's directory.
   - `config::read_layers(managed, local, home)` reads both files, and `config::parse_layers` reads both texts. `config::read` and `config::parse` stay the reading of one file, the managed layer alone, its `local` `NoFile`.
   - `Config` gains `local: LocalLayer`, with `LocalLayer::{NoFile, Taken, NotTaken}` and `PinnedKey`.
@@ -28,7 +28,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
   Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with:
   - a unit test for each of the configuration spec's "No local file", "The local layer's repositories", "A repository both layers name" and "The local layer's partitions";
   - `local_path` under `XDG_CONFIG_HOME` set, unset and not absolute.
-- [ ] 3.2 A local layer at fault is not taken (design Decision 4, steps 3, 4 and 6):
+- [x] 3.2 A local layer at fault is not taken (design Decision 4, steps 3, 4 and 6):
   - one that sets a key the runner does not list, each named by its dotted path, the shortest holding no listed key;
   - one that is not TOML;
   - one holding a value the runner's reading, or the implementation's `read`, refuses.
@@ -37,7 +37,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
   - a unit test for each of the configuration spec's "A root in the local layer", "A control plane named in the local layer", "A token in the local layer", "A local file that is not TOML", "A local address out of form" and "A partition the implementation refuses";
   - a local layer naming `control_plane.hosted.partitions` under a managed `type = "crew"`, not taken;
   - a local layer naming two entries that are one repository, not taken.
-- [ ] 3.3 The managed layer's `pin` holds keys against the local layer, a key it holds passed over and named with its pin, and a pin of nothing refused as the managed layer's fault (design Decision 6). Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with:
+- [x] 3.3 The managed layer's `pin` holds keys against the local layer, a key it holds passed over and named with its pin, and a pin of nothing refused as the managed layer's fault (design Decision 6). Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with:
   - a unit test for each of the configuration spec's "Repositories pinned", "A table pinned" and "A pin of nothing";
   - a `pin` that is no list of strings, refused;
   - `pin` set in the local layer, not taken.
