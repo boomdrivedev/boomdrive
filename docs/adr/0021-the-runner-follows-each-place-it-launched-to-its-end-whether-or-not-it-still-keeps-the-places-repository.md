@@ -1,7 +1,7 @@
 ---
 number: 21
 title: A repository is drained before it goes, the runner following each place it launched there to its end, and no rename is handled in flight
-status: proposed
+status: accepted
 date: 2026-11-05
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # A repository is drained before it goes, the runner following each place it launched there to its end, and no rename is handled in flight
 
-Status: proposed on 2026-11-05 by the code stage of the fix `the-runner-follows-each-place-it-launched-to-its-end`, and revised on 2026-11-07 on the user's note on its card, quoted below, which rules out handling a rename in flight; accepted when the user says yes to it. How the runner reads a place it no longer keeps the repository of, and that crew's implementation gives such a launch, are the stage's choices, made on this repository's rules and the two tools' statements. Record 0020 is the sibling change `boomdrive-publishes-a-flake-of-the-family-and-the-runners-service`'s, on its branch.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-05 by the code stage of the fix `the-runner-follows-each-place-it-launched-to-its-end`, and revised on 2026-11-07 on the user's note on its card, quoted below, which rules out handling a rename in flight. How the runner reads a place it no longer keeps the repository of, and that crew's implementation gives such a launch, are the stage's choices, made on this repository's rules and the two tools' statements. Record 0020 is the sibling change `boomdrive-publishes-a-flake-of-the-family-and-the-runners-service`'s, on its branch.
 
 Deciders: the user, 2026-11-07, on this record's card: "We are not going to build special functionality to handle repositories being renamed in flight. Big picture with boomdrive, you add repositories and, when you remove repositories, I don't think there's a rename. I think you would drain the work from it, remove it, do the rename separately, and then add it back"; agentplot-design, for how a drained repository is kept; the orchestrator's brief and the code stage, for the first draft.
 Sources: the orchestrator's brief of the fix `the-runner-follows-each-place-it-launched-to-its-end`, 2026-11-05; Flume's statement, clauses 56, 58 and 62, and `flume status`'s usage at 0.6.4; crew's `plugin/lib/runner.py` (`flume_facts`, `places.rec`'s descriptor) and `plugin/lib/asks.py` (`status_of`); record 0016; rules core.1, core.5, core.9, core.26 and core.38; the work-into-flume and crew-control-plane specs.
@@ -50,6 +50,6 @@ Option 1 follows a place by its location after its repository is gone, and has c
 
 ### Consequences
 
-- core.5's "Not ruled out" names a dropped repository's clone and view kept, with nothing launched in it, while a place the runner launched there is live, in place of a place followed by its location alone. It is marked proposed with this revision.
+- core.5's "Not ruled out" names a dropped repository's clone and view kept, with nothing launched in it, while a place the runner launched there is live, in place of a place followed by its location alone.
 - The fix `the-runner-follows-each-place-it-launched-to-its-end`, built on option 1, is taken back by a later change once this record is accepted: the runner asks Flume of a place only through a kept clone, crew's implementation gives a launch only where the runner keeps its repository, draining ones among them, and the work-into-flume and crew-control-plane specs say so.
 - A request that names a repository by an old name is given to no runner. Its work is launched again under the repository's name once the repository is added back.
