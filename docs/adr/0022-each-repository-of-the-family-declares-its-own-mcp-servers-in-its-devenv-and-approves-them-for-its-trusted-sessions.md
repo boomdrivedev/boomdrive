@@ -1,7 +1,7 @@
 ---
 number: 22
 title: Each repository of the family declares its own MCP servers in its devenv and approves them for its trusted sessions
-status: proposed
+status: accepted
 date: 2026-11-06
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # Each repository of the family declares its own MCP servers in its devenv and approves them for its trusted sessions
 
-Status: proposed to the user on 2026-11-06, as `briefs.15` has it; accepted only on their yes.
+Status: accepted by the user on 2026-11-07, on their card.
 
 Deciders: the user, in agentplot's main level at 23:20:23Z on 2026-11-06 (afterthought/crew-state, agentplot/main, signal 2026-11-06-agentplot-planner-bc65dc91/01): "We need to make sure that we have the MCP servers defined in their debian/v.yaml and that, when agent sessions run, the MCP servers start. The boomdrive-cloud one is supposed to have Cloudflare and durable object MCP servers and I don't see those." ("debian/v.yaml" is dictation for devenv), which settles that each repository's servers are declared in its devenv, that an agent's session starts them, and that boomdrive-cloud has Cloudflare's servers; and, by the same signal, that OpenSpec's Claude Code files are declared where OpenSpec changes are written and devenv's own server is in place. agentplot-design for the shape below, each choice with the path not taken.
 
