@@ -63,7 +63,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 7. README
 
-- [ ] 7.1 README's configuration section says what design Decision 10 lists, and shows a local layer in a second ```toml block after the configuration's. Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_local_layer_reads` reading that block over the first through `config::parse_layers`, and asserting both layers' repositories kept and the local layer taken.
+- [x] 7.1 README's configuration section says what design Decision 10 lists, and shows a local layer in a second ```toml block after the configuration's. Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_local_layer_reads` reading that block over the first through `config::parse_layers`, and asserting both layers' repositories kept and the local layer taken.
 
 ## 8. The specs
 
