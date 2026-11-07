@@ -10,7 +10,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 1. The record and the rules
 
-- [ ] 1.1 Record 0009 gains "Amendment, 2026-11-07: how the runner reads its two layers". It is the writing agent's, made within the amendment of 2026-11-06 that the user accepted, and holds design Decisions 1 to 7, each with the path not taken. core.17's details gain what design Decision 11 names. core.5's and core.46's details read "local layer" where they say the managed level of record 0009's first words, citing the record's amendment of 2026-11-06. Done when `sluice exec main -- moon run root:format` passes.
+- [x] 1.1 Record 0009 gains "Amendment, 2026-11-07: how the runner reads its two layers". It is the writing agent's, made within the amendment of 2026-11-06 that the user accepted, and holds design Decisions 1 to 7, each with the path not taken. core.17's details gain what design Decision 11 names. core.5's and core.46's details read "local layer" where they say the managed level of record 0009's first words, citing the record's amendment of 2026-11-06. Done when `sluice exec main -- moon run root:format` passes.
 
 ## 2. Each implementation lists its local layer's keys
 
