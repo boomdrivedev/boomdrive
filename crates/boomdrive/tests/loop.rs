@@ -2,13 +2,16 @@
 //! is told of between passes, a failure that does not stop it, and the
 //! configuration read again at every pass, `code_workspaces` among it
 //! (the running spec, the clones spec's landings and the configuration
-//! spec's reading while running; design 10).
+//! spec's reading while running; design 10). The runner runs a stub
+//! `flume` of the test's, and no Flume of the host's (record 0029).
 
 mod common;
+mod fakes;
 
 use boomdrive::config::Address;
-use boomdrive::run::{Notices, Runner, Stopper};
+use boomdrive::run::{Notices, Programs, Runner, Stopper};
 use common::{keeping, Scratch};
+use fakes::Stub;
 use std::ffi::OsStr;
 use std::sync::mpsc::{self, Receiver};
 use std::thread::{self, JoinHandle};
@@ -23,11 +26,15 @@ struct Running {
     stopper: Stopper,
     lines: Receiver<String>,
     thread: JoinHandle<()>,
+    /// The stub `flume` the runner runs, whose calls a test reads.
+    flume: Stub,
 }
 
 impl Running {
     /// Starts the runner on the scratch host's default configuration
-    /// file, and its loop.
+    /// file, running a stub `flume`, and its loop. Its sluice and herdr
+    /// are stubs that are not there: a runner with no control plane runs
+    /// neither.
     fn start(scratch: &Scratch) -> Running {
         let overlay = scratch.overlay();
         let var = |name: &str| {
@@ -37,6 +44,12 @@ impl Running {
                 .map(|(_, value)| value.clone())
         };
         let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let flume = Stub::new();
+        runner.tools(Programs {
+            flume: flume.program(),
+            sluice: scratch.root.join("absent/sluice"),
+            herdr: scratch.root.join("absent/herdr"),
+        });
         let notices = runner.notices();
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
@@ -50,6 +63,7 @@ impl Running {
             stopper,
             lines,
             thread,
+            flume,
         }
     }
 

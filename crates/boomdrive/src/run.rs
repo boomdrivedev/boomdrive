@@ -112,7 +112,8 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
     (last_start + interval).max(now)
 }
 
-/// The programs a control pass runs for Flume, sluice and herdr.
+/// The programs the runner runs for Flume, sluice and herdr: its settle
+/// and its control passes'.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
@@ -153,8 +154,8 @@ struct Control {
     poll_interval: Duration,
     /// The implementation, or why it could not be opened.
     plane: Result<Plane, String>,
-    programs: Programs,
-    /// The terminals relaying, kept across control passes.
+    /// The terminals relaying through the runner's herdr, kept across
+    /// control passes.
     relays: Relays,
     /// Whether the last pull was read, kept across control passes.
     reach: Reach,
@@ -162,10 +163,16 @@ struct Control {
 
 impl Control {
     /// The control plane `table` names, of the configuration file `file`,
-    /// keeping what it keeps under `data`, and waking the runner through
-    /// `notices`. An implementation says its lines on standard error.
-    fn open(table: &ControlPlaneTable, file: &Path, data: &Path, notices: &Notices) -> Control {
-        let programs = Programs::on_path();
+    /// keeping what it keeps under `data`, waking the runner through
+    /// `notices`, and relaying terminals through `programs`' herdr. An
+    /// implementation says its lines on standard error.
+    fn open(
+        table: &ControlPlaneTable,
+        file: &Path,
+        data: &Path,
+        notices: &Notices,
+        programs: &Programs,
+    ) -> Control {
         Control {
             poll_interval: table.poll_interval,
             plane: planes::open(
@@ -178,7 +185,6 @@ impl Control {
                 notices.waker(),
             ),
             relays: programs.relays(),
-            programs,
             reach: Reach::default(),
         }
     }
@@ -192,6 +198,9 @@ pub struct Runner {
     file: PathBuf,
     data: PathBuf,
     config: Config,
+    /// The programs the runner runs for Flume, sluice and herdr, each on
+    /// the host's `PATH` unless a test puts its own in place.
+    programs: Programs,
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
@@ -233,16 +242,18 @@ impl Runner {
         let lock = lock(&data)?;
         let (events, waiting) = mpsc::channel();
         let notices = Notices::new(events.clone());
+        let programs = Programs::on_path();
         let control = config
             .control_plane
             .as_ref()
-            .map(|table| Control::open(table, &file, &data, &notices));
+            .map(|table| Control::open(table, &file, &data, &notices, &programs));
         Ok(Runner {
             git,
             home: env.home,
             file,
             data,
             config,
+            programs,
             control,
             events,
             notices,
@@ -279,9 +290,18 @@ impl Runner {
             return Err("the configuration names no control plane".to_string());
         };
         control.plane = Ok(open(wake));
-        control.relays = programs.relays();
-        control.programs = programs;
+        self.tools(programs);
         Ok(())
+    }
+
+    /// Runs `programs` in place of those on the host's `PATH`, its
+    /// terminals relayed through their herdr: how a test runs the loop
+    /// with tools of its own, a control plane named or not.
+    pub fn tools(&mut self, programs: Programs) {
+        if let Some(control) = &mut self.control {
+            control.relays = programs.relays();
+        }
+        self.programs = programs;
     }
 
     /// What tells the runner of landings, and wakes it.
@@ -444,7 +464,6 @@ impl Runner {
     ) -> Option<Passed> {
         let Some(Control {
             plane: Ok(plane),
-            programs,
             relays,
             reach,
             ..
@@ -452,6 +471,7 @@ impl Runner {
         else {
             return None;
         };
+        let programs = &self.programs;
         let unread = |say: &mut dyn FnMut(String), why: String| {
             say(format!("boomdrive: {why}: nothing carried this pass"));
             Some(Passed {
