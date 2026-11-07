@@ -16,7 +16,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
   - a unit test for each of the configuration spec's "A key in a drive", "A key in an account", "A stream in a drive" and "A flat list of before";
   - "A key of before" asserting a flat `repositories` named with `views` and `fetch_every` when all three are there;
   - no refusal quoting a value.
-- [ ] 1.3 An account's and a drive's name is 1 to 32 lower-case letters, digits and `-`, starting with a letter, and a drive's name is given once across the accounts. A repository is named once on the host, in one drive or in two, each refusal naming both entries and their drives (design Decisions 3 and 4). Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with a unit test for each of the configuration spec's "One drive in two accounts", "A name out of form", "An address with no owner", "One repository twice" and "One repository in two drives", each refusal naming the file's line.
+- [x] 1.3 An account's and a drive's name is 1 to 32 lower-case letters, digits and `-`, starting with a letter, and a drive's name is given once across the accounts. A repository is named once on the host, in one drive or in two, each refusal naming both entries and their drives (design Decisions 3 and 4). Done when `devenv shell -- cargo test -p boomdrive --lib config::tests` passes, with a unit test for each of the configuration spec's "One drive in two accounts", "A name out of form", "An address with no owner", "One repository twice" and "One repository in two drives", each refusal naming the file's line.
 
 ## 2. The modules render accounts
 

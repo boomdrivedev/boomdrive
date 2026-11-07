@@ -409,10 +409,11 @@ fn entry<'t, 'i>(
 }
 
 /// `accounts` as the document holds it, `document` (design Decisions 1
-/// and 2): each account with its drives and each drive with its
-/// repositories, in the file's order. Each refusal is made by `refuse`,
-/// naming its key by its path, and `line` gives the line a place stands
-/// on.
+/// to 4): each account with its drives and each drive with its
+/// repositories, in the file's order. Each name is of the hosted label's
+/// form, a drive's given once on the host, and a repository is named
+/// once on the host. Each refusal is made by `refuse`, naming its key by
+/// its path, and `line` gives the line a place stands on.
 fn accounts(
     document: &Tree<'_>,
     refuse: &impl Fn(usize, String) -> String,
@@ -422,10 +423,21 @@ fn accounts(
         return Ok(Vec::new());
     };
     let table = table_at(value, "accounts", key.span().start, refuse)?;
+    // Each drive named so far, with its account and where it stands, and
+    // each repository with its entry and its drive.
+    let mut named: Vec<(&str, &str, usize)> = Vec::new();
+    let mut kept: Vec<(Address, &Spanned<DeValue<'_>>, &str)> = Vec::new();
     let mut accounts = Vec::new();
-    for (name, value) in in_order(table) {
-        let at = name.span().start;
-        let path = format!("accounts.{}", name.get_ref());
+    for (account_name, value) in in_order(table) {
+        let at = account_name.span().start;
+        let account_name = account_name.get_ref().as_ref();
+        if !in_form(account_name) {
+            return Err(refuse(
+                at,
+                format!("`accounts` names {account_name:?}: an account's {NAME_FORM}"),
+            ));
+        }
+        let path = format!("accounts.{account_name}");
         let account = table_at(value, &path, at, refuse)?;
         only(
             account,
@@ -442,16 +454,32 @@ fn accounts(
                 ),
             ));
         };
-        let drives = table_at(
-            drives,
-            &format!("{path}.drives"),
-            drives_key.span().start,
-            refuse,
-        )?;
-        let mut kept = Vec::new();
-        for (name, value) in in_order(drives) {
-            let at = name.span().start;
-            let path = format!("{path}.drives.{}", name.get_ref());
+        let path = format!("{path}.drives");
+        let drives = table_at(drives, &path, drives_key.span().start, refuse)?;
+        let mut account_drives = Vec::new();
+        for (drive_name, value) in in_order(drives) {
+            let at = drive_name.span().start;
+            let drive_name = drive_name.get_ref().as_ref();
+            if !in_form(drive_name) {
+                return Err(refuse(
+                    at,
+                    format!("`{path}` names {drive_name:?}: a drive's {NAME_FORM}"),
+                ));
+            }
+            if let Some((_, first, first_at)) =
+                named.iter().find(|(named, _, _)| *named == drive_name)
+            {
+                return Err(refuse(
+                    at,
+                    format!(
+                        "the drive `{drive_name}` is named by the accounts `{first}`, on line \
+                         {}, and `{account_name}`: a drive's name is given once on the host",
+                        line(*first_at)
+                    ),
+                ));
+            }
+            named.push((drive_name, account_name, at));
+            let path = format!("{path}.{drive_name}");
             let drive = table_at(value, &path, at, refuse)?;
             only(
                 drive,
@@ -460,17 +488,52 @@ fn accounts(
                 "a drive holds only `repositories`",
                 refuse,
             )?;
-            kept.push(Drive {
-                name: name.get_ref().to_string(),
-                repositories: repositories(drive, &path, at, refuse, line)?,
+            let mut repositories = Vec::new();
+            for (address, entry) in addresses(drive, &path, at, refuse)? {
+                if let Some((_, first, first_drive)) =
+                    kept.iter().find(|(kept, _, _)| *kept == address)
+                {
+                    return Err(refuse(
+                        entry.span().start,
+                        format!(
+                            "the drive `{first_drive}`'s entry {:?}, on line {}, and the drive \
+                             `{drive_name}`'s entry {:?} are one repository: a repository \
+                             belongs to one drive, and GitHub compares addresses without case",
+                            first.get_ref().as_str().unwrap_or_default(),
+                            line(first.span().start),
+                            entry.get_ref().as_str().unwrap_or_default(),
+                        ),
+                    ));
+                }
+                repositories.push(address.clone());
+                kept.push((address, entry, drive_name));
+            }
+            account_drives.push(Drive {
+                name: drive_name.to_string(),
+                repositories,
             });
         }
         accounts.push(Account {
-            name: path["accounts.".len()..].to_string(),
-            drives: kept,
+            name: account_name.to_string(),
+            drives: account_drives,
         });
     }
     Ok(accounts)
+}
+
+/// The form of an account's and a drive's name, as a refusal says it:
+/// the hosted table's form of a label (design Decision 3).
+const NAME_FORM: &str =
+    "name is 1 to 32 lower-case letters, digits and `-`, starting with a letter";
+
+/// Whether `name` is of `NAME_FORM`, so a drive's `<name>.code-workspace`
+/// is a plain file name at the repository root.
+fn in_form(name: &str) -> bool {
+    name.len() <= 32
+        && name.starts_with(|c: char| c.is_ascii_lowercase())
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
 /// Refuses the first key of `table`, at `path`, but `read`, naming its
@@ -502,14 +565,13 @@ fn only(
 }
 
 /// The repositories of the drive `drive`, whose key, at `path`, stands at
-/// `at`, each an address, in the file's order.
-fn repositories(
-    drive: &Tree<'_>,
+/// `at`, each an address with its entry, in the file's order.
+fn addresses<'t, 'i>(
+    drive: &'t Tree<'i>,
     path: &str,
     at: usize,
     refuse: &impl Fn(usize, String) -> String,
-    line: &impl Fn(usize) -> usize,
-) -> Result<Vec<Address>, String> {
+) -> Result<Vec<(Address, &'t Spanned<DeValue<'i>>)>, String> {
     let path = format!("{path}.repositories");
     let Some((key, list)) = entry(drive, "repositories") else {
         return Err(refuse(
@@ -520,7 +582,7 @@ fn repositories(
     let DeValue::Array(entries) = list.get_ref() else {
         return Err(refuse(key.span().start, format!("`{path}` is not a list")));
     };
-    let mut kept: Vec<(Address, &Spanned<DeValue<'_>>)> = Vec::new();
+    let mut addresses = Vec::new();
     for entry in entries.iter() {
         let at = entry.span().start;
         let Some(text) = entry.get_ref().as_str() else {
@@ -531,20 +593,9 @@ fn repositories(
         };
         let address = Address::parse(text)
             .map_err(|rule| refuse(at, format!("`{path}` entry {text:?}: {rule}")))?;
-        if let Some((_, first)) = kept.iter().find(|(kept, _)| *kept == address) {
-            return Err(refuse(
-                at,
-                format!(
-                    "`{path}` entries {:?}, on line {}, and {text:?} are one repository: \
-                     GitHub compares addresses without case",
-                    first.get_ref().as_str().unwrap_or_default(),
-                    line(first.span().start),
-                ),
-            ));
-        }
-        kept.push((address, entry));
+        addresses.push((address, entry));
     }
-    Ok(kept.into_iter().map(|(address, _)| address).collect())
+    Ok(addresses)
 }
 
 /// `[control_plane]` as written in `table`, whose key stands at `at`,
@@ -826,6 +877,107 @@ mod tests {
             .collect::<Vec<_>>(),
             ["work", "home"]
         );
+    }
+
+    /// The configuration spec's "One drive in two accounts".
+    #[test]
+    fn one_drive_in_two_accounts() {
+        assert_eq!(
+            read(
+                "[accounts.own.drives.home]\nrepositories = []\n\n\
+                 [accounts.client.drives.home]\nrepositories = []\n"
+            ),
+            Err(format!(
+                "{FILE}:4: the drive `home` is named by the accounts `own`, on line 1, and \
+                 `client`: a drive's name is given once on the host"
+            ))
+        );
+    }
+
+    /// The configuration spec's "A name out of form", and each edge of
+    /// the form.
+    #[test]
+    fn a_name_out_of_form() {
+        assert_eq!(
+            read("[accounts.own.drives.Home]\nrepositories = []\n"),
+            Err(format!(
+                "{FILE}:1: `accounts.own.drives` names \"Home\": a drive's name is 1 to 32 \
+                 lower-case letters, digits and `-`, starting with a letter"
+            ))
+        );
+        assert_eq!(
+            read("\n[accounts.my_own.drives.home]\nrepositories = []\n"),
+            Err(format!(
+                "{FILE}:2: `accounts` names \"my_own\": an account's name is 1 to 32 \
+                 lower-case letters, digits and `-`, starting with a letter"
+            ))
+        );
+        let longest = format!("a{}", "-".repeat(31));
+        for good in ["a", "own", "a1-b2", longest.as_str()] {
+            assert!(in_form(good), "{good}");
+        }
+        let too_long = format!("a{}", "b".repeat(32));
+        for bad in [
+            "",
+            "1a",
+            "-a",
+            "Own",
+            "a_b",
+            "a.b",
+            "a b",
+            "\u{e9}t\u{e9}",
+            too_long.as_str(),
+        ] {
+            assert!(!in_form(bad), "{bad}");
+        }
+    }
+
+    /// The configuration spec's "An address with no owner".
+    #[test]
+    fn an_address_with_no_owner() {
+        assert_eq!(
+            read("[accounts.own.drives.home]\nrepositories = [\"flume\"]\n"),
+            Err(format!(
+                "{FILE}:2: `accounts.own.drives.home.repositories` entry \"flume\": an address \
+                 is `owner/name`"
+            ))
+        );
+    }
+
+    /// The configuration spec's "One repository twice".
+    #[test]
+    fn one_repository_twice() {
+        assert_eq!(
+            read(
+                "[accounts.own.drives.home]\nrepositories = [\n  \"agentplot/flume\",\n  \
+                 \"AgentPlot/flume\",\n]\n"
+            ),
+            Err(format!(
+                "{FILE}:4: the drive `home`'s entry \"agentplot/flume\", on line 3, and the \
+                 drive `home`'s entry \"AgentPlot/flume\" are one repository: a repository \
+                 belongs to one drive, and GitHub compares addresses without case"
+            ))
+        );
+    }
+
+    /// The configuration spec's "One repository in two drives", of one
+    /// account or of two.
+    #[test]
+    fn one_repository_in_two_drives() {
+        for second in ["own", "client"] {
+            assert_eq!(
+                read(&format!(
+                    "[accounts.own.drives.home]\nrepositories = [\"agentplot/flume\"]\n\n\
+                     [accounts.{second}.drives.work]\nrepositories = [\"AgentPlot/flume\"]\n"
+                )),
+                Err(format!(
+                    "{FILE}:5: the drive `home`'s entry \"agentplot/flume\", on line 2, and the \
+                     drive `work`'s entry \"AgentPlot/flume\" are one repository: a repository \
+                     belongs to one drive, and GitHub compares addresses without case"
+                )),
+                "{second}"
+            );
+        }
     }
 
     /// The configuration spec's "No list", which has no `accounts`.
