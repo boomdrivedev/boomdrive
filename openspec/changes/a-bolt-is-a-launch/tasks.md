@@ -20,7 +20,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 3. A bolt is a launch, and its send a retry of its submission
 
 - [x] 3.1 A launch of a kind that lands with no stages is taken, counted against its stream's room and launched as any launch, and its unit after it on its branch (design Decisions 1 and 2; Task notes 3.1 and 3.2). True when `devenv shell -- cargo test -p boomdrive --test bolts` passes with `a_bolt_and_its_unit` and `a_bolt_counts_against_its_streams_room_within_its_pass`, proving the work-into-flume spec's "A bolt and its unit" and "A bolt counts against its stream's room within its pass".
-- [ ] 3.2 A bolt's send is `flume --json retry <place> --submission`, and Flume's refusal of it is the act's answer (design Decision 3; Task notes 3.1 and 3.2). True when `devenv shell -- cargo test -p boomdrive --test bolts` passes with `a_bolts_send` and `a_send_flume_refuses`, proving the work-into-flume spec's "A bolt's send" and "A send Flume refuses".
+- [x] 3.2 A bolt's send is `flume --json retry <place> --submission`, and Flume's refusal of it is the act's answer (design Decision 3; Task notes 3.1 and 3.2). True when `devenv shell -- cargo test -p boomdrive --test bolts` passes with `a_bolts_send` and `a_send_flume_refuses`, proving the work-into-flume spec's "A bolt's send" and "A send Flume refuses".
 
 ## 4. The words
 

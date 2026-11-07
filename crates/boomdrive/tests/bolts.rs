@@ -14,8 +14,8 @@ mod fakes;
 
 use boomdrive::flume::Cli;
 use boomdrive_control::fake::Fake;
-use boomdrive_control::{Id, Offer, Outcome, Want};
-use fakes::{offer, printed, Bench, Stub};
+use boomdrive_control::{ActSort, Id, Offer, Outcome, Want};
+use fakes::{act, offer, printed, Bench, Stub};
 use serde_json::{json, Value};
 use std::fs;
 
@@ -27,6 +27,9 @@ const BOLT: &str = "madswan/bolt/3";
 
 /// Its unit's launch.
 const UNIT: &str = "madswan/14";
+
+/// The place the bolt stands at, `P`.
+const P: &str = "/places/bolt--x";
 
 /// A launch `id` of kind `kind` named `name` in [`CREW`] on `base`, in
 /// the stream `madswan`.
@@ -47,6 +50,16 @@ fn bolt() -> Want {
 /// Its unit `madswan/14`, of kind `change` named `a` on `bolt/x`.
 fn unit() -> Want {
     Want::Offer(launch(UNIT, "change", "a", "bolt/x"))
+}
+
+/// The bolt's send: a retry of its launch's submission.
+fn send() -> Want {
+    let what = ActSort::Retry {
+        stage: None,
+        words: None,
+        submission: true,
+    };
+    act(&format!("{BOLT}/send"), BOLT, what)
 }
 
 /// A host part with no bound of its own and the stream `madswan`, whose
@@ -180,6 +193,82 @@ fn a_bolt_counts_against_its_streams_room_within_its_pass() {
     assert_eq!(launches[1].base.as_deref(), Some("bolt/x"));
     assert_eq!(launches[1].stream.as_deref(), Some("madswan"));
     assert_eq!(outcome(&bench, UNIT), Some(Outcome::Launched));
+    assert!(
+        bench.sluice.calls().is_empty(),
+        "{:?}",
+        bench.sluice.calls()
+    );
+}
+
+/// The bolt's place `P`, live, as Flume lists it, marked for its launch.
+fn bolt_at_p() -> Value {
+    json!([{
+        "place": P,
+        "kind": "bolt",
+        "name": "x",
+        "branch": "bolt/x",
+        "base": "main",
+        "mark": "boomdrive:madswan/bolt/3",
+        "lands": true,
+        "phase": "live",
+        "stages": [],
+        "stream": { "name": "madswan", "from": "launch" }
+    }])
+}
+
+/// A pass over `stub` holding the bolt at `P` and its send, and what the
+/// report file holds of the send, with the lines the pass said.
+fn sending(stub: &Stub) -> (Bench, Outcome, Option<String>, Vec<String>) {
+    let bench = keeping_crew();
+    let mut plane = Fake::holding(vec![bolt(), send()]);
+    let (_, lines) = bench.pass_over(&Cli::new(stub.program()), &mut plane);
+    let acted = bench.report().acts[&Id::new(&format!("{BOLT}/send"))].clone();
+    (bench, acted.outcome, acted.words, lines)
+}
+
+/// The work-into-flume spec's "A bolt's send".
+#[test]
+fn a_bolts_send() {
+    let stub = stub(bolt_at_p(), 2);
+    stub.answers("retry", "retry.json", 0);
+    let (bench, outcome, words, lines) = sending(&stub);
+    let retries: Vec<Vec<String>> = stub
+        .calls()
+        .into_iter()
+        .filter(|call| call[1] == "retry")
+        .collect();
+    assert_eq!(retries, [argv(&["--json", "retry", P, "--submission"])]);
+    assert_eq!((outcome, words), (Outcome::Done, None));
+    assert!(
+        lines.contains(&format!("{BOLT}/send: retry of {BOLT} at {P}: done")),
+        "{lines:?}"
+    );
+    assert!(stub.call_of("launch").is_none(), "found by its mark");
+    assert!(
+        bench.sluice.calls().is_empty(),
+        "{:?}",
+        bench.sluice.calls()
+    );
+}
+
+/// The work-into-flume spec's "A send Flume refuses".
+#[test]
+fn a_send_flume_refuses() {
+    let stub = stub(bolt_at_p(), 2);
+    let reason = "the places on bolt/x are live: Q";
+    let refused = json!({ "refused": { "refusal": { "reason": reason } } });
+    stub.answers_text("retry", &printed(&refused), 1);
+    let (bench, outcome, words, lines) = sending(&stub);
+    assert_eq!(
+        (outcome, words.as_deref()),
+        (Outcome::Refused, Some(reason))
+    );
+    assert!(
+        lines.contains(&format!(
+            "{BOLT}/send: retry of {BOLT} at {P}: refused by Flume: {reason}"
+        )),
+        "{lines:?}"
+    );
     assert!(
         bench.sluice.calls().is_empty(),
         "{:?}",
