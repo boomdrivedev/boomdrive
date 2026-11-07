@@ -57,7 +57,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
 - [x] 4.1 `tests/common/mod.rs`'s `keeping` writes its addresses under the account `own`'s drive `home`, and a helper beside it writes several drives, each with its addresses. Every configuration text of the crate's integration tests names its repositories under a drive: `planes.rs`, `running.rs`, `loop.rs`, `control.rs` and `enroll.rs`, and the helpers of `dropped.rs`, `views.rs` and `code_workspaces.rs`. Each test asserts what it asserted before, its owners' workspaces among them, since the workspaces move in group 5. Done when `sluice exec main -- moon run boomdrive:test` passes.
 
-- [ ] 4.2 `tests/local_layer.rs` names its layers' repositories under drives: its pin is `accounts`, said passed over with each drive's `repositories`, and "A local file broken while running" keeps `agentplot/sluice` in the local layer's drive `work`, whose workspace stands unchanged at the root while the local layer is not taken. Done when `devenv shell -- cargo test -p boomdrive --test local_layer` passes.
+- [x] 4.2 `tests/local_layer.rs` names its layers' repositories under drives: its pin is `accounts`, said passed over with each drive's `repositories`, and "A local file broken while running" keeps `agentplot/sluice` in the local layer's drive `work`, whose workspace stands unchanged at the root while the local layer is not taken. Done when `devenv shell -- cargo test -p boomdrive --test local_layer` passes.
 
 ## 5. One workspace per drive
 
