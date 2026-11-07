@@ -1,7 +1,7 @@
 # releases Specification
 
 ## Purpose
-Boomdrive's versions, tags and release notes, made by git-cliff from the Conventional Commits since the newest release tag. It covers how the next version is found, what its notes hold, the workflow `release` that tags it on the commit of `main` that was pushed and publishes its notes, building nothing, and the gate's check that every commit since the newest release is conventional (core.48; record 0023).
+Boomdrive's versions, tags and release notes, made by git-cliff from the Conventional Commits since the newest release tag. It covers how the next version is found, what its notes hold, the workflow `release` that tags it on the commit of `main` that was pushed and publishes its notes, building nothing, and the gate's check that every commit since the newest release is conventional (core.48; record 0024).
 
 ## Requirements
 

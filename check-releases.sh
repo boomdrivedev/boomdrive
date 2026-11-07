@@ -1,5 +1,5 @@
 #!/bin/sh
-# The releases spec (record 0023, core.48), proven in scratch repositories
+# The releases spec (record 0024, core.48), proven in scratch repositories
 # made in a temporary directory: release.sh's next tag and its notes under
 # the tree's cliff.toml, release-preview beside them, check-commits.sh
 # under the tree's .versionrc, and the workflow release read line by line.

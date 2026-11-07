@@ -1,5 +1,5 @@
 ---
-number: 23
+number: 24
 title: Boomdrive is versioned by git-cliff from its Conventional Commits, and its release is a tag of main and its notes
 status: proposed
 date: 2026-11-06

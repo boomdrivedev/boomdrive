@@ -78,7 +78,7 @@ let
   # outside the gate's sandbox (design Decision 14).
   flakeInputs = import ./nix/inputs.nix { };
 
-  # The release's tools (record 0023, core.48): git-cliff, which makes the
+  # The release's tools (record 0024, core.48): git-cliff, which makes the
   # next version and its notes, and convco, which root:commits holds each
   # commit to the convention with. The flake's nixpkgs' builds, the ones
   # the workflow release runs as `nix shell --inputs-from .
@@ -246,7 +246,7 @@ in
   };
 
   # What the workflow release would release from here: the next version
-  # and its notes, by its git-cliff (record 0023). It writes nothing.
+  # and its notes, by its git-cliff (record 0024). It writes nothing.
   scripts.release-preview = {
     description = "The next release's version and notes: git-cliff --unreleased --bump";
     exec = ''

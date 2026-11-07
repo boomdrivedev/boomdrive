@@ -1,6 +1,6 @@
 #!/bin/sh
 # The workflow release's two asks of git-cliff, under cliff.toml, in the
-# repository it runs in (record 0023, core.48), so root:releases tests what
+# repository it runs in (record 0024, core.48), so root:releases tests what
 # the workflow runs:
 #
 #   release.sh next          the tag of the next version, from the commits
