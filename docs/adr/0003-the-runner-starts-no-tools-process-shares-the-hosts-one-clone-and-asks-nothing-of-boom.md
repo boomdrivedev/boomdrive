@@ -11,6 +11,8 @@ decision-makers:
 
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
 
+Revised 2026-11-06, still proposed, for sluice record 0093 (proposed, on the user's approval of the host process that day): sluice's queues move in sluice's own host process, so a host's service manager keeps no sluice process; the context's `sluice run` describes the tools as they stood on 2026-11-01.
+
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on what the runner owns; flume's statement, clauses 1, 70 and 119 to 120, and flume record 0020; sluice's statement, clauses 104 to 106, and sluice record 0026; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its assumption 7; rules core.1 and core.5.
 
@@ -45,7 +47,7 @@ For Boom's claims:
 
 Option 1 each time, the user's choice.
 
-- **No tool's process.** The runner starts, keeps and stops no tool's long-running process, and runs no tool's housekeeping of its own accord. sluice's driver, the multiplexer's server and any settle loop are the host's service manager's (core.13).
+- **No tool's process.** The runner starts, keeps and stops no tool's long-running process, and runs no tool's housekeeping of its own accord. The multiplexer's server and any settle loop are the host's service manager's, and sluice's host process is sluice's own, started by its commands and gone when idle, so no host keeps a sluice service (core.13; sluice record 0093, proposed 2026-11-06).
 - **The host's one clone.** The runner's clone is the host's one clone of the repository. Flume, sluice and what a launch runs may work in its container. The runner alone fetches it and moves its view. It moves no branch of the clone and reads each at origin's tracking ref (record 0019), and it never removes, moves or rewrites what another tool made there (core.14).
 - **Flume asks Boom.** The runner passes a launch as its control plane gave it and reads nothing of Boom for it (core.15).
 
