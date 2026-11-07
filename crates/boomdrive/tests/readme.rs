@@ -33,7 +33,8 @@ fn second_toml_block(text: &str) -> &str {
 }
 
 /// The local layer README shows, read over its configuration, keeps both
-/// layers' repositories and is taken.
+/// layers' repositories and is taken: it adds to a drive the managed
+/// layer names, and declares one it does not.
 #[test]
 fn the_readme_local_layer_reads() {
     let (text, readme) = readme();
@@ -52,11 +53,30 @@ fn the_readme_local_layer_reads() {
         }
     );
     let managed = config::parse(toml_block(&text), &readme, Path::new("/h")).unwrap();
-    assert!(config.repositories.len() > managed.repositories.len());
-    assert!(managed
-        .repositories
-        .iter()
-        .all(|address| config.repositories.contains(address)));
+    assert!(config.repositories().count() > managed.repositories().count());
+    for address in managed.repositories() {
+        assert_eq!(
+            config.drive_of(address).map(|drive| &drive.name),
+            managed.drive_of(address).map(|drive| &drive.name),
+            "{address}"
+        );
+    }
+    let added_to: Vec<&str> = config
+        .drives()
+        .filter(|drive| {
+            managed.drives().any(|kept| {
+                kept.name == drive.name && kept.repositories.len() < drive.repositories.len()
+            })
+        })
+        .map(|drive| drive.name.as_str())
+        .collect();
+    assert_eq!(added_to, ["home"]);
+    let declared: Vec<&str> = config
+        .drives()
+        .filter(|drive| managed.drives().all(|kept| kept.name != drive.name))
+        .map(|drive| drive.name.as_str())
+        .collect();
+    assert_eq!(declared, ["garden"]);
 }
 
 #[test]

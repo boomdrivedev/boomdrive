@@ -51,7 +51,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
   Its nix example sets `settings.accounts`. Its owner's-workspace words are gone (design Decision 12). Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_configuration_reads` asserting the example's drives and their repositories.
 
-- [ ] 3.2 README's local layer section says that the local layer sets each drive's `repositories`, that a drive both layers name keeps both layers' repositories and one only the local layer names is declared by it, and what is not taken. Its example adds to the drive `home` and declares the drive `garden`. Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_local_layer_reads` asserting the example adds to `home` and declares `garden`.
+- [x] 3.2 README's local layer section says that the local layer sets each drive's `repositories`, that a drive both layers name keeps both layers' repositories and one only the local layer names is declared by it, and what is not taken. Its example adds to the drive `home` and declares the drive `garden`. Done when `devenv shell -- cargo test -p boomdrive --test readme` passes, with `the_readme_local_layer_reads` asserting the example adds to `home` and declares `garden`.
 
 ## 4. The tests name their repositories under drives
 

@@ -83,36 +83,51 @@ comments in it say, is left as it is and named at every pass.
 `code_workspaces` is `true` or `false`, and where it is absent or
 `false` the runner writes and removes no workspace.
 
-The local layer sets `repositories`, and in a control plane's table,
-`[control_plane.<type>]`, its `partitions`, and nothing else; each is
-read whole, as the managed layer's is. Its repositories add to the
-managed layer's: the runner keeps the managed layer's, in their order,
-then each of the local layer's the managed layer does not name, so a
+The local layer sets each drive's `repositories`,
+`accounts.<account>.drives.<drive>.repositories`, and in a control
+plane's table, `[control_plane.<type>]`, its `partitions`, and nothing
+else; each is read whole, as the managed layer's is. Its repositories
+add to the managed layer's: a drive both layers name keeps the managed
+layer's repositories, in their order, then each of the local layer's
+the managed layer does not name, and a drive or an account only the
+local layer names is declared by it, after the managed layer's. So a
 control plane that drops a drive drops only the repositories it wrote.
-Its `partitions` replace the managed layer's. A local layer a control
-plane might write:
+A repository is still in one drive on the host, and a drive's name is
+given once: a local layer that names a repository the managed layer
+keeps in another drive, or a drive the managed layer holds under
+another account, is not taken. Its `partitions` replace the managed
+layer's. A local layer a control plane might write:
 
 ```toml
-# Added to the managed layer's repositories.
+# Added to the managed layer's drive `home`.
+[accounts.own.drives.home]
 repositories = ["agentplot/sluice"]
+
+# A drive the managed layer does not name, declared here.
+[accounts.own.drives.garden]
+repositories = ["agentplot/timber"]
 ```
 
 The managed layer may pin a key the local layer could set: `pin`, at its
-top, lists keys in TOML's dotted spelling, such as `"repositories"`,
+top, lists keys in TOML's dotted spelling, such as
+`"accounts.own.drives.home.repositories"` or
 `"control_plane.hosted.partitions"`, or a table holding one, such as
-`"control_plane"`. A pinned key the local layer sets is passed over and
-named, and the rest of the local layer is taken. A pin of anything else
-is refused as the managed layer's fault.
+`"accounts"`, `"accounts.own.drives.home"` or `"control_plane"`. A
+pinned key the local layer sets is passed over and named, and the rest
+of the local layer is taken. A pin of anything else is refused as the
+managed layer's fault.
 
-A local file that sets any other key, `repository_root`, `pin` or a
-control plane's `type` among them, that is not TOML, or that holds a
-value the runner or the control plane's implementation refuses, is not
-taken at all, and the managed layer is read alone. While such a file
-stands, a pass keeps the managed layer's repositories, lets go of none
-and sets no workspace, since the layer it could not take may name them.
-Removing the file lets go of what only it named. Each pass says one line
-of the local file where its reading changes: taken, with each key passed
-over; not taken, with why; or gone.
+A local file that sets any other key, `repository_root`, `pin`, a flat
+`repositories`, a key of an account or a drive other than `drives` and
+`repositories`, or a control plane's `type` among them, that is not
+TOML, or that holds a value the runner or the control plane's
+implementation refuses, is not taken at all, and the managed layer is
+read alone. While such a file stands, a pass keeps the managed layer's
+repositories, lets go of none and sets or removes no workspace, since
+the layer it could not take may name them. Removing the file lets go of
+what only it named. Each pass says one line of the local file where its
+reading changes: taken, with each key passed over; not taken, with why;
+or gone.
 
 ## Running on a host
 
