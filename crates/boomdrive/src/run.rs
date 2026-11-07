@@ -12,6 +12,7 @@ use crate::config::{self, Address, Config, ControlPlaneTable, Env};
 use crate::git::Git;
 use crate::pass::{self, Outcome};
 use crate::planes::{self, Plane};
+use crate::settle::{self, Settles};
 use crate::terminal::{self, Relays};
 use crate::{clone, flume, hello, report, sluice};
 use boomdrive_control::Wake;
@@ -204,6 +205,8 @@ pub struct Runner {
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
+    /// Whether the last settle was answered, kept across turns.
+    settles: Settles,
     events: Sender<Event>,
     /// The runner's one set of notices, whose wake each control pass
     /// reads.
@@ -255,6 +258,7 @@ impl Runner {
             config,
             programs,
             control,
+            settles: Settles::default(),
             events,
             notices,
             waiting,
@@ -349,9 +353,10 @@ impl Runner {
 
     /// One keeping pass over the configuration the runner started with,
     /// then, where it names a control plane, one control pass (design
-    /// Decision 5): failed where a git call of the keeping pass failed,
-    /// or the control pass did not pull and report, its control plane
-    /// unopened among it.
+    /// Decision 5), then the settle that ends them (record 0029): failed
+    /// where a git call of the keeping pass failed, or the control pass
+    /// did not pull and report, its control plane unopened among it. A
+    /// settle refused or unanswered is said, and no failure.
     pub fn once(&mut self, say: &mut dyn FnMut(String)) -> Outcome {
         let kept = pass::pass(&self.git, &self.data, &self.config, &self.stop, say);
         let carried = match &self.control {
@@ -363,6 +368,7 @@ impl Runner {
                 _ => Outcome::Failed,
             },
         };
+        self.settle(self.config.fetch_interval, say);
         kept.and(carried)
     }
 
@@ -441,6 +447,19 @@ impl Runner {
     /// configuration names one, and it was opened.
     fn carries(&self) -> bool {
         matches!(self.control, Some(Control { plane: Ok(_), .. }))
+    }
+
+    /// Flume's settle of every place, run once and awaited, which ends a
+    /// turn of passes and keeps Flume's watch over the host (core.13;
+    /// record 0029). Its bound is `fetch_interval`, the one the latest
+    /// reading of the configuration gave, or the shorter of it and
+    /// `poll_interval` while the runner makes control passes. Its answer
+    /// is said only where it changes, and carried and kept nowhere.
+    fn settle(&mut self, fetch_interval: Duration, say: &mut dyn FnMut(String)) {
+        let poll_interval = self.carries().then(|| self.poll_interval());
+        let bound = settle::bound(fetch_interval, poll_interval);
+        let answer = flume::Cli::new(&self.programs.flume).settle_every(bound);
+        self.settles.heard(answer, say);
     }
 
     /// The interval between control passes, as the configuration said at
