@@ -26,9 +26,8 @@ pub struct Config {
     pub repository_root: PathBuf,
     /// How often every repository is fetched.
     pub fetch_interval: Duration,
-    /// Whether each owner of the kept repositories has a VS Code
-    /// workspace beside its views,
-    /// `<repository_root>/<owner>/<owner>.code-workspace` (core.43): false
+    /// Whether each drive has a VS Code workspace at the repository
+    /// root, `<repository_root>/<drive>.code-workspace` (core.43): false
     /// where the file names none.
     pub code_workspaces: bool,
     /// Each account the host serves, in the file's order, its drives

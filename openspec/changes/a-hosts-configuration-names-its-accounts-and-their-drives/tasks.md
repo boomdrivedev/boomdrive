@@ -51,7 +51,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
 ## 5. One workspace per drive
 
-- [ ] 5.1 `src/code_workspace.rs` gives each drive of the configuration its workspace, in the file's order:
+- [x] 5.1 `src/code_workspace.rs` gives each drive of the configuration its workspace, in the file's order:
   - `Wanted` names its drive;
   - its file is `<repository_root>/<drive>.code-workspace`;
   - its folders are the drive's repositories as `<owner>/<name>`, owners as the configuration writes them;

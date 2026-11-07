@@ -1,6 +1,6 @@
-//! Each owner's VS Code workspace beside its views (core.43; design
-//! Decisions 1, 3, 4 and 5): `<repository_root>/<owner>/<owner>.code-workspace`,
-//! whose `folders` are exactly the owner's kept repositories and whose
+//! Each drive's VS Code workspace at the repository root (core.43; record
+//! 0017 as revised; design Decision 1): `<repository_root>/<drive>.code-workspace`,
+//! whose `folders` are exactly the drive's kept repositories and whose
 //! other members are kept as they were. A file the runner cannot read as
 //! a JSON object, a link or a folder at its path is left as it is and
 //! named, never with the file's text (core.11).
@@ -14,15 +14,16 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-/// An owner's workspace as the configuration wants it.
+/// A drive's workspace as the configuration wants it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Wanted {
-    /// The owner, as its first repository in the file writes it.
-    pub owner: String,
-    /// The workspace's file, `<repository_root>/<owner>/<owner>.code-workspace`.
+    /// The drive, as the file names it.
+    pub drive: String,
+    /// The workspace's file, `<repository_root>/<drive>.code-workspace`.
     pub file: PathBuf,
-    /// The path of each of the owner's kept repositories' view from the
-    /// file's folder, in the file's order.
+    /// The path of each of the drive's kept repositories' view from the
+    /// repository root, `<owner>/<name>` as the file writes it, in the
+    /// file's order.
     pub folders: Vec<String>,
 }
 
@@ -50,43 +51,35 @@ pub enum Act {
     Name(String),
 }
 
-/// Each owner of `config`'s repositories, compared without case, with its
-/// workspace's file and folders, in the order its first repository stands
-/// in the file. A repository whose owner is written as the first one's is
-/// `<name>`, and one written otherwise `../<owner as written>/<name>`,
-/// where `config::view_path` puts its view.
+/// Each drive of `config`, in the file's order, with its workspace's file
+/// at the repository root and its folders: each of its repositories by
+/// the path of its view from the root, `<owner>/<name>` as the file
+/// writes it, where `config::view_path` puts it. A drive keeping none has
+/// no folders.
 pub fn wanted(config: &Config) -> Vec<Wanted> {
-    let mut wanted: Vec<Wanted> = Vec::new();
-    for address in config.repositories() {
-        let owner = address.owner();
-        let at = match wanted
-            .iter()
-            .position(|kept| kept.owner.eq_ignore_ascii_case(owner))
-        {
-            Some(at) => at,
-            None => {
-                wanted.push(Wanted {
-                    owner: owner.to_string(),
-                    file: config.repository_root.join(owner).join(file_name(owner)),
-                    folders: Vec::new(),
-                });
-                wanted.len() - 1
-            }
-        };
-        let workspace = &mut wanted[at];
-        let folder = if workspace.owner == owner {
-            address.name().to_string()
-        } else {
-            format!("../{owner}/{}", address.name())
-        };
-        workspace.folders.push(folder);
-    }
-    wanted
+    config
+        .drives()
+        .map(|drive| Wanted {
+            drive: drive.name.clone(),
+            file: file(config, &drive.name),
+            folders: drive
+                .repositories
+                .iter()
+                .map(|address| format!("{}/{}", address.owner(), address.name()))
+                .collect(),
+        })
+        .collect()
 }
 
-/// The workspace file's name in the folder of `owner`, `<owner>.code-workspace`.
-pub fn file_name(owner: &str) -> String {
-    format!("{owner}.code-workspace")
+/// The workspace of the drive `drive` at `config`'s repository root,
+/// `<repository_root>/<drive>.code-workspace`.
+pub fn file(config: &Config, drive: &str) -> PathBuf {
+    config.repository_root.join(file_name(drive))
+}
+
+/// The workspace file's name for `name`, `<name>.code-workspace`.
+pub fn file_name(name: &str) -> String {
+    format!("{name}.code-workspace")
 }
 
 /// What stands at `path`, read with `symlink_metadata`, so a link is seen
@@ -263,48 +256,66 @@ mod tests {
             .collect()
     }
 
+    /// Two drives sharing the owner `agentplot`: each lists its own
+    /// repositories, in the file's order, by their paths from the root.
     #[test]
-    fn two_owners() {
+    fn two_drives_sharing_an_owner() {
         let config = config(
             "repository_root = \"/h/Code\"\n\
              [accounts.own.drives.home]\n\
-             repositories = [\"agentplot/flume\", \"afterthought/crew\", \"agentplot/sluice\"]\n",
+             repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n\
+             [accounts.own.drives.work]\n\
+             repositories = [\"agentplot/sluice\"]\n",
         );
         assert_eq!(
             wanted(&config),
             [
                 Wanted {
-                    owner: "agentplot".to_string(),
-                    file: PathBuf::from("/h/Code/agentplot/agentplot.code-workspace"),
-                    folders: folders(&["flume", "sluice"]),
+                    drive: "home".to_string(),
+                    file: PathBuf::from("/h/Code/home.code-workspace"),
+                    folders: folders(&["agentplot/flume", "afterthought/crew"]),
                 },
                 Wanted {
-                    owner: "afterthought".to_string(),
-                    file: PathBuf::from("/h/Code/afterthought/afterthought.code-workspace"),
-                    folders: folders(&["crew"]),
+                    drive: "work".to_string(),
+                    file: PathBuf::from("/h/Code/work.code-workspace"),
+                    folders: folders(&["agentplot/sluice"]),
                 },
             ]
         );
     }
 
+    /// An owner written in two cases: each folder is its view's path as
+    /// the file writes its address.
     #[test]
-    fn owners_differing_in_case() {
+    fn an_owner_written_in_two_cases() {
         let config = config(
-            "[accounts.own.drives.home]\nrepositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n",
+            "[accounts.own.drives.home]\n\
+             repositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n",
         );
         assert_eq!(
             wanted(&config),
             [Wanted {
-                owner: "AgentPlot".to_string(),
-                file: PathBuf::from("/h/Code/AgentPlot/AgentPlot.code-workspace"),
-                folders: folders(&["flume", "../agentplot/sluice"]),
+                drive: "home".to_string(),
+                file: PathBuf::from("/h/Code/home.code-workspace"),
+                folders: folders(&["AgentPlot/flume", "agentplot/sluice"]),
             }]
         );
     }
 
+    /// A drive keeping none has its workspace, with no folders; a host
+    /// with no drive has none.
     #[test]
-    fn keeping_none() {
-        assert_eq!(wanted(&config("accounts = {}\n")), []);
+    fn a_drive_keeping_none() {
+        let config = config("[accounts.client.drives.garden]\nrepositories = []\n");
+        assert_eq!(
+            wanted(&config),
+            [Wanted {
+                drive: "garden".to_string(),
+                file: PathBuf::from("/h/Code/garden.code-workspace"),
+                folders: vec![],
+            }]
+        );
+        assert_eq!(wanted(&self::config("accounts = {}\n")), []);
     }
 
     #[test]
