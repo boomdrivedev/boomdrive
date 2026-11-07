@@ -80,8 +80,12 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   left as it is;
 - lets go of each repository the configuration no longer names. It is
   never fetched again, and its clone and view are removed once neither
-  holds work the forge lacks; until then they are left, and named at
-  every pass;
+  holds work the forge lacks and no place the runner launched there is
+  left to end; until then they are left, and named at every pass. While
+  the runner's report holds a launch at a place there whose status, as
+  last carried, Flume still lists and has not read tidied or gone, the
+  repository is drained: nothing more is launched in it, and its place
+  is followed to its end through its clone;
 - where `code_workspaces` is true, keeps each owner's VS Code workspace
   at `<repository_root>/<owner>/<owner>.code-workspace`, writing it only
   when its `folders` are not the owner's kept repositories, whole and
@@ -327,11 +331,11 @@ A control pass:
 
 - reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
-  Flume's host part as Flume printed it, and the leases the runner
-  holds;
+  apart from them those it drains, Flume's host part as Flume printed
+  it, and the leases the runner holds;
 - takes each launch offered under a lease, for a repository the runner
-  keeps, once each launch it comes after has landed and while its
-  stream has room as Flume's status gives it. Each becomes one
+  keeps, and none in one it drains but a launch found by its mark, once
+  each launch it comes after has landed and while its stream has room as Flume's status gives it. Each becomes one
   `flume launch`, naming its kind, stream, priority and intent only as
   the launch gives them, marked `boomdrive:<id>`;
 - carries out each retry, drop, priority or done as Flume's own command
@@ -344,11 +348,14 @@ A control pass:
 - carries back Flume's status of each place, sluice's entry of each
   submission and each inbox the control plane names, each as the tool
   gave it, and never a log; and relays a terminal on a launch's agent
-  through herdr, keeping nothing of it. A place is followed to its end,
-  over or tidied, even once the configuration no longer names its
-  repository: Flume is then asked for it by its location alone. Where
-  the pass ran a command, Flume's status is read again before the
-  places' are carried, so a place tidied meanwhile is carried from
+  through herdr, keeping nothing of it. A place is followed through its
+  repository's clone, as `flume --json status --repository <container>
+  <place>`, to its end, over or tidied, the clone of a repository the
+  configuration dropped among them while the runner drains it; where no
+  clone stands, Flume is asked nothing of it. No rename is followed: to
+  rename a repository, drain its work, drop it, rename it on the forge,
+  and add it back under its new name. Where the pass ran a command,
+  Flume's status is read again before the places' are carried, so a place tidied meanwhile is carried from
   Flume's record of it, `<location>@<at>`.
 
 Each launch, act and command is carried out once, across a restart: the
