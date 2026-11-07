@@ -33,6 +33,15 @@ system the flake gives and pushes it to the family's cache, `boomdrive`
 on Cachix, at each push to `main` and each tag `v*` (record 0020,
 core.44 to core.47).
 
+Boomdrive's versions are git-cliff's, from its Conventional Commits
+(`cliff.toml`; record 0023, core.48). At each push to `main`, the
+workflow `.github/workflows/release.yml` asks `release.sh` for the next
+version since the newest tag `v*`, and where it is new publishes a
+GitHub release of its tag on the commit pushed, with git-cliff's notes,
+building nothing, then runs `cache` at the tag. The version lives only
+in the tag. `devenv shell -- release-preview` shows what it would
+release.
+
 ## The family
 
 **The family.** This tool works with the others of the Boomdrive family:
@@ -72,7 +81,7 @@ branch requires:
 
 | layer | what | who requires it |
 |---|---|---|
-| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, records, specs and open changes | main |
+| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, records, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint) | main |
 
 Run suites through sluice, so the agents on this host take turns under
 its bound: once your work is committed, `sluice exec main` for the
