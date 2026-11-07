@@ -97,18 +97,27 @@ pub struct ControlPlaneTable {
     pub implementation_table: Table,
 }
 
+/// The keys of `HELD_ELSEWHERE` that name what is each host's Flume
+/// configuration, refused with its words in an account or a drive too
+/// (core.5).
+const FLUMES: [&str; 5] = ["stream", "streams", "kind", "kinds", "kinds_file"];
+
 /// The fetch interval where the file names none.
 const FETCH_INTERVAL: Duration = Duration::from_secs(2 * 60);
 
 /// The poll interval where `[control_plane]` names none.
 const POLL_INTERVAL: Duration = Duration::from_secs(60);
 
-/// Keys the runner does not read that a host's file may hold, each with
-/// what its refusal adds: the key that holds it now (core.12), or whose
-/// configuration it is (core.5).
-const HELD_ELSEWHERE: [(&str, &str); 7] = [
+/// Keys the runner does not read that a host's file may hold at its top,
+/// each with what its refusal adds: the key that holds it now (core.12;
+/// record 0028), or whose configuration it is (core.5).
+const HELD_ELSEWHERE: [(&str, &str); 8] = [
     ("views", "`repository_root` holds it now"),
     ("fetch_every", "`fetch_interval` holds it now"),
+    (
+        "repositories",
+        "`accounts` holds it now, each repository named under its drive",
+    ),
     ("stream", "streams are Flume's host configuration"),
     ("streams", "streams are Flume's host configuration"),
     ("kind", "kinds are Flume's host configuration"),
@@ -418,6 +427,13 @@ fn accounts(
         let at = name.span().start;
         let path = format!("accounts.{}", name.get_ref());
         let account = table_at(value, &path, at, refuse)?;
+        only(
+            account,
+            "drives",
+            &path,
+            "an account holds only `drives`",
+            refuse,
+        )?;
         let Some((drives_key, drives)) = entry(account, "drives") else {
             return Err(refuse(
                 at,
@@ -437,6 +453,13 @@ fn accounts(
             let at = name.span().start;
             let path = format!("{path}.drives.{}", name.get_ref());
             let drive = table_at(value, &path, at, refuse)?;
+            only(
+                drive,
+                "repositories",
+                &path,
+                "a drive holds only `repositories`",
+                refuse,
+            )?;
             kept.push(Drive {
                 name: name.get_ref().to_string(),
                 repositories: repositories(drive, &path, at, refuse, line)?,
@@ -448,6 +471,34 @@ fn accounts(
         });
     }
     Ok(accounts)
+}
+
+/// Refuses the first key of `table`, at `path`, but `read`, naming its
+/// path and never its value (core.4): a key naming a stream or a kind
+/// with whose configuration it is (core.5), and any other with what the
+/// table holds, `holds`.
+fn only(
+    table: &Tree<'_>,
+    read: &str,
+    path: &str,
+    holds: &str,
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<(), String> {
+    let Some((key, _)) = in_order(table)
+        .into_iter()
+        .find(|(key, _)| key.get_ref() != read)
+    else {
+        return Ok(());
+    };
+    let name = key.get_ref();
+    let words = HELD_ELSEWHERE
+        .iter()
+        .find(|(held, _)| FLUMES.contains(held) && held == name)
+        .map_or(holds, |(_, words)| words);
+    Err(refuse(
+        key.span().start,
+        format!("unknown field `{path}.{name}`: {words}"),
+    ))
 }
 
 /// The repositories of the drive `drive`, whose key, at `path`, stands at
@@ -995,6 +1046,109 @@ mod tests {
                 "{FILE}:2: unknown field `fetch_every`: `fetch_interval` holds it now"
             ))
         );
+        assert_eq!(
+            read(
+                "views = \"~/Code\"\nfetch_every = \"2m\"\n\
+                 repositories = [\"agentplot/flume\"]\n"
+            ),
+            Err(format!(
+                "{FILE}:1: unknown field `views`: `repository_root` holds it now; \
+                 unknown field `fetch_every`, on line 2: `fetch_interval` holds it now; \
+                 unknown field `repositories`, on line 3: `accounts` holds it now, each \
+                 repository named under its drive"
+            ))
+        );
+    }
+
+    /// The configuration spec's "A flat list of before", named before
+    /// what else is wrong, `accounts` missing among it.
+    #[test]
+    fn a_flat_list_of_before() {
+        for text in [
+            "repositories = [\"agentplot/flume\"]\n",
+            "repositories = [\"agentplot/flume\"]\naccounts = {}\n",
+        ] {
+            assert_eq!(
+                read(text),
+                Err(format!(
+                    "{FILE}:1: unknown field `repositories`: `accounts` holds it now, each \
+                     repository named under its drive"
+                )),
+                "{text}"
+            );
+        }
+    }
+
+    /// The configuration spec's "A key in a drive", its value in no
+    /// output.
+    #[test]
+    fn a_key_in_a_drive() {
+        let refusal =
+            read("[accounts.own.drives.home]\nrepositories = []\nmachine = \"elsewhere\"\n");
+        assert_eq!(
+            refusal,
+            Err(format!(
+                "{FILE}:3: unknown field `accounts.own.drives.home.machine`: a drive holds \
+                 only `repositories`"
+            ))
+        );
+        let refusal =
+            read("[accounts.own.drives.home]\nrepositories = []\ntoken = \"ghp_n0t4r34lt0k3n\"\n")
+                .unwrap_err();
+        assert!(!refusal.contains("ghp_n0t4r34lt0k3n"), "{refusal}");
+    }
+
+    /// The configuration spec's "A key in an account", its value in no
+    /// output.
+    #[test]
+    fn a_key_in_an_account() {
+        let refusal = read(
+            "[accounts.own]\nstate = \"example/state\"\n\n\
+             [accounts.own.drives.home]\nrepositories = []\n",
+        );
+        assert_eq!(
+            refusal,
+            Err(format!(
+                "{FILE}:2: unknown field `accounts.own.state`: an account holds only `drives`"
+            ))
+        );
+        assert!(!refusal.unwrap_err().contains("example/state"));
+    }
+
+    /// The configuration spec's "A stream in a drive", and each key of
+    /// Flume's alike in a drive or an account.
+    #[test]
+    fn a_stream_in_a_drive() {
+        assert_eq!(
+            read("[accounts.own.drives.home]\nrepositories = []\nstream = \"home\"\n"),
+            Err(format!(
+                "{FILE}:3: unknown field `accounts.own.drives.home.stream`: streams are \
+                 Flume's host configuration"
+            ))
+        );
+        for (key, words) in [
+            ("streams", "streams are Flume's host configuration"),
+            ("kind", "kinds are Flume's host configuration"),
+            ("kinds", "kinds are Flume's host configuration"),
+            ("kinds_file", "kinds are Flume's host configuration"),
+        ] {
+            assert_eq!(
+                read(&format!(
+                    "[accounts.own]\n{key} = \"x\"\n\n[accounts.own.drives.home]\nrepositories = []\n"
+                )),
+                Err(format!("{FILE}:2: unknown field `accounts.own.{key}`: {words}")),
+                "{key}"
+            );
+            assert_eq!(
+                read(&format!(
+                    "[accounts.own.drives.home]\n{key} = \"x\"\nrepositories = []\n"
+                )),
+                Err(format!(
+                    "{FILE}:2: unknown field `accounts.own.drives.home.{key}`: {words}"
+                )),
+                "{key}"
+            );
+        }
     }
 
     #[test]
