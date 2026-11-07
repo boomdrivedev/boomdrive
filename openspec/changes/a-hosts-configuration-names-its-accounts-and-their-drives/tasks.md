@@ -67,7 +67,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
   - proving the views spec's "The owner's last view", "The owner's folder holds more" and "An owner's workspace from before";
   - with `the_owners_last_view_with_its_workspace`, `an_owner_still_kept_keeps_its_workspace` and `a_workspace_not_asked_for` replaced by "An owner's workspace from before".
 - [x] 5.4 A changed root leaves an owner's workspace of before in the old owner's folder. Done when `devenv shell -- cargo test -p boomdrive --test views` passes, proving the views spec's "A new root, an owner's workspace from before" in place of `a_new_root_the_old_owners_workspace`.
-- [ ] 5.5 A running runner asked for workspaces writes the drive's. Done when `devenv shell -- cargo test -p boomdrive --test loop workspaces_asked_for_while_running` passes, proving the configuration spec's "Workspaces asked for while running" at `/h/Code/home.code-workspace` with the folder `agentplot/flume`.
+- [x] 5.5 A running runner asked for workspaces writes the drive's. Done when `devenv shell -- cargo test -p boomdrive --test loop workspaces_asked_for_while_running` passes, proving the configuration spec's "Workspaces asked for while running" at `/h/Code/home.code-workspace` with the folder `agentplot/flume`.
 
 ## 6. A drive's workspace goes with its drive
 
