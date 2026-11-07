@@ -56,6 +56,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
   - "A local file broken while running", with `code_workspaces = true` and the owner's workspace's `folders` asserted unchanged while the layer is not taken;
   - "A repository the local layer drops";
   - "A local file removed", with the gone line said once.
+- [ ] 5.3 `tests/local_layer.rs` passes clippy's `cloned_ref_to_slice_refs`: the broken layer's one line is awaited as `std::slice::from_ref(&named)`, not `[named.clone()]`. Done when `sluice exec main -- moon run boomdrive:lint` passes.
 
 ## 6. The modules leave the local layer
 
@@ -67,4 +68,4 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 8. The specs
 
-- [x] 8.1 The change is archived into `openspec/specs`, and the specs it changes pass openspec's strict check. Done when, after `devenv shell -- openspec archive the-runner-reads-a-local-layer-over-its-managed-one --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 8.1 The change is archived into `openspec/specs`, and the specs it changes pass openspec's strict check. Done when, after `devenv shell -- openspec archive the-runner-reads-a-local-layer-over-its-managed-one --yes`, `sluice exec main -- moon run root:specs` passes.
