@@ -1478,6 +1478,7 @@ mod tests {
                 }],
             }],
             control_plane: None,
+            local: crate::config::LocalLayer::NoFile,
         }
     }
 

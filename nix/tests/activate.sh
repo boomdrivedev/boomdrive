@@ -171,6 +171,20 @@ expect "$named" "link's refusal \"$err\" names not both paths" \
 expect "$named" "link says \"$out\"" [ -z "$out" ]
 quiet "$named"
 
+named="A local layer beside it"
+fresh
+local=$home/.config/boomdrive/config.local.toml
+mkdir -p "$(dirname "$local")"
+echo 'repositories = ["example/local"]' >"$local"
+run link "$file"
+expect "$named" "link exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$target is no link to $file" linked
+expect "$named" "link changed $local" holds "$local" 'repositories = ["example/local"]'
+expect "$named" "link made $local a link" [ ! -L "$local" ]
+expect "$named" "link moved something aside" missing "$aside"
+expect "$named" "link moved $local aside" missing "$local.before-nix"
+quiet "$named"
+
 named="Not running on NixOS"
 fresh
 run keep alice "$program" run --config "$file"

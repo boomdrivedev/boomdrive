@@ -15,12 +15,18 @@ the runner's protocol with it, one JSON Schema per version under
 
 ## The configuration
 
-`boomdrive` reads one TOML file: the one `--config <file>` names, else
+`boomdrive` reads its configuration in two layers of TOML, in Flume's
+words. The managed layer is the file `--config <file>` names, else
 `$XDG_CONFIG_HOME/boomdrive/config.toml`, else
-`~/.config/boomdrive/config.toml`. It names the accounts the host
-serves, each account's drives and each drive's repositories by their
-GitHub address, the root their views are kept under, how often they are
-fetched and whether each drive has a VS Code workspace:
+`~/.config/boomdrive/config.toml`, written by Nix, a fleet or a person.
+The local layer is `config.local.toml` in that same directory,
+`$XDG_CONFIG_HOME/boomdrive/` or `~/.config/boomdrive/`, whatever
+`--config` names, written by the operator or a control plane and read
+over the managed one. A host with no local file reads the managed layer
+alone. The managed layer names the accounts the host serves, each
+account's drives and each drive's repositories by their GitHub address,
+the root their views are kept under, how often they are fetched and
+whether each drive has a VS Code workspace:
 
 ```toml
 # The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
@@ -76,6 +82,37 @@ other. A file there the runner cannot read as a JSON object, one with
 comments in it say, is left as it is and named at every pass.
 `code_workspaces` is `true` or `false`, and where it is absent or
 `false` the runner writes and removes no workspace.
+
+The local layer sets `repositories`, and in a control plane's table,
+`[control_plane.<type>]`, its `partitions`, and nothing else; each is
+read whole, as the managed layer's is. Its repositories add to the
+managed layer's: the runner keeps the managed layer's, in their order,
+then each of the local layer's the managed layer does not name, so a
+control plane that drops a drive drops only the repositories it wrote.
+Its `partitions` replace the managed layer's. A local layer a control
+plane might write:
+
+```toml
+# Added to the managed layer's repositories.
+repositories = ["agentplot/sluice"]
+```
+
+The managed layer may pin a key the local layer could set: `pin`, at its
+top, lists keys in TOML's dotted spelling, such as `"repositories"`,
+`"control_plane.hosted.partitions"`, or a table holding one, such as
+`"control_plane"`. A pinned key the local layer sets is passed over and
+named, and the rest of the local layer is taken. A pin of anything else
+is refused as the managed layer's fault.
+
+A local file that sets any other key, `repository_root`, `pin` or a
+control plane's `type` among them, that is not TOML, or that holds a
+value the runner or the control plane's implementation refuses, is not
+taken at all, and the managed layer is read alone. While such a file
+stands, a pass keeps the managed layer's repositories, lets go of none
+and sets no workspace, since the layer it could not take may name them.
+Removing the file lets go of what only it named. Each pass says one line
+of the local file where its reading changes: taken, with each key passed
+over; not taken, with why; or gone.
 
 ## Running on a host
 
@@ -242,11 +279,13 @@ lingers, so it runs from boot. The file is written into the store, the
 service runs `boomdrive run --config <that file>`, and each switch
 links `~/.config/boomdrive/config.toml` to it, so a command run by hand
 reads it too. A file of your own there is moved once to
-`config.toml.before-nix`. A switch that changes the file or the runner
-restarts it. `settings.accounts` is always written, each account's
-`drives` and each drive's `repositories` with it, and a key in an
-account or a drive that the runner does not read fails evaluation, as a
-flat `settings.repositories` of before does. A key of `settings` named
+`config.toml.before-nix`, and the local layer, `config.local.toml`
+beside it, is left as it is. A host pins a key through
+`services.boomdrive.settings.pin`. A switch that changes the file or the
+runner restarts it. `settings.accounts` is always written, each
+account's `drives` and each drive's `repositories` with it, and a key in
+an account or a drive that the runner does not read fails evaluation, as
+a flat `settings.repositories` of before does. A key of `settings` named
 for a credential, `token`, `key`, `secret` or `password`, or one ending
 in `_token`, `_key`, `_secret` or `_password`, fails evaluation, since
 every user reads the store.
@@ -290,7 +329,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.10.1
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.17.2
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version is its tagged tree's. Its git crates are fetched by the hashes
@@ -303,7 +342,7 @@ beside it:
 
 ```nix
 # In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.69.0";
+boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.75.0";
 ```
 
 ```nix
@@ -312,8 +351,8 @@ services.boomdrive.tools = [
   boomdrive.packages.aarch64-darwin.flume
   (boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
     __intentionallyOverridingVersion = true;
-    version = "0.69.0";
-    env = old.env // { SLUICE_VERSION = "0.69.0"; };
+    version = "0.75.0";
+    env = old.env // { SLUICE_VERSION = "0.75.0"; };
   }))
 ];
 ```

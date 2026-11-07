@@ -2,7 +2,7 @@
 //! the partition `<label>` of the configuration's control plane enrolled
 //! once, with the one-time token read from standard input, never from an
 //! argument or the environment, and never shown. It reads the
-//! configuration as `run` reads it, reaches the implementation's
+//! configuration as `run` reads it, its local layer over its managed one, reaches the implementation's
 //! enrollment through `planes::enroll` alone (core.2), takes no lock, and
 //! writes no configuration and nothing in the data directory (core.35).
 
@@ -51,7 +51,8 @@ pub fn main(file: Option<&Path>, json: bool, label: &str) -> ExitCode {
 }
 
 /// Enrolls the partition `label` of the control plane the configuration
-/// `file` names, else the default one, in the environment `var` gives,
+/// `file` names, else the default one, with the local layer over it
+/// (design Decision 8), in the environment `var` gives,
 /// with the token `token` gives, or words saying why it could not be
 /// read. A configuration that cannot be read, or names no control plane,
 /// is refused as the host's to fix, before the token is asked for.
@@ -63,7 +64,8 @@ pub fn enroll(
 ) -> Result<Enrolled, Refusal> {
     let env = Env::read(var).map_err(host)?;
     let file = config::config_path(file, &env);
-    let config = config::read(&file, &env.home).map_err(host)?;
+    let local = config::local_path(&env);
+    let config = config::read_layers(&file, &local, &env.home).map_err(host)?;
     let Some(table) = config.control_plane else {
         return Err(host(format!(
             "{}: names no `[control_plane]`, so no partition of one to enroll",

@@ -1,6 +1,6 @@
 //! README's examples are what the runner reads (task 1.2, Task notes
-//! 9.4, task 6.4): its configuration, and with it its `[control_plane]`
-//! table, which opens crew's implementation, and its hosted table, which
+//! 9.4, task 6.4): its configuration, the local layer over it, and with
+//! it its `[control_plane]` table, which opens crew's implementation, and its hosted table, which
 //! the hosted implementation reads.
 
 use boomdrive::{config, planes};
@@ -21,6 +21,42 @@ fn toml_block(text: &str) -> &str {
         .expect("README holds a ```toml block");
     let (block, _) = block.split_once("```").expect("the block is closed");
     block
+}
+
+/// The ```toml block after the first of `text`, the local layer's.
+fn second_toml_block(text: &str) -> &str {
+    let (_, after) = text
+        .split_once("```toml\n")
+        .expect("README holds a ```toml block");
+    let (_, after) = after.split_once("```").expect("the block is closed");
+    toml_block(after)
+}
+
+/// The local layer README shows, read over its configuration, keeps both
+/// layers' repositories and is taken.
+#[test]
+fn the_readme_local_layer_reads() {
+    let (text, readme) = readme();
+    let config = config::parse_layers(
+        toml_block(&text),
+        &readme,
+        Some(second_toml_block(&text)),
+        &readme.with_file_name("config.local.toml"),
+        Path::new("/h"),
+    )
+    .unwrap();
+    assert_eq!(
+        config.local,
+        config::LocalLayer::Taken {
+            passed_over: vec![]
+        }
+    );
+    let managed = config::parse(toml_block(&text), &readme, Path::new("/h")).unwrap();
+    assert!(config.repositories.len() > managed.repositories.len());
+    assert!(managed
+        .repositories
+        .iter()
+        .all(|address| config.repositories.contains(address)));
 }
 
 #[test]
