@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 let
   # proto from its own release build: nixpkgs trails it by minor versions or
@@ -71,6 +71,36 @@ let
     sourceRoot = ".";
     installPhase = "install -Dm755 vale $out/bin/vale";
   };
+
+  # OpenSpec, which writes and validates the site's changes and specs, and
+  # writes the Claude Code skills and commands the tree tracks: the release
+  # flume, boomdrive and sluice pin, built as nixpkgs builds its older one.
+  # Bump the version, then each hash from the mismatch the build reports,
+  # then write the skills and commands again with it (record 0003).
+  openspec = pkgs.openspec.overrideAttrs (
+    finalAttrs: _: {
+      version = "1.14.3";
+      src = pkgs.fetchFromGitHub {
+        owner = "Fission-AI";
+        repo = "OpenSpec";
+        tag = "v${finalAttrs.version}";
+        hash = "sha256-tdTX0nkDe/aNZgLckh6/B6BtoSb40w0Y5qzg+d1LjHU=";
+      };
+      pnpmDeps = pkgs.fetchPnpmDeps {
+        inherit (finalAttrs) pname version src;
+        pnpm = pkgs.pnpm_10;
+        fetcherVersion = 3;
+        hash = "sha256-fKm4sBdTDeQfIiE0k301jtRbiuJrBE7YIEBu8RZxuXI=";
+      };
+    }
+  );
+
+  # devenv's own script that makes the files it declares, Claude Code's
+  # among them, run from the repository's root.
+  writeFiles = ''
+    cd ${lib.escapeShellArg config.devenv.root} || exit
+    ${config.tasks."devenv:files".exec}
+  '';
 in
 {
   # Every tool the site's scripts run is declared here, never assumed on the
@@ -81,7 +111,38 @@ in
     pkgs.bun
     pkgs.nodejs_24
     vale
+    openspec
   ];
+
+  # Claude Code's project files (record 0003, after agentplot/boomdrive's
+  # record 0022): .mcp.json from the servers below and .claude/settings.json,
+  # each a link devenv makes into the store and git ignores. The servers are
+  # hosted, need no sign-in and start no process on the host: devenv's,
+  # which searches packages and devenv's options, named here because a list
+  # of the repository's own replaces devenv's default; and Astro's
+  # documentation, for the release package.json pins. Every server named is
+  # approved by name in the settings, so a session in a trusted folder, a
+  # place among them, starts them and asks nothing. OpenSpec's skills and
+  # commands under .claude/ are tracked, as the openspec pinned above writes
+  # them: `openspec init --tools claude --profile custom`, with the user's
+  # OpenSpec configuration naming the family's ten workflows, propose,
+  # explore, new, continue, apply, ff, sync, archive, bulk-archive and
+  # verify.
+  claude.code = {
+    enable = true;
+    mcpServers = {
+      "mcp.devenv.sh" = {
+        type = "http";
+        url = "https://mcp.devenv.sh";
+      };
+      astro-docs = {
+        type = "http";
+        url = "https://mcp.docs.astro.build/mcp";
+      };
+    };
+  };
+  files.${config.claude.code.settingsPath}.json.enabledMcpjsonServers =
+    lib.attrNames config.claude.code.mcpServers;
 
   scripts = {
     # The glossary is the one source of the vocabulary Vale enforces.
@@ -142,6 +203,15 @@ in
   # dir, so every worktree shares them. The rest of .moon/cache records the
   # checkout's absolute paths and stays its own.
   enterShell = ''
+    # devenv's files, Claude Code's above, made here as well as by devenv's
+    # own task: a place's readiness is sluice's equip, which sources this
+    # script from `devenv print-dev-env` and runs no task, and the agent
+    # started after it reads them as it starts (record 0003). Its words go
+    # to no output a caller reads the environment from, and a working copy
+    # where they cannot be written still gets its shell.
+    if ! (${writeFiles}) >/dev/null; then
+      echo "devenv.nix: Claude Code's files were not written in ${config.devenv.root}" >&2
+    fi
     if _moon_root="$(git rev-parse --show-toplevel 2>/dev/null)" &&
       _moon_common="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
       _moon_cache="$_moon_root/.moon/cache"

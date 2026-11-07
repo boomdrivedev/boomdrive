@@ -14,6 +14,12 @@ fleet's measurements and the tools. `docs/` holds its design and plans; read
 - Every tool comes from `devenv.nix`; never a global install. Run
   `site-check` before committing content: Vale's errors and a schema failure
   both fail it, and a Vale warning is fixed, not ignored.
+- Claude Code's `.mcp.json` and `.claude/settings.json` are written by
+  devenv from `claude.code` in `devenv.nix`, and git ignores them: a server
+  is declared and approved there, never in those files (`docs/adr/0003`).
+  OpenSpec's skills and commands under `.claude/` are the pinned OpenSpec's;
+  when its pin moves, write them again with
+  `openspec init --tools claude --profile custom`.
 - After a change to `src/content.config.ts`, restart the dev server
   (`astro dev stop`, then `bun run dev`) rather than debug the page: Astro
   7.3.5's dev server stops finishing responses after one.
