@@ -107,8 +107,7 @@ impl Clones for Configured {
 pub struct Carrier<'a> {
     pub flume: &'a dyn Flume,
     pub sluice: &'a dyn Sluice,
-    /// git, for an inbox read from its clone and a branch read from
-    /// origin.
+    /// git, for an inbox read from its clone.
     pub git: &'a Git,
     pub clones: &'a dyn Clones,
     pub tools: &'a dyn Tools,
@@ -289,12 +288,12 @@ struct Work<'p> {
     report: Report,
     /// Flume's listing, `flume --json status`, where Flume gave it: the
     /// pass's own, read before the pull, and read again before the
-    /// statuses are carried where answering the wants ran a tool's
-    /// command.
+    /// statuses are carried where answering the wants ran a launch or an
+    /// act of Flume's.
     listing: Option<Value>,
     room: Room,
-    /// Whether answering the wants ran a tool's command: a launch, an act
-    /// of Flume's or a branch of sluice's.
+    /// Whether answering the wants ran a tool's command: a launch or an
+    /// act of Flume's. A command runs none (record 0027).
     ran: bool,
     /// The pass's clock, read once at its start.
     now: At,
@@ -681,11 +680,13 @@ impl Work<'_> {
         self.report.answer(&offer.id, offer.lease, answer)
     }
 
-    /// Carries out or refuses `command` (design Decision 15). A command
-    /// the report holds is left as it stands, under the lease the control
-    /// plane gives now, and its tool is not run again (core.10). One whose
-    /// lease has lapsed is left untaken (design Decision 13; core.24). A
-    /// sort this binary does not carry is refused, naming its tool.
+    /// Answers `command` (core.16, core.52). A command the report holds
+    /// is left as it stands, under the lease the control plane gives now
+    /// (core.10). One whose lease has lapsed is left untaken (design
+    /// Decision 13; core.24). Every other is refused, naming its tool, a
+    /// branch command's being sluice: this binary carries no tool's
+    /// command, so it reads neither the command's repository nor its
+    /// clone, and runs nothing.
     fn command(&mut self, command: &Command, say: &mut dyn FnMut(String)) {
         if let Some(commanded) = self.report.commands.get_mut(&command.id) {
             commanded.lease = command.lease;
@@ -694,103 +695,24 @@ impl Work<'_> {
         if lapsed(command.lease, self.now) {
             return;
         }
-        match &command.what {
-            CommandSort::Branch {
-                repository,
-                branch,
-                from,
-            } => self.branch(command, repository, branch, from, say),
-            CommandSort::Other { tool, .. } => {
-                let words = format!("this binary does not carry {tool}'s commands");
-                say(format!("{}: refused: {words}", command.id));
-                self.commanded(command, Outcome::Refused, None, Some(words), None);
-            }
-        }
+        let tool = match &command.what {
+            CommandSort::Branch { .. } => "sluice",
+            CommandSort::Other { tool, .. } => tool,
+        };
+        let words = format!("this binary does not carry {tool}'s commands");
+        say(format!("{}: refused: {words}", command.id));
+        self.commanded(command, Outcome::Refused, Some(words));
     }
 
-    /// Makes `branch` from `from` in `repository` by sluice, in its clone,
-    /// whatever the room (core.9), and carries sluice's answer as given,
-    /// `done` where it exits 0 and `refused` otherwise, with the commit
-    /// origin's `branch` then stands at, read from origin and never from
-    /// sluice's words. A command for a repository the configuration does
-    /// not keep is refused, naming it; one whose clone is not yet made is
-    /// left untaken, for a host keeping the repository to take (core.5).
-    /// Where sluice could not be run, nothing is kept, and the next pass
-    /// carries it out.
-    fn branch(
-        &mut self,
-        command: &Command,
-        repository: &str,
-        branch: &str,
-        from: &str,
-        say: &mut dyn FnMut(String),
-    ) {
-        let id = &command.id;
-        let container = match self.carrier.clones.keeping(repository) {
-            Keeping::Ready(container) => container,
-            Keeping::NotYet => return,
-            Keeping::NotNamed => {
-                let words = format!("this host's configuration does not keep {repository}");
-                say(format!("{id}: refused: {words}"));
-                self.commanded(command, Outcome::Refused, None, Some(words), None);
-                return;
-            }
-        };
-        let what = format!("{id}: branch {branch} from {from} in {repository}");
-        self.ran = true;
-        let printed = match self.carrier.sluice.branch(&container, branch, from) {
-            Ok(printed) => printed,
-            Err(sluice::Unrun(words)) => {
-                say(format!("{what}: not carried out: {words}"));
-                return;
-            }
-        };
-        let bare = clone::bare(&container);
-        let (origin_commit, unread) = match clone::origin_commit(self.carrier.git, &bare, branch) {
-            Ok(commit) => (commit, None),
-            Err(failure) => {
-                let words = format!("origin's {branch} could not be read: {failure}");
-                (None, Some(words))
-            }
-        };
-        let on_origin = match (&origin_commit, &unread) {
-            (Some(commit), _) => format!("origin holds {branch} at {commit}"),
-            (None, Some(unread)) => unread.clone(),
-            (None, None) => format!("origin holds no {branch}"),
-        };
-        let outcome = match &printed.refused {
-            Some(words) => {
-                say(format!("{what}: refused by sluice: {words}; {on_origin}"));
-                Outcome::Refused
-            }
-            None => {
-                say(format!("{what}: done; {on_origin}"));
-                Outcome::Done
-            }
-        };
-        let words = match (printed.refused, unread) {
-            (Some(refused), Some(unread)) => Some(format!("{refused}; {unread}")),
-            (refused, unread) => refused.or(unread),
-        };
-        self.commanded(command, outcome, Some(printed.text), words, origin_commit);
-    }
-
-    /// Records `command` answered `outcome`, with its tool's `text`, where
-    /// one ran, `words` and `origin_commit`.
-    fn commanded(
-        &mut self,
-        command: &Command,
-        outcome: Outcome,
-        text: Option<String>,
-        words: Option<String>,
-        origin_commit: Option<String>,
-    ) {
+    /// Records `command` answered `outcome`, with `words`: no tool ran
+    /// for it, so it has no text and no origin commit.
+    fn commanded(&mut self, command: &Command, outcome: Outcome, words: Option<String>) {
         let commanded = Commanded {
             lease: command.lease,
             outcome,
-            text,
+            text: None,
             words,
-            origin_commit,
+            origin_commit: None,
             at: At::now(),
         };
         self.report.commands.insert(command.id.clone(), commanded);
