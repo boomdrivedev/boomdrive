@@ -14,7 +14,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. The runner keeps nothing that asks sluice for a branch
 
-- [ ] 2.1 `Sluice::branch`, `Cli::branch` and `Printed` are gone from `crates/boomdrive/src/sluice.rs`, whose module documentation no longer names a branch it makes. `clone::origin_commit` is gone. sluice 0.61.1's `branch-made.json`, `branch-there.json` and `branch-ungated.json` are gone, with the fixtures README's section *A bolt's branch*, and so are `tests/sluice.rs`'s tests of a branch and its `READ` entries for them (design Decision 4; Task notes 2.1). True when `devenv shell -- cargo test -p boomdrive --test sluice every_fixture_is_read` passes, and `sluice exec main -- moon run boomdrive:lint` passes, finding nothing left unused.
+- [x] 2.1 `Sluice::branch`, `Cli::branch` and `Printed` are gone from `crates/boomdrive/src/sluice.rs`, whose module documentation no longer names a branch it makes. `clone::origin_commit` is gone. sluice 0.61.1's `branch-made.json`, `branch-there.json` and `branch-ungated.json` are gone, with the fixtures README's section *A bolt's branch*, and so are `tests/sluice.rs`'s tests of a branch and its `READ` entries for them (design Decision 4; Task notes 2.1). True when `devenv shell -- cargo test -p boomdrive --test sluice every_fixture_is_read` passes, and `sluice exec main -- moon run boomdrive:lint` passes, finding nothing left unused.
 - [ ] 2.2 No crate's source asks sluice for a branch (core.52; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test rules no_crate_asks_sluice_for_a_branch` passes.
 
 ## 3. A bolt is a launch, and its send a retry of its submission
