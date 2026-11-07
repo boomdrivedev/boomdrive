@@ -451,6 +451,7 @@ impl Partition {
                 .map(|(id, launched)| {
                     let launched = Launched {
                         lease: launched.lease,
+                        repository: None,
                         answer: launched.answer,
                         status: None,
                         entry: None,

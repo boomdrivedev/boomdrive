@@ -112,6 +112,7 @@ fn hello(report: &Report) -> Hello {
             ToolVersion::Printed("flume 0.4.1".to_string()),
         )]),
         repositories: vec!["example/app".to_string(), "example/service".to_string()],
+        draining: vec![],
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),
@@ -155,6 +156,7 @@ fn launched(ids: &[&str]) -> Report {
                     number: 1,
                     expires: None,
                 },
+                repository: None,
                 answer: Answer {
                     outcome: Outcome::Launched,
                     place_dir: Some(format!("/places/{id}")),

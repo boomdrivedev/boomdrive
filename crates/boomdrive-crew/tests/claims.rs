@@ -291,6 +291,7 @@ fn a_launch_the_report_answers_is_given_whatever_the_hello_names() {
         Id::new("madswan/20"),
         Launched {
             lease: boomdrive_crew::read::LEASE,
+            repository: None,
             answer: Answer {
                 outcome: Outcome::Launched,
                 place_dir: Some("/places/change--a".to_string()),
@@ -344,6 +345,7 @@ fn a_claim_replaced_by_the_runners_answer() {
         Id::new("madswan/20"),
         Launched {
             lease: boomdrive_crew::read::LEASE,
+            repository: None,
             answer: Answer {
                 outcome: Outcome::Launched,
                 place_dir: Some("/places/change--a".to_string()),

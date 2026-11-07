@@ -7,7 +7,7 @@ Build the groups in order: each stands on the ones before it. A task is true onc
 
 ## 1. The interface records each launch's repository and the repositories drained
 
-- [ ] 1.1 `boomdrive_control::Launched` gains `repository: Option<String>`, `#[serde(default, skip_serializing_if = "Option::is_none")]`, and `Hello` gains `draining: Vec<String>`, `#[serde(default)]`, each documented as design Decisions 1 and 3 say; every construction of either in every crate's sources and tests names the new field (Task notes 1.1). `crates/boomdrive-control/tests/json.rs`'s `a_report` and `a_hello` hold the new fields, and `a_report_from_before_reads` proves the control-plane-interface spec's "A report from before". True when `devenv shell -- cargo test -p boomdrive-control --test json a_report_from_before_reads -- --exact` passes.
+- [x] 1.1 `boomdrive_control::Launched` gains `repository: Option<String>`, `#[serde(default, skip_serializing_if = "Option::is_none")]`, and `Hello` gains `draining: Vec<String>`, `#[serde(default)]`, each documented as design Decisions 1 and 3 say; every construction of either in every crate's sources and tests names the new field (Task notes 1.1). `crates/boomdrive-control/tests/json.rs`'s `a_report` and `a_hello` hold the new fields, and `a_report_from_before_reads` proves the control-plane-interface spec's "A report from before". True when `devenv shell -- cargo test -p boomdrive-control --test json a_report_from_before_reads -- --exact` passes.
 
 ## 2. What has ended, and what holds a repository
 

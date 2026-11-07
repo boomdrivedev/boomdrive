@@ -126,6 +126,7 @@ pub fn hello(
             .map(|tool| (tool.to_string(), tools.version(tool)))
             .collect(),
         repositories,
+        draining: vec![],
         capacity,
         leases: report.leases(),
     }
