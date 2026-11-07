@@ -202,7 +202,7 @@ The local layer MAY set each drive's `repositories`, `accounts.<account>.drives.
 
 ### Requirement: The local layer's repositories add to the managed layer's, and its partitions replace them
 
-A drive both layers name under one account SHALL keep the managed layer's repositories, in their order, then each the local layer names that the managed layer does not, in its order; a repository both name there SHALL be kept once and refused in neither. A drive or an account only the local layer names SHALL be declared by it, after the managed layer's. A control plane's `partitions` the local layer sets SHALL replace the managed layer's whole (record 0009 as amended 2026-11-06, "Repositories add"; record 0028 as amended 2026-11-07).
+A drive both layers name under one account SHALL keep the managed layer's repositories, then each the local layer names that the managed layer does not, a repository both name kept once and refused in neither. A drive or an account only the local layer names SHALL be declared by it, after the managed layer's. A control plane's `partitions` the local layer sets SHALL replace the managed layer's whole (record 0009 as amended 2026-11-06; record 0028 as amended 2026-11-07).
 
 #### Scenario: A repository both layers name
 
@@ -226,7 +226,7 @@ A drive both layers name under one account SHALL keep the managed layer's reposi
 
 ### Requirement: A local layer that sets any other key is not taken
 
-A local file that sets any key the runner does not list for it SHALL not be taken, and the configuration SHALL be the managed layer alone. Such a key is one of the runner's own, such as `repository_root`, `pin` or a flat `repositories`; any of an account or a drive but `drives` and `repositories`; any of `[control_plane]` or an implementation's table it does not list, such as `type` or `url`; or one the runner does not read. The runner SHALL name each by its dotted path, the shortest holding no key the local layer may set, and never its value (core.4).
+A local file that sets any key the runner does not list for it SHALL not be taken, and the configuration SHALL be the managed layer alone: one of the runner's own, such as `repository_root`, `pin` or a flat `repositories`; any of an account or a drive but `drives` and `repositories`; or any of a control plane's tables it does not list, such as `type` or `url`. The runner SHALL name each by its dotted path, the shortest holding no key the local layer may set, never its value (core.4).
 
 #### Scenario: A root in the local layer
 
