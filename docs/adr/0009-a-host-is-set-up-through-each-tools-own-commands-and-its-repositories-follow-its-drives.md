@@ -1,7 +1,7 @@
 ---
 number: 9
 title: A host is set up through each tool's own commands, and its repositories follow its drives
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # A host is set up through each tool's own commands, and its repositories follow its drives
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
+Status: accepted by the user on 2026-11-06, in agentplot-design's pane, with its amendment of that day: "Other than that nitpick I approve them all". Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/boomdrive-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
@@ -48,6 +48,22 @@ core.5 stands: the configuration names every repository kept, its managed level 
 - Flume is asked for commands that declare and remove a stream and a kind source, and for a managed level of its own. sluice is asked for the same.
 - On a nix host, nix writes the host's level of defaults and stops writing what the control plane manages.
 - In what order a host takes up a drive's repositories, and whether Boom's repositories are among them, is still open.
+
+## Amendment, 2026-11-06: two layers in every tool, in Flume's words
+
+Status: accepted by the user on 2026-11-06, in agentplot-design's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).
+
+Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (`design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". agentplot-design for writing it here.
+Sources: `design/the-flakes-configuration/design.md`; flume record 0032 (a managed and a local layer); record 0023; rules core.5, core.17 and core.18.
+
+### Decision outcome
+
+- **Two layers, by one pair of words.** Each tool's configuration is its managed layer, `config.toml`, written by Nix, a fleet or a person, and its local layer, `config.local.toml` beside it, written by the operator or a control plane and read over it. The managed level above is the runner's local layer.
+- **The local layer sets only what runs the work.** Each tool lists the keys its local layer may set; for the runner, its repositories and its control plane's partitions. Accounts, pools, credentials' paths and every other key are the managed layer's alone, and a local file that sets one is not taken. The managed layer may pin any key the local one could set, which the local layer then cannot change.
+- **Repositories add.** The runner keeps every repository its managed layer names and every one its local layer names. A control plane that drops a drive drops only the repositories it wrote.
+- **A control plane writes a tool's local file.** Setup under a hosted control plane writes the runner's and Flume's local layers, with the repositories of the drives the host serves and each one's stream by its address, and the files Nix wrote stay as Nix wrote them. This replaces setup through each tool's own commands above, and Flume is asked for no command that declares a stream.
+
+Rules core.17 and core.18 are amended with it.
 
 ## Amendment, 2026-11-05: setup installs the host's tools, never a repository's pins
 
