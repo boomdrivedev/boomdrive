@@ -1,42 +1,52 @@
 # Verify: a-hosts-configuration-names-its-accounts-and-their-drives
 
-The work on `change/a-hosts-configuration-names-its-accounts-and-their-drives`, read at 5922efa, meets its change, so the change stays archived with this report.
+The work on `change/a-hosts-configuration-names-its-accounts-and-their-drives`, read at 9f2fe61, meets its change, so the change stays archived with this report.
 
-- The gate run through sluice passes every `check-fast` task it ran, 12 of 12, with 417 tests passed and none failed.
-- Every task is ticked.
-- The change adds or modifies 13 requirements with 52 scenarios across three specs, and removes two. A case of `boomdrive:test` or `nix:test` asserts the outcome of every scenario.
-- Task 7.1 archives the change, so the code stage archived it at 5922efa, before this stage. The specs it merged pass `root:specs`. This report is committed into the archived change's directory.
-- The bolt `the-boomdrive-flake-configures-the-whole-host` has moved since the cut, from 3f428cf to 3d3a988, landing #16. That landing moves the set's Flume and sluice tags in `flake.nix`, `flake.lock`, `nix/packages/flume-git-crates.nix` and README, and takes no record. `git merge-tree --write-tree` merges the bolt and the branch with no conflict.
+- The gate run through sluice passes every `check-fast` task it ran, 21 of 21, with 673 tests passed and none failed.
+- Every task is ticked, 19 of 19.
+- The change adds, modifies or renames 22 requirements with 78 scenarios across three specs, and removes two. A case of `boomdrive:test` or `nix:test` asserts the outcome of every scenario.
+- Task 7.1 archives the change, so the code stage archived it at 9f2fe61, before this stage, over #17's specs. The specs it merged pass `root:specs`, and `root:changes` passes. This report is committed into the archived change's directory.
+- The branch holds the bolt `the-boomdrive-flake-configures-the-whole-host` at its head, 4a4b7c8, which landed #17, `the-runner-reads-a-local-layer-over-its-managed-one`: the branch merged it at b1a7d15, and origin's bolt is still 4a4b7c8.
 
 ## Checks
 
-- **The gate.** `devenv shell -- sluice exec main` at 5922efa exited 0. sluice recorded its 12 results under their keys for 5922efa:
+- **The gate.** `devenv shell -- sluice exec main` at 9f2fe61 exited 0. sluice recorded its 21 results under their keys for 9f2fe61:
   - `boomdrive:format`, `boomdrive:lint`, `boomdrive:typecheck` and `boomdrive:test`;
+  - `boomdrive-crew:format`, `boomdrive-crew:lint`, `boomdrive-crew:typecheck` and `boomdrive-crew:test`;
+  - `boomdrive-hosted:format`, `boomdrive-hosted:lint`, `boomdrive-hosted:typecheck` and `boomdrive-hosted:test`;
   - `nix:format`, `nix:lint`, `nix:typecheck` and `nix:test`;
-  - `root:format`, `root:adrs`, `root:specs` and `root:changes`.
-- **The tests.** 417 tests passed, with none failed or ignored. Among them are `config::tests`, `code_workspace::tests`, `tests/code_workspaces.rs`, `tests/drive_workspaces.rs`, `tests/dropped.rs`, `tests/views.rs`, `tests/loop.rs`, `tests/module_files.rs` and `tests/readme.rs`.
-- **The warnings.** The run's only warnings were moon's. It could not write its output archives or the shared cache's blobs, which the sandbox does not let it write. They change no task's outcome.
+  - `root:format`, `root:adrs`, `root:specs`, `root:changes` and `root:releases`.
+- **The tests.** 673 tests passed, with none failed or ignored. Among them are `config::tests`, `code_workspace::tests`, `tests/local_layer.rs`, `tests/code_workspaces.rs`, `tests/drive_workspaces.rs`, `tests/dropped.rs`, `tests/views.rs`, `tests/loop.rs`, `tests/running.rs`, `tests/enroll.rs`, `tests/module_files.rs` and `tests/readme.rs`.
+- **The warnings.** The run's only warnings were moon's, which could not write the shared cache's blobs, and the OTLP exporter's at shutdown. The sandbox does not let moon write there. They change no task's outcome.
 - The checks ran once, as the brief asks.
 
 ## Tasks
 
-All 15 tasks of `tasks.md`, groups 1 to 7, are ticked `[x]`, and none is open. What each names is in the tree:
+All 19 tasks of `tasks.md`, groups 1 to 7, are ticked `[x]`, and none is open. What each names is in the tree:
 
 - **The configuration** (1.1 to 1.3). `src/config.rs` reads `accounts` into `Config.accounts`, of `Account` and `Drive`, in the file's order by the keys' spans.
   - `Config::repositories()`, `Config::drives()` and `Config::drive_of()` give what the design names. Every reader in `src/` uses them, and the `repositories` field is gone.
   - An account holds only `drives` and a drive only `repositories`, each other key refused by its path. Flume's keys there are refused with the top level's words.
   - A top-level `repositories` is among the keys held elsewhere.
   - Names are checked by `in_form`. A drive is named once across accounts, and a repository once on the host, each refusal naming both entries, their drives and the first one's line.
+- **The local layer's accounts** (1.4, 1.5).
+  - Record 0028 gains "Amendment, 2026-11-07: the local layer's accounts", the writing agent's, with each path not taken. core.17's details gain what it rules out and allows.
+  - `config::local_keys` gives `accounts.<account>.drives.<drive>.repositories` as a pattern of `Segment`s, a name standing for any account or drive, beside each implementation's keys. `is_local_key` and `leads_to_local_key` match it segment by segment, so a pin may name `accounts`, an account, an account's `drives`, a drive or a drive's `repositories`. A pin of the flat `repositories` is refused as a pin of nothing.
+  - `config::over` collects each drive's unit not passed over by a pin and adds them through `add_drives`. A drive both layers name keeps the managed layer's repositories, then the local layer's it lacks. A drive or an account only the local layer names is appended after the managed layer's.
+  - `add_drives` refuses, against the local file and its line: a name out of form; a drive the local layer names under two accounts, or under an account the managed layer does not hold it under; an entry that is no address; a repository the local layer names twice, or names in a drive other than the managed layer's.
+  - `LocalFile` and the flat list's `addresses` are gone.
+  - `pass::wanted_workspaces` gives no workspaces while the local layer is not taken, so `keep_workspaces` and `take_departed` do not run.
 - **The modules** (2.1, 2.2).
   - `nix/modules/options.nix` declares `settings.accounts` with submodules for accounts and drives, which have no freeform type, and defaults `{ }`, `{ }` and `[ ]`. Its assertion on a top-level `settings.repositories` names `settings.accounts.<account>.drives.<drive>.repositories`.
   - `nix/tests/settings.nix` and the three files under `nix/tests/files` name the design's neutral accounts and drives.
   - `tests/module_files.rs` reads each file through `Config::accounts` and `Config::repositories()`.
-- **README** (3.1).
-  - Its configuration example keeps `agentplot/flume` in the drive `home` and `afterthought/crew` in the drive `work`, both of the account `own`.
-  - Its words cover each point the task lists. Its nix example sets `settings.accounts.own.drives.home.repositories`, and no owner's-workspace words remain.
-- **The tests' configurations** (4.1).
-  - `tests/common/mod.rs`'s `keeping` writes under `own`'s drive `home`, and a helper beside it writes several drives.
-  - No integration test's configuration text names a flat `repositories`.
+- **README** (3.1, 3.2).
+  - Its configuration example keeps `agentplot/flume` in the drive `home` and `afterthought/crew` in the drive `work`, both of the account `own`. Its words cover each point task 3.1 lists. Its nix example sets `settings.accounts.own.drives.home.repositories`, and no owner's-workspace words remain.
+  - Its local layer section says the local layer sets each drive's `repositories`, how both layers' drives combine, and what is not taken. Its example adds `agentplot/sluice` to `home` and declares `garden`. Its pin words name `accounts`, a drive and a drive's `repositories`.
+- **The tests' configurations** (4.1, 4.2).
+  - `tests/common/mod.rs`'s `keeping` writes under `own`'s drive `home`, and `drives` beside it writes several drives.
+  - No integration test's configuration text names a flat `repositories`, but the refusals that assert it.
+  - `tests/local_layer.rs` pins `accounts`. Its "A local file broken while running" keeps `agentplot/sluice` in the local layer's drive `work`, and asserts `home.code-workspace` and `work.code-workspace` unchanged while the local layer is not taken.
 - **One workspace per drive** (5.1 to 5.5).
   - `src/code_workspace.rs` gives `Wanted` per drive, at `<repository_root>/<drive>.code-workspace`.
   - `code_workspace::alone_in` and the workspaces argument of `let_go` are gone. A removed view takes its owner's folder only by `fs::remove_dir`, which removes only an empty folder.
@@ -45,16 +55,17 @@ All 15 tasks of `tasks.md`, groups 1 to 7, are ticked `[x]`, and none is open. W
 - **A drive's workspace goes with its drive** (6.1, 6.2).
   - `clone::find` reads `boomdrive.address` and `boomdrive.drive` in one `git config --local -z --get-regexp ^boomdrive\.`.
   - `clone::record_drive` writes `boomdrive.drive`. `pass::keep` calls it where the clone records another drive or none, at a fresh clone and through `keep_one`.
-  - `pass::take_departed` runs at the end of a pass not stopped, where `code_workspaces` is true. It takes the drives the clones recorded when found, leaves out those the configuration names and those a clone still standing records, and leaves out any record not of a name's form.
-- **The specs** (7.1). The change is under `openspec/changes/archive/2026-11-07-…`. `openspec/specs/configuration`, `views` and `service-modules` hold its deltas, and `root:specs` passes.
+  - `pass::take_departed` runs at the end of a pass not stopped, where `code_workspaces` is true and the local layer is not held back. It takes the drives the clones recorded when found, leaves out those the configuration names and those a clone still standing records, and leaves out any record not of a name's form.
+- **The specs** (7.1). The change is under `openspec/changes/archive/2026-11-07-…`. `openspec/specs/configuration`, `views` and `service-modules` hold its deltas over #17's, and `root:specs` passes.
 
-Nothing outside the proposal's Touches changed. `git diff --stat 3f428cf..HEAD` lists only those paths and the change's own files. `crates/boomdrive/tests/enroll.rs`, listed in Touches, did not need to change.
+Nothing outside the proposal's Touches changed. `git diff --name-only 4a4b7c8..HEAD` lists only those paths and the change's own files. `crates/boomdrive/tests/enroll.rs`, listed in Touches, did not need to change on this branch.
 
-The records and rule are amended as the proposal says:
+The records and rules are amended as the proposal says:
 
 - record 0017 gains its amendment of 2026-11-07, on how a drive's workspace goes with its drive;
-- record 0028 gains its amendment of 2026-11-07, on the keys of the runner's file;
-- core.43's details now say a drive's workspace is removed once no clone the runner holds records the drive.
+- record 0028 gains its amendment of 2026-11-07 on the keys of the runner's file, and a second, the local layer's accounts;
+- core.43's details say a drive's workspace is removed once no clone the runner holds records the drive;
+- core.17's details rule out a workspace removed while the local layer stands not taken, and a local layer taken that names a repository or a drive the managed layer holds elsewhere, and allow each drive's `repositories` as the local layer's key.
 
 ## Requirements and scenarios
 
@@ -70,6 +81,9 @@ The records and rule are amended as the proposal says:
 - **An account's and a drive's name is of one form, and a drive's is given once on the host.**
   - "One drive in two accounts": `config::tests::one_drive_in_two_accounts`.
   - "A name out of form": `config::tests::a_name_out_of_form`.
+- **A local layer naming a repository or a drive the managed layer holds elsewhere is not taken.**
+  - "A repository the managed layer keeps in another drive": `config::tests::a_repository_the_managed_layer_keeps_in_another_drive`.
+  - "A drive the managed layer holds under another account": `config::tests::a_drive_the_managed_layer_holds_under_another_account`.
 - **The configuration names each repository by its forge address.**
   - "An address with no owner": `config::tests::an_address_with_no_owner`.
   - "One repository twice": `config::tests::one_repository_twice`.
@@ -91,6 +105,38 @@ The records and rule are amended as the proposal says:
   - "No workspaces setting": `config::tests::no_workspaces_setting`.
   - "Workspaces asked for in words": `config::tests::workspaces_asked_for_in_words`.
   - "Workspaces asked for while running": `loop.rs` `workspaces_asked_for_while_running`, at `/h/Code/home.code-workspace` with the folder `agentplot/flume`.
+- **The configuration is a managed file and a local one over it.**
+  - "The default file": `running.rs` `the_default_file`.
+  - "The file named": `running.rs` `the_file_named`.
+  - "No file": `running.rs` `no_file`.
+  - "No local file": `config::tests::no_local_file` and `running.rs` `no_local_file`.
+- **The local layer sets the repositories and a control plane's partitions alone.**
+  - "The local layer's repositories": `config::tests::the_local_layers_repositories`, both in the drive `home`.
+  - "A partition enrolled from the local layer": `enroll.rs` `a_partition_of_the_local_layer`.
+- **The local layer's repositories add to the managed layer's, and its partitions replace them.**
+  - "A repository both layers name": `config::tests::a_repository_both_layers_name`.
+  - "A drive only the local layer names": `config::tests::a_drive_only_the_local_layer_names`, with an empty drive of the account `client` as well.
+  - "A repository the local layer drops": `local_layer.rs` `a_repository_the_local_layer_drops`.
+  - "The local layer's partitions": `config::tests::the_local_layers_partitions`.
+- **A local layer that sets any other key is not taken.**
+  - "A root in the local layer": `config::tests::a_root_in_the_local_layer`.
+  - "A key in a local drive": `config::tests::a_key_in_a_local_drive`.
+  - "A flat list in the local layer": `config::tests::a_flat_list_in_the_local_layer`.
+  - "A control plane named in the local layer": `config::tests::a_control_plane_named_in_the_local_layer`.
+  - "A token in the local layer": `config::tests::a_token_in_the_local_layer`.
+- **A local layer the runner cannot read is not taken.**
+  - "A local file that is not TOML": `config::tests::a_local_file_that_is_not_toml`.
+  - "A local address out of form": `config::tests::a_local_address_out_of_form`. A repository named twice, a drive under two accounts and a name out of form are `config::tests::a_local_layer_naming_one_repository_twice` and `a_local_drive_named_twice_or_out_of_form`.
+  - "A partition the implementation refuses": `config::tests::a_partition_the_implementation_refuses`.
+- **While the local layer is not taken, nothing is let go.**
+  - "A local file broken while running": `local_layer.rs` `a_local_file_broken_while_running`.
+  - "A local file removed": `local_layer.rs` `a_local_file_removed`.
+- **The managed layer may pin a key the local layer could set.**
+  - "Repositories pinned": `config::tests::repositories_pinned`, and a drive pinned alone in `a_drive_pinned`.
+  - "A table pinned": `config::tests::a_table_pinned`.
+- **How the local layer was read is said once each way.**
+  - "Taken at the start": `local_layer.rs` `taken_at_the_start`.
+  - "A fault said once": `local_layer.rs` `a_fault_said_once`. A pin passed over is said once in `pinned_accounts_passed_over_said_once`.
 
 ### Views
 
@@ -147,3 +193,5 @@ None of these holds the change back.
 
   The code matches each. `take_departed` reads only the drives the clones recorded when the pass found them, so in each case the workspace is left for the person.
 - **A record the pass cannot write.** Where `boomdrive.drive` cannot be written to a clone found, the clone's earlier drive stays among those standing. So a failed record leaves a workspace and never removes one.
+- **A pinned local drive is not read.** `add_drives` reads only the drives whose units no pin holds. A local drive a pin passes over is named as passed over, and its entries are not checked against the managed layer's, so they neither fault the local layer nor are kept. Decision 13 and the spec ask nothing more of it.
+- **Record 0028's second amendment is the writing agent's.** It records choices made within records 0009 and 0028 as accepted, each with the path not taken, and says each is cheap to change, as the capture process has such choices recorded.
