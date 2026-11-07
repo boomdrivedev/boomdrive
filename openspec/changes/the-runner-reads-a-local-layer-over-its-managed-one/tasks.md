@@ -59,7 +59,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 6. The modules leave the local layer
 
-- [ ] 6.1 `nix/tests/activate.sh` gains "A local layer beside it": the activation, run for a home whose `.config/boomdrive` holds a `config.local.toml`, links `config.toml` and leaves that file's text unchanged (design Decision 9). Done when `sluice exec main -- moon run nix:test` passes, proving the service-modules spec's "A local layer beside it".
+- [x] 6.1 `nix/tests/activate.sh` gains "A local layer beside it": the activation, run for a home whose `.config/boomdrive` holds a `config.local.toml`, links `config.toml` and leaves that file's text unchanged (design Decision 9). Done when `sluice exec main -- moon run nix:test` passes, proving the service-modules spec's "A local layer beside it".
 
 ## 7. README
 
