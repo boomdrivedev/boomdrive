@@ -8,7 +8,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The set's Flume keeps a watch
 
-- [ ] 1.1 The set names Flume v0.17.1, which takes `settle --every`, its tag moved with the lock (design Decision 5; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test family each_tools_version_is_its_tags` passes.
+- [x] 1.1 The set names Flume v0.17.1, which takes `settle --every`, its tag moved with the lock (design Decision 5; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test family each_tools_version_is_its_tags` passes.
 
 ## 2. Flume's settle, as the runner asks it
 
