@@ -52,3 +52,13 @@ Option 1.
 - One chore in each of boomdrive, boomdrive-cloud, boomdrive-web, boom, flume, sluice, timber and weir, citing this record: its servers declared and approved in its devenv, devenv's named beside them, the two files ignored, its OpenSpec files tracked; boomdrive-cloud's hand-committed `.mcp.json` gives way to devenv's.
 - A remote server that needs a sign-in, Cloudflare's API server, is signed in once in each account folder an agent runs under, until Flume's design decides who signs a host's servers in. An agent whose account has not signed in sees the server needing authentication and is held by nothing.
 - No unit in Flume.
+
+## Amendment, 2026-11-07: boomdrive's places are given their servers by the shell's own script
+
+Status: the code stage's own choices in the chore boomdrive-devenv-declares-its-mcp-servers, on 2026-11-07, under this record's line that each repository's change confirms its places have their servers before their agents start.
+
+A boomdrive place's readiness is sluice's equip of it (flume 11, sluice 147): it sources the script `devenv print-dev-env` prints, the toolchain `.config/sluice.toml` names, which holds the shell's `enterShell` and none of devenv's tasks, so devenv's own task that writes `.mcp.json` and `.claude/settings.json` never runs there. boomdrive's `enterShell` therefore runs that task's script itself, from the repository's root and writing nothing to standard output, so a place holds both files once it is ready, before its agent starts, and a shell entered later finds them made. The other path was a toolchain that enters the shell and runs its tasks, which would change the environment sluice's gate runs every check under.
+
+devenv has no option for `enabledMcpjsonServers`: boomdrive adds it to the settings file devenv writes, naming every server `claude.code.mcpServers` names, so a server added there is approved with it. Its one server is devenv's; it declares no other.
+
+The OpenSpec files boomdrive tracks are those `openspec init --tools claude --profile custom` writes with the ten workflows sluice tracks, propose, explore, new, continue, apply, ff, sync, archive, bulk-archive and verify, as skills and as commands, rather than the six of OpenSpec's core profile, so the family's repositories carry one set; the custom profile's workflows are read from the user's OpenSpec configuration, which must name those ten when they are written again. The root's toolchain check fails when a skill names another release than the OpenSpec devenv pins, so moving the pin writes them again.
