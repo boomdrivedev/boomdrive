@@ -76,4 +76,4 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
 ## 7. The specs
 
-- [x] 7.1 The change is archived into `openspec/specs`, and the specs it changes pass openspec's strict check. Done when, after `devenv shell -- openspec archive a-hosts-configuration-names-its-accounts-and-their-drives --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 7.1 The change is archived into `openspec/specs`, and the specs it changes pass openspec's strict check. Done when, after `devenv shell -- openspec archive a-hosts-configuration-names-its-accounts-and-their-drives --yes`, `sluice exec main -- moon run root:specs` passes.
