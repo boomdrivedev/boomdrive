@@ -1,17 +1,17 @@
 ---
 number: 21
-title: The runner follows each place it launched to its end, whether or not it still keeps the place's repository
+title: A repository is drained before it goes, the runner following each place it launched there to its end, and no rename is handled in flight
 status: proposed
 date: 2026-11-05
 decision-makers:
 - Chuck Swanberg
 ---
 
-# The runner follows each place it launched to its end, whether or not it still keeps the place's repository
+# A repository is drained before it goes, the runner following each place it launched there to its end, and no rename is handled in flight
 
-Status: proposed on 2026-11-05 by the code stage of the fix `the-runner-follows-each-place-it-launched-to-its-end`. The direction is the orchestrator's, in its brief's words below; the user has not ruled on it yet, and rules at the fix's review. How the runner reads a place it no longer keeps the repository of, and that crew's implementation gives such a launch, are the stage's choices, made on this repository's rules and the two tools' statements. Record 0020 is the sibling change `boomdrive-publishes-a-flake-of-the-family-and-the-runners-service`'s, on its branch.
+Status: proposed on 2026-11-05 by the code stage of the fix `the-runner-follows-each-place-it-launched-to-its-end`, and revised on 2026-11-07 on the user's note on its card, quoted below, which rules out handling a rename in flight; accepted when the user says yes to it. How the runner reads a place it no longer keeps the repository of, and that crew's implementation gives such a launch, are the stage's choices, made on this repository's rules and the two tools' statements. Record 0020 is the sibling change `boomdrive-publishes-a-flake-of-the-family-and-the-runners-service`'s, on its branch.
 
-Deciders: the orchestrator's brief, for the direction; the code stage, for how; the user, at the fix's review.
+Deciders: the user, 2026-11-07, on this record's card: "We are not going to build special functionality to handle repositories being renamed in flight. Big picture with boomdrive, you add repositories and, when you remove repositories, I don't think there's a rename. I think you would drain the work from it, remove it, do the rename separately, and then add it back"; agentplot-design, for how a drained repository is kept; the orchestrator's brief and the code stage, for the first draft.
 Sources: the orchestrator's brief of the fix `the-runner-follows-each-place-it-launched-to-its-end`, 2026-11-05; Flume's statement, clauses 56, 58 and 62, and `flume status`'s usage at 0.6.4; crew's `plugin/lib/runner.py` (`flume_facts`, `places.rec`'s descriptor) and `plugin/lib/asks.py` (`status_of`); record 0016; rules core.1, core.5, core.9, core.26 and core.38; the work-into-flume and crew-control-plane specs.
 
 ## Context and problem statement
@@ -36,22 +36,20 @@ The orchestrator's brief, 2026-11-05: "Find why the runner stopped following tha
 2. **The runner follows each launch its report holds, whether the pull gives it or not.**
 3. **The renamed repository is matched to its new address**, from the forge's redirect or a table of renames.
 4. **Every place is asked by its location alone**, with no `--repository` at all.
+5. **No rename is handled, and a repository is drained before it goes** (the user's).
 
 ## Decision outcome
 
-Option 1.
+Option 5, the user's.
 
-- **A place is followed to its end whether or not the runner still keeps its repository.** For each launch the pull gives that the report holds launched at a place, the pass carries Flume's status of the place. Where the configuration keeps the launch's repository with its clone made, it asks as before, `flume --json status --repository <container> <place>`. Where it does not, it asks `flume --json status <place>`, by the place's location alone. The status is still read again only when the place's entry in the pass's listing differs from the one carried, and a tidied place's record is still its entry.
-- **No keeper is told of a landing in a repository the runner does not keep.** The keeper keeps only what the configuration names (core.5), so a landing there is told to none.
-- **crew's implementation gives each launch the runner answered.** A kit's launch the runner's report or its branch already answers is given at every pull, whatever the hello names. Its repository is the kept address its `Repo` names where there is one, else its `Repo` as written. It is neither claimed again nor named in the log. A launch no runner has answered is given, as before, only where the runner keeps its repository. The runner takes no action on a launch it already answered `launched` but to follow its place; one it held and no longer keeps the repository of, it refuses, naming the repository (core.5).
+- **A rename is a removal and an addition.** Neither the runner nor crew's implementation matches a repository's old name to its new one. A launch is given, taken and followed only for a repository the runner keeps.
+- **A repository is drained before it goes.** Where the configuration drops a repository while a place the runner launched in it is live, the runner launches nothing more there, keeps its clone and view, and carries each such place's status to its end as before. Once none is live, it removes them as it removes any dropped repository's. A rename is then done in four steps: drain the work, remove the repository, rename it on the forge, and add it back.
+- **No keeper is told of a landing in a repository the runner does not keep.** The keeper keeps only what the configuration names (core.5).
 
-Option 2 would have the runner read work its control plane no longer gives. Which work is the host's is the control plane's (core.1), and what goes over a partition's connection names only the work it gives (core.26). A control plane that stops giving a launch lets it go by its answer to the report. Option 3 would have the runner guess a forge's rename. Which repository a kit is, is crew's to say, by renaming its kit. Requests are never changed, so a request made before the rename names the old name for good, and following its place needs no repository. Option 4 would change the call for every place the runner keeps, at a release that does not yet check Flume's floor (core.38). Keeping `--repository` where the clone is kept changes nothing for those places.
+Option 1 follows a place by its location after its repository is gone, and has crew's implementation give a launch whatever the hello names. That is a rename handled in flight, which the user ruled out. Option 2 would have the runner read work its control plane no longer gives, and which work is the host's is the control plane's (core.1). Option 3 would have the runner guess a forge's rename. Option 4 changes the call for every place the runner keeps, for a case that no longer arises.
 
 ### Consequences
 
-- core.5's "Not ruled out" gains a place the runner launched, followed in Flume's status by its location after the configuration drops its repository, citing this record. No clone or view of that repository is made, fetched or kept for it.
-- The work-into-flume spec gains "A place is followed to its end whether or not its repository is kept", and its "Flume's status of each place is carried as Flume gave it" and "A landing is told to the keeper once" are amended. The crew-control-plane spec gains "A launch the runner answered is given whatever the hello names", and its "A launch naming no host is given only where this runner keeps its repository" is amended. That is the OpenSpec change `the-runner-follows-each-place-it-launched-to-its-end`.
-- `Flume::status_of` takes the clone's container where the runner keeps one, and none where it does not.
-- sluice's entry of a submission is read only in a kept clone, as before. A place whose repository the runner no longer keeps carries its landing in Flume's status alone, which is what crew reads first (`flume_facts`).
-- On the host, the first pass of this release carries the tidied place's record, with its landing and its commit, to the runner's branch.
-- A request made after the rename that names a repository by its old name is given to no runner until crew renames its kit. That is crew's, told to the orchestrator.
+- core.5's "Not ruled out" names a dropped repository's clone and view kept, with nothing launched in it, while a place the runner launched there is live, in place of a place followed by its location alone. It is marked proposed with this revision.
+- The fix `the-runner-follows-each-place-it-launched-to-its-end`, built on option 1, is taken back by a later change once this record is accepted: the runner asks Flume of a place only through a kept clone, crew's implementation gives a launch only where the runner keeps its repository, draining ones among them, and the work-into-flume and crew-control-plane specs say so.
+- A request that names a repository by an old name is given to no runner. Its work is launched again under the repository's name once the repository is added back.

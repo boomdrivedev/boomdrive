@@ -1,7 +1,7 @@
 ---
 number: 15
 title: The runner's protocol is one closed JSON Schema per version, kept with the hosted implementation and checked at both ends
-status: proposed
+status: accepted
 date: 2026-11-02
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner's protocol is one closed JSON Schema per version, kept with the hosted implementation and checked at both ends
 
-Status: proposed on 2026-11-02 by the construct stage of the change `the-runner-keeps-its-protocol-as-one-json-schema-per-version`, as the choices that change makes on rules already written; accepted when the user approves the change in its review.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-02 by the construct stage of the change `the-runner-keeps-its-protocol-as-one-json-schema-per-version`, as the choices that change makes on rules already written.
 
 Deciders: the construct stage, on the written rules; the user, at the change's review.
 Sources: agentplot/boomdrive-cloud's records 0016, 0022, 0049 and 0056 and its rules core.18, core.36, core.38, core.106 and core.108, cited by id; its roadmap's item 1.16 and ruling D5; its research rows S6, F8, F50 and F54 (`design/research/awesome-lists-disposition.md`); records 0004, 0005, 0012 and 0014; rules core.2, core.11, core.26, core.27 and core.30; the change's design, Decisions 1 to 13.
