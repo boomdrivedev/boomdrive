@@ -51,7 +51,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 5. A keeping pass under the local layer
 
-- [ ] 5.1 A keeping pass says one line of the local layer where its reading differs from the last one said, `Runner` keeping the state said, in design Decision 7's words. `run --once`'s pass says it too. Done when `devenv shell -- cargo test -p boomdrive --test local_layer` passes. That new test file proves the configuration spec's "Taken at the start" and "A fault said once", and a running runner whose pinned `repositories` are passed over saying so once across passes.
+- [x] 5.1 A keeping pass says one line of the local layer where its reading differs from the last one said, `Runner` keeping the state said, in design Decision 7's words. `run --once`'s pass says it too. Done when `devenv shell -- cargo test -p boomdrive --test local_layer` passes. That new test file proves the configuration spec's "Taken at the start" and "A fault said once", and a running runner whose pinned `repositories` are passed over saying so once across passes.
 - [ ] 5.2 While `config.local` is `NotTaken`, a keeping pass keeps the managed layer's repositories, lets go of none and sets no workspace (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test local_layer` passes, proving the configuration spec's:
   - "A local file broken while running", with `code_workspaces = true` and the owner's workspace's `folders` asserted unchanged while the layer is not taken;
   - "A repository the local layer drops";
