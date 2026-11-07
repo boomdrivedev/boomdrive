@@ -47,7 +47,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
 ## 4. The tests name their repositories under drives
 
-- [ ] 4.1 `tests/common/mod.rs`'s `keeping` writes its addresses under the account `own`'s drive `home`, and a helper beside it writes several drives, each with its addresses. Every configuration text of the crate's integration tests names its repositories under a drive: `planes.rs`, `running.rs`, `loop.rs`, `control.rs` and `enroll.rs`, and the helpers of `dropped.rs`, `views.rs` and `code_workspaces.rs`. Each test asserts what it asserted before, its owners' workspaces among them, since the workspaces move in group 5. Done when `sluice exec main -- moon run boomdrive:test` passes.
+- [x] 4.1 `tests/common/mod.rs`'s `keeping` writes its addresses under the account `own`'s drive `home`, and a helper beside it writes several drives, each with its addresses. Every configuration text of the crate's integration tests names its repositories under a drive: `planes.rs`, `running.rs`, `loop.rs`, `control.rs` and `enroll.rs`, and the helpers of `dropped.rs`, `views.rs` and `code_workspaces.rs`. Each test asserts what it asserted before, its owners' workspaces among them, since the workspaces move in group 5. Done when `sluice exec main -- moon run boomdrive:test` passes.
 
 ## 5. One workspace per drive
 

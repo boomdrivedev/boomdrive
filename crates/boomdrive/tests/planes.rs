@@ -16,7 +16,7 @@ use std::path::Path;
 const FILE: &str = "/c/config.toml";
 
 /// Design Decision 4's example.
-const EXAMPLE: &str = r#"repositories = ["afterthought/crew", "agentplot/flume"]
+const EXAMPLE: &str = r#"accounts.own.drives.home.repositories = ["afterthought/crew", "agentplot/flume"]
 
 [control_plane]
 type = "crew"
@@ -82,7 +82,7 @@ fn the_table_is_the_implementations() {
 #[test]
 fn the_hosted_table_is_the_hosted_implementations() {
     let refusal = open(
-        "repositories = []\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+        "accounts = {}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
          url = \"https://control.example\"\ntoken = \"n0t-a-r34l-t0k3n\"\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = []\n",
     )
@@ -97,7 +97,7 @@ fn the_hosted_table_is_the_hosted_implementations() {
 /// is refused, naming `crew` and `hosted`, the words this binary carries.
 #[test]
 fn a_word_not_carried() {
-    let refusal = open("repositories = []\n[control_plane]\ntype = \"elsewhere\"\n")
+    let refusal = open("accounts = {}\n[control_plane]\ntype = \"elsewhere\"\n")
         .err()
         .unwrap();
     assert_eq!(

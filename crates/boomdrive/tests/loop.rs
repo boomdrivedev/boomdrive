@@ -284,10 +284,10 @@ fn a_file_broken_while_running() {
 
     rewrite(
         &scratch,
-        "fetch_interval = \"1s\"\nrepositories = [\"flume\"]\n",
+        "fetch_interval = \"1s\"\naccounts.own.drives.home.repositories = [\"flume\"]\n",
     );
     let broken = format!(
-        "boomdrive: {}:2: `repositories` entry \"flume\": an address is `owner/name`: nothing kept this pass",
+        "boomdrive: {}:2: `accounts.own.drives.home.repositories` entry \"flume\": an address is `owner/name`: nothing kept this pass",
         scratch.config_file().display()
     );
     assert_eq!(running.until(&broken), [broken.as_str()]);

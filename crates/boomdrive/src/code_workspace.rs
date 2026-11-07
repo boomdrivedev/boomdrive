@@ -267,6 +267,7 @@ mod tests {
     fn two_owners() {
         let config = config(
             "repository_root = \"/h/Code\"\n\
+             [accounts.own.drives.home]\n\
              repositories = [\"agentplot/flume\", \"afterthought/crew\", \"agentplot/sluice\"]\n",
         );
         assert_eq!(
@@ -288,7 +289,9 @@ mod tests {
 
     #[test]
     fn owners_differing_in_case() {
-        let config = config("repositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n");
+        let config = config(
+            "[accounts.own.drives.home]\nrepositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n",
+        );
         assert_eq!(
             wanted(&config),
             [Wanted {
@@ -301,7 +304,7 @@ mod tests {
 
     #[test]
     fn keeping_none() {
-        assert_eq!(wanted(&config("repositories = []\n")), []);
+        assert_eq!(wanted(&config("accounts = {}\n")), []);
     }
 
     #[test]
