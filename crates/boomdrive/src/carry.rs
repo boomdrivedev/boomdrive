@@ -1,7 +1,9 @@
 //! The control pass (design Decision 5). It takes the runner's report,
 //! reads the host once from Flume's status, hands the hello to the pull,
-//! answers each want in the control plane's order, opens each terminal
-//! pulled, and sends the whole report. The runner takes only what it was
+//! answers each want in the control plane's order, but carries out an
+//! act on a place only once every launch the pull offers is taken
+//! (record 0002; core.49), opens each terminal pulled, and sends the
+//! whole report. The runner takes only what it was
 //! offered, launches only through Flume's command line, and carries each
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
@@ -227,12 +229,16 @@ impl Carrier<'_> {
             room: Room::read(listing.as_ref()),
             listing,
             now,
+            round: Round::Wants,
         };
-        for want in &pulled.wants {
-            work.want(want, say);
-            if !work.save(say) {
-                say("boomdrive: nothing more is carried out this pass".to_string());
-                break;
+        'carrying: for round in [Round::Wants, Round::OnPlaces] {
+            work.round = round;
+            for want in &pulled.wants {
+                work.want(want, say);
+                if !work.save(say) {
+                    say("boomdrive: nothing more is carried out this pass".to_string());
+                    break 'carrying;
+                }
             }
         }
         work.carry_statuses(say);
@@ -263,10 +269,34 @@ struct Work<'p> {
     room: Room,
     /// The pass's clock, read once at its start.
     now: At,
+    round: Round,
+}
+
+/// The pass's two rounds over the pull's wants, each in the control
+/// plane's order, so that no launch waits behind an act on a place
+/// (record 0002; core.49). An act on a place moves no room and lifts no
+/// hold within the pass, which read both from its one listing, so taking
+/// it second changes no answer; an act Flume refuses because its place no
+/// longer stands costs the pass its answer alone (record 0010; core.10).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Round {
+    /// Every want: each offer, inbox and command, and each act answered
+    /// from the report, running no command. An act that runs Flume's
+    /// command on its launch's place is left for the second round.
+    Wants,
+    /// Each act left by the first, as Flume's command on its place, and
+    /// each act whose launch the first round took.
+    OnPlaces,
 }
 
 impl Work<'_> {
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
+        if self.round == Round::OnPlaces {
+            if let Want::Act(act) = want {
+                self.act(act, say);
+            }
+            return;
+        }
         match want {
             Want::Offer(offer) => self.offer(offer, say),
             Want::Act(act) => self.act(act, say),
@@ -446,7 +476,9 @@ impl Work<'_> {
     /// Carries out or answers `act` on its launch (design Decision 9). An
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
-    /// core.24).
+    /// core.24). One that runs Flume's command on its launch's place is
+    /// carried out in the pass's second round alone, after every launch
+    /// the pull offers (core.49).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -468,7 +500,8 @@ impl Work<'_> {
             return;
         }
         match launched.answer.place_dir.clone() {
-            Some(place) => self.act_on(act, &place, say),
+            Some(place) if self.round == Round::OnPlaces => self.act_on(act, &place, say),
+            Some(_) => {}
             None => {
                 let words = format!("{} was launched at no place Flume named", act.launch);
                 self.acted(act, Outcome::Refused, Some(words), None, say);
