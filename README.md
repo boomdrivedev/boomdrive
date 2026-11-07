@@ -325,7 +325,7 @@ once when the control plane wakes the runner. The runner says once that
 its control plane could not be read, and once that it is read again.
 A control pass:
 
-- reads `flume --json status` once, and hands the control plane the
+- reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
   Flume's host part as Flume printed it, and the leases the runner
   holds;
@@ -343,7 +343,10 @@ A control pass:
   gave it, and never a log; and relays a terminal on a launch's agent
   through herdr, keeping nothing of it. A place is followed to its end,
   over or tidied, even once the configuration no longer names its
-  repository: Flume is then asked for it by its location alone.
+  repository: Flume is then asked for it by its location alone. Where
+  the pass ran a command, Flume's status is read again before the
+  places' are carried, so a place tidied meanwhile is carried from
+  Flume's record of it, `<location>@<at>`.
 
 Each launch, act and command is carried out once, across a restart: the
 runner's report is kept at `<data>/control/report.json`, and a launch
