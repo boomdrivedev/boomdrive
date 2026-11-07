@@ -1,9 +1,9 @@
 //! The runner's configuration (design 2): one TOML file naming the
-//! repositories a host keeps by their GitHub address, the root their
-//! views are kept under, how often they are fetched, whether each owner's
-//! views have a VS Code workspace, and the control plane whose work it
-//! carries, each key named for what it holds
-//! (core.12). A refusal names the file, the line and the key or entry. It
+//! accounts a host serves, each account's drives and each drive's
+//! repositories by their GitHub address (record 0028; core.5), the root
+//! their views are kept under, how often they are fetched, whether each
+//! drive has a VS Code workspace, and the control plane whose work it
+//! carries, each key named for what it holds (core.12). A refusal names the file, the line and the key or entry. It
 //! is built from what is wrong and never from the file's text around it,
 //! a value put there by mistake among it (core.4).
 
@@ -15,6 +15,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use toml::de::{DeString, DeTable, DeValue};
 use toml::{Spanned, Table, Value};
 
 /// The configuration as a pass reads it.
@@ -30,11 +31,55 @@ pub struct Config {
     /// `<repository_root>/<owner>/<owner>.code-workspace` (core.43): false
     /// where the file names none.
     pub code_workspaces: bool,
-    /// Each repository the host keeps, in the file's order.
-    pub repositories: Vec<Address>,
+    /// Each account the host serves, in the file's order, its drives
+    /// holding the repositories it keeps (record 0028).
+    pub accounts: Vec<Account>,
     /// `[control_plane]`, where the file holds it. Read at every pass, it
     /// is taken when the runner starts (design Decision 4).
     pub control_plane: Option<ControlPlaneTable>,
+}
+
+impl Config {
+    /// Each repository the host keeps, every drive's in the file's order:
+    /// its accounts in turn, each account's drives in turn, each drive's
+    /// repositories in turn (design Decision 1).
+    pub fn repositories(&self) -> impl Iterator<Item = &Address> {
+        self.drives().flat_map(|drive| &drive.repositories)
+    }
+
+    /// Each drive of every account, in the file's order.
+    pub fn drives(&self) -> impl Iterator<Item = &Drive> {
+        self.accounts.iter().flat_map(|account| &account.drives)
+    }
+
+    /// The drive that names `address`, compared without case as an
+    /// address is.
+    pub fn drive_of(&self, address: &Address) -> Option<&Drive> {
+        self.drives()
+            .find(|drive| drive.repositories.contains(address))
+    }
+}
+
+/// An account the host serves, `[accounts.<name>]`: what a runner enrolls
+/// with a control plane, and its drives (record 0028).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Account {
+    /// The account's name, as the file's key writes it.
+    pub name: String,
+    /// Each of the account's drives, in the file's order.
+    pub drives: Vec<Drive>,
+}
+
+/// One account's body of work, `[accounts.<account>.drives.<name>]`: the
+/// repositories it keeps (record 0028). Its stream and its branch of the
+/// account's crew state are other tools' configuration, never the
+/// runner's (core.5).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Drive {
+    /// The drive's name, as the file's key writes it.
+    pub name: String,
+    /// Each repository the drive keeps, in the file's order.
+    pub repositories: Vec<Address>,
 }
 
 /// `[control_plane]` (design Decision 4): the implementation the runner
@@ -172,23 +217,15 @@ struct File {
     repository_root: Option<Spanned<Value>>,
     fetch_interval: Option<Spanned<Value>>,
     code_workspaces: Option<Spanned<Value>>,
-    #[serde(default, deserialize_with = "list")]
-    repositories: Option<Spanned<Entries>>,
+    /// Read from the document's own tree, which keeps where each key of
+    /// it stands (`accounts`).
+    accounts: Option<IgnoredAny>,
     #[serde(default, deserialize_with = "table")]
     control_plane: Option<Keys>,
 }
 
-/// `repositories` as written, each entry with where it stands.
-type Entries = Vec<Spanned<Value>>;
-
 /// A table as written, each key and value with where it stands.
 type Keys = BTreeMap<Spanned<String>, Spanned<Value>>;
-
-/// `repositories`, refused by its key where it is not a list.
-fn list<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Spanned<Entries>>, D::Error> {
-    Option::deserialize(deserializer)
-        .map_err(|_| serde::de::Error::custom("`repositories` is not a list"))
-}
 
 /// `control_plane`, refused by its key where it is not a table.
 fn table<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Keys>, D::Error> {
@@ -297,37 +334,15 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
         })?,
     };
 
-    let entries = raw.repositories.ok_or_else(|| {
-        format!(
-            "{}: `repositories` is required: the repositories this host keeps, \
-             `repositories = []` for none",
+    if raw.accounts.is_none() {
+        return Err(format!(
+            "{}: `accounts` is required: the accounts this host serves, each naming its \
+             drives and each drive its repositories, `accounts = {{}}` for none",
             file.display()
-        )
-    })?;
-    let mut repositories: Vec<(Address, &Spanned<Value>)> = Vec::new();
-    for entry in entries.get_ref() {
-        let at = entry.span().start;
-        let Some(text) = entry.get_ref().as_str() else {
-            return Err(refuse(
-                at,
-                "`repositories` entry is not a string: an address is `owner/name`".to_string(),
-            ));
-        };
-        let address = Address::parse(text)
-            .map_err(|rule| refuse(at, format!("`repositories` entry {text:?}: {rule}")))?;
-        if let Some((_, first)) = repositories.iter().find(|(kept, _)| *kept == address) {
-            return Err(refuse(
-                at,
-                format!(
-                    "`repositories` entries {}, on line {}, and {text:?} are one repository: \
-                     GitHub compares addresses without case",
-                    named(first.get_ref()),
-                    line(first.span().start),
-                ),
-            ));
-        }
-        repositories.push((address, entry));
+        ));
     }
+    let document = DeTable::parse(text).map_err(broken)?;
+    let accounts = accounts(document.get_ref(), &refuse, &line)?;
 
     let control_plane = match &raw.control_plane {
         None => None,
@@ -344,12 +359,141 @@ pub fn parse(text: &str, file: &Path, home: &Path) -> Result<Config, String> {
         repository_root,
         fetch_interval,
         code_workspaces,
-        repositories: repositories
-            .into_iter()
-            .map(|(address, _)| address)
-            .collect(),
+        accounts,
         control_plane,
     })
+}
+
+/// A table of the document as written, each key and value with where it
+/// stands.
+type Tree<'i> = DeTable<'i>;
+
+/// A table's keys with their values, in the order they stand in the file.
+fn in_order<'t, 'i>(
+    table: &'t Tree<'i>,
+) -> Vec<(&'t Spanned<DeString<'i>>, &'t Spanned<DeValue<'i>>)> {
+    let mut keys: Vec<_> = table.iter().collect();
+    keys.sort_by_key(|(key, _)| key.span().start);
+    keys
+}
+
+/// The table `value` holds, refused by `path`, its key standing at `at`,
+/// where it holds something else.
+fn table_at<'t, 'i>(
+    value: &'t Spanned<DeValue<'i>>,
+    path: &str,
+    at: usize,
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<&'t Tree<'i>, String> {
+    match value.get_ref() {
+        DeValue::Table(table) => Ok(table),
+        _ => Err(refuse(at, format!("`{path}` is not a table"))),
+    }
+}
+
+/// The value of `name` in `table`, with its key, where it holds one.
+fn entry<'t, 'i>(
+    table: &'t Tree<'i>,
+    name: &str,
+) -> Option<(&'t Spanned<DeString<'i>>, &'t Spanned<DeValue<'i>>)> {
+    table.iter().find(|(key, _)| key.get_ref() == name)
+}
+
+/// `accounts` as the document holds it, `document` (design Decisions 1
+/// and 2): each account with its drives and each drive with its
+/// repositories, in the file's order. Each refusal is made by `refuse`,
+/// naming its key by its path, and `line` gives the line a place stands
+/// on.
+fn accounts(
+    document: &Tree<'_>,
+    refuse: &impl Fn(usize, String) -> String,
+    line: &impl Fn(usize) -> usize,
+) -> Result<Vec<Account>, String> {
+    let Some((key, value)) = entry(document, "accounts") else {
+        return Ok(Vec::new());
+    };
+    let table = table_at(value, "accounts", key.span().start, refuse)?;
+    let mut accounts = Vec::new();
+    for (name, value) in in_order(table) {
+        let at = name.span().start;
+        let path = format!("accounts.{}", name.get_ref());
+        let account = table_at(value, &path, at, refuse)?;
+        let Some((drives_key, drives)) = entry(account, "drives") else {
+            return Err(refuse(
+                at,
+                format!(
+                    "`{path}.drives` is required: the account's drives, `drives = {{}}` for none"
+                ),
+            ));
+        };
+        let drives = table_at(
+            drives,
+            &format!("{path}.drives"),
+            drives_key.span().start,
+            refuse,
+        )?;
+        let mut kept = Vec::new();
+        for (name, value) in in_order(drives) {
+            let at = name.span().start;
+            let path = format!("{path}.drives.{}", name.get_ref());
+            let drive = table_at(value, &path, at, refuse)?;
+            kept.push(Drive {
+                name: name.get_ref().to_string(),
+                repositories: repositories(drive, &path, at, refuse, line)?,
+            });
+        }
+        accounts.push(Account {
+            name: path["accounts.".len()..].to_string(),
+            drives: kept,
+        });
+    }
+    Ok(accounts)
+}
+
+/// The repositories of the drive `drive`, whose key, at `path`, stands at
+/// `at`, each an address, in the file's order.
+fn repositories(
+    drive: &Tree<'_>,
+    path: &str,
+    at: usize,
+    refuse: &impl Fn(usize, String) -> String,
+    line: &impl Fn(usize) -> usize,
+) -> Result<Vec<Address>, String> {
+    let path = format!("{path}.repositories");
+    let Some((key, list)) = entry(drive, "repositories") else {
+        return Err(refuse(
+            at,
+            format!("`{path}` is required: the drive's repositories, `repositories = []` for none"),
+        ));
+    };
+    let DeValue::Array(entries) = list.get_ref() else {
+        return Err(refuse(key.span().start, format!("`{path}` is not a list")));
+    };
+    let mut kept: Vec<(Address, &Spanned<DeValue<'_>>)> = Vec::new();
+    for entry in entries.iter() {
+        let at = entry.span().start;
+        let Some(text) = entry.get_ref().as_str() else {
+            return Err(refuse(
+                at,
+                format!("`{path}` entry is not a string: an address is `owner/name`"),
+            ));
+        };
+        let address = Address::parse(text)
+            .map_err(|rule| refuse(at, format!("`{path}` entry {text:?}: {rule}")))?;
+        if let Some((_, first)) = kept.iter().find(|(kept, _)| *kept == address) {
+            return Err(refuse(
+                at,
+                format!(
+                    "`{path}` entries {:?}, on line {}, and {text:?} are one repository: \
+                     GitHub compares addresses without case",
+                    first.get_ref().as_str().unwrap_or_default(),
+                    line(first.span().start),
+                ),
+            ));
+        }
+        kept.push((address, entry));
+    }
+    Ok(kept.into_iter().map(|(address, _)| address).collect())
 }
 
 /// `[control_plane]` as written in `table`, whose key stands at `at`,
@@ -547,55 +691,189 @@ mod tests {
         Address::parse(text).unwrap()
     }
 
+    /// `text`'s drives, each named with its account and its
+    /// repositories as written, in the order kept.
+    fn drives(text: &str) -> Vec<(String, String, Vec<String>)> {
+        read(text)
+            .unwrap()
+            .accounts
+            .iter()
+            .flat_map(|account| {
+                account.drives.iter().map(|drive| {
+                    (
+                        account.name.clone(),
+                        drive.name.clone(),
+                        drive.repositories.iter().map(Address::to_string).collect(),
+                    )
+                })
+            })
+            .collect()
+    }
+
+    /// The configuration spec's "One drive".
     #[test]
-    fn an_address_with_no_owner() {
+    fn one_drive() {
+        let text = "[accounts.own.drives.home]\nrepositories = [\"agentplot/flume\"]\n";
         assert_eq!(
-            read("repositories = [\"flume\"]\n"),
-            Err(format!(
-                "{FILE}:1: `repositories` entry \"flume\": an address is `owner/name`"
-            ))
+            drives(text),
+            [(
+                "own".to_string(),
+                "home".to_string(),
+                vec!["agentplot/flume".to_string()]
+            )]
+        );
+        let config = read(text).unwrap();
+        let flume = address("agentplot/flume");
+        assert_eq!(
+            config.drive_of(&flume).map(|drive| drive.name.as_str()),
+            Some("home")
+        );
+        assert_eq!(config.drive_of(&address("agentplot/sluice")), None);
+    }
+
+    /// The configuration spec's "Drives of two accounts": every drive's
+    /// repositories are kept in the file's order, whatever the order of
+    /// the accounts' and drives' names.
+    #[test]
+    fn drives_of_two_accounts() {
+        let config = read(
+            "[accounts.own.drives.home]\n\
+             repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n\
+             \n\
+             [accounts.client.drives.garden]\n\
+             repositories = [\"agentplot/sluice\"]\n",
+        )
+        .unwrap();
+        assert_eq!(
+            config
+                .repositories()
+                .map(Address::to_string)
+                .collect::<Vec<_>>(),
+            ["agentplot/flume", "afterthought/crew", "agentplot/sluice"]
+        );
+        assert_eq!(
+            config
+                .accounts
+                .iter()
+                .map(|account| account.name.as_str())
+                .collect::<Vec<_>>(),
+            ["own", "client"]
+        );
+        assert_eq!(
+            config
+                .drive_of(&address("AgentPlot/Sluice"))
+                .map(|drive| drive.name.as_str()),
+            Some("garden")
+        );
+        assert_eq!(
+            drives(
+                "[accounts.own.drives.work]\nrepositories = []\n\
+                 [accounts.own.drives.home]\nrepositories = []\n"
+            )
+            .into_iter()
+            .map(|(_, drive, _)| drive)
+            .collect::<Vec<_>>(),
+            ["work", "home"]
         );
     }
 
+    /// The configuration spec's "No list", which has no `accounts`.
     #[test]
-    fn one_repository_twice() {
-        assert_eq!(
-            read("repositories = [\n  \"agentplot/flume\",\n  \"AgentPlot/flume\",\n]\n"),
-            Err(format!(
-                "{FILE}:3: `repositories` entries \"agentplot/flume\", on line 2, and \
-                 \"AgentPlot/flume\" are one repository: GitHub compares addresses without case"
-            ))
-        );
-    }
-
-    #[test]
-    fn no_list() {
+    fn no_accounts() {
         assert_eq!(
             read("repository_root = \"~/Code\"\n"),
             Err(format!(
-                "{FILE}: `repositories` is required: the repositories this host keeps, \
-                 `repositories = []` for none"
+                "{FILE}: `accounts` is required: the accounts this host serves, each naming \
+                 its drives and each drive its repositories, `accounts = {{}}` for none"
             ))
         );
     }
 
+    /// An account with no `drives`.
     #[test]
-    fn keeping_none() {
-        assert_eq!(read("repositories = []\n").unwrap().repositories, vec![]);
+    fn an_account_with_no_drives() {
+        assert_eq!(
+            read("accounts = {}\n").map(|config| config.accounts),
+            Ok(vec![])
+        );
+        assert_eq!(
+            read("[accounts.own]\n"),
+            Err(format!(
+                "{FILE}:1: `accounts.own.drives` is required: the account's drives, \
+                 `drives = {{}}` for none"
+            ))
+        );
+        assert_eq!(
+            drives("[accounts.own]\ndrives = {}\n"),
+            Vec::<(String, String, Vec<String>)>::new()
+        );
     }
 
+    /// The configuration spec's "A drive with no list".
     #[test]
-    fn no_views_setting() {
-        let config = read("repositories = [\"agentplot/flume\"]\n").unwrap();
+    fn a_drive_with_no_list() {
         assert_eq!(
-            view_path(&config, &address("agentplot/flume")),
-            Path::new("/h/Code/agentplot/flume")
+            read("repository_root = \"~/Code\"\n\n[accounts.own.drives.home]\n"),
+            Err(format!(
+                "{FILE}:3: `accounts.own.drives.home.repositories` is required: the drive's \
+                 repositories, `repositories = []` for none"
+            ))
         );
+    }
+
+    /// The configuration spec's "Keeping none".
+    #[test]
+    fn keeping_none() {
+        let config = read("accounts = {}\n").unwrap();
+        assert_eq!(config.accounts, vec![]);
+        assert_eq!(config.repositories().count(), 0);
+        assert_eq!(read("[accounts]\n").unwrap().accounts, vec![]);
+    }
+
+    /// The configuration spec's "A drive keeping none".
+    #[test]
+    fn a_drive_keeping_none() {
+        assert_eq!(
+            drives("[accounts.own.drives.home]\nrepositories = []\n"),
+            [("own".to_string(), "home".to_string(), vec![])]
+        );
+    }
+
+    /// Each level is a table, and a drive's `repositories` a list of
+    /// strings, each refused by its path.
+    #[test]
+    fn a_level_of_another_kind_is_named_by_its_path() {
+        for (text, refusal) in [
+            ("accounts = []\n", "1: `accounts` is not a table"),
+            (
+                "accounts = { own = 3 }\n",
+                "1: `accounts.own` is not a table",
+            ),
+            (
+                "[accounts.own]\ndrives = []\n",
+                "2: `accounts.own.drives` is not a table",
+            ),
+            (
+                "[[accounts.own.drives.home]]\nrepositories = []\n",
+                "1: `accounts.own.drives.home` is not a table",
+            ),
+            (
+                "[accounts.own.drives.home]\nrepositories = \"agentplot/flume\"\n",
+                "2: `accounts.own.drives.home.repositories` is not a list",
+            ),
+            (
+                "[accounts.own.drives.home]\nrepositories = [3]\n",
+                "2: `accounts.own.drives.home.repositories` entry is not a string: an address \
+                 is `owner/name`",
+            ),
+        ] {
+            assert_eq!(read(text), Err(format!("{FILE}:{refusal}")), "{text}");
+        }
     }
 
     #[test]
     fn a_home_relative_root() {
-        let config = read("repository_root = \"~/src\"\nrepositories = []\n").unwrap();
+        let config = read("repository_root = \"~/src\"\naccounts = {}\n").unwrap();
         assert_eq!(config.repository_root, Path::new("/h/src"));
     }
 
@@ -603,9 +881,7 @@ mod tests {
     fn a_relative_root() {
         for (root, named) in [("Code", "\"Code\""), ("$HOME/Code", "\"$HOME/Code\"")] {
             assert_eq!(
-                read(&format!(
-                    "repositories = []\nrepository_root = \"{root}\"\n"
-                )),
+                read(&format!("accounts = {{}}\nrepository_root = \"{root}\"\n")),
                 Err(format!(
                     "{FILE}:2: `repository_root` is {named}: a repository root is an absolute \
                      path or begins with `~/`"
@@ -617,7 +893,7 @@ mod tests {
     #[test]
     fn no_period() {
         assert_eq!(
-            read("repositories = []\n").unwrap().fetch_interval,
+            read("accounts = {}\n").unwrap().fetch_interval,
             Duration::from_secs(120)
         );
     }
@@ -625,9 +901,10 @@ mod tests {
     /// The configuration spec's "No workspaces setting".
     #[test]
     fn no_workspaces_setting() {
-        let config = read("repositories = [\"agentplot/flume\"]\n").unwrap();
+        let config =
+            read("[accounts.own.drives.home]\nrepositories = [\"agentplot/flume\"]\n").unwrap();
         assert!(!config.code_workspaces);
-        let config = read("code_workspaces = false\nrepositories = []\n").unwrap();
+        let config = read("code_workspaces = false\naccounts = {}\n").unwrap();
         assert!(!config.code_workspaces);
     }
 
@@ -637,7 +914,7 @@ mod tests {
     fn workspaces_asked_for_in_words() {
         for (value, named) in [("\"yes\"", "\"yes\""), ("1", "not a string")] {
             assert_eq!(
-                read(&format!("repositories = []\ncode_workspaces = {value}\n")),
+                read(&format!("accounts = {{}}\ncode_workspaces = {value}\n")),
                 Err(format!(
                     "{FILE}:2: `code_workspaces` is {named}: it is `true` or `false`"
                 ))
@@ -650,7 +927,7 @@ mod tests {
         for interval in ["0m", "soon"] {
             assert_eq!(
                 read(&format!(
-                    "repositories = []\nfetch_interval = \"{interval}\"\n"
+                    "accounts = {{}}\nfetch_interval = \"{interval}\"\n"
                 )),
                 Err(format!(
                     "{FILE}:2: `fetch_interval` is \"{interval}\": an interval is `<n>s`, \
@@ -662,7 +939,7 @@ mod tests {
 
     #[test]
     fn a_misspelt_key() {
-        let refusal = read("repositories = []\nrepositories_root = \"~/Code\"\n").unwrap_err();
+        let refusal = read("accounts = {}\nrepositories_root = \"~/Code\"\n").unwrap_err();
         assert!(
             refusal.starts_with(&format!("{FILE}:2: unknown field `repositories_root`")),
             "{refusal}"
@@ -672,13 +949,13 @@ mod tests {
     #[test]
     fn a_stream_named() {
         assert_eq!(
-            read("repositories = []\nstream = \"work\"\n"),
+            read("accounts = {}\nstream = \"work\"\n"),
             Err(format!(
                 "{FILE}:2: unknown field `stream`: streams are Flume's host configuration"
             ))
         );
         assert_eq!(
-            read("repositories = []\n\n[streams]\nwork = 2\n"),
+            read("accounts = {}\n\n[streams]\nwork = 2\n"),
             Err(format!(
                 "{FILE}:3: unknown field `streams`: streams are Flume's host configuration"
             ))
@@ -688,14 +965,14 @@ mod tests {
     #[test]
     fn a_kinds_file_named() {
         assert_eq!(
-            read("repositories = []\nkinds = { crew = \"/k/kinds.toml\" }\n"),
+            read("accounts = {}\nkinds = { crew = \"/k/kinds.toml\" }\n"),
             Err(format!(
                 "{FILE}:2: unknown field `kinds`: kinds are Flume's host configuration"
             ))
         );
         for key in ["kind", "kinds_file"] {
             assert_eq!(
-                read(&format!("repositories = []\n{key} = \"change\"\n")),
+                read(&format!("accounts = {{}}\n{key} = \"change\"\n")),
                 Err(format!(
                     "{FILE}:2: unknown field `{key}`: kinds are Flume's host configuration"
                 ))
@@ -706,14 +983,14 @@ mod tests {
     #[test]
     fn a_key_of_before() {
         assert_eq!(
-            read("views = \"~/Code\"\nfetch_every = \"2m\"\nrepositories = []\n"),
+            read("views = \"~/Code\"\nfetch_every = \"2m\"\naccounts = {}\n"),
             Err(format!(
                 "{FILE}:1: unknown field `views`: `repository_root` holds it now; \
                  unknown field `fetch_every`, on line 2: `fetch_interval` holds it now"
             ))
         );
         assert_eq!(
-            read("repositories = []\nfetch_every = \"2m\"\n"),
+            read("accounts = {}\nfetch_every = \"2m\"\n"),
             Err(format!(
                 "{FILE}:2: unknown field `fetch_every`: `fetch_interval` holds it now"
             ))
@@ -728,15 +1005,14 @@ mod tests {
                 "{FILE}:1: unknown field `views`: `repository_root` holds it now"
             ))
         );
-        let refusal =
-            read("repositories = []\nviews = \"~/Code\"\nghp_n0t4r34lt0k3n\n").unwrap_err();
+        let refusal = read("accounts = {}\nviews = \"~/Code\"\nghp_n0t4r34lt0k3n\n").unwrap_err();
         assert!(refusal.starts_with(&format!("{FILE}:3: ")), "{refusal}");
         assert!(!refusal.contains("ghp_n0t4r34lt0k3n"), "{refusal}");
     }
 
     #[test]
     fn a_token() {
-        let refusal = read("repositories = []\ntoken = \"ghp_n0t4r34lt0k3n\"\n").unwrap_err();
+        let refusal = read("accounts = {}\ntoken = \"ghp_n0t4r34lt0k3n\"\n").unwrap_err();
         assert!(
             refusal.starts_with(&format!("{FILE}:2: unknown field `token`")),
             "{refusal}"
@@ -746,7 +1022,7 @@ mod tests {
 
     #[test]
     fn a_broken_file_is_named_by_its_line_and_never_quoted() {
-        let refusal = read("repositories = []\nghp_n0t4r34lt0k3n\n").unwrap_err();
+        let refusal = read("accounts = {}\nghp_n0t4r34lt0k3n\n").unwrap_err();
         assert!(refusal.starts_with(&format!("{FILE}:2: ")), "{refusal}");
         assert!(!refusal.contains("ghp_n0t4r34lt0k3n"), "{refusal}");
     }
@@ -754,17 +1030,7 @@ mod tests {
     #[test]
     fn a_value_of_another_kind_is_named_by_its_key() {
         assert_eq!(
-            read("repositories = \"agentplot/flume\"\n"),
-            Err(format!("{FILE}:1: `repositories` is not a list"))
-        );
-        assert_eq!(
-            read("repositories = [3]\n"),
-            Err(format!(
-                "{FILE}:1: `repositories` entry is not a string: an address is `owner/name`"
-            ))
-        );
-        assert_eq!(
-            read("repositories = []\nrepository_root = 3\n"),
+            read("accounts = {}\nrepository_root = 3\n"),
             Err(format!(
                 "{FILE}:2: `repository_root` is not a string: a repository root is an \
                  absolute path or begins with `~/`"
@@ -778,20 +1044,31 @@ mod tests {
             read(
                 "repository_root = \"/srv/code\"\nfetch_interval = \"90s\"\n\
                  code_workspaces = true\n\
+                 \n\
+                 [accounts.own.drives.home]\n\
                  repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n"
             ),
             Ok(Config {
                 repository_root: PathBuf::from("/srv/code"),
                 fetch_interval: Duration::from_secs(90),
                 code_workspaces: true,
-                repositories: vec![address("agentplot/flume"), address("afterthought/crew")],
+                accounts: vec![Account {
+                    name: "own".to_string(),
+                    drives: vec![Drive {
+                        name: "home".to_string(),
+                        repositories: vec![
+                            address("agentplot/flume"),
+                            address("afterthought/crew")
+                        ],
+                    }],
+                }],
                 control_plane: None,
             })
         );
     }
 
     /// Design Decision 4's example of `[control_plane]`.
-    const CONTROL_PLANE: &str = "repositories = []
+    const CONTROL_PLANE: &str = "accounts = {}
 
 [control_plane]
 type = \"crew\"
@@ -828,21 +1105,21 @@ state_repository = \"afterthought/madswan-state\"
     /// The configuration spec's "No control plane".
     #[test]
     fn no_control_plane() {
-        assert_eq!(read("repositories = []\n").unwrap().control_plane, None);
+        assert_eq!(read("accounts = {}\n").unwrap().control_plane, None);
     }
 
     /// The configuration spec's "No type".
     #[test]
     fn no_type() {
         assert_eq!(
-            read("repositories = []\n\n[control_plane]\npoll_interval = \"30s\"\n"),
+            read("accounts = {}\n\n[control_plane]\npoll_interval = \"30s\"\n"),
             Err(format!(
                 "{FILE}:3: `type` is required in `[control_plane]`: the word of the control \
                  plane's implementation"
             ))
         );
         assert_eq!(
-            read("repositories = []\n[control_plane]\ntype = 3\n"),
+            read("accounts = {}\n[control_plane]\ntype = 3\n"),
             Err(format!(
                 "{FILE}:3: `type` is not a string: it is the word of the control plane's \
                  implementation"
@@ -853,7 +1130,7 @@ state_repository = \"afterthought/madswan-state\"
     /// The configuration spec's "No poll interval".
     #[test]
     fn no_poll_interval() {
-        let table = read("repositories = []\n[control_plane]\ntype = \"crew\"\n")
+        let table = read("accounts = {}\n[control_plane]\ntype = \"crew\"\n")
             .unwrap()
             .control_plane
             .unwrap();
@@ -865,7 +1142,7 @@ state_repository = \"afterthought/madswan-state\"
     fn poll_intervals() {
         for (interval, seconds) in [("30s", 30), ("5m", 300), ("1h", 3600)] {
             let table = read(&format!(
-                "repositories = []\n[control_plane]\ntype = \"crew\"\n\
+                "accounts = {{}}\n[control_plane]\ntype = \"crew\"\n\
                  poll_interval = \"{interval}\"\n"
             ))
             .unwrap()
@@ -889,7 +1166,7 @@ state_repository = \"afterthought/madswan-state\"
         ] {
             assert_eq!(
                 read(&format!(
-                    "repositories = []\n[control_plane]\ntype = \"crew\"\n\
+                    "accounts = {{}}\n[control_plane]\ntype = \"crew\"\n\
                      poll_interval = {interval}\n"
                 )),
                 Err(format!(
@@ -910,7 +1187,7 @@ state_repository = \"afterthought/madswan-state\"
             ("[control_plane.hosted]\ntoken = \"ghp_n0t4r34lt0k3n\"", 4),
         ] {
             let refusal = read(&format!(
-                "repositories = []\n[control_plane]\ntype = \"crew\"\n{key}\n"
+                "accounts = {{}}\n[control_plane]\ntype = \"crew\"\n{key}\n"
             ))
             .unwrap_err();
             let name = if key.starts_with('[') {
@@ -931,11 +1208,11 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_control_plane_of_another_kind_is_named_by_its_key() {
         assert_eq!(
-            read("repositories = []\ncontrol_plane = \"crew\"\n"),
+            read("accounts = {}\ncontrol_plane = \"crew\"\n"),
             Err(format!("{FILE}:2: `control_plane` is not a table"))
         );
         assert_eq!(
-            read("repositories = []\n[control_plane]\ntype = \"crew\"\ncrew = 3\n"),
+            read("accounts = {}\n[control_plane]\ntype = \"crew\"\ncrew = 3\n"),
             Err(format!(
                 "{FILE}:4: `crew` in `[control_plane]` is not a table: it is \
                  `[control_plane.crew]`, the implementation's own table"

@@ -67,7 +67,7 @@ impl Configured {
     /// `clones`, as `clone::find` gives them, against `config`.
     pub fn new(config: &Config, clones: Vec<(Address, PathBuf)>) -> Configured {
         Configured {
-            named: config.repositories.clone(),
+            named: config.repositories().cloned().collect(),
             clones,
         }
     }
@@ -1367,6 +1367,7 @@ fn expires(report: &Report, now: At) -> Option<At> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{Account, Drive};
     use std::path::Path;
 
     fn at(text: &str) -> At {
@@ -1463,10 +1464,16 @@ mod tests {
             repository_root: PathBuf::from("/code"),
             fetch_interval: std::time::Duration::from_secs(120),
             code_workspaces: false,
-            repositories: repositories
-                .iter()
-                .map(|address| Address::parse(address).unwrap())
-                .collect(),
+            accounts: vec![Account {
+                name: "own".to_string(),
+                drives: vec![Drive {
+                    name: "home".to_string(),
+                    repositories: repositories
+                        .iter()
+                        .map(|address| Address::parse(address).unwrap())
+                        .collect(),
+                }],
+            }],
             control_plane: None,
         }
     }

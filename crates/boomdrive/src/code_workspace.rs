@@ -57,7 +57,7 @@ pub enum Act {
 /// where `config::view_path` puts its view.
 pub fn wanted(config: &Config) -> Vec<Wanted> {
     let mut wanted: Vec<Wanted> = Vec::new();
-    for address in &config.repositories {
+    for address in config.repositories() {
         let owner = address.owner();
         let at = match wanted
             .iter()

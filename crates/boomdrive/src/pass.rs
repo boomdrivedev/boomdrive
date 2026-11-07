@@ -60,7 +60,7 @@ pub fn pass(
     };
     let workspaces = wanted_workspaces(config);
     let mut outcome = Outcome::Kept;
-    for address in &config.repositories {
+    for address in config.repositories() {
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
@@ -79,7 +79,7 @@ pub fn pass(
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        if config.repositories.contains(address) {
+        if config.repositories().any(|kept| kept == address) {
             continue;
         }
         outcome = outcome.and(let_go(git, address, container, workspaces.as_deref(), say));
@@ -110,7 +110,7 @@ pub fn keep_one(
     address: &Address,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    let Some(address) = config.repositories.iter().find(|kept| *kept == address) else {
+    let Some(address) = config.repositories().find(|kept| *kept == address) else {
         say(format!(
             "{address}: not kept: the configuration does not name it"
         ));
