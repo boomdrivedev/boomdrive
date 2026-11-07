@@ -197,10 +197,11 @@ fn keep_workspace(wanted: &Wanted, say: &mut dyn FnMut(String)) -> Outcome {
         }
         Act::Write(text) => match code_workspace::write(&wanted.file, &text) {
             Ok(()) => {
-                say(format!(
-                    "boomdrive: workspace written at {file}: {}",
-                    wanted.folders.join(", ")
-                ));
+                let folders = match wanted.folders.as_slice() {
+                    [] => "no folders".to_string(),
+                    folders => folders.join(", "),
+                };
+                say(format!("boomdrive: workspace written at {file}: {folders}"));
                 Outcome::Kept
             }
             Err(error) => {

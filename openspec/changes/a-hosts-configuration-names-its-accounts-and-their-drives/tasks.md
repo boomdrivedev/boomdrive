@@ -58,7 +58,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
   - a drive keeping none has no folders.
 
   A workspace's written line lists its folders as they are written (design Decision 1; the views spec's "Each drive has a VS Code workspace at the repository root where the configuration asks"). Done when `devenv shell -- cargo test -p boomdrive --lib code_workspace::tests` passes, with unit tests for two drives sharing an owner, an owner written in two cases, and a drive keeping none.
-- [ ] 5.2 `tests/code_workspaces.rs` proves each drive's workspace at the root. Done when `devenv shell -- cargo test -p boomdrive --test code_workspaces` passes, proving the views spec's:
+- [x] 5.2 `tests/code_workspaces.rs` proves each drive's workspace at the root. Done when `devenv shell -- cargo test -p boomdrive --test code_workspaces` passes, proving the views spec's:
   - "The first workspaces", "No workspace asked for", "A kept repository with no view", "A drive keeping none" and "A new root";
   - "The user's settings kept", "Folders edited by hand", "A dropped repository leaves its workspace", "A repository moved to another drive" and "A quiet pass leaves the workspaces";
   - "A comment in the workspace", "A link at the workspace's path" and "A workspace that cannot be written";
