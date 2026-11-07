@@ -222,7 +222,7 @@ fn sending(stub: &Stub) -> (Bench, Outcome, Option<String>, Vec<String>) {
     let bench = keeping_crew();
     let mut plane = Fake::holding(vec![bolt(), send()]);
     let (_, lines) = bench.pass_over(&Cli::new(stub.program()), &mut plane);
-    let acted = bench.report().acts[&Id::new(&format!("{BOLT}/send"))].clone();
+    let acted = bench.report().acts[&Id::new(format!("{BOLT}/send"))].clone();
     (bench, acted.outcome, acted.words, lines)
 }
 
