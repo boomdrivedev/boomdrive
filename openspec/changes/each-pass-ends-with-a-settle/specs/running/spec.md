@@ -42,7 +42,7 @@ The bound of the settle SHALL be written `<n>s`, in whole seconds: `fetch_interv
 
 ### Requirement: The settle is the runner's own and said only when it changes
 
-The settle SHALL be no part of a control pass: no want's answer SHALL turn on it, and its answer SHALL be carried to no control plane and kept nowhere. Where a settle is refused, or gives no answer, the runner SHALL say so in one line only where the settle before was answered or it is the first, and SHALL say `boomdrive: Flume settles every place again` at the first settle answered after one that was not. No settle SHALL stop the runner (core.1, core.11, core.23).
+The settle SHALL be no part of a control pass: no want's answer SHALL turn on it, and its answer SHALL be carried to no control plane and kept nowhere. Where a settle is refused, or gives no answer, the runner SHALL say so in one line only where the settle before was answered or it is the first, and SHALL say `boomdrive: Flume settles every place again` at the first settle answered after one that was not. No settle SHALL stop the runner or fail a pass (core.1, core.11, core.23).
 
 #### Scenario: A refusal said once until Flume settles again
 
@@ -58,7 +58,7 @@ The settle SHALL be no part of a control pass: no want's answer SHALL turn on it
 
 ### Requirement: boomdrive run --once makes one pass
 
-`boomdrive run --once` SHALL make one keeping pass, just as a pass of `boomdrive run`, then, where the configuration names a control plane, one control pass, then the settle that ends them, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and the control pass both pulled and reported, and 1 otherwise. Something left and named as the specs say SHALL not be a failure: an offer left untaken for want of room, a tool the control pass could not run or read, and a settle Flume refused or gave no answer to, among it.
+`boomdrive run --once` SHALL make one keeping pass, just as a pass of `boomdrive run`, then, where the configuration names a control plane, one control pass, then the settle that ends them, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and the control pass both pulled and reported, and 1 otherwise. Something left and named as the specs say SHALL not be a failure: an offer left untaken for want of room, and a tool the control pass could not run or read, among it.
 
 #### Scenario: Every repository kept
 
