@@ -138,3 +138,26 @@ with no origin on a forge keeps being named by its folder.
   `session` and roles. The runner's `[control_plane.crew]` names the
   same partitions again, each `label` and `state_repository`.
 - crew, sluice and Flume are public repositories.
+
+## herdr and a way in
+
+The user, 2026-11-06: "Is there a way to make it so that when somebody
+installs this, it could also install Herdr and maybe give them one easy
+thing to click to open up the preconfigured Herdr instance? either that
+or have a shell they drop into that is preconfigured to launch herdr or
+something".
+
+What stands:
+
+- herdr is the host's own today: record 0020 keeps "its git and herdr"
+  the host's, and core.44 rules herdr out of the set (record 0012). The
+  set carries Flume's and sluice's herdr plugins, from their tags.
+- deneb's herdr, 0.9.5, comes from the fleet's flake (swancloud), which
+  takes it from a flake of agents' tools; herdr's own repository is
+  `herdrdev/herdr`.
+- Flume already opens a stream's agents for a person: `flume open
+  [<session>]` (Flume's statement 186) starts the stream's herdr session
+  where it does not run, and opens a window of the host's terminal app,
+  `terminal_app`, attached to it, or prints the line to run where none is
+  named. A launcher that runs it is the person's asking; the runner
+  still starts no multiplexer (core.13) and names none (core.29).
