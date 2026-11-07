@@ -289,7 +289,7 @@ fn a_local_file_broken_while_running() {
     rewrite(&scratch.local_file(), broken);
     let managed = every_second("code_workspaces = true\n", &["agentplot/flume"]);
     let named = not_taken(&scratch, &fault_of(&scratch, &managed, broken));
-    assert_eq!(running.until(&named), [named.clone()]);
+    assert_eq!(running.until(&named), std::slice::from_ref(&named));
     for pass in 0..2 {
         let later = flume.commit("main", &format!("later-{pass}"), "while it is broken\n");
         assert_eq!(

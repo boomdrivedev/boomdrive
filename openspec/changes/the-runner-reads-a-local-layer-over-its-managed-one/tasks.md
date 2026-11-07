@@ -56,7 +56,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
   - "A local file broken while running", with `code_workspaces = true` and the owner's workspace's `folders` asserted unchanged while the layer is not taken;
   - "A repository the local layer drops";
   - "A local file removed", with the gone line said once.
-- [ ] 5.3 `tests/local_layer.rs` passes clippy's `cloned_ref_to_slice_refs`: the broken layer's one line is awaited as `std::slice::from_ref(&named)`, not `[named.clone()]`. Done when `sluice exec main -- moon run boomdrive:lint` passes.
+- [x] 5.3 `tests/local_layer.rs` passes clippy's `cloned_ref_to_slice_refs`: the broken layer's one line is awaited as `std::slice::from_ref(&named)`, not `[named.clone()]`. Done when `sluice exec main -- moon run boomdrive:lint` passes.
 
 ## 6. The modules leave the local layer
 
