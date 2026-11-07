@@ -43,8 +43,12 @@ pub enum Keeping {
     Ready(PathBuf),
     /// The configuration names it, and its clone is not yet made.
     NotYet,
-    /// The configuration does not name it.
+    /// The configuration does not name it, and no clone of it is made.
     NotNamed,
+    /// The configuration does not name it, and its clone stands in this
+    /// container, dropped: the keeper fetches it no more, and keeps it only
+    /// while something holds it (core.5).
+    Dropped(PathBuf),
 }
 
 /// The repositories the runner keeps, as a control pass reads them.
@@ -54,6 +58,9 @@ pub trait Clones {
     /// Each address the configuration names whose clone is made, in the
     /// configuration's order and as it writes each.
     fn made(&self) -> Vec<String>;
+    /// Each address whose clone stands while the configuration does not
+    /// name it, as its clone is found.
+    fn dropped(&self) -> Vec<String>;
 }
 
 /// The runner's clones against its configuration: `Clones` on a host.
@@ -86,7 +93,10 @@ impl Clones for Configured {
             return Keeping::NotNamed;
         };
         if !self.named.contains(&address) {
-            return Keeping::NotNamed;
+            return match self.container(&address) {
+                Some(container) => Keeping::Dropped(container.clone()),
+                None => Keeping::NotNamed,
+            };
         }
         match self.container(&address) {
             Some(container) => Keeping::Ready(container.clone()),
@@ -99,6 +109,14 @@ impl Clones for Configured {
             .iter()
             .filter(|address| self.container(address).is_some())
             .map(Address::to_string)
+            .collect()
+    }
+
+    fn dropped(&self) -> Vec<String> {
+        self.clones
+            .iter()
+            .filter(|(address, _)| !self.named.contains(address))
+            .map(|(address, _)| address.to_string())
             .collect()
     }
 }
@@ -377,7 +395,7 @@ impl Work<'_> {
         let container = match self.carrier.clones.keeping(repository) {
             Keeping::Ready(container) => container,
             Keeping::NotYet => return,
-            Keeping::NotNamed => {
+            Keeping::NotNamed | Keeping::Dropped(_) => {
                 let words = format!("this host's configuration does not keep {repository}");
                 say(format!("{id}: refused: {words}"));
                 self.answer(offer, Outcome::Refused, None, Some(words));
@@ -729,7 +747,7 @@ impl Work<'_> {
         let container = match self.carrier.clones.keeping(repository) {
             Keeping::Ready(container) => container,
             Keeping::NotYet => return,
-            Keeping::NotNamed => {
+            Keeping::NotNamed | Keeping::Dropped(_) => {
                 let words = format!("this host's configuration does not keep {repository}");
                 say(format!("{id}: refused: {words}"));
                 self.commanded(command, Outcome::Refused, None, Some(words), None);
@@ -827,7 +845,7 @@ impl Work<'_> {
             };
             let container = match self.carrier.clones.keeping(&offer.launch.repository) {
                 Keeping::Ready(container) => Some(container),
-                Keeping::NotYet | Keeping::NotNamed => None,
+                Keeping::NotYet | Keeping::NotNamed | Keeping::Dropped(_) => None,
             };
             let was = carried_entry(launched, &place);
             let listed = facts::entry(&listing, &place);
@@ -936,7 +954,7 @@ impl Work<'_> {
         let container = match self.carrier.clones.keeping(repository) {
             Keeping::Ready(container) => container,
             Keeping::NotYet => return,
-            Keeping::NotNamed => {
+            Keeping::NotNamed | Keeping::Dropped(_) => {
                 let words = format!("this host's configuration does not keep {repository}");
                 if self.carry_inbox(id, None, BTreeMap::new(), Some(words.clone())) {
                     say(format!("{id}: not carried: {words}"));
@@ -1489,13 +1507,22 @@ mod tests {
     }
 
     #[test]
-    fn a_clone_the_configuration_drops_is_not_kept() {
+    fn a_clone_the_configuration_drops_is_dropped() {
         let flume = Address::parse("agentplot/flume").unwrap();
+        let crew = Address::parse("afterthought/crew").unwrap();
         let clones = Configured::new(
-            &config(&[]),
-            vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
+            &config(&["afterthought/crew"]),
+            vec![
+                (flume, PathBuf::from("/d/repositories/agentplot/flume")),
+                (crew, PathBuf::from("/d/repositories/afterthought/crew")),
+            ],
         );
-        assert_eq!(clones.keeping("agentplot/flume"), Keeping::NotNamed);
-        assert!(clones.made().is_empty());
+        assert_eq!(
+            clones.keeping("Agentplot/Flume"),
+            Keeping::Dropped(Path::new("/d/repositories/agentplot/flume").into())
+        );
+        assert_eq!(clones.keeping("agentplot/sluice"), Keeping::NotNamed);
+        assert_eq!(clones.made(), ["afterthought/crew"]);
+        assert_eq!(clones.dropped(), ["agentplot/flume"]);
     }
 }
