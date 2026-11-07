@@ -17,7 +17,7 @@ use boomdrive_control::{
     Acted, Capacity, ControlPlane, Hello, Id, Launched, Pulled, Report, Reported, Unread, Unsent,
     Want,
 };
-use config::{Config, Partition};
+use config::{Config, Partition, StateRepository};
 use read::{runner_branch, Kept, Main, Request, Runner, Store};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -67,8 +67,13 @@ pub fn open(table: &toml::Table, file: &Path, data_dir: &Path, say: Say) -> Resu
 
 impl Crew {
     /// crew's implementation of `config`, its state repositories reached
-    /// on `forge`, a base address ending in `/`.
-    pub fn new(config: Config, forge: &str, data_dir: &Path, say: Say) -> Crew {
+    /// on `forge`, a base address ending in `/`. The cache a release
+    /// before shared among every partition of a state repository is
+    /// removed where it is there, and said (design Decision 7).
+    pub fn new(config: Config, forge: &str, data_dir: &Path, mut say: Say) -> Crew {
+        for partition in &config.partitions {
+            remove_shared_cache(data_dir, &partition.state_repository, &mut say);
+        }
         Crew {
             config,
             forge: forge.to_string(),
@@ -119,6 +124,31 @@ impl Crew {
 /// Where crew's implementation keeps its caches, `<data>/control/crew`.
 fn caches(data_dir: &Path) -> PathBuf {
     data_dir.join("control/crew")
+}
+
+/// Removes the cache a release before kept for `repository`, shared
+/// among every partition of it, `<data>/control/crew/<owner>/<name>.git`,
+/// where it is there, saying one line naming it. A cache is made again
+/// from the state repository (core.35).
+fn remove_shared_cache(data_dir: &Path, repository: &StateRepository, say: &mut Say) {
+    let shared = caches(data_dir)
+        .join(&repository.owner)
+        .join(format!("{}.git", repository.name));
+    if shared.symlink_metadata().is_err() {
+        return;
+    }
+    match std::fs::remove_dir_all(&shared) {
+        Ok(()) => say(format!(
+            "crew: removed {}, the cache of {repository} a release before shared among its \
+             partitions: each partition reads through a cache of its own",
+            shared.display()
+        )),
+        Err(error) => say(format!(
+            "crew: {}, the cache of {repository} a release before shared among its partitions, \
+             cannot be removed: {error}",
+            shared.display()
+        )),
+    }
 }
 
 /// The host's room, as the hello's capacity gives it: `null`, unbounded,

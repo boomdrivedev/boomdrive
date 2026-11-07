@@ -556,3 +556,32 @@ fn two_partitions_of_one_state_repository() {
     assert!(work_refs.contains("work/main"), "{work_refs}");
     assert!(!work_refs.contains("home/"), "{work_refs}");
 }
+
+/// The crew-control-plane spec's "The shared cache of a release before":
+/// opened with the cache a release before shared among `example/state`'s
+/// partitions there, crew's implementation removes it, one line names it,
+/// and each partition's pull fetches into its own cache.
+#[test]
+fn the_shared_cache_of_a_release_before() {
+    let state = State::new();
+    two_drives(&state);
+    let caches = state.root.join("data-host-a/control/crew/example");
+    let shared = caches.join("state.git");
+    std::fs::create_dir_all(&shared).unwrap();
+    git(&shared, &["init", "--quiet", "--bare"], None);
+    let (mut crew, said) = state.crew_serving(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    assert!(!shared.exists());
+    let lines = said.lines();
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(
+        lines[0].starts_with(&format!("crew: removed {}, ", shared.display())),
+        "{lines:?}"
+    );
+    assert_eq!(ids(&pull(&mut crew, &kept())), ["home/1", "work/1"]);
+    assert!(caches.join("state/home.git").is_dir());
+    assert!(caches.join("state/work.git").is_dir());
+    assert!(!shared.exists());
+}
