@@ -261,9 +261,9 @@ fn an_act_on_a_lapsed_launch() {
 }
 
 /// The work-into-flume spec's "A command whose lease lapsed": a branch
-/// command under a lease that has expired runs no `sluice` command, and
-/// has no answer in the report; once a pull gives it under a live lease,
-/// sluice is run.
+/// command under a lease that has expired has no answer in the report and
+/// the pass says nothing; once a pull gives it under a live lease, it is
+/// refused, naming sluice, and no `sluice` command is run.
 #[test]
 fn a_command_whose_lease_lapsed() {
     let bench = Bench::new();
@@ -271,12 +271,19 @@ fn a_command_whose_lease_lapsed() {
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
     assert_eq!(lines, Vec::<String>::new());
-    assert_eq!(bench.sluice.calls(), Vec::<Vec<String>>::new());
     assert_eq!(plane.reports(), [Report::default()]);
 
     plane.set_wants(vec![branch(2, after(300))]);
-    bench.pass(&mut plane);
-    assert_eq!(bench.sluice.calls().len(), 1);
+    let (_, lines) = bench.pass(&mut plane);
+    let refused = "this binary does not carry sluice's commands";
+    assert_eq!(lines, [format!("branch/1: refused: {refused}")]);
+    let commanded = &bench.report().commands[&Id::new("branch/1")];
+    assert_eq!(
+        (commanded.outcome, commanded.words.as_deref()),
+        (Outcome::Refused, Some(refused))
+    );
+    assert_eq!(commanded.lease.number, 2);
+    assert_eq!(bench.sluice.calls(), Vec::<Vec<String>>::new());
 }
 
 /// The work-into-flume spec's "A lease refused".
