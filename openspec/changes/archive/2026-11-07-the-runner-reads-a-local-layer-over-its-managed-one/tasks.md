@@ -68,4 +68,4 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 8. The specs
 
-- [ ] 8.1 The change is archived into `openspec/specs`, and the specs it changes pass openspec's strict check. Done when, after `devenv shell -- openspec archive the-runner-reads-a-local-layer-over-its-managed-one --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 8.1 The change is archived into `openspec/specs`, and the specs it changes pass openspec's strict check. Done when, after `devenv shell -- openspec archive the-runner-reads-a-local-layer-over-its-managed-one --yes`, `sluice exec main -- moon run root:specs` passes.
