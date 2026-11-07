@@ -63,7 +63,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
   - "The user's settings kept", "Folders edited by hand", "A dropped repository leaves its workspace", "A repository moved to another drive" and "A quiet pass leaves the workspaces";
   - "A comment in the workspace", "A link at the workspace's path" and "A workspace that cannot be written";
   - a stopped pass writing no workspace.
-- [ ] 5.3 A removed view takes its owner's folder only when that folder is then empty. `pass::take_workspace`, `code_workspace::alone_in` and the workspaces argument of `let_go` and of a changed root's old view are removed, so the pass touches no workspace in an owner's folder (design Decision 10). Done when `devenv shell -- cargo test -p boomdrive --test dropped` passes:
+- [x] 5.3 A removed view takes its owner's folder only when that folder is then empty. `pass::take_workspace`, `code_workspace::alone_in` and the workspaces argument of `let_go` and of a changed root's old view are removed, so the pass touches no workspace in an owner's folder (design Decision 10). Done when `devenv shell -- cargo test -p boomdrive --test dropped` passes:
   - proving the views spec's "The owner's last view", "The owner's folder holds more" and "An owner's workspace from before";
   - with `the_owners_last_view_with_its_workspace`, `an_owner_still_kept_keeps_its_workspace` and `a_workspace_not_asked_for` replaced by "An owner's workspace from before".
 - [ ] 5.4 A changed root leaves an owner's workspace of before in the old owner's folder. Done when `devenv shell -- cargo test -p boomdrive --test views` passes, proving the views spec's "A new root, an owner's workspace from before" in place of `a_new_root_the_old_owners_workspace`.

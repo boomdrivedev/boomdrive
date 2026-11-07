@@ -1,10 +1,10 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
-//! settled and its view kept, then each
-//! dropped repository let go, then, where the configuration asks, each
-//! owner's VS Code workspace kept (core.43). Where it asks, a removed
-//! view's owner folder that then holds only a workspace no kept owner has
-//! goes with that workspace. Each repository is
+//! settled and its view kept, then each dropped repository let go, then,
+//! where the configuration asks, each drive's VS Code workspace kept at
+//! the repository root (core.43). A removed view's owner folder goes only
+//! where it is then empty, and the pass touches no workspace in an
+//! owner's folder. Each repository is
 //! independent: a failure in one is named and the next is kept. A pass
 //! stopped keeps no further repository and no workspace. The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
@@ -17,7 +17,6 @@ use crate::git::Git;
 use crate::lacks;
 use crate::view::{self, OldAct, ViewAct};
 use std::fs;
-use std::io;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -64,16 +63,7 @@ pub fn pass(
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        let kept = keep_configured(
-            git,
-            data,
-            config,
-            workspaces.as_deref(),
-            &clones,
-            address,
-            say,
-        );
-        outcome = outcome.and(kept);
+        outcome = outcome.and(keep_configured(git, data, config, &clones, address, say));
     }
     for (address, container) in &clones {
         if stop.load(Ordering::SeqCst) {
@@ -82,7 +72,7 @@ pub fn pass(
         if config.repositories().any(|kept| kept == address) {
             continue;
         }
-        outcome = outcome.and(let_go(git, address, container, workspaces.as_deref(), say));
+        outcome = outcome.and(let_go(git, address, container, say));
     }
     if let Some(workspaces) = &workspaces {
         if !stop.load(Ordering::SeqCst) {
@@ -116,17 +106,8 @@ pub fn keep_one(
         ));
         return Outcome::Kept;
     };
-    let workspaces = wanted_workspaces(config);
     match find(git, data, say) {
-        Some(clones) => keep_configured(
-            git,
-            data,
-            config,
-            workspaces.as_deref(),
-            &clones,
-            address,
-            say,
-        ),
+        Some(clones) => keep_configured(git, data, config, &clones, address, say),
         None => Outcome::Failed,
     }
 }
@@ -147,13 +128,11 @@ fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<(Addr
 }
 
 /// Keeps `address`, which `config` names, its clone among `clones` where
-/// it has one, each line said with its address. `workspaces` are those
-/// `config` wants, none where it does not ask for them.
+/// it has one, each line said with its address.
 fn keep_configured(
     git: &Git,
     data: &Path,
     config: &Config,
-    workspaces: Option<&[Wanted]>,
     clones: &[(Address, PathBuf)],
     address: &Address,
     say: &mut dyn FnMut(String),
@@ -163,11 +142,11 @@ fn keep_configured(
         .find(|(kept, _)| kept == address)
         .map(|(_, container)| container.as_path());
     let view = config::view_path(config, address);
-    keep(git, data, address, found, &view, workspaces, say)
+    keep(git, data, address, found, &view, say)
 }
 
-/// Keeps each owner's VS Code workspace the configuration wants, the
-/// `workspaces` (design Decisions 4 to 6; core.43): made, its folders
+/// Keeps each drive's VS Code workspace the configuration wants, the
+/// `workspaces` (design Decision 1; core.43): made, its folders
 /// set, or left as it is and named. A workspace whose folders are the
 /// wanted ones says nothing. One that cannot be read or written is named,
 /// and fails the pass.
@@ -217,19 +196,12 @@ fn keep_workspace(wanted: &Wanted, say: &mut dyn FnMut(String)) -> Outcome {
 /// Lets go of the clone in `container`, whose address the configuration
 /// no longer names (design 8). It is never fetched. Once neither it nor
 /// its view holds anything the forge lacks, the view is removed, then
-/// the view's owner folder if empty, or if it holds only a workspace none
-/// of `workspaces` is (design Decision 7), then the container, then the
-/// container's owner folder if empty. Until then nothing is touched, and
-/// each thing that holds them is named. A folder at the view's path that
-/// is not the clone's worktree is left as it is. Each line of the clone's
-/// says its address.
-fn let_go(
-    git: &Git,
-    address: &Address,
-    container: &Path,
-    workspaces: Option<&[Wanted]>,
-    say: &mut dyn FnMut(String),
-) -> Outcome {
+/// the view's owner folder if empty, then the container, then the
+/// container's owner folder if empty (design Decision 10). Until then
+/// nothing is touched, and each thing that holds them is named. A folder
+/// at the view's path that is not the clone's worktree is left as it is.
+/// Each line of the clone's says its address.
+fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(String)) -> Outcome {
     let bare = clone::bare(container);
     let read = view::recorded_path(git, &bare).and_then(|view| {
         let facts = lacks::read(git, &bare, view.as_deref())?;
@@ -250,15 +222,10 @@ fn let_go(
         return Outcome::Kept;
     }
     let view = view.filter(|_| facts.view.is_some());
-    let mut outcome = Outcome::Kept;
     if let Some(view) = &view {
-        match view::remove(git, &bare, view) {
-            Ok(Some(folder)) => outcome = take_workspace(&folder, workspaces, say),
-            Ok(None) => {}
-            Err(words) => {
-                say(format!("{address}: view not removed: {words}"));
-                return Outcome::Failed;
-            }
+        if let Err(words) = view::remove(git, &bare, view) {
+            say(format!("{address}: view not removed: {words}"));
+            return Outcome::Failed;
         }
     }
     if let Err(error) = fs::remove_dir_all(container) {
@@ -275,73 +242,20 @@ fn let_go(
         Some(_) => format!("{address}: removed: clone and view"),
         None => format!("{address}: removed: clone"),
     });
-    outcome
-}
-
-/// Takes the workspace in `folder`, an owner's folder a removed view left
-/// standing, and then the folder, where the folder holds nothing else but
-/// the workspace's partial file and the workspace is none of `workspaces`
-/// (design Decision 7; core.43). Where the configuration does not ask for
-/// workspaces, `workspaces` is none and the folder is left as it is. A
-/// workspace or folder that cannot be removed is named, and fails the
-/// pass.
-fn take_workspace(
-    folder: &Path,
-    workspaces: Option<&[Wanted]>,
-    say: &mut dyn FnMut(String),
-) -> Outcome {
-    let Some(workspaces) = workspaces else {
-        return Outcome::Kept;
-    };
-    let Some(file) = code_workspace::alone_in(folder) else {
-        return Outcome::Kept;
-    };
-    if workspaces
-        .iter()
-        .any(|kept| view::same_path(&kept.file, &file))
-    {
-        return Outcome::Kept;
-    }
-    let removed = fs::remove_file(&file).and_then(|()| {
-        match fs::remove_file(code_workspace::partial(&file)) {
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-            removed => removed,
-        }
-    });
-    if let Err(error) = removed {
-        say(format!(
-            "boomdrive: workspace not removed from {}: {error}",
-            file.display()
-        ));
-        return Outcome::Failed;
-    }
-    if let Err(error) = fs::remove_dir(folder) {
-        say(format!(
-            "boomdrive: workspace removed from {}, but not its folder: {error}",
-            file.display()
-        ));
-        return Outcome::Failed;
-    }
-    say(format!(
-        "boomdrive: workspace removed from {}, with its folder",
-        file.display()
-    ));
     Outcome::Kept
 }
 
 /// Keeps `address`: makes its clone where it has none (design 4), else
 /// fetches the one `found` (design 5), then settles its HEAD on origin's
-/// default branch (design 6), then keeps its view at `view` (design 7). A view the runner put where the repository root no
-/// longer gives is let go of first, its owner's workspace with it where
-/// none of `workspaces` is that one (design Decision 7). Each line of the
-/// repository's says its address.
+/// default branch (design 6), then keeps its view at `view` (design 7). A
+/// view the runner put where the repository root no longer gives is let
+/// go of first. Each line of the repository's says its address.
 fn keep(
     git: &Git,
     data: &Path,
     address: &Address,
     found: Option<&Path>,
     view: &Path,
-    workspaces: Option<&[Wanted]>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
     let container = match found {
@@ -390,7 +304,7 @@ fn keep(
     let settled = settle(git, &bare, &default, &mut |words| {
         say(format!("{address}: {words}"))
     });
-    match let_go_of_old_view(git, address, &bare, view, workspaces, say) {
+    match let_go_of_old_view(git, address, &bare, view, say) {
         ControlFlow::Break(outcome) => settled.and(outcome),
         ControlFlow::Continue(outcome) => {
             settled
@@ -484,18 +398,16 @@ fn keep_view(
 /// Lets go of the view the clone `bare` of `address` records where
 /// `path`, the view's path now, is not that one, the repository root
 /// having changed (design 7). The old view is removed while it holds
-/// nothing the forge lacks, its owner's workspace and folder with it
-/// where none of `workspaces` is that one (design Decision 7), else left
-/// and named; where it is gone or no longer the clone's worktree, it is
-/// forgotten and any folder there left untouched. Breaks with the outcome
-/// where no view is to be kept at `path` this pass, and else goes on with
-/// the let-go's own.
+/// nothing the forge lacks, its owner's folder with it where that is then
+/// empty (design Decision 10), else left and named; where it is gone or
+/// no longer the clone's worktree, it is forgotten and any folder there
+/// left untouched. Breaks with the outcome where no view is to be kept at
+/// `path` this pass, and else goes on with the let-go's own.
 fn let_go_of_old_view(
     git: &Git,
     address: &Address,
     bare: &Path,
     path: &Path,
-    workspaces: Option<&[Wanted]>,
     say: &mut dyn FnMut(String),
 ) -> ControlFlow<Outcome, Outcome> {
     let read = view::recorded_path(git, bare).and_then(|old| match old {
@@ -513,7 +425,6 @@ fn let_go_of_old_view(
             return ControlFlow::Break(Outcome::Failed);
         }
     };
-    let mut outcome = Outcome::Kept;
     match view::decide_old(&facts) {
         OldAct::Hold(held) => {
             for holding in held {
@@ -526,17 +437,11 @@ fn let_go_of_old_view(
             return ControlFlow::Break(Outcome::Kept);
         }
         OldAct::Remove => {
-            let left = match view::remove(git, bare, &old) {
-                Ok(left) => left,
-                Err(words) => {
-                    say(format!("{address}: view not removed: {words}"));
-                    return ControlFlow::Break(Outcome::Failed);
-                }
-            };
-            say(format!("{address}: view removed from {}", old.display()));
-            if let Some(folder) = left {
-                outcome = take_workspace(&folder, workspaces, say);
+            if let Err(words) = view::remove(git, bare, &old) {
+                say(format!("{address}: view not removed: {words}"));
+                return ControlFlow::Break(Outcome::Failed);
             }
+            say(format!("{address}: view removed from {}", old.display()));
         }
         OldAct::Forget => {}
     }
@@ -544,7 +449,7 @@ fn let_go_of_old_view(
         say(format!("{address}: view not forgotten: {words}"));
         return ControlFlow::Break(Outcome::Failed);
     }
-    ControlFlow::Continue(outcome)
+    ControlFlow::Continue(Outcome::Kept)
 }
 
 /// A commit as a line gives it, at seven characters.
