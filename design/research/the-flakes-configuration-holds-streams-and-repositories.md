@@ -70,3 +70,34 @@ with no origin on a forge keeps being named by its folder.
   would it end up resolving? Would Flume become responsible for taking
   that and resolving it through BoomDrive, or through a known BoomDrive
   location or something?"
+- 2026-11-06, answering four questions:
+  - A repository's stream: "One block by owner", each owner once with
+    its stream and its repositories' names, which the flake splits into
+    the runner's addresses and Flume's `<owner>/*` rule, chosen over the
+    runner's list beside a block of Flume's own:
+
+    ```nix
+    services.boomdrive.repositories = {
+      agentplot = {
+        stream = "agentplot";
+        names  = [ "boomdrive" "flume" "sluice" ];
+      };
+      afterthought = {
+        stream = "afterthought";
+        names  = [ "crew" "swancloud" ];
+      };
+    };
+    ```
+
+  - Flume's module: "Flume's flake, re-exported": Flume publishes a
+    `services.flume` module in its own flake, the Boomdrive flake
+    imports it into its modules, and carries it until Flume's flake
+    does, as it carries Flume's package. Chosen over the Boomdrive flake
+    owning it, and over each host writing Flume's file.
+  - Accounts: "Yes, all of Flume's file": the module writes the whole
+    file nix writes, host, streams, pools with their accounts, kinds and
+    owner rules, the fleet passing its accounts as option values.
+  - deneb's four streams: "three plus wldn. madswan=madswan-dev. wldn i
+    will setup so i can track the repos, the the ec2 box will configure
+    the flake for just willdangroup/*". So `agentplot`, `afterthought`,
+    `madswan` and `wldn`; the owner `madswan-dev` runs in `madswan`.
