@@ -1,45 +1,28 @@
 # Verify
 
-The verify stage of `the-runner-reads-a-local-layer-over-its-managed-one`, on the branch `change/the-runner-reads-a-local-layer-over-its-managed-one` at `90d90e8`, 2026-11-07.
+The verify stage of `the-runner-reads-a-local-layer-over-its-managed-one`, on the branch `change/the-runner-reads-a-local-layer-over-its-managed-one` at `36a1043`, 2026-11-07.
 
-**Verdict: not passed.** The gate fails on one task, `boomdrive:lint`. The work otherwise meets the change: every requirement and scenario of its two specs is built and tested, and every task is ticked. The change goes back to its code stage.
+**Verdict: passed.** The gate passes whole. Every requirement and scenario of the change's two specs is built and tested, and every task is ticked and held by the check it names.
 
 ## Where the change stands
 
-Task 8.1 had the code stage archive the change, and `90d90e8` holds it archived, at `openspec/changes/archive/2026-11-07-the-runner-reads-a-local-layer-over-its-managed-one/`. The directory the brief names, `openspec/changes/the-runner-reads-a-local-layer-over-its-managed-one/`, is gone, so this report is written in the archived one. The verify stage archived nothing and changed no file but this one.
+Task 8.1 has the code stage archive the change, and `36a1043` holds it archived, at `openspec/changes/archive/2026-11-07-the-runner-reads-a-local-layer-over-its-managed-one/`. Its delta specs are merged into `openspec/specs/configuration/spec.md` and `openspec/specs/service-modules/spec.md`. The directory the brief names, `openspec/changes/the-runner-reads-a-local-layer-over-its-managed-one/`, is gone, so this report is written in the archived one, and is archived with the change by its commit. Archiving again would merge nothing new, so the verify stage runs no `openspec archive`, and changes no file but this one.
 
 ## The whole checks
 
-`devenv shell -- sluice exec main`, run once at `90d90e8`: exit 1. 19 tasks passed, 1 failed.
+`devenv shell -- sluice exec main`, run once at `36a1043`: exit 0, "passed: 20 tasks", its results recorded under their keys for `36a1043`.
 
-| task | outcome |
-|---|---|
-| `boomdrive:format` | passed |
-| `boomdrive:lint` | **failed** |
-| `boomdrive:typecheck` | passed |
-| `boomdrive:test` | passed |
-| `boomdrive-crew:format`, `:lint`, `:typecheck`, `:test` | passed |
-| `boomdrive-hosted:format`, `:lint`, `:typecheck`, `:test` | passed |
-| `nix:format`, `:lint`, `:typecheck`, `:test` | passed |
-| `root:format`, `root:adrs`, `root:specs`, `root:changes` | passed |
+| project | format | lint | typecheck | test |
+|---|---|---|---|---|
+| `boomdrive` | passed | passed | passed | passed |
+| `boomdrive-crew` | passed | passed | passed | passed |
+| `boomdrive-hosted` | passed | passed | passed | passed |
+| `nix` | passed | passed | passed | passed |
+| `root` | `root:format` passed | | | `root:adrs`, `root:specs`, `root:changes` passed |
 
-Every test binary the run built passed: 58 test results, none failed.
+Every test binary the run built passed: 58 test results, none failed. `boomdrive:lint` passes with `tests/local_layer.rs` awaiting the broken layer's one line as `std::slice::from_ref(&named)` (task 5.3).
 
-The failure, clippy under `-D warnings`, which fails the test binary `local_layer`'s build in the lint:
-
-```
-error: unnecessary use of `clone` to create a slice from a reference
-   --> crates/boomdrive/tests/local_layer.rs:292:5
-    |
-292 |     assert_eq!(running.until(&named), [named.clone()]);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cloned_ref_to_slice_refs
-    = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
-error: could not compile `boomdrive` (test "local_layer") due to 1 previous error
-```
-
-clippy's own fix is `std::slice::from_ref(&named)` in place of `[named.clone()]`. The code stage makes it, and runs `sluice exec main -- moon run boomdrive:lint`.
+The run's two warnings fail nothing: moon could not package `boomdrive:test`'s outputs into its cache, and the OTLP metrics exporter did not shut down cleanly.
 
 ## Tasks
 
@@ -48,19 +31,18 @@ All 13 tasks are ticked `[x]`, and each is held by what it names:
 | task | held by |
 |---|---|
 | 1.1 record 0009's amendment of 2026-11-07; core.5, core.17, core.46 | the amendment holds Decisions 1 to 7, each with the path not taken; core.17's details gain Decision 11's words; core.5's and core.46's details read "local layer"; `root:format` and `root:adrs` pass |
-| 2.1 `LOCAL_KEYS`, `Entry::local_keys` and `Entry::read` | both crates' `LOCAL_KEYS = ["partitions"]`; `tests/planes.rs` `each_implementation_lists_partitions_for_the_local_layer` |
-| 3.1 the two layers | `config::local_path`, `read_layers`, `parse_layers`, `LocalLayer`, `PinnedKey`; unit tests `no_local_file`, `the_local_layers_repositories`, `a_repository_both_layers_name`, `the_local_layers_partitions`, `the_local_layers_file` |
+| 2.1 `LOCAL_KEYS`, `Entry::local_keys` and `Entry::read` | `boomdrive_crew::config::LOCAL_KEYS` and `boomdrive_hosted::table::LOCAL_KEYS`, each `["partitions"]`; `tests/planes.rs` `each_implementation_lists_partitions_for_the_local_layer` |
+| 3.1 the two layers | `config::local_path`, `read_layers`, `parse_layers`, `LocalLayer`, `PinnedKey`; unit tests `no_local_file`, `the_local_layers_repositories`, `a_repository_both_layers_name`, `the_local_layers_partitions`, and `the_local_layers_file`, `local_path` under `XDG_CONFIG_HOME` set, unset, empty and not absolute |
 | 3.2 a local layer at fault | `a_root_in_the_local_layer`, `a_control_plane_named_in_the_local_layer`, `a_token_in_the_local_layer`, `a_local_file_that_is_not_toml`, `a_local_address_out_of_form`, `a_partition_the_implementation_refuses`, `partitions_of_a_control_plane_the_managed_layer_does_not_name`, `a_local_layer_naming_one_repository_twice` |
 | 3.3 `pin` | `repositories_pinned`, `a_table_pinned`, `a_pin_of_nothing`, `a_pin_of_another_kind`, `a_pin_in_the_local_layer` |
-| 4.1 every reading reads both layers | `Runner` holds `local`, and its start, keeping pass, control pass and landing read through `read_layers`; `tests/running.rs` `the_default_file`, `the_file_named`, `no_local_file` |
-| 4.2 `enroll` reads both layers | `enroll.rs` reads through `read_layers`; `tests/enroll.rs` `a_partition_of_the_local_layer` |
-| 5.1 the line, once each way | `Runner::say_local`, `local_line`; `tests/local_layer.rs` `taken_at_the_start`, `a_fault_said_once`, `pinned_repositories_passed_over_said_once` |
-| 5.2 nothing let go while not taken | `pass::holds_back` skips the let-go loop and `wanted_workspaces`; `a_local_file_broken_while_running`, `a_repository_the_local_layer_drops`, `a_local_file_removed` |
+| 4.1 every reading reads both layers | `Runner` holds the local layer's path, and its start and every later reading go through `read_layers` (`run.rs`); `tests/running.rs` `the_default_file`, `the_file_named`, `no_local_file` |
+| 4.2 `enroll` reads both layers | `enroll.rs` reads through `read_layers`; no command reads through `config::read`, which only `tests/module_files.rs` calls; `tests/enroll.rs` `a_partition_of_the_local_layer` |
+| 5.1 the line, once each way | `tests/local_layer.rs` `taken_at_the_start`, `a_fault_said_once`, `pinned_repositories_passed_over_said_once` |
+| 5.2 nothing let go while not taken | `pass.rs` `holds_back`, which skips the let-go and the workspaces wanted; `a_local_file_broken_while_running`, `a_repository_the_local_layer_drops`, `a_local_file_removed` |
+| 5.3 the lint | `std::slice::from_ref(&named)` in `a_local_file_broken_while_running`; `boomdrive:lint` passes |
 | 6.1 the modules leave the local layer | `nix/tests/activate.sh` "A local layer beside it"; `nix:test` passes |
 | 7.1 README | the two layers, what the local layer sets, `pin`, a local layer at fault, and a second ```toml block; `tests/readme.rs` `the_readme_local_layer_reads` |
-| 8.1 archived into the specs | `90d90e8`; `root:specs` passes |
-
-Every test is held by `boomdrive:test`, which passes. The test binary `local_layer` holds the lint's one failure, but it builds and passes under test.
+| 8.1 archived into the specs | `36a1043`; `root:specs` passes |
 
 ## Requirements and scenarios
 
