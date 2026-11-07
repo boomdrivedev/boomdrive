@@ -161,3 +161,17 @@ What stands:
   `terminal_app`, attached to it, or prints the line to run where none is
   named. A launcher that runs it is the person's asking; the runner
   still starts no multiplexer (core.13) and names none (core.29).
+
+The user's answers, 2026-11-06:
+
+- herdr: "In the set, overridable": the flake installs herdr at the
+  version Flume's terminal profile was checked against, with the family's
+  herdr plugins, and a host replaces or drops it through the module's
+  options. Chosen over herdr staying the host's own.
+- The way in: "An app to click" and "A shell": a Boomdrive app on macOS,
+  a desktop entry on Linux, each running `flume open`; and a shell from
+  the flake with the set on its `PATH` that starts herdr. Not chosen: a
+  `nix run` of the flake with nothing installed.
+- The terminal app: "Install Ghostty too": the flake installs Ghostty and
+  names it Flume's `terminal_app`, so a fresh Mac opens a window with
+  nothing else installed. Chosen over the host's own terminal app.

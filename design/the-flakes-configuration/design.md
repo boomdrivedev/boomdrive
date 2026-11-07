@@ -44,9 +44,24 @@ which holds the user's words). Not yet a record or a rule.
 - **Flume reads each account's usage itself.** An account names its
   login's folder and its program; Flume reads the allowance left from
   the program's own source, and no host writes a reading for it.
+- **herdr and Ghostty are in the set.** The flake installs herdr at the
+  version Flume's terminal profile was checked against, with Flume's and
+  sluice's herdr plugins in it, and Ghostty, which the module names
+  Flume's `terminal` and `terminal_app` where the host names neither.
+  Each is overridable, as Flume and sluice are: a host replaces either
+  through the module's options, or drops it for its own.
+- **One way in.** The module installs a Boomdrive app, in
+  `/Applications/Nix Apps` on macOS and as a desktop entry on Linux,
+  which runs `flume open`: Flume starts the default stream's herdr
+  session where it does not run and opens a Ghostty window on it
+  (Flume's statement 186). The flake also gives a shell, its `PATH` the
+  set's tools, that starts herdr on entering. Each is the person's
+  asking: the runner still starts no multiplexer (core.13) and names
+  none (core.29).
 - **A laptop** writes `services.boomdrive.repositories.<owner>.names`
   and nothing else: no stream, no pool, every place in Flume's default
-  stream under the login's own program.
+  stream under the login's own program, and clicks the Boomdrive app to
+  see its agents.
 
 The sketch of deneb is `deneb.nix` beside this file.
 
@@ -74,7 +89,9 @@ The sketch of deneb is `deneb.nix` beside this file.
 ## What each repository owes
 
 - **agentplot/boomdrive**: a record amending record 0020 (the set gains
-  crew; the modules configure Flume, sluice and crew; the owner block);
+  crew, herdr and Ghostty; the modules configure Flume, sluice and crew;
+  the owner block; the Boomdrive app and the shell); core.44 amended,
+  herdr no longer the host's own;
   core.5's details (the owner block's stream is no key of the runner's
   file), core.18 and core.46 amended; the configuration and
   service-modules specs through an OpenSpec change. The queued units of
