@@ -275,14 +275,6 @@ struct File {
     pin: Option<Spanned<Entries>>,
 }
 
-/// A local layer's `repositories` as written, each entry with where it
-/// stands. Every other key it may set is read from its table.
-#[derive(Deserialize)]
-struct LocalFile {
-    #[serde(default, deserialize_with = "list")]
-    repositories: Option<Spanned<Entries>>,
-}
-
 /// A list as written, each entry with where it stands.
 type Entries = Vec<Spanned<Value>>;
 
@@ -419,8 +411,9 @@ fn not_taken(alone: Config, keys: Vec<String>, fault: Option<String>) -> Config 
 /// with the local layer `text`, the file `file`'s, read over it (design
 /// Decision 4, steps 3 to 6): not taken where it is not TOML, sets a key
 /// it may not, or holds a value the runner's reading or the
-/// implementation's refuses; else each unit a pin holds passed over, its
-/// repositories added and each unit of a control plane's table set in
+/// implementation's refuses; else each unit a pin holds passed over, each
+/// drive's repositories added (record 0028's amendment of 2026-11-07, the
+/// local layer's accounts) and each unit of a control plane's table set in
 /// place.
 fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
     let source = Source { text, file };
@@ -435,6 +428,7 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
 
     let mut merged = alone.clone();
     let mut passed_over = Vec::new();
+    let mut drives_set: Vec<Vec<String>> = Vec::new();
     let mut set_in: Option<&'static planes::Entry> = None;
     for (path, value) in found.units {
         if let Some(pin) = pins.iter().find(|pin| path.starts_with(&pin.path)) {
@@ -446,24 +440,7 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
         }
         let refused = |words: String| format!("{}: `{}` {words}", file.display(), dotted(&path));
         match path.as_slice() {
-            [repositories] if repositories == "repositories" => {
-                let entries = match toml::from_str::<LocalFile>(text) {
-                    Ok(LocalFile {
-                        repositories: Some(entries),
-                    }) => entries,
-                    Ok(LocalFile { repositories: None }) => continue,
-                    Err(error) => return not_taken(alone, vec![], Some(source.broken(error))),
-                };
-                let added = match addresses(entries.get_ref(), &source) {
-                    Ok(added) => added,
-                    Err(fault) => return not_taken(alone, vec![], Some(fault)),
-                };
-                for address in added {
-                    if !merged.repositories.contains(&address) {
-                        merged.repositories.push(address);
-                    }
-                }
-            }
+            [accounts, ..] if accounts == "accounts" => drives_set.push(path),
             [_, word, key] => {
                 let Some(plane) = merged.control_plane.as_mut() else {
                     let fault = refused(
@@ -482,6 +459,12 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
                 set_in = planes::carried(word);
             }
             _ => unreachable!("every unit is a key of the local layer's"),
+        }
+    }
+
+    if !drives_set.is_empty() {
+        if let Err(fault) = add_drives(&mut merged.accounts, &drives_set, &source) {
+            return not_taken(alone, vec![], Some(fault));
         }
     }
 
@@ -504,14 +487,53 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
     }
 }
 
-/// Each key the local layer may set, by its path (design Decision 2):
-/// `repositories`, and `control_plane.<type>.<key>` for each key each
-/// implementation this binary carries lists.
-fn local_keys() -> Vec<Vec<&'static str>> {
-    let mut keys = vec![vec!["repositories"]];
+/// A segment of a key the local layer may set: a key as written, or the
+/// name of an account or a drive, any key there, which the reading of the
+/// merged accounts holds to its form.
+#[derive(Clone, Copy)]
+enum Segment {
+    Key(&'static str),
+    Name(&'static str),
+}
+
+impl Segment {
+    /// Whether `segment` stands where this one does.
+    fn holds(self, segment: &str) -> bool {
+        match self {
+            Segment::Key(key) => key == segment,
+            Segment::Name(_) => true,
+        }
+    }
+
+    /// The segment as a refusal lists it: a name as `<account>`.
+    fn listed(self) -> String {
+        match self {
+            Segment::Key(key) => key.to_string(),
+            Segment::Name(name) => format!("<{name}>"),
+        }
+    }
+}
+
+/// Each key the local layer may set, by its path (design Decision 13;
+/// record 0009's amendment of 2026-11-07): each drive's `repositories`,
+/// `accounts.<account>.drives.<drive>.repositories`, and
+/// `control_plane.<type>.<key>` for each key each implementation this
+/// binary carries lists.
+fn local_keys() -> Vec<Vec<Segment>> {
+    let mut keys = vec![vec![
+        Segment::Key("accounts"),
+        Segment::Name("account"),
+        Segment::Key("drives"),
+        Segment::Name("drive"),
+        Segment::Key("repositories"),
+    ]];
     for entry in &planes::PLANES {
         for key in entry.local_keys {
-            keys.push(vec!["control_plane", entry.word, key]);
+            keys.push(vec![
+                Segment::Key("control_plane"),
+                Segment::Key(entry.word),
+                Segment::Key(key),
+            ]);
         }
     }
     keys
@@ -519,13 +541,23 @@ fn local_keys() -> Vec<Vec<&'static str>> {
 
 /// Whether `path` is a key the local layer may set.
 fn is_local_key(path: &[String]) -> bool {
-    local_keys().iter().any(|key| key.as_slice() == path)
+    local_keys().iter().any(|key| {
+        key.len() == path.len()
+            && key
+                .iter()
+                .zip(path)
+                .all(|(word, segment)| word.holds(segment))
+    })
 }
 
 /// Whether `path` is a table holding a key the local layer may set.
 fn leads_to_local_key(path: &[String]) -> bool {
     local_keys().iter().any(|key| {
-        key.len() > path.len() && key.iter().zip(path).all(|(word, segment)| word == segment)
+        key.len() > path.len()
+            && key
+                .iter()
+                .zip(path)
+                .all(|(word, segment)| word.holds(segment))
     })
 }
 
@@ -633,7 +665,10 @@ fn pins(entries: &Entries, source: &Source<'_>) -> Result<Vec<Pin>, String> {
         if !is_local_key(&path) && !leads_to_local_key(&path) {
             let listed: Vec<String> = local_keys()
                 .iter()
-                .map(|key| format!("`{}`", key.join(".")))
+                .map(|key| {
+                    let words: Vec<String> = key.iter().map(|word| word.listed()).collect();
+                    format!("`{}`", words.join("."))
+                })
                 .collect();
             return Err(source.refuse(
                 at,
@@ -650,39 +685,6 @@ fn pins(entries: &Entries, source: &Source<'_>) -> Result<Vec<Pin>, String> {
         });
     }
     Ok(pins)
-}
-
-/// The addresses `entries` write, in their order, or the first fault: an
-/// entry that is no address, or two that are one repository (design 2).
-fn addresses(entries: &Entries, source: &Source<'_>) -> Result<Vec<Address>, String> {
-    let mut repositories: Vec<(Address, &Spanned<Value>)> = Vec::new();
-    for entry in entries {
-        let at = entry.span().start;
-        let Some(text) = entry.get_ref().as_str() else {
-            return Err(source.refuse(
-                at,
-                "`repositories` entry is not a string: an address is `owner/name`".to_string(),
-            ));
-        };
-        let address = Address::parse(text)
-            .map_err(|rule| source.refuse(at, format!("`repositories` entry {text:?}: {rule}")))?;
-        if let Some((_, first)) = repositories.iter().find(|(kept, _)| *kept == address) {
-            return Err(source.refuse(
-                at,
-                format!(
-                    "`repositories` entries {}, on line {}, and {text:?} are one repository: \
-                     GitHub compares addresses without case",
-                    named(first.get_ref()),
-                    source.line(first.span().start),
-                ),
-            ));
-        }
-        repositories.push((address, entry));
-    }
-    Ok(repositories
-        .into_iter()
-        .map(|(address, _)| address)
-        .collect())
 }
 
 /// Reads the managed layer in `text`, the file `file`'s, with `~` as
@@ -955,6 +957,176 @@ fn accounts(
         });
     }
     Ok(accounts)
+}
+
+/// Adds to `accounts`, the managed layer's, the repositories of each drive
+/// the local layer sets, `drives_set`, each by its path, the local layer's
+/// text and file being `source`'s (design Decision 13; record 0028's
+/// amendment of 2026-11-07, the local layer's accounts). A drive both
+/// layers name keeps the managed layer's repositories, then each of the
+/// local layer's it does not name; a drive or an account only the local
+/// layer names is declared by it, after the managed layer's; each in the
+/// local file's order. The local layer's fault, named against its file:
+/// a name out of form; a drive it names twice, or under an account the
+/// managed layer does not hold it under; an entry that is no address; a
+/// repository it names twice, or in a drive the managed layer does not
+/// name it in.
+fn add_drives(
+    accounts: &mut Vec<Account>,
+    drives_set: &[Vec<String>],
+    source: &Source<'_>,
+) -> Result<(), String> {
+    let refuse = |at: usize, words: String| source.refuse(at, words);
+    let line = |at: usize| source.line(at);
+    let document = DeTable::parse(source.text).map_err(|error| source.broken(error))?;
+    let Some((key, value)) = entry(document.get_ref(), "accounts") else {
+        return Ok(());
+    };
+    let table = table_at(value, "accounts", key.span().start, &refuse)?;
+    // Each drive the local layer sets, with its account and where it
+    // stands, and each repository it names with its entry and its drive.
+    let mut named: Vec<(&str, &str, usize)> = Vec::new();
+    let mut kept: Vec<(Address, &Spanned<DeValue<'_>>, &str)> = Vec::new();
+    for (account_key, value) in in_order(table) {
+        let account_at = account_key.span().start;
+        let account_name = account_key.get_ref().as_ref();
+        let path = format!("accounts.{account_name}");
+        let account = table_at(value, &path, account_at, &refuse)?;
+        let Some((drives_key, drives)) = entry(account, "drives") else {
+            continue;
+        };
+        let path = format!("{path}.drives");
+        let drives = table_at(drives, &path, drives_key.span().start, &refuse)?;
+        for (drive_key, value) in in_order(drives) {
+            let at = drive_key.span().start;
+            let drive_name = drive_key.get_ref().as_ref();
+            let set = [
+                "accounts",
+                account_name,
+                "drives",
+                drive_name,
+                "repositories",
+            ];
+            if !drives_set.iter().any(|unit| unit.iter().eq(set.iter())) {
+                continue;
+            }
+            if !in_form(account_name) {
+                return Err(refuse(
+                    account_at,
+                    format!("`accounts` names {account_name:?}: an account's {NAME_FORM}"),
+                ));
+            }
+            if !in_form(drive_name) {
+                return Err(refuse(
+                    at,
+                    format!("`{path}` names {drive_name:?}: a drive's {NAME_FORM}"),
+                ));
+            }
+            if let Some((_, first, first_at)) =
+                named.iter().find(|(named, _, _)| *named == drive_name)
+            {
+                return Err(refuse(
+                    at,
+                    format!(
+                        "the drive `{drive_name}` is named by the accounts `{first}`, on line \
+                         {}, and `{account_name}`: a drive's name is given once on the host",
+                        line(*first_at)
+                    ),
+                ));
+            }
+            named.push((drive_name, account_name, at));
+            if let Some(other) = accounts.iter().find(|account| {
+                account.name != account_name
+                    && account.drives.iter().any(|drive| drive.name == drive_name)
+            }) {
+                return Err(refuse(
+                    at,
+                    format!(
+                        "the drive `{drive_name}` is the managed layer's account `{}`'s, and \
+                         the local layer names it under `{account_name}`: a drive's name is \
+                         given once on the host",
+                        other.name
+                    ),
+                ));
+            }
+            let path = format!("{path}.{drive_name}");
+            let drive = table_at(value, &path, at, &refuse)?;
+            let entries = addresses(drive, &path, at, &refuse)?;
+
+            let account_index = match accounts
+                .iter()
+                .position(|account| account.name == account_name)
+            {
+                Some(index) => index,
+                None => {
+                    accounts.push(Account {
+                        name: account_name.to_string(),
+                        drives: Vec::new(),
+                    });
+                    accounts.len() - 1
+                }
+            };
+            let drive_index = match accounts[account_index]
+                .drives
+                .iter()
+                .position(|drive| drive.name == drive_name)
+            {
+                Some(index) => index,
+                None => {
+                    accounts[account_index].drives.push(Drive {
+                        name: drive_name.to_string(),
+                        repositories: Vec::new(),
+                    });
+                    accounts[account_index].drives.len() - 1
+                }
+            };
+            for (address, entry) in entries {
+                let written = entry.get_ref().as_str().unwrap_or_default();
+                if let Some((_, first, first_drive)) =
+                    kept.iter().find(|(kept, _, _)| *kept == address)
+                {
+                    return Err(refuse(
+                        entry.span().start,
+                        format!(
+                            "the drive `{first_drive}`'s entry {:?}, on line {}, and the drive \
+                             `{drive_name}`'s entry {written:?} are one repository: a \
+                             repository belongs to one drive, and GitHub compares addresses \
+                             without case",
+                            first.get_ref().as_str().unwrap_or_default(),
+                            line(first.span().start),
+                        ),
+                    ));
+                }
+                kept.push((address.clone(), entry, drive_name));
+                let drive = &accounts[account_index].drives[drive_index];
+                if drive.repositories.contains(&address) {
+                    continue;
+                }
+                if let Some((other, managed)) = accounts
+                    .iter()
+                    .flat_map(|account| &account.drives)
+                    .find_map(|other| {
+                        let managed = other.repositories.iter().find(|kept| **kept == address)?;
+                        Some((other, managed))
+                    })
+                {
+                    return Err(refuse(
+                        entry.span().start,
+                        format!(
+                            "the drive `{drive_name}`'s entry {written:?} is the managed layer's \
+                             `{managed}` in the drive `{}`: a repository belongs to one drive, \
+                             and GitHub compares addresses without case",
+                            other.name
+                        ),
+                    ));
+                }
+                accounts[account_index].drives[drive_index]
+                    .repositories
+                    .push(address);
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The form of an account's and a drive's name, as a refusal says it:
@@ -2068,11 +2240,47 @@ state_repository = \"afterthought/madswan-state\"
 
     /// The repositories `config` keeps, as written.
     fn kept(config: &Config) -> Vec<String> {
+        config.repositories().map(ToString::to_string).collect()
+    }
+
+    /// `config`'s drives, each named with its account and its
+    /// repositories as written, in the order kept.
+    fn drives_of(config: &Config) -> Vec<(String, String, Vec<String>)> {
         config
-            .repositories
+            .accounts
             .iter()
-            .map(ToString::to_string)
+            .flat_map(|account| {
+                account.drives.iter().map(|drive| {
+                    (
+                        account.name.clone(),
+                        drive.name.clone(),
+                        drive.repositories.iter().map(Address::to_string).collect(),
+                    )
+                })
+            })
             .collect()
+    }
+
+    /// One drive of `drives_of`'s.
+    fn drive(account: &str, name: &str, kept: &[&str]) -> (String, String, Vec<String>) {
+        (
+            account.to_string(),
+            name.to_string(),
+            kept.iter().map(ToString::to_string).collect(),
+        )
+    }
+
+    /// A layer whose account `own`'s drive `name` keeps `addresses`, as a
+    /// dotted key.
+    fn in_drive(name: &str, addresses: &[&str]) -> String {
+        let entries: Vec<String> = addresses
+            .iter()
+            .map(|address| format!("{address:?}"))
+            .collect();
+        format!(
+            "accounts.own.drives.{name}.repositories = [{}]\n",
+            entries.join(", ")
+        )
     }
 
     /// The hosted table's partitions' labels, as `config` hands them on.
@@ -2105,12 +2313,14 @@ state_repository = \"afterthought/madswan-state\"
         }
     }
 
-    /// A managed layer naming the hosted control plane at an address, and
-    /// `partitions` as its partitions' labels, with `top` above it.
+    /// A managed layer keeping `agentplot/flume` in the drive `home` and
+    /// naming the hosted control plane at an address, and `partitions` as
+    /// its partitions' labels, with `top` above it.
     fn hosted(top: &str, partitions: &[&str]) -> String {
         let mut text = format!(
-            "{top}repositories = [\"agentplot/flume\"]\n\n[control_plane]\ntype = \"hosted\"\n\n\
-             [control_plane.hosted]\nurl = \"https://control.example\"\n"
+            "{top}{}\n[control_plane]\ntype = \"hosted\"\n\n\
+             [control_plane.hosted]\nurl = \"https://control.example\"\n",
+            in_drive("home", &["agentplot/flume"])
         );
         for label in partitions {
             text += &format!(
@@ -2135,24 +2345,31 @@ state_repository = \"afterthought/madswan-state\"
     /// The configuration spec's "No local file".
     #[test]
     fn no_local_file() {
-        let config = layers("repositories = [\"agentplot/flume\"]\n", None).unwrap();
+        let managed = in_drive("home", &["agentplot/flume"]);
+        let config = layers(&managed, None).unwrap();
         assert_eq!(kept(&config), ["agentplot/flume"]);
         assert_eq!(config.local, LocalLayer::NoFile);
-        assert_eq!(
-            config,
-            read("repositories = [\"agentplot/flume\"]\n").unwrap()
-        );
+        assert_eq!(config, read(&managed).unwrap());
     }
 
-    /// The configuration spec's "The local layer's repositories".
+    /// The configuration spec's "The local layer's repositories": the
+    /// drive both layers name keeps the managed layer's, then the local
+    /// layer's.
     #[test]
     fn the_local_layers_repositories() {
         let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("repositories = [\"agentplot/sluice\"]\n"),
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&in_drive("home", &["agentplot/sluice"])),
         )
         .unwrap();
-        assert_eq!(kept(&config), ["agentplot/flume", "agentplot/sluice"]);
+        assert_eq!(
+            drives_of(&config),
+            [drive(
+                "own",
+                "home",
+                &["agentplot/flume", "agentplot/sluice"]
+            )]
+        );
         assert_eq!(
             config.local,
             LocalLayer::Taken {
@@ -2161,17 +2378,135 @@ state_repository = \"afterthought/madswan-state\"
         );
     }
 
+    /// The configuration spec's "A drive only the local layer names": a
+    /// drive, and an account, the managed layer does not name are
+    /// declared by the local layer, after the managed layer's, in the
+    /// local file's order.
+    #[test]
+    fn a_drive_only_the_local_layer_names() {
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some(
+                "[accounts.own.drives.work]\nrepositories = [\"afterthought/crew\"]\n\n\
+                 [accounts.client.drives.garden]\nrepositories = [\"agentplot/sluice\"]\n\n\
+                 [accounts.client.drives.allotment]\nrepositories = []\n",
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            drives_of(&config),
+            [
+                drive("own", "home", &["agentplot/flume"]),
+                drive("own", "work", &["afterthought/crew"]),
+                drive("client", "garden", &["agentplot/sluice"]),
+                drive("client", "allotment", &[]),
+            ]
+        );
+        assert!(matches!(config.local, LocalLayer::Taken { .. }));
+    }
+
     /// The configuration spec's "A repository both layers name": kept
     /// once, as the managed layer spells it, and neither layer refused.
     #[test]
     fn a_repository_both_layers_name() {
         let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("repositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n"),
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&in_drive("home", &["AgentPlot/flume", "agentplot/sluice"])),
         )
         .unwrap();
         assert_eq!(kept(&config), ["agentplot/flume", "agentplot/sluice"]);
         assert!(matches!(config.local, LocalLayer::Taken { .. }));
+    }
+
+    /// The configuration spec's "A repository the managed layer keeps in
+    /// another drive": the local layer is not taken, and the repository
+    /// stays in the managed layer's drive.
+    #[test]
+    fn a_repository_the_managed_layer_keeps_in_another_drive() {
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&in_drive("work", &["afterthought/crew", "AgentPlot/Flume"])),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:1: the drive `work`'s entry \"AgentPlot/Flume\" is the managed \
+                 layer's `agentplot/flume` in the drive `home`: a repository belongs to one \
+                 drive, and GitHub compares addresses without case"
+            )
+        );
+        assert_eq!(
+            drives_of(&config),
+            [drive("own", "home", &["agentplot/flume"])]
+        );
+    }
+
+    /// The configuration spec's "A drive the managed layer holds under
+    /// another account".
+    #[test]
+    fn a_drive_the_managed_layer_holds_under_another_account() {
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some("\naccounts.client.drives.home.repositories = [\"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:2: the drive `home` is the managed layer's account `own`'s, and the \
+                 local layer names it under `client`: a drive's name is given once on the host"
+            )
+        );
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// A local layer naming one drive under two accounts, or a name out of
+    /// form, is not taken, as a managed one is refused for it.
+    #[test]
+    fn a_local_drive_named_twice_or_out_of_form() {
+        let config = layers(
+            "accounts = {}\n",
+            Some(
+                "accounts.own.drives.work.repositories = []\n\
+                 accounts.client.drives.work.repositories = []\n",
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:2: the drive `work` is named by the accounts `own`, on line 1, and \
+                 `client`: a drive's name is given once on the host"
+            )
+        );
+
+        let config = layers(
+            "accounts = {}\n",
+            Some("accounts.own.drives.Home.repositories = []\n"),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:1: `accounts.own.drives` names \"Home\": a drive's name is 1 to 32 \
+                 lower-case letters, digits and `-`, starting with a letter"
+            )
+        );
+
+        let config = layers(
+            "accounts = {}\n",
+            Some("accounts.my_own.drives.home.repositories = []\n"),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:1: `accounts` names \"my_own\": an account's name is 1 to 32 \
+                 lower-case letters, digits and `-`, starting with a letter"
+            )
+        );
+        assert_eq!(config.accounts, []);
     }
 
     /// The configuration spec's "The local layer's partitions": the
@@ -2225,12 +2560,52 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_root_in_the_local_layer() {
         let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("repository_root = \"~/src\"\nrepositories = [\"agentplot/sluice\"]\n"),
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&format!(
+                "repository_root = \"~/src\"\n{}",
+                in_drive("home", &["agentplot/sluice"])
+            )),
         )
         .unwrap();
         assert_eq!(config.local, for_keys(&["repository_root"]));
         assert_eq!(config.repository_root, Path::new("/h/Code"));
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// The configuration spec's "A key in a local drive": a drive and an
+    /// account of the local layer hold only what it may set, each other
+    /// key named by its path.
+    #[test]
+    fn a_key_in_a_local_drive() {
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some(
+                "[accounts.own]\nstate_repository = \"example/state\"\n\n\
+                 [accounts.own.drives.home]\nrepositories = [\"agentplot/sluice\"]\n\
+                 stream = \"home\"\n",
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            config.local,
+            for_keys(&[
+                "accounts.own.drives.home.stream",
+                "accounts.own.state_repository"
+            ])
+        );
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// The configuration spec's "A flat list in the local layer": the
+    /// flat `repositories` of before is a key the local layer may not set.
+    #[test]
+    fn a_flat_list_in_the_local_layer() {
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some("repositories = [\"agentplot/sluice\"]\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["repositories"]));
         assert_eq!(kept(&config), ["agentplot/flume"]);
     }
 
@@ -2239,8 +2614,8 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_control_plane_named_in_the_local_layer() {
         let config = layers(
-            "repositories = []\n",
-            Some("repositories = []\n\n[control_plane]\ntype = \"hosted\"\n"),
+            "accounts = {}\n",
+            Some("accounts = {}\n\n[control_plane]\ntype = \"hosted\"\n"),
         )
         .unwrap();
         assert_eq!(config.local, for_keys(&["control_plane.type"]));
@@ -2254,8 +2629,8 @@ state_repository = \"afterthought/madswan-state\"
         assert_eq!(config.local, for_keys(&["control_plane.hosted.url"]));
 
         let config = layers(
-            "repositories = []\n",
-            Some("pin = [\"repositories\"]\n\n[streams]\nwork = 2\n"),
+            "accounts = {}\n",
+            Some("pin = [\"accounts\"]\n\n[streams]\nwork = 2\n"),
         )
         .unwrap();
         assert_eq!(config.local, for_keys(&["pin", "streams"]));
@@ -2265,11 +2640,7 @@ state_repository = \"afterthought/madswan-state\"
     /// its key, its value in no output.
     #[test]
     fn a_token_in_the_local_layer() {
-        let config = layers(
-            "repositories = []\n",
-            Some("token = \"ghp_n0t4r34lt0k3n\"\n"),
-        )
-        .unwrap();
+        let config = layers("accounts = {}\n", Some("token = \"ghp_n0t4r34lt0k3n\"\n")).unwrap();
         assert_eq!(config.local, for_keys(&["token"]));
         assert!(
             !format!("{config:?}").contains("ghp_n0t4r34lt0k3n"),
@@ -2282,8 +2653,8 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_local_file_that_is_not_toml() {
         let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("repositories = [\n"),
+            &in_drive("home", &["agentplot/flume"]),
+            Some("accounts.own.drives.home.repositories = [\n"),
         )
         .unwrap();
         let fault = fault_of(&config);
@@ -2291,8 +2662,8 @@ state_repository = \"afterthought/madswan-state\"
         assert_eq!(kept(&config), ["agentplot/flume"]);
 
         let config = layers(
-            "repositories = []\n",
-            Some("repositories = []\nghp_n0t4r34lt0k3n\n"),
+            "accounts = {}\n",
+            Some("accounts = {}\nghp_n0t4r34lt0k3n\n"),
         )
         .unwrap();
         let fault = fault_of(&config);
@@ -2304,34 +2675,60 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_local_address_out_of_form() {
         let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("repositories = [\"sluice\"]\n"),
-        )
-        .unwrap();
-        assert_eq!(
-            fault_of(&config),
-            format!("{LOCAL}:1: `repositories` entry \"sluice\": an address is `owner/name`")
-        );
-        assert_eq!(kept(&config), ["agentplot/flume"]);
-    }
-
-    /// A local layer naming two entries that are one repository is not
-    /// taken, as a managed one naming them is refused.
-    #[test]
-    fn a_local_layer_naming_one_repository_twice() {
-        let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("repositories = [\n  \"agentplot/sluice\",\n  \"AgentPlot/Sluice\",\n]\n"),
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&in_drive("home", &["sluice"])),
         )
         .unwrap();
         assert_eq!(
             fault_of(&config),
             format!(
-                "{LOCAL}:3: `repositories` entries \"agentplot/sluice\", on line 2, and \
-                 \"AgentPlot/Sluice\" are one repository: GitHub compares addresses without case"
+                "{LOCAL}:1: `accounts.own.drives.home.repositories` entry \"sluice\": an \
+                 address is `owner/name`"
             )
         );
         assert_eq!(kept(&config), ["agentplot/flume"]);
+    }
+
+    /// A local layer naming two entries that are one repository, in one
+    /// drive or in two, is not taken, as a managed one naming them is
+    /// refused.
+    #[test]
+    fn a_local_layer_naming_one_repository_twice() {
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some(
+                "accounts.own.drives.home.repositories = [\n  \"agentplot/sluice\",\n  \
+                 \"AgentPlot/Sluice\",\n]\n",
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:3: the drive `home`'s entry \"agentplot/sluice\", on line 2, and the \
+                 drive `home`'s entry \"AgentPlot/Sluice\" are one repository: a repository \
+                 belongs to one drive, and GitHub compares addresses without case"
+            )
+        );
+        assert_eq!(kept(&config), ["agentplot/flume"]);
+
+        let config = layers(
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&format!(
+                "{}{}",
+                in_drive("home", &["agentplot/sluice"]),
+                in_drive("work", &["agentplot/sluice"])
+            )),
+        )
+        .unwrap();
+        assert_eq!(
+            fault_of(&config),
+            format!(
+                "{LOCAL}:2: the drive `home`'s entry \"agentplot/sluice\", on line 1, and the \
+                 drive `work`'s entry \"agentplot/sluice\" are one repository: a repository \
+                 belongs to one drive, and GitHub compares addresses without case"
+            )
+        );
     }
 
     /// The configuration spec's "A partition the implementation refuses":
@@ -2379,7 +2776,7 @@ state_repository = \"afterthought/madswan-state\"
             Some("deneb")
         );
 
-        let config = layers("repositories = []\n", Some(&hosted_local("", &["work"]))).unwrap();
+        let config = layers("accounts = {}\n", Some(&hosted_local("", &["work"]))).unwrap();
         assert_eq!(
             fault_of(&config),
             format!(
@@ -2394,28 +2791,81 @@ state_repository = \"afterthought/madswan-state\"
     /// fault.
     #[test]
     fn a_local_table_of_another_kind() {
-        let config = layers("repositories = []\n", Some("control_plane = 3\n")).unwrap();
-        assert_eq!(
-            fault_of(&config),
-            format!("{LOCAL}: `control_plane` is not a table")
-        );
+        for (local, path) in [
+            ("control_plane = 3\n", "control_plane"),
+            ("accounts = 3\n", "accounts"),
+            ("accounts.own.drives = []\n", "accounts.own.drives"),
+        ] {
+            let config = layers("accounts = {}\n", Some(local)).unwrap();
+            assert_eq!(
+                fault_of(&config),
+                format!("{LOCAL}: `{path}` is not a table")
+            );
+        }
     }
 
-    /// The configuration spec's "Repositories pinned".
+    /// The configuration spec's "Repositories pinned": `accounts` holds
+    /// every drive's repositories.
     #[test]
     fn repositories_pinned() {
         let config = layers(
-            "pin = [\"repositories\"]\nrepositories = [\"agentplot/flume\"]\n",
-            Some("repositories = [\"agentplot/sluice\"]\n"),
+            &format!(
+                "pin = [\"accounts\"]\n{}",
+                in_drive("home", &["agentplot/flume"])
+            ),
+            Some(&format!(
+                "{}{}",
+                in_drive("home", &["agentplot/sluice"]),
+                in_drive("work", &["afterthought/crew"])
+            )),
         )
         .unwrap();
         assert_eq!(kept(&config), ["agentplot/flume"]);
         assert_eq!(
             config.local,
             LocalLayer::Taken {
+                passed_over: vec![
+                    PinnedKey {
+                        key: "accounts.own.drives.home.repositories".to_string(),
+                        pin: "accounts".to_string(),
+                    },
+                    PinnedKey {
+                        key: "accounts.own.drives.work.repositories".to_string(),
+                        pin: "accounts".to_string(),
+                    },
+                ]
+            }
+        );
+    }
+
+    /// A pin of one drive holds that drive's repositories alone.
+    #[test]
+    fn a_drive_pinned() {
+        let config = layers(
+            &format!(
+                "pin = [\"accounts.own.drives.home\"]\n{}",
+                in_drive("home", &["agentplot/flume"])
+            ),
+            Some(&format!(
+                "{}{}",
+                in_drive("home", &["agentplot/sluice"]),
+                in_drive("work", &["afterthought/crew"])
+            )),
+        )
+        .unwrap();
+        assert_eq!(
+            drives_of(&config),
+            [
+                drive("own", "home", &["agentplot/flume"]),
+                drive("own", "work", &["afterthought/crew"]),
+            ]
+        );
+        assert_eq!(
+            config.local,
+            LocalLayer::Taken {
                 passed_over: vec![PinnedKey {
-                    key: "repositories".to_string(),
-                    pin: "repositories".to_string(),
+                    key: "accounts.own.drives.home.repositories".to_string(),
+                    pin: "accounts.own.drives.home".to_string(),
                 }]
             }
         );
@@ -2428,7 +2878,7 @@ state_repository = \"afterthought/madswan-state\"
             &hosted("pin = [\"control_plane\"]\n", &["home"])
                 .replace("[\"agentplot/flume\"]", "[]"),
             Some(&hosted_local(
-                "repositories = [\"agentplot/sluice\"]\n",
+                &in_drive("home", &["agentplot/sluice"]),
                 &["work"],
             )),
         )
@@ -2460,12 +2910,17 @@ state_repository = \"afterthought/madswan-state\"
         assert_eq!(hosted_labels(&config), ["home"]);
     }
 
-    /// The configuration spec's "A pin of nothing", and a pin of a word
-    /// this binary does not carry.
+    /// The configuration spec's "A pin of nothing", a pin of the flat list
+    /// of before, and a pin of a word this binary does not carry.
     #[test]
     fn a_pin_of_nothing() {
-        for (pin, line) in [("repository_root", 1), ("control_plane.elsewhere", 1)] {
-            let managed = format!("pin = [\"{pin}\"]\nrepositories = []\n");
+        for pin in [
+            "repository_root",
+            "repositories",
+            "accounts.own.drives.home.stream",
+            "control_plane.elsewhere",
+        ] {
+            let managed = format!("pin = [\"{pin}\"]\naccounts = {{}}\n");
             for refusal in [
                 layers(&managed, None).unwrap_err(),
                 read(&managed).unwrap_err(),
@@ -2473,9 +2928,10 @@ state_repository = \"afterthought/madswan-state\"
                 assert_eq!(
                     refusal,
                     format!(
-                        "{FILE}:{line}: `pin` entry \"{pin}\" names no key a local layer may set: \
-                         those are `repositories`, `control_plane.crew.partitions`, \
-                         `control_plane.hosted.partitions`, and a table holding one"
+                        "{FILE}:1: `pin` entry \"{pin}\" names no key a local layer may set: \
+                         those are `accounts.<account>.drives.<drive>.repositories`, \
+                         `control_plane.crew.partitions`, `control_plane.hosted.partitions`, \
+                         and a table holding one"
                     )
                 );
             }
@@ -2487,17 +2943,17 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_pin_of_another_kind() {
         assert_eq!(
-            read("repositories = []\npin = \"repositories\"\n"),
+            read("accounts = {}\npin = \"accounts\"\n"),
             Err(format!("{FILE}:2: `pin` is not a list of dotted keys"))
         );
         assert_eq!(
-            read("repositories = []\npin = [3]\n"),
+            read("accounts = {}\npin = [3]\n"),
             Err(format!(
                 "{FILE}:2: `pin` entry is not a string: a pin is a dotted key"
             ))
         );
         assert_eq!(
-            read("repositories = []\npin = [\"a b\"]\n"),
+            read("accounts = {}\npin = [\"a b\"]\n"),
             Err(format!("{FILE}:2: `pin` entry \"a b\" is not a dotted key"))
         );
     }
@@ -2506,8 +2962,11 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_pin_in_the_local_layer() {
         let config = layers(
-            "repositories = [\"agentplot/flume\"]\n",
-            Some("pin = [\"repositories\"]\nrepositories = [\"agentplot/sluice\"]\n"),
+            &in_drive("home", &["agentplot/flume"]),
+            Some(&format!(
+                "pin = [\"accounts\"]\n{}",
+                in_drive("home", &["agentplot/sluice"])
+            )),
         )
         .unwrap();
         assert_eq!(config.local, for_keys(&["pin"]));
@@ -2519,9 +2978,10 @@ state_repository = \"afterthought/madswan-state\"
     #[test]
     fn a_managed_layer_at_fault() {
         assert_eq!(
-            layers("repositories = [\"flume\"]\n", Some("repositories = []\n")),
+            layers(&in_drive("home", &["flume"]), Some("accounts = {}\n")),
             Err(format!(
-                "{FILE}:1: `repositories` entry \"flume\": an address is `owner/name`"
+                "{FILE}:1: `accounts.own.drives.home.repositories` entry \"flume\": an address \
+                 is `owner/name`"
             ))
         );
     }
