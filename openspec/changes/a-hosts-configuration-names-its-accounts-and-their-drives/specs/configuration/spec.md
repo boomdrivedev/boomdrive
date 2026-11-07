@@ -45,6 +45,20 @@ An account's and a drive's name SHALL be 1 to 32 lower-case letters, digits and 
 - **WHEN** the configuration holds `[accounts.own.drives.Home]`, or `[accounts.my_own.drives.home]`
 - **THEN** it is refused, naming `Home`, or `my_own`, and the form
 
+### Requirement: A local layer naming a repository or a drive the managed layer holds elsewhere is not taken
+
+A repository SHALL belong to one drive, and a drive's name SHALL be given once, across both layers: a local layer that names a repository the managed layer keeps in another drive, or a drive the managed layer holds under another account, SHALL not be taken, and the runner SHALL name both (record 0028 as amended 2026-11-07).
+
+#### Scenario: A repository the managed layer keeps in another drive
+
+- **WHEN** the managed layer keeps `agentplot/flume` in the drive `home`, and the local layer names `AgentPlot/Flume` in the drive `work`
+- **THEN** the local layer is not taken, the runner names the local entry, `agentplot/flume` and the drives `work` and `home`, and `agentplot/flume` stays in the drive `home`
+
+#### Scenario: A drive the managed layer holds under another account
+
+- **WHEN** the managed layer holds the drive `home` under the account `own`, and the local layer names the drive `home` under the account `client`
+- **THEN** the local layer is not taken, and the runner names the drive `home` and the accounts `own` and `client`
+
 ## MODIFIED Requirements
 
 ### Requirement: The configuration names each repository by its forge address
@@ -174,7 +188,7 @@ The runner SHALL read its managed layer from the file `--config <file>` names, e
 
 ### Requirement: The local layer sets the repositories and a control plane's partitions alone
 
-The local layer MAY set each drive's `repositories`, `accounts.<account>.drives.<drive>.repositories`, and in a control plane's table, `[control_plane.<type>]`, the keys its implementation lists for it: `partitions`, in crew's table and in the hosted one's. Each SHALL be one key, its value read whole as the managed layer's is read. Every command of the runner SHALL read both layers (record 0009 as amended 2026-11-06; record 0028's amendment of 2026-11-07, the local layer's accounts; core.17; flume record 0032).
+The local layer MAY set each drive's `repositories`, `accounts.<account>.drives.<drive>.repositories`, and in a control plane's table, `[control_plane.<type>]`, the keys its implementation lists for it: `partitions`, in crew's table and in the hosted one's. Each SHALL be one key, its value read whole as the managed layer's is read. Every command of the runner SHALL read both layers (record 0009 as amended 2026-11-06; record 0028 as amended 2026-11-07; core.17; flume record 0032).
 
 #### Scenario: The local layer's repositories
 
@@ -188,7 +202,7 @@ The local layer MAY set each drive's `repositories`, `accounts.<account>.drives.
 
 ### Requirement: The local layer's repositories add to the managed layer's, and its partitions replace them
 
-A drive both layers name under one account SHALL keep the managed layer's repositories, in their order, then each the local layer names that the managed layer does not, in its order; a repository both name there SHALL be kept once and refused in neither. A drive or an account only the local layer names SHALL be declared by it, after the managed layer's, in the local file's order. A repository SHALL still belong to one drive and a drive's name be given once on the host: a local layer that names a repository the managed layer keeps in another drive, or a drive the managed layer holds under another account, SHALL not be taken, naming both. A control plane's `partitions` the local layer sets SHALL replace the managed layer's whole (record 0009 as amended 2026-11-06, "Repositories add"; record 0028's amendment of 2026-11-07, the local layer's accounts).
+A drive both layers name under one account SHALL keep the managed layer's repositories, in their order, then each the local layer names that the managed layer does not, in its order; a repository both name there SHALL be kept once and refused in neither. A drive or an account only the local layer names SHALL be declared by it, after the managed layer's. A control plane's `partitions` the local layer sets SHALL replace the managed layer's whole (record 0009 as amended 2026-11-06, "Repositories add"; record 0028 as amended 2026-11-07).
 
 #### Scenario: A repository both layers name
 
@@ -199,16 +213,6 @@ A drive both layers name under one account SHALL keep the managed layer's reposi
 
 - **WHEN** the managed layer keeps `agentplot/flume` in the account `own`'s drive `home`, and the local layer names `afterthought/crew` in the account `own`'s drive `work` and `agentplot/sluice` in the account `client`'s drive `garden`
 - **THEN** the runner keeps the drives `home`, `work` and `garden`, in that order, each with its repository
-
-#### Scenario: A repository the managed layer keeps in another drive
-
-- **WHEN** the managed layer keeps `agentplot/flume` in the drive `home`, and the local layer names `AgentPlot/Flume` in the drive `work`
-- **THEN** the local layer is not taken, the runner names the local entry, `agentplot/flume` and the drives `work` and `home`, and `agentplot/flume` stays in the drive `home`
-
-#### Scenario: A drive the managed layer holds under another account
-
-- **WHEN** the managed layer holds the drive `home` under the account `own`, and the local layer names the drive `home` under the account `client`
-- **THEN** the local layer is not taken, and the runner names the drive `home` and the accounts `own` and `client`
 
 #### Scenario: A repository the local layer drops
 
@@ -222,7 +226,7 @@ A drive both layers name under one account SHALL keep the managed layer's reposi
 
 ### Requirement: A local layer that sets any other key is not taken
 
-A local file that sets any key the runner does not list for it SHALL not be taken, and the configuration SHALL be the managed layer alone. Such a key is one of the runner's own, such as `repository_root`, `pin` or the flat `repositories` of before; one of an account or a drive other than `drives` and `repositories`, such as a drive's `stream`; one of `[control_plane]`, such as `type`; one of an implementation's table it does not list, such as `url`; or one the runner does not read. The runner SHALL name each by its dotted path, the shortest holding no key the local layer may set, and never its value (core.4).
+A local file that sets any key the runner does not list for it SHALL not be taken, and the configuration SHALL be the managed layer alone. Such a key is one of the runner's own, such as `repository_root`, `pin` or a flat `repositories`; any of an account or a drive but `drives` and `repositories`; any of `[control_plane]` or an implementation's table it does not list, such as `type` or `url`; or one the runner does not read. The runner SHALL name each by its dotted path, the shortest holding no key the local layer may set, and never its value (core.4).
 
 #### Scenario: A root in the local layer
 
@@ -251,7 +255,7 @@ A local file that sets any key the runner does not list for it SHALL not be take
 
 ### Requirement: A local layer the runner cannot read is not taken
 
-A local file SHALL not be taken where it is not valid TOML, where the runner's reading refuses a value it sets, such as a drive's `repositories` entry out of form, two entries that are one repository, an account's or a drive's name out of form, or a drive it names under two accounts, or where the implementation's reading of its own table refuses one. The configuration SHALL then be the managed layer alone. The runner SHALL name the fault as it names a managed file's: the file, the line where it has one and what is wrong, never the file's text.
+A local file SHALL not be taken where it is not valid TOML, where the runner's reading refuses a value it sets, such as an address or a name out of form, one repository named twice or a drive under two accounts, or where the implementation's reading of its own table refuses one. The configuration SHALL then be the managed layer alone. The runner SHALL name the fault as it names a managed file's: the file, the line where it has one and what is wrong, never the file's text.
 
 #### Scenario: A local file that is not TOML
 
@@ -284,7 +288,7 @@ While a local file stands that is not taken, a keeping pass SHALL keep the manag
 
 ### Requirement: The managed layer may pin a key the local layer could set
 
-The managed layer MAY set `pin`, a list of keys in TOML's dotted spelling, each a key the local layer may set, such as `"accounts.own.drives.home.repositories"` or `"control_plane.hosted.partitions"`, or a table holding one, such as `"accounts"`, `"accounts.own.drives.home"` or `"control_plane"`, which pins each such key under it. A key the local layer sets that a pin holds SHALL be passed over and named with its pin, and the rest of the local layer SHALL be taken (flume record 0032, point 4; core.17).
+The managed layer MAY set `pin`, a list of keys in TOML's dotted spelling, each a key the local layer may set, such as `"control_plane.hosted.partitions"`, or a table holding one, such as `"accounts"` or `"accounts.own.drives.home"`, which pins each such key under it. A key the local layer sets that a pin holds SHALL be passed over and named with its pin, and the rest of the local layer SHALL be taken (flume record 0032, point 4; core.17).
 
 #### Scenario: Repositories pinned
 
