@@ -5,7 +5,8 @@
 mod common;
 
 use boomdrive_control::{Act, ActSort, ControlPlane, Id, Launch, Lease, Offer, Report, Want};
-use common::{act, file, hello, ids, launch, plan, pull, want, State, REQUESTS};
+use common::{act, commit_to, file, git, hello, ids, launch, plan, pull, want, State, REQUESTS};
+use std::path::Path;
 
 const CREW: &str = "afterthought/crew";
 
@@ -502,4 +503,56 @@ fn a_kits_launch_naming_no_stream() {
     };
     assert_eq!(offer.launch.stream, None);
     assert_eq!(offer.launch.repository, CREW);
+}
+
+/// `example/state` on the scratch forge, its `home/main` and `work/main`
+/// each holding a launch request for `host-a`, numbered 1, of a unit the
+/// partition's plan holds.
+fn two_drives(state: &State) -> std::path::PathBuf {
+    let bare = state.make("example/state");
+    for label in ["home", "work"] {
+        commit_to(
+            &bare,
+            &format!("{label}/main"),
+            &[
+                (
+                    "requests.rec",
+                    &file(
+                        REQUESTS,
+                        &[launch(1, Some("host-a"), "unit/a", CREW, label, &[])],
+                    ),
+                ),
+                ("plan.rec", &plan(&["a"], &[])),
+            ],
+        );
+    }
+    bare
+}
+
+/// Every ref the bare cache at `cache` holds.
+fn refs_of(cache: &Path) -> String {
+    git(cache, &["for-each-ref", "--format=%(refname)"], None)
+}
+
+/// The crew-control-plane spec's "Two partitions of one state
+/// repository": each partition reads through a bare cache of its own, and
+/// neither writes in the other's.
+#[test]
+fn two_partitions_of_one_state_repository() {
+    let state = State::new();
+    two_drives(&state);
+    let (mut crew, _) = state.crew_serving(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    assert_eq!(ids(&pull(&mut crew, &kept())), ["home/1", "work/1"]);
+    let caches = state.root.join("data-host-a/control/crew/example");
+    let (home, work) = (caches.join("state/home.git"), caches.join("state/work.git"));
+    assert!(home.is_dir() && work.is_dir());
+    assert!(!caches.join("state.git").exists());
+    let (home_refs, work_refs) = (refs_of(&home), refs_of(&work));
+    assert!(home_refs.contains("home/main"), "{home_refs}");
+    assert!(!home_refs.contains("work/"), "{home_refs}");
+    assert!(work_refs.contains("work/main"), "{work_refs}");
+    assert!(!work_refs.contains("home/"), "{work_refs}");
 }

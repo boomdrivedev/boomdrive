@@ -98,20 +98,27 @@ impl Crew {
         self.before_claim = Some(Box::new(hook));
     }
 
-    /// The state repository of `partition`, through its bare cache,
-    /// `<data>/control/crew/<owner>/<name>.git`, outside `repositories/`
-    /// so the keeper never takes it for a clone.
+    /// The state repository of `partition`, through the partition's own
+    /// bare cache, `<data>/control/crew/<owner>/<name>/<label>.git`,
+    /// outside `repositories/` so the keeper never takes it for a clone.
+    /// Two partitions of one state repository share no git directory and
+    /// so no weir lock, and one's fetch or push holds no other's pull or
+    /// report (record 0026; design Decision 7).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
         Store {
-            cache: self
-                .data_dir
-                .join("control/crew")
+            cache: caches(&self.data_dir)
                 .join(&repository.owner)
-                .join(format!("{}.git", repository.name)),
+                .join(&repository.name)
+                .join(format!("{}.git", partition.label)),
             url: repository.url(&self.forge),
         }
     }
+}
+
+/// Where crew's implementation keeps its caches, `<data>/control/crew`.
+fn caches(data_dir: &Path) -> PathBuf {
+    data_dir.join("control/crew")
 }
 
 /// The host's room, as the hello's capacity gives it: `null`, unbounded,
