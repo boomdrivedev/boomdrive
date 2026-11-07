@@ -11,6 +11,8 @@ decision-makers:
 
 Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record. Once accepted, it supersedes record 0001's "It is private for now".
 
+Amended in part by record 0023, proposed on 2026-11-06, once it is accepted: herdr, with the family's herdr plugins, and Ghostty are installed with the set, each replaceable or dropped through the modules' options.
+
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on installing and upgrading; record 0001; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, rows S8, F9 and F51; self_update, sigstore-rust, GitHub's artifact attestations and dist (cargo-dist), each public; agentplot/boomdrive-cloud's rule core.96, cited by id; the running spec.
 

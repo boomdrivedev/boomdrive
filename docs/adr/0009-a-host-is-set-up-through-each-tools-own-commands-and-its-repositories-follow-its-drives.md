@@ -49,6 +49,22 @@ core.5 stands: the configuration names every repository kept, its managed level 
 - On a nix host, nix writes the host's level of defaults and stops writing what the control plane manages.
 - In what order a host takes up a drive's repositories, and whether Boom's repositories are among them, is still open.
 
+## Amendment, 2026-11-06: two layers in every tool, in Flume's words
+
+Status: proposed to the user on 2026-11-06, as `briefs.15` has it; accepted only on their yes.
+
+Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (`design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". agentplot-design for writing it here.
+Sources: `design/the-flakes-configuration/design.md`; flume record 0032 (a managed and a local layer); record 0023; rules core.5, core.17 and core.18.
+
+### Decision outcome
+
+- **Two layers, by one pair of words.** Each tool's configuration is its managed layer, `config.toml`, written by Nix, a fleet or a person, and its local layer, `config.local.toml` beside it, written by the operator or a control plane and read over it. The managed level above is the runner's local layer.
+- **The local layer sets only what runs the work.** Each tool lists the keys its local layer may set; for the runner, its repositories and its control plane's partitions. Accounts, pools, credentials' paths and every other key are the managed layer's alone, and a local file that sets one is not taken. The managed layer may pin any key the local one could set, which the local layer then cannot change.
+- **Repositories add.** The runner keeps every repository its managed layer names and every one its local layer names. A control plane that drops a drive drops only the repositories it wrote.
+- **A control plane writes a tool's local file.** Setup under a hosted control plane writes the runner's and Flume's local layers, with the repositories of the drives the host serves and each one's stream by its address, and the files Nix wrote stay as Nix wrote them. This replaces setup through each tool's own commands above, and Flume is asked for no command that declares a stream.
+
+Rules core.17 and core.18 are amended with it, each marked proposed.
+
 ## Amendment, 2026-11-05: setup installs the host's tools, never a repository's pins
 
 Status: accepted by the user on 2026-11-05, on their approval of flume's cross-tool design `a-places-readiness-is-one-design-across-the-tools`, whose decision 7 words this amendment.
