@@ -1,13 +1,15 @@
 //! The hello (design Decision 6): what the runner tells its control plane
 //! of the host at every pull. It holds the runner's version and its
-//! tools', the repositories it keeps with their clones made, Flume's host
+//! tools', the repositories it keeps with their clones made, apart from
+//! them those it drains (record 0021), Flume's host
 //! part as Flume printed it, and the leases it holds. It is the Host
 //! object's copy of the host (cloud record 0005), each part as its tool
 //! gave it (core.11), and registers no repository to anything (cloud
 //! record 0007).
 
-use crate::facts;
+use crate::config::Address;
 use crate::flume::{Reply, Unrun};
+use crate::{facts, report};
 use boomdrive_control::{Capacity, Hello, HostPart, Report, ToolVersion, INTERFACE_VERSION};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -111,7 +113,8 @@ pub fn capacity(status: &Result<Reply, Unrun>) -> Capacity {
 
 /// The hello for a pull: the tools' versions as `tools` reads them, the
 /// addresses kept with their clones made, the host's capacity, and each
-/// lease `report` holds.
+/// lease `report` holds. It names no repository drained: the pass sets
+/// them apart, from [`draining`].
 pub fn hello(
     tools: &dyn Tools,
     repositories: Vec<String>,
@@ -126,8 +129,23 @@ pub fn hello(
             .map(|tool| (tool.to_string(), tools.version(tool)))
             .collect(),
         repositories,
-        draining: vec![],
+        draining: Vec::new(),
         capacity,
         leases: report.leases(),
     }
+}
+
+/// The repositories the runner drains, for the hello to name apart from
+/// those it keeps: each address of `dropped`, whose clone stands while the
+/// configuration does not name it, that a launch of `report`, the report
+/// the pass read before its pull, holds at a place that has not ended
+/// (record 0021).
+pub fn draining(dropped: Vec<String>, report: &Report) -> Vec<String> {
+    dropped
+        .into_iter()
+        .filter(|address| {
+            Address::parse(address)
+                .is_ok_and(|address| !report::holding(report, &address).is_empty())
+        })
+        .collect()
 }
