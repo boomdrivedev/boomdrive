@@ -1,8 +1,10 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
-# The site: every check `site-check` runs, as moon tasks. The types, the
-# prose and the build are the fast layer, which sluice's gate requires on
-# main and on every bolt; a pass replays wherever the inputs are the same.
+# The site: every check `site-check` runs, as moon tasks, and the check that
+# OpenSpec's Claude Code skills are the pinned OpenSpec's. The types, the
+# prose, the build and the skills are the fast layer, which sluice's gate
+# requires on main and on every bolt; a pass replays wherever the inputs are
+# the same.
 # The check and the build both write the .astro folder, so they share one
 # mutex and run one after the other, never at once.
 language: 'typescript'
@@ -37,3 +39,9 @@ tasks:
     deps: ['~:install']
     tags: [check-fast]
     options: {mutex: 'astro'}
+  # OpenSpec's Claude Code skills the tree tracks name the release devenv.nix
+  # pins (record 0003).
+  openspec-skills:
+    command: 'bun run scripts/openspec-skills.ts'
+    inputs: ['.claude/skills/**/*', 'scripts/openspec-skills.ts', 'devenv.nix', 'devenv.lock']
+    tags: [check-fast]
