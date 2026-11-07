@@ -86,7 +86,7 @@ pub fn runner_version() -> String {
     format!("boomdrive {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// The host's capacity, from the pass's one `flume --json status`: its
+/// The host's capacity, from the `flume --json status` a pass reads before its pull: its
 /// host part's `running`, `bound`, `room` and `streams` as Flume printed
 /// each, and none of its `pools`, `addresses`, `bases` or `terminal_kept`,
 /// which are Flume's bookkeeping; else why it could not be read.

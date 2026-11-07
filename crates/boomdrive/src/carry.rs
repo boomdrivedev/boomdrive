@@ -1,12 +1,14 @@
 //! The control pass (design Decision 5). It takes the runner's report,
-//! reads the host once from Flume's status, hands the hello to the pull,
+//! reads the host from Flume's status, hands the hello to the pull,
 //! answers each want in the control plane's order, but carries out an
 //! act on a place only once every launch the pull offers is taken, and
 //! none but the first once the next pass is due (record 0002; core.50),
-//! opens each terminal pulled, and sends the whole report. An act on a
-//! place the listing does not hold reads Flume's status of the place
-//! first, and takes Flume's refusal of it as its answer (record 0010;
-//! core.51). The runner takes only what it was
+//! carries each place's status against Flume's listing as it stands once
+//! those answers are made (record 0027), opens each terminal pulled, and
+//! sends the whole report. An act on a place the listing read before the
+//! pull does not hold reads Flume's status of the place first, and takes
+//! Flume's refusal of it as its answer (record 0010; core.51). The runner
+//! takes only what it was
 //! offered, launches only through Flume's command line, and carries each
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
@@ -200,15 +202,7 @@ impl Carrier<'_> {
         };
         let saved = kept.clone().unwrap_or_default();
         let status = self.flume.status();
-        let listing = match &status {
-            Ok(Reply::Given(text)) => serde_json::from_str::<Value>(text).ok(),
-            Ok(Reply::Refused(words)) | Err(Unrun(words)) => {
-                say(format!(
-                    "boomdrive: Flume's status could not be read: {words}"
-                ));
-                None
-            }
-        };
+        let listing = listing_of(&status, say);
         let hello = hello::hello(
             self.tools,
             self.clones.made(),
@@ -237,6 +231,7 @@ impl Carrier<'_> {
             report,
             room: Room::read(listing.as_ref()),
             listing,
+            ran: false,
             now,
             round: Round::Wants,
             acts_run: 0,
@@ -262,6 +257,13 @@ impl Carrier<'_> {
                 "boomdrive: the next control pass is due, so {n} acts on places wait for it"
             )),
         }
+        // The commands the wants ran may have taken minutes, while Flume
+        // moved places on, tidied some and let their records go: the
+        // statuses are carried against its listing as it stands now
+        // (record 0027).
+        if work.ran {
+            work.listing = listing_of(&self.flume.status(), say);
+        }
         work.carry_statuses(say);
         work.carry_entries(say);
         for terminal in pulled.terminals {
@@ -285,9 +287,15 @@ struct Work<'p> {
     /// The report as the file holds it.
     saved: Report,
     report: Report,
-    /// The pass's one `flume --json status`, where Flume gave it.
+    /// Flume's listing, `flume --json status`, where Flume gave it: the
+    /// pass's own, read before the pull, and read again before the
+    /// statuses are carried where answering the wants ran a tool's
+    /// command.
     listing: Option<Value>,
     room: Room,
+    /// Whether answering the wants ran a tool's command: a launch, an act
+    /// of Flume's or a branch of sluice's.
+    ran: bool,
     /// The pass's clock, read once at its start.
     now: At,
     round: Round,
@@ -300,12 +308,12 @@ struct Work<'p> {
 /// The pass's two rounds over the pull's wants, each in the control
 /// plane's order, so that no launch waits behind an act on a place
 /// (record 0002; core.50). An act on a place moves no room and lifts no
-/// hold within the pass, which read both from its one listing, so taking
-/// it second changes no answer. The second round ends its acts on places
-/// once the next pass is due, after the first, so no launch the next pull
-/// offers waits behind them either. An act Flume refuses because its place
-/// no longer stands costs the pass the reading of Flume's refusal alone
-/// (record 0010; core.51).
+/// hold within the pass, which read both from its listing before the pull,
+/// so taking it second changes no answer. The second round ends its acts on
+/// places once the next pass is due, after the first, so no launch the next
+/// pull offers waits behind them either. An act Flume refuses because its
+/// place no longer stands costs the pass the reading of Flume's refusal
+/// alone (record 0010; core.51).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Round {
     /// Every want: each offer, inbox and command, and each act answered
@@ -401,6 +409,7 @@ impl Work<'_> {
         let id = &offer.id;
         let args = launch_args(offer, container, self.priority(offer));
         let briefs = self.carrier.control_dir.join("briefs");
+        self.ran = true;
         match self.carrier.flume.launch(&args, &briefs) {
             Ok(Reply::Given(text)) => {
                 let answer = serde_json::from_str::<Value>(&text).ok();
@@ -568,6 +577,7 @@ impl Work<'_> {
             return;
         }
         self.acts_run += 1;
+        self.ran = true;
         match self.carrier.flume.act(place, &flume_act(&act.what)) {
             Ok(Reply::Given(_)) => self.acted(act, Outcome::Done, None, Some(place), say),
             Ok(Reply::Refused(words)) => {
@@ -727,6 +737,7 @@ impl Work<'_> {
             }
         };
         let what = format!("{id}: branch {branch} from {from} in {repository}");
+        self.ran = true;
         let printed = match self.carrier.sluice.branch(&container, branch, from) {
             Ok(printed) => printed,
             Err(sluice::Unrun(words)) => {
@@ -790,9 +801,11 @@ impl Work<'_> {
     /// whole answer, as the one line Flume printed. A place is followed to
     /// its end whether or not the configuration still keeps its
     /// repository: one it no longer keeps is asked for by its location
-    /// alone (record 0021). The pass's listing decides when it is read
-    /// again: only where the place's entry there differs, as JSON, from its
-    /// entry in the answer carried. A place the listing no longer holds is
+    /// alone (record 0021). Flume's listing as it stands once the wants are
+    /// answered decides when it is read again (record 0027): only where the
+    /// place's entry there, the place standing or else its tidied record
+    /// `<location>@<at>`, differs, as JSON, from its entry in the answer
+    /// carried. A place the listing no longer holds is
     /// asked for once a pass, and where Flume refuses, the last status
     /// carried stands, not listed. The first status carried that reads the
     /// place landed tells the keeper, where it keeps the repository, so it
@@ -1087,6 +1100,20 @@ impl Work<'_> {
         let command = report.commands.remove(id).is_some();
         let inbox = report.inboxes.remove(id).is_some();
         launch || act || command || inbox
+    }
+}
+
+/// Flume's listing in its answer to `flume --json status`, where it gave
+/// one, else none, its words said.
+fn listing_of(status: &Result<Reply, Unrun>, say: &mut dyn FnMut(String)) -> Option<Value> {
+    match status {
+        Ok(Reply::Given(text)) => serde_json::from_str::<Value>(text).ok(),
+        Ok(Reply::Refused(words)) | Err(Unrun(words)) => {
+            say(format!(
+                "boomdrive: Flume's status could not be read: {words}"
+            ));
+            None
+        }
     }
 }
 
