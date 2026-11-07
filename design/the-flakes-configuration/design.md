@@ -63,22 +63,31 @@ which holds the user's words). Not yet a record or a rule.
   stream under the login's own program, and clicks the Boomdrive app to
   see its agents.
 
+- **Two layers in every tool, by one pair of words.** Each tool's
+  configuration is its managed layer, `config.toml`, written by Nix, a
+  fleet or a person, and its local layer, `config.local.toml` beside it,
+  written by the operator or a control plane, read over it. The runner
+  takes Flume's words and Flume's rule (flume record 0032), and sluice
+  takes both when it gains layers:
+  - **The local layer sets only what runs the work.** Each tool lists
+    the keys its local layer may set; for the runner, its repositories
+    and its control plane's partitions. Accounts, pools, credentials'
+    paths and every other key are the managed layer's alone, and a local
+    file that sets one is not taken.
+  - **The managed layer may pin** any key the local one could set, which
+    the local layer then cannot change.
+  - **Repositories add.** The runner keeps every repository its managed
+    layer names and every one its local layer names. A control plane
+    that drops a drive drops only the repositories it wrote.
+  - **A control plane writes a tool's local file.** Setup under a hosted
+    control plane writes the runner's and Flume's local layers, the
+    repositories of the drives a host serves and each one's stream by
+    its address, and Nix's files stay as Nix wrote them.
+
 The sketch of deneb is `deneb.nix` beside this file.
 
 ## Open
 
-- **Layer names.** The runner's managed level is the one a control plane
-  writes over the host's own (record 0009); Flume's managed layer is the
-  one the host's manager writes, and its local layer the operator's or
-  a control plane's over it (flume record 0032). sluice has no layers
-  yet. The family needs one pair of words for both tools, and sluice's
-  when it gains layers.
-- **A repository added from the cloud.** Under record 0009 the hosted
-  control plane writes the runner's managed level with the repositories
-  of the drives a host serves, beside the file nix writes, and the
-  runner reads both. To confirm with Boomdrive Cloud: that it writes
-  that file, and where a cloud-added repository's stream goes, Flume's
-  local layer by its address being the one place Flume's design allows.
 - **crew's partitions are named twice.** The runner's
   `[control_plane.crew]` and crew's `teams.json` each name the host's
   partitions and their state repository.
@@ -93,7 +102,11 @@ The sketch of deneb is `deneb.nix` beside this file.
   the owner block; the Boomdrive app and the shell); core.44 amended,
   herdr no longer the host's own;
   core.5's details (the owner block's stream is no key of the runner's
-  file), core.18 and core.46 amended; the configuration and
+  file), core.18 and core.46 amended; a record amending record 0009 (the
+  local layer in Flume's words in place of the managed level, its keys
+  listed and pinnable, repositories added, a control plane writing a
+  tool's local file in place of setup through each tool's commands),
+  with core.17 and core.18 amended; the configuration and
   service-modules specs through an OpenSpec change. The queued units of
   the bolt `clones-are-found-from-boomdrive`, which give Flume each
   clone's folder, are no longer needed once Flume names a repository by
@@ -102,12 +115,14 @@ The sketch of deneb is `deneb.nix` beside this file.
   and statement clauses (C.7, 143) for naming a repository by its
   address; a record and C.7's change for reading an account's usage
   itself.
-- **agentplot/sluice**: a flake module for the host's own settings.
+- **agentplot/sluice**: a flake module for the host's own settings;
+  its layers, when it gains them, in the family's words.
 - **afterthought/crew**: a flake with its package and a module for its
   host file.
 - **agentplot/blueprints**: Flume's statement, clauses 143 and C.7; the
-  family's one pair of words for a configuration's layers, in the
-  principles or each tool's statement.
+  family's one pair of words for a configuration's layers, managed and
+  local, and Flume's rule for what a local layer may set, in the
+  principles.
 - **afterthought/swancloud**: once the modules land, it passes deneb's
   facts as option values and stops writing Flume's, sluice's and crew's
   files and the usage readings for Flume.

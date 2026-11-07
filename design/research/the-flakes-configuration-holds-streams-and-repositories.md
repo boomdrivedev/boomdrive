@@ -175,3 +175,31 @@ The user's answers, 2026-11-06:
 - The terminal app: "Install Ghostty too": the flake installs Ghostty and
   names it Flume's `terminal_app`, so a fresh Mac opens a window with
   nothing else installed. Chosen over the host's own terminal app.
+
+## The layers
+
+The user, 2026-11-06, on "I want to confirm with Nick": "i don't konw who
+Nick is. did I say nick when i meant nix?" Read as Nix: "as Nix is
+writing these settings, once we have the cloud control plane, can a
+repository get added from the cloud and written into the other config
+file?" As the records stand, yes: the cloud writes the runner's managed
+level (record 0009) and Flume's local layer (flume record 0032), each
+beside the file Nix writes. The two records also differ in how: record
+0009 has setup set Flume's streams through Flume's commands (core.18),
+and flume record 0032 has no command of Flume's write configuration and
+a control plane write the local file.
+
+The user's answers, 2026-11-06:
+
+- The words: "Flume's: managed + local". Every tool's `config.toml` is
+  its managed layer, written by Nix, a fleet or a person, and
+  `config.local.toml` its local layer, written by the operator or a
+  control plane over it; the runner's managed level of record 0009, not
+  yet built, becomes its local layer. Chosen over the runner's words,
+  host and managed, and over new words naming each file's writer.
+- What a local layer may set: "Flume's rule for all": each tool lists
+  the keys its local layer may set, and the managed layer may pin them.
+  Chosen over the runner's cloud level overriding any key.
+- Repositories under the cloud: "Add to Nix's": the host keeps every
+  repository Nix names and every one the cloud names for its drives.
+  Chosen over the cloud's list replacing Nix's (core.17 as it reads).
