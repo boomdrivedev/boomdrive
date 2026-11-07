@@ -1,7 +1,7 @@
 ---
 number: 23
 title: The Boomdrive flake configures the whole host, each tool by its own module, and each repository named once by its owner
-status: proposed
+status: accepted
 date: 2026-11-06
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # The Boomdrive flake configures the whole host, each tool by its own module, and each repository named once by its owner
 
-Status: proposed to the user on 2026-11-06, as `briefs.15` has it; accepted only on their yes.
+Status: accepted by the user on 2026-11-06, in agentplot-design's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).
 
 Amends record 0020 in part, and record 0012 where it keeps herdr the host's own, each marked so where it stands.
 
@@ -44,9 +44,8 @@ Not taken: the runner reading crew's `teams.json`, which core.17 rules out and w
 
 ### Consequences
 
-- Rules core.18 and core.46 say a tool's file is written by its own module, and the Boomdrive module sets the others' options; core.44's details take herdr and Ghostty into the set; core.5's details say the owner block's stream is no key of the runner's file. Each is marked proposed.
+- Rules core.18 and core.46 say a tool's file is written by its own module, and the Boomdrive module sets the others' options; core.44's details take herdr and Ghostty into the set; core.5's details say the owner block's stream is no key of the runner's file. 
 - The configuration and service-modules specs change through an OpenSpec change.
 - The queued units of the bolt `clones-are-found-from-boomdrive`, which give Flume each clone's folder, are no longer needed once Flume names a repository by its address.
 - Flume publishes a flake with its `services.flume` module (flume record 0055), sluice a module for its host settings, and afterthought/crew a flake with its package and a module for its host file.
 - afterthought/swancloud, once the modules land, passes deneb's facts as option values and stops writing Flume's, sluice's and crew's files.
-- No unit is queued from this record while it is proposed.
