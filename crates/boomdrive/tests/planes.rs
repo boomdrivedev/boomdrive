@@ -158,3 +158,28 @@ fn a_word_not_carried_enrolls_nothing() {
     );
     assert!(refusal.host_to_fix);
 }
+
+/// Each implementation lists `partitions` as the one key of its table the
+/// runner's local layer may set, and reads its own table, a partition
+/// with no `label` refused, opening nothing (design Decision 2; record
+/// 0009 as amended 2026-11-07).
+#[test]
+fn each_implementation_lists_partitions_for_the_local_layer() {
+    for entry in &PLANES {
+        assert_eq!(entry.local_keys, ["partitions"], "{}", entry.word);
+        let others = match entry.word {
+            "crew" => "host = \"deneb\"\n",
+            "hosted" => "url = \"https://control.example\"\n",
+            word => panic!("no table written for {word}"),
+        };
+        let table: toml::Table = format!("{others}\n[[partitions]]\nrepositories = []\n")
+            .parse()
+            .expect("a table");
+        let refusal = (entry.read)(&table, Path::new(FILE)).unwrap_err();
+        assert!(
+            refusal.contains("`partitions` entry 1 names no `label`"),
+            "{}: {refusal}",
+            entry.word
+        );
+    }
+}

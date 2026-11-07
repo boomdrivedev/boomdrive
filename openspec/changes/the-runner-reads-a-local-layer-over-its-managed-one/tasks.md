@@ -14,7 +14,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 
 ## 2. Each implementation lists its local layer's keys
 
-- [ ] 2.1 `boomdrive_crew::config::LOCAL_KEYS` and `boomdrive_hosted::table::LOCAL_KEYS` each list `partitions`. `planes::Entry` gains `local_keys`, the implementation's list, and `read`, its own reading of its table, which opens nothing: crew's `config::read`, and the hosted `Table::read` (design Decision 2). Done when `devenv shell -- cargo test -p boomdrive --test planes each_implementation_lists_partitions_for_the_local_layer` passes. That new test asserts, for every entry of `planes::PLANES`, that its `local_keys` are `["partitions"]` and that its `read` refuses a partition with no `label`.
+- [x] 2.1 `boomdrive_crew::config::LOCAL_KEYS` and `boomdrive_hosted::table::LOCAL_KEYS` each list `partitions`. `planes::Entry` gains `local_keys`, the implementation's list, and `read`, its own reading of its table, which opens nothing: crew's `config::read`, and the hosted `Table::read` (design Decision 2). Done when `devenv shell -- cargo test -p boomdrive --test planes each_implementation_lists_partitions_for_the_local_layer` passes. That new test asserts, for every entry of `planes::PLANES`, that its `local_keys` are `["partitions"]` and that its `read` refuses a partition with no `label`.
 
 ## 3. The configuration reads its two layers
 
