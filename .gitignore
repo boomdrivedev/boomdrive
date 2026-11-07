@@ -8,3 +8,8 @@ devenv.local.nix
 
 # cargo's build directory
 /target
+
+# Claude Code's project files, which devenv writes from devenv.nix at each
+# entry to the shell (record 0022)
+/.mcp.json
+/.claude/settings.json
