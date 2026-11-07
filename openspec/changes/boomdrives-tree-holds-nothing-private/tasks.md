@@ -8,7 +8,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 1. crew's implementation takes the neutral names
 
-- [ ] 1.1 The unit tests in `crates/boomdrive-crew/src/config.rs`, `ids.rs` and `records.rs` name the partitions `home` and `work`, the host `host-a` and the state repositories `example/home-state` and `example/work-state`, with every id, branch, file path and refusal's words built from them, and the label refused for its space is `ho me`. True when `devenv shell -- cargo test -p boomdrive-crew --lib` passes.
+- [x] 1.1 The unit tests in `crates/boomdrive-crew/src/config.rs`, `ids.rs` and `records.rs` name the partitions `home` and `work`, the host `host-a` and the state repositories `example/home-state` and `example/work-state`, with every id, branch, file path and refusal's words built from them, and the label refused for its space is `ho me`. True when `devenv shell -- cargo test -p boomdrive-crew --lib` passes.
 - [ ] 1.2 crew's tests, `crates/boomdrive-crew/tests/common/mod.rs`, `claims.rs`, `letgo.rs`, `read.rs`, `roles.rs`, `shared.rs` and `write.rs`, name the partitions `home` and `work`, the hosts `host-a` and `host-b`, the state repositories under `example`, and every example repository a personal account owned as `example/<its name>`, each test proving the crew-control-plane scenario it proved. True when `sluice exec main -- moon run boomdrive-crew:test` passes.
 
 ## 2. The interface, the runner and the README take the neutral names
