@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below: a pull's launches go ahead of its acts on places. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud at `24baa4e`: its records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022; its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39; and `design/domain-model.html`, with its Launch, Command and Host cards, its copies of a Flume place, a sluice entry, the inbox and a host's capacity (section 8), "One launch, start to finish" (section 10) and its ledger (section 13). Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -59,3 +59,36 @@ core.11 holds it.
 - crew's implementation gives every launch the lease number 1 and no expiry: crew addresses each request to one host and never moves it.
 - A launch that names no stream runs where Flume puts it, and Flume's status does not say where before the launch. Until Flume says so, the runner judges such a launch by its host's room.
 - This record departs from flywheel-next's design. Its host took a lease itself, by compare-and-swap on the state store, within what its manifest declared. It also removed stray places from its disk (`definitions/engine/lease.yaml`, `host.yaml`; its requirements 55, 128 and 149). Here the control plane offers each lease, and the runner removes nothing.
+
+## Amendment, 2026-11-07: a pull's launches go ahead of its acts on places
+
+Status: the code stage's own choice, on the brief of the chore `a-launch-goes-ahead-of-other-acts`, 2026-11-07. It moves when within a pass an act on a place runs, and changes no answer the runner gives, so it is cheap to change and is not asked.
+
+The brief: "Boomdrive's runner takes a pull's launches ahead of its other acts, and an act Flume refuses because its place no longer stands costs no more than its answer, as records 0002 and 0010 say, so a launch never waits behind acts on places that are over."
+
+### Context
+
+A pass answered each want in the control plane's order. crew's implementation gives its wants in `Request` order, so acts asked before a launch come ahead of it. On 2026-11-07 a host's pull gave some twenty priority acts on launches whose places Flume no longer stood, ahead of new offers. Flume refused each, "no place <location> stands on this host", and each refusal took Flume about half a minute on that host. The launches waited some ten minutes behind them.
+
+### Considered options
+
+1. Keep the control plane's order, and leave the order to each control plane.
+2. Answer an act on a place the pass's listing does not hold from that listing, running no Flume.
+3. Take every act after every other want.
+4. Two rounds over the pull, each in the control plane's order: the first answers every want but an act that runs Flume's command on a place, which it leaves for the second.
+
+### Decision outcome
+
+Option 4.
+
+- **The first round** takes each offer, inbox and command, and answers each act that runs no command: one on a launch the runner holds unlaunched, on no launch of the runner's, or on a launch Flume named no place for.
+- **The second round** carries out each act left, as Flume's command on its place, and each act on a launch the first round took. So no launch waits behind an act on a place.
+- **No answer changes.** Room and holds are read from the pass's one listing, and an act on a place moves neither within the pass. So the launches made are the ones the control plane's order makes, and each act on a place gets its answer from Flume as before, later in the pass. An act ahead of its own launch is now carried out on the place that launch makes in the same pass, where before it waited for the next.
+
+Not taken:
+
+- **Option 1.** Each control plane would order its wants for a cost the runner pays, and crew's order is its requests'.
+- **Option 2.** An act's answer is Flume's (core.1, core.11). The runner would judge, from Flume's status, what Flume decides of its own command.
+- **Option 3.** A drop of a held launch is answered from the report. Where the pull gives it ahead of the launch, and the launch's After lands that pass, the launch would be made and then dropped, where the control plane's order never makes it. Which work runs is the control plane's (core.1).
+
+core.49 holds it, and core.1's details allow it. The work-into-flume spec gains it through the chore `a-launch-goes-ahead-of-other-acts`.

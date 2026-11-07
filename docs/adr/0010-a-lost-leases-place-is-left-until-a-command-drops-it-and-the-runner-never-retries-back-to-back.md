@@ -9,7 +9,7 @@ decision-makers:
 
 # A lost lease's place is left until a command drops it, and the runner never retries back to back
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-07, below: an act Flume refuses because its place no longer stands costs its answer alone.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
@@ -39,3 +39,11 @@ Then four rules drawn from the material, each kept or not: no launch past its le
 - The cloud is asked for the command that drops a stray place, sent when a lapsed lease's work goes to another host. Where two places of one unit conflict, sluice's gate refuses whichever lands second.
 - The back-to-back passes the verify report names are fixed by a change of their own.
 - A host offline for longer than its leases loses them, and its places keep running until the control plane drops them.
+
+## Amendment, 2026-11-07: an act Flume refuses because its place no longer stands costs its answer alone
+
+Status: the code stage's own choice, on the brief of the chore `a-launch-goes-ahead-of-other-acts`, quoted in record 0002's amendment of the same day.
+
+- **Its answer is the whole of it.** An act on a place Flume no longer stands is carried out as any act on a place: Flume's command, run once. Its refusal, "no place <location> stands on this host", is its answer, kept in the report and carried back as Flume gave it (core.10, core.11). The runner runs it no second time and asks Flume nothing more for it, and the pass goes on to its next act.
+- **It holds back no launch.** Since record 0002's amendment of 2026-11-07, it runs after every launch the pull offers (core.49).
+- **What the answer takes is Flume's.** Flume took about half a minute to refuse one on the host where this was seen. That is told to the orchestrator for Flume. The runner does not answer the act from Flume's listing in Flume's place (record 0002's amendment, option 2).
