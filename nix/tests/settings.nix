@@ -1,7 +1,8 @@
 # The service-modules spec's three settings, each rendered to its file
-# under nix/tests/files, by the names of core.41.
+# under nix/tests/files, by the names of core.41: the accounts `own`, `home`
+# and `work`, the drives `home` and `garden`.
 {
-  # "Only repositories": nothing set.
+  # "Only accounts": nothing set.
   empty = { };
 
   # "A host under crew".
@@ -9,7 +10,7 @@
     repository_root = "~/Code";
     fetch_interval = "2m";
     code_workspaces = true;
-    repositories = [
+    accounts.own.drives.home.repositories = [
       "agentplot/flume"
       "agentplot/sluice"
     ];
@@ -27,10 +28,14 @@
     };
   };
 
-  # "A host under a hosted control plane": `home` served the one
-  # repository the host keeps, `work` none.
+  # "A host under a hosted control plane": the account `home`, whose drive
+  # `garden` keeps the one repository the host keeps, served it, and the
+  # account `work`, with no drive, none.
   hosted = {
-    repositories = [ "agentplot/flume" ];
+    accounts = {
+      home.drives.garden.repositories = [ "agentplot/flume" ];
+      work = { };
+    };
     control_plane = {
       type = "hosted";
       hosted = {

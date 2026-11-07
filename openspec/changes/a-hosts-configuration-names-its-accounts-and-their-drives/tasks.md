@@ -20,7 +20,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
 ## 2. The modules render accounts
 
-- [ ] 2.1 `nix/modules/options.nix` declares `settings.accounts` in place of `settings.repositories`, as design Decision 11 has it:
+- [x] 2.1 `nix/modules/options.nix` declares `settings.accounts` in place of `settings.repositories`, as design Decision 11 has it:
   - accounts, then drives, then a drive's `repositories`, typed as `repositories` is typed today;
   - defaults `{ }`, `{ }` and `[ ]`, so each level is always written;
   - no freeform type in an account or a drive;
