@@ -37,7 +37,7 @@ The runner SHALL read room from the pass's listing, the `flume --json status` it
 
 ### Requirement: Flume's status of each place is carried as Flume gave it
 
-For each launch with a place, the runner SHALL carry Flume's status of the place as Flume printed it, on one line, under the launch's lease number: where it keeps the launch's repository with its clone made, `flume --json status --repository <container> <place>`'s whole answer. It SHALL ask for that answer again, and move its time, only when the place's entry in the statuses' listing differs, as a JSON value, from the entry inside the carried answer. The statuses' listing SHALL be Flume's listing as it stands once the pull's wants are answered: where answering them ran a `flume launch`, an act of Flume's or a `sluice branch create`, a `flume --json status` read then; where it ran none, the pass's listing (record 0027).
+For each launch with a place, the runner SHALL carry Flume's status of the place as Flume printed it, on one line, under the launch's lease number: where it keeps the launch's repository with its clone made, `flume --json status --repository <container> <place>`'s whole answer. It SHALL ask for that answer again, and move its time, only when the place's entry in the statuses' listing differs, as a JSON value, from the entry inside the carried answer.
 
 #### Scenario: The status byte for byte
 
@@ -49,6 +49,21 @@ For each launch with a place, the runner SHALL carry Flume's status of the place
 - **WHEN** a pass's listing differs from the last only in its host part
 - **THEN** no `flume status <place>` is run, and the report is unchanged
 
+### Requirement: A place the listing no longer holds keeps its last status
+
+A place the statuses' listing no longer holds SHALL be asked for once a pass by its location. Where Flume answers, its answer SHALL be carried. Where Flume refuses, the last carried status SHALL stand, marked as not listed.
+
+#### Scenario: A place tidied
+
+- **WHEN** the listing no longer holds a carried place, and the stub `flume` refuses `status <place>`
+- **THEN** its last carried status stands, marked as not listed
+
+## ADDED Requirements
+
+### Requirement: The statuses are carried against Flume's listing as it stands once the wants are answered
+
+The statuses' listing SHALL be Flume's listing as it stands once the pull's wants are answered. Where answering them ran a `flume launch`, an act of Flume's or a `sluice branch create`, it SHALL be a `flume --json status` read then. Where it ran none, it SHALL be the pass's listing (record 0027).
+
 #### Scenario: A place tidied while the pass answers its wants
 
 - **WHEN** a carried place `P` stands live in the pass's listing, as carried, and while the pass launches another offer Flume tidies `P` landed, keeping its record `P@<at>`
@@ -58,12 +73,3 @@ For each launch with a place, the runner SHALL carry Flume's status of the place
 
 - **WHEN** a pass's wants run no `flume` or `sluice` command
 - **THEN** it runs `flume --json status` once, before its pull
-
-### Requirement: A place the listing no longer holds keeps its last status
-
-A place the statuses' listing no longer holds SHALL be asked for once a pass by its location. Where Flume answers, its answer SHALL be carried. Where Flume refuses, the last carried status SHALL stand, marked as not listed.
-
-#### Scenario: A place tidied
-
-- **WHEN** the listing no longer holds a carried place, and the stub `flume` refuses `status <place>`
-- **THEN** its last carried status stands, marked as not listed
