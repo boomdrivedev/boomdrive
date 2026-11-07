@@ -14,8 +14,8 @@ pub mod roles;
 pub mod write;
 
 use boomdrive_control::{
-    Acted, Capacity, ControlPlane, Hello, Id, Launched, Pulled, Report, Reported, Unread, Unsent,
-    Want,
+    Acted, Capacity, ControlPlane, Hello, Id, Launched, Part, Pulled, Report, Reported, Unread,
+    Unsent, Want,
 };
 use config::{Config, Partition, StateRepository};
 use read::{runner_branch, Kept, Main, Request, Runner, Store};
@@ -36,7 +36,8 @@ pub type Say = Box<dyn FnMut(String) + Send>;
 /// check.
 pub type Hook = Box<dyn FnMut() + Send>;
 
-/// crew's implementation, serving each partition of its table.
+/// crew's implementation, serving each partition of its table in turn.
+/// The runner opens one for each partition, by [`parts`].
 pub struct Crew {
     config: Config,
     /// The forge state repositories are reached on, ending in `/`.
@@ -63,6 +64,36 @@ pub struct Crew {
 /// configuration file `file`, keeping its caches under `data_dir`.
 pub fn open(table: &toml::Table, file: &Path, data_dir: &Path, say: Say) -> Result<Crew, String> {
     Ok(Crew::new(config::read(table, file)?, GITHUB, data_dir, say))
+}
+
+/// crew's implementation of `config` as parts, its state repositories
+/// reached on `forge`: one [`Crew`] of one partition for each partition
+/// of the table, in its order, each labelled by its partition and saying
+/// through the say `say_for` makes for that label. A partition is a
+/// drive, and each is pulled, answered and reported on its own, so one
+/// that cannot be read or written hides only its own work (record 0026;
+/// design Decision 7).
+pub fn parts(
+    config: Config,
+    forge: &str,
+    data_dir: &Path,
+    say_for: &dyn Fn(&str) -> Say,
+) -> Vec<Part> {
+    config
+        .partitions
+        .iter()
+        .map(|partition| {
+            let one = Config {
+                host: config.host.clone(),
+                partitions: vec![partition.clone()],
+            };
+            let say = say_for(&partition.label);
+            Part {
+                label: partition.label.clone(),
+                plane: Box::new(Crew::new(one, forge, data_dir, say)),
+            }
+        })
+        .collect()
 }
 
 impl Crew {

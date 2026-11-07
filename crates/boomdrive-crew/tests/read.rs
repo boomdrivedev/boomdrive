@@ -366,55 +366,77 @@ fn a_file_missing_at_the_tip() {
     assert_eq!(ids(&pull(&mut crew, &kept())), ["madswan/1"]);
 }
 
+/// The crew-control-plane spec's "One partition missing", over parts:
+/// `work`'s state repository holds no `work/main`, and `home`'s part gives
+/// `home`'s requests while `work`'s is unread, naming `work/main`, each
+/// saying through its own say.
 #[test]
 fn one_partition_missing() {
     let state = State::new();
-    state.make("afterthought/swancloud-state");
-    state.main(&[
-        (
-            "requests.rec",
-            &file(
-                REQUESTS,
-                &[launch(1, Some("deneb"), "unit/a", CREW, "a", &[])],
-            ),
-        ),
-        ("plan.rec", &plan(&["a"], &[])),
-    ]);
-    let (mut crew, said) = state.crew_serving(
-        "deneb",
+    let home = state.make("example/home-state");
+    state.make("example/work-state");
+    commit_to(
+        &home,
+        "home/main",
         &[
-            ("swancloud", "afterthought/swancloud-state"),
-            ("madswan", "afterthought/madswan-state"),
+            (
+                "requests.rec",
+                &file(
+                    REQUESTS,
+                    &[launch(1, Some("host-a"), "unit/a", CREW, "a", &[])],
+                ),
+            ),
+            ("plan.rec", &plan(&["a"], &[])),
         ],
     );
-    let pulled = pull(&mut crew, &kept());
-    assert_eq!(ids(&pulled), ["madswan/1"]);
-    assert!(
-        said.holds(&[
-            "swancloud/main",
-            "afterthought/swancloud-state",
-            "could not be read"
-        ]),
-        "{:?}",
-        said.lines()
+    let (mut parts, saids) = state.parts(
+        "host-a",
+        &[
+            ("home", "example/home-state"),
+            ("work", "example/work-state"),
+        ],
     );
+    let none = Report::default();
+    let pulled = parts[0].plane.pull(&kept(), &none).expect("home's pull");
+    assert_eq!(ids(&pulled), ["home/1"]);
+    let unread = parts[1]
+        .plane
+        .pull(&kept(), &none)
+        .expect_err("work's pull unread");
+    assert!(unread.0.contains("work/main"), "{unread}");
+    let work = saids.of("work");
+    assert!(
+        work.holds(&["work/main", "example/work-state", "could not be read"]),
+        "{:?}",
+        work.lines()
+    );
+    let home = saids.of("home").lines();
+    assert!(home.iter().all(|line| !line.contains("work")), "{home:?}");
 }
 
+/// The crew-control-plane spec's "No partition read", over parts: every
+/// part is unread, each naming its own.
 #[test]
 fn no_partition_read() {
     let state = State::new();
-    let (mut crew, _) = state.crew_serving(
-        "deneb",
-        &[
-            ("madswan", "afterthought/madswan-state"),
-            ("swancloud", "afterthought/nowhere"),
-        ],
+    let (mut parts, _) = state.parts(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/nowhere")],
     );
-    let unread = crew
-        .pull(&kept(), &Report::default())
-        .expect_err("an unread pull");
-    assert!(unread.0.contains("madswan/main"), "{unread}");
-    assert!(unread.0.contains("swancloud/main"), "{unread}");
+    for part in &mut parts {
+        let unread = part
+            .plane
+            .pull(&kept(), &Report::default())
+            .expect_err("an unread pull");
+        let own = format!("{}/main", part.label);
+        assert!(unread.0.contains(&own), "{unread}");
+        let other = if part.label == "home" {
+            "work/"
+        } else {
+            "home/"
+        };
+        assert!(!unread.0.contains(other), "{unread}");
+    }
 }
 
 /// git's words on a state repository it cannot reach run over several
@@ -584,4 +606,140 @@ fn the_shared_cache_of_a_release_before() {
     assert!(caches.join("state/home.git").is_dir());
     assert!(caches.join("state/work.git").is_dir());
     assert!(!shared.exists());
+}
+
+/// The control-plane-interface spec's "crew's partitions as parts": a
+/// table naming `home` and `work` opens two parts, `home` then `work`,
+/// each pulling its own partition alone.
+#[test]
+fn crews_partitions_as_parts() {
+    let state = State::new();
+    two_drives(&state);
+    let (mut parts, _) = state.parts(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
+    assert_eq!(labels, ["home", "work"]);
+    let none = Report::default();
+    for part in &mut parts {
+        let pulled = part.plane.pull(&kept(), &none).expect("a pull");
+        assert_eq!(ids(&pulled), [format!("{}/1", part.label)]);
+    }
+}
+
+/// The control-plane-interface spec's "crew's ids by partition": each
+/// part owns its own launch numbered 1, and not the other's.
+#[test]
+fn crews_ids_by_partition() {
+    let state = State::new();
+    two_drives(&state);
+    let (parts, _) = state.parts(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    let (home, work) = (&parts[0].plane, &parts[1].plane);
+    let (home_1, work_1) = (Id::new("home/1"), Id::new("work/1"));
+    assert!(home.owns(&home_1) && !home.owns(&work_1));
+    assert!(work.owns(&work_1) && !work.owns(&home_1));
+}
+
+/// The crew-control-plane spec's "One partition missing at a report",
+/// over parts: `work`'s state repository holds no `work/main`, and
+/// `home`'s unit `u` is tidied and gone from its plan. `home`'s part
+/// writes `home/runner/host-a`, its let-go naming `u`'s launch, and
+/// `work`'s part's report is unsent, naming `work/runner/host-a`.
+#[test]
+fn one_partition_missing_at_a_report() {
+    let state = State::new();
+    let home = state.make("example/home-state");
+    state.make("example/work-state");
+    commit_to(
+        &home,
+        "home/main",
+        &[
+            (
+                "requests.rec",
+                &file(
+                    REQUESTS,
+                    &[
+                        launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+                        act(
+                            13,
+                            "priority",
+                            Some("host-a"),
+                            "unit/u",
+                            12,
+                            &[("Priority", "4")],
+                        ),
+                    ],
+                ),
+            ),
+            ("plan.rec", &plan(&[], &["b"])),
+        ],
+    );
+    let (mut parts, _) = state.parts(
+        "host-a",
+        &[
+            ("home", "example/home-state"),
+            ("work", "example/work-state"),
+        ],
+    );
+    let report = tidied("home");
+    parts[0].plane.pull(&kept(), &report).expect("home's pull");
+    let reported = parts[0].plane.report(&report).expect("home's report");
+    let let_go: Vec<String> = reported.let_go.iter().map(Id::to_string).collect();
+    assert_eq!(let_go, ["home/12", "home/13"]);
+    assert!(common::tip_of(&home, "home/runner/host-a").is_some());
+    let none = Report::default();
+    parts[1]
+        .plane
+        .pull(&kept(), &none)
+        .expect_err("work's pull unread");
+    let unsent = parts[1]
+        .plane
+        .report(&none)
+        .expect_err("work's report unsent");
+    assert!(unsent.0.contains("work/runner/host-a"), "{unsent}");
+}
+
+/// The runner's report of partition `label`'s launch 12, at a place Flume
+/// lists no more, and its priority 13 done.
+fn tidied(label: &str) -> Report {
+    let at = |text: &str| boomdrive_control::At::parse(text).unwrap();
+    let launch = Id::new(format!("{label}/12"));
+    let mut report = Report::default();
+    report.launches.insert(
+        launch.clone(),
+        boomdrive_control::Launched {
+            lease: Lease {
+                number: 1,
+                expires: None,
+            },
+            answer: boomdrive_control::Answer {
+                outcome: boomdrive_control::Outcome::Launched,
+                place_dir: Some("/places/change--u".to_string()),
+                words: None,
+                at: at("2026-11-01T10:00:00Z"),
+            },
+            status: Some(boomdrive_control::Carried {
+                text: r#"{"status":{"places":[{"place":"/places/change--u","phase":"live"}],"host":{}}}"#
+                    .to_string(),
+                at: at("2026-11-01T10:01:00Z"),
+                listed: false,
+            }),
+            entry: None,
+        },
+    );
+    report.acts.insert(
+        Id::new(format!("{label}/13")),
+        boomdrive_control::Acted {
+            launch,
+            lease: 1,
+            outcome: boomdrive_control::Outcome::Done,
+            words: None,
+            at: at("2026-11-01T10:02:00Z"),
+        },
+    );
+    report
 }
