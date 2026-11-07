@@ -27,7 +27,27 @@ fn toml_block(text: &str) -> &str {
 fn the_readme_configuration_reads() {
     let (text, readme) = readme();
     let config = config::parse(toml_block(&text), &readme, Path::new("/h")).unwrap();
-    assert!(!config.repositories.is_empty());
+    let drives: Vec<(&str, &str, Vec<String>)> = config
+        .accounts
+        .iter()
+        .flat_map(|account| {
+            account.drives.iter().map(|drive| {
+                let repositories = drive.repositories.iter().map(ToString::to_string);
+                (
+                    account.name.as_str(),
+                    drive.name.as_str(),
+                    repositories.collect(),
+                )
+            })
+        })
+        .collect();
+    assert_eq!(
+        drives,
+        [
+            ("own", "home", vec!["agentplot/flume".to_string()]),
+            ("own", "work", vec!["afterthought/crew".to_string()]),
+        ]
+    );
     assert!(config.code_workspaces);
     assert_eq!(config.control_plane, None);
 }
@@ -70,12 +90,11 @@ fn the_readme_hosted_table_reads() {
         .expect("README says how the runner dials the hosted control plane");
     let file = format!("{}\n{}", toml_block(&text), toml_block(dialing));
     let config = config::parse(&file, &readme, Path::new("/h")).unwrap();
-    let table = config.control_plane.expect("a control plane named");
+    let table = config.control_plane.clone().expect("a control plane named");
     assert_eq!(table.implementation, "hosted");
     assert_eq!(table.poll_interval, Duration::from_secs(60));
     let kept: Vec<String> = config
-        .repositories
-        .iter()
+        .repositories()
         .map(|address| format!("{}/{}", address.owner(), address.name()))
         .collect();
     let partitions = table.implementation_table["partitions"]

@@ -17,43 +17,65 @@ the runner's protocol with it, one JSON Schema per version under
 
 `boomdrive` reads one TOML file: the one `--config <file>` names, else
 `$XDG_CONFIG_HOME/boomdrive/config.toml`, else
-`~/.config/boomdrive/config.toml`. It names the repositories the host
-keeps by their GitHub address, the root their views are kept under, how
-often they are fetched and whether each owner's views have a VS Code
-workspace:
+`~/.config/boomdrive/config.toml`. It names the accounts the host
+serves, each account's drives and each drive's repositories by their
+GitHub address, the root their views are kept under, how often they are
+fetched and whether each drive has a VS Code workspace:
 
 ```toml
 # The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
 repository_root = "~/Code"
 # How often every repository is fetched; 2m where none is named.
 fetch_interval = "2m"
-# Whether each owner's views have a VS Code workspace, <repository_root>/<owner>/<owner>.code-workspace; false where none is named.
+# Whether each drive has a VS Code workspace, <repository_root>/<drive>.code-workspace; false where none is named.
 code_workspaces = true
-# Each repository this host keeps, by its GitHub address.
-repositories = ["agentplot/flume", "afterthought/crew"]
+
+# The account `own`'s drive `home`: each repository it keeps, by its GitHub address.
+[accounts.own.drives.home]
+repositories = ["agentplot/flume"]
+
+# The account `own`'s drive `work`.
+[accounts.own.drives.work]
+repositories = ["afterthought/crew"]
 ```
 
-`repositories` is required, so a host that keeps none says
-`repositories = []`. Addresses are compared without case, so two that
-differ only in case are refused as one repository named twice.
-`repository_root` is an absolute path or begins with `~/`.
-`fetch_interval` is `<n>s`, `<n>m` or `<n>h`. A key the runner does not
-read is refused, so the file has no place for a credential: the host's
-own git credential helper answers every fetch. A file written for an
-earlier runner is refused with what to write instead: `views` is
-`repository_root` now, and `fetch_every` is `fetch_interval`. Nor does
-the file name a stream or a kind: those are each host's Flume
-configuration, and a key naming one is refused, saying so.
+An account is what the runner enrolls with a control plane. A drive is
+one account's body of work, `[accounts.<account>.drives.<drive>]`, and
+its `repositories` are the repositories it keeps, in the order kept.
+The runner keeps every drive's repositories, in the file's order.
+`accounts`, each account's `drives` and each drive's `repositories` are
+required, and each may be empty: a host that keeps none says
+`accounts = {}`, and a drive that keeps none yet says
+`repositories = []`. An account holds only its `drives` and a drive
+only its `repositories`. An account's or a drive's name is 1 to 32
+lower-case letters, digits and `-`, starting with a letter, and a
+drive's name is given once on the host, across its accounts. A
+repository belongs to one drive: addresses are compared without case,
+and two that differ only in case, in one drive or in two, are refused
+as one repository named twice. `repository_root` is an absolute path or
+begins with `~/`. `fetch_interval` is `<n>s`, `<n>m` or `<n>h`. A key the
+runner does not read is refused, so the file has no place for a
+credential: the host's own git credential helper answers every fetch. A
+file written for an earlier runner is refused with what to write
+instead: `views` is `repository_root` now, `fetch_every` is
+`fetch_interval`, and a flat `repositories` is `accounts`, each
+repository named under its drive. Nor does the file name a stream or a
+kind, at its top, in an account or in a drive: those are each host's
+Flume configuration, and a key naming one is refused, saying so.
 
-`code_workspaces = true` asks for one VS Code workspace for each owner
-of the kept repositories, beside the owner's views, so VS Code titles
-its window `— <owner> (Workspace)`. Its `folders` are the owner's kept
-repositories, in the file's order, set at every pass; the rest of the
-file, the settings VS Code writes into it, is kept. A file there the
-runner cannot read as a JSON object, one with comments in it say, is
-left as it is and named at every pass. `code_workspaces` is `true` or
-`false`, and where it is absent or `false` the runner writes and removes
-no workspace.
+`code_workspaces = true` asks for one VS Code workspace for each drive,
+at the repository root under the drive's name,
+`<repository_root>/<drive>.code-workspace`, so VS Code titles its window
+`— <drive> (Workspace)`. Its `folders` are the drive's kept
+repositories, each by its view's path from the root, `<owner>/<name>`,
+in the file's order, set at every pass; the rest of the file, the
+settings VS Code writes into it, is kept. A drive's workspace goes with
+its drive: once the drive has left the configuration and no clone the
+runner holds was kept for it, the runner removes the workspace, and no
+other. A file there the runner cannot read as a JSON object, one with
+comments in it say, is left as it is and named at every pass.
+`code_workspaces` is `true` or `false`, and where it is absent or
+`false` the runner writes and removes no workspace.
 
 ## Running on a host
 
@@ -82,10 +104,11 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   never fetched again, and its clone and view are removed once neither
   holds work the forge lacks; until then they are left, and named at
   every pass;
-- where `code_workspaces` is true, keeps each owner's VS Code workspace
-  at `<repository_root>/<owner>/<owner>.code-workspace`, writing it only
-  when its `folders` are not the owner's kept repositories, whole and
-  renamed over the old one.
+- where `code_workspaces` is true, keeps each drive's VS Code workspace
+  at `<repository_root>/<drive>.code-workspace`, writing it only when its
+  `folders` are not the drive's kept repositories, whole and renamed
+  over the old one, and removes the workspace of a drive that has gone
+  with its last clone.
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
@@ -195,7 +218,7 @@ each key as the file names it:
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
-                repositories = [ "agentplot/flume" "agentplot/sluice" ];
+                accounts.own.drives.home.repositories = [ "agentplot/flume" "agentplot/sluice" ];
                 control_plane = {
                   type = "crew";
                   crew = { host = "host-a"; partitions = [ { label = "home"; state_repository = "example/state"; } ]; };
@@ -220,9 +243,13 @@ service runs `boomdrive run --config <that file>`, and each switch
 links `~/.config/boomdrive/config.toml` to it, so a command run by hand
 reads it too. A file of your own there is moved once to
 `config.toml.before-nix`. A switch that changes the file or the runner
-restarts it. A key of `settings` named for a credential, `token`, `key`,
-`secret` or `password`, or one ending in `_token`, `_key`, `_secret` or
-`_password`, fails evaluation, since every user reads the store.
+restarts it. `settings.accounts` is always written, each account's
+`drives` and each drive's `repositories` with it, and a key in an
+account or a drive that the runner does not read fails evaluation, as a
+flat `settings.repositories` of before does. A key of `settings` named
+for a credential, `token`, `key`, `secret` or `password`, or one ending
+in `_token`, `_key`, `_secret` or `_password`, fails evaluation, since
+every user reads the store.
 
 The module puts the runner and the set's Flume and sluice in the system
 profile, and the runner's `PATH` is the user's profiles, then the

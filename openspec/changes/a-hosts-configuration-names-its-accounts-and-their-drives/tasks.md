@@ -36,7 +36,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
 
 ## 3. README
 
-- [ ] 3.1 README's configuration example keeps `agentplot/flume` and `afterthought/crew` under one account's drives, and its words say:
+- [x] 3.1 README's configuration example keeps `agentplot/flume` and `afterthought/crew` under one account's drives, and its words say:
   - what an account, a drive and a drive's `repositories` are;
   - that each level is required and may be empty;
   - that a repository belongs to one drive, and a drive's name is given once;
