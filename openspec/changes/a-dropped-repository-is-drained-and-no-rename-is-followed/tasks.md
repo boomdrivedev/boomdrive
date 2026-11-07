@@ -27,10 +27,10 @@ Build the groups in order: each stands on the ones before it. A task is true onc
 
 ## 4. The keeper drains a dropped repository
 
-- [ ] 4.1 The keeper reads the report file once a pass, keeps a dropped clone and view while a launch holds the repository, and names each place and launch that holds it (design Decision 2; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive --test dropped dropped_while_a_place_is_live -- --exact` passes, proving the clones spec's "Dropped while a place is live".
-- [ ] 4.2 A drained repository whose place is tidied is removed at the next pass. True when `devenv shell -- cargo test -p boomdrive --test dropped the_place_tidied -- --exact` passes, proving the clones spec's "The place tidied".
-- [ ] 4.3 A drained repository whose place stands not listed is removed at the next pass. True when `devenv shell -- cargo test -p boomdrive --test dropped the_place_no_longer_listed -- --exact` passes, proving the clones spec's "The place no longer listed".
-- [ ] 4.4 A report file that cannot be read lets no dropped repository go, and names it. True when `devenv shell -- cargo test -p boomdrive --test dropped a_report_that_cannot_be_read -- --exact` passes, proving the clones spec's "A report that cannot be read".
+- [x] 4.1 The keeper reads the report file once a pass, keeps a dropped clone and view while a launch holds the repository, and names each place and launch that holds it (design Decision 2; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive --test dropped dropped_while_a_place_is_live -- --exact` passes, proving the clones spec's "Dropped while a place is live".
+- [x] 4.2 A drained repository whose place is tidied is removed at the next pass. True when `devenv shell -- cargo test -p boomdrive --test dropped the_place_tidied -- --exact` passes, proving the clones spec's "The place tidied".
+- [x] 4.3 A drained repository whose place stands not listed is removed at the next pass. True when `devenv shell -- cargo test -p boomdrive --test dropped the_place_no_longer_listed -- --exact` passes, proving the clones spec's "The place no longer listed".
+- [x] 4.4 A report file that cannot be read lets no dropped repository go, and names it. True when `devenv shell -- cargo test -p boomdrive --test dropped a_report_that_cannot_be_read -- --exact` passes, proving the clones spec's "A report that cannot be read".
 
 ## 5. crew's implementation gives a launch only for a repository kept or drained
 
