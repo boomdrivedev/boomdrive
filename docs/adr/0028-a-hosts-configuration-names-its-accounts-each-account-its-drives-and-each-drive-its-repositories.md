@@ -1,7 +1,7 @@
 ---
 number: 28
 title: A host's configuration names its accounts, each account its drives, and each drive its repositories
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers:
 - Chuck Swanberg
@@ -10,9 +10,9 @@ decision-makers:
 
 # A host's configuration names its accounts, each account its drives, and each drive its repositories
 
-Status: proposed to the user on 2026-11-07, as `briefs.15` has it; accepted only on their yes.
+Status: accepted by the user on 2026-11-07, on their card.
 
-Amends record 0023 in part, where each repository is named under its owner with the owner's stream; records 0006, 0018 and 0026 in their word "partition"; and rule core.5, whose drafted reading below is marked proposed. Record 0017, revised the same day, follows this one.
+Amends record 0023 in part, where each repository is named under its owner with the owner's stream; records 0006, 0018 and 0026 in their word "partition"; and rule core.5, as drafted below. Record 0017, revised the same day, follows this one.
 
 Deciders: the user, in agentplot-design's pane on 2026-11-07: "Since crew is only being used by one person on a computer, we still might want to have the concept of different accounts. In my setup with Willdan, I could have that separate from my personal account. For example, I could have a personal account and a Willdan account. In my personal account, I would have an Afterthought, an Agentplot, and a MadSwan Drive, and those would be different crew states." Later the same day, on the flake's configuration: "there was other context where we talked about Boomdrive, the runner working with the cloud, and how you could enroll multiple accounts from the cloud. Each one would be a partition with the runner. That word being used in different places could be confusing", "Yes the branches in crew correlate to the drives. That's correct" and "Willdan work on DeNEB is just for reading and the work stays on the box". And on record 0017's card: "Per recent discussion with designer agent, this becomes one workspace per boomdrive drive". Loosening core.5 is the user's alone, and the reason for this card. agentplot-design for the rest: the two words, the stream's defaults, the keys and the rule for a drive on another machine.
 
@@ -78,7 +78,7 @@ Option 2 runs a repository's work in its owner's stream, which is the wrong one 
 
 ### Rule core.5, as drafted
 
-- **[core.5]** The runner keeps a clone or a view only of a repository its configuration names, and keeps none of one it does not; the configuration names its accounts, each account's drives, each drive's repositories and where their views go, and no stream or kind. (Proposed 2026-11-07, record 0028, on the user's card; accepted only on their yes.)
+- **[core.5]** The runner keeps a clone or a view only of a repository its configuration names, and keeps none of one it does not; the configuration names its accounts, each account's drives, each drive's repositories and where their views go, and no stream or kind. (Record 0028, accepted 2026-11-07.)
 
 Its details no longer rule out a drive named in the configuration. They still rule out a stream or a kind there.
 
