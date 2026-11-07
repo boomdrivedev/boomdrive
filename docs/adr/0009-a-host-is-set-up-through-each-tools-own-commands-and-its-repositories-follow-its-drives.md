@@ -51,7 +51,7 @@ core.5 stands: the configuration names every repository kept, its managed level 
 
 ## Amendment, 2026-11-06: two layers in every tool, in Flume's words
 
-Status: proposed to the user on 2026-11-06, as `briefs.15` has it; accepted only on their yes.
+Status: accepted by the user on 2026-11-06, in agentplot-design's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).
 
 Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (`design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". agentplot-design for writing it here.
 Sources: `design/the-flakes-configuration/design.md`; flume record 0032 (a managed and a local layer); record 0023; rules core.5, core.17 and core.18.
@@ -63,7 +63,7 @@ Sources: `design/the-flakes-configuration/design.md`; flume record 0032 (a manag
 - **Repositories add.** The runner keeps every repository its managed layer names and every one its local layer names. A control plane that drops a drive drops only the repositories it wrote.
 - **A control plane writes a tool's local file.** Setup under a hosted control plane writes the runner's and Flume's local layers, with the repositories of the drives the host serves and each one's stream by its address, and the files Nix wrote stay as Nix wrote them. This replaces setup through each tool's own commands above, and Flume is asked for no command that declares a stream.
 
-Rules core.17 and core.18 are amended with it, each marked proposed.
+Rules core.17 and core.18 are amended with it.
 
 ## Amendment, 2026-11-05: setup installs the host's tools, never a repository's pins
 
