@@ -43,3 +43,26 @@ tasks:
     inputs: ['/openspec/changes/**/*', '!/openspec/changes/archive/**/*', '/openspec/specs/**/*', '/openspec/config.yaml', '/devenv.nix', '/devenv.lock']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
+  # Every commit since the newest release tag is a Conventional Commit
+  # (check-commits.sh, .versionrc), since git-cliff releases from them
+  # (record 0024, core.48). It reads the history, outside any input, so it
+  # never replays.
+  commits:
+    command: 'sh check-commits.sh'
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true, cache: false}
+  # The releases spec: release.sh and check-commits.sh in scratch
+  # repositories, release-preview beside release.sh, and the workflow
+  # release read (check-releases.sh).
+  releases:
+    command: 'sh check-releases.sh'
+    inputs: ['/cliff.toml', '/.versionrc', '/release.sh', '/check-commits.sh', '/check-releases.sh', '/.github/workflows/release.yml', '/devenv.nix', '/devenv.lock', '/flake.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # actionlint over the workflow release, which the root owns; the nix
+  # project lints the workflow cache (nix:lint).
+  workflow:
+    command: 'actionlint .github/workflows/release.yml'
+    inputs: ['/.github/workflows/release.yml', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}

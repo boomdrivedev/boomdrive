@@ -1,11 +1,11 @@
 #!/bin/sh
 # Every tool the gate runs is the version the tree pins, on every host
 # (rule core.8): rustc, cargo, clippy and rustfmt the build .prototools
-# pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec
-# and the nix project's nix, nixfmt, statix, deadnix and actionlint the
-# releases devenv.nix pins. A tool found outside its pin, a
-# runner's rustup default say, fails here rather than holding the tree to
-# another version's rules.
+# pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec,
+# the nix project's nix, nixfmt, statix, deadnix and actionlint, and the
+# release's git-cliff and convco the releases devenv.nix pins. A tool
+# found outside its pin, a runner's rustup default say, fails here rather
+# than holding the tree to another version's rules.
 set -eu
 
 fail() {
@@ -59,6 +59,8 @@ release nix "$(pinned nixVersion)" nix --version
 release nixfmt "$(pinned nixfmtVersion)" nixfmt --version
 release deadnix "$(pinned deadnixVersion)" deadnix --version
 release actionlint "$(pinned actionlintVersion)" actionlint --version
+release git-cliff "$(pinned gitCliffVersion)" git-cliff --version
+release convco "$(pinned convcoVersion)" convco --version
 
 # statix answers no --version: its version is the name of the store path
 # its program is in.

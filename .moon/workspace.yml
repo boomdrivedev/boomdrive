@@ -11,8 +11,9 @@
 # Each check is tagged with its layer, which a branch's policy requires by
 # tag (.config/sluice.toml):
 #   check-fast    each crate's and the flake's format, lint, type check
-#                 and tests; the root's format, toolchain, records, specs
-#                 and changes.
+#                 and tests; the root's format, toolchain, records, specs,
+#                 changes, commits since the newest release, the
+#                 release's tests and its workflow's lint.
 #                 main requires it
 # A task whose inputs are identical to a run that passed on this host, in
 # any worktree, replays from .moon/cache/outputs (a link into the git common

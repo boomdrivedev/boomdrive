@@ -78,6 +78,17 @@ let
   # outside the gate's sandbox (design Decision 14).
   flakeInputs = import ./nix/inputs.nix { };
 
+  # The release's tools (record 0024, core.48): git-cliff, which makes the
+  # next version and its notes, and convco, which root:commits holds each
+  # commit to the convention with. The flake's nixpkgs' builds, the ones
+  # the workflow release runs as `nix shell --inputs-from .
+  # nixpkgs#git-cliff`, so the gate, release-preview and the release run
+  # one git-cliff. Pinned by flake.lock and asserted to be these versions
+  # as git is.
+  gitCliffVersion = "2.14.2";
+  convcoVersion = "0.7.2";
+  flakePkgs = flakeInputs.inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+
   # The set the runner's tests prove (record 0020, core.45, design
   # Decision 6): the flake's own packages for this shell's system, its
   # outputs called with the lock's inputs as nix/tests calls them, so they
@@ -118,11 +129,11 @@ let
 
 in
 {
-  # The system tools are this file's, pinned by devenv.lock; moon and Rust
-  # are .prototools', installed by the boomdrive:proto:install task on
-  # entering the shell and activated by enterShell. git, recutils,
-  # OpenSpec and the nix project's tools are the releases pinned above,
-  # never the host's (core.8).
+  # The system tools are this file's, pinned by devenv.lock, and the
+  # release's flake.lock's; moon and Rust are .prototools', installed by
+  # the boomdrive:proto:install task on entering the shell and activated by
+  # enterShell. git, recutils, OpenSpec, the nix project's tools and the
+  # release's are the releases pinned above, never the host's (core.8).
   packages = [
     (
       assert pkgs.git.version == gitVersion;
@@ -151,6 +162,14 @@ in
     (
       assert pkgs.actionlint.version == actionlintVersion;
       pkgs.actionlint
+    )
+    (
+      assert flakePkgs.git-cliff.version == gitCliffVersion;
+      flakePkgs.git-cliff
+    )
+    (
+      assert flakePkgs.convco.version == convcoVersion;
+      flakePkgs.convco
     )
     proto
     openspec
@@ -224,6 +243,17 @@ in
       "devenv:enterShell"
       "devenv:treefmt:run"
     ];
+  };
+
+  # What the workflow release would release from here: the next version
+  # and its notes, by its git-cliff (record 0024). It writes nothing.
+  scripts.release-preview = {
+    description = "The next release's version and notes: git-cliff --unreleased --bump";
+    exec = ''
+      set -euo pipefail
+      cd "$(git rev-parse --show-toplevel)"
+      exec git-cliff --unreleased --bump --strip all "$@"
+    '';
   };
 
   treefmt.enable = true;

@@ -1,0 +1,4 @@
+# convco: what a conventional commit is here, for root:commits
+# (check-commits.sh). A scope may name several parts of the tree,
+# "docs(adr, architecture): ...". sluice's.
+scopeRegex: "^[[:alnum:]]+(?:[-_/][[:alnum:]]+)*(?:, ?[[:alnum:]]+(?:[-_/][[:alnum:]]+)*)*$"

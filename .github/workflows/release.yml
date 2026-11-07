@@ -1,0 +1,65 @@
+# The workflow `release` (record 0024, core.48): at each push to main, the
+# next version git-cliff finds in the commits since the newest v* tag
+# (cliff.toml), asked through release.sh. Where it is not tagged yet, a
+# GitHub release of its tag, made on the commit pushed, with git-cliff's
+# notes. main holds only what the gate passed, so it tests nothing; it
+# builds and attaches nothing, the binaries being the workflow cache's
+# (record 0020) and the attested release's of record 0012. GitHub runs no
+# workflow on a tag this workflow's token made, so it runs cache at the
+# tag itself. root:releases holds this file to the releases spec.
+name: release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# One release at a time, none cancelled, so each run reads the tags the
+# run before it made.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      # The tag and its release.
+      contents: write
+      # cache, run at the tag.
+      actions: write
+    steps:
+      # git-cliff reads the whole history and its tags.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The flake's nixpkgs' git-cliff, the build the devenv shell holds.
+      - name: Find the next version
+        id: next
+        run: |
+          tag=$(nix shell --inputs-from . nixpkgs#git-cliff -c sh release.sh next)
+          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+
+      - name: Release it
+        if: steps.next.outputs.tag != ''
+        env:
+          TAG: ${{ steps.next.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          nix shell --inputs-from . nixpkgs#git-cliff -c sh release.sh notes "$TAG" >"$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          gh workflow run cache.yml --ref "$TAG"
