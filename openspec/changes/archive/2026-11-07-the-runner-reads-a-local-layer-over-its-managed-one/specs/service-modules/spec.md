@@ -4,7 +4,7 @@
 
 ### Requirement: The file is at the runner's own path for commands run by hand
 
-Each module's activation SHALL link the service's user's `~/.config/boomdrive/config.toml` to the module's file, so `boomdrive enroll` and `boomdrive run --once` run by hand read what the service reads. A link there SHALL be replaced. A file or folder there that is no link SHALL be moved aside once, to `config.toml.before-nix`, and named in the activation's output. The activation SHALL leave `~/.config/boomdrive/config.local.toml`, the runner's local layer, as it is, since the operator or a control plane writes it (record 0009 as amended 2026-11-06; core.18).
+Each module's activation SHALL link the service's user's `~/.config/boomdrive/config.toml` to the module's file, so `boomdrive enroll` and `boomdrive run --once` run by hand read what the service reads. A link there SHALL be replaced, and a file or folder there that is no link SHALL be moved aside once, to `config.toml.before-nix`, and named in its output. It SHALL leave the runner's local layer, `config.local.toml` beside it, as it is (record 0009 as amended 2026-11-06; core.18).
 
 #### Scenario: An empty home
 

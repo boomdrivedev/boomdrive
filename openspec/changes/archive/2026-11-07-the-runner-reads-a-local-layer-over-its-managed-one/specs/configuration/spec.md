@@ -9,7 +9,7 @@
 
 ### Requirement: The configuration is a managed file and a local one over it
 
-The runner SHALL read its managed layer from the file `--config <file>` names, else `$XDG_CONFIG_HOME/boomdrive/config.toml`, else `~/.config/boomdrive/config.toml` where `XDG_CONFIG_HOME` is unset or empty. It SHALL read its local layer over it from `config.local.toml` in the default file's directory, whatever `--config` names, and the managed layer alone where there is none (record 0009 as amended 2026-11-06). A managed file that does not exist or is not valid TOML SHALL be refused, naming the file, the line and what is wrong, never quoting its text.
+The runner SHALL read its managed layer from the file `--config <file>` names, else `$XDG_CONFIG_HOME/boomdrive/config.toml`, else `~/.config/boomdrive/config.toml` where `XDG_CONFIG_HOME` is unset or empty, and its local layer over it from `config.local.toml` in the default file's directory whatever `--config` names, if there is one (record 0009 as amended 2026-11-06). A managed file that is missing or not valid TOML SHALL be refused, naming the file, the line and what is wrong, never its text.
 
 #### Scenario: The default file
 
