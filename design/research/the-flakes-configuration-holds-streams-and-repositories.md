@@ -101,3 +101,40 @@ with no origin on a forge keeps being named by its folder.
     will setup so i can track the repos, the the ec2 box will configure
     the flake for just willdangroup/*". So `agentplot`, `afterthought`,
     `madswan` and `wldn`; the owner `madswan-dev` runs in `madswan`.
+- 2026-11-06, reading the sketch of deneb's configuration, which gave
+  each account the `usage` file swancloud's reader writes: "That usage
+  setting comes from our SwanCloud homegrown process that writes it out,
+  and that is not [...] appropriate. It should be Flume's responsibility
+  to read the usage, not expect it from some external third party."
+- The same message: "I want to make sure the flake also packages and
+  configures crew and sluice. I don't see any sluice configuration."
+- The same message: "I want to confirm with Nick: as he is writing these
+  settings, once we have the cloud control plane, can a repository get
+  added from the cloud and written into the other config file?"
+- The same message: "I don't want to forget the finding you had at the
+  beginning: we have a mismatch in terminology between sluice and Flume
+  in terms of what we call a managed config." (The mismatch found is the
+  runner's and Flume's; sluice has one file of the host's own settings
+  and no layers yet, and record 0009 asks it for a managed level.)
+- The same message, on one flake: "I thought we were going to create one
+  flake for people to use from Boom Drive so they didn't have to set up
+  two flakes. I thought that would encapsulate everything underneath
+  Boom Drive. I agree that you should set up a flake for Flume as well
+  so Flume could be used independently but I want to make sure that
+  it's a one-stop shop with the Boom Drive flake".
+- The same message: "no wldn agents on deneb".
+- The same message, on `willdangroup/*`: "I'm fine with listing the
+  names and in fact I think that's preferable."
+
+## What sluice and crew keep on deneb
+
+- sluice: `~/.config/sluice/config.toml`, written by home-manager, the
+  host's own settings of sluice's statement (clauses 71, 35): `[runs]`
+  `cores`, `max` and `reserved`; `[[caches]]` with their `env`;
+  `[peers] name`; `[forge]` `app_id` and the path of the App's key;
+  `[signing]` the path of the signing key and its `signer`. No layers.
+- crew: `~/.config/crew/teams.json`, written by home-manager: each
+  partition's `label`, `machine`, `state` repository, `blueprints`,
+  `session` and roles. The runner's `[control_plane.crew]` names the
+  same partitions again, each `label` and `state_repository`.
+- crew, sluice and Flume are public repositories.

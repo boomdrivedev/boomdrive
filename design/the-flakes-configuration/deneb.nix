@@ -4,14 +4,15 @@
 # Not evaluated: the shape of the options, not their code.
 { boomdrive, pkgs, ... }:
 {
-  imports = [ boomdrive.darwinModules.default ]; # the runner's module and Flume's
+  imports = [ boomdrive.darwinModules.default ]; # the runner, Flume, sluice and crew
 
   services.boomdrive = {
     enable = true;
 
     # Each owner once, with the stream its repositories run in and their
-    # names. The runner's file gets the addresses, `agentplot/boomdrive`,
-    # and Flume's file the rule `[repos."agentplot/*"] stream = "agentplot"`.
+    # names. The runner's file gets each address, `agentplot/boomdrive`,
+    # and Flume's file one rule for each, `[repos."agentplot/boomdrive"]
+    # stream = "agentplot"`. An owner with no stream gives Flume no rule.
     repositories = {
       agentplot = {
         stream = "agentplot";
@@ -25,10 +26,8 @@
         stream = "madswan";
         names = [ "paymaster" ];
       };
-      willdangroup = {
-        stream = "wldn";
-        names = [ ];
-      };
+      # Kept to follow; no wldn agents on deneb, so no stream.
+      willdangroup.names = [ "willdan-blueprints" ];
     };
 
     # The rest of the runner's file, as today.
@@ -77,19 +76,15 @@
         labels.operation = { reserve = 1; keep_free = 0; };
         labels.planning = { reserve = 2; keep_free = 0; };
       };
-      wldn = {
-        # open: whether deneb runs wldn's agents, or keeps its repositories
-        # only to follow them
-      };
     };
 
     pools.madswan = {
       strategy = "most-left";
       threshold = 90;
+      # Flume reads each account's usage itself: no reading is written for it.
       accounts = map (name: {
         inherit name;
         program = "claude";
-        usage = "~/.local/state/swancloud/usage/readings/${name}.json";
         env = {
           CLAUDE_CONFIG_DIR = "~/.claude-sub-${name}";
           HONCHO_CONFIG_DIR = "~/.honcho-business";
@@ -105,4 +100,23 @@
       research.agents = { mode = "full"; instructions = "…"; };
     };
   };
+
+  # sluice's host settings, each key named as its file names it. A key's
+  # file is named by its path; no key is in the store.
+  services.sluice.settings = {
+    runs = { cores = 12; max = 3; reserved = 1; };
+    caches = [
+      { dir = "~/Library/Caches/sccache"; env.RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache"; }
+      { dir = "~/.moon/cache/shared"; env.MOON_CACHE_SHARED_WORKTREE_CACHE = "true"; }
+    ];
+    peers.name = "deneb";
+    forge = { app_id = 0; key = "~/.config/sluice/app.pem"; };
+    signing = { key = "<path of the signing key>"; signer = "sessions"; };
+  };
+
+  # crew's host file: the partitions this host serves.
+  services.crew.settings.partitions = [
+    { label = "agentplot"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "agentplot/blueprints" ]; }
+    # …
+  ];
 }
