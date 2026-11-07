@@ -1,7 +1,7 @@
 ---
 number: 8
 title: The runner carries tools' commands and four of its own, for one control plane, over one kept socket
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner carries tools' commands and four of its own, for one control plane, over one kept socket
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on control planes and on the command line; the control-plane-interface, branch-commands and crew-control-plane specs; agentplot/boomdrive-cloud's records 0017, 0022 and 0026 and its rules core.36 to core.39, core.50 and core.52, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F49; rules core.1, core.2 and core.3.
