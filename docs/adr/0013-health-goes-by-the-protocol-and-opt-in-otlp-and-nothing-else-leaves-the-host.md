@@ -1,7 +1,7 @@
 ---
 number: 13
 title: Health goes by the protocol and an opt-in OTLP export, and nothing else leaves the host
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # Health goes by the protocol and an opt-in OTLP export, and nothing else leaves the host
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on telemetry; sluice's README on its opt-in OTLP export; Flume's, which sends none; agentplot/boomdrive-cloud's rules core.59 and core.60, cited by id; rule core.11.
