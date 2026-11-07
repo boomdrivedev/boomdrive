@@ -1,7 +1,7 @@
 ---
 number: 9
 title: A host is set up through each tool's own commands, and its repositories follow its drives
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # A host is set up through each tool's own commands, and its repositories follow its drives
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
+Status: accepted by the user on 2026-11-06, in agentplot-design's pane, with its amendment of that day: "Other than that nitpick I approve them all". Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/boomdrive-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
