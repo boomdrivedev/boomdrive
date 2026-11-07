@@ -26,7 +26,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. What the runner says of it
 
-- [ ] 4.1 README's "Running on a host" says each turn of passes ends with `flume settle --every <bound>`, its bound, what the runner says of it, and that a host whose runner stops runs attended once the watch lapses; its control pass's section says a control pass that follows a keeping pass at once shares its settle (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
+- [x] 4.1 README's "Running on a host" says each turn of passes ends with `flume settle --every <bound>`, its bound, what the runner says of it, and that a host whose runner stops runs attended once the watch lapses; its control pass's section says a control pass that follows a keeping pass at once shares its settle (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
 
 ## 5. The specs
 

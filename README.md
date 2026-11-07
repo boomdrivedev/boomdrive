@@ -94,6 +94,26 @@ stops on SIGTERM or SIGINT before the next repository it would keep,
 and exits 0. It opens no listening socket: every connection it makes is
 outgoing.
 
+Each turn of passes ends, before the runner waits, with Flume's settle
+of every place, `flume --json settle --every <bound>`, run once and
+awaited, so the runner keeps Flume's watch over its host: while it
+runs, Flume runs unattended, and every place waiting on it, a submitted
+place with no agent among them, moves within the bound. The bound is
+`fetch_interval` in whole seconds, or the shorter of it and
+`poll_interval` while the runner makes control passes. A turn whose
+reading of the configuration failed settles all the same: the watch is
+the host's, not the file's. A landing kept between passes is followed by
+no settle, and a runner told to stop begins none. The runner reads
+nothing of the settle's answer, and carries and keeps none of it. It
+says nothing while Flume settles; it says one line when a settle is
+refused, `boomdrive: Flume refused the settle of every place: <words>`,
+or gives no answer, `boomdrive: Flume gave no answer to the settle of
+every place: <why>`, and one when Flume settles again, `boomdrive: Flume
+settles every place again`. A refused settle stops nothing. Flume offers
+no end to a watch, so once the runner stops, its last watch stands until
+twice its bound has passed since that settle began, and the host then
+runs attended: Flume settles every place at each command that acts.
+
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or
 written. A repository left by rule, for a folder of the user's or work
@@ -102,7 +122,9 @@ runner cannot read it. Where
 the configuration names a control plane, `--once` makes one control
 pass after the keeping pass, and exits 1 too when that pass did not
 pull and report. A tool that pass could not run or read is named, and
-is not a failure.
+is not a failure. `--once` settles every place once, after its passes,
+and a settle Flume refused or gave no answer to is named, and is not a
+failure either.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
@@ -323,7 +345,9 @@ A control pass runs after the first keeping pass, then each
 that reported, where a lease not yet lapsed would lapse first, and at
 once when the control plane wakes the runner. The runner says once that
 its control plane could not be read, and once that it is read again.
-A control pass:
+Each control pass ends with the settle of every place, and a control
+pass that follows a keeping pass at once shares its settle, run once
+after both, so no launch waits behind a settle. A control pass:
 
 - reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
