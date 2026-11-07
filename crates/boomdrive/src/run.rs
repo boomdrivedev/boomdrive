@@ -324,7 +324,7 @@ impl Runner {
     /// both layers keep, its configuration file, data directory and
     /// repository root.
     pub fn started(&self) -> String {
-        let kept = match self.config.repositories.len() {
+        let kept = match self.config.repositories().count() {
             1 => "1 repository".to_string(),
             n => format!("{n} repositories"),
         };

@@ -67,3 +67,16 @@ Listing only the views that stand would move the window's folders whenever a clo
 - No message of the protocol changes, and no control plane's implementation reads the key (core.2, core.42). Under a hosted control plane, the managed level may set it as it sets the repositories (core.17, record 0009).
 
 Rule: core.43.
+
+## Amendment, 2026-11-07: how a drive's workspace goes with its drive
+
+Status: decided on 2026-11-07 by the construct stage of the change `a-hosts-configuration-names-its-accounts-and-their-drives`, on the written rules. Its design gives the path not taken for each choice.
+
+- **The clone records its drive.** Each kept repository's clone records the drive the configuration names it under, as `boomdrive.drive` in its bare repository's configuration, beside `boomdrive.address` and `boomdrive.view` (core.14, core.35, core.36).
+- **The workspace goes when the drive is gone.** At the end of a pass, where `code_workspaces` is true, the runner looks at each drive the clones recorded when the pass began. Where the configuration no longer names that drive and no clone still standing records it, the runner removes its workspace at the root, if it reads the file as a JSON object. Anything else at that path is left and named.
+- **Moved repositories count.** A drive whose repositories all moved to other drives has no view left of its own, so its workspace goes too.
+- **Not taken:**
+  - a list of written workspaces in the data directory, which core.35 does not hold;
+  - removing every workspace at the root that no drive names, which would take a person's own (core.43).
+
+core.43's details are amended with this amendment.

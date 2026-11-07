@@ -660,8 +660,11 @@ fn a_new_root_the_old_folder_replaced() {
     assert_eq!(lines, Vec::<String>::new());
 }
 
+/// The views spec's "A new root, an owner's workspace from before": the
+/// old view is removed and its owner's folder, holding a workspace an
+/// earlier runner kept there, is left with it as it was.
 #[test]
-fn a_new_root_the_old_owners_workspace() {
+fn a_new_root_an_owners_workspace_from_before() {
     let scratch = Scratch::new();
     let origin = scratch.origin("agentplot/flume");
     let asking = |root: &str| {
@@ -674,35 +677,38 @@ fn a_new_root_the_old_owners_workspace() {
     let old = view(&scratch);
     let owner = scratch.home.join("Code/agentplot");
     let file = owner.join("agentplot.code-workspace");
+    let before = "{\n\t\"folders\": [{\"path\": \"flume\"}],\n\t\"settings\": {}\n}\n";
+    std::fs::write(&file, before).expect("an owner's workspace from before");
     assert_eq!(entries(&owner), ["agentplot.code-workspace", "flume"]);
 
     let (outcome, lines) = scratch.pass(&asking("~/src"));
 
     let new = src_view(&scratch);
     let tip = origin.tip("main");
-    let new_file = scratch.home.join("src/agentplot/agentplot.code-workspace");
+    let new_file = scratch.home.join("src/home.code-workspace");
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
         [
             format!("agentplot/flume: view removed from {}", old.display()),
-            format!(
-                "boomdrive: workspace removed from {}, with its folder",
-                file.display()
-            ),
             made(&new, "main", &tip),
             format!(
-                "boomdrive: workspace written at {}: flume",
+                "boomdrive: workspace written at {}: agentplot/flume",
                 new_file.display()
             ),
         ]
     );
-    assert!(!owner.exists(), "the old owner's folder is left");
-    assert_eq!(entries(&scratch.home.join("Code")), [] as [&str; 0]);
+    assert_eq!(entries(&owner), ["agentplot.code-workspace"]);
+    assert_eq!(read(&file), before);
+    assert_eq!(
+        entries(&scratch.home.join("Code")),
+        ["agentplot", "home.code-workspace"]
+    );
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&read(&new_file)).expect("JSON"),
-        json!({"folders": [{"path": "flume"}], "settings": {}})
+        json!({"folders": [{"path": "agentplot/flume"}], "settings": {}})
     );
+    assert!(new.is_dir());
 
     let (outcome, lines) = scratch.pass(&asking("~/src"));
     assert_eq!(outcome, Outcome::Kept);

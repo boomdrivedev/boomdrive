@@ -4,8 +4,12 @@
 # the paths the family's cache holds whatever nixpkgs the host runs (design
 # Decision 4); and `settings`, the runner's file under its own names
 # (core.46), free-form TOML with the README's keys declared for their types
-# (RFC 42). A key left unset is left out of the file, so the runner's own
-# default holds and the two never drift; a key the module does not declare
+# (RFC 42). Its `accounts` name the host's accounts, each account's drives
+# and each drive's repositories (record 0028), every level always written;
+# an account and a drive hold no key the runner does not read, so one fails
+# evaluation, and a flat `repositories` of before fails it too. Any other
+# key left unset is left out of the file, so the runner's own default holds
+# and the two never drift; a top-level key the module does not declare
 # passes to the file, and the runner judges it. A key named for a
 # credential fails evaluation, since the file is in the store, which every
 # user reads (design Decision 12, core.4).
@@ -38,6 +42,26 @@ let
       default = null;
       inherit description;
     };
+
+  # A drive, `[accounts.<account>.drives.<drive>]`: its repositories and
+  # nothing else, so a stream or a key the runner does not read fails
+  # evaluation, naming its option (core.5).
+  drive = types.submodule {
+    options.repositories = mkOption {
+      type = types.listOf (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+");
+      default = [ ];
+      description = "Each repository the drive keeps, by its GitHub address, `owner/name`, in the order kept; a repository belongs to one drive. Always written.";
+    };
+  };
+
+  # An account, `[accounts.<account>]`: its drives and nothing else.
+  account = types.submodule {
+    options.drives = mkOption {
+      type = types.attrsOf drive;
+      default = { };
+      description = "Each of the account's drives by its name, which is given once on the host: one account's body of work. Always written.";
+    };
+  };
 
   controlPlane = types.submodule {
     freeformType = toml;
@@ -106,14 +130,14 @@ in
       type = types.submodule {
         freeformType = toml;
         options = {
-          repositories = mkOption {
-            type = types.listOf (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+");
-            default = [ ];
-            description = "Each repository the host keeps, by its GitHub address, `owner/name`; always written.";
+          accounts = mkOption {
+            type = types.attrsOf account;
+            default = { };
+            description = "Each account the host serves by its name, what a runner enrolls with a control plane, each naming its drives and each drive its repositories; always written.";
           };
           repository_root = unset types.str "The root each repository's view is kept under, an absolute path or one beginning with `~/`; the runner's `~/Code` where unset.";
           fetch_interval = unset interval "How often every repository is fetched; the runner's `2m` where unset.";
-          code_workspaces = unset types.bool "Whether each owner's views have a VS Code workspace; the runner's `false` where unset.";
+          code_workspaces = unset types.bool "Whether each drive has a VS Code workspace at the repository root; the runner's `false` where unset.";
           control_plane = unset controlPlane "`[control_plane]`, the control plane whose work the runner carries; none where unset.";
         };
       };
@@ -127,6 +151,10 @@ in
       {
         assertion = found == [ ];
         message = "services.boomdrive.settings names a credential at ${lib.concatStringsSep ", " found}: the runner's file is in the store, which every user reads, so it holds no token or key. A partition's key is made on the host by `boomdrive enroll <label>`, its token on standard input.";
+      }
+      {
+        assertion = !(cfg.settings ? repositories);
+        message = "services.boomdrive.settings.repositories is the flat list of before: each repository is named under its drive, settings.accounts.<account>.drives.<drive>.repositories (record 0028).";
       }
     ];
   };

@@ -9,7 +9,7 @@ mod common;
 
 use boomdrive::config;
 use boomdrive::run::{Runner, Stopper};
-use common::{keeping, Scratch};
+use common::{drives, keeping, Scratch};
 use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver};
@@ -191,7 +191,7 @@ fn a_fault_said_once() {
     let sluice = scratch.origin("agentplot/sluice");
     let managed = every_second("", &["agentplot/flume"]);
     scratch.configure(&managed);
-    let broken = "repositories = [\n";
+    let broken = "accounts.own.drives.home.repositories = [\n";
     scratch.configure_local(broken);
     let named = not_taken(&scratch, &fault_of(&scratch, &managed, broken));
 
@@ -218,20 +218,21 @@ fn a_fault_said_once() {
     assert_eq!(running.stop(), ["boomdrive: stopped"]);
 }
 
-/// A running runner whose pinned `repositories` the local layer sets says
-/// them passed over once, at its first pass, and not again.
+/// A running runner whose pinned `accounts` the local layer sets a drive's
+/// repositories in says them passed over once, at its first pass, and not
+/// again.
 #[test]
-fn pinned_repositories_passed_over_said_once() {
+fn pinned_accounts_passed_over_said_once() {
     let scratch = Scratch::new();
     let flume = scratch.origin("agentplot/flume");
     scratch.origin("agentplot/sluice");
     scratch.configure(&every_second(
-        "pin = [\"repositories\"]\n",
+        "pin = [\"accounts\"]\n",
         &["agentplot/flume"],
     ));
     scratch.configure_local(&keeping(&["agentplot/sluice"]));
     let passed_over = format!(
-        "{}; `repositories` passed over, pinned by `repositories`",
+        "{}; `accounts.own.drives.home.repositories` passed over, pinned by `accounts`",
         taken(&scratch)
     );
 
@@ -261,33 +262,35 @@ fn folders(file: &Path) -> serde_json::Value {
 
 /// The configuration spec's "A local file broken while running": while
 /// the local layer is not taken, the managed layer's repository is
-/// fetched, nothing is removed and the owner's workspace is left as it
-/// is; once mended, the pass after keeps both.
+/// fetched, nothing is removed, and each drive's workspace is left as it
+/// is, the workspace of the drive only the local layer names among them;
+/// once mended, the pass after keeps both.
 #[test]
 fn a_local_file_broken_while_running() {
     let scratch = Scratch::new();
     let flume = scratch.origin("agentplot/flume");
     let sluice = scratch.origin("agentplot/sluice");
-    scratch.configure(&every_second(
-        "code_workspaces = true\n",
-        &["agentplot/flume"],
-    ));
-    scratch.configure_local(&keeping(&["agentplot/sluice"]));
-    let workspace = scratch.home.join("Code/agentplot/agentplot.code-workspace");
+    let managed = every_second("code_workspaces = true\n", &["agentplot/flume"]);
+    scratch.configure(&managed);
+    let local = drives(&[("work", &["agentplot/sluice"])]);
+    scratch.configure_local(&local);
+    let home = scratch.home.join("Code/home.code-workspace");
+    let work = scratch.home.join("Code/work.code-workspace");
     let written = format!(
-        "boomdrive: workspace written at {}: flume, sluice",
-        workspace.display()
+        "boomdrive: workspace written at {}: agentplot/sluice",
+        work.display()
     );
 
     let running = Running::start(&scratch);
     let first = running.until(&written);
     assert_eq!(first[0], taken(&scratch), "{first:#?}");
-    let both = serde_json::json!([{"path": "flume"}, {"path": "sluice"}]);
-    assert_eq!(folders(&workspace), both);
+    let flume_folder = serde_json::json!([{"path": "agentplot/flume"}]);
+    let sluice_folder = serde_json::json!([{"path": "agentplot/sluice"}]);
+    assert_eq!(folders(&home), flume_folder);
+    assert_eq!(folders(&work), sluice_folder);
 
-    let broken = "repositories = [\"agentplot/sluice\"\n";
+    let broken = "accounts.own.drives.work.repositories = [\"agentplot/sluice\"\n";
     rewrite(&scratch.local_file(), broken);
-    let managed = every_second("code_workspaces = true\n", &["agentplot/flume"]);
     let named = not_taken(&scratch, &fault_of(&scratch, &managed, broken));
     assert_eq!(running.until(&named), std::slice::from_ref(&named));
     for pass in 0..2 {
@@ -299,9 +302,10 @@ fn a_local_file_broken_while_running() {
     }
     assert!(scratch.clone_of("agentplot/sluice").exists());
     assert!(scratch.home.join("Code/agentplot/sluice").exists());
-    assert_eq!(folders(&workspace), both);
+    assert_eq!(folders(&home), flume_folder);
+    assert_eq!(folders(&work), sluice_folder);
 
-    rewrite(&scratch.local_file(), &keeping(&["agentplot/sluice"]));
+    rewrite(&scratch.local_file(), &local);
     assert_eq!(running.until(&taken(&scratch)), [taken(&scratch)]);
     let later = sluice.commit("main", "mended", "once it is mended\n");
     assert_eq!(
@@ -309,7 +313,8 @@ fn a_local_file_broken_while_running() {
         [moved("agentplot/sluice", &later)]
     );
     assert_eq!(running.stop(), ["boomdrive: stopped"]);
-    assert_eq!(folders(&workspace), both);
+    assert_eq!(folders(&home), flume_folder);
+    assert_eq!(folders(&work), sluice_folder);
 }
 
 /// The configuration spec's "A repository the local layer drops": the

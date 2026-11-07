@@ -88,3 +88,27 @@ Its details no longer rule out a drive named in the configuration. They still ru
 - The configuration, service-modules and views specs change through one OpenSpec change, queued on the user's yes, citing this record and record 0017.
 - The Boomdrive flake's bolt `the-boomdrive-flake-configures-the-whole-host` takes the accounts' shape in its unit `each-repository-is-named-once-by-its-owner`, which waits on this record.
 - afterthought/swancloud passes deneb's accounts and drives as option values, once the modules land.
+
+## Amendment, 2026-11-07: the keys of the runner's file
+
+Status: decided on 2026-11-07 by the construct stage of the change `a-hosts-configuration-names-its-accounts-and-their-drives`. These are choices this record leaves to the runner's file, made on the written rules, each cheap to change. The change's design gives the path not taken for each.
+
+- **The form.** The runner's file names `[accounts.<account>.drives.<drive>]`. Each drive's `repositories` is a list of addresses `owner/name`, in the order kept. The module turns its owners' names into addresses. Not taken: a table of owners in each drive. TOML does not order a table's keys, and a drive's workspace lists its folders in its list's order (record 0017).
+- **Every level is required.** `accounts`, each account's `drives` and each drive's `repositories` are required, and each may be empty. A key left out is a mistake, never a host that keeps nothing.
+- **Names.** An account's and a drive's name is the hosted label's form: 1 to 32 lower-case letters, digits and `-`, starting with a letter. A drive's name is given once on the host, across its accounts, and a repository is named in one drive.
+- **Nothing else in an account or a drive.** The drive's stream and machine, and the account's state repository, are the modules' options and never keys of the runner's file (core.2, core.5). The `[control_plane]` tables keep their `partitions`, each handed whole to its implementation.
+- **The flat list.** A top-level `repositories` is refused, naming `accounts`, as `views` and `fetch_every` are. The configuration is no file the runner keeps (core.35), so core.36 does not hold its keys for a release.
+
+## Amendment, 2026-11-07: the local layer's accounts
+
+Status: decided on 2026-11-07 by the code stage of the change `a-hosts-configuration-names-its-accounts-and-their-drives`, which landed after the change `the-runner-reads-a-local-layer-over-its-managed-one`, as both changes' designs leave this to the one landing second. These are the writing agent's choices, made within this record and record 0009's amendments of 2026-11-06 and 2026-11-07 as accepted, each cheap to change. The change's design, its Decision 13, gives the path not taken for each.
+
+Amends record 0009's amendment of 2026-11-07 in its key `repositories`, which the runner's file no longer holds at its top.
+
+- **The local layer sets each drive's `repositories`.** The key the local layer may set in place of the flat `repositories` is `accounts.<account>.drives.<drive>.repositories`, one unit for each drive, taken whole. An account or a drive of the local layer holds no other key, and a local file that sets one, or the flat `repositories`, is not taken. So this record's "the managed layer writes the drives" reads "the local layer", in the words of record 0009's amendment of 2026-11-06.
+- **A drive's repositories add.** A drive both layers name under one account keeps the managed layer's repositories, in their order, then each of the local layer's the managed layer does not name. A drive or an account only the local layer names is declared by it, after the managed layer's, in the local file's order. Not taken: the local layer adding to a drive only where the managed layer declares it, which would leave a control plane no way to add a drive Nix does not name.
+- **One drive per repository, and a drive's name once, across the layers.** A local layer that names a repository the managed layer keeps in another drive, or a drive the managed layer holds under another account, is not taken. Not taken: the repository moved to the local layer's drive, which would let a control plane's write move work, and its stream, out of the drive Nix gave it.
+- **Pins.** The managed layer's `pin` may name `accounts`, an account, a drive, or a drive's `repositories`, each holding every drive's `repositories` under it. A pin of the flat `repositories` is a pin of nothing, the managed layer's fault.
+- **A local layer not taken removes no workspace.** While it stands, a pass sets no drive's workspace and removes none, a departed drive's among them, since the drive it could not be read for may be that one.
+
+core.17's details are amended in this amendment's commit with what it rules out and allows.

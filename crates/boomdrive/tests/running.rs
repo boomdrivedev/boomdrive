@@ -300,7 +300,7 @@ fn a_second_runner() {
 fn a_bad_configuration_at_start() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
-    let file = scratch.configure("repositories = [\"agentplot/flume\", \"flume\"]\n");
+    let file = scratch.configure(&keeping(&["agentplot/flume", "flume"]));
 
     let output = scratch
         .boomdrive()
@@ -312,7 +312,7 @@ fn a_bad_configuration_at_start() {
     assert_eq!(
         stderr(&output),
         format!(
-            "boomdrive: {}:1: `repositories` entry \"flume\": an address is `owner/name`\n",
+            "boomdrive: {}:1: `accounts.own.drives.home.repositories` entry \"flume\": an address is `owner/name`\n",
             file.display()
         )
     );
@@ -375,7 +375,7 @@ fn the_file_named() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
     scratch.origin("agentplot/sluice");
-    scratch.configure("repositories = [\"flume\"]\n");
+    scratch.configure(&keeping(&["flume"]));
     scratch.configure_local(&keeping(&["agentplot/sluice"]));
     let named = scratch.root.join("boomdrive.toml");
     std::fs::write(&named, keeping(&["agentplot/flume"])).expect("the file named");
