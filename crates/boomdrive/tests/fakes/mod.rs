@@ -709,11 +709,17 @@ impl Stub {
         }
     }
 
-    /// A stub answering `status` with `status.json`.
+    /// A stub answering `status` with `status.json`, and `settle` with
+    /// Flume 0.17.1's `settled.json`.
     pub fn new() -> Stub {
         let stub = Stub::absent();
         stub.write();
         stub.answers("status", "status.json", 0);
+        stub.answers_from(
+            "settle",
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json"),
+            0,
+        );
         stub
     }
 
@@ -734,10 +740,16 @@ impl Stub {
         let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/flume-0.4.1")
             .join(name);
+        self.answers_from(what, &fixture, exit);
+    }
+
+    /// `what`, a command or `status-of`, answered with the file `answer`
+    /// and the exit `exit`.
+    fn answers_from(&self, what: &str, answer: &Path, exit: i32) {
         let dir = self.dir.path();
         fs::write(
             dir.join(format!("{what}.stdout")),
-            fixture.to_string_lossy().as_bytes(),
+            answer.to_string_lossy().as_bytes(),
         )
         .expect("the stub's answer");
         fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
@@ -783,9 +795,8 @@ impl Stub {
 /// The stub `sluice`'s program. Each call writes its arguments,
 /// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
 /// It then prints the file `<what>.stdout` names, writes `<what>.stderr`
-/// on standard error, runs `<what>.then` by `sh`, and exits with
-/// `<what>.exit`'s status, each where the test wrote one, `<what>` being
-/// its command.
+/// on standard error, and exits with `<what>.exit`'s status, each where
+/// the test wrote one, `<what>` being its command.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
@@ -795,7 +806,6 @@ pwd -P > "$dir/dir-$n"
 what=$1
 if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
 if [ -e "$dir/$what.stderr" ]; then cat "$dir/$what.stderr" >&2; fi
-if [ -e "$dir/$what.then" ]; then sh "$dir/$what.then" || exit 99; fi
 if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
 exit 0
 "#;
@@ -848,12 +858,6 @@ impl SluiceStub {
     /// `what`, a command, saying `words` on standard error.
     pub fn says(&self, what: &str, words: &str) {
         fs::write(self.dir.path().join(format!("{what}.stderr")), words).expect("its words");
-    }
-
-    /// `what`, a command, running `script` by `sh` once it has printed,
-    /// as sluice changes what it is asked to.
-    pub fn then(&self, what: &str, script: &str) {
-        fs::write(self.dir.path().join(format!("{what}.then")), script).expect("its script");
     }
 
     /// The arguments of every call, in order.

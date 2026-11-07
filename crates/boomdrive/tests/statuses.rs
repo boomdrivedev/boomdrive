@@ -13,7 +13,7 @@ mod fakes;
 
 use boomdrive::flume::{Cli, Unrun};
 use boomdrive_control::fake::Fake;
-use boomdrive_control::{At, Carried, Id, Want};
+use boomdrive_control::{At, Carried, Command, CommandSort, Id, Lease, Outcome, Want};
 use fakes::{fixture, offer, place_of, printed, Bench, Call, Stub, KEPT};
 use serde_json::{json, Value};
 use std::fs;
@@ -202,6 +202,47 @@ fn a_place_tidied_while_the_pass_answers_its_wants() {
         "a quiet pass reads it once"
     );
     assert_eq!(carried(&bench, "a"), status);
+}
+
+/// The work-into-flume spec's "A pass that answers a command reads the
+/// listing once": a command runs no tool, so it makes Flume's listing be
+/// read no second time (record 0027; design Decision 6; Task notes 1.4).
+#[test]
+fn a_pass_that_answers_a_command_reads_the_listing_once() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    assert!(
+        bench.flume.entry(&place_of("a")).is_some(),
+        "a's place stands"
+    );
+    let branch = Want::Command(Command {
+        id: Id::new("branch/1"),
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        what: CommandSort::Branch {
+            repository: KEPT.to_string(),
+            branch: "bolt/x".to_string(),
+            from: "main".to_string(),
+        },
+    });
+    plane.set_wants(vec![Want::Offer(offer("a", "a")), branch]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    let calls = bench.flume.take_calls();
+    let listings = calls.iter().filter(|c| **c == Call::Status).count();
+    assert_eq!(listings, 1, "{calls:?}");
+    assert_eq!(calls.first(), Some(&Call::Status), "read before the pull");
+    let commanded = &bench.report().commands[&Id::new("branch/1")];
+    assert_eq!(
+        (commanded.outcome, commanded.words.as_deref()),
+        (
+            Outcome::Refused,
+            Some("this binary does not carry sluice's commands")
+        )
+    );
 }
 
 /// A place's status Flume could not be run for is named, and what was
