@@ -8,7 +8,7 @@
 use crate::config::Config;
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
-use serde_json::{json, Serializer, Value};
+use serde_json::{json, Map, Serializer, Value};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
@@ -112,23 +112,35 @@ pub fn decide(stands: &Stands, folders: &[String]) -> Act {
             .map(|folder| json!({ "path": folder }))
             .collect(),
     );
-    match stands {
-        Stands::Missing => Act::Write(text(&json!({ "folders": wanted, "settings": {} }))),
-        Stands::Link => Act::Name("it is a link".to_string()),
-        Stands::Other => Act::Name("it is not a file".to_string()),
-        Stands::File(bytes) => match serde_json::from_slice::<Value>(bytes) {
-            Err(error) => Act::Name(format!("it is not JSON the runner reads: {error}")),
-            Ok(Value::Object(mut members)) => {
-                match members.get_mut("folders") {
-                    Some(folders) if *folders == wanted => return Act::Leave,
-                    Some(folders) => *folders = wanted,
-                    None => {
-                        members.shift_insert(0, "folders".to_string(), wanted);
-                    }
+    match object(stands) {
+        Ok(None) => Act::Write(text(&json!({ "folders": wanted, "settings": {} }))),
+        Ok(Some(mut members)) => {
+            match members.get_mut("folders") {
+                Some(folders) if *folders == wanted => return Act::Leave,
+                Some(folders) => *folders = wanted,
+                None => {
+                    members.shift_insert(0, "folders".to_string(), wanted);
                 }
-                Act::Write(text(&Value::Object(members)))
             }
-            Ok(_) => Act::Name("it is not a JSON object".to_string()),
+            Act::Write(text(&Value::Object(members)))
+        }
+        Err(wrong) => Act::Name(wrong),
+    }
+}
+
+/// The JSON object a workspace's path holds, as `stands` there reads,
+/// none where nothing is there; or what is wrong with what stands, never
+/// with the file's text (core.11): a link, no file, a file the runner
+/// does not read as JSON, or JSON that is not an object.
+pub fn object(stands: &Stands) -> Result<Option<Map<String, Value>>, String> {
+    match stands {
+        Stands::Missing => Ok(None),
+        Stands::Link => Err("it is a link".to_string()),
+        Stands::Other => Err("it is not a file".to_string()),
+        Stands::File(bytes) => match serde_json::from_slice::<Value>(bytes) {
+            Err(error) => Err(format!("it is not JSON the runner reads: {error}")),
+            Ok(Value::Object(members)) => Ok(Some(members)),
+            Ok(_) => Err("it is not a JSON object".to_string()),
         },
     }
 }

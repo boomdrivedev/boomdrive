@@ -525,9 +525,10 @@ fn accounts(
 const NAME_FORM: &str =
     "name is 1 to 32 lower-case letters, digits and `-`, starting with a letter";
 
-/// Whether `name` is of `NAME_FORM`, so a drive's `<name>.code-workspace`
-/// is a plain file name at the repository root.
-fn in_form(name: &str) -> bool {
+/// Whether `name` is of `NAME_FORM`, an account's or a drive's, so a
+/// drive's `<name>.code-workspace` is a plain file name at the repository
+/// root.
+pub fn in_form(name: &str) -> bool {
     name.len() <= 32
         && name.starts_with(|c: char| c.is_ascii_lowercase())
         && name

@@ -31,9 +31,12 @@ fn kept(config: &Config) -> Vec<String> {
     config.repositories().map(ToString::to_string).collect()
 }
 
+/// A drive's name with its repositories as written.
+type Drive<'a> = (&'a str, Vec<String>);
+
 /// Each account `config` names, with each of its drives and their
 /// repositories as written.
-fn accounts(config: &Config) -> Vec<(&str, Vec<(&str, Vec<String>)>)> {
+fn accounts(config: &Config) -> Vec<(&str, Vec<Drive<'_>>)> {
     config
         .accounts
         .iter()

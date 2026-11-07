@@ -2,9 +2,10 @@
 //! repository in the file's order, its clone made or fetched, its HEAD
 //! settled and its view kept, then each dropped repository let go, then,
 //! where the configuration asks, each drive's VS Code workspace kept at
-//! the repository root (core.43). A removed view's owner folder goes only
-//! where it is then empty, and the pass touches no workspace in an
-//! owner's folder. Each repository is
+//! the repository root and each departed drive's taken, once no clone the
+//! runner holds records the drive (core.43; design Decision 8). A removed
+//! view's owner folder goes only where it is then empty, and the pass
+//! touches no workspace in an owner's folder. Each repository is
 //! independent: a failure in one is named and the next is kept. A pass
 //! stopped keeps no further repository and no workspace. The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
@@ -16,7 +17,9 @@ use crate::config::{self, Address, Config};
 use crate::git::Git;
 use crate::lacks;
 use crate::view::{self, OldAct, ViewAct};
+use std::collections::BTreeSet;
 use std::fs;
+use std::io;
 use std::ops::ControlFlow;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -58,12 +61,15 @@ pub fn pass(
         return Outcome::Failed;
     };
     let workspaces = wanted_workspaces(config);
+    // The drives the clones standing record, once kept or let go.
+    let mut standing = BTreeSet::new();
     let mut outcome = Outcome::Kept;
     for address in config.repositories() {
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        outcome = outcome.and(keep_configured(git, data, config, &clones, address, say));
+        let kept = keep_configured(git, data, config, &clones, address, &mut standing, say);
+        outcome = outcome.and(kept);
     }
     for found in &clones {
         if stop.load(Ordering::SeqCst) {
@@ -72,11 +78,12 @@ pub fn pass(
         if config.repositories().any(|kept| *kept == found.address) {
             continue;
         }
-        outcome = outcome.and(let_go(git, &found.address, &found.container, say));
+        outcome = outcome.and(let_go(git, found, &mut standing, say));
     }
     if let Some(workspaces) = &workspaces {
         if !stop.load(Ordering::SeqCst) {
             outcome = outcome.and(keep_workspaces(workspaces, say));
+            outcome = outcome.and(take_departed(config, &clones, &standing, say));
         }
     }
     outcome.and(clear_partials(data, &clones, say))
@@ -107,7 +114,15 @@ pub fn keep_one(
         return Outcome::Kept;
     };
     match find(git, data, say) {
-        Some(clones) => keep_configured(git, data, config, &clones, address, say),
+        Some(clones) => keep_configured(
+            git,
+            data,
+            config,
+            &clones,
+            address,
+            &mut BTreeSet::new(),
+            say,
+        ),
         None => Outcome::Failed,
     }
 }
@@ -129,13 +144,15 @@ fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<Found
 
 /// Keeps `address`, which `config` names, its clone among `clones` where
 /// it has one, each line said with its address. The clone records the
-/// drive `config` names it under (design Decision 7).
+/// drive `config` names it under (design Decision 7), and the drive it
+/// records once kept joins `standing`.
 fn keep_configured(
     git: &Git,
     data: &Path,
     config: &Config,
     clones: &[Found],
     address: &Address,
+    standing: &mut BTreeSet<String>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
     let found = clones.iter().find(|found| found.address == *address);
@@ -143,7 +160,7 @@ fn keep_configured(
         .drive_of(address)
         .map_or("", |drive| drive.name.as_str());
     let view = config::view_path(config, address);
-    keep(git, data, address, found, drive, &view, say)
+    keep(git, data, address, found, drive, &view, standing, say)
 }
 
 /// Keeps each drive's VS Code workspace the configuration wants, the
@@ -194,15 +211,49 @@ fn keep_workspace(wanted: &Wanted, say: &mut dyn FnMut(String)) -> Outcome {
     }
 }
 
-/// Lets go of the clone in `container`, whose address the configuration
-/// no longer names (design 8). It is never fetched. Once neither it nor
-/// its view holds anything the forge lacks, the view is removed, then
-/// the view's owner folder if empty, then the container, then the
+/// Lets go of the clone `found`, whose address the configuration no
+/// longer names (design 8). It is never fetched. Once neither it nor its
+/// view holds anything the forge lacks, the view is removed, then the
+/// view's owner folder if empty, then the container, then the
 /// container's owner folder if empty (design Decision 10). Until then
 /// nothing is touched, and each thing that holds them is named. A folder
 /// at the view's path that is not the clone's worktree is left as it is.
-/// Each line of the clone's says its address.
-fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(String)) -> Outcome {
+/// A clone left standing has the drive it records join `standing`. Each
+/// line of the clone's says its address.
+fn let_go(
+    git: &Git,
+    found: &Found,
+    standing: &mut BTreeSet<String>,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let removed = remove_dropped(git, &found.address, &found.container, say);
+    if removed != Removed::Gone {
+        standing.extend(found.drive.clone());
+    }
+    match removed {
+        Removed::Failed => Outcome::Failed,
+        Removed::Gone | Removed::Held => Outcome::Kept,
+    }
+}
+
+/// What became of a dropped repository's clone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Removed {
+    /// It and its view are gone.
+    Gone,
+    /// It is left, held by what the forge lacks.
+    Held,
+    /// A step failed, and was named.
+    Failed,
+}
+
+/// `let_go`'s steps for the clone of `address` in `container`.
+fn remove_dropped(
+    git: &Git,
+    address: &Address,
+    container: &Path,
+    say: &mut dyn FnMut(String),
+) -> Removed {
     let bare = clone::bare(container);
     let read = view::recorded_path(git, &bare).and_then(|view| {
         let facts = lacks::read(git, &bare, view.as_deref())?;
@@ -212,7 +263,7 @@ fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(St
         Ok(read) => read,
         Err(words) => {
             say(format!("{address}: not let go: {words}"));
-            return Outcome::Failed;
+            return Removed::Failed;
         }
     };
     let held = lacks::holdings(&facts);
@@ -220,13 +271,13 @@ fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(St
         for holding in held {
             say(format!("{address}: left: held by {holding}"));
         }
-        return Outcome::Kept;
+        return Removed::Held;
     }
     let view = view.filter(|_| facts.view.is_some());
     if let Some(view) = &view {
         if let Err(words) = view::remove(git, &bare, view) {
             say(format!("{address}: view not removed: {words}"));
-            return Outcome::Failed;
+            return Removed::Failed;
         }
     }
     if let Err(error) = fs::remove_dir_all(container) {
@@ -234,7 +285,7 @@ fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(St
             "{address}: clone not removed: {}: {error}",
             container.display()
         ));
-        return Outcome::Failed;
+        return Removed::Failed;
     }
     if let Some(owner) = container.parent() {
         let _ = fs::remove_dir(owner);
@@ -243,7 +294,84 @@ fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(St
         Some(_) => format!("{address}: removed: clone and view"),
         None => format!("{address}: removed: clone"),
     });
-    Outcome::Kept
+    Removed::Gone
+}
+
+/// Takes the workspace of each drive that has gone with its last clone
+/// (design Decision 8; core.43): each drive one of `clones` recorded when
+/// the pass found it, that `config` does not name and that no clone in
+/// `standing` records once the pass has kept and let go. Its workspace at
+/// `config`'s repository root is removed where it is a file the runner
+/// reads as a JSON object, its partial file with it, and one line names
+/// it; anything else there is left as it is and named. A drive's record
+/// that is no drive's name names no workspace. A workspace that cannot
+/// be read or removed is named, and fails the pass.
+fn take_departed(
+    config: &Config,
+    clones: &[Found],
+    standing: &BTreeSet<String>,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let mut departed: Vec<&str> = Vec::new();
+    for drive in clones.iter().filter_map(|found| found.drive.as_deref()) {
+        if config::in_form(drive)
+            && !config.drives().any(|kept| kept.name == drive)
+            && !standing.contains(drive)
+            && !departed.contains(&drive)
+        {
+            departed.push(drive);
+        }
+    }
+    let mut outcome = Outcome::Kept;
+    for drive in departed {
+        outcome = outcome.and(take_workspace(
+            &code_workspace::file(config, drive),
+            drive,
+            say,
+        ));
+    }
+    outcome
+}
+
+/// Takes the workspace at `file` of the drive `drive`, which has gone, as
+/// `take_departed` does.
+fn take_workspace(file: &Path, drive: &str, say: &mut dyn FnMut(String)) -> Outcome {
+    let shown = file.display();
+    let stands = match code_workspace::stands(file) {
+        Ok(stands) => stands,
+        Err(error) => {
+            say(format!("boomdrive: workspace not read at {shown}: {error}"));
+            return Outcome::Failed;
+        }
+    };
+    match code_workspace::object(&stands) {
+        Ok(None) => return Outcome::Kept,
+        Ok(Some(_)) => {}
+        Err(wrong) => {
+            say(format!("boomdrive: workspace left at {shown}: {wrong}"));
+            return Outcome::Kept;
+        }
+    }
+    let removed =
+        fs::remove_file(file).and_then(|()| match fs::remove_file(code_workspace::partial(file)) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+            removed => removed,
+        });
+    match removed {
+        Ok(()) => {
+            say(format!(
+                "boomdrive: workspace removed at {shown}: its drive {drive} has left the \
+                 configuration"
+            ));
+            Outcome::Kept
+        }
+        Err(error) => {
+            say(format!(
+                "boomdrive: workspace not removed at {shown}: {error}"
+            ));
+            Outcome::Failed
+        }
+    }
 }
 
 /// Keeps `address`: makes its clone where it has none (design 4), else
@@ -252,7 +380,9 @@ fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(St
 /// none (design Decision 7); then settles its HEAD on origin's default
 /// branch (design 6), then keeps its view at `view` (design 7). A view
 /// the runner put where the repository root no longer gives is let go of
-/// first. Each line of the repository's says its address.
+/// first. The drive the clone records once kept joins `standing`. Each
+/// line of the repository's says its address.
+#[allow(clippy::too_many_arguments)]
 fn keep(
     git: &Git,
     data: &Path,
@@ -260,6 +390,7 @@ fn keep(
     found: Option<&Found>,
     drive: &str,
     view: &Path,
+    standing: &mut BTreeSet<String>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
     let mut recorded = Outcome::Kept;
@@ -269,6 +400,11 @@ fn keep(
             if found.drive.as_deref() != Some(drive) {
                 recorded = record_drive(git, address, &bare, drive, say);
             }
+            let records = match recorded {
+                Outcome::Kept => Some(drive.to_string()),
+                Outcome::Failed => found.drive.clone(),
+            };
+            standing.extend(records);
             if let Err(failure) = clone::fetch(git, &bare) {
                 say(format!("{address}: not fetched: {failure}"));
                 return Outcome::Failed;
@@ -288,6 +424,9 @@ fn keep(
                 Ok(container) => {
                     say(format!("{address}: cloned from {}", clone::url(address)));
                     recorded = record_drive(git, address, &clone::bare(&container), drive, say);
+                    if recorded == Outcome::Kept {
+                        standing.insert(drive.to_string());
+                    }
                     container
                 }
                 Err(failure) => {

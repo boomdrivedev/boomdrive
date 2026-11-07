@@ -215,7 +215,7 @@ fn records(git: &Git, container: &Path) -> Option<(Address, Option<String>)> {
             .filter_map(|entry| entry.split_once('\n'))
             .filter(|(named, _)| *named == key)
             .map(|(_, value)| value)
-            .last()
+            .next_back()
     };
     let address = Address::parse(value(ADDRESS)?.trim()).ok()?;
     let is = |part: Option<&OsStr>, written: &str| {
