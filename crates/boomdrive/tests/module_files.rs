@@ -2,9 +2,9 @@
 //! runner reads each file", design Decision 9): each file under
 //! `nix/tests/files`, which `nix:test` holds byte for byte to what the
 //! modules render of the spec's settings, is read by the runner's own
-//! reader against a scratch home, refusing no key, with the repositories
-//! and the control plane its settings named; each control plane's table
-//! is one its implementation reads.
+//! reader against a scratch home, refusing no key, with the accounts,
+//! drives, repositories and control plane its settings named; each
+//! control plane's table is one its implementation reads.
 
 mod common;
 
@@ -26,12 +26,28 @@ fn read(scratch: &Scratch, name: &str) -> Config {
     config::read(&file, &scratch.home).unwrap_or_else(|refusal| panic!("{refusal}"))
 }
 
-/// The repositories `config` keeps, as written.
+/// The repositories `config` keeps, as written, in the order kept.
 fn kept(config: &Config) -> Vec<String> {
+    config.repositories().map(ToString::to_string).collect()
+}
+
+/// Each account `config` names, with each of its drives and their
+/// repositories as written.
+fn accounts(config: &Config) -> Vec<(&str, Vec<(&str, Vec<String>)>)> {
     config
-        .repositories
+        .accounts
         .iter()
-        .map(ToString::to_string)
+        .map(|account| {
+            let drives = account
+                .drives
+                .iter()
+                .map(|drive| {
+                    let repositories = drive.repositories.iter().map(ToString::to_string);
+                    (drive.name.as_str(), repositories.collect())
+                })
+                .collect();
+            (account.name.as_str(), drives)
+        })
         .collect()
 }
 
@@ -45,13 +61,14 @@ fn each_rendered_file_is_one_read_here() {
     assert_eq!(names, ["crew.toml", "empty.toml", "hosted.toml"]);
 }
 
-/// "Only repositories": the runner's own defaults hold for every key the
+/// "Only accounts": the runner's own defaults hold for every key the
 /// file leaves out.
 #[test]
 fn the_empty_file_keeps_nothing_with_the_runners_defaults() {
     let scratch = Scratch::new();
     let config = read(&scratch, "empty.toml");
-    assert!(config.repositories.is_empty());
+    assert!(config.accounts.is_empty());
+    assert!(kept(&config).is_empty());
     assert_eq!(config.repository_root, scratch.home.join("Code"));
     assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
     assert!(!config.code_workspaces);
@@ -65,6 +82,19 @@ fn the_crew_file_opens_crews_implementation() {
     let scratch = Scratch::new();
     let file = files().join("crew.toml");
     let config = read(&scratch, "crew.toml");
+    assert_eq!(
+        accounts(&config),
+        [(
+            "own",
+            vec![(
+                "home",
+                vec![
+                    "agentplot/flume".to_string(),
+                    "agentplot/sluice".to_string()
+                ]
+            )]
+        )]
+    );
     assert_eq!(kept(&config), ["agentplot/flume", "agentplot/sluice"]);
     assert_eq!(config.repository_root, scratch.home.join("Code"));
     assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
@@ -94,6 +124,16 @@ fn the_hosted_file_names_its_partitions() {
     let scratch = Scratch::new();
     let file = files().join("hosted.toml");
     let config = read(&scratch, "hosted.toml");
+    assert_eq!(
+        accounts(&config),
+        [
+            (
+                "home",
+                vec![("garden", vec!["agentplot/flume".to_string()])]
+            ),
+            ("work", vec![]),
+        ]
+    );
     assert_eq!(kept(&config), ["agentplot/flume"]);
     let table = config.control_plane.expect("a control plane named");
     assert_eq!(table.implementation, "hosted");

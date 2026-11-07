@@ -32,7 +32,7 @@ Work through the tasks in order. Each stands on the ones before it. The groups a
   - "A stream in a drive's settings", whose render fails under `builtins.tryEval`.
 
   The option's descriptions and the file's header comment name accounts and drives. Done when `sluice exec main -- moon run nix:test` passes, proving the service-modules spec's "Only accounts", "A host under crew", "A host under a hosted control plane", "The flat list in settings" and "A stream in a drive's settings".
-- [ ] 2.2 `tests/module_files.rs` reads each rendered file with the accounts, drives and repositories its settings named, through `Config::accounts` and `Config::repositories()`. Done when `devenv shell -- cargo test -p boomdrive --test module_files` passes, proving the service-modules spec's "The runner reads each file".
+- [x] 2.2 `tests/module_files.rs` reads each rendered file with the accounts, drives and repositories its settings named, through `Config::accounts` and `Config::repositories()`. Done when `devenv shell -- cargo test -p boomdrive --test module_files` passes, proving the service-modules spec's "The runner reads each file".
 
 ## 3. README
 
