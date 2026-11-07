@@ -432,7 +432,7 @@ impl Running {
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
         let thread = thread::spawn(move || {
-            runner.keep(&mut |line| {
+            runner.keep(&|line| {
                 let _ = said.send((Instant::now(), line));
             })
         });

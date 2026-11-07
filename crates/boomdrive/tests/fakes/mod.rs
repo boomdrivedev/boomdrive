@@ -987,3 +987,87 @@ impl CredsStub {
             .any(|call| call.first().map(String::as_str) != Some("--version"))
     }
 }
+
+/// A fetch of one repository held until the test lets it go: an
+/// upload-pack of the test's own, set as the scratch git configuration's
+/// `remote.origin.uploadpack`, which, for that repository alone, waits
+/// while a file the test makes is there, and runs git's own upload-pack
+/// for every repository once it is gone.
+pub struct HeldFetch {
+    dir: TempDir,
+}
+
+impl HeldFetch {
+    /// Sets the scratch git configuration `gitconfig` to hold the fetches
+    /// of the repository `address`, `<owner>/<name>`, while
+    /// [`HeldFetch::hold`] holds them.
+    pub fn new(gitconfig: &Path, address: &str) -> HeldFetch {
+        let held = HeldFetch {
+            dir: tempfile::tempdir().expect("the upload-pack's directory"),
+        };
+        let script = held.dir.path().join("upload-pack");
+        fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\n\
+                 case \"$*\" in\n\
+                 *'/{address}.git'*)\n\
+                 \tif [ -e '{hold}' ]; then\n\
+                 \t\ttouch '{waiting}'\n\
+                 \t\twhile [ -e '{hold}' ]; do sleep 0.05; done\n\
+                 \tfi ;;\n\
+                 esac\n\
+                 exec git upload-pack \"$@\"\n",
+                hold = held.hold_file().display(),
+                waiting = held.waiting_file().display(),
+            ),
+        )
+        .expect("the upload-pack written");
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755))
+            .expect("the upload-pack made runnable");
+        let mut config = fs::read_to_string(gitconfig).expect("the git configuration");
+        config.push_str(&format!(
+            "[remote \"origin\"]\n\tuploadpack = {}\n",
+            script.display()
+        ));
+        fs::write(gitconfig, config).expect("the git configuration written");
+        held
+    }
+
+    fn hold_file(&self) -> PathBuf {
+        self.dir.path().join("hold")
+    }
+
+    fn waiting_file(&self) -> PathBuf {
+        self.dir.path().join("waiting")
+    }
+
+    /// Holds every fetch of the repository from now on.
+    pub fn hold(&self) {
+        fs::write(self.hold_file(), "").expect("the hold made");
+    }
+
+    /// Waits until a fetch of the repository is held; panics where none
+    /// is within `patience`.
+    pub fn wait_held(&self, patience: std::time::Duration) {
+        let deadline = std::time::Instant::now() + patience;
+        while !self.waiting_file().exists() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "no fetch held in time"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    /// Lets every fetch held go on.
+    pub fn let_go(&self) {
+        let _ = fs::remove_file(self.hold_file());
+    }
+}
+
+impl Drop for HeldFetch {
+    fn drop(&mut self) {
+        self.let_go();
+    }
+}

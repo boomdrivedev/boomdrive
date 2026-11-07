@@ -10,6 +10,7 @@
 use crate::carry::{Carrier, Configured, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env};
 use crate::git::Git;
+use crate::locks::Locks;
 use crate::pass::{self, Outcome};
 use crate::planes::{self, Plane};
 use crate::terminal::{self, Relays};
@@ -201,6 +202,9 @@ pub struct Runner {
     notices: Notices,
     waiting: Receiver<Event>,
     stop: Arc<AtomicBool>,
+    /// Each clone's lock, which the keeper takes alone and a launch into
+    /// the clone shared (design Decision 4).
+    locks: Arc<Locks>,
     _lock: File,
 }
 
@@ -248,6 +252,7 @@ impl Runner {
             notices,
             waiting,
             stop: Arc::new(AtomicBool::new(false)),
+            locks: Arc::new(Locks::new()),
             _lock: lock,
         })
     }
@@ -332,16 +337,26 @@ impl Runner {
     /// Decision 5): failed where a git call of the keeping pass failed,
     /// or the control pass did not pull and report, its control plane
     /// unopened among it.
-    pub fn once(&mut self, say: &mut dyn FnMut(String)) -> Outcome {
-        let kept = pass::pass(&self.git, &self.data, &self.config, &self.stop, say);
+    pub fn once(&mut self, say: &(dyn Fn(String) + Sync)) -> Outcome {
+        let kept = pass::pass(
+            &self.git,
+            &self.data,
+            &self.config,
+            &self.locks,
+            &self.stop,
+            &mut || false,
+            &mut |line| say(line),
+        );
         let carried = match &self.control {
             None => Outcome::Kept,
             Some(Control { plane: Err(_), .. }) => Outcome::Failed,
             // No control pass follows, so none is ever due.
-            Some(_) => match self.carry(Ok(self.config.clone()), &|| false, say) {
-                Some(Passed { reported: true, .. }) => Outcome::Kept,
-                _ => Outcome::Failed,
-            },
+            Some(_) => {
+                match self.carry(Ok(self.config.clone()), &|| false, &mut |line| say(line)) {
+                    Some(Passed { reported: true, .. }) => Outcome::Kept,
+                    _ => Outcome::Failed,
+                }
+            }
         };
         kept.and(carried)
     }
@@ -355,9 +370,10 @@ impl Runner {
     /// one each `poll_interval` after the start of the one before, sooner,
     /// after a pass that reported, before a lease not yet lapsed lapses,
     /// and at once when the control plane wakes the runner. Between
-    /// passes, each landing it is told of is kept at once. Stopped, it
-    /// keeps no further repository and says so.
-    pub fn keep(&mut self, say: &mut dyn FnMut(String)) {
+    /// passes, and between two repositories of a keeping pass, each
+    /// landing it is told of is kept at once. Stopped, it keeps no further
+    /// repository and says so.
+    pub fn keep(&mut self, say: &(dyn Fn(String) + Sync)) {
         let mut started = Some(self.config.clone());
         let mut fetch_interval = self.config.fetch_interval;
         let mut keep_due = Instant::now();
@@ -372,7 +388,19 @@ impl Runner {
                 match read {
                     Ok(config) => {
                         fetch_interval = config.fetch_interval;
-                        pass::pass(&self.git, &self.data, &config, &self.stop, say);
+                        let mut woken = false;
+                        pass::pass(
+                            &self.git,
+                            &self.data,
+                            &config,
+                            &self.locks,
+                            &self.stop,
+                            &mut || self.between(&mut woken, say),
+                            &mut |line| say(line),
+                        );
+                        if woken && carry_due.is_some() {
+                            carry_due = Some(Instant::now());
+                        }
                     }
                     Err(why) => say(format!("boomdrive: {why}: nothing kept this pass")),
                 }
@@ -389,7 +417,7 @@ impl Runner {
                 notices.begin_pass();
                 let due = move || began.elapsed() >= poll_interval || notices.woken();
                 carry_due = self
-                    .carry(read, &due, say)
+                    .carry(read, &due, &mut |line| say(line))
                     .map(|passed| passed.next_due(began, Instant::now(), poll_interval));
             }
             loop {
@@ -493,13 +521,39 @@ impl Runner {
         Some(carrier.pass(plane.as_mut(), say))
     }
 
+    /// Keeps each landing told since, between two repositories of a
+    /// keeping pass, and takes a wake, `woken`, waiting for nothing: a
+    /// stop told is read by the pass from the stop itself. Says whether it
+    /// kept a landing (design Decision 3).
+    fn between(&self, woken: &mut bool, say: &(dyn Fn(String) + Sync)) -> bool {
+        let mut kept = false;
+        for event in self.waiting.try_iter() {
+            match event {
+                Event::Landed(address) => {
+                    self.landed(&address, say);
+                    kept = true;
+                }
+                Event::Wake => *woken = true,
+                Event::Stop => {}
+            }
+        }
+        kept
+    }
+
     /// Keeps `address` at once, told of a landing on it, against the
     /// configuration as it stands: read again, so a repository dropped
-    /// since the last pass is never fetched.
-    fn landed(&self, address: &Address, say: &mut dyn FnMut(String)) {
+    /// since the last pass is never fetched. It is kept under its lock.
+    fn landed(&self, address: &Address, say: &(dyn Fn(String) + Sync)) {
         match config::read(&self.file, &self.home) {
             Ok(config) => {
-                pass::keep_one(&self.git, &self.data, &config, address, say);
+                pass::keep_one(
+                    &self.git,
+                    &self.data,
+                    &config,
+                    &self.locks,
+                    address,
+                    &mut |line| say(line),
+                );
             }
             Err(why) => say(format!(
                 "boomdrive: {why}: nothing kept at the landing on {address}"
@@ -554,12 +608,12 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
     if let Some(why) = runner.unopened() {
         eprintln!("boomdrive: {why}: no control pass runs");
     }
-    let mut say = |line: String| eprintln!("{line}");
+    let say = |line: String| eprintln!("{line}");
     if !once {
-        runner.keep(&mut say);
+        runner.keep(&say);
         return ExitCode::SUCCESS;
     }
-    match runner.once(&mut say) {
+    match runner.once(&say) {
         Outcome::Kept => ExitCode::SUCCESS,
         Outcome::Failed => ExitCode::from(1),
     }
