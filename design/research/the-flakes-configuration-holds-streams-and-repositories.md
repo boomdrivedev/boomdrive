@@ -203,3 +203,11 @@ The user's answers, 2026-11-06:
 - Repositories under the cloud: "Add to Nix's": the host keeps every
   repository Nix names and every one the cloud names for its drives.
   Chosen over the cloud's list replacing Nix's (core.17 as it reads).
+
+## crew's partitions
+
+The user, 2026-11-06: "propose fix for partitions". Proposed: crew's
+partitions written once, in crew's module, the runner's
+`[control_plane.crew]` derived from those whose `machine` is this host,
+an explicit table winning. The user's answer: "Yes, derive it". Chosen
+over the runner reading crew's `teams.json`, and over leaving both.

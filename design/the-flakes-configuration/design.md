@@ -63,6 +63,20 @@ which holds the user's words). Not yet a record or a rule.
   stream under the login's own program, and clicks the Boomdrive app to
   see its agents.
 
+- **crew's partitions are written once, in crew's module.**
+  `services.crew.settings.partitions` is crew's file, the fleet's every
+  partition with its `machine`, and `services.crew.host` names this host
+  to crew. Where `control_plane.type` is `crew` and no
+  `[control_plane.crew]` is written, the Boomdrive module writes it:
+  `host` from `services.crew.host`, and a `label` and `state_repository`
+  for each partition whose `machine` is this host. A table written out
+  wins. The runner's file still names its partitions (core.17), and
+  neither the runner nor crew changes. Not taken: the runner reading
+  crew's `teams.json`, which core.17 rules out and which ties the runner
+  to crew's file versions; and asking crew by a command, which crew has
+  not and which teams are leaving. A host without Nix writes both files,
+  as it does today; under a hosted control plane a partition is an
+  enrollment in the runner's file alone.
 - **Two layers in every tool, by one pair of words.** Each tool's
   configuration is its managed layer, `config.toml`, written by Nix, a
   fleet or a person, and its local layer, `config.local.toml` beside it,
@@ -88,9 +102,6 @@ The sketch of deneb is `deneb.nix` beside this file.
 
 ## Open
 
-- **crew's partitions are named twice.** The runner's
-  `[control_plane.crew]` and crew's `teams.json` each name the host's
-  partitions and their state repository.
 - **Flume's usage reader.** How Flume reads an account's allowance, and
   what Flume's statement C.7 keeps of the `usage` file, is Flume's
   design.
@@ -99,7 +110,9 @@ The sketch of deneb is `deneb.nix` beside this file.
 
 - **agentplot/boomdrive**: a record amending record 0020 (the set gains
   crew, herdr and Ghostty; the modules configure Flume, sluice and crew;
-  the owner block; the Boomdrive app and the shell); core.44 amended,
+  the owner block; crew's partitions written once and the runner's
+  `[control_plane.crew]` derived from them; the Boomdrive app and the
+  shell); core.44 amended,
   herdr no longer the host's own;
   core.5's details (the owner block's stream is no key of the runner's
   file), core.18 and core.46 amended; a record amending record 0009 (the

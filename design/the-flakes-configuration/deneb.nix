@@ -35,13 +35,9 @@
       repository_root = "~/Code/boomdrive";
       fetch_interval = "2m";
       code_workspaces = true;
-      control_plane = {
-        type = "crew";
-        crew = {
-          host = "deneb";
-          partitions = map (label: { inherit label; state_repository = "afterthought/crew-state"; }) [ "agentplot" "madswan" "afterthought" ];
-        };
-      };
+      # Its `[control_plane.crew]` is written from crew's partitions below:
+      # host deneb, and each partition whose machine is deneb.
+      control_plane.type = "crew";
     };
   };
 
@@ -114,9 +110,15 @@
     signing = { key = "<path of the signing key>"; signer = "sessions"; };
   };
 
-  # crew's host file: the partitions this host serves.
-  services.crew.settings.partitions = [
-    { label = "agentplot"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "agentplot/blueprints" ]; }
-    # …
-  ];
+  # crew's host file, the fleet's every partition, written once. The
+  # runner's `[control_plane.crew]` is written from the ones on deneb.
+  services.crew = {
+    host = "deneb";
+    settings.partitions = [
+      { label = "agentplot"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "agentplot/blueprints" ]; session = "agentplot"; }
+      { label = "madswan"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "afterthought/blueprints" "agentplot/blueprints" ]; session = "madswan"; }
+      { label = "afterthought"; machine = "deneb"; state = "afterthought/crew-state"; blueprints = [ "afterthought/blueprints" ]; session = "afterthought"; }
+      { label = "wldn"; machine = "chuck-herdr-alpha"; state = "WilldanGroup/crew-state"; blueprints = [ "WilldanGroup/willdan-blueprints" ]; session = "wldn-2"; }
+    ];
+  };
 }
