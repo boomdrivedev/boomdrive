@@ -1,7 +1,7 @@
 ---
 number: 25
 title: Boomdrive opens now, and its site moves into it from boomdrive-web
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # Boomdrive opens now, and its site moves into it from boomdrive-web
 
-Status: proposed on 2026-11-07, from the user's own words that day in agentplot-design's pane; accepted on their yes.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in agentplot-design's pane.
 
 Deciders: the user, 2026-11-07, in agentplot-design's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The order, the names and how the site's rules come over are agentplot-design's, each cheap to change before the move.
 
