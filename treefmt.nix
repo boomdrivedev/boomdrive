@@ -70,7 +70,9 @@ in
   # values, never as bytes, so its layout changes nothing they hold.
   programs.jsonfmt.enable = true;
 
+  # .versionrc, convco's, is YAML under a name with no extension.
   programs.yamlfmt.enable = true;
+  settings.formatter.yamlfmt.includes = [ ".versionrc" ];
   programs.yamlfmt.settings.formatter = {
     type = "basic";
     retain_line_breaks_single = true;

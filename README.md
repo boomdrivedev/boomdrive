@@ -157,7 +157,10 @@ store paths. So does a host whose path the cache no longer holds.
 Distrust costs only the time to build.
 
 The flake at `main` moves with each change that lands, and its cache
-run pushes that commit's binaries. To stay on one set, pin a tag,
+run pushes that commit's binaries. Each landing that git-cliff finds a
+new version in, from its Conventional Commits, is released as a tag
+`v<version>` on that commit of `main`, with its notes, and the cache
+runs again at the tag. To stay on one set, pin a tag,
 `github:agentplot/boomdrive/<tag>`, or a commit of `main` whose `cache`
 run passed:
 
