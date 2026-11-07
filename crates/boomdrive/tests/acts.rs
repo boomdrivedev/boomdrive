@@ -301,6 +301,34 @@ fn a_launch_ahead_of_acts_on_places_that_are_over() {
     assert_eq!(lines, [] as [String; 0]);
 }
 
+/// An act answered with Flume's refusal of its place's status runs no
+/// command, so the pass reads Flume's listing once, and carries the
+/// statuses against it (the work-into-flume spec's "The statuses are
+/// carried against Flume's listing as it stands once the wants are
+/// answered"; record 0027; core.51).
+#[test]
+fn an_act_refused_by_its_places_status_reads_the_listing_once() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    let p = place_of("a");
+    bench.flume.tidy(&p);
+    plane.set_wants(vec![
+        Want::Offer(offer("a", "a")),
+        act("a/drop", "a", ActSort::Drop),
+    ]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    let calls = bench.flume.calls();
+    let listings = calls.iter().filter(|call| **call == Call::Status).count();
+    assert_eq!(listings, 1, "{calls:?}");
+    assert_eq!(made(&bench), [] as [String; 0], "no command is run");
+    assert_eq!(
+        bench.report().acts[&Id::new("a/drop")].outcome,
+        Outcome::Refused
+    );
+}
+
 /// The work-into-flume spec's "An act on a place the listing does not
 /// hold, which Flume stands": where Flume gives the place's status, the
 /// act is Flume's own command on it, and Flume's answer is the act's.
