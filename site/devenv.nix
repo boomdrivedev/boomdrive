@@ -116,22 +116,29 @@ in
 
   # Claude Code's project files (record 0003, after agentplot/boomdrive's
   # record 0022): .mcp.json from the servers below and .claude/settings.json,
-  # each a link devenv makes into the store and git ignores. The site's one
-  # server is devenv's hosted one, which searches packages and devenv's
-  # options and starts no process on the host; it is named here because a
-  # list of the repository's own replaces devenv's default. Every server
-  # named is approved by name in the settings, so a session in a trusted
-  # folder, a place among them, starts them and asks nothing. OpenSpec's
-  # skills and commands under .claude/ are tracked, as the openspec pinned
-  # above writes them: `openspec init --tools claude --profile custom`, with
-  # the user's OpenSpec configuration naming the family's ten workflows,
-  # propose, explore, new, continue, apply, ff, sync, archive, bulk-archive
-  # and verify.
+  # each a link devenv makes into the store and git ignores. The servers are
+  # hosted, need no sign-in and start no process on the host: devenv's,
+  # which searches packages and devenv's options, named here because a list
+  # of the repository's own replaces devenv's default; and Astro's
+  # documentation, for the release package.json pins. Every server named is
+  # approved by name in the settings, so a session in a trusted folder, a
+  # place among them, starts them and asks nothing. OpenSpec's skills and
+  # commands under .claude/ are tracked, as the openspec pinned above writes
+  # them: `openspec init --tools claude --profile custom`, with the user's
+  # OpenSpec configuration naming the family's ten workflows, propose,
+  # explore, new, continue, apply, ff, sync, archive, bulk-archive and
+  # verify.
   claude.code = {
     enable = true;
-    mcpServers."mcp.devenv.sh" = {
-      type = "http";
-      url = "https://mcp.devenv.sh";
+    mcpServers = {
+      "mcp.devenv.sh" = {
+        type = "http";
+        url = "https://mcp.devenv.sh";
+      };
+      astro-docs = {
+        type = "http";
+        url = "https://mcp.docs.astro.build/mcp";
+      };
     };
   };
   files.${config.claude.code.settingsPath}.json.enabledMcpjsonServers =
