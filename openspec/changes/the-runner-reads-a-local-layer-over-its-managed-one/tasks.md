@@ -47,7 +47,7 @@ Work through the tasks in order; each stands on the ones before it. The groups a
 - [x] 4.1 `Runner` holds the local layer's path, and its start, every keeping pass, every control pass and every landing read both layers through `config::read_layers`. The start line's count is both layers' repositories (design Decisions 7 and 8). `tests/common/mod.rs` gains `Scratch::local_file()` and `Scratch::configure_local(text)`. Done when `devenv shell -- cargo test -p boomdrive --test running` passes, with:
   - `the_default_file` and `the_file_named` each writing a local layer that keeps a second repository and asserting its clone made, proving the configuration spec's "The default file" and "The file named";
   - `no_local_file` proving "No local file".
-- [ ] 4.2 `boomdrive enroll` reads both layers through `config::read_layers`, so no command of the runner's reads through `config::read`, which stays the reading of one file that `tests/module_files.rs` reads the modules' files with (design Decision 8). Done when `devenv shell -- cargo test -p boomdrive --test enroll a_partition_of_the_local_layer` passes. That new test proves the configuration spec's "A partition enrolled from the local layer".
+- [x] 4.2 `boomdrive enroll` reads both layers through `config::read_layers`, so no command of the runner's reads through `config::read`, which stays the reading of one file that `tests/module_files.rs` reads the modules' files with (design Decision 8). Done when `devenv shell -- cargo test -p boomdrive --test enroll a_partition_of_the_local_layer` passes. That new test proves the configuration spec's "A partition enrolled from the local layer".
 
 ## 5. A keeping pass under the local layer
 
