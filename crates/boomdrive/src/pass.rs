@@ -10,7 +10,7 @@
 //! each act and each thing it names as one line, `<owner>/<name>:
 //! <words>`, and a pass with nothing to say writes nothing.
 
-use crate::clone;
+use crate::clone::{self, Found};
 use crate::code_workspace::{self, Act, Wanted};
 use crate::config::{self, Address, Config};
 use crate::git::Git;
@@ -18,7 +18,7 @@ use crate::lacks;
 use crate::view::{self, OldAct, ViewAct};
 use std::fs;
 use std::ops::ControlFlow;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Whether every git call of a pass succeeded, and every workspace it
@@ -65,14 +65,14 @@ pub fn pass(
         }
         outcome = outcome.and(keep_configured(git, data, config, &clones, address, say));
     }
-    for (address, container) in &clones {
+    for found in &clones {
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        if config.repositories().any(|kept| kept == address) {
+        if config.repositories().any(|kept| *kept == found.address) {
             continue;
         }
-        outcome = outcome.and(let_go(git, address, container, say));
+        outcome = outcome.and(let_go(git, &found.address, &found.container, say));
     }
     if let Some(workspaces) = &workspaces {
         if !stop.load(Ordering::SeqCst) {
@@ -114,7 +114,7 @@ pub fn keep_one(
 
 /// The runner's clones in `data`, none where they cannot be read, which
 /// is named.
-fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<(Address, PathBuf)>> {
+fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<Found>> {
     match clone::find(git, data) {
         Ok(clones) => Some(clones),
         Err(error) => {
@@ -128,21 +128,22 @@ fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<(Addr
 }
 
 /// Keeps `address`, which `config` names, its clone among `clones` where
-/// it has one, each line said with its address.
+/// it has one, each line said with its address. The clone records the
+/// drive `config` names it under (design Decision 7).
 fn keep_configured(
     git: &Git,
     data: &Path,
     config: &Config,
-    clones: &[(Address, PathBuf)],
+    clones: &[Found],
     address: &Address,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    let found = clones
-        .iter()
-        .find(|(kept, _)| kept == address)
-        .map(|(_, container)| container.as_path());
+    let found = clones.iter().find(|found| found.address == *address);
+    let drive = config
+        .drive_of(address)
+        .map_or("", |drive| drive.name.as_str());
     let view = config::view_path(config, address);
-    keep(git, data, address, found, &view, say)
+    keep(git, data, address, found, drive, &view, say)
 }
 
 /// Keeps each drive's VS Code workspace the configuration wants, the
@@ -246,25 +247,33 @@ fn let_go(git: &Git, address: &Address, container: &Path, say: &mut dyn FnMut(St
 }
 
 /// Keeps `address`: makes its clone where it has none (design 4), else
-/// fetches the one `found` (design 5), then settles its HEAD on origin's
-/// default branch (design 6), then keeps its view at `view` (design 7). A
-/// view the runner put where the repository root no longer gives is let
-/// go of first. Each line of the repository's says its address.
+/// fetches the one `found` (design 5), the clone recording `drive`, the
+/// drive the configuration names it under, where it records another or
+/// none (design Decision 7); then settles its HEAD on origin's default
+/// branch (design 6), then keeps its view at `view` (design 7). A view
+/// the runner put where the repository root no longer gives is let go of
+/// first. Each line of the repository's says its address.
 fn keep(
     git: &Git,
     data: &Path,
     address: &Address,
-    found: Option<&Path>,
+    found: Option<&Found>,
+    drive: &str,
     view: &Path,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
+    let mut recorded = Outcome::Kept;
     let container = match found {
-        Some(container) => {
-            if let Err(failure) = clone::fetch(git, &clone::bare(container)) {
+        Some(found) => {
+            let bare = clone::bare(&found.container);
+            if found.drive.as_deref() != Some(drive) {
+                recorded = record_drive(git, address, &bare, drive, say);
+            }
+            if let Err(failure) = clone::fetch(git, &bare) {
                 say(format!("{address}: not fetched: {failure}"));
                 return Outcome::Failed;
             }
-            container.to_path_buf()
+            found.container.clone()
         }
         None => {
             let container = clone::container(data, address);
@@ -278,6 +287,7 @@ fn keep(
             match clone::make(git, data, address) {
                 Ok(container) => {
                     say(format!("{address}: cloned from {}", clone::url(address)));
+                    recorded = record_drive(git, address, &clone::bare(&container), drive, say);
                     container
                 }
                 Err(failure) => {
@@ -294,16 +304,16 @@ fn keep(
             say(format!(
                 "{address}: origin names no default branch, so it has no view"
             ));
-            return Outcome::Kept;
+            return recorded;
         }
         Err(words) => {
             say(format!("{address}: default branch not read: {words}"));
             return Outcome::Failed;
         }
     };
-    let settled = settle(git, &bare, &default, &mut |words| {
+    let settled = recorded.and(settle(git, &bare, &default, &mut |words| {
         say(format!("{address}: {words}"))
-    });
+    }));
     match let_go_of_old_view(git, address, &bare, view, say) {
         ControlFlow::Break(outcome) => settled.and(outcome),
         ControlFlow::Continue(outcome) => {
@@ -312,6 +322,25 @@ fn keep(
                 .and(keep_view(git, &bare, view, &default, &mut |words| {
                     say(format!("{address}: {words}"))
                 }))
+        }
+    }
+}
+
+/// Records in the clone `bare` of `address` that the configuration names
+/// it under `drive` (design Decision 7). A record that cannot be written
+/// is named, and fails the pass.
+fn record_drive(
+    git: &Git,
+    address: &Address,
+    bare: &Path,
+    drive: &str,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    match clone::record_drive(git, bare, drive) {
+        Ok(()) => Outcome::Kept,
+        Err(words) => {
+            say(format!("{address}: drive {drive} not recorded: {words}"));
+            Outcome::Failed
         }
     }
 }
@@ -460,11 +489,7 @@ fn short(commit: &str) -> &str {
 /// Removes each `.<name>.partial` folder an earlier run left in `data`,
 /// other than one of `clones`, a repository's own name ending so
 /// (design 9's step 5).
-fn clear_partials(
-    data: &Path,
-    clones: &[(Address, PathBuf)],
-    say: &mut dyn FnMut(String),
-) -> Outcome {
+fn clear_partials(data: &Path, clones: &[Found], say: &mut dyn FnMut(String)) -> Outcome {
     let Ok(owners) = fs::read_dir(clone::repositories(data)) else {
         return Outcome::Kept;
     };
@@ -476,7 +501,7 @@ fn clear_partials(
         for folder in folders.flatten() {
             let path = folder.path();
             if !clone::is_partial(&folder.file_name())
-                || clones.iter().any(|(_, container)| *container == path)
+                || clones.iter().any(|found| found.container == path)
             {
                 continue;
             }

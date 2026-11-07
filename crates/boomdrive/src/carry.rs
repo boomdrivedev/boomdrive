@@ -65,10 +65,13 @@ pub struct Configured {
 
 impl Configured {
     /// `clones`, as `clone::find` gives them, against `config`.
-    pub fn new(config: &Config, clones: Vec<(Address, PathBuf)>) -> Configured {
+    pub fn new(config: &Config, clones: Vec<clone::Found>) -> Configured {
         Configured {
             named: config.repositories().cloned().collect(),
-            clones,
+            clones: clones
+                .into_iter()
+                .map(|found| (found.address, found.container))
+                .collect(),
         }
     }
 
@@ -1478,12 +1481,22 @@ mod tests {
         }
     }
 
+    /// The clone of `address` in `container`, as `clone::find` finds one
+    /// that records no drive.
+    fn found(address: Address, container: &str) -> clone::Found {
+        clone::Found {
+            address,
+            container: PathBuf::from(container),
+            drive: None,
+        }
+    }
+
     #[test]
     fn a_repository_is_kept_as_the_configuration_and_the_clones_have_it() {
         let flume = Address::parse("agentplot/flume").unwrap();
         let clones = Configured::new(
             &config(&["afterthought/crew", "agentplot/flume"]),
-            vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
+            vec![found(flume, "/d/repositories/agentplot/flume")],
         );
         assert_eq!(
             clones.keeping("Agentplot/Flume"),
@@ -1500,7 +1513,7 @@ mod tests {
         let flume = Address::parse("agentplot/flume").unwrap();
         let clones = Configured::new(
             &config(&[]),
-            vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
+            vec![found(flume, "/d/repositories/agentplot/flume")],
         );
         assert_eq!(clones.keeping("agentplot/flume"), Keeping::NotNamed);
         assert!(clones.made().is_empty());
