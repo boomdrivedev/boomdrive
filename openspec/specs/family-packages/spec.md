@@ -84,6 +84,11 @@ The gate SHALL run the set's own Flume and sluice, the flake's packages of its l
 - **WHEN** the set's Flume is asked `--json status` on a scratch host that holds no place
 - **THEN** the runner reads the answer as Flume's status, with no place and the host part as Flume printed it
 
+#### Scenario: The set's Flume keeps the runner's watch
+
+- **WHEN** the set's Flume is asked `--json settle --every 60s` on a scratch host that holds no place, as the runner asks it
+- **THEN** the runner reads the answer as given, and the set's Flume's `--json status` then gives the host's watch with a bound of 60 seconds
+
 #### Scenario: A submission sluice has no record of
 
 - **WHEN** the set's sluice is asked, in a scratch repository, for the entry of a submission it has no record of

@@ -689,11 +689,17 @@ impl Stub {
         }
     }
 
-    /// A stub answering `status` with `status.json`.
+    /// A stub answering `status` with `status.json`, and `settle` with
+    /// Flume 0.17.1's `settled.json`.
     pub fn new() -> Stub {
         let stub = Stub::absent();
         stub.write();
         stub.answers("status", "status.json", 0);
+        stub.answers_from(
+            "settle",
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json"),
+            0,
+        );
         stub
     }
 
@@ -714,10 +720,16 @@ impl Stub {
         let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/flume-0.4.1")
             .join(name);
+        self.answers_from(what, &fixture, exit);
+    }
+
+    /// `what`, a command or `status-of`, answered with the file `answer`
+    /// and the exit `exit`.
+    fn answers_from(&self, what: &str, answer: &Path, exit: i32) {
         let dir = self.dir.path();
         fs::write(
             dir.join(format!("{what}.stdout")),
-            fixture.to_string_lossy().as_bytes(),
+            answer.to_string_lossy().as_bytes(),
         )
         .expect("the stub's answer");
         fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
