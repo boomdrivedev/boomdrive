@@ -1,7 +1,7 @@
 ---
 number: 26
 title: Each partition the runner serves runs on its own, and what partitions share on a host is a designed cap
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # Each partition the runner serves runs on its own, and what partitions share on a host is a designed cap
 
-Status: proposed on 2026-11-07, from the user's own words that day, carried from swancloud-planner by agentplot-operator; accepted on their yes.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words, carried from swancloud-planner by agentplot-operator.
 
 Deciders: the user, 2026-11-07, after one partition's backlog on deneb held another's launches: "We might want to improve Boomdrive's design so that each account partition operates independently unless there's some sort of host-level cap and synchronization that needs to be designed." The design's words are agentplot-design's.
 
@@ -43,5 +43,5 @@ Option 1, the user's direction.
 - Good: one partition's trouble stays its own. A burst of acts in one partition costs that partition alone.
 - Good: the chore `a-launch-waits-on-no-other-act` goes ahead as it stands, as the first step within a partition.
 - Bad: the runner's pass becomes several, one per partition, which its log and status show each on its own.
-- A rule beside core.26 says it, marked proposed.
+- A rule beside core.26 says it: core.49.
 - Under the accounts and drives being designed for the flake, a partition here is what the runner enrolls, one per account, and the same independence holds between the drives of one account; that wording follows with the flake's record.
