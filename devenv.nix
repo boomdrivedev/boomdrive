@@ -128,6 +128,13 @@ let
     }
   );
 
+  # devenv's own script that makes the files it declares, Claude Code's
+  # among them, run from the repository's root.
+  writeFiles = ''
+    cd ${lib.escapeShellArg config.devenv.root} || exit
+    ${config.tasks."devenv:files".exec}
+  '';
+
 in
 {
   # The system tools are this file's, pinned by devenv.lock, and the
@@ -226,7 +233,7 @@ in
     # started after it reads them as it starts (record 0022). Its words go
     # to no output a caller reads the environment from, and a working copy
     # where they cannot be written still gets its shell.
-    if ! (cd ${lib.escapeShellArg config.devenv.root} && ${config.tasks."devenv:files".exec}) >/dev/null; then
+    if ! (${writeFiles}) >/dev/null; then
       echo "devenv.nix: Claude Code's files were not written in ${config.devenv.root}" >&2
     fi
     if _moon_root="$(git rev-parse --show-toplevel 2>/dev/null)" &&
