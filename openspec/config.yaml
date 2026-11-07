@@ -42,11 +42,11 @@ rules:
     - "Cite by id the rules in docs/architecture/ that this design relies on. Where the design departs from a rule, name the rule and say why."
     - "Where the design reaches the control plane, it goes through the one control-plane interface and names the implementation that serves it (core.2)."
   tasks:
-    - "Each task says what must be true and names the moon task that proves it, run as `devenv shell -- moon run <project>:<task>`. No task is a step done by hand, a deploy or work after the landing."
+    - "Each task says what must be true and names the narrowest check that shows that task done, one of the gate's: one test by name of a crate's test task, run as `devenv shell -- cargo test -p <crate> <test>`, as CLAUDE.md has a quick, narrow call run directly, where a test shows it; else one project's task, its tests or the lint of what the task touched, run as `sluice exec main -- moon run <project>:<task>` (flume record 0054). No task is a step done by hand, a deploy or work after the landing."
     - "A task that adds a crate adds it to the cargo workspace's `members` and as a moon project of its own in .moon/workspace.yml, with its language declared and check-fast tasks for format, lint, type check and test, one task per check, each declaring its inputs, /devenv.nix, /devenv.lock and /.prototools among them (core.7)."
     - "A task that adds a tool pins its version in devenv.nix or .prototools, never a range, and runs it from there in every task (core.8)."
     - "A task that adds a file type has treefmt.nix claim it with a formatter or name it in an exclude, with its reason, in the same task (core.7)."
-    - "The last task runs the checks of the moon projects the change touches, never the whole workspace, which sluice runs at the merge."
+    - "No task runs the repository's whole checks, `sluice exec main` or a layer of them, and no task checks a task group or the projects the change touches: a group is a heading, for reading, and the change's verify runs the repository's whole checks once, before sluice runs its gate at the merge (flume record 0054)."
 
 operations:
   apply:
