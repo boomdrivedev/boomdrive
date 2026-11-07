@@ -3,10 +3,13 @@
 //! and named until then (the clones spec's dropped repository and the
 //! work the forge lacks; the views spec's owner folder, its workspace
 //! with it; the running spec's "Left for the user"; design 8; core.43).
+//! One the runner's report holds a launch in, at a place that has not
+//! ended, is drained: kept as it is until the place ends (record 0021).
 
 mod common;
 
 use boomdrive::pass::Outcome;
+use boomdrive_control::{Answer, At, Carried, Id, Launched, Lease, Outcome as Answered, Report};
 use common::{keeping, Scratch};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -511,4 +514,138 @@ fn a_workspace_not_asked_for() {
     assert!(!view(&scratch).exists(), "the view is left");
     assert_eq!(entries(&owner), ["agentplot.code-workspace"]);
     assert_eq!(std::fs::read(&file).expect("the workspace"), bytes);
+}
+
+/// The place the runner's report holds launch `a` at.
+const PLACE: &str = "/places/change--a";
+
+/// Writes the runner's report file, holding launch `a` launched at
+/// [`PLACE`] in `agentplot/flume`, its carried status reading the place's
+/// entry, `place` and `phase`, `listed` or not.
+fn report_holding(scratch: &Scratch, place: &str, phase: Value, listed: bool) {
+    let status = json!({ "status": { "places": [{ "place": place, "phase": phase }] } });
+    let a = Launched {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: Some("agentplot/flume".to_string()),
+        answer: Answer {
+            outcome: Answered::Launched,
+            place_dir: Some(PLACE.to_string()),
+            words: None,
+            at: At::parse("2026-11-01T10:00:00Z").unwrap(),
+        },
+        status: Some(Carried {
+            text: status.to_string(),
+            at: At::parse("2026-11-01T10:01:00Z").unwrap(),
+            listed,
+        }),
+        entry: None,
+    };
+    let report = Report {
+        launches: [(Id::new("a"), a)].into(),
+        ..Report::default()
+    };
+    boomdrive::report::save(&report_file(scratch), &report).expect("the report written");
+}
+
+/// The runner's report file in its data directory.
+fn report_file(scratch: &Scratch) -> PathBuf {
+    boomdrive::report::file(&boomdrive::report::control_dir(&scratch.data()))
+}
+
+const HELD_BY_THE_PLACE: &str =
+    "agentplot/flume: left: held by the place /places/change--a of a, which has not ended";
+
+/// The clones spec's "Dropped while a place is live": kept, neither
+/// fetched nor moved, and named held by the place.
+#[test]
+fn dropped_while_a_place_is_live() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    scratch.pass(&keeping(&["agentplot/flume"]));
+    let view = view(&scratch);
+    let put = head(&scratch, &view);
+    let bare = scratch.clone_of("agentplot/flume");
+    let fetched = scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main"]);
+    origin.commit("main", "README", "two\n");
+    report_holding(&scratch, PLACE, json!("live"), true);
+
+    for _ in 0..2 {
+        let (outcome, lines) = scratch.pass(&keeping(&[]));
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, [HELD_BY_THE_PLACE]);
+    }
+    assert_eq!(head(&scratch, &view), put, "the view is moved");
+    assert_eq!(
+        scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main"]),
+        fetched,
+        "a drained clone is fetched"
+    );
+    assert!(scratch.container("agentplot/flume").exists());
+}
+
+/// The clones spec's "The place tidied": its record `<place>@<at>`
+/// carried tidied and landed, the next pass removes the clone and view.
+#[test]
+fn the_place_tidied() {
+    let scratch = Scratch::new();
+    kept(&scratch);
+    report_holding(&scratch, PLACE, json!("live"), true);
+    let (_, lines) = scratch.pass(&keeping(&[]));
+    assert_eq!(lines, [HELD_BY_THE_PLACE]);
+
+    let tidied = json!({ "tidied": {
+        "over": { "landed": { "commit": "c0ffee" } },
+        "at": 1793559694,
+        "pending_for": ["scratch/planner"],
+    } });
+    report_holding(&scratch, &format!("{PLACE}@1793559694"), tidied, true);
+    let (outcome, lines) = scratch.pass(&keeping(&[]));
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [REMOVED]);
+    assert_gone(&scratch);
+}
+
+/// The clones spec's "The place no longer listed": its carried status
+/// standing not listed, the next pass removes the clone and view.
+#[test]
+fn the_place_no_longer_listed() {
+    let scratch = Scratch::new();
+    kept(&scratch);
+    report_holding(&scratch, PLACE, json!("live"), true);
+    let (_, lines) = scratch.pass(&keeping(&[]));
+    assert_eq!(lines, [HELD_BY_THE_PLACE]);
+
+    report_holding(&scratch, PLACE, json!("live"), false);
+    let (outcome, lines) = scratch.pass(&keeping(&[]));
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [REMOVED]);
+    assert_gone(&scratch);
+}
+
+/// The clones spec's "A report that cannot be read": no dropped clone is
+/// let go, each named with the report file, and the pass fails.
+#[test]
+fn a_report_that_cannot_be_read() {
+    let scratch = Scratch::new();
+    let view = kept(&scratch);
+    let file = report_file(&scratch);
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "{\"launches\": 7}").unwrap();
+
+    let (outcome, lines) = scratch.pass(&keeping(&[]));
+
+    assert_eq!(outcome, Outcome::Failed);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let named = format!(
+        "agentplot/flume: not let go: {} does not read as a report",
+        file.display()
+    );
+    assert!(lines[0].starts_with(&named), "{lines:?}");
+    assert!(view.exists(), "the view is removed");
+    assert!(scratch.container("agentplot/flume").exists());
 }

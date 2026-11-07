@@ -396,8 +396,20 @@ impl FakeClones {
         self.keep(address, Keeping::NotYet);
     }
 
-    /// `address` named no more, as a configuration that drops it.
+    /// `address` named no more, as a configuration that drops it: a clone
+    /// made stands, dropped, in its container, and one not made is gone.
     pub fn drop_named(&self, address: &str) {
+        match self.keeping(address) {
+            Keeping::Ready(container) | Keeping::Dropped(container) => {
+                self.keep(address, Keeping::Dropped(container))
+            }
+            Keeping::NotYet | Keeping::NotNamed => self.gone(address),
+        }
+    }
+
+    /// `address` neither named nor with a clone, as one dropped and then
+    /// removed.
+    pub fn gone(&self, address: &str) {
         let mut kept = self.kept.borrow_mut();
         kept.retain(|(named, _)| !named.eq_ignore_ascii_case(address));
     }
@@ -421,6 +433,14 @@ impl Clones for FakeClones {
         let kept = self.kept.borrow();
         kept.iter()
             .filter(|(_, keeping)| matches!(keeping, Keeping::Ready(_)))
+            .map(|(address, _)| address.clone())
+            .collect()
+    }
+
+    fn dropped(&self) -> Vec<String> {
+        let kept = self.kept.borrow();
+        kept.iter()
+            .filter(|(_, keeping)| matches!(keeping, Keeping::Dropped(_)))
             .map(|(address, _)| address.clone())
             .collect()
     }

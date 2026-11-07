@@ -23,6 +23,11 @@ pub struct Report {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Launched {
     pub lease: Lease,
+    /// The repository the offer named, as the offer wrote it, set when
+    /// the runner first answers the launch and never changed; none where
+    /// the runner recorded none, as in a report file of before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     pub answer: Answer,
     /// Flume's status of its place.
     pub status: Option<Carried>,
@@ -129,6 +134,7 @@ impl Report {
                 id.clone(),
                 Launched {
                     lease,
+                    repository: None,
                     answer,
                     status: None,
                     entry: None,
