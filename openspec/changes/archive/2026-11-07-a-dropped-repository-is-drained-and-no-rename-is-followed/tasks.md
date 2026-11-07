@@ -46,4 +46,4 @@ Build the groups in order: each stands on the ones before it. A task is true onc
 ## 7. The README and the specs
 
 - [x] 7.1 README says a dropped repository is drained while a place the runner launched there has not ended, its place followed through its clone, and that no rename is followed, in place of the paragraph that follows a place by its location alone. True when `sluice exec main -- moon run root:format` passes.
-- [ ] 7.2 The spec delta archives into specs that pass openspec's strict check. True when, after `openspec archive a-dropped-repository-is-drained-and-no-rename-is-followed --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 7.2 The spec delta archives into specs that pass openspec's strict check. True when, after `openspec archive a-dropped-repository-is-drained-and-no-rename-is-followed --yes`, `sluice exec main -- moon run root:specs` passes.

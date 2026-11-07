@@ -4,7 +4,7 @@
 
 ### Requirement: A launch naming no host is given only where this runner keeps its repository
 
-A launch naming no `Host` that no runner answers SHALL be for this host only where its `Repo` is a repository the runner keeps: an address the hello names among its repositories, or a name alone that exactly one of them has as its name. A repository the hello names as drained SHALL not count. Where the runner keeps no such repository, crew's implementation SHALL give nothing for the launch and write nothing of it, so that another host's runner may take it. Where two addresses the hello names share the name, it SHALL give nothing and name both in its log.
+A launch naming no `Host` that no runner answers SHALL be for this host only where its `Repo` is a repository the runner keeps: an address among the hello's repositories, or a name alone that exactly one of them has as its name. Where the runner keeps no such repository, crew's implementation SHALL give nothing for the launch and write nothing of it, so that another host's runner may take it. Where two addresses the hello names share the name, it SHALL give nothing and name both in its log.
 
 #### Scenario: A kit named by its name alone
 
@@ -16,12 +16,16 @@ A launch naming no `Host` that no runner answers SHALL be for this host only whe
 - **WHEN** a launch naming no `Host` says `Repo: agentplot/sluice`, and the hello does not name it
 - **THEN** the pull gives nothing for it, and the runner's branch holds no answer to it
 
+## ADDED Requirements
+
+### Requirement: A repository draining gives no launch no runner answered
+
+A launch naming no `Host` that no runner answers SHALL not be for this host where its `Repo` names a repository the hello names only as drained, and crew's implementation SHALL give nothing for it and write nothing of it.
+
 #### Scenario: A repository draining
 
 - **WHEN** a launch naming no `Host` says `Repo: example/kit`, no runner answers it, and the hello names `example/kit` only as drained
 - **THEN** the pull gives nothing for it, and the runner's branch holds no answer to it
-
-## ADDED Requirements
 
 ### Requirement: A launch the runner answered is given while the runner keeps or drains its repository
 

@@ -2,34 +2,9 @@
 
 ## MODIFIED Requirements
 
-### Requirement: Every pull carries the host's tools, repositories and leases
-
-The runner SHALL hand every pull a hello holding:
-
-- its interface's version, and `boomdrive --version`'s text, as the runner's version;
-- each tool's version: the first line of `flume --version`, `sluice --version`, `herdr --version` and `git --version`, as each printed it, or the tool named missing;
-- the address of each repository the configuration names whose clone is made;
-- apart from them, the address of each repository it drains, as the clones spec has it;
-- each lease it holds, by id and number.
-
-#### Scenario: Repositories kept
-
-- **WHEN** the configuration names `agentplot/flume` and `afterthought/crew`, and only `agentplot/flume`'s clone is made
-- **THEN** the hello names `agentplot/flume` alone
-
-#### Scenario: A tool missing
-
-- **WHEN** no program the runner runs as `herdr` exists
-- **THEN** the hello names `herdr` as missing, and the pass goes on
-
-#### Scenario: A repository draining in the hello
-
-- **WHEN** the configuration no longer names `example/kit`, its clone is made, and the report holds launch `a` launched at `P` in `example/kit`, whose carried status reads `P` live
-- **THEN** the hello names `example/kit` as drained, and not among its repositories
-
 ### Requirement: An offer is taken only for a repository the runner keeps
 
-The runner SHALL answer `refused` an offer for a repository it neither keeps nor drains, with words naming the repository and saying this host's configuration does not keep it, whatever Flume's listing holds under the offer's mark. Where it keeps or drains the repository, an offer whose place Flume's listing holds under its mark SHALL be answered `launched` at that place. Any other offer in a repository it drains SHALL be refused as one in a repository not kept. It SHALL leave unanswered an offer for a repository the configuration names whose clone is not yet made. It SHALL run no command for any of them.
+The runner SHALL answer `refused` an offer for a repository it neither keeps nor drains, with words naming the repository and saying this host's configuration does not keep it, whatever Flume's listing holds under the offer's mark. It SHALL leave unanswered an offer for a repository the configuration names whose clone is not yet made. It SHALL run no command for either.
 
 #### Scenario: A repository not kept
 
@@ -41,11 +16,6 @@ The runner SHALL answer `refused` an offer for a repository it neither keeps nor
 - **WHEN** an offer of a launch in `agentplot/flume` is pulled, the configuration names it, and its clone is not yet made
 - **THEN** it is left unanswered, and is launched at the first pass after its clone is made
 
-#### Scenario: A repository drained
-
-- **WHEN** the runner drains `example/kit` for launch `a`, and an offer `b` of a launch in `example/kit` is pulled, with room on the host
-- **THEN** `b` is answered `refused`, its words naming `example/kit`, and no `flume launch` is run
-
 #### Scenario: A mark in a repository not kept
 
 - **WHEN** an offer `a` in `example/old-kit` is pulled, the runner neither keeps nor drains `example/old-kit`, and Flume's listing holds a place marked `boomdrive:a`
@@ -53,7 +23,7 @@ The runner SHALL answer `refused` an offer for a repository it neither keeps nor
 
 ### Requirement: Flume's status of each place is carried as Flume gave it
 
-For each launch with a place whose repository's clone stands, whether the configuration names the repository or the runner drains it, the runner SHALL carry Flume's status of the place as Flume printed it, on one line, under the launch's lease number: `flume --json status --repository <container> <place>`'s whole answer. It SHALL ask for that answer again, and move its time, only when the place's entry in the statuses' listing differs, as a JSON value, from the entry inside the carried answer. For a launch whose repository's clone does not stand, it SHALL ask Flume nothing, and the status last carried SHALL stand as it was.
+For each launch with a place whose repository's clone stands, whether the configuration names the repository or the runner drains it, the runner SHALL carry Flume's status of the place as Flume printed it, on one line, under the launch's lease number: `flume --json status --repository <container> <place>`'s whole answer. It SHALL ask for that answer again, and move its time, only when the place's entry in the statuses' listing differs, as a JSON value, from the entry inside the carried answer.
 
 #### Scenario: The status byte for byte
 
@@ -64,11 +34,6 @@ For each launch with a place whose repository's clone stands, whether the config
 
 - **WHEN** a pass's listing differs from the last only in its host part
 - **THEN** no `flume status <place>` is run, and the report is unchanged
-
-#### Scenario: A place in a repository with no clone
-
-- **WHEN** the pull gives launch `a`, launched at `P` in `example/old-kit`, the runner has no clone of `example/old-kit`, and `P`'s entry in the listing changes
-- **THEN** no `flume status P` is run, and `a`'s carried status is as it was
 
 ### Requirement: A landing is told to the keeper once
 
@@ -85,6 +50,33 @@ The first pass that reads a carried place landed SHALL tell the keeper of a land
 - **THEN** its status is carried, and the keeper is told nothing
 
 ## ADDED Requirements
+
+### Requirement: The hello names the repositories drained apart from those kept
+
+Apart from its repositories, the hello SHALL name the address of each repository the runner drains, as the clones spec has it, and SHALL not name it among its repositories.
+
+#### Scenario: A repository draining in the hello
+
+- **WHEN** the configuration no longer names `example/kit`, its clone is made, and the report holds launch `a` launched at `P` in `example/kit`, whose carried status reads `P` live
+- **THEN** the hello names `example/kit` as drained, and not among its repositories
+
+### Requirement: Nothing more is launched in a repository drained
+
+Where the runner drains a repository, an offer there whose place Flume's listing holds under its mark SHALL be answered `launched` at that place, and any other SHALL be refused as one in a repository not kept. It SHALL run no command for either.
+
+#### Scenario: A repository drained
+
+- **WHEN** the runner drains `example/kit` for launch `a`, and an offer `b` of a launch in `example/kit` is pulled, with room on the host
+- **THEN** `b` is answered `refused`, its words naming `example/kit`, and no `flume launch` is run
+
+### Requirement: A place whose repository has no clone is asked of Flume no more
+
+For a launch whose repository's clone does not stand, the runner SHALL ask Flume nothing of its place, and the status last carried SHALL stand as it was.
+
+#### Scenario: A place in a repository with no clone
+
+- **WHEN** the pull gives launch `a`, launched at `P` in `example/old-kit`, the runner has no clone of `example/old-kit`, and `P`'s entry in the listing changes
+- **THEN** no `flume status P` is run, and `a`'s carried status is as it was
 
 ### Requirement: A place in a repository drained is followed to its end through its clone
 
