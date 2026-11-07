@@ -9,8 +9,9 @@
 //! core.7: every crate is a
 //! moon project of its own, its language declared, whose check-fast tasks
 //! format, lint, type-check and test it, one task per check, each taking
-//! the sources of every crate it builds. core.3's test, `no_listener.rs`,
-//! reads every crate's sources beside these.
+//! the sources of every crate it builds. core.52: no crate's source asks
+//! sluice for a branch. core.3's test, `no_listener.rs`, reads every
+//! crate's sources beside these.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -411,6 +412,34 @@ fn each_task_takes_the_sources_of_every_crate_it_builds() {
             }
         }
     }
+}
+
+/// core.52: no `.rs` file under any crate's `src` holds the argument list
+/// of `sluice branch create` or `sluice branch delete`, so no crate asks
+/// sluice for a branch (Task notes 2.2).
+#[test]
+fn no_crate_asks_sluice_for_a_branch() {
+    let root = root();
+    let read: Vec<PathBuf> = crates()
+        .iter()
+        .flat_map(|name| files(&root.join("crates").join(name).join("src")))
+        .filter(|file| file.extension().is_some_and(|extension| extension == "rs"))
+        .collect();
+    assert!(read.len() > 20, "{read:?}");
+    let asking: Vec<String> = read
+        .iter()
+        .filter(|file| {
+            let text = std::fs::read_to_string(file).expect("a file");
+            ["create", "delete"]
+                .iter()
+                .any(|verb| text.contains(&format!("\"branch\", \"{verb}\"")))
+        })
+        .map(|file| file.display().to_string())
+        .collect();
+    assert!(
+        asking.is_empty(),
+        "these ask sluice for a branch (core.52): {asking:?}"
+    );
 }
 
 /// The reader of moon's files reads this tree's own shapes.
