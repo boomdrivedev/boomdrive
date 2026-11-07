@@ -4,15 +4,18 @@
 //! dropped repository let go, then, where the configuration asks, each
 //! owner's VS Code workspace kept (core.43). Where it asks, a removed
 //! view's owner folder that then holds only a workspace no kept owner has
-//! goes with that workspace. Each repository is
-//! independent: a failure in one is named and the next is kept. A pass
+//! goes with that workspace. While a local layer stands that the
+//! configuration could not take, no repository is let go and no workspace
+//! is set, since that layer may name them (design Decision 5). Each
+//! repository is independent: a failure in one is named and the next is
+//! kept. A pass
 //! stopped keeps no further repository and no workspace. The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
 //! <words>`, and a pass with nothing to say writes nothing.
 
 use crate::clone;
 use crate::code_workspace::{self, Act, Wanted};
-use crate::config::{self, Address, Config};
+use crate::config::{self, Address, Config, LocalLayer};
 use crate::git::Git;
 use crate::lacks;
 use crate::view::{self, OldAct, ViewAct};
@@ -46,8 +49,10 @@ impl Outcome {
 }
 
 /// One pass over `config`, the runner's clones kept in `data`, each line
-/// said to `say` as it is said. Once `stop` is set, no further
-/// repository is kept or let go, no workspace is kept, and the pass ends.
+/// said to `say` as it is said. Where `config`'s local layer was not
+/// taken, its managed layer's repositories are kept and none is let go.
+/// Once `stop` is set, no further repository is kept or let go, no
+/// workspace is kept, and the pass ends.
 pub fn pass(
     git: &Git,
     data: &Path,
@@ -79,7 +84,7 @@ pub fn pass(
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        if config.repositories.contains(address) {
+        if config.repositories.contains(address) || holds_back(config) {
             continue;
         }
         outcome = outcome.and(let_go(git, address, container, workspaces.as_deref(), say));
@@ -93,11 +98,16 @@ pub fn pass(
 }
 
 /// The workspaces `config` wants, none where it does not ask for them
-/// (core.43).
+/// (core.43), or where its local layer was not taken (design Decision 5).
 fn wanted_workspaces(config: &Config) -> Option<Vec<Wanted>> {
-    config
-        .code_workspaces
-        .then(|| code_workspace::wanted(config))
+    (config.code_workspaces && !holds_back(config)).then(|| code_workspace::wanted(config))
+}
+
+/// Whether `config` stands on its managed layer alone because a local
+/// layer there was not taken: the repositories and folders that layer may
+/// name are then neither let go nor set (design Decision 5).
+fn holds_back(config: &Config) -> bool {
+    matches!(config.local, LocalLayer::NotTaken { .. })
 }
 
 /// Keeps `address` alone, just as a pass keeps it, against `config`
