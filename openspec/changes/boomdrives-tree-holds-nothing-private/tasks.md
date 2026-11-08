@@ -34,7 +34,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 5. The research transcripts move to the archive, and the flake's design is neutral
 
-- [ ] 5.1 `design/research/the-constitution-interview.md` and `design/research/the-flakes-configuration-holds-streams-and-repositories.md` are removed from the tree, and every record that cites one, 0003 to 0014, 0009's amendment, 0016 and 0023, cites it as agentplot/boomdrive-archive's `design/research/<file>` (design Decision 5). True when `sluice exec main -- moon run root:adrs` passes.
+- [x] 5.1 `design/research/the-constitution-interview.md` and `design/research/the-flakes-configuration-holds-streams-and-repositories.md` are removed from the tree, and every record that cites one, 0003 to 0014, 0009's amendment, 0016 and 0023, cites it as agentplot/boomdrive-archive's `design/research/<file>` (design Decision 5). True when `sluice exec main -- moon run root:adrs` passes.
 - [ ] 5.2 The Nix sketch in `design/the-flakes-configuration/`, named for the operator's host, is `design/the-flakes-configuration/host.nix`, the same options in the same shape with design Decision 7's neutral owners, repositories, streams, pools, accounts, partitions, machine and paths, and none of the operator's values, instructions or employer; its header cites the flake talk in the archive, and record 0023 names it. True when `sluice exec main -- moon run root:format` passes.
 - [ ] 5.3 `design/the-flakes-configuration/design.md` names neutral owners and streams and no host, calls its sketch `host.nix`, and cites the flake talk in the archive (design Decisions 5 and 7). True when `sluice exec main -- moon run root:format` passes.
 
