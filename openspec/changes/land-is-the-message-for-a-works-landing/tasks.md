@@ -11,7 +11,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. The runner carries out a land
 
-- [ ] 2.1 `crates/boomdrive/src/carry.rs` carries out a land:
+- [x] 2.1 `crates/boomdrive/src/carry.rs` carries out a land:
   - `flume_act` maps `ActSort::Land` to `flume::Act::Retry { stage: None, words: None, submission: true }`;
   - `sort` names it `land`;
   - `act_unlaunched` refuses it, naming where the launch stands, as it refuses a retry or a done.
