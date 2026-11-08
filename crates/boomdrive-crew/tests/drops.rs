@@ -2,7 +2,7 @@
 //! launched it, let go where the runner holds it unlaunched, and its drop
 //! given to the runner that holds it whatever the plan holds (the change
 //! a-dropped-launch-is-never-offered, design Decisions 1 to 6). Each test
-//! runs over one bare state repository, `deneb` and `vega` its hosts.
+//! runs over one bare state repository, `host-a` and `host-b` its hosts.
 
 mod common;
 
@@ -15,14 +15,14 @@ use common::{act, file, hello, ids, launch, plan, pull, State, REQUESTS};
 use std::collections::BTreeMap;
 use weir_capture::rec::Record;
 
-const CREW: &str = "afterthought/crew";
+const CREW: &str = "example/crew";
 const PLACE: &str = "/places/change--a";
 
 fn kept() -> Hello {
     hello(&[CREW], "4")
 }
 
-/// `madswan/main` holding `requests`, its plan holding `units`.
+/// `home/main` holding `requests`, its plan holding `units`.
 fn main_holding(state: &State, requests: &[String], units: &[&str]) {
     state.main(&[
         ("requests.rec", &file(REQUESTS, requests)),
@@ -32,7 +32,7 @@ fn main_holding(state: &State, requests: &[String], units: &[&str]) {
 
 /// `host`'s branch as crew reads it: its answers, by request.
 fn answers(state: &State, host: &str) -> BTreeMap<u64, Record> {
-    let branch = format!("madswan/runner/{host}");
+    let branch = format!("home/runner/{host}");
     let mut files = RunnerFiles::new();
     for path in ["runner.rec", "answers.rec", "places.rec"] {
         files.insert(path, state.file(&branch, path));
@@ -77,7 +77,7 @@ fn report_of(n: u64, launched: Launched) -> Report {
     let mut report = Report::default();
     report
         .launches
-        .insert(Id::new(format!("madswan/{n}")), launched);
+        .insert(Id::new(format!("home/{n}")), launched);
     report
 }
 
@@ -85,12 +85,7 @@ fn report_of(n: u64, launched: Launched) -> Report {
 fn held(n: u64) -> Report {
     report_of(
         n,
-        answered(
-            Outcome::Held,
-            None,
-            Some("held on its After madswan/11"),
-            None,
-        ),
+        answered(Outcome::Held, None, Some("held on its After home/11"), None),
     )
 }
 
@@ -103,13 +98,13 @@ fn a_drop_naming_another_host() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("vega"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-b"), "unit/u", 12, &[]),
         ],
         &["u"],
     );
-    let (mut deneb, _) = state.crew("deneb");
-    let pulled = deneb.pull(&kept(), &held(12)).expect("a pull");
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = host_a.pull(&kept(), &held(12)).expect("a pull");
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
 }
 
@@ -121,14 +116,14 @@ fn a_held_launch_dropped() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-a"), "unit/u", 12, &[]),
         ],
         &["u"],
     );
-    let (mut deneb, _) = state.crew("deneb");
-    let pulled = deneb.pull(&kept(), &held(12)).expect("a pull");
-    assert_eq!(ids(&pulled), ["madswan/14"]);
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = host_a.pull(&kept(), &held(12)).expect("a pull");
+    assert_eq!(ids(&pulled), ["home/14"]);
 }
 
 /// "A dropped launch the runner launched": it is given still, so its
@@ -139,18 +134,18 @@ fn a_dropped_launch_the_runner_launched() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-a"), "unit/u", 12, &[]),
         ],
         &["u"],
     );
-    let (mut deneb, _) = state.crew("deneb");
+    let (mut host_a, _) = state.crew("host-a");
     let report = report_of(
         12,
         answered(Outcome::Launched, Some(PLACE), None, Some(true)),
     );
-    let pulled = deneb.pull(&kept(), &report).expect("a pull");
-    assert_eq!(ids(&pulled), ["madswan/12", "madswan/14"]);
+    let pulled = host_a.pull(&kept(), &report).expect("a pull");
+    assert_eq!(ids(&pulled), ["home/12", "home/14"]);
 }
 
 /// "A kit's launch dropped before it is claimed": no runner answers it,
@@ -167,10 +162,10 @@ fn a_kits_launch_dropped_before_it_is_claimed() {
         ],
         &["u"],
     );
-    let (mut deneb, _) = state.crew("deneb");
-    let pulled = pull(&mut deneb, &kept());
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = pull(&mut host_a, &kept());
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
-    assert_eq!(state.tip("madswan/runner/deneb"), None);
+    assert_eq!(state.tip("home/runner/host-a"), None);
 }
 
 /// "A claimed launch dropped": a claim standing on this host's branch is
@@ -181,21 +176,21 @@ fn a_claimed_launch_dropped() {
     let state = State::new();
     let kit = launch(20, None, "unit/u", CREW, "u", &[]);
     main_holding(&state, std::slice::from_ref(&kit), &["u"]);
-    let (mut deneb, _) = state.crew("deneb");
-    assert_eq!(ids(&pull(&mut deneb, &kept())), ["madswan/20"]);
+    let (mut host_a, _) = state.crew("host-a");
+    assert_eq!(ids(&pull(&mut host_a, &kept())), ["home/20"]);
     // The runner leaves the offer unanswered, its stream having no room.
-    deneb.report(&Report::default()).expect("a report");
-    assert!(answers(&state, "deneb").contains_key(&20));
+    host_a.report(&Report::default()).expect("a report");
+    assert!(answers(&state, "host-a").contains_key(&20));
 
     main_holding(
         &state,
         &[kit, act(21, "drop", None, "unit/u", 20, &[])],
         &["u"],
     );
-    let pulled = pull(&mut deneb, &kept());
+    let pulled = pull(&mut host_a, &kept());
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
-    deneb.report(&Report::default()).expect("a report");
-    assert!(!answers(&state, "deneb").contains_key(&20));
+    host_a.report(&Report::default()).expect("a report");
+    assert!(!answers(&state, "host-a").contains_key(&20));
 }
 
 /// "Work gone that the runner does not hold": a request whose work has
@@ -205,11 +200,11 @@ fn work_gone_that_the_runner_does_not_hold() {
     let state = State::new();
     main_holding(
         &state,
-        &[launch(12, Some("deneb"), "unit/u", CREW, "u", &[])],
+        &[launch(12, Some("host-a"), "unit/u", CREW, "u", &[])],
         &[],
     );
-    let (mut deneb, _) = state.crew("deneb");
-    let pulled = pull(&mut deneb, &kept());
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = pull(&mut host_a, &kept());
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
 }
 
@@ -222,28 +217,28 @@ fn a_drop_written_as_its_work_leaves_the_plan() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-a"), "unit/u", 12, &[]),
         ],
         &[],
     );
-    let (mut deneb, _) = state.crew("deneb");
+    let (mut host_a, _) = state.crew("host-a");
     let report = report_of(
         12,
         answered(Outcome::Launched, Some(PLACE), None, Some(true)),
     );
-    let pulled = deneb.pull(&kept(), &report).expect("a pull");
-    assert_eq!(ids(&pulled), ["madswan/12", "madswan/14"]);
+    let pulled = host_a.pull(&kept(), &report).expect("a pull");
+    assert_eq!(ids(&pulled), ["home/12", "home/14"]);
     assert!(
-        matches!(common::want(&pulled, "madswan/14"), Want::Act(_)),
+        matches!(common::want(&pulled, "home/14"), Want::Act(_)),
         "{:?}",
         pulled.wants
     );
 }
 
-/// "A kit's drop goes to the runner holding its launch": `deneb`'s branch
-/// answers the kit's launch, so `deneb` is given it and its drop, and
-/// `vega` neither.
+/// "A kit's drop goes to the runner holding its launch": `host-a`'s branch
+/// answers the kit's launch, so `host-a` is given it and its drop, and
+/// `host-b` neither.
 #[test]
 fn a_kits_drop_goes_to_the_runner_holding_its_launch() {
     let state = State::new();
@@ -261,11 +256,11 @@ fn a_kits_drop_goes_to_the_runner_holding_its_launch() {
     answer.push("Place", PLACE);
     answer.push("At", "2026-11-01T09:40:00Z");
     state.commit(
-        "madswan/runner/deneb",
+        "home/runner/host-a",
         &[
             (
                 "runner.rec",
-                &write::runner_text("deneb", "boomdrive 0.0.0", "2026-11-01T09:00:00Z"),
+                &write::runner_text("host-a", "boomdrive 0.0.0", "2026-11-01T09:00:00Z"),
             ),
             (
                 "answers.rec",
@@ -277,15 +272,12 @@ fn a_kits_drop_goes_to_the_runner_holding_its_launch() {
             ),
         ],
     );
-    let (mut deneb, _) = state.crew("deneb");
-    assert_eq!(
-        ids(&pull(&mut deneb, &kept())),
-        ["madswan/20", "madswan/21"]
-    );
-    let (mut vega, _) = state.crew("vega");
-    let pulled = pull(&mut vega, &kept());
+    let (mut host_a, _) = state.crew("host-a");
+    assert_eq!(ids(&pull(&mut host_a, &kept())), ["home/20", "home/21"]);
+    let (mut host_b, _) = state.crew("host-b");
+    let pulled = pull(&mut host_b, &kept());
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
-    assert_eq!(state.tip("madswan/runner/vega"), None);
+    assert_eq!(state.tip("home/runner/host-b"), None);
 }
 
 /// A pull of `crew`, handed `report`, then a report of it: the ids let
@@ -305,22 +297,22 @@ fn a_held_launch_dropped_is_let_go() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-a"), "unit/u", 12, &[]),
         ],
         &["u"],
     );
-    let (mut deneb, _) = state.crew("deneb");
-    assert_eq!(let_go(&mut deneb, &held(12)), ["madswan/12"]);
-    assert!(!answers(&state, "deneb").contains_key(&12));
+    let (mut host_a, _) = state.crew("host-a");
+    assert_eq!(let_go(&mut host_a, &held(12)), ["home/12"]);
+    assert!(!answers(&state, "host-a").contains_key(&12));
 }
 
 /// Drop 14 of launch 12, done, as the runner answers it.
 fn with_drop_done(mut report: Report) -> Report {
     report.acts.insert(
-        Id::new("madswan/14"),
+        Id::new("home/14"),
         Acted {
-            launch: Id::new("madswan/12"),
+            launch: Id::new("home/12"),
             lease: LEASE.number,
             outcome: Outcome::Done,
             words: None,
@@ -338,22 +330,22 @@ fn a_drop_answered_from_the_report_its_work_gone() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-a"), "unit/u", 12, &[]),
         ],
         &[],
     );
-    let (mut deneb, _) = state.crew("deneb");
+    let (mut host_a, _) = state.crew("host-a");
     let report = with_drop_done(report_of(
         12,
         answered(
             Outcome::Done,
             None,
-            Some("dropped by madswan/14 before it was launched"),
+            Some("dropped by home/14 before it was launched"),
             None,
         ),
     ));
-    assert_eq!(let_go(&mut deneb, &report), ["madswan/12", "madswan/14"]);
+    assert_eq!(let_go(&mut host_a, &report), ["home/12", "home/14"]);
 }
 
 /// "A dropped launch the runner launched stays until its place is over":
@@ -365,21 +357,18 @@ fn a_dropped_launch_the_runner_launched_stays_until_its_place_is_over() {
     main_holding(
         &state,
         &[
-            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
-            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+            launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("host-a"), "unit/u", 12, &[]),
         ],
         &[],
     );
-    let (mut deneb, _) = state.crew("deneb");
+    let (mut host_a, _) = state.crew("host-a");
     let listed = |listed: bool| {
         with_drop_done(report_of(
             12,
             answered(Outcome::Launched, Some(PLACE), None, Some(listed)),
         ))
     };
-    assert!(let_go(&mut deneb, &listed(true)).is_empty());
-    assert_eq!(
-        let_go(&mut deneb, &listed(false)),
-        ["madswan/12", "madswan/14"]
-    );
+    assert!(let_go(&mut host_a, &listed(true)).is_empty());
+    assert_eq!(let_go(&mut host_a, &listed(false)), ["home/12", "home/14"]);
 }

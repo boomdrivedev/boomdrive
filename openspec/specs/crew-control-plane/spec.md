@@ -16,8 +16,8 @@ A missing or malformed key SHALL be refused, naming the key and the file. Any ot
 
 #### Scenario: The table read
 
-- **WHEN** the table says `host = "deneb"` and one partition `madswan` with `state_repository = "afterthought/madswan-state"`
-- **THEN** crew's implementation opens for host `deneb`, serving `madswan` from `afterthought/madswan-state`
+- **WHEN** the table says `host = "host-a"` and one partition `home` with `state_repository = "example/home-state"`
+- **THEN** crew's implementation opens for host `host-a`, serving `home` from `example/home-state`
 
 #### Scenario: No host
 
@@ -26,8 +26,8 @@ A missing or malformed key SHALL be refused, naming the key and the file. Any ot
 
 #### Scenario: A label twice
 
-- **WHEN** two partitions say `label = "madswan"`
-- **THEN** it is refused, naming `madswan`
+- **WHEN** two partitions say `label = "home"`
+- **THEN** it is refused, naming `home`
 
 #### Scenario: A kinds file named
 
@@ -49,7 +49,7 @@ At each pull, for each partition, crew's implementation SHALL read `requests.rec
 
 #### Scenario: A file missing at the tip
 
-- **WHEN** `madswan/main`'s tip holds `requests.rec` and no `roles.rec`
+- **WHEN** `home/main`'s tip holds `requests.rec` and no `roles.rec`
 - **THEN** the pull gives the requests for this host, and offers no role's run
 
 ### Requirement: A partition that cannot be read hides only its own work
@@ -58,8 +58,8 @@ A partition whose `<label>/main` cannot be read SHALL give nothing that pass, wi
 
 #### Scenario: One partition missing
 
-- **WHEN** partition `swancloud`'s state repository has no `swancloud/main` and `madswan`'s holds requests for this host
-- **THEN** the pull gives `madswan`'s requests and names `swancloud/main` as unread
+- **WHEN** partition `work`'s state repository has no `work/main` and `home`'s holds requests for this host
+- **THEN** the pull gives `home`'s requests and names `work/main` as unread
 
 #### Scenario: No partition read
 
@@ -68,8 +68,8 @@ A partition whose `<label>/main` cannot be read SHALL give nothing that pass, wi
 
 #### Scenario: One partition missing at a report
 
-- **WHEN** partition `swancloud`'s state repository has no `swancloud/main`, and `madswan`'s unit `u` is tidied and gone from its plan
-- **THEN** the report writes `madswan/runner/deneb`, its let-go names `u`'s launch, and it names `swancloud/runner/deneb` as not written
+- **WHEN** partition `work`'s state repository has no `work/main`, and `home`'s unit `u` is tidied and gone from its plan
+- **THEN** the report writes `home/runner/host-a`, its let-go names `u`'s launch, and it names `work/runner/host-a` as not written
 
 ### Requirement: Each request for this host is a want under the lease number 1
 
@@ -77,8 +77,8 @@ crew's implementation SHALL give each request for this host, in `Request` order,
 
 #### Scenario: Only this host's requests
 
-- **WHEN** `requests.rec` holds launches naming `Host: deneb` and launches naming `Host: vega`, and the host is `deneb`
-- **THEN** the pull gives `deneb`'s alone, in `Request` order, each under lease 1
+- **WHEN** `requests.rec` holds launches naming `Host: host-a` and launches naming `Host: host-b`, and the host is `host-a`
+- **THEN** the pull gives `host-a`'s alone, in `Request` order, each under lease 1
 
 ### Requirement: A launch naming no host is given only where this runner keeps its repository
 
@@ -86,8 +86,8 @@ A launch naming no `Host` SHALL be for this host only where its `Repo` is a repo
 
 #### Scenario: A kit named by its name alone
 
-- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/flume`
-- **THEN** the launch is for this host, its repository `afterthought/crew`
+- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `example/crew` and `agentplot/flume`
+- **THEN** the launch is for this host, its repository `example/crew`
 
 #### Scenario: A repository not kept
 
@@ -100,18 +100,18 @@ A launch naming no `Host` that no runner's branch answers and no drop names SHAL
 
 #### Scenario: Claimed alone
 
-- **WHEN** `deneb` and `vega` both keep `afterthought/crew`, launch 20 names no `Host` and says `Repo: afterthought/crew`, no runner's branch answers it, and `deneb`'s host has room
-- **THEN** `deneb`'s pull writes `madswan/runner/deneb` with request 20's `Answer` `held`, reads `madswan/runner/vega` holding no answer to 20, and gives an offer `madswan/20`
+- **WHEN** `host-a` and `host-b` both keep `example/crew`, launch 20 names no `Host` and says `Repo: example/crew`, no runner's branch answers it, and `host-a`'s host has room
+- **THEN** `host-a`'s pull writes `home/runner/host-a` with request 20's `Answer` `held`, reads `home/runner/host-b` holding no answer to 20, and gives an offer `home/20`
 
 #### Scenario: Another's claim seen
 
-- **WHEN** after `deneb`'s claim of launch 20, `madswan/runner/vega` holds an answer to 20
-- **THEN** `deneb`'s pull writes its branch without the answer to 20 and gives nothing for it
+- **WHEN** after `host-a`'s claim of launch 20, `home/runner/host-b` holds an answer to 20
+- **THEN** `host-a`'s pull writes its branch without the answer to 20 and gives nothing for it
 
 #### Scenario: Taken elsewhere
 
-- **WHEN** `madswan/runner/vega` answers launch 20 before `deneb`'s pull
-- **THEN** `deneb`'s pull writes nothing of 20 and gives nothing for it
+- **WHEN** `home/runner/host-b` answers launch 20 before `host-a`'s pull
+- **THEN** `host-a`'s pull writes nothing of 20 and gives nothing for it
 
 ### Requirement: A launch naming no host is claimed only while the host has room
 
@@ -128,18 +128,18 @@ A claim SHALL stand on the runner's branch until the runner's report answers its
 
 #### Scenario: A claim waiting for its stream's room
 
-- **WHEN** `deneb` holds the claim of launch 20 and the runner leaves the offer unanswered for want of room in its stream
-- **THEN** the report's write keeps request 20's claim on `madswan/runner/deneb`, and the next pull gives the offer again
+- **WHEN** `host-a` holds the claim of launch 20 and the runner leaves the offer unanswered for want of room in its stream
+- **THEN** the report's write keeps request 20's claim on `home/runner/host-a`, and the next pull gives the offer again
 
 #### Scenario: A claim found again after a stop
 
-- **WHEN** `deneb`'s runner stopped between its claim of launch 20 and its check, and starts again with `madswan/runner/vega` answering 20 as well
-- **THEN** `deneb`'s first pull withdraws its claim of 20 and gives nothing for it
+- **WHEN** `host-a`'s runner stopped between its claim of launch 20 and its check, and starts again with `home/runner/host-b` answering 20 as well
+- **THEN** `host-a`'s first pull withdraws its claim of 20 and gives nothing for it
 
 #### Scenario: A claimed launch dropped
 
-- **WHEN** `madswan/runner/deneb` holds `deneb`'s claim of launch 20, the runner left the offer unanswered for want of room, and request 21, naming no `Host`, drops 20
-- **THEN** `deneb`'s pull gives nothing for 20 or 21, and its next report's write leaves `madswan/runner/deneb` holding no answer to 20
+- **WHEN** `home/runner/host-a` holds `host-a`'s claim of launch 20, the runner left the offer unanswered for want of room, and request 21, naming no `Host`, drops 20
+- **THEN** `host-a`'s pull gives nothing for 20 or 21, and its next report's write leaves `home/runner/host-a` holding no answer to 20
 
 ### Requirement: A withdrawn launch is claimed again in the name order of its claimants
 
@@ -147,8 +147,8 @@ A launch crew's implementation withdrew SHALL be claimed again only while no oth
 
 #### Scenario: Claimed again in name order
 
-- **WHEN** `deneb` and `vega` each withdrew launch 20, each having seen the other's claim
-- **THEN** `deneb` claims 20 again at its next pull, and `vega` not before the pull after its next
+- **WHEN** `host-a` and `host-b` each withdrew launch 20, each having seen the other's claim
+- **THEN** `host-a` claims 20 again at its next pull, and `host-b` not before the pull after its next
 
 ### Requirement: An act naming no host is given to the runner that holds its launch
 
@@ -156,8 +156,8 @@ A retry, drop or priority naming no `Host` SHALL be for this host only where the
 
 #### Scenario: An act on another host's launch
 
-- **WHEN** request 22 retries `Of: 20` naming no `Host`, and `madswan/runner/vega` answers 20 while `deneb`'s report does not
-- **THEN** `deneb`'s pull gives nothing for 22
+- **WHEN** request 22 retries `Of: 20` naming no `Host`, and `home/runner/host-b` answers 20 while `host-a`'s report does not
+- **THEN** `host-a`'s pull gives nothing for 22
 
 ### Requirement: A launch request is an offer of what it names
 
@@ -166,12 +166,12 @@ A `launch` SHALL be given as an offer whose launch holds its repository, its `Ki
 #### Scenario: A launch's every field
 
 - **WHEN** request 12 is a launch for this host naming every field, with a `Brief` over three `+` lines and `After` 10 and 11
-- **THEN** the pull gives an offer `madswan/12`, its brief the three lines joined by newlines, coming after `madswan/10` and `madswan/11`
+- **THEN** the pull gives an offer `home/12`, its brief the three lines joined by newlines, coming after `home/10` and `home/11`
 
 #### Scenario: A kit's launch naming no stream
 
 - **WHEN** request 20 is a launch naming no `Host` and no `Stream`, claimed by this host
-- **THEN** the offer `madswan/20` names no stream, so the launch runs in the stream the host's Flume configuration maps its repository to
+- **THEN** the offer `home/20` names no stream, so the launch runs in the stream the host's Flume configuration maps its repository to
 
 ### Requirement: A retry, a drop and a priority are acts on the launch they name
 
@@ -180,7 +180,7 @@ A `retry` SHALL be given as an act on the launch `<label>/<Of>` with its `Stage`
 #### Scenario: A retry of the submission
 
 - **WHEN** request 14 retries `Of: 12` with `Submission: yes`
-- **THEN** the pull gives an act `madswan/14` on `madswan/12` asking for the submission
+- **THEN** the pull gives an act `home/14` on `home/12` asking for the submission
 
 ### Requirement: A request crew's implementation cannot read is refused by its host's runner
 
@@ -203,7 +203,7 @@ At each report, and at a pull that claims or withdraws, for each partition, crew
 #### Scenario: Only the runner's branch
 
 - **WHEN** a report has been written
-- **THEN** the state repository's refs are those it held before, with `madswan/runner/deneb` beside them, and every file written passes `recfix --check`
+- **THEN** the state repository's refs are those it held before, with `home/runner/host-a` beside them, and every file written passes `recfix --check`
 
 ### Requirement: The runner's branch holds crew's three files in crew's formats
 
@@ -211,8 +211,8 @@ crew's implementation SHALL write `runner.rec`, one `Runner` with `Host`, `Versi
 
 #### Scenario: The first report
 
-- **WHEN** the runner first reports for `madswan` on host `deneb`
-- **THEN** the state repository gains `madswan/runner/deneb`, holding `runner.rec` with `Host: deneb`, the runner's version and the time, and `madswan/main`'s tip is unchanged
+- **WHEN** the runner first reports for `home` on host `host-a`
+- **THEN** the state repository gains `home/runner/host-a`, holding `runner.rec` with `Host: host-a`, the runner's version and the time, and `home/main`'s tip is unchanged
 
 #### Scenario: A place's status as Flume gave it
 
@@ -239,7 +239,7 @@ A place of any host's `places.rec` SHALL wait on a role where its launch request
 
 #### Scenario: Another host's place asks the planner
 
-- **WHEN** `madswan/runner/vega`'s `places.rec` holds a place whose launch names `madswan/planner` as `Recipient` and whose status waits with `why` `answer`
+- **WHEN** `home/runner/host-b`'s `places.rec` holds a place whose launch names `home/planner` as `Recipient` and whose status waits with `why` `answer`
 - **THEN** the pull gives an offer of `planner`'s run
 
 #### Scenario: A role's work landed
@@ -254,17 +254,17 @@ crew's implementation SHALL offer a run of a wanted role whose latest run has no
 #### Scenario: A burst of asks
 
 - **WHEN** `asks.rec` holds three asks of `planner` that no ended turn took, and no run of `planner` stands
-- **THEN** the pull gives one offer, `madswan/planner/1`, of kind `crew/crew-planner` named `madswan`, its stream the role's, priority 0, intent `madswan-planner` and the agent setting `model=<the role's Model>`
+- **THEN** the pull gives one offer, `home/planner/1`, of kind `crew/crew-planner` named `home`, its stream the role's, priority 0, intent `home-planner` and the agent setting `model=<the role's Model>`
 
 #### Scenario: A run standing
 
-- **WHEN** asks of `planner` are pending and its latest run, `madswan/planner/1`, reads `live` in its carried status
-- **THEN** the pull gives `madswan/planner/1` again, the run the report holds, and offers no new run of `planner`
+- **WHEN** asks of `planner` are pending and its latest run, `home/planner/1`, reads `live` in its carried status
+- **THEN** the pull gives `home/planner/1` again, the run the report holds, and offers no new run of `planner`
 
 #### Scenario: A run waiting for room keeps its id
 
-- **WHEN** an offer of `madswan/planner/3` is left untaken for want of room
-- **THEN** the next pull offers `madswan/planner/3` again; and once the runner records it refused, the pull after offers `madswan/planner/4`
+- **WHEN** an offer of `home/planner/3` is left untaken for want of room
+- **THEN** the next pull offers `home/planner/3` again; and once the runner records it refused, the pull after offers `home/planner/4`
 
 ### Requirement: A role's run is declared done once its turn has delivered
 
@@ -272,8 +272,8 @@ Where a role's latest run's carried status waits on its caller with `why` `deliv
 
 #### Scenario: A turn delivered
 
-- **WHEN** `madswan/planner/2`'s carried status waits on its caller with `why` `delivered`
-- **THEN** the pull gives a done of `madswan/planner/2`, with the id `madswan/planner/2/done`
+- **WHEN** `home/planner/2`'s carried status waits on its caller with `why` `delivered`
+- **THEN** the pull gives a done of `home/planner/2`, with the id `home/planner/2/done`
 
 ### Requirement: A launch is let go once its work has left crew's plan
 
@@ -300,13 +300,13 @@ A launch naming no `Host` that the runner's report or this host's branch answers
 
 #### Scenario: A launch answered before its repository left the hello
 
-- **WHEN** `madswan/runner/deneb` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: old-kit`, and the hello names `example/new-kit` alone
-- **THEN** the pull gives the offer `madswan/20`, its repository `old-kit`, writes nothing, and says nothing
+- **WHEN** `home/runner/host-a` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: old-kit`, and the hello names `example/new-kit` alone
+- **THEN** the pull gives the offer `home/20`, its repository `old-kit`, writes nothing, and says nothing
 
 #### Scenario: An answered launch whose name two kept addresses share
 
-- **WHEN** the runner's report answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/crew`
-- **THEN** the pull gives the offer `madswan/20`, its repository `crew`
+- **WHEN** the runner's report answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: crew`, and the hello names `example/crew` and `agentplot/crew`
+- **THEN** the pull gives the offer `home/20`, its repository `crew`
 
 ### Requirement: A request whose work has left crew's plan is given only while the runner holds it
 
@@ -324,12 +324,12 @@ A drop naming this host or none SHALL be given, whatever `plan.rec` holds, where
 #### Scenario: A drop written as its work leaves the plan
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and request 14, naming this host, drops 12 at a tip whose `plan.rec` holds no `Unit: u`
-- **THEN** the pull gives the offer `madswan/12`, then the act `madswan/14` dropping it
+- **THEN** the pull gives the offer `home/12`, then the act `home/14` dropping it
 
 #### Scenario: A kit's drop goes to the runner holding its launch
 
-- **WHEN** launch 20 of `unit/u` names no `Host`, `madswan/runner/deneb` answers it `launched`, and request 21, naming no `Host`, drops 20 at a tip whose `plan.rec` holds no `Unit: u`
-- **THEN** `deneb`'s pull gives the offer `madswan/20` and the act `madswan/21`, and `vega`'s pull gives nothing for 20 or 21
+- **WHEN** launch 20 of `unit/u` names no `Host`, `home/runner/host-a` answers it `launched`, and request 21, naming no `Host`, drops 20 at a tip whose `plan.rec` holds no `Unit: u`
+- **THEN** `host-a`'s pull gives the offer `home/20` and the act `home/21`, and `host-b`'s pull gives nothing for 20 or 21
 
 ### Requirement: A launch is dropped as crew reads it
 
@@ -337,8 +337,8 @@ A launch SHALL be dropped where a request of `requests.rec` at `<label>/main`'s 
 
 #### Scenario: A drop naming another host
 
-- **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming `Host: vega`, drops 12
-- **THEN** the pull gives no offer of `madswan/12`, and nothing for 14
+- **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming `Host: host-b`, drops 12
+- **THEN** the pull gives no offer of `home/12`, and nothing for 14
 
 ### Requirement: A launch a drop names is offered only where the runner launched it
 
@@ -347,17 +347,17 @@ crew's implementation SHALL give a dropped launch as an offer only where the run
 #### Scenario: A held launch dropped
 
 - **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming this host, drops 12
-- **THEN** the pull gives the act `madswan/14` and no offer of `madswan/12`
+- **THEN** the pull gives the act `home/14` and no offer of `home/12`
 
 #### Scenario: A kit's launch dropped before it is claimed
 
-- **WHEN** launch 20 names no `Host` and says `Repo: afterthought/crew`, which the hello names, request 21, naming no `Host`, drops 20, no runner's branch answers 20, and the host has room
+- **WHEN** launch 20 names no `Host` and says `Repo: example/crew`, which the hello names, request 21, naming no `Host`, drops 20, no runner's branch answers 20, and the host has room
 - **THEN** the pull claims nothing, writes no branch, and gives nothing for 20 or 21
 
 #### Scenario: A dropped launch the runner launched
 
 - **WHEN** the runner's report answers launch 12 `launched` at place `P`, its place listed, and request 14, naming this host, drops 12 at a tip whose `plan.rec` still holds the launch's unit
-- **THEN** the pull gives the offer `madswan/12` and the act `madswan/14`
+- **THEN** the pull gives the offer `home/12` and the act `home/14`
 
 ### Requirement: A dropped launch the runner holds unlaunched is let go
 
@@ -366,14 +366,14 @@ At each report, a launch the runner's report holds that a drop names, answered `
 #### Scenario: A held launch dropped is let go
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `held`, request 14 drops 12, and `plan.rec` still holds `Unit: u`
-- **THEN** the report's let-go names `madswan/12`, and `madswan/runner/deneb` holds no answer to 12
+- **THEN** the report's let-go names `home/12`, and `home/runner/host-a` holds no answer to 12
 
 #### Scenario: A drop answered from the report, its work gone
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `done` with words naming its drop, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
-- **THEN** the report's let-go names `madswan/12` and `madswan/14`
+- **THEN** the report's let-go names `home/12` and `home/14`
 
 #### Scenario: A dropped launch the runner launched stays until its place is over
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
-- **THEN** while Flume lists `P`, the report's let-go names neither `madswan/12` nor `madswan/14`; and once Flume no longer lists `P`, it names both
+- **THEN** while Flume lists `P`, the report's let-go names neither `home/12` nor `home/14`; and once Flume no longer lists `P`, it names both
