@@ -8,7 +8,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 1. The tests the bolt adds take the neutral names
 
-- [ ] 1.1 The unit tests of `crates/boomdrive/src/config.rs` that keep a drive's repositories name `example/crew`, and crew's table in `crates/boomdrive/tests/planes.rs` names the host `host-a`, each test proving the scenario it proved. True when `sluice exec main -- moon run boomdrive:test` passes.
+- [x] 1.1 The unit tests of `crates/boomdrive/src/config.rs` that keep a drive's repositories name `example/crew`, and crew's table in `crates/boomdrive/tests/planes.rs` names the host `host-a`, each test proving the scenario it proved. True when `sluice exec main -- moon run boomdrive:test` passes.
 
 ## 2. The nix and the docs the bolt adds name no one's host
 

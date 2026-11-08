@@ -1449,7 +1449,7 @@ mod tests {
     fn drives_of_two_accounts() {
         let config = read(
             "[accounts.own.drives.home]\n\
-             repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n\
+             repositories = [\"agentplot/flume\", \"example/crew\"]\n\
              \n\
              [accounts.client.drives.garden]\n\
              repositories = [\"agentplot/sluice\"]\n",
@@ -1460,7 +1460,7 @@ mod tests {
                 .repositories()
                 .map(Address::to_string)
                 .collect::<Vec<_>>(),
-            ["agentplot/flume", "afterthought/crew", "agentplot/sluice"]
+            ["agentplot/flume", "example/crew", "agentplot/sluice"]
         );
         assert_eq!(
             config
@@ -2384,7 +2384,7 @@ state_repository = \"example/home-state\"
         let config = layers(
             &in_drive("home", &["agentplot/flume"]),
             Some(
-                "[accounts.own.drives.work]\nrepositories = [\"afterthought/crew\"]\n\n\
+                "[accounts.own.drives.work]\nrepositories = [\"example/crew\"]\n\n\
                  [accounts.client.drives.garden]\nrepositories = [\"agentplot/sluice\"]\n\n\
                  [accounts.client.drives.allotment]\nrepositories = []\n",
             ),
@@ -2394,7 +2394,7 @@ state_repository = \"example/home-state\"
             drives_of(&config),
             [
                 drive("own", "home", &["agentplot/flume"]),
-                drive("own", "work", &["afterthought/crew"]),
+                drive("own", "work", &["example/crew"]),
                 drive("client", "garden", &["agentplot/sluice"]),
                 drive("client", "allotment", &[]),
             ]
@@ -2422,7 +2422,7 @@ state_repository = \"example/home-state\"
     fn a_repository_the_managed_layer_keeps_in_another_drive() {
         let config = layers(
             &in_drive("home", &["agentplot/flume"]),
-            Some(&in_drive("work", &["afterthought/crew", "AgentPlot/Flume"])),
+            Some(&in_drive("work", &["example/crew", "AgentPlot/Flume"])),
         )
         .unwrap();
         assert_eq!(
@@ -2813,7 +2813,7 @@ state_repository = \"example/home-state\"
             Some(&format!(
                 "{}{}",
                 in_drive("home", &["agentplot/sluice"]),
-                in_drive("work", &["afterthought/crew"])
+                in_drive("work", &["example/crew"])
             )),
         )
         .unwrap();
@@ -2846,7 +2846,7 @@ state_repository = \"example/home-state\"
             Some(&format!(
                 "{}{}",
                 in_drive("home", &["agentplot/sluice"]),
-                in_drive("work", &["afterthought/crew"])
+                in_drive("work", &["example/crew"])
             )),
         )
         .unwrap();
@@ -2854,7 +2854,7 @@ state_repository = \"example/home-state\"
             drives_of(&config),
             [
                 drive("own", "home", &["agentplot/flume"]),
-                drive("own", "work", &["afterthought/crew"]),
+                drive("own", "work", &["example/crew"]),
             ]
         );
         assert_eq!(

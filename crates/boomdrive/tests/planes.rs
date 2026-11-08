@@ -202,7 +202,7 @@ fn each_implementation_lists_partitions_for_the_local_layer() {
     for entry in &PLANES {
         assert_eq!(entry.local_keys, ["partitions"], "{}", entry.word);
         let others = match entry.word {
-            "crew" => "host = \"deneb\"\n",
+            "crew" => "host = \"host-a\"\n",
             "hosted" => "url = \"https://control.example\"\n",
             word => panic!("no table written for {word}"),
         };
