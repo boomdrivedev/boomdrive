@@ -215,4 +215,32 @@ in
         "v0.67.0"
       ]
     ) "flake.nix's sluice v0.68.0 under a lock of v0.67.0 gives ${builtins.toJSON found}";
+
+  "A tool named by no release tag" =
+    let
+      inherit (t) lock;
+      node = lock.nodes.${lock.root}.inputs.crew;
+      named = flake.inputs // {
+        crew = flake.inputs.crew // {
+          url = "github:agentplot/crew/main";
+        };
+      };
+      locked = lock // {
+        nodes = lock.nodes // {
+          ${node} = lock.nodes.${node} // {
+            original = lock.nodes.${node}.original // {
+              ref = "main";
+            };
+          };
+        };
+      };
+      found = tags named locked;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "crew"
+        "main"
+      ]
+    ) "flake.nix and the lock naming crew by main give ${builtins.toJSON found}";
 }
