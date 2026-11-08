@@ -1,11 +1,13 @@
 # The binary-cache spec over the flake and the modules (design Decision 4):
 # `nixConfig` names the family's cache alone, the README's install with
 # nix gives a host the same two lines, and each module, in a system whose
-# `pkgs` carries an overlay of the host's own, installs the flake's own
-# packages and adds nothing of the cache's to the host's nix settings.
+# `pkgs` carries an overlay of the host's own and with crew on, installs
+# the flake's own packages and adds nothing of the cache's to the host's
+# nix settings.
 t:
 let
   inherit (t) lib;
+  settings = import ./settings.nix;
 
   # The family's cache, as design Decision 4 names it.
   substituter = "https://boomdrive.cachix.org";
@@ -25,15 +27,29 @@ let
 
   # The host's own packages under the set's names, so a module that took
   # its packages from the host's `pkgs` would install these.
-  overlay =
-    final: _: lib.genAttrs [ "boomdrive" "flume" "sluice" ] (name: final.writeShellScriptBin name "");
+  names = [
+    "boomdrive"
+    "crew"
+    "flume"
+    "sluice"
+  ];
+  overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
+  # The host's overlay, and crew turned on with its host and partitions.
+  host = {
+    nixpkgs.overlays = [ overlay ];
+    services.crew = {
+      enable = true;
+      host = "host-a";
+      settings = settings.crewModule;
+    };
+  };
   hosts = {
     "nix-darwin" = {
-      evaluated = t.darwinSystem { nixpkgs.overlays = [ overlay ]; };
+      evaluated = t.darwinSystem host;
       set = t.outputs.packages.aarch64-darwin;
     };
     NixOS = {
-      evaluated = t.nixosSystem { nixpkgs.overlays = [ overlay ]; };
+      evaluated = t.nixosSystem host;
       set = t.outputs.packages.x86_64-linux;
     };
   };
@@ -49,22 +65,15 @@ let
     t.expect (
       evaluated.pkgs ? boomdrive
     ) "the ${platform} system's pkgs carries no overlay of the host's own"
-    ++
-      lib.concatMap
-        (
-          name:
-          t.expect (builtins.elem set.${name}.outPath
-            profile
-          ) "the system profile holds no flake's own ${name}"
-          ++ t.expect (
-            !builtins.elem evaluated.pkgs.${name}.outPath profile
-          ) "the system profile holds the host's pkgs' ${name}"
-        )
-        [
-          "boomdrive"
-          "flume"
-          "sluice"
-        ];
+    ++ lib.concatMap (
+      name:
+      t.expect (builtins.elem set.${name}.outPath
+        profile
+      ) "the system profile holds no flake's own ${name}"
+      ++ t.expect (
+        !builtins.elem evaluated.pkgs.${name}.outPath profile
+      ) "the system profile holds the host's pkgs' ${name}"
+    ) names;
 
   # Each of the host's nix settings that names a substituter or a key.
   trusted = [
