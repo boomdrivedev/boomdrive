@@ -34,7 +34,7 @@ pub const REQUESTS: &str = "\
 %doc: A request for Work: a launch of a Flume place of Kind named Name, cut from Base of Repo, taken by a runner whose configuration names Repo, in the stream its host maps it to, or by Host's runner in Stream for a role's work; or a retry, drop or priority of the place the launch Of names launched, taken by the runner that took it.
 %key: Request
 %type: Request,Of,After,Priority int
-%type: Act enum launch retry drop priority
+%type: Act enum launch retry land drop priority
 %type: Kind enum change chore fix
 %type: Hold enum submission
 %type: Submission bool
