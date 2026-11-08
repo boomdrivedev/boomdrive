@@ -114,6 +114,25 @@ let
       };
     };
   fleet = crewWith settings.crewUnwritten settings.crewFleet;
+  # "A host under crew" whose crew table, written out, is the partition
+  # `garden` alone, beside crew's fleet.
+  garden = {
+    host = "host-a";
+    partitions = [
+      {
+        label = "garden";
+        state_repository = "example/garden";
+      }
+    ];
+  };
+  gardenSettings = settings.crew // {
+    control_plane = settings.crew.control_plane // {
+      crew = garden;
+    };
+  };
+  writtenOut = crewWith gardenSettings settings.crewFleet;
+  writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
+  render = import ../modules/toml.nix { inherit lib; };
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
@@ -233,6 +252,15 @@ in
   "A host under crew on nix-darwin" =
     t.expect (t.failures crew == [ ]) "crew's settings fail: ${toString (t.failures crew)}"
     ++ t.expect (writes crew (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
+
+  "A table written out wins on nix-darwin" =
+    t.expect (
+      t.failures writtenOut == [ ]
+    ) "a table written out fails: ${toString (t.failures writtenOut)}"
+    ++
+      t.expect (writtenTable == garden)
+        "settings.control_plane.crew is ${builtins.toJSON writtenTable}, not the table written, ${builtins.toJSON garden}"
+    ++ t.expect (writes writtenOut (render gardenSettings)) "the agent's --config is not the rendering of the settings with the table written";
 
   "crew's partitions on this host on nix-darwin" =
     t.expect (
