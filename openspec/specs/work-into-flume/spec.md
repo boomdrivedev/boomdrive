@@ -384,13 +384,13 @@ The runner SHALL take a launch of a kind that lands with no stages, as a bolt's 
 
 #### Scenario: A bolt and its unit
 
-- **WHEN** a pull offers `madswan/bolt/3` of kind `bolt` named `x` in `afterthought/crew` on `main`, then `madswan/14` of kind `change` named `a` on `bolt/x`, both with stream `madswan`, whose `room` is 2, and the clone is made
-- **THEN** the stub `flume` is run as `flume --json launch --repository <the container> --kind bolt --name x --base main --stream madswan --mark boomdrive:madswan/bolt/3`, then as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream madswan --mark boomdrive:madswan/14`; both are answered `launched`, and no `sluice` command is run
+- **WHEN** a pull offers `home/bolt/3` of kind `bolt` named `x` in `example/crew` on `main`, then `home/14` of kind `change` named `a` on `bolt/x`, both with stream `home`, whose `room` is 2, and the clone is made
+- **THEN** the stub `flume` is run as `flume --json launch --repository <the container> --kind bolt --name x --base main --stream home --mark boomdrive:home/bolt/3`, then as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream home --mark boomdrive:home/14`; both are answered `launched`, and no `sluice` command is run
 
 #### Scenario: A bolt counts against its stream's room within its pass
 
-- **WHEN** a pull offers the bolt `madswan/bolt/3`, then its unit `madswan/14`, both with stream `madswan`, whose `room` is 1
-- **THEN** the bolt is launched and the unit is left unanswered; and at the next pass, whose listing gives `madswan` a `room` of 1 again, the unit is launched
+- **WHEN** a pull offers the bolt `home/bolt/3`, then its unit `home/14`, both with stream `home`, whose `room` is 1
+- **THEN** the bolt is launched and the unit is left unanswered; and at the next pass, whose listing gives `home` a `room` of 1 again, the unit is launched
 
 ### Requirement: A bolt's send is a retry of its submission
 
@@ -398,12 +398,12 @@ The runner SHALL carry out the send of a place whose kind lands with no stages, 
 
 #### Scenario: A bolt's send
 
-- **WHEN** an act retries the submission of launch `madswan/bolt/3`, which was launched at place `P`
+- **WHEN** an act retries the submission of launch `home/bolt/3`, which was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --submission`, and the act is answered `done`
 
 #### Scenario: A send Flume refuses
 
-- **WHEN** an act retries the submission of launch `madswan/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
+- **WHEN** an act retries the submission of launch `home/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
 - **THEN** the act is answered `refused` with the words `the places on bolt/x are live: Q`, and no `sluice` command is run
 
 ### Requirement: The hello names the repositories drained apart from those kept
