@@ -1,11 +1,11 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, and Flume and sluice each at a release tag (record
-# 0020, core.44). A host's nix substitutes their binaries from the family's
+# runner at this tree, and Flume, sluice and crew each at a release tag
+# through its own flake (records 0020 and 0023, core.44). A host's nix substitutes their binaries from the family's
 # cache where it trusts it, and builds the same paths where it does not
 # (core.47). The development shell is devenv's (devenv.nix); everything
 # else of the flake's is under nix/, the moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume and sluice, pinned together";
+  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -35,6 +35,11 @@
       url = "github:agentplot/flume/v0.18.0";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
+      inputs.nix-darwin.follows = "nix-darwin";
+    };
+    crew = {
+      url = "github:agentplot/crew/v0.44.8";
+      inputs.nixpkgs.follows = "nixpkgs";
       inputs.nix-darwin.follows = "nix-darwin";
     };
     # The tests' nix-darwin. A host's configuration follows its own, which
@@ -77,6 +82,11 @@
               package = inputs.sluice.packages.${system}.default;
               src = inputs.sluice;
               tag = tagOf (import ./flake.nix).inputs.sluice.url;
+            };
+            crew = import ./nix/packages/crew.nix {
+              inherit lib;
+              package = inputs.crew.packages.${system}.crew;
+              tag = tagOf (import ./flake.nix).inputs.crew.url;
             };
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };

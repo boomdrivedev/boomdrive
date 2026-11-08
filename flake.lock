@@ -1,5 +1,29 @@
 {
   "nodes": {
+    "crew": {
+      "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794158472,
+        "narHash": "sha256-VPwFEVNVE+I66U3dFimDsWZNhDm50c8qIRhPCQ/obQc=",
+        "owner": "agentplot",
+        "repo": "crew",
+        "rev": "2ae956170f149e4b80f8f6520d8e115693f50493",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agentplot",
+        "ref": "v0.44.8",
+        "repo": "crew",
+        "type": "github"
+      }
+    },
     "flume": {
       "inputs": {
         "nix-darwin": [
@@ -65,6 +89,7 @@
     },
     "root": {
       "inputs": {
+        "crew": "crew",
         "flume": "flume",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",

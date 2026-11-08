@@ -147,6 +147,25 @@ in
     ) "packages.${system}.sluice's build is given SLUICE_VERSION ${given}, not its tag's ${version}"
   );
 
+  # crew keeps its version in no file, so the set gives crew's flake's
+  # package its tag's (design Decision 3).
+  "crew through its own flake" = each (
+    system: packages:
+    let
+      inherit (packages) crew;
+      own = inputs.crew.packages.${system}.crew;
+      version = t.lockedVersion "crew";
+    in
+    t.expect (
+      toString crew.src == toString own.src
+      && crew.pname == own.pname
+      && crew.meta.homepage == own.meta.homepage
+    ) "packages.${system}.crew is not crew's flake's package"
+    ++ t.expect (
+      crew.version == version
+    ) "packages.${system}.crew says ${crew.version}, not its tag's ${version}"
+  );
+
   # Where sluice's tree carries a version of its own, the package is
   # sluice's flake's, unchanged (design Decision 3).
   "sluice's version from its tree" = lib.concatMap (
