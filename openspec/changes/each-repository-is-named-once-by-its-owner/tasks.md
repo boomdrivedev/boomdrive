@@ -20,7 +20,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 2.3 A host's own value in `services.flume.settings` wins over the module's, and a stream's key the module does not give, set there, sits beside the module's (design Decision 4; Task notes 2.3). True when `sluice exec main -- moon run nix:test` passes, proving "A host's own room and rule".
 - [x] 2.4 A drive whose `machine` names a host other than `services.crew.host` gives Flume no stream and no repository's table, its repositories still in the runner's file, and a drive that names a `machine` where `services.crew.host` is not set fails evaluation (design Decision 5; Task notes 2.4). True when `sluice exec main -- moon run nix:test` passes, proving "A drive of another machine", "A drive of this machine" and "No host to compare with".
 - [x] 2.5 A stream given by two drives of this host fails evaluation, naming the stream and the drives (design Decision 6; Task notes 2.5). True when `sluice exec main -- moon run nix:test` passes, proving "One stream for two drives".
-- [ ] 2.6 The nix files this change adds or changes keep to the nix project's lint (Task notes 2.6). True when `sluice exec main -- moon run nix:lint` passes.
+- [x] 2.6 The nix files this change adds or changes keep to the nix project's lint (Task notes 2.6). True when `sluice exec main -- moon run nix:lint` passes.
 
 ## 3. The words
 
