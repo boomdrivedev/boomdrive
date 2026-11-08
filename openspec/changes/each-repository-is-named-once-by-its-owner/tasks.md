@@ -24,6 +24,6 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 3. The words
 
-- [ ] 3.1 The README's **Installing with nix** names the accounts in `services.boomdrive.accounts`, each drive's repositories by owner and its stream's keys and defaults, a drive's `machine` against `services.crew.host`, and Flume's own `services.flume.settings.streams` for any other key of a stream, and no `settings.accounts` (Task notes 3.1). True when `sluice exec main -- moon run nix:test` passes, proving "The README's accounts", with "The README's words" still holding.
+- [x] 3.1 The README's **Installing with nix** names the accounts in `services.boomdrive.accounts`, each drive's repositories by owner and its stream's keys and defaults, a drive's `machine` against `services.crew.host`, and Flume's own `services.flume.settings.streams` for any other key of a stream, and no `settings.accounts` (Task notes 3.1). True when `sluice exec main -- moon run nix:test` passes, proving "The README's accounts", with "The README's words" still holding.
 - [ ] 3.2 CLAUDE.md's paragraph on the flake says the module's `accounts` and `settings` are the runner's file, each drive's stream given to Flume's module (Task notes 3.2). True when `sluice exec main -- moon run root:format` passes.
 - [ ] 3.3 The spec delta archives into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive each-repository-is-named-once-by-its-owner --yes`, `sluice exec main -- moon run root:specs` passes.
