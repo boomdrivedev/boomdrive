@@ -46,7 +46,7 @@ Status: the code stage's own choice, on the brief of the chore `a-launch-waits-o
 
 ### Context
 
-Flume's command acting on a place settles every place on the host first, where no caller keeps watch (Flume's clause 119), and only then finds that the place does not stand. On deneb on 2026-11-07, `flume --json priority <place> 12` refused a place that no longer stood in 27 to 33 seconds. `flume --json status <place>`, which settles nothing (Flume's clause 119), refused the same place in about ten milliseconds, in the same words: "no place <location> stands on this host". Of some 180 acts on places one pass carried out there, 162 were such refusals.
+Flume's command acting on a place settles every place on the host first, where no caller keeps watch (Flume's clause 119), and only then finds that the place does not stand. On a host on 2026-11-07, `flume --json priority <place> 12` refused a place that no longer stood in 27 to 33 seconds. `flume --json status <place>`, which settles nothing (Flume's clause 119), refused the same place in about ten milliseconds, in the same words: "no place <location> stands on this host". Of some 180 acts on places one pass carried out there, 162 were such refusals.
 
 ### Considered options
 

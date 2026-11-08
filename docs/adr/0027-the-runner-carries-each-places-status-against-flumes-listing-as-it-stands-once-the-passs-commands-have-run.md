@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-07 by the code stage of the chore `the-runner-reads-a-tidied-places-record`. The direction is the chore's brief, quoted below. When the listing is read again is the stage's choice, made on this repository's rules and Flume's statement. The record is accepted when the user says yes to it.
 
 Deciders: the chore's brief, for the direction; the code stage, for how it is met.
-Sources: the chore's brief, 2026-11-07, and its signal 2026-11-07-agentplot-design-617188df/01 on afterthought/crew-state; a host's runner report and Flume's listing on 2026-11-07; Flume's statement, clauses 43 and 62, and its `keep_for_ends` and `status`; records 0002, 0021 and 0026; rules core.1, core.9 and core.11; the work-into-flume spec.
+Sources: the chore's brief, 2026-11-07, and the design agent's signal behind it; a host's runner report and Flume's listing on 2026-11-07; Flume's statement, clauses 43 and 62, and its `keep_for_ends` and `status`; records 0002, 0021 and 0026; rules core.1, core.9 and core.11; the work-into-flume spec.
 
 ## Context and problem statement
 

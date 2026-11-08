@@ -94,7 +94,7 @@ The brief: "Boomdrive's runner answers a pull's acts in seconds: no partition's 
 
 ### Context
 
-The amendment above keeps a pull's launches ahead of its own acts on places. A launch the next pull offers still waits for every act of the pass under way. On deneb on 2026-11-07, one pass carried out some 180 acts of one partition's on places, most of them refused, at about 30 seconds each. Another partition's launches 63 and 64, asked at 13:48:54Z, waited through that pass and most of the next, while that partition's stream ran none of its four agents. Flume settles every place on the host before it acts, where no caller keeps watch (Flume's clause 119), so even an act Flume carries out takes it that long there.
+The amendment above keeps a pull's launches ahead of its own acts on places. A launch the next pull offers still waits for every act of the pass under way. On a host on 2026-11-07, one pass carried out some 180 acts of one partition's on places, most of them refused, at about 30 seconds each. Another partition's launches 63 and 64, asked at 13:48:54Z, waited through that pass and most of the next, while that partition's stream ran none of its four agents. Flume settles every place on the host before it acts, where no caller keeps watch (Flume's clause 119), so even an act Flume carries out takes it that long there.
 
 Record 0026, on main, gives each partition's work time of its own, and names this chore its first step within a partition.
 

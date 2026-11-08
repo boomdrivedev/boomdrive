@@ -11,7 +11,7 @@ decision-makers:
 
 Status: accepted by the user on 2026-11-07, on their card, with record 0028. Proposed on 2026-11-05 by the construct stage of the change `a-view-writes-its-vs-code-workspace`. That the runner may write VS Code workspaces for its views, as an option, is the user's decision, in their words below. Where the files go, what they list and how they are kept are the stage's choices, made on the written rules. Revised on 2026-11-07 on the user's note on its card, quoted below: one workspace per drive, the drives as record 0028 has them.
 
-Deciders: the user, for the option, and on 2026-11-05 for the hosts turning it on now and their views retiring; the user, on 2026-11-07 on this record's card, for what one workspace gathers: "Per recent discussion with designer agent, this becomes one workspace per boomdrive drive"; the construct stage, for its form, and agentplot-design, for where a drive's workspace goes.
+Deciders: the user, for the option, and on 2026-11-05 for the hosts turning it on now and their views retiring; the user, on 2026-11-07 on this record's card, for what one workspace gathers: "Per recent discussion with designer agent, this becomes one workspace per boomdrive drive"; the construct stage, for its form, and the design agent, for where a drive's workspace goes.
 Sources: the user's words of 2026-11-04 and 2026-11-05 in the brief of the change `a-view-writes-its-vs-code-workspace`; afterthought/swancloud's rule herdr.14 and its record 0031, cited by id; record 0009; rules core.2, core.5, core.12, core.14, core.17, core.35 and core.42; the views and configuration specs; record 0028.
 
 ## Context and problem statement
