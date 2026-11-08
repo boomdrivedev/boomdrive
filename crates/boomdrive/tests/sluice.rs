@@ -206,7 +206,7 @@ fn a_landed_submission_carried() {
     let carried = sluice::carried(&sluice_fixture("status-landed.json")).unwrap();
     assert_eq!(
         carried,
-        r#"{"id":1,"branch":"main","head":"91aff4b74c91b37c374c46b43b35e87b128b0c65","state":"landed","landed_as":"3e61c31926e3e265212226d30fe3c5934665cc4d"}"#
+        r#"{"id":1,"branch":"main","head":"3cb12e20c76c17ef51cb8be1c32bec8671a7ab73","state":"landed","landed_as":"fdaaeaf1b1094b39db4ccea5f01e88a3bedb95d8"}"#
     );
 }
 
@@ -216,10 +216,10 @@ fn a_failed_row_carried_without_its_log() {
     assert_eq!(
         carried,
         concat!(
-            r#"{"id":45,"branch":"main","head":"0d43da70a2ff2bdc4e31fa260252ace4a9ff44b6","state":"failed","failed":["#,
-            r#"{"task":"flume:tools","hash":"e0e41e5811489647069b018088b150c920c426e67932fe2206b24c0ad6342f8d","flaky":"#,
-            r#"{"here":"pass","at":"2026-10-29T17:53:11Z","host":"deneb","other":"#,
-            r#"{"outcome":"fail","at":"2026-10-29T17:19:43Z","branch":"main","combination":"0d43da70a2ff2bdc4e31fa260252ace4a9ff44b6","host":"deneb","worktree":"/Users/chuck/Code/github_agentplot/flume/fix-live-trust-and-secret-env"}}}]}"#
+            r#"{"id":2,"branch":"main","head":"490ad47e09844724909e5bd15919616a9a76e74b","state":"failed","failed":["#,
+            r#"{"task":"sh check.sh","hash":"09e46ec47a28327f23dfc07c480bec754024a2e7","flaky":"#,
+            r#"{"here":"pass","at":"2026-11-08T00:34:38Z","host":"host-a","other":"#,
+            r#"{"outcome":"fail","at":"2026-11-08T00:34:35Z","branch":"main","combination":"09e46ec47a28327f23dfc07c480bec754024a2e7","host":"host-a","worktree":"/private/tmp/scratch/host/worktrees/tabs-combination"}}}]}"#
         )
     );
 }
@@ -237,23 +237,23 @@ fn a_flaky_readings_log_is_left_out() {
     assert_eq!(
         value,
         json!({
-            "id": 291,
+            "id": 4,
             "branch": "main",
-            "head": "4480899ef7e43922145534dc0b9e09b5d30ed105",
+            "head": "2b944a5326f3bcbbff3e0a717bc05f403c2fd3cb",
             "state": "withdrawn",
             "failed": [{
-                "task": "cli:test",
-                "hash": "ac52c612a1fb27a96a0e1b72b709852ef4267f1a3e53b5bbc43ded025ce0f2d1",
+                "task": "sh check.sh",
+                "hash": "871867da54ed6ec660b7123312f2dc68760f7ec2",
                 "flaky": {
                     "here": "pass",
-                    "at": "2026-10-29T15:29:18Z",
-                    "host": "deneb",
+                    "at": "2026-11-08T00:34:45Z",
+                    "host": "host-a",
                     "other": {
                         "outcome": "fail",
-                        "at": "2026-10-29T14:54:24Z",
+                        "at": "2026-11-08T00:34:42Z",
                         "branch": "main",
-                        "combination": "01cd2fc56e2c947392f198d3dd43082fd5967d6b",
-                        "host": "deneb"
+                        "combination": "871867da54ed6ec660b7123312f2dc68760f7ec2",
+                        "host": "host-a"
                     }
                 }
             }]
