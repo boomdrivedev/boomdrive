@@ -45,7 +45,7 @@ const PATIENCE: Duration = Duration::from_secs(20);
 const KEPT: &str = "agentplot/flume";
 
 /// A configuration keeping [`KEPT`], each `fetch_interval`, carrying
-/// crew's work for the host `deneb` in the partition `madswan`, each
+/// crew's work for the host `host-a` in the partition `home`, each
 /// `poll_interval`.
 fn carrying(fetch_interval: &str, poll_interval: &str) -> String {
     format!(
@@ -54,10 +54,10 @@ fn carrying(fetch_interval: &str, poll_interval: &str) -> String {
          type = \"crew\"\n\
          poll_interval = {poll_interval:?}\n\n\
          [control_plane.crew]\n\
-         host = \"deneb\"\n\n\
+         host = \"host-a\"\n\n\
          [[control_plane.crew.partitions]]\n\
-         label = \"madswan\"\n\
-         state_repository = \"afterthought/madswan-state\"\n",
+         label = \"home\"\n\
+         state_repository = \"example/home-state\"\n",
         keeping(&[KEPT])
     )
 }
@@ -133,25 +133,25 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-/// The state repository `afterthought/madswan-state` on the scratch
-/// forge, its `madswan/main` holding a launch request for `deneb` of
+/// The state repository `example/home-state` on the scratch
+/// forge, its `home/main` holding a launch request for `host-a` of
 /// [`KEPT`]'s unit `a`, and the plan holding `a`, as crew writes them.
 fn state_repository(scratch: &Scratch) -> Origin<'_> {
-    let state = scratch.empty_origin("afterthought/madswan-state");
+    let state = scratch.empty_origin("example/home-state");
     let request = records::launch(
         1,
-        Some("deneb"),
+        Some("host-a"),
         "unit/a",
         KEPT,
         "a",
         &[("Base", "main"), ("Brief", "Parse the input.")],
     );
     state.commit(
-        "madswan/main",
+        "home/main",
         "requests.rec",
         &records::file(records::REQUESTS, &[request]),
     );
-    state.commit("madswan/main", "plan.rec", &records::plan(&["a"], &[]));
+    state.commit("home/main", "plan.rec", &records::plan(&["a"], &[]));
     state
 }
 
@@ -181,14 +181,14 @@ fn one_control_pass() {
     assert!(
         stderr(&output)
             .lines()
-            .any(|line| line.starts_with("madswan/1: launched at ")),
+            .any(|line| line.starts_with("home/1: launched at ")),
         "{}",
         stderr(&output)
     );
-    let answers = scratch.git(&state.bare, &["show", "madswan/runner/deneb:answers.rec"]);
+    let answers = scratch.git(&state.bare, &["show", "home/runner/host-a:answers.rec"]);
     assert!(answers.contains("Outcome: launched"), "{answers}");
-    let runner = scratch.git(&state.bare, &["show", "madswan/runner/deneb:runner.rec"]);
-    assert!(runner.contains("Host: deneb"), "{runner}");
+    let runner = scratch.git(&state.bare, &["show", "home/runner/host-a:runner.rec"]);
+    assert!(runner.contains("Host: host-a"), "{runner}");
 }
 
 /// The running spec's "Flume's status refused": the control pass pulled
@@ -221,8 +221,8 @@ fn flumes_status_refused() {
         "{:?}",
         tools.flume_commands()
     );
-    let runner = scratch.git(&state.bare, &["show", "madswan/runner/deneb:runner.rec"]);
-    assert!(runner.contains("Host: deneb"), "{runner}");
+    let runner = scratch.git(&state.bare, &["show", "home/runner/host-a:runner.rec"]);
+    assert!(runner.contains("Host: host-a"), "{runner}");
 }
 
 /// The running spec's "A control plane that cannot be read": no

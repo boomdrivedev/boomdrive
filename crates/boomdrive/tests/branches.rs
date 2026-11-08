@@ -18,7 +18,7 @@ use serde_json::json;
 use std::fs;
 
 /// The repository the bolt is in.
-const CREW: &str = "afterthought/crew";
+const CREW: &str = "example/crew";
 
 /// The commit sluice's captured answers name, the scratch forge's they
 /// were read on.
@@ -49,7 +49,7 @@ fn bolt_in(repository: &str) -> Want {
     })
 }
 
-/// A bench keeping `afterthought/crew`, whose forge on `scratch` holds
+/// A bench keeping `example/crew`, whose forge on `scratch` holds
 /// `main`, its clone made by the runner's own `clone::make`.
 struct Host<'s> {
     bench: Bench,
