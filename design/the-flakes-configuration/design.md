@@ -1,7 +1,8 @@
 # The flake configures the whole host
 
 Status: proposed, from the talk of 2026-11-06
-(`design/research/the-flakes-configuration-holds-streams-and-repositories.md`,
+(agentplot/boomdrive-archive's
+`design/research/the-flakes-configuration-holds-streams-and-repositories.md`,
 which holds the user's words). Not yet a record or a rule.
 
 ## The shape
@@ -26,17 +27,17 @@ which holds the user's words). Not yet a record or a rule.
 
   ```nix
   services.boomdrive.repositories = {
-    agentplot   = { stream = "agentplot"; names = [ "boomdrive" "flume" ]; };
-    madswan-dev = { stream = "madswan";   names = [ "paymaster" ]; };
-    willdangroup.names = [ "…" ];   # kept to follow, no agents here
+    agentplot = { stream = "family"; names = [ "boomdrive" "flume" ]; };
+    example   = { stream = "work";   names = [ "app" ]; };
   };
   ```
 
   The module writes each address into the runner's `repositories`, and
   gives each address its owner's stream in Flume's module,
-  `repos."agentplot/boomdrive".stream = "agentplot"`. The person writes
+  `repos."agentplot/boomdrive".stream = "family"`. The person writes
   no star and no folder; Flume's file holds one exact address per
-  repository. An owner with no stream gives Flume no rule.
+  repository. An owner with no stream, `<owner>.names` alone, gives
+  Flume no rule.
 - **Flume names a repository by its address.** Flume reads the address
   from the clone a launch names, its `remote.origin.url`, and matches it
   against `[repos."<owner>/<name>"]`; a repository with no forge origin
@@ -98,7 +99,7 @@ which holds the user's words). Not yet a record or a rule.
     repositories of the drives a host serves and each one's stream by
     its address, and Nix's files stay as Nix wrote them.
 
-The sketch of deneb is `deneb.nix` beside this file.
+The sketch of one host is `host.nix` beside this file.
 
 ## Open
 
@@ -130,12 +131,12 @@ The sketch of deneb is `deneb.nix` beside this file.
   itself.
 - **agentplot/sluice**: a flake module for the host's own settings;
   its layers, when it gains them, in the family's words.
-- **afterthought/crew**: a flake with its package and a module for its
+- **agentplot/crew**: a flake with its package and a module for its
   host file.
 - **agentplot/blueprints**: Flume's statement, clauses 143 and C.7; the
   family's one pair of words for a configuration's layers, managed and
   local, and Flume's rule for what a local layer may set, in the
   principles.
-- **afterthought/swancloud**: once the modules land, it passes deneb's
+- **afterthought/swancloud**: once the modules land, it passes its hosts'
   facts as option values and stops writing Flume's, sluice's and crew's
   files and the usage readings for Flume.

@@ -11,25 +11,25 @@ use boomdrive_crew::Crew;
 use common::{file, plan, rec, State, REQUESTS, ROLES};
 use std::collections::BTreeMap;
 
-/// The shared cases' harness: each control plane is deneb's crew's
+/// The shared cases' harness: each control plane is host-a's crew's
 /// implementation over a state repository of its own, whose
-/// `madswan/main` holds the wants as crew writes them, and what the
+/// `home/main` holds the wants as crew writes them, and what the
 /// harness sees of it is every ref it holds.
 #[derive(Default)]
 struct Crews {
     states: Vec<State>,
 }
 
-/// The request number of `id`, `madswan/<n>`.
+/// The request number of `id`, `home/<n>`.
 fn number(id: &Id) -> String {
     id.as_str()
-        .strip_prefix("madswan/")
-        .expect("a madswan id")
+        .strip_prefix("home/")
+        .expect("a home id")
         .to_string()
 }
 
 /// `wants` as crew writes them in `requests.rec`: each a request naming
-/// deneb, an offer a launch of its unit and an act on its launch; and the
+/// host-a, an offer a launch of its unit and an act on its launch; and the
 /// plan holding each unit.
 fn requests(wants: &[Want]) -> (String, Vec<String>) {
     let mut records = Vec::new();
@@ -44,7 +44,7 @@ fn requests(wants: &[Want]) -> (String, Vec<String>) {
                 fields.extend([
                     ("Request", number(&offer.id)),
                     ("Act", "launch".to_string()),
-                    ("Host", "deneb".to_string()),
+                    ("Host", "host-a".to_string()),
                     ("Work", work),
                     ("Repo", launch.repository.clone()),
                     ("Kind", launch.kind.clone()),
@@ -75,7 +75,7 @@ fn requests(wants: &[Want]) -> (String, Vec<String>) {
                 fields.extend([
                     ("Request", number(&act.id)),
                     ("Act", name.to_string()),
-                    ("Host", "deneb".to_string()),
+                    ("Host", "host-a".to_string()),
                     ("Work", format!("unit/{}", works[&act.launch])),
                     ("Of", number(&act.launch)),
                 ]);
@@ -84,7 +84,7 @@ fn requests(wants: &[Want]) -> (String, Vec<String>) {
             other => panic!("no shared case gives {other:?}"),
         }
         fields.push(("Date", "2026-11-01T09:00:00Z".to_string()));
-        fields.push(("By", "crew@deneb".to_string()));
+        fields.push(("By", "crew@host-a".to_string()));
         let fields: Vec<(&str, &str)> = fields.iter().map(|(f, v)| (*f, v.as_str())).collect();
         records.push(rec(&fields));
     }
@@ -96,7 +96,7 @@ impl Harness for Crews {
     type Seen = String;
 
     fn id(&self, n: u32) -> Id {
-        Id::new(format!("madswan/{n}"))
+        Id::new(format!("home/{n}"))
     }
 
     fn plane(&mut self, wants: &[Want]) -> Crew {
@@ -108,7 +108,7 @@ impl Harness for Crews {
             ("roles.rec", ROLES),
             ("plan.rec", &plan(&units, &[])),
         ]);
-        let (crew, _) = state.crew("deneb");
+        let (crew, _) = state.crew("host-a");
         self.states.push(state);
         crew
     }

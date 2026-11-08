@@ -8,8 +8,8 @@ Where `code_workspaces` is true, each owner of a kept repository SHALL have one 
 
 #### Scenario: The first workspaces
 
-- **WHEN** a pass keeps `agentplot/flume`, `afterthought/crew` and `agentplot/sluice`, in that order, with `code_workspaces = true` and the repository root `/h/Code`, and no workspace is there
-- **THEN** `/h/Code/agentplot/agentplot.code-workspace` holds `{"folders": [{"path": "flume"}, {"path": "sluice"}], "settings": {}}`, and `/h/Code/afterthought/afterthought.code-workspace` holds `{"folders": [{"path": "crew"}], "settings": {}}`
+- **WHEN** a pass keeps `agentplot/flume`, `example/crew` and `agentplot/sluice`, in that order, with `code_workspaces = true` and the repository root `/h/Code`, and no workspace is there
+- **THEN** `/h/Code/agentplot/agentplot.code-workspace` holds `{"folders": [{"path": "flume"}, {"path": "sluice"}], "settings": {}}`, and `/h/Code/example/example.code-workspace` holds `{"folders": [{"path": "crew"}], "settings": {}}`
 
 #### Scenario: No workspace asked for
 

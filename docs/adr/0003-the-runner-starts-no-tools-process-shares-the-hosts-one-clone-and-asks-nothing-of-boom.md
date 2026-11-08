@@ -16,7 +16,7 @@ Revised 2026-11-06, still proposed, for sluice record 0093 (accepted by the user
 Revised 2026-11-06, still proposed, on the user's word that day: "I don't know what tool or how Boom should be coupled to Flume and/or Boom Drive". The record now decides only that the runner asks nothing of Boom; which tool asks Boom for a launch's claims, and how Boom is coupled to Flume and Boomdrive, is left to Boom's own design.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on what the runner owns; flume's statement, clauses 1, 70 and 119 to 120, and flume record 0020; sluice's statement, clauses 104 to 106, and sluice record 0026; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its assumption 7; rules core.1 and core.5.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on what the runner owns; flume's statement, clauses 1, 70 and 119 to 120, and flume record 0020; sluice's statement, clauses 104 to 106, and sluice record 0026; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its assumption 7; rules core.1 and core.5.
 
 ## Context and problem statement
 
@@ -54,7 +54,7 @@ Option 1 each time, the user's choice.
 
 ### Consequences
 
-- crew's main-level checkouts come from the runner's clone rather than from swancloud's spaces, and swancloud's own containers retire. Both are asks of theirs.
+- crew's main-level checkouts come from the runner's clone rather than from afterthought/swancloud's, and afterthought/swancloud's own clones retire. Both are asks of theirs.
 - sluice's statement, which still lists Boomdrive among its drivers, is read as Flume being the driver of a submission.
 - How Boom is coupled to Flume and Boomdrive, and which of them asks Boom for a launch's claims, is decided with Boom's own design. Until then a launch carries what its control plane wrote.
 - The spike's assumption 7 is read with this record: the runner composes no brief.

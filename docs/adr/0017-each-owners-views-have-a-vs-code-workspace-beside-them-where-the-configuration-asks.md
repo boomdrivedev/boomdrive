@@ -16,11 +16,11 @@ Sources: the user's words of 2026-11-04 and 2026-11-05 in the brief of the chang
 
 ## Context and problem statement
 
-The user browses code in VS Code through one workspace file per context, which lists that context's repositories. The hosts' own configuration keeps those files today, under swancloud's herdr.14: beside each space's views is a workspace listing exactly the space's repositories. Its `folders` are set at every deploy, and everything else in it is kept, since VS Code writes the user's settings into the file. VS Code titles a workspace's window `— <name> (Workspace)`. A window manager that files windows by their title puts each context's window in a row of its own.
+The user browses code in VS Code through one workspace file per context, which lists that context's repositories. The hosts' own configuration keeps those files today (afterthought/swancloud's herdr.14 and its record 0031). VS Code writes the user's settings into the file, and titles a workspace's window `— <name> (Workspace)`. A window manager that files windows by their title puts each context's window in a row of its own.
 
 The runner keeps each repository's view, at `<repository_root>/<owner>/<name>` (the views spec), from the repositories its configuration names. A workspace kept anywhere else is a second list beside the runner's, which can name a repository the host no longer keeps or miss one it does. Under a hosted control plane the hosts' configuration does not know the list at all: the managed level holds it (record 0009).
 
-The user, 2026-11-04: "I don't know if we should build it as a feature into Boom Drive, where we automatically generate VS Code workspaces that point to your view. Maybe it's an option that goes in." On 2026-11-05 they asked for it to be rushed, and later that day, in madswan-design's pane: "We need to turn it on and then deprecate the views. The code views are going away. We have the Boom Drive one now that replaces it".
+The user, 2026-11-04: "I don't know if we should build it as a feature into Boom Drive, where we automatically generate VS Code workspaces that point to your view. Maybe it's an option that goes in." On 2026-11-05 they asked for it to be rushed, and later that day, in the design agent's pane: "We need to turn it on and then deprecate the views. The code views are going away. We have the Boom Drive one now that replaces it".
 
 ## Considered options
 
@@ -45,7 +45,7 @@ For a file already there: set its `folders` and keep the rest, or write it whole
 Option 1, with A, the configuration's list, and the rest of the file kept.
 
 - **An option, off unless asked for.** `code_workspaces = true` in the configuration asks for them, so a host with no editor, a server or a box, gets none. The key names VS Code's `.code-workspace` file as VS Code means it. A bare `workspace` is herdr's word, which Flume uses for its own panes (core.12).
-- **One per owner, beside the owner's views.** The owner's folder holds the owner's views as a space's folder holds its views under herdr.14. So the workspace sits there under the owner's name, and each of its folders is a view's name. VS Code titles its window `— <owner> (Workspace)`, by which a window manager files it.
+- **One per owner, beside the owner's views.** The owner's folder holds the owner's views, so the workspace sits there under the owner's name, and each of its folders is a view's name. VS Code titles its window `— <owner> (Workspace)`, by which a window manager files it.
 - **The configuration's list.** A workspace lists exactly its owner's kept repositories, in the configuration's order, whether or not a view stands this pass. The workspace and the views follow one list, so the two never name different repositories (core.5), and a fetch that fails never takes a folder out of the window.
 - **The rest of the file is kept.** At every pass the runner sets `folders`, keeps every other member as it was, in its order, and writes the file only when its folders differ. A file it cannot read as a JSON object, a person's comment in it among the reasons, is left as it is and named at every pass, as is a link or a folder at its path.
 - **It goes with its owner.** When the runner removes a view and the owner's folder then holds only a workspace that no kept owner has there, it removes the workspace and the folder, as it removes an empty owner folder. Where the option is off, the runner never touches a workspace.

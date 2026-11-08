@@ -12,11 +12,11 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; agentplot/boomdrive-cloud's records 0018, 0023 and 0040 and its rules core.13, core.14, core.21, core.24, core.33, core.43 and core.96, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F10; the design of `the-runner-carries-crews-work-into-flume`, Decision 20; rule core.4.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; agentplot/boomdrive-cloud's records 0018, 0023 and 0040 and its rules core.13, core.14, core.21, core.24, core.33, core.43 and core.96, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F10; the design of `the-runner-carries-crews-work-into-flume`, Decision 20; rule core.4.
 
 ## Context and problem statement
 
-The cloud enrolls a host with a one-time token, issued from its console for an install command a person runs. The host's first connection raises its rail item. The runner is a principal of its own, never acting with a member's credential, and a host's signing identity is recorded in the account's chain. A host belongs to exactly one Account and has one Host object.
+How the cloud enrolls a host, and what a host is to it, are its records 0018, 0023 and 0040 and its rules core.13, core.14, core.21, core.24, core.33, core.43 and core.96. What this record needs of them: enrollment begins with a one-time token, the runner acts as no member, and a host belongs to one account.
 
 On the runner's side, several things were open: what the host's lasting identity is, how enrollment runs, where the identity is kept, and how one machine serves two accounts, for example one person's own work and an employer's. The unbuilt hosted implementation named a `token_file`.
 

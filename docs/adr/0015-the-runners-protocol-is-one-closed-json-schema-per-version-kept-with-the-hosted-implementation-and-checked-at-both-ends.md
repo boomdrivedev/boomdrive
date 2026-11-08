@@ -16,7 +16,7 @@ Sources: agentplot/boomdrive-cloud's records 0016, 0022, 0049 and 0056 and its r
 
 ## Context and problem statement
 
-boomdrive-cloud's record 0056 puts the runner protocol's JSON Schema in this repository, one set of files per version, beside the `ControlPlane` interface whose shapes its messages carry, and has the cloud pin it by revision and check every runner message against it before any method sees it. Its rule core.36 accepts the current version and the one before, and makes a breaking change a new version. Its record 0049 gives the schema no field for the text the cloud does not keep. Its record 0016 puts a terminal's key exchange in the first version.
+boomdrive-cloud's records 0016, 0049 and 0056 and its rule core.36 ask this repository for the runner protocol's JSON Schema, in versions the cloud pins and checks a runner's messages against.
 
 This repository's rules say what the schema must serve without saying what it is. core.2 keeps the hosted protocol out of every crate but an implementation's. core.27 carries to a hosted control plane only the fields the protocol's copy of a tool's status names. core.26 keeps each partition's work to its own connection. core.30 lets a terminal leave the host only encrypted to the browser. No rule says where the schema lives in the tree, how tight it is, who checks it, or when a version stops changing.
 
@@ -31,7 +31,7 @@ For where it lives:
 
 For how tight it is: every object closed, so a message holds only what its version names; or objects open, so a newer sender's extra fields pass an older receiver.
 
-For who checks it: the cloud's Worker alone, on what the runner sends; or both ends, each on what it is sent.
+For who checks it: the cloud alone, on what the runner sends; or both ends, each on what it is sent.
 
 For the runner's types: serde types written by hand and tested against the schema with the `jsonschema` crate (F50); types generated from the schema by typify (F50); or the schema generated from the types by schemars.
 
@@ -41,7 +41,7 @@ Option 1, closed, both ends, and serde types tested against the schema. core.42 
 
 - **In the hosted implementation's crate.** Version 1 is `crates/boomdrive-hosted/protocol/v1/`, beside the interface's crate, whose types the messages carry. The crate's tests are the schema's checks. Option 2 would put the hosted protocol in the interface's crate, and option 3 in a crate that is no implementation, each against core.2. Option 4 leaves the files to no crate's checks (core.7).
 - **Closed.** Every object the schema names takes only the fields it names, at every depth, so the cloud's check refuses a field the version does not name. That is how core.27's allowed list and the cloud's core.108 hold at the check, not only in the runner's code. Open objects would let a leaked field pass. The price is that any added field is a new version.
-- **Both ends.** The cloud's Worker checks what a runner sends (cloud core.36). The runner checks what its control plane sends against the same version before reading it into the interface's types, and refuses a failing message whole, as the Worker does.
+- **Both ends.** The cloud checks what a runner sends (cloud core.36). The runner checks what its control plane sends against the same version before reading it into the interface's types, and refuses a failing message whole, as the cloud does.
 - **Fixed once spoken.** A version may change until a release of the runner speaks it to a control plane. From that release it never changes, and its directory is never removed, so the cloud's pin can hold the current version and the one before. A change after that is a new version beside it.
 - **Serde types tested against the schema.** The runner's message types are serde types in `boomdrive-hosted`, reusing the interface's own wherever the shape is the same. Tests check every value they write, and every example the version holds, against the schema with the `jsonschema` crate. typify would generate a second model of the interface's shapes under the schema's names (core.12). schemars would make every edit of a type an unreviewed edit of the public contract.
 
@@ -50,4 +50,4 @@ Option 1, closed, both ends, and serde types tested against the schema. core.42 
 - `crates/boomdrive-hosted` exists before it implements `ControlPlane`, and `type = "hosted"` stays refused until the change that builds it (the control-plane-interface spec).
 - Health, forge tokens, enrollment and the proof of the host's key, the runner's own commands and a stray place's drop are not in version 1 as this change writes it. Each change that builds one adds its messages to version 1 while no release speaks it, or else makes version 2.
 - A Flume or sluice field the copies do not name never reaches the cloud, whatever the tool adds. A field the cloud then wants is a new version.
-- The cloud's change 1.6 pins the version's directory and builds its validators from those files alone.
+- The cloud pins the version's directory (its change 1.6).

@@ -32,7 +32,7 @@ fn argv(words: &[&str]) -> Vec<String> {
 #[test]
 fn repositories_kept() {
     let bench = Bench::new();
-    bench.clones.not_yet("afterthought/crew");
+    bench.clones.not_yet("example/crew");
     let mut plane = Fake::new();
     bench.pass(&mut plane);
     assert_eq!(plane.hellos()[0].repositories, [KEPT]);
@@ -43,7 +43,7 @@ fn repositories_kept() {
 fn a_tool_missing() {
     let bench = Bench::new();
     bench.tools.missing("herdr");
-    let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/1", "a"))]);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a"))]);
     bench.pass(&mut plane);
     let tools = &plane.hellos()[0].tool_versions;
     assert!(
@@ -55,7 +55,7 @@ fn a_tool_missing() {
         tools.keys().collect::<Vec<_>>(),
         ["flume", "git", "herdr", "sluice"]
     );
-    assert_eq!(outcome(&bench, "madswan/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
 }
 
 /// The work-into-flume spec's "Streams as Flume printed them".
@@ -64,7 +64,7 @@ fn streams_as_flume_printed_them() {
     let bench = Bench::new();
     let streams = r#"[ {"name":"wide", "priority":5,"running":2,"bound":3,"room":1,"queue":[]},{"name":"work","priority":0,"running":1,"bound":1,"room":0,"queue":[]} ]"#;
     let listing = format!(
-        r#"{{"status":{{"places":[],"host":{{"running": 3,"bound":null,"room": null,"queue":[],"streams":{streams},"pools":[{{"name":"madswan","accounts":["madswan-1"]}}],"addresses":[],"bases":[],"terminal_kept":false}}}}}}"#
+        r#"{{"status":{{"places":[],"host":{{"running": 3,"bound":null,"room": null,"queue":[],"streams":{streams},"pools":[{{"name":"pool-a","accounts":["pool-a-1"]}}],"addresses":[],"bases":[],"terminal_kept":false}}}}}}"#
     ) + "\n";
     bench.flume.listing(Ok(Reply::Given(listing)));
     let mut plane = Fake::new();
@@ -78,18 +78,18 @@ fn streams_as_flume_printed_them() {
         ("3", "null", "null", streams)
     );
     let text = serde_json::to_string(hello).unwrap();
-    assert!(!text.contains("madswan"), "{text}");
+    assert!(!text.contains("pool-a"), "{text}");
 }
 
 /// The work-into-flume spec's "A repository not kept".
 #[test]
 fn a_repository_not_kept() {
     let bench = Bench::new();
-    let mut sluice = offer("madswan/1", "a");
+    let mut sluice = offer("home/1", "a");
     sluice.launch.repository = "agentplot/sluice".into();
     let mut plane = Fake::holding(vec![Want::Offer(sluice)]);
     let (_, lines) = bench.pass(&mut plane);
-    let answer = &bench.report().launches[&id("madswan/1")].answer;
+    let answer = &bench.report().launches[&id("home/1")].answer;
     assert_eq!(answer.outcome, Outcome::Refused);
     assert_eq!(
         answer.words.as_deref(),
@@ -98,7 +98,7 @@ fn a_repository_not_kept() {
     assert_eq!(bench.flume.commands(), []);
     assert_eq!(
         lines,
-        ["madswan/1: refused: this host's configuration does not keep agentplot/sluice"]
+        ["home/1: refused: this host's configuration does not keep agentplot/sluice"]
     );
 }
 
@@ -106,18 +106,18 @@ fn a_repository_not_kept() {
 #[test]
 fn a_clone_not_yet_made() {
     let bench = Bench::new();
-    bench.clones.not_yet("afterthought/crew");
-    let mut crew = offer("madswan/1", "a");
-    crew.launch.repository = "afterthought/crew".into();
+    bench.clones.not_yet("example/crew");
+    let mut crew = offer("home/1", "a");
+    crew.launch.repository = "example/crew".into();
     let mut plane = Fake::holding(vec![Want::Offer(crew)]);
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), None);
+    assert_eq!(outcome(&bench, "home/1"), None);
     assert_eq!(bench.flume.commands(), []);
     assert_eq!(lines, [] as [String; 0]);
-    let container = bench.container("afterthought/crew");
-    bench.clones.ready("afterthought/crew", &container);
+    let container = bench.container("example/crew");
+    bench.clones.ready("example/crew", &container);
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
     let launches = bench.flume.launches();
     assert_eq!(launches.len(), 1);
     assert_eq!(launches[0].container_dir, container);
@@ -128,23 +128,21 @@ fn a_clone_not_yet_made() {
 #[test]
 fn a_units_launch() {
     let bench = Bench::new();
-    let container = bench.container("afterthought/crew");
-    bench.clones.ready("afterthought/crew", &container);
+    let container = bench.container("example/crew");
+    bench.clones.ready("example/crew", &container);
     let stub = Stub::new();
     stub.answers("launch", "launch.json", 0);
-    let mut unit = offer("madswan/12", "a");
-    unit.launch.repository = "afterthought/crew".into();
+    let mut unit = offer("home/12", "a");
+    unit.launch.repository = "example/crew".into();
     unit.launch.base = Some("bolt/x".into());
-    unit.launch.stream = Some("madswan".into());
+    unit.launch.stream = Some("home".into());
     unit.launch.priority = Some(4);
-    unit.launch.intent = Some("madswan/x".into());
-    unit.launch.recipients = vec!["madswan/planner".into()];
+    unit.launch.intent = Some("home/x".into());
+    unit.launch.recipients = vec!["home/planner".into()];
     unit.launch.brief = Some("Parse the input.".into());
     let mut plane = Fake::holding(vec![Want::Offer(unit)]);
     bench.pass_over(&Cli::new(stub.program()), &mut plane);
-    let brief_file = bench
-        .control_dir()
-        .join("briefs/boomdrive%3Amadswan%2F12.md");
+    let brief_file = bench.control_dir().join("briefs/boomdrive%3Ahome%2F12.md");
     let launches: Vec<_> = stub
         .calls()
         .into_iter()
@@ -164,17 +162,17 @@ fn a_units_launch() {
             "--base",
             "bolt/x",
             "--stream",
-            "madswan",
+            "home",
             "--priority",
             "4",
             "--intent",
-            "madswan/x",
+            "home/x",
             "--recipient",
-            "madswan/planner",
+            "home/planner",
             "--brief-file",
             brief_file.to_str().unwrap(),
             "--mark",
-            "boomdrive:madswan/12",
+            "boomdrive:home/12",
         ])]
     );
     let n = stub.call_of("launch").unwrap();
@@ -191,7 +189,7 @@ fn a_launch_naming_no_stream_priority_or_intent() {
     let bench = Bench::new();
     let stub = Stub::new();
     stub.answers("launch", "launch.json", 0);
-    let mut fix = offer("madswan/13", "b");
+    let mut fix = offer("home/13", "b");
     fix.launch.kind = "fix".into();
     let mut plane = Fake::holding(vec![Want::Offer(fix)]);
     bench.pass_over(&Cli::new(stub.program()), &mut plane);
@@ -219,14 +217,12 @@ fn a_launch_naming_no_stream_priority_or_intent() {
 #[test]
 fn a_kind_named_by_its_identity() {
     let bench = Bench::new();
-    let container = bench.container("afterthought/madswan-blueprints");
-    bench
-        .clones
-        .ready("afterthought/madswan-blueprints", &container);
+    let container = bench.container("example/home-blueprints");
+    bench.clones.ready("example/home-blueprints", &container);
     let stub = Stub::new();
     stub.answers("launch", "launch.json", 0);
-    let mut planner = offer("madswan/planner/1", "madswan");
-    planner.launch.repository = "afterthought/madswan-blueprints".into();
+    let mut planner = offer("home/planner/1", "home");
+    planner.launch.repository = "example/home-blueprints".into();
     planner.launch.kind = "crew/crew-planner".into();
     planner.launch.agent_settings = vec![AgentSetting {
         field: "model".into(),
@@ -248,7 +244,7 @@ fn a_launchs_environment_and_brief() {
     let bench = Bench::new();
     let stub = Stub::new();
     stub.answers("launch", "launch.json", 0);
-    let mut briefed = offer("madswan/14", "c");
+    let mut briefed = offer("home/14", "c");
     briefed.launch.brief = Some("Read the words.\n\nAll of them.".into());
     let mut plane = Fake::holding(vec![Want::Offer(briefed)]);
     std::env::set_var("FLUME_RECIPIENT", "someone/else");
@@ -279,19 +275,19 @@ fn flume_refuses() {
     let bench = Bench::new();
     let stub = Stub::new();
     stub.answers("launch", "launch-refused.json", 1);
-    let mut nowhere = offer("madswan/15", "nowhere");
+    let mut nowhere = offer("home/15", "nowhere");
     nowhere.launch.stream = Some("nosuch".into());
     let mut plane = Fake::holding(vec![Want::Offer(nowhere)]);
     let (_, lines) = bench.pass_over(&Cli::new(stub.program()), &mut plane);
     let reason =
         "the stream nosuch the launch names is not declared by the host's configuration (143)";
-    let answer = &bench.report().launches[&id("madswan/15")].answer;
+    let answer = &bench.report().launches[&id("home/15")].answer;
     assert_eq!(
         (answer.outcome, answer.words.as_deref(), &answer.place_dir),
         (Outcome::Refused, Some(reason), &None)
     );
     assert!(fixture("launch-refused.json").contains(reason));
-    assert_eq!(lines, [format!("madswan/15: refused by Flume: {reason}")]);
+    assert_eq!(lines, [format!("home/15: refused by Flume: {reason}")]);
 }
 
 /// The work-into-flume spec's "Flume is not there".
@@ -299,11 +295,11 @@ fn flume_refuses() {
 fn flume_is_not_there() {
     let bench = Bench::new();
     let stub = Stub::absent();
-    let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/16", "d"))]);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/16", "d"))]);
     let flume = Cli::new(stub.program());
     let (passed, lines) = bench.pass_over(&flume, &mut plane);
     assert!(passed.reported);
-    assert_eq!(outcome(&bench, "madswan/16"), None);
+    assert_eq!(outcome(&bench, "home/16"), None);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
         lines[0].starts_with("boomdrive: Flume's status could not be read: flume could not run:"),
@@ -315,7 +311,7 @@ fn flume_is_not_there() {
     stub.answers("launch", "launch.json", 0);
     let (passed, _) = bench.pass_over(&flume, &mut plane);
     assert!(passed.reported);
-    assert_eq!(outcome(&bench, "madswan/16"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/16"), Some(Outcome::Launched));
 }
 
 /// A launch Flume could not be run for is kept unanswered, named, and
@@ -327,13 +323,10 @@ fn a_launch_flume_could_not_run() {
         "e",
         Err(boomdrive::flume::Unrun("flume was ended: signal: 9".into())),
     );
-    let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/17", "e"))]);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/17", "e"))]);
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
-    assert_eq!(
-        lines,
-        ["madswan/17: not launched: flume was ended: signal: 9"]
-    );
+    assert_eq!(lines, ["home/17: not launched: flume was ended: signal: 9"]);
     assert!(boomdrive::report::read(&bench.report_file())
         .unwrap()
         .is_none());
@@ -343,7 +336,7 @@ fn a_launch_flume_could_not_run() {
 #[test]
 fn a_pull_that_cannot_be_read() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/1", "a"))]);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a"))]);
     plane.refuse_pulls("no network");
     let (passed, lines) = bench.pass(&mut plane);
     assert!(!passed.reported);

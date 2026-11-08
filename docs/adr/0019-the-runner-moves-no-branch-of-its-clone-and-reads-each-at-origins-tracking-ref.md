@@ -62,5 +62,5 @@ Option 1 costs one reader: Flume, cutting a place from a base no merge queue lan
 - The clones spec's requirement that the clone's own default branch follows origin's gives way to one that it is never moved. Its purpose, and the running spec's landing, no longer say the default branch is kept. That is the OpenSpec change `the-runner-reads-origin-not-sluices-copy`.
 - A pass says no `<default> moved to origin/<default>` line and no `<default> left` line again. A HEAD that cannot be settled is said as `HEAD not settled on <default>: <git's words>`.
 - A clone's own default branch, levelled until this release, stays where the last levelling put it. Where sluice keeps the branch, sluice levels it at the next landing it reads. The runner removes none.
-- herdr.13 in afterthought/swancloud says the views timer moves a host's default branch after its fetch. The runner no longer carries that part. Amending herdr.13 is swancloud's, asked through the orchestrator.
+- herdr.13 in afterthought/swancloud says the views timer moves a host's default branch after its fetch. The runner no longer carries that part. Amending herdr.13 is afterthought/swancloud's, asked through the orchestrator.
 - Flume is asked to read a base no merge queue lands at `origin/<base>`, as above.

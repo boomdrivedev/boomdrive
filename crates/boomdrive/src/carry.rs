@@ -1358,14 +1358,14 @@ mod tests {
     fn a_repository_is_kept_as_the_configuration_and_the_clones_have_it() {
         let flume = Address::parse("agentplot/flume").unwrap();
         let clones = Configured::new(
-            &config(&["afterthought/crew", "agentplot/flume"]),
+            &config(&["example/crew", "agentplot/flume"]),
             vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
         );
         assert_eq!(
             clones.keeping("Agentplot/Flume"),
             Keeping::Ready(Path::new("/d/repositories/agentplot/flume").into())
         );
-        assert_eq!(clones.keeping("afterthought/crew"), Keeping::NotYet);
+        assert_eq!(clones.keeping("example/crew"), Keeping::NotYet);
         assert_eq!(clones.keeping("agentplot/sluice"), Keeping::NotNamed);
         assert_eq!(clones.keeping("not an address"), Keeping::NotNamed);
         assert_eq!(clones.made(), ["agentplot/flume"]);

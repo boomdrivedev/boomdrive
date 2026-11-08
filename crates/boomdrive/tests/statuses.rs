@@ -291,7 +291,7 @@ fn the_users_own_place() {
         .stand(json!({ "place": "/places/mine", "phase": "live", "mark": null }));
     bench
         .flume
-        .stand(json!({ "place": "/places/theirs", "phase": "live", "mark": "boomdrive:vega/3" }));
+        .stand(json!({ "place": "/places/theirs", "phase": "live", "mark": "boomdrive:work/3" }));
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
     bench.pass(&mut plane);
     bench.flume.land("/places/mine");
@@ -315,10 +315,10 @@ fn the_users_own_place() {
 #[test]
 fn a_launch_said() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/12", "a"))]);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/12", "a"))]);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines.len(), 1, "{lines:?}");
-    assert!(lines[0].starts_with("madswan/12: "));
+    assert!(lines[0].starts_with("home/12: "));
     assert!(lines[0].contains(&place_of("a")));
 }
 

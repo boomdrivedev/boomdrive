@@ -229,7 +229,7 @@ fn order<'a>(fields: &mut Vec<(&'a str, &'a str)>, more: &[(&'a str, &'a str)]) 
         fields.push(("Date", "2026-11-01T09:00:00Z"));
     }
     if !fields.iter().any(|(name, _)| *name == "By") {
-        fields.push(("By", "crew@deneb"));
+        fields.push(("By", "crew@host-a"));
     }
     let rank = |name: &str| {
         FIELDS
@@ -249,7 +249,7 @@ pub fn plan(units: &[&str], bolts: &[&str]) -> String {
         .map(|bolt| {
             rec(&[
                 ("Bolt", bolt),
-                ("Repo", "afterthought/crew"),
+                ("Repo", "example/crew"),
                 ("Goal", &format!("{bolt}'s goal")),
             ])
         })
@@ -259,7 +259,7 @@ pub fn plan(units: &[&str], bolts: &[&str]) -> String {
         .map(|name| {
             rec(&[
                 ("Unit", name),
-                ("Repo", "afterthought/crew"),
+                ("Repo", "example/crew"),
                 ("Intent", &format!("{name}'s intent")),
             ])
         })
@@ -268,7 +268,7 @@ pub fn plan(units: &[&str], bolts: &[&str]) -> String {
     format!("{}\n{}", file(&head, &bolts), file(unit, &units))
 }
 
-/// The scratch state repository `afterthought/madswan-state`, removed
+/// The scratch state repository `example/home-state`, removed
 /// when dropped.
 pub struct State {
     _dir: TempDir,
@@ -300,7 +300,7 @@ impl State {
             root,
             forge,
         };
-        state.make("afterthought/madswan-state");
+        state.make("example/home-state");
         state
     }
 
@@ -312,9 +312,9 @@ impl State {
         bare
     }
 
-    /// The bare repository `afterthought/madswan-state`.
+    /// The bare repository `example/home-state`.
     pub fn bare(&self) -> PathBuf {
-        self.forge.join("afterthought/madswan-state.git")
+        self.forge.join("example/home-state.git")
     }
 
     /// The forge's base address, as crew's implementation is handed it.
@@ -347,9 +347,9 @@ impl State {
         (crew, said)
     }
 
-    /// crew's implementation on `host`, serving `madswan`.
+    /// crew's implementation on `host`, serving `home`.
     pub fn crew(&self, host: &str) -> (Crew, Said) {
-        self.crew_serving(host, &[("madswan", "afterthought/madswan-state")])
+        self.crew_serving(host, &[("home", "example/home-state")])
     }
 
     /// Commits `files` onto `branch` of the state repository as one
@@ -359,9 +359,9 @@ impl State {
         commit_to(&self.bare(), branch, files)
     }
 
-    /// `madswan/main` holding `files`.
+    /// `home/main` holding `files`.
     pub fn main(&self, files: &[(&str, &str)]) -> String {
-        self.commit("madswan/main", files)
+        self.commit("home/main", files)
     }
 
     /// The commit `branch` stands at, none where it does not exist.
@@ -409,9 +409,9 @@ pub fn git(bare: &Path, args: &[&str], input: Option<&str>) -> String {
         .arg(bare)
         .args(args)
         .env("GIT_AUTHOR_NAME", "crew")
-        .env("GIT_AUTHOR_EMAIL", "crew@deneb.invalid")
+        .env("GIT_AUTHOR_EMAIL", "crew@host-a.invalid")
         .env("GIT_COMMITTER_NAME", "crew")
-        .env("GIT_COMMITTER_EMAIL", "crew@deneb.invalid")
+        .env("GIT_COMMITTER_EMAIL", "crew@host-a.invalid")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -558,21 +558,21 @@ pub fn status_delivered() -> String {
         .to_string()
 }
 
-/// `role`'s record of partition `madswan` on `host`, as crew's
+/// `role`'s record of partition `home` on `host`, as crew's
 /// `asks.role_record` writes it.
 pub fn role(role: &str, host: &str) -> String {
     rec(&[
         ("Role", role),
-        ("Address", &format!("madswan/{role}")),
-        ("Run", &format!("madswan-{role}")),
+        ("Address", &format!("home/{role}")),
+        ("Run", &format!("home-{role}")),
         ("Host", host),
-        ("Repository", "afterthought/blueprints"),
+        ("Repository", "example/blueprints"),
         ("Kinds", "crew"),
         ("Kind", &format!("crew-{role}")),
-        ("Name", "madswan"),
-        ("Stream", "madswan-main"),
+        ("Name", "home"),
+        ("Stream", "home-main"),
         ("Priority", "0"),
-        ("Intent", &format!("madswan-{role}")),
+        ("Intent", &format!("home-{role}")),
         ("Model", "claude-fable-5-1"),
         ("Effort", "xhigh"),
     ])

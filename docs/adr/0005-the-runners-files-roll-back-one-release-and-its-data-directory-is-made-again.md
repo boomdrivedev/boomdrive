@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on the state directory; the clones, running and work-into-flume specs; the design of `the-runner-carries-crews-work-into-flume`, Decisions 11 and 17, and its verify report's observations; agentplot/boomdrive-cloud's rule core.67, cited by id, as the model; rules core.10 and core.11.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on the state directory; the clones, running and work-into-flume specs; the design of `the-runner-carries-crews-work-into-flume`, Decisions 11 and 17, and its verify report's observations; agentplot/boomdrive-cloud's rule core.67, cited by id, as the model; rules core.10 and core.11.
 
 ## Context and problem statement
 
