@@ -52,6 +52,19 @@ let
   saysGone = words: lib.hasInfix words (toString (t.failures gone));
   crew = t.nixosSystem { services.boomdrive.settings = settings.crew; };
   hosted = t.nixosSystem { services.boomdrive.settings = settings.hosted; };
+  # The runner's settings `given`, beside crew's module turned on with the
+  # host `host-a` and crew's settings `teams`.
+  crewWith =
+    given: teams:
+    t.nixosSystem {
+      services.boomdrive.settings = given;
+      services.crew = {
+        enable = true;
+        host = "host-a";
+        settings = teams;
+      };
+    };
+  fleet = crewWith settings.crewUnwritten settings.crewFleet;
   oldSystemd = t.nixosSystem (
     { pkgs, ... }:
     {
@@ -182,6 +195,12 @@ in
   "A host under crew on NixOS" =
     t.expect (t.failures crew == [ ]) "crew's settings fail: ${toString (t.failures crew)}"
     ++ t.expect (runs crew (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
+
+  "crew's partitions on this host on NixOS" =
+    t.expect (
+      t.failures fleet == [ ]
+    ) "crew's partitions on this host fail: ${toString (t.failures fleet)}"
+    ++ t.expect (runs fleet (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
 
   "The user activation on NixOS" =
     t.expect (lib.hasInfix keeps activation) "the user activation is not `${keeps}`: ${activation}";

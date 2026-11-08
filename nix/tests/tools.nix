@@ -143,14 +143,16 @@ let
       !failures.success || failures.value == [ ]
     ) "a ${platform} system that imports default and boomdrive fails: ${toString failures.value}";
 
-  # crew turned on, with its host and one partition.
-  crewOn = {
+  # crew turned on, with its host `host-a` and crew's settings `teams`.
+  crewOf = teams: {
     services.crew = {
       enable = true;
       host = "host-a";
-      settings = settings.crewModule;
+      settings = teams;
     };
   };
+  # crew turned on, with its host and one partition.
+  crewOn = crewOf settings.crewModule;
 
   profileOf = evaluated: map (p: p.outPath) evaluated.config.environment.systemPackages;
 
@@ -299,6 +301,39 @@ let
   darwinRest = linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText);
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
+  # The runner's crew table, under crew with no table written, for crew's
+  # partitions `garden` and `home` on host-a with `away` on host-b between
+  # them (design Decision 3).
+  crewOrder =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (crewOf settings.crewOrder) ];
+        services.boomdrive.settings.control_plane.type = "crew";
+      };
+      table = evaluated.config.services.boomdrive.settings.control_plane.crew;
+      ordered = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "garden";
+            state_repository = "example/garden";
+          }
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system of crew's order fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      table == ordered
+    ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
+
   nixosRunner = userScripts (t.nixosSystem crewOn);
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
@@ -312,6 +347,7 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
+// onEach "crew's order" crewOrder
 // {
   "The tools' user on NixOS" =
     t.expect (

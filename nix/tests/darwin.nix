@@ -101,6 +101,19 @@ let
       "the agent's PATH does not name ${entry} before /run/current-system/sw/bin: ${agent.EnvironmentVariables.PATH}";
 
   crew = t.darwinSystem { services.boomdrive.settings = settings.crew; };
+  # The runner's settings `given`, beside crew's module turned on with the
+  # host `host-a` and crew's settings `teams`.
+  crewWith =
+    given: teams:
+    t.darwinSystem {
+      services.boomdrive.settings = given;
+      services.crew = {
+        enable = true;
+        host = "host-a";
+        settings = teams;
+      };
+    };
+  fleet = crewWith settings.crewUnwritten settings.crewFleet;
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
@@ -220,6 +233,12 @@ in
   "A host under crew on nix-darwin" =
     t.expect (t.failures crew == [ ]) "crew's settings fail: ${toString (t.failures crew)}"
     ++ t.expect (writes crew (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
+
+  "crew's partitions on this host on nix-darwin" =
+    t.expect (
+      t.failures fleet == [ ]
+    ) "crew's partitions on this host fail: ${toString (t.failures fleet)}"
+    ++ t.expect (writes fleet (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
 
   "The activation links the file on nix-darwin" =
     t.expect (lib.hasInfix link activation) "the activation runs no `${link}`: ${activation}";

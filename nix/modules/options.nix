@@ -6,7 +6,11 @@
 # (RFC 42). Its `accounts` name the host's accounts, each account's drives
 # and each drive's repositories (record 0028), every level always written;
 # an account and a drive hold no key the runner does not read, so one fails
-# evaluation, and a flat `repositories` of before fails it too. Any other
+# evaluation, and a flat `repositories` of before fails it too. Under crew,
+# with crew's module on, `control_plane.crew` is written from crew's
+# partitions whose `machine` is `services.crew.host`, a table written out
+# winning whole (record 0023; the change
+# crews-partitions-give-the-runner-its-crew-table). Any other
 # key left unset is left out of the file, so the runner's own default holds
 # and the two never drift; a top-level key the module does not declare
 # passes to the file, and the runner judges it. A key named for a
@@ -65,21 +69,48 @@ let
     };
   };
 
-  controlPlane = types.submodule {
-    freeformType = toml;
-    options = {
-      type = mkOption {
-        type = types.enum [
-          "crew"
-          "hosted"
-        ];
-        description = "The control plane's implementation the runner opens.";
+  # crew's module as the host sets it, off where the system declares none,
+  # as options.nix evaluated alone does.
+  crew = config.services.crew or { enable = false; };
+  # The runner's crew table written from crew's partitions (record 0023):
+  # crew's host, and each partition whose `machine` is that host, in crew's
+  # order, by its label and its state alone, since crew's implementation
+  # refuses any other key. None where crew's module is off.
+  written =
+    if crew.enable then
+      {
+        inherit (crew) host;
+        partitions = map (p: {
+          inherit (p) label;
+          state_repository = p.state;
+        }) (lib.filter (p: p.machine == crew.host) crew.settings.partitions);
+      }
+    else
+      null;
+
+  controlPlane = types.submodule (
+    { config, ... }:
+    {
+      freeformType = toml;
+      options = {
+        type = mkOption {
+          type = types.enum [
+            "crew"
+            "hosted"
+          ];
+          description = "The control plane's implementation the runner opens.";
+        };
+        poll_interval = unset interval "How often a control pass is made; the runner's `1m` where unset.";
+        crew = mkOption {
+          type = types.nullOr (types.attrsOf toml);
+          default = if config.type == "crew" then written else null;
+          defaultText = lib.literalMD "Under crew, with crew's module on, `host` from `services.crew.host` and each of `services.crew.settings.partitions` whose `machine` is that host, by its `label` and its `state` as `state_repository`; else `null`.";
+          description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Under crew, with crew's module on, the module writes it from crew's partitions on this host; a table written out wins, whole.";
+        };
+        hosted = unset (types.attrsOf toml) "`[control_plane.hosted]`, handed whole to the hosted implementation, whose keys are its own. It holds no token or key: a partition's key is made on the host by `boomdrive enroll`.";
       };
-      poll_interval = unset interval "How often a control pass is made; the runner's `1m` where unset.";
-      crew = unset (types.attrsOf toml) "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own.";
-      hosted = unset (types.attrsOf toml) "`[control_plane.hosted]`, handed whole to the hosted implementation, whose keys are its own. It holds no token or key: a partition's key is made on the host by `boomdrive enroll`.";
-    };
-  };
+    }
+  );
 
   # Each key of `value`, at any depth, named for a credential, by its path.
   words = [
