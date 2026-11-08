@@ -252,3 +252,112 @@ fn a_preview_waiting_at_sluices_bound() {
         "{lines:?}"
     );
 }
+
+/// A pass over `bench` against `plane` in which the stub brings `home/30`
+/// up as `preview-starting.json` names it, and lists `previews.json`.
+fn brought_up_and_listed(bench: &Bench, plane: &mut Fake) {
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    bench.sluice.answers_preview("previews", "previews.json", 0);
+    bench.pass(plane);
+}
+
+/// What is carried of `previews.json`'s row of R1's preview, `up`.
+const UP: &str = concat!(
+    r#"{"name":"preview/c2b72605d2ad","branch":"main","#,
+    r#""revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"up","#,
+    r#""made":"2026-11-08T19:54:52Z","#,
+    r#""addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#
+);
+
+/// The previews spec's "A preview comes up": the row sluice lists under
+/// the name its answer gave is carried as the preview's status, and
+/// Flume's listing is not read again for sluice's commands (record 0027).
+#[test]
+fn a_preview_comes_up() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    brought_up_and_listed(&bench, &mut plane);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.text.as_deref(), Some(STARTING));
+    let status = previewed.status.as_ref().expect("its status");
+    assert_eq!(status.text, UP);
+    assert!(status.listed);
+    let listings = bench
+        .flume
+        .calls()
+        .into_iter()
+        .filter(|call| *call == fakes::Call::Status)
+        .count();
+    assert_eq!(listings, 1, "Flume's listing read again");
+}
+
+/// The previews spec's "A preview released by a person".
+#[test]
+fn a_preview_released_by_a_person() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    brought_up_and_listed(&bench, &mut plane);
+    let carried = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    bench.sluice.answers_text("previews", "[]\n", 0);
+    bench.pass(&mut plane);
+    let status = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    assert_eq!((status.text.as_str(), status.at), (UP, carried.at));
+    assert!(!status.listed);
+    let listed = calls_of(&bench, "previews").len();
+    bench.pass(&mut plane);
+    assert_eq!(calls_of(&bench, "previews").len(), listed);
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+}
+
+/// The previews spec's "A listing that cannot be read".
+#[test]
+fn a_listing_that_cannot_be_read() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    brought_up_and_listed(&bench, &mut plane);
+    let carried = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    bench.sluice.answers_text("previews", "", 1);
+    bench.sluice.says("previews", "no repository here");
+    let (_, lines) = bench.pass(&mut plane);
+    let status = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    assert_eq!(status, carried);
+    assert!(status.listed);
+    let line =
+        "boomdrive: sluice's previews of agentplot/flume could not be read: no repository here";
+    assert!(lines.contains(&line.to_string()), "{lines:?}");
+}
+
+/// The previews spec's "One listing for two previews of one repository".
+#[test]
+fn one_listing_for_two_previews_of_one_repository() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/32", "main", "R2", false),
+    ]);
+    bench.pass(&mut plane);
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert_eq!(report.previews[&id("home/32")].outcome, Outcome::Done);
+    assert_eq!(calls_of(&bench, "previews").len(), 1);
+    let (call, dir) = &calls_of(&bench, "previews")[0];
+    assert_eq!(call, &["previews", "--json"].map(String::from).to_vec());
+    assert_eq!(dir, &kept(&bench));
+}
