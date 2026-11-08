@@ -50,6 +50,37 @@ let
       ]
       ++ given;
     };
+
+  # Flume's, sluice's and crew's own modules alone, each from its own
+  # flake, turned on with the set's packages, crew's settings for host-a,
+  # and on NixOS the user alice (design Decision 8).
+  settings = import ./settings.nix;
+  toolsOf =
+    platform: set: extra:
+    map (tool: inputs.${tool}."${platform}Modules".${tool}) [
+      "flume"
+      "sluice"
+      "crew"
+    ]
+    ++ [
+      {
+        services.flume = {
+          enable = true;
+          package = set.flume;
+        };
+        services.sluice = {
+          enable = true;
+          package = set.sluice;
+        };
+        services.crew = {
+          enable = true;
+          package = set.crew;
+          host = "host-a";
+          settings = settings.crewModule;
+        };
+      }
+      extra
+    ];
 in
 {
   inherit
@@ -106,6 +137,17 @@ in
       }
       given
     ];
+
+  # A system of darwinOf's and one of nixosOf's of the tools' own modules
+  # alone, beside the runner's systems above.
+  toolsDarwinSystem = darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin { });
+  toolsNixosSystem = nixosOf (
+    toolsOf "nixos" outputs.packages.x86_64-linux {
+      services.flume.user = "alice";
+      services.sluice.user = "alice";
+      services.crew.user = "alice";
+    }
+  );
 
   # The messages of the assertions a system fails.
   failures =

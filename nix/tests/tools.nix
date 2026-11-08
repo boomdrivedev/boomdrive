@@ -283,6 +283,26 @@ let
       !builtins.elem set.sluice.outPath (profileOf evaluated)
     ) "the ${platform} system profile with no sluice holds the set's sluice"
     ++ t.expect (lib.hasInfix fileNames.sluice (activationOf evaluated "sluice")) "the ${platform} activation with no sluice links no sluice's file";
+
+  # The runner's system with crew on beside one of the tools' own modules
+  # alone (design Decision 5): the Boomdrive module adds the runner's own
+  # link and nothing else to the tools' activations.
+  render = import ../modules/toml.nix { inherit lib; };
+  linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
+
+  darwinRunner = t.darwinSystem crewOn;
+  runnerLink = builtins.unsafeDiscardStringContext ''
+    sudo --user=alice -- /usr/bin/env HOME=/Users/alice \
+      /bin/sh ${../modules/activate.sh} link ${darwinRunner.pkgs.writeText "boomdrive-config.toml" (render darwinRunner.config.services.boomdrive.settings)} || true
+  '';
+  darwinText = darwinActivation darwinRunner;
+  darwinRest = linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText);
+  darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
+
+  nixosRunner = userScripts (t.nixosSystem crewOn);
+  nixosTools = userScripts t.toolsNixosSystem;
+  nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
+  textOf = scripts: tool: builtins.unsafeDiscardStringContext (scripts.${tool}.text or "");
 in
 onEach "Each tool's options are its own flake's" ownOptions
 // onEach "The tools' modules re-exported" reExported
@@ -305,4 +325,33 @@ onEach "Each tool's options are its own flake's" ownOptions
     ++ t.expect (
       sluicesUser.flume == "alice" && sluicesUser.crew == "alice"
     ) "Flume's and crew's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
+
+  "The tools' activation is their own on nix-darwin" =
+    t.expect (t.failures t.toolsDarwinSystem == [ ])
+      "the nix-darwin system of the tools' own modules fails: ${toString (t.failures t.toolsDarwinSystem)}"
+    ++ t.expect (lib.hasInfix runnerLink darwinText) "the nix-darwin activation runs no `${runnerLink}`: ${darwinText}"
+    ++
+      t.expect (darwinRest == darwinTools)
+        "the nix-darwin activation less the runner's link is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
+
+  "The tools' activation is their own on NixOS" =
+    t.expect (
+      t.failures t.toolsNixosSystem == [ ]
+    ) "the NixOS system of the tools' own modules fails: ${toString (t.failures t.toolsNixosSystem)}"
+    ++ t.expect (nixosRunner ? boomdrive) "the NixOS user activation has no runner's snippet"
+    ++
+      t.expect (nixosNames == builtins.attrNames nixosTools)
+        "the NixOS user activation's snippets less the runner's are ${toString nixosNames}, not the tools' own ${toString (builtins.attrNames nixosTools)}"
+    ++
+      lib.concatMap
+        (
+          tool:
+          t.expect (textOf nixosRunner tool != "" && textOf nixosRunner tool == textOf nixosTools tool)
+            "the NixOS user activation's ${tool} is ${textOf nixosRunner tool}, not the tool's own ${textOf nixosTools tool}"
+        )
+        [
+          "crew"
+          "flume"
+          "sluice"
+        ];
 }
