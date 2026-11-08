@@ -149,8 +149,63 @@ let
     ++ lib.optionals (platform == "nix-darwin") (
       t.expect (plistOf four == plistOf six) "the nix-darwin agents' plists differ with the drive's room"
     );
+
+  # Each repository's stream in Flume's settings, by its key; null where
+  # there is none.
+  reposOf =
+    evaluated:
+    let
+      inherit (flumeOf evaluated) repos;
+    in
+    if repos == null then null else lib.mapAttrs (_: repo: repo.stream) repos;
+  reposHold =
+    platform: evaluated: expected:
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (reposOf evaluated == expected)
+        "the ${platform} system's Flume repositories are ${builtins.toJSON (reposOf evaluated)}, not ${builtins.toJSON expected}";
+
+  eachAddress =
+    platform:
+    { system, ... }:
+    reposHold platform
+      (system {
+        services.boomdrive.accounts = {
+          own.drives.home.repositories.agentplot = [
+            "flume"
+            "sluice"
+          ];
+          work.drives.garden.repositories.example = [ "alpha" ];
+        };
+      })
+      {
+        "agentplot/flume" = "home";
+        "agentplot/sluice" = "home";
+        "example/alpha" = "garden";
+      };
+
+  namedOther =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system (home {
+        name = "garden";
+      });
+      inherit (flumeOf evaluated) streams;
+      names = if streams == null then [ ] else builtins.attrNames streams;
+    in
+    reposHold platform evaluated { "agentplot/flume" = "garden"; }
+    ++ t.expect (
+      names == [
+        "garden"
+      ]
+    ) "the ${platform} system's Flume streams are ${toString names}, not garden alone";
 in
 onEach "A drive's stream by default" byDefault
 // onEach "A drive that writes only what it changes" onlyChanges
 // onEach "With the runner off" runnerOff
 // onEach "A drive's stream changes nothing of the runner's" nothingOfTheRunners
+// onEach "Each address given its drive's stream" eachAddress
+// onEach "A stream named other than its drive" namedOther
