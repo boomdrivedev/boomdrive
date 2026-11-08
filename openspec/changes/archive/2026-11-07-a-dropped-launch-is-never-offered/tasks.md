@@ -33,4 +33,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. What it says, and its spec
 
 - [x] 4.1 README's section on crew's table says that crew's implementation offers and claims no launch a drop names unless the runner launched it, lets go one the runner holds unlaunched, and gives a drop to the runner that holds its launch. True when `sluice exec main -- moon run root:format` passes.
-- [ ] 4.2 The spec delta is archived into `openspec/specs/crew-control-plane/spec.md`. True when, after `devenv shell -- openspec archive a-dropped-launch-is-never-offered --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.2 The spec delta is archived into `openspec/specs/crew-control-plane/spec.md`. True when, after `devenv shell -- openspec archive a-dropped-launch-is-never-offered --yes`, `sluice exec main -- moon run root:specs` passes.
