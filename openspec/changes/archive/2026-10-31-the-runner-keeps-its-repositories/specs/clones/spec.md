@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How the runner keeps each repository its configuration names: one bare clone in its own data directory, hidden from the user. The clone is fetched over https through the host's credential helper, on the runner's timer and when it is told of a landing, and its own default branch is kept at origin's. This spec also covers how the runner lets go of a repository the configuration drops (crew record 0052 part 2; swancloud's `names.3` and `herdr.13` as they move to the runner; core.5).
+How the runner keeps each repository its configuration names: one bare clone in its own data directory, hidden from the user. The clone is fetched over https through the host's credential helper, on the runner's timer and when it is told of a landing, and its own default branch is kept at origin's. This spec also covers how the runner lets go of a repository the configuration drops (crew record 0052 part 2; afterthought/swancloud's `names.3` and `herdr.13` as they move to the runner; core.5).
 
 ## ADDED Requirements
 
