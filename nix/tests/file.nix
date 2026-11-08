@@ -4,8 +4,9 @@
 # text of its file under nix/tests/files, byte for byte, through
 # accounts.nix's `fileOf`; each drive's owners are turned into addresses; a
 # key named for a credential fails evaluation, naming its path; and a flat
-# `repositories` of before, the accounts in `settings`, or a key in a drive
-# the module does not declare, fails it too (record 0028).
+# `repositories` of before, the accounts in `settings`, a key in a drive
+# the module does not declare, or an owner and a name that make no
+# address, fails it too (record 0028).
 t:
 let
   inherit (t) lib;
@@ -75,6 +76,10 @@ let
   flat.settings.repositories = [ "agentplot/flume" ];
   stream.settings.accounts.own.drives.home.stream = "home";
 
+  # A key a drive does not hold, and an owner that makes no address.
+  pool.accounts.own.drives.home.pool = "home";
+  inner.accounts.own.drives.home.repositories."example/inner" = [ "alpha" ];
+
   # Two owners, the second's names out of their order.
   owners.accounts.own.drives.home.repositories = {
     example = [
@@ -112,7 +117,7 @@ in
         (words: t.expect (says flat words) "the failure names no ${words}: ${toString (failures flat)}")
         [
           "settings.repositories"
-          "settings.accounts.<account>.drives.<drive>.repositories"
+          "services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner>"
         ];
 
   "A stream in a drive's settings" =
@@ -124,6 +129,14 @@ in
           "settings.accounts"
           "services.boomdrive.accounts"
         ];
+
+  "A key a drive does not hold" = t.expect (
+    !(builtins.tryEval (rendered pool)).success
+  ) "accounts.own.drives.home.pool renders";
+
+  "An address of no repository" =
+    t.expect (failures inner != [ ]) "the owner example/inner evaluates"
+    ++ t.expect (says inner "example/inner/alpha") "the failure names no example/inner/alpha: ${toString (failures inner)}";
 
   "A host under crew" = rendersAs "crew";
 

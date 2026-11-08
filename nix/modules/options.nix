@@ -165,6 +165,15 @@ let
     else
       [ ];
   found = credentials "" cfg.settings;
+
+  # Each drive of the accounts, and each address of theirs that is no
+  # GitHub repository's, as the runner reads one: an attribute set's names,
+  # the owners, take no type.
+  drives = (import ./accounts.nix { inherit lib; }).drivesOf cfg.accounts;
+  addresses = lib.concatMap (drive: drive.addresses) drives;
+  noRepository = lib.filter (
+    address: builtins.match "[A-Za-z0-9-]+/[A-Za-z0-9._-]+" address == null
+  ) addresses;
 in
 {
   imports = [
@@ -218,11 +227,15 @@ in
       }
       {
         assertion = !(cfg.settings ? repositories);
-        message = "services.boomdrive.settings.repositories is the flat list of before: each repository is named under its drive, settings.accounts.<account>.drives.<drive>.repositories (record 0028).";
+        message = "services.boomdrive.settings.repositories is the flat list of before: each repository is named under its drive and its owner, services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner> (record 0028).";
       }
       {
         assertion = !(cfg.settings ? accounts);
         message = "services.boomdrive.settings.accounts is set: the accounts are named in services.boomdrive.accounts alone, each drive's repositories by owner, services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner> (record 0028).";
+      }
+      {
+        assertion = noRepository == [ ];
+        message = "services.boomdrive.accounts keeps ${lib.concatStringsSep ", " noRepository}, which is no GitHub repository's address, `<owner>/<name>`: each drive's repositories are named by their owner, repositories.<owner> = [ <names> ].";
       }
     ];
   };
