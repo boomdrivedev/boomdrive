@@ -5,7 +5,8 @@
 //! implementation can hold, as crew's requests can: ids the harness
 //! gives, in order; leases numbered 1 with no expiry; launches of
 //! [`REPOSITORY`] with no held stage and no agent setting; and acts on
-//! those launches.
+//! those launches, none a drop, since crew offers a launch a drop names
+//! only where the runner launched it.
 
 use crate::report::{Acted, Answer, At, Carried, Launched, Outcome, Report};
 use crate::want::{Act, ActSort, Id, Launch, Lease, Offer, Want};
@@ -39,7 +40,7 @@ pub fn wants_in_order<H: Harness>(harness: &mut H) {
         offer(harness, 1, "a", &[]),
         act(harness, 2, 1, ActSort::Priority(5)),
         offer(harness, 3, "b", &[1]),
-        act(harness, 4, 3, ActSort::Drop),
+        act(harness, 4, 3, ActSort::Priority(1)),
     ];
     let mut plane = harness.plane(&wants);
     let report = Report::default();

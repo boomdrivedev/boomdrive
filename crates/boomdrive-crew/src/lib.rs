@@ -14,8 +14,8 @@ pub mod roles;
 pub mod write;
 
 use boomdrive_control::{
-    Acted, Capacity, ControlPlane, Hello, Id, Launched, Pulled, Report, Reported, Unread, Unsent,
-    Want,
+    Acted, Capacity, ControlPlane, Hello, Id, Launched, Outcome, Pulled, Report, Reported, Unread,
+    Unsent, Want,
 };
 use config::{Config, Partition};
 use read::{runner_branch, Kept, Main, Request, Runner, Store};
@@ -169,6 +169,23 @@ impl Pulling<'_> {
             .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
     }
 
+    /// Whether the runner launched request `number`: its report answers
+    /// it `launched`, or, where the report holds no answer to it, this
+    /// host's branch does. A claim is never launched.
+    fn launched(&self, number: u64) -> bool {
+        let id = self.id(number);
+        if let Some(launched) = self.report.launches.get(&id) {
+            return launched.answer.outcome == Outcome::Launched;
+        }
+        if self.report.acts.contains_key(&id) {
+            return false;
+        }
+        self.own
+            .as_ref()
+            .and_then(|own| own.answers.get(&number))
+            .is_some_and(|answer| answer.get("Outcome") == Some("launched"))
+    }
+
     /// Whether this host's branch holds its claim of request `number`.
     fn claimed(&self, number: u64) -> bool {
         self.own
@@ -197,11 +214,17 @@ impl Pulling<'_> {
 
     /// Whether request `number`'s work is still crew's, or the runner has
     /// answered it: such a request is given, so its place's status is
-    /// carried until it is let go.
+    /// carried until it is let go. A drop is current, whatever the plan
+    /// holds, while the runner answers the launch it names, since crew
+    /// writes a drop as its work leaves the plan.
     fn current(&self, request: &Request) -> bool {
         self.main.plans(request.work())
             || self.reported(request.number)
             || self.branch_answers(request.number, false)
+            || (request.act() == Some("drop")
+                && request
+                    .of()
+                    .is_some_and(|of| self.reported(of) || self.branch_answers(of, false)))
     }
 }
 
@@ -282,6 +305,15 @@ impl Crew {
             };
             for request in &main.requests {
                 if !pulling.current(request) {
+                    continue;
+                }
+                // A launch a drop names no longer stands, as crew reads it:
+                // it is given only where the runner launched it, so its
+                // place is followed to its end, and is claimed by no one.
+                if request.is_launch()
+                    && main.dropped(request.number)
+                    && !pulling.launched(request.number)
+                {
                     continue;
                 }
                 match (request.host(), request.act()) {
@@ -409,12 +441,14 @@ impl Crew {
             }
         }
         let mut others = pulling.others;
+        // A claim of a launch a drop names is given nothing, so no act
+        // goes with it.
         let mut own_claims: BTreeSet<u64> = own
             .as_ref()
             .map(|own| {
                 own.answers
                     .iter()
-                    .filter(|(_, answer)| write::is_claim(answer, &host))
+                    .filter(|(n, answer)| write::is_claim(answer, &host) && !main.dropped(**n))
                     .map(|(n, _)| *n)
                     .collect()
             })
@@ -808,6 +842,7 @@ impl ControlPlane for Crew {
                     .filter(|(n, answer)| {
                         write::is_claim(answer, &host)
                             && !kept.launches.contains_key(&ids::request(label, *n))
+                            && !main.dropped(*n)
                             && main
                                 .request(*n)
                                 .is_some_and(|request| main.plans(request.work()))

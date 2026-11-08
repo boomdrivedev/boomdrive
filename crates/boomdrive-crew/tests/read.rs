@@ -4,7 +4,11 @@
 
 mod common;
 
-use boomdrive_control::{Act, ActSort, ControlPlane, Id, Launch, Lease, Offer, Report, Want};
+use boomdrive_control::{
+    Act, ActSort, Answer, At, ControlPlane, Id, Launch, Launched, Lease, Offer, Outcome, Report,
+    Want,
+};
+use boomdrive_crew::read::LEASE;
 use common::{act, file, hello, ids, launch, plan, pull, want, State, REQUESTS};
 
 const CREW: &str = "example/crew";
@@ -171,7 +175,24 @@ fn a_retry_of_the_submission() {
         ("plan.rec", &plan(&["a"], &[])),
     ]);
     let (mut crew, _) = state.crew("host-a");
-    let pulled = pull(&mut crew, &kept());
+    // The runner launched 12, so the drop naming it leaves it given.
+    let mut report = Report::default();
+    report.launches.insert(
+        Id::new("home/12"),
+        Launched {
+            lease: LEASE,
+            repository: None,
+            answer: Answer {
+                outcome: Outcome::Launched,
+                place_dir: Some("/places/change--a".to_string()),
+                words: None,
+                at: At::parse("2026-11-01T10:00:00Z").unwrap(),
+            },
+            status: None,
+            entry: None,
+        },
+    );
+    let pulled = crew.pull(&kept(), &report).expect("a pull");
     let on_12 = |n: u64, what: ActSort| {
         Want::Act(Act {
             id: Id::new(format!("home/{n}")),
