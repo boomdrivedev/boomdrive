@@ -37,5 +37,5 @@ Option 1.
 
 ## Consequences
 
-- One crew unit, then one Boomdrive unit, which retire it.
+- One crew unit, then one Boomdrive unit, which build it.
 - afterthought/swancloud writes deneb's machines in both places, the same, until both changes land, then once.
