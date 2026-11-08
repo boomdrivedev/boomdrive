@@ -7,7 +7,7 @@
 mod common;
 
 use boomdrive_control::{
-    Answer, At, Carried, ControlPlane, Hello, Id, Launched, Outcome, Report, Want,
+    Acted, Answer, At, Carried, ControlPlane, Hello, Id, Launched, Outcome, Report, Want,
 };
 use boomdrive_crew::read::{host_read, RunnerFiles, LEASE};
 use boomdrive_crew::write;
@@ -313,4 +313,73 @@ fn a_held_launch_dropped_is_let_go() {
     let (mut deneb, _) = state.crew("deneb");
     assert_eq!(let_go(&mut deneb, &held(12)), ["madswan/12"]);
     assert!(!answers(&state, "deneb").contains_key(&12));
+}
+
+/// Drop 14 of launch 12, done, as the runner answers it.
+fn with_drop_done(mut report: Report) -> Report {
+    report.acts.insert(
+        Id::new("madswan/14"),
+        Acted {
+            launch: Id::new("madswan/12"),
+            lease: LEASE.number,
+            outcome: Outcome::Done,
+            words: None,
+            at: at("2026-11-01T10:02:00Z"),
+        },
+    );
+    report
+}
+
+/// "A drop answered from the report, its work gone": the launch the
+/// runner answered done from its report, and its drop, go together.
+#[test]
+fn a_drop_answered_from_the_report_its_work_gone() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+        ],
+        &[],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let report = with_drop_done(report_of(
+        12,
+        answered(
+            Outcome::Done,
+            None,
+            Some("dropped by madswan/14 before it was launched"),
+            None,
+        ),
+    ));
+    assert_eq!(let_go(&mut deneb, &report), ["madswan/12", "madswan/14"]);
+}
+
+/// "A dropped launch the runner launched stays until its place is over":
+/// while Flume lists its place, neither it nor its drop is let go; once
+/// Flume lists it no more, both are.
+#[test]
+fn a_dropped_launch_the_runner_launched_stays_until_its_place_is_over() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+        ],
+        &[],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let listed = |listed: bool| {
+        with_drop_done(report_of(
+            12,
+            answered(Outcome::Launched, Some(PLACE), None, Some(listed)),
+        ))
+    };
+    assert!(let_go(&mut deneb, &listed(true)).is_empty());
+    assert_eq!(
+        let_go(&mut deneb, &listed(false)),
+        ["madswan/12", "madswan/14"]
+    );
 }

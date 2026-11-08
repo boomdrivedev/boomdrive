@@ -24,8 +24,8 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 3. A dropped launch the runner holds unlaunched is let go
 
 - [x] 3.1 `write::let_go` lets go a launch a drop names whose answer is not `launched`, whatever the plan holds, and counts it among the launches gone for its acts (design Decision 3; Task notes 1.5). True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_held_launch_dropped_is_let_go` passes, proving "A held launch dropped is let go".
-- [ ] 3.2 A drop the runner answered from its report goes with its launch once its work has left the plan. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_drop_answered_from_the_report_its_work_gone` passes, proving "A drop answered from the report, its work gone".
-- [ ] 3.3 A dropped launch the runner launched, and its drop, are let go only once Flume no longer lists its place. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_dropped_launch_the_runner_launched_stays_until_its_place_is_over` passes, proving "A dropped launch the runner launched stays until its place is over".
+- [x] 3.2 A drop the runner answered from its report goes with its launch once its work has left the plan. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_drop_answered_from_the_report_its_work_gone` passes, proving "A drop answered from the report, its work gone".
+- [x] 3.3 A dropped launch the runner launched, and its drop, are let go only once Flume no longer lists its place. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_dropped_launch_the_runner_launched_stays_until_its_place_is_over` passes, proving "A dropped launch the runner launched stays until its place is over".
 
 ## 4. What it says, and its spec
 
