@@ -118,15 +118,16 @@ throttle keeps it from spinning.
 
 The flake at this repository's root, `github:agentplot/boomdrive`,
 gives the family's host tools pinned together: the runner from this
-tree, Flume and sluice each at a release tag, and each tool's herdr
-plugin from its tag, for `aarch64-darwin`, `aarch64-linux` and
-`x86_64-linux`. Each reports its tag's version, and the set is the one
+tree, Flume, sluice and crew each at a release tag through its own
+flake, and Flume's and sluice's herdr plugins from their tags, for
+`aarch64-darwin`, `aarch64-linux` and `x86_64-linux`. Each reports its tag's version, and the set is the one
 the runner's tests pass with. nixpkgs builds nothing for an Intel Mac,
 so the flake gives it nothing. herdr and git are the host's own.
 
-To put the runner, Flume and sluice in your profile:
+To put the runner, Flume and sluice in your profile, and crew where the
+host runs crew:
 
-    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice
+    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
 
 An older nix spells it `nix profile install`. nix asks whether to
 accept the flake's `nixConfig`, which names the family's cache,
@@ -169,7 +170,19 @@ run passed:
 A host's configuration imports its platform's module,
 `darwinModules.default` for nix-darwin or `nixosModules.default` for
 NixOS, and writes the runner's file as `services.boomdrive.settings`,
-each key as the file names it:
+each key as the file names it. The module brings Flume's, sluice's and
+crew's own modules, `services.flume`, `services.sluice` and
+`services.crew`, each from its tool's flake at the tag this flake names,
+and the flake gives each again as `darwinModules.<tool>` and
+`nixosModules.<tool>`. Each writes its own tool's file from its
+`settings`, each key as that file names it, and links it at the tool's
+own path, `~/.config/flume/config.toml`, `~/.config/sluice/config.toml`
+and `~/.config/crew/teams.json`. A file of your own there is moved once
+to `config.toml.before-nix`, and crew's to `teams.json.before-nix`, so
+move its values into the tool's `settings` in the switch that takes this
+flake. `services.boomdrive.enable` turns on Flume's and sluice's
+modules; a host that runs crew turns on crew's, with its `host` and its
+partitions:
 
 ```nix
 {
@@ -202,6 +215,22 @@ each key as the file names it:
                 };
               };
             };
+            services.crew = {
+              enable = true;
+              host = "host-a";
+              settings.partitions = [
+                {
+                  label = "home";
+                  partition = "home";
+                  blueprints = [ "example/blueprints" ];
+                  state = "example/state";
+                  machine = "host-a";
+                  session = "home";
+                  review = { every = 5; hours = 4; };
+                  flume = { design = false; planner = false; reviewer = false; ops = false; operator = false; };
+                }
+              ];
+            };
           }
         ];
       };
@@ -224,18 +253,22 @@ restarts it. A key of `settings` named for a credential, `token`, `key`,
 `secret` or `password`, or one ending in `_token`, `_key`, `_secret` or
 `_password`, fails evaluation, since every user reads the store.
 
-The module puts the runner and the set's Flume and sluice in the system
-profile, and the runner's `PATH` is the user's profiles, then the
-system's, so the runner, the agents Flume launches and your shell run
-one copy of each tool. A host that installs its own Flume and sluice
-says so:
+The runner's module puts the runner in the system profile, and each
+tool's module puts its tool there, the set's unless the host gives its
+own. The runner's `PATH` is the user's profiles, then the system's, so
+the runner, the agents Flume launches and your shell run one copy of
+each tool. A host that installs its own Flume and sluice says so in
+each tool's `package`, `null` for none:
 
 ```nix
-services.boomdrive.tools = [ ];
+services.flume.package = null;
+services.sluice.package = null;
 ```
 
-`tools` may name the host's own packages instead, and
-`services.boomdrive.package` replaces the runner.
+Each tool's `package`, `services.crew.package` among them, may name the
+host's own package instead, and `services.boomdrive.package` replaces
+the runner. A host that keeps a tool's file its own sets that tool's
+`enable = false`, and installs the tool itself.
 
 Under a hosted control plane, enroll each partition after the switch,
 on the host, as the service's user, the token on standard input:
@@ -263,32 +296,27 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.10.1
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.18.1
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
-version is its tagged tree's. Its git crates are fetched by the hashes
-the flake holds for the tag it names, in
-`nix/packages/flume-git-crates.nix`, so a tag whose weir differs fails
-to build, and needs a package of the host's own in `tools`. sluice's
-tagged tree says `0.0.0`, and the set gives sluice the version of the
-tag `flake.nix` names, so an overridden sluice is given its own version
-beside it:
+version and its git crates' hashes are Flume's own flake's, at the tag
+it names. sluice's tagged tree says `0.0.0`, and crew's carries no
+version, so the set gives each the version of the tag `flake.nix`
+names, and an overridden sluice or crew is given its own version beside
+it, in that tool's `package`:
 
 ```nix
 # In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.69.0";
+boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.77.0";
 ```
 
 ```nix
 # In its configuration:
-services.boomdrive.tools = [
-  boomdrive.packages.aarch64-darwin.flume
-  (boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
-    __intentionallyOverridingVersion = true;
-    version = "0.69.0";
-    env = old.env // { SLUICE_VERSION = "0.69.0"; };
-  }))
-];
+services.sluice.package = boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
+  __intentionallyOverridingVersion = true;
+  version = "0.77.0";
+  env = old.env // { SLUICE_VERSION = "0.77.0"; };
+});
 ```
 
 ## Carrying the control plane's work

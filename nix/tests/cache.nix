@@ -116,6 +116,23 @@ in
     }
   ) "nixConfig is ${builtins.toJSON t.flake.nixConfig}, not ${substituter} and ${key} alone";
 
+  # The README names each tool's package option, which replaces
+  # services.boomdrive.tools (design Decision 6).
+  "The README's words" =
+    lib.concatMap
+      (
+        option:
+        t.expect (lib.hasInfix option (toString installing)) "the README's Installing with nix names no ${option}"
+      )
+      [
+        "services.flume.package"
+        "services.sluice.package"
+        "services.crew.package"
+      ]
+    ++ t.expect (
+      !lib.hasInfix "services.boomdrive.tools" (toString installing)
+    ) "the README's Installing with nix names services.boomdrive.tools";
+
   "The README's lines" =
     t.expect (installing != null) "the README has no section ## Installing with nix"
     ++
