@@ -47,4 +47,4 @@ For the build (F51): dist with our own unit templates; dist with generated units
 
 - Fleets of hosts managed for an enterprise are a third way in, still to be decided: "we'll need to decide how to do that."
 - The runner protocol's schema has to be somewhere a public runner can build against. The cloud's record 0046 keeps it in a private package, so the cloud is asked to re-read that.
-- The hosts' service units are written by the install or by the flake's module, and no longer by swancloud alone.
+- The hosts' service units are written by the install or by the flake's module, and no longer by afterthought/swancloud alone.
