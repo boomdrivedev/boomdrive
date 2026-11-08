@@ -46,6 +46,7 @@ fn launched(answer: Answer, status: Option<(&str, &str)>) -> Launched {
             number: 1,
             expires: None,
         },
+        repository: None,
         answer,
         status: status.map(|(text, when)| Carried {
             text: text.to_string(),

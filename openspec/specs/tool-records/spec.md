@@ -7,7 +7,7 @@ What the runner carries back of sluice and of an inbox. For sluice, it carries e
 
 ### Requirement: Each submission Flume names is carried from sluice's own answer
 
-For each launch whose carried status names a sluice entry, at `submission.read.found.submission.id`, the runner SHALL run `sluice status <id> --json` in the launch's clone container. It SHALL carry these fields of sluice's answer, each as sluice printed it: `id`, `branch`, `head`, `state`, `failed`, each row with only its `task`, `hash`, `flaky` and `system`, and `landed_as`.
+For each launch whose carried status names a sluice entry, at `submission.read.found.submission.id`, and whose repository's clone stands, whether the configuration names the repository or the runner drains it, the runner SHALL run `sluice status <id> --json` in that clone's container. It SHALL carry these fields of sluice's answer, each as sluice printed it: `id`, `branch`, `head`, `state`, `failed`, each row with only its `task`, `hash`, `flaky` and `system`, and `landed_as`.
 
 #### Scenario: An entry carried
 
@@ -18,6 +18,11 @@ For each launch whose carried status names a sluice entry, at `submission.read.f
 
 - **WHEN** a launched place's carried status names no sluice entry
 - **THEN** no `sluice` command is run for it
+
+#### Scenario: An entry carried from a repository drained
+
+- **WHEN** the runner drains `example/kit` for launch `a`, and `a`'s carried status names entry 412
+- **THEN** the stub `sluice` is run as `sluice status 412 --json` in `example/kit`'s clone container, and its entry is carried
 
 ### Requirement: No log of sluice's is carried
 

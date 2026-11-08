@@ -43,8 +43,12 @@ pub enum Keeping {
     Ready(PathBuf),
     /// The configuration names it, and its clone is not yet made.
     NotYet,
-    /// The configuration does not name it.
+    /// The configuration does not name it, and no clone of it is made.
     NotNamed,
+    /// The configuration does not name it, and its clone stands in this
+    /// container, dropped: the keeper fetches it no more, and keeps it only
+    /// while something holds it (core.5).
+    Dropped(PathBuf),
 }
 
 /// The repositories the runner keeps, as a control pass reads them.
@@ -54,6 +58,9 @@ pub trait Clones {
     /// Each address the configuration names whose clone is made, in the
     /// configuration's order and as it writes each.
     fn made(&self) -> Vec<String>;
+    /// Each address whose clone stands while the configuration does not
+    /// name it, as its clone is found.
+    fn dropped(&self) -> Vec<String>;
 }
 
 /// The runner's clones against its configuration: `Clones` on a host.
@@ -86,7 +93,10 @@ impl Clones for Configured {
             return Keeping::NotNamed;
         };
         if !self.named.contains(&address) {
-            return Keeping::NotNamed;
+            return match self.container(&address) {
+                Some(container) => Keeping::Dropped(container.clone()),
+                None => Keeping::NotNamed,
+            };
         }
         match self.container(&address) {
             Some(container) => Keeping::Ready(container.clone()),
@@ -101,14 +111,21 @@ impl Clones for Configured {
             .map(Address::to_string)
             .collect()
     }
+
+    fn dropped(&self) -> Vec<String> {
+        self.clones
+            .iter()
+            .filter(|(address, _)| !self.named.contains(address))
+            .map(|(address, _)| address.to_string())
+            .collect()
+    }
 }
 
 /// What a control pass runs over.
 pub struct Carrier<'a> {
     pub flume: &'a dyn Flume,
     pub sluice: &'a dyn Sluice,
-    /// git, for an inbox read from its clone and a branch read from
-    /// origin.
+    /// git, for an inbox read from its clone.
     pub git: &'a Git,
     pub clones: &'a dyn Clones,
     pub tools: &'a dyn Tools,
@@ -203,12 +220,13 @@ impl Carrier<'_> {
         let saved = kept.clone().unwrap_or_default();
         let status = self.flume.status();
         let listing = listing_of(&status, say);
-        let hello = hello::hello(
+        let mut hello = hello::hello(
             self.tools,
             self.clones.made(),
             hello::capacity(&status),
             &saved,
         );
+        hello.draining = hello::draining(self.clones.dropped(), &saved);
         let pulled = match plane.pull(&hello, &saved) {
             Ok(pulled) => pulled,
             Err(Unread(words)) => {
@@ -289,12 +307,12 @@ struct Work<'p> {
     report: Report,
     /// Flume's listing, `flume --json status`, where Flume gave it: the
     /// pass's own, read before the pull, and read again before the
-    /// statuses are carried where answering the wants ran a tool's
-    /// command.
+    /// statuses are carried where answering the wants ran a launch or an
+    /// act of Flume's.
     listing: Option<Value>,
     room: Room,
-    /// Whether answering the wants ran a tool's command: a launch, an act
-    /// of Flume's or a branch of sluice's.
+    /// Whether answering the wants ran a tool's command: a launch or an
+    /// act of Flume's. A command runs none (record 0027).
     ran: bool,
     /// The pass's clock, read once at its start.
     now: At,
@@ -344,12 +362,23 @@ impl Work<'_> {
     /// Takes, leaves or refuses `offer` (design Decision 7). An offer
     /// whose lease has lapsed is left unanswered, and one already answered
     /// keeps its answer, until a pull gives it under a live lease (design
-    /// Decision 13; core.24).
+    /// Decision 13; core.24). A launch is taken only for a repository the
+    /// runner keeps (record 0021; core.5): an offer for one it neither
+    /// keeps nor drains is refused before any mark is read, and one in a
+    /// repository it drains is answered `launched` only where Flume's
+    /// listing holds its place under its mark, so a launch made just before
+    /// a stop is not made twice (core.10), and refused otherwise.
     fn offer(&mut self, offer: &Offer, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
+        let repository = &offer.launch.repository;
         if let Some(launched) = self.report.launches.get_mut(id) {
             // The lease is the one the control plane gives now.
             launched.lease = offer.lease;
+            // A launch a report of before holds with no repository takes
+            // the offer's.
+            if launched.repository.is_none() {
+                launched.repository = Some(repository.clone());
+            }
             if launched.answer.outcome != Outcome::Held {
                 return;
             }
@@ -362,6 +391,16 @@ impl Work<'_> {
         let Some(listing) = &self.listing else {
             return;
         };
+        let keeping = self.carrier.clones.keeping(repository);
+        let drained = matches!(keeping, Keeping::Dropped(_)) && self.drains(repository);
+        let refuse = |work: &mut Work, say: &mut dyn FnMut(String)| {
+            let words = format!("this host's configuration does not keep {repository}");
+            say(format!("{id}: refused: {words}"));
+            work.answer(offer, Outcome::Refused, None, Some(words));
+        };
+        if keeping == Keeping::NotNamed || (matches!(keeping, Keeping::Dropped(_)) && !drained) {
+            return refuse(self, say);
+        }
         let found = marks(id).into_iter().find_map(|mark| {
             let place = facts::marked(listing, &mark).and_then(place_of)?;
             Some((mark, place))
@@ -373,16 +412,11 @@ impl Work<'_> {
             self.answer(offer, Outcome::Launched, Some(place), None);
             return;
         }
-        let repository = &offer.launch.repository;
-        let container = match self.carrier.clones.keeping(repository) {
+        // Nothing more is launched in a repository the runner drains.
+        let container = match keeping {
             Keeping::Ready(container) => container,
             Keeping::NotYet => return,
-            Keeping::NotNamed => {
-                let words = format!("this host's configuration does not keep {repository}");
-                say(format!("{id}: refused: {words}"));
-                self.answer(offer, Outcome::Refused, None, Some(words));
-                return;
-            }
+            Keeping::NotNamed | Keeping::Dropped(_) => return refuse(self, say),
         };
         if let Some(words) = self.waits(&offer.launch.after) {
             if self.answer(offer, Outcome::Held, None, Some(words.clone())) {
@@ -501,6 +535,14 @@ impl Work<'_> {
             .acts
             .get(id)
             .is_some_and(|acted| acted.outcome == Outcome::Done)
+    }
+
+    /// Whether the runner drains `repository`: a launch of the report
+    /// holds it, at a place that has not ended (record 0021). Only a
+    /// repository whose clone stands dropped is drained.
+    fn drains(&self, repository: &str) -> bool {
+        Address::parse(repository)
+            .is_ok_and(|address| !report::holding(&self.report, &address).is_empty())
     }
 
     /// Whether the pull offers launch `id`.
@@ -665,6 +707,8 @@ impl Work<'_> {
     }
 
     /// Gives `offer` the answer `outcome`, at `place_dir`, with `words`.
+    /// The first answer records the repository the offer names, which no
+    /// later answer changes.
     fn answer(
         &mut self,
         offer: &Offer,
@@ -678,14 +722,24 @@ impl Work<'_> {
             words,
             at: At::now(),
         };
-        self.report.answer(&offer.id, offer.lease, answer)
+        let changed = self.report.answer(&offer.id, offer.lease, answer);
+        let recorded = match self.report.launches.get_mut(&offer.id) {
+            Some(launched) if launched.repository.is_none() => {
+                launched.repository = Some(offer.launch.repository.clone());
+                true
+            }
+            _ => false,
+        };
+        changed || recorded
     }
 
-    /// Carries out or refuses `command` (design Decision 15). A command
-    /// the report holds is left as it stands, under the lease the control
-    /// plane gives now, and its tool is not run again (core.10). One whose
-    /// lease has lapsed is left untaken (design Decision 13; core.24). A
-    /// sort this binary does not carry is refused, naming its tool.
+    /// Answers `command` (core.16, core.52). A command the report holds
+    /// is left as it stands, under the lease the control plane gives now
+    /// (core.10). One whose lease has lapsed is left untaken (design
+    /// Decision 13; core.24). Every other is refused, naming its tool, a
+    /// branch command's being sluice: this binary carries no tool's
+    /// command, so it reads neither the command's repository nor its
+    /// clone, and runs nothing.
     fn command(&mut self, command: &Command, say: &mut dyn FnMut(String)) {
         if let Some(commanded) = self.report.commands.get_mut(&command.id) {
             commanded.lease = command.lease;
@@ -694,103 +748,24 @@ impl Work<'_> {
         if lapsed(command.lease, self.now) {
             return;
         }
-        match &command.what {
-            CommandSort::Branch {
-                repository,
-                branch,
-                from,
-            } => self.branch(command, repository, branch, from, say),
-            CommandSort::Other { tool, .. } => {
-                let words = format!("this binary does not carry {tool}'s commands");
-                say(format!("{}: refused: {words}", command.id));
-                self.commanded(command, Outcome::Refused, None, Some(words), None);
-            }
-        }
+        let tool = match &command.what {
+            CommandSort::Branch { .. } => "sluice",
+            CommandSort::Other { tool, .. } => tool,
+        };
+        let words = format!("this binary does not carry {tool}'s commands");
+        say(format!("{}: refused: {words}", command.id));
+        self.commanded(command, Outcome::Refused, Some(words));
     }
 
-    /// Makes `branch` from `from` in `repository` by sluice, in its clone,
-    /// whatever the room (core.9), and carries sluice's answer as given,
-    /// `done` where it exits 0 and `refused` otherwise, with the commit
-    /// origin's `branch` then stands at, read from origin and never from
-    /// sluice's words. A command for a repository the configuration does
-    /// not keep is refused, naming it; one whose clone is not yet made is
-    /// left untaken, for a host keeping the repository to take (core.5).
-    /// Where sluice could not be run, nothing is kept, and the next pass
-    /// carries it out.
-    fn branch(
-        &mut self,
-        command: &Command,
-        repository: &str,
-        branch: &str,
-        from: &str,
-        say: &mut dyn FnMut(String),
-    ) {
-        let id = &command.id;
-        let container = match self.carrier.clones.keeping(repository) {
-            Keeping::Ready(container) => container,
-            Keeping::NotYet => return,
-            Keeping::NotNamed => {
-                let words = format!("this host's configuration does not keep {repository}");
-                say(format!("{id}: refused: {words}"));
-                self.commanded(command, Outcome::Refused, None, Some(words), None);
-                return;
-            }
-        };
-        let what = format!("{id}: branch {branch} from {from} in {repository}");
-        self.ran = true;
-        let printed = match self.carrier.sluice.branch(&container, branch, from) {
-            Ok(printed) => printed,
-            Err(sluice::Unrun(words)) => {
-                say(format!("{what}: not carried out: {words}"));
-                return;
-            }
-        };
-        let bare = clone::bare(&container);
-        let (origin_commit, unread) = match clone::origin_commit(self.carrier.git, &bare, branch) {
-            Ok(commit) => (commit, None),
-            Err(failure) => {
-                let words = format!("origin's {branch} could not be read: {failure}");
-                (None, Some(words))
-            }
-        };
-        let on_origin = match (&origin_commit, &unread) {
-            (Some(commit), _) => format!("origin holds {branch} at {commit}"),
-            (None, Some(unread)) => unread.clone(),
-            (None, None) => format!("origin holds no {branch}"),
-        };
-        let outcome = match &printed.refused {
-            Some(words) => {
-                say(format!("{what}: refused by sluice: {words}; {on_origin}"));
-                Outcome::Refused
-            }
-            None => {
-                say(format!("{what}: done; {on_origin}"));
-                Outcome::Done
-            }
-        };
-        let words = match (printed.refused, unread) {
-            (Some(refused), Some(unread)) => Some(format!("{refused}; {unread}")),
-            (refused, unread) => refused.or(unread),
-        };
-        self.commanded(command, outcome, Some(printed.text), words, origin_commit);
-    }
-
-    /// Records `command` answered `outcome`, with its tool's `text`, where
-    /// one ran, `words` and `origin_commit`.
-    fn commanded(
-        &mut self,
-        command: &Command,
-        outcome: Outcome,
-        text: Option<String>,
-        words: Option<String>,
-        origin_commit: Option<String>,
-    ) {
+    /// Records `command` answered `outcome`, with `words`: no tool ran
+    /// for it, so it has no text and no origin commit.
+    fn commanded(&mut self, command: &Command, outcome: Outcome, words: Option<String>) {
         let commanded = Commanded {
             lease: command.lease,
             outcome,
-            text,
+            text: None,
             words,
-            origin_commit,
+            origin_commit: None,
             at: At::now(),
         };
         self.report.commands.insert(command.id.clone(), commanded);
@@ -798,18 +773,21 @@ impl Work<'_> {
 
     /// Carries Flume's status of each launch's place (design Decision 12;
     /// core.11): `flume --json status --repository <container> <place>`'s
-    /// whole answer, as the one line Flume printed. A place is followed to
-    /// its end whether or not the configuration still keeps its
-    /// repository: one it no longer keeps is asked for by its location
-    /// alone (record 0021). Flume's listing as it stands once the wants are
+    /// whole answer, as the one line Flume printed. A place is followed
+    /// only through its repository's clone, named or dropped, which the
+    /// keeper drains while the place has not ended; where no clone stands,
+    /// Flume is asked nothing, and the status last carried stands (record
+    /// 0021). No old name of a repository is matched to a new one. Flume's
+    /// listing as it stands once the wants are
     /// answered decides when it is read again (record 0027): only where the
     /// place's entry there, the place standing or else its tidied record
     /// `<location>@<at>`, differs, as JSON, from its entry in the answer
     /// carried. A place the listing no longer holds is
     /// asked for once a pass, and where Flume refuses, the last status
     /// carried stands, not listed. The first status carried that reads the
-    /// place landed tells the keeper, where it keeps the repository, so it
-    /// is fetched at once. Only the places the report holds are read, and
+    /// place landed tells the keeper, where the configuration names the
+    /// repository, so it is fetched at once; a dropped repository is
+    /// fetched no more. Only the places the report holds are read, and
     /// only for launches the pull gives, whose repositories it names.
     fn carry_statuses(&mut self, say: &mut dyn FnMut(String)) {
         let Some(listing) = self.listing.take() else {
@@ -825,9 +803,10 @@ impl Work<'_> {
             else {
                 continue;
             };
-            let container = match self.carrier.clones.keeping(&offer.launch.repository) {
-                Keeping::Ready(container) => Some(container),
-                Keeping::NotYet | Keeping::NotNamed => None,
+            let (container, named) = match self.carrier.clones.keeping(&offer.launch.repository) {
+                Keeping::Ready(container) => (container, true),
+                Keeping::Dropped(container) => (container, false),
+                Keeping::NotYet | Keeping::NotNamed => continue,
             };
             let was = carried_entry(launched, &place);
             let listed = facts::entry(&listing, &place);
@@ -835,7 +814,7 @@ impl Work<'_> {
                 self.relist(id, Carrying::Status, true);
                 continue;
             }
-            match self.carrier.flume.status_of(container.as_deref(), &place) {
+            match self.carrier.flume.status_of(Some(&container), &place) {
                 Ok(Reply::Given(text)) => {
                     let line = text.strip_suffix('\n').unwrap_or(&text);
                     self.report
@@ -851,7 +830,7 @@ impl Work<'_> {
                 }
             }
             let now = carried_entry(&self.report.launches[id], &place);
-            if container.is_some() && !reads_landed(was.as_ref()) && reads_landed(now.as_ref()) {
+            if named && !reads_landed(was.as_ref()) && reads_landed(now.as_ref()) {
                 if let Ok(address) = Address::parse(&offer.launch.repository) {
                     self.carrier.notices.landed(address);
                 }
@@ -862,7 +841,8 @@ impl Work<'_> {
 
     /// Carries sluice's entry of each launch's submission (design
     /// Decision 13; core.11): of `sluice status <id> --json`, run in the
-    /// launch's clone, the fields the cloud's copy of an entry holds, each
+    /// clone of the launch's repository, named or dropped, the fields the
+    /// cloud's copy of an entry holds, each
     /// as sluice printed it, and no log. The entry is the one the status
     /// carried for the launch names; a launch whose status names none runs
     /// no sluice. An entry is read again at each pass until its state is
@@ -893,9 +873,9 @@ impl Work<'_> {
                 continue;
             }
             let submission = submission.to_string();
-            let Keeping::Ready(container) = self.carrier.clones.keeping(&offer.launch.repository)
-            else {
-                continue;
+            let container = match self.carrier.clones.keeping(&offer.launch.repository) {
+                Keeping::Ready(container) | Keeping::Dropped(container) => container,
+                Keeping::NotYet | Keeping::NotNamed => continue,
             };
             let refused = match self.carrier.sluice.entry(&container, &submission) {
                 Ok(sluice::Reply::Given(answer)) => match sluice::carried(&answer) {
@@ -923,8 +903,9 @@ impl Work<'_> {
     }
 
     /// Carries the inbox `inbox` names (design Decision 14; core.5,
-    /// core.11). An inbox in a repository the configuration does not keep
-    /// is answered with words naming it, and nothing of it read; one whose
+    /// core.11). An inbox in a repository the configuration does not keep,
+    /// one the runner drains among them, is answered with words naming it,
+    /// and nothing of it read; one whose
     /// clone is not yet made waits; one on a branch origin does not hold
     /// is answered with words naming the branch. Otherwise its branch's
     /// tip in the clone is read, and, where it moved since the tip last
@@ -936,7 +917,7 @@ impl Work<'_> {
         let container = match self.carrier.clones.keeping(repository) {
             Keeping::Ready(container) => container,
             Keeping::NotYet => return,
-            Keeping::NotNamed => {
+            Keeping::NotNamed | Keeping::Dropped(_) => {
                 let words = format!("this host's configuration does not keep {repository}");
                 if self.carry_inbox(id, None, BTreeMap::new(), Some(words.clone())) {
                     say(format!("{id}: not carried: {words}"));
@@ -1489,13 +1470,22 @@ mod tests {
     }
 
     #[test]
-    fn a_clone_the_configuration_drops_is_not_kept() {
+    fn a_clone_the_configuration_drops_is_dropped() {
         let flume = Address::parse("agentplot/flume").unwrap();
+        let crew = Address::parse("example/crew").unwrap();
         let clones = Configured::new(
-            &config(&[]),
-            vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
+            &config(&["example/crew"]),
+            vec![
+                (flume, PathBuf::from("/d/repositories/agentplot/flume")),
+                (crew, PathBuf::from("/d/repositories/example/crew")),
+            ],
         );
-        assert_eq!(clones.keeping("agentplot/flume"), Keeping::NotNamed);
-        assert!(clones.made().is_empty());
+        assert_eq!(
+            clones.keeping("Agentplot/Flume"),
+            Keeping::Dropped(Path::new("/d/repositories/agentplot/flume").into())
+        );
+        assert_eq!(clones.keeping("agentplot/sluice"), Keeping::NotNamed);
+        assert_eq!(clones.made(), ["example/crew"]);
+        assert_eq!(clones.dropped(), ["agentplot/flume"]);
     }
 }

@@ -41,22 +41,3 @@ run the check on the key the queue's run then read.
 
 A `log` names where a task's output is kept on the scratch host, and the
 runner carries none of them (core.11).
-
-## A bolt's branch
-
-`sluice branch create` changes a repository, so its answers were read on
-a scratch host too: on 2026-11-01, from sluice's release 0.61.1, under
-`env -i` with a temporary `HOME`, XDG directories and git configuration.
-Its forge was a bare `example/crew.git` on disk, which the git
-configuration put in place of GitHub's https address, its `main` holding
-`.config/sluice.toml`. Its clone was laid out as the runner lays one out,
-a bare `crew.git` in its container beside a `.git` file naming it, and
-each command ran in that container.
-
-| file | what stood | what sluice did |
-|---|---|---|
-| `branch-made.json` | `[branches.main]` and `[branches."bolt/*"]`, each with `remote = "origin"`; no `bolt/x` | `sluice branch create bolt/x --from main --json`, exit 0: made `bolt/x` on the forge at `main`'s commit, nothing on standard error |
-| `branch-there.json` | the same, once `branch-made.json` was read | the same command, exit 2: `already there`, as sluice's `error` answer, nothing on standard error |
-| `branch-ungated.json` | `[branches.main]` alone; no `bolt/x` | the same command, exit 2: no `[branches]` table names `bolt/x`, as sluice's `error` answer, nothing on standard error |
-
-The commits they name are the scratch forge's.

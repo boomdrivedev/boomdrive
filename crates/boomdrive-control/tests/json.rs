@@ -105,6 +105,7 @@ fn a_hello() {
             ),
         ]),
         repositories: vec!["example/crew".to_string()],
+        draining: vec!["example/kit".to_string()],
         capacity: Capacity::Printed(HostPart {
             running: "2".to_string(),
             bound: "4".to_string(),
@@ -205,6 +206,7 @@ fn an_inbox() {
 fn a_report() {
     let launched = Launched {
         lease: lease(),
+        repository: Some("example/crew".to_string()),
         answer: Answer {
             outcome: Outcome::Launched,
             place_dir: Some("/places/plan-the-week".to_string()),
@@ -221,6 +223,7 @@ fn a_report() {
             words: Some("waits on home/1, launched at a place not landed".to_string()),
             at: at("2026-11-01T10:00:00Z"),
         },
+        repository: None,
         status: None,
         entry: None,
         ..launched.clone()
@@ -277,6 +280,19 @@ fn a_report() {
         serde_json::to_value(Outcome::Held).unwrap(),
         serde_json::json!("held")
     );
+}
+
+#[test]
+fn a_report_from_before_reads() {
+    let report = r#"{"launches":{"a":{"lease":{"number":1,"expires":null},"answer":{"outcome":"launched","place_dir":"/places/a","words":null,"at":"2026-11-01T10:00:00Z"},"status":null,"entry":null}},"acts":{},"commands":{},"inboxes":{}}"#;
+    let read: Report = serde_json::from_str(report).expect("a report of before reads");
+    assert_eq!(read.launches[&Id::new("a")].repository, None);
+    assert_eq!(serde_json::to_string(&read).unwrap(), report);
+    round_trip(&read);
+    let hello = r#"{"interface_version":1,"runner_version":"boomdrive 0.0.0","tool_versions":{},"repositories":["example/app"],"capacity":{"missing":"flume is not on PATH"},"leases":{}}"#;
+    let read: Hello = serde_json::from_str(hello).expect("a hello of before reads");
+    assert!(read.draining.is_empty());
+    round_trip(&read);
 }
 
 #[test]
