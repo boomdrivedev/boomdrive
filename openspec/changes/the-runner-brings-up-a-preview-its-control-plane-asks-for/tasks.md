@@ -78,7 +78,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - `nothing_changed` and `only_the_runners_branch`, `previews.rec` among the files checked by `recfix --check` where written.
 
   These prove the crew-control-plane spec's "A preview brought up" and "A branch with no preview".
-- [ ] 6.5 `previews.rec` is read with the runner's other files and checked as they are. `read_back` takes the hello and gives each `Preview` back as its preview (design Decision 10; Task notes 6.5). True when `devenv shell -- cargo test -p boomdrive-crew --test write a_preview_read_back` passes, proving the crew-control-plane spec's "A preview read back".
+- [x] 6.5 `previews.rec` is read with the runner's other files and checked as they are. `read_back` takes the hello and gives each `Preview` back as its preview (design Decision 10; Task notes 6.5). True when `devenv shell -- cargo test -p boomdrive-crew --test write a_preview_read_back` passes, proving the crew-control-plane spec's "A preview read back".
 - [ ] 6.6 `let_go` names a preview once its work has left the plan and it holds no preview up, and the report's write leaves it out of `previews.rec` (design Decision 10). True when `devenv shell -- cargo test -p boomdrive-crew --test letgo` passes with `a_preview_put_away_its_work_gone` and `a_preview_still_up_its_work_gone`, proving the crew-control-plane spec's scenarios of those names.
 - [ ] 6.7 crew's implementation passes the lint. True when `sluice exec main -- moon run boomdrive-crew:lint` passes.
 

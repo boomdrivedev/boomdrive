@@ -329,16 +329,7 @@ impl Crew {
                         // Its repository among those the runner keeps, else
                         // those it drains, else its Repo as written (record
                         // 0021).
-                        let repository = request.get("Repo").and_then(|repo| {
-                            match read::kept(repo, &hello.repositories) {
-                                Kept::Address(address) => Some(address),
-                                Kept::No => match read::kept(repo, &hello.draining) {
-                                    Kept::Address(address) => Some(address),
-                                    _ => None,
-                                },
-                                Kept::Shared(_) => None,
-                            }
-                        });
+                        let repository = read::resolved(request, hello);
                         let want = read::want(&label, request, repository.as_deref())
                             .unwrap_or_else(|why| read::refused(&label, request, &why));
                         given.insert(request.number, want);
@@ -652,7 +643,9 @@ impl Crew {
             lines.say(line);
         }
 
-        let back = own.as_ref().map(|own| read_back(&label, &host, &main, own));
+        let back = own
+            .as_ref()
+            .map(|own| read_back(&label, &host, &main, own, hello));
         let mut wants: Vec<Want> = given.into_values().collect();
         wants.extend(role_wants);
         drop(places);
@@ -741,9 +734,23 @@ fn claim_texts(
 
 /// The runner's report as its branch of partition `label` holds it: each
 /// answer, as the request it answers would be given, its claims left
-/// out; a launch with its place's status.
-fn read_back(label: &str, host: &str, main: &Main, own: &Runner) -> Report {
+/// out; a launch with its place's status; and each preview of
+/// `previews.rec` as the preview its request names, its repository
+/// resolved against `hello` as at a pull (design Decision 10).
+fn read_back(label: &str, host: &str, main: &Main, own: &Runner, hello: &Hello) -> Report {
     let mut report = Report::default();
+    for (n, record) in &own.previews {
+        let Some(request) = main.request(*n) else {
+            continue;
+        };
+        let repository = read::resolved(request, hello);
+        let Ok(Want::Preview(preview)) = read::want(label, request, repository.as_deref()) else {
+            continue;
+        };
+        if let Some(previewed) = read::previewed(preview, record) {
+            report.previews.insert(ids::request(label, *n), previewed);
+        }
+    }
     for (n, record) in &own.answers {
         if write::is_claim(record, host) {
             continue;
@@ -796,6 +803,7 @@ impl ControlPlane for Crew {
                         let all = back.get_or_insert_with(Report::default);
                         all.launches.extend(held.launches);
                         all.acts.extend(held.acts);
+                        all.previews.extend(held.previews);
                     }
                 }
                 Err(why) => {

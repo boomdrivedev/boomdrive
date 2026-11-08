@@ -8,7 +8,8 @@
 use crate::ids;
 use crate::records::{self, whole, Sets};
 use boomdrive_control::{
-    Act, ActSort, Answer, At, Carried, Id, Launch, Launched, Lease, Offer, Outcome, Preview, Want,
+    Act, ActSort, Answer, At, Carried, Hello, Id, Launch, Launched, Lease, Offer, Outcome, Preview,
+    Previewed, Want,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -296,13 +297,14 @@ pub fn one_line(said: &str) -> String {
 
 /// A runner's files read as crew's `runner.host_read` reads them: one
 /// `Runner` naming `host`, no record before its `%rec`, no request
-/// answered or placed twice and no run twice; or why not.
+/// answered, placed or previewed twice and no run twice; or why not.
 pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
     let mut sets = BTreeMap::new();
     for (path, set) in [
         ("runner.rec", "Runner"),
         ("answers.rec", "Answer"),
         ("places.rec", "Place"),
+        ("previews.rec", "Preview"),
     ] {
         let text = files.get(path).cloned().flatten();
         let read = match &text {
@@ -340,7 +342,11 @@ pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
         since: runner.get("Since").map(str::to_string),
         ..Runner::default()
     };
-    for (path, set) in [("answers.rec", "Answer"), ("places.rec", "Place")] {
+    for (path, set) in [
+        ("answers.rec", "Answer"),
+        ("places.rec", "Place"),
+        ("previews.rec", "Preview"),
+    ] {
         let Some(read) = &sets[path] else { continue };
         for record in records::of(read, set) {
             let number = record
@@ -349,6 +355,7 @@ pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
                 .ok_or_else(|| format!("{path} holds a record with no request's number"))?;
             let into = match set {
                 "Answer" => &mut out.answers,
+                "Preview" => &mut out.previews,
                 _ => &mut out.places,
             };
             if into.insert(number, record.clone()).is_some() {
@@ -562,6 +569,52 @@ pub fn kept(repo: &str, kept: &[String]) -> Kept {
         [one] => Kept::Address(one.clone()),
         _ => Kept::Shared(named),
     }
+}
+
+/// The address a request naming this host's `Repo` names among the
+/// repositories `hello` keeps, else among those it drains, else none, as
+/// a pull resolves it (record 0021).
+pub fn resolved(request: &Request, hello: &Hello) -> Option<String> {
+    let repo = request.get("Repo")?;
+    match kept(repo, &hello.repositories) {
+        Kept::Address(address) => Some(address),
+        Kept::No => match kept(repo, &hello.draining) {
+            Kept::Address(address) => Some(address),
+            _ => None,
+        },
+        Kept::Shared(_) => None,
+    }
+}
+
+/// A `Preview` record of a runner's branch as the runner's answer to
+/// `preview`, the preview its request names, under the lease number 1:
+/// its outcome, text and words as written, and its status the `Status`,
+/// at its `At`, listed as `Listed` says; none where its outcome or time
+/// can't be read (design Decision 10).
+pub fn previewed(preview: Preview, record: &Record) -> Option<Previewed> {
+    let outcome = match record.get("Outcome")? {
+        "held" => Outcome::Held,
+        "done" => Outcome::Done,
+        "refused" => Outcome::Refused,
+        _ => return None,
+    };
+    let at = At::parse(record.get("At")?).ok()?;
+    let status = record.get("Status").map(|text| Carried {
+        text: text.to_string(),
+        at,
+        listed: record.get("Listed") != Some("no"),
+    });
+    Some(Previewed {
+        lease: LEASE,
+        repository: preview.repository,
+        revision: preview.revision,
+        done: preview.done,
+        outcome,
+        text: record.get("Text").map(str::to_string),
+        words: record.get("Words").map(str::to_string),
+        status,
+        at,
+    })
 }
 
 /// An answer record of a runner's branch as the runner's answer, none

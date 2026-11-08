@@ -433,3 +433,48 @@ fn a_branch_with_no_preview() {
     assert!(state.file(BRANCH, "answers.rec").is_some());
     assert_eq!(state.file(BRANCH, "previews.rec"), None);
 }
+
+/// The crew-control-plane spec's "A preview read back": a pull handed no
+/// report gives back the preview `previews.rec` holds, as its request
+/// names it, its repository resolved as at a pull.
+#[test]
+fn a_preview_read_back() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[common::preview(
+                    30,
+                    Some("host-a"),
+                    "unit/a",
+                    "crew",
+                    "main",
+                    "c2b72605d2ad8471a98dfae00551852c527d4dcf",
+                    false,
+                )],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    pull(&mut crew, &hello(&[CREW], "4"));
+    let report = with_preview(Report::default());
+    crew.report(&report).expect("a report");
+    let (mut fresh, _) = state.crew("host-a");
+    let pulled = pull(&mut fresh, &hello(&[CREW], "4"));
+    let back = pulled.report.expect("the report on the branch");
+    let previewed = &back.previews[&Id::new("home/30")];
+    let sent = &report.previews[&Id::new("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Done);
+    assert_eq!(previewed.text, sent.text);
+    assert_eq!(previewed.words, None);
+    assert_eq!(previewed.status, sent.status);
+    assert_eq!(previewed.repository, CREW);
+    assert_eq!(previewed.revision, sent.revision);
+    assert!(!previewed.done);
+    assert_eq!(previewed.lease.number, 1);
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
+    assert_eq!(read.previews.keys().copied().collect::<Vec<_>>(), [30]);
+}
