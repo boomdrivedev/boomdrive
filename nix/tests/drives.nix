@@ -297,6 +297,31 @@ let
           "services.crew.host"
           "accounts.work.drives.garden.machine"
         ];
+
+  oneStream =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        services.boomdrive.accounts.own.drives = {
+          home.repositories.agentplot = [ "flume" ];
+          garden = {
+            stream.name = "home";
+            repositories.example = [ "alpha" ];
+          };
+        };
+      };
+      failures = t.failures evaluated;
+      names = lib.any (
+        message:
+        lib.all (word: lib.hasInfix word message) [
+          "stream home"
+          "garden"
+          "drives garden and home"
+        ]
+      ) failures;
+    in
+    t.expect names "no ${platform} failure names the stream home and the drives home and garden: ${toString failures}";
 in
 onEach "A drive's stream by default" byDefault
 // onEach "A drive that writes only what it changes" onlyChanges
@@ -308,3 +333,4 @@ onEach "A drive's stream by default" byDefault
 // onEach "A drive of another machine" anotherMachine
 // onEach "A drive of this machine" thisMachine
 // onEach "No host to compare with" noHost
+// onEach "One stream for two drives" oneStream

@@ -37,6 +37,12 @@ let
   # The drives that name a machine where this host has no name to compare.
   unplaced = lib.filter (drive: drive.machine != null && host == null) drives;
 
+  # Each stream given by more than one drive of this host, by its drives
+  # (design Decision 6).
+  streamsTwice = lib.filterAttrs (_: given: lib.length given > 1) (
+    lib.mapAttrs (_: map (drive: drive.name)) (lib.groupBy (drive: drive.stream.name) here)
+  );
+
   # A drive's stream, as Flume's `[streams.<stream>]` names its keys.
   streamOf =
     { stream, ... }:
@@ -67,6 +73,16 @@ in
             drive: "accounts.${drive.account}.drives.${drive.name}.machine"
           ) unplaced
         }, and services.crew.host, this host's name to compare it with, is not set: set services.crew.host, as `hostname -s` names this host, whether or not crew runs here.";
+      }
+      {
+        assertion = streamsTwice == { };
+        message = "services.boomdrive.accounts gives Flume ${
+          lib.concatStringsSep "; " (
+            lib.mapAttrsToList (
+              stream: given: "the stream ${stream} from the drives ${lib.concatStringsSep " and " given}"
+            ) streamsTwice
+          )
+        }: a stream is given by one drive of this host, so set another stream.name on all but one.";
       }
     ];
 
