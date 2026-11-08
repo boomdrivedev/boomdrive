@@ -15,13 +15,14 @@ use boomdrive::carry::{Carrier, Clones, Keeping, Passed, Reach};
 use boomdrive::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
 use boomdrive::git::Git;
 use boomdrive::hello::Tools;
-use boomdrive::report;
+use boomdrive::locks::Locks;
+use boomdrive::report::{self, ReportFile};
 use boomdrive::run::{Event, Notices};
 use boomdrive::sluice;
 use boomdrive::terminal::{self, Relays};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
+    ActSort, AgentSetting, ControlPlane, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
 };
 use serde_json::{json, Value};
 use std::cell::RefCell;
@@ -386,8 +387,10 @@ pub struct FakeClones {
 }
 
 impl FakeClones {
-    /// `address` named, its clone made in `container`.
+    /// `address` named, its clone made in `container`, which is made
+    /// where it is not there, so a launch finds the clone again.
     pub fn ready(&self, address: &str, container: &Path) {
+        fs::create_dir_all(container).expect("the clone's container");
         self.keep(address, Keeping::Ready(container.to_path_buf()));
     }
 
@@ -468,10 +471,14 @@ impl Tools for FakeTools {
     }
 }
 
+/// The label of the part a bench's passes are of, but where a test names
+/// another.
+pub const PART: &str = "home";
+
 /// A host for control passes: a fake Flume, a stub `sluice`, a stub
-/// `herdr` and the terminals relayed through it, clones and tools, and a
-/// data directory of its own, which keeps [`KEPT`] with its clone's
-/// container made.
+/// `herdr` and the terminals relayed through it, clones and tools, each
+/// clone's lock, the one report file, and a data directory of its own,
+/// which keeps [`KEPT`] with its clone's container made.
 pub struct Bench {
     /// Dropped first, so every terminal's thread ends before the stubs
     /// and the data directory go.
@@ -486,8 +493,12 @@ pub struct Bench {
     pub git: Git,
     pub clones: FakeClones,
     pub tools: FakeTools,
+    /// Each clone's lock, as the keeper and the launches take it.
+    pub locks: Arc<Locks>,
+    /// The one report file every part's pass keeps its share of.
+    pub report_file: ReportFile,
     /// Whether the last pull was read, kept across the bench's passes as
-    /// the loop keeps it.
+    /// a part's thread keeps it.
     reach: Reach,
     notices: Notices,
     events: Receiver<Event>,
@@ -503,6 +514,7 @@ impl Bench {
         let relays = Relays::new(terminal::Cli::new(herdr.program()), move |line| {
             said.lock().expect("the relay's lines").push(line);
         });
+        let report_file = ReportFile::new(&report::control_dir(&dir.path().join("data")));
         let bench = Bench {
             relays,
             relay_lines,
@@ -513,6 +525,8 @@ impl Bench {
             git: Git::default(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
+            locks: Arc::new(Locks::new()),
+            report_file,
             reach: Reach::default(),
             notices: Notices::new(events),
             events: received,
@@ -535,7 +549,7 @@ impl Bench {
 
     /// The report file.
     pub fn report_file(&self) -> PathBuf {
-        report::file(&self.control_dir())
+        self.report_file.path().to_path_buf()
     }
 
     /// The container `address`'s clone is made in.
@@ -563,9 +577,23 @@ impl Bench {
         plane: &mut Fake,
         due: &dyn Fn() -> bool,
     ) -> (Passed, Vec<String>) {
+        self.pass_of(PART, flume, plane, due)
+    }
+
+    /// One control pass of the part `label`, whose control plane is
+    /// `plane`, over `flume`, the next pass due once `due` says so, and
+    /// the lines it said.
+    pub fn pass_of(
+        &self,
+        label: &str,
+        flume: &dyn Flume,
+        plane: &mut dyn ControlPlane,
+        due: &dyn Fn() -> bool,
+    ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
         let sluice = sluice::Cli::new(self.sluice.program());
         let carrier = Carrier {
+            label,
             flume,
             sluice: &sluice,
             git: &self.git,
@@ -573,6 +601,8 @@ impl Bench {
             tools: &self.tools,
             notices: &self.notices,
             control_dir: &control_dir,
+            report: &self.report_file,
+            locks: &self.locks,
             relays: &self.relays,
             reach: &self.reach,
             due,
@@ -601,7 +631,7 @@ impl Bench {
             .try_iter()
             .filter_map(|event| match event {
                 Event::Landed(address) => Some(address.to_string()),
-                Event::Wake | Event::Stop => None,
+                Event::Stop => None,
             })
             .collect()
     }
@@ -1009,5 +1039,89 @@ impl CredsStub {
         self.calls()
             .iter()
             .any(|call| call.first().map(String::as_str) != Some("--version"))
+    }
+}
+
+/// A fetch of one repository held until the test lets it go: an
+/// upload-pack of the test's own, set as the scratch git configuration's
+/// `remote.origin.uploadpack`, which, for that repository alone, waits
+/// while a file the test makes is there, and runs git's own upload-pack
+/// for every repository once it is gone.
+pub struct HeldFetch {
+    dir: TempDir,
+}
+
+impl HeldFetch {
+    /// Sets the scratch git configuration `gitconfig` to hold the fetches
+    /// of the repository `address`, `<owner>/<name>`, while
+    /// [`HeldFetch::hold`] holds them.
+    pub fn new(gitconfig: &Path, address: &str) -> HeldFetch {
+        let held = HeldFetch {
+            dir: tempfile::tempdir().expect("the upload-pack's directory"),
+        };
+        let script = held.dir.path().join("upload-pack");
+        fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\n\
+                 case \"$*\" in\n\
+                 *'/{address}.git'*)\n\
+                 \tif [ -e '{hold}' ]; then\n\
+                 \t\ttouch '{waiting}'\n\
+                 \t\twhile [ -e '{hold}' ]; do sleep 0.05; done\n\
+                 \tfi ;;\n\
+                 esac\n\
+                 exec git upload-pack \"$@\"\n",
+                hold = held.hold_file().display(),
+                waiting = held.waiting_file().display(),
+            ),
+        )
+        .expect("the upload-pack written");
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755))
+            .expect("the upload-pack made runnable");
+        let mut config = fs::read_to_string(gitconfig).expect("the git configuration");
+        config.push_str(&format!(
+            "[remote \"origin\"]\n\tuploadpack = {}\n",
+            script.display()
+        ));
+        fs::write(gitconfig, config).expect("the git configuration written");
+        held
+    }
+
+    fn hold_file(&self) -> PathBuf {
+        self.dir.path().join("hold")
+    }
+
+    fn waiting_file(&self) -> PathBuf {
+        self.dir.path().join("waiting")
+    }
+
+    /// Holds every fetch of the repository from now on.
+    pub fn hold(&self) {
+        fs::write(self.hold_file(), "").expect("the hold made");
+    }
+
+    /// Waits until a fetch of the repository is held; panics where none
+    /// is within `patience`.
+    pub fn wait_held(&self, patience: std::time::Duration) {
+        let deadline = std::time::Instant::now() + patience;
+        while !self.waiting_file().exists() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "no fetch held in time"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    /// Lets every fetch held go on.
+    pub fn let_go(&self) {
+        let _ = fs::remove_file(self.hold_file());
+    }
+}
+
+impl Drop for HeldFetch {
+    fn drop(&mut self) {
+        self.let_go();
     }
 }

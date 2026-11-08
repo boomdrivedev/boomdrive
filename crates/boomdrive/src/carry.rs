@@ -13,17 +13,22 @@
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
 //! under a lease that has lapsed by the pass's clock waits for a live one
-//! (core.24). Each act is said on standard error, one line each, prefixed
-//! with its id, and a pass that changes nothing says nothing.
+//! (core.24). A pass is over one part of the control plane (record 0026):
+//! it reads and saves that part's share of the report file alone, and
+//! each of its lines names the part's label after `boomdrive:`. Each act
+//! is said on standard error, one line each, prefixed with its id, which
+//! is the part's own, and a pass that changes nothing says nothing.
 
 use crate::config::{Address, Config};
 use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
 use crate::git::Git;
 use crate::hello::{self, Tools};
+use crate::locks::Locks;
+use crate::report::{self, ReportFile};
 use crate::run::Notices;
 use crate::sluice::{self, Sluice};
 use crate::terminal::Relays;
-use crate::{clone, facts, inbox, report};
+use crate::{clone, facts, inbox};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
     Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Report, Reported, Unread,
@@ -121,8 +126,10 @@ impl Clones for Configured {
     }
 }
 
-/// What a control pass runs over.
+/// What a control pass of one part runs over.
 pub struct Carrier<'a> {
+    /// The part's label, which each of the pass's own lines names.
+    pub label: &'a str,
     pub flume: &'a dyn Flume,
     pub sluice: &'a dyn Sluice,
     /// git, for an inbox read from its clone.
@@ -132,9 +139,15 @@ pub struct Carrier<'a> {
     /// Told of each landing the pass reads, so its repository is kept at
     /// once.
     pub notices: &'a Notices,
-    /// The runner's control directory, `<data>/control`: its report file
-    /// and the folder its briefs pass through.
+    /// The runner's control directory, `<data>/control`: the folder its
+    /// briefs pass through.
     pub control_dir: &'a Path,
+    /// The one report file, of which the pass reads and saves its part's
+    /// share alone (design Decision 5).
+    pub report: &'a ReportFile,
+    /// Each clone's lock, which a launch into the clone holds shared
+    /// (design Decision 4).
+    pub locks: &'a Locks,
     /// The terminals relaying, kept across passes: the pass opens each
     /// terminal pulled, and closes those on a launch it lets go.
     pub relays: &'a Relays,
@@ -159,19 +172,22 @@ pub struct Reach {
 }
 
 impl Reach {
-    /// Takes a pull that could not be read, with the pull's `words`.
-    fn unread(&self, words: &str, say: &mut dyn FnMut(String)) {
+    /// Takes a pull of the part `label` that could not be read, with the
+    /// pull's `words`.
+    fn unread(&self, label: &str, words: &str, say: &mut dyn FnMut(String)) {
         if !self.unread.replace(true) {
             say(format!(
-                "boomdrive: the control plane could not be read: {words}"
+                "boomdrive: {label}: the control plane could not be read: {words}"
             ));
         }
     }
 
-    /// Takes a pull that was read.
-    fn read(&self, say: &mut dyn FnMut(String)) {
+    /// Takes a pull of the part `label` that was read.
+    fn read(&self, label: &str, say: &mut dyn FnMut(String)) {
         if self.unread.replace(false) {
-            say("boomdrive: the control plane is read again".to_string());
+            say(format!(
+                "boomdrive: {label}: the control plane is read again"
+            ));
         }
     }
 }
@@ -200,17 +216,23 @@ impl Passed {
 }
 
 impl Carrier<'_> {
-    /// One control pass against `plane`, each line said to `say` as it is
-    /// said.
+    /// One of the pass's own lines, naming the part's label.
+    fn line(&self, words: &str) -> String {
+        format!("boomdrive: {}: {words}", self.label)
+    }
+
+    /// One control pass of the part whose control plane is `plane`, each
+    /// line said to `say` as it is said. Its report is the part's share of
+    /// the report file, where the file holds it, else what the pull gives
+    /// back (design Decision 5).
     pub fn pass(&self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> Passed {
         // The pass's clock, read once, by which the work under each lease
         // is judged (core.24).
         let now = At::now();
-        let file = report::file(self.control_dir);
-        let kept = match report::read(&file) {
+        let kept = match self.report.share(self.label, &|id| plane.owns(id)) {
             Ok(kept) => kept,
             Err(why) => {
-                say(format!("boomdrive: {why}: nothing carried this pass"));
+                say(self.line(&format!("{why}: nothing carried this pass")));
                 return Passed {
                     expires: None,
                     reported: false,
@@ -219,7 +241,7 @@ impl Carrier<'_> {
         };
         let saved = kept.clone().unwrap_or_default();
         let status = self.flume.status();
-        let listing = listing_of(&status, say);
+        let listing = listing_of(&status, self.label, say);
         let mut hello = hello::hello(
             self.tools,
             self.clones.made(),
@@ -230,21 +252,21 @@ impl Carrier<'_> {
         let pulled = match plane.pull(&hello, &saved) {
             Ok(pulled) => pulled,
             Err(Unread(words)) => {
-                self.reach.unread(&words, say);
+                self.reach.unread(self.label, &words, say);
                 return Passed {
                     expires: expires(&saved, At::now()),
                     reported: false,
                 };
             }
         };
-        self.reach.read(say);
-        // A report file lost with the data directory is taken from the
-        // control plane, which holds every answer the runner reported.
+        self.reach.read(self.label, say);
+        // A share the report file does not hold, the file lost with the
+        // data directory among it, is taken from the control plane, which
+        // holds every answer the runner reported.
         let report = kept.or(pulled.report).unwrap_or_default();
         let mut work = Work {
             carrier: self,
             wants: &pulled.wants,
-            file,
             saved,
             report,
             room: Room::read(listing.as_ref()),
@@ -254,33 +276,40 @@ impl Carrier<'_> {
             round: Round::Wants,
             acts_run: 0,
             left: BTreeSet::new(),
+            waiting: Vec::new(),
         };
         'carrying: for round in [Round::Wants, Round::OnPlaces] {
             work.round = round;
+            if round == Round::OnPlaces {
+                for (offer, container, address) in std::mem::take(&mut work.waiting) {
+                    work.launch_once_kept(&offer, &container, &address, say);
+                    if !work.save(&*plane, say) {
+                        say(self.line("nothing more is carried out this pass"));
+                        break 'carrying;
+                    }
+                }
+            }
             for want in &pulled.wants {
                 work.want(want, say);
-                if !work.save(say) {
-                    say("boomdrive: nothing more is carried out this pass".to_string());
+                if !work.save(&*plane, say) {
+                    say(self.line("nothing more is carried out this pass"));
                     break 'carrying;
                 }
             }
         }
         match work.left.len() {
             0 => {}
-            1 => say(
-                "boomdrive: the next control pass is due, so 1 act on a place waits for it"
-                    .to_string(),
-            ),
-            n => say(format!(
-                "boomdrive: the next control pass is due, so {n} acts on places wait for it"
-            )),
+            1 => say(self.line("the next control pass is due, so 1 act on a place waits for it")),
+            n => say(self.line(&format!(
+                "the next control pass is due, so {n} acts on places wait for it"
+            ))),
         }
         // The commands the wants ran may have taken minutes, while Flume
         // moved places on, tidied some and let their records go: the
         // statuses are carried against its listing as it stands now
         // (record 0027).
         if work.ran {
-            work.listing = listing_of(&self.flume.status(), say);
+            work.listing = listing_of(&self.flume.status(), self.label, say);
         }
         work.carry_statuses(say);
         work.carry_entries(say);
@@ -301,9 +330,9 @@ struct Work<'p> {
     carrier: &'p Carrier<'p>,
     /// What the pull gave, in the control plane's order.
     wants: &'p [Want],
-    file: PathBuf,
-    /// The report as the file holds it.
+    /// The part's share as the file holds it.
     saved: Report,
+    /// The part's share as it stands.
     report: Report,
     /// Flume's listing, `flume --json status`, where Flume gave it: the
     /// pass's own, read before the pull, and read again before the
@@ -321,6 +350,10 @@ struct Work<'p> {
     acts_run: usize,
     /// The acts on places left for the next pass, which is due.
     left: BTreeSet<Id>,
+    /// Each offer whose clone the keeper held when its turn came, with
+    /// its clone's container and address, launched once the keep is done,
+    /// its room counted at its turn (design Decision 4).
+    waiting: Vec<(Offer, PathBuf, Address)>,
 }
 
 /// The pass's two rounds over the pull's wants, each in the control
@@ -331,7 +364,10 @@ struct Work<'p> {
 /// places once the next pass is due, after the first, so no launch the next
 /// pull offers waits behind them either. An act Flume refuses because its
 /// place no longer stands costs the pass the reading of Flume's refusal
-/// alone (record 0010; core.51).
+/// alone (record 0010; core.51). A launch whose clone the keeper holds at
+/// its turn is made before the second round, once that keep is done, its
+/// room counted at its turn, so no other launch waits on another
+/// repository's keep (record 0026; design Decision 4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Round {
     /// Every want: each offer, inbox and command, and each act answered
@@ -435,11 +471,55 @@ impl Work<'_> {
             }
             return;
         }
-        self.launch(offer, &container, say);
+        let Ok(address) = Address::parse(repository) else {
+            return self.launch(offer, &container, say);
+        };
+        match self.carrier.locks.try_launch(&address) {
+            Some(held) => {
+                self.launch(offer, &container, say);
+                drop(held);
+            }
+            None => {
+                // Its room is counted now, at its turn, so the launch is
+                // the one the control plane's order makes.
+                self.room.take(stream);
+                self.waiting.push((offer.clone(), container, address));
+            }
+        }
     }
 
-    /// Launches `offer` in the clone at `container` (design Decision 9).
+    /// Launches `offer`, its room already counted, in the clone at
+    /// `container` once the keeper's keep of `address` is done, holding
+    /// the clone's lock shared until `flume launch` ends.
+    fn launch_once_kept(
+        &mut self,
+        offer: &Offer,
+        container: &Path,
+        address: &Address,
+        say: &mut dyn FnMut(String),
+    ) {
+        let held = self.carrier.locks.launch(address);
+        if container.is_dir() {
+            self.made(offer, container, say);
+        }
+        drop(held);
+    }
+
+    /// Launches `offer` in the clone at `container`, holding its lock,
+    /// where the clone is still there: one the keeper let go meanwhile is
+    /// one not yet made, and the offer is left unanswered (design
+    /// Decision 4; core.14).
     fn launch(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
+        if !container.is_dir() {
+            return;
+        }
+        self.room.take(offer.launch.stream.as_deref());
+        self.made(offer, container, say);
+    }
+
+    /// Runs `flume launch` for `offer` in the clone at `container`, its
+    /// room counted (design Decision 9).
+    fn made(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
         let args = launch_args(offer, container, self.priority(offer));
         let briefs = self.carrier.control_dir.join("briefs");
@@ -458,7 +538,6 @@ impl Work<'_> {
                         "{id}: launched, though Flume's answer names no place"
                     )),
                 }
-                self.room.take(offer.launch.stream.as_deref());
                 self.answer(offer, Outcome::Launched, place, None);
             }
             Ok(Reply::Refused(words)) => {
@@ -1002,39 +1081,41 @@ impl Work<'_> {
         }
     }
 
-    /// Saves the report where it changed since the file was last written,
-    /// and says whether the file holds it.
-    fn save(&mut self, say: &mut dyn FnMut(String)) -> bool {
+    /// Saves the part's share, whose entries `plane` owns, where it
+    /// changed since the file was last written, every other part's share
+    /// kept as it stands, and says whether the file holds it.
+    fn save(&mut self, plane: &dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
         if self.report == self.saved {
             return true;
         }
-        match report::save(&self.file, &self.report) {
+        let (report, label) = (self.carrier.report, self.carrier.label);
+        match report.save_share(label, &|id| plane.owns(id), &self.report) {
             Ok(()) => {
                 self.saved = self.report.clone();
                 true
             }
             Err(why) => {
-                say(format!("boomdrive: {why}"));
+                say(self.carrier.line(&why));
                 false
             }
         }
     }
 
-    /// Sends the whole report, which renews every lease it names, and
+    /// Sends the part's share, which renews every lease it names, and
     /// says whether the control plane took it; one not sent is kept in the
     /// file, to be sent at the next pass.
     fn send(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
-        self.save(say);
+        self.save(&*plane, say);
         match plane.report(&self.report) {
             Ok(reported) => {
                 self.reported(&reported, say);
-                self.save(say);
+                self.save(&*plane, say);
                 true
             }
             Err(Unsent(words)) => {
-                say(format!(
-                    "boomdrive: the report could not be sent: {words}: it is sent at the next pass"
-                ));
+                say(self.carrier.line(&format!(
+                    "the report could not be sent: {words}: it is sent at the next pass"
+                )));
                 false
             }
         }
@@ -1087,13 +1168,17 @@ impl Work<'_> {
 }
 
 /// Flume's listing in its answer to `flume --json status`, where it gave
-/// one, else none, its words said.
-fn listing_of(status: &Result<Reply, Unrun>, say: &mut dyn FnMut(String)) -> Option<Value> {
+/// one, else none, its words said on a line naming the part `label`.
+fn listing_of(
+    status: &Result<Reply, Unrun>,
+    label: &str,
+    say: &mut dyn FnMut(String),
+) -> Option<Value> {
     match status {
         Ok(Reply::Given(text)) => serde_json::from_str::<Value>(text).ok(),
         Ok(Reply::Refused(words)) | Err(Unrun(words)) => {
             say(format!(
-                "boomdrive: Flume's status could not be read: {words}"
+                "boomdrive: {label}: Flume's status could not be read: {words}"
             ));
             None
         }
