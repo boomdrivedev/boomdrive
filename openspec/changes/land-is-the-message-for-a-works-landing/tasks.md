@@ -23,7 +23,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 3. crew's implementation reads a land
 
 - [x] 3.1 `read::want` gives a request whose `Act` is `land` as `ActSort::Land` on the launch its `Of` names, reading no other field of it. `tests/common/mod.rs`'s copy of crew's `requests.rec` descriptor gains `land` in its `Act` enum (design Decision 6; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-crew --test read a_land_is_an_act_on_the_launch_it_names` passes, proving the crew-control-plane spec's "A land".
-- [ ] 3.2 A `land` naming no `Host` goes to the runner that holds its launch, and to no other, as a `retry`, `drop` or `priority` does (`crates/boomdrive-crew/src/lib.rs`; design Decision 6; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive-crew --test claims a_land_naming_no_host_goes_to_the_runner_holding_its_launch` passes, proving the crew-control-plane spec's "A land naming no host, of a launch this runner holds".
+- [x] 3.2 A `land` naming no `Host` goes to the runner that holds its launch, and to no other, as a `retry`, `drop` or `priority` does (`crates/boomdrive-crew/src/lib.rs`; design Decision 6; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive-crew --test claims a_land_naming_no_host_goes_to_the_runner_holding_its_launch` passes, proving the crew-control-plane spec's "A land naming no host, of a launch this runner holds".
 
 ## 4. Version 1 carries no land
 
