@@ -72,6 +72,7 @@ crates/boomdrive-crew/tests/read.rs
 crates/boomdrive-crew/tests/claims.rs
 crates/boomdrive-crew/tests/common/mod.rs
 crates/boomdrive-hosted/tests/interface.rs
+crates/boomdrive-hosted/tests/connection.rs
 README.md
 openspec/specs/control-plane-interface/spec.md
 openspec/specs/work-into-flume/spec.md

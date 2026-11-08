@@ -28,8 +28,9 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. Version 1 carries no land
 
 - [x] 4.1 A want whose act is a land, as `boomdrive-control`'s types write it, fails version 1's `want`. Every act sort version 1 names still passes, and no protocol file changes (design Decision 7; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface` passes with `a_land_is_no_act_of_version_1` and `the_interfaces_values_pass`, proving the runner-protocol spec's "A land is no act of version 1" and "The interface's values pass".
+- [ ] 4.2 `tests/connection.rs`'s `the_hello_first` reads home before it drops home's first connection, so the fake's `pulled` answering the first hello is taken, and wakes the runner, before the drop. The fake records a hello before it sends the `pulled` that answers it, so a drop on seeing the hello could reach the connection first and leave the runner one wake short (sluice #38). True when `sluice exec main -- moon run boomdrive-hosted:test` passes.
 
 ## 5. The words
 
 - [x] 5.1 The README's control pass says the runner carries out each retry, land, drop, priority or done as Flume's own command on the launch's place. It says a land is `flume retry <place> --submission`, whatever the launch's kind, and that a bolt is landed on a land, whose answer is Flume's. It no longer says a bolt's send is a retry naming its submission (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
-- [x] 5.2 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive land-is-the-message-for-a-works-landing --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 5.2 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive land-is-the-message-for-a-works-landing --yes`, `sluice exec main -- moon run root:specs` passes.
