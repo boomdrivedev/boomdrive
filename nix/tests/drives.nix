@@ -232,6 +232,71 @@ let
       t.expect (keepFree == 1)
         "the ${platform} system's Flume stream home keeps ${builtins.toJSON keepFree} free for operation, not 1"
     ++ reposHold platform evaluated { "agentplot/flume" = "other"; };
+
+  # The drive `garden` of the account `work` on `machine`, keeping the
+  # owner example's alpha, beside crew's host `host`, where it is set.
+  garden = machine: host: {
+    services = {
+      boomdrive.accounts.work.drives.garden = {
+        inherit machine;
+        repositories.example = [ "alpha" ];
+      };
+    }
+    // lib.optionalAttrs (host != null) { crew.host = host; };
+  };
+
+  anotherMachine =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system (garden "host-b" "host-a");
+      fileText = render (fileOf evaluated.config.services.boomdrive);
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      streamOf evaluated "garden" == null
+    ) "the ${platform} system gives Flume the stream garden of host-b's drive"
+    ++ t.expect (
+      !(reposOf evaluated ? "example/alpha")
+    ) "the ${platform} system gives Flume example/alpha of host-b's drive"
+    ++ t.expect (lib.hasInfix ''
+      [accounts.work.drives.garden]
+      repositories = ["example/alpha"]
+    '' fileText) "the ${platform} runner's file keeps no example/alpha of host-b's drive: ${fileText}";
+
+  thisMachine =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system (garden "host-a" "host-a");
+    in
+    reposHold platform evaluated { "example/alpha" = "garden"; }
+    ++ t.expect (
+      streamOf evaluated "garden" != null
+    ) "the ${platform} system gives Flume no stream garden of host-a's drive";
+
+  noHost =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system (garden "host-b" null);
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (
+      t.failures evaluated != [ ]
+    ) "the ${platform} system of a drive on host-b, with no crew's host, evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (lib.hasInfix words failures) "the ${platform} failure names no ${words}: ${failures}"
+        )
+        [
+          "services.crew.host"
+          "accounts.work.drives.garden.machine"
+        ];
 in
 onEach "A drive's stream by default" byDefault
 // onEach "A drive that writes only what it changes" onlyChanges
@@ -240,3 +305,6 @@ onEach "A drive's stream by default" byDefault
 // onEach "Each address given its drive's stream" eachAddress
 // onEach "A stream named other than its drive" namedOther
 // onEach "A host's own room and rule" hostsOwn
+// onEach "A drive of another machine" anotherMachine
+// onEach "A drive of this machine" thisMachine
+// onEach "No host to compare with" noHost

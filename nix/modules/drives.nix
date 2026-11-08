@@ -1,11 +1,13 @@
 # What the Boomdrive module gives Flume's own module of each drive of this
 # host (the change each-repository-is-named-once-by-its-owner, design
-# Decisions 3 and 4; record 0028): with the runner enabled, the drive's
+# Decisions 3 to 6; record 0028): with the runner enabled, the drive's
 # stream, `services.flume.settings.streams.<stream>`, its room, its
 # priority where the drive sets one, and each label's reserve; and each
 # address the drive keeps, `services.flume.settings.repos."<owner>/<name>"`,
 # the drive's stream, by its address and never a folder (flume record
-# 0055). Each value is given by `lib.mkDefault`, so a host's own value in
+# 0055). A drive of this host names no `machine`, or names
+# services.crew.host; one of another host gives Flume nothing. Each value
+# is given by `lib.mkDefault`, so a host's own value in
 # services.flume.settings wins, and a key of a stream the module does not
 # give, set there, sits beside the module's; where no drive of this host is
 # named, Flume is given no `streams` and no `repos` at all. Nothing else:
@@ -15,14 +17,25 @@
 {
   config,
   lib,
+  options,
   ...
 }:
 let
   cfg = config.services.boomdrive;
   inherit (import ./accounts.nix { inherit lib; }) drivesOf;
+  drives = drivesOf cfg.accounts;
 
-  # The drives of this host.
-  here = lib.filter (drive: drive.machine == null) (drivesOf cfg.accounts);
+  # This host, as crew names it, whether or not crew is on; null where it
+  # is not set (design Decision 5).
+  host = if options.services.crew.host.isDefined then config.services.crew.host else null;
+
+  # The drives of this host: those that name no machine, or this one. A
+  # drive of another machine gives Flume nothing, and the runner's file
+  # still keeps its repositories, to read.
+  here = lib.filter (drive: drive.machine == null || drive.machine == host) drives;
+
+  # The drives that name a machine where this host has no name to compare.
+  unplaced = lib.filter (drive: drive.machine != null && host == null) drives;
 
   # A drive's stream, as Flume's `[streams.<stream>]` names its keys.
   streamOf =
@@ -46,6 +59,17 @@ let
 in
 {
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = unplaced == [ ];
+        message = "services.boomdrive.accounts names a machine at ${
+          lib.concatMapStringsSep ", " (
+            drive: "accounts.${drive.account}.drives.${drive.name}.machine"
+          ) unplaced
+        }, and services.crew.host, this host's name to compare it with, is not set: set services.crew.host, as `hostname -s` names this host, whether or not crew runs here.";
+      }
+    ];
+
     services.flume.settings = {
       streams = lib.mkIf (here != [ ]) (lib.mkMerge (map streamOf here));
       repos = lib.mkIf (here != [ ]) (lib.mkMerge (map reposOf here));
