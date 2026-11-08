@@ -10,7 +10,7 @@ The runner SHALL answer `refused` every command its control plane sends under a 
 
 #### Scenario: A branch command
 
-- **WHEN** a command asks for `bolt/x` from `main` in `afterthought/crew`, which the configuration names with its clone made
+- **WHEN** a command asks for `bolt/x` from `main` in `example/crew`, which the configuration names with its clone made
 - **THEN** it is answered `refused` with the words `this binary does not carry sluice's commands`, no text and no origin commit, and no `sluice` command is run
 
 #### Scenario: A clone not yet made
