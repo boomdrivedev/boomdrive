@@ -153,7 +153,7 @@ Each partition SHALL be a part of its own. A part's pull SHALL give the wants of
 
 ### Requirement: A partition's connection carries only its own repositories and work
 
-Each partition's hello SHALL name only the repositories its table names, of those kept with their clones made, and only its own leases. Each report SHALL carry only the entries under its prefix. A want naming a repository the partition does not name SHALL not be given to the runner, and one line SHALL name it (core.26; ledger 3.b).
+Each partition's hello SHALL name only the repositories its table names, of those kept with their clones made, and only its own leases. No hello SHALL name a repository the runner drains, and no report the repository a launch was answered in, since version 1 carries neither. Each report SHALL carry only the entries under its prefix. A want naming a repository the partition does not name SHALL not be given to the runner, and one line SHALL name it (core.26; ledger 3.b).
 
 #### Scenario: Each hello its own
 
@@ -164,6 +164,11 @@ Each partition's hello SHALL name only the repositories its table names, of thos
 
 - **WHEN** `home`'s control plane offers a launch on `example/service`, which `home` does not name
 - **THEN** the pull does not give it, and one line names the offer, `home` and `example/service`
+
+#### Scenario: A repository drained goes up in no hello
+
+- **WHEN** the runner keeps `example/service` and drains `example/app`, which `home` names, and its report's launch `home/l-1` names `example/app` as the repository it was answered in
+- **THEN** `home`'s hello names no repository, and its report's `l-1` holds no repository
 
 ### Requirement: A report goes to each partition, answered by its id
 

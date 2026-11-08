@@ -250,47 +250,23 @@ fn a_repository_not_kept() {
     assert!(said.lines().is_empty(), "{:?}", said.lines());
 }
 
-/// The crew-control-plane spec's "A launch answered before its repository
-/// left the hello": a kit's launch this host's branch answers, whose
-/// `Repo` the hello no longer names, is given still, its `Repo` as
-/// written, and an act on it with it; one no runner answers is given
-/// nothing (record 0021).
-#[test]
-fn a_launch_answered_before_its_repository_left_the_hello() {
-    let state = State::new();
-    main_holding(
-        &state,
-        &[
-            kit("old-kit"),
-            launch(21, None, "unit/a", "old-kit", "b", &[]),
-            act(22, "retry", None, "unit/a", 20, &[]),
-        ],
-    );
-    answering(&state, "deneb", &[launched(20)]);
-    let (mut deneb, said) = state.crew("deneb");
-    // The hello names the repository under its new name alone, and the
-    // host has no room.
-    let pulled = pull(&mut deneb, &hello(&["example/new-kit"], "0"));
-    assert_eq!(ids(&pulled), ["madswan/20", "madswan/22"]);
-    let Want::Offer(offer) = want(&pulled, "madswan/20") else {
-        panic!("not an offer")
-    };
-    assert_eq!(offer.launch.repository, "old-kit");
-    assert_eq!(state.commits("madswan/runner/deneb"), 1, "nothing written");
-    assert!(said.lines().is_empty(), "{:?}", said.lines());
+/// The hello of a host keeping `example/other` and draining `example/kit`,
+/// with no room.
+fn draining_kit() -> Hello {
+    let mut hello = hello(&["example/other"], "0");
+    hello.draining = vec!["example/kit".to_string()];
+    hello
 }
 
-/// A launch the runner's report answers is given whatever the hello
-/// names, its `Repo` an address no longer kept, or a name two kept
-/// addresses share (record 0021).
-#[test]
-fn a_launch_the_report_answers_is_given_whatever_the_hello_names() {
-    use boomdrive_control::{Answer, At, ControlPlane, Id, Launched, Outcome, Report};
+/// The runner's report answering launch 20 launched.
+fn reporting_20() -> boomdrive_control::Report {
+    use boomdrive_control::{Answer, At, Id, Launched, Outcome, Report};
     let mut report = Report::default();
     report.launches.insert(
         Id::new("madswan/20"),
         Launched {
             lease: boomdrive_crew::read::LEASE,
+            repository: None,
             answer: Answer {
                 outcome: Outcome::Launched,
                 place_dir: Some("/places/change--a".to_string()),
@@ -301,20 +277,110 @@ fn a_launch_the_report_answers_is_given_whatever_the_hello_names() {
             entry: None,
         },
     );
-    for (repo, kept) in [
-        ("example/old-kit", vec!["example/new-kit"]),
-        ("crew", vec![CREW, "agentplot/crew"]),
-    ] {
+    report
+}
+
+/// The crew-control-plane spec's "A repository draining": a launch no
+/// runner answers, in a repository the hello names only as drained, is
+/// given nothing, and nothing of it written (record 0021).
+#[test]
+fn an_unanswered_launch_in_a_repository_draining() {
+    let state = State::new();
+    main_holding(&state, &[kit("example/kit")]);
+    let (mut deneb, said) = state.crew("deneb");
+    // The host has room, so a launch in a repository it kept would be
+    // claimed.
+    let mut hello = draining_kit();
+    hello.capacity = common::hello(&[], "4").capacity;
+    let pulled = pull(&mut deneb, &hello);
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+    assert_eq!(state.tip("madswan/runner/deneb"), None);
+    assert!(said.lines().is_empty(), "{:?}", said.lines());
+}
+
+/// The crew-control-plane spec's "A launch answered in a repository
+/// draining": a launch this host's branch, or the runner's report,
+/// answers is given at the address of the repository the hello drains,
+/// with an act on it, nothing written and nothing said (record 0021).
+#[test]
+fn a_launch_answered_in_a_repository_draining() {
+    use boomdrive_control::{ControlPlane, Report};
+    for by_report in [false, true] {
         let state = State::new();
-        main_holding(&state, &[kit(repo)]);
-        let (mut deneb, _) = state.crew("deneb");
-        let pulled = deneb.pull(&hello(&kept, "4"), &report).unwrap();
+        main_holding(
+            &state,
+            &[kit("kit"), act(22, "retry", None, "unit/a", 20, &[])],
+        );
+        let report = match by_report {
+            true => reporting_20(),
+            false => {
+                answering(&state, "deneb", &[launched(20)]);
+                Report::default()
+            }
+        };
+        let tip = state.tip("madswan/runner/deneb");
+        let (mut deneb, said) = state.crew("deneb");
+        let pulled = deneb.pull(&draining_kit(), &report).unwrap();
+        assert_eq!(ids(&pulled), ["madswan/20", "madswan/22"], "{by_report}");
         let Want::Offer(offer) = want(&pulled, "madswan/20") else {
             panic!("not an offer")
         };
-        assert_eq!(offer.launch.repository, repo);
-        assert_eq!(state.tip("madswan/runner/deneb"), None, "nothing written");
+        assert_eq!(offer.launch.repository, "example/kit");
+        assert_eq!(state.tip("madswan/runner/deneb"), tip, "nothing written");
+        assert!(said.lines().is_empty(), "{:?}", said.lines());
     }
+}
+
+/// The crew-control-plane spec's "A launch answered before its repository
+/// was renamed": a launch the runner answered whose `Repo` the hello
+/// neither keeps nor drains is given nothing, and no old name is matched
+/// to a new one (record 0021).
+#[test]
+fn a_launch_answered_before_its_repository_was_renamed() {
+    use boomdrive_control::{ControlPlane, Report};
+    for by_report in [false, true] {
+        let state = State::new();
+        main_holding(&state, &[kit("example/old-kit")]);
+        let report = match by_report {
+            true => reporting_20(),
+            false => {
+                answering(&state, "deneb", &[launched(20)]);
+                Report::default()
+            }
+        };
+        let tip = state.tip("madswan/runner/deneb");
+        let (mut deneb, said) = state.crew("deneb");
+        let pulled = deneb
+            .pull(&hello(&["example/new-kit"], "4"), &report)
+            .unwrap();
+        assert!(pulled.wants.is_empty(), "{by_report}: {:?}", ids(&pulled));
+        assert_eq!(state.tip("madswan/runner/deneb"), tip, "nothing written");
+        assert!(said.lines().is_empty(), "{:?}", said.lines());
+    }
+}
+
+/// The crew-control-plane spec's "A launch naming this host in a
+/// repository draining": its `Repo` is resolved among the repositories
+/// the hello keeps, then among those it drains (record 0021).
+#[test]
+fn a_launch_naming_this_host_in_a_repository_draining() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[launch(12, Some("deneb"), "unit/a", "kit", "a", &[])],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut deneb, _) = state.crew("deneb");
+    let pulled = pull(&mut deneb, &draining_kit());
+    let Want::Offer(offer) = want(&pulled, "madswan/12") else {
+        panic!("not an offer")
+    };
+    assert_eq!(offer.launch.repository, "example/kit");
 }
 
 #[test]
@@ -344,6 +410,7 @@ fn a_claim_replaced_by_the_runners_answer() {
         Id::new("madswan/20"),
         Launched {
             lease: boomdrive_crew::read::LEASE,
+            repository: None,
             answer: Answer {
                 outcome: Outcome::Launched,
                 place_dir: Some("/places/change--a".to_string()),

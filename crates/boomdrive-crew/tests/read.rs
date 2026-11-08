@@ -716,6 +716,7 @@ fn tidied(label: &str) -> Report {
                 number: 1,
                 expires: None,
             },
+            repository: None,
             answer: boomdrive_control::Answer {
                 outcome: boomdrive_control::Outcome::Launched,
                 place_dir: Some("/places/change--u".to_string()),

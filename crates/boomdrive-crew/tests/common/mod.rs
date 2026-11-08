@@ -551,6 +551,7 @@ pub fn hello(repositories: &[&str], room: &str) -> Hello {
         runner_version: "boomdrive 0.0.0".to_string(),
         tool_versions: BTreeMap::new(),
         repositories: repositories.iter().map(|r| r.to_string()).collect(),
+        draining: vec![],
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "null".to_string(),

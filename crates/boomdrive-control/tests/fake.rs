@@ -104,6 +104,7 @@ fn launched(ids: &[&str]) -> Report {
             number: 1,
             expires: None,
         },
+        repository: None,
         answer: Answer {
             outcome: Outcome::Launched,
             place_dir: Some(format!("/places/{id}")),

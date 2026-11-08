@@ -1,7 +1,8 @@
 //! README's examples are what the runner reads (task 1.2, Task notes
 //! 9.4, task 6.4): its configuration, and with it its `[control_plane]`
 //! table, which opens crew's implementation, and its hosted table, which
-//! the hosted implementation reads.
+//! the hosted implementation reads. It names no branch command the
+//! runner runs (core.52).
 
 use boomdrive::{config, planes};
 use std::path::{Path, PathBuf};
@@ -103,4 +104,24 @@ fn the_readme_hosted_table_reads() {
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
     );
     assert!(refusal.host_to_fix);
+}
+
+/// core.52 and design Decision 8: README says a bolt is a launch and a
+/// command is refused, and names no `sluice branch create` the runner
+/// runs.
+#[test]
+fn the_readme_names_no_branch_command() {
+    let (text, _) = readme();
+    assert!(
+        !text.contains("sluice branch create"),
+        "README names sluice branch create"
+    );
+    assert!(
+        text.contains("A bolt is a launch"),
+        "README says a bolt is a launch"
+    );
+    assert!(
+        text.contains("refuses every command, naming its tool"),
+        "README says every command is refused"
+    );
 }
