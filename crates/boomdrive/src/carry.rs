@@ -1,7 +1,14 @@
 //! The control pass (design Decision 5). It takes the runner's report,
-//! reads the host once from Flume's status, hands the hello to the pull,
-//! answers each want in the control plane's order, opens each terminal
-//! pulled, and sends the whole report. The runner takes only what it was
+//! reads the host from Flume's status, hands the hello to the pull,
+//! answers each want in the control plane's order, but carries out an
+//! act on a place only once every launch the pull offers is taken, and
+//! none but the first once the next pass is due (record 0002; core.50),
+//! carries each place's status against Flume's listing as it stands once
+//! those answers are made (record 0027), opens each terminal pulled, and
+//! sends the whole report. An act on a place the listing read before the
+//! pull does not hold reads Flume's status of the place first, and takes
+//! Flume's refusal of it as its answer (record 0010; core.51). The runner
+//! takes only what it was
 //! offered, launches only through Flume's command line, and carries each
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
@@ -24,7 +31,7 @@ use boomdrive_control::{
 };
 use serde_json::Value;
 use std::cell::Cell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -116,6 +123,12 @@ pub struct Carrier<'a> {
     pub relays: &'a Relays,
     /// Whether the last pull was read, kept across passes.
     pub reach: &'a Reach,
+    /// Whether the next control pass is due, by the control timer or
+    /// because the control plane woke the runner. Once it is, the pass
+    /// carries out no further act on a place, after its first, and
+    /// leaves the rest to that pass, whose launches go ahead of them
+    /// (core.50).
+    pub due: &'a dyn Fn() -> bool,
 }
 
 /// Whether the control plane's last pull was read, kept across control
@@ -189,15 +202,7 @@ impl Carrier<'_> {
         };
         let saved = kept.clone().unwrap_or_default();
         let status = self.flume.status();
-        let listing = match &status {
-            Ok(Reply::Given(text)) => serde_json::from_str::<Value>(text).ok(),
-            Ok(Reply::Refused(words)) | Err(Unrun(words)) => {
-                say(format!(
-                    "boomdrive: Flume's status could not be read: {words}"
-                ));
-                None
-            }
-        };
+        let listing = listing_of(&status, say);
         let hello = hello::hello(
             self.tools,
             self.clones.made(),
@@ -226,14 +231,38 @@ impl Carrier<'_> {
             report,
             room: Room::read(listing.as_ref()),
             listing,
+            ran: false,
             now,
+            round: Round::Wants,
+            acts_run: 0,
+            left: BTreeSet::new(),
         };
-        for want in &pulled.wants {
-            work.want(want, say);
-            if !work.save(say) {
-                say("boomdrive: nothing more is carried out this pass".to_string());
-                break;
+        'carrying: for round in [Round::Wants, Round::OnPlaces] {
+            work.round = round;
+            for want in &pulled.wants {
+                work.want(want, say);
+                if !work.save(say) {
+                    say("boomdrive: nothing more is carried out this pass".to_string());
+                    break 'carrying;
+                }
             }
+        }
+        match work.left.len() {
+            0 => {}
+            1 => say(
+                "boomdrive: the next control pass is due, so 1 act on a place waits for it"
+                    .to_string(),
+            ),
+            n => say(format!(
+                "boomdrive: the next control pass is due, so {n} acts on places wait for it"
+            )),
+        }
+        // The commands the wants ran may have taken minutes, while Flume
+        // moved places on, tidied some and let their records go: the
+        // statuses are carried against its listing as it stands now
+        // (record 0027).
+        if work.ran {
+            work.listing = listing_of(&self.flume.status(), say);
         }
         work.carry_statuses(say);
         work.carry_entries(say);
@@ -258,15 +287,52 @@ struct Work<'p> {
     /// The report as the file holds it.
     saved: Report,
     report: Report,
-    /// The pass's one `flume --json status`, where Flume gave it.
+    /// Flume's listing, `flume --json status`, where Flume gave it: the
+    /// pass's own, read before the pull, and read again before the
+    /// statuses are carried where answering the wants ran a tool's
+    /// command.
     listing: Option<Value>,
     room: Room,
+    /// Whether answering the wants ran a tool's command: a launch, an act
+    /// of Flume's or a branch of sluice's.
+    ran: bool,
     /// The pass's clock, read once at its start.
     now: At,
+    round: Round,
+    /// How many acts the pass has run Flume's command for on their places.
+    acts_run: usize,
+    /// The acts on places left for the next pass, which is due.
+    left: BTreeSet<Id>,
+}
+
+/// The pass's two rounds over the pull's wants, each in the control
+/// plane's order, so that no launch waits behind an act on a place
+/// (record 0002; core.50). An act on a place moves no room and lifts no
+/// hold within the pass, which read both from its listing before the pull,
+/// so taking it second changes no answer. The second round ends its acts on
+/// places once the next pass is due, after the first, so no launch the next
+/// pull offers waits behind them either. An act Flume refuses because its
+/// place no longer stands costs the pass the reading of Flume's refusal
+/// alone (record 0010; core.51).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Round {
+    /// Every want: each offer, inbox and command, and each act answered
+    /// from the report, running no command. An act that runs Flume's
+    /// command on its launch's place is left for the second round.
+    Wants,
+    /// Each act left by the first, as Flume's command on its place, and
+    /// each act whose launch the first round took.
+    OnPlaces,
 }
 
 impl Work<'_> {
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
+        if self.round == Round::OnPlaces {
+            if let Want::Act(act) = want {
+                self.act(act, say);
+            }
+            return;
+        }
         match want {
             Want::Offer(offer) => self.offer(offer, say),
             Want::Act(act) => self.act(act, say),
@@ -343,6 +409,7 @@ impl Work<'_> {
         let id = &offer.id;
         let args = launch_args(offer, container, self.priority(offer));
         let briefs = self.carrier.control_dir.join("briefs");
+        self.ran = true;
         match self.carrier.flume.launch(&args, &briefs) {
             Ok(Reply::Given(text)) => {
                 let answer = serde_json::from_str::<Value>(&text).ok();
@@ -446,7 +513,8 @@ impl Work<'_> {
     /// Carries out or answers `act` on its launch (design Decision 9). An
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
-    /// core.24).
+    /// core.24). One on its launch's place is carried out in the pass's
+    /// second round alone, after every launch the pull offers (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -468,7 +536,8 @@ impl Work<'_> {
             return;
         }
         match launched.answer.place_dir.clone() {
-            Some(place) => self.act_on(act, &place, say),
+            Some(place) if self.round == Round::OnPlaces => self.act_on(act, &place, say),
+            Some(_) => {}
             None => {
                 let words = format!("{} was launched at no place Flume named", act.launch);
                 self.acted(act, Outcome::Refused, Some(words), None, say);
@@ -476,23 +545,54 @@ impl Work<'_> {
         }
     }
 
-    /// Carries out `act` as Flume's own command on the place at `place`,
-    /// never forced, its answer Flume's. Where Flume could not be run,
-    /// nothing is kept, and the next pass carries it out.
+    /// Carries out `act` on the place at `place`, its answer Flume's. A
+    /// place the pass's listing does not hold is first asked of Flume's
+    /// status, which settles nothing: where Flume refuses it, that refusal
+    /// is the act's answer, as Flume gave it, and the act's command is not
+    /// run (core.51). Otherwise the act is Flume's own command on the
+    /// place, never forced; once the next pass is due, the pass runs none
+    /// but its first, and leaves the act for that pass (core.50). Where
+    /// Flume could not be run, nothing is kept, and the next pass carries
+    /// it out.
     fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
+        let unrun = |words: String, say: &mut dyn FnMut(String)| {
+            let what = sort(&act.what);
+            say(format!(
+                "{}: {what} of {} at {place}: not carried out: {words}",
+                act.id, act.launch
+            ));
+        };
+        if !self.listed(place) {
+            match self.carrier.flume.status_of(None, place) {
+                Ok(Reply::Given(_)) => {}
+                Ok(Reply::Refused(words)) => {
+                    self.acted(act, Outcome::Refused, Some(words), Some(place), say);
+                    return;
+                }
+                Err(Unrun(words)) => return unrun(words, say),
+            }
+        }
+        if self.acts_run > 0 && (self.carrier.due)() {
+            self.left.insert(act.id.clone());
+            return;
+        }
+        self.acts_run += 1;
+        self.ran = true;
         match self.carrier.flume.act(place, &flume_act(&act.what)) {
             Ok(Reply::Given(_)) => self.acted(act, Outcome::Done, None, Some(place), say),
             Ok(Reply::Refused(words)) => {
                 self.acted(act, Outcome::Refused, Some(words), Some(place), say)
             }
-            Err(Unrun(words)) => {
-                let what = sort(&act.what);
-                say(format!(
-                    "{}: {what} of {} at {place}: not carried out: {words}",
-                    act.id, act.launch
-                ));
-            }
+            Err(Unrun(words)) => unrun(words, say),
         }
+    }
+
+    /// Whether the pass's listing holds the place at `place`, standing or
+    /// as the record Flume keeps of it tidied.
+    fn listed(&self, place: &str) -> bool {
+        self.listing
+            .as_ref()
+            .is_some_and(|listing| facts::entry(listing, place).is_some())
     }
 
     /// Answers `act` on a launch the runner holds not yet launched, from
@@ -637,6 +737,7 @@ impl Work<'_> {
             }
         };
         let what = format!("{id}: branch {branch} from {from} in {repository}");
+        self.ran = true;
         let printed = match self.carrier.sluice.branch(&container, branch, from) {
             Ok(printed) => printed,
             Err(sluice::Unrun(words)) => {
@@ -700,9 +801,11 @@ impl Work<'_> {
     /// whole answer, as the one line Flume printed. A place is followed to
     /// its end whether or not the configuration still keeps its
     /// repository: one it no longer keeps is asked for by its location
-    /// alone (record 0021). The pass's listing decides when it is read
-    /// again: only where the place's entry there differs, as JSON, from its
-    /// entry in the answer carried. A place the listing no longer holds is
+    /// alone (record 0021). Flume's listing as it stands once the wants are
+    /// answered decides when it is read again (record 0027): only where the
+    /// place's entry there, the place standing or else its tidied record
+    /// `<location>@<at>`, differs, as JSON, from its entry in the answer
+    /// carried. A place the listing no longer holds is
     /// asked for once a pass, and where Flume refuses, the last status
     /// carried stands, not listed. The first status carried that reads the
     /// place landed tells the keeper, where it keeps the repository, so it
@@ -997,6 +1100,20 @@ impl Work<'_> {
         let command = report.commands.remove(id).is_some();
         let inbox = report.inboxes.remove(id).is_some();
         launch || act || command || inbox
+    }
+}
+
+/// Flume's listing in its answer to `flume --json status`, where it gave
+/// one, else none, its words said.
+fn listing_of(status: &Result<Reply, Unrun>, say: &mut dyn FnMut(String)) -> Option<Value> {
+    match status {
+        Ok(Reply::Given(text)) => serde_json::from_str::<Value>(text).ok(),
+        Ok(Reply::Refused(words)) | Err(Unrun(words)) => {
+            say(format!(
+                "boomdrive: Flume's status could not be read: {words}"
+            ));
+            None
+        }
     }
 }
 

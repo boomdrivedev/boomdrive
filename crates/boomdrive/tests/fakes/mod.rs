@@ -94,7 +94,12 @@ struct State {
     /// Every call left unrun, with these words.
     unrun: Option<String>,
     calls: Vec<Call>,
+    /// What Flume does on its own while the next launch or act runs.
+    meanwhile: Option<Meanwhile>,
 }
+
+/// What Flume does on its own while a command of the runner's runs.
+type Meanwhile = Box<dyn FnOnce(&FakeFlume)>;
 
 /// A host part with no bound, its one stream `default`, and a pool whose
 /// account is named.
@@ -213,6 +218,12 @@ impl FakeFlume {
             .insert(place.to_string(), reply);
     }
 
+    /// `then` done to Flume while the next launch or act runs, as Flume's
+    /// own settling moves a place on while the runner waits on a command.
+    pub fn meanwhile(&self, then: impl FnOnce(&FakeFlume) + 'static) {
+        self.state.borrow_mut().meanwhile = Some(Box::new(then));
+    }
+
     /// Every call left unrun with `words`, as when `flume` is not there.
     pub fn unrun(&self, words: &str) {
         self.state.borrow_mut().unrun = Some(words.to_string());
@@ -270,6 +281,14 @@ impl FakeFlume {
         state.unrun.clone().map(Unrun)
     }
 
+    /// What Flume does on its own while a launch or an act runs.
+    fn settle(&self) {
+        let meanwhile = self.state.borrow_mut().meanwhile.take();
+        if let Some(then) = meanwhile {
+            then(self);
+        }
+    }
+
     fn listing_now(&self) -> Value {
         let state = self.state.borrow();
         json!({ "status": { "places": state.places, "host": state.host } })
@@ -286,6 +305,7 @@ impl Flume for FakeFlume {
         if let Some(unrun) = self.call(Call::Launch(args.clone())) {
             return Err(unrun);
         }
+        self.settle();
         if let Some(reply) = self.state.borrow().launches.get(&args.name) {
             return reply.clone();
         }
@@ -309,6 +329,7 @@ impl Flume for FakeFlume {
         if let Some(unrun) = self.call(Call::Act(place.to_string(), act.clone())) {
             return Err(unrun);
         }
+        self.settle();
         if let Some(reply) = self.state.borrow().acts.get(place) {
             return reply.clone();
         }
@@ -508,9 +529,20 @@ impl Bench {
         self.pass_over(&self.flume, plane)
     }
 
-    /// One control pass against `plane` over `flume`, and the lines it
-    /// said.
+    /// One control pass against `plane` over `flume`, the next pass never
+    /// due, and the lines it said.
     pub fn pass_over(&self, flume: &dyn Flume, plane: &mut Fake) -> (Passed, Vec<String>) {
+        self.pass_due(flume, plane, &|| false)
+    }
+
+    /// One control pass against `plane` over `flume`, the next pass due
+    /// once `due` says so, and the lines it said.
+    pub fn pass_due(
+        &self,
+        flume: &dyn Flume,
+        plane: &mut Fake,
+        due: &dyn Fn() -> bool,
+    ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
         let sluice = sluice::Cli::new(self.sluice.program());
         let carrier = Carrier {
@@ -523,6 +555,7 @@ impl Bench {
             control_dir: &control_dir,
             relays: &self.relays,
             reach: &self.reach,
+            due,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(plane, &mut |line| lines.push(line));

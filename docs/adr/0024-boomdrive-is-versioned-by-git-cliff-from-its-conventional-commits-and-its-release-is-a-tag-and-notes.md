@@ -1,7 +1,7 @@
 ---
 number: 24
 title: Boomdrive is versioned by git-cliff from its Conventional Commits, and its release is a tag of main and its notes
-status: proposed
+status: accepted
 date: 2026-11-06
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # Boomdrive is versioned by git-cliff from its Conventional Commits, and its release is a tag of main and its notes
 
-Status: proposed on 2026-11-06 by the code stage of the chore `boomdrive-is-versioned-by-git-cliff`, from its brief; accepted on the user's yes once they have read it as a record.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-06 by the code stage of the chore `boomdrive-is-versioned-by-git-cliff`, from its brief.
 
 Deciders: the brief of the chore, in the bolt `boomdrive-releases-are-versioned`, 2026-11-06, for what is versioned and how; the code stage, for its form, each choice below with the path it did not take.
 Sources: the brief, quoted below; agentplot/sluice's, agentplot/flume's and agentplot/timber's `cliff.toml`, `.versionrc`, `devenv.nix` and `.github/workflows/ci.yml` at origin/main on 2026-11-06, each public; agentplot/timber's record 0004, cited by id; records 0012, 0014 and 0020; rules core.7, core.8, core.37, core.44 and core.47; GitHub's documentation on the events a workflow's `GITHUB_TOKEN` triggers; git-cliff 2.14.2 and convco 0.7.2, run on this repository's history on 2026-11-06.

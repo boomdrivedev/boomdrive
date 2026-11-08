@@ -9,7 +9,7 @@ decision-makers:
 
 # A lost lease's place is left until a command drops it, and the runner never retries back to back
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-07, below: an act on a place Flume does not stand costs the reading of Flume's refusal.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
@@ -39,3 +39,36 @@ Then four rules drawn from the material, each kept or not: no launch past its le
 - The cloud is asked for the command that drops a stray place, sent when a lapsed lease's work goes to another host. Where two places of one unit conflict, sluice's gate refuses whichever lands second.
 - The back-to-back passes the verify report names are fixed by a change of their own.
 - A host offline for longer than its leases loses them, and its places keep running until the control plane drops them.
+
+## Amendment, 2026-11-07: an act on a place Flume does not stand costs the reading of Flume's refusal
+
+Status: the code stage's own choice, on the brief of the chore `a-launch-waits-on-no-other-act`, quoted in record 0002's second amendment of the same day. It changes how a refusal is read, not what it says, so it is cheap to change and is not asked.
+
+### Context
+
+Flume's command acting on a place settles every place on the host first, where no caller keeps watch (Flume's clause 119), and only then finds that the place does not stand. On deneb on 2026-11-07, `flume --json priority <place> 12` refused a place that no longer stood in 27 to 33 seconds. `flume --json status <place>`, which settles nothing (Flume's clause 119), refused the same place in about ten milliseconds, in the same words: "no place <location> stands on this host". Of some 180 acts on places one pass carried out there, 162 were such refusals.
+
+### Considered options
+
+1. Run Flume's act command on every place, its refusal the act's answer, once.
+2. Answer an act on a place the pass's listing does not hold from that listing, running no Flume.
+3. Read Flume's status of a place the pass's listing does not hold before running the act's command on it: where Flume refuses it, carry that refusal as the act's answer; where Flume gives it, run the command.
+4. Leave it to Flume, to refuse a place that does not stand before it settles.
+
+### Decision outcome
+
+Option 3.
+
+- **Flume is asked, of the place.** Where the pass's listing holds the place, standing or as the record Flume keeps of it tidied, the act is Flume's command, as before. Where it does not, or no listing was read, the runner first reads `flume --json status <place>`, naming no repository, as the act's command names none.
+- **Flume's refusal is the answer.** Where Flume refuses the place's status, the act is answered `refused` with Flume's words, as Flume gave them, kept in the report and carried back (core.10, core.11), and the act's command is not run. The runner reads none of the refusal's words to decide it, and runs nothing more for the act, at that pass or after.
+- **Flume's status given, its command runs.** On a place whose status Flume gives, a tidied place's record among them, the act's command is run, and Flume's answer is the act's.
+- **Flume not run, nothing kept.** Where Flume could not be run for the status, the act is left unanswered and named, and carried out at the next pass, as an act whose command could not be run is.
+- **It holds back no launch** (record 0002's amendments of 2026-11-07; core.50).
+
+Not taken:
+
+- **Option 1.** An act on a place that no longer stands costs the pass Flume's settle of every place, for the answer Flume's status gives in milliseconds.
+- **Option 2.** An act's answer is Flume's (core.1, core.11): the runner would judge from its listing what Flume says of the place.
+- **Option 4.** It is Flume's to do, and is told to the orchestrator for Flume, with a caller keeping watch on the host (Flume's clause 208), under which no act settles first. Until Flume does it, each refusal would still cost a settle.
+
+core.51 holds it, and core.1's details allow it. The work-into-flume spec gains it through the chore `a-launch-waits-on-no-other-act`.

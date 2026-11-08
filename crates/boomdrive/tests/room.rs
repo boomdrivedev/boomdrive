@@ -1,4 +1,4 @@
-//! Room, read from the pass's one `flume --json status` and counted down
+//! Room, read from the `flume --json status` a pass reads before its pull, and counted down
 //! as the pass launches: a launch is made only while the stream it runs
 //! in has room, or the host where it names none (design Decision 8;
 //! core.9; the work-into-flume spec's "Room is read from Flume's status
