@@ -7,12 +7,13 @@
 mod fakes;
 
 use boomdrive::sluice::{self, Cli, Reply, Sluice};
-use fakes::{sluice_fixture, sluice_fixtures, SluiceStub};
+use fakes::{preview_fixtures, sluice_fixture, sluice_fixtures, SluiceStub};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use std::fs;
+use std::path::Path;
 
-/// Every fixture of sluice's some test here reads.
+/// Every fixture of sluice 0.61.1's some test here reads.
 const READ: [&str; 4] = [
     "status-failed.json",
     "status-landed.json",
@@ -20,9 +21,24 @@ const READ: [&str; 4] = [
     "status-withdrawn.json",
 ];
 
+/// Every fixture of sluice 0.74.3's, a preview's, some test reads.
+const READ_PREVIEWS: [&str; 5] = [
+    "preview-no-table.json",
+    "preview-starting.json",
+    "previews.json",
+    "release-nothing.json",
+    "release.json",
+];
+
 #[test]
 fn every_fixture_is_read() {
-    let held: BTreeSet<String> = fs::read_dir(sluice_fixtures())
+    each_fixture_is_read(&sluice_fixtures(), &READ);
+    each_fixture_is_read(&preview_fixtures(), &READ_PREVIEWS);
+}
+
+/// `dir` holds `read` and its README, and the README names each of them.
+fn each_fixture_is_read(dir: &Path, read: &[&str]) {
+    let held: BTreeSet<String> = fs::read_dir(dir)
         .expect("the fixtures")
         .map(|file| {
             file.expect("a fixture")
@@ -32,16 +48,19 @@ fn every_fixture_is_read() {
         })
         .filter(|name| name != "README.md")
         .collect();
-    let read: BTreeSet<String> = READ.iter().map(|name| name.to_string()).collect();
+    let names: BTreeSet<String> = read.iter().map(|name| name.to_string()).collect();
     assert_eq!(
-        held, read,
-        "a fixture no test reads, or one read and not held"
+        held,
+        names,
+        "{}: a fixture no test reads, or one read and not held",
+        dir.display()
     );
-    let readme = sluice_fixture("README.md");
-    for name in READ {
+    let readme = fs::read_to_string(dir.join("README.md")).expect("the README");
+    for name in read {
         assert!(
             readme.contains(&format!("`{name}`")),
-            "README says nothing of {name}"
+            "{}: README says nothing of {name}",
+            dir.display()
         );
     }
 }

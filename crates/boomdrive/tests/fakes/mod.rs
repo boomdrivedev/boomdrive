@@ -54,6 +54,16 @@ pub fn sluice_fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sluice-0.61.1")
 }
 
+/// A fixture of sluice 0.74.3's, a preview's, as it printed it.
+pub fn preview_fixture(name: &str) -> String {
+    fs::read_to_string(preview_fixtures().join(name)).expect("the fixture")
+}
+
+/// The directory of sluice 0.74.3's fixtures, a preview's.
+pub fn preview_fixtures() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sluice-0.74.3")
+}
+
 /// `value` as Flume prints JSON: on one line, ending in a newline.
 pub fn printed(value: &Value) -> String {
     serde_json::to_string(value).expect("JSON") + "\n"
@@ -856,6 +866,12 @@ impl SluiceStub {
     /// exit `exit`.
     pub fn answers(&self, what: &str, name: &str, exit: i32) {
         self.answers_text(what, &sluice_fixture(name), exit);
+    }
+
+    /// `what`, a command, answered with sluice 0.74.3's fixture `name`,
+    /// a preview's, and the exit `exit`.
+    pub fn answers_preview(&self, what: &str, name: &str, exit: i32) {
+        self.answers_text(what, &preview_fixture(name), exit);
     }
 
     /// `what`, a command, answered with `text` and the exit `exit`.
