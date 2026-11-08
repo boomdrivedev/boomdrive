@@ -25,6 +25,14 @@ const FIELDS: [&str; 6] = ["id", "branch", "head", "state", "failed", "landed_as
 /// The fields of a `failed` row the runner carries, in this order.
 const ROW: [&str; 4] = ["task", "hash", "flaky", "system"];
 
+/// The fields of a preview the runner carries, in this order: no
+/// `output`, which is its command's log, no `release_failed`, a log too,
+/// and no `checkout`, `names`, `ports` or `exit` (core.11, core.55).
+const PREVIEW: [&str; 6] = ["name", "branch", "revision", "state", "made", "addresses"];
+
+/// The fields of a release the runner carries, in this order.
+const RELEASE: [&str; 2] = ["preview", "released"];
+
 /// sluice's answer, read by its exit.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Reply {
@@ -213,6 +221,91 @@ fn member<'a>(members: &[(String, &'a RawValue)], name: &str) -> Option<&'a RawV
         .iter()
         .find(|(named, _)| named == name)
         .map(|(_, value)| *value)
+}
+
+/// What the runner carries of `document`, a preview as sluice's ask
+/// answers it or its listing holds it (design Decision 4; core.11): a
+/// JSON object of its `name`, `branch`, `revision`, `state`, `made` and
+/// `addresses`, each where sluice printed it, a value's text as sluice
+/// printed it, an object or an array formed of its members or elements,
+/// each so, on one line. None where `document` is no JSON object, or
+/// names no `name`, so is no preview.
+pub fn preview_carried(document: &str) -> Option<String> {
+    let members = serde_json::from_str::<Members>(document).ok()?.0;
+    member(&members, "name")?;
+    Some(fields_of(&members, &PREVIEW))
+}
+
+/// What the runner carries of `answer`, sluice's `release <name> --json`
+/// (design Decision 4): a JSON object of its `preview` and `released`,
+/// each where sluice printed it, as sluice printed it. None where
+/// `answer` is no JSON object, or names no `preview`.
+pub fn release_carried(answer: &str) -> Option<String> {
+    let members = serde_json::from_str::<Members>(answer).ok()?.0;
+    member(&members, "preview")?;
+    Some(fields_of(&members, &RELEASE))
+}
+
+/// A preview sluice's listing holds: its `name` and `revision`, where it
+/// printed them as strings, and what the runner carries of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Listed {
+    pub name: Option<String>,
+    pub revision: Option<String>,
+    pub carried: String,
+}
+
+/// Each preview `answer`, sluice's `previews --json`, lists, or none
+/// where it is no JSON array. A row that is no preview is passed over.
+pub fn listed(answer: &str) -> Option<Vec<Listed>> {
+    let rows = serde_json::from_str::<Vec<&RawValue>>(answer).ok()?;
+    let listed = rows
+        .into_iter()
+        .filter_map(|row| {
+            let carried = preview_carried(row.get())?;
+            Some(Listed {
+                name: text_of(&carried, "name"),
+                revision: text_of(&carried, "revision"),
+                carried,
+            })
+        })
+        .collect();
+    Some(listed)
+}
+
+/// The string `carried`, a JSON object, holds at `field`, or none where
+/// it holds no string there.
+pub fn text_of(carried: &str, field: &str) -> Option<String> {
+    let value = serde_json::from_str::<serde_json::Value>(carried).ok()?;
+    Some(value.get(field)?.as_str()?.to_string())
+}
+
+/// The JSON object of `fields` of `members`, in that order, each where
+/// it is a member, its value as [`compact`] gives it.
+fn fields_of(members: &[(String, &RawValue)], fields: &[&str]) -> String {
+    let fields = fields
+        .iter()
+        .filter_map(|name| Some((*name, compact(member(members, name)?))))
+        .collect();
+    object(fields)
+}
+
+/// `value`'s text as sluice printed it, but that an object is formed of
+/// its members, each so, and an array of its elements, each so, so the
+/// whole is on one line.
+fn compact(value: &RawValue) -> String {
+    if let Ok(Members(members)) = serde_json::from_str::<Members>(value.get()) {
+        let fields = members
+            .iter()
+            .map(|(name, value)| (name.as_str(), compact(value)))
+            .collect();
+        return object(fields);
+    }
+    if let Ok(elements) = serde_json::from_str::<Vec<&RawValue>>(value.get()) {
+        let elements: Vec<String> = elements.into_iter().map(compact).collect();
+        return format!("[{}]", elements.join(","));
+    }
+    value.get().to_string()
 }
 
 /// The id a carried entry names, as sluice printed it, a number or a

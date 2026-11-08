@@ -7,7 +7,7 @@
 mod fakes;
 
 use boomdrive::sluice::{self, Cli, Reply, Sluice};
-use fakes::{preview_fixtures, sluice_fixture, sluice_fixtures, SluiceStub};
+use fakes::{preview_fixture, preview_fixtures, sluice_fixture, sluice_fixtures, SluiceStub};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use std::fs;
@@ -188,4 +188,64 @@ fn a_flaky_readings_log_is_left_out() {
             }]
         })
     );
+}
+
+/// `preview-starting.json` carried as its `name`, `branch`, `revision`,
+/// `state`, `made` and `addresses`, in that order, each as the fixture
+/// prints it, and nothing more (design Decision 4).
+#[test]
+fn a_preview_carried() {
+    let carried = sluice::preview_carried(&preview_fixture("preview-starting.json")).unwrap();
+    assert_eq!(
+        carried,
+        concat!(
+            r#"{"name":"preview/c2b72605d2ad","branch":"main","#,
+            r#""revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"starting","#,
+            r#""made":"2026-11-08T19:54:52Z","#,
+            r#""addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#
+        )
+    );
+}
+
+/// The previews spec's "A failed preview's output left out":
+/// `previews.json`'s failed row is carried with its `state`, `name` and
+/// `addresses` as the fixture prints them, and no `output` (core.11).
+#[test]
+fn a_failed_previews_output_is_left_out() {
+    let printed = preview_fixture("previews.json");
+    let output = "the stack did not come up";
+    assert!(printed.contains(output));
+    let listed = sluice::listed(&printed).unwrap();
+    let failed = listed
+        .iter()
+        .find(|row| sluice::text_of(&row.carried, "state").as_deref() == Some("failed"))
+        .expect("the failed row");
+    assert!(!failed.carried.contains("\"output\""), "{}", failed.carried);
+    assert!(!failed.carried.contains(output), "{}", failed.carried);
+    assert_eq!(
+        failed.carried,
+        concat!(
+            r#"{"name":"preview/124c789156d0","branch":"main","#,
+            r#""revision":"124c789156d05fed6f36914a4d0a57ccbb92abe2","state":"failed","#,
+            r#""made":"2026-11-08T19:54:52Z","#,
+            r#""addresses":{"web":"http://web-124c789--main--repo.localhost:20001"}}"#
+        )
+    );
+    assert_eq!(failed.name.as_deref(), Some("preview/124c789156d0"));
+    assert_eq!(listed.len(), 2);
+}
+
+/// `release.json` carried as its `preview` and `released`.
+#[test]
+fn a_release_carried() {
+    assert_eq!(
+        sluice::release_carried(&preview_fixture("release.json")).as_deref(),
+        Some(r#"{"preview":"preview/c2b72605d2ad","released":true}"#)
+    );
+    assert_eq!(
+        sluice::release_carried(&preview_fixture("release-nothing.json")).as_deref(),
+        Some(r#"{"preview":"preview/c2b72605d2ad","released":false}"#)
+    );
+    assert_eq!(sluice::release_carried("[]"), None);
+    assert_eq!(sluice::preview_carried(r#"{"state":"up"}"#), None);
 }

@@ -40,7 +40,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. sluice's word of a preview
 
 - [x] 4.1 `crates/boomdrive/tests/fixtures/sluice-0.74.3/` holds `preview-starting.json`, `preview-no-table.json`, `previews.json`, `release.json` and `release-nothing.json`. Each is the set's sluice's own answer, captured on a scratch host byte for byte, with a README saying how and what stood, as design Decision 14 and Task notes 4.1 have it. `tests/sluice.rs`'s `every_fixture_is_read` reads them. True when `devenv shell -- cargo test -p boomdrive --test sluice every_fixture_is_read` passes.
-- [ ] 4.2 `sluice.rs` gains `preview_carried` and `release_carried` (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --test sluice` passes with:
+- [x] 4.2 `sluice.rs` gains `preview_carried` and `release_carried` (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --test sluice` passes with:
   - `a_preview_carried`: `preview-starting.json` carried as its `name`, `branch`, `revision`, `state`, `made` and `addresses` in that order, each as the fixture prints it;
   - `a_failed_previews_output_is_left_out`: `previews.json`'s failed row carried with no `output`;
   - `a_release_carried`: `release.json` carried as its `preview` and `released`.
