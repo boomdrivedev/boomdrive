@@ -383,3 +383,51 @@ fn a_preview_whose_work_has_left_the_plan() {
     assert_eq!(ids, ["home/30"]);
     assert!(matches!(pulled.wants[0], Want::Preview(_)));
 }
+
+/// The runner's report of preview 30 brought up, its status listed or
+/// not, and its done 31 where `done`.
+fn previews_report(listed: bool, done: bool) -> Report {
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/30"),
+        previewed(Outcome::Done, false, Some(listed)),
+    );
+    if done {
+        let mut put_away = previewed(Outcome::Done, true, None);
+        put_away.text = Some(r#"{"preview":"preview/r1","released":true}"#.to_string());
+        report.previews.insert(Id::new("home/31"), put_away);
+    }
+    report
+}
+
+/// The crew-control-plane spec's "A preview put away, its work gone":
+/// both leave the runner's files, `previews.rec` written as its
+/// descriptor alone.
+#[test]
+fn a_preview_put_away_its_work_gone() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&["u"], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    let report = previews_report(false, true);
+    assert!(let_go(&mut crew, &report).is_empty());
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
+    main_with_previews(&state, &plan(&[], &[]));
+    assert_eq!(let_go(&mut crew, &report), ["home/30", "home/31"]);
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(!previews.contains("Request: 30"), "{previews}");
+    assert!(!previews.contains("Request: 31"), "{previews}");
+    assert_eq!(previews, boomdrive_crew::write::PREVIEWS);
+}
+
+/// The crew-control-plane spec's "A preview still up, its work gone".
+#[test]
+fn a_preview_still_up_its_work_gone() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    let report = previews_report(true, false);
+    assert!(let_go(&mut crew, &report).is_empty());
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
+}

@@ -848,6 +848,7 @@ impl ControlPlane for Crew {
             let mut kept = report.clone();
             kept.launches.retain(|id, _| !gone.contains(id));
             kept.acts.retain(|id, _| !gone.contains(id));
+            kept.previews.retain(|id, _| !gone.contains(id));
             let addresses: BTreeMap<String, String> = main
                 .roles
                 .iter()

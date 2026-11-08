@@ -421,8 +421,11 @@ pub fn since_at(files: &read::RunnerFiles) -> Option<String> {
 /// has left crew's plan at `main`'s tip, and each a drop names that the
 /// runner holds unlaunched, whatever the plan holds, with its acts; each
 /// role's earlier run once a later one is recorded and its place is over;
-/// and a role's last run once its record has gone from `roles.rec` and
-/// its place is over, each run with its done.
+/// a role's last run once its record has gone from `roles.rec` and its
+/// place is over, each run with its done; and each preview whose work has
+/// left crew's plan and which holds no preview up: a done, a preview
+/// refused, or one brought up or held whose status sluice's listing no
+/// longer holds (design Decision 10).
 pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet<Id> {
     let mut gone = BTreeSet::new();
     let mut launches = BTreeSet::new();
@@ -459,6 +462,24 @@ pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet
             gone.insert(id.clone());
         }
     }
+    for (id, previewed) in &report.previews {
+        let Some(Named::Request(n)) = ids::named(label, id) else {
+            continue;
+        };
+        let Some(request) = main.request(n) else {
+            continue;
+        };
+        let unlisted = previewed
+            .status
+            .as_ref()
+            .is_some_and(|status| !status.listed);
+        let up = !previewed.done
+            && matches!(previewed.outcome, Outcome::Done | Outcome::Held)
+            && !unlisted;
+        if !up && !main.plans(request.work()) {
+            gone.insert(id.clone());
+        }
+    }
     let kept = roles::of_host(main, host);
     for (role, runs) in roles::runs(label, report) {
         let Some(latest) = runs.last().map(|run| run.k) else {
@@ -472,6 +493,10 @@ pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet
             }
         }
     }
-    gone.retain(|id| report.launches.contains_key(id) || report.acts.contains_key(id));
+    gone.retain(|id| {
+        report.launches.contains_key(id)
+            || report.acts.contains_key(id)
+            || report.previews.contains_key(id)
+    });
     gone
 }
