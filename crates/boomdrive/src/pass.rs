@@ -5,7 +5,11 @@
 //! owner's VS Code workspace kept (core.43). Where it asks, a removed
 //! view's owner folder that then holds only a workspace no kept owner has
 //! goes with that workspace. Each repository is
-//! independent: a failure in one is named and the next is kept. A pass
+//! independent: a failure in one is named and the next is kept. Each is
+//! kept or let go under its clone's lock, which a launch into the clone
+//! takes shared, and after each the pass runs the loop's hook, which keeps
+//! the landings told since, so a landing waits for no more than the
+//! repository in hand (record 0026; design Decisions 3 and 4). A pass
 //! stopped keeps no further repository and no workspace. The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
 //! <words>`, and a pass with nothing to say writes nothing.
@@ -15,6 +19,7 @@ use crate::code_workspace::{self, Act, Wanted};
 use crate::config::{self, Address, Config};
 use crate::git::Git;
 use crate::lacks;
+use crate::locks::Locks;
 use crate::view::{self, OldAct, ViewAct};
 use std::fs;
 use std::io;
@@ -45,17 +50,25 @@ impl Outcome {
     }
 }
 
-/// One pass over `config`, the runner's clones kept in `data`, each line
-/// said to `say` as it is said. Once `stop` is set, no further
+/// What a pass runs after each repository it keeps or lets go of, and
+/// whether it changed a clone, so the pass reads its clones again: the
+/// loop's keeping of the landings told since (design Decision 3).
+pub type Between<'a> = &'a mut dyn FnMut() -> bool;
+
+/// One pass over `config`, the runner's clones kept in `data`, each
+/// repository under its lock among `locks`, `between` run after each,
+/// each line said to `say` as it is said. Once `stop` is set, no further
 /// repository is kept or let go, no workspace is kept, and the pass ends.
 pub fn pass(
     git: &Git,
     data: &Path,
     config: &Config,
+    locks: &Locks,
     stop: &AtomicBool,
+    between: Between<'_>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    let Some(clones) = find(git, data, say) else {
+    let Some(mut clones) = find(git, data, say) else {
         return Outcome::Failed;
     };
     let workspaces = wanted_workspaces(config);
@@ -64,6 +77,7 @@ pub fn pass(
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
+        let held = locks.keep(address);
         let kept = keep_configured(
             git,
             data,
@@ -73,16 +87,27 @@ pub fn pass(
             address,
             say,
         );
+        drop(held);
         outcome = outcome.and(kept);
+        if between() {
+            let Some(found) = find(git, data, say) else {
+                return Outcome::Failed;
+            };
+            clones = found;
+        }
     }
-    for (address, container) in &clones {
+    let dropped: Vec<&(Address, PathBuf)> = clones
+        .iter()
+        .filter(|(address, _)| !config.repositories.contains(address))
+        .collect();
+    for (address, container) in dropped {
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        if config.repositories.contains(address) {
-            continue;
-        }
+        let held = locks.keep(address);
         outcome = outcome.and(let_go(git, address, container, workspaces.as_deref(), say));
+        drop(held);
+        between();
     }
     if let Some(workspaces) = &workspaces {
         if !stop.load(Ordering::SeqCst) {
@@ -100,13 +125,15 @@ fn wanted_workspaces(config: &Config) -> Option<Vec<Wanted>> {
         .then(|| code_workspace::wanted(config))
 }
 
-/// Keeps `address` alone, just as a pass keeps it, against `config`
-/// (design 9): what a landing told of it runs. An address `config` does
-/// not name is named, and nothing is cloned or fetched for it (core.5).
+/// Keeps `address` alone, just as a pass keeps it, against `config`,
+/// under its lock among `locks` (design 9): what a landing told of it
+/// runs. An address `config` does not name is named, and nothing is
+/// cloned or fetched for it (core.5).
 pub fn keep_one(
     git: &Git,
     data: &Path,
     config: &Config,
+    locks: &Locks,
     address: &Address,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
@@ -117,6 +144,7 @@ pub fn keep_one(
         return Outcome::Kept;
     };
     let workspaces = wanted_workspaces(config);
+    let _held = locks.keep(address);
     match find(git, data, say) {
         Some(clones) => keep_configured(
             git,

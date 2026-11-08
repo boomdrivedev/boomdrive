@@ -5,8 +5,8 @@
 //! It holds the hosted table, the host's key and its stores, a
 //! partition's enrollment, each partition's connection, the cut of each
 //! tool's answer to its copy, the checks of version 1's messages, and
-//! `Hosted`, the `ControlPlane` over every partition's connection, which
-//! [`open`] opens.
+//! `Hosted`, the `ControlPlane` over a partition's connection, which
+//! [`open`] opens as a part for each partition.
 
 pub mod check;
 pub mod connection;
