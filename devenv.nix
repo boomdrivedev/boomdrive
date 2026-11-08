@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  config,
   ...
 }:
 
@@ -127,6 +128,13 @@ let
     }
   );
 
+  # devenv's own script that makes the files it declares, Claude Code's
+  # among them, run from the repository's root.
+  writeFiles = ''
+    cd ${lib.escapeShellArg config.devenv.root} || exit
+    ${config.tasks."devenv:files".exec}
+  '';
+
 in
 {
   # The system tools are this file's, pinned by devenv.lock, and the
@@ -192,10 +200,42 @@ in
   env.BOOMDRIVE_SET_SLUICE = lib.getExe set.sluice;
   cachix.pull = [ "boomdrive" ];
 
+  # Claude Code's project files (record 0022): .mcp.json from the servers
+  # below and .claude/settings.json, each a link devenv makes into the
+  # store and git ignores. The repository's one server is devenv's hosted
+  # one, which searches packages and devenv's options and starts no
+  # process on the host; it is named here because a list of the
+  # repository's own replaces devenv's default. Every server named is
+  # approved by name in the settings, so a session in a trusted folder, a
+  # place among them, starts them and asks nothing. OpenSpec's skills and
+  # commands under .claude/ are tracked, as the openspec pinned above
+  # writes them, and written again when that pin moves: `openspec init
+  # --tools claude --profile custom`, with the user's OpenSpec
+  # configuration naming sluice's ten workflows, propose, explore, new,
+  # continue, apply, ff, sync, archive, bulk-archive and verify.
+  claude.code = {
+    enable = true;
+    mcpServers."mcp.devenv.sh" = {
+      type = "http";
+      url = "https://mcp.devenv.sh";
+    };
+  };
+  files.${config.claude.code.settingsPath}.json.enabledMcpjsonServers =
+    lib.attrNames config.claude.code.mcpServers;
+
   # moon's task archives (.moon/cache/outputs) are a link into the git common
   # dir, so every worktree shares them. The rest of .moon/cache records the
   # checkout's absolute paths and stays its own.
   enterShell = ''
+    # devenv's files, Claude Code's above, made here as well as by devenv's
+    # own task: a place's readiness is sluice's equip, which sources this
+    # script from `devenv print-dev-env` and runs no task, and the agent
+    # started after it reads them as it starts (record 0022). Its words go
+    # to no output a caller reads the environment from, and a working copy
+    # where they cannot be written still gets its shell.
+    if ! (${writeFiles}) >/dev/null; then
+      echo "devenv.nix: Claude Code's files were not written in ${config.devenv.root}" >&2
+    fi
     if _moon_root="$(git rev-parse --show-toplevel 2>/dev/null)" &&
       _moon_common="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
       _moon_cache="$_moon_root/.moon/cache"

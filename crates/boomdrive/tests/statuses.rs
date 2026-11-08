@@ -130,8 +130,8 @@ fn a_place_tidied() {
     bench.pass(&mut plane);
     let launched = carried(&bench, "a");
     assert!(
-        !launched.listed,
-        "the pass's listing was read before the launch"
+        launched.listed,
+        "the listing is read again after the launch"
     );
     bench.pass(&mut plane);
     let listed = carried(&bench, "a");
@@ -154,6 +154,54 @@ fn a_place_tidied() {
     bench.pass(&mut plane);
     assert_eq!(asked(bench.flume.take_calls()), 1, "once a pass");
     assert_eq!(carried(&bench, "a"), tidied);
+}
+
+/// The work-into-flume spec's "A place tidied while the pass answers its
+/// wants": a carried place that lands and is tidied while the pass
+/// launches another is carried that pass as Flume's record of it,
+/// `<location>@<at>`, tidied and landed, though the listing the pass read
+/// before the launch holds it live (record 0027).
+#[test]
+fn a_place_tidied_while_the_pass_answers_its_wants() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let tidied = place.clone();
+    bench
+        .flume
+        .meanwhile(move |flume| flume.tidy_pending(&tidied, 1793559694));
+    plane.set_wants(vec![
+        Want::Offer(offer("a", "a")),
+        Want::Offer(offer("b", "b")),
+    ]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    let listings = |calls: Vec<Call>| calls.into_iter().filter(|c| *c == Call::Status).count();
+    assert_eq!(
+        listings(bench.flume.take_calls()),
+        2,
+        "read again once b is launched"
+    );
+    let status = carried(&bench, "a");
+    let answer: Value = serde_json::from_str(&status.text).unwrap();
+    let entry = &answer["status"]["places"][0];
+    assert_eq!(entry["place"], format!("{place}@1793559694"));
+    assert_eq!(
+        entry["phase"]["tidied"]["over"],
+        json!({ "landed": { "commit": "c0ffee" } })
+    );
+    assert!(status.listed);
+    let launched = carried(&bench, "b");
+    assert!(launched.listed, "b's place is in the listing read after it");
+
+    bench.pass(&mut plane);
+    assert_eq!(
+        listings(bench.flume.take_calls()),
+        1,
+        "a quiet pass reads it once"
+    );
+    assert_eq!(carried(&bench, "a"), status);
 }
 
 /// A place's status Flume could not be run for is named, and what was
