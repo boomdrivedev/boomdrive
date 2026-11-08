@@ -151,6 +151,7 @@ impl ReportFile {
         report.acts.extend(cloned(&share.acts));
         report.commands.extend(cloned(&share.commands));
         report.inboxes.extend(cloned(&share.inboxes));
+        report.previews.extend(cloned(&share.previews));
         if let Some(parts) = &mut written.parts {
             parts.insert(label.to_string());
         }
@@ -164,6 +165,7 @@ fn retain(report: &mut Report, keep: impl Fn(&Id) -> bool) {
     report.acts.retain(|id, _| keep(id));
     report.commands.retain(|id, _| keep(id));
     report.inboxes.retain(|id, _| keep(id));
+    report.previews.retain(|id, _| keep(id));
 }
 
 /// `entries`, each cloned.
@@ -216,7 +218,7 @@ fn ended(launched: &Launched, place: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use boomdrive_control::{Answer, At, Carried, Lease};
+    use boomdrive_control::{Answer, At, Carried, Lease, Previewed};
 
     fn a_report() -> Report {
         let mut report = Report::default();
@@ -335,6 +337,53 @@ mod tests {
             .map(|entry| entry.unwrap().file_name())
             .collect();
         assert_eq!(names, ["report.json"], "no partial file is left");
+    }
+
+    /// A part's previews are of its share, as its launches are: `home`'s
+    /// save holds its preview `home/4` and keeps `work`'s `work/5`, and
+    /// each part's share reads back holding its own alone.
+    #[test]
+    fn a_save_keeps_every_parts_previews() {
+        let previewed = |id: &str| {
+            let mut report = Report::default();
+            report.previews.insert(
+                Id::new(id),
+                Previewed {
+                    lease: Lease {
+                        number: 1,
+                        expires: None,
+                    },
+                    repository: "example/crew".into(),
+                    revision: "R1".into(),
+                    done: false,
+                    outcome: Outcome::Done,
+                    text: Some("{}".into()),
+                    words: None,
+                    status: None,
+                    at: At::parse("2026-11-01T10:00:00Z").unwrap(),
+                },
+            );
+            report
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let shared = ReportFile::new(dir.path());
+        shared
+            .save_share("work", &of("work"), &previewed("work/5"))
+            .unwrap();
+        shared
+            .save_share("home", &of("home"), &previewed("home/4"))
+            .unwrap();
+        let home = shared.share("home", &of("home")).unwrap();
+        assert_eq!(home, Some(previewed("home/4")));
+        let work = shared.share("work", &of("work")).unwrap();
+        assert_eq!(work, Some(previewed("work/5")));
+        shared
+            .save_share("home", &of("home"), &Report::default())
+            .unwrap();
+        let home = shared.share("home", &of("home")).unwrap();
+        assert_eq!(home, Some(Report::default()));
+        let work = shared.share("work", &of("work")).unwrap();
+        assert_eq!(work, Some(previewed("work/5")));
     }
 
     /// The work-into-flume spec's "A file from the release before": a file
