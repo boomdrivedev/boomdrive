@@ -7,7 +7,7 @@
 mod common;
 
 use boomdrive_control::*;
-use common::{definition, passes, validator};
+use common::{definition, passes, refused, validator};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -73,6 +73,9 @@ fn no_more_than_needed() -> Launch {
     }
 }
 
+/// One value of each want sort but a preview, which version 1 names not
+/// (`a_preview_is_no_want_of_version_1`), and of each act and command
+/// sort, and each other value of the interface, passes its definition.
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
@@ -247,4 +250,28 @@ fn the_interfaces_values_pass() {
     };
     passes_as("report.schema.json", "report", &report);
     passes_as("report.schema.json", "report", &Report::default());
+}
+
+/// A preview, as the interface's types write it, fails version 1's
+/// `want`: version 1 names no preview, and a release has spoken it
+/// (the runner-protocol spec's "A preview is no want of version 1";
+/// core.42).
+#[test]
+fn a_preview_is_no_want_of_version_1() {
+    for done in [false, true] {
+        let preview = Want::Preview(Preview {
+            id: Id::new("preview-1"),
+            lease: lease(),
+            repository: "example/app".to_string(),
+            branch: "main".to_string(),
+            revision: "0123456789abcdef0123456789abcdef01234567".to_string(),
+            done,
+        });
+        let json = serde_json::to_value(&preview).unwrap();
+        refused(
+            &validator(&definition("wants.schema.json", "want")),
+            &json,
+            "a preview",
+        );
+    }
 }

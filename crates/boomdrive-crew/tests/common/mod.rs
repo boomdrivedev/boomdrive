@@ -19,7 +19,10 @@ use tempfile::TempDir;
 
 /// crew's header of `requests.rec`, as `runner.REQUESTS` holds it at
 /// `the-team-machinery-leaves` (`2b97ee57`), where a launch of a kit's
-/// work names no `Host`.
+/// work names no `Host`, with what crew's unit that moves its previews
+/// onto the runner adds: `preview` among its `Act`s, `Done` a bool, and
+/// `Branch`, `Revision` and `Done` allowed (design Decision 10; Task notes
+/// 6.1).
 pub const REQUESTS: &str = "\
 # crew's requests of the runners: a launch of a Flume place for a started
 # bolt's work, a fix or a role's work that lands, or a retry, drop or priority
@@ -34,14 +37,15 @@ pub const REQUESTS: &str = "\
 %doc: A request for Work: a launch of a Flume place of Kind named Name, cut from Base of Repo, taken by a runner whose configuration names Repo, in the stream its host maps it to, or by Host's runner in Stream for a role's work; or a retry, drop or priority of the place the launch Of names launched, taken by the runner that took it.
 %key: Request
 %type: Request,Of,After,Priority int
-%type: Act enum launch retry drop priority
+%type: Act enum launch retry drop priority preview
 %type: Kind enum change chore fix
 %type: Hold enum submission
 %type: Submission bool
+%type: Done bool
 %type: Host regexp /^[a-z0-9][a-z0-9-]*$/
 %type: Date date
 %mandatory: Request Act Work Date By
-%allowed: Request Act Host Work Repo Kind Name Base Stream Priority Intent Recipient Hold After Brief Of Stage Submission Words Date By
+%allowed: Request Act Host Work Repo Kind Name Base Branch Revision Done Stream Priority Intent Recipient Hold After Brief Of Stage Submission Words Date By
 ";
 
 /// crew's header of `plan.rec`, as `plan.HEADER` holds it at `2b97ee57`.
@@ -195,8 +199,39 @@ pub fn act(
     rec(&fields)
 }
 
-/// The fields of crew's `runner.FIELDS`, in its order.
-const FIELDS: [&str; 21] = [
+/// A preview request as crew's unit writes one, numbered `n`, of `work`
+/// in `repo`, of `branch` at `revision`, for `host` where one is named,
+/// `Done: yes` where `done` and no `Done` otherwise (Task notes 6.1).
+pub fn preview(
+    n: u64,
+    host: Option<&str>,
+    work: &str,
+    repo: &str,
+    branch: &str,
+    revision: &str,
+    done: bool,
+) -> String {
+    let number = n.to_string();
+    let mut fields: Vec<(&str, &str)> = vec![("Request", &number), ("Act", "preview")];
+    if let Some(host) = host {
+        fields.push(("Host", host));
+    }
+    fields.extend([
+        ("Work", work),
+        ("Repo", repo),
+        ("Branch", branch),
+        ("Revision", revision),
+    ]);
+    if done {
+        fields.push(("Done", "yes"));
+    }
+    order(&mut fields, &[]);
+    rec(&fields)
+}
+
+/// The fields of crew's `runner.FIELDS`, in its order, with the fields of
+/// a preview after `Base`, as crew's unit writes them (Task notes 6.1).
+const FIELDS: [&str; 24] = [
     "Request",
     "Act",
     "Host",
@@ -205,6 +240,9 @@ const FIELDS: [&str; 21] = [
     "Kind",
     "Name",
     "Base",
+    "Branch",
+    "Revision",
+    "Done",
     "Stream",
     "Priority",
     "Intent",

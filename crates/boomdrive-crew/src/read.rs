@@ -8,7 +8,8 @@
 use crate::ids;
 use crate::records::{self, whole, Sets};
 use boomdrive_control::{
-    Act, ActSort, Answer, At, Carried, Id, Launch, Launched, Lease, Offer, Outcome, Want,
+    Act, ActSort, Answer, At, Carried, Hello, Id, Launch, Launched, Lease, Offer, Outcome, Preview,
+    Previewed, Want,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -109,22 +110,23 @@ impl Main {
 }
 
 /// A runner's branch as crew's `host_read` reads it: the host's one
-/// `Runner`, each answer and place by its request's number, and each
-/// role's run by its address.
+/// `Runner`, each answer and place by its request's number, each role's
+/// run by its address, and each preview by its request's number.
 #[derive(Clone, Debug, Default)]
 pub struct Runner {
     pub since: Option<String>,
     pub answers: BTreeMap<u64, Record>,
     pub places: BTreeMap<u64, Record>,
     pub runs: BTreeMap<String, Record>,
+    pub previews: BTreeMap<u64, Record>,
 }
 
-/// A runner's files at a tip, by name: `runner.rec`, `answers.rec` and
-/// `places.rec`, each none where the tip lacks it.
+/// A runner's files at a tip, by name: `runner.rec`, `answers.rec`,
+/// `places.rec` and `previews.rec`, each none where the tip lacks it.
 pub type RunnerFiles = BTreeMap<&'static str, Option<String>>;
 
 /// The runner's files a branch holds.
-pub const FILES: [&str; 3] = ["runner.rec", "answers.rec", "places.rec"];
+pub const FILES: [&str; 4] = ["runner.rec", "answers.rec", "places.rec", "previews.rec"];
 
 impl Store {
     /// The branch `name` of the state repository.
@@ -295,13 +297,14 @@ pub fn one_line(said: &str) -> String {
 
 /// A runner's files read as crew's `runner.host_read` reads them: one
 /// `Runner` naming `host`, no record before its `%rec`, no request
-/// answered or placed twice and no run twice; or why not.
+/// answered, placed or previewed twice and no run twice; or why not.
 pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
     let mut sets = BTreeMap::new();
     for (path, set) in [
         ("runner.rec", "Runner"),
         ("answers.rec", "Answer"),
         ("places.rec", "Place"),
+        ("previews.rec", "Preview"),
     ] {
         let text = files.get(path).cloned().flatten();
         let read = match &text {
@@ -339,7 +342,11 @@ pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
         since: runner.get("Since").map(str::to_string),
         ..Runner::default()
     };
-    for (path, set) in [("answers.rec", "Answer"), ("places.rec", "Place")] {
+    for (path, set) in [
+        ("answers.rec", "Answer"),
+        ("places.rec", "Place"),
+        ("previews.rec", "Preview"),
+    ] {
         let Some(read) = &sets[path] else { continue };
         for record in records::of(read, set) {
             let number = record
@@ -348,6 +355,7 @@ pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
                 .ok_or_else(|| format!("{path} holds a record with no request's number"))?;
             let into = match set {
                 "Answer" => &mut out.answers,
+                "Preview" => &mut out.previews,
                 _ => &mut out.places,
             };
             if into.insert(number, record.clone()).is_some() {
@@ -377,9 +385,11 @@ pub fn host_read(host: &str, files: &RunnerFiles) -> Result<Runner, String> {
 pub type Unreadable = String;
 
 /// Request `request` of partition `label` as a want; or what of it can't
-/// be read. A launch's repository is `repository` where one is given, the
-/// address its `Repo` names among those the runner keeps, else its `Repo`
-/// as written.
+/// be read. A launch's or a preview's repository is `repository` where one
+/// is given, the address its `Repo` names among those the runner keeps,
+/// else its `Repo` as written. A `preview` is a preview of its `Branch` at
+/// its `Revision`, done where its `Done` says so (design Decision 10;
+/// core.55).
 pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<Want, Unreadable> {
     let id = ids::request(label, request.number);
     let of = || -> Result<Id, Unreadable> {
@@ -402,20 +412,30 @@ pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<
             lease: LEASE,
             launch: launch(label, request, repository)?,
         })),
-        Some("retry") => {
-            let submission = match request.get("Submission") {
-                None => false,
-                Some("yes" | "true" | "1") => true,
-                Some("no" | "false" | "0") => false,
-                Some(other) => {
-                    return Err(format!("its Submission {other}, which is no yes or no"))
-                }
+        Some("retry") => act(ActSort::Retry {
+            stage: request.get("Stage").map(str::to_string),
+            words: request.get("Words").map(str::to_string),
+            submission: yes_or_no(request, "Submission")?,
+        }),
+        Some("preview") => {
+            let named = |field: &str| -> Result<String, Unreadable> {
+                request
+                    .get(field)
+                    .map(str::to_string)
+                    .ok_or_else(|| format!("it names no {field}"))
             };
-            act(ActSort::Retry {
-                stage: request.get("Stage").map(str::to_string),
-                words: request.get("Words").map(str::to_string),
-                submission,
-            })
+            let repository = match repository {
+                Some(repository) => repository.to_string(),
+                None => named("Repo")?,
+            };
+            Ok(Want::Preview(Preview {
+                id: id.clone(),
+                lease: LEASE,
+                repository,
+                branch: named("Branch")?,
+                revision: named("Revision")?,
+                done: yes_or_no(request, "Done")?,
+            }))
         }
         Some("drop") => act(ActSort::Drop),
         Some("priority") => act(ActSort::Priority(
@@ -438,6 +458,17 @@ pub fn refused(label: &str, request: &Request, why: &str) -> Want {
         lease: LEASE.number,
         what: ActSort::Drop,
     })
+}
+
+/// A request's field read as crew writes a bool: `yes`, `true` or `1`, or
+/// `no`, `false` or `0`, and no where it is not there.
+fn yes_or_no(request: &Request, field: &str) -> Result<bool, Unreadable> {
+    match request.get(field) {
+        None => Ok(false),
+        Some("yes" | "true" | "1") => Ok(true),
+        Some("no" | "false" | "0") => Ok(false),
+        Some(other) => Err(format!("its {field} {other}, which is no yes or no")),
+    }
 }
 
 /// A request's field as a number, none where it is not there.
@@ -538,6 +569,52 @@ pub fn kept(repo: &str, kept: &[String]) -> Kept {
         [one] => Kept::Address(one.clone()),
         _ => Kept::Shared(named),
     }
+}
+
+/// The address a request naming this host's `Repo` names among the
+/// repositories `hello` keeps, else among those it drains, else none, as
+/// a pull resolves it (record 0021).
+pub fn resolved(request: &Request, hello: &Hello) -> Option<String> {
+    let repo = request.get("Repo")?;
+    match kept(repo, &hello.repositories) {
+        Kept::Address(address) => Some(address),
+        Kept::No => match kept(repo, &hello.draining) {
+            Kept::Address(address) => Some(address),
+            _ => None,
+        },
+        Kept::Shared(_) => None,
+    }
+}
+
+/// A `Preview` record of a runner's branch as the runner's answer to
+/// `preview`, the preview its request names, under the lease number 1:
+/// its outcome, text and words as written, and its status the `Status`,
+/// at its `At`, listed as `Listed` says; none where its outcome or time
+/// can't be read (design Decision 10).
+pub fn previewed(preview: Preview, record: &Record) -> Option<Previewed> {
+    let outcome = match record.get("Outcome")? {
+        "held" => Outcome::Held,
+        "done" => Outcome::Done,
+        "refused" => Outcome::Refused,
+        _ => return None,
+    };
+    let at = At::parse(record.get("At")?).ok()?;
+    let status = record.get("Status").map(|text| Carried {
+        text: text.to_string(),
+        at,
+        listed: record.get("Listed") != Some("no"),
+    });
+    Some(Previewed {
+        lease: LEASE,
+        repository: preview.repository,
+        revision: preview.revision,
+        done: preview.done,
+        outcome,
+        text: record.get("Text").map(str::to_string),
+        words: record.get("Words").map(str::to_string),
+        status,
+        at,
+    })
 }
 
 /// An answer record of a runner's branch as the runner's answer, none

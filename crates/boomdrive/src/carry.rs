@@ -13,7 +13,13 @@
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
 //! under a lease that has lapsed by the pass's clock waits for a live one
-//! (core.24). Each act is said on standard error, one line each, prefixed
+//! (core.24). A preview its control plane asks for is brought up in a
+//! repository the runner keeps by sluice's own preview command, after
+//! every launch the pull offers, its ask awaited no longer than the
+//! runner's patience; sluice's listing of it is carried until sluice lists
+//! it no more; and on its done, only what the runner asked sluice for is
+//! put away, by sluice's own release, with no output of a command carried
+//! (core.55). Each act is said on standard error, one line each, prefixed
 //! with its id, and a pass that changes nothing says nothing.
 
 use crate::config::{Address, Config};
@@ -21,13 +27,13 @@ use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
 use crate::git::Git;
 use crate::hello::{self, Tools};
 use crate::run::Notices;
-use crate::sluice::{self, Sluice};
+use crate::sluice::{self, Asked, Sluice};
 use crate::terminal::Relays;
 use crate::{clone, facts, inbox, report};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
-    Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Report, Reported, Unread,
-    Unsent, Want,
+    Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Preview, Previewed, Report,
+    Reported, Unread, Unsent, Want,
 };
 use serde_json::Value;
 use std::cell::Cell;
@@ -254,6 +260,8 @@ impl Carrier<'_> {
             round: Round::Wants,
             acts_run: 0,
             left: BTreeSet::new(),
+            previews_run: 0,
+            previews_left: BTreeSet::new(),
         };
         'carrying: for round in [Round::Wants, Round::OnPlaces] {
             work.round = round;
@@ -275,6 +283,15 @@ impl Carrier<'_> {
                 "boomdrive: the next control pass is due, so {n} acts on places wait for it"
             )),
         }
+        match work.previews_left.len() {
+            0 => {}
+            1 => say(
+                "boomdrive: the next control pass is due, so 1 preview waits for it".to_string(),
+            ),
+            n => say(format!(
+                "boomdrive: the next control pass is due, so {n} previews wait for it"
+            )),
+        }
         // The commands the wants ran may have taken minutes, while Flume
         // moved places on, tidied some and let their records go: the
         // statuses are carried against its listing as it stands now
@@ -284,6 +301,7 @@ impl Carrier<'_> {
         }
         work.carry_statuses(say);
         work.carry_entries(say);
+        work.carry_previews(say);
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
@@ -321,6 +339,11 @@ struct Work<'p> {
     acts_run: usize,
     /// The acts on places left for the next pass, which is due.
     left: BTreeSet<Id>,
+    /// How many previews the pass has run sluice's command for, counted
+    /// apart from the acts' (design Decision 7).
+    previews_run: usize,
+    /// The previews left for the next pass, which is due.
+    previews_left: BTreeSet<Id>,
 }
 
 /// The pass's two rounds over the pull's wants, each in the control
@@ -334,20 +357,24 @@ struct Work<'p> {
 /// alone (record 0010; core.51).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Round {
-    /// Every want: each offer, inbox and command, and each act answered
-    /// from the report, running no command. An act that runs Flume's
-    /// command on its launch's place is left for the second round.
+    /// Every want: each offer, inbox and command, and each act and preview
+    /// answered from the report or refused, running no command. An act
+    /// that runs Flume's command on its launch's place, and a preview that
+    /// runs sluice's, is left for the second round.
     Wants,
-    /// Each act left by the first, as Flume's command on its place, and
-    /// each act whose launch the first round took.
+    /// Each act left by the first, as Flume's command on its place, each
+    /// act whose launch the first round took, and each preview left by the
+    /// first, as sluice's command (core.55).
     OnPlaces,
 }
 
 impl Work<'_> {
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
         if self.round == Round::OnPlaces {
-            if let Want::Act(act) = want {
-                self.act(act, say);
+            match want {
+                Want::Act(act) => self.act(act, say),
+                Want::Preview(preview) => self.preview_command(preview, say),
+                Want::Offer(_) | Want::Inbox(_) | Want::Command(_) => {}
             }
             return;
         }
@@ -356,6 +383,7 @@ impl Work<'_> {
             Want::Act(act) => self.act(act, say),
             Want::Inbox(inbox) => self.inbox(inbox, say),
             Want::Command(command) => self.command(command, say),
+            Want::Preview(preview) => self.preview(preview, say),
         }
     }
 
@@ -771,6 +799,280 @@ impl Work<'_> {
         self.report.commands.insert(command.id.clone(), commanded);
     }
 
+    /// Answers `preview` in the pass's first round, running no command
+    /// (core.55). A preview the report holds `done` or `refused` keeps its
+    /// answer, under the lease the control plane gives now (core.10), and
+    /// one whose lease has lapsed is left untaken, one held not asked again
+    /// (core.24). A bring-up in a repository the runner neither keeps nor
+    /// drains, or one it drains, is refused, since nothing new is made in
+    /// one, and one whose clone is not yet made waits (core.5). A done
+    /// whose repository has no clone is refused, since its checkout went
+    /// with the clone. Every other is left for the second round, after
+    /// every launch the pull offers (core.50).
+    fn preview(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
+        if let Some(previewed) = self.report.previews.get_mut(&preview.id) {
+            previewed.lease = preview.lease;
+            if previewed.outcome != Outcome::Held {
+                return;
+            }
+        }
+        if lapsed(preview.lease, self.now) {
+            return;
+        }
+        let repository = &preview.repository;
+        match (preview.done, self.carrier.clones.keeping(repository)) {
+            (false, Keeping::NotNamed | Keeping::Dropped(_)) => {
+                let words = format!("this host's configuration does not keep {repository}");
+                self.preview_refused(preview, words, say);
+            }
+            (true, Keeping::NotYet | Keeping::NotNamed) => {
+                let words = format!("no clone of {repository} stands on this host");
+                self.preview_refused(preview, words, say);
+            }
+            _ => {}
+        }
+    }
+
+    /// Carries out `preview` in the pass's second round, after every launch
+    /// the pull offers, by sluice's own command (core.50, core.55). A
+    /// preview the report holds answered, or one whose lease has lapsed, is
+    /// left as it stands.
+    fn preview_command(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
+        let held = match self.report.previews.get(&preview.id) {
+            Some(previewed) if previewed.outcome != Outcome::Held => return,
+            Some(_) => true,
+            None => false,
+        };
+        if lapsed(preview.lease, self.now) {
+            return;
+        }
+        match preview.done {
+            false => self.bring_up(preview, held, say),
+            true => self.put_away(preview, say),
+        }
+    }
+
+    /// Brings `preview` up by `sluice preview <branch> <revision> --json`,
+    /// in its repository's clone, once (design Decisions 2 and 3). A
+    /// preview held whose done the pull gives is not asked again: the done
+    /// puts away what sluice holds of it. Once the next pass is due, the
+    /// pass runs no preview's command but its first (design Decision 7).
+    /// sluice's answer is the preview's: `done` with what is carried of
+    /// it, or `refused` with sluice's words. Where sluice was interrupted
+    /// at the runner's patience, waiting at the host's bound, the preview
+    /// is held, said once, and asked again at the next pass. Where sluice
+    /// could not be run, nothing is kept, and the next pass asks again.
+    fn bring_up(&mut self, preview: &Preview, held: bool, say: &mut dyn FnMut(String)) {
+        let Keeping::Ready(container) = self.carrier.clones.keeping(&preview.repository) else {
+            return;
+        };
+        if held && self.done_given(preview) {
+            return;
+        }
+        if !self.preview_may_run(&preview.id) {
+            return;
+        }
+        let what = what_preview(preview);
+        let asked = self
+            .carrier
+            .sluice
+            .preview(&container, &preview.branch, &preview.revision);
+        match asked {
+            Ok(Asked::Replied(sluice::Reply::Given(answer))) => {
+                let Some(text) = sluice::preview_carried(&answer) else {
+                    let words = "sluice's answer is no preview".to_string();
+                    return self.preview_refused(preview, words, say);
+                };
+                match sluice::text_of(&text, "state") {
+                    Some(state) => say(format!("{what}: brought up, {state}")),
+                    None => say(format!("{what}: brought up")),
+                }
+                self.previewed(preview, Outcome::Done, Some(text), None);
+                // A listing that held it no more while it waited was of a
+                // preview sluice no longer kept: the one brought up is read
+                // anew.
+                if let Some(previewed) = self.report.previews.get_mut(&preview.id) {
+                    if previewed
+                        .status
+                        .as_ref()
+                        .is_some_and(|status| !status.listed)
+                    {
+                        previewed.status = None;
+                    }
+                }
+            }
+            Ok(Asked::Replied(sluice::Reply::Refused(words))) => {
+                say(format!("{what}: refused by sluice: {words}"));
+                self.previewed(preview, Outcome::Refused, None, Some(words));
+            }
+            Ok(Asked::Waiting) => {
+                if !held {
+                    say(format!(
+                        "{what}: waits at sluice's bound, asked again at the next pass"
+                    ));
+                }
+                self.previewed(preview, Outcome::Held, None, None);
+            }
+            Err(sluice::Unrun(words)) => say(format!("{what}: not carried out: {words}")),
+        }
+    }
+
+    /// Puts away, on `preview`'s done, what the report holds of its
+    /// repository and revision asked of sluice, brought up or held, by one
+    /// `sluice release <name> --json` in its repository's clone, named or
+    /// dropped (design Decision 6). The name is the one sluice gave the
+    /// first such preview, in its answer or else its listing, else the
+    /// revision. Where the report holds none, the done is refused and
+    /// sluice is not run, so a person's own preview is never put away.
+    /// sluice's answer is the done's. A preview held so put away is
+    /// refused, and asked of sluice no more; one brought up keeps its
+    /// answer, and its listing reads it gone.
+    fn put_away(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
+        let repository = &preview.repository;
+        let container = match self.carrier.clones.keeping(repository) {
+            Keeping::Ready(container) | Keeping::Dropped(container) => container,
+            Keeping::NotYet | Keeping::NotNamed => {
+                let words = format!("no clone of {repository} stands on this host");
+                return self.preview_refused(preview, words, say);
+            }
+        };
+        let asked: Vec<Id> = self
+            .report
+            .previews
+            .iter()
+            .filter(|(_, previewed)| {
+                !previewed.done
+                    && matches!(previewed.outcome, Outcome::Done | Outcome::Held)
+                    && previewed.revision == preview.revision
+                    && same_repository(&previewed.repository, repository)
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        let Some(first) = asked.first().map(|id| &self.report.previews[id]) else {
+            let words = format!(
+                "no preview of {} in {repository} was brought up here at the control plane's asking",
+                preview.revision
+            );
+            return self.preview_refused(preview, words, say);
+        };
+        let name = first
+            .text
+            .as_deref()
+            .and_then(|text| sluice::text_of(text, "name"))
+            .or_else(|| {
+                let status = first.status.as_ref()?;
+                sluice::text_of(&status.text, "name")
+            })
+            .unwrap_or_else(|| preview.revision.clone());
+        if !self.preview_may_run(&preview.id) {
+            return;
+        }
+        let what = what_preview(preview);
+        match self.carrier.sluice.release(&container, &name) {
+            Ok(sluice::Reply::Given(answer)) => {
+                let Some(text) = sluice::release_carried(&answer) else {
+                    let words = "sluice's answer is no release".to_string();
+                    return self.preview_refused(preview, words, say);
+                };
+                say(format!("{what}: put away"));
+                self.previewed(preview, Outcome::Done, Some(text), None);
+                for id in asked {
+                    let Some(previewed) = self.report.previews.get_mut(&id) else {
+                        continue;
+                    };
+                    if previewed.outcome != Outcome::Held {
+                        continue;
+                    }
+                    let words = "put away before sluice brought it up".to_string();
+                    say(format!(
+                        "{id}: preview of {} at {}: refused: {words}",
+                        preview.branch, previewed.revision
+                    ));
+                    previewed.outcome = Outcome::Refused;
+                    previewed.words = Some(words);
+                    previewed.at = At::now();
+                }
+            }
+            Ok(sluice::Reply::Refused(words)) => {
+                say(format!("{what}: refused by sluice: {words}"));
+                self.previewed(preview, Outcome::Refused, None, Some(words));
+            }
+            Err(sluice::Unrun(words)) => say(format!("{what}: not carried out: {words}")),
+        }
+    }
+
+    /// Whether the pull gives, under a live lease, a done of `preview`'s
+    /// repository and revision the report has not answered.
+    fn done_given(&self, preview: &Preview) -> bool {
+        self.wants.iter().any(|want| match want {
+            Want::Preview(done) => {
+                done.done
+                    && done.revision == preview.revision
+                    && same_repository(&done.repository, &preview.repository)
+                    && !lapsed(done.lease, self.now)
+                    && !self.report.previews.contains_key(&done.id)
+            }
+            _ => false,
+        })
+    }
+
+    /// Whether the pass may run sluice's command for preview `id`: once the
+    /// next pass is due, none but its first, the rest left to that pass
+    /// (design Decision 7). Counts the one it may run.
+    fn preview_may_run(&mut self, id: &Id) -> bool {
+        if self.previews_run > 0 && (self.carrier.due)() {
+            self.previews_left.insert(id.clone());
+            return false;
+        }
+        self.previews_run += 1;
+        true
+    }
+
+    /// Answers `preview` refused by the runner, with `words`, running
+    /// nothing, and says so.
+    fn preview_refused(&mut self, preview: &Preview, words: String, say: &mut dyn FnMut(String)) {
+        say(format!("{}: refused: {words}", what_preview(preview)));
+        self.previewed(preview, Outcome::Refused, None, Some(words));
+    }
+
+    /// Gives `preview` the answer `outcome`, with `text` and `words`,
+    /// under the lease the control plane gives now. Its `at` moves only
+    /// where the outcome, text or words do, and the status carried stands.
+    /// Says whether the report changed.
+    fn previewed(
+        &mut self,
+        preview: &Preview,
+        outcome: Outcome,
+        text: Option<String>,
+        words: Option<String>,
+    ) -> bool {
+        if let Some(held) = self.report.previews.get_mut(&preview.id) {
+            let renewed = held.lease != preview.lease;
+            held.lease = preview.lease;
+            if held.outcome == outcome && held.text == text && held.words == words {
+                return renewed;
+            }
+            held.outcome = outcome;
+            held.text = text;
+            held.words = words;
+            held.at = At::now();
+            return true;
+        }
+        let previewed = Previewed {
+            lease: preview.lease,
+            repository: preview.repository.clone(),
+            revision: preview.revision.clone(),
+            done: preview.done,
+            outcome,
+            text,
+            words,
+            status: None,
+            at: At::now(),
+        };
+        self.report.previews.insert(preview.id.clone(), previewed);
+        true
+    }
+
     /// Carries Flume's status of each launch's place (design Decision 12;
     /// core.11): `flume --json status --repository <container> <place>`'s
     /// whole answer, as the one line Flume printed. A place is followed
@@ -898,6 +1200,98 @@ impl Work<'_> {
                 say(format!(
                     "{id}: sluice's entry {submission} is refused: {refused}"
                 ));
+            }
+        }
+    }
+
+    /// Carries sluice's listing of each preview the runner holds up (design
+    /// Decision 5; core.11, core.55): of `sluice previews --json`, read once
+    /// a pass in the clone, named or dropped, of each repository of a
+    /// preview the pull gives, not marked done, that the report holds held
+    /// or brought up, and whose status is not carried as unlisted, the row
+    /// whose `name` is the one sluice's answer gave, or, for a preview held,
+    /// the row whose `revision` begins with the revision it names, with no
+    /// output of its command. A preview the listing holds no more keeps its
+    /// status, not listed, and is read no more. A listing that cannot be
+    /// read leaves each status as it was, said in one line. sluice's
+    /// listing releases each preview nobody can use before it lists them,
+    /// which is sluice's (sluice's 101 and 123). None of it is Flume's, so
+    /// it sets no `ran` (record 0027).
+    fn carry_previews(&mut self, say: &mut dyn FnMut(String)) {
+        let mut repositories: Vec<(&str, Vec<&Id>)> = Vec::new();
+        for want in self.wants {
+            let Want::Preview(preview) = want else {
+                continue;
+            };
+            let Some(previewed) = self.report.previews.get(&preview.id) else {
+                continue;
+            };
+            let up = matches!(previewed.outcome, Outcome::Done | Outcome::Held);
+            let unlisted = previewed
+                .status
+                .as_ref()
+                .is_some_and(|status| !status.listed);
+            if preview.done || !up || unlisted {
+                continue;
+            }
+            let repository = preview.repository.as_str();
+            match repositories
+                .iter_mut()
+                .find(|(named, _)| same_repository(named, repository))
+            {
+                Some((_, ids)) => ids.push(&preview.id),
+                None => repositories.push((repository, vec![&preview.id])),
+            }
+        }
+        for (repository, ids) in repositories {
+            let container = match self.carrier.clones.keeping(repository) {
+                Keeping::Ready(container) | Keeping::Dropped(container) => container,
+                Keeping::NotYet | Keeping::NotNamed => continue,
+            };
+            let listing = match self.carrier.sluice.previews(&container) {
+                Ok(sluice::Reply::Given(answer)) => {
+                    sluice::listed(&answer).ok_or("sluice's answer is no listing".to_string())
+                }
+                Ok(sluice::Reply::Refused(words)) | Err(sluice::Unrun(words)) => Err(words),
+            };
+            let listing = match listing {
+                Ok(listing) => listing,
+                Err(words) => {
+                    say(format!(
+                        "boomdrive: sluice's previews of {repository} could not be read: {words}"
+                    ));
+                    continue;
+                }
+            };
+            for id in ids {
+                let previewed = &self.report.previews[id];
+                let name = previewed
+                    .text
+                    .as_deref()
+                    .and_then(|text| sluice::text_of(text, "name"));
+                let row = listing.iter().find(|row| match &name {
+                    Some(name) => row.name.as_ref() == Some(name),
+                    None => row
+                        .revision
+                        .as_deref()
+                        .is_some_and(|revision| revision.starts_with(&previewed.revision)),
+                });
+                let row = row.map(|row| row.carried.clone());
+                let Some(previewed) = self.report.previews.get_mut(id) else {
+                    continue;
+                };
+                match (row, &mut previewed.status) {
+                    (Some(text), Some(status)) if status.text == text => status.listed = true,
+                    (Some(text), status) => {
+                        *status = Some(boomdrive_control::Carried {
+                            text,
+                            at: At::now(),
+                            listed: true,
+                        });
+                    }
+                    (None, Some(status)) => status.listed = false,
+                    (None, None) => {}
+                }
             }
         }
     }
@@ -1056,6 +1450,7 @@ impl Work<'_> {
                 .launches
                 .get(id)
                 .and_then(|launched| launched.answer.place_dir.clone());
+            let preview = self.report.previews.get(id).is_some_and(|p| !p.done);
             if !self.forget(id) {
                 continue;
             }
@@ -1063,6 +1458,10 @@ impl Work<'_> {
                 Some(place) => say(format!(
                     "{id}: let go, its lease no longer this runner's: {words}: \
                      its place {place} is left on this host as Flume holds it"
+                )),
+                None if preview => say(format!(
+                    "{id}: let go, its lease no longer this runner's: {words}: \
+                     its preview is left on this host as sluice holds it"
                 )),
                 None => say(format!(
                     "{id}: let go, its lease no longer this runner's: {words}"
@@ -1080,7 +1479,8 @@ impl Work<'_> {
         let act = report.acts.remove(id).is_some();
         let command = report.commands.remove(id).is_some();
         let inbox = report.inboxes.remove(id).is_some();
-        launch || act || command || inbox
+        let preview = report.previews.remove(id).is_some();
+        launch || act || command || inbox || preview
     }
 }
 
@@ -1104,6 +1504,26 @@ fn offers(wants: &[Want]) -> impl Iterator<Item = &Offer> {
         Want::Offer(offer) => Some(offer),
         _ => None,
     })
+}
+
+/// `preview` as its lines name it: `<id>: preview of <branch> at
+/// <revision>`, or, for a done, `<id>: done of the preview of <branch> at
+/// <revision>`.
+fn what_preview(preview: &Preview) -> String {
+    let (id, branch, revision) = (&preview.id, &preview.branch, &preview.revision);
+    match preview.done {
+        false => format!("{id}: preview of {branch} at {revision}"),
+        true => format!("{id}: done of the preview of {branch} at {revision}"),
+    }
+}
+
+/// Whether `one` and `other` address one repository: as addresses, which
+/// compare without case, where both are, else as written.
+fn same_repository(one: &str, other: &str) -> bool {
+    match (Address::parse(one), Address::parse(other)) {
+        (Ok(one), Ok(other)) => one == other,
+        _ => one == other,
+    }
 }
 
 /// The entry of the place at `place` in the status `launched` carries.
@@ -1338,8 +1758,10 @@ fn lapsed(lease: Lease, now: At) -> bool {
 fn expires(report: &Report, now: At) -> Option<At> {
     let launches = report.launches.values().map(|launched| launched.lease);
     let commands = report.commands.values().map(|commanded| commanded.lease);
+    let previews = report.previews.values().map(|previewed| previewed.lease);
     launches
         .chain(commands)
+        .chain(previews)
         .filter(|lease| !lapsed(*lease, now))
         .filter_map(|lease| lease.expires)
         .min()

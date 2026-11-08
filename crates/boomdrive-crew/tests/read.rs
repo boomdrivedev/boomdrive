@@ -5,11 +5,11 @@
 mod common;
 
 use boomdrive_control::{
-    Act, ActSort, Answer, At, ControlPlane, Id, Launch, Launched, Lease, Offer, Outcome, Report,
-    Want,
+    Act, ActSort, Answer, At, ControlPlane, Id, Launch, Launched, Lease, Offer, Outcome, Preview,
+    Report, Want,
 };
 use boomdrive_crew::read::LEASE;
-use common::{act, file, hello, ids, launch, plan, pull, want, State, REQUESTS};
+use common::{act, file, hello, ids, launch, plan, preview, pull, want, State, REQUESTS};
 
 const CREW: &str = "example/crew";
 
@@ -516,4 +516,132 @@ fn a_kits_launch_naming_no_stream() {
     };
     assert_eq!(offer.launch.stream, None);
     assert_eq!(offer.launch.repository, CREW);
+}
+
+/// `home/main` holding `requests` and a plan of the unit `u`.
+fn with_requests(state: &State, requests: &[String]) {
+    state.main(&[
+        ("requests.rec", &file(REQUESTS, requests)),
+        ("plan.rec", &plan(&["u"], &[])),
+    ]);
+}
+
+/// The crew-control-plane spec's "A preview".
+#[test]
+fn a_preview() {
+    let state = State::new();
+    with_requests(
+        &state,
+        &[preview(
+            30,
+            Some("host-a"),
+            "unit/u",
+            "crew",
+            "main",
+            "R1",
+            false,
+        )],
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        want(&pulled, "home/30"),
+        &Want::Preview(Preview {
+            id: Id::new("home/30"),
+            lease: LEASE,
+            repository: CREW.to_string(),
+            branch: "main".to_string(),
+            revision: "R1".to_string(),
+            done: false,
+        })
+    );
+}
+
+/// The crew-control-plane spec's "A preview marked done".
+#[test]
+fn a_preview_marked_done() {
+    let state = State::new();
+    with_requests(
+        &state,
+        &[
+            preview(30, Some("host-a"), "unit/u", "crew", "main", "R1", false),
+            preview(31, Some("host-a"), "unit/u", "crew", "main", "R1", true),
+        ],
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(ids(&pulled), ["home/30", "home/31"]);
+    let Want::Preview(done) = want(&pulled, "home/31") else {
+        panic!("not a preview")
+    };
+    assert!(done.done);
+    assert_eq!(
+        (
+            done.repository.as_str(),
+            done.branch.as_str(),
+            done.revision.as_str()
+        ),
+        (CREW, "main", "R1")
+    );
+}
+
+/// The crew-control-plane spec's "A preview with no revision": given as
+/// one the runner refuses, its words naming `Revision`; and one whose
+/// `Done` is no yes or no likewise.
+#[test]
+fn a_preview_with_no_revision() {
+    let state = State::new();
+    let no_revision = common::rec(&[
+        ("Request", "32"),
+        ("Act", "preview"),
+        ("Host", "host-a"),
+        ("Work", "unit/u"),
+        ("Repo", "crew"),
+        ("Branch", "main"),
+        ("Date", "2026-11-01T09:00:00Z"),
+        ("By", "crew@host-a"),
+    ]);
+    let done_maybe = preview(34, Some("host-a"), "unit/u", "crew", "main", "R1", false)
+        .replace("Date:", "Done: maybe\nDate:");
+    with_requests(&state, &[no_revision, done_maybe]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    let Want::Act(refused) = want(&pulled, "home/32") else {
+        panic!("not one the runner refuses")
+    };
+    assert_eq!(refused.launch.as_str(), "request 32 (it names no Revision)");
+    let Want::Act(refused) = want(&pulled, "home/34") else {
+        panic!("not one the runner refuses")
+    };
+    assert_eq!(
+        refused.launch.as_str(),
+        "request 34 (its Done maybe, which is no yes or no)"
+    );
+}
+
+/// The crew-control-plane spec's "A preview naming no host".
+#[test]
+fn a_preview_naming_no_host() {
+    let state = State::new();
+    with_requests(
+        &state,
+        &[preview(33, None, "unit/u", CREW, "main", "R1", false)],
+    );
+    let (mut crew, said) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+    crew.report(&Report::default()).expect("a report");
+    let answers = state
+        .file("home/runner/host-a", "answers.rec")
+        .unwrap_or_default();
+    assert!(!answers.contains("Request: 33"), "{answers}");
+    assert!(
+        said.lines().contains(
+            &"crew: home/33: a preview names no Host, so no runner brings it up: \
+              it is given nothing"
+                .to_string()
+        ),
+        "{:?}",
+        said.lines()
+    );
 }

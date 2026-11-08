@@ -1,0 +1,592 @@
+//! The preview a control plane asks for, brought up through a stub
+//! `sluice` in a repository the runner keeps, carried as sluice listed it
+//! with no output of its command, and put away on its done only where the
+//! runner asked sluice for it (the previews spec; design Decisions 2 to 8;
+//! core.55; Task notes 3.1 and group 5).
+
+mod fakes;
+
+use boomdrive_control::fake::Fake;
+use boomdrive_control::{At, Id, Lease, Outcome, Report, Want};
+use fakes::{preview, preview_fixture, Bench, KEPT};
+use std::path::PathBuf;
+
+/// `want`, a preview, in `repository`.
+fn in_repository(mut want: Want, repository: &str) -> Want {
+    if let Want::Preview(preview) = &mut want {
+        preview.repository = repository.to_string();
+    }
+    want
+}
+
+/// `want`, a preview, under lease 1 expiring at `expires`.
+fn expiring(mut want: Want, expires: &str) -> Want {
+    if let Want::Preview(preview) = &mut want {
+        preview.lease = Lease {
+            number: 1,
+            expires: Some(At::parse(expires).unwrap()),
+        };
+    }
+    want
+}
+
+fn id(text: &str) -> Id {
+    Id::new(text)
+}
+
+/// The report the bench's file holds, or none where no pass wrote one.
+fn report(bench: &Bench) -> Report {
+    boomdrive::report::read(&bench.report_file())
+        .expect("the report file reads")
+        .unwrap_or_default()
+}
+
+/// A bench whose stub `sluice` lists no preview.
+fn bench() -> Bench {
+    let bench = Bench::new();
+    bench.sluice.answers_text("previews", "[]\n", 0);
+    bench
+}
+
+/// Each call the stub `sluice` was given whose command is `what`, with
+/// the directory it ran in.
+fn calls_of(bench: &Bench, what: &str) -> Vec<(Vec<String>, PathBuf)> {
+    bench
+        .sluice
+        .calls()
+        .into_iter()
+        .enumerate()
+        .filter(|(_, call)| call.first().map(String::as_str) == Some(what))
+        .map(|(n, call)| (call, bench.sluice.dir_of(n + 1).expect("its directory")))
+        .collect()
+}
+
+/// The commands the stub `sluice` was given, in order.
+fn commands(bench: &Bench) -> Vec<String> {
+    bench
+        .sluice
+        .calls()
+        .into_iter()
+        .filter_map(|call| call.first().cloned())
+        .collect()
+}
+
+/// The container of [`KEPT`]'s clone, as the stub reads its directory.
+fn kept(bench: &Bench) -> PathBuf {
+    bench.container(KEPT).canonicalize().unwrap()
+}
+
+/// What is carried of `preview-starting.json`.
+const STARTING: &str = concat!(
+    r#"{"name":"preview/c2b72605d2ad","branch":"main","#,
+    r#""revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"starting","#,
+    r#""made":"2026-11-08T19:54:52Z","#,
+    r#""addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#
+);
+
+/// The previews spec's "A preview brought up".
+#[test]
+fn a_preview_brought_up() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    let (_, lines) = bench.pass(&mut plane);
+    let asked = calls_of(&bench, "preview");
+    let call = ["preview", "main", "R1", "--json"]
+        .map(String::from)
+        .to_vec();
+    assert_eq!(asked, [(call, kept(&bench))]);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Done);
+    assert_eq!(previewed.text.as_deref(), Some(STARTING));
+    assert_eq!(previewed.words, None);
+    assert!(
+        lines.contains(&"home/30: preview of main at R1: brought up, starting".to_string()),
+        "{lines:?}"
+    );
+    assert_eq!(plane.held().unwrap().previews[&id("home/30")], *previewed);
+}
+
+/// The previews spec's "A preview sluice refuses".
+#[test]
+fn a_preview_sluice_refuses() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-no-table.json", 2);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    let (_, lines) = bench.pass(&mut plane);
+    let message = "no [preview] table in .config/sluice.toml at 99248c2";
+    let fixture: serde_json::Value =
+        serde_json::from_str(&preview_fixture("preview-no-table.json")).unwrap();
+    assert_eq!(fixture["error"]["message"], message);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Refused);
+    assert_eq!(previewed.words.as_deref(), Some(message));
+    assert_eq!(previewed.text, None);
+    assert!(
+        lines.contains(&format!(
+            "home/30: preview of main at R1: refused by sluice: {message}"
+        )),
+        "{lines:?}"
+    );
+    assert!(!commands(&bench).contains(&"previews".to_string()));
+}
+
+/// The previews spec's "A preview given twice": the second pass, after
+/// the runner restarts, runs no `sluice preview`, and reports the answer
+/// with its time as it stood.
+#[test]
+fn a_preview_given_twice() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut plane);
+    let first = bench.report().previews[&id("home/30")].clone();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    let mut restarted = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut restarted);
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    let sent = &restarted.reports().last().unwrap().previews[&id("home/30")];
+    assert_eq!(sent.outcome, Outcome::Done);
+    assert_eq!(sent.text, first.text);
+    assert_eq!(sent.at, first.at);
+}
+
+/// The previews spec's "A preview in a repository not kept".
+#[test]
+fn a_preview_in_a_repository_not_kept() {
+    let bench = Bench::new();
+    let want = in_repository(preview("home/30", "main", "R1", false), "example/elsewhere");
+    let mut plane = Fake::holding(vec![want]);
+    let (_, lines) = bench.pass(&mut plane);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Refused);
+    assert_eq!(
+        previewed.words.as_deref(),
+        Some("this host's configuration does not keep example/elsewhere")
+    );
+    assert!(
+        lines.contains(
+            &"home/30: preview of main at R1: refused: \
+              this host's configuration does not keep example/elsewhere"
+                .to_string()
+        ),
+        "{lines:?}"
+    );
+    assert!(bench.sluice.calls().is_empty());
+}
+
+/// The previews spec's "A preview in a repository whose clone is not yet
+/// made".
+#[test]
+fn a_preview_in_a_repository_whose_clone_is_not_yet_made() {
+    let bench = Bench::new();
+    bench.clones.not_yet("example/crew");
+    let want = in_repository(preview("home/30", "main", "R1", false), "example/crew");
+    let mut plane = Fake::holding(vec![want]);
+    bench.pass(&mut plane);
+    assert!(!report(&bench).previews.contains_key(&id("home/30")));
+    assert!(plane.reports().iter().all(|sent| sent.previews.is_empty()));
+    assert!(bench.sluice.calls().is_empty());
+}
+
+/// The previews spec's "A preview whose lease lapsed".
+#[test]
+fn a_preview_whose_lease_lapsed() {
+    let bench = Bench::new();
+    let want = expiring(
+        preview("home/30", "main", "R1", false),
+        "2026-11-01T10:00:00Z",
+    );
+    let mut plane = Fake::holding(vec![want]);
+    bench.pass(&mut plane);
+    assert!(!report(&bench).previews.contains_key(&id("home/30")));
+    assert!(plane.reports().iter().all(|sent| sent.previews.is_empty()));
+    assert!(bench.sluice.calls().is_empty());
+}
+
+/// The previews spec's "A preview waiting at sluice's bound": the ask is
+/// interrupted at the runner's patience, the preview held and said once,
+/// and asked again at the next pass (design Decision 3).
+#[test]
+fn a_preview_waiting_at_sluices_bound() {
+    let bench = bench();
+    bench.sluice_patience.set(std::time::Duration::from_secs(1));
+    bench.sluice.waits("preview");
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    let began = std::time::Instant::now();
+    let (_, lines) = bench.pass(&mut plane);
+    assert!(began.elapsed() < std::time::Duration::from_secs(5));
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Held);
+    assert_eq!(previewed.text, None);
+    let waits =
+        "home/30: preview of main at R1: waits at sluice's bound, asked again at the next pass";
+    assert!(lines.contains(&waits.to_string()), "{lines:?}");
+
+    bench.sluice.waits_no_more("preview");
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let (_, lines) = bench.pass(&mut plane);
+    let call = ["preview", "main", "R1", "--json"]
+        .map(String::from)
+        .to_vec();
+    let asked: Vec<Vec<String>> = calls_of(&bench, "preview")
+        .into_iter()
+        .map(|(call, _)| call)
+        .collect();
+    assert_eq!(asked, [call.clone(), call]);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Done);
+    assert_eq!(previewed.text.as_deref(), Some(STARTING));
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.contains("waits at sluice's bound")),
+        "{lines:?}"
+    );
+}
+
+/// A pass over `bench` against `plane` in which the stub brings `home/30`
+/// up as `preview-starting.json` names it, and lists `previews.json`.
+fn brought_up_and_listed(bench: &Bench, plane: &mut Fake) {
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    bench.sluice.answers_preview("previews", "previews.json", 0);
+    bench.pass(plane);
+}
+
+/// What is carried of `previews.json`'s row of R1's preview, `up`.
+const UP: &str = concat!(
+    r#"{"name":"preview/c2b72605d2ad","branch":"main","#,
+    r#""revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"up","#,
+    r#""made":"2026-11-08T19:54:52Z","#,
+    r#""addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#
+);
+
+/// The previews spec's "A preview comes up": the row sluice lists under
+/// the name its answer gave is carried as the preview's status, and
+/// Flume's listing is not read again for sluice's commands (record 0027).
+#[test]
+fn a_preview_comes_up() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    brought_up_and_listed(&bench, &mut plane);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.text.as_deref(), Some(STARTING));
+    let status = previewed.status.as_ref().expect("its status");
+    assert_eq!(status.text, UP);
+    assert!(status.listed);
+    let listings = bench
+        .flume
+        .calls()
+        .into_iter()
+        .filter(|call| *call == fakes::Call::Status)
+        .count();
+    assert_eq!(listings, 1, "Flume's listing read again");
+}
+
+/// The previews spec's "A preview released by a person".
+#[test]
+fn a_preview_released_by_a_person() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    brought_up_and_listed(&bench, &mut plane);
+    let carried = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    bench.sluice.answers_text("previews", "[]\n", 0);
+    bench.pass(&mut plane);
+    let status = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    assert_eq!((status.text.as_str(), status.at), (UP, carried.at));
+    assert!(!status.listed);
+    let listed = calls_of(&bench, "previews").len();
+    bench.pass(&mut plane);
+    assert_eq!(calls_of(&bench, "previews").len(), listed);
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+}
+
+/// The previews spec's "A listing that cannot be read".
+#[test]
+fn a_listing_that_cannot_be_read() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    brought_up_and_listed(&bench, &mut plane);
+    let carried = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    bench.sluice.answers_text("previews", "", 1);
+    bench.sluice.says("previews", "no repository here");
+    let (_, lines) = bench.pass(&mut plane);
+    let status = bench.report().previews[&id("home/30")]
+        .status
+        .clone()
+        .unwrap();
+    assert_eq!(status, carried);
+    assert!(status.listed);
+    let line =
+        "boomdrive: sluice's previews of agentplot/flume could not be read: no repository here";
+    assert!(lines.contains(&line.to_string()), "{lines:?}");
+}
+
+/// The previews spec's "One listing for two previews of one repository".
+#[test]
+fn one_listing_for_two_previews_of_one_repository() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/32", "main", "R2", false),
+    ]);
+    bench.pass(&mut plane);
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert_eq!(report.previews[&id("home/32")].outcome, Outcome::Done);
+    assert_eq!(calls_of(&bench, "previews").len(), 1);
+    let (call, dir) = &calls_of(&bench, "previews")[0];
+    assert_eq!(call, &["previews", "--json"].map(String::from).to_vec());
+    assert_eq!(dir, &kept(&bench));
+}
+
+/// The previews spec's "A preview put away".
+#[test]
+fn a_preview_put_away() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut plane);
+    bench.sluice.answers_preview("release", "release.json", 0);
+    let mut later = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/31", "main", "R1", true),
+    ]);
+    let (_, lines) = bench.pass(&mut later);
+    let call = ["release", "preview/c2b72605d2ad", "--json"]
+        .map(String::from)
+        .to_vec();
+    assert_eq!(calls_of(&bench, "release"), [(call, kept(&bench))]);
+    let report = bench.report();
+    let done = &report.previews[&id("home/31")];
+    assert_eq!(done.outcome, Outcome::Done);
+    assert_eq!(
+        done.text.as_deref(),
+        Some(r#"{"preview":"preview/c2b72605d2ad","released":true}"#)
+    );
+    assert!(done.done);
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert!(
+        lines.contains(&"home/31: done of the preview of main at R1: put away".to_string()),
+        "{lines:?}"
+    );
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+}
+
+/// The previews spec's "A done of a preview never asked for".
+#[test]
+fn a_done_of_a_preview_never_asked_for() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/31", "main", "R9", true)]);
+    let (_, lines) = bench.pass(&mut plane);
+    let words =
+        "no preview of R9 in agentplot/flume was brought up here at the control plane's asking";
+    let done = &bench.report().previews[&id("home/31")];
+    assert_eq!(done.outcome, Outcome::Refused);
+    assert_eq!(done.words.as_deref(), Some(words));
+    assert!(
+        lines.contains(&format!(
+            "home/31: done of the preview of main at R9: refused: {words}"
+        )),
+        "{lines:?}"
+    );
+    assert!(bench.sluice.calls().is_empty());
+}
+
+/// The previews spec's "A held preview put away": sluice lists the held
+/// preview `waiting` under its name, which the done releases, asking no
+/// `sluice preview`; the held preview is refused, and asked no more.
+#[test]
+fn a_held_preview_put_away() {
+    let bench = bench();
+    bench.sluice_patience.set(std::time::Duration::from_secs(1));
+    bench.sluice.waits("preview");
+    let waiting = concat!(
+        r#"[{"addresses":{"web":"http://web-r1--main--repo.localhost:20000"},"#,
+        r#""branch":"main","made":"2026-11-08T19:54:52Z","name":"preview/r1-waiting","#,
+        r#""revision":"R1000000","state":"waiting"}]"#,
+        "\n"
+    );
+    bench.sluice.answers_text("previews", waiting, 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut plane);
+    let held = &bench.report().previews[&id("home/30")];
+    assert_eq!(held.outcome, Outcome::Held);
+    assert!(held
+        .status
+        .as_ref()
+        .unwrap()
+        .text
+        .contains("preview/r1-waiting"));
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+
+    bench.sluice.answers_preview("release", "release.json", 0);
+    let mut later = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/31", "main", "R1", true),
+    ]);
+    let (_, lines) = bench.pass(&mut later);
+    let call = ["release", "preview/r1-waiting", "--json"]
+        .map(String::from)
+        .to_vec();
+    assert_eq!(calls_of(&bench, "release"), [(call, kept(&bench))]);
+    assert_eq!(
+        calls_of(&bench, "preview").len(),
+        1,
+        "sluice preview asked again"
+    );
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/31")].outcome, Outcome::Done);
+    let put_away = &report.previews[&id("home/30")];
+    assert_eq!(put_away.outcome, Outcome::Refused);
+    assert_eq!(
+        put_away.words.as_deref(),
+        Some("put away before sluice brought it up")
+    );
+    assert!(
+        lines.contains(
+            &"home/30: preview of main at R1: refused: put away before sluice brought it up"
+                .to_string()
+        ),
+        "{lines:?}"
+    );
+    bench.pass(&mut later);
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    assert_eq!(calls_of(&bench, "release").len(), 1);
+}
+
+/// The previews spec's "A bring-up and its done in one pull".
+#[test]
+fn a_bring_up_and_its_done_in_one_pull() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    bench.sluice.answers_preview("release", "release.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/31", "main", "R1", true),
+    ]);
+    bench.pass(&mut plane);
+    let asked: Vec<String> = commands(&bench)
+        .into_iter()
+        .filter(|command| command == "preview" || command == "release")
+        .collect();
+    assert_eq!(asked, ["preview", "release"]);
+    assert_eq!(
+        calls_of(&bench, "preview")[0].0,
+        ["preview", "main", "R1", "--json"]
+            .map(String::from)
+            .to_vec()
+    );
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert_eq!(report.previews[&id("home/31")].outcome, Outcome::Done);
+}
+
+/// The previews spec's "A launch ahead of a preview": a pull's preview
+/// waits behind every launch it offers (design Decision 7; core.50).
+#[test]
+fn a_launch_ahead_of_a_preview() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let first_call = bench.sluice.dir.path().join("call-1");
+    let sluice_asked_first = std::rc::Rc::new(std::cell::Cell::new(None));
+    let seen = std::rc::Rc::clone(&sluice_asked_first);
+    bench
+        .flume
+        .meanwhile(move |_| seen.set(Some(first_call.exists())));
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        Want::Offer(fakes::offer("a", "a")),
+    ]);
+    bench.pass(&mut plane);
+    assert_eq!(bench.flume.launches().len(), 1);
+    assert_eq!(sluice_asked_first.get(), Some(false), "sluice asked first");
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    assert_eq!(
+        bench.report().previews[&id("home/30")].outcome,
+        Outcome::Done
+    );
+}
+
+/// The previews spec's "Previews wait for the next pass once it is due":
+/// once the next pass is due, a pass runs no preview's command but its
+/// first, counted apart from the acts' (design Decision 7).
+#[test]
+fn previews_wait_for_the_next_pass_once_it_is_due() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/32", "main", "R2", false),
+    ]);
+    let due = || !bench.sluice.calls().is_empty();
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert!(!report.previews.contains_key(&id("home/32")));
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    let line = "boomdrive: the next control pass is due, so 1 preview waits for it";
+    assert!(lines.contains(&line.to_string()), "{lines:?}");
+    assert!(
+        !lines.iter().any(|line| line.contains("act on a place")),
+        "{lines:?}"
+    );
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
+    assert_eq!(
+        bench.report().previews[&id("home/32")].outcome,
+        Outcome::Done
+    );
+    assert!(
+        !lines.iter().any(|line| line.contains("waits for it")),
+        "{lines:?}"
+    );
+}
+
+/// The previews spec's "A preview's lease refused": the preview leaves
+/// the report, left on the host as sluice holds it, and nothing is run
+/// against it (design Decision 8; core.10).
+#[test]
+fn a_previews_lease_refused() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    plane.refuse(id("home/30"), "lease 1 is replaced by 2");
+    let (_, lines) = bench.pass(&mut plane);
+    assert!(!bench.report().previews.contains_key(&id("home/30")));
+    let line = "home/30: let go, its lease no longer this runner's: lease 1 is replaced by 2: \
+                its preview is left on this host as sluice holds it";
+    assert!(lines.contains(&line.to_string()), "{lines:?}");
+    assert!(calls_of(&bench, "release").is_empty());
+}
