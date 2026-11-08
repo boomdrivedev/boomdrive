@@ -390,6 +390,24 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "Under crew with neither" neither
 // onEach "No partition on this host" elsewhere
 // {
+  # The README's install with nix writes no crew table beside crew's
+  # partitions, and says the module writes it (design Decision 8).
+  "The README's crew table" =
+    t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
+    ++ t.expect (
+      !lib.any (lib.hasInfix "state_repository") t.nixBlocks
+    ) "a nix block of the README's Installing with nix names state_repository"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (lib.hasInfix words (toString t.installing)) "the README's Installing with nix says no ${words}"
+        )
+        [
+          "services.crew.host"
+          "written out wins"
+        ];
+
   "The tools' user on NixOS" =
     t.expect (
       runnersUsers == {
