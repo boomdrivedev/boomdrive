@@ -4,15 +4,15 @@
 
 The runner reaches its control plane through one interface, `ControlPlane`, built by `the-runner-carries-crews-work-into-flume` (landed as #2): a pull that hands the control plane the host's hello and takes back its wants, and a report that carries the runner's report. crew's implementation is built. The hosted control plane's is named and unbuilt (that change's Decision 20), and the messages it would send were left to the change that builds it.
 
-agentplot/flywheel-cloud has since settled where those messages are written down. Its record 0056 puts the runner protocol's JSON Schema in this repository, one set of files per version, beside the interface whose shapes the messages carry. The cloud pins it by revision, and its Worker checks every runner message against it before any method sees it (cloud core.36, core.106). This repository is to be public (record 0012), so the schema is the runner's public contract, which both sides test against.
+agentplot/flywheel-cloud has since settled where those messages are written down. Its record 0056 asks this repository for the runner protocol's JSON Schema. The cloud pins it and checks a runner's messages against it (cloud core.36, core.106). This repository is to be public (record 0012), so the schema is the runner's public contract, which both sides test against.
 
-Two changes wait on it. The cloud's 1.6 pins the schema and builds the Worker's check. This repository's 1.15 builds the hosted implementation and speaks it. Neither can start while the messages are unwritten. Some of them must be right from the first version, or a later version has to fix them:
+Two changes wait on it. The cloud's 1.6 pins the schema. This repository's 1.15 builds the hosted implementation and speaks it. Neither can start while the messages are unwritten. Some of them must be right from the first version, or a later version has to fix them:
 
 - the terminal's key exchange (cloud record 0016; core.30);
 - a place's status cut to the fields the cloud keeps (cloud record 0049, core.108; core.27);
 - an id of its own on every message (cloud core.38; core.21).
 
-This change is the cloud roadmap's item 1.16, 3 points, with its research notes S6, F54 and F50.
+This change is the cloud roadmap's item 1.16, with its research rows S6, F54 and F50.
 
 ## What Changes
 
