@@ -113,16 +113,21 @@ room. A hosted partition is an account's enrollment, so the drives of
 one hosted account share that account's connection, in the order its
 control plane gives their work.
 
-Each turn of passes ends, before the runner waits, with Flume's settle
-of every place, `flume --json settle --every <bound>`, run once and
-awaited, so the runner keeps Flume's watch over its host: while it
-runs, Flume runs unattended, and every place waiting on it, a submitted
-place with no agent among them, moves within the bound. The bound is
-`fetch_interval` in whole seconds, or the shorter of it and
-`poll_interval` while the runner makes control passes. A turn whose
-reading of the configuration failed settles all the same: the watch is
-the host's, not the file's. A landing kept between passes is followed by
-no settle, and a runner told to stop begins none. The runner reads
+Each pass ends, before its thread waits, with Flume's settle of every
+place, `flume --json settle --every <bound>`, run once and awaited: a
+keeping pass on the runner's loop, and each part's control pass on the
+part's thread. So the runner keeps Flume's watch over its host: while
+it runs, Flume runs unattended, and every place waiting on it, a
+submitted place with no agent among them, moves within the bound. The
+first keeping pass, which each part's first control pass follows at
+once, shares their settles, so no launch waits behind a settle. No two
+settles run at once: a pass that ends while another's settle is under
+way shares it, and waits for nothing. The bound is `fetch_interval` in
+whole seconds, or the shorter of it and `poll_interval` while the
+runner makes control passes. A keeping pass whose reading of the
+configuration failed settles all the same: the watch is the host's, not
+the file's. A landing kept between passes is followed by no settle, and
+a runner told to stop begins none. The runner reads
 nothing of the settle's answer, and carries and keeps none of it. It
 says nothing while Flume settles; it says one line when a settle is
 refused, `boomdrive: Flume refused the settle of every place: <words>`,
@@ -365,9 +370,9 @@ A control pass runs after the first keeping pass, then each
 that reported, where a lease not yet lapsed would lapse first, and at
 once when the control plane wakes the runner. The runner says once that
 its control plane could not be read, and once that it is read again.
-Each control pass ends with the settle of every place, and a control
-pass that follows a keeping pass at once shares its settle, run once
-after both, so no launch waits behind a settle. A control pass:
+Each control pass ends with the settle of every place, on its part's
+thread, and the first, which follows the first keeping pass at once,
+settles for both, so no launch waits behind a settle. A control pass:
 
 - reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
