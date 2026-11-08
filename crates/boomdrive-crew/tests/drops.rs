@@ -180,7 +180,7 @@ fn a_kits_launch_dropped_before_it_is_claimed() {
 fn a_claimed_launch_dropped() {
     let state = State::new();
     let kit = launch(20, None, "unit/u", CREW, "u", &[]);
-    main_holding(&state, &[kit.clone()], &["u"]);
+    main_holding(&state, std::slice::from_ref(&kit), &["u"]);
     let (mut deneb, _) = state.crew("deneb");
     assert_eq!(ids(&pull(&mut deneb, &kept())), ["madswan/20"]);
     // The runner leaves the offer unanswered, its stream having no room.
