@@ -16,7 +16,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 1.6 The claims of launches no drop names stand as they were. True when `devenv shell -- cargo test -p boomdrive-crew --test claims` passes, proving the MODIFIED requirements' scenarios that design Decision 6 names in `tests/claims.rs`.
 - [x] 1.7 `tests/drops.rs` passes clippy's `cloned_ref_to_slice_refs`: `a_claimed_launch_dropped` hands `main_holding` its kit's launch as `std::slice::from_ref(&kit)`, not `&[kit.clone()]`. True when `sluice exec main -- moon run boomdrive-crew:lint` passes.
 - [x] 1.8 `tests/read.rs`'s `a_retry_of_the_submission` pulls with the runner's report answering launch 12 `launched`, so the drop its fixture holds, request 15, leaves 12 given and its acts 13 to 16 follow it as before. True when `devenv shell -- cargo test -p boomdrive-crew --test read a_retry_of_the_submission` passes.
-- [ ] 1.9 `boomdrive-control`'s shared case `wants_in_order` gives a priority on launch 3 where it gave launch 3's drop, so its wants are ones crew's requests can hold, and the module's documentation says its acts hold no drop (design Decision 6). True when `sluice exec main -- moon run boomdrive-control:test boomdrive-crew:test boomdrive-hosted:test` passes.
+- [x] 1.9 `boomdrive-control`'s shared case `wants_in_order` gives a priority on launch 3 where it gave launch 3's drop, so its wants are ones crew's requests can hold, and the module's documentation says its acts hold no drop (design Decision 6). True when `sluice exec main -- moon run boomdrive-control:test boomdrive-crew:test boomdrive-hosted:test` passes.
 
 ## 2. A drop reaches the runner that holds its launch
 

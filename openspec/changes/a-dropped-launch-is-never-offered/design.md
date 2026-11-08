@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md for why. There are no area pages, so `docs/architecture/core.md` binds every path this change touches. Only crew's implementation, `crates/boomdrive-crew`, changes. The runner and the hosted implementation do not.
+See proposal.md for why. There are no area pages, so `docs/architecture/core.md` binds every path this change touches. Only crew's implementation, `crates/boomdrive-crew`, changes, with one shared case of `boomdrive-control` whose wants crew no longer gives. The runner and the hosted implementation do not.
 
 What stands, in `crates/boomdrive-crew`:
 
@@ -128,6 +128,8 @@ Every test runs over a bare state repository in a temporary folder, through `tes
 | `a_dropped_launch_the_runner_launched_stays_until_its_place_is_over` | "A dropped launch the runner launched stays until its place is over" |
 
 The MODIFIED requirements' other scenarios are proven by `tests/claims.rs` as they stand: `claimed_alone`, `another_claim_seen`, `taken_elsewhere`, `a_claim_waiting_for_its_streams_room`, `a_claim_found_again_after_a_stop`, `a_launch_answered_before_its_repository_left_the_hello` and `a_launch_the_report_answers_is_given_whatever_the_hello_names`. "Only this host's requests" is proven by `tests/read.rs`'s `only_this_hosts_requests`.
+
+Two tests that stand held a drop beside an offer of the launch it names, pulled with no report, so they follow the change. `tests/read.rs`'s `a_retry_of_the_submission` reads every act's sort on launch 12, a drop among them, and now pulls with the runner's report answering 12 `launched`, which keeps the drop in its fixture. `boomdrive-control`'s shared case `wants_in_order` gave launch 3 and its drop. Its wants are to be those every implementation can hold as crew's requests can, so its act on launch 3 is a priority. The other path, a report answering 3 `launched` handed to the case, would change what the case says of the report the pull gives back, for every implementation.
 
 ### Rules relied on
 
