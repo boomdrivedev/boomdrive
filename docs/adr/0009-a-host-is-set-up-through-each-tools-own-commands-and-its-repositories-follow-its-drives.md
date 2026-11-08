@@ -9,7 +9,7 @@ decision-makers:
 
 # A host is set up through each tool's own commands, and its repositories follow its drives
 
-Status: accepted by the user on 2026-11-06, in agentplot-design's pane, with its amendment of that day: "Other than that nitpick I approve them all". Proposed on 2026-11-01, from the user's words in the constitution interview.
+Status: accepted by the user on 2026-11-06, in the design agent's pane, with its amendment of that day: "Other than that nitpick I approve them all". Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/boomdrive-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
@@ -28,7 +28,7 @@ For how setup works: by each tool's own commands, or by the runner writing a too
 
 For what it covers: the runner's configuration, Flume's streams, Flume's kind sources, and installing the tools.
 
-For a host whose configuration nix keeps: setup refuses what nix keeps; swancloud stops keeping it; or swancloud runs setup itself.
+For a host whose configuration nix keeps: setup refuses what nix keeps; the host's nix configuration stops keeping it; or that configuration runs setup itself.
 
 For core.5: a host keeps the repositories of the drives it serves plus any of its own level, or the control plane's alone.
 
@@ -51,9 +51,9 @@ core.5 stands: the configuration names every repository kept, its managed level 
 
 ## Amendment, 2026-11-06: two layers in every tool, in Flume's words
 
-Status: accepted by the user on 2026-11-06, in agentplot-design's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).
+Status: accepted by the user on 2026-11-06, in the design agent's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).
 
-Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (`design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". agentplot-design for writing it here.
+Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (`design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". The design agent for writing it here.
 Sources: `design/the-flakes-configuration/design.md`; flume record 0032 (a managed and a local layer); record 0023; rules core.5, core.17 and core.18.
 
 ### Decision outcome

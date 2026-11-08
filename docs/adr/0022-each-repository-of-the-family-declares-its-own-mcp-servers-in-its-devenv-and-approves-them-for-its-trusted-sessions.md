@@ -5,14 +5,14 @@ status: accepted
 date: 2026-11-06
 decision-makers:
 - Chuck Swanberg
-- agentplot-design
+- the design agent
 ---
 
 # Each repository of the family declares its own MCP servers in its devenv and approves them for its trusted sessions
 
 Status: accepted by the user on 2026-11-07, on their card.
 
-Deciders: the user, in agentplot's main level at 23:20:23Z on 2026-11-06 (afterthought/crew-state, agentplot/main, signal 2026-11-06-agentplot-planner-bc65dc91/01): "We need to make sure that we have the MCP servers defined in their debian/v.yaml and that, when agent sessions run, the MCP servers start. The boomdrive-cloud one is supposed to have Cloudflare and durable object MCP servers and I don't see those." ("debian/v.yaml" is dictation for devenv), which settles that each repository's servers are declared in its devenv, that an agent's session starts them, and that boomdrive-cloud has Cloudflare's servers; and, by the same signal, that OpenSpec's Claude Code files are declared where OpenSpec changes are written and devenv's own server is in place. agentplot-design for the shape below, each choice with the path not taken.
+Deciders: the user, in a main level at 23:20:23Z on 2026-11-06: "We need to make sure that we have the MCP servers defined in their debian/v.yaml and that, when agent sessions run, the MCP servers start. The boomdrive-cloud one is supposed to have Cloudflare and durable object MCP servers and I don't see those." ("debian/v.yaml" is dictation for devenv), which settles that each repository's servers are declared in its devenv, that an agent's session starts them, and that boomdrive-cloud has Cloudflare's servers; and, in the same message, that OpenSpec's Claude Code files are declared where OpenSpec changes are written and devenv's own server is in place. The design agent for the shape below, each choice with the path not taken.
 
 Sources: devenv 2.4.0's `src/modules/integrations/claude.nix` and `src/modules/files.nix` (the installed source), https://devenv.sh/integrations/claude-code/, https://devenv.sh/creating-files/ and https://devenv.sh/mcp/, read 2026-11-06; Claude Code's https://code.claude.com/docs/en/mcp and https://code.claude.com/docs/en/settings-reference, read 2026-11-06; https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/, github.com/cloudflare/mcp-server-cloudflare and github.com/cloudflare/mcp, read 2026-11-06; agentplot/blueprints `design/flume/requirements.md` clauses 34 and 183 and section 10; Flume's research `research--mcp-servers-for-flumes-agents` (2026-11-02, its talk stalled); agentplot/boomdrive-cloud rule core.126 and record 0066; each repository's `devenv.nix`, `.mcp.json` and `.claude/` at origin/main on 2026-11-06.
 
