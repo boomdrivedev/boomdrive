@@ -1,7 +1,8 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
 //! settled and its view kept, then each
-//! dropped repository let go, then, where the configuration asks, each
+//! dropped repository let go, kept while a place the runner launched
+//! there has not ended (record 0021), then, where the configuration asks, each
 //! owner's VS Code workspace kept (core.43). Where it asks, a removed
 //! view's owner folder that then holds only a workspace no kept owner has
 //! goes with that workspace. Each repository is
@@ -20,7 +21,9 @@ use crate::config::{self, Address, Config};
 use crate::git::Git;
 use crate::lacks;
 use crate::locks::Locks;
+use crate::report;
 use crate::view::{self, OldAct, ViewAct};
+use boomdrive_control::Id;
 use std::fs;
 use std::io;
 use std::ops::ControlFlow;
@@ -104,9 +107,32 @@ pub fn pass(
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        let held = locks.keep(address);
-        outcome = outcome.and(let_go(git, address, container, workspaces.as_deref(), say));
-        drop(held);
+        // The runner's report is read under the clone's lock, after any
+        // launch into the clone has ended, so what holds it is read as it
+        // stands (record 0021; record 0026).
+        let lock = locks.keep(address);
+        let launched = report::read(&report::file(&report::control_dir(data)));
+        let held = match &launched {
+            Ok(report) => report
+                .as_ref()
+                .map_or_else(Vec::new, |report| report::holding(report, address)),
+            Err(why) => {
+                say(format!("{address}: not let go: {why}"));
+                outcome = Outcome::Failed;
+                drop(lock);
+                between();
+                continue;
+            }
+        };
+        outcome = outcome.and(let_go(
+            git,
+            address,
+            container,
+            &held,
+            workspaces.as_deref(),
+            say,
+        ));
+        drop(lock);
         between();
     }
     if let Some(workspaces) = &workspaces {
@@ -242,7 +268,11 @@ fn keep_workspace(wanted: &Wanted, say: &mut dyn FnMut(String)) -> Outcome {
 }
 
 /// Lets go of the clone in `container`, whose address the configuration
-/// no longer names (design 8). It is never fetched. Once neither it nor
+/// no longer names (design 8). It is never fetched. While a launch of the
+/// runner's report holds it at a place that has not ended, each such
+/// place with its launch among the `launched`, it is drained: kept as it
+/// is, neither fetched nor moved, and named held by each (record 0021;
+/// core.5). Once nothing holds it and neither it nor
 /// its view holds anything the forge lacks, the view is removed, then
 /// the view's owner folder if empty, or if it holds only a workspace none
 /// of `workspaces` is (design Decision 7), then the container, then the
@@ -254,6 +284,7 @@ fn let_go(
     git: &Git,
     address: &Address,
     container: &Path,
+    launched: &[(Id, String)],
     workspaces: Option<&[Wanted]>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
@@ -270,9 +301,14 @@ fn let_go(
         }
     };
     let held = lacks::holdings(&facts);
-    if !held.is_empty() {
+    if !held.is_empty() || !launched.is_empty() {
         for holding in held {
             say(format!("{address}: left: held by {holding}"));
+        }
+        for (id, place) in launched {
+            say(format!(
+                "{address}: left: held by the place {place} of {id}, which has not ended"
+            ));
         }
         return Outcome::Kept;
     }

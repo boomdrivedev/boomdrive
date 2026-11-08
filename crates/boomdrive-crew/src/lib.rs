@@ -360,10 +360,17 @@ impl Crew {
                 }
                 match (request.host(), request.act()) {
                     (Some(named), _) if named == host => {
+                        // Its repository among those the runner keeps, else
+                        // those it drains, else its Repo as written (record
+                        // 0021).
                         let repository = request.get("Repo").and_then(|repo| {
                             match read::kept(repo, &hello.repositories) {
                                 Kept::Address(address) => Some(address),
-                                _ => None,
+                                Kept::No => match read::kept(repo, &hello.draining) {
+                                    Kept::Address(address) => Some(address),
+                                    _ => None,
+                                },
+                                Kept::Shared(_) => None,
                             }
                         });
                         let want = read::want(&label, request, repository.as_deref())
@@ -379,31 +386,44 @@ impl Crew {
                             ));
                             continue;
                         };
+                        let answered = pulling.reported(request.number)
+                            || pulling.branch_answers(request.number, false);
+                        let shared = |addresses: Vec<String>, how: &str, lines: &mut Lines| {
+                            lines.say(format!(
+                                "{label}/{}: Repo {repo} is the name of {}, which this \
+                                 host {how}, so it is given nothing",
+                                request.number,
+                                addresses.join(" and ")
+                            ));
+                        };
                         let address = match read::kept(repo, &hello.repositories) {
                             Kept::Address(address) => address,
+                            Kept::Shared(addresses) => {
+                                shared(addresses, "keeps", lines);
+                                continue;
+                            }
                             // A launch the runner answered is given while
-                            // it holds it, its Repo as written, so its
-                            // place is followed to its end though the
-                            // runner keeps the repository no more (record
-                            // 0021).
-                            _ if pulling.reported(request.number)
-                                || pulling.branch_answers(request.number, false) =>
-                            {
-                                if let Ok(want) = read::want(&label, request, None) {
-                                    given.insert(request.number, want);
+                            // the runner drains its repository, at its
+                            // address, so its place is followed to its end
+                            // through the clone the runner drains; where
+                            // the runner neither keeps nor drains it, it is
+                            // given nothing, and no old name is matched to
+                            // a new one (record 0021).
+                            Kept::No if answered => {
+                                match read::kept(repo, &hello.draining) {
+                                    Kept::Address(address) => {
+                                        if let Ok(want) =
+                                            read::want(&label, request, Some(&address))
+                                        {
+                                            given.insert(request.number, want);
+                                        }
+                                    }
+                                    Kept::Shared(addresses) => shared(addresses, "drains", lines),
+                                    Kept::No => {}
                                 }
                                 continue;
                             }
                             Kept::No => continue,
-                            Kept::Shared(addresses) => {
-                                lines.say(format!(
-                                    "{label}/{}: Repo {repo} is the name of {}, which this \
-                                     host keeps, so it is given nothing",
-                                    request.number,
-                                    addresses.join(" and ")
-                                ));
-                                continue;
-                            }
                         };
                         if let Err(why) = read::want(&label, request, Some(&address)) {
                             lines.say(format!(

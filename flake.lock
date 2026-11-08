@@ -3,16 +3,16 @@
     "flume": {
       "flake": false,
       "locked": {
-        "lastModified": 1793916004,
-        "narHash": "sha256-Y7YqB+/tN6qLdxouIXwq7ZYw31NihEqvyDWLXiw0ASY=",
+        "lastModified": 1794069151,
+        "narHash": "sha256-utABZelBlYkcE0SJz/f/JLRQmt79zYHJCtBC07stVDE=",
         "owner": "agentplot",
         "repo": "flume",
-        "rev": "448dd92e6ef810fefaf34e5e8de98de57b4b70bb",
+        "rev": "4c6faa0283417eb6d49187fc1a4b55ad69bd033b",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.10.0",
+        "ref": "v0.17.1",
         "repo": "flume",
         "type": "github"
       }
@@ -92,16 +92,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1793923753,
-        "narHash": "sha256-+CD1OFpuo2B7VcLNKQ8ShH9KgQaRp/huakC12ZNKeA8=",
+        "lastModified": 1794082892,
+        "narHash": "sha256-XoArmaLEyKHVOqhDFToGFOMT6wiEg5F1ZMScOF45rEw=",
         "owner": "agentplot",
         "repo": "sluice",
-        "rev": "c7ee329de628dfc281ad7c49ce5255c5b4414c70",
+        "rev": "a476703c4c4fd20b9254c5252c4a87a46b7505fa",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.68.0",
+        "ref": "v0.74.3",
         "repo": "sluice",
         "type": "github"
       }

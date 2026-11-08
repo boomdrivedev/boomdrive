@@ -10,8 +10,11 @@
 //! so no part's pull, act, command or report waits on another's or on a
 //! keeping pass. What they share is a clone's lock, for one keep or one
 //! launch, the report file's own lock, for one save of a part's share, and
-//! Flume's room (design Decisions 2 to 6). The runner opens no listening
-//! socket: every connection it makes is outgoing (core.3).
+//! Flume's room (design Decisions 2 to 6). Each pass, keeping or control,
+//! ends with Flume's settle of every place, which keeps Flume's watch
+//! over the host while the runner runs, and which no two passes run at
+//! once (record 0029). The runner opens no listening socket: every
+//! connection it makes is outgoing (core.3).
 
 use crate::carry::{Carrier, Configured, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env};
@@ -20,6 +23,7 @@ use crate::locks::Locks;
 use crate::pass::{self, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
+use crate::settle::{self, Settles};
 use crate::terminal::{self, Relays};
 use crate::{clone, flume, hello, sluice};
 use boomdrive_control::{Part, Wake};
@@ -118,6 +122,11 @@ impl Bell {
         self.rung().woken
     }
 
+    /// Whether the runner stopped, so the part begins nothing further.
+    pub fn stopped(&self) -> bool {
+        self.rung().stopped
+    }
+
     /// Takes the wake that a pass beginning now answers.
     pub fn begin_pass(&self) {
         self.rung().woken = false;
@@ -199,7 +208,8 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
     (last_start + interval).max(now)
 }
 
-/// The programs a control pass runs for Flume, sluice and herdr.
+/// The programs the runner runs for Flume, sluice and herdr: its settles
+/// and its parts' control passes'.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
@@ -240,7 +250,6 @@ struct Control {
     poll_interval: Duration,
     /// The implementation's parts, or why it could not be opened.
     parts: Result<Vec<Part>, String>,
-    programs: Programs,
 }
 
 impl Control {
@@ -260,7 +269,6 @@ impl Control {
                 &|_| Box::new(|line| eprintln!("{line}")),
                 &|label| bells.waker(label),
             ),
-            programs: Programs::on_path(),
         }
     }
 }
@@ -273,9 +281,15 @@ pub struct Runner {
     file: PathBuf,
     data: PathBuf,
     config: Config,
+    /// The programs the runner runs for Flume, sluice and herdr, each on
+    /// the host's `PATH` unless a test puts its own in place.
+    programs: Programs,
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
+    /// The runner's settles of every place, shared by the loop and every
+    /// part's thread.
+    watch: Watch,
     events: Sender<Event>,
     notices: Notices,
     waiting: Receiver<Event>,
@@ -303,6 +317,59 @@ struct Host<'a> {
     notices: &'a Notices,
     locks: &'a Locks,
     report: &'a ReportFile,
+    watch: &'a Watch,
+}
+
+/// The runner's watch over the host: Flume's settle of every place,
+/// `flume settle --every <bound>`, run once and awaited at the end of
+/// each pass, keeping or control (core.13; record 0029). The loop and
+/// every part's thread share it, so no two settles run at once: a pass
+/// that ends while another's settle is under way shares that settle, as a
+/// keeping pass shares the settle of the control pass that follows it at
+/// once, and waits for nothing (core.49).
+struct Watch {
+    /// The `fetch_interval` the latest reading of the configuration gave.
+    fetch_interval: Mutex<Duration>,
+    /// Whether the last settle was answered, held while a settle runs.
+    settles: Mutex<Settles>,
+}
+
+impl Watch {
+    /// A watch whose bound starts from `fetch_interval`, as the
+    /// configuration the runner started with gave it.
+    fn new(fetch_interval: Duration) -> Watch {
+        Watch {
+            fetch_interval: Mutex::new(fetch_interval),
+            settles: Mutex::default(),
+        }
+    }
+
+    /// Takes the `fetch_interval` a reading of the configuration gave.
+    fn read(&self, fetch_interval: Duration) {
+        *self
+            .fetch_interval
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = fetch_interval;
+    }
+
+    /// Runs `flume`'s settle of every place, its bound the latest
+    /// `fetch_interval`, or the shorter of it and `poll_interval` while
+    /// the runner makes control passes, and says its answer only where it
+    /// changes. Where another pass's settle is under way, runs none.
+    fn settle(&self, flume: &Path, poll_interval: Option<Duration>, say: Say<'_>) {
+        let mut settles = match self.settles.try_lock() {
+            Ok(settles) => settles,
+            Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+            Err(std::sync::TryLockError::WouldBlock) => return,
+        };
+        let fetch_interval = *self
+            .fetch_interval
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let bound = settle::bound(fetch_interval, poll_interval);
+        let answer = flume::Cli::new(flume).settle_every(bound);
+        settles.heard(answer, &mut |line| say(line));
+    }
 }
 
 impl Runner {
@@ -340,13 +407,16 @@ impl Runner {
             .as_ref()
             .map(|table| Control::open(table, &file, &data, &bells));
         let report = ReportFile::new(&report::control_dir(&data));
+        let watch = Watch::new(config.fetch_interval);
         Ok(Runner {
             git,
             home: env.home,
             file,
             data,
             config,
+            programs: Programs::on_path(),
             control,
+            watch,
             events,
             notices,
             waiting,
@@ -385,8 +455,15 @@ impl Runner {
             return Err("the configuration names no control plane".to_string());
         };
         control.parts = Ok(open(&|label| bells.waker(label)));
-        control.programs = programs;
+        self.tools(programs);
         Ok(())
+    }
+
+    /// Runs `programs` in place of those on the host's `PATH`: how a test
+    /// runs the runner with tools of its own, a control plane named or
+    /// not.
+    pub fn tools(&mut self, programs: Programs) {
+        self.programs = programs;
     }
 
     /// What tells the runner of landings.
@@ -465,11 +542,24 @@ impl Runner {
             file: &self.file,
             data: &self.data,
             poll_interval: control.poll_interval,
-            programs: &control.programs,
+            programs: &self.programs,
             notices: &self.notices,
             locks: &self.locks,
             report: &self.report,
+            watch: &self.watch,
         })
+    }
+
+    /// The interval between control passes where the runner makes them,
+    /// its control plane opened as parts; none where it makes none.
+    fn polls(&self) -> Option<Duration> {
+        match &self.control {
+            Some(Control {
+                poll_interval,
+                parts: Ok(parts),
+            }) if !parts.is_empty() => Some(*poll_interval),
+            _ => None,
+        }
     }
 
     /// One keeping pass over the configuration the runner started with,
@@ -477,8 +567,11 @@ impl Runner {
     /// part, side by side (design Decision 2): failed where a git call of
     /// the keeping pass failed, or no part both pulled and reported, its
     /// control plane unopened among it. Each part's pass carries out every
-    /// act, since no pass follows it (core.50).
+    /// act, since no pass follows it (core.50). Then the settle that ends
+    /// them (record 0029): a settle refused or unanswered is said, and no
+    /// failure.
     pub fn once(&mut self, say: Say<'_>) -> Outcome {
+        let polls = self.polls();
         let kept = pass::pass(
             &self.git,
             &self.data,
@@ -520,6 +613,7 @@ impl Runner {
                 }
             }
         };
+        self.watch.settle(&self.programs.flume, polls, say);
         kept.and(carried)
     }
 
@@ -534,10 +628,13 @@ impl Runner {
     /// pass: a control pass at once, then one each `poll_interval` after
     /// the start of the part's one before, sooner, after a pass that
     /// reported, before a lease of the part's not yet lapsed lapses, and
-    /// at once when its implementation wakes it. Stopped, it keeps no
-    /// further repository, begins no part's pass, waits for each part to
-    /// end the pass in hand, and says so.
+    /// at once when its implementation wakes it. Each pass, keeping or
+    /// control, ends with one settle of every place, before its thread
+    /// waits (record 0029). Stopped, it keeps no further repository,
+    /// begins no part's pass and no settle, waits for each part to end the
+    /// pass in hand, and says so.
     pub fn keep(&mut self, say: Say<'_>) {
+        let polls = self.polls();
         let mut parts = self.take_parts();
         let bells: Vec<Arc<Bell>> = parts
             .iter()
@@ -551,7 +648,9 @@ impl Runner {
             let mut fetch_interval = this.config.fetch_interval;
             let mut keep_due = Instant::now();
             'passes: loop {
+                let mut kept = false;
                 if Instant::now() >= keep_due {
+                    kept = true;
                     let began = Instant::now();
                     let read = match started.take() {
                         Some(config) => Ok(config),
@@ -560,6 +659,7 @@ impl Runner {
                     match read {
                         Ok(config) => {
                             fetch_interval = config.fetch_interval;
+                            this.watch.read(fetch_interval);
                             pass::pass(
                                 &this.git,
                                 &this.data,
@@ -577,10 +677,20 @@ impl Runner {
                 if this.stop.load(Ordering::SeqCst) {
                     break 'passes;
                 }
+                let mut followed = false;
                 if let (Some(host), Some(unstarted)) = (&host, unstarted.take()) {
                     for (part, bell) in unstarted {
+                        followed = true;
                         scope.spawn(move || host.carry_on(part, bell, say));
                     }
+                }
+                // A keeping pass that each part's first control pass
+                // follows at once shares their settle, so no launch waits
+                // behind a settle of every place; a keeping pass on a
+                // configuration that did not read settles all the same
+                // (record 0029).
+                if kept && !followed {
+                    this.watch.settle(&this.programs.flume, polls, say);
                 }
                 loop {
                     if this.stop.load(Ordering::SeqCst) {
@@ -651,7 +761,8 @@ impl Host<'_> {
     /// Carries `part` on the thread this runs on until the runner stops
     /// (design Decision 2): a pass at once, then each when its timer or
     /// its wake, through `bell`, says, its own reach and terminals kept
-    /// across its passes. Stopped, it begins no further pass.
+    /// across its passes, each pass followed by the settle of every place
+    /// (record 0029). Stopped, it begins no further pass and no settle.
     fn carry_on(&self, part: &mut Part, bell: &Bell, say: Say<'_>) {
         let relays = self.programs.relays();
         let reach = Reach::default();
@@ -664,6 +775,12 @@ impl Host<'_> {
             let is_due = || began.elapsed() >= poll_interval || bell.woken();
             let passed = self.carry(part, read, &relays, &reach, &is_due, say);
             due = passed.next_due(began, Instant::now(), poll_interval);
+            // The control pass ends with the settle of every place, no
+            // part of it, before the part waits (record 0029).
+            if !bell.stopped() {
+                self.watch
+                    .settle(&self.programs.flume, Some(poll_interval), say);
+            }
         }
     }
 
@@ -786,9 +903,50 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_pass, Bell, Bells, Rang};
+    use super::{next_pass, Bell, Bells, Rang, Watch};
     use crate::carry::next_due;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
     use std::time::{Duration, Instant};
+
+    /// The running spec's "A pass ends while a settle is under way": a
+    /// pass that ends while another's settle runs runs none, and returns
+    /// without waiting for it, which it could not do here, the first
+    /// settle running until the test lets it go; a pass after the first
+    /// settle ended runs its own.
+    #[test]
+    fn a_settle_under_way_is_shared() {
+        let dir = tempfile::tempdir().unwrap();
+        let (flume, calls, go) = (
+            dir.path().join("flume"),
+            dir.path().join("calls"),
+            dir.path().join("go"),
+        );
+        let program = format!(
+            "#!/bin/sh\necho settle >> '{}'\nwhile [ ! -e '{}' ]; do sleep 0.02; done\n\
+             echo '{{\"settled\":{{\"places\":[]}}}}'\n",
+            calls.display(),
+            go.display()
+        );
+        fs::write(&flume, program).unwrap();
+        fs::set_permissions(&flume, fs::Permissions::from_mode(0o755)).unwrap();
+        let watch = Watch::new(Duration::from_secs(60));
+        let said = std::sync::Mutex::new(Vec::new());
+        let say = |line: String| said.lock().unwrap().push(line);
+        std::thread::scope(|scope| {
+            let first = scope.spawn(|| watch.settle(&flume, None, &say));
+            while !calls.exists() {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            watch.settle(&flume, Some(Duration::from_secs(1)), &say);
+            fs::write(&go, "").unwrap();
+            first.join().unwrap();
+        });
+        assert_eq!(fs::read_to_string(&calls).unwrap(), "settle\n");
+        watch.settle(&flume, None, &say);
+        assert_eq!(fs::read_to_string(&calls).unwrap(), "settle\nsettle\n");
+        assert_eq!(*said.lock().unwrap(), [] as [String; 0]);
+    }
 
     /// A part's wake is read by its pass under way until its next pass
     /// begins (core.50), and ends its wait at once; the wake of one part

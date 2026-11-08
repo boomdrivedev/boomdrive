@@ -8,8 +8,11 @@
 //! other part's entries kept as they stand. The file names in `parts` the
 //! labels of the parts whose share it holds (record 0026; core.36).
 
-use boomdrive_control::{Id, Report};
+use crate::config::Address;
+use crate::facts;
+use boomdrive_control::{Id, Launched, Outcome, Report};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::{self, Write};
@@ -170,10 +173,50 @@ fn cloned<T: Clone>(entries: &BTreeMap<Id, T>) -> impl Iterator<Item = (Id, T)> 
         .map(|(id, entry)| (id.clone(), entry.clone()))
 }
 
+/// Each launch of `report`, with its place, that holds the repository at
+/// `address` (record 0021; core.5): one whose recorded repository is that
+/// address, as addresses compare, answered `launched` at a place that has
+/// not ended. A launch recording no repository, or one not an address,
+/// holds none. The keeper, the hello and the control pass read draining
+/// by it alike.
+pub fn holding(report: &Report, address: &Address) -> Vec<(Id, String)> {
+    report
+        .launches
+        .iter()
+        .filter(|(_, launched)| {
+            let repository = launched.repository.as_deref().map(Address::parse);
+            matches!(repository, Some(Ok(repository)) if repository == *address)
+        })
+        .filter_map(|(id, launched)| {
+            let place = launched.answer.place_dir.as_deref()?;
+            let live = launched.answer.outcome == Outcome::Launched && !ended(launched, place);
+            live.then(|| (id.clone(), place.to_string()))
+        })
+        .collect()
+}
+
+/// Whether the place at `place` has ended, by the status `launched`
+/// carries of it: the status stands not listed, or the place's entry in it
+/// reads its phase tidied or gone. A place with no status carried has not
+/// ended.
+fn ended(launched: &Launched, place: &str) -> bool {
+    let Some(carried) = &launched.status else {
+        return false;
+    };
+    if !carried.listed {
+        return true;
+    }
+    serde_json::from_str::<Value>(&carried.text)
+        .ok()
+        .as_ref()
+        .and_then(|answer| facts::entry(answer, place))
+        .is_some_and(facts::ended)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use boomdrive_control::{Answer, At, Id, Lease, Outcome};
+    use boomdrive_control::{Answer, At, Carried, Lease};
 
     fn a_report() -> Report {
         let mut report = Report::default();
@@ -239,7 +282,7 @@ mod tests {
     }
 
     /// A report holding a launch for each of `ids`.
-    fn holding(ids: &[&str]) -> Report {
+    fn launches(ids: &[&str]) -> Report {
         let mut report = Report::default();
         for id in ids {
             launched(&mut report, id);
@@ -268,13 +311,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let shared = ReportFile::new(dir.path());
         shared
-            .save_share("work", &of("work"), &holding(&["work/2"]))
+            .save_share("work", &of("work"), &launches(&["work/2"]))
             .unwrap();
         shared
-            .save_share("home", &of("home"), &holding(&["home/1"]))
+            .save_share("home", &of("home"), &launches(&["home/1"]))
             .unwrap();
         shared
-            .save_share("home", &of("home"), &holding(&["home/1", "home/3"]))
+            .save_share("home", &of("home"), &launches(&["home/1", "home/3"]))
             .unwrap();
         assert_eq!(
             held(shared.path()),
@@ -284,9 +327,9 @@ mod tests {
             )
         );
         let home = shared.share("home", &of("home")).unwrap();
-        assert_eq!(home, Some(holding(&["home/1", "home/3"])));
+        assert_eq!(home, Some(launches(&["home/1", "home/3"])));
         let work = shared.share("work", &of("work")).unwrap();
-        assert_eq!(work, Some(holding(&["work/2"])));
+        assert_eq!(work, Some(launches(&["work/2"])));
         let names: Vec<_> = fs::read_dir(dir.path())
             .unwrap()
             .map(|entry| entry.unwrap().file_name())
@@ -302,13 +345,13 @@ mod tests {
     fn a_file_with_no_parts_holds_every_part() {
         let dir = tempfile::tempdir().unwrap();
         let shared = ReportFile::new(dir.path());
-        save(shared.path(), &holding(&["home/1", "work/2"])).unwrap();
+        save(shared.path(), &launches(&["home/1", "work/2"])).unwrap();
         assert_eq!(
             shared.share("work", &of("work")).unwrap(),
-            Some(holding(&["work/2"]))
+            Some(launches(&["work/2"]))
         );
         shared
-            .save_share("home", &of("home"), &holding(&["home/3"]))
+            .save_share("home", &of("home"), &launches(&["home/3"]))
             .unwrap();
         assert_eq!(
             held(shared.path()),
@@ -316,11 +359,11 @@ mod tests {
         );
         assert_eq!(
             shared.share("work", &of("work")).unwrap(),
-            Some(holding(&["work/2"]))
+            Some(launches(&["work/2"]))
         );
         assert_eq!(
             read(shared.path()).unwrap(),
-            Some(holding(&["home/3", "work/2"]))
+            Some(launches(&["home/3", "work/2"]))
         );
     }
 
@@ -332,15 +375,15 @@ mod tests {
         let shared = ReportFile::new(dir.path());
         assert_eq!(shared.share("home", &of("home")).unwrap(), None);
         shared
-            .save_share("home", &of("home"), &holding(&["home/1"]))
+            .save_share("home", &of("home"), &launches(&["home/1"]))
             .unwrap();
         assert_eq!(shared.share("work", &of("work")).unwrap(), None);
         shared
-            .save_share("work", &of("work"), &holding(&["work/2"]))
+            .save_share("work", &of("work"), &launches(&["work/2"]))
             .unwrap();
         assert_eq!(
             shared.share("work", &of("work")).unwrap(),
-            Some(holding(&["work/2"]))
+            Some(launches(&["work/2"]))
         );
     }
 
@@ -358,7 +401,7 @@ mod tests {
                         let ids: Vec<String> = (0..=n).map(|k| format!("{label}/{k}")).collect();
                         let ids: Vec<&str> = ids.iter().map(String::as_str).collect();
                         shared
-                            .save_share(label, &of(label), &holding(&ids))
+                            .save_share(label, &of(label), &launches(&ids))
                             .unwrap();
                     }
                 });
@@ -367,6 +410,128 @@ mod tests {
         let (ids, parts) = held(shared.path());
         assert_eq!(ids.len(), 40, "{ids:?}");
         assert_eq!(parts, Some(vec!["home".into(), "work".into()]));
+    }
+
+    /// A launch at `place` in `repository`, answered `outcome`, its status
+    /// carried with the place's `phase`, `listed` or not, where one is.
+    fn launch(
+        repository: Option<&str>,
+        outcome: Outcome,
+        place: &str,
+        status: Option<(&str, bool)>,
+    ) -> Launched {
+        Launched {
+            lease: Lease {
+                number: 1,
+                expires: None,
+            },
+            repository: repository.map(str::to_string),
+            answer: Answer {
+                outcome,
+                place_dir: Some(place.to_string()),
+                words: None,
+                at: At::parse("2026-11-01T10:00:00Z").unwrap(),
+            },
+            status: status.map(|(phase, listed)| Carried {
+                text: format!(
+                    r#"{{"status":{{"places":[{{"place":"{place}","phase":{phase}}}]}}}}"#
+                ),
+                at: At::parse("2026-11-01T10:01:00Z").unwrap(),
+                listed,
+            }),
+            entry: None,
+        }
+    }
+
+    #[test]
+    fn the_places_that_hold_a_repository() {
+        let live = Some((r#""live""#, true));
+        let tidied = r#"{"tidied":{"over":{"landed":{}},"at":7,"pending_for":["r"]}}"#;
+        let launches = [
+            (
+                "a",
+                launch(Some("example/kit"), Outcome::Launched, "/p/a", live),
+            ),
+            (
+                "b",
+                launch(Some("Example/Kit"), Outcome::Launched, "/p/b", None),
+            ),
+            (
+                "c",
+                launch(
+                    Some("example/kit"),
+                    Outcome::Launched,
+                    "/p/c",
+                    Some((r#"{"over":{"over":"done"}}"#, true)),
+                ),
+            ),
+            (
+                "d",
+                launch(
+                    Some("example/kit"),
+                    Outcome::Launched,
+                    "/p/d",
+                    Some((tidied, true)),
+                ),
+            ),
+            (
+                "e",
+                launch(
+                    Some("example/kit"),
+                    Outcome::Launched,
+                    "/p/e",
+                    Some((r#"{"gone":{"over":"done"}}"#, true)),
+                ),
+            ),
+            (
+                "f",
+                launch(
+                    Some("example/kit"),
+                    Outcome::Launched,
+                    "/p/f",
+                    Some((r#""live""#, false)),
+                ),
+            ),
+            (
+                "g",
+                launch(Some("example/other"), Outcome::Launched, "/p/g", live),
+            ),
+            (
+                "h",
+                launch(Some("example/kit"), Outcome::Held, "/p/h", None),
+            ),
+            (
+                "i",
+                launch(Some("example/kit"), Outcome::Refused, "/p/i", None),
+            ),
+            ("j", launch(None, Outcome::Launched, "/p/j", live)),
+            (
+                "k",
+                launch(Some("not an address"), Outcome::Launched, "/p/k", live),
+            ),
+        ];
+        let mut report = Report::default();
+        for (id, launched) in launches {
+            report.launches.insert(Id::new(id), launched);
+        }
+        let mut placeless = launch(Some("example/kit"), Outcome::Launched, "/p/l", live);
+        placeless.answer.place_dir = None;
+        report.launches.insert(Id::new("l"), placeless);
+        let held: Vec<(String, String)> = holding(&report, &Address::parse("example/kit").unwrap())
+            .into_iter()
+            .map(|(id, place)| (id.to_string(), place))
+            .collect();
+        assert_eq!(
+            held,
+            [
+                ("a".to_string(), "/p/a".to_string()),
+                ("b".to_string(), "/p/b".to_string()),
+                ("c".to_string(), "/p/c".to_string()),
+            ]
+        );
+        let other = holding(&report, &Address::parse("example/other").unwrap());
+        assert_eq!(other, [(Id::new("g"), "/p/g".to_string())]);
+        assert!(holding(&report, &Address::parse("example/none").unwrap()).is_empty());
     }
 
     #[test]

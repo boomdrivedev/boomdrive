@@ -144,6 +144,7 @@ pub fn hello(report: &Report) -> Hello {
             ToolVersion::Printed("flume 0.4.1".to_string()),
         )]),
         repositories: vec![REPOSITORY.to_string()],
+        draining: vec![],
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),
@@ -207,6 +208,7 @@ fn launched(id: Id) -> Report {
     let status = r#"{"status":{"places":[{"location":"/places/a","phase":"live"}]}}"#;
     let launched = Launched {
         lease: lease(),
+        repository: None,
         answer: Answer {
             outcome: Outcome::Launched,
             place_dir: Some("/places/a".to_string()),

@@ -1,8 +1,11 @@
 //! The scratch host every test runs on (design 11): a temporary directory
-//! holding the home, a git configuration and a forge standing in for
-//! GitHub. Every git call a test makes, and every one the runner makes in
-//! it, runs under its environment, so no test reads the user's git
-//! configuration, reaches the network or holds a credential (core.4).
+//! holding the home, a git configuration, a forge standing in for GitHub,
+//! and a stub `flume` that answers the runner's settle. Every git call a
+//! test makes, and every one the runner makes in it, runs under its
+//! environment, so no test reads the user's git configuration, reaches
+//! the network or holds a credential (core.4), and every run of the
+//! runner's binary finds the stub first on its `PATH`, so none settles a
+//! Flume of the host's (record 0029).
 
 #![allow(dead_code)]
 
@@ -25,6 +28,14 @@ pub fn keeping(addresses: &[&str]) -> String {
     format!("repositories = [{}]\n", entries.join(", "))
 }
 
+/// The scratch host's stub `flume`: it answers `--json settle` with Flume
+/// 0.17.1's answer on a scratch host holding no place, `{fixture}`, and
+/// exit 0, and anything else with nothing and exit 1.
+const FLUME: &str = r#"#!/bin/sh
+if [ "$1" = --json ] && [ "$2" = settle ]; then cat '{fixture}'; exit 0; fi
+exit 1
+"#;
+
 /// A scratch host, removed when dropped.
 pub struct Scratch {
     _dir: TempDir,
@@ -36,6 +47,8 @@ pub struct Scratch {
     pub gitconfig: PathBuf,
     /// The forge, `<owner>/<name>.git` for each repository on it.
     pub forge: PathBuf,
+    /// The folder of the stub `flume`, first on the binary's `PATH`.
+    pub bin: PathBuf,
 }
 
 impl Scratch {
@@ -71,12 +84,28 @@ impl Scratch {
             ),
         )
         .expect("the scratch git configuration");
+        let bin = root.join("bin");
+        std::fs::create_dir_all(&bin).expect("the stub's folder");
+        let settled =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json");
+        let flume = bin.join("flume");
+        std::fs::write(
+            &flume,
+            FLUME.replace("{fixture}", &settled.to_string_lossy()),
+        )
+        .expect("the stub flume");
+        let mut permissions = std::fs::metadata(&flume)
+            .expect("the stub's metadata")
+            .permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+        std::fs::set_permissions(&flume, permissions).expect("the stub made runnable");
         Scratch {
             _dir: dir,
             root,
             home,
             gitconfig,
             forge,
+            bin,
         }
     }
 
@@ -113,9 +142,18 @@ impl Scratch {
         command
     }
 
-    /// The runner's binary under the scratch environment.
+    /// The runner's binary under the scratch environment, the stub
+    /// `flume` first on its `PATH`, so its settle runs no Flume of the
+    /// host's. A test that sets `PATH` itself puts its own stubs first.
     pub fn boomdrive(&self) -> Command {
-        self.command(env!("CARGO_BIN_EXE_boomdrive"))
+        let mut path = OsString::from(&self.bin);
+        if let Some(own) = std::env::var_os("PATH") {
+            path.push(":");
+            path.push(own);
+        }
+        let mut command = self.command(env!("CARGO_BIN_EXE_boomdrive"));
+        command.env("PATH", path);
+        command
     }
 
     /// git as the runner runs it in-process on the scratch host.

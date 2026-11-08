@@ -18,7 +18,7 @@ use boomdrive_control::fake::Fake;
 use boomdrive_control::{
     ActSort, Acted, Answer, At, ControlPlane, Id, Lease, Outcome, Report, Want,
 };
-use fakes::{act, fixture, offer, place_of, Bench, FakeFlume};
+use fakes::{act, fixture, offer, place_of, Bench, FakeFlume, KEPT};
 use serde_json::Value;
 use std::cell::RefCell;
 use std::fs;
@@ -331,7 +331,8 @@ fn a_parts_save_keeps_every_other_parts_share() {
 /// The work-into-flume spec's "A file from the release before": the file
 /// names no `parts` and holds `work`'s retry `work/2` done, and `work`
 /// pulls `work/2` again. It is answered from the file, and no `flume`
-/// command is run for it.
+/// command is run for it; `work/1`, held with no repository, gains its
+/// offer's.
 #[test]
 fn a_file_from_the_release_before() {
     let bench = Bench::new();
@@ -346,6 +347,8 @@ fn a_file_from_the_release_before() {
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(bench.flume.acts(), [], "no flume command for work/2");
     assert_eq!(bench.flume.launches(), []);
+    let work_1 = file.launches.get_mut(&Id::new("work/1")).unwrap();
+    work_1.repository = Some(KEPT.to_string());
     assert_eq!(
         bench.report(),
         file,

@@ -150,7 +150,12 @@ pub struct Command {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CommandSort {
-    /// A bolt's branch, made from `from` (cloud record 0017).
+    /// A branch made from `from` (cloud record 0017). A control plane
+    /// may still send it, as version 1 of the hosted protocol names it,
+    /// which a release has spoken and which is never changed (core.42).
+    /// This binary refuses it, naming sluice: a branch other places land
+    /// on is a Flume place's, launched as any launch and sent by a retry
+    /// of its submission (core.52).
     Branch {
         repository: String,
         branch: String,

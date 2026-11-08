@@ -138,6 +138,20 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+/// `words` as a call's arguments.
+fn words(words: &[&str]) -> Vec<String> {
+    words.iter().map(|word| word.to_string()).collect()
+}
+
+/// How many settles the stub `flume` was asked.
+fn settles(tools: &Tools) -> usize {
+    tools
+        .flume_commands()
+        .iter()
+        .filter(|command| *command == "settle")
+        .count()
+}
+
 /// The state repository `afterthought/madswan-state` on the scratch
 /// forge, its `madswan/main` holding a launch request for `deneb` of
 /// [`KEPT`]'s unit `a`, and the plan holding `a`, as crew writes them.
@@ -163,7 +177,9 @@ fn state_repository(scratch: &Scratch) -> Origin<'_> {
 /// The running spec's "One control pass": crew's implementation over a
 /// scratch state repository holding a launch for this host, and a stub
 /// `flume` that launches it. The runner keeps its repositories, launches
-/// once, writes its branch, and exits 0.
+/// once, writes its branch, settles every place after every other `flume`
+/// command, on the shorter interval (the running spec's "The shorter
+/// interval"), and exits 0.
 #[test]
 fn one_control_pass() {
     let scratch = Scratch::new();
@@ -183,6 +199,13 @@ fn one_control_pass() {
         .filter(|command| command == "launch")
         .count();
     assert_eq!(launches, 1, "{:?}", tools.flume_commands());
+    let calls = tools.flume.calls();
+    assert_eq!(
+        calls.last(),
+        Some(&words(&["--json", "settle", "--every", "60s"])),
+        "{calls:?}"
+    );
+    assert_eq!(settles(&tools), 1, "{calls:?}");
     assert!(
         stderr(&output)
             .lines()
@@ -250,7 +273,8 @@ fn carrying_two() -> String {
 /// repositories, names each part as unread, launches and acts on nothing,
 /// and exits 1. Each part's pass reads Flume's status and each tool's
 /// version for the hello it hands the pull, before the pull is read
-/// (design Decision 5, step 2): no other Flume command runs.
+/// (design Decision 5, step 2), and the settle ends the pass: no other
+/// Flume command runs.
 #[test]
 fn a_control_plane_that_cannot_be_read() {
     let scratch = Scratch::new();
@@ -277,11 +301,12 @@ fn a_control_plane_that_cannot_be_read() {
     }
     for command in tools.flume_commands() {
         assert!(
-            ["status", "--version"].contains(&command.as_str()),
+            ["status", "--version", "settle"].contains(&command.as_str()),
             "{:?}",
             tools.flume_commands()
         );
     }
+    assert_eq!(settles(&tools), 1, "{:?}", tools.flume_commands());
 }
 
 /// The running spec's "One part unread": crew's control plane serves
@@ -346,7 +371,8 @@ fn one_part_unread() {
 }
 
 /// The configuration spec's "No control plane": `--once` keeps the
-/// repositories and runs no `flume` command.
+/// repositories and runs no `flume` command but the settle that ends its
+/// pass, on the default `fetch_interval`.
 #[test]
 fn no_control_plane() {
     let scratch = Scratch::new();
@@ -358,9 +384,43 @@ fn no_control_plane() {
 
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     assert!(scratch.home.join("Code").join(KEPT).exists());
-    assert_eq!(tools.flume.calls(), Vec::<Vec<String>>::new());
+    assert_eq!(
+        tools.flume.calls(),
+        [words(&["--json", "settle", "--every", "120s"])]
+    );
     assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
     assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
+}
+
+/// The running spec's "A settle Flume refuses": with no control plane, a
+/// stub `flume` that refuses the settle. `--once` says Flume's refusal in
+/// its words, and exits 0: a refused settle is no failure.
+#[test]
+fn a_settle_flume_refuses() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&keeping(&[KEPT]));
+    let tools = Tools::new();
+    tools.flume.answers_text(
+        "settle",
+        "{\"refused\":{\"refusal\":{\"reason\":\"no store\"}}}\n",
+        1,
+    );
+
+    let output = once(&scratch, &tools);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let refused = "boomdrive: Flume refused the settle of every place: no store";
+    assert_eq!(
+        stderr(&output)
+            .lines()
+            .filter(|line| *line == refused)
+            .count(),
+        1,
+        "{}",
+        stderr(&output)
+    );
+    assert!(scratch.home.join("Code").join(KEPT).exists());
 }
 
 /// The control-plane-interface spec's "The hosted control plane named",
@@ -402,7 +462,9 @@ fn the_hosted_control_plane_named() {
 /// The control-plane-interface spec's "A word not carried": the runner
 /// names `elsewhere` as a control plane this binary does not carry and
 /// names `crew` and `hosted`, runs no control pass, and keeps its
-/// repositories. Its control pass did not pull, so `--once` exits 1.
+/// repositories. Its control pass did not pull, so `--once` exits 1. It
+/// runs no `flume` command but the settle, on `fetch_interval` alone (the
+/// running spec's "A control plane that could not be opened").
 #[test]
 fn a_word_not_carried() {
     let scratch = Scratch::new();
@@ -427,7 +489,12 @@ fn a_word_not_carried() {
         stderr(&output)
     );
     assert!(scratch.home.join("Code").join(KEPT).exists());
-    assert_eq!(tools.flume.calls(), Vec::<Vec<String>>::new());
+    assert_eq!(
+        tools.flume.calls(),
+        [words(&["--json", "settle", "--every", "120s"])]
+    );
+    assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
+    assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
 }
 
 /// A loopback address with nothing listening on it.
@@ -588,7 +655,7 @@ struct Running {
     stopper: Stopper,
     lines: Receiver<(Instant, String)>,
     thread: JoinHandle<()>,
-    _tools: Tools,
+    tools: Tools,
 }
 
 impl Running {
@@ -655,7 +722,7 @@ impl Running {
             stopper,
             lines,
             thread,
-            _tools: tools,
+            tools,
         }
     }
 
@@ -717,6 +784,20 @@ impl Running {
             said.push(next);
         }
         panic!("{what:?} not said in time; said: {said:#?}");
+    }
+
+    /// Waits until the stub `flume` has been asked `settles` settles;
+    /// panics where it is not in time.
+    fn settled(&self, settles: usize) {
+        let deadline = Instant::now() + PATIENCE;
+        while self::settles(&self.tools) < settles {
+            assert!(
+                Instant::now() < deadline,
+                "{settles} settles not run in time: {:?}",
+                self.tools.flume_commands()
+            );
+            thread::sleep(Duration::from_millis(20));
+        }
     }
 
     /// Stops the runner, and gives the lines said from the last read, its
@@ -787,6 +868,73 @@ fn control_passes_on_their_own_timer() {
     );
     running.stop();
     assert_eq!(fetched(&scratch), was, "no keeping pass but the first");
+}
+
+/// The running spec's "Passes back to back share one settle": the first
+/// keeping pass and the first control pass run back to back, and one
+/// settle follows them, on the shorter interval, after every other
+/// `flume` command of the control pass; no other runs before the next
+/// turn, an hour on.
+#[test]
+fn passes_back_to_back_share_one_settle() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1h"));
+    let running = Running::start(&scratch);
+    running.pull();
+    running.settled(1);
+    thread::sleep(Duration::from_millis(500));
+
+    let calls = running.tools.flume.calls();
+    assert_eq!(settles(&running.tools), 1, "{calls:?}");
+    assert_eq!(
+        calls.last(),
+        Some(&words(&["--json", "settle", "--every", "3600s"])),
+        "{calls:?}"
+    );
+    running.stop();
+}
+
+/// The running spec's "Each control pass ends with a settle": with
+/// `poll_interval` a second, each control pass's `flume` commands, from
+/// its read of Flume's status, end with one settle on the shorter
+/// interval, before the next control pass reads Flume's status.
+#[test]
+fn each_control_pass_ends_with_a_settle() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let running = Running::start(&scratch);
+    for _ in 0..3 {
+        running.pull();
+    }
+    let calls = running.tools.flume.calls();
+    running.stop();
+
+    let starts: Vec<usize> = calls
+        .iter()
+        .enumerate()
+        .filter(|(_, call)| *call == &words(&["--json", "status"]))
+        .map(|(n, _)| n)
+        .collect();
+    assert!(starts.len() >= 3, "three control passes: {calls:?}");
+    assert_eq!(
+        starts[0], 0,
+        "a flume command before the first pass: {calls:?}"
+    );
+    let settle = words(&["--json", "settle", "--every", "1s"]);
+    for pass in starts.windows(2) {
+        let group = &calls[pass[0]..pass[1]];
+        assert_eq!(group.last(), Some(&settle), "{group:?} in {calls:?}");
+        assert_eq!(
+            group
+                .iter()
+                .filter(|call| call.get(1).map(String::as_str) == Some("settle"))
+                .count(),
+            1,
+            "{group:?} in {calls:?}"
+        );
+    }
 }
 
 /// The running spec's "Woken by the control plane": woken through the
