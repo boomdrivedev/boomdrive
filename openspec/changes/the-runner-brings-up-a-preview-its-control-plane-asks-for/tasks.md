@@ -46,7 +46,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - `a_release_carried`: `release.json` carried as its `preview` and `released`.
 
   These prove the previews spec's "A failed preview's output left out".
-- [ ] 4.3 The `Sluice` trait and `Cli` gain `preview`, `previews` and `release`, each run in the clone's container (design Decisions 2, 3, 5 and 6; Task notes 4.3):
+- [x] 4.3 The `Sluice` trait and `Cli` gain `preview`, `previews` and `release`, each run in the clone's container (design Decisions 2, 3, 5 and 6; Task notes 4.3):
   - `preview` is awaited no longer than the patience, `PREVIEW_PATIENCE`, 20 seconds, which `Cli` takes another of for a test. sluice is then sent SIGINT and awaited. An exit with no document after the interrupt is an answer that sluice holds the preview waiting.
   - `libc` becomes a dependency of `crates/boomdrive`.
   - The stub `sluice` waits where a test asks.

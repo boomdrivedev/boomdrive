@@ -6,15 +6,30 @@
 //! each field's text as sluice printed it, and never a log or where one
 //! is kept (core.11). The runner asks sluice for no branch: a branch
 //! other places land on is a Flume place's, which sluice makes and closes
-//! at Flume's asking (core.52).
+//! at Flume's asking (core.52). It asks sluice for a preview its control
+//! plane asks for, its listing and its release, each sluice's own command,
+//! awaiting the ask no longer than its patience, and carries of a preview
+//! no output of its command (core.55).
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use std::ffi::OsStr;
 use std::fmt;
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// How long the runner awaits sluice's ask of a preview before it
+/// interrupts it, which ends sluice's wait at the host's bound and
+/// nothing else, so no launch and no other drive's work waits on that
+/// bound behind it (design Decision 3; core.49, core.50, core.55).
+pub const PREVIEW_PATIENCE: Duration = Duration::from_secs(20);
+
+/// How often an ask is looked at while the runner awaits it.
+const LOOK_INTERVAL: Duration = Duration::from_millis(25);
 
 /// The states after which a submission's entry no longer changes.
 pub const FINAL: [&str; 4] = ["landed", "failed", "conflict", "withdrawn"];
@@ -44,6 +59,16 @@ pub enum Reply {
     Refused(String),
 }
 
+/// sluice's answer to the ask of a preview.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Asked {
+    /// sluice answered, as [`Reply`] reads it.
+    Replied(Reply),
+    /// sluice holds the preview waiting at the host's bound: interrupted
+    /// at the runner's patience, it exited with no document.
+    Waiting,
+}
+
 /// Why `sluice` gave no answer at all: it could not be run, or a signal
 /// ended it. Nothing is kept of it, and the next pass asks again.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,6 +85,16 @@ pub trait Sluice {
     /// `sluice status <id> --json`, the submission `id` of the repository
     /// whose clone is in `container_dir`.
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun>;
+    /// `sluice preview <branch> <revision> --json`, in the repository
+    /// whose clone is in `container_dir`, awaited no longer than the
+    /// patience, then interrupted and awaited (design Decisions 2 and 3).
+    fn preview(&self, container_dir: &Path, branch: &str, revision: &str) -> Result<Asked, Unrun>;
+    /// `sluice previews --json`, in the repository whose clone is in
+    /// `container_dir` (design Decision 5).
+    fn previews(&self, container_dir: &Path) -> Result<Reply, Unrun>;
+    /// `sluice release <name> --json`, in the repository whose clone is in
+    /// `container_dir` (design Decision 6).
+    fn release(&self, container_dir: &Path, name: &str) -> Result<Reply, Unrun>;
 }
 
 /// sluice's command line, by the program at `program`: `sluice` on the
@@ -67,13 +102,72 @@ pub trait Sluice {
 #[derive(Clone, Debug)]
 pub struct Cli {
     program: PathBuf,
+    /// How long a preview's ask is awaited before it is interrupted.
+    patience: Duration,
 }
 
 impl Cli {
+    /// sluice by the program at `program`, a preview's ask awaited for
+    /// [`PREVIEW_PATIENCE`].
     pub fn new(program: impl Into<PathBuf>) -> Cli {
         Cli {
             program: program.into(),
+            patience: PREVIEW_PATIENCE,
         }
+    }
+
+    /// This sluice, a preview's ask awaited for `patience` instead, as a
+    /// test sets it.
+    pub fn patient(self, patience: Duration) -> Cli {
+        Cli { patience, ..self }
+    }
+
+    /// sluice's output from `args`, run in `dir`, awaited for the
+    /// patience, then sent SIGINT and awaited, and whether it was. Its
+    /// standard output and error are read on threads of their own while
+    /// it runs, so neither pipe fills (Task notes 4.3).
+    fn run_patiently(&self, dir: &Path, args: &[&str]) -> Result<(Output, bool), Unrun> {
+        let mut child = Command::new(&self.program)
+            .args(args)
+            .current_dir(dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| Unrun(format!("sluice could not run: {error}")))?;
+        let stdout = drain(child.stdout.take());
+        let stderr = drain(child.stderr.take());
+        let (status, interrupted) = self.await_patiently(&mut child)?;
+        let output = Output {
+            status,
+            stdout: stdout.join().unwrap_or_default(),
+            stderr: stderr.join().unwrap_or_default(),
+        };
+        Ok((output, interrupted))
+    }
+
+    /// `child`'s exit, awaited for the patience, then, sent SIGINT, awaited
+    /// whole, and whether it was interrupted.
+    fn await_patiently(&self, child: &mut Child) -> Result<(ExitStatus, bool), Unrun> {
+        let deadline = Instant::now() + self.patience;
+        let unawaited =
+            |error: std::io::Error| Unrun(format!("sluice could not be awaited: {error}"));
+        loop {
+            if let Some(status) = child.try_wait().map_err(unawaited)? {
+                return Ok((status, false));
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            thread::sleep(LOOK_INTERVAL);
+        }
+        if let Ok(pid) = libc::pid_t::try_from(child.id()) {
+            // SAFETY: `kill` reads only its two integer arguments, and
+            // `pid` is our own child's, not yet awaited, so not reused.
+            unsafe { libc::kill(pid, libc::SIGINT) };
+        }
+        let status = child.wait().map_err(unawaited)?;
+        Ok((status, true))
     }
 
     /// sluice's output from `args`, run in `dir`.
@@ -95,6 +189,40 @@ impl Sluice for Cli {
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun> {
         read(&self.run(container_dir, ["status", id, "--json"])?)
     }
+
+    fn preview(&self, container_dir: &Path, branch: &str, revision: &str) -> Result<Asked, Unrun> {
+        let args = ["preview", branch, revision, "--json"];
+        let (output, interrupted) = self.run_patiently(container_dir, &args)?;
+        if interrupted && output.status.code().is_some() && !printed_json(&output) {
+            return Ok(Asked::Waiting);
+        }
+        read(&output).map(Asked::Replied)
+    }
+
+    fn previews(&self, container_dir: &Path) -> Result<Reply, Unrun> {
+        read(&self.run(container_dir, ["previews", "--json"])?)
+    }
+
+    fn release(&self, container_dir: &Path, name: &str) -> Result<Reply, Unrun> {
+        read(&self.run(container_dir, ["release", name, "--json"])?)
+    }
+}
+
+/// A thread reading `pipe` to its end, giving what it read.
+fn drain(pipe: Option<impl Read + Send + 'static>) -> thread::JoinHandle<Vec<u8>> {
+    thread::spawn(move || {
+        let mut read = Vec::new();
+        if let Some(mut pipe) = pipe {
+            let _ = pipe.read_to_end(&mut read);
+        }
+        read
+    })
+}
+
+/// Whether sluice printed a JSON document on standard output.
+fn printed_json(output: &Output) -> bool {
+    std::str::from_utf8(&output.stdout)
+        .is_ok_and(|text| serde_json::from_str::<&RawValue>(text).is_ok())
 }
 
 /// sluice's `error` answer, as it prints one on a refusal.

@@ -6,12 +6,13 @@
 
 mod fakes;
 
-use boomdrive::sluice::{self, Cli, Reply, Sluice};
+use boomdrive::sluice::{self, Asked, Cli, Reply, Sluice};
 use fakes::{preview_fixture, preview_fixtures, sluice_fixture, sluice_fixtures, SluiceStub};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 /// Every fixture of sluice 0.61.1's some test here reads.
 const READ: [&str; 4] = [
@@ -248,4 +249,86 @@ fn a_release_carried() {
     );
     assert_eq!(sluice::release_carried("[]"), None);
     assert_eq!(sluice::preview_carried(r#"{"state":"up"}"#), None);
+}
+
+/// A preview is asked of sluice in the clone's container, the branch and
+/// the revision as given, and its answer read by sluice's exit (design
+/// Decision 2).
+#[test]
+fn a_preview_is_asked_in_the_clones_container() {
+    let stub = SluiceStub::new();
+    stub.answers_preview("preview", "preview-starting.json", 0);
+    let container = container();
+    let reply = Cli::new(stub.program()).preview(container.path(), "main", "R1");
+    assert_eq!(
+        reply,
+        Ok(Asked::Replied(Reply::Given(preview_fixture(
+            "preview-starting.json"
+        ))))
+    );
+    assert_eq!(stub.calls(), [["preview", "main", "R1", "--json"]]);
+    assert_eq!(
+        stub.dir_of(1),
+        Some(container.path().canonicalize().unwrap())
+    );
+    stub.answers_preview("preview", "preview-no-table.json", 2);
+    let reply = Cli::new(stub.program()).preview(container.path(), "main", "R0");
+    assert_eq!(
+        reply,
+        Ok(Asked::Replied(Reply::Refused(
+            "no [preview] table in .config/sluice.toml at 99248c2".to_string()
+        )))
+    );
+}
+
+/// An ask sluice holds past the patience is sent SIGINT, and its exit
+/// with no document read as sluice holding the preview waiting (design
+/// Decision 3).
+#[test]
+fn an_ask_past_the_patience_is_interrupted_and_waits() {
+    let stub = SluiceStub::new();
+    stub.waits("preview");
+    let began = Instant::now();
+    let reply = Cli::new(stub.program())
+        .patient(Duration::from_secs(1))
+        .preview(container().path(), "main", "R1");
+    let took = began.elapsed();
+    assert_eq!(reply, Ok(Asked::Waiting));
+    assert!(took >= Duration::from_secs(1), "{took:?}");
+    assert!(took < Duration::from_secs(5), "{took:?}");
+}
+
+/// sluice's previews are listed in the clone's container (design
+/// Decision 5).
+#[test]
+fn previews_are_listed_in_the_clones_container() {
+    let stub = SluiceStub::new();
+    stub.answers_preview("previews", "previews.json", 0);
+    let container = container();
+    let reply = Cli::new(stub.program()).previews(container.path());
+    assert_eq!(reply, Ok(Reply::Given(preview_fixture("previews.json"))));
+    assert_eq!(stub.calls(), [["previews", "--json"]]);
+    assert_eq!(
+        stub.dir_of(1),
+        Some(container.path().canonicalize().unwrap())
+    );
+}
+
+/// A preview is released by its name in the clone's container (design
+/// Decision 6).
+#[test]
+fn a_release_is_asked_by_name() {
+    let stub = SluiceStub::new();
+    stub.answers_preview("release", "release.json", 0);
+    let container = container();
+    let reply = Cli::new(stub.program()).release(container.path(), "preview/c2b72605d2ad");
+    assert_eq!(reply, Ok(Reply::Given(preview_fixture("release.json"))));
+    assert_eq!(
+        stub.calls(),
+        [["release", "preview/c2b72605d2ad", "--json"]]
+    );
+    assert_eq!(
+        stub.dir_of(1),
+        Some(container.path().canonicalize().unwrap())
+    );
 }

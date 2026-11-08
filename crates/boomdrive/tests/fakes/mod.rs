@@ -24,13 +24,14 @@ use boomdrive_control::{
     ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Preview, Report, ToolVersion, Want,
 };
 use serde_json::{json, Value};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tempfile::TempDir;
 
 /// The repository every bench keeps with its clone made.
@@ -499,6 +500,10 @@ pub struct Bench {
     /// Whether the last pull was read, kept across the bench's passes as
     /// the loop keeps it.
     reach: Reach,
+    /// How long a pass awaits sluice's ask of a preview before it
+    /// interrupts it: [`sluice::PREVIEW_PATIENCE`], but where a test sets
+    /// another.
+    pub sluice_patience: Cell<Duration>,
     notices: Notices,
     events: Receiver<Event>,
 }
@@ -524,6 +529,7 @@ impl Bench {
             clones: FakeClones::default(),
             tools: FakeTools::default(),
             reach: Reach::default(),
+            sluice_patience: Cell::new(sluice::PREVIEW_PATIENCE),
             notices: Notices::new(events),
             events: received,
         };
@@ -574,7 +580,7 @@ impl Bench {
         due: &dyn Fn() -> bool,
     ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
-        let sluice = sluice::Cli::new(self.sluice.program());
+        let sluice = sluice::Cli::new(self.sluice.program()).patient(self.sluice_patience.get());
         let carrier = Carrier {
             flume,
             sluice: &sluice,
@@ -820,9 +826,14 @@ impl Stub {
 
 /// The stub `sluice`'s program. Each call writes its arguments,
 /// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
-/// It then prints the file `<what>.stdout` names, writes `<what>.stderr`
-/// on standard error, and exits with `<what>.exit`'s status, each where
-/// the test wrote one, `<what>` being its command.
+/// Where the test wrote `<what>.wait`, it waits, as sluice's ask of a
+/// preview waits at the host's bound, until it is sent SIGINT, then says
+/// it stopped on standard error and exits 130 with no document, as sluice
+/// does (Task notes 4.3); its wait is a `sleep` it awaits, so its trap
+/// runs at once, and which it ends. Otherwise it prints the file
+/// `<what>.stdout` names, writes `<what>.stderr` on standard error, and
+/// exits with `<what>.exit`'s status, each where the test wrote one,
+/// `<what>` being its command.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
@@ -830,6 +841,13 @@ while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
 for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
 pwd -P > "$dir/dir-$n"
 what=$1
+if [ -e "$dir/$what.wait" ]; then
+  sleep 60 </dev/null >/dev/null 2>&1 &
+  sleeper=$!
+  trap 'kill "$sleeper" 2>/dev/null; echo "stopped: preview/$3 waits; ask for it again to start it" >&2; exit 130' INT
+  echo "waiting: the host is at its bound" >&2
+  wait "$sleeper"
+fi
 if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
 if [ -e "$dir/$what.stderr" ]; then cat "$dir/$what.stderr" >&2; fi
 if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
@@ -885,6 +903,17 @@ impl SluiceStub {
         )
         .expect("the stub's answer");
         fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// `what`, a command, waiting until it is interrupted, as sluice's ask
+    /// of a preview waits at the host's bound.
+    pub fn waits(&self, what: &str) {
+        fs::write(self.dir.path().join(format!("{what}.wait")), "").expect("its wait");
+    }
+
+    /// `what`, a command, answering at once again.
+    pub fn waits_no_more(&self, what: &str) {
+        let _ = fs::remove_file(self.dir.path().join(format!("{what}.wait")));
     }
 
     /// `what`, a command, saying `words` on standard error.
