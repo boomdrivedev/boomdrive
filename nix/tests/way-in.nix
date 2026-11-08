@@ -25,7 +25,7 @@ let
     ++ t.expect (
       parts.script.destination == "/Applications/Boomdrive.app/Contents/MacOS/boomdrive-launcher"
     ) "the aarch64-darwin launcher's script is at ${parts.script.destination}, not in Contents/MacOS"
-    ++ t.expect (parts.script.executable) "the aarch64-darwin launcher's script is not executable"
+    ++ t.expect parts.script.executable "the aarch64-darwin launcher's script is not executable"
     ++ t.expect (
       textOf parts.script == launcherText
     ) "the aarch64-darwin launcher's script is not launcher.sh";
