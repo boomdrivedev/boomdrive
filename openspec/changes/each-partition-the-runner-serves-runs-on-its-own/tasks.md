@@ -43,7 +43,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 6. What the runner says of it
 
-- [ ] 6.1 README's "Running on a host" says each part of the control plane, a crew partition or a hosted partition, runs its control passes on its own, on its own timer, that its lines name its label, and that the drives of one hosted account share that account's connection (design Decisions 2 and 8). True when `sluice exec main -- moon run root:format` passes.
+- [x] 6.1 README's "Running on a host" says each part of the control plane, a crew partition or a hosted partition, runs its control passes on its own, on its own timer, that its lines name its label, and that the drives of one hosted account share that account's connection (design Decisions 2 and 8). True when `sluice exec main -- moon run root:format` passes.
 
 ## 7. The specs
 

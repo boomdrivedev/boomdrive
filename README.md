@@ -89,10 +89,25 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
-nothing. Told of a landing, it keeps that one repository at once. It
-stops on SIGTERM or SIGINT before the next repository it would keep,
-and exits 0. It opens no listening socket: every connection it makes is
-outgoing.
+nothing. Told of a landing, it keeps that one repository at once,
+between passes or between two repositories of a pass. It stops on
+SIGTERM or SIGINT before the next repository it would keep, lets each
+part of its control plane end the pass it has in hand, and exits 0. It
+opens no listening socket: every connection it makes is outgoing.
+
+Where the configuration names a control plane, each part of it, a crew
+partition or a hosted partition, runs its control passes on its own,
+on a thread of its own from the end of the first keeping pass: on its
+own timer, at once when its control plane wakes it, and saying its own
+reach. No part's pull, act, command or report waits on another part's,
+or on a keeping pass. Each line the runner says of a part's pass names
+its label after `boomdrive:`, as `boomdrive: <label>: <words>`, or
+begins with the id of the want it is about. What the parts share on the
+host is a clone, which the keeper keeps and a launch goes into in turn,
+the report file, each part saving its own share of it, and Flume's
+room. A hosted partition is an account's enrollment, so the drives of
+one hosted account share that account's connection, in the order its
+control plane gives their work.
 
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or
@@ -100,9 +115,10 @@ written. A repository left by rule, for a folder of the user's or work
 the forge lacks, is not a failure, nor is a workspace left because the
 runner cannot read it. Where
 the configuration names a control plane, `--once` makes one control
-pass after the keeping pass, and exits 1 too when that pass did not
-pull and report. A tool that pass could not run or read is named, and
-is not a failure.
+pass of each part after the keeping pass, side by side, and exits 1 too
+when no part both pulled and reported. A part that could not be read
+while another reported, or a tool a pass could not run or read, is
+named, and is not a failure.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
