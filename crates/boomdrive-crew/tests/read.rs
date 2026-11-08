@@ -618,3 +618,30 @@ fn a_preview_with_no_revision() {
         "request 34 (its Done maybe, which is no yes or no)"
     );
 }
+
+/// The crew-control-plane spec's "A preview naming no host".
+#[test]
+fn a_preview_naming_no_host() {
+    let state = State::new();
+    with_requests(
+        &state,
+        &[preview(33, None, "unit/u", CREW, "main", "R1", false)],
+    );
+    let (mut crew, said) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+    crew.report(&Report::default()).expect("a report");
+    let answers = state
+        .file("home/runner/host-a", "answers.rec")
+        .unwrap_or_default();
+    assert!(!answers.contains("Request: 33"), "{answers}");
+    assert!(
+        said.lines().contains(
+            &"crew: home/33: a preview names no Host, so no runner brings it up: \
+              it is given nothing"
+                .to_string()
+        ),
+        "{:?}",
+        said.lines()
+    );
+}

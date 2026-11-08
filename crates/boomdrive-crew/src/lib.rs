@@ -394,6 +394,14 @@ impl Crew {
                         kits.push((request, address));
                     }
                     (None, Some("retry" | "drop" | "priority")) => acts.push(request),
+                    // A preview is the ask of the one host its Host names:
+                    // two runners keeping its repository would each bring
+                    // it up (design Decision 10).
+                    (None, Some("preview")) => lines.say(format!(
+                        "{label}/{}: a preview names no Host, so no runner brings it up: \
+                         it is given nothing",
+                        request.number
+                    )),
                     (None, _) => lines.say(format!(
                         "{label}/{}: names no Host and an Act crew's implementation does not \
                          read, so no runner's answer to it is the one: it is given nothing",
