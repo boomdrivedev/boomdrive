@@ -409,7 +409,9 @@ fn a_stopped_pass_writes_no_workspace() {
         &scratch.runner_git(),
         &scratch.data(),
         &config,
+        &boomdrive::locks::Locks::new(),
         &AtomicBool::new(true),
+        &mut || false,
         &mut |line| lines.push(line),
     );
 

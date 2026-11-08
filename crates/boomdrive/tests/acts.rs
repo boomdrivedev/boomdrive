@@ -453,7 +453,8 @@ fn acts_on_places_wait_for_the_next_pass_once_it_is_due() {
         [
             format!("c: launched at {}", place_of("c")),
             format!("a/priority: priority 3 of a at {pa}: done"),
-            "boomdrive: the next control pass is due, so 1 act on a place waits for it".to_string(),
+            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
+                .to_string(),
         ]
     );
     assert!(!bench.report().acts.contains_key(&Id::new("b/priority")));
@@ -472,6 +473,47 @@ fn acts_on_places_wait_for_the_next_pass_once_it_is_due() {
         "the next pass's launch goes first, then the act left"
     );
     assert!(lines.contains(&format!("b/priority: priority 4 of b at {pb}: done")));
+}
+
+/// The running spec's "Acts left for the next pass": `home`'s next
+/// control pass falls due while its pass has two acts on places still to
+/// carry out. One line says so, naming `home` after `boomdrive:`, and each
+/// line about one want begins with its id, `home`'s own.
+#[test]
+fn acts_left_for_the_next_pass() {
+    let bench = Bench::new();
+    let mut plane = Fake::owning("home/");
+    plane.set_wants(vec![
+        Want::Offer(offer("home/a", "a")),
+        Want::Offer(offer("home/b", "b")),
+    ]);
+    bench.pass_of("home", &bench.flume, &mut plane, &|| false);
+    let (pa, pb) = (place_of("a"), place_of("b"));
+    plane.set_wants(vec![
+        Want::Offer(offer("home/a", "a")),
+        Want::Offer(offer("home/b", "b")),
+        act("home/a/priority", "home/a", ActSort::Priority(3)),
+        act("home/b/priority", "home/b", ActSort::Priority(4)),
+    ]);
+    bench.flume.take_calls();
+    let due = || !bench.flume.acts().is_empty();
+    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane, &due);
+    assert_eq!(made(&bench), [format!("Priority(3) at {pa}")]);
+    assert_eq!(
+        lines,
+        [
+            format!("home/a/priority: priority 3 of home/a at {pa}: done"),
+            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
+                .to_string(),
+        ]
+    );
+    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane, &due);
+    assert_eq!(
+        lines,
+        [format!(
+            "home/b/priority: priority 4 of home/b at {pb}: done"
+        )]
+    );
 }
 
 /// An act ahead of its own launch in the control plane's order is

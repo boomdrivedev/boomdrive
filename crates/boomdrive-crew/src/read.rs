@@ -43,6 +43,10 @@ pub struct Main {
     /// The plan's `Unit` and `Bolt` records, by name.
     pub units: BTreeSet<String>,
     pub bolts: BTreeSet<String>,
+    /// The launches a drop names: each request's whole `Of` whose `Act`
+    /// is `drop`, whatever its `Host`, its `Work` or its place in the file,
+    /// as crew's `standing` reads them.
+    pub dropped: BTreeSet<u64>,
 }
 
 /// A request of `requests.rec`, with its number.
@@ -83,6 +87,12 @@ impl Request {
 impl Main {
     pub fn request(&self, number: u64) -> Option<&Request> {
         self.requests.iter().find(|r| r.number == number)
+    }
+
+    /// Whether a drop names launch `number`: such a launch no longer
+    /// stands, as crew reads it.
+    pub fn dropped(&self, number: u64) -> bool {
+        self.dropped.contains(&number)
     }
 
     /// Whether the work a request serves is still in crew's plan:
@@ -153,6 +163,10 @@ impl Store {
             }
         }
         numbered.sort_by_key(|r| r.number);
+        let dropped = records::of(&requests, "Request")
+            .filter(|record| record.get("Act") == Some("drop"))
+            .filter_map(|record| record.get("Of").and_then(whole))
+            .collect();
         let roles = file("roles.rec")?;
         let asks = file("asks.rec")?;
         let plan = file("plan.rec")?;
@@ -170,6 +184,7 @@ impl Store {
             turns: records::of(&asks, "Turn").cloned().collect(),
             units: names("Unit"),
             bolts: names("Bolt"),
+            dropped,
         })
     }
 
