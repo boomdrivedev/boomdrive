@@ -903,9 +903,50 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_pass, Bell, Bells, Rang};
+    use super::{next_pass, Bell, Bells, Rang, Watch};
     use crate::carry::next_due;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
     use std::time::{Duration, Instant};
+
+    /// The running spec's "A pass ends while a settle is under way": a
+    /// pass that ends while another's settle runs runs none, and returns
+    /// without waiting for it, which it could not do here, the first
+    /// settle running until the test lets it go; a pass after the first
+    /// settle ended runs its own.
+    #[test]
+    fn a_settle_under_way_is_shared() {
+        let dir = tempfile::tempdir().unwrap();
+        let (flume, calls, go) = (
+            dir.path().join("flume"),
+            dir.path().join("calls"),
+            dir.path().join("go"),
+        );
+        let program = format!(
+            "#!/bin/sh\necho settle >> '{}'\nwhile [ ! -e '{}' ]; do sleep 0.02; done\n\
+             echo '{{\"settled\":{{\"places\":[]}}}}'\n",
+            calls.display(),
+            go.display()
+        );
+        fs::write(&flume, program).unwrap();
+        fs::set_permissions(&flume, fs::Permissions::from_mode(0o755)).unwrap();
+        let watch = Watch::new(Duration::from_secs(60));
+        let said = std::sync::Mutex::new(Vec::new());
+        let say = |line: String| said.lock().unwrap().push(line);
+        std::thread::scope(|scope| {
+            let first = scope.spawn(|| watch.settle(&flume, None, &say));
+            while !calls.exists() {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            watch.settle(&flume, Some(Duration::from_secs(1)), &say);
+            fs::write(&go, "").unwrap();
+            first.join().unwrap();
+        });
+        assert_eq!(fs::read_to_string(&calls).unwrap(), "settle\n");
+        watch.settle(&flume, None, &say);
+        assert_eq!(fs::read_to_string(&calls).unwrap(), "settle\nsettle\n");
+        assert_eq!(*said.lock().unwrap(), [] as [String; 0]);
+    }
 
     /// A part's wake is read by its pass under way until its next pass
     /// begins (core.50), and ends its wait at once; the wake of one part
