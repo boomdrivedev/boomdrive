@@ -100,7 +100,7 @@ let
     t.expect (at != null && system != null && at < system)
       "the agent's PATH does not name ${entry} before /run/current-system/sw/bin: ${agent.EnvironmentVariables.PATH}";
 
-  crew = t.darwinSystem { services.boomdrive.settings = settings.crew; };
+  crew = t.darwinSystem { services.boomdrive = settings.crew; };
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;

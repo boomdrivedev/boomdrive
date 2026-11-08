@@ -6,11 +6,11 @@
 # own module, which flake.nix imports beside this one; tools.nix sets
 # their options, and each tool's user is the runner's unless the host
 # names its own (record 0023). The unit runs `boomdrive run --config`
-# with the file rendered from `settings` (design Decision 9). NixOS
-# restarts no changed user unit, so the user's activation links the file
-# at the runner's own path, then starts the unit where it is not running
-# and restarts it where the running runner's command line is not the
-# unit's; any other user's activation does nothing.
+# with the file rendered from `accounts` and `settings` (design Decision
+# 9). NixOS restarts no changed user unit, so the user's activation links
+# the file at the runner's own path, then starts the unit where it is not
+# running and restarts it where the running runner's command line is not
+# the unit's; any other user's activation does nothing.
 { packages }:
 {
   config,
@@ -22,7 +22,8 @@
 let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
-  file = pkgs.writeText "boomdrive-config.toml" (render cfg.settings);
+  inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   inherit (cfg) user;
   account = config.users.users.${user};

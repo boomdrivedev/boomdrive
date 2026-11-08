@@ -50,12 +50,12 @@ let
   };
   gone = t.nixosSystem { services.boomdrive.tools = [ ]; };
   saysGone = words: lib.hasInfix words (toString (t.failures gone));
-  crew = t.nixosSystem { services.boomdrive.settings = settings.crew; };
-  hosted = t.nixosSystem { services.boomdrive.settings = settings.hosted; };
+  crew = t.nixosSystem { services.boomdrive = settings.crew; };
+  hosted = t.nixosSystem { services.boomdrive = settings.hosted; };
   oldSystemd = t.nixosSystem (
     { pkgs, ... }:
     {
-      services.boomdrive.settings = settings.hosted;
+      services.boomdrive = settings.hosted;
       systemd.package = pkgs.systemd.overrideAttrs {
         version = "255";
         __intentionallyOverridingVersion = true;
