@@ -19,9 +19,13 @@ context: |
   Stack: devenv for the shell, moon (through proto) for the checks,
   treefmt for formatting. A flake at the root, flake.nix with the rest
   of it under nix/ (the moon project nix), gives the runner, Flume,
-  sluice and crew pinned together, each tool's own module re-exported
-  beside the runner's service, services.boomdrive, as nix-darwin and
-  NixOS modules; .github/workflows/cache.yml builds every package of
+  sluice and crew pinned together, with herdr, its plugins and Ghostty,
+  each tool's own module re-exported beside the runner's service,
+  services.boomdrive, as nix-darwin and NixOS modules, which with the
+  runner install herdr, Ghostty and the Boomdrive launcher, an app that
+  runs flume open, and link the set's herdr plugins; and a shell,
+  devShells.<system>.default, that starts herdr (record 0023);
+  .github/workflows/cache.yml builds every package of
   every system and pushes it to the family's cache, boomdrive on Cachix,
   from which a host that trusts it substitutes the set (records 0020
   and 0023, core.44 to core.47). Every tool runs through the shell, one command

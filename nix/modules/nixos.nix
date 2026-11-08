@@ -9,9 +9,10 @@
 # stream (record 0028). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
-# the file at the runner's own path, then starts the unit where it is not
-# running and restarts it where the running runner's command line is not
-# the unit's; any other user's activation does nothing.
+# the file at the runner's own path, links the herdr plugins way-in.nix
+# lists with herdr's own command (record 0023), then starts the unit where
+# it is not running and restarts it where the running runner's command
+# line is not the unit's; any other user's activation does nothing.
 { packages }:
 {
   config,
@@ -25,6 +26,18 @@ let
   render = import ./toml.nix { inherit lib; };
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
+
+  # herdr's own link of each plugin, where a herdr and a plugin are given
+  # (way-in.nix).
+  linking = cfg.herdr.package != null && cfg.herdr.plugins != [ ];
+  plugins = lib.escapeShellArgs (
+    [
+      "plugins"
+      (lib.getExe' cfg.herdr.package "herdr")
+    ]
+    ++ map toString cfg.herdr.plugins
+  );
+  pluginsStep = lib.optionalString linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
 
   inherit (cfg) user;
   account = config.users.users.${user};
@@ -63,6 +76,7 @@ in
   imports = [
     (import ./options.nix { inherit packages; })
     (import ./tools.nix { inherit packages; })
+    (import ./way-in.nix { inherit packages; })
     ./drives.nix
   ];
 
@@ -128,6 +142,7 @@ in
     system.userActivationScripts.boomdrive.text = ''
       if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
         ${pkgs.runtimeShell} ${./activate.sh} link ${file} || true
+        ${pluginsStep}
         PATH=${keepPath}:$PATH \
           ${pkgs.runtimeShell} ${./activate.sh} keep ${lib.escapeShellArgs ([ user ] ++ command)}
       fi

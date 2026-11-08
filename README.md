@@ -192,17 +192,33 @@ throttle keeps it from spinning.
 ## Installing with nix
 
 The flake at this repository's root, `github:agentplot/boomdrive`,
-gives the family's host tools pinned together: the runner from this
-tree, Flume, sluice and crew each at a release tag through its own
-flake, and Flume's and sluice's herdr plugins from their tags, for
-`aarch64-darwin`, `aarch64-linux` and `x86_64-linux`. Each reports its tag's version, and the set is the one
-the runner's tests pass with. nixpkgs builds nothing for an Intel Mac,
-so the flake gives it nothing. herdr and git are the host's own.
+gives the family's host tools pinned together, for `aarch64-darwin`,
+`aarch64-linux` and `x86_64-linux`:
+
+- the runner, from this tree;
+- Flume, sluice and crew, each at a release tag through its own flake,
+  and Flume's and sluice's herdr plugins from their tags;
+- herdr, through its own flake at the release Flume's tag pins, which
+  Flume's terminal profile was checked against;
+- Ghostty, from the flake's nixpkgs at the release Flume's window
+  profile was checked against: built from source on Linux, and on
+  macOS, where nothing builds its app from source, Ghostty's own
+  release as nixpkgs' `ghostty-bin` gives it;
+- the Boomdrive launcher, `boomdrive-launcher`, of this tree: an app,
+  `Boomdrive`, on macOS and a desktop entry on Linux, which runs `flume
+  open` to show the host's agents.
+
+Each tool reports its tag's version, and the set is the one the
+runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
+the flake gives it nothing. git alone is the host's own.
 
 To put the runner, Flume and sluice in your profile, and crew where the
 host runs crew:
 
     nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
+
+The same line may add `github:agentplot/boomdrive#herdr` and
+`github:agentplot/boomdrive#ghostty`.
 
 An older nix spells it `nix profile install`. nix asks whether to
 accept the flake's `nixConfig`, which names the family's cache,
@@ -395,6 +411,52 @@ host's own package instead, and `services.boomdrive.package` replaces
 the runner. A host that keeps a tool's file its own sets that tool's
 `enable = false`, and installs the tool itself.
 
+With `services.boomdrive.enable`, the runner's module also gives the
+host a way to see its agents:
+
+- It installs herdr, Ghostty and the Boomdrive launcher, `Boomdrive`
+  in `/Applications/Nix Apps` on macOS or in the desktop's applications
+  on Linux. A click on it runs `flume open`, which shows the default
+  stream's own session, and shows Flume's words where Flume refuses.
+- At each switch it links each plugin of
+  `services.boomdrive.herdr.plugins`, by default the set's Flume and
+  sluice plugins, into the runner's user's herdr with herdr's own
+  `herdr plugin link`, which starts no server. A relink enables a plugin
+  you disabled, so leave one you want off out of the list. A plugin
+  left out stays linked until `herdr plugin unlink`. A herdr already
+  running takes a new plugin at its next start.
+- It sets Flume's `host.multiplexer` to `herdr` and `host.terminal_app`
+  to `ghostty`, unless the host names its own in
+  `services.flume.settings.host`. Where the host writes Flume's older
+  `host.terminal`, it sets no `multiplexer`.
+
+Each of the three is the set's by default, and each may name the host's
+own package instead, or `null` for none:
+
+```nix
+services.boomdrive.herdr.package = null;
+services.boomdrive.ghostty.package = null;
+services.boomdrive.launcher.package = null;
+```
+
+With no herdr package, or no plugin, nothing is linked. A host with a
+herdr of its own may give it as `services.boomdrive.herdr.package`, and
+the plugins are linked with it. A host with no display sets Ghostty and
+the launcher `null`, and Flume's `host.terminal_app` its own. A Mac that
+keeps a Ghostty of its own in `/Applications` sets the set's `null`, so
+macOS opens one Ghostty.
+
+The flake also gives a shell, its `PATH` the set's runner, Flume,
+sluice, crew and herdr, that starts herdr on entering and leaves you in
+the shell when herdr ends:
+
+    nix develop github:agentplot/boomdrive
+
+A command run through it, `nix develop github:agentplot/boomdrive
+--command <command>`, starts no herdr, and neither does a shell entered
+from inside herdr. The shell links no plugin: the modules do. This
+repository's own development shell is devenv's.
+
 Under a hosted control plane, enroll each partition after the switch,
 on the host, as the service's user, the token on standard input:
 
@@ -409,9 +471,9 @@ Mac whose only git is Apple's, where that is older, puts a newer one in
 a profile, as `environment.systemPackages = [ pkgs.git ];` does.
 
 The set gives each tool's herdr plugin, `flume-herdr-plugin` and
-`sluice-herdr-plugin`, at its tool's tag. herdr's own command links
-one. Build it to a link of your own, which keeps nix's garbage
-collector from it, and link that:
+`sluice-herdr-plugin`, at its tool's tag, which the modules link. A host
+without them links one with herdr's own command. Build it to a link of
+your own, which keeps nix's garbage collector from it, and link that:
 
     nix build github:agentplot/boomdrive#flume-herdr-plugin --out-link ~/.local/state/herdr-plugins/flume
     herdr plugin link ~/.local/state/herdr-plugins/flume
