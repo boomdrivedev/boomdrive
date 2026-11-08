@@ -1,19 +1,27 @@
 # Flume 0.4.1's own answers
 
-Each file here is what Flume 0.4.1 printed, byte for byte, its trailing
-newline among it: nothing is stripped, reformatted or rewritten (design
-Decision 21). treefmt excludes the directory so that no formatter changes
-a byte (core.7). Each was read on deneb on 2026-11-01, from
-`/opt/homebrew/bin/flume`, which says `flume 0.4.1`.
+Each file here is what Flume 0.4.1 printed on a scratch host, its
+trailing newline among it, every byte as Flume printed it but the scratch
+directory's prefix (the change boomdrives-tree-holds-nothing-private,
+design Decision 2): nothing else is stripped, reformatted or rewritten.
+treefmt excludes the directory so that no formatter changes a byte
+(core.7). Each was read from a Flume that says `flume 0.4.1`.
 
 ## The scratch host
 
-Every file but `status-live-agent.json` was read from a scratch host on
-deneb: Flume 0.4.1 run under an environment holding nothing but a
+Every file but `status-live-agent.json` was read on 2026-11-01 from a
+scratch host: Flume 0.4.1 run under an environment holding nothing but a
 temporary directory's `HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and
 `XDG_DATA_HOME`, a `PATH`, and a git configuration of its own, so that no
-place, configuration or session of the user's was read or touched. Its
-paths are under `/private/tmp/claude-501/…/scratchpad/host/`.
+place, configuration or session of the user's was read or touched.
+
+The temporary directory's path, up to and including its `scratchpad/host/`,
+is written in each answer as `/private/tmp/scratch/host/`, in every form
+Flume gave it: in a path, in a command Flume printed, and in a state
+folder's name, where Flume joins the path's parts with `%`, as
+`private%tmp%scratch%host%`. No other byte is changed: no field, time,
+digest or newline. A digest Flume made of a path, such as the
+`2867c6a5947d` in each place's path, keeps the value Flume printed.
 
 - **Its Flume configuration** declared the printed command as its
   terminal, a pool of one account, `stand-in-1`, and two bounded streams
