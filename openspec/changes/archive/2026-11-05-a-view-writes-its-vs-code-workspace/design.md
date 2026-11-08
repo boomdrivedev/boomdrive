@@ -12,11 +12,7 @@ What stands:
   - The configuration (`src/config.rs`) refuses a key it does not name (`deny_unknown_fields`). It is read again at every pass, but for `[control_plane]`, which is taken at the start. `Address` compares owner and name without case, as GitHub does.
   - A pass says each line to `say`, `<owner>/<name>: <words>` for a repository and `boomdrive: <words>` for anything else. The running runner prefixes each with its time (core.40).
   - `serde_json` is a workspace dependency with `raw_value`. `indexmap` 2.14.2 is in `Cargo.lock`, through `toml`.
-- **The model**, afterthought/swancloud's herdr.14 and its record 0031, read 2026-11-05 and cited by id (core.41):
-  - each space's workspace is a real file beside the space's views, never a link, since VS Code writes the user's settings into it;
-  - its `folders` are set at every deploy to exactly the space's repositories, one `{"path": "<repo>"}` each, and everything else in the file is kept;
-  - a file its JSON reader cannot read, one with comments say, is left as it is and named, and the deploy goes on;
-  - a new file is `{"folders": [...], "settings": {}}`, indented with tabs, as VS Code writes it.
+- **The model**, afterthought/swancloud's herdr.14 and its record 0031, read 2026-11-05 and cited by id (core.41), which keep these workspaces on the hosts today.
 - **VS Code** titles a workspace's window `<what is open> — <file name less .code-workspace> (Workspace)`. It reads a workspace as JSON with comments and trailing commas, but adds neither when it writes one, and the workspaces it makes are indented with tabs.
 
 There are no area pages, so `docs/architecture/core.md` binds every path this change touches.
@@ -35,14 +31,14 @@ There are no area pages, so `docs/architecture/core.md` binds every path this ch
 - **A workspace's name chosen by the person**, or a workspace gathering several owners. A later key can add a name per owner should a host need one (Decision 1).
 - **A label for a folder.** Each folder shows the repository's name, as VS Code shows a folder with no `name`.
 - **Keeping a person's comments.** A file with comments is left whole and named (Decision 5).
-- **The hosts' change.** The hosts' configuration keeps its own spaces' workspaces while crew is the control plane, and retires them once the runner keeps a context's views (What this change asks of others).
+- **The hosts' change.** The hosts' configuration keeps its own workspaces while crew is the control plane, and retires them once the runner keeps a context's views (What this change asks of others).
 - **The managed level and setup** (record 0009). They are unbuilt. Once built, the managed level may set `code_workspaces` as it sets `repositories` (core.17).
 
 ## Decisions
 
 ### 1. One workspace per owner, beside the owner's views
 
-An owner's workspace is `<repository_root>/<owner>/<owner>.code-workspace`. The owner's folder holds the owner's views as a space's folder holds its views under herdr.14, and the file sits among them under the folder's name. VS Code titles its window `— <owner> (Workspace)`.
+An owner's workspace is `<repository_root>/<owner>/<owner>.code-workspace`. The owner's folder holds the owner's views, and the file sits among them under the folder's name. VS Code titles its window `— <owner> (Workspace)`.
 
 - **Owners compare without case**, as `Address` does, so `AgentPlot/flume` and `agentplot/sluice` share one workspace. Its folder and file take the owner as the first of its repositories in the file writes it, which is where `config::view_path` puts that repository's view.
 - **Each folder's `path` is the view's path relative to the workspace's folder.** That is `<name>` for a repository whose owner is written the same way. It is `../<owner as written>/<name>` for one written otherwise, which a file system that ignores case finds in the same folder.
@@ -96,7 +92,7 @@ A partial file left by a write cut short is written over at the next write. The 
 Alternatives:
 
 - **Write the whole file at every pass.** Not taken: it drops the settings VS Code writes into the file.
-- **A JSON-with-comments editor that keeps a person's comments**, such as the `jsonc-parser` crate's tree. Not taken now: it is a dependency of its own for comments VS Code never adds, and a file with comments is left and named, as herdr.14's writer leaves it.
+- **A JSON-with-comments editor that keeps a person's comments**, such as the `jsonc-parser` crate's tree. Not taken now: it is a dependency of its own for comments VS Code never adds, and a file with comments is left and named.
 
 ### 5. What is left, and what fails
 
@@ -169,7 +165,7 @@ None.
 
 ## What this change asks of others
 
-- **The hosts' configuration**, afterthought/swancloud: its herdr.14 module keeps writing its spaces' workspaces while crew is the control plane, and leaves `code_workspaces` off in the runner's configuration. Once a host's runner keeps a context's repositories and views, the host asks for the option and the module retires. A window manager's rules then match each owner's name. This is told to the orchestrator, not done here.
+- **The hosts' configuration**, afterthought/swancloud (its herdr.14): it keeps writing the hosts' workspaces while crew is the control plane, and leaves `code_workspaces` off in the runner's configuration. Once a host's runner keeps a context's repositories and views, the host asks for the option and the module retires. A window manager's rules then match each owner's name. This is told to the orchestrator, not done here.
 
 ## Risks / Trade-offs
 

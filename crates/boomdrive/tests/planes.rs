@@ -17,18 +17,18 @@ use std::path::Path;
 const FILE: &str = "/c/config.toml";
 
 /// Design Decision 4's example.
-const EXAMPLE: &str = r#"repositories = ["afterthought/crew", "agentplot/flume"]
+const EXAMPLE: &str = r#"repositories = ["example/crew", "agentplot/flume"]
 
 [control_plane]
 type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
-host = "deneb"
+host = "host-a"
 
 [[control_plane.crew.partitions]]
-label = "madswan"
-state_repository = "afterthought/madswan-state"
+label = "home"
+state_repository = "example/home-state"
 "#;
 
 /// Opens the control plane `text` names, keeping nothing anywhere: no
@@ -54,7 +54,7 @@ fn open(text: &str) -> Result<Vec<Part>, String> {
 fn crew_named() {
     let parts = open(EXAMPLE).expect("opened");
     let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
-    assert_eq!(labels, ["madswan"]);
+    assert_eq!(labels, ["home"]);
 }
 
 /// Each part an implementation opens is handed a say made for its own
@@ -64,7 +64,7 @@ fn crew_named() {
 fn each_part_is_handed_its_own_say() {
     let text = format!(
         "{EXAMPLE}\n[[control_plane.crew.partitions]]\nlabel = \"work\"\n\
-         state_repository = \"afterthought/madswan-state\"\n"
+         state_repository = \"example/work-state\"\n"
     );
     let config = config::parse(&text, Path::new(FILE), Path::new("/h")).expect("a configuration");
     let table = config.control_plane.expect("a control plane named");
@@ -83,15 +83,15 @@ fn each_part_is_handed_its_own_say() {
     )
     .expect("opened");
     let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
-    assert_eq!(labels, ["madswan", "work"]);
-    assert_eq!(asked.into_inner(), ["madswan", "work"]);
+    assert_eq!(labels, ["home", "work"]);
+    assert_eq!(asked.into_inner(), ["home", "work"]);
 }
 
 /// The table `type` names is handed to the implementation whole, so its
 /// keys are the implementation's own to refuse.
 #[test]
 fn the_table_is_the_implementations() {
-    let refusal = open(&EXAMPLE.replace("host = \"deneb\"\n", ""))
+    let refusal = open(&EXAMPLE.replace("host = \"host-a\"\n", ""))
         .err()
         .unwrap();
     assert!(
@@ -99,8 +99,8 @@ fn the_table_is_the_implementations() {
         "{refusal}"
     );
     let refusal = open(&EXAMPLE.replace(
-        "host = \"deneb\"\n",
-        "host = \"deneb\"\nkinds = \"/k/kinds.toml\"\n",
+        "host = \"host-a\"\n",
+        "host = \"host-a\"\nkinds = \"/k/kinds.toml\"\n",
     ))
     .err()
     .unwrap();

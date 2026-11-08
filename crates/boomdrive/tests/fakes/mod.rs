@@ -110,7 +110,7 @@ pub fn unbounded() -> Value {
         "streams": [
             { "name": "default", "priority": 0, "running": 0, "bound": null, "room": null, "queue": [] }
         ],
-        "pools": [{ "name": "madswan", "accounts": ["madswan-1"] }],
+        "pools": [{ "name": "pool-a", "accounts": ["pool-a-1"] }],
         "addresses": [], "bases": [], "terminal_kept": false
     })
 }
@@ -665,19 +665,19 @@ pub fn offer(id: &str, name: &str) -> Offer {
 }
 
 /// An offer of a launch with every field, design's unit launch: `change`
-/// named `a` in `afterthought/crew` on `bolt/x`.
+/// named `a` in `example/crew` on `bolt/x`.
 pub fn every_field(id: &str) -> Offer {
     let mut offer = offer(id, "a");
     offer.launch = Launch {
-        repository: "afterthought/crew".to_string(),
+        repository: "example/crew".to_string(),
         kind: "change".to_string(),
         name: "a".to_string(),
         base: Some("bolt/x".to_string()),
         brief: Some("Parse the input.\n\nAs words.".to_string()),
-        stream: Some("madswan".to_string()),
+        stream: Some("home".to_string()),
         priority: Some(4),
-        intent: Some("madswan/x".to_string()),
-        recipients: vec!["madswan/planner".to_string()],
+        intent: Some("home/x".to_string()),
+        recipients: vec!["home/planner".to_string()],
         holds: vec![Hold {
             stage: "code".to_string(),
             words: "the user reads the design".to_string(),

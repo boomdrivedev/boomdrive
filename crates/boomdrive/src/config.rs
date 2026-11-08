@@ -778,13 +778,13 @@ mod tests {
             read(
                 "repository_root = \"/srv/code\"\nfetch_interval = \"90s\"\n\
                  code_workspaces = true\n\
-                 repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n"
+                 repositories = [\"agentplot/flume\", \"example/crew\"]\n"
             ),
             Ok(Config {
                 repository_root: PathBuf::from("/srv/code"),
                 fetch_interval: Duration::from_secs(90),
                 code_workspaces: true,
-                repositories: vec![address("agentplot/flume"), address("afterthought/crew")],
+                repositories: vec![address("agentplot/flume"), address("example/crew")],
                 control_plane: None,
             })
         );
@@ -798,11 +798,11 @@ type = \"crew\"
 poll_interval = \"1m\"
 
 [control_plane.crew]
-host = \"deneb\"
+host = \"host-a\"
 
 [[control_plane.crew.partitions]]
-label = \"madswan\"
-state_repository = \"afterthought/madswan-state\"
+label = \"home\"
+state_repository = \"example/home-state\"
 ";
 
     /// The configuration spec's "crew named": the table `type` names is
@@ -811,8 +811,8 @@ state_repository = \"afterthought/madswan-state\"
     fn the_control_plane_named() {
         let table = read(CONTROL_PLANE).unwrap().control_plane.unwrap();
         let own: Table = toml::from_str(
-            "host = \"deneb\"\n\n[[partitions]]\nlabel = \"madswan\"\n\
-             state_repository = \"afterthought/madswan-state\"\n",
+            "host = \"host-a\"\n\n[[partitions]]\nlabel = \"home\"\n\
+             state_repository = \"example/home-state\"\n",
         )
         .unwrap();
         assert_eq!(

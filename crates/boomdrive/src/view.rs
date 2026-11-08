@@ -228,8 +228,8 @@ fn resolved(path: &Path) -> PathBuf {
 }
 
 /// Whether the folder `path` is a worktree of the clone `bare`: git
-/// there names `bare` as its common repository (swancloud's own test)
-/// and `path` itself as its top level, each the same folder on disk.
+/// there names `bare` as its common repository (afterthought/swancloud's
+/// own test) and `path` itself as its top level, each the same folder on disk.
 fn is_worktree(git: &Git, bare: &Path, path: &Path) -> bool {
     let Ok(said) = git.run(
         At::Dir(path),

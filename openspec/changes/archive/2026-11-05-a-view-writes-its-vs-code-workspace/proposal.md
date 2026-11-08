@@ -2,7 +2,7 @@
 
 ## Why
 
-The user browses code in VS Code through one workspace per context, which lists the context's repositories. The hosts' own configuration writes those workspaces today, under afterthought/swancloud's rule herdr.14 and its record 0031. Beside each space's views is a workspace listing exactly the space's repositories. Its `folders` are set at every deploy, and the rest of the file, the user's VS Code settings, is kept. VS Code titles the window `— <name> (Workspace)`, and a window manager that files windows by their title puts each context in a row of its own.
+The user browses code in VS Code through one workspace per context, which lists the context's repositories. The hosts' own configuration writes those workspaces today (afterthought/swancloud's herdr.14 and its record 0031). VS Code writes the user's settings into the file, and titles the window `— <name> (Workspace)`, and a window manager that files windows by their title puts each context in a row of its own.
 
 The runner keeps each repository's view under its repository root, from the repositories its configuration names (the views spec). Once it keeps a context's repositories, a workspace kept anywhere else is a second list that can drift from the views. And under a hosted control plane, the hosts' configuration no longer knows the list at all, since the managed level holds it (record 0009).
 
@@ -44,7 +44,7 @@ None.
   - tests under `crates/boomdrive/tests/` and in the modules.
 - `README.md`: the configuration's example and words name the key.
 - Nothing else changes: no crate, no tool, no tracked file type, no message of the protocol, no control plane's implementation.
-- Outside this repository, the hosts' configuration keeps writing its spaces' workspaces while crew is the control plane, and leaves the option off. Once the runner keeps a context's views, the host asks for the option and the hosts' module retires.
+- Outside this repository, the hosts' configuration keeps writing its own workspaces while crew is the control plane, and leaves the option off. Once the runner keeps a context's views, the host asks for the option and the hosts' module retires.
 
 ## Touches
 

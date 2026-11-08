@@ -4,7 +4,7 @@
 
 A runner serves one control plane (core.19) through one interface, `ControlPlane`, a pull and a report (core.2). Each implementation serves the partitions of its table. crew's table names a partition for each drive this host serves, a branch `<label>/main` of its account's state repository. The hosted table names a partition for each account enrolled, one connection each (record 0028; the change `a-hosts-configuration-names-its-accounts-and-their-drives`, Decision 9). Each implementation's pull and report go through its partitions in turn.
 
-`boomdrive run` makes every pass on one loop, one at a time: a keeping pass on its timer, then a control pass that reads Flume's listing, pulls every partition, answers every want, carries every place's status and sluice entry, and reports to every partition (`crates/boomdrive/src/run.rs`, `carry.rs`). So every partition's work waits in one line. On deneb on 2026-11-07 one drive's backlog of acts held another drive's launches for a quarter of an hour, while that drive's stream had room for four agents and ran none (record 0026).
+`boomdrive run` makes every pass on one loop, one at a time: a keeping pass on its timer, then a control pass that reads Flume's listing, pulls every partition, answers every want, carries every place's status and sluice entry, and reports to every partition (`crates/boomdrive/src/run.rs`, `carry.rs`). So every partition's work waits in one line. On a host on 2026-11-07 one drive's backlog of acts held another drive's launches for a quarter of an hour, while that drive's stream had room for four agents and ran none (record 0026).
 
 core.50 already takes a pull's launches ahead of its acts on places, and once the next pass is due, runs no act but the first. That is the first step within one line. Record 0026, accepted by the user, takes the rest: each drive runs on its own, and what drives share on a host is a cap or a synchronization its owner designs. core.49 says it.
 
@@ -164,7 +164,7 @@ Not taken: a room counted across parts by the runner. Record 0026 rules out a li
 
 Each account's connection carries the work of every drive of that account, in the hosted control plane's order (core.26; record 0028). Protocol version 1 names no drive on a want, so the runner cannot tell one account's drives apart. Within an account, launches go ahead of acts on places, and acts wait for the next pass once it is due (core.50).
 
-This departs from core.49, under the hosted implementation, for two drives of one account: one drive's backlog of acts on places can hold that account's next pull. The runner reads no id and knows no hosted repository's drive. Telling them apart needs a protocol version that names a want's drive (core.42), agreed with boomdrive-cloud, whose control plane holds the account's order. crew's implementation, which deneb runs, gives each drive a part of its own, and does not depart. The proposal tells the orchestrator.
+This departs from core.49, under the hosted implementation, for two drives of one account: one drive's backlog of acts on places can hold that account's next pull. The runner reads no id and knows no hosted repository's drive. Telling them apart needs a protocol version that names a want's drive (core.42), agreed with boomdrive-cloud, whose control plane holds the account's order. crew's implementation, which the host of record 0026 runs, gives each drive a part of its own, and does not depart. The proposal tells the orchestrator.
 
 ### 9. The record and the rules
 

@@ -50,14 +50,14 @@ fn room_for_one() {
         .flume
         .host(host(json!(null), json!([stream("work", json!(1), 0)])));
     let mut plane = Fake::holding(vec![
-        in_stream("madswan/1", "a", Some("work")),
-        in_stream("madswan/2", "b", Some("work")),
+        in_stream("home/1", "a", Some("work")),
+        in_stream("home/2", "b", Some("work")),
     ]);
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), Some(Outcome::Launched));
-    assert_eq!(outcome(&bench, "madswan/2"), None);
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/2"), None);
     assert_eq!(bench.flume.launches().len(), 1);
-    assert_eq!(lines, ["madswan/1: launched at /places/a"]);
+    assert_eq!(lines, ["home/1: launched at /places/a"]);
 }
 
 /// The work-into-flume spec's "Each part counts its own room": `home`
@@ -88,9 +88,9 @@ fn a_stream_with_a_queue() {
     bench
         .flume
         .host(host(json!(null), json!([stream("work", json!(2), 1)])));
-    let mut plane = Fake::holding(vec![in_stream("madswan/1", "a", Some("work"))]);
+    let mut plane = Fake::holding(vec![in_stream("home/1", "a", Some("work"))]);
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), None);
+    assert_eq!(outcome(&bench, "home/1"), None);
     assert_eq!(bench.flume.commands(), []);
     assert_eq!(lines, [] as [String; 0]);
 }
@@ -102,9 +102,9 @@ fn a_host_with_no_room() {
     bench
         .flume
         .host(host(json!(0), json!([stream("work", json!(null), 0)])));
-    let mut plane = Fake::holding(vec![in_stream("madswan/1", "a", Some("work"))]);
+    let mut plane = Fake::holding(vec![in_stream("home/1", "a", Some("work"))]);
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), None);
+    assert_eq!(outcome(&bench, "home/1"), None);
     assert_eq!(bench.flume.commands(), []);
 }
 
@@ -117,12 +117,12 @@ fn unbounded() {
         json!([stream("default", json!(null), 0)]),
     ));
     let mut plane = Fake::holding(vec![
-        in_stream("madswan/1", "a", Some("default")),
-        in_stream("madswan/2", "b", Some("default")),
+        in_stream("home/1", "a", Some("default")),
+        in_stream("home/2", "b", Some("default")),
     ]);
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), Some(Outcome::Launched));
-    assert_eq!(outcome(&bench, "madswan/2"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
 }
 
 /// The work-into-flume spec's "A stream the host does not declare".
@@ -137,9 +137,9 @@ fn a_stream_the_host_does_not_declare() {
     bench
         .flume
         .launch_answers("a", Ok(Reply::Refused(reason.to_string())));
-    let mut plane = Fake::holding(vec![in_stream("madswan/1", "a", Some("nosuch"))]);
+    let mut plane = Fake::holding(vec![in_stream("home/1", "a", Some("nosuch"))]);
     bench.pass(&mut plane);
-    let answer = &bench.report().launches[&Id::new("madswan/1")].answer;
+    let answer = &bench.report().launches[&Id::new("home/1")].answer;
     assert_eq!(
         (answer.outcome, answer.words.as_deref()),
         (Outcome::Refused, Some(reason))
@@ -155,15 +155,15 @@ fn no_stream_named() {
     bench
         .flume
         .host(host(json!(0), json!([stream("default", json!(null), 0)])));
-    let mut plane = Fake::holding(vec![in_stream("madswan/1", "a", None)]);
+    let mut plane = Fake::holding(vec![in_stream("home/1", "a", None)]);
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), None);
+    assert_eq!(outcome(&bench, "home/1"), None);
     assert_eq!(bench.flume.commands(), []);
     bench
         .flume
         .host(host(json!(1), json!([stream("work", json!(0), 3)])));
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
     let launches = bench.flume.launches();
     assert_eq!(launches.len(), 1);
     assert_eq!(launches[0].stream, None);
@@ -181,14 +181,14 @@ fn the_hosts_room_is_counted_down() {
         ]),
     ));
     let mut plane = Fake::holding(vec![
-        in_stream("madswan/1", "a", Some("work")),
-        in_stream("madswan/2", "b", Some("wide")),
-        in_stream("madswan/3", "c", None),
+        in_stream("home/1", "a", Some("work")),
+        in_stream("home/2", "b", Some("wide")),
+        in_stream("home/3", "c", None),
     ]);
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), Some(Outcome::Launched));
-    assert_eq!(outcome(&bench, "madswan/2"), None);
-    assert_eq!(outcome(&bench, "madswan/3"), None);
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/2"), None);
+    assert_eq!(outcome(&bench, "home/3"), None);
 }
 
 /// A room Flume's status gives as neither `null` nor a whole number reads
@@ -199,12 +199,12 @@ fn a_room_that_is_no_number_is_no_room() {
     bench
         .flume
         .host(host(json!(null), json!([stream("work", json!("1"), 0)])));
-    let mut plane = Fake::holding(vec![in_stream("madswan/1", "a", Some("work"))]);
+    let mut plane = Fake::holding(vec![in_stream("home/1", "a", Some("work"))]);
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), None);
+    assert_eq!(outcome(&bench, "home/1"), None);
     bench.flume.host(host(json!("unbounded"), json!([])));
     bench.pass(&mut plane);
-    assert_eq!(outcome(&bench, "madswan/1"), None);
+    assert_eq!(outcome(&bench, "home/1"), None);
     assert_eq!(bench.flume.commands(), []);
 }
 
@@ -217,10 +217,10 @@ fn flumes_own_streams() {
         .flume
         .listing(Ok(Reply::Given(fakes::fixture("status.json"))));
     let mut plane = Fake::holding(vec![
-        in_stream("madswan/1", "a", Some("work")),
-        in_stream("madswan/2", "b", Some("wide")),
-        in_stream("madswan/3", "c", Some("wide")),
-        in_stream("madswan/4", "d", Some("default")),
+        in_stream("home/1", "a", Some("work")),
+        in_stream("home/2", "b", Some("wide")),
+        in_stream("home/3", "c", Some("wide")),
+        in_stream("home/4", "d", Some("default")),
     ]);
     bench.pass(&mut plane);
     let launched: Vec<_> = bench

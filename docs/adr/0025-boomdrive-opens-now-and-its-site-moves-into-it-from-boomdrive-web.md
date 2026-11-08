@@ -5,14 +5,14 @@ status: accepted
 date: 2026-11-07
 decision-makers:
 - Chuck Swanberg
-- agentplot-design
+- the design agent
 ---
 
 # Boomdrive opens now, and its site moves into it from boomdrive-web
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in agentplot-design's pane.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane.
 
-Deciders: the user, 2026-11-07, in agentplot-design's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The order, the names and how the site's rules come over are agentplot-design's, each cheap to change before the move.
+Deciders: the user, 2026-11-07, in the design agent's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The order, the names and how the site's rules come over are the design agent's, each cheap to change before the move.
 
 Sources: records 0012 (the runner is open source), 0014 (nothing private enters the repository, and it opens with a fresh history) and 0024 (releases and their notes from the commits); agentplot/boomdrive-web `README.md`, `CLAUDE.md`, `.config/flume.toml` and `docs/adr/0002-flywheel-is-renamed-boomdrive.md`; agentplot/sluice, agentplot/flume, agentplot/timber and agentplot/boom, each keeping its site in its own `site/`; GitHub Pages, which on the Free plan publishes only from a public repository (the agentplot organization's plan is Free).
 

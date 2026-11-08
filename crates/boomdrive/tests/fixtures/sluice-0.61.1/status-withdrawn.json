@@ -1,51 +1,51 @@
 {
   "schema": "sluice/submission@1",
-  "id": 291,
+  "id": 4,
   "branch": "main",
-  "head": "4480899ef7e43922145534dc0b9e09b5d30ed105",
+  "head": "2b944a5326f3bcbbff3e0a717bc05f403c2fd3cb",
   "from": {
-    "agent": "small-fixes-after-the-deliveries",
-    "worktree": "pull/149",
-    "head": "small-fixes-after-the-deliveries"
+    "agent": "fix/indent",
+    "worktree": "fix/indent",
+    "path": "/private/tmp/scratch/host/worktrees/indent",
+    "host": "host-a"
   },
-  "submitted": "2026-10-29T14:11:21Z",
+  "submitted": "2026-11-08T00:34:42Z",
   "after": [],
   "priority": 0,
-  "attempt": 1,
+  "attempt": 2,
   "state": "withdrawn",
   "tested": {
-    "combination": "dd4424c73b904df14efbe191aba0a6ae86623567",
-    "on": "8b64012481b2b39812340adc291ab273bba6fd88",
+    "combination": "871867da54ed6ec660b7123312f2dc68760f7ec2",
+    "on": "fdaaeaf1b1094b39db4ccea5f01e88a3bedb95d8",
     "submissions": [
-      291
+      4
     ]
   },
   "result": "failed",
   "failed": [
     {
-      "task": "cli:test",
-      "hash": "ac52c612a1fb27a96a0e1b72b709852ef4267f1a3e53b5bbc43ded025ce0f2d1",
-      "log": "/Users/chuck/Code/github_agentplot/sluice/sluice.git/sluice/.logs/main/c143/cli:test.log",
+      "task": "sh check.sh",
+      "hash": "871867da54ed6ec660b7123312f2dc68760f7ec2",
+      "log": "/private/tmp/scratch/host/repo/.git/sluice/.logs/main/c4/sh check.sh.log",
       "flaky": {
         "here": "pass",
-        "at": "2026-10-29T15:29:18Z",
-        "host": "deneb",
+        "at": "2026-11-08T00:34:45Z",
+        "host": "host-a",
         "other": {
           "outcome": "fail",
-          "at": "2026-10-29T14:54:24Z",
+          "at": "2026-11-08T00:34:42Z",
           "branch": "main",
-          "combination": "01cd2fc56e2c947392f198d3dd43082fd5967d6b",
-          "host": "deneb",
-          "log": "/Users/chuck/Code/github_agentplot/sluice/sluice.git/sluice/.logs/main/c144/cli:test.log"
+          "combination": "871867da54ed6ec660b7123312f2dc68760f7ec2",
+          "host": "host-a",
+          "log": "/private/tmp/scratch/host/repo/.git/sluice/.logs/main/c3/sh check.sh.log"
         }
       }
     }
   ],
   "withdrawn": {
     "by": "resubmission",
-    "at": "2026-10-29T16:06:28Z"
+    "at": "2026-11-08T00:34:45Z"
   },
-  "delivered": "2026-10-29T15:29:36Z",
-  "delivered_to": "pull/149",
-  "subject": "small-fixes-after-the-deliveries"
+  "delivered": "2026-11-08T00:34:45Z",
+  "delivered_to": "/private/tmp/scratch/host/worktrees/indent"
 }
