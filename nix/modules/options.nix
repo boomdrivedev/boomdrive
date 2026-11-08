@@ -140,6 +140,9 @@ let
 
   # Whether the runner's control plane is crew.
   crewPlane = (cfg.settings.control_plane.type or null) == "crew";
+  # The machines crew's partitions name, each once, read only where crew's
+  # module is on.
+  machines = lib.concatStringsSep ", " (lib.unique (map (p: p.machine) crew.settings.partitions));
 in
 {
   imports = [
@@ -196,6 +199,16 @@ in
       {
         assertion = !(crewPlane && cfg.settings.control_plane.crew == null);
         message = "services.boomdrive.settings.control_plane.type is crew, and no services.boomdrive.settings.control_plane.crew is written: write that table, or turn on crew's module, services.crew, with its host and its partitions, and the module writes it from crew's partitions on this host (record 0023).";
+      }
+      {
+        assertion =
+          !(
+            crewPlane
+            && written != null
+            && cfg.settings.control_plane.crew == written
+            && written.partitions == [ ]
+          );
+        message = lib.optionalString crew.enable "services.boomdrive.settings.control_plane.crew is written from crew's partitions whose machine is services.crew.host, ${crew.host}, and no partition's is: they name ${machines}. Set services.crew.host to this host's machine, or give one of services.crew.settings.partitions this host as its machine (record 0023).";
       }
     ];
   };

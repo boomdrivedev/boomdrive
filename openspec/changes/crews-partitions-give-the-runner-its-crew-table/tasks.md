@@ -14,7 +14,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 2. Hosts the runner cannot serve
 
 - [x] 2.1 With `services.boomdrive.enable`, evaluation fails where the control plane's `type` is `crew` and `settings.control_plane.crew` is null, the host having written none and crew's module being off. The words name `settings.control_plane.crew` and `services.crew` (design Decision 6; Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving the delta's "Under crew with neither" on nix-darwin and on NixOS.
-- [ ] 2.2 With `services.boomdrive.enable`, evaluation fails where the module would write the crew table and no partition's `machine` is `services.crew.host`. The words name `services.crew.host`, its value and each `machine` the partitions name (design Decision 6; Task notes 2.2). True when `sluice exec main -- moon run nix:test` passes, proving the delta's "No partition on this host" on nix-darwin and on NixOS.
+- [x] 2.2 With `services.boomdrive.enable`, evaluation fails where the module would write the crew table and no partition's `machine` is `services.crew.host`. The words name `services.crew.host`, its value and each `machine` the partitions name (design Decision 6; Task notes 2.2). True when `sluice exec main -- moon run nix:test` passes, proving the delta's "No partition on this host" on nix-darwin and on NixOS.
 
 ## 3. The words
 

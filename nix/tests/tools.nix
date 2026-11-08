@@ -357,6 +357,22 @@ let
         "services.crew"
       ];
 
+  # Under crew, with no crew table written and crew's one partition on
+  # host-b while crew's host is host-a (design Decision 6).
+  elsewhere =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with no partition on its host"
+      (system {
+        imports = [ (crewOf settings.crewElsewhere) ];
+        services.boomdrive.settings = settings.crewUnwritten;
+      })
+      [
+        "services.crew.host"
+        "host-a"
+        "host-b"
+      ];
+
   nixosRunner = userScripts (t.nixosSystem crewOn);
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
@@ -372,6 +388,7 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "No sluice of the set's" noSluice
 // onEach "crew's order" crewOrder
 // onEach "Under crew with neither" neither
+// onEach "No partition on this host" elsewhere
 // {
   "The tools' user on NixOS" =
     t.expect (
