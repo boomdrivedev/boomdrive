@@ -78,7 +78,7 @@ Alternatives:
 
 - **The tools** are built from their tags, Flume `v0.4.1` (`78cf178`) and sluice `v0.61.1` (`074b0f5`), outside the tree, and run by their paths; nothing is installed.
 - **The scratch host** is rooted at `/private/tmp/scratch/host/`, as Decision 2's prefix is: `HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` under its `home/`, laid out as the scratch captures lay them out, a `PATH` and a git configuration of its own, and a forge of bare repositories beside it. No place, configuration, session or account of the user's is read or touched, and the root is removed once the answers are kept.
-- **Flume's live agent.** Flume's configuration names herdr as its terminal, its server's session under the scratch `HOME`, a pool of one account `stand-in-1`, no bound on the host and no stream but `default`. A place is launched with no mark, and its agent, Flume's stand-in built from the same tag, works in its pane when `flume --json status <place>` is read. The answer shows what the tests read: one place, live, no mark, its `clues.shown_at.agent` a herdr pane at a socket under the scratch root, and a host part unbounded with the one stream `default`.
+- **Flume's live agent.** Flume's configuration names herdr as its terminal, its server's session under the scratch `HOME`, a pool of one account `stand-in-1`, no bound on the host and no stream but `default`. A place is launched with no mark, its agent Flume's stand-in built from the same tag, in a pane of that server. Flume 0.4.1 types the prompt into a herdr pane, while its stand-in acts only on a prompt on its command line, so when `flume --json status <place>` is read the stand-in's session has ended with no prompt, and the place shows the pane it ran in. The answer, Flume 0.4.1's own and unrewritten, shows what the tests read: one place, live, no mark, its `clues.shown_at.agent` a herdr pane at a socket under the scratch root, and a host part unbounded with the one stream `default`.
 - **sluice's entries.** sluice's peer is named `host-a`. Its submissions show what each entry showed: one landed on `main` with its `landed_as`; one failed whose one failed row holds its task's `log` and a `flaky` reading whose `other` names a worktree; one withdrawn by its resubmission, whose failed row's `flaky` reading's `other` names a log; and `sluice status <n> --json` for a number no submission has, exiting 1.
 
 The tests take the new answers' values where they write them out (`facts.rs`, `sluice.rs`, `entries.rs`), each test proving what it proved. Each README says how each answer was read, naming no machine.
@@ -88,6 +88,7 @@ Alternatives:
 - **The same answers with their values rewritten.** Not taken: core.41 rules out a fixture captured anywhere but a scratch host, and a rewritten answer is no tool's.
 - **The answers read again at the versions the flake pins now.** Not taken: the tests are written to 0.4.1's and 0.61.1's shapes, and core.45 keeps an older version's answers as the runner's unit fixtures.
 - **The live agent dropped.** Not taken: it is the one answer that shows a pane, which `facts::pane` reads.
+- **A stand-in from a later Flume tag, one that takes a typed prompt.** Not taken: the fixture would be no single version's answer.
 
 ### 4. A private repository is cited, and its text is not copied
 
