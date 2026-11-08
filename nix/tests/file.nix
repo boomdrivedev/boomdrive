@@ -1,7 +1,9 @@
 # The service-modules spec's file (design Decisions 9 and 12), over
 # options.nix evaluated alone: each of the spec's settings renders the text
-# of its file under nix/tests/files, byte for byte, and a key named for a
-# credential fails evaluation, naming its path.
+# of its file under nix/tests/files, byte for byte; a key named for a
+# credential fails evaluation, naming its path; and a flat `repositories`
+# of before, or a key in a drive the runner does not read, fails it too
+# (record 0028).
 t:
 let
   inherit (t) lib;
@@ -34,8 +36,11 @@ let
   # The messages of the assertions `given` fails.
   failures = given: map (a: a.message) (lib.filter (a: !a.assertion) (evaluated given).assertions);
 
+  # The text `given` renders.
+  rendered = given: render (evaluated given).services.boomdrive.settings;
+
   # The text of `name`'s settings, held to its file.
-  text = name: render (evaluated settings.${name}).services.boomdrive.settings;
+  text = name: rendered settings.${name};
   rendersAs =
     name:
     t.expect (
@@ -60,16 +65,35 @@ let
     control_plane.crew.state_password = "stand-in";
   };
   says = given: words: lib.hasInfix words (toString (failures given));
+
+  # The flat list of before, and a stream in a drive.
+  flat.repositories = [ "agentplot/flume" ];
+  stream.accounts.own.drives.home.stream = "home";
 in
 {
-  "Only repositories" =
+  "Only accounts" =
     rendersAs "empty"
     ++ t.expect (
       lib.tail (lib.splitString "\n" (text "empty")) == [
-        "repositories = []"
+        ""
+        "[accounts]"
         ""
       ]
-    ) "the empty settings render more than `repositories = []` after the header";
+    ) "the empty settings render more than an empty `[accounts]` after the header";
+
+  "The flat list in settings" =
+    t.expect (failures flat != [ ]) "settings.repositories evaluates"
+    ++
+      lib.concatMap
+        (words: t.expect (says flat words) "the failure names no ${words}: ${toString (failures flat)}")
+        [
+          "settings.repositories"
+          "settings.accounts.<account>.drives.<drive>.repositories"
+        ];
+
+  "A stream in a drive's settings" = t.expect (
+    !(builtins.tryEval (rendered stream)).success
+  ) "settings.accounts.own.drives.home.stream renders";
 
   "A host under crew" = rendersAs "crew";
 

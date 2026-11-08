@@ -14,14 +14,35 @@ use std::process::Command;
 use std::sync::atomic::AtomicBool;
 use tempfile::TempDir;
 
-/// A configuration keeping `addresses`, in order, with every other
-/// setting its default.
+/// A configuration keeping `addresses`, in order, in the account `own`'s
+/// drive `home`, with every other setting its default. Its keys are
+/// dotted, so a key of the top level may be written before it and a table
+/// after it.
 pub fn keeping(addresses: &[&str]) -> String {
-    let entries: Vec<String> = addresses
+    drives(&[("home", addresses)])
+}
+
+/// A configuration keeping each of `drives` of the account `own`, in
+/// order, each with its addresses in order, and every other setting its
+/// default; with none, the account keeps no drive. Its keys are dotted,
+/// as `keeping`'s are.
+pub fn drives(drives: &[(&str, &[&str])]) -> String {
+    if drives.is_empty() {
+        return "accounts.own.drives = {}\n".to_string();
+    }
+    drives
         .iter()
-        .map(|address| format!("{address:?}"))
-        .collect();
-    format!("repositories = [{}]\n", entries.join(", "))
+        .map(|(drive, addresses)| {
+            let entries: Vec<String> = addresses
+                .iter()
+                .map(|address| format!("{address:?}"))
+                .collect();
+            format!(
+                "accounts.own.drives.{drive}.repositories = [{}]\n",
+                entries.join(", ")
+            )
+        })
+        .collect()
 }
 
 /// A scratch host, removed when dropped.
@@ -135,6 +156,21 @@ impl Scratch {
         std::fs::create_dir_all(file.parent().expect("the file's folder"))
             .expect("the configuration's folder");
         std::fs::write(&file, text).expect("the configuration written");
+        file
+    }
+
+    /// The runner's local layer, `config.local.toml` beside the default
+    /// file, where it reads it whatever `--config` names.
+    pub fn local_file(&self) -> PathBuf {
+        self.home.join(".config/boomdrive/config.local.toml")
+    }
+
+    /// Writes `text` as the runner's local layer and gives its path.
+    pub fn configure_local(&self, text: &str) -> PathBuf {
+        let file = self.local_file();
+        std::fs::create_dir_all(file.parent().expect("the file's folder"))
+            .expect("the configuration's folder");
+        std::fs::write(&file, text).expect("the local layer written");
         file
     }
 

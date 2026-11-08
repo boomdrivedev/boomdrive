@@ -22,6 +22,23 @@ const SECTION: &str = "boomdrive";
 /// made for, as written then.
 const ADDRESS: &str = "boomdrive.address";
 
+/// The key in a clone's own git config that records the drive the
+/// configuration last named its repository under (design Decision 7).
+const DRIVE: &str = "boomdrive.drive";
+
+/// A clone of the runner's, as `find` finds it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Found {
+    /// The address it records, as written then.
+    pub address: Address,
+    /// Its container, `<data>/repositories/<owner>/<name>`.
+    pub container: PathBuf,
+    /// The drive it records, where it records one: the drive the
+    /// configuration named its repository under when the runner last kept
+    /// it.
+    pub drive: Option<String>,
+}
+
 /// Where every clone is kept: `<data>/repositories`.
 pub fn repositories(data: &Path) -> PathBuf {
     data.join("repositories")
@@ -95,12 +112,13 @@ impl From<Words> for Failure {
 }
 
 /// The runner's clones in `data`, each by the address it records, with
-/// its container. A folder of `repositories/<owner>/` is the runner's
-/// clone only when its bare repository records an address and that
-/// address is the folder's own, ignoring case; any other folder is not
-/// the runner's, a partial one among them (design 3). A clone made before
-/// the rename has its records carried over first.
-pub fn find(git: &Git, data: &Path) -> io::Result<Vec<(Address, PathBuf)>> {
+/// its container and the drive it records. A folder of
+/// `repositories/<owner>/` is the runner's clone only when its bare
+/// repository records an address and that address is the folder's own,
+/// ignoring case; any other folder is not the runner's, a partial one
+/// among them (design 3). A clone made before the rename has its records
+/// carried over first.
+pub fn find(git: &Git, data: &Path) -> io::Result<Vec<Found>> {
     let mut clones = Vec::new();
     for owner in folders(&repositories(data))? {
         for container in folders(&owner)? {
@@ -110,8 +128,12 @@ pub fn find(git: &Git, data: &Path) -> io::Result<Vec<(Address, PathBuf)>> {
                     container.display()
                 ))
             })?;
-            if let Some(address) = recorded(git, &container) {
-                clones.push((address, container));
+            if let Some((address, drive)) = records(git, &container) {
+                clones.push(Found {
+                    address,
+                    container,
+                    drive,
+                });
             }
         }
     }
@@ -174,19 +196,43 @@ fn folders(dir: &Path) -> io::Result<Vec<PathBuf>> {
 /// one: its bare repository's `boomdrive.address`, naming the container's
 /// own owner and name.
 pub fn recorded(git: &Git, container: &Path) -> Option<Address> {
+    records(git, container).map(|(address, _)| address)
+}
+
+/// The runner's records of the clone in `container`, where it is one:
+/// the address `recorded` gives, with the drive its bare repository's
+/// `boomdrive.drive` names, where it names one. Both are read in one
+/// call, of the `boomdrive` section (design Decision 7).
+fn records(git: &Git, container: &Path) -> Option<(Address, Option<String>)> {
     let said = git
         .ask(
             At::GitDir(&bare(container)),
-            ["config", "--local", "--get", ADDRESS],
+            ["config", "--local", "-z", "--get-regexp", r"^boomdrive\."],
         )
         .ok()??;
-    let address = Address::parse(said.trim()).ok()?;
+    let value = |key: &str| {
+        said.split('\0')
+            .filter_map(|entry| entry.split_once('\n'))
+            .filter(|(named, _)| *named == key)
+            .map(|(_, value)| value)
+            .next_back()
+    };
+    let address = Address::parse(value(ADDRESS)?.trim()).ok()?;
     let is = |part: Option<&OsStr>, written: &str| {
         part.and_then(OsStr::to_str)
             .is_some_and(|part| part.eq_ignore_ascii_case(written))
     };
     let owner = container.parent().and_then(Path::file_name);
-    (is(container.file_name(), address.name()) && is(owner, address.owner())).then_some(address)
+    let drive = value(DRIVE).map(str::to_string);
+    (is(container.file_name(), address.name()) && is(owner, address.owner()))
+        .then_some((address, drive))
+}
+
+/// Records in `bare` that the configuration names its repository under
+/// `drive` (design Decision 7).
+pub fn record_drive(git: &Git, bare: &Path, drive: &str) -> Result<(), Words> {
+    git.run(At::GitDir(bare), ["config", "--local", DRIVE, drive])?;
+    Ok(())
 }
 
 /// Makes `address`'s clone in `data` and gives its container (design 4).

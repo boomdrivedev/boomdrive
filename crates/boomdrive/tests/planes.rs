@@ -16,7 +16,7 @@ use std::path::Path;
 const FILE: &str = "/c/config.toml";
 
 /// Design Decision 4's example.
-const EXAMPLE: &str = r#"repositories = ["afterthought/crew", "agentplot/flume"]
+const EXAMPLE: &str = r#"accounts.own.drives.home.repositories = ["afterthought/crew", "agentplot/flume"]
 
 [control_plane]
 type = "crew"
@@ -82,7 +82,7 @@ fn the_table_is_the_implementations() {
 #[test]
 fn the_hosted_table_is_the_hosted_implementations() {
     let refusal = open(
-        "repositories = []\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+        "accounts = {}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
          url = \"https://control.example\"\ntoken = \"n0t-a-r34l-t0k3n\"\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = []\n",
     )
@@ -97,7 +97,7 @@ fn the_hosted_table_is_the_hosted_implementations() {
 /// is refused, naming `crew` and `hosted`, the words this binary carries.
 #[test]
 fn a_word_not_carried() {
-    let refusal = open("repositories = []\n[control_plane]\ntype = \"elsewhere\"\n")
+    let refusal = open("accounts = {}\n[control_plane]\ntype = \"elsewhere\"\n")
         .err()
         .unwrap();
     assert_eq!(
@@ -157,4 +157,29 @@ fn a_word_not_carried_enrolls_nothing() {
         refusal.words
     );
     assert!(refusal.host_to_fix);
+}
+
+/// Each implementation lists `partitions` as the one key of its table the
+/// runner's local layer may set, and reads its own table, a partition
+/// with no `label` refused, opening nothing (design Decision 2; record
+/// 0009 as amended 2026-11-07).
+#[test]
+fn each_implementation_lists_partitions_for_the_local_layer() {
+    for entry in &PLANES {
+        assert_eq!(entry.local_keys, ["partitions"], "{}", entry.word);
+        let others = match entry.word {
+            "crew" => "host = \"deneb\"\n",
+            "hosted" => "url = \"https://control.example\"\n",
+            word => panic!("no table written for {word}"),
+        };
+        let table: toml::Table = format!("{others}\n[[partitions]]\nrepositories = []\n")
+            .parse()
+            .expect("a table");
+        let refusal = (entry.read)(&table, Path::new(FILE)).unwrap_err();
+        assert!(
+            refusal.contains("`partitions` entry 1 names no `label`"),
+            "{}: {refusal}",
+            entry.word
+        );
+    }
 }
