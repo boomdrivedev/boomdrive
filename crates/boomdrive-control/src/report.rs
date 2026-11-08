@@ -23,6 +23,11 @@ pub struct Report {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Launched {
     pub lease: Lease,
+    /// The repository the offer named, as the offer wrote it, set when
+    /// the runner first answers the launch and never changed; none where
+    /// the runner recorded none, as in a report file of before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     pub answer: Answer,
     /// Flume's status of its place.
     pub status: Option<Carried>,
@@ -88,8 +93,12 @@ pub struct Commanded {
     /// The tool's answer as given, where a tool ran.
     pub text: Option<String>,
     pub words: Option<String>,
-    /// The commit the branch stands at on origin, or none where origin
-    /// holds no such branch.
+    /// The commit a branch command's branch stood at on origin, or none
+    /// where origin held no such branch. No command this release answers
+    /// fills it: it is kept for a branch command an earlier release
+    /// carried out, which the release before reads in `report.json`
+    /// (core.36), and version 1 of the hosted protocol carries it
+    /// (core.42).
     pub origin_commit: Option<String>,
     pub at: At,
 }
@@ -125,6 +134,7 @@ impl Report {
                 id.clone(),
                 Launched {
                     lease,
+                    repository: None,
                     answer,
                     status: None,
                     entry: None,

@@ -1,11 +1,12 @@
-//! sluice's command line (design Decisions 13 and 15), the one way the
-//! runner reaches sluice (record 0001). Each call runs in a clone's
-//! container, where sluice finds the repository, and its answer is read
-//! by sluice's exit and kept as sluice gave it (core.1). Of a
-//! submission's entry the runner carries the fields the cloud's copy of a
-//! sluice entry holds, each field's text as sluice printed it, and never
-//! a log or where one is kept (core.11). Of a branch it makes, the runner
-//! carries sluice's whole answer.
+//! sluice's command line (design Decision 13), the one way the runner
+//! reaches sluice (record 0001). Each call runs in a clone's container,
+//! where sluice finds the repository, and its answer is read by sluice's
+//! exit and kept as sluice gave it (core.1). Of a submission's entry the
+//! runner carries the fields the cloud's copy of a sluice entry holds,
+//! each field's text as sluice printed it, and never a log or where one
+//! is kept (core.11). The runner asks sluice for no branch: a branch
+//! other places land on is a Flume place's, which sluice makes and closes
+//! at Flume's asking (core.52).
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::Deserialize;
@@ -35,17 +36,6 @@ pub enum Reply {
     Refused(String),
 }
 
-/// sluice's answer to a command whose standard output is carried
-/// whatever its exit (design Decision 15).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Printed {
-    /// Its standard output, as sluice printed it.
-    pub text: String,
-    /// Where sluice exited other than 0, the `message` of its `error`
-    /// answer, as given, or, where it printed none, its standard error.
-    pub refused: Option<String>,
-}
-
 /// Why `sluice` gave no answer at all: it could not be run, or a signal
 /// ended it. Nothing is kept of it, and the next pass asks again.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -62,9 +52,6 @@ pub trait Sluice {
     /// `sluice status <id> --json`, the submission `id` of the repository
     /// whose clone is in `container_dir`.
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun>;
-    /// `sluice branch create <branch> --from <from> --json`, in the
-    /// repository whose clone is in `container_dir`.
-    fn branch(&self, container_dir: &Path, branch: &str, from: &str) -> Result<Printed, Unrun>;
 }
 
 /// sluice's command line, by the program at `program`: `sluice` on the
@@ -99,16 +86,6 @@ impl Cli {
 impl Sluice for Cli {
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun> {
         read(&self.run(container_dir, ["status", id, "--json"])?)
-    }
-
-    fn branch(&self, container_dir: &Path, branch: &str, from: &str) -> Result<Printed, Unrun> {
-        let args = ["branch", "create", branch, "--from", from, "--json"];
-        let output = self.run(container_dir, args)?;
-        let refused = (exit(&output)? != 0).then(|| refusal(&output));
-        Ok(Printed {
-            text: String::from_utf8_lossy(&output.stdout).into_owned(),
-            refused,
-        })
     }
 }
 
