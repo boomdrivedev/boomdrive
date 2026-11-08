@@ -82,3 +82,29 @@ The command sort was not taken: a command holds no carried answer, and its `Comm
 - Bad: a preview whose lease the runner lost stays up until someone puts it away, as a lost launch's place stays.
 - `previews.rec`'s descriptor is the runner's proposal until crew's unit holds it. sluice's statement's row for Boomdrive names the machinery's effects, and Boomdrive now asks for previews too. Both are told to the orchestrator.
 - Rule core.55 says it, under *Work under a lease*.
+
+## Amendment, 2026-11-08: a part's pass brings up its previews
+
+Status: proposed on 2026-11-08 by the code stage of the fix `the-runner-brings-up-previews--takes-main-in-1`, which took `main` into the bolt `the-runner-brings-up-previews`. It is the stage's own choice, within this record and record 0026 as they stand, and cheap to change, so it is not asked. It is accepted with this record.
+
+### Context
+
+This record was written while one control pass carried every drive's work, the keeping pass on the same loop before it. Record 0026, as `main` now carries it, runs each part of the control plane on a thread of its own, beside the loop's keeping passes. The parts share two things, each under a lock: a clone's lock, held by the keeper for one repository's keep or let-go and by a part for one launch into that clone, and the report file's, held for one save of a part's share. A launch holds the clone's lock so that it never makes a worktree in a clone the keeper is removing as dropped.
+
+A preview's ask, `sluice preview`, also makes a checkout in the clone, and may wait at sluice's bound for this record's patience of 20 seconds.
+
+### Decision outcome
+
+- **A preview is brought up on its part's thread.** Its rounds, its listing and its done are its part's pass's, and what this record says of the pass holds of each part's. A preview held at sluice's bound holds its own part's pass alone, for no longer than the patience.
+- **A part's share of the report file holds its previews**, as it holds the part's launches, acts, commands and inboxes: a part's save replaces its own previews and keeps every other part's.
+- **A preview's ask takes no clone's lock.** A clone the keeper removes while sluice brings up a preview there takes the preview's checkout with it, and sluice frees a preview nobody can use (sluice 123), as it does of a dropped clone removed between passes. This record already answers a done whose clone no longer stands.
+
+Not taken:
+
+- **The clone's lock held shared for a preview's ask, as a launch holds it.** The ask may wait the whole patience. The keeper's keep of that repository would wait for it, and every launch into the repository behind that keep, so a launch would wait on sluice's bound, which this record and core.50 rule out.
+
+### Consequences
+
+- Good: no part's launch waits on another part's preview, and none waits on a preview of its own part's beyond the order core.50 and core.55 give.
+- Bad: where a repository leaves the configuration while a part brings up a preview in it, the keeper may remove the clone under the new checkout; the preview is brought up and then freed by sluice, and with no clone its listing is read no more, its status left as it was last carried.
+- Record 0026's list of what parts share stands as it is: a preview takes neither lock but the report file's, at its part's save.
