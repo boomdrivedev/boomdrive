@@ -181,6 +181,7 @@ fn a_retry_of_the_submission() {
         Id::new("home/12"),
         Launched {
             lease: LEASE,
+            repository: None,
             answer: Answer {
                 outcome: Outcome::Launched,
                 place_dir: Some("/places/change--a".to_string()),

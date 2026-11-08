@@ -26,13 +26,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.68.0";
+      url = "github:agentplot/sluice/v0.74.3";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
     # Flume publishes no flake yet: nix/packages/flume.nix builds its tag.
     flume = {
-      url = "github:agentplot/flume/v0.10.0";
+      url = "github:agentplot/flume/v0.17.1";
       flake = false;
     };
     # The tests' nix-darwin. A host's configuration follows its own, which

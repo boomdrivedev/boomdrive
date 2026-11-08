@@ -59,6 +59,7 @@ fn launched(outcome: Outcome, place: Option<&str>, listed: Option<bool>) -> Laun
             number: 1,
             expires: None,
         },
+        repository: None,
         answer: Answer {
             outcome,
             place_dir: place.map(str::to_string),

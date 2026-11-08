@@ -54,6 +54,7 @@ fn answered(
 ) -> Launched {
     Launched {
         lease: LEASE,
+        repository: None,
         answer: Answer {
             outcome,
             place_dir: place.map(str::to_string),

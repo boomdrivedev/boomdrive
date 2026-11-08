@@ -112,6 +112,7 @@ fn hello(report: &Report) -> Hello {
             ToolVersion::Printed("flume 0.4.1".to_string()),
         )]),
         repositories: vec!["example/app".to_string(), "example/service".to_string()],
+        draining: vec![],
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),
@@ -155,6 +156,7 @@ fn launched(ids: &[&str]) -> Report {
                     number: 1,
                     expires: None,
                 },
+                repository: None,
                 answer: Answer {
                     outcome: Outcome::Launched,
                     place_dir: Some(format!("/places/{id}")),
@@ -290,6 +292,43 @@ fn each_hello_its_own() {
     );
     assert_eq!(work["leases"], json!({ "l-2": 1 }));
     assert_eq!(home["capacity"]["printed"]["streams"][0].get("queue"), None);
+}
+
+/// The hosted-control-plane spec's "A repository drained goes up in no
+/// hello": version 1 names no repository drained, nor the repository a
+/// launch was answered in (record 0021; core.42).
+#[test]
+fn a_repository_draining_goes_up_in_no_hello() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut report = launched(&["home/l-1"]);
+    for launched in report.launches.values_mut() {
+        launched.repository = Some("example/app".to_string());
+    }
+    let mut hello = hello(&report);
+    hello.repositories = vec!["example/service".to_string()];
+    hello.draining = vec!["example/app".to_string()];
+    plane.hosted.pull(&hello, &report).expect("read");
+    plane.hosted.report(&report).expect("answered");
+    let taken = fake.taken();
+    let body = |partition: &str, of: &str| {
+        messages(&taken, partition)
+            .into_iter()
+            .find(|message| kind(message).as_deref() == Some(of))
+            .unwrap_or_else(|| panic!("a {of} from {partition}"))["body"][of]
+            .clone()
+    };
+    let home = body("home", "hello");
+    assert_eq!(home["repositories"], json!([]));
+    assert_eq!(home.get("draining"), None);
+    assert_eq!(home["leases"], json!({ "l-1": 1 }));
+    assert_eq!(
+        body("work", "hello")["repositories"],
+        json!(["example/service"])
+    );
+    let l_1 = &body("home", "report")["launches"]["l-1"];
+    assert!(l_1.is_object(), "{l_1}");
+    assert_eq!(l_1.get("repository"), None, "{l_1}");
 }
 
 #[test]
