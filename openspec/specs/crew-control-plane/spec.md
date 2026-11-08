@@ -45,31 +45,36 @@ A state repository SHALL be reached at `https://github.com/<owner>/<name>.git` b
 
 ### Requirement: crew's records are read at one tip of each partition's drive branch
 
-At each pull, for each partition, crew's implementation SHALL read `requests.rec`, `roles.rec`, `asks.rec` and `plan.rec` at one tip of `<label>/main`, through a bare cache at `<data>/control/crew/<owner>/<name>.git`. A file missing at the tip SHALL hold nothing. It SHALL read every `<label>/runner/*` branch the state repository lists, taking its own host's answers and places from the report the runner hands the pull.
+At each pull, for each partition, crew's implementation SHALL read `requests.rec`, `roles.rec`, `asks.rec` and `plan.rec` at one tip of `<label>/main`, through a bare cache of that partition's own, `<data>/control/crew/<owner>/<name>/<label>.git`. A file missing at the tip SHALL hold nothing. It SHALL read every `<label>/runner/*` branch the state repository lists, taking its own host's answers and places from the report the runner hands the pull (record 0026).
 
 #### Scenario: A file missing at the tip
 
 - **WHEN** `home/main`'s tip holds `requests.rec` and no `roles.rec`
 - **THEN** the pull gives the requests for this host, and offers no role's run
 
+#### Scenario: Two partitions of one state repository
+
+- **WHEN** crew's table names the partitions `home` and `work`, both at `example/state`
+- **THEN** `home`'s part reads through `<data>/control/crew/example/state/home.git`, `work`'s through `<data>/control/crew/example/state/work.git`, and neither writes in the other's
+
 ### Requirement: A partition that cannot be read hides only its own work
 
-A partition whose `<label>/main` cannot be read SHALL give nothing that pass, with its words, while the other partitions give their own. A pull SHALL be unread only when no partition could be read. A report SHALL write each partition's runner branch it can, with its let-go, name each it could not, and be unsent only when it wrote none.
+Each partition SHALL be a part of its own. A part whose `<label>/main` cannot be read SHALL give `Unread`, with its words, while every other part pulls on its own. A part's report SHALL write its partition's runner branch, with its let-go, and SHALL give `Unsent`, naming the branch, where it could not write it.
 
 #### Scenario: One partition missing
 
 - **WHEN** partition `work`'s state repository has no `work/main` and `home`'s holds requests for this host
-- **THEN** the pull gives `home`'s requests and names `work/main` as unread
+- **THEN** `home`'s part gives `home`'s requests, and `work`'s part is unread, naming `work/main`
 
 #### Scenario: No partition read
 
 - **WHEN** no partition's state repository can be read
-- **THEN** the pull is unread, naming each
+- **THEN** every part is unread, each naming its own
 
 #### Scenario: One partition missing at a report
 
-- **WHEN** partition `work`'s state repository has no `work/main`, and `home`'s unit `u` is tidied and gone from its plan
-- **THEN** the report writes `home/runner/host-a`, its let-go names `u`'s launch, and it names `work/runner/host-a` as not written
+- **WHEN** this host is `host-a`, partition `work`'s state repository has no `work/main`, and `home`'s unit `u` is tidied and gone from its plan
+- **THEN** `home`'s part writes `home/runner/host-a`, its let-go names `u`'s launch, and `work`'s part's report is unsent, naming `work/runner/host-a`
 
 ### Requirement: Each request for this host is a want under the lease number 1
 
@@ -152,12 +157,17 @@ A launch crew's implementation withdrew SHALL be claimed again only while no oth
 
 ### Requirement: An act naming no host is given to the runner that holds its launch
 
-A retry, drop or priority naming no `Host` SHALL be for this host only where the runner's report, or its own branch, answers the launch its `Of` names. Otherwise crew's implementation SHALL give nothing for it and write nothing of it.
+A retry, land, drop or priority naming no `Host` SHALL be for this host only where the runner's report, or its own branch, answers the launch its `Of` names. Otherwise crew's implementation SHALL give nothing for it and write nothing of it.
 
 #### Scenario: An act on another host's launch
 
 - **WHEN** request 22 retries `Of: 20` naming no `Host`, and `home/runner/host-b` answers 20 while `host-a`'s report does not
 - **THEN** `host-a`'s pull gives nothing for 22
+
+#### Scenario: A land naming no host, of a launch this runner holds
+
+- **WHEN** `host-a` claims launch 21, which names no `Host`, and request 24 says `Act: land` and `Of: 21`, naming no `Host`, while `home/runner/host-b` answers launch 20 and request 25 lands `Of: 20`, naming no `Host`
+- **THEN** `host-a`'s pull gives `home/24`, landing `home/21`, and nothing for 25
 
 ### Requirement: A launch request is an offer of what it names
 
@@ -173,14 +183,19 @@ A `launch` SHALL be given as an offer whose launch holds its repository, its `Ki
 - **WHEN** request 20 is a launch naming no `Host` and no `Stream`, claimed by this host
 - **THEN** the offer `home/20` names no stream, so the launch runs in the stream the host's Flume configuration maps its repository to
 
-### Requirement: A retry, a drop and a priority are acts on the launch they name
+### Requirement: A retry, a land, a drop and a priority are acts on the launch they name
 
-A `retry` SHALL be given as an act on the launch `<label>/<Of>` with its `Stage` and `Words`, asking for the submission where it holds a `Submission` field. A `drop` SHALL be an act dropping `<label>/<Of>`. A `priority` SHALL be an act setting `<label>/<Of>`'s priority to `Priority`.
+A `retry` SHALL be given as an act on the launch `<label>/<Of>` with its `Stage` and `Words`, asking for the submission where it holds a `Submission` field. A `land` SHALL be given as an act landing `<label>/<Of>`, and crew's implementation SHALL read no other field of it. A `drop` SHALL be an act dropping `<label>/<Of>`. A `priority` SHALL be an act setting `<label>/<Of>`'s priority to `Priority` (core.53; crew record 0056).
 
 #### Scenario: A retry of the submission
 
 - **WHEN** request 14 retries `Of: 12` with `Submission: yes`
 - **THEN** the pull gives an act `home/14` on `home/12` asking for the submission
+
+#### Scenario: A land
+
+- **WHEN** request 17 says `Act: land` and `Of: 12`, naming this host
+- **THEN** the pull gives an act `home/17` landing `home/12` under lease 1
 
 ### Requirement: A request crew's implementation cannot read is refused by its host's runner
 
@@ -399,6 +414,15 @@ At each report, a launch the runner's report holds that a drop names, answered `
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
 - **THEN** while Flume lists `P`, the report's let-go names neither `home/12` nor `home/14`; and once Flume no longer lists `P`, it names both
+
+### Requirement: The shared cache of a release before is removed
+
+At open, crew's implementation SHALL remove the shared cache a release before kept for a state repository, `<data>/control/crew/<owner>/<name>.git`, where it is there, saying one line naming it. A cache is made again from the control plane (core.35).
+
+#### Scenario: The shared cache of a release before
+
+- **WHEN** crew's implementation opens with `<data>/control/crew/example/state.git` there
+- **THEN** that cache is removed, one line names it, and each partition's pull fetches into its own cache
 
 ### Requirement: A preview request is a preview of what it names
 

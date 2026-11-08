@@ -1,10 +1,12 @@
 //! `boomdrive-control`, the one interface through which the runner reaches
 //! its control plane (design Decisions 1 and 2; core.2): a pull, which
-//! gives what the control plane wants of the host, and a report, which
-//! takes the runner's whole report. Ids are the control plane's, and
-//! nothing here assumes git, files or a socket. It depends on no
-//! implementation of it, and holds a fake control plane and the cases
-//! every implementation passes.
+//! gives what the control plane wants of the host, a report, which takes
+//! the runner's report, and `owns`, which says whose an id is. An
+//! implementation serves its control plane as parts, each a [`Part`]
+//! the runner carries on its own (record 0026; core.49). Ids are the
+//! control plane's, and nothing here assumes git, files or a socket. It
+//! depends on no implementation of it, and holds a fake control plane and
+//! the cases every implementation passes.
 
 pub mod fake;
 pub mod report;
@@ -30,18 +32,31 @@ pub const INTERFACE_VERSION: u32 = 1;
 /// The runner's control plane, through one of its implementations.
 pub trait ControlPlane {
     /// What the control plane wants of the host now, handed the runner's
-    /// hello and its whole report, or why it could not be read.
+    /// hello and its report, or why it could not be read.
     fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread>;
-    /// Takes the runner's whole report, which renews every lease it names.
-    /// A second report of one report changes nothing.
+    /// Takes the runner's report, which renews every lease it names. A
+    /// second report of one report changes nothing.
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent>;
+    /// Whether `id` is one this control plane gives: every want it gives
+    /// carries an id it owns. The runner reads no id, and keeps each
+    /// part's share of its report by asking the part (design Decision 1).
+    fn owns(&self, id: &Id) -> bool;
 }
 
-/// What an implementation is handed when it is opened, to wake the runner
-/// once its control plane pushes work: each call makes a control pass at
-/// once, the runner's control timer then timed from that pass's start
-/// (design Decision 5). It may be called from any thread. A runner that
-/// has stopped is woken to nothing.
+/// A part of the control plane, which the runner carries on its own: its
+/// own pulls, answers and reports, on its own timer (record 0026;
+/// core.49).
+pub struct Part {
+    /// The implementation's name for it, given once among its parts.
+    pub label: String,
+    pub plane: Box<dyn ControlPlane + Send>,
+}
+
+/// What an implementation is handed for each part it opens, to wake the
+/// runner for that part once its control plane pushes the part's work:
+/// each call makes a control pass of that part at once, the part's timer
+/// then timed from that pass's start. It may be called from any thread. A
+/// runner that has stopped is woken to nothing.
 pub type Wake = Box<dyn Fn() + Send + Sync>;
 
 /// What the runner tells the control plane of its host at every pull

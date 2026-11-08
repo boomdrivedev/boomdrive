@@ -9,7 +9,10 @@ use boomdrive_control::{
     Report, Want,
 };
 use boomdrive_crew::read::LEASE;
-use common::{act, file, hello, ids, launch, plan, preview, pull, want, State, REQUESTS};
+use common::{
+    act, commit_to, file, git, hello, ids, launch, plan, preview, pull, want, State, REQUESTS,
+};
+use std::path::Path;
 
 const CREW: &str = "example/crew";
 
@@ -226,6 +229,37 @@ fn a_retry_of_the_submission() {
     );
 }
 
+/// The crew-control-plane spec's "A land": an act landing the launch its
+/// `Of` names, under lease 1 (core.53; crew record 0056).
+#[test]
+fn a_land_is_an_act_on_the_launch_it_names() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(17, "land", Some("host-a"), "unit/a", 12, &[]),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        pulled.wants[1..],
+        [Want::Act(Act {
+            id: Id::new("home/17"),
+            launch: Id::new("home/12"),
+            lease: 1,
+            what: ActSort::Land,
+        })]
+    );
+}
+
 #[test]
 fn an_act_crew_does_not_write() {
     let state = State::new();
@@ -386,48 +420,77 @@ fn a_file_missing_at_the_tip() {
     assert_eq!(ids(&pull(&mut crew, &kept())), ["home/1"]);
 }
 
+/// The crew-control-plane spec's "One partition missing", over parts:
+/// `work`'s state repository holds no `work/main`, and `home`'s part gives
+/// `home`'s requests while `work`'s is unread, naming `work/main`, each
+/// saying through its own say.
 #[test]
 fn one_partition_missing() {
     let state = State::new();
+    let home = state.make("example/home-state");
     state.make("example/work-state");
-    state.main(&[
-        (
-            "requests.rec",
-            &file(
-                REQUESTS,
-                &[launch(1, Some("host-a"), "unit/a", CREW, "a", &[])],
-            ),
-        ),
-        ("plan.rec", &plan(&["a"], &[])),
-    ]);
-    let (mut crew, said) = state.crew_serving(
-        "host-a",
+    commit_to(
+        &home,
+        "home/main",
         &[
-            ("work", "example/work-state"),
-            ("home", "example/home-state"),
+            (
+                "requests.rec",
+                &file(
+                    REQUESTS,
+                    &[launch(1, Some("host-a"), "unit/a", CREW, "a", &[])],
+                ),
+            ),
+            ("plan.rec", &plan(&["a"], &[])),
         ],
     );
-    let pulled = pull(&mut crew, &kept());
-    assert_eq!(ids(&pulled), ["home/1"]);
-    assert!(
-        said.holds(&["work/main", "example/work-state", "could not be read"]),
-        "{:?}",
-        said.lines()
+    let (mut parts, saids) = state.parts(
+        "host-a",
+        &[
+            ("home", "example/home-state"),
+            ("work", "example/work-state"),
+        ],
     );
+    let none = Report::default();
+    let pulled = parts[0].plane.pull(&kept(), &none).expect("home's pull");
+    assert_eq!(ids(&pulled), ["home/1"]);
+    let unread = parts[1]
+        .plane
+        .pull(&kept(), &none)
+        .expect_err("work's pull unread");
+    assert!(unread.0.contains("work/main"), "{unread}");
+    let work = saids.of("work");
+    assert!(
+        work.holds(&["work/main", "example/work-state", "could not be read"]),
+        "{:?}",
+        work.lines()
+    );
+    let home = saids.of("home").lines();
+    assert!(home.iter().all(|line| !line.contains("work")), "{home:?}");
 }
 
+/// The crew-control-plane spec's "No partition read", over parts: every
+/// part is unread, each naming its own.
 #[test]
 fn no_partition_read() {
     let state = State::new();
-    let (mut crew, _) = state.crew_serving(
+    let (mut parts, _) = state.parts(
         "host-a",
-        &[("home", "example/home-state"), ("work", "example/nowhere")],
+        &[("home", "example/state"), ("work", "example/nowhere")],
     );
-    let unread = crew
-        .pull(&kept(), &Report::default())
-        .expect_err("an unread pull");
-    assert!(unread.0.contains("home/main"), "{unread}");
-    assert!(unread.0.contains("work/main"), "{unread}");
+    for part in &mut parts {
+        let unread = part
+            .plane
+            .pull(&kept(), &Report::default())
+            .expect_err("an unread pull");
+        let own = format!("{}/main", part.label);
+        assert!(unread.0.contains(&own), "{unread}");
+        let other = if part.label == "home" {
+            "work/"
+        } else {
+            "home/"
+        };
+        assert!(!unread.0.contains(other), "{unread}");
+    }
 }
 
 /// git's words on a state repository it cannot reach run over several
@@ -516,6 +579,224 @@ fn a_kits_launch_naming_no_stream() {
     };
     assert_eq!(offer.launch.stream, None);
     assert_eq!(offer.launch.repository, CREW);
+}
+
+/// `example/state` on the scratch forge, its `home/main` and `work/main`
+/// each holding a launch request for `host-a`, numbered 1, of a unit the
+/// partition's plan holds.
+fn two_drives(state: &State) -> std::path::PathBuf {
+    let bare = state.make("example/state");
+    for label in ["home", "work"] {
+        commit_to(
+            &bare,
+            &format!("{label}/main"),
+            &[
+                (
+                    "requests.rec",
+                    &file(
+                        REQUESTS,
+                        &[launch(1, Some("host-a"), "unit/a", CREW, label, &[])],
+                    ),
+                ),
+                ("plan.rec", &plan(&["a"], &[])),
+            ],
+        );
+    }
+    bare
+}
+
+/// Every ref the bare cache at `cache` holds.
+fn refs_of(cache: &Path) -> String {
+    git(cache, &["for-each-ref", "--format=%(refname)"], None)
+}
+
+/// The crew-control-plane spec's "Two partitions of one state
+/// repository": each partition reads through a bare cache of its own, and
+/// neither writes in the other's.
+#[test]
+fn two_partitions_of_one_state_repository() {
+    let state = State::new();
+    two_drives(&state);
+    let (mut crew, _) = state.crew_serving(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    assert_eq!(ids(&pull(&mut crew, &kept())), ["home/1", "work/1"]);
+    let caches = state.root.join("data-host-a/control/crew/example");
+    let (home, work) = (caches.join("state/home.git"), caches.join("state/work.git"));
+    assert!(home.is_dir() && work.is_dir());
+    assert!(!caches.join("state.git").exists());
+    let (home_refs, work_refs) = (refs_of(&home), refs_of(&work));
+    assert!(home_refs.contains("home/main"), "{home_refs}");
+    assert!(!home_refs.contains("work/"), "{home_refs}");
+    assert!(work_refs.contains("work/main"), "{work_refs}");
+    assert!(!work_refs.contains("home/"), "{work_refs}");
+}
+
+/// The crew-control-plane spec's "The shared cache of a release before":
+/// opened with the cache a release before shared among `example/state`'s
+/// partitions there, crew's implementation removes it, one line names it,
+/// and each partition's pull fetches into its own cache.
+#[test]
+fn the_shared_cache_of_a_release_before() {
+    let state = State::new();
+    two_drives(&state);
+    let caches = state.root.join("data-host-a/control/crew/example");
+    let shared = caches.join("state.git");
+    std::fs::create_dir_all(&shared).unwrap();
+    git(&shared, &["init", "--quiet", "--bare"], None);
+    let (mut crew, said) = state.crew_serving(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    assert!(!shared.exists());
+    let lines = said.lines();
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(
+        lines[0].starts_with(&format!("crew: removed {}, ", shared.display())),
+        "{lines:?}"
+    );
+    assert_eq!(ids(&pull(&mut crew, &kept())), ["home/1", "work/1"]);
+    assert!(caches.join("state/home.git").is_dir());
+    assert!(caches.join("state/work.git").is_dir());
+    assert!(!shared.exists());
+}
+
+/// The control-plane-interface spec's "crew's partitions as parts": a
+/// table naming `home` and `work` opens two parts, `home` then `work`,
+/// each pulling its own partition alone.
+#[test]
+fn crews_partitions_as_parts() {
+    let state = State::new();
+    two_drives(&state);
+    let (mut parts, _) = state.parts(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
+    assert_eq!(labels, ["home", "work"]);
+    let none = Report::default();
+    for part in &mut parts {
+        let pulled = part.plane.pull(&kept(), &none).expect("a pull");
+        assert_eq!(ids(&pulled), [format!("{}/1", part.label)]);
+    }
+}
+
+/// The control-plane-interface spec's "crew's ids by partition": each
+/// part owns its own launch numbered 1, and not the other's.
+#[test]
+fn crews_ids_by_partition() {
+    let state = State::new();
+    two_drives(&state);
+    let (parts, _) = state.parts(
+        "host-a",
+        &[("home", "example/state"), ("work", "example/state")],
+    );
+    let (home, work) = (&parts[0].plane, &parts[1].plane);
+    let (home_1, work_1) = (Id::new("home/1"), Id::new("work/1"));
+    assert!(home.owns(&home_1) && !home.owns(&work_1));
+    assert!(work.owns(&work_1) && !work.owns(&home_1));
+}
+
+/// The crew-control-plane spec's "One partition missing at a report",
+/// over parts: `work`'s state repository holds no `work/main`, and
+/// `home`'s unit `u` is tidied and gone from its plan. `home`'s part
+/// writes `home/runner/host-a`, its let-go naming `u`'s launch, and
+/// `work`'s part's report is unsent, naming `work/runner/host-a`.
+#[test]
+fn one_partition_missing_at_a_report() {
+    let state = State::new();
+    let home = state.make("example/home-state");
+    state.make("example/work-state");
+    commit_to(
+        &home,
+        "home/main",
+        &[
+            (
+                "requests.rec",
+                &file(
+                    REQUESTS,
+                    &[
+                        launch(12, Some("host-a"), "unit/u", CREW, "u", &[]),
+                        act(
+                            13,
+                            "priority",
+                            Some("host-a"),
+                            "unit/u",
+                            12,
+                            &[("Priority", "4")],
+                        ),
+                    ],
+                ),
+            ),
+            ("plan.rec", &plan(&[], &["b"])),
+        ],
+    );
+    let (mut parts, _) = state.parts(
+        "host-a",
+        &[
+            ("home", "example/home-state"),
+            ("work", "example/work-state"),
+        ],
+    );
+    let report = tidied("home");
+    parts[0].plane.pull(&kept(), &report).expect("home's pull");
+    let reported = parts[0].plane.report(&report).expect("home's report");
+    let let_go: Vec<String> = reported.let_go.iter().map(Id::to_string).collect();
+    assert_eq!(let_go, ["home/12", "home/13"]);
+    assert!(common::tip_of(&home, "home/runner/host-a").is_some());
+    let none = Report::default();
+    parts[1]
+        .plane
+        .pull(&kept(), &none)
+        .expect_err("work's pull unread");
+    let unsent = parts[1]
+        .plane
+        .report(&none)
+        .expect_err("work's report unsent");
+    assert!(unsent.0.contains("work/runner/host-a"), "{unsent}");
+}
+
+/// The runner's report of partition `label`'s launch 12, at a place Flume
+/// lists no more, and its priority 13 done.
+fn tidied(label: &str) -> Report {
+    let at = |text: &str| boomdrive_control::At::parse(text).unwrap();
+    let launch = Id::new(format!("{label}/12"));
+    let mut report = Report::default();
+    report.launches.insert(
+        launch.clone(),
+        boomdrive_control::Launched {
+            lease: Lease {
+                number: 1,
+                expires: None,
+            },
+            repository: None,
+            answer: boomdrive_control::Answer {
+                outcome: boomdrive_control::Outcome::Launched,
+                place_dir: Some("/places/change--u".to_string()),
+                words: None,
+                at: at("2026-11-01T10:00:00Z"),
+            },
+            status: Some(boomdrive_control::Carried {
+                text: r#"{"status":{"places":[{"place":"/places/change--u","phase":"live"}],"host":{}}}"#
+                    .to_string(),
+                at: at("2026-11-01T10:01:00Z"),
+                listed: false,
+            }),
+            entry: None,
+        },
+    );
+    report.acts.insert(
+        Id::new(format!("{label}/13")),
+        boomdrive_control::Acted {
+            launch,
+            lease: 1,
+            outcome: boomdrive_control::Outcome::Done,
+            words: None,
+            at: at("2026-11-01T10:02:00Z"),
+        },
+    );
+    report
 }
 
 /// `home/main` holding `requests` and a plan of the unit `u`.

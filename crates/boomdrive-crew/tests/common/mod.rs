@@ -7,7 +7,7 @@
 
 #![allow(dead_code)]
 
-use boomdrive_control::{Capacity, Hello, HostPart, Pulled, Report, Want, INTERFACE_VERSION};
+use boomdrive_control::{Capacity, Hello, HostPart, Part, Pulled, Report, Want, INTERFACE_VERSION};
 use boomdrive_crew::config::{Config, Partition, StateRepository};
 use boomdrive_crew::Crew;
 use std::collections::BTreeMap;
@@ -37,7 +37,7 @@ pub const REQUESTS: &str = "\
 %doc: A request for Work: a launch of a Flume place of Kind named Name, cut from Base of Repo, taken by a runner whose configuration names Repo, in the stream its host maps it to, or by Host's runner in Stream for a role's work; or a retry, drop or priority of the place the launch Of names launched, taken by the runner that took it.
 %key: Request
 %type: Request,Of,After,Priority int
-%type: Act enum launch retry drop priority preview
+%type: Act enum launch retry land drop priority preview
 %type: Kind enum change chore fix
 %type: Hold enum submission
 %type: Submission bool
@@ -385,6 +385,33 @@ impl State {
         (crew, said)
     }
 
+    /// crew's implementation on `host` as parts, one for each of
+    /// `partitions` (label and state repository), its data under the
+    /// scratch directory, and the lines each part says, by its label.
+    pub fn parts(&self, host: &str, partitions: &[(&str, &str)]) -> (Vec<Part>, Saids) {
+        let saids = Saids::default();
+        let config = Config {
+            host: host.to_string(),
+            partitions: partitions
+                .iter()
+                .map(|(label, repository)| Partition {
+                    label: label.to_string(),
+                    state_repository: StateRepository::parse(repository).unwrap(),
+                })
+                .collect(),
+        };
+        let parts = boomdrive_crew::parts(
+            config,
+            &self.url(),
+            &self.root.join(format!("data-{host}")),
+            &|label| {
+                let lines = saids.of(label).0;
+                Box::new(move |line| lines.lock().unwrap().push(line))
+            },
+        );
+        (parts, saids)
+    }
+
     /// crew's implementation on `host`, serving `home`.
     pub fn crew(&self, host: &str) -> (Crew, Said) {
         self.crew_serving(host, &[("home", "example/home-state")])
@@ -540,6 +567,18 @@ impl Said {
         self.lines()
             .iter()
             .any(|line| words.iter().all(|word| line.contains(word)))
+    }
+}
+
+/// The lines each part said, by its label.
+#[derive(Clone, Default)]
+pub struct Saids(Arc<Mutex<BTreeMap<String, Said>>>);
+
+impl Saids {
+    /// The lines the part `label` said.
+    pub fn of(&self, label: &str) -> Said {
+        let mut saids = self.0.lock().unwrap();
+        saids.entry(label.to_string()).or_default().clone()
     }
 }
 

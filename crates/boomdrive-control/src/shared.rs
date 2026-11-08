@@ -116,6 +116,24 @@ pub fn a_settled_want_is_given<H: Harness>(harness: &mut H) {
     assert_eq!(pulled.wants, wants);
 }
 
+/// Every want a pull gives carries an id its control plane owns (design
+/// Decision 1), so the runner keeps each part's share of its report by
+/// asking the part.
+pub fn each_id_given_is_owned<H: Harness>(harness: &mut H) {
+    let wants = vec![
+        offer(harness, 1, "a", &[]),
+        act(harness, 2, 1, ActSort::Priority(5)),
+        offer(harness, 3, "b", &[1]),
+    ];
+    let mut plane = harness.plane(&wants);
+    let report = Report::default();
+    let pulled = plane.pull(&hello(&report), &report).expect("a pull");
+    assert_eq!(pulled.wants.len(), wants.len());
+    for want in &pulled.wants {
+        assert!(plane.owns(want.id()), "{} is not owned", want.id());
+    }
+}
+
 /// The hello the cases hand every pull: a host keeping [`REPOSITORY`],
 /// with room, holding `report`'s leases.
 pub fn hello(report: &Report) -> Hello {

@@ -93,21 +93,41 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
-nothing. Told of a landing, it keeps that one repository at once. It
-stops on SIGTERM or SIGINT before the next repository it would keep,
-and exits 0. It opens no listening socket: every connection it makes is
-outgoing.
+nothing. Told of a landing, it keeps that one repository at once,
+between passes or between two repositories of a pass. It stops on
+SIGTERM or SIGINT before the next repository it would keep, lets each
+part of its control plane end the pass it has in hand, and exits 0. It
+opens no listening socket: every connection it makes is outgoing.
 
-Each turn of passes ends, before the runner waits, with Flume's settle
-of every place, `flume --json settle --every <bound>`, run once and
-awaited, so the runner keeps Flume's watch over its host: while it
-runs, Flume runs unattended, and every place waiting on it, a submitted
-place with no agent among them, moves within the bound. The bound is
-`fetch_interval` in whole seconds, or the shorter of it and
-`poll_interval` while the runner makes control passes. A turn whose
-reading of the configuration failed settles all the same: the watch is
-the host's, not the file's. A landing kept between passes is followed by
-no settle, and a runner told to stop begins none. The runner reads
+Where the configuration names a control plane, each part of it, a crew
+partition or a hosted partition, runs its control passes on its own,
+on a thread of its own from the end of the first keeping pass: on its
+own timer, at once when its control plane wakes it, and saying its own
+reach. No part's pull, act, command or report waits on another part's,
+or on a keeping pass. Each line the runner says of a part's pass names
+its label after `boomdrive:`, as `boomdrive: <label>: <words>`, or
+begins with the id of the want it is about. What the parts share on the
+host is a clone, which the keeper keeps and a launch goes into in turn,
+the report file, each part saving its own share of it, and Flume's
+room. A hosted partition is an account's enrollment, so the drives of
+one hosted account share that account's connection, in the order its
+control plane gives their work.
+
+Each pass ends, before its thread waits, with Flume's settle of every
+place, `flume --json settle --every <bound>`, run once and awaited: a
+keeping pass on the runner's loop, and each part's control pass on the
+part's thread. So the runner keeps Flume's watch over its host: while
+it runs, Flume runs unattended, and every place waiting on it, a
+submitted place with no agent among them, moves within the bound. The
+first keeping pass, which each part's first control pass follows at
+once, shares their settles, so no launch waits behind a settle. No two
+settles run at once: a pass that ends while another's settle is under
+way shares it, and waits for nothing. The bound is `fetch_interval` in
+whole seconds, or the shorter of it and `poll_interval` while the
+runner makes control passes. A keeping pass whose reading of the
+configuration failed settles all the same: the watch is the host's, not
+the file's. A landing kept between passes is followed by no settle, and
+a runner told to stop begins none. The runner reads
 nothing of the settle's answer, and carries and keeps none of it. It
 says nothing while Flume settles; it says one line when a settle is
 refused, `boomdrive: Flume refused the settle of every place: <words>`,
@@ -124,11 +144,12 @@ written. A repository left by rule, for a folder of the user's or work
 the forge lacks, is not a failure, nor is a workspace left because the
 runner cannot read it. Where
 the configuration names a control plane, `--once` makes one control
-pass after the keeping pass, and exits 1 too when that pass did not
-pull and report. A tool that pass could not run or read is named, and
-is not a failure. `--once` settles every place once, after its passes,
-and a settle Flume refused or gave no answer to is named, and is not a
-failure either.
+pass of each part after the keeping pass, side by side, and exits 1 too
+when no part both pulled and reported. A part that could not be read
+while another reported, or a tool a pass could not run or read, is
+named, and is not a failure. `--once` settles every place once, after
+its passes, and a settle Flume refused or gave no answer to is named,
+and is not a failure either.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
@@ -349,9 +370,9 @@ A control pass runs after the first keeping pass, then each
 that reported, where a lease not yet lapsed would lapse first, and at
 once when the control plane wakes the runner. The runner says once that
 its control plane could not be read, and once that it is read again.
-Each control pass ends with the settle of every place, and a control
-pass that follows a keeping pass at once shares its settle, run once
-after both, so no launch waits behind a settle. A control pass:
+Each control pass ends with the settle of every place, on its part's
+thread, and the first, which follows the first keeping pass at once,
+settles for both, so no launch waits behind a settle. A control pass:
 
 - reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
@@ -365,14 +386,14 @@ after both, so no launch waits behind a settle. A control pass:
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
   branch;
-- carries out each retry, drop, priority or done as Flume's own command
-  on the launch's place, once every launch the pull offers is taken,
-  and, once the next pass is due, no further act after its first, so no
-  launch waits behind an act. A place Flume's listing does not hold is
-  first asked of `flume --json status <place>`, which settles nothing,
-  and Flume's refusal of it is the act's answer. A bolt's send is a
-  retry naming its submission, `flume retry <place> --submission`,
-  whose answer is Flume's;
+- carries out each retry, land, drop, priority or done as Flume's own
+  command on the launch's place, once every launch the pull offers is
+  taken, and, once the next pass is due, no further act after its
+  first, so no launch waits behind an act. A place Flume's listing does
+  not hold is first asked of `flume --json status <place>`, which
+  settles nothing, and Flume's refusal of it is the act's answer. A
+  land is `flume retry <place> --submission`, whatever the launch's
+  kind, and a bolt is landed on a land, whose answer is Flume's;
 - refuses every command, naming its tool, `this binary does not carry
   <tool>'s commands`, a branch command's being sluice, and runs nothing
   for it;

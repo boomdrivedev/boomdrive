@@ -136,6 +136,13 @@ pub enum ActSort {
         words: Option<String>,
         submission: bool,
     },
+    /// The landing of its launch's work, written as the word `land`. It
+    /// holds nothing but its launch, named by the act around it, and the
+    /// runner carries it out as Flume's retry of the submission of that
+    /// launch's place, naming no stage and no words (core.53). Version 1
+    /// of the hosted protocol names no land, a later version being the
+    /// one to carry it (core.42).
+    Land,
     Drop,
     Priority(i64),
     Done,
@@ -157,8 +164,8 @@ pub enum CommandSort {
     /// may still send it, as version 1 of the hosted protocol names it,
     /// which a release has spoken and which is never changed (core.42).
     /// This binary refuses it, naming sluice: a branch other places land
-    /// on is a Flume place's, launched as any launch and sent by a retry
-    /// of its submission (core.52).
+    /// on is a Flume place's, launched as any launch and landed on a land
+    /// (core.52, core.53).
     Branch {
         repository: String,
         branch: String,

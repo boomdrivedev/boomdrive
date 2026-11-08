@@ -78,7 +78,8 @@ impl Request {
         self.act() == Some("launch")
     }
 
-    /// The launch a retry, drop or priority names, where `Of` is whole.
+    /// The launch a retry, land, drop or priority names, where `Of` is
+    /// whole.
     pub fn of(&self) -> Option<u64> {
         self.get("Of").and_then(whole)
     }
@@ -437,6 +438,9 @@ pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<
                 done: yes_or_no(request, "Done")?,
             }))
         }
+        // A land reads its Of alone, and no other field of it (core.53;
+        // crew record 0056).
+        Some("land") => act(ActSort::Land),
         Some("drop") => act(ActSort::Drop),
         Some("priority") => act(ActSort::Priority(
             number(request, "Priority")?.ok_or("it names no Priority".to_string())?,

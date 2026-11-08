@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 
 use boomdrive::git::Git;
+use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -245,7 +246,9 @@ impl Scratch {
             &self.runner_git(),
             &self.data(),
             &config,
+            &Locks::new(),
             &AtomicBool::new(false),
+            &mut || false,
             &mut |line| lines.push(line),
         );
         (outcome, lines)

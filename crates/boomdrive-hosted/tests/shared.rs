@@ -131,3 +131,8 @@ fn a_report_twice() {
 fn a_settled_want_is_given() {
     shared::a_settled_want_is_given(&mut Hosteds::new());
 }
+
+#[test]
+fn each_id_given_is_owned() {
+    shared::each_id_given_is_owned(&mut Hosteds::new());
+}

@@ -5,7 +5,7 @@
 
 mod common;
 
-use boomdrive_control::{Hello, Want};
+use boomdrive_control::{Act, ActSort, Hello, Id, Want};
 use boomdrive_crew::read::{host_read, RunnerFiles};
 use boomdrive_crew::write;
 use common::{act, file, hello, ids, launch, plan, pull, want, State, REQUESTS};
@@ -465,6 +465,37 @@ fn an_act_naming_no_host_goes_to_the_runner_holding_its_launch() {
     // host-b holds launch 20, so its retry 22 is host-b's; host-a claims 21 and
     // takes its priority 23.
     assert_eq!(ids(&pulled), ["home/21", "home/23"]);
+}
+
+/// The crew-control-plane spec's "A land naming no host, of a launch this
+/// runner holds": host-b holds launch 20, so its land 25 is host-b's;
+/// host-a claims 21 and takes its land 24 (core.53).
+#[test]
+fn a_land_naming_no_host_goes_to_the_runner_holding_its_launch() {
+    let state = State::new();
+    let launch_21 = launch(21, None, "unit/a", CREW, "b", &[]);
+    main_holding(
+        &state,
+        &[
+            kit(CREW),
+            launch_21,
+            act(24, "land", None, "unit/a", 21, &[]),
+            act(25, "land", None, "unit/a", 20, &[]),
+        ],
+    );
+    answering(&state, "host-b", &[launched(20)]);
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = pull(&mut host_a, &kept());
+    assert_eq!(ids(&pulled), ["home/21", "home/24"]);
+    assert_eq!(
+        pulled.wants[1],
+        Want::Act(Act {
+            id: Id::new("home/24"),
+            launch: Id::new("home/21"),
+            lease: 1,
+            what: ActSort::Land,
+        })
+    );
 }
 
 #[test]
