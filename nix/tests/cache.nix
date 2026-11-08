@@ -13,15 +13,11 @@ let
   substituter = "https://boomdrive.cachix.org";
   key = "boomdrive.cachix.org-1:vHLgmasPg2jKqkvPXWOOrYzspoGL2xxsW4fAuHBtiag=";
 
-  # The README's **Installing with nix**, up to the next section, and each
-  # nix block in it. A host copies the block that trusts the cache, so one
-  # block holds each substituter and key nixConfig names, as nix strings.
-  installing = lib.findFirst (lib.hasPrefix "Installing with nix\n") null (
-    lib.splitString "\n## " (builtins.readFile ../../README.md)
-  );
-  nixBlocks = map (block: lib.head (lib.splitString "```" block)) (
-    lib.drop 1 (lib.splitString "```nix\n" (toString installing))
-  );
+  # The README's **Installing with nix** and each nix block in it, as
+  # lib.nix gives them. A host copies the block that trusts the cache, so
+  # one block holds each substituter and key nixConfig names, as nix
+  # strings.
+  inherit (t) installing nixBlocks;
   named = t.flake.nixConfig.extra-substituters ++ t.flake.nixConfig.extra-trusted-public-keys;
   trusts = block: lib.all (value: lib.hasInfix ''"${value}"'' block) named;
 
