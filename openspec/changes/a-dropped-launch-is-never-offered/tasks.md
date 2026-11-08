@@ -14,6 +14,8 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 1.4 A kit's launch a drop names is never claimed, and no branch is written for it. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_kits_launch_dropped_before_it_is_claimed` passes, proving "A kit's launch dropped before it is claimed".
 - [x] 1.5 A claim of a dropped launch is not given. No act naming no host goes with it, as `own_claims` leaves dropped launches out. The report's write keeps no claim of a dropped launch (design Decision 2; Task notes 1.3). True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_claimed_launch_dropped` passes, proving "A claimed launch dropped".
 - [x] 1.6 The claims of launches no drop names stand as they were. True when `devenv shell -- cargo test -p boomdrive-crew --test claims` passes, proving the MODIFIED requirements' scenarios that design Decision 6 names in `tests/claims.rs`.
+- [ ] 1.7 `tests/drops.rs` passes clippy's `cloned_ref_to_slice_refs`: `a_claimed_launch_dropped` hands `main_holding` its kit's launch as `std::slice::from_ref(&kit)`, not `&[kit.clone()]`. True when `sluice exec main -- moon run boomdrive-crew:lint` passes.
+- [ ] 1.8 `tests/read.rs`'s `a_retry_of_the_submission` pulls with the runner's report answering launch 12 `launched`, so the drop its fixture holds, request 15, leaves 12 given and its acts 13 to 16 follow it as before. True when `sluice exec main -- moon run boomdrive-crew:test` passes.
 
 ## 2. A drop reaches the runner that holds its launch
 
@@ -30,4 +32,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. What it says, and its spec
 
 - [x] 4.1 README's section on crew's table says that crew's implementation offers and claims no launch a drop names unless the runner launched it, lets go one the runner holds unlaunched, and gives a drop to the runner that holds its launch. True when `sluice exec main -- moon run root:format` passes.
-- [x] 4.2 The spec delta is archived into `openspec/specs/crew-control-plane/spec.md`. True when, after `devenv shell -- openspec archive a-dropped-launch-is-never-offered --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 4.2 The spec delta is archived into `openspec/specs/crew-control-plane/spec.md`. True when, after `devenv shell -- openspec archive a-dropped-launch-is-never-offered --yes`, `sluice exec main -- moon run root:specs` passes.

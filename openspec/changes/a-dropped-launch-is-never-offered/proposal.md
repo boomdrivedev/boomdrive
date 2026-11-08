@@ -35,7 +35,8 @@ None.
   - `src/read.rs`: `Main` knows the launches a drop names;
   - `src/lib.rs`: `pull_partition` gives no offer and makes no claim for a dropped launch the runner has not launched, and gives a drop whose launch the runner holds; `report` keeps no claim of a dropped launch;
   - `src/write.rs`: `let_go` lets go a dropped launch the runner holds unlaunched;
-  - `tests/drops.rs`: the spec's scenarios.
+  - `tests/drops.rs`: the spec's scenarios;
+  - `tests/read.rs`: "A retry of the submission" pulls with launch 12 answered `launched`, so the drop its fixture holds leaves 12 given.
 - `README.md`: crew's implementation offers no dropped launch.
 - `docs/adr/0002-…`: an amendment of 2026-11-07.
 - Nothing else changes: no rule, no crate, no tool, no tracked file type, no message of the protocol, no code of the runner's or of the hosted implementation.
@@ -47,6 +48,7 @@ crates/boomdrive-crew/src/read.rs
 crates/boomdrive-crew/src/lib.rs
 crates/boomdrive-crew/src/write.rs
 crates/boomdrive-crew/tests/drops.rs
+crates/boomdrive-crew/tests/read.rs
 README.md
 docs/adr/0002-the-runner-takes-leased-work-while-its-flume-stream-has-room-and-carries-each-tools-record-back-as-given.md
 ```
