@@ -2,27 +2,27 @@
   "schema": "sluice/submission@1",
   "id": 1,
   "branch": "main",
-  "head": "91aff4b74c91b37c374c46b43b35e87b128b0c65",
+  "head": "3cb12e20c76c17ef51cb8be1c32bec8671a7ab73",
   "from": {
-    "agent": "change/the-runner-keeps-its-repositories",
-    "worktree": "pull/1",
-    "head": "change/the-runner-keeps-its-repositories"
+    "agent": "change/parse-words",
+    "worktree": "change/parse-words",
+    "path": "/private/tmp/scratch/host/worktrees/parse-words",
+    "host": "host-a"
   },
-  "submitted": "2026-10-31T20:07:34Z",
+  "submitted": "2026-11-08T00:34:29Z",
   "after": [],
   "priority": 0,
   "attempt": 1,
   "state": "landed",
   "tested": {
-    "combination": "0e00e7280074caab4fe6694746db1c872bd67443",
-    "on": "2b8b9ec3326ef2f027ebfe9f246eed4943f1e938",
+    "combination": "ff90cd8f13c83a0d34105fa1e93e569e443abb2e",
+    "on": "0eb4f97716867a82046e1056cf9f42339f2bf9ea",
     "submissions": [
       1
     ]
   },
   "result": "passed",
-  "delivered": "2026-10-31T20:08:16Z",
-  "delivered_to": "pull/1",
-  "landed_as": "3e61c31926e3e265212226d30fe3c5934665cc4d",
-  "subject": "change/the-runner-keeps-its-repositories"
+  "delivered": "2026-11-08T00:34:32Z",
+  "delivered_to": "/private/tmp/scratch/host/worktrees/parse-words",
+  "landed_as": "fdaaeaf1b1094b39db4ccea5f01e88a3bedb95d8"
 }

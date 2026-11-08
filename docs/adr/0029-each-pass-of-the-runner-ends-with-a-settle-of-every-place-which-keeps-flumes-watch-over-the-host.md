@@ -12,7 +12,7 @@ decision-makers:
 Status: proposed on 2026-11-07 by the construct stage of the change `each-pass-ends-with-a-settle`. The direction is the user's, in their words of 2026-11-06 quoted below. How the runner meets it, when in its loop the settle runs, the bound it states and what it says, is the stage's choice, made on this repository's rules and Flume's statement. The record is accepted when the user says yes to it.
 
 Deciders: the user, 2026-11-06, for the direction; the construct stage, for how it is met.
-Sources: Flume record 0051 and the design of Flume's change `every-place-waiting-on-the-merge-queue-is-settled-at-every-depth`, its named follow-up B1; Flume's statement, clauses 46, 119, 120 and 208 and section 9's runner; the planner's signal 2026-11-06-agentplot-planner-f440c926/01-boomdrive-first on afterthought/crew-state; Flume v0.17.0, the first release that takes `flume settle --every`; records 0002, 0003, 0010 and 0026; rules core.1, core.11, core.13, core.16, core.22 and core.50; the running spec.
+Sources: Flume record 0051 and the design of Flume's change `every-place-waiting-on-the-merge-queue-is-settled-at-every-depth`, its named follow-up B1; Flume's statement, clauses 46, 119, 120 and 208 and section 9's runner; a planner's signal of 2026-11-06; Flume v0.17.0, the first release that takes `flume settle --every`; records 0002, 0003, 0010 and 0026; rules core.1, core.11, core.13, core.16, core.22 and core.50; the running spec.
 
 ## Context and problem statement
 

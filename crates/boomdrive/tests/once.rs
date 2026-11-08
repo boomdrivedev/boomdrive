@@ -38,17 +38,17 @@ fn retry() -> ActSort {
 #[test]
 fn a_retry_not_made_twice() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(offer("madswan/12", "a"))]);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/12", "a"))]);
     bench.pass(&mut plane);
     plane.set_wants(vec![
-        Want::Offer(offer("madswan/12", "a")),
-        act("madswan/20", "madswan/12", retry()),
+        Want::Offer(offer("home/12", "a")),
+        act("home/20", "home/12", retry()),
     ]);
     plane.refuse_reports("the state repository cannot be pushed");
     bench.pass(&mut plane);
     assert_eq!(bench.flume.acts().len(), 1);
     assert_eq!(
-        bench.report().acts[&Id::new("madswan/20")].outcome,
+        bench.report().acts[&Id::new("home/20")].outcome,
         Outcome::Done
     );
     plane.take_reports();
@@ -56,7 +56,7 @@ fn a_retry_not_made_twice() {
     assert_eq!(bench.flume.acts().len(), 1, "no second retry");
     assert_eq!(lines, [] as [String; 0]);
     let reported = plane.reports().last().unwrap();
-    assert_eq!(reported.acts[&Id::new("madswan/20")].outcome, Outcome::Done);
+    assert_eq!(reported.acts[&Id::new("home/20")].outcome, Outcome::Done);
 }
 
 /// A Flume that reads the report file at every act it is asked, so a test

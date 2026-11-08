@@ -8,8 +8,8 @@ The hello's capacity SHALL be Flume's host part, `running`, `bound`, `room` and 
 
 #### Scenario: Streams as Flume printed them
 
-- **WHEN** the stub `flume` prints a listing whose host part holds two streams and a pool named `madswan`
-- **THEN** the hello's capacity holds the two streams' text as the stub printed it, and the word `madswan` appears nowhere in the hello
+- **WHEN** the stub `flume` prints a listing whose host part holds two streams and a pool named `pool-a`
+- **THEN** the hello's capacity holds the two streams' text as the stub printed it, and the word `pool-a` appears nowhere in the hello
 
 ### Requirement: Room is read from Flume's status and counted down within a pass
 

@@ -4,7 +4,7 @@
 
 A control pass takes a pull's launches ahead of its acts on places (record 0002's first amendment of 2026-11-07), but a launch the next pull offers still waits for every act of the pass under way, and every act on a place costs Flume's settle of every place on the host, where no caller keeps watch (Flume's clause 119), even one Flume refuses because its place no longer stands.
 
-On deneb on 2026-11-07 one pass carried out some 180 of one partition's acts on places, 162 of them refused, at about 30 seconds each: `flume --json priority <place> 12` took 27 to 33 seconds to refuse a place that no longer stood, where `flume --json status <place>`, which settles nothing, refused it in about ten milliseconds in the same words. Another partition's launches 63 and 64, asked at 13:48:54Z, waited through that pass and most of the next, with that partition's stream running none of its four agents.
+On a host on 2026-11-07 one pass carried out some 180 of one partition's acts on places, 162 of them refused, at about 30 seconds each: `flume --json priority <place> 12` took 27 to 33 seconds to refuse a place that no longer stood, where `flume --json status <place>`, which settles nothing, refused it in about ten milliseconds in the same words. Another partition's launches 63 and 64, asked at 13:48:54Z, waited through that pass and most of the next, with that partition's stream running none of its four agents.
 
 The orchestrator's brief, 2026-11-07: "Boomdrive's runner answers a pull's acts in seconds: no partition's acts hold another partition's launches, within a partition launches go ahead of other acts, and an act Flume refuses because its place no longer stands costs no more than reading the refusal, as records 0002 and 0010 say."
 

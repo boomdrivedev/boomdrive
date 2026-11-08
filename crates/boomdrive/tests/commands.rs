@@ -21,7 +21,7 @@ use fakes::Bench;
 use std::fs;
 
 /// The repository the bolt is in.
-const CREW: &str = "afterthought/crew";
+const CREW: &str = "example/crew";
 
 /// The command's id.
 const ID: &str = "branch/1";
@@ -51,7 +51,7 @@ fn bolt_in(repository: &str) -> Want {
     })
 }
 
-/// A bench keeping `afterthought/crew`, whose forge on `scratch` holds
+/// A bench keeping `example/crew`, whose forge on `scratch` holds
 /// `main`, its clone made by the runner's own `clone::make`.
 fn keeping_crew(scratch: &Scratch) -> Bench {
     scratch.origin(CREW);

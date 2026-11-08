@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The one view of each kept repository, which the user browses. It is a worktree of the runner's clone under the views root, detached at `origin/<default>` and never on a branch. It is moved only while it holds no uncommitted change and stands where the runner last put it, so a view the user moved stays where they put it (crew record 0052 part 2; swancloud's `herdr.14` as it moves to the runner, carried whole).
+The one view of each kept repository, which the user browses. It is a worktree of the runner's clone under the views root, detached at `origin/<default>` and never on a branch. It is moved only while it holds no uncommitted change and stands where the runner last put it, so a view the user moved stays where they put it (crew record 0052 part 2; afterthought/swancloud's `herdr.14` as it moves to the runner, carried whole).
 
 ## ADDED Requirements
 

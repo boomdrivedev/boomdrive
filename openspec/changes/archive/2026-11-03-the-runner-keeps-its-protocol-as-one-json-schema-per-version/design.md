@@ -12,18 +12,7 @@ What stands:
   - `Carried::text` holds a tool's answer as a text. `HostPart`'s four fields each hold the text of a Flume field as Flume printed it.
   - `crates/flywheel-crew` is the one implementation. `crates/flywheel/src/planes.rs` lists it, and refuses `type = "hosted"` as a word the binary does not carry (that change's Decision 20).
   - Rules core.1 to core.41 bind. Record 0004 takes the herdr terminal relay out until Flume relays one, and `_open.md` names the code that still stands against core.29 for it.
-- **agentplot/flywheel-cloud**, at `6b63a54`, read 2026-11-02.
-  - **Records.**
-    - 0016: a launch's terminal is relayed through the Host object, encrypted end to end, and its key exchange is in the protocol from its first version.
-    - 0022: every runner message names its version, is checked before any method sees it, and is refused whole if it fails, and every offer, lease, command and event carries an id.
-    - 0047: a host is enrolled to its Account alone.
-    - 0049: of a place's status the cloud keeps only ids, states, times, counts, what it made, its pane's address and the words a person reads to follow or answer it, and the protocol's schema has no field for the rest.
-    - 0056, superseding 0046: the schema lives in this repository, one set of files per version, beside the interface; the cloud pins it by revision.
-    - 0061: the page connects to the Flywheel object by the Agents SDK's `useAgent`, and draws a terminal with xterm.js.
-    - 0065: grants are WorkOS FGA's, and runners are not its subjects.
-  - **Rules.** core.13, the Host object; core.18, a terminal relayed and never stored; core.23 and core.43, a member's certified key and the log of keys; core.36 to core.39, the runner contract; core.106, the schema's home; core.108, what of a place's status reaches it.
-  - **Its roadmap**, `design/roadmap.md`: item 1.16 is this change, under ruling D5. Item 1.6 pins the schema and builds the Worker's check, and item 1.15, in this repository, builds the hosted implementation. Both wait on this change.
-  - **Its research**, `design/research/awesome-lists-disposition.md`: rows S6 (the terminal encrypted end to end), F54 (frames addressed by byte offset), F50 (schema tools), and F8 (the Worker's validator and a compatibility check), which is 1.6's.
+- **agentplot/flywheel-cloud**, read 2026-11-02: its records 0016, 0022, 0047, 0049, 0056 (superseding 0046), 0061 and 0065; its rules core.13, core.18, core.23, core.36 to core.39, core.43, core.106 and core.108; its roadmap's items 1.6, 1.15 and 1.16 and its ruling D5, item 1.16 being this change; and its research rows S6, F8, F50 and F54 (`design/research/awesome-lists-disposition.md`). What this change takes from each is said where it is cited.
 - **The tools' answers** the copies are cut from:
   - Flume 0.4.1's `status --json`, as `crates/flywheel/tests/fixtures/flume-0.4.1/` holds it. Flume's place-status spec makes its JSON a form that only gains fields.
   - sluice 0.61.1's `status --json`, as `crates/flywheel/tests/fixtures/sluice-0.61.1/` holds it, and the fields of it the runner already carries (`crates/flywheel/src/sluice.rs`, that change's Decision 13).
@@ -31,32 +20,32 @@ What stands:
 
 There are no area pages, so `docs/architecture/core.md` binds every path this change touches.
 
-## What wave 0 settles for this change
+## What the cloud's earlier items settle for this change
 
-The cloud roadmap's wave 0 was made so that wave 1 builds from it. Each item bears on this change as follows.
+The cloud roadmap's items before this one bear on it as follows.
 
-- **0.5, `the-runner-carries-crews-work-into-flume`**, landed here as #2.
+- **`the-runner-carries-crews-work-into-flume`** (the cloud's item 0.5), landed here as #2.
   - Its `ControlPlane` is the source of the messages' shapes. Version 1 carries its `Hello`, its `Want`s and its `Report` as its serde types write them, field for field.
   - The wire departs from them in three places only, each forced by a rule (Decision 6):
     - a place's status and sluice's entry go up as their copies, not as texts;
     - the host's capacity goes up as values, its streams without their queues;
     - a terminal's link is a set of sealed frames.
   - Its Decision 20 named the hosted implementation's crate `flywheel-hosted`, and this change makes that crate to hold the protocol (Decision 1).
-- **The first run** (flywheel-cloud `design/the-first-run-from-an-empty-account.md` and `.html`).
-  - **`--keep`.** The install command carries the repositories to keep, so the person who runs it writes the runner's configuration on the host, and the cloud sends nothing to the machine. Version 1 has no message that writes the configuration or names a repository for the host to keep. That agrees with core.16, and leaves `setup`'s managed level (core.17, record 0009) to the change that builds it (Decision 11).
-  - **FR3, a new host asks to be admitted.** The host's first hello carries its tools, the repositories it keeps and its streams' room (Decisions 5 and 8). The token it used and who took it are the cloud's own, from enrolment. The host takes no lease before it is admitted, and the protocol needs nothing for that: the control plane offers it nothing. The machine FR3 names is not in the interface's hello. It comes with enrolment, which 1.15 builds and adds to version 1 (Decision 11).
-  - **FR7, the states that reach the protocol.**
+- **The first run** (flywheel-cloud's `design/the-first-run-from-an-empty-account.md`).
+  - **`--keep`.** The person who installs the runner writes its configuration on the host. Version 1 has no message that writes the configuration or names a repository for the host to keep. That agrees with core.16, and leaves `setup`'s managed level (core.17, record 0009) to the change that builds it (Decision 11).
+  - **FR3.** The host's first hello carries its tools, the repositories it keeps and its streams' room (Decisions 5 and 8). The token it used and who took it are the cloud's own, from enrolment. The host takes no lease before it is admitted, and the protocol needs nothing for that: the control plane offers it nothing. The machine FR3 names is not in the interface's hello. It comes with enrolment, which 1.15 builds and adds to version 1 (Decision 11).
+  - **FR7.**
     - *A tool missing on the host*: the hello's `tool_versions` names it as `missing`, with the words, and `capacity` is `missing` where Flume's status cannot be read (Decision 5).
-    - *The host gone quiet*: no message says it. It is the socket's silence under the WebSocket protocol's own pings, which core.21 keeps out of the application's messages. The Host object tells the Flywheel (cloud core.13).
+    - *The host gone quiet*: no message says it. It is the socket's silence under the WebSocket protocol's own pings, which core.21 keeps out of the application's messages (cloud core.13).
     - *The token lapsed*: that is enrolment's answer, and 1.15's to add (Decision 11).
-- **Records 0047 and 0065, and `design/research/authorization.md`.** A runner's host token is its Account's, and runners are not FGA subjects. So no message of version 1 names an account, a member's grant, a role or a permission. A connection is its enrolment's, and what it may do comes from the cloud's definition, never from a message. The one identity a message carries is a signature's: the browser's key share is signed by a key certified to a member (Decision 10). The cloud checks the member's permission to open a terminal (its core.115, record 0055), and sends no grant down. A test holds version 1 to naming none (Decision 14).
-- **Record 0061.** The page's socket is the Agents SDK's `useAgent` to the Flywheel object, apart from the runner's protocol. So S6's key exchange and F54's offsets are the runner's frames, and nothing of the page's socket is in this schema. The frames pass the cloud sealed. A frame's plaintext is the terminal's bytes, which the page's xterm.js writes as they come (Decision 10).
+- **Records 0047 and 0065, and `design/research/authorization.md`.** A runner's host token is its account's, and a runner holds no grant. So no message of version 1 names an account, a member's grant, a role or a permission. A connection is its enrolment's, and what it may do comes from the cloud's definition, never from a message. The one identity a message carries is a signature's: the browser's key share is signed by a key certified to a member (Decision 10). The cloud checks the member's permission to open a terminal (its core.115, record 0055), and sends no grant down. A test holds version 1 to naming none (Decision 14).
+- **Record 0061.** The page's socket is apart from the runner's protocol. So S6's key exchange and F54's offsets are the runner's frames, and nothing of the page's socket is in this schema. The frames pass the cloud sealed. A frame's plaintext is the terminal's bytes (Decision 10).
 
-Where a wave 0 record changes what the roadmap's entry for 1.16 says, the record wins:
+Where a record of the cloud's changes what its roadmap's item 1.16 says, the record wins:
 
-- **The copy of a place's status is in version 1.** The entry names the messages and the terminal's frames. Record 0049, of wave 0's item 0.4, gives the schema no field for the text the cloud does not keep. Record 0014 had left the copy's fields to the change that builds the hosted implementation. Since record 0056 the schema is written here, so this change writes the copy, field by field, as core.108 keeps it (Decision 7). 1.15 cuts each status to it.
-- **Scrollback comes from the agent's pane through Flume, not from herdr's.** The entry, F54, has scrollback come from the herdr pane and never the cloud. Record 0061 makes the frames the runner's. This repository's core.29 and record 0004 have the runner reach a terminal only through Flume's command line, naming no multiplexer. So a reconnecting browser's redraw comes from the agent's pane through Flume's relay, never the cloud's and never kept by the runner (Decision 10).
-- **No message carries a grant.** The entry says nothing of grants. Records 0047 and 0065 settle that none goes over the runner's socket.
+- **The copy of a place's status is in version 1.** Record 0049 gives the schema no field for the text the cloud does not keep. Record 0014 had left the copy's fields to the change that builds the hosted implementation. Since record 0056 the schema is written here, so this change writes the copy, field by field, as core.108 keeps it (Decision 7). 1.15 cuts each status to it.
+- **Scrollback comes from the agent's pane through Flume, not from herdr's.** Item 1.16 and row F54 had scrollback from the herdr pane. Record 0061 makes the frames the runner's. This repository's core.29 and record 0004 have the runner reach a terminal only through Flume's command line, naming no multiplexer. So a reconnecting browser's redraw comes from the agent's pane through Flume's relay, never the cloud's and never kept by the runner (Decision 10).
+- **No message carries a grant.** Records 0047 and 0065 settle that none goes over the runner's socket.
 
 ## Goals / Non-Goals
 
@@ -72,7 +61,7 @@ Where a wave 0 record changes what the roadmap's entry for 1.16 says, the record
 **Non-Goals:**
 
 - **The hosted implementation** (1.15): the socket, enrolment, the key, the certificates, the cutting of a status to its copy, the runtime check of every message, and the opener in `planes.rs`.
-- **The cloud's check** (1.6): its pin, its validators compiled at build time, and jsoncompat holding the version before (F8).
+- **The cloud's check** (its 1.6 and F8).
 - **The browser's half of a terminal** (5.5), and the suite both ends use (Decision 10).
 - **Messages no change has designed** (Decision 11): health, forge tokens, enrolment, the runner's own commands and a stray place's drop.
 - **A change to the interface.** `flywheel-control` and crew's implementation stay as they are.
@@ -121,8 +110,8 @@ Version 1 is these files, each a JSON Schema of draft 2020-12, named for what it
 | `terminal.schema.json` | a key share and a terminal's frames (Decision 10) |
 
 - **Each file's `$id`** is its address among the repository's raw files at `main`, under the version's directory: `https://raw.githubusercontent.com/agentplot/flywheel-runner/main/crates/flywheel-hosted/protocol/v1/<file>`.
-- **Every `$ref` is relative**, to a file of the same version and a `$defs` entry in it. No check fetches a file: each validator, the runner's tests and the Worker alike, is handed the version's files and nothing else. A reference outside them fails to resolve.
-- **A pattern** uses only what ECMA-262 and Rust's `regex` read alike: anchors, classes, counts and alternation. The Worker's validator and the runner's tests then refuse the same strings.
+- **Every `$ref` is relative**, to a file of the same version and a `$defs` entry in it. No check fetches a file: each validator, the runner's tests and the cloud's alike, is handed the version's files and nothing else. A reference outside them fails to resolve.
+- **A pattern** uses only what ECMA-262 and Rust's `regex` read alike: anchors, classes, counts and alternation. The cloud's check and the runner's tests then refuse the same strings.
 - **`examples/from-runner/` and `examples/to-runner/`** hold one example message or more of each kind, each a whole message, with neutral names (core.41). They are the protocol's examples for a reader, and the tests' cases (Decision 14).
 - **`README.md`**, in `protocol/`, says what a reader of the contract needs:
   - the versions and when one is fixed (Decision 12);
@@ -134,7 +123,7 @@ Version 1 is these files, each a JSON Schema of draft 2020-12, named for what it
 Alternatives:
 
 - **One file.** Not taken: the copies alone run to many definitions, and a reviewer reads a file per subject more easily.
-- **AsyncAPI or OpenAPI.** Not taken: the Worker's validator (F8) reads JSON Schema, and neither adds a check the schema lacks.
+- **AsyncAPI or OpenAPI.** Not taken: the cloud's check (F8) reads JSON Schema, and neither adds a check the schema lacks.
 - **Protocol Buffers with buf** (F50). Not taken: record 0056 fixes JSON Schema, and the messages are JSON.
 
 ### 3. The envelope: a version, an id of its own, one body, two directions
@@ -148,12 +137,12 @@ Every message is a JSON object with three fields:
 - **`protocol_version`** is `1` in every message of version 1 (cloud core.36). It is the protocol's number, apart from the hello's `interface_version`, which is the interface's. A connection asks for the subprotocol `flywheel-runner.v1` at its upgrade, so a control plane that does not accept the version refuses the connection before any message (1.6, 1.15).
 - **`id`** is the message's own, given by its sender and unique among what that sender sends on its enrolment, across reconnects (cloud core.38). A resend keeps it (core.21), so a second delivery changes nothing. It is a string of 1 to 128 characters of letters, digits and `._:/-`, and the runner never reads into another's. It is not a want's id: an offer's, an act's or a command's `id` is the interface's `Id`, inside the body.
 - **`body`** holds exactly one kind, by its name, which holds that kind's fields. A body is externally tagged, as the interface's own enums are.
-- **Two directions.** `from-runner.schema.json` takes only the kinds a runner sends, and `to-runner.schema.json` only those a control plane sends. The Worker checks what it is sent against the first, and the runner checks what it is sent against the second (core.42). A kind of the other direction is refused.
+- **Two directions.** `from-runner.schema.json` takes only the kinds a runner sends, and `to-runner.schema.json` only those a control plane sends. The cloud checks what it is sent against the first, and the runner checks what it is sent against the second (core.42). A kind of the other direction is refused.
 
 Alternatives:
 
 - **The kind as a `type` field beside the body's fields.** Not taken: a body's own `id`, such as an offer's, would clash with the message's. serde can read it only by flattening, which cannot also refuse unknown fields.
-- **One envelope for both directions.** Not taken: the Worker would take a control plane's message from a runner.
+- **One envelope for both directions.** Not taken: the cloud would take a control plane's message from a runner.
 
 ### 4. Closed objects, and the forms of values
 
@@ -162,7 +151,7 @@ Alternatives:
   - The **values carried whole**, of any form, are a sluice row's `flaky` (Decision 9) and a thing an end made (Decision 7), each as its tool printed it.
 - **Required.** Every field the interface's serde types always write is required, `null` where the interface writes none. The schema refuses a missing field that serde would read as none, so the two ends agree on what a message holds.
 - **A time** of the runner's or a control plane's is RFC 3339 in UTC to the second, `YYYY-MM-DDTHH:MM:SSZ`, by pattern. `format: date-time` is not used, since validators treat it as an annotation by default and would disagree. A time inside a copy is the tool's, as it printed it: Flume's are Unix seconds, and sluice's are its own strings.
-- **An integer** is between 0 and 2^53 − 1, or between −(2^53 − 1) and 2^53 − 1 where it may be negative, such as a launch's priority. The Worker's JavaScript then reads it exactly. A lease's number is 1 or more.
+- **An integer** is between 0 and 2^53 − 1, or between −(2^53 − 1) and 2^53 − 1 where it may be negative, such as a launch's priority. A JavaScript reader then reads it exactly. A lease's number is 1 or more.
 - **Bytes** are base64url without padding, by pattern: a key, a signature, a certificate and a sealed frame.
 - **A repository's address** is `owner/name`. **A commit** is 40 or 64 lowercase hex digits. **A digest** is `sha256:` and 64 hex digits, as an inbox's brief is carried.
 
@@ -217,7 +206,7 @@ It names where an interface type allows more than the protocol does: an act's or
 
 It departs from them in three places, each because a rule makes the interface's form wrong for a hosted control plane:
 
-1. **A place's status and sluice's entry go up as copies.** The interface's `Carried::text` holds a tool's answer as a text. Version 1's carried status is `{"copy": {…}, "at": …, "listed": …}`, its `copy` an object holding only the fields Decision 7 names, each as Flume printed it. A text would hide its fields from the Worker's check, and a validator reads no schema into a string, so the cloud could not refuse a field core.108 keeps from it. Its `at` and `listed` are the interface's. sluice's entry goes the same way (Decision 9).
+1. **A place's status and sluice's entry go up as copies.** The interface's `Carried::text` holds a tool's answer as a text. Version 1's carried status is `{"copy": {…}, "at": …, "listed": …}`, its `copy` an object holding only the fields Decision 7 names, each as Flume printed it. A text would hide its fields from the cloud's check, and a validator reads no schema into a string, so the cloud could not refuse a field core.108 keeps from it. Its `at` and `listed` are the interface's. sluice's entry goes the same way (Decision 9).
 2. **The host's capacity goes up as values**, its streams without their queues (Decision 8). The interface's `HostPart` holds each Flume field as a text, `streams` among them, whose queues name places of every partition on the host (core.26).
 3. **A terminal's link is frames.** The interface's `Terminal` holds a `Link`, a channel. On the wire it is the terminal messages of Decision 10, sealed end to end (core.30).
 
@@ -272,7 +261,7 @@ Alternatives:
 - **The whole status, with the cloud dropping what it does not keep.** Ruled out by core.27 and cloud record 0049.
 - **Only the top-level fields named, each carried whole.** Not taken: `agent`, `stages[].end` and `phase.over.kept` hold text the cloud may not keep, beside fields it does.
 - **A made thing closed to its `name`.** Not taken: Flume carries each thing's fields as the run wrote them, so a closed thing would refuse a report holding a thing with a field of its own. What a place made is the cloud's to keep (cloud core.108).
-- **Leaving the copy to 1.15**, as record 0014 had it. Not taken: record 0049 and record 0056 make it version 1's (*What wave 0 settles*).
+- **Leaving the copy to 1.15**, as record 0014 had it. Not taken: record 0049 and record 0056 make it version 1's (*What the cloud's earlier items settle*).
 
 ### 8. The hello, and the copy of Flume's host part
 
@@ -307,7 +296,7 @@ A row's `flaky` holds the task's outcomes and times, and the runner carries it w
 
 ### 10. A terminal: signed shares, sealed frames, and offsets
 
-Cloud record 0016 puts the key exchange in the protocol's first version, and core.30 keeps every byte of a pane from leaving the host in the clear. Record 0061 makes the frames the runner's, which reach the page's xterm.js.
+Cloud record 0016 puts the key exchange in the protocol's first version, and core.30 keeps every byte of a pane from leaving the host in the clear. Record 0061 makes the frames the runner's.
 
 - **The shares.** `terminal_open` carries the browser's share, and `terminal_opened` the runner's, each a `share`:
   - `suite`, the scheme both ends use;
@@ -318,7 +307,7 @@ Cloud record 0016 puts the key exchange in the protocol's first version, and cor
   The runner takes the browser's share only where its signature checks against a key certified to a member. It never opens a terminal on a share that fails, and never falls back to the clear (core.30). The signature is over the UTF-8 bytes of `flywheel-runner.v1 terminal share`, then, each after a NUL byte, the end (`browser` or `runner`), the terminal's id, the launch's id, the suite, and the key's bytes. A share therefore binds its terminal, its launch and its end, so a share is never taken for another terminal or reflected back.
 - **The suite is named, not fixed.** `suite` is a string the two ends agree. The cloud relays it and cannot read what it names. The change that builds the runner's half with the browser's (1.15 and 5.5) chooses the scheme (cloud record 0016: HPKE, or ECDH with HKDF and AES-GCM), and names it in the README, without a new version.
 - **Sealed frames.** `terminal_output` and `terminal_input` carry `sealed`, the suite's ciphertext of the frame's bytes, in base64url. A frame has no other field holding its bytes, so a frame in the clear fails the check.
-- **The plaintext** of `terminal_output` is the pane's bytes as Flume's relay gives them, which the browser hands to xterm.js as they come. The plaintext of `terminal_input` is the bytes xterm.js gives for the person's keys, which the runner passes to Flume as a person's keys (record 0004).
+- **The plaintext** of `terminal_output` is the pane's bytes as Flume's relay gives them, which the browser draws as they come. The plaintext of `terminal_input` is the bytes the browser gives for the person's keys, which the runner passes to Flume as a person's keys (record 0004).
 - **Offsets (F54).** Each frame carries `offset`, the place of its first byte in its direction's stream, counted from 0 at the terminal's opening. A browser whose socket dropped, its keys still held, sends `terminal_resume` with `seen`, the offset it has every byte up to.
   - The runner keeps none of what it sent (core.11), and the cloud keeps nothing (cloud core.18). So where `seen` is behind what the runner has sent, the runner answers with a frame whose `redraw` is `true`: the pane's present screen, read from the pane through Flume's relay, at the runner's next offset. The browser clears its terminal and draws it.
   - Until Flume relays a stream of bytes, each screen the runner reads is a whole screen, so every frame it sends is a redraw.
@@ -327,7 +316,7 @@ Cloud record 0016 puts the key exchange in the protocol's first version, and cor
 
 Alternatives:
 
-- **Binary WebSocket frames for the bytes.** Not taken: the schema could not describe them, and the Worker could not check them (cloud core.36). base64url costs a third more bytes.
+- **Binary WebSocket frames for the bytes.** Not taken: the schema could not describe them, and the cloud could not check them (cloud core.36). base64url costs a third more bytes.
 - **A buffer of sent bytes on the runner, replayed from `seen`.** Not taken: it keeps a terminal's bytes (core.11).
 - **A fixed suite.** Not taken: the scheme is the building change's (cloud record 0016), and that change comes after a release speaks version 1.
 
@@ -349,7 +338,7 @@ Each such change adds its messages to version 1 while no release of the runner s
 
 A version may change until a release of the runner speaks it to a control plane. From the first such release it never changes, and its directory is never removed (core.42). The cloud's pin can then hold the current version and the one before (cloud core.36, record 0056). Every change after that is a new version, in a directory of its own beside it, made here first. The cloud takes it by moving its pin.
 
-The gate cannot know what a release spoke until a release exists (record 0012), so this is a rule a reviewer holds. The cloud's jsoncompat check (F8, 1.6) holds the version before against the current one on its side. The change that cuts the first release that speaks version 1 adds this repository's check, a digest of each of its files.
+The gate cannot know what a release spoke until a release exists (record 0012), so this is a rule a reviewer holds. The cloud's check (its 1.6 and F8) holds the version before against the current one on its side. The change that cuts the first release that speaks version 1 adds this repository's check, a digest of each of its files.
 
 ### 13. The runner's types, tested against the schema (F50)
 
@@ -412,7 +401,7 @@ Alternative: excluding the protocol's files from formatting. Not taken: they are
 - **core.2**: Decisions 1 and 13, and the control-plane-interface spec's scenario.
 - **core.3**: nothing here opens a socket. A connection is the runner's, outgoing (Decision 3).
 - **core.4**: Decision 14's names. No credential is a field, and none is in an example.
-- **core.5** and **core.16**: no message names a repository for the host to keep (*What wave 0 settles*).
+- **core.5** and **core.16**: no message names a repository for the host to keep (*What the cloud's earlier items settle*).
 - **core.7**: Decisions 1 and 15.
 - **core.8**: jsonfmt from the pinned nixpkgs, and `jsonschema` pinned by `Cargo.lock`.
 - **core.11**: Decisions 7 to 10. Nothing of a terminal is kept.
@@ -452,7 +441,7 @@ None.
 
 ## Risks / Trade-offs
 
-- **Any added field is a new version** once a release speaks version 1 (Decision 4). The cloud accepts two versions at once (cloud core.36), so a field costs a version and a pin's move. Version 1 stays open to change until 1.15's first release, so the fields wave 1 finds missing are added before then.
+- **Any added field is a new version** once a release speaks version 1 (Decision 4). The cloud accepts two versions at once (cloud core.36), so a field costs a version and a pin's move. Version 1 stays open to change until 1.15's first release, so the fields the cloud's next items find missing are added before then.
 - **A report is sent whole.** Its size grows with each inbox's files and each place's copy. The copies are small, and an inbox's briefs go by digest. A host with a large inbox makes large reports, and splitting the report is a new version.
 - **The copy follows Flume 0.4.1's form.** Flume only gains fields within its version, so a later Flume's fields are left out of the copy and never refused. A Flume that changes a kept field's form would fail the check. It would break its own contract first, and the runner's checked versions (core.38) name it.
 - **A redraw is the only resume.** A browser that misses frames redraws the whole screen, and anything that scrolled off the pane's screen in the gap is lost to it. That is the price of keeping nothing (core.11, cloud core.18).

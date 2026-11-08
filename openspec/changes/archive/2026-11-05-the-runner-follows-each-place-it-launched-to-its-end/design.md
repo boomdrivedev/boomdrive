@@ -15,7 +15,7 @@ What stands:
   - `flume status [PLACE]`: a place is "a location, or `<kind>--<name>` in the repository". `--repository` is "the repository, where it is not the one the command runs in", which only a `<kind>--<name>` needs.
   - Asked by a place's location, from any folder, with or without `--repository`, and with a `--repository` that does not exist, it answers the place, or its tidied record `<location>@<at>` (clause 58; clause 62).
   - Once every end of a tidied place is delivered, Flume keeps nothing of it, and `status` of it is refused (62).
-- **crew**, at `afterthought/crew`'s `plugin/lib/runner.py`: `places.rec` holds `flume status --json <place>`'s answer on one line. `flume_facts` takes the place's entry at its location or at `<location>@…`, its phase, and how its work is over with the commit it landed at. `stage_of` reads a landed place `merged` into its bolt, or `landed` on main.
+- **crew**, at agentplot/crew's `plugin/lib/runner.py`: `places.rec` holds `flume status --json <place>`'s answer on one line. `flume_facts` takes the place's entry at its location or at `<location>@…`, its phase, and how its work is over with the commit it landed at. `stage_of` reads a landed place `merged` into its bolt, or `landed` on main.
 
 There are no area pages, so `docs/architecture/core.md` binds every path this change touches.
 

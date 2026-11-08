@@ -291,14 +291,14 @@ fn a_command_whose_lease_lapsed() {
 fn a_lease_refused() {
     let bench = Bench::new();
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
-    plane.refuse(Id::new("a"), "lease 2 of a is vega's");
+    plane.refuse(Id::new("a"), "lease 2 of a is host-b's");
     let (_, lines) = bench.pass(&mut plane);
     let p = place_of("a");
     assert!(!bench.report().launches.contains_key(&Id::new("a")));
     assert_eq!(
         lines.last().unwrap(),
         &format!(
-            "a: let go, its lease no longer this runner's: lease 2 of a is vega's: \
+            "a: let go, its lease no longer this runner's: lease 2 of a is host-b's: \
              its place {p} is left on this host as Flume holds it"
         )
     );

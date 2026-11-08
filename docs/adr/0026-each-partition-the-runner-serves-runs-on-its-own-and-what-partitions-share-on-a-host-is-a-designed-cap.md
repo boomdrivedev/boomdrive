@@ -5,22 +5,22 @@ status: accepted
 date: 2026-11-07
 decision-makers:
 - Chuck Swanberg
-- agentplot-design
+- the design agent
 ---
 
 # Each drive the runner serves runs on its own, and what drives share on a host is a designed cap
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words, carried from swancloud-planner by agentplot-operator. Amended on 2026-11-07, below: how each part of the control plane runs on its own, and what parts share.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words, carried from a planner by the operator agent. Amended on 2026-11-07, below: how each part of the control plane runs on its own, and what parts share.
 
 Amended by record 0028, accepted on 2026-11-07: it reads "drive" where it said "partition" for a body of work, and "account" where it meant what a runner enrolls, and is so written below. The user's words keep their own. The file keeps its name.
 
-Deciders: the user, 2026-11-07, after one drive's backlog on deneb held another's launches: "We might want to improve Boomdrive's design so that each account partition operates independently unless there's some sort of host-level cap and synchronization that needs to be designed." The design's words are agentplot-design's.
+Deciders: the user, 2026-11-07, after one drive's backlog on a host held another's launches: "We might want to improve Boomdrive's design so that each account partition operates independently unless there's some sort of host-level cap and synchronization that needs to be designed." The design's words are the design agent's.
 
-Sources: records 0002, 0008 and 0010; rules core.19 and core.26; signals 2026-11-07-agentplot-design-f293029e/01 on afterthought/crew-state agentplot/main and 2026-11-07-swancloud-planner-55d3681f/01 on its swancloud branch; the runner's log on deneb, 2026-11-07 (requests 181, 182 and 184 at 14:05:40, 14:06:13 and 14:06:44Z, and swancloud's launches 63 and 64 of 13:48:54Z claimed only at about 14:03Z while swancloud's stream ran none of its four).
+Sources: records 0002, 0008 and 0010; rules core.19 and core.26; the design agent's and a planner's signals of 2026-11-07; the host's runner log, 2026-11-07 (requests 181, 182 and 184 at 14:05:40, 14:06:13 and 14:06:44Z, and another drive's launches 63 and 64 of 13:48:54Z claimed only at about 14:03Z while that drive's stream ran none of its four).
 
 ## Context and problem statement
 
-A runner serves several drives of one control plane, of one account or of several, each account an enrollment of its own (core.19), and keeps each account's data apart (core.26). It does not keep the drives' time apart. On deneb the runner took every drive's requests in one line, about 30 seconds each. One drive's backlog of acts on places that no longer stood held another drive's launches for a quarter of an hour, while that drive's stream had room for four agents and ran none.
+A runner serves several drives of one control plane, of one account or of several, each account an enrollment of its own (core.19), and keeps each account's data apart (core.26). It does not keep the drives' time apart. On that host the runner took every drive's requests in one line, about 30 seconds each. One drive's backlog of acts on places that no longer stood held another drive's launches for a quarter of an hour, while that drive's stream had room for four agents and ran none.
 
 Some things on a host are shared by every drive and are no drive's own: the host's bound on agents running (Flume's I6 and 70), the host's bound on check runs (sluice's), and the one clone of each repository (record 0003). Each of these already has an owner who bounds it.
 

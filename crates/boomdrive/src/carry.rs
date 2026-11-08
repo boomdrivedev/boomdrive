@@ -1541,14 +1541,14 @@ mod tests {
     fn a_repository_is_kept_as_the_configuration_and_the_clones_have_it() {
         let flume = Address::parse("agentplot/flume").unwrap();
         let clones = Configured::new(
-            &config(&["afterthought/crew", "agentplot/flume"]),
+            &config(&["example/crew", "agentplot/flume"]),
             vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
         );
         assert_eq!(
             clones.keeping("Agentplot/Flume"),
             Keeping::Ready(Path::new("/d/repositories/agentplot/flume").into())
         );
-        assert_eq!(clones.keeping("afterthought/crew"), Keeping::NotYet);
+        assert_eq!(clones.keeping("example/crew"), Keeping::NotYet);
         assert_eq!(clones.keeping("agentplot/sluice"), Keeping::NotNamed);
         assert_eq!(clones.keeping("not an address"), Keeping::NotNamed);
         assert_eq!(clones.made(), ["agentplot/flume"]);
@@ -1557,12 +1557,12 @@ mod tests {
     #[test]
     fn a_clone_the_configuration_drops_is_dropped() {
         let flume = Address::parse("agentplot/flume").unwrap();
-        let crew = Address::parse("afterthought/crew").unwrap();
+        let crew = Address::parse("example/crew").unwrap();
         let clones = Configured::new(
-            &config(&["afterthought/crew"]),
+            &config(&["example/crew"]),
             vec![
                 (flume, PathBuf::from("/d/repositories/agentplot/flume")),
-                (crew, PathBuf::from("/d/repositories/afterthought/crew")),
+                (crew, PathBuf::from("/d/repositories/example/crew")),
             ],
         );
         assert_eq!(
@@ -1570,7 +1570,7 @@ mod tests {
             Keeping::Dropped(Path::new("/d/repositories/agentplot/flume").into())
         );
         assert_eq!(clones.keeping("agentplot/sluice"), Keeping::NotNamed);
-        assert_eq!(clones.made(), ["afterthought/crew"]);
+        assert_eq!(clones.made(), ["example/crew"]);
         assert_eq!(clones.dropped(), ["agentplot/flume"]);
     }
 }

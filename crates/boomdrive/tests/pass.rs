@@ -35,13 +35,13 @@ use std::sync::{Arc, Mutex, Once};
 const KEPT: &str = "agentplot/flume";
 
 /// The state repository, on the scratch forge.
-const STATE: &str = "afterthought/madswan-state";
+const STATE: &str = "example/home-state";
 
 /// The runner's branch, as crew reads it.
-const BRANCH: &str = "madswan/runner/deneb";
+const BRANCH: &str = "home/runner/host-a";
 
 /// The claim's words, as crew's implementation writes them.
-const CLAIMED: &str = "claimed by deneb's runner; launching once no other runner has claimed it";
+const CLAIMED: &str = "claimed by host-a's runner; launching once no other runner has claimed it";
 
 static ENVIRONMENT: Once = Once::new();
 
@@ -94,7 +94,7 @@ impl Host {
             let work = format!("unit/{unit}");
             let mut fields = vec![
                 ("Base", "bolt/x"),
-                ("Intent", "madswan/x"),
+                ("Intent", "home/x"),
                 ("Brief", "Parse the input.\n\nAs words."),
             ];
             fields.extend_from_slice(more);
@@ -105,23 +105,23 @@ impl Host {
             request(2, "b", &[("Priority", "4"), ("After", "1")]),
         ];
         state.commit(
-            "madswan/main",
+            "home/main",
             "requests.rec",
             &records::file(records::REQUESTS, &requests),
         );
-        state.commit("madswan/main", "plan.rec", &records::plan(&["a", "b"], &[]));
+        state.commit("home/main", "plan.rec", &records::plan(&["a", "b"], &[]));
         state
     }
 
-    /// crew's implementation on `deneb`, serving `madswan`, its state
+    /// crew's implementation on `host-a`, serving `home`, its state
     /// repository reached on the scratch forge, and the lines it says.
     fn crew(&self) -> (Crew, Arc<Mutex<Vec<String>>>) {
         let said = Arc::new(Mutex::new(Vec::new()));
         let lines = Arc::clone(&said);
         let config = Config {
-            host: "deneb".to_string(),
+            host: "host-a".to_string(),
             partitions: vec![Partition {
-                label: "madswan".to_string(),
+                label: "home".to_string(),
                 state_repository: StateRepository::parse(STATE).unwrap(),
             }],
         };
@@ -253,8 +253,8 @@ fn a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands(
     assert_eq!(
         lines,
         [
-            format!("madswan/1: launched at {place}"),
-            format!("madswan/2: held: waits on madswan/1 (launched at {place}, not landed)"),
+            format!("home/1: launched at {place}"),
+            format!("home/2: held: waits on home/1 (launched at {place}, not landed)"),
         ]
     );
     // The claim of both, in one write, before either was given.
@@ -270,7 +270,7 @@ fn a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands(
     assert!(a.contains(&format!("Place: {place}")), "{a}");
     let b = request(&answers, 2);
     assert!(b.contains("Outcome: held"), "{b}");
-    assert!(b.contains("Words: waits on madswan/1"), "{b}");
+    assert!(b.contains("Words: waits on home/1"), "{b}");
     let places = host.branch_file(BRANCH, "places.rec");
     let a_place = request(&places, 1);
     assert!(a_place.contains(&format!("Place: {place}")), "{a_place}");
@@ -308,8 +308,8 @@ fn a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands(
     assert_eq!(flag(b, "--kind"), Some("change"));
     assert_eq!(flag(b, "--base"), Some("bolt/x"));
     assert_eq!(flag(b, "--priority"), Some("4"));
-    assert_eq!(flag(b, "--intent"), Some("madswan/x"));
-    assert_eq!(flag(b, "--mark"), Some("boomdrive:madswan/2"));
+    assert_eq!(flag(b, "--intent"), Some("home/x"));
+    assert_eq!(flag(b, "--mark"), Some("boomdrive:home/2"));
     for launch in &launches {
         assert_eq!(flag(launch, "--stream"), None, "{launch:?}");
         assert!(!launch.iter().any(|arg| arg == "--kinds"), "{launch:?}");
@@ -317,7 +317,7 @@ fn a_kits_two_launches_claimed_launched_held_then_launched_once_the_first_lands(
     // The stub answers every launch as Flume answered fix--parser's, so b
     // too stands at its place.
     assert!(
-        lines.contains(&format!("madswan/2: launched at {place}")),
+        lines.contains(&format!("home/2: launched at {place}")),
         "{lines:#?}"
     );
     let answers = host.branch_file(BRANCH, "answers.rec");

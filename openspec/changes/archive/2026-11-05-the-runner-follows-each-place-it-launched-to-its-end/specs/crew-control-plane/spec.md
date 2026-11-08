@@ -8,8 +8,8 @@ A launch naming no `Host` SHALL be for this host only where its `Repo` is a repo
 
 #### Scenario: A kit named by its name alone
 
-- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/flume`
-- **THEN** the launch is for this host, its repository `afterthought/crew`
+- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `example/crew` and `agentplot/flume`
+- **THEN** the launch is for this host, its repository `example/crew`
 
 #### Scenario: A repository not kept
 
@@ -24,10 +24,10 @@ A launch naming no `Host` that the runner's report or this host's branch answers
 
 #### Scenario: A launch answered before its repository left the hello
 
-- **WHEN** `madswan/runner/deneb` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: old-kit`, and the hello names `example/new-kit` alone
-- **THEN** the pull gives the offer `madswan/20`, its repository `old-kit`, writes nothing, and says nothing
+- **WHEN** `home/runner/host-a` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: old-kit`, and the hello names `example/new-kit` alone
+- **THEN** the pull gives the offer `home/20`, its repository `old-kit`, writes nothing, and says nothing
 
 #### Scenario: An answered launch whose name two kept addresses share
 
-- **WHEN** the runner's report answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/crew`
-- **THEN** the pull gives the offer `madswan/20`, its repository `crew`
+- **WHEN** the runner's report answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: crew`, and the hello names `example/crew` and `agentplot/crew`
+- **THEN** the pull gives the offer `home/20`, its repository `crew`

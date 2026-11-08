@@ -7,12 +7,7 @@ See proposal.md for why. This change builds crew record 0052's part 2, carried w
 What stands today:
 
 - `crates/flywheel` is one binary that answers `--version` and `-V` and prints its usage for anything else, exiting 2. It has no dependencies and no library.
-- swancloud does on every host what this change moves into the runner:
-  - `space-clone` clones each space's repositories into the bare-container layout, `<dir>/<repo>/<repo>.git` with a `.git` gitfile and worktrees as peer folders, and never touches a folder already there (`names.3`).
-  - Every two minutes, `packages/swancloud-views` fetches each repository over https, so git's credential helper answers and never the 1Password agent.
-  - It levels the bare repository's own default branch to origin's tip as a fast-forward, while no worktree holds it (`herdr.13` as amended 2026-10-26).
-  - It keeps `~/Code/views/<space>/<repo>`, a worktree detached where the repository's work is. It records the commit it last set in `$XDG_STATE_HOME/swancloud/views/`, and moves the view only while it is detached, clean of tracked changes (`status --porcelain --untracked-files=no`) and at that commit (`herdr.14`).
-  - The views timer follows the local `<default>` for a repository that does not land through sluice. Record 0052 part 2 makes every view follow `origin/<default>`: the runner's clone holds no one's work but Flume's places, and they land through sluice.
+- afterthought/swancloud does on every host what this change moves into the runner: it clones each repository, fetches it on a timer, keeps the clone's default branch at origin's, and keeps a view of each that moves only where it was left (its `names.3`, `herdr.13` as amended 2026-10-26, and `herdr.14`). Record 0052 part 2 makes every view follow `origin/<default>`: the runner's clone holds no one's work but Flume's places, and they land through sluice.
 - Flume 0.3.6 finds a repository named by `--repository <dir>` as either a repository git finds there or a directory holding `<name>.git` and its worktrees. It makes each place at `<dir>/places/<kind>--<name>` (flume `crates/flume/src/git.rs`, `crates/flume-core/src/launch.rs`). sluice lands a place by a merge commit, so a landed branch's commits are reachable from `origin/<default>`.
 - The sibling change `the-runner-carries-crews-work-into-flume` is being constructed beside this one. It defines the control-plane interface and crew's implementation, and runs `flume launch` in the clones this change keeps. Decision 12 says what it builds on.
 
@@ -31,9 +26,9 @@ Git is the only tool this change runs. It is run by its command line, as flume r
 
 - The control-plane interface, crew's implementation, and turning requests into `flume launch` (the sibling change).
 - Who runs a repository's `sluice run` rounds on a host (record 0052, for the plan to settle). The clone is a plain bare container that a `sluice run` could be pointed at.
-- Adopting swancloud's existing containers and views. The runner clones afresh into its own data directory and never touches a folder it did not make (record 0052, for the plan to settle; Decision 3).
+- Adopting the clones and views afterthought/swancloud made. The runner clones afresh into its own data directory and never touches a folder it did not make (record 0052, for the plan to settle; Decision 3).
 - A `.code-workspace` file beside the views, a host without views, a view per branch, or a forge other than GitHub.
-- The host's service definition, a launchd agent or a systemd unit. That is swancloud's, which installs the runner (record 0052 part 4).
+- The host's service definition, a launchd agent or a systemd unit. That is afterthought/swancloud's, which installs the runner (record 0052 part 4).
 
 ## Decisions
 
@@ -67,7 +62,7 @@ views = "~/Code"
 # How often every repository is fetched; 2m where none is named.
 fetch_every = "2m"
 # Each repository this host keeps, by its GitHub address.
-repositories = ["agentplot/flume", "afterthought/crew"]
+repositories = ["agentplot/flume", "example/crew"]
 ```
 
 - `repositories` is required, so an empty file never reads as "keep nothing" and lets everything go (Decision 8). Addresses are compared without case, as GitHub compares them, and two equal ones are refused.
@@ -96,7 +91,7 @@ The data directory is `$XDG_DATA_HOME/flywheel`, else `~/.local/share/flywheel`.
   places/           Flume's, made by flume launch --repository <this folder>
 ```
 
-This is swancloud's bare-container layout (`names.3`), less the anchor worktree. No one works in the clone's own checkout, and the view takes its place for the user. The container is the directory the sibling passes to `flume launch --repository`. Flume finds `flume.git` in it, or follows `.git`.
+This follows afterthought/swancloud's `names.3`. No one works in the clone's own checkout, and the view takes its place for the user. The container is the directory the sibling passes to `flume launch --repository`. Flume finds `flume.git` in it, or follows `.git`.
 
 The runner's record of a clone is kept in the clone itself:
 
@@ -106,7 +101,7 @@ The runner's record of a clone is kept in the clone itself:
 
 So everything about a repository goes with its container, a dropped one leaves nothing behind elsewhere, and the recorded commit stays reachable. A pass finds its clones by listing `repositories/*/*` and reading each one's `flywheel.address`, not by trusting a path, so a change of case in the configuration finds the same clone. A folder there with no record is not the runner's. It is never fetched, removed or made over, and is named when it stands where a configured repository's container would go.
 
-Alternative: a state file under `$XDG_STATE_HOME`, as swancloud's views timer keeps one. Not taken: a second place to keep in step with the clone, and to clean up when the clone goes.
+Alternative: a state file under `$XDG_STATE_HOME`. Not taken: a second place to keep in step with the clone, and to clean up when the clone goes.
 
 ### 4. A clone is made whole or not at all
 
@@ -124,9 +119,9 @@ A step that fails removes the partial folder and names the repository with git's
 
 ### 5. A fetch is https through the host's credential helper, and never asks
 
-Every git call is built in one place (`git::Git`). It sets `GIT_TERMINAL_PROMPT=0` and removes `GIT_ASKPASS` and `SSH_ASKPASS` from git's environment. It gives git no credential, no token and no `-c credential.*`: the host's own credential helper (`gh` on a Mac, a token helper on a box) answers, or the fetch fails without asking anyone (core.4). It takes an environment overlay from its caller, which is empty in production and holds the scratch git configuration in tests. A failure's words are the last line git wrote on standard error, as swancloud's timer names them.
+Every git call is built in one place (`git::Git`). It sets `GIT_TERMINAL_PROMPT=0` and removes `GIT_ASKPASS` and `SSH_ASKPASS` from git's environment. It gives git no credential, no token and no `-c credential.*`: the host's own credential helper (`gh` on a Mac, a token helper on a box) answers, or the fetch fails without asking anyone (core.4). It takes an environment overlay from its caller, which is empty in production and holds the scratch git configuration in tests. A failure's words are the last line git wrote on standard error, as afterthought/swancloud's `herdr.14` names them.
 
-The clone's URL is https because the runner sets it. A host's git configuration can still rewrite it: `url."git@github.com:".insteadOf = "https://github.com/"` is a common one, and it would send the fetch through the ssh agent, which on a Mac waits on 1Password and someone at the keyboard. Before each fetch, the runner reads the URL git would use (`git ls-remote --get-url origin`). If that is in ssh form (`git@…:` or `ssh://`), it runs no fetch and names the repository with that URL. Any other scheme passes, which is what lets a test's `file://` forge stand in for GitHub.
+The clone's URL is https because the runner sets it. A host's git configuration can still rewrite it: `url."git@github.com:".insteadOf = "https://github.com/"` is a common one, and it would send the fetch through the ssh agent, which may wait on a password manager and someone at the keyboard. Before each fetch, the runner reads the URL git would use (`git ls-remote --get-url origin`). If that is in ssh form (`git@…:` or `ssh://`), it runs no fetch and names the repository with that URL. Any other scheme passes, which is what lets a test's `file://` forge stand in for GitHub.
 
 Every fetch is `fetch --prune --quiet origin`, and each repository is fetched on its own. One failure is named, and the rest of the pass goes on.
 
@@ -135,15 +130,15 @@ Every fetch is `fetch --prune --quiet origin`, and each repository is fetched on
 `remote.origin.followRemoteHEAD = always` makes every fetch keep `refs/remotes/origin/HEAD` at origin's default. This is git 2.48 and later, the least version the runner starts with (Decision 10). It also means no `ls-remote` call per pass and no `default_branch` setting. After each fetch:
 
 - **The default.** `<default>` is what `refs/remotes/origin/HEAD` names. Where origin names none, or names a branch the fetch did not bring, the repository is named as having no default branch, and gets no view this pass. Where the clone's HEAD names another branch, origin having renamed its default, HEAD is pointed at the new branch, and that branch is created at origin's tip if the clone lacks it.
-- **Levelling** (`herdr.13` as amended 2026-10-26, carried whole). The clone's own `refs/heads/<default>` is moved to `origin/<default>` by `update-ref <ref> <new> <old>` only when the move is a fast-forward and no worktree of the clone has the branch checked out, read from `worktree list --porcelain`. Otherwise it is left and named: with how many commits it is ahead, or with the worktree that holds it. sluice moves the branch at a landing on this host; levelling keeps it at origin's tip between landings, so whatever reads the clone's default branch reads origin's.
+- **Levelling** (afterthought/swancloud's `herdr.13` as amended 2026-10-26, carried whole). The clone's own `refs/heads/<default>` is moved to `origin/<default>` by `update-ref <ref> <new> <old>` only when the move is a fast-forward and no worktree of the clone has the branch checked out, read from `worktree list --porcelain`. Otherwise it is left and named: with how many commits it is ahead, or with the worktree that holds it. sluice moves the branch at a landing on this host; levelling keeps it at origin's tip between landings, so whatever reads the clone's default branch reads origin's.
 
 ### 7. The view: made where missing, moved only where the runner last put it
 
-A view's path is `<views>/<owner>/<name>`. Owner and name together are the address, so two owners' repositories of one name never meet, as `agentplot/blueprints` and `afterthought/blueprints` would under `<views>/<name>`. This settles record 0052's question of how views are grouped once spaces have gone: by owner, the address's own first part.
+A view's path is `<views>/<owner>/<name>`. Owner and name together are the address, so two owners' repositories of one name never meet, as `agentplot/blueprints` and `example/blueprints` would under `<views>/<name>`. This settles record 0052's question of how views are grouped once spaces have gone: by owner, the address's own first part.
 
 `view::decide` takes plain facts and gives one act:
 
-- **The facts:** the configured path `P`; the recorded path `R`; the recorded commit `C`; the target `T`, which is `origin/<default>` or none. For each folder at `P` and at `R`, whether it is missing, a folder that is not a worktree of this clone, or this clone's worktree. For the clone's own worktree: whether HEAD is detached, its HEAD, whether it holds a change to a tracked file, and what it holds that the forge lacks (Decision 8). A folder is the clone's worktree when `git -C <folder> rev-parse --path-format=absolute --git-common-dir` is the clone's bare repository, swancloud's own test.
+- **The facts:** the configured path `P`; the recorded path `R`; the recorded commit `C`; the target `T`, which is `origin/<default>` or none. For each folder at `P` and at `R`, whether it is missing, a folder that is not a worktree of this clone, or this clone's worktree. For the clone's own worktree: whether HEAD is detached, its HEAD, whether it holds a change to a tracked file, and what it holds that the forge lacks (Decision 8). A folder is the clone's worktree when `git -C <folder> rev-parse --path-format=absolute --git-common-dir` is the clone's bare repository, afterthought/swancloud's own test.
 - **No target.** Do nothing. The clone already named it.
 - **`R` is set and is not `P`** (the views root changed). If `R` is the clone's worktree and holds nothing the forge lacks, remove it (Decision 8's removal), forget `R`, and go on to `P`. If it holds work, leave it, name it with what it holds, and make no view at `P`. If `R` is missing or no longer the clone's worktree, forget it and go on to `P`, leaving any folder there untouched.
 - **`P` is missing.** Make the view: `worktree add --detach P T`, creating the folders above `P`. Add `--force` only when git still registers `P` as a worktree whose folder is gone, as after the user deleted it. That flag overrides only that safeguard, because no branch is named.
@@ -207,7 +202,7 @@ Without `--once`, the loop is the runner's one thread of work, so no two of the 
 - `Event::Stop` comes from a `signal-hook` thread on SIGTERM or SIGINT. It also sets a flag that a pass reads between repositories, so the runner finishes the git call in hand, then says `flywheel: stopped` and exits 0.
 - `Runner::notices()` hands out a `Notices`, a clonable sender with `landed(address)`, for whatever is told of landings.
 
-A host's service manager starts `flywheel run` and keeps it alive: launchd's `KeepAlive` on a Mac, `Restart=always` in a systemd user unit on a box. Both are swancloud's to write (record 0052 part 4). Exit 2 means the host must be fixed, and the service manager's throttle keeps it from spinning.
+A host's service manager starts `flywheel run` and keeps it alive: launchd's `KeepAlive` on a Mac, `Restart=always` in a systemd user unit on a box. Both are afterthought/swancloud's to write (record 0052 part 4). Exit 2 means the host must be fixed, and the service manager's throttle keeps it from spinning.
 
 The runner opens no listening socket, so no connection comes in to a host (core.3). This change's only connections are git's fetches over https. A test reads the crate's sources for `TcpListener`, `UnixListener`, `UdpSocket` or a socket's `bind`, and reads `Cargo.lock` for a server crate (`hyper`, `axum`, `actix-web`, `warp`, `tiny_http`, `rouille`, `tide`, `poem`). The sibling's state-repository fetch and push, and the hosted control plane's WebSocket, are outgoing too.
 
@@ -254,8 +249,8 @@ Nothing in this change names crew, its records or a hosted control plane (core.2
 
 ## Risks / Trade-offs
 
-- **A second full clone of every repository** while swancloud's containers remain → the runner's are the ones Flume launches into. swancloud retires its own when record 0052's asks of it are taken up, and this change touches none of them.
-- **A host whose git rewrites https to ssh** fetches nothing → each pass names the repository and the URL. Fixing the host's git configuration is swancloud's.
+- **A second full clone of every repository** while afterthought/swancloud's remain → the runner's are the ones Flume launches into. afterthought/swancloud retires its own when record 0052's asks of it are taken up, and this change touches none of them.
+- **A host whose git rewrites https to ssh** fetches nothing → each pass names the repository and the URL. Fixing the host's git configuration is afterthought/swancloud's.
 - **A dropped clone held by an unlanded branch** stays until someone acts → it is named at every pass with the branch and its count. Deleting or pushing the branch lets it go.
 - **A view path that holds a folder of the user's** gets no view → named at every pass. The user moves the folder, or the views root.
 - **Flume and the runner in one clone at once** (a place made while a fetch runs) can meet on git's lock files → the failed call is named and tried again at the next pass. Nothing is forced or retried in a loop.
@@ -265,9 +260,9 @@ Nothing in this change names crew, its records or a hosted control plane (core.2
 
 Nothing converts in code. On a host:
 
-1. swancloud installs `flywheel`, writes `~/.config/flywheel/config.toml` listing the host's repositories, and starts `flywheel run` under its service manager.
+1. afterthought/swancloud installs `flywheel`, writes `~/.config/flywheel/config.toml` listing the host's repositories, and starts `flywheel run` under its service manager.
 2. The first pass clones each repository afresh into `~/.local/share/flywheel/repositories/` and makes its view under `~/Code/<owner>/`.
-3. swancloud's containers, `~/Code/views/` and its views timer go on as they are until swancloud retires them.
+3. afterthought/swancloud's own clones and views go on as they are until it retires them.
 
 To roll back, stop the service. A host's runner data is let go by setting `repositories = []` and running one pass, which removes everything that holds no work of its own, and names the rest.
 
