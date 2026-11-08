@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, three times: a pull's launches go ahead of its acts on places, a launch waits on no act of the pass before its own, and a bolt is a launch, the runner carrying no branch command, which retires settled point 3 and is proposed. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, three times: a pull's launches go ahead of its acts on places, a launch waits on no act of the pass before its own, and a bolt is a launch, the runner carrying no branch command, which retires settled point 3 and is proposed. Amended again on 2026-11-08: land is the message for a work's landing, which is proposed. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud's records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022, its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39, and its `design/domain-model.html` with its ledger items 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -168,3 +168,55 @@ core.52 holds it. The commands and work-into-flume specs gain it through the cha
 - boomdrive-cloud's records 0017 and 0051 have its bolt made by a branch Command, and end the bolt on a refused one. Until the cloud launches a bolt instead, a hosted bolt's branch command is refused with the runner's words. That is the cloud's to follow, and is told to the orchestrator.
 - crew's implementation needs nothing. A bolt's launch is a request like any other, and its send is a retry request naming the submission. crew's own follow-up, C1, makes its bolts base places.
 - Flume's guards on a base place hold among the places of its own host (202 to 204). Which host takes a bolt and its units, and when the bolt is sent, are the control plane's (core.1).
+
+## Amendment, 2026-11-08: land is the message for a work's landing
+
+Status: proposed on 2026-11-08 by the construct stage of the change `land-is-the-message-for-a-works-landing`, until the user sees it as a record. The direction is the user's. On 2026-11-08 they rewrote crew's record 0056 on their own words and accepted it on its card ("Yes, that's it. Rewrite the record that way"). That record names the message `land`, and leaves the runner's half to a Boomdrive unit, which this amendment is. The stage chose three things, each cheap to change: a land of a launch held unlaunched is refused, as a retry is; the retry naming the submission stays beside the land; and version 1 of the hosted protocol carries no land.
+
+The brief: "The runner takes land, naming a launch, as the control plane's message to land that work, and carries it out as Flume's retry of the work's submission, so a control plane names no Flume word for a landing."
+
+Sources: crew's record 0056, as rewritten and accepted on 2026-11-08; Flume's statement, clause 203; `crates/boomdrive-control/src/want.rs` and `crates/boomdrive/src/carry.rs` at c6eb79b; rules core.1, core.10, core.15, core.42, core.50 to core.52; the control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs.
+
+### Context
+
+The amendment above has a bolt sent by a retry naming the submission, carried out as `flume retry <place> --submission`. A control plane that lands work so names Flume's command and its words. crew still lands a bolt itself: it submits it to sluice, waits on it and removes its branch. On 2026-11-08 the user declined a plan that kept crew landing each bolt by name:
+
+> It's not crew's job to land anymore. That's the whole point of the runner in Flume and sluice. Crew no longer is responsible for landing itself. I guess I'm thinking about how the control plane would work. It is going to be a decision in the user's rail to land, so that's a message for a Flume place, theoretically.
+
+And on crew's record's card that day:
+
+> But crew is like the control plane. It doesn't talk to Flume. Remember, the Boom Drive runner is pulling from the control plane. Everything has to happen from the Boom Drive runner. There can be messages back and forth with the control plane but crew doesn't know about Flume directly except for whatever the control plane contract allows.
+
+crew's record names the message `land`, for a bolt and for a red main's fix alike, posted once for each row the user sends. crew reads what came of it only from the runner's report.
+
+### Considered options
+
+1. Keep the retry naming the submission as the way a control plane lands work.
+2. A land, naming its launch, is an act of the interface's own. The runner carries it out as Flume's retry of the submission of its launch's place, whatever the launch's kind.
+3. A land carried as a command, under a lease of its own.
+
+### Decision outcome
+
+Option 2.
+
+- **A land is an act.** It names its launch and nothing else, under that launch's lease. The interface writes it as the word `land`. It holds no stage, no words and no other word of Flume's.
+- **The runner carries it out as Flume's retry of the submission.** It runs `flume retry <place> --submission` on the launch's place, with no stage and no words, as it carries out any act. So it runs once, in the pass's second round, after Flume's status of a place the listing does not hold, and never under a lapsed lease (core.10, core.24, core.50, core.51). The runner reads no kind, so a bolt's base place, a fix and a unit whose submission is held land the same way (core.15, core.52). Flume's answer is the land's, a refusal while a place on a bolt's branch is live among them (core.1, core.11; Flume's 203).
+- **A land of a launch held unlaunched is refused**, naming where the launch stands, as a retry or a done is. It is the stage's choice. The launch is made as its offer gives it.
+- **The retry naming the submission stays.** It is the stage's choice. crew's implementation still gives it, with words, to answer a place stopped short in its submission. Version 1 of the hosted protocol names it too.
+- **Version 1 of the hosted protocol carries no land.** It is the stage's choice, within core.42. A release has spoken version 1, so it never changes. A land is no act of version 1, and its check refuses one. A hosted control plane lands work by version 1's retry naming the submission, which the runner carries out as it carries out a land. A later version, the runner's and the cloud's together, may name `land`.
+
+Not taken:
+
+- **Option 1.** A control plane would go on naming Flume's command and its words to land work, which the user ruled out for crew, the control plane.
+- **Option 3.** A landing acts on a launch's place. A lease the runner has let go must stop it (core.10), and a place Flume no longer stands must answer it (core.51), so it is an act, as the amendment above found for a bolt's send.
+- **A land of a held launch carried onto the launch when it is made**, freeing a held submission. The runner would change a launch from what its offer gives (core.15), and an answer would turn on when the launch was made.
+- **Dropping the retry's submission from the interface.** Version 1 carries the interface's wants as their serde writes them, and its retry names the submission, so a pull holding one, which the check passes, would fail to read (core.42). And crew's answer to a stop-short in a submission needs it.
+- **A version 2 of the protocol now.** The cloud pins the protocol by revision and does not yet send a bolt as a launch. A version is the runner's and the cloud's to make together, and nothing in it waits on this.
+
+core.53 holds it, and core.52 names it as how a branch other places land on is landed. The control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs gain it through the change `land-is-the-message-for-a-works-landing`.
+
+### Consequences
+
+- crew's implementation reads `Act: land`, with its `Of`, as a land of that launch. One naming no `Host` goes to the runner that holds its launch. crew posts it from the release that carries this. Until then crew lands as it does today.
+- boomdrive-cloud lands a bolt by version 1's retry naming the submission until a later version names `land`. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
+- Flume's statement names, in its section 9, crew's retry of a bolt's submission and the runner's retry its control plane asks. crew asks Flume nothing now, and the runner's retry is asked as a land. That is the statement's owner's to amend, and is told to the orchestrator.
