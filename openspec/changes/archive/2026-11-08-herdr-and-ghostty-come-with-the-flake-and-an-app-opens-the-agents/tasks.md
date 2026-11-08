@@ -32,4 +32,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 - [x] 4.1 The README's **Installing with nix** names herdr, Ghostty and the launcher in the set, git alone as the host's own, the options that replace or drop each, the plugins' links, Flume's two keys, and the shell (Task notes 4.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's words".
 - [x] 4.2 CLAUDE.md and `openspec/config.yaml` name herdr, its plugins, Ghostty, the launcher and the shell in the flake (Task notes 4.2). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 4.3 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.3 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents --yes`, `sluice exec main -- moon run root:specs` passes.
