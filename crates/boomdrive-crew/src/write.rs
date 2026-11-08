@@ -354,10 +354,11 @@ pub fn since_at(files: &read::RunnerFiles) -> Option<String> {
 
 /// What of partition `label`'s report is let go (design Decision 17):
 /// each request launch whose place Flume no longer lists and whose work
-/// has left crew's plan at `main`'s tip, with its acts; each role's
-/// earlier run once a later one is recorded and its place is over; and a
-/// role's last run once its record has gone from `roles.rec` and its
-/// place is over, each run with its done.
+/// has left crew's plan at `main`'s tip, and each a drop names that the
+/// runner holds unlaunched, whatever the plan holds, with its acts; each
+/// role's earlier run once a later one is recorded and its place is over;
+/// and a role's last run once its record has gone from `roles.rec` and
+/// its place is over, each run with its done.
 pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet<Id> {
     let mut gone = BTreeSet::new();
     let mut launches = BTreeSet::new();
@@ -373,7 +374,8 @@ pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet
                 .status
                 .as_ref()
                 .is_some_and(|status| !status.listed);
-        if over && !main.plans(request.work()) {
+        let dropped = main.dropped(n) && launched.answer.outcome != Outcome::Launched;
+        if dropped || (over && !main.plans(request.work())) {
             gone.insert(id.clone());
             launches.insert(n);
         }
