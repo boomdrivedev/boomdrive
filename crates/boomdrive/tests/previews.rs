@@ -361,3 +361,149 @@ fn one_listing_for_two_previews_of_one_repository() {
     assert_eq!(call, &["previews", "--json"].map(String::from).to_vec());
     assert_eq!(dir, &kept(&bench));
 }
+
+/// The previews spec's "A preview put away".
+#[test]
+fn a_preview_put_away() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut plane);
+    bench.sluice.answers_preview("release", "release.json", 0);
+    let mut later = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/31", "main", "R1", true),
+    ]);
+    let (_, lines) = bench.pass(&mut later);
+    let call = ["release", "preview/c2b72605d2ad", "--json"]
+        .map(String::from)
+        .to_vec();
+    assert_eq!(calls_of(&bench, "release"), [(call, kept(&bench))]);
+    let report = bench.report();
+    let done = &report.previews[&id("home/31")];
+    assert_eq!(done.outcome, Outcome::Done);
+    assert_eq!(
+        done.text.as_deref(),
+        Some(r#"{"preview":"preview/c2b72605d2ad","released":true}"#)
+    );
+    assert!(done.done);
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert!(
+        lines.contains(&"home/31: done of the preview of main at R1: put away".to_string()),
+        "{lines:?}"
+    );
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+}
+
+/// The previews spec's "A done of a preview never asked for".
+#[test]
+fn a_done_of_a_preview_never_asked_for() {
+    let bench = bench();
+    let mut plane = Fake::holding(vec![preview("home/31", "main", "R9", true)]);
+    let (_, lines) = bench.pass(&mut plane);
+    let words =
+        "no preview of R9 in agentplot/flume was brought up here at the control plane's asking";
+    let done = &bench.report().previews[&id("home/31")];
+    assert_eq!(done.outcome, Outcome::Refused);
+    assert_eq!(done.words.as_deref(), Some(words));
+    assert!(
+        lines.contains(&format!(
+            "home/31: done of the preview of main at R9: refused: {words}"
+        )),
+        "{lines:?}"
+    );
+    assert!(bench.sluice.calls().is_empty());
+}
+
+/// The previews spec's "A held preview put away": sluice lists the held
+/// preview `waiting` under its name, which the done releases, asking no
+/// `sluice preview`; the held preview is refused, and asked no more.
+#[test]
+fn a_held_preview_put_away() {
+    let bench = bench();
+    bench.sluice_patience.set(std::time::Duration::from_secs(1));
+    bench.sluice.waits("preview");
+    let waiting = concat!(
+        r#"[{"addresses":{"web":"http://web-r1--main--repo.localhost:20000"},"#,
+        r#""branch":"main","made":"2026-11-08T19:54:52Z","name":"preview/r1-waiting","#,
+        r#""revision":"R1000000","state":"waiting"}]"#,
+        "\n"
+    );
+    bench.sluice.answers_text("previews", waiting, 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut plane);
+    let held = &bench.report().previews[&id("home/30")];
+    assert_eq!(held.outcome, Outcome::Held);
+    assert!(held
+        .status
+        .as_ref()
+        .unwrap()
+        .text
+        .contains("preview/r1-waiting"));
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+
+    bench.sluice.answers_preview("release", "release.json", 0);
+    let mut later = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/31", "main", "R1", true),
+    ]);
+    let (_, lines) = bench.pass(&mut later);
+    let call = ["release", "preview/r1-waiting", "--json"]
+        .map(String::from)
+        .to_vec();
+    assert_eq!(calls_of(&bench, "release"), [(call, kept(&bench))]);
+    assert_eq!(
+        calls_of(&bench, "preview").len(),
+        1,
+        "sluice preview asked again"
+    );
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/31")].outcome, Outcome::Done);
+    let put_away = &report.previews[&id("home/30")];
+    assert_eq!(put_away.outcome, Outcome::Refused);
+    assert_eq!(
+        put_away.words.as_deref(),
+        Some("put away before sluice brought it up")
+    );
+    assert!(
+        lines.contains(
+            &"home/30: preview of main at R1: refused: put away before sluice brought it up"
+                .to_string()
+        ),
+        "{lines:?}"
+    );
+    bench.pass(&mut later);
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    assert_eq!(calls_of(&bench, "release").len(), 1);
+}
+
+/// The previews spec's "A bring-up and its done in one pull".
+#[test]
+fn a_bring_up_and_its_done_in_one_pull() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    bench.sluice.answers_preview("release", "release.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/31", "main", "R1", true),
+    ]);
+    bench.pass(&mut plane);
+    let asked: Vec<String> = commands(&bench)
+        .into_iter()
+        .filter(|command| command == "preview" || command == "release")
+        .collect();
+    assert_eq!(asked, ["preview", "release"]);
+    assert_eq!(
+        calls_of(&bench, "preview")[0].0,
+        ["preview", "main", "R1", "--json"]
+            .map(String::from)
+            .to_vec()
+    );
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert_eq!(report.previews[&id("home/31")].outcome, Outcome::Done);
+}
