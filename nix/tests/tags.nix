@@ -24,6 +24,7 @@ let
         builtins.elem name [
           "crew"
           "flume"
+          "herdr"
           "sluice"
         ]
         && builtins.match "v[0-9]+\\.[0-9]+\\.[0-9]+" (show named) == null
