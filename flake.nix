@@ -1,6 +1,7 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, and Flume, sluice and crew each at a release tag
-# through its own flake (records 0020 and 0023, core.44). A host's nix substitutes their binaries from the family's
+# runner at this tree, and Flume, sluice, crew and herdr each at a release
+# tag through its own flake (records 0020 and 0023, core.44). git is the
+# host's own. A host's nix substitutes their binaries from the family's
 # cache where it trusts it, and builds the same paths where it does not
 # (core.47). The development shell is devenv's (devenv.nix); everything
 # else of the flake's is under nix/, the moon project `nix`.
@@ -18,7 +19,7 @@
   };
 
   # A tool's tag moves only with the lock, in a change the gate passes
-  # (core.45).
+  # (core.45). git is the host's own (record 0023).
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay = {
@@ -48,6 +49,15 @@
         nix-darwin.follows = "nix-darwin";
       };
     };
+    # The herdr Flume's tree pins at its tag, which Flume's terminal profile
+    # was checked against (record 0023; design Decision 1).
+    herdr = {
+      url = "github:herdrdev/herdr/v0.9.5";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+      };
+    };
     # The tests' nix-darwin. A host's configuration follows its own, which
     # changes none of the packages.
     nix-darwin = {
@@ -72,7 +82,7 @@
 
       # The set for one system (design Decisions 2 and 3), made with the
       # flake's own nixpkgs, so its paths are the ones the family's cache
-      # holds (design Decision 4). herdr and git are the host's own.
+      # holds (design Decision 4). git is the host's own (record 0023).
       packagesOf =
         system:
         let
@@ -94,6 +104,7 @@
               package = inputs.crew.packages.${system}.crew;
               tag = tagOf (import ./flake.nix).inputs.crew.url;
             };
+            inherit (inputs.herdr.packages.${system}) herdr;
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
         in

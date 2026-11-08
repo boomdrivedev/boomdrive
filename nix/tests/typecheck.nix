@@ -14,6 +14,7 @@ let
     "default"
     "flume"
     "flume-herdr-plugin"
+    "herdr"
     "sluice"
     "sluice-herdr-plugin"
   ];
@@ -46,11 +47,9 @@ let
       ) "packages.${system}.default is not packages.${system}.boomdrive"
     );
 
-  # The host's own tools, which the set holds none of (record 0012).
-  hosts = [
-    "git"
-    "herdr"
-  ];
+  # The host's own tools, which the set holds none of: git alone, since
+  # herdr joined the set (records 0012 and 0023).
+  hosts = [ "git" ];
   ownedBy =
     system: name: package:
     lib.concatMap (
