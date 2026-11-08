@@ -98,19 +98,38 @@
           sluice-herdr-plugin = pluginOf tools.sluice;
         };
       packages = lib.genAttrs systems packagesOf;
+
+      # A platform's modules (design Decision 4): `boomdrive`, also
+      # `default`, is the runner's service, its options the runner's file
+      # (record 0020, core.46), with Flume's, sluice's and crew's own
+      # modules, each as its tool's flake gives it at the tag the lock
+      # names, none carried here (record 0023, core.18); and each tool's
+      # module again, as its flake gives it. Keyed, as Flume's is, so a
+      # system that imports `default` and `boomdrive` takes it once.
+      tools = [
+        "flume"
+        "sluice"
+        "crew"
+      ];
+      modulesOf =
+        platform: file:
+        let
+          toolOf = tool: inputs.${tool}."${platform}Modules".${tool};
+        in
+        rec {
+          boomdrive = {
+            _file = ./flake.nix;
+            key = "github:agentplot/boomdrive#${platform}Modules.boomdrive";
+            imports = [ (import file { inherit packages; }) ] ++ map toolOf tools;
+          };
+          default = boomdrive;
+        }
+        // lib.genAttrs tools toolOf;
     in
     {
       inherit packages;
 
-      # The runner's service, its options the runner's file (record 0020,
-      # core.46), its packages the flake's own above.
-      darwinModules = rec {
-        boomdrive = import ./nix/modules/darwin.nix { inherit packages; };
-        default = boomdrive;
-      };
-      nixosModules = rec {
-        boomdrive = import ./nix/modules/nixos.nix { inherit packages; };
-        default = boomdrive;
-      };
+      darwinModules = modulesOf "darwin" ./nix/modules/darwin.nix;
+      nixosModules = modulesOf "nixos" ./nix/modules/nixos.nix;
     };
 }
