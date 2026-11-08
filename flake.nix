@@ -27,20 +27,26 @@
     };
     sluice = {
       url = "github:agentplot/sluice/v0.76.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
-      inputs.nix-darwin.follows = "nix-darwin";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
+      };
     };
     flume = {
       url = "github:agentplot/flume/v0.18.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
-      inputs.nix-darwin.follows = "nix-darwin";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
+      };
     };
     crew = {
       url = "github:agentplot/crew/v0.44.8";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nix-darwin.follows = "nix-darwin";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        nix-darwin.follows = "nix-darwin";
+      };
     };
     # The tests' nix-darwin. A host's configuration follows its own, which
     # changes none of the packages.
