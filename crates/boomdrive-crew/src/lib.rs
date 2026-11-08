@@ -154,19 +154,27 @@ impl Pulling<'_> {
         ids::request(self.label, number)
     }
 
-    /// Whether the runner's report answers request `number`.
+    /// Whether the runner's report answers request `number`: a launch, an
+    /// act or a preview.
     fn reported(&self, number: u64) -> bool {
         let id = self.id(number);
-        self.report.launches.contains_key(&id) || self.report.acts.contains_key(&id)
+        self.report.launches.contains_key(&id)
+            || self.report.acts.contains_key(&id)
+            || self.report.previews.contains_key(&id)
     }
 
     /// Whether this host's branch answers request `number`, a claim
-    /// counting or not.
+    /// counting or not, in `answers.rec` or, a preview, in `previews.rec`
+    /// (design Decision 10).
     fn branch_answers(&self, number: u64, claims: bool) -> bool {
-        self.own
-            .as_ref()
-            .and_then(|own| own.answers.get(&number))
-            .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
+        let Some(own) = self.own.as_ref() else {
+            return false;
+        };
+        own.previews.contains_key(&number)
+            || own
+                .answers
+                .get(&number)
+                .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
     }
 
     /// Whether the runner launched request `number`: its report answers

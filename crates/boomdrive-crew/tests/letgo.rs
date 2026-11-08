@@ -5,10 +5,11 @@
 mod common;
 
 use boomdrive_control::{
-    Acted, Answer, At, Carried, ControlPlane, Hello, Id, Launched, Lease, Outcome, Report,
+    Acted, Answer, At, Carried, ControlPlane, Hello, Id, Launched, Lease, Outcome, Previewed,
+    Report, Want,
 };
 use boomdrive_crew::Crew;
-use common::{act, file, hello, launch, plan, rec, role, State, REQUESTS, ROLES};
+use common::{act, file, hello, launch, plan, preview, rec, role, State, REQUESTS, ROLES};
 
 const BRANCH: &str = "home/runner/host-a";
 const PLACE: &str = "/places/change--a";
@@ -307,4 +308,78 @@ fn a_record_of_a_kind_crew_writes_is_left_as_it_stands() {
         launched(Outcome::Launched, Some(PLACE), Some(false)),
     );
     assert!(let_go(&mut crew, &report).is_empty());
+}
+
+/// `home/main` holding preview 30 of `unit/u` and its done 31, for
+/// host-a, and `plan` as its plan.
+fn main_with_previews(state: &State, plan_rec: &str) {
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    preview(
+                        30,
+                        Some("host-a"),
+                        "unit/u",
+                        "example/crew",
+                        "main",
+                        "R1",
+                        false,
+                    ),
+                    preview(
+                        31,
+                        Some("host-a"),
+                        "unit/u",
+                        "example/crew",
+                        "main",
+                        "R1",
+                        true,
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", plan_rec),
+    ]);
+}
+
+/// A preview of `R1` in `example/crew` answered `outcome`, done or not,
+/// its status listed or not where one is carried.
+fn previewed(outcome: Outcome, done: bool, listed: Option<bool>) -> Previewed {
+    Previewed {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: "example/crew".to_string(),
+        revision: "R1".to_string(),
+        done,
+        outcome,
+        text: Some(r#"{"name":"preview/r1","state":"starting"}"#.to_string()),
+        words: None,
+        status: listed.map(|listed| Carried {
+            text: r#"{"name":"preview/r1","state":"up"}"#.to_string(),
+            at: at("2026-11-01T10:06:00Z"),
+            listed,
+        }),
+        at: at("2026-11-01T10:05:00Z"),
+    }
+}
+
+/// The crew-control-plane spec's "A preview whose work has left the
+/// plan".
+#[test]
+fn a_preview_whose_work_has_left_the_plan() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    let mut report = Report::default();
+    report
+        .previews
+        .insert(Id::new("home/30"), previewed(Outcome::Done, false, None));
+    let pulled = crew.pull(&kept(), &report).expect("a pull");
+    let ids: Vec<String> = pulled.wants.iter().map(|w| w.id().to_string()).collect();
+    assert_eq!(ids, ["home/30"]);
+    assert!(matches!(pulled.wants[0], Want::Preview(_)));
 }

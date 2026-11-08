@@ -109,14 +109,15 @@ impl Main {
 }
 
 /// A runner's branch as crew's `host_read` reads it: the host's one
-/// `Runner`, each answer and place by its request's number, and each
-/// role's run by its address.
+/// `Runner`, each answer and place by its request's number, each role's
+/// run by its address, and each preview by its request's number.
 #[derive(Clone, Debug, Default)]
 pub struct Runner {
     pub since: Option<String>,
     pub answers: BTreeMap<u64, Record>,
     pub places: BTreeMap<u64, Record>,
     pub runs: BTreeMap<String, Record>,
+    pub previews: BTreeMap<u64, Record>,
 }
 
 /// A runner's files at a tip, by name: `runner.rec`, `answers.rec` and
