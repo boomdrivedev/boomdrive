@@ -327,6 +327,10 @@ fn the_hello_first() {
     connection.hand(&handed).expect("handed");
 
     fake.wait_until("home's first hello", |t| sent(t, "hello") == 1);
+    // The fake records a hello before it sends the `pulled` answering
+    // it, so home is read before its connection is dropped: a drop on
+    // seeing the hello could reach the connection before that `pulled`.
+    connection.read(PATIENCE).expect("home is read");
     fake.drop_connection("home");
     let taken = fake.wait_until("home's second hello", |t| sent(t, "hello") == 2);
 
