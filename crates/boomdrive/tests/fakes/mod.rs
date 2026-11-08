@@ -15,13 +15,14 @@ use boomdrive::carry::{Carrier, Clones, Keeping, Passed, Reach};
 use boomdrive::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
 use boomdrive::git::Git;
 use boomdrive::hello::Tools;
-use boomdrive::report;
+use boomdrive::locks::Locks;
+use boomdrive::report::{self, ReportFile};
 use boomdrive::run::{Event, Notices};
 use boomdrive::sluice;
 use boomdrive::terminal::{self, Relays};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
+    ActSort, AgentSetting, ControlPlane, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
 };
 use serde_json::{json, Value};
 use std::cell::RefCell;
@@ -448,10 +449,14 @@ impl Tools for FakeTools {
     }
 }
 
+/// The label of the part a bench's passes are of, but where a test names
+/// another.
+pub const PART: &str = "home";
+
 /// A host for control passes: a fake Flume, a stub `sluice`, a stub
-/// `herdr` and the terminals relayed through it, clones and tools, and a
-/// data directory of its own, which keeps [`KEPT`] with its clone's
-/// container made.
+/// `herdr` and the terminals relayed through it, clones and tools, each
+/// clone's lock, the one report file, and a data directory of its own,
+/// which keeps [`KEPT`] with its clone's container made.
 pub struct Bench {
     /// Dropped first, so every terminal's thread ends before the stubs
     /// and the data directory go.
@@ -466,8 +471,12 @@ pub struct Bench {
     pub git: Git,
     pub clones: FakeClones,
     pub tools: FakeTools,
+    /// Each clone's lock, as the keeper and the launches take it.
+    pub locks: Arc<Locks>,
+    /// The one report file every part's pass keeps its share of.
+    pub report_file: ReportFile,
     /// Whether the last pull was read, kept across the bench's passes as
-    /// the loop keeps it.
+    /// a part's thread keeps it.
     reach: Reach,
     notices: Notices,
     events: Receiver<Event>,
@@ -483,6 +492,7 @@ impl Bench {
         let relays = Relays::new(terminal::Cli::new(herdr.program()), move |line| {
             said.lock().expect("the relay's lines").push(line);
         });
+        let report_file = ReportFile::new(&report::control_dir(&dir.path().join("data")));
         let bench = Bench {
             relays,
             relay_lines,
@@ -493,6 +503,8 @@ impl Bench {
             git: Git::default(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
+            locks: Arc::new(Locks::new()),
+            report_file,
             reach: Reach::default(),
             notices: Notices::new(events),
             events: received,
@@ -515,7 +527,7 @@ impl Bench {
 
     /// The report file.
     pub fn report_file(&self) -> PathBuf {
-        report::file(&self.control_dir())
+        self.report_file.path().to_path_buf()
     }
 
     /// The container `address`'s clone is made in.
@@ -543,9 +555,23 @@ impl Bench {
         plane: &mut Fake,
         due: &dyn Fn() -> bool,
     ) -> (Passed, Vec<String>) {
+        self.pass_of(PART, flume, plane, due)
+    }
+
+    /// One control pass of the part `label`, whose control plane is
+    /// `plane`, over `flume`, the next pass due once `due` says so, and
+    /// the lines it said.
+    pub fn pass_of(
+        &self,
+        label: &str,
+        flume: &dyn Flume,
+        plane: &mut dyn ControlPlane,
+        due: &dyn Fn() -> bool,
+    ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
         let sluice = sluice::Cli::new(self.sluice.program());
         let carrier = Carrier {
+            label,
             flume,
             sluice: &sluice,
             git: &self.git,
@@ -553,6 +579,8 @@ impl Bench {
             tools: &self.tools,
             notices: &self.notices,
             control_dir: &control_dir,
+            report: &self.report_file,
+            locks: &self.locks,
             relays: &self.relays,
             reach: &self.reach,
             due,
@@ -581,7 +609,7 @@ impl Bench {
             .try_iter()
             .filter_map(|event| match event {
                 Event::Landed(address) => Some(address.to_string()),
-                Event::Wake | Event::Stop => None,
+                Event::Stop => None,
             })
             .collect()
     }

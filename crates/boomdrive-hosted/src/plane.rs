@@ -41,25 +41,26 @@ pub const PATIENCE: Duration = Duration::from_secs(10);
 const CLOSE_WAIT: Duration = Duration::from_secs(1);
 
 /// Opens the hosted implementation from its table, `table`, of the
-/// configuration file `file`: one connection for each partition, each
-/// trying again on a backoff whose cap stops at `poll_interval`, saying
-/// its lines to `say` and waking the runner by `wake` (design Decision 1).
-/// Each partition's key is read from the host's own credential store at
-/// every attempt; a host with none says so for each partition, once, and
-/// opens nonetheless.
+/// configuration file `file`, as its parts: one for each partition, its
+/// connection trying again on a backoff whose cap stops at
+/// `poll_interval`, saying its lines to the say `say_for` makes for its
+/// label and waking the runner for it by the wake `wake_for` makes for it
+/// (design Decision 1; record 0026). Each partition's key is read from
+/// the host's own credential store at every attempt; a host with none
+/// says so for each partition, once, and opens nonetheless.
 pub fn open(
     table: &toml::Table,
     file: &Path,
     poll_interval: Duration,
-    say: Say,
-    wake: Wake,
-) -> Result<Hosted, String> {
+    say_for: &dyn Fn(&str) -> Say,
+    wake_for: &dyn Fn(&str) -> Wake,
+) -> Result<Vec<Part>, String> {
     let table = Table::read(table, file)?;
     let store: Arc<dyn Store> = match key::store_for_host() {
         Ok(store) => Arc::from(store),
         Err(words) => Arc::new(Lacking(words)),
     };
-    Hosted::new(&table, store, poll_interval, say, wake)
+    Hosted::parts(&table, store, poll_interval, say_for, wake_for)
 }
 
 /// A host with no credential store: every key is unread, with the words

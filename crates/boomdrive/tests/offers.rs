@@ -306,7 +306,8 @@ fn flume_is_not_there() {
     assert_eq!(outcome(&bench, "madswan/16"), None);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
-        lines[0].starts_with("boomdrive: Flume's status could not be read: flume could not run:"),
+        lines[0]
+            .starts_with("boomdrive: home: Flume's status could not be read: flume could not run:"),
         "{lines:?}"
     );
     assert!(matches!(plane.hellos()[0].capacity, Capacity::Missing(_)));
@@ -349,7 +350,7 @@ fn a_pull_that_cannot_be_read() {
     assert!(!passed.reported);
     assert_eq!(
         lines,
-        ["boomdrive: the control plane could not be read: no network"]
+        ["boomdrive: home: the control plane could not be read: no network"]
     );
     assert_eq!(bench.flume.calls(), [Call::Status]);
     assert_eq!(plane.reports(), [] as [Report; 0]);
@@ -384,7 +385,7 @@ fn a_report_not_sent() {
     assert!(!passed.reported);
     assert_eq!(plane.reports(), [] as [Report; 0]);
     assert!(lines.contains(
-        &"boomdrive: the report could not be sent: offline: it is sent at the next pass"
+        &"boomdrive: home: the report could not be sent: offline: it is sent at the next pass"
             .to_string()
     ));
     let held = bench.report();

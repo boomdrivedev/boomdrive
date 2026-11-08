@@ -1,22 +1,26 @@
 //! `boomdrive run` carrying a control plane's work (design Decisions 4, 5
-//! and 13): `--once` makes one keeping pass and one control pass, and the
-//! loop makes control passes on a timer of their own, hastened by no
-//! lapsed lease and after no pass that did not report, at once when the
-//! control plane wakes it, and none that acts while the configuration
-//! does not read, saying the control plane unread once until it is read
-//! again (the running spec's "boomdrive run --once makes one pass",
-//! "boomdrive run makes control passes on a timer of their own", "A
-//! control pass runs at once when its control plane wakes the runner", "A
-//! control pass after a broken configuration acts on nothing" and "A
-//! control plane that cannot be read is said once until it is read
-//! again"; the
+//! and 13, and Decision 2 of the change
+//! each-partition-the-runner-serves-runs-on-its-own): `--once` makes one
+//! keeping pass and one control pass of each part side by side, and each
+//! part is carried on a thread of its own, its control passes on a timer
+//! of their own, hastened by no lapsed lease and after no pass that did
+//! not report, at once when its implementation wakes it, and none that
+//! acts while the configuration does not read, saying its control plane
+//! unread once until it is read again, waiting on no other part and on no
+//! keeping pass (the running spec's "Each part of the control plane is
+//! carried on its own", "boomdrive run --once makes one pass", "boomdrive
+//! run makes control passes on a timer of their own", "A control pass
+//! runs at once when its control plane wakes the runner", "A control pass
+//! after a broken configuration acts on nothing" and "A control plane
+//! that cannot be read is said once until it is read again"; the
 //! configuration spec's "The configuration may name the control plane"
 //! and "The control-plane table is read when the runner starts"). The
 //! binary runs under the scratch host with stub `flume`, `sluice`,
 //! `herdr` and `systemd-creds` first on its `PATH`, crew's implementation
 //! reaches the scratch forge's state repository through the scratch git
 //! configuration, and the hosted implementation a loopback port with
-//! nothing on it. The loop runs in-process over the fake control plane.
+//! nothing on it. The runner runs in-process over the fake control plane
+//! and control planes of the test's own, its parts `home` and `work`.
 
 mod common;
 mod fakes;
@@ -27,11 +31,12 @@ use boomdrive::report;
 use boomdrive::run::{Programs, Runner, Stopper};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    Answer, At, ControlPlane, Hello, Id, Lease, Outcome, Pulled, Report, Reported, Unread, Unsent,
-    Wake,
+    Answer, At, ControlPlane, Hello, Id, Lease, Outcome, Part, Pulled, Report, Reported, Unread,
+    Unsent, Wake, Want,
 };
 use common::{keeping, Origin, Scratch};
-use fakes::{CredsStub, HerdrStub, SluiceStub, Stub};
+use fakes::{offer, CredsStub, HeldFetch, HerdrStub, SluiceStub, Stub};
+use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -209,7 +214,7 @@ fn flumes_status_refused() {
     assert!(
         stderr(&output)
             .lines()
-            .any(|line| line.starts_with("boomdrive: Flume's status could not be read: ")),
+            .any(|line| line.starts_with("boomdrive: madswan: Flume's status could not be read: ")),
         "{}",
         stderr(&output)
     );
@@ -225,17 +230,32 @@ fn flumes_status_refused() {
     assert!(runner.contains("Host: deneb"), "{runner}");
 }
 
+/// A configuration keeping [`KEPT`], carrying crew's work for the host
+/// `host-a` in the partitions `home` and `work`, both of the state
+/// repository `example/state`.
+fn carrying_two() -> String {
+    format!(
+        "{}\n[control_plane]\ntype = \"crew\"\n\n\
+         [control_plane.crew]\nhost = \"host-a\"\n\n\
+         [[control_plane.crew.partitions]]\nlabel = \"home\"\n\
+         state_repository = \"example/state\"\n\n\
+         [[control_plane.crew.partitions]]\nlabel = \"work\"\n\
+         state_repository = \"example/state\"\n",
+        keeping(&[KEPT])
+    )
+}
+
 /// The running spec's "A control plane that cannot be read": no
 /// partition's state repository can be read. The runner keeps its
-/// repositories, names the control plane as unread, launches and acts on
-/// nothing, and exits 1. The pass reads Flume's status and each tool's
+/// repositories, names each part as unread, launches and acts on nothing,
+/// and exits 1. Each part's pass reads Flume's status and each tool's
 /// version for the hello it hands the pull, before the pull is read
 /// (design Decision 5, step 2): no other Flume command runs.
 #[test]
 fn a_control_plane_that_cannot_be_read() {
     let scratch = Scratch::new();
     scratch.origin(KEPT);
-    scratch.configure(&carrying("2m", "1m"));
+    scratch.configure(&carrying_two());
     let tools = Tools::new();
 
     let output = once(&scratch, &tools);
@@ -243,11 +263,18 @@ fn a_control_plane_that_cannot_be_read() {
     assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
     assert!(scratch.home.join("Code").join(KEPT).exists());
     let said = stderr(&output);
-    let unread: Vec<&str> = said
-        .lines()
-        .filter(|line| line.starts_with("boomdrive: the control plane could not be read: "))
-        .collect();
-    assert_eq!(unread.len(), 1, "{said}");
+    for label in ["home", "work"] {
+        let unread: Vec<&str> = said
+            .lines()
+            .filter(|line| {
+                line.starts_with(&format!(
+                    "boomdrive: {label}: the control plane could not be read: "
+                ))
+            })
+            .collect();
+        assert_eq!(unread.len(), 1, "{said}");
+        assert!(unread[0].contains(&format!("{label}/main")), "{said}");
+    }
     for command in tools.flume_commands() {
         assert!(
             ["status", "--version"].contains(&command.as_str()),
@@ -255,6 +282,67 @@ fn a_control_plane_that_cannot_be_read() {
             tools.flume_commands()
         );
     }
+}
+
+/// The running spec's "One part unread": crew's control plane serves
+/// `home` and `work`, the state repository holds no `home/main`, and
+/// `work/main` holds a launch for this host. The runner names `home` as
+/// unread, launches `work`'s launch once, writes `work`'s runner branch,
+/// and exits 0.
+#[test]
+fn one_part_unread() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    let state = scratch.empty_origin("example/state");
+    let request = records::launch(
+        1,
+        Some("host-a"),
+        "unit/a",
+        KEPT,
+        "a",
+        &[("Base", "main"), ("Brief", "Parse the input.")],
+    );
+    state.commit(
+        "work/main",
+        "requests.rec",
+        &records::file(records::REQUESTS, &[request]),
+    );
+    state.commit("work/main", "plan.rec", &records::plan(&["a"], &[]));
+    scratch.configure(&carrying_two());
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+
+    let output = once(&scratch, &tools);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let said = stderr(&output);
+    assert!(
+        said.lines()
+            .any(|line| line.starts_with("boomdrive: home: the control plane could not be read: ")),
+        "{said}"
+    );
+    let launches = tools
+        .flume_commands()
+        .into_iter()
+        .filter(|command| command == "launch")
+        .count();
+    assert_eq!(launches, 1, "{:?}", tools.flume_commands());
+    assert!(
+        said.lines()
+            .any(|line| line.starts_with("work/1: launched at ")),
+        "{said}"
+    );
+    let answers = scratch.git(&state.bare, &["show", "work/runner/host-a:answers.rec"]);
+    assert!(answers.contains("Outcome: launched"), "{answers}");
+    assert!(!scratch.holds(
+        &state.bare,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            "refs/heads/home/runner/host-a"
+        ]
+    ));
 }
 
 /// The configuration spec's "No control plane": `--once` keeps the
@@ -304,10 +392,9 @@ fn the_hosted_control_plane_named() {
     assert!(!said.contains("no control pass runs"), "{said}");
     let unread: Vec<&str> = said
         .lines()
-        .filter(|line| line.starts_with("boomdrive: the control plane could not be read: "))
+        .filter(|line| line.starts_with("boomdrive: home: the control plane could not be read: "))
         .collect();
     assert_eq!(unread.len(), 1, "{said}");
-    assert!(unread[0].contains("home"), "{said}");
     assert!(scratch.home.join("Code").join(KEPT).exists());
     assert!(!tools.creds.kept_or_read(), "{:?}", tools.creds.calls());
 }
@@ -351,13 +438,15 @@ fn loopback_with_nothing_on_it() -> String {
     format!("http://127.0.0.1:{port}/boomdrive")
 }
 
-/// The fake control plane, telling the test when each pull is made.
+/// The fake control plane, telling the test when each pull is made and
+/// each report taken.
 struct Told {
     fake: Fake,
     /// How many pulls are still refused, with `no network`, before the
     /// fake is asked.
     unread: usize,
     pulls: Sender<Instant>,
+    reports: Sender<Instant>,
 }
 
 impl ControlPlane for Told {
@@ -371,7 +460,9 @@ impl ControlPlane for Told {
     }
 
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
-        self.fake.report(report)
+        let reported = self.fake.report(report)?;
+        let _ = self.reports.send(Instant::now());
+        Ok(reported)
     }
 
     fn owns(&self, id: &Id) -> bool {
@@ -379,73 +470,41 @@ impl ControlPlane for Told {
     }
 }
 
-/// The runner's loop over the fake control plane, running in a thread of
-/// the test's, with the stub tools.
-struct Running {
-    /// The wake the control plane was handed at its opening, as a pushing
-    /// implementation's own thread would hold it.
-    wake: Wake,
-    stopper: Stopper,
-    lines: Receiver<(Instant, String)>,
-    pulls: Receiver<Instant>,
-    thread: JoinHandle<()>,
-    _tools: Tools,
+/// A control plane of the test's own whose pull waits on the test: it
+/// tells the test when a pull begins, and answers it, as the fake does,
+/// only once the test lets it go.
+struct Slow {
+    fake: Fake,
+    pulling: Sender<Instant>,
+    go: Receiver<()>,
+    reports: Sender<Instant>,
 }
 
-impl Running {
-    /// Starts the runner on the scratch host's default configuration
-    /// file, which names crew's implementation, and carries the fake
-    /// control plane's work in its place.
-    fn start(scratch: &Scratch) -> Running {
-        Running::over(scratch, Fake::new(), 0)
+impl ControlPlane for Slow {
+    fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread> {
+        let _ = self.pulling.send(Instant::now());
+        let _ = self.go.recv();
+        self.fake.pull(hello, report)
     }
 
-    /// Starts the runner as [`Running::start`] does, carrying `fake`'s
-    /// work, its first `unread` pulls refused with `no network`.
-    fn over(scratch: &Scratch, fake: Fake, unread: usize) -> Running {
-        let overlay = scratch.overlay();
-        let var = |name: &str| {
-            overlay
-                .iter()
-                .find(|(key, _)| key.as_os_str() == OsStr::new(name))
-                .map(|(_, value)| value.clone())
-        };
-        let tools = Tools::new();
-        let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
-        let (told, pulls) = mpsc::channel();
-        let plane = Told {
-            fake,
-            unread,
-            pulls: told,
-        };
-        let mut handed = None;
-        runner
-            .carry_for(
-                |wake| {
-                    handed = Some(wake);
-                    Box::new(plane)
-                },
-                tools.programs(),
-            )
-            .expect("the configuration names a control plane");
-        let wake = handed.expect("the control plane is handed the runner's wake");
-        let stopper = runner.stopper();
-        let (said, lines) = mpsc::channel();
-        let thread = thread::spawn(move || {
-            runner.keep(&|line| {
-                let _ = said.send((Instant::now(), line));
-            })
-        });
-        Running {
-            wake,
-            stopper,
-            lines,
-            pulls,
-            thread,
-            _tools: tools,
-        }
+    fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
+        let reported = self.fake.report(report)?;
+        let _ = self.reports.send(Instant::now());
+        Ok(reported)
     }
 
+    fn owns(&self, id: &Id) -> bool {
+        self.fake.owns(id)
+    }
+}
+
+/// What a test hears of one part's control plane.
+struct Heard {
+    pulls: Receiver<Instant>,
+    reports: Receiver<Instant>,
+}
+
+impl Heard {
     /// When the next pull is made; panics where none is made in time.
     fn pull(&self) -> Instant {
         self.pulls
@@ -458,26 +517,214 @@ impl Running {
         self.pulls.recv_timeout(wait).is_ok()
     }
 
+    /// When the next report is taken; panics where none is in time.
+    fn report(&self) -> Instant {
+        self.reports
+            .recv_timeout(PATIENCE)
+            .expect("a report taken in time")
+    }
+}
+
+/// `fake` as a part's control plane, its first `unread` pulls refused
+/// with `no network`, and what the test hears of it.
+fn told(fake: Fake, unread: usize) -> (Box<dyn ControlPlane + Send>, Heard) {
+    let (pulls, pulled) = mpsc::channel();
+    let (reports, reported) = mpsc::channel();
+    let plane = Told {
+        fake,
+        unread,
+        pulls,
+        reports,
+    };
+    let heard = Heard {
+        pulls: pulled,
+        reports: reported,
+    };
+    (Box::new(plane), heard)
+}
+
+/// `fake` as a part's control plane whose pulls wait on the test, what
+/// the test hears of it, and what lets each pull go.
+fn slow(fake: Fake) -> (Box<dyn ControlPlane + Send>, Heard, Sender<()>) {
+    let (pulling, pulled) = mpsc::channel();
+    let (reports, reported) = mpsc::channel();
+    let (go, gone) = mpsc::channel();
+    let plane = Slow {
+        fake,
+        pulling,
+        go: gone,
+        reports,
+    };
+    let heard = Heard {
+        pulls: pulled,
+        reports: reported,
+    };
+    (Box::new(plane), heard, go)
+}
+
+/// The fake control plane of the part `label`, owning the ids under
+/// `<label>/` alone, holding `wants`.
+fn part_holding(label: &str, wants: Vec<Want>) -> Fake {
+    let mut fake = Fake::owning(&format!("{label}/"));
+    fake.set_wants(wants);
+    fake
+}
+
+/// An offer of a launch into [`KEPT`] with the id `id`, naming no stream.
+fn launch(id: &str) -> Want {
+    Want::Offer(offer(id, id.rsplit('/').next().unwrap_or(id)))
+}
+
+/// The runner, running in a thread of the test's, carrying parts of the
+/// test's own with the stub tools.
+struct Running {
+    /// The wake each part's implementation was handed at its opening, by
+    /// the part's label, as a pushing implementation's own thread would
+    /// hold it.
+    wakes: BTreeMap<String, Wake>,
+    /// What the test hears of `home`'s control plane, where the runner
+    /// carries one the harness made.
+    home: Option<Heard>,
+    stopper: Stopper,
+    lines: Receiver<(Instant, String)>,
+    thread: JoinHandle<()>,
+    _tools: Tools,
+}
+
+impl Running {
+    /// Starts the runner on the scratch host's default configuration
+    /// file, which names crew's implementation, and carries one part,
+    /// `home`, the fake control plane, in its place.
+    fn start(scratch: &Scratch) -> Running {
+        Running::over(scratch, Fake::new(), 0)
+    }
+
+    /// Starts the runner as [`Running::start`] does, carrying `fake`'s
+    /// work as `home`, its first `unread` pulls refused with `no network`.
+    fn over(scratch: &Scratch, fake: Fake, unread: usize) -> Running {
+        let (plane, heard) = told(fake, unread);
+        let mut running = Running::carrying(scratch, vec![("home", plane)], Tools::new());
+        running.home = Some(heard);
+        running
+    }
+
+    /// Starts the runner on the scratch host's default configuration
+    /// file, which names crew's implementation, and carries `parts`, each
+    /// by its label, in its place, running `tools`.
+    fn carrying(
+        scratch: &Scratch,
+        parts: Vec<(&str, Box<dyn ControlPlane + Send>)>,
+        tools: Tools,
+    ) -> Running {
+        let overlay = scratch.overlay();
+        let var = |name: &str| {
+            overlay
+                .iter()
+                .find(|(key, _)| key.as_os_str() == OsStr::new(name))
+                .map(|(_, value)| value.clone())
+        };
+        let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let mut wakes = BTreeMap::new();
+        runner
+            .carry_for(
+                |wake_for| {
+                    parts
+                        .into_iter()
+                        .map(|(label, plane)| {
+                            wakes.insert(label.to_string(), wake_for(label));
+                            Part {
+                                label: label.to_string(),
+                                plane,
+                            }
+                        })
+                        .collect()
+                },
+                tools.programs(),
+            )
+            .expect("the configuration names a control plane");
+        let stopper = runner.stopper();
+        let (said, lines) = mpsc::channel();
+        let thread = thread::spawn(move || {
+            runner.keep(&|line| {
+                let _ = said.send((Instant::now(), line));
+            })
+        });
+        Running {
+            wakes,
+            home: None,
+            stopper,
+            lines,
+            thread,
+            _tools: tools,
+        }
+    }
+
+    /// What the test hears of `home`'s control plane.
+    fn home(&self) -> &Heard {
+        self.home
+            .as_ref()
+            .expect("home's control plane is the harness's")
+    }
+
+    /// When `home`'s next pull is made; panics where none is in time.
+    fn pull(&self) -> Instant {
+        self.home().pull()
+    }
+
+    /// Whether `home` pulls within `wait`.
+    fn pulled_within(&self, wait: Duration) -> bool {
+        self.home().pulled_within(wait)
+    }
+
+    /// Wakes the part `label` as its implementation would.
+    fn wake(&self, label: &str) {
+        (self.wakes[label])();
+    }
+
     /// When `line` is said, the lines said before it since the last read;
     /// panics where it is not said in time.
     fn until(&self, line: &str) -> (Instant, Vec<String>) {
+        self.until_one(|said| said == line, line)
+    }
+
+    /// When a line starting `start` is said, that line and the lines said
+    /// before it since the last read; panics where none is said in time.
+    fn until_starting(&self, start: &str) -> (Instant, String, Vec<String>) {
         let deadline = Instant::now() + PATIENCE;
         let mut said = Vec::new();
         while let Ok((at, next)) = self
             .lines
             .recv_timeout(deadline.saturating_duration_since(Instant::now()))
         {
-            if next == line {
+            if next.starts_with(start) {
+                return (at, next, said);
+            }
+            said.push(next);
+        }
+        panic!("no line starting {start:?} said in time; said: {said:#?}");
+    }
+
+    fn until_one(&self, is: impl Fn(&str) -> bool, what: &str) -> (Instant, Vec<String>) {
+        let deadline = Instant::now() + PATIENCE;
+        let mut said = Vec::new();
+        while let Ok((at, next)) = self
+            .lines
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+        {
+            if is(&next) {
                 return (at, said);
             }
             said.push(next);
         }
-        panic!("{line:?} not said in time; said: {said:#?}");
+        panic!("{what:?} not said in time; said: {said:#?}");
     }
 
-    fn stop(self) {
+    /// Stops the runner, and gives the lines said from the last read, its
+    /// stop the last, each with when it was said.
+    fn stop(self) -> Vec<(Instant, String)> {
         self.stopper.stop();
-        self.thread.join().expect("the loop ends");
+        self.thread.join().expect("the runner ends");
+        self.lines.try_iter().collect()
     }
 }
 
@@ -507,9 +754,9 @@ fn fetched(scratch: &Scratch) -> String {
     )
 }
 
-/// The running spec's "boomdrive run makes control passes on a timer of
-/// their own": a control pass follows the first keeping pass, and the
-/// next come each `poll_interval`, while the keeping pass keeps its own
+/// The running spec's "On the control timer", over a part: `home`'s
+/// first control pass follows the first keeping pass, and the next come
+/// each `poll_interval`, while the keeping pass keeps its own
 /// `fetch_interval`.
 #[test]
 fn control_passes_on_their_own_timer() {
@@ -543,8 +790,9 @@ fn control_passes_on_their_own_timer() {
 }
 
 /// The running spec's "Woken by the control plane": woken through the
-/// wake its control plane was handed at its opening, a control pass runs
-/// at once, and none follows it within the hour's interval.
+/// wake its implementation was handed for `home` at its opening, a
+/// control pass of `home` runs at once, and none follows it within the
+/// hour's interval.
 #[test]
 fn woken_by_the_control_plane() {
     let scratch = Scratch::new();
@@ -554,7 +802,7 @@ fn woken_by_the_control_plane() {
     running.pull();
 
     let woken = Instant::now();
-    (running.wake)();
+    running.wake("home");
     let pulled = running.pull();
 
     assert!(
@@ -565,6 +813,36 @@ fn woken_by_the_control_plane() {
     assert!(
         !running.pulled_within(Duration::from_secs(2)),
         "the next control pass is an hour after the woken one"
+    );
+    running.stop();
+}
+
+/// The running spec's "One part woken": the wake handed for `home` makes
+/// `home`'s control pass at once, and `work`'s next pass begins when its
+/// own timer says, an hour on.
+#[test]
+fn one_part_woken() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1h"));
+    let (home, home_heard) = told(Fake::owning("home/"), 0);
+    let (work, work_heard) = told(Fake::owning("work/"), 0);
+    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], Tools::new());
+    home_heard.pull();
+    work_heard.pull();
+
+    let woken = Instant::now();
+    running.wake("home");
+    let pulled = home_heard.pull();
+
+    assert!(
+        pulled - woken < Duration::from_secs(5),
+        "{:?}",
+        pulled - woken
+    );
+    assert!(
+        !work_heard.pulled_within(Duration::from_secs(2)),
+        "work's next control pass is its own timer's, an hour on"
     );
     running.stop();
 }
@@ -582,7 +860,7 @@ fn the_timer_kept_from_the_woken_pass() {
     thread::sleep(Duration::from_secs(1));
 
     let woken = Instant::now();
-    (running.wake)();
+    running.wake("home");
     // A pass the timer began before the wake is not the woken one.
     let mut pulled = running.pull();
     while pulled < woken {
@@ -601,9 +879,9 @@ fn the_timer_kept_from_the_woken_pass() {
     running.stop();
 }
 
-/// The running spec's "The configuration broken while running": the next
-/// control pass names the file and acts on nothing, and once the file is
-/// valid again, the pass after acts as before.
+/// The running spec's "The configuration broken while running": `home`'s
+/// next control pass names the file and acts on nothing, and once the file
+/// is valid again, the pass after acts as before.
 #[test]
 fn the_configuration_broken_while_running() {
     let scratch = Scratch::new();
@@ -615,16 +893,16 @@ fn the_configuration_broken_while_running() {
 
     rewrite(&scratch, &valid.replace(&format!("{KEPT:?}"), "\"flume\""));
     let broken = format!(
-        "boomdrive: {}:2: `repositories` entry \"flume\": an address is `owner/name`: \
+        "boomdrive: home: {}:2: `repositories` entry \"flume\": an address is `owner/name`: \
          nothing carried this pass",
         scratch.config_file().display()
     );
     running.until(&broken);
     // A pull begun before the file broke may be told of; none after.
-    running.pulls.try_iter().for_each(drop);
+    running.home().pulls.try_iter().for_each(drop);
     running.until(&broken);
     assert_eq!(
-        running.pulls.try_iter().count(),
+        running.home().pulls.try_iter().count(),
         0,
         "no pull while the file does not read"
     );
@@ -651,7 +929,7 @@ fn a_poll_interval_changed_while_running() {
 }
 
 /// A control pass that changes nothing says nothing (design Decision 5):
-/// over a control plane wanting nothing, the loop says nothing after its
+/// over a control plane wanting nothing, the runner says nothing after its
 /// first keeping pass until it stops.
 #[test]
 fn a_quiet_control_pass_says_nothing() {
@@ -664,11 +942,11 @@ fn a_quiet_control_pass_says_nothing() {
     running.pull();
     running.stopper.stop();
     let (_, said) = running.until("boomdrive: stopped");
-    running.thread.join().expect("the loop ends");
+    running.thread.join().expect("the runner ends");
     assert_eq!(said, Vec::<String>::new());
 }
 
-/// The running spec's "A lapsed lease", over the loop: the report file
+/// The running spec's "A lapsed lease", over the runner: the report file
 /// holds a launch under a lease that lapsed, and the control plane cannot
 /// be reached, so the next control pass comes `poll_interval` after the
 /// one before, never back to back.
@@ -679,6 +957,7 @@ fn a_lapsed_lease_sets_no_pass_sooner() {
     scratch.configure(&carrying("1h", "2s"));
     holding(
         &scratch,
+        "held",
         At::from(At::now().time() - Duration::from_secs(60)),
     );
     let mut fake = Fake::new();
@@ -699,7 +978,7 @@ fn a_lapsed_lease_sets_no_pass_sooner() {
     running.stop();
 }
 
-/// The running spec's "A pass that did not report", over the loop: the
+/// The running spec's "A pass that did not report", over the runner: the
 /// report file holds a launch under a lease that lapses in seconds, and
 /// the control plane takes no report, so no pass is made sooner than
 /// `poll_interval`, an hour.
@@ -710,6 +989,7 @@ fn a_pass_that_did_not_report_sets_no_pass_sooner() {
     scratch.configure(&carrying("1h", "1h"));
     holding(
         &scratch,
+        "held",
         At::from(At::now().time() + Duration::from_secs(5)),
     );
     let mut fake = Fake::new();
@@ -727,10 +1007,10 @@ fn a_pass_that_did_not_report_sets_no_pass_sooner() {
     running.stop();
 }
 
-/// The running spec's "Three passes unread, then read": the control
-/// plane refuses three pulls in a row with `no network`, then gives the
-/// fourth. One line names it unread, and one, at the fourth pass, says it
-/// is read again; the passes after say nothing of it.
+/// The running spec's "Three passes unread, then read": `home` refuses
+/// three pulls in a row with `no network`, then gives the fourth. One
+/// line names `home` unread, and one, at the fourth pass, says it is read
+/// again; the passes after say nothing of it.
 #[test]
 fn three_passes_unread_then_read() {
     let scratch = Scratch::new();
@@ -738,19 +1018,23 @@ fn three_passes_unread_then_read() {
     scratch.configure(&carrying("1h", "1s"));
     let running = Running::over(&scratch, Fake::new(), 3);
 
-    let (read_again, said) = running.until("boomdrive: the control plane is read again");
+    let (read_again, said) = running.until("boomdrive: home: the control plane is read again");
     let pulls: Vec<Instant> = (0..4).map(|_| running.pull()).collect();
     let reach: Vec<&String> = said
         .iter()
-        .filter(|line| line.starts_with("boomdrive: the control plane"))
+        .filter(|line| line.starts_with("boomdrive: home: the control plane"))
         .collect();
     assert_eq!(
         reach,
-        ["boomdrive: the control plane could not be read: no network"]
+        ["boomdrive: home: the control plane could not be read: no network"]
     );
     assert!(read_again >= pulls[3], "said at the fourth pass");
     assert!(
-        running.pulls.try_iter().all(|fifth| fifth > read_again),
+        running
+            .home()
+            .pulls
+            .try_iter()
+            .all(|fifth| fifth > read_again),
         "said before the fifth pass"
     );
 
@@ -758,13 +1042,226 @@ fn three_passes_unread_then_read() {
     running.pull();
     running.stopper.stop();
     let (_, after) = running.until("boomdrive: stopped");
-    running.thread.join().expect("the loop ends");
+    running.thread.join().expect("the runner ends");
     assert_eq!(after, Vec::<String>::new());
 }
 
+/// The running spec's "Each part's reach its own": `home` refuses every
+/// pull, and `work` gives every pull. One line names `home` as unread, and
+/// no line names `work`'s reach.
+#[test]
+fn each_parts_reach_its_own() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let mut refusing = Fake::owning("home/");
+    refusing.refuse_pulls("no network");
+    let (home, home_heard) = told(refusing, 0);
+    let (work, work_heard) = told(Fake::owning("work/"), 0);
+    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], Tools::new());
+    for _ in 0..3 {
+        home_heard.pull();
+        work_heard.pull();
+    }
+
+    let said: Vec<String> = running.stop().into_iter().map(|(_, line)| line).collect();
+    let reach: Vec<&String> = said
+        .iter()
+        .filter(|line| line.contains(": the control plane "))
+        .collect();
+    assert_eq!(
+        reach,
+        ["boomdrive: home: the control plane could not be read: no network"],
+        "{said:#?}"
+    );
+}
+
+/// The running spec's "A slow part": `home`'s pull answers only once the
+/// test lets it go, and `work` offers a launch whose stream has room.
+/// `work`'s launch is made and reported within seconds, and `work`'s next
+/// control pass begins `poll_interval` after the start of its last.
+#[test]
+fn a_slow_part() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "2s"));
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+    let (home, home_heard, home_go) = slow(Fake::owning("home/"));
+    let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
+    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], tools);
+    let began = home_heard.pull();
+
+    let (launched, _, _) = running.until_starting("work/1: launched at ");
+    let reported = work_heard.report();
+    let first = work_heard.pull();
+    let second = work_heard.pull();
+
+    assert!(
+        launched - began < Duration::from_secs(10),
+        "{:?}",
+        launched - began
+    );
+    assert!(reported >= launched);
+    let apart = second - first;
+    assert!(
+        apart >= Duration::from_secs(1) && apart < Duration::from_secs(4),
+        "{apart:?} between work's passes"
+    );
+    assert!(
+        home_heard.reports.try_recv().is_err(),
+        "home's pass still waits"
+    );
+    home_go.send(()).expect("home's pull let go");
+    drop(home_go);
+    running.stop();
+}
+
+/// The running spec's "A failing part": `home` refuses every pull and
+/// report with `no network`, and `work` offers a launch whose stream has
+/// room. `work`'s launch is made and reported, and one line says `home`
+/// cannot be read.
+#[test]
+fn a_failing_part() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+    let mut failing = Fake::owning("home/");
+    failing.refuse_pulls("no network");
+    failing.refuse_reports("no network");
+    let (home, home_heard) = told(failing, 0);
+    let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
+    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], tools);
+
+    let (_, launched, mut said) = running.until_starting("work/1: launched at ");
+    work_heard.report();
+    home_heard.pull();
+    home_heard.pull();
+
+    said.push(launched);
+    said.extend(running.stop().into_iter().map(|(_, line)| line));
+    let unread = "boomdrive: home: the control plane could not be read: no network";
+    let named: Vec<&String> = said
+        .iter()
+        .filter(|line| line.starts_with("boomdrive: home") || line.starts_with("home/"))
+        .collect();
+    assert_eq!(named, [unread], "{said:#?}");
+}
+
+/// The running spec's "Each part on its own timer": `work` holds a lease
+/// expiring seconds after a pass of `work` that reported, so `work`'s next
+/// pass comes by the midpoint of the time left, and `home`'s keeps its
+/// own `poll_interval`.
+#[test]
+fn each_part_on_its_own_timer() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "8s"));
+    holding(
+        &scratch,
+        "work/held",
+        At::from(At::now().time() + Duration::from_secs(8)),
+    );
+    let (home, home_heard) = told(Fake::owning("home/"), 0);
+    let (work, work_heard) = told(Fake::owning("work/"), 0);
+    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], Tools::new());
+
+    let home_first = home_heard.pull();
+    let work_first = work_heard.pull();
+    let work_second = work_heard.pull();
+    let home_second = home_heard.pull();
+
+    let work_apart = work_second - work_first;
+    assert!(
+        work_apart < Duration::from_secs(6),
+        "{work_apart:?} between work's passes, hastened by its lease"
+    );
+    let home_apart = home_second - home_first;
+    assert!(
+        home_apart >= Duration::from_secs(7),
+        "{home_apart:?} between home's passes, its own poll_interval"
+    );
+    running.stop();
+}
+
+/// The running spec's "A keeping pass under way": a keeping pass's fetch
+/// of [`KEPT`] is held, and `work`'s control passes fall due meanwhile:
+/// they pull, answer and report while the fetch is held.
+#[test]
+fn a_keeping_pass_under_way() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin(KEPT);
+    scratch.configure(&carrying("3s", "1s"));
+    let held = HeldFetch::new(&scratch.gitconfig, KEPT);
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+    let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
+    let running = Running::carrying(&scratch, vec![("work", work)], tools);
+    running.until(&view_made(&scratch, &origin.tip("main")));
+    held.hold();
+    held.wait_held(PATIENCE);
+    // Every pull and report the test has heard of may have come before
+    // the fetch was held; those that come now come while it is held.
+    work_heard.pulls.try_iter().for_each(drop);
+    work_heard.reports.try_iter().for_each(drop);
+
+    work_heard.pull();
+    work_heard.report();
+    work_heard.pull();
+    work_heard.report();
+
+    held.let_go();
+    running.stop();
+}
+
+/// The running spec's "Stopped with a part's pass under way": stopped
+/// while `home`'s control pass waits on its pull and `work` waits for its
+/// next pass, `work` begins no pass, `home`'s pass ends with its report
+/// saved, the runner says it stopped, and no pass begins after that line.
+#[test]
+fn stopped_with_a_parts_pass_under_way() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1h"));
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+    let (home, home_heard, home_go) = slow(part_holding("home", vec![launch("home/1")]));
+    let (work, work_heard) = told(Fake::owning("work/"), 0);
+    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], tools);
+    home_heard.pull();
+    work_heard.pull();
+    work_heard.report();
+
+    running.stopper.stop();
+    thread::sleep(Duration::from_millis(300));
+    home_go.send(()).expect("home's pull let go");
+    let reported = home_heard.report();
+    let said = running.stop();
+
+    let (stopped, last) = said.last().cloned().expect("a line");
+    assert_eq!(last, "boomdrive: stopped", "{said:#?}");
+    assert!(reported <= stopped, "home's pass ended before the stop");
+    assert!(
+        work_heard.pulls.try_recv().is_err(),
+        "work began no pass once stopped"
+    );
+    assert!(
+        home_heard.pulls.try_recv().is_err(),
+        "home began no pass once stopped"
+    );
+    let file = report::file(&report::control_dir(&scratch.data()));
+    let saved = report::read(&file).unwrap().expect("the report file");
+    assert_eq!(
+        saved.launches[&Id::new("home/1")].answer.outcome,
+        Outcome::Launched
+    );
+}
+
 /// Writes the runner's report file on the scratch host, holding launch
-/// `held` at a place under lease 1, expiring at `expires`.
-fn holding(scratch: &Scratch, expires: At) {
+/// `id` at a place under lease 1, expiring at `expires`.
+fn holding(scratch: &Scratch, id: &str, expires: At) {
     let mut held = Report::default();
     let lease = Lease {
         number: 1,
@@ -776,7 +1273,7 @@ fn holding(scratch: &Scratch, expires: At) {
         words: None,
         at: At::now(),
     };
-    held.answer(&Id::new("held"), lease, answer);
+    held.answer(&Id::new(id), lease, answer);
     let control_dir = report::control_dir(&scratch.data());
     std::fs::create_dir_all(&control_dir).expect("the control directory");
     report::save(&report::file(&control_dir), &held).expect("the report saved");

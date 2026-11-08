@@ -61,9 +61,15 @@ pub struct Crew {
 }
 
 /// Opens crew's implementation from its table, `table`, of the
-/// configuration file `file`, keeping its caches under `data_dir`.
-pub fn open(table: &toml::Table, file: &Path, data_dir: &Path, say: Say) -> Result<Crew, String> {
-    Ok(Crew::new(config::read(table, file)?, GITHUB, data_dir, say))
+/// configuration file `file`, keeping its caches under `data_dir`, as its
+/// [`parts`], each saying through the say `say_for` makes for its label.
+pub fn open(
+    table: &toml::Table,
+    file: &Path,
+    data_dir: &Path,
+    say_for: &dyn Fn(&str) -> Say,
+) -> Result<Vec<Part>, String> {
+    Ok(parts(config::read(table, file)?, GITHUB, data_dir, say_for))
 }
 
 /// crew's implementation of `config` as parts, its state repositories

@@ -3,32 +3,39 @@
 //! names it, against the function that opens it and the one that enrolls
 //! a partition of it, where it has one. The list is data, and the one
 //! place outside an implementation that names one: every other module
-//! reaches the control plane through `ControlPlane` alone, and
-//! `boomdrive enroll` through [`enroll`].
+//! reaches the control plane through `ControlPlane` alone, served as
+//! parts, and `boomdrive enroll` through [`enroll`].
 
-use boomdrive_control::{ControlPlane, Wake};
+use boomdrive_control::{Part, Wake};
 use std::path::Path;
 use std::time::Duration;
-
-/// A control plane as the runner holds it, on its loop's one thread.
-pub type Plane = Box<dyn ControlPlane + Send>;
 
 /// Where an implementation says what it did and could not do, one line
 /// each.
 pub type Say = Box<dyn FnMut(String) + Send>;
 
+/// What makes the say of each part an implementation opens, by its
+/// label.
+pub type SayFor<'a> = &'a dyn Fn(&str) -> Say;
+
+/// What makes the wake of each part an implementation opens, by its
+/// label, which it calls when its control plane pushes that part's work.
+pub type WakeFor<'a> = &'a dyn Fn(&str) -> Wake;
+
 /// Opens an implementation from its own table, `[control_plane.<type>]`,
 /// of the configuration file `file`, keeping what it keeps under the
-/// runner's data directory, making a control pass each `poll_interval`,
-/// and handed `wake` for when its control plane pushes work.
+/// runner's data directory, each part making a control pass each
+/// `poll_interval`, as its parts: at least one, each label once, in its
+/// table's order, each handed the say and the wake made for its label
+/// (record 0026; design Decision 1).
 pub type Opener = fn(
     table: &toml::Table,
     file: &Path,
     data_dir: &Path,
     poll_interval: Duration,
-    say: Say,
-    wake: Wake,
-) -> Result<Plane, String>;
+    say_for: SayFor<'_>,
+    wake_for: WakeFor<'_>,
+) -> Result<Vec<Part>, String>;
 
 /// Enrolls the partition `label` of an implementation's own table, of the
 /// configuration file `file`, with the one-time token `token` gives, or
@@ -85,38 +92,32 @@ pub struct Refusal {
     pub host_to_fix: bool,
 }
 
-/// crew's implementation, which never wakes the runner: crew's control
-/// plane pushes nothing, its records are read at each pull, and nothing
-/// of it waits on `poll_interval`.
+/// crew's implementation, a part for each partition, which never wakes
+/// the runner: crew's control plane pushes nothing, its records are read
+/// at each pull, and nothing of it waits on `poll_interval`.
 fn crew(
     table: &toml::Table,
     file: &Path,
     data_dir: &Path,
     _poll_interval: Duration,
-    say: Say,
-    _wake: Wake,
-) -> Result<Plane, String> {
-    Ok(Box::new(boomdrive_crew::open(table, file, data_dir, say)?))
+    say_for: SayFor<'_>,
+    _wake_for: WakeFor<'_>,
+) -> Result<Vec<Part>, String> {
+    boomdrive_crew::open(table, file, data_dir, say_for)
 }
 
-/// The hosted control plane's implementation, whose connections' backoff
-/// stops at `poll_interval` (core.22), and which keeps nothing under the
-/// data directory (core.35).
+/// The hosted control plane's implementation, a part for each partition,
+/// whose connections' backoff stops at `poll_interval` (core.22), and
+/// which keeps nothing under the data directory (core.35).
 fn hosted(
     table: &toml::Table,
     file: &Path,
     _data_dir: &Path,
     poll_interval: Duration,
-    say: Say,
-    wake: Wake,
-) -> Result<Plane, String> {
-    Ok(Box::new(boomdrive_hosted::open(
-        table,
-        file,
-        poll_interval,
-        say,
-        wake,
-    )?))
+    say_for: SayFor<'_>,
+    wake_for: WakeFor<'_>,
+) -> Result<Vec<Part>, String> {
+    boomdrive_hosted::open(table, file, poll_interval, say_for, wake_for)
 }
 
 /// The hosted implementation's enrollment, its key kept in the host's own
@@ -160,19 +161,20 @@ fn listed<'a>(entries: impl Iterator<Item = &'a Entry>) -> String {
 
 /// Opens the implementation whose word is `word` from its own table,
 /// `table`, of the configuration file `file`, keeping what it keeps under
-/// `data_dir`, making a control pass each `poll_interval`, and handed
-/// `wake`; or why it could not be opened. A word this binary does not
-/// carry is refused, naming those it does.
+/// `data_dir`, each part making a control pass each `poll_interval`, as
+/// its parts, each handed the say and the wake `say_for` and `wake_for`
+/// make for its label; or why it could not be opened. A word this binary
+/// does not carry is refused, naming those it does.
 pub fn open(
     word: &str,
     table: &toml::Table,
     file: &Path,
     data_dir: &Path,
     poll_interval: Duration,
-    say: Say,
-    wake: Wake,
-) -> Result<Plane, String> {
-    (entry(word, file)?.open)(table, file, data_dir, poll_interval, say, wake)
+    say_for: SayFor<'_>,
+    wake_for: WakeFor<'_>,
+) -> Result<Vec<Part>, String> {
+    (entry(word, file)?.open)(table, file, data_dir, poll_interval, say_for, wake_for)
 }
 
 /// Enrolls the partition `label` of the implementation whose word is
