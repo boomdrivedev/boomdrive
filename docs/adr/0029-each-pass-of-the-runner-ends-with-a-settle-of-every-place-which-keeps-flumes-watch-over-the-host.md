@@ -59,3 +59,32 @@ Option 2 runs two settles back to back whenever both passes are due, and holds a
 - A Flume older than v0.17.0 refuses `--every` as a usage error. The runner names it once, the host runs attended as before, and the set's Flume, v0.17.1, takes it.
 - core.13's rule names this settle as the one tool housekeeping the runner runs of its own accord, and its details and core.1's allow it. Record 0003's first bullet reads with this record.
 - The running, configuration and family-packages specs say it, in this record's change.
+
+## Amendment, 2026-11-08: each pass settles on its own thread
+
+Status: proposed on 2026-11-08 by the code stage of the fix `the-runner-serves-each-partition-apart--take-main-e82cd25`, which took `main` into the bolt `the-runner-serves-each-partition-apart`, in its change `each-parts-pass-ends-with-a-settle`. It is the stage's own choice, within this record and record 0026 as they stand, and cheap to change, so it is not asked. It is accepted with this record.
+
+### Context
+
+This record put the settle at the end of each turn of the runner's one loop, after the keeping pass and the control pass due. Record 0026's amendment of 2026-11-07 carries each part of the control plane on a thread of its own from the end of the first keeping pass, so no part's pull, act, command or report waits on another part's or on a keeping pass (core.49). Once both stand, the loop's turn holds the keeping pass alone, and a settle on the loop could follow a part's control pass only by the part waiting on the loop.
+
+### Decision outcome
+
+- **Each pass ends with a settle, on its own thread.** A keeping pass ends with the settle on the loop, and each part's control pass on the part's thread, before that thread waits. The settle stays no part of the control pass.
+- **The first keeping pass shares the parts' first settles.** Each part's first control pass follows it at once, so it runs no settle of its own, and no launch waits behind a settle of every place. A keeping pass after it settles on its own: where `fetch_interval` is the shorter, the parts' settles would come too seldom for the bound.
+- **No two settles at once.** The loop and every part's thread share one watch. A pass that ends while another pass's settle is under way shares that settle and runs none, waiting for nothing: the watch's newest settle began within the bound, and a place the sharing pass moved after it was read moves at the next.
+- **What is said is the host's.** A refusal, or no answer, is said once, and Flume settling again once, whichever thread's settle it was.
+- **The bound** stays the latest `fetch_interval`, or the shorter of it and `poll_interval` while the runner carries one part or more.
+
+Not taken:
+
+- **The settle on the loop alone, on the shorter interval.** A settle on a timer of its own, between passes, which this record and core.13 rule out.
+- **A pass waiting for the settle under way, then running its own.** Every part would wait on a settle another began, a line all parts share that core.49 rules out.
+- **Settles run at once.** With many parts, as many settles of every place at once, each the cost of a host's full status read, for no watch the first does not keep.
+
+### Consequences
+
+- Good: no part's control pass waits on another's settle or on the loop's, and every pass still ends with a settle or shares one under way.
+- Bad: a host carrying many parts settles at each part's pass where they do not overlap, as often as its parts pass.
+- The letter of Flume's statement, section 9, says each pass, keeping or control, runs the settle once, which this amendment meets but for the passes that share one.
+- core.13's rule and details, and core.1's and core.49's details, read with it. The running spec says it, in the change `each-parts-pass-ends-with-a-settle`.
