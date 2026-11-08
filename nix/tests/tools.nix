@@ -143,14 +143,16 @@ let
       !failures.success || failures.value == [ ]
     ) "a ${platform} system that imports default and boomdrive fails: ${toString failures.value}";
 
-  # crew turned on, with its host and one partition.
-  crewOn = {
+  # crew turned on, with its host `host-a` and crew's settings `teams`.
+  crewOf = teams: {
     services.crew = {
       enable = true;
       host = "host-a";
-      settings = settings.crewModule;
+      settings = teams;
     };
   };
+  # crew turned on, with its host and one partition.
+  crewOn = crewOf settings.crewModule;
 
   profileOf = evaluated: map (p: p.outPath) evaluated.config.environment.systemPackages;
 
@@ -299,6 +301,78 @@ let
   darwinRest = linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText);
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
+  # The runner's crew table, under crew with no table written, for crew's
+  # partitions `garden` and `home` on host-a with `away` on host-b between
+  # them (design Decision 3).
+  crewOrder =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (crewOf settings.crewOrder) ];
+        services.boomdrive.settings.control_plane.type = "crew";
+      };
+      table = evaluated.config.services.boomdrive.settings.control_plane.crew;
+      ordered = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "garden";
+            state_repository = "example/garden";
+          }
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system of crew's order fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      table == ordered
+    ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
+
+  # Each of `words` in the failures of `evaluated`, which fails.
+  failsNaming =
+    what: evaluated: words:
+    let
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (t.failures evaluated != [ ]) "${what} evaluates"
+    ++ lib.concatMap (
+      word: t.expect (lib.hasInfix word failures) "the failure of ${what} names no ${word}: ${failures}"
+    ) words;
+
+  # Under crew, with no crew table written and crew's module off (design
+  # Decision 6).
+  neither =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with neither a table nor crew's module"
+      (system { services.boomdrive.settings = settings.crewUnwritten; })
+      [
+        "settings.control_plane.crew"
+        "services.crew"
+      ];
+
+  # Under crew, with no crew table written and crew's one partition on
+  # host-b while crew's host is host-a (design Decision 6).
+  elsewhere =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with no partition on its host"
+      (system {
+        imports = [ (crewOf settings.crewElsewhere) ];
+        services.boomdrive.settings = settings.crewUnwritten;
+      })
+      [
+        "services.crew.host"
+        "host-a"
+        "host-b"
+      ];
+
   nixosRunner = userScripts (t.nixosSystem crewOn);
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
@@ -312,7 +386,28 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
+// onEach "crew's order" crewOrder
+// onEach "Under crew with neither" neither
+// onEach "No partition on this host" elsewhere
 // {
+  # The README's install with nix writes no crew table beside crew's
+  # partitions, and says the module writes it (design Decision 8).
+  "The README's crew table" =
+    t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
+    ++ t.expect (
+      !lib.any (lib.hasInfix "state_repository") t.nixBlocks
+    ) "a nix block of the README's Installing with nix names state_repository"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (lib.hasInfix words (toString t.installing)) "the README's Installing with nix says no ${words}"
+        )
+        [
+          "services.crew.host"
+          "written out wins"
+        ];
+
   "The tools' user on NixOS" =
     t.expect (
       runnersUsers == {

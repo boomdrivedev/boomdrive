@@ -49,3 +49,14 @@ Not taken: the runner reading crew's `teams.json`, which core.17 rules out and w
 - The queued units of the bolt `clones-are-found-from-boomdrive`, which give Flume each clone's folder, are no longer needed once Flume names a repository by its address.
 - Flume publishes a flake with its `services.flume` module (flume record 0055), sluice a module for its host settings, and afterthought/crew a flake with its package and a module for its host file.
 - afterthought/swancloud, once the modules land, passes deneb's facts as option values and stops writing Flume's, sluice's and crew's files.
+
+## Amendment, 2026-11-08: how the module writes the runner's crew table
+
+Status: decided on 2026-11-08 by the construct stage of the change `crews-partitions-give-the-runner-its-crew-table`. These are the writing agent's choices, made within this record and rules core.17, core.18 and core.19, each cheap to change. The change's design gives the path not taken for each, in its Decisions 1 to 6.
+
+- **Only where crew's module is on.** The module writes `[control_plane.crew]` where `control_plane.type` is `crew`, `services.crew.enable` is true and the host writes no table. Not taken: reading crew's `host` and `partitions` wherever they are defined, crew on or off. A host that keeps crew off writes its table out, as the change `the-flake-configures-each-tool-by-its-own-module` has it in its Decision 5.
+- **What of each partition.** The table holds each partition whose `machine` is `services.crew.host`, in crew's order. Each is its `label`, and its `state` as `state_repository`, and nothing else of it. Not taken: the fleet's every partition. The runner would then claim another machine's launches that name no host.
+- **Whole.** A table the host writes is the file's table, whole. None of crew's partitions is merged into it. Partitions are added through the local layer, whose `partitions` replace the managed layer's (core.17).
+- **None beside another control plane.** Under a hosted control plane, or with none, no crew table is written, whatever crew's module holds (core.19).
+- **Two failures at evaluation.** With the runner enabled, evaluation fails in two cases. The first is under crew with no table written and crew's module off. The second is where the module would write the table and no partition names this host. Each failure names the options to set. Not taken: the runner's refusal at start, which it repeats under the service manager while the switch that wrote the file succeeds.
+- **Where it lives.** The table is the default of `settings.control_plane.crew`, so `services.boomdrive.settings` reads what the file holds. Not taken: a fill at render time, which `settings` would not show.
