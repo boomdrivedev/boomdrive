@@ -120,12 +120,12 @@ pub struct Runner {
     pub previews: BTreeMap<u64, Record>,
 }
 
-/// A runner's files at a tip, by name: `runner.rec`, `answers.rec` and
-/// `places.rec`, each none where the tip lacks it.
+/// A runner's files at a tip, by name: `runner.rec`, `answers.rec`,
+/// `places.rec` and `previews.rec`, each none where the tip lacks it.
 pub type RunnerFiles = BTreeMap<&'static str, Option<String>>;
 
 /// The runner's files a branch holds.
-pub const FILES: [&str; 3] = ["runner.rec", "answers.rec", "places.rec"];
+pub const FILES: [&str; 4] = ["runner.rec", "answers.rec", "places.rec", "previews.rec"];
 
 impl Store {
     /// The branch `name` of the state repository.

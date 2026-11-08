@@ -5,7 +5,8 @@
 mod common;
 
 use boomdrive_control::{
-    Acted, Answer, At, Carried, ControlPlane, Id, Launched, Lease, Outcome, Report, Reported,
+    Acted, Answer, At, Carried, ControlPlane, Id, Launched, Lease, Outcome, Previewed, Report,
+    Reported,
 };
 use boomdrive_crew::read::{host_read, RunnerFiles};
 use common::{act, file, hello, launch, plan, pull, State, REQUESTS};
@@ -26,6 +27,44 @@ const PLACES: &str = "%rec: Place\n%key: Request\n%type: Request int\n%type: At 
                       %mandatory: Request Place At Status\n%allowed: Request Place At Status\n";
 const RUNS: &str = "%rec: Run\n%key: Address\n%type: At date\n%mandatory: Address At\n\
                     %allowed: Address Place At Status Words\n";
+// The descriptor of `previews.rec` this repository proposes for crew to
+// hold (design Decision 10).
+const PREVIEWS: &str = "%rec: Preview\n%key: Request\n%type: Request int\n\
+                        %type: Outcome enum held done refused\n%type: Listed enum yes no\n\
+                        %type: At date\n%mandatory: Request Outcome At\n\
+                        %allowed: Request Outcome Text Status Listed Words At\n";
+
+/// What is carried of a preview sluice brought up, and of its listing.
+const TEXT: &str = r#"{"name":"preview/c2b72605d2ad","branch":"main","revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"starting","made":"2026-11-08T19:54:52Z","addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#;
+const STATUS: &str = r#"{"name":"preview/c2b72605d2ad","branch":"main","revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"up","made":"2026-11-08T19:54:52Z","addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#;
+
+/// Preview 30 brought up, its text and its status carried, listed.
+fn brought_up() -> Previewed {
+    Previewed {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: CREW.to_string(),
+        revision: "c2b72605d2ad8471a98dfae00551852c527d4dcf".to_string(),
+        done: false,
+        outcome: Outcome::Done,
+        text: Some(TEXT.to_string()),
+        words: None,
+        status: Some(Carried {
+            text: STATUS.to_string(),
+            at: at("2026-11-01T10:07:00Z"),
+            listed: true,
+        }),
+        at: at("2026-11-01T10:06:00Z"),
+    }
+}
+
+/// `report` holding preview 30 brought up.
+fn with_preview(mut report: Report) -> Report {
+    report.previews.insert(Id::new("home/30"), brought_up());
+    report
+}
 
 fn at(text: &str) -> At {
     At::parse(text).unwrap()
@@ -105,7 +144,7 @@ fn report_launched(status: &str) -> Report {
 
 fn files(state: &State) -> RunnerFiles {
     let mut files = RunnerFiles::new();
-    for path in ["runner.rec", "answers.rec", "places.rec"] {
+    for path in ["runner.rec", "answers.rec", "places.rec", "previews.rec"] {
         files.insert(path, state.file(BRANCH, path));
     }
     files
@@ -275,7 +314,7 @@ fn a_run_with_words() {
 #[test]
 fn nothing_changed() {
     let (state, mut crew) = pulled();
-    let report = report_launched(&common::status_code());
+    let report = with_preview(report_launched(&common::status_code()));
     crew.report(&report).expect("a report");
     let tip = state.tip(BRANCH);
     crew.report(&report).expect("a report");
@@ -287,7 +326,7 @@ fn nothing_changed() {
 fn only_the_runners_branch() {
     let (state, mut crew) = pulled();
     let before = state.refs();
-    crew.report(&report_launched(&common::status_code()))
+    crew.report(&with_preview(report_launched(&common::status_code())))
         .expect("a report");
     let after = state.refs();
     let added: Vec<&str> = after
@@ -302,7 +341,7 @@ fn only_the_runners_branch() {
     for line in before.lines() {
         assert!(after.lines().any(|now| now == line), "{line} moved");
     }
-    for path in ["runner.rec", "answers.rec", "places.rec"] {
+    for path in ["runner.rec", "answers.rec", "places.rec", "previews.rec"] {
         let text = state.file(BRANCH, path).unwrap();
         assert_eq!(recfix(&text), None, "{path}: {text}");
     }
@@ -363,4 +402,34 @@ fn the_report_comes_back_in_the_next_pull() {
     let pulled = pull(&mut fresh, &hello(&[CREW], "4"));
     let back = pulled.report.expect("the report on the branch");
     assert_eq!(back, report);
+}
+
+/// The crew-control-plane spec's "A preview brought up": `previews.rec`
+/// opens with crew's descriptor of a `Preview`, byte for byte, and holds
+/// one `Preview` as the report answers it, passing `recfix --check`.
+#[test]
+fn a_preview_brought_up_is_written_in_previews_rec() {
+    let (state, mut crew) = pulled();
+    crew.report(&with_preview(Report::default()))
+        .expect("a report");
+    let previews = state.file(BRANCH, "previews.rec").expect("previews.rec");
+    assert_eq!(
+        previews,
+        format!(
+            "{PREVIEWS}\nRequest: 30\nOutcome: done\nText: {TEXT}\nStatus: {STATUS}\n\
+             Listed: yes\nAt: 2026-11-01T10:07:00Z\n"
+        )
+    );
+    assert_eq!(recfix(&previews), None, "{previews}");
+    let message = common::git(&state.bare(), &["log", "-1", "--format=%s", BRANCH], None);
+    assert!(message.contains("previews 30"), "{message}");
+}
+
+/// The crew-control-plane spec's "A branch with no preview".
+#[test]
+fn a_branch_with_no_preview() {
+    let (state, mut crew) = pulled();
+    crew.report(&report_launched("{}")).expect("a report");
+    assert!(state.file(BRANCH, "answers.rec").is_some());
+    assert_eq!(state.file(BRANCH, "previews.rec"), None);
 }
