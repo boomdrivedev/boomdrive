@@ -16,8 +16,8 @@ A missing or malformed key SHALL be refused, naming the key and the file. Any ot
 
 #### Scenario: The table read
 
-- **WHEN** the table says `host = "deneb"` and one partition `madswan` with `state_repository = "afterthought/madswan-state"`
-- **THEN** crew's implementation opens for host `deneb`, serving `madswan` from `afterthought/madswan-state`
+- **WHEN** the table says `host = "host-a"` and one partition `home` with `state_repository = "example/home-state"`
+- **THEN** crew's implementation opens for host `host-a`, serving `home` from `example/home-state`
 
 #### Scenario: No host
 
@@ -26,8 +26,8 @@ A missing or malformed key SHALL be refused, naming the key and the file. Any ot
 
 #### Scenario: A label twice
 
-- **WHEN** two partitions say `label = "madswan"`
-- **THEN** it is refused, naming `madswan`
+- **WHEN** two partitions say `label = "home"`
+- **THEN** it is refused, naming `home`
 
 #### Scenario: A kinds file named
 
@@ -45,49 +45,54 @@ A state repository SHALL be reached at `https://github.com/<owner>/<name>.git` b
 
 ### Requirement: crew's records are read at one tip of each partition's drive branch
 
-At each pull, for each partition, crew's implementation SHALL read `requests.rec`, `roles.rec`, `asks.rec` and `plan.rec` at one tip of `<label>/main`, through a bare cache at `<data>/control/crew/<owner>/<name>.git`. A file missing at the tip SHALL hold nothing. It SHALL read every `<label>/runner/*` branch the state repository lists, taking its own host's answers and places from the report the runner hands the pull.
+At each pull, for each partition, crew's implementation SHALL read `requests.rec`, `roles.rec`, `asks.rec` and `plan.rec` at one tip of `<label>/main`, through a bare cache of that partition's own, `<data>/control/crew/<owner>/<name>/<label>.git`. A file missing at the tip SHALL hold nothing. It SHALL read every `<label>/runner/*` branch the state repository lists, taking its own host's answers and places from the report the runner hands the pull (record 0026).
 
 #### Scenario: A file missing at the tip
 
-- **WHEN** `madswan/main`'s tip holds `requests.rec` and no `roles.rec`
+- **WHEN** `home/main`'s tip holds `requests.rec` and no `roles.rec`
 - **THEN** the pull gives the requests for this host, and offers no role's run
+
+#### Scenario: Two partitions of one state repository
+
+- **WHEN** crew's table names the partitions `home` and `work`, both at `example/state`
+- **THEN** `home`'s part reads through `<data>/control/crew/example/state/home.git`, `work`'s through `<data>/control/crew/example/state/work.git`, and neither writes in the other's
 
 ### Requirement: A partition that cannot be read hides only its own work
 
-A partition whose `<label>/main` cannot be read SHALL give nothing that pass, with its words, while the other partitions give their own. A pull SHALL be unread only when no partition could be read. A report SHALL write each partition's runner branch it can, with its let-go, name each it could not, and be unsent only when it wrote none.
+Each partition SHALL be a part of its own. A part whose `<label>/main` cannot be read SHALL give `Unread`, with its words, while every other part pulls on its own. A part's report SHALL write its partition's runner branch, with its let-go, and SHALL give `Unsent`, naming the branch, where it could not write it.
 
 #### Scenario: One partition missing
 
-- **WHEN** partition `swancloud`'s state repository has no `swancloud/main` and `madswan`'s holds requests for this host
-- **THEN** the pull gives `madswan`'s requests and names `swancloud/main` as unread
+- **WHEN** partition `work`'s state repository has no `work/main` and `home`'s holds requests for this host
+- **THEN** `home`'s part gives `home`'s requests, and `work`'s part is unread, naming `work/main`
 
 #### Scenario: No partition read
 
 - **WHEN** no partition's state repository can be read
-- **THEN** the pull is unread, naming each
+- **THEN** every part is unread, each naming its own
 
 #### Scenario: One partition missing at a report
 
-- **WHEN** partition `swancloud`'s state repository has no `swancloud/main`, and `madswan`'s unit `u` is tidied and gone from its plan
-- **THEN** the report writes `madswan/runner/deneb`, its let-go names `u`'s launch, and it names `swancloud/runner/deneb` as not written
+- **WHEN** this host is `host-a`, partition `work`'s state repository has no `work/main`, and `home`'s unit `u` is tidied and gone from its plan
+- **THEN** `home`'s part writes `home/runner/host-a`, its let-go names `u`'s launch, and `work`'s part's report is unsent, naming `work/runner/host-a`
 
 ### Requirement: Each request for this host is a want under the lease number 1
 
-crew's implementation SHALL give each request for this host, in `Request` order, as a want with the id `<label>/<Request>` and the lease number 1, with no expiry. A request naming a `Host` SHALL be for the host it names, and for no other. A launch naming no `Host`, and an act on one, SHALL be for this host as the requirements below give them.
+crew's implementation SHALL give each request for this host, in `Request` order, as a want with the id `<label>/<Request>` and the lease number 1, with no expiry. A request naming a `Host` SHALL be for the host it names, and for no other. A launch naming no `Host`, and an act on one, SHALL be for this host as the requirements below give them. A request whose work has left crew's plan, and a launch a drop names, SHALL be given only as the requirements below give them.
 
 #### Scenario: Only this host's requests
 
-- **WHEN** `requests.rec` holds launches naming `Host: deneb` and launches naming `Host: vega`, and the host is `deneb`
-- **THEN** the pull gives `deneb`'s alone, in `Request` order, each under lease 1
+- **WHEN** `requests.rec` holds launches naming `Host: host-a` and launches naming `Host: host-b`, and the host is `host-a`
+- **THEN** the pull gives `host-a`'s alone, in `Request` order, each under lease 1
 
 ### Requirement: A launch naming no host is given only where this runner keeps its repository
 
-A launch naming no `Host` SHALL be for this host only where its `Repo` is a repository the runner keeps: an address the hello names, or a name alone that exactly one address the hello names has as its name. Where the runner keeps no such repository, crew's implementation SHALL give nothing for a launch it has not answered and write nothing of it, so that another host's runner may take it. Where two addresses the hello names share the name, it SHALL give nothing and name both in its log.
+A launch naming no `Host` that no runner answers SHALL be for this host only where its `Repo` is a repository the runner keeps: an address among the hello's repositories, or a name alone that exactly one of them has as its name. Where the runner keeps no such repository, crew's implementation SHALL give nothing for the launch and write nothing of it, so that another host's runner may take it. Where two addresses the hello names share the name, it SHALL give nothing and name both in its log.
 
 #### Scenario: A kit named by its name alone
 
-- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/flume`
-- **THEN** the launch is for this host, its repository `afterthought/crew`
+- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `example/crew` and `agentplot/flume`
+- **THEN** the launch is for this host, its repository `example/crew`
 
 #### Scenario: A repository not kept
 
@@ -96,22 +101,22 @@ A launch naming no `Host` SHALL be for this host only where its `Repo` is a repo
 
 ### Requirement: A launch naming no host is claimed before it is given
 
-A launch naming no `Host` that no runner's branch answers SHALL be claimed: crew's implementation SHALL write its branch with the launch's `Answer` `held`, its words saying this host's runner claims it, one write for every claim of the pull. It SHALL then read every other `<label>/runner/*` branch again, give each claimed launch no other branch answers as an offer, and withdraw each another branch answers, writing its branch without that claim and giving nothing for it.
+A launch naming no `Host` that no runner's branch answers and no drop names SHALL be claimed: crew's implementation SHALL write its branch with the launch's `Answer` `held`, its words saying this host's runner claims it, one write for every claim of the pull. It SHALL then read every other `<label>/runner/*` branch again, give each claimed launch no other branch answers as an offer, and withdraw each another branch answers, writing its branch without that claim and giving nothing for it.
 
 #### Scenario: Claimed alone
 
-- **WHEN** `deneb` and `vega` both keep `afterthought/crew`, launch 20 names no `Host` and says `Repo: afterthought/crew`, no runner's branch answers it, and `deneb`'s host has room
-- **THEN** `deneb`'s pull writes `madswan/runner/deneb` with request 20's `Answer` `held`, reads `madswan/runner/vega` holding no answer to 20, and gives an offer `madswan/20`
+- **WHEN** `host-a` and `host-b` both keep `example/crew`, launch 20 names no `Host` and says `Repo: example/crew`, no runner's branch answers it, and `host-a`'s host has room
+- **THEN** `host-a`'s pull writes `home/runner/host-a` with request 20's `Answer` `held`, reads `home/runner/host-b` holding no answer to 20, and gives an offer `home/20`
 
 #### Scenario: Another's claim seen
 
-- **WHEN** after `deneb`'s claim of launch 20, `madswan/runner/vega` holds an answer to 20
-- **THEN** `deneb`'s pull writes its branch without the answer to 20 and gives nothing for it
+- **WHEN** after `host-a`'s claim of launch 20, `home/runner/host-b` holds an answer to 20
+- **THEN** `host-a`'s pull writes its branch without the answer to 20 and gives nothing for it
 
 #### Scenario: Taken elsewhere
 
-- **WHEN** `madswan/runner/vega` answers launch 20 before `deneb`'s pull
-- **THEN** `deneb`'s pull writes nothing of 20 and gives nothing for it
+- **WHEN** `home/runner/host-b` answers launch 20 before `host-a`'s pull
+- **THEN** `host-a`'s pull writes nothing of 20 and gives nothing for it
 
 ### Requirement: A launch naming no host is claimed only while the host has room
 
@@ -124,17 +129,22 @@ crew's implementation SHALL claim a launch only while the hello's capacity gives
 
 ### Requirement: A claim stands until the runner answers its launch
 
-A claim SHALL stand on the runner's branch until the runner's report answers its launch. At every later pull, a launch the runner's report answers SHALL be given; one only its own claim answers SHALL be given while no other branch answers it; and one its own claim and another branch both answer SHALL be withdrawn.
+A claim SHALL stand on the runner's branch until the runner's report answers its launch, or until a drop names its launch, when the claim SHALL leave at the branch's next write. At every later pull, a launch the runner's report answers SHALL be given, save a dropped launch the runner has not launched; one only its own claim answers SHALL be given while no other branch answers it and no drop names it; and one its own claim and another branch both answer SHALL be withdrawn.
 
 #### Scenario: A claim waiting for its stream's room
 
-- **WHEN** `deneb` holds the claim of launch 20 and the runner leaves the offer unanswered for want of room in its stream
-- **THEN** the report's write keeps request 20's claim on `madswan/runner/deneb`, and the next pull gives the offer again
+- **WHEN** `host-a` holds the claim of launch 20 and the runner leaves the offer unanswered for want of room in its stream
+- **THEN** the report's write keeps request 20's claim on `home/runner/host-a`, and the next pull gives the offer again
 
 #### Scenario: A claim found again after a stop
 
-- **WHEN** `deneb`'s runner stopped between its claim of launch 20 and its check, and starts again with `madswan/runner/vega` answering 20 as well
-- **THEN** `deneb`'s first pull withdraws its claim of 20 and gives nothing for it
+- **WHEN** `host-a`'s runner stopped between its claim of launch 20 and its check, and starts again with `home/runner/host-b` answering 20 as well
+- **THEN** `host-a`'s first pull withdraws its claim of 20 and gives nothing for it
+
+#### Scenario: A claimed launch dropped
+
+- **WHEN** `home/runner/host-a` holds `host-a`'s claim of launch 20, the runner left the offer unanswered for want of room, and request 21, naming no `Host`, drops 20
+- **THEN** `host-a`'s pull gives nothing for 20 or 21, and its next report's write leaves `home/runner/host-a` holding no answer to 20
 
 ### Requirement: A withdrawn launch is claimed again in the name order of its claimants
 
@@ -142,17 +152,22 @@ A launch crew's implementation withdrew SHALL be claimed again only while no oth
 
 #### Scenario: Claimed again in name order
 
-- **WHEN** `deneb` and `vega` each withdrew launch 20, each having seen the other's claim
-- **THEN** `deneb` claims 20 again at its next pull, and `vega` not before the pull after its next
+- **WHEN** `host-a` and `host-b` each withdrew launch 20, each having seen the other's claim
+- **THEN** `host-a` claims 20 again at its next pull, and `host-b` not before the pull after its next
 
 ### Requirement: An act naming no host is given to the runner that holds its launch
 
-A retry, drop or priority naming no `Host` SHALL be for this host only where the runner's report, or its own branch, answers the launch its `Of` names. Otherwise crew's implementation SHALL give nothing for it and write nothing of it.
+A retry, land, drop or priority naming no `Host` SHALL be for this host only where the runner's report, or its own branch, answers the launch its `Of` names. Otherwise crew's implementation SHALL give nothing for it and write nothing of it.
 
 #### Scenario: An act on another host's launch
 
-- **WHEN** request 22 retries `Of: 20` naming no `Host`, and `madswan/runner/vega` answers 20 while `deneb`'s report does not
-- **THEN** `deneb`'s pull gives nothing for 22
+- **WHEN** request 22 retries `Of: 20` naming no `Host`, and `home/runner/host-b` answers 20 while `host-a`'s report does not
+- **THEN** `host-a`'s pull gives nothing for 22
+
+#### Scenario: A land naming no host, of a launch this runner holds
+
+- **WHEN** `host-a` claims launch 21, which names no `Host`, and request 24 says `Act: land` and `Of: 21`, naming no `Host`, while `home/runner/host-b` answers launch 20 and request 25 lands `Of: 20`, naming no `Host`
+- **THEN** `host-a`'s pull gives `home/24`, landing `home/21`, and nothing for 25
 
 ### Requirement: A launch request is an offer of what it names
 
@@ -161,21 +176,26 @@ A `launch` SHALL be given as an offer whose launch holds its repository, its `Ki
 #### Scenario: A launch's every field
 
 - **WHEN** request 12 is a launch for this host naming every field, with a `Brief` over three `+` lines and `After` 10 and 11
-- **THEN** the pull gives an offer `madswan/12`, its brief the three lines joined by newlines, coming after `madswan/10` and `madswan/11`
+- **THEN** the pull gives an offer `home/12`, its brief the three lines joined by newlines, coming after `home/10` and `home/11`
 
 #### Scenario: A kit's launch naming no stream
 
 - **WHEN** request 20 is a launch naming no `Host` and no `Stream`, claimed by this host
-- **THEN** the offer `madswan/20` names no stream, so the launch runs in the stream the host's Flume configuration maps its repository to
+- **THEN** the offer `home/20` names no stream, so the launch runs in the stream the host's Flume configuration maps its repository to
 
-### Requirement: A retry, a drop and a priority are acts on the launch they name
+### Requirement: A retry, a land, a drop and a priority are acts on the launch they name
 
-A `retry` SHALL be given as an act on the launch `<label>/<Of>` with its `Stage` and `Words`, asking for the submission where it holds a `Submission` field. A `drop` SHALL be an act dropping `<label>/<Of>`. A `priority` SHALL be an act setting `<label>/<Of>`'s priority to `Priority`.
+A `retry` SHALL be given as an act on the launch `<label>/<Of>` with its `Stage` and `Words`, asking for the submission where it holds a `Submission` field. A `land` SHALL be given as an act landing `<label>/<Of>`, and crew's implementation SHALL read no other field of it. A `drop` SHALL be an act dropping `<label>/<Of>`. A `priority` SHALL be an act setting `<label>/<Of>`'s priority to `Priority` (core.53; crew record 0056).
 
 #### Scenario: A retry of the submission
 
 - **WHEN** request 14 retries `Of: 12` with `Submission: yes`
-- **THEN** the pull gives an act `madswan/14` on `madswan/12` asking for the submission
+- **THEN** the pull gives an act `home/14` on `home/12` asking for the submission
+
+#### Scenario: A land
+
+- **WHEN** request 17 says `Act: land` and `Of: 12`, naming this host
+- **THEN** the pull gives an act `home/17` landing `home/12` under lease 1
 
 ### Requirement: A request crew's implementation cannot read is refused by its host's runner
 
@@ -198,7 +218,7 @@ At each report, and at a pull that claims or withdraws, for each partition, crew
 #### Scenario: Only the runner's branch
 
 - **WHEN** a report has been written
-- **THEN** the state repository's refs are those it held before, with `madswan/runner/deneb` beside them, and every file written passes `recfix --check`
+- **THEN** the state repository's refs are those it held before, with `home/runner/host-a` beside them, and every file written passes `recfix --check`
 
 ### Requirement: The runner's branch holds crew's three files in crew's formats
 
@@ -206,8 +226,8 @@ crew's implementation SHALL write `runner.rec`, one `Runner` with `Host`, `Versi
 
 #### Scenario: The first report
 
-- **WHEN** the runner first reports for `madswan` on host `deneb`
-- **THEN** the state repository gains `madswan/runner/deneb`, holding `runner.rec` with `Host: deneb`, the runner's version and the time, and `madswan/main`'s tip is unchanged
+- **WHEN** the runner first reports for `home` on host `host-a`
+- **THEN** the state repository gains `home/runner/host-a`, holding `runner.rec` with `Host: host-a`, the runner's version and the time, and `home/main`'s tip is unchanged
 
 #### Scenario: A place's status as Flume gave it
 
@@ -234,7 +254,7 @@ A place of any host's `places.rec` SHALL wait on a role where its launch request
 
 #### Scenario: Another host's place asks the planner
 
-- **WHEN** `madswan/runner/vega`'s `places.rec` holds a place whose launch names `madswan/planner` as `Recipient` and whose status waits with `why` `answer`
+- **WHEN** `home/runner/host-b`'s `places.rec` holds a place whose launch names `home/planner` as `Recipient` and whose status waits with `why` `answer`
 - **THEN** the pull gives an offer of `planner`'s run
 
 #### Scenario: A role's work landed
@@ -249,17 +269,17 @@ crew's implementation SHALL offer a run of a wanted role whose latest run has no
 #### Scenario: A burst of asks
 
 - **WHEN** `asks.rec` holds three asks of `planner` that no ended turn took, and no run of `planner` stands
-- **THEN** the pull gives one offer, `madswan/planner/1`, of kind `crew/crew-planner` named `madswan`, its stream the role's, priority 0, intent `madswan-planner` and the agent setting `model=<the role's Model>`
+- **THEN** the pull gives one offer, `home/planner/1`, of kind `crew/crew-planner` named `home`, its stream the role's, priority 0, intent `home-planner` and the agent setting `model=<the role's Model>`
 
 #### Scenario: A run standing
 
-- **WHEN** asks of `planner` are pending and its latest run, `madswan/planner/1`, reads `live` in its carried status
-- **THEN** the pull gives `madswan/planner/1` again, the run the report holds, and offers no new run of `planner`
+- **WHEN** asks of `planner` are pending and its latest run, `home/planner/1`, reads `live` in its carried status
+- **THEN** the pull gives `home/planner/1` again, the run the report holds, and offers no new run of `planner`
 
 #### Scenario: A run waiting for room keeps its id
 
-- **WHEN** an offer of `madswan/planner/3` is left untaken for want of room
-- **THEN** the next pull offers `madswan/planner/3` again; and once the runner records it refused, the pull after offers `madswan/planner/4`
+- **WHEN** an offer of `home/planner/3` is left untaken for want of room
+- **THEN** the next pull offers `home/planner/3` again; and once the runner records it refused, the pull after offers `home/planner/4`
 
 ### Requirement: A role's run is declared done once its turn has delivered
 
@@ -267,8 +287,8 @@ Where a role's latest run's carried status waits on its caller with `why` `deliv
 
 #### Scenario: A turn delivered
 
-- **WHEN** `madswan/planner/2`'s carried status waits on its caller with `why` `delivered`
-- **THEN** the pull gives a done of `madswan/planner/2`, with the id `madswan/planner/2/done`
+- **WHEN** `home/planner/2`'s carried status waits on its caller with `why` `delivered`
+- **THEN** the pull gives a done of `home/planner/2`, with the id `home/planner/2/done`
 
 ### Requirement: A launch is let go once its work has left crew's plan
 
@@ -289,16 +309,199 @@ A launch SHALL leave the runner's files, and be named in the report's let-go, on
 - **WHEN** a `fix/main/crew/x` launch's place is tidied
 - **THEN** its `Place` stays
 
-### Requirement: A launch the runner answered is given whatever the hello names
+### Requirement: A repository draining gives no launch no runner answered
 
-A launch naming no `Host` that the runner's report or this host's branch answers, a claim apart, SHALL be given at every pull whatever the hello names, so that its place is followed to its end. Its repository SHALL be the address its `Repo` names among those the hello names where there is one, else its `Repo` as written. It SHALL be neither claimed nor named in the log.
+A launch naming no `Host` that no runner answers SHALL not be for this host where its `Repo` names a repository the hello names only as drained, and crew's implementation SHALL give nothing for it and write nothing of it.
 
-#### Scenario: A launch answered before its repository left the hello
+#### Scenario: A repository draining
 
-- **WHEN** `madswan/runner/deneb` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: old-kit`, and the hello names `example/new-kit` alone
-- **THEN** the pull gives the offer `madswan/20`, its repository `old-kit`, writes nothing, and says nothing
+- **WHEN** a launch naming no `Host` says `Repo: example/kit`, no runner answers it, and the hello names `example/kit` only as drained
+- **THEN** the pull gives nothing for it, and the runner's branch holds no answer to it
 
-#### Scenario: An answered launch whose name two kept addresses share
+### Requirement: A launch the runner answered is given while the runner keeps or drains its repository
 
-- **WHEN** the runner's report answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/crew`
-- **THEN** the pull gives the offer `madswan/20`, its repository `crew`
+A launch naming no `Host` that the runner's report or this host's branch answers, a claim apart, save a dropped launch the runner has not launched, SHALL be given at every pull while its `Repo` names a repository the hello names: one among its repositories, else one among those it drains, each read as an unanswered launch's `Repo` is read. Its repository SHALL be that address, and it SHALL be neither claimed nor named in the log.
+
+#### Scenario: A launch answered in a repository draining
+
+- **WHEN** `home/runner/host-a` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: kit`, and the hello names `example/other` among its repositories and `example/kit` as drained
+- **THEN** the pull gives the offer `home/20`, its repository `example/kit`, writes nothing, and says nothing
+
+### Requirement: No old name of a repository is matched to a new one
+
+Where neither the hello's repositories nor those it drains name the `Repo` of a launch the runner answered, crew's implementation SHALL give nothing for the launch, write nothing of it and say nothing. It SHALL match no name a `Repo` once had to another.
+
+#### Scenario: A launch answered before its repository was renamed
+
+- **WHEN** the runner's report answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: example/old-kit`, and the hello names `example/new-kit` alone
+- **THEN** the pull gives nothing for launch 20, writes nothing, and says nothing
+
+### Requirement: A launch naming this host takes its repository from those kept, then those drained
+
+A launch naming this host SHALL take as its repository the address its `Repo` names among the hello's repositories, else among those it drains, else its `Repo` as written.
+
+#### Scenario: A launch naming this host in a repository draining
+
+- **WHEN** request 12 is a launch naming `Host: host-a` and saying `Repo: kit`, and the hello names `example/kit` as drained
+- **THEN** the pull gives the offer `home/12`, its repository `example/kit`
+
+### Requirement: A request whose work has left crew's plan is given only while the runner holds it
+
+A request whose `Work` has left `plan.rec` at `<label>/main`'s tip SHALL be given only where the runner's report or this host's branch answers it, a claim apart, or as the drop's requirement below gives it. `unit/<u>` and `chore/<u>` work SHALL have left the plan once it holds no `Unit` record of that name, and `fix/<bolt>/<name>` once it holds no `Bolt` record of `<bolt>`. `fix/main/…`, `role/…` and any other work SHALL never have left it.
+
+#### Scenario: Work gone that the runner does not hold
+
+- **WHEN** request 12 launches `unit/u` naming this host, no runner answers it, and `plan.rec` holds no `Unit: u`
+- **THEN** the pull gives nothing for 12
+
+### Requirement: A drop is given to the runner that holds its launch whatever the plan holds
+
+A drop naming this host or none SHALL be given, whatever `plan.rec` holds, where the runner's report or this host's branch answers the launch its `Of` names, a claim apart. It SHALL then be given by the rules of a request naming this host, or of an act naming no `Host`.
+
+#### Scenario: A drop written as its work leaves the plan
+
+- **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and request 14, naming this host, drops 12 at a tip whose `plan.rec` holds no `Unit: u`
+- **THEN** the pull gives the offer `home/12`, then the act `home/14` dropping it
+
+#### Scenario: A kit's drop goes to the runner holding its launch
+
+- **WHEN** launch 20 of `unit/u` names no `Host`, `home/runner/host-a` answers it `launched`, and request 21, naming no `Host`, drops 20 at a tip whose `plan.rec` holds no `Unit: u`
+- **THEN** `host-a`'s pull gives the offer `home/20` and the act `home/21`, and `host-b`'s pull gives nothing for 20 or 21
+
+### Requirement: A launch is dropped as crew reads it
+
+A launch SHALL be dropped where a request of `requests.rec` at `<label>/main`'s tip says `Act: drop` and names the launch's number as its `Of`, whatever that request's `Host`, its `Work` or its place in the file, as crew's own `standing` reads it.
+
+#### Scenario: A drop naming another host
+
+- **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming `Host: host-b`, drops 12
+- **THEN** the pull gives no offer of `home/12`, and nothing for 14
+
+### Requirement: A launch a drop names is offered only where the runner launched it
+
+crew's implementation SHALL give a dropped launch as an offer only where the runner's report answers it `launched`, or, where the report holds no answer to it, this host's branch does. Otherwise it SHALL give no offer for it and claim it not, whatever `Host` it names and whatever `plan.rec` holds. An act naming no `Host` on a dropped launch that only this host's claim answers SHALL be given nothing.
+
+#### Scenario: A held launch dropped
+
+- **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming this host, drops 12
+- **THEN** the pull gives the act `home/14` and no offer of `home/12`
+
+#### Scenario: A kit's launch dropped before it is claimed
+
+- **WHEN** launch 20 names no `Host` and says `Repo: example/crew`, which the hello names, request 21, naming no `Host`, drops 20, no runner's branch answers 20, and the host has room
+- **THEN** the pull claims nothing, writes no branch, and gives nothing for 20 or 21
+
+#### Scenario: A dropped launch the runner launched
+
+- **WHEN** the runner's report answers launch 12 `launched` at place `P`, its place listed, and request 14, naming this host, drops 12 at a tip whose `plan.rec` still holds the launch's unit
+- **THEN** the pull gives the offer `home/12` and the act `home/14`
+
+### Requirement: A dropped launch the runner holds unlaunched is let go
+
+At each report, a launch the runner's report holds that a drop names, answered `held`, `refused` or `done`, SHALL leave the runner's files and be named in the report's let-go, whatever `plan.rec` holds. A dropped launch answered `launched` SHALL leave only once Flume no longer lists its place and its work has left the plan, as any launch does. An act on a dropped launch SHALL leave once its launch has left and its own work has left the plan.
+
+#### Scenario: A held launch dropped is let go
+
+- **WHEN** the runner's report answers launch 12 of `unit/u` `held`, request 14 drops 12, and `plan.rec` still holds `Unit: u`
+- **THEN** the report's let-go names `home/12`, and `home/runner/host-a` holds no answer to 12
+
+#### Scenario: A drop answered from the report, its work gone
+
+- **WHEN** the runner's report answers launch 12 of `unit/u` `done` with words naming its drop, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
+- **THEN** the report's let-go names `home/12` and `home/14`
+
+#### Scenario: A dropped launch the runner launched stays until its place is over
+
+- **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
+- **THEN** while Flume lists `P`, the report's let-go names neither `home/12` nor `home/14`; and once Flume no longer lists `P`, it names both
+
+### Requirement: The shared cache of a release before is removed
+
+At open, crew's implementation SHALL remove the shared cache a release before kept for a state repository, `<data>/control/crew/<owner>/<name>.git`, where it is there, saying one line naming it. A cache is made again from the control plane (core.35).
+
+#### Scenario: The shared cache of a release before
+
+- **WHEN** crew's implementation opens with `<data>/control/crew/example/state.git` there
+- **THEN** that cache is removed, one line names it, and each partition's pull fetches into its own cache
+
+### Requirement: A preview request is a preview of what it names
+
+A `preview` request naming this host SHALL be given as a preview with the id `<label>/<Request>` and the lease number 1, with no expiry: its repository its `Repo`, resolved as a launch naming this host resolves it, its `Branch` and its `Revision`. It SHALL be done where its `Done` reads `yes`, `true` or `1`, and not done where it reads `no`, `false` or `0`, or where it has none (core.55; crew record 0056).
+
+#### Scenario: A preview
+
+- **WHEN** request 30 says `Act: preview`, naming this host, `Repo: crew`, `Branch: main` and `Revision: R1`, and the hello names `example/crew`
+- **THEN** the pull gives a preview `home/30` of `main` at `R1` in `example/crew`, not done, under lease 1
+
+#### Scenario: A preview marked done
+
+- **WHEN** request 31 says `Act: preview`, naming this host, with the same `Repo`, `Branch` and `Revision` as request 30, and `Done: yes`
+- **THEN** the pull gives a preview `home/31` of `main` at `R1` in `example/crew`, done
+
+### Requirement: A preview request crew's implementation cannot read is refused by its host's runner
+
+A `preview` request naming this host that lacks its `Branch` or its `Revision`, or whose `Done` reads anything but `yes`, `true`, `1`, `no`, `false` or `0`, SHALL be given as one the runner refuses, with words naming the field.
+
+#### Scenario: A preview with no revision
+
+- **WHEN** request 32 says `Act: preview`, naming this host, with no `Revision`
+- **THEN** the pull gives it as one the runner answers `refused`, with words naming `Revision`
+
+### Requirement: A preview naming no host is given nothing
+
+A `preview` request naming no `Host` SHALL be given nothing, written nothing of, and named in the log, since a preview is brought up only on the host its control plane names and two runners keeping its repository would each bring it up.
+
+#### Scenario: A preview naming no host
+
+- **WHEN** request 33 says `Act: preview`, naming no `Host`, of a repository the hello names
+- **THEN** the pull gives nothing for it, the runner's branch holds no answer to it, and a line names request 33 as a preview that names no Host
+
+### Requirement: A preview the runner answered is the runner's
+
+A preview the runner's report holds, or this host's `previews.rec` answers, SHALL be the runner's, and SHALL be given while its work has left crew's plan, as any request the runner answered is.
+
+#### Scenario: A preview whose work has left the plan
+
+- **WHEN** the runner's report holds preview `home/30` of `unit/u`, answered `done`, and `plan.rec` holds no `Unit: u`
+- **THEN** the pull gives the preview `home/30`
+
+### Requirement: A preview's answer is written in previews.rec
+
+crew's implementation SHALL write `previews.rec` on the runner's branch, under crew's descriptor of a `Preview`, one `Preview` per preview request the report answers. Each SHALL hold its `Request` and `Outcome`; sluice's answer as carried as its `Text`; its `Words`; sluice's listing of it as carried as its `Status`, with `Listed` `yes` or `no`; and its `At`, the status's time where a status is carried, else the answer's. The file SHALL pass `recfix --check`.
+
+#### Scenario: A preview brought up
+
+- **WHEN** the runner reports preview `home/30` answered `done`, its text and its status carried listed
+- **THEN** `home/runner/host-a`'s `previews.rec` opens with crew's descriptor of a `Preview`, byte for byte, and holds one `Preview` with `Request: 30`, `Outcome: done`, `Text` and `Status` as carried, byte for byte, `Listed: yes` and the status's time as its `At`, and the file passes `recfix --check`
+
+### Requirement: previews.rec is written only where a preview is or was
+
+crew's implementation SHALL write `previews.rec` where the partition's report holds a preview, and as the descriptor alone where the tip holds one and the report none. Otherwise the runner's branch SHALL hold no `previews.rec`.
+
+#### Scenario: A branch with no preview
+
+- **WHEN** the runner first reports for `home`, its report holding a launch and no preview
+- **THEN** `home/runner/host-a` holds no `previews.rec`
+
+### Requirement: A preview is read back from previews.rec
+
+`previews.rec` SHALL be read with the runner's other files at each pull, and checked as they are: no record before its `%rec`, and no request twice. Where the runner hands the pull no report of its own, the report the pull gives back SHALL hold each `Preview` of this host's branch as the preview its request names, under lease 1. Its repository SHALL be resolved as at a pull, its outcome, text and words as written, and its status the `Status`, at its `At`, listed as `Listed` says.
+
+#### Scenario: A preview read back
+
+- **WHEN** preview `home/30` has been reported `done`, its status listed, and a pull is handed no report
+- **THEN** the pull's report holds `home/30` answered `done`, its text, its status listed and its repository as reported
+
+### Requirement: A preview is let go once its work has left crew's plan and it holds no preview up
+
+At each report, a preview the report holds SHALL leave the runner's files, and be named in the report's let-go, once its work has left `plan.rec` at `<label>/main`'s tip and it holds no preview up: a done, a preview refused, or a preview brought up or held whose status sluice's listing no longer holds. A preview whose status sluice still lists SHALL stay, whatever the plan holds.
+
+#### Scenario: A preview put away, its work gone
+
+- **WHEN** the runner's report holds preview `home/30` of `unit/u` answered `done`, its status not listed, and its done `home/31` answered `done`, and `plan.rec` holds no `Unit: u`
+- **THEN** the report's let-go names `home/30` and `home/31`, and `home/runner/host-a`'s `previews.rec` holds neither
+
+#### Scenario: A preview still up, its work gone
+
+- **WHEN** the runner's report holds preview `home/30` of `unit/u` answered `done`, its status listed, and `plan.rec` holds no `Unit: u`
+- **THEN** the report's let-go does not name `home/30`, and `previews.rec` still holds it

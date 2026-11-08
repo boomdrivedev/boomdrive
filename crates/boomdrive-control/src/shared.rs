@@ -5,7 +5,8 @@
 //! implementation can hold, as crew's requests can: ids the harness
 //! gives, in order; leases numbered 1 with no expiry; launches of
 //! [`REPOSITORY`] with no held stage and no agent setting; and acts on
-//! those launches.
+//! those launches, none a drop, since crew offers a launch a drop names
+//! only where the runner launched it.
 
 use crate::report::{Acted, Answer, At, Carried, Launched, Outcome, Report};
 use crate::want::{Act, ActSort, Id, Launch, Lease, Offer, Want};
@@ -39,7 +40,7 @@ pub fn wants_in_order<H: Harness>(harness: &mut H) {
         offer(harness, 1, "a", &[]),
         act(harness, 2, 1, ActSort::Priority(5)),
         offer(harness, 3, "b", &[1]),
-        act(harness, 4, 3, ActSort::Drop),
+        act(harness, 4, 3, ActSort::Priority(1)),
     ];
     let mut plane = harness.plane(&wants);
     let report = Report::default();
@@ -115,6 +116,24 @@ pub fn a_settled_want_is_given<H: Harness>(harness: &mut H) {
     assert_eq!(pulled.wants, wants);
 }
 
+/// Every want a pull gives carries an id its control plane owns (design
+/// Decision 1), so the runner keeps each part's share of its report by
+/// asking the part.
+pub fn each_id_given_is_owned<H: Harness>(harness: &mut H) {
+    let wants = vec![
+        offer(harness, 1, "a", &[]),
+        act(harness, 2, 1, ActSort::Priority(5)),
+        offer(harness, 3, "b", &[1]),
+    ];
+    let mut plane = harness.plane(&wants);
+    let report = Report::default();
+    let pulled = plane.pull(&hello(&report), &report).expect("a pull");
+    assert_eq!(pulled.wants.len(), wants.len());
+    for want in &pulled.wants {
+        assert!(plane.owns(want.id()), "{} is not owned", want.id());
+    }
+}
+
 /// The hello the cases hand every pull: a host keeping [`REPOSITORY`],
 /// with room, holding `report`'s leases.
 pub fn hello(report: &Report) -> Hello {
@@ -126,6 +145,7 @@ pub fn hello(report: &Report) -> Hello {
             ToolVersion::Printed("flume 0.4.1".to_string()),
         )]),
         repositories: vec![REPOSITORY.to_string()],
+        draining: vec![],
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),
@@ -189,6 +209,7 @@ fn launched(id: Id) -> Report {
     let status = r#"{"status":{"places":[{"location":"/places/a","phase":"live"}]}}"#;
     let launched = Launched {
         lease: lease(),
+        repository: None,
         answer: Answer {
             outcome: Outcome::Launched,
             place_dir: Some("/places/a".to_string()),

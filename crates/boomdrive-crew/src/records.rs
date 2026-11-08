@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn records_are_read_with_their_sets_and_descriptors_left_out() {
         let text = "# a comment\n\n%rec: Place\n%key: Request\n\nRequest: 1\nStatus: {\"a\":1}\n\n\
-                    %rec: Run\n%key: Address\n\nAddress: madswan/planner\nWords: one\n+ two\n";
+                    %rec: Run\n%key: Address\n\nAddress: home/planner\nWords: one\n+ two\n";
         let sets = read(text).unwrap();
         assert_eq!(sets.len(), 2);
         assert_eq!(of(&sets, "Place").count(), 1);

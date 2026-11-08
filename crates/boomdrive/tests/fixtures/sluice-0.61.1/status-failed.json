@@ -1,47 +1,47 @@
 {
   "schema": "sluice/submission@1",
-  "id": 45,
+  "id": 2,
   "branch": "main",
-  "head": "0d43da70a2ff2bdc4e31fa260252ace4a9ff44b6",
+  "head": "490ad47e09844724909e5bd15919616a9a76e74b",
   "from": {
-    "agent": "fix/live-trust-and-secret-env",
-    "worktree": "pull/38",
-    "head": "fix/live-trust-and-secret-env"
+    "agent": "fix/tabs",
+    "worktree": "fix/tabs",
+    "path": "/private/tmp/scratch/host/worktrees/tabs",
+    "host": "host-a"
   },
-  "submitted": "2026-10-29T17:20:05Z",
+  "submitted": "2026-11-08T00:34:35Z",
   "after": [],
   "priority": 0,
   "attempt": 1,
   "state": "failed",
   "tested": {
-    "combination": "4c3a3c021325e3f7d03087188f67d038fb850479",
-    "on": "8abbecb3f12e7c92e2aa5b2f597375ceda51617d",
+    "combination": "09e46ec47a28327f23dfc07c480bec754024a2e7",
+    "on": "fdaaeaf1b1094b39db4ccea5f01e88a3bedb95d8",
     "submissions": [
-      45
+      2
     ]
   },
   "result": "failed",
   "failed": [
     {
-      "task": "flume:tools",
-      "hash": "e0e41e5811489647069b018088b150c920c426e67932fe2206b24c0ad6342f8d",
-      "log": "/Users/chuck/Code/github_agentplot/flume/flume.git/sluice/.logs/main/c41/flume:tools.log",
+      "task": "sh check.sh",
+      "hash": "09e46ec47a28327f23dfc07c480bec754024a2e7",
+      "log": "/private/tmp/scratch/host/repo/.git/sluice/.logs/main/c2/sh check.sh.log",
       "flaky": {
         "here": "pass",
-        "at": "2026-10-29T17:53:11Z",
-        "host": "deneb",
+        "at": "2026-11-08T00:34:38Z",
+        "host": "host-a",
         "other": {
           "outcome": "fail",
-          "at": "2026-10-29T17:19:43Z",
+          "at": "2026-11-08T00:34:35Z",
           "branch": "main",
-          "combination": "0d43da70a2ff2bdc4e31fa260252ace4a9ff44b6",
-          "host": "deneb",
-          "worktree": "/Users/chuck/Code/github_agentplot/flume/fix-live-trust-and-secret-env"
+          "combination": "09e46ec47a28327f23dfc07c480bec754024a2e7",
+          "host": "host-a",
+          "worktree": "/private/tmp/scratch/host/worktrees/tabs-combination"
         }
       }
     }
   ],
-  "delivered": "2026-10-29T17:53:19Z",
-  "delivered_to": "pull/38",
-  "subject": "fix/live-trust-and-secret-env"
+  "delivered": "2026-11-08T00:34:38Z",
+  "delivered_to": "/private/tmp/scratch/host/worktrees/tabs"
 }

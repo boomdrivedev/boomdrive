@@ -1,12 +1,14 @@
 //! Flume's command line against a stub `flume` written into each test's
 //! own temporary directory (design Decision 21): the argv it is given,
 //! its environment, the brief's file, and the reading of each answer by
-//! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1).
+//! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), and
+//! Flume 0.17.1's to the settle that keeps the host's watch (record 0029).
 
 use boomdrive::flume::{Act, Cli, Flume, LaunchArgs, Reply};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tempfile::TempDir;
 
 /// A fixture of Flume 0.4.1's, as it printed it.
@@ -14,6 +16,12 @@ fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/flume-0.4.1")
         .join(name)
+}
+
+/// Flume 0.17.1's answer to `--json settle --every 60s` on a scratch host
+/// holding no place, as it printed it.
+fn settled() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json")
 }
 
 /// The stub's program. Each call writes its arguments, NUL-terminated, to
@@ -63,13 +71,17 @@ impl Stub {
     /// The next calls print the fixture `stdout`, write the fixture
     /// `stderr` on standard error, and exit with `exit`.
     fn answers(&self, stdout: Option<&str>, stderr: Option<&str>, exit: i32) {
-        for (name, fixture_name) in [("stdout", stdout), ("stderr", stderr)] {
+        self.answers_from(stdout.map(fixture), stderr.map(fixture), exit);
+    }
+
+    /// The next calls print the file `stdout`, write the file `stderr` on
+    /// standard error, and exit with `exit`.
+    fn answers_from(&self, stdout: Option<PathBuf>, stderr: Option<PathBuf>, exit: i32) {
+        for (name, answer) in [("stdout", stdout), ("stderr", stderr)] {
             let file = self.dir.path().join(name);
-            match fixture_name {
-                Some(fixture_name) => {
-                    fs::write(&file, fixture(fixture_name).to_string_lossy().as_bytes())
-                        .expect("the stub's answer")
-                }
+            match answer {
+                Some(answer) => fs::write(&file, answer.to_string_lossy().as_bytes())
+                    .expect("the stub's answer"),
                 None => {
                     let _ = fs::remove_file(&file);
                 }
@@ -104,15 +116,15 @@ fn every_flag(container_dir: &Path) -> LaunchArgs {
         kind: "change".into(),
         name: "a".into(),
         base: Some("bolt/x".into()),
-        stream: Some("madswan".into()),
+        stream: Some("home".into()),
         priority: Some(4),
-        intent: Some("madswan/x".into()),
-        recipients: vec!["madswan/planner".into(), "madswan/reviewer".into()],
+        intent: Some("home/x".into()),
+        recipients: vec!["home/planner".into(), "home/reviewer".into()],
         holds: vec![("code".into(), "the user reads the design".into())],
         hold_submission: true,
         brief: Some("Parse the input.\n\nAs words.".into()),
         agent_settings: vec![("model".into(), "opus".into())],
-        mark: "boomdrive:madswan/12".into(),
+        mark: "boomdrive:home/12".into(),
     }
 }
 
@@ -125,7 +137,7 @@ fn argv(words: &[&str]) -> Vec<String> {
 fn a_launch_with_every_flag() {
     let stub = Stub::new();
     stub.answers(Some("launch.json"), None, 0);
-    let container = Path::new("/d/repositories/afterthought/crew");
+    let container = Path::new("/d/repositories/example/crew");
     let reply = stub
         .cli()
         .launch(&every_flag(container), &stub.brief_dir())
@@ -134,14 +146,14 @@ fn a_launch_with_every_flag() {
     assert_eq!(reply, Reply::Given(text));
     let calls = stub.calls();
     assert_eq!(calls.len(), 1, "{calls:?}");
-    let brief_file = stub.brief_dir().join("boomdrive%3Amadswan%2F12.md");
+    let brief_file = stub.brief_dir().join("boomdrive%3Ahome%2F12.md");
     assert_eq!(
         calls[0],
         argv(&[
             "--json",
             "launch",
             "--repository",
-            "/d/repositories/afterthought/crew",
+            "/d/repositories/example/crew",
             "--kind",
             "change",
             "--name",
@@ -149,15 +161,15 @@ fn a_launch_with_every_flag() {
             "--base",
             "bolt/x",
             "--stream",
-            "madswan",
+            "home",
             "--priority",
             "4",
             "--intent",
-            "madswan/x",
+            "home/x",
             "--recipient",
-            "madswan/planner",
+            "home/planner",
             "--recipient",
-            "madswan/reviewer",
+            "home/reviewer",
             "--hold",
             "code=the user reads the design",
             "--hold-submission",
@@ -166,7 +178,7 @@ fn a_launch_with_every_flag() {
             "--agent",
             "model=opus",
             "--mark",
-            "boomdrive:madswan/12",
+            "boomdrive:home/12",
         ])
     );
     assert_eq!(
@@ -185,7 +197,7 @@ fn a_launch_naming_no_stream_priority_or_intent() {
         container_dir: "/d/repositories/agentplot/flume".into(),
         kind: "fix".into(),
         name: "b".into(),
-        mark: "boomdrive:madswan/13".into(),
+        mark: "boomdrive:home/13".into(),
         ..LaunchArgs::default()
     };
     stub.cli()
@@ -203,7 +215,7 @@ fn a_launch_naming_no_stream_priority_or_intent() {
             "--name",
             "b",
             "--mark",
-            "boomdrive:madswan/13",
+            "boomdrive:home/13",
         ])]
     );
     assert!(!stub.brief_dir().exists(), "a folder made for no brief");
@@ -214,18 +226,18 @@ fn a_kind_named_by_its_identity_is_passed_whole() {
     let stub = Stub::new();
     stub.answers(Some("launch.json"), None, 0);
     let args = LaunchArgs {
-        container_dir: "/d/repositories/afterthought/madswan-blueprints".into(),
+        container_dir: "/d/repositories/example/home-blueprints".into(),
         kind: "crew/crew-planner".into(),
-        name: "madswan".into(),
-        stream: Some("madswan".into()),
+        name: "home".into(),
+        stream: Some("home".into()),
         agent_settings: vec![("model".into(), "opus".into())],
-        mark: "boomdrive:madswan/planner/1".into(),
+        mark: "boomdrive:home/planner/1".into(),
         ..LaunchArgs::default()
     };
     let cli = stub.cli();
     cli.launch(&args, &stub.brief_dir()).expect("flume answers");
     cli.launch(
-        &every_flag(Path::new("/d/repositories/afterthought/crew")),
+        &every_flag(Path::new("/d/repositories/example/crew")),
         &stub.brief_dir(),
     )
     .expect("flume answers");
@@ -347,7 +359,7 @@ fn flume_runs_with_no_recipient_of_the_runners_own() {
     stub.answers(Some("launch.json"), None, 0);
     let cli = stub.cli();
     cli.launch(
-        &every_flag(Path::new("/d/repositories/afterthought/crew")),
+        &every_flag(Path::new("/d/repositories/example/crew")),
         &stub.brief_dir(),
     )
     .expect("flume answers");
@@ -460,7 +472,7 @@ fn a_program_that_is_not_there_gives_no_answer() {
     assert!(failure.0.starts_with("flume could not run: "), "{failure}");
     let failure = cli
         .launch(
-            &every_flag(Path::new("/d/repositories/afterthought/crew")),
+            &every_flag(Path::new("/d/repositories/example/crew")),
             &stub.brief_dir(),
         )
         .expect_err("an answer from no program");
@@ -492,7 +504,7 @@ fn a_refused_launch_leaves_no_brief() {
     let reply = stub
         .cli()
         .launch(
-            &every_flag(Path::new("/d/repositories/afterthought/crew")),
+            &every_flag(Path::new("/d/repositories/example/crew")),
             &stub.brief_dir(),
         )
         .expect("flume answers");
@@ -508,4 +520,46 @@ fn a_refused_launch_leaves_no_brief() {
         0,
         "a brief is left"
     );
+}
+
+/// The settle that ends each turn of the runner's passes (record 0029;
+/// design Decision 6): `--json settle --every <n>s`, run with no
+/// `FLUME_RECIPIENT`, its answer given as Flume printed it, and a refusal
+/// on exit 1 given with Flume's reason.
+#[test]
+fn a_settle_as_the_hosts_watch() {
+    std::env::set_var("FLUME_RECIPIENT", "someone/else");
+    let stub = Stub::new();
+    stub.answers_from(Some(settled()), None, 0);
+    let cli = stub.cli();
+    let printed = fs::read_to_string(settled()).expect("the fixture");
+    assert_eq!(
+        cli.settle_every(Duration::from_secs(120)),
+        Ok(Reply::Given(printed))
+    );
+    let refusal = stub.dir.path().join("refused.json");
+    fs::write(
+        &refusal,
+        "{\"refused\":{\"refusal\":{\"reason\":\"no store\"}}}\n",
+    )
+    .expect("the refusal");
+    stub.answers_from(Some(refusal), Some(fixture("usage.stderr")), 1);
+    assert_eq!(
+        cli.settle_every(Duration::from_secs(60)),
+        Ok(Reply::Refused("no store".to_string()))
+    );
+    assert_eq!(
+        stub.calls(),
+        [
+            argv(&["--json", "settle", "--every", "120s"]),
+            argv(&["--json", "settle", "--every", "60s"]),
+        ]
+    );
+    for n in 1..=2 {
+        assert_eq!(
+            stub.read(&format!("recipient-{n}")).as_deref(),
+            Some("unset\n"),
+            "settle {n} ran with FLUME_RECIPIENT set"
+        );
+    }
 }

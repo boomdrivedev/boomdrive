@@ -1,15 +1,20 @@
 //! One pass over the configuration (design 9): each configured
 //! repository in the file's order, its clone made or fetched, its HEAD
-//! settled and its view kept, then each dropped repository let go, then,
-//! where the configuration asks, each drive's VS Code workspace kept at
-//! the repository root and each departed drive's taken, once no clone the
-//! runner holds records the drive (core.43; design Decision 8). A removed
-//! view's owner folder goes only where it is then empty, and the pass
-//! touches no workspace in an owner's folder. While a local layer stands
-//! that the configuration could not take, no repository is let go and no
-//! workspace is set or taken, since that layer may name them (record 0009
-//! as amended 2026-11-07). Each repository is independent: a failure in
-//! one is named and the next is kept. A pass
+//! settled and its view kept, then each dropped repository let go, kept
+//! while a place the runner launched there has not ended (record 0021),
+//! then, where the configuration asks, each drive's VS Code workspace
+//! kept at the repository root and each departed drive's taken, once no
+//! clone the runner holds records the drive (core.43; design Decision 8).
+//! A removed view's owner folder goes only where it is then empty, and
+//! the pass touches no workspace in an owner's folder. While a local
+//! layer stands that the configuration could not take, no repository is
+//! let go and no workspace is set or taken, since that layer may name
+//! them (record 0009 as amended 2026-11-07). Each repository is
+//! independent: a failure in one is named and the next is kept. Each is
+//! kept or let go under its clone's lock, which a launch into the clone
+//! takes shared, and after each the pass runs the loop's hook, which keeps
+//! the landings told since, so a landing waits for no more than the
+//! repository in hand (record 0026; design Decisions 3 and 4). A pass
 //! stopped keeps no further repository and no workspace. The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
 //! <words>`, and a pass with nothing to say writes nothing.
@@ -19,7 +24,10 @@ use crate::code_workspace::{self, Act, Wanted};
 use crate::config::{self, Address, Config, LocalLayer};
 use crate::git::Git;
 use crate::lacks;
+use crate::locks::Locks;
+use crate::report;
 use crate::view::{self, OldAct, ViewAct};
+use boomdrive_control::Id;
 use std::collections::BTreeSet;
 use std::fs;
 use std::io;
@@ -50,19 +58,27 @@ impl Outcome {
     }
 }
 
-/// One pass over `config`, the runner's clones kept in `data`, each line
-/// said to `say` as it is said. Where `config`'s local layer was not
-/// taken, its managed layer's repositories are kept and none is let go.
-/// Once `stop` is set, no further repository is kept or let go, no
-/// workspace is kept, and the pass ends.
+/// What a pass runs after each repository it keeps or lets go of, and
+/// whether it changed a clone, so the pass reads its clones again: the
+/// loop's keeping of the landings told since (design Decision 3).
+pub type Between<'a> = &'a mut dyn FnMut() -> bool;
+
+/// One pass over `config`, the runner's clones kept in `data`, each
+/// repository under its lock among `locks`, `between` run after each,
+/// each line said to `say` as it is said. Where `config`'s local layer
+/// was not taken, its managed layer's repositories are kept and none is
+/// let go. Once `stop` is set, no further repository is kept or let go,
+/// no workspace is kept, and the pass ends.
 pub fn pass(
     git: &Git,
     data: &Path,
     config: &Config,
+    locks: &Locks,
     stop: &AtomicBool,
+    between: Between<'_>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    let Some(clones) = find(git, data, say) else {
+    let Some(mut clones) = find(git, data, say) else {
         return Outcome::Failed;
     };
     let workspaces = wanted_workspaces(config);
@@ -73,17 +89,49 @@ pub fn pass(
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
+        let held = locks.keep(address);
         let kept = keep_configured(git, data, config, &clones, address, &mut standing, say);
+        drop(held);
         outcome = outcome.and(kept);
+        if between() {
+            let Some(found) = find(git, data, say) else {
+                return Outcome::Failed;
+            };
+            clones = found;
+        }
     }
-    for found in &clones {
+    let dropped: Vec<&Found> = clones
+        .iter()
+        .filter(|found| {
+            !holds_back(config) && !config.repositories().any(|kept| *kept == found.address)
+        })
+        .collect();
+    for found in dropped {
         if stop.load(Ordering::SeqCst) {
             return outcome;
         }
-        if config.repositories().any(|kept| *kept == found.address) || holds_back(config) {
-            continue;
-        }
-        outcome = outcome.and(let_go(git, found, &mut standing, say));
+        // The runner's report is read under the clone's lock, after any
+        // launch into the clone has ended, so what holds it is read as it
+        // stands (record 0021; record 0026).
+        let address = &found.address;
+        let lock = locks.keep(address);
+        let launched = report::read(&report::file(&report::control_dir(data)));
+        let held = match &launched {
+            Ok(report) => report
+                .as_ref()
+                .map_or_else(Vec::new, |report| report::holding(report, address)),
+            Err(why) => {
+                say(format!("{address}: not let go: {why}"));
+                outcome = Outcome::Failed;
+                standing.extend(found.drive.clone());
+                drop(lock);
+                between();
+                continue;
+            }
+        };
+        outcome = outcome.and(let_go(git, found, &held, &mut standing, say));
+        drop(lock);
+        between();
     }
     if let Some(workspaces) = &workspaces {
         if !stop.load(Ordering::SeqCst) {
@@ -107,13 +155,15 @@ fn holds_back(config: &Config) -> bool {
     matches!(config.local, LocalLayer::NotTaken { .. })
 }
 
-/// Keeps `address` alone, just as a pass keeps it, against `config`
-/// (design 9): what a landing told of it runs. An address `config` does
-/// not name is named, and nothing is cloned or fetched for it (core.5).
+/// Keeps `address` alone, just as a pass keeps it, against `config`,
+/// under its lock among `locks` (design 9): what a landing told of it
+/// runs. An address `config` does not name is named, and nothing is
+/// cloned or fetched for it (core.5).
 pub fn keep_one(
     git: &Git,
     data: &Path,
     config: &Config,
+    locks: &Locks,
     address: &Address,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
@@ -123,6 +173,7 @@ pub fn keep_one(
         ));
         return Outcome::Kept;
     };
+    let _held = locks.keep(address);
     match find(git, data, say) {
         Some(clones) => keep_configured(
             git,
@@ -222,21 +273,26 @@ fn keep_workspace(wanted: &Wanted, say: &mut dyn FnMut(String)) -> Outcome {
 }
 
 /// Lets go of the clone `found`, whose address the configuration no
-/// longer names (design 8). It is never fetched. Once neither it nor its
-/// view holds anything the forge lacks, the view is removed, then the
-/// view's owner folder if empty, then the container, then the
-/// container's owner folder if empty (design Decision 10). Until then
-/// nothing is touched, and each thing that holds them is named. A folder
-/// at the view's path that is not the clone's worktree is left as it is.
-/// A clone left standing has the drive it records join `standing`. Each
-/// line of the clone's says its address.
+/// longer names (design 8). It is never fetched. While a launch of the
+/// runner's report holds it at a place that has not ended, each such
+/// place with its launch among the `launched`, it is drained: kept as it
+/// is, neither fetched nor moved, and named held by each (record 0021;
+/// core.5). Once nothing holds it and neither it nor its view holds
+/// anything the forge lacks, the view is removed, then the view's owner
+/// folder if empty, then the container, then the container's owner folder
+/// if empty (design Decision 10). Until then nothing is touched, and each
+/// thing that holds them is named. A folder at the view's path that is
+/// not the clone's worktree is left as it is. A clone left standing has
+/// the drive it records join `standing`. Each line of the clone's says
+/// its address.
 fn let_go(
     git: &Git,
     found: &Found,
+    launched: &[(Id, String)],
     standing: &mut BTreeSet<String>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    let removed = remove_dropped(git, &found.address, &found.container, say);
+    let removed = remove_dropped(git, &found.address, &found.container, launched, say);
     if removed != Removed::Gone {
         standing.extend(found.drive.clone());
     }
@@ -251,7 +307,8 @@ fn let_go(
 enum Removed {
     /// It and its view are gone.
     Gone,
-    /// It is left, held by what the forge lacks.
+    /// It is left, held by what the forge lacks or by a place the
+    /// runner launched there that has not ended.
     Held,
     /// A step failed, and was named.
     Failed,
@@ -262,6 +319,7 @@ fn remove_dropped(
     git: &Git,
     address: &Address,
     container: &Path,
+    launched: &[(Id, String)],
     say: &mut dyn FnMut(String),
 ) -> Removed {
     let bare = clone::bare(container);
@@ -277,9 +335,14 @@ fn remove_dropped(
         }
     };
     let held = lacks::holdings(&facts);
-    if !held.is_empty() {
+    if !held.is_empty() || !launched.is_empty() {
         for holding in held {
             say(format!("{address}: left: held by {holding}"));
+        }
+        for (id, place) in launched {
+            say(format!(
+                "{address}: left: held by the place {place} of {id}, which has not ended"
+            ));
         }
         return Removed::Held;
     }

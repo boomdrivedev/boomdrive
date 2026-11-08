@@ -13,7 +13,7 @@ What stands:
 - **sluice**, read in its statement and its code at 0.66.0:
   - Clause 124: for a branch whose policy names a remote, the host's own ref is sluice's copy, levelled to each landing sluice reads and written at no other time. Any other hand's write is refused, judged by the ref's own value before and after, and logged with the command and both revisions. S58 is a tool moving the copy to the remote's revision by hand, refused.
   - `crates/sluice/src/protect.rs`: the `reference-transaction` hook, in `prepared`, refuses an update to a branch the policy names that moves it from where it stands. It passes a creation (`a creation`), an update that leaves the value as it was, and any ref outside `refs/heads/`.
-  - Record 0069: which remote a branch is on is read from every revision of it the host holds, and a copy that lags decides nothing. This was the cause herdr.13's amendment of 2026-10-26 worked around.
+  - Record 0069: which remote a branch is on is read from every revision of it the host holds, and a copy that lags decides nothing. This was the cause afterthought/swancloud's herdr.13, as amended 2026-10-26, worked around.
 - **Flume**, read in its statement and its code:
   - Clause 9 cuts a place from its base's current revision, never from a copy that may lag it.
   - C.1 and `base_revision`: under sluice, the base is `origin/<base>` after one fetch where the policy lands it on a remote, else the local `<base>`. With no merge queue bound, `history.head` reads the local `refs/heads/<base>`.
@@ -83,12 +83,12 @@ Every test runs on the scratch host (`tests/common`), with neutral names and pat
 
 ### Rules departed from
 
-None. core.14 is amended by record 0019, which departs from herdr.13 as amended 2026-10-26.
+None. core.14 is amended by record 0019, which departs from afterthought/swancloud's herdr.13 as amended 2026-10-26.
 
 ## What this change asks of others
 
 - **Flume.** C.1 reads a base no merge queue lands at the host's own `refs/heads/<base>`. In a clone the runner keeps, origin holds that base and the host's ref is a copy that may lag, which clause 9 rules out. Flume is asked to read it at `origin/<base>` after a fetch where the repository has origin and no merge queue lands the base locally. Until then, a place there is cut from where the clone's branch stands.
-- **afterthought/swancloud.** herdr.13 still says the views timer moves a host's default branch after its fetch. The runner no longer carries that part. Amending herdr.13 is swancloud's.
+- **afterthought/swancloud.** herdr.13 still says the views timer moves a host's default branch after its fetch. The runner no longer carries that part. Amending herdr.13 is afterthought/swancloud's.
 
 Both are told to the orchestrator, not done here.
 

@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md for why. This change builds the host's half of boomdrive-cloud's wave 1 walk: a host enrolls, dials its control plane, takes launches under their leases, and carries each place's status up as version 1's copy.
+See proposal.md for why. This change builds the host's half of boomdrive-cloud's walking skeleton, its roadmap's items 1.4 to 1.15: a host enrolls, dials its control plane, takes launches under their leases, and carries each place's status up as version 1's copy.
 
 What stands:
 
@@ -13,24 +13,24 @@ What stands:
   - The control pass, `carry.rs`, hastens its next pass by the midpoint to the earliest lease expiry, a lapsed one too, so passes run back to back once a lease has lapsed. It says the control plane could not be read at every pass that cannot read it. `_open.md` names both, against core.22 and core.23.
   - The pass launches an offer and carries out an act or a command whatever its lease's expiry. crew's leases have none, so core.24 has not yet bitten.
   - Rules core.1 to core.42 bind. Records 0001 to 0015 stand, 0006 to 0010 and 0012 to 0015 proposed.
-- **agentplot/boomdrive-cloud**, at `edac7ae`, read 2026-11-03.
-  - Its roadmap, `design/roadmap.md`: item 1.15 is this change, needing 0.5 and 1.16, under ruling D5. It builds the runner change's hosted implementation, which the roadmap calls Decision 17 and the landed design numbers Decision 20. Named there: the enrollment token exchanged once, the host's credential kept on the host, one outbound socket, each message in the schema's version with its id, and of each place's status only the fields its core.108 keeps. Research notes: F10, F49 and F51.
+- **agentplot/boomdrive-cloud**, read 2026-11-03.
+  - Its roadmap, `design/roadmap.md`: item 1.15 is this change, needing 0.5 and 1.16, under ruling D5, with research rows F10, F49 and F51.
   - Its records 0005, 0009, 0016, 0022 and 0043 to 0049, 0056 and 0059, and its rules core.13, core.18, core.21, core.24, core.36 to core.39, core.50, core.52, core.106, core.108, core.118 and core.121. All are cited by id, and none is quoted (core.41).
   - Its first run, `design/the-first-run-from-an-empty-account.md`: FR3 and FR7, and the install command's `--keep`.
-  - Its changes 1.4, 1.5 and 1.6 are being designed beside this one. Neither 1.5's nor 1.6's place holds a draft yet. 1.7, the Host object and the token's exchange on the cloud's side, is not yet designed, so this change sets the runner's half of each path and says what 1.7 builds to meet it.
-- **This repository's constitution interview**, `design/research/the-constitution-interview.md`, *The roadmap's changes*: it lists this change as its seventh, beside the opening of the public repository, the relay that waits for Flume's, the backoff and timed lines, the command line, the verified install, the managed level and the terminal encrypted end to end.
+  - Its items 1.4 to 1.7 are designed beside or after this one, so this change sets the runner's half of each path and says what 1.7 builds to meet it.
+- **This repository's constitution interview**, agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`, *The roadmap's changes*: it lists this change as its seventh.
 
 There are no area pages, so `docs/architecture/core.md` binds every path this change touches.
 
-## What wave 0 settles for this change
+## What the cloud's earlier items settle for this change
 
-The cloud roadmap's wave 0 and its step 1 were made so that wave 1 builds from them. Each bears on this change as follows.
+The cloud roadmap's earlier items bear on this change as follows.
 
-- **0.5, `the-runner-carries-crews-work-into-flume`**, landed here as #2.
+- **`the-runner-carries-crews-work-into-flume`** (the cloud's item 0.5), landed here as #2.
   - Its `ControlPlane` is what this change implements. It is unchanged, but for the opener in `planes.rs` taking `poll_interval` (Decision 1).
   - Its Decision 20 sketched the hosted implementation. Three of its points are overtaken by later records (below), and the rest stand: one WebSocket, outgoing; the hello at every reconnect; a pull answered from the messages received; the `Wake` called when one arrives; a refused lease filling `Reported::refused`; one more word in `planes.rs`; the shared cases passed.
   - Its report file, its marks and its control pass are what the hosted implementation feeds.
-- **1.16, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`**, landed as #4 at `508e41d`.
+- **`the-runner-keeps-its-protocol-as-one-json-schema-per-version`** (the cloud's item 1.16), landed as #4 at `508e41d`.
   - Version 1 is what goes over the socket: the envelope with its id, the messages and their order (its Decision 5), the copies (its Decisions 7 to 9) and the terminal's frames (its Decision 10).
   - Its Decision 11 left enrollment and the proof at each connection to this change, to add to version 1 before a release speaks it. This change adds them (Decision 12).
   - It asked of this change: cut each status and the host part to their copies (Decision 9); check every message the runner is sent (Decision 10); give message ids that survive a reconnect (Decision 7); add enrollment and the key's proof (Decisions 4, 5 and 12).
@@ -43,21 +43,21 @@ The cloud roadmap's wave 0 and its step 1 were made so that wave 1 builds from t
   - Work policy and live controls are not touched.
 - **Rulings 0043 to 0049.**
   - 0043, a member's launch, reaches the runner as any offer does, and needs nothing of its own here.
-  - 0044, 0045 and 0048 are the cloud's machines, tables and identity mapping, with no bearing on the host.
+  - 0044, 0045 and 0048 have no bearing on the host.
   - 0046 is superseded by 0056.
   - 0047 and 0049 are above.
 - **The first run (0.3).**
-  - FR3, a new host asks to be admitted. `enroll` carries the machine's name. The repositories it keeps and its streams' room are its first hello's. The token it used and who took it are the cloud's own. A host not admitted is offered nothing, and the runner needs nothing for that.
+  - FR3. `enroll` carries the machine's name. The repositories it keeps and its streams' room are its first hello's. The token it used and who took it are the cloud's own. A host not admitted is offered nothing, and the runner needs nothing for that.
   - FR7. The token lapsed is `enroll_refused`, with the control plane's words, which `boomdrive enroll` prints as given. A tool missing is the hello's. The host gone quiet is the socket's silence.
   - `--keep`. The install command writes the runner's configuration on the host, the repositories to keep among it, and the cloud sends nothing to the machine. That install is this repository's `the-runner-installs-as-one-verified-release` (record 0012), not this change (*What this change leaves out*).
-- **Step 1 (1.1, 1.2, 1.3, 1.14)** is the cloud's own. 1.14's staging Worker is what a host dials. Its address goes in a host's `url`, and never in this repository (core.41).
+- **Items 1.1, 1.2, 1.3 and 1.14** are the cloud's own. A host dials what 1.14 deploys, and its address goes in a host's `url`, and never in this repository (core.41).
 
-Where a wave 0 record, or one of this repository's own, changes what the roadmap's entry or the archived Decision 20 says, the record wins:
+Where a record of the cloud's or of this repository's changes what the cloud's item 1.15 or the archived Decision 20 says, the record wins:
 
-- **The host's credential is a key, not a kept token.** The entry exchanges the enrollment token once and keeps the host's credential on the host. Decision 20 read a token from a `token_file`. Record 0006, with core.31 and core.32, makes the credential a key pair made on the host and kept only in its credential store, proved at every connection. So the token is exchanged once, to register the key. Nothing in the table names a token or a file, and no token is kept (Decisions 3 to 5).
+- **The host's credential is a key, not a kept token.** Decision 20 read a token from a `token_file`. Record 0006, with core.31 and core.32, makes the credential a key pair made on the host and kept only in its credential store, proved at every connection. So the token is exchanged once, to register the key. Nothing in the table names a token or a file, and no token is kept (Decisions 3 to 5).
 - **A report is whole.** Decision 20 sent each piece the server had not acknowledged under its own id. 1.16's Decision 5 sends the report whole and resends only the last one no `reported` answered, under its own id (Decision 7).
 - **No terminal opens yet.** Decision 20 made a terminal's link a stream of the socket's messages. Record 0004 closes every terminal at once until Flume relays one, and 1.16's frames are sealed end to end. So this change answers every `terminal_open` with `terminal_closed` (Decision 11).
-- **The install is a change of its own.** The entry's F51 and its "the install command enrolls the machine" ask for dist's installers and the service units. Record 0012 puts the one verified install in its own change. That change waits on the public repository (record 0014), since a release a stranger's `curl` fetches must be public. This change builds what that install runs, `boomdrive enroll`, and until it lands a host is installed by hand (*What this change leaves out*).
+- **The install is a change of its own.** Item 1.15 and its F51 ask for the installers and the service units. Record 0012 puts the one verified install in its own change. That change waits on the public repository (record 0014), since a release a stranger's `curl` fetches must be public. This change builds what that install runs, `boomdrive enroll`, and until it lands a host is installed by hand (*What this change leaves out*).
 
 ## Goals / Non-Goals
 
@@ -183,7 +183,7 @@ Alternatives:
 
 - **`LoadCredentialEncrypted=` in the service unit**, which F10 names. Not taken: the unit is the install's (record 0012), and would have to name each partition's credential. A partition enrolled later would also wait for a restart. Decrypting through `systemd-creds` uses the same store and the same binding, by the tool's own command line.
 - **Secret Service through keyring on Linux.** Not taken: a headless host has none (F10).
-- **A P-256 key.** Not taken: Ed25519 has one encoding, no curve parameters to get wrong, and is verified by WebCrypto in the Worker and in the browser that will check a terminal's share.
+- **A P-256 key.** Not taken: Ed25519 has one encoding, no curve parameters to get wrong, and is verified by WebCrypto in the cloud and in the browser that will check a terminal's share.
 - **A file readable only by the user.** Ruled out by core.32.
 
 ### 4. Enrollment: `boomdrive enroll`, one request, the token read once
@@ -226,7 +226,7 @@ A request sent again with the same message id and the same key, after an answer 
 
 Alternatives:
 
-- **Enrollment over the WebSocket**, as the first message of a socket opened with the token. Not taken: it opens a socket for one exchange, and the Worker would accept it before any Host object exists for the host. A request answered once is the exchange the cloud's 1.7 names.
+- **Enrollment over the WebSocket**, as the first message of a socket opened with the token. Not taken: it opens a socket for one exchange, and the cloud would accept it before it holds the host. A request answered once is the exchange the cloud's 1.7 names.
 - **The token placed by the installer and exchanged at the first connection.** Not taken in record 0006, which chose `boomdrive enroll`.
 - **The token in the body.** Not taken: version 1 names no credential (1.16's Decision 14), and a header is where a bearer goes.
 
@@ -255,13 +255,13 @@ It finds the enrollment, the Host object, by the key itself. So the runner keeps
 - **`401` or `403`**: the control plane does not take this host's key. The runner says one line, naming the partition and the control plane's words, and that `boomdrive enroll <label>` enrolls it again. It tries again at the backoff's cap (Decision 6), reading the store afresh each time.
 - **A subprotocol it does not accept**: the version is not one it speaks. The runner says one line naming `boomdrive.v1`, and tries again at the cap.
 
-That statement is the host's token in the cloud's words (its core.21): the one module of the Worker that turns credentials into principals verifies it, and gives the host's principal before the socket reaches the Host object. It is no bearer kept as the host's identity (core.31): it is good for five minutes, once.
+That statement is the host's token as the cloud's core.21 has it, proved before the socket reaches the host's Host object. It is no bearer kept as the host's identity (core.31): it is good for five minutes, once.
 
 Alternatives:
 
-- **A challenge answered on the socket.** Not taken: the Host object would hold a socket not yet proved, and the cloud's seam proves a credential before any object sees the caller (cloud core.21).
+- **A challenge answered on the socket.** Not taken: the Host object would hold a socket not yet proved (cloud core.21).
 - **A JWT signed with EdDSA.** Not taken: one signature form, a context then NUL-separated fields, serves the enrollment, the connection and the terminal's share alike, and there is no header naming an algorithm to get wrong.
-- **TLS client certificates.** Not taken: the Worker would need a client CA of its own at Cloudflare's edge.
+- **TLS client certificates.** Not taken: the cloud would need a client CA of its own.
 - **A certificate issued at enrollment and shown at each connection.** Not needed to prove the key, which the cloud holds. The certificate a terminal's share carries is the terminal change's to fetch (*What this change leaves out*).
 
 ### 6. One connection per partition, kept by pings and tried again on a backoff
@@ -404,7 +404,7 @@ No release of the runner speaks version 1, so it changes in place (core.42; 1.16
 | `enroll_refused` | the control plane, answering `enroll` | `enroll`, the `enroll` message's id; `words` |
 
 - **A new file, `enrollment.schema.json`**, holds the three definitions. `key` and `signature` are bytes in base64url. `key` is 43 characters, 32 bytes, and `signature` 86, 64 bytes. `machine` is 1 to 255 characters, `host` an id, and `words` text. Every object is closed.
-- **`from-runner.schema.json`** takes `enroll`, and **`to-runner.schema.json`** takes `enrolled` and `enroll_refused`. A Worker refuses `enroll` on the socket and the hello on the enrollment path, by path, as the README says. The schema checks a message's form, not its transport.
+- **`from-runner.schema.json`** takes `enroll`, and **`to-runner.schema.json`** takes `enrolled` and `enroll_refused`. The cloud refuses `enroll` on the socket and the hello on the enrollment path, by path, as the README says. The schema checks a message's form, not its transport.
 - **`FILES`** gains the file. `FromRunner` gains `Enroll`, and `ToRunner` gains `Enrolled` and `EnrollRefused`. Each kind gets examples.
 - **The README** gains:
   - *The paths*: `runner/enroll` and `runner/connect` under the control plane's `url`, the subprotocol, and which kinds go on each.
@@ -494,7 +494,7 @@ None. Two rules stay unmet by the code, each owed by a change of its own, and th
 
 ## What this change leaves out
 
-The constitution interview's list for this change was wider than the cloud's entry. These are left to changes of their own, each adding its messages to version 1 while no release speaks it, or else making version 2 (core.42):
+The constitution interview's list for this change was wider than the cloud's item 1.15. These are left to changes of their own, each adding its messages to version 1 while no release speaks it, or else making version 2 (core.42):
 
 | what | its record | the change |
 |---|---|---|
@@ -511,7 +511,7 @@ Until the install lands, a host is installed by hand: the runner built or fetche
 - **boomdrive-cloud, 1.6.**
   - Move the pin of `crates/boomdrive-hosted/protocol/v1/` to this change's landing.
   - Check `enroll` at `runner/enroll`, and every message on `runner/connect`, against version 1.
-- **boomdrive-cloud, 1.4's seam and 1.7.**
+- **boomdrive-cloud, 1.4 and 1.7.**
   - Take `BoomdriveHost` at the upgrade of `runner/connect`, by Decision 5's form and window. Find the enrollment by its key, and refuse an unknown or revoked key with `401` and words.
   - Refuse a subprotocol it does not accept at the upgrade.
   - Answer each `hello` with `pulled`, its `report` as held. Send `pulled` again when the wants change, and `reported` for each `report`, naming it.

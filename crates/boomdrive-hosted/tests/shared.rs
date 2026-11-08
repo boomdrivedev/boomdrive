@@ -63,6 +63,10 @@ fn given(want: &Want) -> Want {
             inbox.id = bare(&inbox.id);
             Want::Inbox(inbox)
         }
+        Want::Preview(mut preview) => {
+            preview.id = bare(&preview.id);
+            Want::Preview(preview)
+        }
     }
 }
 
@@ -126,4 +130,9 @@ fn a_report_twice() {
 #[test]
 fn a_settled_want_is_given() {
     shared::a_settled_want_is_given(&mut Hosteds::new());
+}
+
+#[test]
+fn each_id_given_is_owned() {
+    shared::each_id_given_is_owned(&mut Hosteds::new());
 }

@@ -1,7 +1,8 @@
 //! README's examples are what the runner reads (task 1.2, Task notes
 //! 9.4, task 6.4): its configuration, the local layer over it, and with
 //! it its `[control_plane]` table, which opens crew's implementation, and its hosted table, which
-//! the hosted implementation reads.
+//! the hosted implementation reads. It names no branch command the
+//! runner runs (core.52).
 
 use boomdrive::{config, planes};
 use std::path::{Path, PathBuf};
@@ -101,7 +102,7 @@ fn the_readme_configuration_reads() {
         drives,
         [
             ("own", "home", vec!["agentplot/flume".to_string()]),
-            ("own", "work", vec!["afterthought/crew".to_string()]),
+            ("own", "work", vec!["example/crew".to_string()]),
         ]
     );
     assert!(config.code_workspaces);
@@ -127,8 +128,8 @@ fn the_readme_control_plane_opens_crews_implementation() {
         &readme,
         Path::new("/nowhere/boomdrive"),
         table.poll_interval,
-        Box::new(|line| panic!("said {line:?} at its opening")),
-        Box::new(|| panic!("woken at its opening")),
+        &|_| Box::new(|line| panic!("said {line:?} at its opening")),
+        &|_| Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }
@@ -178,4 +179,44 @@ fn the_readme_hosted_table_reads() {
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
     );
     assert!(refusal.host_to_fix);
+}
+
+/// core.52 and design Decision 8: README says a bolt is a launch and a
+/// command is refused, and names no `sluice branch create` the runner
+/// runs.
+#[test]
+fn the_readme_names_no_branch_command() {
+    let (text, _) = readme();
+    assert!(
+        !text.contains("sluice branch create"),
+        "README names sluice branch create"
+    );
+    assert!(
+        text.contains("A bolt is a launch"),
+        "README says a bolt is a launch"
+    );
+    assert!(
+        text.contains("refuses every command, naming its tool"),
+        "README says every command is refused"
+    );
+}
+
+/// core.55 and design Decision 13: README says how a preview is brought
+/// up and put away, by sluice's own commands.
+#[test]
+fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
+    let (text, _) = readme();
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flat.contains("sluice preview <branch> <revision>"),
+        "README names no sluice preview <branch> <revision>"
+    );
+    assert!(
+        flat.contains("sluice release <name>"),
+        "README names no sluice release <name>"
+    );
+    assert!(
+        flat.contains("previews.rec"),
+        "README names no previews.rec"
+    );
 }

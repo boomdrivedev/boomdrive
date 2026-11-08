@@ -1961,7 +1961,7 @@ mod tests {
                  code_workspaces = true\n\
                  \n\
                  [accounts.own.drives.home]\n\
-                 repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n"
+                 repositories = [\"agentplot/flume\", \"example/crew\"]\n"
             ),
             Ok(Config {
                 repository_root: PathBuf::from("/srv/code"),
@@ -1971,10 +1971,7 @@ mod tests {
                     name: "own".to_string(),
                     drives: vec![Drive {
                         name: "home".to_string(),
-                        repositories: vec![
-                            address("agentplot/flume"),
-                            address("afterthought/crew")
-                        ],
+                        repositories: vec![address("agentplot/flume"), address("example/crew")],
                     }],
                 }],
                 control_plane: None,
@@ -1991,11 +1988,11 @@ type = \"crew\"
 poll_interval = \"1m\"
 
 [control_plane.crew]
-host = \"deneb\"
+host = \"host-a\"
 
 [[control_plane.crew.partitions]]
-label = \"madswan\"
-state_repository = \"afterthought/madswan-state\"
+label = \"home\"
+state_repository = \"example/home-state\"
 ";
 
     /// The configuration spec's "crew named": the table `type` names is
@@ -2004,8 +2001,8 @@ state_repository = \"afterthought/madswan-state\"
     fn the_control_plane_named() {
         let table = read(CONTROL_PLANE).unwrap().control_plane.unwrap();
         let own: Table = toml::from_str(
-            "host = \"deneb\"\n\n[[partitions]]\nlabel = \"madswan\"\n\
-             state_repository = \"afterthought/madswan-state\"\n",
+            "host = \"host-a\"\n\n[[partitions]]\nlabel = \"home\"\n\
+             state_repository = \"example/home-state\"\n",
         )
         .unwrap();
         assert_eq!(
@@ -2773,7 +2770,7 @@ state_repository = \"afterthought/madswan-state\"
         );
         assert_eq!(
             config.control_plane.unwrap().implementation_table["host"].as_str(),
-            Some("deneb")
+            Some("host-a")
         );
 
         let config = layers("accounts = {}\n", Some(&hosted_local("", &["work"]))).unwrap();

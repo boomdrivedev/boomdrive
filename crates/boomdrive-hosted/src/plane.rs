@@ -1,8 +1,11 @@
 //! `Hosted`, the hosted control plane's implementation of the interface
 //! (design Decisions 1, 7, 8, 9 and 11; core.2, core.21, core.26,
 //! core.27): one connection for each partition of the hosted table, on a
-//! runtime of its own, which the runner's loop reaches through `pull` and
-//! `report` alone. Every id a partition's control plane gives is handed to
+//! runtime of its own, which the runner reaches through `pull`, `report`
+//! and `owns` alone. [`Hosted::parts`] gives a part for each partition,
+//! an account's enrollment and its one connection, each pulled, answered
+//! and reported on its own and woken alone, all on one runtime the parts
+//! share (record 0026; core.49). Every id a partition's control plane gives is handed to
 //! the runner as `<label>/<id>`, and has its prefix taken off as it goes
 //! up, so a partition's connection carries only its own repositories,
 //! leases and work. What goes up of each tool's answer is version 1's copy
@@ -12,10 +15,10 @@ use crate::connection::{self, Answered, Connection, Dial};
 use crate::copy;
 use crate::key::{self, KeyName, Store};
 use crate::protocol::v1::{self, MessageId};
-use crate::table::Table;
+use crate::table::{self, Table};
 use boomdrive_control::{
-    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Pulled, Report, Reported,
-    Unread, Unsent, Wake, Want,
+    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Pulled, Report,
+    Reported, Unread, Unsent, Wake, Want,
 };
 use ed25519_dalek::SigningKey;
 use serde_json::value::RawValue;
@@ -38,25 +41,26 @@ pub const PATIENCE: Duration = Duration::from_secs(10);
 const CLOSE_WAIT: Duration = Duration::from_secs(1);
 
 /// Opens the hosted implementation from its table, `table`, of the
-/// configuration file `file`: one connection for each partition, each
-/// trying again on a backoff whose cap stops at `poll_interval`, saying
-/// its lines to `say` and waking the runner by `wake` (design Decision 1).
-/// Each partition's key is read from the host's own credential store at
-/// every attempt; a host with none says so for each partition, once, and
-/// opens nonetheless.
+/// configuration file `file`, as its parts: one for each partition, its
+/// connection trying again on a backoff whose cap stops at
+/// `poll_interval`, saying its lines to the say `say_for` makes for its
+/// label and waking the runner for it by the wake `wake_for` makes for it
+/// (design Decision 1; record 0026). Each partition's key is read from
+/// the host's own credential store at every attempt; a host with none
+/// says so for each partition, once, and opens nonetheless.
 pub fn open(
     table: &toml::Table,
     file: &Path,
     poll_interval: Duration,
-    say: Say,
-    wake: Wake,
-) -> Result<Hosted, String> {
+    say_for: &dyn Fn(&str) -> Say,
+    wake_for: &dyn Fn(&str) -> Wake,
+) -> Result<Vec<Part>, String> {
     let table = Table::read(table, file)?;
     let store: Arc<dyn Store> = match key::store_for_host() {
         Ok(store) => Arc::from(store),
         Err(words) => Arc::new(Lacking(words)),
     };
-    Hosted::new(&table, store, poll_interval, say, wake)
+    Hosted::parts(&table, store, poll_interval, say_for, wake_for)
 }
 
 /// A host with no credential store: every key is unread, with the words
@@ -73,14 +77,38 @@ impl Store for Lacking {
     }
 }
 
-/// The hosted control plane, through each partition's connection.
+/// The hosted control plane, through each partition's connection: as a
+/// part, one partition's.
 pub struct Hosted {
     partitions: Vec<Partition>,
     say: connection::Say,
     /// Whether the host part's copy failed at the last pull, said once
     /// while it fails.
     host_part_failing: bool,
-    runtime: Option<Runtime>,
+    /// The runtime its connections run on, shared with every part opened
+    /// beside it, and stopped once the last of them is dropped.
+    runtime: Arc<Shared>,
+}
+
+/// The runtime every part opened together shares, stopped once the last
+/// part holding it is dropped.
+struct Shared(Option<Runtime>);
+
+impl Shared {
+    fn handle(&self) -> &tokio::runtime::Handle {
+        self.0
+            .as_ref()
+            .expect("the runtime is held until it is dropped")
+            .handle()
+    }
+}
+
+impl Drop for Shared {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.0.take() {
+            runtime.shutdown_background();
+        }
+    }
 }
 
 /// One partition, as the implementation holds it.
@@ -110,7 +138,8 @@ struct Partition {
 
 impl Hosted {
     /// The hosted implementation of `table`, each partition's key read
-    /// from `store`.
+    /// from `store`, serving every partition in turn, saying its lines to
+    /// `say` and woken by `wake` for any of them.
     pub fn new(
         table: &Table,
         store: Arc<dyn Store>,
@@ -118,17 +147,8 @@ impl Hosted {
         say: Say,
         wake: Wake,
     ) -> Result<Hosted, String> {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
-            .thread_name("boomdrive-hosted")
-            .enable_all()
-            .build()
-            .map_err(|e| format!("the hosted implementation's runtime could not be made: {e}"))?;
-        let say = Mutex::new(say);
-        let say: connection::Say = Arc::new(move |line| {
-            let mut say = say.lock().unwrap_or_else(|e| e.into_inner());
-            say(line);
-        });
+        let runtime = Arc::new(Shared(Some(runtime()?)));
+        let say = shared_say(say);
         let wake: connection::Wake = Arc::from(wake);
         let partitions = table
             .partitions
@@ -142,24 +162,69 @@ impl Hosted {
                     say.clone(),
                     wake.clone(),
                 );
-                Partition {
-                    label: partition.label.clone(),
-                    repositories: partition.repositories.iter().cloned().collect(),
-                    connection: Connection::open(runtime.handle(), dial),
-                    unhanded: None,
-                    held: None,
-                    sent: None,
-                    withheld: BTreeSet::new(),
-                    failing: BTreeSet::new(),
-                }
+                Partition::open(partition, &runtime, dial)
             })
             .collect();
         Ok(Hosted {
             partitions,
             say,
             host_part_failing: false,
-            runtime: Some(runtime),
+            runtime,
         })
+    }
+
+    /// The hosted implementation of `table` as parts: one for each
+    /// partition, in the table's order, labelled by it, each holding the
+    /// partition's one connection, its key read from `store`, saying its
+    /// lines to the say `say_for` makes for its label and woken by the
+    /// wake `wake_for` makes for it, so a `pulled` on one connection wakes
+    /// that part alone (record 0026; design Decision 8). The parts share
+    /// one runtime, stopped once the last of them is dropped.
+    pub fn parts(
+        table: &Table,
+        store: Arc<dyn Store>,
+        poll_interval: Duration,
+        say_for: &dyn Fn(&str) -> Say,
+        wake_for: &dyn Fn(&str) -> Wake,
+    ) -> Result<Vec<Part>, String> {
+        let runtime = Arc::new(Shared(Some(runtime()?)));
+        let parts = table
+            .partitions
+            .iter()
+            .map(|partition| {
+                let label = &partition.label;
+                let say = shared_say(say_for(label));
+                let dial = Dial::new(
+                    table,
+                    label,
+                    store.clone(),
+                    poll_interval,
+                    say.clone(),
+                    Arc::from(wake_for(label)),
+                );
+                let hosted = Hosted {
+                    partitions: vec![Partition::open(partition, &runtime, dial)],
+                    say,
+                    host_part_failing: false,
+                    runtime: runtime.clone(),
+                };
+                Part {
+                    label: label.clone(),
+                    plane: Box::new(hosted),
+                }
+            })
+            .collect();
+        Ok(parts)
+    }
+
+    /// `words` of the partition `label`, naming it where this holds more
+    /// than one partition: a part's own words do not repeat its label,
+    /// which the runner's line names.
+    fn of(&self, label: &str, words: &str) -> String {
+        match self.partitions.len() {
+            1 => words.to_string(),
+            _ => format!("{label}: {words}"),
+        }
     }
 
     /// The host's capacity as version 1 carries it: Flume's host part as
@@ -212,19 +277,21 @@ impl ControlPlane for Hosted {
         let mut held: Option<Report> = None;
         let mut unread = Vec::new();
         let mut read = 0;
-        for partition in &mut self.partitions {
+        for at in 0..self.partitions.len() {
+            let partition = &self.partitions[at];
             if let Some(words) = &partition.unhanded {
-                unread.push(format!("{}: {words}", partition.label));
+                unread.push(self.of(&partition.label, words));
                 continue;
             }
             let patience = deadline.saturating_duration_since(Instant::now());
             let taken = match partition.connection.read(patience) {
                 Ok(taken) => taken,
                 Err(why) => {
-                    unread.push(format!("{}: {why}", partition.label));
+                    unread.push(self.of(&partition.label, &why));
                     continue;
                 }
             };
+            let partition = &mut self.partitions[at];
             read += 1;
             wants.extend(partition.own_wants(taken.wants, &self.say));
             let report = match &partition.held {
@@ -255,21 +322,24 @@ impl ControlPlane for Hosted {
 
         let mut waiting = Vec::new();
         let mut unanswered = Vec::new();
-        for (at, partition) in self.partitions.iter_mut().enumerate() {
-            if !partition.connection.live() {
-                unanswered.push(format!("{}: it is not reached", partition.label));
+        for at in 0..self.partitions.len() {
+            let label = self.partitions[at].label.clone();
+            if !self.partitions[at].connection.live() {
+                unanswered.push(self.of(&label, "it is not reached"));
                 continue;
             }
+            let say = self.say.clone();
+            let partition = &mut self.partitions[at];
             let part = partition.part(report);
-            let body = partition.upward(&part, &self.say);
+            let body = partition.upward(&part, &say);
             match partition.connection.report(&body) {
                 Ok(id) => {
                     partition.sent = Some((id.clone(), part));
                     waiting.push((at, id));
                 }
                 Err(words) => {
-                    (self.say)(format!("{}: {words}", partition.label));
-                    unanswered.push(format!("{}: {words}", partition.label));
+                    (self.say)(format!("{label}: {words}"));
+                    unanswered.push(self.of(&label, &words));
                 }
             }
         }
@@ -277,26 +347,24 @@ impl ControlPlane for Hosted {
         let deadline = Instant::now() + PATIENCE;
         let mut answered = 0;
         for (at, id) in waiting {
-            let partition = &mut self.partitions[at];
+            let label = self.partitions[at].label.clone();
             let patience = deadline.saturating_duration_since(Instant::now());
-            match partition.connection.answer(&id, patience) {
+            match self.partitions[at].connection.answer(&id, patience) {
                 Some(answer @ Answered::Reported(_)) => {
                     answered += 1;
-                    partition.answered(&id, answer, &mut reported);
+                    self.partitions[at].answered(&id, answer, &mut reported);
                 }
                 Some(Answered::Refused(words)) => {
-                    unanswered.push(format!(
-                        "{}: the control plane refused it: {words}",
-                        partition.label
-                    ));
+                    let words = format!("the control plane refused it: {words}");
+                    unanswered.push(self.of(&label, &words));
                 }
                 None => {
                     let words = format!(
                         "the control plane did not answer the report within {}s",
                         PATIENCE.as_secs()
                     );
-                    (self.say)(format!("{}: {words}", partition.label));
-                    unanswered.push(format!("{}: {words}", partition.label));
+                    (self.say)(format!("{label}: {words}"));
+                    unanswered.push(self.of(&label, &words));
                 }
             }
         }
@@ -305,33 +373,71 @@ impl ControlPlane for Hosted {
         }
         Ok(reported)
     }
+
+    /// An id under one of its partitions' prefixes, `<label>/`.
+    fn owns(&self, id: &Id) -> bool {
+        self.partitions
+            .iter()
+            .any(|partition| partition.unprefixed(id).is_some())
+    }
 }
 
 impl Drop for Hosted {
-    /// Closes each socket with a normal close, waits at most a second for
-    /// them, and stops the runtime.
+    /// Closes each of its sockets with a normal close and waits at most a
+    /// second for them. The runtime stops once the last part holding it
+    /// is dropped.
     fn drop(&mut self) {
-        let Some(runtime) = self.runtime.take() else {
-            return;
-        };
         let tasks: Vec<_> = self
             .partitions
             .iter_mut()
             .filter_map(|partition| partition.connection.close())
             .collect();
         let (closed, waited) = mpsc::channel();
-        runtime.spawn(async move {
+        self.runtime.handle().spawn(async move {
             for task in tasks {
                 let _ = task.await;
             }
             let _ = closed.send(());
         });
         let _ = waited.recv_timeout(CLOSE_WAIT);
-        runtime.shutdown_background();
     }
 }
 
+/// The runtime the connections run on.
+fn runtime() -> Result<Runtime, String> {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .thread_name("boomdrive-hosted")
+        .enable_all()
+        .build()
+        .map_err(|e| format!("the hosted implementation's runtime could not be made: {e}"))
+}
+
+/// `say` as the connections say their lines, from the runtime's threads.
+fn shared_say(say: Say) -> connection::Say {
+    let say = Mutex::new(say);
+    Arc::new(move |line| {
+        let mut say = say.lock().unwrap_or_else(|e| e.into_inner());
+        say(line);
+    })
+}
+
 impl Partition {
+    /// The partition `partition` of the table, its connection opened on
+    /// `runtime` by `dial`.
+    fn open(partition: &table::Partition, runtime: &Shared, dial: Dial) -> Partition {
+        Partition {
+            label: partition.label.clone(),
+            repositories: partition.repositories.iter().cloned().collect(),
+            connection: Connection::open(runtime.handle(), dial),
+            unhanded: None,
+            held: None,
+            sent: None,
+            withheld: BTreeSet::new(),
+            failing: BTreeSet::new(),
+        }
+    }
+
     /// The partition's prefix, which every id its control plane gives
     /// carries in the runner.
     fn prefix(&self) -> String {
@@ -351,8 +457,9 @@ impl Partition {
 
     /// The runner's `hello` as this partition's control plane is told it
     /// (design Decision 8): only the repositories its table names, of
-    /// those kept, and only its own leases, their prefixes taken off; the
-    /// host's tools and capacity as every partition's.
+    /// those kept, and none the runner drains, which version 1 cannot name
+    /// (record 0021), and only its own leases, their prefixes taken off;
+    /// the host's tools and capacity as every partition's.
     fn hello(&self, hello: &Hello, capacity: v1::Capacity) -> v1::Hello {
         v1::Hello {
             interface_version: hello.interface_version,
@@ -376,7 +483,9 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8).
+    /// it is offered (design Decision 8). Version 1 names no preview, so
+    /// no message holding one passes its check; one that reached here
+    /// would be withheld as an inbox is (core.26, core.42).
     fn own_wants(&mut self, wants: Vec<Want>, say: &connection::Say) -> Vec<Want> {
         let mut withheld = BTreeSet::new();
         let mut own = Vec::new();
@@ -388,6 +497,7 @@ impl Partition {
                     CommandSort::Other { .. } => None,
                 },
                 Want::Inbox(inbox) => Some(("inbox", &inbox.repository)),
+                Want::Preview(preview) => Some(("preview", &preview.repository)),
                 Want::Act(_) => None,
             };
             match named {
@@ -435,6 +545,10 @@ impl Partition {
                 inbox.id = self.prefixed(&inbox.id);
                 Want::Inbox(inbox)
             }
+            Want::Preview(mut preview) => {
+                preview.id = self.prefixed(&preview.id);
+                Want::Preview(preview)
+            }
         }
     }
 
@@ -442,7 +556,8 @@ impl Partition {
     /// under the partition's prefix: each launch's lease and answer, each
     /// act, command and inbox, and no launch's status or entry, which the
     /// control plane holds as their copies and not as the tools' answers
-    /// (design Decision 7).
+    /// (design Decision 7). Version 1's report holds no preview, so none
+    /// is taken back (core.42).
     fn taken_back(&self, report: v1::Report) -> Report {
         Report {
             launches: report
@@ -451,6 +566,7 @@ impl Partition {
                 .map(|(id, launched)| {
                     let launched = Launched {
                         lease: launched.lease,
+                        repository: None,
                         answer: launched.answer,
                         status: None,
                         entry: None,
@@ -476,6 +592,7 @@ impl Partition {
                 .into_iter()
                 .map(|(id, inbox)| (self.prefixed(&id), inbox))
                 .collect(),
+            previews: BTreeMap::new(),
         }
     }
 
@@ -495,13 +612,15 @@ impl Partition {
             acts: own(&report.acts, &prefix),
             commands: own(&report.commands, &prefix),
             inboxes: own(&report.inboxes, &prefix),
+            previews: own(&report.previews, &prefix),
         }
     }
 
     /// `part` as version 1's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
-    /// (design Decision 9).
+    /// (design Decision 9). Its four parts alone go up: version 1 names no
+    /// previews, so a report's never do (core.42).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
         let mut launches = serde_json::Map::new();
@@ -602,6 +721,7 @@ impl Partition {
                 part.acts.remove(id);
                 part.commands.remove(id);
                 part.inboxes.remove(id);
+                part.previews.remove(id);
             }
             self.held = Some(part);
         }
@@ -616,6 +736,7 @@ fn merge(into: &mut Report, part: Report) {
     into.acts.extend(part.acts);
     into.commands.extend(part.commands);
     into.inboxes.extend(part.inboxes);
+    into.previews.extend(part.previews);
 }
 
 /// `value` as raw JSON, as version 1's host part carries each value.

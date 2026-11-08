@@ -1,19 +1,35 @@
-//! sluice's command line (design Decisions 13 and 15), the one way the
-//! runner reaches sluice (record 0001). Each call runs in a clone's
-//! container, where sluice finds the repository, and its answer is read
-//! by sluice's exit and kept as sluice gave it (core.1). Of a
-//! submission's entry the runner carries the fields the cloud's copy of a
-//! sluice entry holds, each field's text as sluice printed it, and never
-//! a log or where one is kept (core.11). Of a branch it makes, the runner
-//! carries sluice's whole answer.
+//! sluice's command line (design Decision 13), the one way the runner
+//! reaches sluice (record 0001). Each call runs in a clone's container,
+//! where sluice finds the repository, and its answer is read by sluice's
+//! exit and kept as sluice gave it (core.1). Of a submission's entry the
+//! runner carries the fields the cloud's copy of a sluice entry holds,
+//! each field's text as sluice printed it, and never a log or where one
+//! is kept (core.11). The runner asks sluice for no branch: a branch
+//! other places land on is a Flume place's, which sluice makes and closes
+//! at Flume's asking (core.52). It asks sluice for a preview its control
+//! plane asks for, its listing and its release, each sluice's own command,
+//! awaiting the ask no longer than its patience, and carries of a preview
+//! no output of its command (core.55).
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use std::ffi::OsStr;
 use std::fmt;
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// How long the runner awaits sluice's ask of a preview before it
+/// interrupts it, which ends sluice's wait at the host's bound and
+/// nothing else, so no launch and no other drive's work waits on that
+/// bound behind it (design Decision 3; core.49, core.50, core.55).
+pub const PREVIEW_PATIENCE: Duration = Duration::from_secs(20);
+
+/// How often an ask is looked at while the runner awaits it.
+const LOOK_INTERVAL: Duration = Duration::from_millis(25);
 
 /// The states after which a submission's entry no longer changes.
 pub const FINAL: [&str; 4] = ["landed", "failed", "conflict", "withdrawn"];
@@ -23,6 +39,14 @@ const FIELDS: [&str; 6] = ["id", "branch", "head", "state", "failed", "landed_as
 
 /// The fields of a `failed` row the runner carries, in this order.
 const ROW: [&str; 4] = ["task", "hash", "flaky", "system"];
+
+/// The fields of a preview the runner carries, in this order: no
+/// `output`, which is its command's log, no `release_failed`, a log too,
+/// and no `checkout`, `names`, `ports` or `exit` (core.11, core.55).
+const PREVIEW: [&str; 6] = ["name", "branch", "revision", "state", "made", "addresses"];
+
+/// The fields of a release the runner carries, in this order.
+const RELEASE: [&str; 2] = ["preview", "released"];
 
 /// sluice's answer, read by its exit.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,15 +59,14 @@ pub enum Reply {
     Refused(String),
 }
 
-/// sluice's answer to a command whose standard output is carried
-/// whatever its exit (design Decision 15).
+/// sluice's answer to the ask of a preview.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Printed {
-    /// Its standard output, as sluice printed it.
-    pub text: String,
-    /// Where sluice exited other than 0, the `message` of its `error`
-    /// answer, as given, or, where it printed none, its standard error.
-    pub refused: Option<String>,
+pub enum Asked {
+    /// sluice answered, as [`Reply`] reads it.
+    Replied(Reply),
+    /// sluice holds the preview waiting at the host's bound: interrupted
+    /// at the runner's patience, it exited with no document.
+    Waiting,
 }
 
 /// Why `sluice` gave no answer at all: it could not be run, or a signal
@@ -62,9 +85,16 @@ pub trait Sluice {
     /// `sluice status <id> --json`, the submission `id` of the repository
     /// whose clone is in `container_dir`.
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun>;
-    /// `sluice branch create <branch> --from <from> --json`, in the
-    /// repository whose clone is in `container_dir`.
-    fn branch(&self, container_dir: &Path, branch: &str, from: &str) -> Result<Printed, Unrun>;
+    /// `sluice preview <branch> <revision> --json`, in the repository
+    /// whose clone is in `container_dir`, awaited no longer than the
+    /// patience, then interrupted and awaited (design Decisions 2 and 3).
+    fn preview(&self, container_dir: &Path, branch: &str, revision: &str) -> Result<Asked, Unrun>;
+    /// `sluice previews --json`, in the repository whose clone is in
+    /// `container_dir` (design Decision 5).
+    fn previews(&self, container_dir: &Path) -> Result<Reply, Unrun>;
+    /// `sluice release <name> --json`, in the repository whose clone is in
+    /// `container_dir` (design Decision 6).
+    fn release(&self, container_dir: &Path, name: &str) -> Result<Reply, Unrun>;
 }
 
 /// sluice's command line, by the program at `program`: `sluice` on the
@@ -72,13 +102,72 @@ pub trait Sluice {
 #[derive(Clone, Debug)]
 pub struct Cli {
     program: PathBuf,
+    /// How long a preview's ask is awaited before it is interrupted.
+    patience: Duration,
 }
 
 impl Cli {
+    /// sluice by the program at `program`, a preview's ask awaited for
+    /// [`PREVIEW_PATIENCE`].
     pub fn new(program: impl Into<PathBuf>) -> Cli {
         Cli {
             program: program.into(),
+            patience: PREVIEW_PATIENCE,
         }
+    }
+
+    /// This sluice, a preview's ask awaited for `patience` instead, as a
+    /// test sets it.
+    pub fn patient(self, patience: Duration) -> Cli {
+        Cli { patience, ..self }
+    }
+
+    /// sluice's output from `args`, run in `dir`, awaited for the
+    /// patience, then sent SIGINT and awaited, and whether it was. Its
+    /// standard output and error are read on threads of their own while
+    /// it runs, so neither pipe fills (Task notes 4.3).
+    fn run_patiently(&self, dir: &Path, args: &[&str]) -> Result<(Output, bool), Unrun> {
+        let mut child = Command::new(&self.program)
+            .args(args)
+            .current_dir(dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| Unrun(format!("sluice could not run: {error}")))?;
+        let stdout = drain(child.stdout.take());
+        let stderr = drain(child.stderr.take());
+        let (status, interrupted) = self.await_patiently(&mut child)?;
+        let output = Output {
+            status,
+            stdout: stdout.join().unwrap_or_default(),
+            stderr: stderr.join().unwrap_or_default(),
+        };
+        Ok((output, interrupted))
+    }
+
+    /// `child`'s exit, awaited for the patience, then, sent SIGINT, awaited
+    /// whole, and whether it was interrupted.
+    fn await_patiently(&self, child: &mut Child) -> Result<(ExitStatus, bool), Unrun> {
+        let deadline = Instant::now() + self.patience;
+        let unawaited =
+            |error: std::io::Error| Unrun(format!("sluice could not be awaited: {error}"));
+        loop {
+            if let Some(status) = child.try_wait().map_err(unawaited)? {
+                return Ok((status, false));
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            thread::sleep(LOOK_INTERVAL);
+        }
+        if let Ok(pid) = libc::pid_t::try_from(child.id()) {
+            // SAFETY: `kill` reads only its two integer arguments, and
+            // `pid` is our own child's, not yet awaited, so not reused.
+            unsafe { libc::kill(pid, libc::SIGINT) };
+        }
+        let status = child.wait().map_err(unawaited)?;
+        Ok((status, true))
     }
 
     /// sluice's output from `args`, run in `dir`.
@@ -101,15 +190,39 @@ impl Sluice for Cli {
         read(&self.run(container_dir, ["status", id, "--json"])?)
     }
 
-    fn branch(&self, container_dir: &Path, branch: &str, from: &str) -> Result<Printed, Unrun> {
-        let args = ["branch", "create", branch, "--from", from, "--json"];
-        let output = self.run(container_dir, args)?;
-        let refused = (exit(&output)? != 0).then(|| refusal(&output));
-        Ok(Printed {
-            text: String::from_utf8_lossy(&output.stdout).into_owned(),
-            refused,
-        })
+    fn preview(&self, container_dir: &Path, branch: &str, revision: &str) -> Result<Asked, Unrun> {
+        let args = ["preview", branch, revision, "--json"];
+        let (output, interrupted) = self.run_patiently(container_dir, &args)?;
+        if interrupted && output.status.code().is_some() && !printed_json(&output) {
+            return Ok(Asked::Waiting);
+        }
+        read(&output).map(Asked::Replied)
     }
+
+    fn previews(&self, container_dir: &Path) -> Result<Reply, Unrun> {
+        read(&self.run(container_dir, ["previews", "--json"])?)
+    }
+
+    fn release(&self, container_dir: &Path, name: &str) -> Result<Reply, Unrun> {
+        read(&self.run(container_dir, ["release", name, "--json"])?)
+    }
+}
+
+/// A thread reading `pipe` to its end, giving what it read.
+fn drain(pipe: Option<impl Read + Send + 'static>) -> thread::JoinHandle<Vec<u8>> {
+    thread::spawn(move || {
+        let mut read = Vec::new();
+        if let Some(mut pipe) = pipe {
+            let _ = pipe.read_to_end(&mut read);
+        }
+        read
+    })
+}
+
+/// Whether sluice printed a JSON document on standard output.
+fn printed_json(output: &Output) -> bool {
+    std::str::from_utf8(&output.stdout)
+        .is_ok_and(|text| serde_json::from_str::<&RawValue>(text).is_ok())
 }
 
 /// sluice's `error` answer, as it prints one on a refusal.
@@ -236,6 +349,91 @@ fn member<'a>(members: &[(String, &'a RawValue)], name: &str) -> Option<&'a RawV
         .iter()
         .find(|(named, _)| named == name)
         .map(|(_, value)| *value)
+}
+
+/// What the runner carries of `document`, a preview as sluice's ask
+/// answers it or its listing holds it (design Decision 4; core.11): a
+/// JSON object of its `name`, `branch`, `revision`, `state`, `made` and
+/// `addresses`, each where sluice printed it, a value's text as sluice
+/// printed it, an object or an array formed of its members or elements,
+/// each so, on one line. None where `document` is no JSON object, or
+/// names no `name`, so is no preview.
+pub fn preview_carried(document: &str) -> Option<String> {
+    let members = serde_json::from_str::<Members>(document).ok()?.0;
+    member(&members, "name")?;
+    Some(fields_of(&members, &PREVIEW))
+}
+
+/// What the runner carries of `answer`, sluice's `release <name> --json`
+/// (design Decision 4): a JSON object of its `preview` and `released`,
+/// each where sluice printed it, as sluice printed it. None where
+/// `answer` is no JSON object, or names no `preview`.
+pub fn release_carried(answer: &str) -> Option<String> {
+    let members = serde_json::from_str::<Members>(answer).ok()?.0;
+    member(&members, "preview")?;
+    Some(fields_of(&members, &RELEASE))
+}
+
+/// A preview sluice's listing holds: its `name` and `revision`, where it
+/// printed them as strings, and what the runner carries of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Listed {
+    pub name: Option<String>,
+    pub revision: Option<String>,
+    pub carried: String,
+}
+
+/// Each preview `answer`, sluice's `previews --json`, lists, or none
+/// where it is no JSON array. A row that is no preview is passed over.
+pub fn listed(answer: &str) -> Option<Vec<Listed>> {
+    let rows = serde_json::from_str::<Vec<&RawValue>>(answer).ok()?;
+    let listed = rows
+        .into_iter()
+        .filter_map(|row| {
+            let carried = preview_carried(row.get())?;
+            Some(Listed {
+                name: text_of(&carried, "name"),
+                revision: text_of(&carried, "revision"),
+                carried,
+            })
+        })
+        .collect();
+    Some(listed)
+}
+
+/// The string `carried`, a JSON object, holds at `field`, or none where
+/// it holds no string there.
+pub fn text_of(carried: &str, field: &str) -> Option<String> {
+    let value = serde_json::from_str::<serde_json::Value>(carried).ok()?;
+    Some(value.get(field)?.as_str()?.to_string())
+}
+
+/// The JSON object of `fields` of `members`, in that order, each where
+/// it is a member, its value as [`compact`] gives it.
+fn fields_of(members: &[(String, &RawValue)], fields: &[&str]) -> String {
+    let fields = fields
+        .iter()
+        .filter_map(|name| Some((*name, compact(member(members, name)?))))
+        .collect();
+    object(fields)
+}
+
+/// `value`'s text as sluice printed it, but that an object is formed of
+/// its members, each so, and an array of its elements, each so, so the
+/// whole is on one line.
+fn compact(value: &RawValue) -> String {
+    if let Ok(Members(members)) = serde_json::from_str::<Members>(value.get()) {
+        let fields = members
+            .iter()
+            .map(|(name, value)| (name.as_str(), compact(value)))
+            .collect();
+        return object(fields);
+    }
+    if let Ok(elements) = serde_json::from_str::<Vec<&RawValue>>(value.get()) {
+        let elements: Vec<String> = elements.into_iter().map(compact).collect();
+        return format!("[{}]", elements.join(","));
+    }
+    value.get().to_string()
 }
 
 /// The id a carried entry names, as sluice printed it, a number or a

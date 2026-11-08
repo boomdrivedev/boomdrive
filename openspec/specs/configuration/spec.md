@@ -174,8 +174,8 @@ The configuration MAY hold a `[control_plane]` table. In it, `type`, the word of
 
 #### Scenario: No control plane
 
-- **WHEN** the configuration holds no `[control_plane]`
-- **THEN** `boomdrive run --once` keeps the repositories and runs no `flume` command
+- **WHEN** the configuration holds no `[control_plane]` and names no `fetch_interval`
+- **THEN** `boomdrive run --once` keeps the repositories, makes no control pass, and runs no `flume` command but the settle that ends its pass, `flume --json settle --every 120s`
 
 ### Requirement: How often the control plane is polled is a setting with a default
 

@@ -11,16 +11,16 @@ decision-makers:
 
 Status: accepted by the user on 2026-11-07, on their card, with record 0028. Proposed on 2026-11-05 by the construct stage of the change `a-view-writes-its-vs-code-workspace`. That the runner may write VS Code workspaces for its views, as an option, is the user's decision, in their words below. Where the files go, what they list and how they are kept are the stage's choices, made on the written rules. Revised on 2026-11-07 on the user's note on its card, quoted below: one workspace per drive, the drives as record 0028 has them.
 
-Deciders: the user, for the option, and on 2026-11-05 for the hosts turning it on now and their views retiring; the user, on 2026-11-07 on this record's card, for what one workspace gathers: "Per recent discussion with designer agent, this becomes one workspace per boomdrive drive"; the construct stage, for its form, and agentplot-design, for where a drive's workspace goes.
+Deciders: the user, for the option, and on 2026-11-05 for the hosts turning it on now and their views retiring; the user, on 2026-11-07 on this record's card, for what one workspace gathers: "Per recent discussion with designer agent, this becomes one workspace per boomdrive drive"; the construct stage, for its form, and the design agent, for where a drive's workspace goes.
 Sources: the user's words of 2026-11-04 and 2026-11-05 in the brief of the change `a-view-writes-its-vs-code-workspace`; afterthought/swancloud's rule herdr.14 and its record 0031, cited by id; record 0009; rules core.2, core.5, core.12, core.14, core.17, core.35 and core.42; the views and configuration specs; record 0028.
 
 ## Context and problem statement
 
-The user browses code in VS Code through one workspace file per context, which lists that context's repositories. The hosts' own configuration keeps those files today, under swancloud's herdr.14: beside each space's views is a workspace listing exactly the space's repositories. Its `folders` are set at every deploy, and everything else in it is kept, since VS Code writes the user's settings into the file. VS Code titles a workspace's window `— <name> (Workspace)`. A window manager that files windows by their title puts each context's window in a row of its own.
+The user browses code in VS Code through one workspace file per context, which lists that context's repositories. The hosts' own configuration keeps those files today (afterthought/swancloud's herdr.14 and its record 0031). VS Code writes the user's settings into the file, and titles a workspace's window `— <name> (Workspace)`. A window manager that files windows by their title puts each context's window in a row of its own.
 
 The runner keeps each repository's view, at `<repository_root>/<owner>/<name>` (the views spec), from the repositories its configuration names. A workspace kept anywhere else is a second list beside the runner's, which can name a repository the host no longer keeps or miss one it does. Under a hosted control plane the hosts' configuration does not know the list at all: the managed level holds it (record 0009).
 
-The user, 2026-11-04: "I don't know if we should build it as a feature into Boom Drive, where we automatically generate VS Code workspaces that point to your view. Maybe it's an option that goes in." On 2026-11-05 they asked for it to be rushed, and later that day, in madswan-design's pane: "We need to turn it on and then deprecate the views. The code views are going away. We have the Boom Drive one now that replaces it".
+The user, 2026-11-04: "I don't know if we should build it as a feature into Boom Drive, where we automatically generate VS Code workspaces that point to your view. Maybe it's an option that goes in." On 2026-11-05 they asked for it to be rushed, and later that day, in the design agent's pane: "We need to turn it on and then deprecate the views. The code views are going away. We have the Boom Drive one now that replaces it".
 
 ## Considered options
 

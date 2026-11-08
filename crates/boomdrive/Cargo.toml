@@ -25,6 +25,10 @@ boomdrive-hosted = { path = "../boomdrive-hosted" }
 # `boomdrive enroll`'s token, read without echo where standard input is a
 # terminal (design Decision 4).
 rpassword.workspace = true
+# SIGINT sent to sluice's ask of a preview at the runner's patience,
+# which ends sluice's wait at the host's bound and nothing else (design
+# Decision 3; core.55).
+libc.workspace = true
 serde.workspace = true
 # Each owner's VS Code workspace is read and written with its members in
 # their order (design Decision 4).
@@ -36,5 +40,4 @@ weir-signals.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
-libc.workspace = true
 weir-capture.workspace = true

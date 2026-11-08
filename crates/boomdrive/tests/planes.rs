@@ -11,28 +11,29 @@
 
 use boomdrive::config;
 use boomdrive::planes::{self, PLANES};
+use boomdrive_control::Part;
 use std::path::Path;
 
 const FILE: &str = "/c/config.toml";
 
 /// Design Decision 4's example.
-const EXAMPLE: &str = r#"accounts.own.drives.home.repositories = ["afterthought/crew", "agentplot/flume"]
+const EXAMPLE: &str = r#"accounts.own.drives.home.repositories = ["example/crew", "agentplot/flume"]
 
 [control_plane]
 type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
-host = "deneb"
+host = "host-a"
 
 [[control_plane.crew.partitions]]
-label = "madswan"
-state_repository = "afterthought/madswan-state"
+label = "home"
+state_repository = "example/home-state"
 "#;
 
 /// Opens the control plane `text` names, keeping nothing anywhere: no
 /// implementation touches its data directory until its first pull.
-fn open(text: &str) -> Result<planes::Plane, String> {
+fn open(text: &str) -> Result<Vec<Part>, String> {
     let config = config::parse(text, Path::new(FILE), Path::new("/h")).expect("a configuration");
     let table = config.control_plane.expect("a control plane named");
     planes::open(
@@ -41,23 +42,56 @@ fn open(text: &str) -> Result<planes::Plane, String> {
         Path::new(FILE),
         Path::new("/nowhere/boomdrive"),
         table.poll_interval,
-        Box::new(|line| panic!("said {line:?} at its opening")),
-        Box::new(|| panic!("woken at its opening")),
+        &|_| Box::new(|line| panic!("said {line:?} at its opening")),
+        &|_| Box::new(|| panic!("woken at its opening")),
     )
 }
 
 /// The configuration spec's "crew named": the example of Decision 4
-/// opens crew's implementation with its table.
+/// opens crew's implementation with its table, a part for its one
+/// partition.
 #[test]
 fn crew_named() {
-    assert!(open(EXAMPLE).is_ok());
+    let parts = open(EXAMPLE).expect("opened");
+    let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
+    assert_eq!(labels, ["home"]);
+}
+
+/// Each part an implementation opens is handed a say made for its own
+/// label, in its table's order (the control-plane-interface spec's "The
+/// configuration chooses the implementation").
+#[test]
+fn each_part_is_handed_its_own_say() {
+    let text = format!(
+        "{EXAMPLE}\n[[control_plane.crew.partitions]]\nlabel = \"work\"\n\
+         state_repository = \"example/work-state\"\n"
+    );
+    let config = config::parse(&text, Path::new(FILE), Path::new("/h")).expect("a configuration");
+    let table = config.control_plane.expect("a control plane named");
+    let asked = std::cell::RefCell::new(Vec::new());
+    let parts = planes::open(
+        &table.implementation,
+        &table.implementation_table,
+        Path::new(FILE),
+        Path::new("/nowhere/boomdrive"),
+        table.poll_interval,
+        &|label| {
+            asked.borrow_mut().push(label.to_string());
+            Box::new(|line| panic!("said {line:?} at its opening"))
+        },
+        &|_| Box::new(|| panic!("woken at its opening")),
+    )
+    .expect("opened");
+    let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
+    assert_eq!(labels, ["home", "work"]);
+    assert_eq!(asked.into_inner(), ["home", "work"]);
 }
 
 /// The table `type` names is handed to the implementation whole, so its
 /// keys are the implementation's own to refuse.
 #[test]
 fn the_table_is_the_implementations() {
-    let refusal = open(&EXAMPLE.replace("host = \"deneb\"\n", ""))
+    let refusal = open(&EXAMPLE.replace("host = \"host-a\"\n", ""))
         .err()
         .unwrap();
     assert!(
@@ -65,8 +99,8 @@ fn the_table_is_the_implementations() {
         "{refusal}"
     );
     let refusal = open(&EXAMPLE.replace(
-        "host = \"deneb\"\n",
-        "host = \"deneb\"\nkinds = \"/k/kinds.toml\"\n",
+        "host = \"host-a\"\n",
+        "host = \"host-a\"\nkinds = \"/k/kinds.toml\"\n",
     ))
     .err()
     .unwrap();

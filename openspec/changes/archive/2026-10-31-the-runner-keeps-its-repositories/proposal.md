@@ -2,7 +2,7 @@
 
 ## Why
 
-A host's repositories are machine configuration today: swancloud lists each space's repositories in Nix, `space-clone` clones them into the bare-container layout (its `names.3`), and the views timer fetches them every two minutes and keeps a detached view of each under `~/Code/views/<space>/<repo>` (its `herdr.13`, `herdr.14`). Crew's record 0052, accepted 2026-10-30, moves all of that to a thin runner on each host. The user settled on 2026-10-31 that the runner is `flywheel` from this repository (record 0001), and that its own configuration names the repositories it keeps (core.5; crew keeps no registry). The crate still only prints its version. Every later part of the runner, starting with the sibling change `the-runner-carries-crews-work-into-flume`, launches into a clone this change keeps.
+A host's repositories are machine configuration today: afterthought/swancloud lists each host's repositories in its Nix configuration, clones them, fetches them and keeps a view of each (its `names.3`, `herdr.13` and `herdr.14`). Crew's record 0052, accepted 2026-10-30, moves all of that to a thin runner on each host. The user settled on 2026-10-31 that the runner is `flywheel` from this repository (record 0001), and that its own configuration names the repositories it keeps (core.5; crew keeps no registry). The crate still only prints its version. Every later part of the runner, starting with the sibling change `the-runner-carries-crews-work-into-flume`, launches into a clone this change keeps.
 
 ## What Changes
 
@@ -31,4 +31,4 @@ None.
 - `devenv.nix` and `check-toolchain.sh`: git, which the tests now run, is pinned by version and checked (core.8).
 - `docs/architecture/core.md`: core.5's detail allows a dropped repository's clone and view, while they hold work the forge lacks, to be named and left.
 - `README.md` and `CLAUDE.md`: what the runner does and how a host runs it.
-- Outside this repository: swancloud installs `flywheel`, writes its configuration and keeps `flywheel run` alive (crew record 0052 part 4). This change touches none of swancloud's containers or views. The sibling change `the-runner-carries-crews-work-into-flume` builds on the clones and the run loop.
+- Outside this repository: afterthought/swancloud installs `flywheel`, writes its configuration and keeps `flywheel run` alive (crew record 0052 part 4). This change touches none of afterthought/swancloud's clones or views. The sibling change `the-runner-carries-crews-work-into-flume` builds on the clones and the run loop.
