@@ -1,5 +1,5 @@
 # The service-modules spec's three settings, each rendered to its file
-# under nix/tests/files, by the names of core.41.
+# under nix/tests/files, and crew's own, by the names of core.41.
 {
   # "Only repositories": nothing set.
   empty = { };
@@ -47,5 +47,31 @@
         ];
       };
     };
+  };
+
+  # crew's teams file, services.crew.settings, for one partition, `home`:
+  # every key crew's module asks for at its tag (design Decision 8).
+  crewModule = {
+    partitions = [
+      {
+        label = "home";
+        partition = "home";
+        blueprints = [ "example/blueprints" ];
+        state = "example/state";
+        machine = "host-a";
+        session = "home";
+        review = {
+          every = 5;
+          hours = 4;
+        };
+        flume = {
+          design = false;
+          planner = false;
+          reviewer = false;
+          ops = false;
+          operator = false;
+        };
+      }
+    ];
   };
 }

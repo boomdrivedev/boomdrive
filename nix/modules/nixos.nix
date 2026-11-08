@@ -1,8 +1,11 @@
-# The NixOS module, nixosModules.default: services.boomdrive as a systemd
-# user unit of services.boomdrive.user, who lingers, so the runner runs
-# from boot on a host no one logs into (design Decision 10), with the
-# runner and its tools in the system profile and the service's PATH the
-# profiles' (design Decision 11). The unit runs `boomdrive run --config`
+# The runner's NixOS module, in nixosModules.default: services.boomdrive as
+# a systemd user unit of services.boomdrive.user, who lingers, so the
+# runner runs from boot on a host no one logs into (design Decision 10),
+# with the runner in the system profile and the service's PATH the
+# profiles' (design Decision 11). Each tool of the set is installed by its
+# own module, which flake.nix imports beside this one; tools.nix sets
+# their options, and each tool's user is the runner's unless the host
+# names its own (record 0023). The unit runs `boomdrive run --config`
 # with the file rendered from `settings` (design Decision 9). NixOS
 # restarts no changed user unit, so the user's activation links the file
 # at the runner's own path, then starts the unit where it is not running
@@ -55,7 +58,10 @@ let
   systemd = config.systemd.package.version;
 in
 {
-  imports = [ (import ./options.nix { inherit packages; }) ];
+  imports = [
+    (import ./options.nix { inherit packages; })
+    (import ./tools.nix { inherit packages; })
+  ];
 
   options.services.boomdrive.user = lib.mkOption {
     type = lib.types.str;
@@ -77,7 +83,13 @@ in
       }
     ];
 
-    environment.systemPackages = [ cfg.package ] ++ cfg.tools;
+    environment.systemPackages = [ cfg.package ];
+
+    # Each tool's module links its file for the runner's user, unless the
+    # host names another.
+    services.flume.user = lib.mkDefault user;
+    services.sluice.user = lib.mkDefault user;
+    services.crew.user = lib.mkDefault user;
 
     users.users.${user}.linger = true;
 

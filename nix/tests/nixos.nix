@@ -44,7 +44,12 @@ let
       !builtins.elem package.outPath (profileOf evaluated)
     ) "the system profile holds the set's ${name}";
 
-  own = t.nixosSystem { services.boomdrive.tools = [ ]; };
+  own = t.nixosSystem {
+    services.flume.package = null;
+    services.sluice.package = null;
+  };
+  gone = t.nixosSystem { services.boomdrive.tools = [ ]; };
+  saysGone = words: lib.hasInfix words (toString (t.failures gone));
   crew = t.nixosSystem { services.boomdrive.settings = settings.crew; };
   hosted = t.nixosSystem { services.boomdrive.settings = settings.hosted; };
   oldSystemd = t.nixosSystem (
@@ -150,6 +155,19 @@ in
     installs own "runner" set.boomdrive
     ++ installsNo own "Flume" set.flume
     ++ installsNo own "sluice" set.sluice;
+
+  "The tools option is gone on NixOS" =
+    t.expect (t.failures gone != [ ]) "services.boomdrive.tools = [ ] evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (saysGone words) "the failure of services.boomdrive.tools names no ${words}: ${toString (t.failures gone)}"
+        )
+        [
+          "services.flume.package"
+          "services.sluice.package"
+        ];
 
   "The user's profile first on NixOS" =
     before "/etc/profiles/per-user/alice/bin"

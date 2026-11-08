@@ -1,8 +1,10 @@
-# The nix-darwin module, darwinModules.default: services.boomdrive as a
-# launchd agent of the primary user's login (design Decision 10), since
-# nix-darwin installs user agents for that user alone, with the runner and
-# its tools in the system profile and the service's PATH the profiles'
-# (design Decision 11). Once the Nix store is mounted, the agent runs
+# The runner's nix-darwin module, in darwinModules.default: services.boomdrive
+# as a launchd agent of the primary user's login (design Decision 10),
+# since nix-darwin installs user agents for that user alone, with the
+# runner in the system profile and the service's PATH the profiles' (design
+# Decision 11). Each tool of the set is installed by its own module, which
+# flake.nix imports beside this one, and tools.nix sets their options
+# (record 0023). Once the Nix store is mounted, the agent runs
 # `boomdrive run --config` with the file rendered from `settings` (design
 # Decision 9), so nix-darwin reloads it when the package or the file
 # changes, and leaves it running when neither does. The activation links the file at the runner's own path,
@@ -39,7 +41,10 @@ let
   ];
 in
 {
-  imports = [ (import ./options.nix { inherit packages; }) ];
+  imports = [
+    (import ./options.nix { inherit packages; })
+    (import ./tools.nix { inherit packages; })
+  ];
 
   options.services.boomdrive.logFile = lib.mkOption {
     type = lib.types.path;
@@ -58,7 +63,7 @@ in
       }
     ];
 
-    environment.systemPackages = [ cfg.package ] ++ cfg.tools;
+    environment.systemPackages = [ cfg.package ];
 
     launchd.user.agents.boomdrive = {
       # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store

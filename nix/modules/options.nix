@@ -1,14 +1,16 @@
 # services.boomdrive, the options both modules share (design Decision 8),
-# given the flake's own `packages`: the runner's package and the tools
-# installed beside it, the flake's own for the host's system, so they are
-# the paths the family's cache holds whatever nixpkgs the host runs (design
-# Decision 4); and `settings`, the runner's file under its own names
+# given the flake's own `packages`: the runner's package, the flake's own
+# for the host's system, so it is the path the family's cache holds
+# whatever nixpkgs the host runs (design Decision 4); and `settings`, the runner's file under its own names
 # (core.46), free-form TOML with the README's keys declared for their types
 # (RFC 42). A key left unset is left out of the file, so the runner's own
 # default holds and the two never drift; a key the module does not declare
 # passes to the file, and the runner judges it. A key named for a
 # credential fails evaluation, since the file is in the store, which every
-# user reads (design Decision 12, core.4).
+# user reads (design Decision 12, core.4). Each tool of the set is
+# installed by its own module, its package the set's unless the host gives
+# its own (tools.nix; record 0023), so `tools` is gone, and setting it
+# fails evaluation, naming what replaces it.
 { packages }:
 {
   config,
@@ -21,10 +23,10 @@ let
   cfg = config.services.boomdrive;
   toml = (pkgs.formats.toml { }).type;
 
-  inherit (pkgs.stdenv.hostPlatform) system;
-  set =
-    packages.${system}
-      or (throw "the boomdrive flake gives no packages for ${system}: it gives ${lib.concatStringsSep ", " (builtins.attrNames packages)}");
+  set = import ./set.nix {
+    inherit lib packages;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   setText =
     name: lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.${name}";
 
@@ -82,6 +84,17 @@ let
   found = credentials "" cfg.settings;
 in
 {
+  imports = [
+    (lib.mkRemovedOptionModule
+      [
+        "services"
+        "boomdrive"
+        "tools"
+      ]
+      "Each tool's own module installs its package, the set's unless the host gives its own: set services.flume.package or services.sluice.package to the host's own package, or to null for none, or set services.flume.enable or services.sluice.enable to false to keep that tool's file the host's own."
+    )
+  ];
+
   options.services.boomdrive = {
     enable = lib.mkEnableOption "the runner, `boomdrive run`, as the host's service";
 
@@ -90,16 +103,6 @@ in
       default = set.boomdrive;
       defaultText = setText "boomdrive";
       description = "The runner.";
-    };
-
-    tools = mkOption {
-      type = types.listOf types.package;
-      default = [
-        set.flume
-        set.sluice
-      ];
-      defaultText = lib.literalExpression "[ ${setText "flume"} ${setText "sluice"} ]";
-      description = "The tools installed beside the runner, in the system profile: the set's Flume and sluice. `[ ]` installs none, for a host that installs its own.";
     };
 
     settings = mkOption {
