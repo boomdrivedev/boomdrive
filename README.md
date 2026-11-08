@@ -260,8 +260,9 @@ run passed:
 
 A host's configuration imports its platform's module,
 `darwinModules.default` for nix-darwin or `nixosModules.default` for
-NixOS, and writes the runner's file as `services.boomdrive.settings`,
-each key as the file names it. The module brings Flume's, sluice's and
+NixOS, names its accounts in `services.boomdrive.accounts`, and writes
+the rest of the runner's file as `services.boomdrive.settings`, each key
+as the file names it. The module brings Flume's, sluice's and
 crew's own modules, `services.flume`, `services.sluice` and
 `services.crew`, each from its tool's flake at the tag this flake names,
 and the flake gives each again as `darwinModules.<tool>` and
@@ -273,7 +274,12 @@ to `config.toml.before-nix`, and crew's to `teams.json.before-nix`, so
 move its values into the tool's `settings` in the switch that takes this
 flake. `services.boomdrive.enable` turns on Flume's and sluice's
 modules; a host that runs crew turns on crew's, with its `host` and its
-partitions:
+partitions. Where `control_plane.type` is `crew` and no
+`control_plane.crew` is written, the module writes the runner's
+`[control_plane.crew]` from crew's partitions: its `host` is
+`services.crew.host`, and it holds each partition whose `machine` is
+that host, by its `label`, with its `state` as `state_repository`. A
+table written out wins, whole:
 
 ```nix
 {
@@ -296,14 +302,11 @@ partitions:
             # The rest of the host's configuration, system.primaryUser among it.
             services.boomdrive = {
               enable = true;
+              accounts.own.drives.home.repositories.agentplot = [ "flume" "sluice" ];
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
-                accounts.own.drives.home.repositories = [ "agentplot/flume" "agentplot/sluice" ];
-                control_plane = {
-                  type = "crew";
-                  crew = { host = "host-a"; partitions = [ { label = "home"; state_repository = "example/state"; } ]; };
-                };
+                control_plane.type = "crew";
               };
             };
             services.crew = {
@@ -329,6 +332,45 @@ partitions:
 }
 ```
 
+Each drive names its repositories by owner,
+`services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner>`,
+the names of the owner's repositories it keeps, and the module writes
+them into the runner's file as their addresses, `<owner>/<name>`, owner
+by owner in the order of the owners' names, each owner's names in the
+order given. A repository is named once on the host, and a drive's name
+once across the host's accounts, or evaluation fails. Each drive has its
+stream in Flume, and the module gives Flume's module the drive's
+`stream`, and each of the drive's repositories that stream, by its
+address:
+
+```nix
+services.boomdrive.accounts.own.drives.home = {
+  stream = {
+    name = "home";                  # the drive's name where unset
+    agents = 4;                     # 4 where unset
+    priority = 11;                  # Flume's own where unset
+    labels.review.reserve = 1;      # beside operation 1 and planning 2
+  };
+  repositories.agentplot = [ "flume" "sluice" ];
+};
+```
+
+A stream's `agents`, `priority` and each label's `reserve` are the
+drive's, and a label the drive does not set keeps the module's reserve,
+`operation` 1 and `planning` 2. A drive's reserves are within its room:
+Flume refuses a stream whose reserves pass its `agents`, naming it. Any
+other key of a stream, a label's `keep_free` among them, is Flume's own,
+set in `services.flume.settings.streams.<stream>`, beside the drive's;
+and a value the host sets there, or in a repository's
+`services.flume.settings.repos."<owner>/<name>"`, wins over the
+drive's. Two drives of this host that give one stream fail evaluation. A
+drive whose work runs on another computer names it, `machine = "host-b"`,
+as crew's partitions name a host, and the module compares it with
+`services.crew.host`, which the host sets whether or not crew runs
+there: a drive of another machine gives Flume nothing, and the runner
+still keeps its repositories, to read. A drive that names a `machine`
+where `services.crew.host` is not set fails evaluation.
+
 On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
 `~/Library/Logs/boomdrive.log` where none is named. It waits for
@@ -342,10 +384,12 @@ reads it too. A file of your own there is moved once to
 `config.toml.before-nix`, and the local layer, `config.local.toml`
 beside it, is left as it is. A host pins a key through
 `services.boomdrive.settings.pin`. A switch that changes the file or the
-runner restarts it. `settings.accounts` is always written, each
-account's `drives` and each drive's `repositories` with it, and a key in
-an account or a drive that the runner does not read fails evaluation, as
-a flat `settings.repositories` of before does. A key of `settings` named
+runner restarts it. `accounts` is always written, each account's
+`drives` and each drive's `repositories` with it, and a key in an
+account or a drive that the module does not declare fails evaluation.
+The accounts are named in `services.boomdrive.accounts` alone: accounts
+written in `settings` fail evaluation, as a flat `settings.repositories`
+of before does. A key of `settings` named
 for a credential, `token`, `key`, `secret` or `password`, or one ending
 in `_token`, `_key`, `_secret` or `_password`, fails evaluation, since
 every user reads the store.

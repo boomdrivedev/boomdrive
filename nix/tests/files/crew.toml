@@ -1,4 +1,4 @@
-# Written by the boomdrive flake's module from services.boomdrive.settings; a change goes there.
+# Written by the boomdrive flake's module from services.boomdrive.accounts and services.boomdrive.settings; a change goes there.
 code_workspaces = true
 fetch_interval = "2m"
 repository_root = "~/Code"

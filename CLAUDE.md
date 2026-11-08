@@ -28,16 +28,16 @@ The flake at the root, `flake.nix` and `flake.lock`, with everything
 else of it under `nix/`, gives the runner, Flume, sluice and crew
 pinned together, with herdr, its plugins and Ghostty, each tool's own
 module re-exported beside the runner's service, `services.boomdrive`, as
-nix-darwin and NixOS modules, whose `settings` are the runner's file.
-With the runner, the modules install herdr, Ghostty and the Boomdrive
-launcher, an app on macOS and a desktop entry on Linux that runs `flume
-open`, and link the set's herdr plugins with herdr's own command. The
-flake gives a shell, `devShells.<system>.default`, that starts herdr
-(record 0023). The workflow
-`.github/workflows/cache.yml` builds every package of every system the
-flake gives and pushes it to the family's cache, `boomdrive` on Cachix,
-at each push to `main` and each tag `v*` (records 0020 and 0023,
-core.44 to core.47).
+nix-darwin and NixOS modules, whose `accounts` and `settings` are the
+runner's file, each drive's stream given to Flume's module. With the
+runner, the modules install herdr, Ghostty and the Boomdrive launcher,
+an app on macOS and a desktop entry on Linux that runs `flume open`, and
+link the set's herdr plugins with herdr's own command. The flake gives a
+shell, `devShells.<system>.default`, that starts herdr (record 0023).
+The workflow `.github/workflows/cache.yml` builds every package of every
+system the flake gives and pushes it to the family's cache, `boomdrive`
+on Cachix, at each push to `main` and each tag `v*` (records 0020 and
+0023, core.44 to core.47).
 
 Boomdrive's versions are git-cliff's, from its Conventional Commits
 (`cliff.toml`; record 0024, core.48). At each push to `main`, the
