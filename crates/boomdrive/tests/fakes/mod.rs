@@ -387,8 +387,10 @@ pub struct FakeClones {
 }
 
 impl FakeClones {
-    /// `address` named, its clone made in `container`.
+    /// `address` named, its clone made in `container`, which is made
+    /// where it is not there, so a launch finds the clone again.
     pub fn ready(&self, address: &str, container: &Path) {
+        fs::create_dir_all(container).expect("the clone's container");
         self.keep(address, Keeping::Ready(container.to_path_buf()));
     }
 

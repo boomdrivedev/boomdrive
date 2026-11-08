@@ -258,9 +258,19 @@ impl Carrier<'_> {
             round: Round::Wants,
             acts_run: 0,
             left: BTreeSet::new(),
+            waiting: Vec::new(),
         };
         'carrying: for round in [Round::Wants, Round::OnPlaces] {
             work.round = round;
+            if round == Round::OnPlaces {
+                for (offer, container, address) in std::mem::take(&mut work.waiting) {
+                    work.launch_once_kept(&offer, &container, &address, say);
+                    if !work.save(&*plane, say) {
+                        say(self.line("nothing more is carried out this pass"));
+                        break 'carrying;
+                    }
+                }
+            }
             for want in &pulled.wants {
                 work.want(want, say);
                 if !work.save(&*plane, say) {
@@ -322,6 +332,10 @@ struct Work<'p> {
     acts_run: usize,
     /// The acts on places left for the next pass, which is due.
     left: BTreeSet<Id>,
+    /// Each offer whose clone the keeper held when its turn came, with
+    /// its clone's container and address, launched once the keep is done,
+    /// its room counted at its turn (design Decision 4).
+    waiting: Vec<(Offer, PathBuf, Address)>,
 }
 
 /// The pass's two rounds over the pull's wants, each in the control
@@ -332,7 +346,10 @@ struct Work<'p> {
 /// places once the next pass is due, after the first, so no launch the next
 /// pull offers waits behind them either. An act Flume refuses because its
 /// place no longer stands costs the pass the reading of Flume's refusal
-/// alone (record 0010; core.51).
+/// alone (record 0010; core.51). A launch whose clone the keeper holds at
+/// its turn is made before the second round, once that keep is done, its
+/// room counted at its turn, so no other launch waits on another
+/// repository's keep (record 0026; design Decision 4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Round {
     /// Every want: each offer, inbox and command, and each act answered
@@ -420,11 +437,55 @@ impl Work<'_> {
             }
             return;
         }
-        self.launch(offer, &container, say);
+        let Ok(address) = Address::parse(repository) else {
+            return self.launch(offer, &container, say);
+        };
+        match self.carrier.locks.try_launch(&address) {
+            Some(held) => {
+                self.launch(offer, &container, say);
+                drop(held);
+            }
+            None => {
+                // Its room is counted now, at its turn, so the launch is
+                // the one the control plane's order makes.
+                self.room.take(stream);
+                self.waiting.push((offer.clone(), container, address));
+            }
+        }
     }
 
-    /// Launches `offer` in the clone at `container` (design Decision 9).
+    /// Launches `offer`, its room already counted, in the clone at
+    /// `container` once the keeper's keep of `address` is done, holding
+    /// the clone's lock shared until `flume launch` ends.
+    fn launch_once_kept(
+        &mut self,
+        offer: &Offer,
+        container: &Path,
+        address: &Address,
+        say: &mut dyn FnMut(String),
+    ) {
+        let held = self.carrier.locks.launch(address);
+        if container.is_dir() {
+            self.made(offer, container, say);
+        }
+        drop(held);
+    }
+
+    /// Launches `offer` in the clone at `container`, holding its lock,
+    /// where the clone is still there: one the keeper let go meanwhile is
+    /// one not yet made, and the offer is left unanswered (design
+    /// Decision 4; core.14).
     fn launch(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
+        if !container.is_dir() {
+            return;
+        }
+        self.room.take(offer.launch.stream.as_deref());
+        self.made(offer, container, say);
+    }
+
+    /// Runs `flume launch` for `offer` in the clone at `container`, its
+    /// room counted (design Decision 9).
+    fn made(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
         let args = launch_args(offer, container, self.priority(offer));
         let briefs = self.carrier.control_dir.join("briefs");
@@ -443,7 +504,6 @@ impl Work<'_> {
                         "{id}: launched, though Flume's answer names no place"
                     )),
                 }
-                self.room.take(offer.launch.stream.as_deref());
                 self.answer(offer, Outcome::Launched, place, None);
             }
             Ok(Reply::Refused(words)) => {
