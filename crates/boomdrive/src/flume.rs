@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn a_mark_names_one_file() {
-        assert_eq!(escaped("boomdrive:madswan/12"), "boomdrive%3Amadswan%2F12");
+        assert_eq!(escaped("boomdrive:home/12"), "boomdrive%3Ahome%2F12");
         assert_eq!(escaped("a%2F"), "a%252F");
         assert_ne!(escaped("a/b"), escaped("a%2Fb"));
     }

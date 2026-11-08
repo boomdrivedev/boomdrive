@@ -102,7 +102,7 @@ mod tests {
     fn a_report() -> Report {
         let mut report = Report::default();
         report.answer(
-            &Id::new("madswan/12"),
+            &Id::new("home/12"),
             Lease {
                 number: 3,
                 expires: Some(At::parse("2026-11-01T10:00:40Z").unwrap()),

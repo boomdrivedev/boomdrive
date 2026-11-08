@@ -1,6 +1,7 @@
-# Sketch, proposed: deneb's whole host configuration through the Boomdrive
+# Sketch, proposed: one host's whole configuration through the Boomdrive
 # flake, its runner and its Flume, as the talk of 2026-11-06 shapes it
-# (design/research/the-flakes-configuration-holds-streams-and-repositories.md).
+# (agentplot/boomdrive-archive's
+# design/research/the-flakes-configuration-holds-streams-and-repositories.md).
 # Not evaluated: the shape of the options, not their code.
 { boomdrive, pkgs, ... }:
 {
@@ -12,45 +13,37 @@
     # Each owner once, with the stream its repositories run in and their
     # names. The runner's file gets each address, `agentplot/boomdrive`,
     # and Flume's file one rule for each, `[repos."agentplot/boomdrive"]
-    # stream = "agentplot"`. An owner with no stream gives Flume no rule.
+    # stream = "family"`. An owner with no stream gives Flume no rule.
     repositories = {
       agentplot = {
-        stream = "agentplot";
+        stream = "family";
         names = [
-          "agentplot"
-          "agentplot-kit"
           "blueprints"
+          "boom"
           "boomdrive"
-          "boomdrive-cloud"
+          "crew"
           "flume"
           "sluice"
           "timber"
           "weir"
         ];
       };
-      afterthought = {
-        stream = "afterthought";
+      example = {
+        stream = "work";
         names = [
+          "app"
           "blueprints"
-          "crew"
-          "swancloud"
         ];
       };
-      madswan-dev = {
-        stream = "madswan";
-        names = [ "paymaster" ];
-      };
-      # Kept to follow; no wldn agents on deneb, so no stream.
-      willdangroup.names = [ "willdan-blueprints" ];
     };
 
-    # The rest of the runner's file, as today.
+    # The rest of the runner's file.
     settings = {
-      repository_root = "~/Code/boomdrive";
+      repository_root = "~/Code";
       fetch_interval = "2m";
       code_workspaces = true;
       # Its `[control_plane.crew]` is written from crew's partitions below:
-      # host deneb, and each partition whose machine is deneb.
+      # host host-a, and each partition whose machine is host-a.
       control_plane.type = "crew";
     };
   };
@@ -59,16 +52,16 @@
   # names it. Its `repos` rules come from the owner block above.
   services.flume.settings = {
     host = {
-      pool = "madswan";
+      pool = "pool-a";
       terminal = "herdr";
       terminal_app = "ghostty";
     };
 
     streams = {
-      agentplot = {
+      family = {
         agents = 4;
         priority = 11;
-        pool = "madswan";
+        pool = "pool-a";
         labels.operation = {
           reserve = 1;
           keep_free = 0;
@@ -78,35 +71,22 @@
           keep_free = 0;
         };
       };
-      afterthought = {
-        agents = 4;
-        priority = 11;
-        pool = "madswan";
+      work = {
+        agents = 2;
+        priority = 10;
+        pool = "pool-a";
         labels.operation = {
           reserve = 1;
           keep_free = 1;
         };
         labels.planning = {
-          reserve = 2;
-          keep_free = 0;
-        };
-      };
-      madswan = {
-        agents = 4;
-        priority = 10;
-        pool = "madswan";
-        labels.operation = {
           reserve = 1;
-          keep_free = 0;
-        };
-        labels.planning = {
-          reserve = 2;
           keep_free = 0;
         };
       };
     };
 
-    pools.madswan = {
+    pools.pool-a = {
       strategy = "most-left";
       threshold = 90;
       # Flume reads each account's usage itself: no reading is written for it.
@@ -116,16 +96,13 @@
             inherit name;
             program = "claude";
             env = {
-              CLAUDE_CONFIG_DIR = "~/.claude-sub-${name}";
-              HONCHO_CONFIG_DIR = "~/.honcho-business";
-              CLAUDE_CODE_CERT_STORE = "bundled,system";
+              CLAUDE_CONFIG_DIR = "~/.claude-${name}";
               PATH = "${pkgs.claude-code}/bin:$PATH";
             };
           })
           [
-            "cswanberg"
-            "amadden"
-            "admin"
+            "pool-a-1"
+            "pool-a-2"
           ];
     };
 
@@ -133,7 +110,7 @@
       fix.label = "operation";
       change.agents = {
         mode = "full";
-        instructions = "Before anything else, read ~/.config/flume/capture.md …";
+        instructions = "…";
       };
       research.agents = {
         mode = "full";
@@ -146,8 +123,8 @@
   # file is named by its path; no key is in the store.
   services.sluice.settings = {
     runs = {
-      cores = 12;
-      max = 3;
+      cores = 8;
+      max = 2;
       reserved = 1;
     };
     caches = [
@@ -160,10 +137,10 @@
         env.MOON_CACHE_SHARED_WORKTREE_CACHE = "true";
       }
     ];
-    peers.name = "deneb";
+    peers.name = "host-a";
     forge = {
       app_id = 0;
-      key = "~/.config/sluice/app.pem";
+      key = "<path of the app's key>";
     };
     signing = {
       key = "<path of the signing key>";
@@ -172,40 +149,26 @@
   };
 
   # crew's host file, the fleet's every partition, written once. The
-  # runner's `[control_plane.crew]` is written from the ones on deneb.
+  # runner's `[control_plane.crew]` is written from the ones on host-a.
   services.crew = {
-    host = "deneb";
+    host = "host-a";
     settings.partitions = [
       {
-        label = "agentplot";
-        machine = "deneb";
-        state = "afterthought/crew-state";
+        label = "home";
+        machine = "host-a";
+        state = "example/crew-state";
         blueprints = [ "agentplot/blueprints" ];
-        session = "agentplot";
+        session = "home";
       }
       {
-        label = "madswan";
-        machine = "deneb";
-        state = "afterthought/crew-state";
+        label = "work";
+        machine = "host-a";
+        state = "example/crew-state";
         blueprints = [
-          "afterthought/blueprints"
+          "example/blueprints"
           "agentplot/blueprints"
         ];
-        session = "madswan";
-      }
-      {
-        label = "afterthought";
-        machine = "deneb";
-        state = "afterthought/crew-state";
-        blueprints = [ "afterthought/blueprints" ];
-        session = "afterthought";
-      }
-      {
-        label = "wldn";
-        machine = "chuck-herdr-alpha";
-        state = "WilldanGroup/crew-state";
-        blueprints = [ "WilldanGroup/willdan-blueprints" ];
-        session = "wldn-2";
+        session = "work";
       }
     ];
   };

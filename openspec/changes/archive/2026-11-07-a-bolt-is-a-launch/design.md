@@ -163,7 +163,7 @@ The README's control pass says a bolt is a launch like any other, its send a ret
   - it issues no branch Command.
 
   Flume's guards on a base place hold among one host's places (202 to 204), so the cloud keeps a bolt's units on its base place's host, or keeps those guards itself. Until the cloud follows, a hosted bolt's branch command is refused with the runner's words, and its record 0051 ends the bolt.
-- **afterthought/crew: C1, a bolt is a base place**, as Flume's design names it. crew's implementation here needs nothing: a bolt's launch is a request like any other, and its send a retry request naming the submission.
+- **agentplot/crew: C1, a bolt is a base place**, as Flume's design names it. crew's implementation here needs nothing: a bolt's launch is a request like any other, and its send a retry request naming the submission.
 
 ## Risks / Trade-offs
 
@@ -187,4 +187,4 @@ None.
 - **1.4.** The test sits beside `a_place_tidied_while_the_pass_answers_its_wants` in `tests/statuses.rs`, and counts the listings Flume was asked as that test does.
 - **2.1.** Once `Sluice::branch` goes, the stub's helpers that only the branch tests used are dropped from `tests/fakes/mod.rs`, so clippy finds none unused.
 - **2.2.** The test reads every `.rs` file under `crates/*/src` and fails naming each that holds the argument list of `sluice branch create` or `sluice branch delete`, that is `"branch", "create"` or `"branch", "delete"`.
-- **3.1 and 3.2.** `tests/bolts.rs` uses the fake Flume and stub of `tests/fakes`. The kind `bolt` and the names are neutral (core.41). The send's refusal is the stub's `refused` answer, `{"refused":{"refusal":{"reason":…}}}`, exit 1, as Flume's contract has it. In the room scenario, the fake Flume's listing is set to give `madswan` a room of 1 at the second pass, as Flume gives it with the base place taking none.
+- **3.1 and 3.2.** `tests/bolts.rs` uses the fake Flume and stub of `tests/fakes`. The kind `bolt` and the names are neutral (core.41). The send's refusal is the stub's `refused` answer, `{"refused":{"refusal":{"reason":…}}}`, exit 1, as Flume's contract has it. In the room scenario, the fake Flume's listing is set to give `home` a room of 1 at the second pass, as Flume gives it with the base place taking none.

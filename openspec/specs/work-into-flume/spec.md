@@ -16,7 +16,7 @@ The runner SHALL hand every pull a hello holding:
 
 #### Scenario: Repositories kept
 
-- **WHEN** the configuration names `agentplot/flume` and `afterthought/crew`, and only `agentplot/flume`'s clone is made
+- **WHEN** the configuration names `agentplot/flume` and `example/crew`, and only `agentplot/flume`'s clone is made
 - **THEN** the hello names `agentplot/flume` alone
 
 #### Scenario: A tool missing
@@ -30,8 +30,8 @@ The hello's capacity SHALL be Flume's host part, `running`, `bound`, `room` and 
 
 #### Scenario: Streams as Flume printed them
 
-- **WHEN** the stub `flume` prints a listing whose host part holds two streams and a pool named `madswan`
-- **THEN** the hello's capacity holds the two streams' text as the stub printed it, and the word `madswan` appears nowhere in the hello
+- **WHEN** the stub `flume` prints a listing whose host part holds two streams and a pool named `pool-a`
+- **THEN** the hello's capacity holds the two streams' text as the stub printed it, and the word `pool-a` appears nowhere in the hello
 
 ### Requirement: An offer is taken only for a repository the runner keeps
 
@@ -110,8 +110,8 @@ The runner SHALL turn a launch into one `flume --json launch --repository <the c
 
 #### Scenario: A unit's launch
 
-- **WHEN** an offer `madswan/12` of `change` named `a` in `afterthought/crew` on `bolt/x` is pulled, with stream `madswan`, priority 4, intent `madswan/x`, recipient `madswan/planner` and a brief, its clone is made, and its stream has room
-- **THEN** the stub `flume` is run once as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream madswan --priority 4 --intent madswan/x --recipient madswan/planner --brief-file <a file holding the brief> --mark boomdrive:madswan/12`
+- **WHEN** an offer `home/12` of `change` named `a` in `example/crew` on `bolt/x` is pulled, with stream `home`, priority 4, intent `home/x`, recipient `home/planner` and a brief, its clone is made, and its stream has room
+- **THEN** the stub `flume` is run once as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream home --priority 4 --intent home/x --recipient home/planner --brief-file <a file holding the brief> --mark boomdrive:home/12`
 
 #### Scenario: A launch naming no stream, priority or intent
 
@@ -124,7 +124,7 @@ The runner SHALL pass a launch's kind to `--kind` as the launch gives it, a name
 
 #### Scenario: A kind named by its identity
 
-- **WHEN** an offer `madswan/planner/1` of kind `crew/crew-planner` named `madswan` in `afterthought/madswan-blueprints` is pulled with the agent setting `model=opus`, and its stream has room
+- **WHEN** an offer `home/planner/1` of kind `crew/crew-planner` named `home` in `example/home-blueprints` is pulled with the agent setting `model=opus`, and its stream has room
 - **THEN** the stub `flume`'s arguments hold `--kind crew/crew-planner` and `--agent model=opus`, and no `--kinds`
 
 ### Requirement: Flume runs with no recipient of the runner's own, and no brief is left
@@ -161,12 +161,12 @@ The runner SHALL act on the place its report holds for the act's launch, never p
 
 #### Scenario: A retry with words
 
-- **WHEN** an act retries launch `madswan/12` at stage `code` with the words `use the second option`, and `madswan/12` was launched at place `P`
+- **WHEN** an act retries launch `home/12` at stage `code` with the words `use the second option`, and `home/12` was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --stage code --words "use the second option"`, and the act is answered `done`
 
 #### Scenario: A done
 
-- **WHEN** an act declares launch `madswan/planner/2` done, and it was launched at place `P`
+- **WHEN** an act declares launch `home/planner/2` done, and it was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json done P`
 
 ### Requirement: A priority or a drop of a launch not yet launched is answered from its report
@@ -194,8 +194,8 @@ A retry or a done of a launch the runner holds unlaunched SHALL be answered `ref
 
 #### Scenario: An act on another's launch
 
-- **WHEN** an act names launch `madswan/99`, which the runner's report does not hold
-- **THEN** it is answered `refused`, naming `madswan/99`, and no `flume` command is run
+- **WHEN** an act names launch `home/99`, which the runner's report does not hold
+- **THEN** it is answered `refused`, naming `home/99`, and no `flume` command is run
 
 ### Requirement: Each launch, act and command is carried out once
 
@@ -208,7 +208,7 @@ The runner SHALL keep its report in `<data>/control/report.json`, written whole 
 
 #### Scenario: A launch found by its mark
 
-- **WHEN** the report file is missing, and an offer `madswan/12` is pulled whose mark `boomdrive:madswan/12` Flume's listing holds on place `P`
+- **WHEN** the report file is missing, and an offer `home/12` is pulled whose mark `boomdrive:home/12` Flume's listing holds on place `P`
 - **THEN** it is answered `launched` at `P`, and no `flume launch` is run
 
 ### Requirement: A launch marked before the rename is found by its old mark
@@ -286,8 +286,8 @@ The control pass SHALL write one line on standard error for each launch, act, re
 
 #### Scenario: A launch said
 
-- **WHEN** a pass launches `madswan/12` at place `P`
-- **THEN** it writes one line beginning `madswan/12:` and naming `P`
+- **WHEN** a pass launches `home/12` at place `P`
+- **THEN** it writes one line beginning `home/12:` and naming `P`
 
 #### Scenario: A quiet pass
 
@@ -384,13 +384,13 @@ The runner SHALL take a launch of a kind that lands with no stages, as a bolt's 
 
 #### Scenario: A bolt and its unit
 
-- **WHEN** a pull offers `madswan/bolt/3` of kind `bolt` named `x` in `afterthought/crew` on `main`, then `madswan/14` of kind `change` named `a` on `bolt/x`, both with stream `madswan`, whose `room` is 2, and the clone is made
-- **THEN** the stub `flume` is run as `flume --json launch --repository <the container> --kind bolt --name x --base main --stream madswan --mark boomdrive:madswan/bolt/3`, then as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream madswan --mark boomdrive:madswan/14`; both are answered `launched`, and no `sluice` command is run
+- **WHEN** a pull offers `home/bolt/3` of kind `bolt` named `x` in `example/crew` on `main`, then `home/14` of kind `change` named `a` on `bolt/x`, both with stream `home`, whose `room` is 2, and the clone is made
+- **THEN** the stub `flume` is run as `flume --json launch --repository <the container> --kind bolt --name x --base main --stream home --mark boomdrive:home/bolt/3`, then as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream home --mark boomdrive:home/14`; both are answered `launched`, and no `sluice` command is run
 
 #### Scenario: A bolt counts against its stream's room within its pass
 
-- **WHEN** a pull offers the bolt `madswan/bolt/3`, then its unit `madswan/14`, both with stream `madswan`, whose `room` is 1
-- **THEN** the bolt is launched and the unit is left unanswered; and at the next pass, whose listing gives `madswan` a `room` of 1 again, the unit is launched
+- **WHEN** a pull offers the bolt `home/bolt/3`, then its unit `home/14`, both with stream `home`, whose `room` is 1
+- **THEN** the bolt is launched and the unit is left unanswered; and at the next pass, whose listing gives `home` a `room` of 1 again, the unit is launched
 
 ### Requirement: A bolt's send is a retry of its submission
 
@@ -398,12 +398,12 @@ The runner SHALL carry out the send of a place whose kind lands with no stages, 
 
 #### Scenario: A bolt's send
 
-- **WHEN** an act retries the submission of launch `madswan/bolt/3`, which was launched at place `P`
+- **WHEN** an act retries the submission of launch `home/bolt/3`, which was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --submission`, and the act is answered `done`
 
 #### Scenario: A send Flume refuses
 
-- **WHEN** an act retries the submission of launch `madswan/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
+- **WHEN** an act retries the submission of launch `home/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
 - **THEN** the act is answered `refused` with the words `the places on bolt/x are live: Q`, and no `sluice` command is run
 
 ### Requirement: The hello names the repositories drained apart from those kept

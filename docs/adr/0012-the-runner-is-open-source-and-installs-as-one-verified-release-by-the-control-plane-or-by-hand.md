@@ -14,7 +14,7 @@ Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-0
 Amended in part by record 0023, accepted on 2026-11-06: herdr, with the family's herdr plugins, and Ghostty are installed with the set, each replaceable or dropped through the modules' options.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on installing and upgrading; record 0001; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, rows S8, F9 and F51; self_update, sigstore-rust, GitHub's artifact attestations and dist (cargo-dist), each public; agentplot/boomdrive-cloud's rule core.96, cited by id; the running spec.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on installing and upgrading; record 0001; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, rows S8, F9 and F51; self_update, sigstore-rust, GitHub's artifact attestations and dist (cargo-dist), each public; agentplot/boomdrive-cloud's rule core.96, cited by id; the running spec.
 
 ## Context and problem statement
 
@@ -47,4 +47,4 @@ For the build (F51): dist with our own unit templates; dist with generated units
 
 - Fleets of hosts managed for an enterprise are a third way in, still to be decided: "we'll need to decide how to do that."
 - The runner protocol's schema has to be somewhere a public runner can build against. The cloud's record 0046 keeps it in a private package, so the cloud is asked to re-read that.
-- The hosts' service units are written by the install or by the flake's module, and no longer by swancloud alone.
+- The hosts' service units are written by the install or by the flake's module, and no longer by afterthought/swancloud alone.
