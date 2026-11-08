@@ -31,7 +31,7 @@ fn lease() -> Lease {
 
 fn launch() -> Launch {
     Launch {
-        repository: "afterthought/crew".to_string(),
+        repository: "example/crew".to_string(),
         kind: "crew/crew-planner".to_string(),
         name: "plan-the-week".to_string(),
         base: Some("bolt/x".to_string()),
@@ -45,7 +45,7 @@ fn launch() -> Launch {
             words: "wait for the brief".to_string(),
         }],
         hold_submission: true,
-        after: vec![Id::new("madswan/1"), Id::new("madswan/2")],
+        after: vec![Id::new("home/1"), Id::new("home/2")],
         agent_settings: vec![AgentSetting {
             field: "model".to_string(),
             value: "opus".to_string(),
@@ -63,10 +63,10 @@ fn carried(text: &str) -> Carried {
 
 #[test]
 fn an_id() {
-    round_trip(&Id::new("madswan/12"));
+    round_trip(&Id::new("home/12"));
     assert_eq!(
-        serde_json::to_string(&Id::new("madswan/12")).unwrap(),
-        r#""madswan/12""#
+        serde_json::to_string(&Id::new("home/12")).unwrap(),
+        r#""home/12""#
     );
 }
 
@@ -104,7 +104,7 @@ fn a_hello() {
                 ToolVersion::Missing("not found".to_string()),
             ),
         ]),
-        repositories: vec!["afterthought/crew".to_string()],
+        repositories: vec!["example/crew".to_string()],
         draining: vec!["example/kit".to_string()],
         capacity: Capacity::Printed(HostPart {
             running: "2".to_string(),
@@ -112,7 +112,7 @@ fn a_hello() {
             room: "null".to_string(),
             streams: r#"[{"name":"default","room":2,"queue":[]}]"#.to_string(),
         }),
-        leases: BTreeMap::from([(Id::new("madswan/1"), 1)]),
+        leases: BTreeMap::from([(Id::new("home/1"), 1)]),
     });
     round_trip(&Capacity::Missing("flume is not on PATH".to_string()));
 }
@@ -138,7 +138,7 @@ fn a_launch() {
 #[test]
 fn an_offer() {
     round_trip(&Want::Offer(Offer {
-        id: Id::new("madswan/1"),
+        id: Id::new("home/1"),
         lease: lease(),
         launch: launch(),
     }));
@@ -163,8 +163,8 @@ fn an_act_of_each_sort() {
     ];
     for what in sorts {
         round_trip(&Want::Act(Act {
-            id: Id::new("madswan/2"),
-            launch: Id::new("madswan/1"),
+            id: Id::new("home/2"),
+            launch: Id::new("home/1"),
             lease: 3,
             what,
         }));
@@ -206,7 +206,7 @@ fn an_inbox() {
 fn a_report() {
     let launched = Launched {
         lease: lease(),
-        repository: Some("afterthought/crew".to_string()),
+        repository: Some("example/crew".to_string()),
         answer: Answer {
             outcome: Outcome::Launched,
             place_dir: Some("/places/plan-the-week".to_string()),
@@ -220,7 +220,7 @@ fn a_report() {
         answer: Answer {
             outcome: Outcome::Held,
             place_dir: None,
-            words: Some("waits on madswan/1, launched at a place not landed".to_string()),
+            words: Some("waits on home/1, launched at a place not landed".to_string()),
             at: at("2026-11-01T10:00:00Z"),
         },
         repository: None,
@@ -230,13 +230,13 @@ fn a_report() {
     };
     let report = Report {
         launches: BTreeMap::from([
-            (Id::new("madswan/1"), launched.clone()),
-            (Id::new("madswan/2"), held),
+            (Id::new("home/1"), launched.clone()),
+            (Id::new("home/2"), held),
         ]),
         acts: BTreeMap::from([(
-            Id::new("madswan/3"),
+            Id::new("home/3"),
             Acted {
-                launch: Id::new("madswan/1"),
+                launch: Id::new("home/1"),
                 lease: 3,
                 outcome: Outcome::Refused,
                 words: Some("no such stage".to_string()),
@@ -298,8 +298,8 @@ fn a_report_from_before_reads() {
 #[test]
 fn a_reports_answer() {
     round_trip(&Reported {
-        let_go: vec![Id::new("madswan/1")],
-        refused: BTreeMap::from([(Id::new("madswan/2"), "lease 3 is replaced by 4".to_string())]),
+        let_go: vec![Id::new("home/1")],
+        refused: BTreeMap::from([(Id::new("home/2"), "lease 3 is replaced by 4".to_string())]),
     });
     round_trip(&Reported::default());
 }

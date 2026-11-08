@@ -223,48 +223,48 @@ mod tests {
         read(&table, Path::new(FILE))
     }
 
-    fn madswan() -> Partition {
+    fn home() -> Partition {
         Partition {
-            label: "madswan".to_string(),
-            state_repository: StateRepository::parse("afterthought/madswan-state").unwrap(),
+            label: "home".to_string(),
+            state_repository: StateRepository::parse("example/home-state").unwrap(),
         }
     }
 
-    const EXAMPLE: &str = "host = \"deneb\"\n\n[[partitions]]\nlabel = \"madswan\"\n\
-                           state_repository = \"afterthought/madswan-state\"\n";
+    const EXAMPLE: &str = "host = \"host-a\"\n\n[[partitions]]\nlabel = \"home\"\n\
+                           state_repository = \"example/home-state\"\n";
 
     #[test]
     fn the_table_read() {
         assert_eq!(
             read_table(EXAMPLE),
             Ok(Config {
-                host: "deneb".to_string(),
-                partitions: vec![madswan()],
+                host: "host-a".to_string(),
+                partitions: vec![home()],
             })
         );
         assert_eq!(
-            madswan().state_repository.url("https://github.com/"),
-            "https://github.com/afterthought/madswan-state.git"
+            home().state_repository.url("https://github.com/"),
+            "https://github.com/example/home-state.git"
         );
     }
 
     #[test]
     fn two_partitions_in_the_tables_order() {
         let config = read_table(&format!(
-            "{EXAMPLE}\n[[partitions]]\nlabel = \"swancloud\"\n\
-             state_repository = \"afterthought/swancloud-state\"\n"
+            "{EXAMPLE}\n[[partitions]]\nlabel = \"work\"\n\
+             state_repository = \"example/work-state\"\n"
         ))
         .unwrap();
         let labels: Vec<&str> = config.partitions.iter().map(|p| p.label.as_str()).collect();
-        assert_eq!(labels, ["madswan", "swancloud"]);
+        assert_eq!(labels, ["home", "work"]);
     }
 
     #[test]
     fn no_host() {
         assert_eq!(
             read_table(
-                "[[partitions]]\nlabel = \"madswan\"\n\
-                 state_repository = \"afterthought/madswan-state\"\n"
+                "[[partitions]]\nlabel = \"home\"\n\
+                 state_repository = \"example/home-state\"\n"
             ),
             Err(format!(
                 "{FILE}: [control_plane.crew]: names no `host`: crew's name for this host, as \
@@ -276,14 +276,14 @@ mod tests {
     #[test]
     fn no_partitions() {
         assert_eq!(
-            read_table("host = \"deneb\"\n"),
+            read_table("host = \"host-a\"\n"),
             Err(format!(
                 "{FILE}: [control_plane.crew]: names no `partitions`: at least one partition \
                  is served, each a `label` and a `state_repository`"
             ))
         );
         assert_eq!(
-            read_table("host = \"deneb\"\npartitions = []\n"),
+            read_table("host = \"host-a\"\npartitions = []\n"),
             Err(format!(
                 "{FILE}: [control_plane.crew]: `partitions` is empty: at least one partition \
                  is served"
@@ -295,8 +295,8 @@ mod tests {
     fn no_label() {
         assert_eq!(
             read_table(
-                "host = \"deneb\"\n[[partitions]]\n\
-                 state_repository = \"afterthought/madswan-state\"\n"
+                "host = \"host-a\"\n[[partitions]]\n\
+                 state_repository = \"example/home-state\"\n"
             ),
             Err(format!(
                 "{FILE}: [control_plane.crew]: `partitions` entry 1 names no `label`: the \
@@ -308,9 +308,9 @@ mod tests {
     #[test]
     fn no_state_repository() {
         assert_eq!(
-            read_table("host = \"deneb\"\n[[partitions]]\nlabel = \"madswan\"\n"),
+            read_table("host = \"host-a\"\n[[partitions]]\nlabel = \"home\"\n"),
             Err(format!(
-                "{FILE}: [control_plane.crew]: `partitions` entry `madswan` names no \
+                "{FILE}: [control_plane.crew]: `partitions` entry `home` names no \
                  `state_repository`: the repository holding the partition's drive branch, \
                  `owner/name`, is required"
             ))
@@ -319,12 +319,14 @@ mod tests {
 
     #[test]
     fn a_label_twice() {
-        let refusal = read_table(&format!("{EXAMPLE}\n[[partitions]]\nlabel = \"madswan\"\nstate_repository = \"afterthought/other\"\n"))
-            .unwrap_err();
+        let refusal = read_table(&format!(
+            "{EXAMPLE}\n[[partitions]]\nlabel = \"home\"\nstate_repository = \"example/other\"\n"
+        ))
+        .unwrap_err();
         assert_eq!(
             refusal,
             format!(
-                "{FILE}: [control_plane.crew]: `partitions` names `madswan` twice: each \
+                "{FILE}: [control_plane.crew]: `partitions` names `home` twice: each \
                  partition is served once"
             )
         );
@@ -332,22 +334,16 @@ mod tests {
 
     #[test]
     fn a_state_repository_not_owner_and_name() {
-        for text in [
-            "madswan-state",
-            "afterthought/",
-            "/madswan-state",
-            "a/b.git",
-            "a/b/c",
-        ] {
+        for text in ["home-state", "example/", "/home-state", "a/b.git", "a/b/c"] {
             let refusal = read_table(&format!(
-                "host = \"deneb\"\n[[partitions]]\nlabel = \"madswan\"\n\
+                "host = \"host-a\"\n[[partitions]]\nlabel = \"home\"\n\
                  state_repository = {text:?}\n"
             ))
             .unwrap_err();
             assert_eq!(
                 refusal,
                 format!(
-                    "{FILE}: [control_plane.crew]: `partitions` entry `madswan`'s \
+                    "{FILE}: [control_plane.crew]: `partitions` entry `home`'s \
                      `state_repository` is {text:?}: a state repository is `owner/name`"
                 )
             );
@@ -356,12 +352,12 @@ mod tests {
 
     #[test]
     fn a_host_or_a_label_crew_would_not_write() {
-        assert!(read_table(&EXAMPLE.replace("deneb", "Deneb"))
+        assert!(read_table(&EXAMPLE.replace("host-a", "Host-A"))
             .unwrap_err()
-            .contains("`host` is \"Deneb\": a host is named as crew names it"));
-        assert!(read_table(&EXAMPLE.replace("\"madswan\"", "\"mad swan\""))
+            .contains("`host` is \"Host-A\": a host is named as crew names it"));
+        assert!(read_table(&EXAMPLE.replace("\"home\"", "\"ho me\""))
             .unwrap_err()
-            .contains("`partitions` entry 1's `label` is \"mad swan\""));
+            .contains("`partitions` entry 1's `label` is \"ho me\""));
         assert_eq!(
             read_table("host = 3\n"),
             Err(format!(
@@ -393,7 +389,7 @@ mod tests {
         assert_eq!(
             refusal,
             format!(
-                "{FILE}: [control_plane.crew]: `partitions` entry `madswan` names \
+                "{FILE}: [control_plane.crew]: `partitions` entry `home` names \
                  `kinds_file`, which crew's implementation does not read: kinds are Flume's \
                  host configuration"
             )

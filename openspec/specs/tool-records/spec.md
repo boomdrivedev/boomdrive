@@ -57,7 +57,7 @@ Where weir takes an inbox's files, the runner SHALL carry the tip's commit, each
 
 #### Scenario: An inbox carried
 
-- **WHEN** an inbox is named on `inbox` in `afterthought/crew`, and the forge's `inbox` branch holds a capture, a signal and an item with a brief written in weir's layout
+- **WHEN** an inbox is named on `inbox` in `example/crew`, and the forge's `inbox` branch holds a capture, a signal and an item with a brief written in weir's layout
 - **THEN** the carried inbox holds the tip's commit, the capture's and signal's files with their text as the tip holds it, the item's record, and the brief as its digest
 
 ### Requirement: An inbox weir refuses keeps what was carried

@@ -267,7 +267,7 @@ mod tests {
     fn two_owners() {
         let config = config(
             "repository_root = \"/h/Code\"\n\
-             repositories = [\"agentplot/flume\", \"afterthought/crew\", \"agentplot/sluice\"]\n",
+             repositories = [\"agentplot/flume\", \"example/crew\", \"agentplot/sluice\"]\n",
         );
         assert_eq!(
             wanted(&config),
@@ -278,8 +278,8 @@ mod tests {
                     folders: folders(&["flume", "sluice"]),
                 },
                 Wanted {
-                    owner: "afterthought".to_string(),
-                    file: PathBuf::from("/h/Code/afterthought/afterthought.code-workspace"),
+                    owner: "example".to_string(),
+                    file: PathBuf::from("/h/Code/example/example.code-workspace"),
                     folders: folders(&["crew"]),
                 },
             ]

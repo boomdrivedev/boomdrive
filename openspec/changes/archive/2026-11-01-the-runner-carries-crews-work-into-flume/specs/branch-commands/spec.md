@@ -21,7 +21,7 @@ After sluice answers, whichever way, the runner SHALL read `git ls-remote origin
 
 #### Scenario: A branch made
 
-- **WHEN** a command asks for `bolt/x` from `main` in `afterthought/crew`, and the stub `sluice` exits 0 and the forge then holds `bolt/x` at `C`
+- **WHEN** a command asks for `bolt/x` from `main` in `example/crew`, and the stub `sluice` exits 0 and the forge then holds `bolt/x` at `C`
 - **THEN** the command is answered `done`, its answer the stub's output as printed, and its origin commit `C`
 
 #### Scenario: A branch already there

@@ -49,7 +49,7 @@ All 12 tasks are ticked `[x]`. Each test a task names ran in the gate's `boomdri
 
 **work-into-flume**:
 
-- *A bolt is a launch*: no code reads a kind. *A bolt and its unit* (`a_bolt_and_its_unit`) checks the two exact `flume --json launch` argument vectors, both answered `launched`, and that no `sluice` call is made. *A bolt counts against its stream's room within its pass* (`a_bolt_counts_against_its_streams_room_within_its_pass`) checks that the bolt is launched and the unit left unanswered, then launched at the next pass on `bolt/x` in stream `madswan`.
+- *A bolt is a launch*: no code reads a kind. *A bolt and its unit* (`a_bolt_and_its_unit`) checks the two exact `flume --json launch` argument vectors, both answered `launched`, and that no `sluice` call is made. *A bolt counts against its stream's room within its pass* (`a_bolt_counts_against_its_streams_room_within_its_pass`) checks that the bolt is launched and the unit left unanswered, then launched at the next pass on `bolt/x` in stream `home`.
 - *A bolt's send is a retry of its submission*: *A bolt's send* (`a_bolts_send`, exactly `flume --json retry P --submission`, answered `done`). *A send Flume refuses* (`a_send_flume_refuses`, answered `refused` with Flume's reason as given, and no `sluice` call).
 - *Work under a lapsed lease waits for a live one*, modified: *A command whose lease lapsed* (`a_command_whose_lease_lapsed`).
 - *The statuses are carried against Flume's listing…*, modified: a command no longer sets `Work::ran`. *A pass that answers a command reads the listing once* (`a_pass_that_answers_a_command_reads_the_listing_once`).

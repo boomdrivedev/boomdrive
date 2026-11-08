@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-07, below: an act on a place Flume does not stand costs the reading of Flume's refusal.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (`design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
 
 ## Context and problem statement
 
@@ -46,7 +46,7 @@ Status: the code stage's own choice, on the brief of the chore `a-launch-waits-o
 
 ### Context
 
-Flume's command acting on a place settles every place on the host first, where no caller keeps watch (Flume's clause 119), and only then finds that the place does not stand. On deneb on 2026-11-07, `flume --json priority <place> 12` refused a place that no longer stood in 27 to 33 seconds. `flume --json status <place>`, which settles nothing (Flume's clause 119), refused the same place in about ten milliseconds, in the same words: "no place <location> stands on this host". Of some 180 acts on places one pass carried out there, 162 were such refusals.
+Flume's command acting on a place settles every place on the host first, where no caller keeps watch (Flume's clause 119), and only then finds that the place does not stand. On a host on 2026-11-07, `flume --json priority <place> 12` refused a place that no longer stood in 27 to 33 seconds. `flume --json status <place>`, which settles nothing (Flume's clause 119), refused the same place in about ten milliseconds, in the same words: "no place <location> stands on this host". Of some 180 acts on places one pass carried out there, 162 were such refusals.
 
 ### Considered options
 

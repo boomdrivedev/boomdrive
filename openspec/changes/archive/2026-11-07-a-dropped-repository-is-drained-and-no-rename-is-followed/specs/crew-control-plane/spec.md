@@ -8,8 +8,8 @@ A launch naming no `Host` that no runner answers SHALL be for this host only whe
 
 #### Scenario: A kit named by its name alone
 
-- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `afterthought/crew` and `agentplot/flume`
-- **THEN** the launch is for this host, its repository `afterthought/crew`
+- **WHEN** a launch naming no `Host` says `Repo: crew`, and the hello names `example/crew` and `agentplot/flume`
+- **THEN** the launch is for this host, its repository `example/crew`
 
 #### Scenario: A repository not kept
 
@@ -33,8 +33,8 @@ A launch naming no `Host` that the runner's report or this host's branch answers
 
 #### Scenario: A launch answered in a repository draining
 
-- **WHEN** `madswan/runner/deneb` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: kit`, and the hello names `example/other` among its repositories and `example/kit` as drained
-- **THEN** the pull gives the offer `madswan/20`, its repository `example/kit`, writes nothing, and says nothing
+- **WHEN** `home/runner/host-a` answers launch 20 `launched`, launch 20 names no `Host` and says `Repo: kit`, and the hello names `example/other` among its repositories and `example/kit` as drained
+- **THEN** the pull gives the offer `home/20`, its repository `example/kit`, writes nothing, and says nothing
 
 ### Requirement: No old name of a repository is matched to a new one
 
@@ -51,8 +51,8 @@ A launch naming this host SHALL take as its repository the address its `Repo` na
 
 #### Scenario: A launch naming this host in a repository draining
 
-- **WHEN** request 12 is a launch naming `Host: deneb` and saying `Repo: kit`, and the hello names `example/kit` as drained
-- **THEN** the pull gives the offer `madswan/12`, its repository `example/kit`
+- **WHEN** request 12 is a launch naming `Host: host-a` and saying `Repo: kit`, and the hello names `example/kit` as drained
+- **THEN** the pull gives the offer `home/12`, its repository `example/kit`
 
 ## REMOVED Requirements
 
