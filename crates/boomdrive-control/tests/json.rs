@@ -157,6 +157,7 @@ fn an_act_of_each_sort() {
             words: None,
             submission: false,
         },
+        ActSort::Land,
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
@@ -169,6 +170,17 @@ fn an_act_of_each_sort() {
             what,
         }));
     }
+    // A land is the word `land`, holding nothing more (core.53).
+    let land = Act {
+        id: Id::new("home/2"),
+        launch: Id::new("home/1"),
+        lease: 3,
+        what: ActSort::Land,
+    };
+    assert_eq!(
+        serde_json::to_value(&land).unwrap(),
+        serde_json::json!({"id": "home/2", "launch": "home/1", "lease": 3, "what": "land"}),
+    );
 }
 
 #[test]

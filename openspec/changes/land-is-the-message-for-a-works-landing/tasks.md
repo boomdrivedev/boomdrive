@@ -7,7 +7,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 1. The interface names a land
 
-- [ ] 1.1 `boomdrive-control`'s `ActSort` gains `Land`, a unit variant whose serde form is `"land"`. Its documentation says it asks for the landing of its launch's work, holds nothing but its launch, and is carried out as Flume's retry of the submission (core.53). It also says version 1 of the hosted protocol names no land, a later version being the one to carry it (core.42) (design Decisions 1 and 7; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive-control --test json an_act_of_each_sort` passes, proving the control-plane-interface spec's "An act of each sort".
+- [x] 1.1 `boomdrive-control`'s `ActSort` gains `Land`, a unit variant whose serde form is `"land"`. Its documentation says it asks for the landing of its launch's work, holds nothing but its launch, and is carried out as Flume's retry of the submission (core.53). It also says version 1 of the hosted protocol names no land, a later version being the one to carry it (core.42) (design Decisions 1 and 7; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive-control --test json an_act_of_each_sort` passes, proving the control-plane-interface spec's "An act of each sort".
 
 ## 2. The runner carries out a land
 
