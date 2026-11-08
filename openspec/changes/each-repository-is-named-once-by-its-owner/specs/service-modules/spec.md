@@ -43,6 +43,34 @@ Evaluation SHALL fail where `settings` names `repositories` at its top, saying e
 - **WHEN** `accounts.own.drives.home.pool = "home"` is set
 - **THEN** evaluation fails, and no file is rendered
 
+### Requirement: Under crew, the runner's crew table is written from crew's partitions on this host
+
+Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it: `host` as `services.crew.host`, and one entry of `partitions` for each of crew's partitions whose `machine` is that host, in crew's order, each its `label` and its `state` as `state_repository` alone. `settings.control_plane.crew` SHALL read that table (record 0023; core.18).
+
+#### Scenario: crew's partitions on this host
+
+- **WHEN** `accounts` names the account `own`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and `settings` names `repository_root = "~/Code"`, `fetch_interval = "2m"`, `code_workspaces = true` and `control_plane.type = "crew"` with no `control_plane.crew`, and crew's module is on with the host `host-a` and the partitions `home`, whose `machine` is `host-a` and `state` `example/state`, and `away`, whose `machine` is `host-b` and `state` `example/away`
+- **THEN** the file is `nix/tests/files/crew.toml`, byte for byte, on nix-darwin and on NixOS
+
+#### Scenario: crew's order
+
+- **WHEN** `control_plane.type = "crew"` is set with no `control_plane.crew`, and crew's module is on with the host `host-a` and the partitions `garden` on `host-a` at `example/garden`, `away` on `host-b` at `example/away` and `home` on `host-a` at `example/state`, in that order
+- **THEN** `settings.control_plane.crew` is the host `host-a` with the partitions `garden` at `example/garden`, then `home` at `example/state`, each holding `label` and `state_repository` alone, on nix-darwin and on NixOS
+
+### Requirement: No crew table beside another control plane
+
+Where `settings` names no control plane, or one whose `type` is not `crew`, the modules SHALL write no `[control_plane.crew]`, whatever crew's module holds.
+
+#### Scenario: A hosted control plane beside crew
+
+- **WHEN** `accounts` names the account `home`, whose drive `garden` keeps the owner `agentplot`'s `flume`, and the account `work` with no drive, and `settings` names a hosted control plane at `https://control.example` with the partitions `home` and `work`, and crew's module is on with the host `host-a` and the partition `home` on `host-a`
+- **THEN** the file is `nix/tests/files/hosted.toml`, byte for byte, on nix-darwin and on NixOS
+
+#### Scenario: No control plane beside crew
+
+- **WHEN** neither `accounts` nor `settings` sets anything, and crew's module is on with the host `host-a` and the partition `home` on `host-a`
+- **THEN** the file is `nix/tests/files/empty.toml`, byte for byte, on nix-darwin and on NixOS
+
 ## ADDED Requirements
 
 ### Requirement: Each repository is named once, under its drive and its owner
