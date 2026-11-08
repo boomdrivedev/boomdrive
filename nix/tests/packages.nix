@@ -86,6 +86,16 @@ let
     in
     if builtins.length found == 1 then builtins.head found else null;
 
+  # A system's Ghostty against the release Flume's ghostty window profile
+  # was checked against (Flume's statement, C.8; design Decision 2). Flume's
+  # tree pins no Ghostty to read, so the constant moves only with a check
+  # of Flume's profile.
+  checked = "1.4.0";
+  ghosttyHeld =
+    system: package:
+    t.expect (package.version == checked)
+      "packages.${system}.ghostty is Ghostty ${package.version}, not ${checked}, the release Flume's window profile was checked against";
+
   # Each of the set's herdr plugins' floors, from its manifest.
   floorsOf =
     packages:
@@ -243,6 +253,32 @@ in
       herdr.version == version
     ) "packages.${system}.herdr says ${herdr.version}, not its tag's ${version}"
   );
+
+  "Ghostty on each system" = each (
+    system: packages:
+    let
+      nixpkgs = inputs.nixpkgs.legacyPackages.${system};
+      own = if lib.hasSuffix "-darwin" system then nixpkgs.ghostty-bin else nixpkgs.ghostty;
+      named = if lib.hasSuffix "-darwin" system then "ghostty-bin" else "ghostty";
+    in
+    t.expect (
+      packages.ghostty.drvPath == own.drvPath
+    ) "packages.${system}.ghostty is not the flake's nixpkgs' ${named}"
+    ++ ghosttyHeld system packages.ghostty
+  );
+
+  "Ghostty moved with nixpkgs" =
+    let
+      found = ghosttyHeld "x86_64-linux" { version = "1.5.0"; };
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "x86_64-linux"
+        "1.5.0"
+        "1.4.0"
+      ]
+    ) "a Ghostty 1.5.0 gives ${builtins.toJSON found}";
 
   "herdr is Flume's" =
     if flumesHerdr == null then
