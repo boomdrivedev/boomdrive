@@ -4,11 +4,13 @@
 # runner in the system profile and the service's PATH the profiles' (design
 # Decision 11). Each tool of the set is installed by its own module, which
 # flake.nix imports beside this one, and tools.nix sets their options
-# (record 0023). Once the Nix store is mounted, the agent runs
-# `boomdrive run --config` with the file rendered from `settings` (design
-# Decision 9), so nix-darwin reloads it when the package or the file
-# changes, and leaves it running when neither does. The activation links the file at the runner's own path,
-# as the primary user, for the commands a person runs by hand.
+# (record 0023); drives.nix gives Flume's module each drive's stream (record
+# 0028). Once the Nix store is mounted, the agent runs
+# `boomdrive run --config` with the file rendered from `accounts` and
+# `settings` (design Decision 9), so nix-darwin reloads it when the package
+# or the file changes, and leaves it running when neither does. The
+# activation links the file at the runner's own path, as the primary user,
+# for the commands a person runs by hand.
 { packages }:
 {
   config,
@@ -19,7 +21,8 @@
 let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
-  file = pkgs.writeText "boomdrive-config.toml" (render cfg.settings);
+  inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
@@ -44,6 +47,7 @@ in
   imports = [
     (import ./options.nix { inherit packages; })
     (import ./tools.nix { inherit packages; })
+    ./drives.nix
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {

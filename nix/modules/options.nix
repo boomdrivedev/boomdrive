@@ -1,24 +1,29 @@
 # services.boomdrive, the options both modules share (design Decision 8),
 # given the flake's own `packages`: the runner's package, the flake's own
 # for the host's system, so it is the path the family's cache holds
-# whatever nixpkgs the host runs (design Decision 4); and `settings`, the runner's file under its own names
-# (core.46), free-form TOML with the README's keys declared for their types
-# (RFC 42). Its `accounts` name the host's accounts, each account's drives
-# and each drive's repositories (record 0028), every level always written;
-# an account and a drive hold no key the runner does not read, so one fails
-# evaluation, and a flat `repositories` of before fails it too. Under crew,
-# with crew's module on, `control_plane.crew` is written from crew's
-# partitions whose `machine` is `services.crew.host`, a table written out
-# winning whole (record 0023; the change
-# crews-partitions-give-the-runner-its-crew-table). Any other
-# key left unset is left out of the file, so the runner's own default holds
-# and the two never drift; a top-level key the module does not declare
-# passes to the file, and the runner judges it. A key named for a
-# credential fails evaluation, since the file is in the store, which every
-# user reads (design Decision 12, core.4). Each tool of the set is
-# installed by its own module, its package the set's unless the host gives
-# its own (tools.nix; record 0023), so `tools` is gone, and setting it
-# fails evaluation, naming what replaces it.
+# whatever nixpkgs the host runs (design Decision 4); and `accounts` and
+# `settings`, the runner's file under its own names (core.46). `accounts`
+# names the host's accounts, each account's drives, each drive's machine
+# and stream, and each drive's repositories by owner (record 0028), and the
+# module writes the runner's `accounts` from it, every level always
+# written (accounts.nix); an account and a drive hold no key the module
+# does not declare, so one fails evaluation. A drive's stream and machine
+# are given to Flume's module (drives.nix), never to the runner's file
+# (core.5). `settings` holds the rest of the file, free-form TOML with the
+# README's keys declared for their types (RFC 42). Under crew, with crew's
+# module on, `control_plane.crew` is written from crew's partitions whose
+# `machine` is `services.crew.host`, a table written out winning whole
+# (record 0023; the change crews-partitions-give-the-runner-its-crew-table).
+# Any other key left unset is left out of the file, so the runner's own
+# default holds and the two never drift; a top-level key the module does
+# not declare passes to the file, and the runner judges it, but `accounts`
+# and the flat `repositories` of before each fail evaluation, naming
+# services.boomdrive.accounts. A key named for a credential fails
+# evaluation, since the file is in the store, which every user reads
+# (design Decision 12, core.4). Each tool of the set is installed by its
+# own module, its package the set's unless the host gives its own
+# (tools.nix; record 0023), so `tools` is gone, and setting it fails
+# evaluation, naming what replaces it.
 { packages }:
 {
   config,
@@ -49,16 +54,70 @@ let
       inherit description;
     };
 
-  # A drive, `[accounts.<account>.drives.<drive>]`: its repositories and
-  # nothing else, so a stream or a key the runner does not read fails
-  # evaluation, naming its option (core.5).
-  drive = types.submodule {
-    options.repositories = mkOption {
-      type = types.listOf (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+");
-      default = [ ];
-      description = "Each repository the drive keeps, by its GitHub address, `owner/name`, in the order kept; a repository belongs to one drive. Always written.";
+  # A drive's stream, which Flume's module is given (drives.nix): its name,
+  # its room, its priority and each label's reserve, record 0028's keys,
+  # with deneb's room and reserves by default. Each default label's
+  # reserve is the module's own default, so a drive that sets another
+  # label, or one of these, keeps the rest; a label's reserve has none of
+  # its own. Any other key of a stream is Flume's own option,
+  # services.flume.settings.streams.<stream>.
+  stream =
+    drive:
+    types.submodule {
+      options = {
+        name = mkOption {
+          type = types.nonEmptyStr;
+          default = drive;
+          defaultText = lib.literalMD "the drive's name";
+          description = "The name of the drive's stream in Flume, which each of the drive's repositories runs in.";
+        };
+        agents = mkOption {
+          type = types.ints.unsigned;
+          default = 4;
+          description = "The bound on the stream's agents running, Flume's `agents`; it holds each label's reserve.";
+        };
+        priority = unset types.int "The stream's priority, Flume's `priority`; Flume's own where unset.";
+        labels = mkOption {
+          type = types.attrsOf (
+            types.submodule {
+              options.reserve = mkOption {
+                type = types.ints.unsigned;
+                description = "The stream's agents the label is owed, Flume's `reserve`.";
+              };
+            }
+          );
+          default = { };
+          description = "Each label's reserve of the stream's agents; `operation` 1 and `planning` 2 unless the drive gives its own.";
+        };
+      };
+      config.labels = {
+        operation.reserve = lib.mkDefault 1;
+        planning.reserve = lib.mkDefault 2;
+      };
     };
-  };
+
+  # A drive, `[accounts.<account>.drives.<drive>]`: its machine, its
+  # stream and its repositories by owner, and nothing else, so a key the
+  # module does not declare fails evaluation, naming its option (core.5).
+  drive = types.submodule (
+    { name, ... }:
+    {
+      options = {
+        machine = unset (types.strMatching "[a-z0-9][a-z0-9-]*") "The host the drive's work runs on, as crew's partitions' `machine` names one; this host where unset. A drive of another host gives Flume nothing, and this host keeps its repositories to read.";
+        stream = mkOption {
+          type = stream name;
+          default = { };
+          description = "The drive's stream in Flume.";
+        };
+        repositories = mkOption {
+          type = types.attrsOf (types.listOf (types.strMatching "[A-Za-z0-9._-]+"));
+          default = { };
+          example = lib.literalExpression ''{ agentplot = [ "flume" "sluice" ]; }'';
+          description = "Each repository the drive keeps, by its owner, the names of the owner's repositories in the order kept; a repository belongs to one drive. Written as their addresses, `<owner>/<name>`, owner by owner in the order of the owners' names.";
+        };
+      };
+    }
+  );
 
   # An account, `[accounts.<account>]`: its drives and nothing else.
   account = types.submodule {
@@ -138,6 +197,40 @@ let
       [ ];
   found = credentials "" cfg.settings;
 
+  # Each drive of the accounts, and each address of theirs that is no
+  # GitHub repository's, as the runner reads one: an attribute set's names,
+  # the owners, take no type.
+  drives = (import ./accounts.nix { inherit lib; }).drivesOf cfg.accounts;
+  addresses = lib.concatMap (drive: drive.addresses) drives;
+  noRepository = lib.filter (
+    address: builtins.match "[A-Za-z0-9-]+/[A-Za-z0-9._-]+" address == null
+  ) addresses;
+
+  # What is given more than once, each by what gives it (design Decision
+  # 6): a drive's name by its accounts, and an address by its drives, a
+  # drive named again for each time it keeps the address.
+  twice =
+    pairs:
+    lib.filterAttrs (_: givers: lib.length givers > 1) (
+      lib.mapAttrs (_: map (pair: pair.by)) (lib.groupBy (pair: pair.what) pairs)
+    );
+  said = givers: lib.concatStringsSep " and " givers;
+  drivesTwice = twice (
+    map (drive: {
+      what = drive.name;
+      by = drive.account;
+    }) drives
+  );
+  addressesTwice = twice (
+    lib.concatMap (
+      drive:
+      map (address: {
+        what = address;
+        by = drive.name;
+      }) drive.addresses
+    ) drives
+  );
+
   # Whether the runner's control plane is crew.
   crewPlane = (cfg.settings.control_plane.type or null) == "crew";
   # The machines crew's partitions name, each once, read only where crew's
@@ -166,15 +259,17 @@ in
       description = "The runner.";
     };
 
+    accounts = mkOption {
+      type = types.attrsOf account;
+      default = { };
+      example = lib.literalExpression ''{ own.drives.home.repositories.agentplot = [ "flume" "sluice" ]; }'';
+      description = "Each account the host serves by its name, what a runner enrolls with a control plane, each naming its drives and each drive its repositories by owner: the runner's `accounts`, always written.";
+    };
+
     settings = mkOption {
       type = types.submodule {
         freeformType = toml;
         options = {
-          accounts = mkOption {
-            type = types.attrsOf account;
-            default = { };
-            description = "Each account the host serves by its name, what a runner enrolls with a control plane, each naming its drives and each drive its repositories; always written.";
-          };
           repository_root = unset types.str "The root each repository's view is kept under, an absolute path or one beginning with `~/`; the runner's `~/Code` where unset.";
           fetch_interval = unset interval "How often every repository is fetched; the runner's `2m` where unset.";
           code_workspaces = unset types.bool "Whether each drive has a VS Code workspace at the repository root; the runner's `false` where unset.";
@@ -182,7 +277,7 @@ in
         };
       };
       default = { };
-      description = "The runner's file, each key named as the file names it (README), rendered at evaluation. It holds no token, key or credential.";
+      description = "The runner's file but its `accounts`, each key named as the file names it (README), rendered at evaluation. It holds no token, key or credential.";
     };
   };
 
@@ -194,7 +289,33 @@ in
       }
       {
         assertion = !(cfg.settings ? repositories);
-        message = "services.boomdrive.settings.repositories is the flat list of before: each repository is named under its drive, settings.accounts.<account>.drives.<drive>.repositories (record 0028).";
+        message = "services.boomdrive.settings.repositories is the flat list of before: each repository is named under its drive and its owner, services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner> (record 0028).";
+      }
+      {
+        assertion = !(cfg.settings ? accounts);
+        message = "services.boomdrive.settings.accounts is set: the accounts are named in services.boomdrive.accounts alone, each drive's repositories by owner, services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner> (record 0028).";
+      }
+      {
+        assertion = noRepository == [ ];
+        message = "services.boomdrive.accounts keeps ${lib.concatStringsSep ", " noRepository}, which is no GitHub repository's address, `<owner>/<name>`: each drive's repositories are named by their owner, repositories.<owner> = [ <names> ].";
+      }
+      {
+        assertion = drivesTwice == { };
+        message = "services.boomdrive.accounts names ${
+          lib.concatStringsSep "; " (
+            lib.mapAttrsToList (
+              drive: accounts: "the drive ${drive} under the accounts ${said accounts}"
+            ) drivesTwice
+          )
+        }: a drive's name is given once on the host (record 0028).";
+      }
+      {
+        assertion = addressesTwice == { };
+        message = "services.boomdrive.accounts keeps ${
+          lib.concatStringsSep "; " (
+            lib.mapAttrsToList (address: drives: "${address} in the drives ${said drives}") addressesTwice
+          )
+        }: a repository belongs to one drive, which names it once (record 0028).";
       }
       {
         assertion = !(crewPlane && cfg.settings.control_plane.crew == null);

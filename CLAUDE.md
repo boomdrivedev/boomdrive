@@ -28,11 +28,11 @@ The flake at the root, `flake.nix` and `flake.lock`, with everything
 else of it under `nix/`, gives the runner, Flume, sluice and crew
 pinned together, each tool's own module re-exported beside the runner's
 service, `services.boomdrive`, as nix-darwin and NixOS modules, whose
-`settings` are the runner's file. The workflow
-`.github/workflows/cache.yml` builds every package of every system the
-flake gives and pushes it to the family's cache, `boomdrive` on Cachix,
-at each push to `main` and each tag `v*` (records 0020 and 0023,
-core.44 to core.47).
+`accounts` and `settings` are the runner's file, each drive's stream
+given to Flume's module. The workflow `.github/workflows/cache.yml`
+builds every package of every system the flake gives and pushes it to
+the family's cache, `boomdrive` on Cachix, at each push to `main` and
+each tag `v*` (records 0020 and 0023, core.44 to core.47).
 
 Boomdrive's versions are git-cliff's, from its Conventional Commits
 (`cliff.toml`; record 0024, core.48). At each push to `main`, the

@@ -100,13 +100,13 @@ let
     t.expect (at != null && system != null && at < system)
       "the agent's PATH does not name ${entry} before /run/current-system/sw/bin: ${agent.EnvironmentVariables.PATH}";
 
-  crew = t.darwinSystem { services.boomdrive.settings = settings.crew; };
-  # The runner's settings `given`, beside crew's module turned on with the
-  # host `host-a` and crew's settings `teams`.
+  crew = t.darwinSystem { services.boomdrive = settings.crew; };
+  # The runner's `accounts` and `settings` `given`, beside crew's module
+  # turned on with the host `host-a` and crew's settings `teams`.
   crewWith =
     given: teams:
     t.darwinSystem {
-      services.boomdrive.settings = given;
+      services.boomdrive = given;
       services.crew = {
         enable = true;
         host = "host-a";
@@ -126,13 +126,18 @@ let
     ];
   };
   gardenSettings = settings.crew // {
-    control_plane = settings.crew.control_plane // {
-      crew = garden;
+    settings = settings.crew.settings // {
+      control_plane = settings.crew.settings.control_plane // {
+        crew = garden;
+      };
     };
   };
   writtenOut = crewWith gardenSettings settings.crewFleet;
   writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
   render = import ../modules/toml.nix { inherit lib; };
+  # The table the runner's file is rendered from, `accounts` joined to
+  # `settings` (accounts.nix).
+  tableOf = (import ../modules/accounts.nix { inherit lib; }).fileOf;
   # Another control plane, or none, beside crew's module with one
   # partition on host-a.
   hostedBesideCrew = crewWith settings.hosted settings.crewModule;
@@ -264,7 +269,7 @@ in
     ++
       t.expect (writtenTable == garden)
         "settings.control_plane.crew is ${builtins.toJSON writtenTable}, not the table written, ${builtins.toJSON garden}"
-    ++ t.expect (writes writtenOut (render gardenSettings)) "the agent's --config is not the rendering of the settings with the table written";
+    ++ t.expect (writes writtenOut (render (tableOf gardenSettings))) "the agent's --config is not the rendering of the settings with the table written";
 
   "A hosted control plane beside crew on nix-darwin" =
     t.expect (

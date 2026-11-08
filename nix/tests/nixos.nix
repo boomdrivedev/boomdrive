@@ -50,14 +50,14 @@ let
   };
   gone = t.nixosSystem { services.boomdrive.tools = [ ]; };
   saysGone = words: lib.hasInfix words (toString (t.failures gone));
-  crew = t.nixosSystem { services.boomdrive.settings = settings.crew; };
-  hosted = t.nixosSystem { services.boomdrive.settings = settings.hosted; };
-  # The runner's settings `given`, beside crew's module turned on with the
-  # host `host-a` and crew's settings `teams`.
+  crew = t.nixosSystem { services.boomdrive = settings.crew; };
+  hosted = t.nixosSystem { services.boomdrive = settings.hosted; };
+  # The runner's `accounts` and `settings` `given`, beside crew's module
+  # turned on with the host `host-a` and crew's settings `teams`.
   crewWith =
     given: teams:
     t.nixosSystem {
-      services.boomdrive.settings = given;
+      services.boomdrive = given;
       services.crew = {
         enable = true;
         host = "host-a";
@@ -77,13 +77,18 @@ let
     ];
   };
   gardenSettings = settings.crew // {
-    control_plane = settings.crew.control_plane // {
-      crew = garden;
+    settings = settings.crew.settings // {
+      control_plane = settings.crew.settings.control_plane // {
+        crew = garden;
+      };
     };
   };
   writtenOut = crewWith gardenSettings settings.crewFleet;
   writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
   render = import ../modules/toml.nix { inherit lib; };
+  # The table the runner's file is rendered from, `accounts` joined to
+  # `settings` (accounts.nix).
+  tableOf = (import ../modules/accounts.nix { inherit lib; }).fileOf;
   # Another control plane, or none, beside crew's module with one
   # partition on host-a.
   hostedBesideCrew = crewWith settings.hosted settings.crewModule;
@@ -91,7 +96,7 @@ let
   oldSystemd = t.nixosSystem (
     { pkgs, ... }:
     {
-      services.boomdrive.settings = settings.hosted;
+      services.boomdrive = settings.hosted;
       systemd.package = pkgs.systemd.overrideAttrs {
         version = "255";
         __intentionallyOverridingVersion = true;
@@ -226,7 +231,7 @@ in
     ++
       t.expect (writtenTable == garden)
         "settings.control_plane.crew is ${builtins.toJSON writtenTable}, not the table written, ${builtins.toJSON garden}"
-    ++ t.expect (runs writtenOut (render gardenSettings)) "the unit's --config is not the rendering of the settings with the table written";
+    ++ t.expect (runs writtenOut (render (tableOf gardenSettings))) "the unit's --config is not the rendering of the settings with the table written";
 
   "A hosted control plane beside crew on NixOS" =
     t.expect (

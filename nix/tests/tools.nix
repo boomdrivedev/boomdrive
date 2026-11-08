@@ -290,12 +290,13 @@ let
   # alone (design Decision 5): the Boomdrive module adds the runner's own
   # link and nothing else to the tools' activations.
   render = import ../modules/toml.nix { inherit lib; };
+  inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
 
   darwinRunner = t.darwinSystem crewOn;
   runnerLink = builtins.unsafeDiscardStringContext ''
     sudo --user=alice -- /usr/bin/env HOME=/Users/alice \
-      /bin/sh ${../modules/activate.sh} link ${darwinRunner.pkgs.writeText "boomdrive-config.toml" (render darwinRunner.config.services.boomdrive.settings)} || true
+      /bin/sh ${../modules/activate.sh} link ${darwinRunner.pkgs.writeText "boomdrive-config.toml" (render (fileOf darwinRunner.config.services.boomdrive))} || true
   '';
   darwinText = darwinActivation darwinRunner;
   darwinRest = linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText);
@@ -351,7 +352,7 @@ let
     platform:
     { system, ... }:
     failsNaming "a ${platform} system under crew with neither a table nor crew's module"
-      (system { services.boomdrive.settings = settings.crewUnwritten; })
+      (system { services.boomdrive = settings.crewUnwritten; })
       [
         "settings.control_plane.crew"
         "services.crew"
@@ -365,7 +366,7 @@ let
     failsNaming "a ${platform} system under crew with no partition on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
-        services.boomdrive.settings = settings.crewUnwritten;
+        services.boomdrive = settings.crewUnwritten;
       })
       [
         "services.crew.host"

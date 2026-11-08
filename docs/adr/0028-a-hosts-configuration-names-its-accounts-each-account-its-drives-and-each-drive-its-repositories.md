@@ -112,3 +112,16 @@ Amends record 0009's amendment of 2026-11-07 in its key `repositories`, which th
 - **A local layer not taken removes no workspace.** While it stands, a pass sets no drive's workspace and removes none, a departed drive's among them, since the drive it could not be read for may be that one.
 
 core.17's details are amended in this amendment's commit with what it rules out and allows.
+
+## Amendment, 2026-11-08: the module's options
+
+Status: decided on 2026-11-08 by the construct stage of the change `each-repository-is-named-once-by-its-owner`. These are choices this record leaves to the Boomdrive module, made on the written rules, each cheap to change. The change's design gives the path not taken for each.
+
+- **One option names the accounts.** `services.boomdrive.accounts` names each account, its drives, and each drive's `machine`, `stream` and `repositories` by owner. The module writes the runner's `accounts` from it, and `services.boomdrive.settings` holds the rest of the runner's file. A host's own `settings.accounts` fails evaluation, naming `services.boomdrive.accounts`. Not taken: both, merged, which would let a repository be named in two places, one of them giving it no stream.
+- **The order.** A drive's repositories are written owner by owner, in the order of the owners' names, each owner's names in the order given, since nix keeps no order of an attribute set's names. A drive's workspace lists its folders in that order (record 0017).
+- **A drive's stream keys.** `stream.name`, the drive's own name by default; `stream.agents`, 4; `stream.priority`, Flume's own where unset; and `stream.labels.<label>.reserve`, `operation` 1 and `planning` 2, each default kept where a drive sets another label. Every other key of a stream, a label's `keep_free` among them, is set in Flume's own `services.flume.settings.streams.<stream>`, which merges with what the module gives. Not taken: a drive holding every key of Flume's stream, a second option for each of Flume's keys (core.46).
+- **A host's own Flume settings win.** The module gives each stream's keys and each repository's `stream` to Flume's options at their default priority, as it gives each tool's package, so a value the host sets in `services.flume.settings` wins. Where no drive of this host is named, it gives Flume nothing. It gives nothing while the runner is not enabled. Not taken: the module's values at the normal priority, which a host's own value for the same key would conflict with.
+- **This host is crew's host.** A drive's `machine` names a host as crew's partitions name one, and is compared with `services.crew.host`. A drive whose `machine` is unset or is that host gives Flume its stream, and one naming another host gives none. A drive that names a `machine` where `services.crew.host` is not set fails evaluation, naming both. Not taken: `networking.hostName`, which NixOS gives `nixos` by default and nix-darwin leaves unset, so a drive could lose its stream with no word.
+- **Named once, at evaluation.** A drive's name under two accounts, an address kept twice, and a stream given by two drives each fail evaluation, naming what is given twice. The runner still refuses the first two at its start.
+
+core.46's details are amended in this amendment's commit with what it allows.

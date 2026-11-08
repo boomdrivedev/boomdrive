@@ -1,7 +1,8 @@
-# The service-modules spec's three settings, each rendered to its file
-# under nix/tests/files, and crew's own, by the names of core.41: the
-# accounts `own`, `home` and `work`, the drives `home` and `garden`, and
-# crew's hosts `host-a` and `host-b`.
+# The service-modules spec's three values of services.boomdrive less its
+# `enable`, its `accounts` and `settings`, each rendered to its file under
+# nix/tests/files, and crew's own, by the names of core.41: the accounts
+# `own`, `home` and `work`, the drives `home` and `garden`, the owner
+# `agentplot`, and crew's hosts `host-a` and `host-b`.
 let
   # A partition of crew's teams file, services.crew.settings, on the
   # machine `machine`, its state at `state`: every key crew's module asks
@@ -26,23 +27,25 @@ let
 
   # "A host under crew".
   crew = {
-    repository_root = "~/Code";
-    fetch_interval = "2m";
-    code_workspaces = true;
-    accounts.own.drives.home.repositories = [
-      "agentplot/flume"
-      "agentplot/sluice"
+    accounts.own.drives.home.repositories.agentplot = [
+      "flume"
+      "sluice"
     ];
-    control_plane = {
-      type = "crew";
-      crew = {
-        host = "host-a";
-        partitions = [
-          {
-            label = "home";
-            state_repository = "example/state";
-          }
-        ];
+    settings = {
+      repository_root = "~/Code";
+      fetch_interval = "2m";
+      code_workspaces = true;
+      control_plane = {
+        type = "crew";
+        crew = {
+          host = "host-a";
+          partitions = [
+            {
+              label = "home";
+              state_repository = "example/state";
+            }
+          ];
+        };
       };
     };
   };
@@ -58,10 +61,10 @@ in
   # account `work`, with no drive, none.
   hosted = {
     accounts = {
-      home.drives.garden.repositories = [ "agentplot/flume" ];
+      home.drives.garden.repositories.agentplot = [ "flume" ];
       work = { };
     };
-    control_plane = {
+    settings.control_plane = {
       type = "hosted";
       hosted = {
         url = "https://control.example";
@@ -81,8 +84,10 @@ in
 
   # "A host under crew" with no crew table, for the module to write.
   crewUnwritten = crew // {
-    control_plane = {
-      type = "crew";
+    settings = crew.settings // {
+      control_plane = {
+        type = "crew";
+      };
     };
   };
 

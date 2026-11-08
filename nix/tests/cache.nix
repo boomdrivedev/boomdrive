@@ -129,6 +129,23 @@ in
       !lib.hasInfix "services.boomdrive.tools" (toString installing)
     ) "the README's Installing with nix names services.boomdrive.tools";
 
+  # The README names the accounts by owner in services.boomdrive.accounts,
+  # and Flume's own streams for the rest of a drive's stream (the change
+  # each-repository-is-named-once-by-its-owner).
+  "The README's accounts" =
+    lib.concatMap
+      (
+        option:
+        t.expect (lib.hasInfix option (toString installing)) "the README's Installing with nix names no ${option}"
+      )
+      [
+        "services.boomdrive.accounts"
+        "services.flume.settings.streams"
+      ]
+    ++ t.expect (
+      !lib.hasInfix "settings.accounts" (toString installing)
+    ) "the README's Installing with nix names settings.accounts";
+
   "The README's lines" =
     t.expect (installing != null) "the README has no section ## Installing with nix"
     ++
