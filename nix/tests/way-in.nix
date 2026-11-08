@@ -155,7 +155,45 @@ let
     ) "a ${platform} system with no Ghostty fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       !builtins.elem set.ghostty.outPath profile
-    ) "the ${platform} system profile with no Ghostty holds the set's Ghostty";
+    ) "the ${platform} system profile with no Ghostty holds the set's Ghostty"
+    ++
+      t.expect (hostOf evaluated ? terminal_app && (hostOf evaluated).terminal_app == "ghostty")
+        "the ${platform} system with no Ghostty gives Flume's host ${builtins.toJSON (hostOf evaluated)}, its terminal_app no ghostty";
+
+  # Flume's `[host]`, as Flume's module gives it (design Decision 7).
+  hostOf = evaluated: evaluated.config.services.flume.settings.host or null;
+  hostIs =
+    platform: given: expected:
+    let
+      evaluated = platforms.${platform}.system given;
+      host = hostOf evaluated;
+      held = lib.mapAttrs (key: _: host.${key} or null) expected;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (held == expected)
+        "the ${platform} system gives Flume's host ${builtins.toJSON held}, not ${builtins.toJSON expected}";
+
+  flumesTerminal =
+    platform: _:
+    hostIs platform { } {
+      multiplexer = "herdr";
+      terminal_app = "ghostty";
+    };
+  hostsWindow =
+    platform: _:
+    hostIs platform { services.flume.settings.host.terminal_app = "terminal"; } {
+      multiplexer = "herdr";
+      terminal_app = "terminal";
+    };
+  wordOfBefore =
+    platform: _:
+    hostIs platform { services.flume.settings.host.terminal = "herdr"; } {
+      terminal = "herdr";
+      multiplexer = null;
+    };
 
   withoutRunner =
     platform:
@@ -184,3 +222,6 @@ in
 // onEach "A host's own herdr" hostsHerdr
 // onEach "No Ghostty of the set's" noGhostty
 // onEach "Not without the runner" withoutRunner
+// onEach "Flume's terminal and window" flumesTerminal
+// onEach "A host's own window" hostsWindow
+// onEach "The word of before" wordOfBefore

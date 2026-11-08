@@ -8,7 +8,10 @@
 # whatever nixpkgs the host runs (core.47); a host's own replaces it, and
 # `null` installs none. With the runner enabled they go in the system
 # profile; without it, none does. The plugins are linked by the platform's
-# activation, darwin.nix's and nixos.nix's, with herdr's own command.
+# activation, darwin.nix's and nixos.nix's, with herdr's own command. With
+# the runner enabled, Flume's module is told herdr and Ghostty, its
+# `host.multiplexer` and `host.terminal_app`, each by default, so a host's
+# own wins, and whether or not the host keeps the set's herdr and Ghostty.
 { packages }:
 {
   config,
@@ -66,5 +69,15 @@ in
       cfg.ghostty.package
       cfg.launcher.package
     ];
+
+    # Flume's terminal and window (design Decision 7). `terminal` is the word
+    # a host wrote before for `multiplexer`, which Flume reads as it and
+    # refuses beside it (Flume's C.7), so where the host gives it no
+    # `multiplexer` is set. Flume's module declares no `terminal`, so the
+    # condition reads no definition it guards.
+    services.flume.settings.host = {
+      multiplexer = lib.mkIf (!(config.services.flume.settings.host ? terminal)) (lib.mkDefault "herdr");
+      terminal_app = lib.mkDefault "ghostty";
+    };
   };
 }

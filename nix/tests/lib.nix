@@ -53,7 +53,8 @@ let
 
   # Flume's, sluice's and crew's own modules alone, each from its own
   # flake, turned on with the set's packages, crew's settings for host-a,
-  # and on NixOS the user alice (design Decision 8).
+  # Flume's terminal and window as the Boomdrive module gives them
+  # (way-in.nix), and on NixOS the user alice (design Decision 8).
   settings = import ./settings.nix;
   toolsOf =
     platform: set: extra:
@@ -68,6 +69,10 @@ let
           flume = {
             enable = true;
             package = set.flume;
+            settings.host = {
+              multiplexer = "herdr";
+              terminal_app = "ghostty";
+            };
           };
           sluice = {
             enable = true;
