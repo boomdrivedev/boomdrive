@@ -33,4 +33,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 5. The words
 
 - [x] 5.1 The README's control pass says the runner carries out each retry, land, drop, priority or done as Flume's own command on the launch's place. It says a land is `flume retry <place> --submission`, whatever the launch's kind, and that a bolt is landed on a land, whose answer is Flume's. It no longer says a bolt's send is a retry naming its submission (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 5.2 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive land-is-the-message-for-a-works-landing --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 5.2 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive land-is-the-message-for-a-works-landing --yes`, `sluice exec main -- moon run root:specs` passes.
