@@ -571,3 +571,22 @@ fn previews_wait_for_the_next_pass_once_it_is_due() {
         "{lines:?}"
     );
 }
+
+/// The previews spec's "A preview's lease refused": the preview leaves
+/// the report, left on the host as sluice holds it, and nothing is run
+/// against it (design Decision 8; core.10).
+#[test]
+fn a_previews_lease_refused() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    plane.refuse(id("home/30"), "lease 1 is replaced by 2");
+    let (_, lines) = bench.pass(&mut plane);
+    assert!(!bench.report().previews.contains_key(&id("home/30")));
+    let line = "home/30: let go, its lease no longer this runner's: lease 1 is replaced by 2: \
+                its preview is left on this host as sluice holds it";
+    assert!(lines.contains(&line.to_string()), "{lines:?}");
+    assert!(calls_of(&bench, "release").is_empty());
+}
