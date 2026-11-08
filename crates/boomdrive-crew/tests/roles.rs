@@ -15,10 +15,10 @@ use common::{
 };
 use std::collections::BTreeMap;
 
-const PLACE: &str = "/places/crew-planner--madswan";
+const PLACE: &str = "/places/crew-planner--home";
 
 fn kept() -> Hello {
-    hello(&["afterthought/blueprints", "afterthought/crew"], "4")
+    hello(&["example/blueprints", "example/crew"], "4")
 }
 
 fn ask(n: u64, role: &str) -> String {
@@ -38,9 +38,9 @@ fn turn(n: u64, took: &[&str], ended: bool, superseded: Option<u64>) -> String {
     let mut fields: Vec<(&str, String)> = vec![
         ("Turn", number),
         ("Role", "planner".to_string()),
-        ("Run", "madswan-planner".to_string()),
-        ("Place", "crew-planner--madswan".to_string()),
-        ("Host", "deneb".to_string()),
+        ("Run", "home-planner".to_string()),
+        ("Place", "crew-planner--home".to_string()),
+        ("Host", "host-a".to_string()),
     ];
     fields.extend(took.iter().map(|t| ("Took", t.to_string())));
     fields.push(("Began", "2026-11-01T09:10:00Z".to_string()));
@@ -61,11 +61,11 @@ fn asks_rec(asks: &[String], turns: &[String]) -> String {
     format!("{}\n{}", file(ASKS, asks), file(TURNS, turns))
 }
 
-/// `madswan/main` holding the planner's role on deneb, `asks`, `turns`
+/// `home/main` holding the planner's role on host-a, `asks`, `turns`
 /// and `requests`.
 fn main_with(state: &State, asks: &[String], turns: &[String], requests: &[String]) {
     state.main(&[
-        ("roles.rec", &file(ROLES, &[role("planner", "deneb")])),
+        ("roles.rec", &file(ROLES, &[role("planner", "host-a")])),
         ("asks.rec", &asks_rec(asks, turns)),
         ("requests.rec", &file(REQUESTS, requests)),
     ]);
@@ -87,20 +87,20 @@ fn waiting(why: &str, stage: Option<&str>, stalled: bool) -> String {
 /// The planner's offer `k`, as crew's role record gives it.
 fn planner(k: u64) -> Want {
     Want::Offer(Offer {
-        id: Id::new(format!("madswan/planner/{k}")),
+        id: Id::new(format!("home/planner/{k}")),
         lease: Lease {
             number: 1,
             expires: None,
         },
         launch: Launch {
-            repository: "afterthought/blueprints".to_string(),
+            repository: "example/blueprints".to_string(),
             kind: "crew/crew-planner".to_string(),
-            name: "madswan".to_string(),
+            name: "home".to_string(),
             base: None,
             brief: None,
-            stream: Some("madswan-main".to_string()),
+            stream: Some("home-main".to_string()),
             priority: Some(0),
-            intent: Some("madswan-planner".to_string()),
+            intent: Some("home-planner".to_string()),
             recipients: vec![],
             holds: vec![],
             hold_submission: false,
@@ -118,7 +118,7 @@ fn planner(k: u64) -> Want {
 fn run(k: u64, outcome: Outcome, place: Option<&str>, status: Option<&str>) -> Report {
     let mut report = Report::default();
     report.launches.insert(
-        Id::new(format!("madswan/planner/{k}")),
+        Id::new(format!("home/planner/{k}")),
         Launched {
             lease: Lease {
                 number: 1,
@@ -142,7 +142,7 @@ fn run(k: u64, outcome: Outcome, place: Option<&str>, status: Option<&str>) -> R
 }
 
 fn wants(state: &State, report: &Report) -> Vec<Want> {
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     crew.pull(&kept(), report).expect("a pull").wants
 }
 
@@ -212,15 +212,15 @@ fn a_superseded_turn_answers_nothing() {
 fn a_role_of_another_host() {
     let state = State::new();
     state.main(&[
-        ("roles.rec", &file(ROLES, &[role("planner", "vega")])),
+        ("roles.rec", &file(ROLES, &[role("planner", "host-b")])),
         ("asks.rec", &asks_rec(&[ask(1, "planner")], &[])),
     ]);
     assert_eq!(wants(&state, &Report::default()), []);
 }
 
-/// vega's branch, its places.rec holding `places`, as vega's runner
+/// host-b's branch, its places.rec holding `places`, as host-b's runner
 /// writes it; `runner` its runner.rec.
-fn vega_places(state: &State, runner: &str, places: &[(u64, &str)]) {
+fn host_b_places(state: &State, runner: &str, places: &[(u64, &str)]) {
     let places: BTreeMap<u64, weir_capture::rec::Record> = places
         .iter()
         .map(|(n, status)| {
@@ -233,7 +233,7 @@ fn vega_places(state: &State, runner: &str, places: &[(u64, &str)]) {
         })
         .collect();
     state.commit(
-        "madswan/runner/vega",
+        "home/runner/host-b",
         &[
             ("runner.rec", runner),
             ("answers.rec", &write::answers_text(&BTreeMap::new())),
@@ -242,15 +242,15 @@ fn vega_places(state: &State, runner: &str, places: &[(u64, &str)]) {
     );
 }
 
-/// Launch 7 for vega, its recipient the planner.
+/// Launch 7 for host-b, its recipient the planner.
 fn asking_launch() -> String {
     launch(
         7,
-        Some("vega"),
+        Some("host-b"),
         "fix/main/crew/x",
-        "afterthought/crew",
+        "example/crew",
         "x",
-        &[("Recipient", "madswan/planner"), ("Hold", "submission")],
+        &[("Recipient", "home/planner"), ("Hold", "submission")],
     )
 }
 
@@ -258,8 +258,8 @@ fn asking_launch() -> String {
 fn another_hosts_place_asks_the_planner() {
     let state = State::new();
     main_with(&state, &[], &[], &[asking_launch()]);
-    let runner = write::runner_text("vega", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
-    vega_places(
+    let runner = write::runner_text("host-b", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
+    host_b_places(
         &state,
         &runner,
         &[(7, &waiting("answer", Some("code"), false))],
@@ -276,8 +276,8 @@ fn the_place_taken_by_an_ended_turn_is_no_longer_pending() {
         &[turn(1, &["place/7@1793440000"], true, None)],
         &[asking_launch()],
     );
-    let runner = write::runner_text("vega", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
-    vega_places(
+    let runner = write::runner_text("host-b", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
+    host_b_places(
         &state,
         &runner,
         &[(7, &waiting("answer", Some("code"), false))],
@@ -289,7 +289,7 @@ fn the_place_taken_by_an_ended_turn_is_no_longer_pending() {
 fn a_place_lost_past_its_bound_held_or_stalled_waits_on_the_role() {
     let state = State::new();
     main_with(&state, &[], &[], &[asking_launch()]);
-    let runner = write::runner_text("vega", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
+    let runner = write::runner_text("host-b", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
     for (status, wanted) in [
         (waiting("lost", Some("code"), false), true),
         (waiting("past_bound", Some("code"), false), true),
@@ -299,7 +299,7 @@ fn a_place_lost_past_its_bound_held_or_stalled_waits_on_the_role() {
         (waiting("never_begun", Some("code"), false), false),
         (waiting("delivered", None, false), false),
     ] {
-        vega_places(&state, &runner, &[(7, &status)]);
+        host_b_places(&state, &runner, &[(7, &status)]);
         let expected = if wanted { vec![planner(1)] } else { vec![] };
         assert_eq!(wants(&state, &Report::default()), expected, "{status}");
     }
@@ -309,16 +309,19 @@ fn a_place_lost_past_its_bound_held_or_stalled_waits_on_the_role() {
 fn a_host_whose_branch_does_not_parse() {
     let state = State::new();
     main_with(&state, &[], &[], &[asking_launch()]);
-    let broken = write::runner_text("deneb", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
-    vega_places(
+    let broken = write::runner_text("host-a", "boomdrive 0.0.0", "2026-11-01T09:00:00Z");
+    host_b_places(
         &state,
         &broken,
         &[(7, &waiting("answer", Some("code"), false))],
     );
-    let (mut crew, said) = state.crew("deneb");
+    let (mut crew, said) = state.crew("host-a");
     assert_eq!(pull(&mut crew, &kept()).wants, []);
     assert!(
-        said.holds(&["vega's runner can't be read", "runner.rec names host deneb"]),
+        said.holds(&[
+            "host-b's runner can't be read",
+            "runner.rec names host host-a"
+        ]),
         "{:?}",
         said.lines()
     );
@@ -329,16 +332,16 @@ fn a_roles_work_landed() {
     let state = State::new();
     let landed = launch(
         9,
-        Some("deneb"),
+        Some("host-a"),
         "role/planner/record-0053",
-        "afterthought/crew",
+        "example/crew",
         "record-0053",
-        &[("Recipient", "madswan/planner"), ("Stream", "madswan-main")],
+        &[("Recipient", "home/planner"), ("Stream", "home-main")],
     );
     main_with(&state, &[], &[], &[landed]);
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/9"),
+        Id::new("home/9"),
         Launched {
             lease: Lease {
                 number: 1,
@@ -368,11 +371,11 @@ fn a_roles_work_landed() {
         &[turn(1, &["landed/9"], true, None)],
         &[launch(
             9,
-            Some("deneb"),
+            Some("host-a"),
             "role/planner/record-0053",
-            "afterthought/crew",
+            "example/crew",
             "record-0053",
-            &[("Recipient", "madswan/planner"), ("Stream", "madswan-main")],
+            &[("Recipient", "home/planner"), ("Stream", "home-main")],
         )],
     );
     assert_eq!(wants(&state, &report).len(), 1);
@@ -398,17 +401,17 @@ fn a_run_on_the_branch_before_the_first_report() {
     main_with(&state, &[ask(1, "planner")], &[], &[]);
     let live = status(serde_json::json!({"place": PLACE, "phase": "live"}));
     let mut run = weir_capture::rec::Record::new();
-    run.push("Address", "madswan/planner");
+    run.push("Address", "home/planner");
     run.push("Place", PLACE);
     run.push("At", "2026-11-01T10:00:00Z");
     run.push("Status", live);
-    let runs: BTreeMap<String, _> = [("madswan/planner".to_string(), run)].into();
+    let runs: BTreeMap<String, _> = [("home/planner".to_string(), run)].into();
     state.commit(
-        "madswan/runner/deneb",
+        "home/runner/host-a",
         &[
             (
                 "runner.rec",
-                &write::runner_text("deneb", "boomdrive 0.0.0", "2026-11-01T09:00:00Z"),
+                &write::runner_text("host-a", "boomdrive 0.0.0", "2026-11-01T09:00:00Z"),
             ),
             ("places.rec", &write::places_text(&BTreeMap::new(), &runs)),
         ],
@@ -431,8 +434,8 @@ fn a_turn_delivered() {
     assert_eq!(
         given[2],
         Want::Act(Act {
-            id: Id::new("madswan/planner/2/done"),
-            launch: Id::new("madswan/planner/2"),
+            id: Id::new("home/planner/2/done"),
+            launch: Id::new("home/planner/2"),
             lease: 1,
             what: ActSort::Done,
         })
@@ -450,9 +453,9 @@ fn a_run_done_or_tidied_stands_no_more() {
     let place = value["status"]["places"][0]["place"].as_str().unwrap();
     let mut report = run(2, Outcome::Launched, Some(place), Some(&delivered));
     report.acts.insert(
-        Id::new("madswan/planner/2/done"),
+        Id::new("home/planner/2/done"),
         boomdrive_control::Acted {
-            launch: Id::new("madswan/planner/2"),
+            launch: Id::new("home/planner/2"),
             lease: 1,
             outcome: Outcome::Done,
             words: None,
@@ -476,7 +479,7 @@ fn a_run_waiting_for_room_keeps_its_id() {
     report.launches.extend(run(2, Outcome::Launched, Some(PLACE), Some(&status(
         serde_json::json!({"place": format!("{PLACE}@1793474400"), "phase": {"tidied": {"over": "done"}}}),
     ))).launches);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     let offered = |crew: &mut boomdrive_crew::Crew, report: &Report| {
         let pulled = crew.pull(&kept(), report).expect("a pull");
         ids(&pulled)
@@ -485,26 +488,18 @@ fn a_run_waiting_for_room_keeps_its_id() {
     // same run is offered again.
     assert_eq!(
         offered(&mut crew, &report),
-        [
-            "madswan/planner/1",
-            "madswan/planner/2",
-            "madswan/planner/3"
-        ]
+        ["home/planner/1", "home/planner/2", "home/planner/3"]
     );
     assert_eq!(
         offered(&mut crew, &report),
-        [
-            "madswan/planner/1",
-            "madswan/planner/2",
-            "madswan/planner/3"
-        ]
+        ["home/planner/1", "home/planner/2", "home/planner/3"]
     );
     // Recorded refused, the next is offered.
     report
         .launches
         .extend(run(3, Outcome::Refused, None, None).launches);
     let pulled = crew.pull(&kept(), &report).expect("a pull");
-    assert_eq!(want(&pulled, "madswan/planner/4"), &planner(4));
+    assert_eq!(want(&pulled, "home/planner/4"), &planner(4));
 }
 
 #[test]
@@ -516,26 +511,26 @@ fn a_dones_refusal_is_the_runs_words() {
     let place = value["status"]["places"][0]["place"].as_str().unwrap();
     let mut report = run(2, Outcome::Launched, Some(place), Some(&delivered));
     report.acts.insert(
-        Id::new("madswan/planner/2/done"),
+        Id::new("home/planner/2/done"),
         boomdrive_control::Acted {
-            launch: Id::new("madswan/planner/2"),
+            launch: Id::new("home/planner/2"),
             lease: 1,
             outcome: Outcome::Refused,
             words: Some("its agent is not quiet".to_string()),
             at: At::parse("2026-11-01T10:05:00Z").unwrap(),
         },
     );
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     crew.pull(&kept(), &report).expect("a pull");
     crew.report(&report).expect("a report");
-    let places = state.file("madswan/runner/deneb", "places.rec").unwrap();
+    let places = state.file("home/runner/host-a", "places.rec").unwrap();
     let run = places.split("%rec: Run").nth(1).unwrap();
     assert!(
-        run.contains(&format!("\nAddress: madswan/planner\nPlace: {place}\n")),
+        run.contains(&format!("\nAddress: home/planner\nPlace: {place}\n")),
         "{run}"
     );
     assert!(run.ends_with("\nWords: its agent is not quiet\n"), "{run}");
     // The done's own answer is the run's, and no request's.
-    let answers = state.file("madswan/runner/deneb", "answers.rec").unwrap();
+    let answers = state.file("home/runner/host-a", "answers.rec").unwrap();
     assert!(!answers.contains("its agent is not quiet"), "{answers}");
 }
