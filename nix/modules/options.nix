@@ -137,6 +137,9 @@ let
     else
       [ ];
   found = credentials "" cfg.settings;
+
+  # Whether the runner's control plane is crew.
+  crewPlane = (cfg.settings.control_plane.type or null) == "crew";
 in
 {
   imports = [
@@ -189,6 +192,10 @@ in
       {
         assertion = !(cfg.settings ? repositories);
         message = "services.boomdrive.settings.repositories is the flat list of before: each repository is named under its drive, settings.accounts.<account>.drives.<drive>.repositories (record 0028).";
+      }
+      {
+        assertion = !(crewPlane && cfg.settings.control_plane.crew == null);
+        message = "services.boomdrive.settings.control_plane.type is crew, and no services.boomdrive.settings.control_plane.crew is written: write that table, or turn on crew's module, services.crew, with its host and its partitions, and the module writes it from crew's partitions on this host (record 0023).";
       }
     ];
   };

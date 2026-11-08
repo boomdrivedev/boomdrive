@@ -334,6 +334,29 @@ let
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
 
+  # Each of `words` in the failures of `evaluated`, which fails.
+  failsNaming =
+    what: evaluated: words:
+    let
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (t.failures evaluated != [ ]) "${what} evaluates"
+    ++ lib.concatMap (
+      word: t.expect (lib.hasInfix word failures) "the failure of ${what} names no ${word}: ${failures}"
+    ) words;
+
+  # Under crew, with no crew table written and crew's module off (design
+  # Decision 6).
+  neither =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with neither a table nor crew's module"
+      (system { services.boomdrive.settings = settings.crewUnwritten; })
+      [
+        "settings.control_plane.crew"
+        "services.crew"
+      ];
+
   nixosRunner = userScripts (t.nixosSystem crewOn);
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
@@ -348,6 +371,7 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
 // onEach "crew's order" crewOrder
+// onEach "Under crew with neither" neither
 // {
   "The tools' user on NixOS" =
     t.expect (
