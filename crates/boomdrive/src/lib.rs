@@ -24,6 +24,7 @@ pub mod pass;
 pub mod planes;
 pub mod report;
 pub mod run;
+pub mod settle;
 pub mod sluice;
 pub mod terminal;
 pub mod view;

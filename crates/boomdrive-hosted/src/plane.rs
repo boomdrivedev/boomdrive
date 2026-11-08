@@ -351,8 +351,9 @@ impl Partition {
 
     /// The runner's `hello` as this partition's control plane is told it
     /// (design Decision 8): only the repositories its table names, of
-    /// those kept, and only its own leases, their prefixes taken off; the
-    /// host's tools and capacity as every partition's.
+    /// those kept, and none the runner drains, which version 1 cannot name
+    /// (record 0021), and only its own leases, their prefixes taken off;
+    /// the host's tools and capacity as every partition's.
     fn hello(&self, hello: &Hello, capacity: v1::Capacity) -> v1::Hello {
         v1::Hello {
             interface_version: hello.interface_version,
@@ -451,6 +452,7 @@ impl Partition {
                 .map(|(id, launched)| {
                     let launched = Launched {
                         lease: launched.lease,
+                        repository: None,
                         answer: launched.answer,
                         status: None,
                         entry: None,

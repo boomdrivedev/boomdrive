@@ -555,6 +555,7 @@ pub fn launched(answer: Answer, place: Option<&Record>) -> Launched {
     });
     Launched {
         lease: LEASE,
+        repository: None,
         answer,
         status,
         entry: None,

@@ -12,6 +12,7 @@ use crate::config::{self, Address, Config, ControlPlaneTable, Env};
 use crate::git::Git;
 use crate::pass::{self, Outcome};
 use crate::planes::{self, Plane};
+use crate::settle::{self, Settles};
 use crate::terminal::{self, Relays};
 use crate::{clone, flume, hello, report, sluice};
 use boomdrive_control::Wake;
@@ -112,7 +113,8 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
     (last_start + interval).max(now)
 }
 
-/// The programs a control pass runs for Flume, sluice and herdr.
+/// The programs the runner runs for Flume, sluice and herdr: its settle
+/// and its control passes'.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
@@ -153,8 +155,8 @@ struct Control {
     poll_interval: Duration,
     /// The implementation, or why it could not be opened.
     plane: Result<Plane, String>,
-    programs: Programs,
-    /// The terminals relaying, kept across control passes.
+    /// The terminals relaying through the runner's herdr, kept across
+    /// control passes.
     relays: Relays,
     /// Whether the last pull was read, kept across control passes.
     reach: Reach,
@@ -162,10 +164,16 @@ struct Control {
 
 impl Control {
     /// The control plane `table` names, of the configuration file `file`,
-    /// keeping what it keeps under `data`, and waking the runner through
-    /// `notices`. An implementation says its lines on standard error.
-    fn open(table: &ControlPlaneTable, file: &Path, data: &Path, notices: &Notices) -> Control {
-        let programs = Programs::on_path();
+    /// keeping what it keeps under `data`, waking the runner through
+    /// `notices`, and relaying terminals through `programs`' herdr. An
+    /// implementation says its lines on standard error.
+    fn open(
+        table: &ControlPlaneTable,
+        file: &Path,
+        data: &Path,
+        notices: &Notices,
+        programs: &Programs,
+    ) -> Control {
         Control {
             poll_interval: table.poll_interval,
             plane: planes::open(
@@ -178,7 +186,6 @@ impl Control {
                 notices.waker(),
             ),
             relays: programs.relays(),
-            programs,
             reach: Reach::default(),
         }
     }
@@ -192,9 +199,14 @@ pub struct Runner {
     file: PathBuf,
     data: PathBuf,
     config: Config,
+    /// The programs the runner runs for Flume, sluice and herdr, each on
+    /// the host's `PATH` unless a test puts its own in place.
+    programs: Programs,
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
+    /// Whether the last settle was answered, kept across turns.
+    settles: Settles,
     events: Sender<Event>,
     /// The runner's one set of notices, whose wake each control pass
     /// reads.
@@ -233,17 +245,20 @@ impl Runner {
         let lock = lock(&data)?;
         let (events, waiting) = mpsc::channel();
         let notices = Notices::new(events.clone());
+        let programs = Programs::on_path();
         let control = config
             .control_plane
             .as_ref()
-            .map(|table| Control::open(table, &file, &data, &notices));
+            .map(|table| Control::open(table, &file, &data, &notices, &programs));
         Ok(Runner {
             git,
             home: env.home,
             file,
             data,
             config,
+            programs,
             control,
+            settles: Settles::default(),
             events,
             notices,
             waiting,
@@ -279,9 +294,18 @@ impl Runner {
             return Err("the configuration names no control plane".to_string());
         };
         control.plane = Ok(open(wake));
-        control.relays = programs.relays();
-        control.programs = programs;
+        self.tools(programs);
         Ok(())
+    }
+
+    /// Runs `programs` in place of those on the host's `PATH`, its
+    /// terminals relayed through their herdr: how a test runs the loop
+    /// with tools of its own, a control plane named or not.
+    pub fn tools(&mut self, programs: Programs) {
+        if let Some(control) = &mut self.control {
+            control.relays = programs.relays();
+        }
+        self.programs = programs;
     }
 
     /// What tells the runner of landings, and wakes it.
@@ -329,9 +353,10 @@ impl Runner {
 
     /// One keeping pass over the configuration the runner started with,
     /// then, where it names a control plane, one control pass (design
-    /// Decision 5): failed where a git call of the keeping pass failed,
-    /// or the control pass did not pull and report, its control plane
-    /// unopened among it.
+    /// Decision 5), then the settle that ends them (record 0029): failed
+    /// where a git call of the keeping pass failed, or the control pass
+    /// did not pull and report, its control plane unopened among it. A
+    /// settle refused or unanswered is said, and no failure.
     pub fn once(&mut self, say: &mut dyn FnMut(String)) -> Outcome {
         let kept = pass::pass(&self.git, &self.data, &self.config, &self.stop, say);
         let carried = match &self.control {
@@ -343,6 +368,7 @@ impl Runner {
                 _ => Outcome::Failed,
             },
         };
+        self.settle(self.config.fetch_interval, say);
         kept.and(carried)
     }
 
@@ -354,16 +380,20 @@ impl Runner {
     /// plane's work, a control pass follows the first keeping pass, then
     /// one each `poll_interval` after the start of the one before, sooner,
     /// after a pass that reported, before a lease not yet lapsed lapses,
-    /// and at once when the control plane wakes the runner. Between
-    /// passes, each landing it is told of is kept at once. Stopped, it
-    /// keeps no further repository and says so.
+    /// and at once when the control plane wakes the runner. Each turn
+    /// that ran a pass, keeping, control or both, ends with one settle of
+    /// every place, before the runner waits (record 0029). Between passes,
+    /// each landing it is told of is kept at once. Stopped, it keeps no
+    /// further repository, begins no settle, and says so.
     pub fn keep(&mut self, say: &mut dyn FnMut(String)) {
         let mut started = Some(self.config.clone());
         let mut fetch_interval = self.config.fetch_interval;
         let mut keep_due = Instant::now();
         let mut carry_due = self.carries().then(Instant::now);
         'passes: loop {
+            let mut passed = false;
             if Instant::now() >= keep_due {
+                passed = true;
                 let began = Instant::now();
                 let read = match started.take() {
                     Some(config) => Ok(config),
@@ -382,6 +412,7 @@ impl Runner {
                 break 'passes;
             }
             if carry_due.is_some_and(|due| Instant::now() >= due) {
+                passed = true;
                 let began = Instant::now();
                 let read = config::read(&self.file, &self.home);
                 let poll_interval = self.poll_interval();
@@ -391,6 +422,15 @@ impl Runner {
                 carry_due = self
                     .carry(read, &due, say)
                     .map(|passed| passed.next_due(began, Instant::now(), poll_interval));
+            }
+            if self.stop.load(Ordering::SeqCst) {
+                break 'passes;
+            }
+            // A keeping pass and a control pass run back to back share
+            // one settle, after both, so no launch waits behind a settle
+            // of every place (record 0029).
+            if passed {
+                self.settle(fetch_interval, say);
             }
             loop {
                 if self.stop.load(Ordering::SeqCst) {
@@ -423,6 +463,19 @@ impl Runner {
         matches!(self.control, Some(Control { plane: Ok(_), .. }))
     }
 
+    /// Flume's settle of every place, run once and awaited, which ends a
+    /// turn of passes and keeps Flume's watch over the host (core.13;
+    /// record 0029). Its bound is `fetch_interval`, the one the latest
+    /// reading of the configuration gave, or the shorter of it and
+    /// `poll_interval` while the runner makes control passes. Its answer
+    /// is said only where it changes, and carried and kept nowhere.
+    fn settle(&mut self, fetch_interval: Duration, say: &mut dyn FnMut(String)) {
+        let poll_interval = self.carries().then(|| self.poll_interval());
+        let bound = settle::bound(fetch_interval, poll_interval);
+        let answer = flume::Cli::new(&self.programs.flume).settle_every(bound);
+        self.settles.heard(answer, say);
+    }
+
     /// The interval between control passes, as the configuration said at
     /// start.
     fn poll_interval(&self) -> Duration {
@@ -444,7 +497,6 @@ impl Runner {
     ) -> Option<Passed> {
         let Some(Control {
             plane: Ok(plane),
-            programs,
             relays,
             reach,
             ..
@@ -452,6 +504,7 @@ impl Runner {
         else {
             return None;
         };
+        let programs = &self.programs;
         let unread = |say: &mut dyn FnMut(String), why: String| {
             say(format!("boomdrive: {why}: nothing carried this pass"));
             Some(Passed {
