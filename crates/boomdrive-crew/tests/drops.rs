@@ -287,3 +287,30 @@ fn a_kits_drop_goes_to_the_runner_holding_its_launch() {
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
     assert_eq!(state.tip("madswan/runner/vega"), None);
 }
+
+/// A pull of `crew`, handed `report`, then a report of it: the ids let
+/// go.
+fn let_go(crew: &mut boomdrive_crew::Crew, report: &Report) -> Vec<String> {
+    crew.pull(&kept(), report).expect("a pull");
+    let reported = crew.report(report).expect("a report");
+    reported.let_go.iter().map(Id::to_string).collect()
+}
+
+/// "A held launch dropped is let go": a launch a drop names that the
+/// runner holds unlaunched leaves its files, though its unit is still in
+/// the plan.
+#[test]
+fn a_held_launch_dropped_is_let_go() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+        ],
+        &["u"],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    assert_eq!(let_go(&mut deneb, &held(12)), ["madswan/12"]);
+    assert!(!answers(&state, "deneb").contains_key(&12));
+}
