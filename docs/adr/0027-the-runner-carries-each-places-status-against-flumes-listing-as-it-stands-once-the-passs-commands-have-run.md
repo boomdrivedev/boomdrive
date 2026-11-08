@@ -4,12 +4,12 @@ title: The runner carries each place's status against Flume's listing as it stan
 status: accepted
 date: 2026-11-07
 decision-makers:
-- agentplot-design
+- the design agent
 ---
 
 # The runner carries each place's status against Flume's listing as it stands once the pass's commands have run
 
-Status: accepted on 2026-11-08 by agentplot-design. The direction is the chore `the-runner-reads-a-tidied-places-record`'s brief, quoted below, and when the listing is read again is its code stage's choice, made on this repository's rules and Flume's statement. Neither is a choice of the user's alone, and both are cheap to change, so the design agent settles them.
+Status: accepted on 2026-11-08 by the design agent. The direction is the chore `the-runner-reads-a-tidied-places-record`'s brief, quoted below, and when the listing is read again is its code stage's choice, made on this repository's rules and Flume's statement. Neither is a choice of the user's alone, and both are cheap to change, so the design agent settles them.
 
 Deciders: the chore's brief, for the direction; the code stage, for how it is met.
 Sources: the chore's brief, 2026-11-07, and the design agent's signal behind it; a host's runner report and Flume's listing on 2026-11-07; Flume's statement, clauses 43 and 62, and its `keep_for_ends` and `status`; records 0002, 0021 and 0026; rules core.1, core.9 and core.11; the work-into-flume spec.
