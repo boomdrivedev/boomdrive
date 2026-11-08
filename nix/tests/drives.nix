@@ -202,6 +202,36 @@ let
         "garden"
       ]
     ) "the ${platform} system's Flume streams are ${toString names}, not garden alone";
+
+  # A host's own values in Flume's settings, at the normal priority.
+  hostsOwn =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (home { }) ];
+        services.flume.settings = {
+          streams.home = {
+            agents = 6;
+            labels.operation.keep_free = 1;
+          };
+          repos."agentplot/flume".stream = "other";
+        };
+      };
+      keepFree = (flumeOf evaluated).streams.home.labels.operation.keep_free or null;
+    in
+    holds platform evaluated "home" {
+      agents = 6;
+      priority = null;
+      reserves = {
+        operation = 1;
+        planning = 2;
+      };
+    }
+    ++
+      t.expect (keepFree == 1)
+        "the ${platform} system's Flume stream home keeps ${builtins.toJSON keepFree} free for operation, not 1"
+    ++ reposHold platform evaluated { "agentplot/flume" = "other"; };
 in
 onEach "A drive's stream by default" byDefault
 // onEach "A drive that writes only what it changes" onlyChanges
@@ -209,3 +239,4 @@ onEach "A drive's stream by default" byDefault
 // onEach "A drive's stream changes nothing of the runner's" nothingOfTheRunners
 // onEach "Each address given its drive's stream" eachAddress
 // onEach "A stream named other than its drive" namedOther
+// onEach "A host's own room and rule" hostsOwn
