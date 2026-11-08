@@ -8,8 +8,8 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 1. The interface
 
-- [ ] 1.1 `boomdrive-control`'s `Want` gains `Preview(Preview)`: `id`, `lease`, `repository`, `branch`, `revision` and `done`, written as `{"preview": {…}}`. `Want::id` gives its id, and `lib.rs` re-exports `Preview` (design Decision 1). True when `devenv shell -- cargo test -p boomdrive-control --test json a_preview_of_each_kind` passes, proving the control-plane-interface spec's "A preview of each kind".
-- [ ] 1.2 `Report` gains `previews: BTreeMap<Id, Previewed>`, serde `default` and skipped where empty. `Previewed` is as design Decision 9 has it. `Report::leases` names each preview's lease, and `Outcome`'s documentation says a preview is `held`, `done` or `refused`. `shared.rs`'s report takes `previews`. True when `devenv shell -- cargo test -p boomdrive-control --test json` passes with:
+- [x] 1.1 `boomdrive-control`'s `Want` gains `Preview(Preview)`: `id`, `lease`, `repository`, `branch`, `revision` and `done`, written as `{"preview": {…}}`. `Want::id` gives its id, and `lib.rs` re-exports `Preview` (design Decision 1). True when `devenv shell -- cargo test -p boomdrive-control --test json a_preview_of_each_kind` passes, proving the control-plane-interface spec's "A preview of each kind".
+- [x] 1.2 `Report` gains `previews: BTreeMap<Id, Previewed>`, serde `default` and skipped where empty. `Previewed` is as design Decision 9 has it. `Report::leases` names each preview's lease, and `Outcome`'s documentation says a preview is `held`, `done` or `refused`. `shared.rs`'s report takes `previews`. True when `devenv shell -- cargo test -p boomdrive-control --test json` passes with:
   - `a_report_holding_a_preview`, writing and reading back a report holding a preview answered `held` with a carried status, under `"previews"`;
   - `a_report_from_before_reads`, finding a report's JSON with no `previews` read as holding none and written back with no `previews`;
   - `a_previews_lease_among_the_reports_leases`, finding a report holding launch `a` under lease 3 and preview `p` under lease 5 give `a` with 3 and `p` with 5 as its leases.
