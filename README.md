@@ -378,7 +378,12 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `<label>/runner/<host>`, in crew's formats: `runner.rec`, `answers.rec`
 and `places.rec`. It pushes no other ref, and never with force. A
 kit's launch that names no host is claimed on that branch, and taken
-once no other runner's branch answers it.
+once no other runner's branch answers it. A launch a drop names no
+longer stands, as crew reads it: crew's implementation offers and
+claims no such launch unless the runner launched it, and lets go one
+the runner holds unlaunched. A drop is given to the runner that holds
+its launch, though its work has left the plan, so the runner answers
+it, dropping a launched place by Flume's own command.
 
 Kinds and streams are Flume's host configuration. The runner passes a
 launch's kind to `--kind` as the control plane gave it, a name or an
