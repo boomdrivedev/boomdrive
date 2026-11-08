@@ -507,3 +507,67 @@ fn a_bring_up_and_its_done_in_one_pull() {
     assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
     assert_eq!(report.previews[&id("home/31")].outcome, Outcome::Done);
 }
+
+/// The previews spec's "A launch ahead of a preview": a pull's preview
+/// waits behind every launch it offers (design Decision 7; core.50).
+#[test]
+fn a_launch_ahead_of_a_preview() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let first_call = bench.sluice.dir.path().join("call-1");
+    let sluice_asked_first = std::rc::Rc::new(std::cell::Cell::new(None));
+    let seen = std::rc::Rc::clone(&sluice_asked_first);
+    bench
+        .flume
+        .meanwhile(move |_| seen.set(Some(first_call.exists())));
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        Want::Offer(fakes::offer("a", "a")),
+    ]);
+    bench.pass(&mut plane);
+    assert_eq!(bench.flume.launches().len(), 1);
+    assert_eq!(sluice_asked_first.get(), Some(false), "sluice asked first");
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    assert_eq!(
+        bench.report().previews[&id("home/30")].outcome,
+        Outcome::Done
+    );
+}
+
+/// The previews spec's "Previews wait for the next pass once it is due":
+/// once the next pass is due, a pass runs no preview's command but its
+/// first, counted apart from the acts' (design Decision 7).
+#[test]
+fn previews_wait_for_the_next_pass_once_it_is_due() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        preview("home/32", "main", "R2", false),
+    ]);
+    let due = || !bench.sluice.calls().is_empty();
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
+    let report = bench.report();
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+    assert!(!report.previews.contains_key(&id("home/32")));
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    let line = "boomdrive: the next control pass is due, so 1 preview waits for it";
+    assert!(lines.contains(&line.to_string()), "{lines:?}");
+    assert!(
+        !lines.iter().any(|line| line.contains("act on a place")),
+        "{lines:?}"
+    );
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
+    assert_eq!(
+        bench.report().previews[&id("home/32")].outcome,
+        Outcome::Done
+    );
+    assert!(
+        !lines.iter().any(|line| line.contains("waits for it")),
+        "{lines:?}"
+    );
+}
