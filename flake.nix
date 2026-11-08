@@ -105,6 +105,11 @@
               tag = tagOf (import ./flake.nix).inputs.crew.url;
             };
             inherit (inputs.herdr.packages.${system}) herdr;
+            # Ghostty from the flake's nixpkgs, at the release Flume's window
+            # profile was checked against: built from source on Linux, and on
+            # macOS, where nothing builds its app from source, Ghostty's own
+            # release as `ghostty-bin` gives it (design Decision 2).
+            ghostty = if pkgs.stdenv.hostPlatform.isDarwin then pkgs.ghostty-bin else pkgs.ghostty;
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
         in

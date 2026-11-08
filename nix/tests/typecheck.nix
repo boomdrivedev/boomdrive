@@ -14,6 +14,7 @@ let
     "default"
     "flume"
     "flume-herdr-plugin"
+    "ghostty"
     "herdr"
     "sluice"
     "sluice-herdr-plugin"
