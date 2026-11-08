@@ -31,7 +31,7 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 #### Scenario: The runner is pushed with its tools
 
 - **WHEN** a commit lands on `main`
-- **THEN** each system's job builds `boomdrive`, `flume`, `sluice` and both herdr plugins of that commit, and pushes them to the cache
+- **THEN** each system's job builds `boomdrive`, `flume`, `sluice`, `crew` and both herdr plugins of that commit, and pushes them to the cache
 
 #### Scenario: A package that does not build
 
@@ -59,12 +59,12 @@ The workflow SHALL read the cache's auth token only from 1Password, through a se
 
 ### Requirement: A host substitutes the set, or builds the same paths
 
-The modules' default packages SHALL be the flake's own, made with its locked nixpkgs whatever the host's `pkgs`, so they are the store paths the cache holds. A host whose nix trusts the cache SHALL substitute them, and one that does not SHALL build the same paths from the source the lock names. The modules SHALL add no substituter or key to a host's nix settings.
+The modules' default packages, the runner's and each tool's module's, SHALL be the flake's own, made with its locked nixpkgs whatever the host's `pkgs`, so they are the store paths the cache holds. A host whose nix trusts the cache SHALL substitute them, and one that does not SHALL build the same paths from the source the lock names. The modules SHALL add no substituter or key to a host's nix settings.
 
 #### Scenario: A host's own nixpkgs
 
-- **WHEN** a module is enabled in a system whose `pkgs` carries an overlay of the host's own
-- **THEN** the system profile holds the flake's own `boomdrive`, `flume` and `sluice`, the store paths the flake gives
+- **WHEN** a module is enabled, with crew turned on, in a system whose `pkgs` carries an overlay of the host's own
+- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice` and `crew`, the store paths the flake gives
 
 #### Scenario: The host's trust
 
