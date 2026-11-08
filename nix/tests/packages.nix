@@ -78,10 +78,6 @@ in
 
   "The runner's git crates" = gitCrates "nix/packages/git-crates.nix" runnerLock runnerCrates;
 
-  "Flume's git crates" = gitCrates "nix/packages/flume-git-crates.nix" (builtins.fromTOML (
-    builtins.readFile "${inputs.flume.outPath}/Cargo.lock"
-  )) (import ../packages/flume-git-crates.nix);
-
   "weir moved without its hash" =
     let
       moved = "1111111111111111111111111111111111111111";
@@ -112,30 +108,21 @@ in
       t.expect (named crate) "a Cargo.lock that moves weir fails naming neither ${crate} nor both revisions"
     ) (builtins.attrNames runnerCrates);
 
-  "Flume at its tag" = each (
+  # Flume's flake builds Flume's tagged tree, which carries its version
+  # (design Decision 3): the set's Flume is that package, unchanged.
+  "Flume through its own flake" = each (
     system: packages:
     let
       inherit (packages) flume;
+      own = inputs.flume.packages.${system}.flume;
       version = t.lockedVersion "flume";
     in
-    t.expect (toString flume.src == inputs.flume.outPath)
-      "packages.${system}.flume is made from ${toString flume.src}, not the lock's Flume, ${inputs.flume.outPath}"
+    t.expect (
+      flume.drvPath == own.drvPath
+    ) "packages.${system}.flume is not Flume's flake's packages.${system}.flume"
     ++ t.expect (
       flume.version == version
     ) "packages.${system}.flume says ${flume.version}, not its tag's ${version}"
-  );
-
-  "An overridden input" = eachOf (flake.outputs (inputs // { inherit self; } // { flume = tree; })) (
-    system: packages:
-    let
-      inherit (packages) flume;
-    in
-    t.expect (
-      toString flume.src == tree.outPath
-    ) "packages.${system}.flume, Flume's input replaced, is made from ${toString flume.src}"
-    ++ t.expect (
-      flume.version == "9.9.9"
-    ) "packages.${system}.flume, Flume's input replaced by a tree of 9.9.9, says ${flume.version}"
   );
 
   "sluice through its own flake" = each (

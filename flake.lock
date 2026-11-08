@@ -1,18 +1,28 @@
 {
   "nodes": {
     "flume": {
-      "flake": false,
+      "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
       "locked": {
-        "lastModified": 1793916004,
-        "narHash": "sha256-Y7YqB+/tN6qLdxouIXwq7ZYw31NihEqvyDWLXiw0ASY=",
+        "lastModified": 1794157966,
+        "narHash": "sha256-cqlcgf2K5zZ0hvS8B/GfYxRRPs0XQfgR42jtJOsgAsA=",
         "owner": "agentplot",
         "repo": "flume",
-        "rev": "448dd92e6ef810fefaf34e5e8de98de57b4b70bb",
+        "rev": "96e2b6777ed0f9ba7adba06b5328d765a7bfc743",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.10.0",
+        "ref": "v0.18.0",
         "repo": "flume",
         "type": "github"
       }

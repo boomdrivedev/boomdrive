@@ -31,10 +31,11 @@
       inputs.rust-overlay.follows = "rust-overlay";
       inputs.nix-darwin.follows = "nix-darwin";
     };
-    # Flume publishes no flake yet: nix/packages/flume.nix builds its tag.
     flume = {
-      url = "github:agentplot/flume/v0.10.0";
-      flake = false;
+      url = "github:agentplot/flume/v0.18.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+      inputs.nix-darwin.follows = "nix-darwin";
     };
     # The tests' nix-darwin. A host's configuration follows its own, which
     # changes none of the packages.
@@ -70,10 +71,7 @@
           };
           tools = {
             boomdrive = pkgs.callPackage ./nix/packages/boomdrive.nix { platforms = systems; };
-            flume = pkgs.callPackage ./nix/packages/flume.nix {
-              src = inputs.flume;
-              platforms = systems;
-            };
+            flume = inputs.flume.packages.${system}.flume;
             sluice = import ./nix/packages/sluice.nix {
               inherit lib;
               package = inputs.sluice.packages.${system}.default;
