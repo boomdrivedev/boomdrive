@@ -2,7 +2,7 @@
 
 Build the tasks in order. A task is true once the check it names passes, run as it names it.
 
-- Every test runs over a bare state repository in a temporary folder, through `crates/boomdrive-crew/tests/common`, with neutral names: partition `madswan`, hosts `deneb` and `vega` (core.41). No test reads the user's configuration, touches a real place or state repository, or reaches the network.
+- Every test runs over a bare state repository in a temporary folder, through `crates/boomdrive-crew/tests/common`, with neutral names: partition `home`, hosts `host-a` and `host-b` (core.41). No test reads the user's configuration, touches a real place or state repository, or reaches the network.
 - Each new test goes in `crates/boomdrive-crew/tests/drops.rs`, named as design Decision 6's table names it.
 - No task adds a crate, a tool or a tracked file type (core.7, core.8). Nothing outside the files proposal.md's Touches lists is changed.
 

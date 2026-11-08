@@ -111,7 +111,7 @@ The crew-control-plane spec gains "A request whose work has left crew's plan is 
 
 ### 6. The tests
 
-Every test runs over a bare state repository in a temporary folder, through `tests/common`, with neutral names: partition `madswan`, hosts `deneb` and `vega`, units `u` and `a` (core.41). They go in a new file, `crates/boomdrive-crew/tests/drops.rs`, one test per scenario:
+Every test runs over a bare state repository in a temporary folder, through `tests/common`, with neutral names: partition `home`, hosts `host-a` and `host-b`, units `u` and `a` (core.41). They go in a new file, `crates/boomdrive-crew/tests/drops.rs`, one test per scenario:
 
 | Test | The spec's scenario |
 |---|---|
