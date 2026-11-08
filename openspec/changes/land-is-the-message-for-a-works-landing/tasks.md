@@ -17,7 +17,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - `act_unlaunched` refuses it, naming where the launch stands, as it refuses a retry or a done.
 
   (design Decisions 2 to 4; Task notes 2.1.) True when `devenv shell -- cargo test -p boomdrive --test acts a_land` passes, proving the work-into-flume spec's "A land".
-- [ ] 2.2 A land of a launch held on its After is refused with the words a retry of it is given, runs no `flume retry`, and leaves the launch to be made as its offer gives it (design Decision 4; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test after a_land_of_a_held_launch` passes, proving the work-into-flume spec's "A land of a held launch".
+- [x] 2.2 A land of a launch held on its After is refused with the words a retry of it is given, runs no `flume retry`, and leaves the launch to be made as its offer gives it (design Decision 4; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test after a_land_of_a_held_launch` passes, proving the work-into-flume spec's "A land of a held launch".
 - [ ] 2.3 A bolt's send is a land, carried out as `flume --json retry <place> --submission`, and Flume's refusal of it is the act's answer. `tests/bolts.rs` sends it as `ActSort::Land`, and its module documentation says so (design Decision 2; Task notes 2.3). True when `devenv shell -- cargo test -p boomdrive --test bolts` passes with `a_bolts_send` and `a_send_flume_refuses`, proving the work-into-flume spec's "A bolt's send" and "A send Flume refuses".
 
 ## 3. crew's implementation reads a land
