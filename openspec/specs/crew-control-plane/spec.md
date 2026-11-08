@@ -128,18 +128,18 @@ A claim SHALL stand on the runner's branch until the runner's report answers its
 
 #### Scenario: A claim waiting for its stream's room
 
-- **WHEN** `deneb` holds the claim of launch 20 and the runner leaves the offer unanswered for want of room in its stream
-- **THEN** the report's write keeps request 20's claim on `madswan/runner/deneb`, and the next pull gives the offer again
+- **WHEN** `host-a` holds the claim of launch 20 and the runner leaves the offer unanswered for want of room in its stream
+- **THEN** the report's write keeps request 20's claim on `home/runner/host-a`, and the next pull gives the offer again
 
 #### Scenario: A claim found again after a stop
 
-- **WHEN** `deneb`'s runner stopped between its claim of launch 20 and its check, and starts again with `madswan/runner/vega` answering 20 as well
-- **THEN** `deneb`'s first pull withdraws its claim of 20 and gives nothing for it
+- **WHEN** `host-a`'s runner stopped between its claim of launch 20 and its check, and starts again with `home/runner/host-b` answering 20 as well
+- **THEN** `host-a`'s first pull withdraws its claim of 20 and gives nothing for it
 
 #### Scenario: A claimed launch dropped
 
-- **WHEN** `madswan/runner/deneb` holds `deneb`'s claim of launch 20, the runner left the offer unanswered for want of room, and request 21, naming no `Host`, drops 20
-- **THEN** `deneb`'s pull gives nothing for 20 or 21, and its next report's write leaves `madswan/runner/deneb` holding no answer to 20
+- **WHEN** `home/runner/host-a` holds `host-a`'s claim of launch 20, the runner left the offer unanswered for want of room, and request 21, naming no `Host`, drops 20
+- **THEN** `host-a`'s pull gives nothing for 20 or 21, and its next report's write leaves `home/runner/host-a` holding no answer to 20
 
 ### Requirement: A withdrawn launch is claimed again in the name order of its claimants
 
@@ -324,12 +324,12 @@ A drop naming this host or none SHALL be given, whatever `plan.rec` holds, where
 #### Scenario: A drop written as its work leaves the plan
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and request 14, naming this host, drops 12 at a tip whose `plan.rec` holds no `Unit: u`
-- **THEN** the pull gives the offer `madswan/12`, then the act `madswan/14` dropping it
+- **THEN** the pull gives the offer `home/12`, then the act `home/14` dropping it
 
 #### Scenario: A kit's drop goes to the runner holding its launch
 
-- **WHEN** launch 20 of `unit/u` names no `Host`, `madswan/runner/deneb` answers it `launched`, and request 21, naming no `Host`, drops 20 at a tip whose `plan.rec` holds no `Unit: u`
-- **THEN** `deneb`'s pull gives the offer `madswan/20` and the act `madswan/21`, and `vega`'s pull gives nothing for 20 or 21
+- **WHEN** launch 20 of `unit/u` names no `Host`, `home/runner/host-a` answers it `launched`, and request 21, naming no `Host`, drops 20 at a tip whose `plan.rec` holds no `Unit: u`
+- **THEN** `host-a`'s pull gives the offer `home/20` and the act `home/21`, and `host-b`'s pull gives nothing for 20 or 21
 
 ### Requirement: A launch is dropped as crew reads it
 
@@ -337,8 +337,8 @@ A launch SHALL be dropped where a request of `requests.rec` at `<label>/main`'s 
 
 #### Scenario: A drop naming another host
 
-- **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming `Host: vega`, drops 12
-- **THEN** the pull gives no offer of `madswan/12`, and nothing for 14
+- **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming `Host: host-b`, drops 12
+- **THEN** the pull gives no offer of `home/12`, and nothing for 14
 
 ### Requirement: A launch a drop names is offered only where the runner launched it
 
@@ -347,17 +347,17 @@ crew's implementation SHALL give a dropped launch as an offer only where the run
 #### Scenario: A held launch dropped
 
 - **WHEN** launch 12 names this host, the runner's report answers it `held` on its After, and request 14, naming this host, drops 12
-- **THEN** the pull gives the act `madswan/14` and no offer of `madswan/12`
+- **THEN** the pull gives the act `home/14` and no offer of `home/12`
 
 #### Scenario: A kit's launch dropped before it is claimed
 
-- **WHEN** launch 20 names no `Host` and says `Repo: afterthought/crew`, which the hello names, request 21, naming no `Host`, drops 20, no runner's branch answers 20, and the host has room
+- **WHEN** launch 20 names no `Host` and says `Repo: example/crew`, which the hello names, request 21, naming no `Host`, drops 20, no runner's branch answers 20, and the host has room
 - **THEN** the pull claims nothing, writes no branch, and gives nothing for 20 or 21
 
 #### Scenario: A dropped launch the runner launched
 
 - **WHEN** the runner's report answers launch 12 `launched` at place `P`, its place listed, and request 14, naming this host, drops 12 at a tip whose `plan.rec` still holds the launch's unit
-- **THEN** the pull gives the offer `madswan/12` and the act `madswan/14`
+- **THEN** the pull gives the offer `home/12` and the act `home/14`
 
 ### Requirement: A dropped launch the runner holds unlaunched is let go
 
@@ -366,14 +366,14 @@ At each report, a launch the runner's report holds that a drop names, answered `
 #### Scenario: A held launch dropped is let go
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `held`, request 14 drops 12, and `plan.rec` still holds `Unit: u`
-- **THEN** the report's let-go names `madswan/12`, and `madswan/runner/deneb` holds no answer to 12
+- **THEN** the report's let-go names `home/12`, and `home/runner/host-a` holds no answer to 12
 
 #### Scenario: A drop answered from the report, its work gone
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `done` with words naming its drop, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
-- **THEN** the report's let-go names `madswan/12` and `madswan/14`
+- **THEN** the report's let-go names `home/12` and `home/14`
 
 #### Scenario: A dropped launch the runner launched stays until its place is over
 
 - **WHEN** the runner's report answers launch 12 of `unit/u` `launched` at place `P`, and act 14, which drops 12, `done`, and `plan.rec` holds no `Unit: u`
-- **THEN** while Flume lists `P`, the report's let-go names neither `madswan/12` nor `madswan/14`; and once Flume no longer lists `P`, it names both
+- **THEN** while Flume lists `P`, the report's let-go names neither `home/12` nor `home/14`; and once Flume no longer lists `P`, it names both
