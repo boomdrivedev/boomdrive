@@ -84,6 +84,9 @@
     },
     "sluice": {
       "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -92,16 +95,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1793923753,
-        "narHash": "sha256-+CD1OFpuo2B7VcLNKQ8ShH9KgQaRp/huakC12ZNKeA8=",
+        "lastModified": 1794156058,
+        "narHash": "sha256-XxWHb9Wk5Gafh9MfvxuWmD6RGARsooQ/l42yJfgwkLM=",
         "owner": "agentplot",
         "repo": "sluice",
-        "rev": "c7ee329de628dfc281ad7c49ce5255c5b4414c70",
+        "rev": "dd3fa01790048e816c764f7adc0acaef9ee8d1b5",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.68.0",
+        "ref": "v0.76.0",
         "repo": "sluice",
         "type": "github"
       }

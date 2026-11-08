@@ -26,9 +26,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.68.0";
+      url = "github:agentplot/sluice/v0.76.0";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
+      inputs.nix-darwin.follows = "nix-darwin";
     };
     # Flume publishes no flake yet: nix/packages/flume.nix builds its tag.
     flume = {
