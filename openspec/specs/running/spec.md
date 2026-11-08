@@ -222,18 +222,18 @@ Each line the runner says of a part's control pass SHALL name the part's label a
 - **WHEN** `home`'s next control pass falls due while its pass has two acts on places still to carry out
 - **THEN** one line says `boomdrive: home: the next control pass is due, so 1 act on a place waits for it`
 
-### Requirement: Each turn of passes ends with a settle of every place
+### Requirement: Each pass ends with a settle of every place
 
-`boomdrive run` SHALL end each turn of its loop, after the passes due and before it waits, with one `flume --json settle --every <bound>`, run once and awaited. A keeping pass that a control pass follows at once SHALL share its settle. A turn whose configuration did not read SHALL settle all the same. A runner told to stop SHALL begin no settle (core.13; record 0029; Flume's 208).
+`boomdrive run` SHALL end each keeping pass, on its loop, and each part's control pass, on the part's thread, with one `flume --json settle --every <bound>`, awaited before that thread waits. The first keeping pass SHALL share the settles of the parts' first control passes. A pass that ends while another's settle is under way SHALL share it and run none. A keeping pass whose configuration did not read SHALL settle all the same, and a runner told to stop SHALL begin none (core.13; record 0029).
 
 #### Scenario: Passes back to back share one settle
 
-- **WHEN** `fetch_interval` and `poll_interval` are an hour, and the runner's first keeping pass and first control pass run back to back with a stub `flume`
-- **THEN** one `flume --json settle --every 3600s` runs, after every other `flume` command of the control pass, and no other settle runs before the next turn
+- **WHEN** `fetch_interval` and `poll_interval` are an hour, and the runner's first keeping pass and its part's first control pass run back to back with a stub `flume`
+- **THEN** one `flume --json settle --every 3600s` runs, after every other `flume` command of the control pass, and no other settle runs before the next pass
 
 #### Scenario: Each control pass ends with a settle
 
-- **WHEN** `fetch_interval` is an hour and `poll_interval` a second, and the runner makes three control passes with a stub `flume`
+- **WHEN** `fetch_interval` is an hour and `poll_interval` a second, and the runner makes three control passes of its part with a stub `flume`
 - **THEN** each control pass's `flume` commands end with one `flume --json settle --every 1s`, before the next control pass reads Flume's status
 
 #### Scenario: Each keeping pass ends with a settle
@@ -245,6 +245,11 @@ Each line the runner says of a part's control pass SHALL name the part's label a
 
 - **WHEN** the configuration of a running runner that keeps a repository each second is made invalid, with a stub `flume`
 - **THEN** each pass names the file and keeps nothing, and is followed by one `flume --json settle --every 1s` all the same
+
+#### Scenario: A pass ends while a settle is under way
+
+- **WHEN** one pass's settle is under way, and another pass ends
+- **THEN** the other pass runs no settle, and returns without waiting for the one under way to end
 
 ### Requirement: The settle's bound is the runner's interval
 

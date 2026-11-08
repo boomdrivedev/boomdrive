@@ -9,7 +9,7 @@
 
 ### Requirement: Each pass ends with a settle of every place
 
-`boomdrive run` SHALL end each keeping pass, on its loop, and each part's control pass, on the part's thread, with one `flume --json settle --every <bound>`, run once and awaited before that thread waits. The first keeping pass, which each part's first control pass follows at once, SHALL share their settles. A pass that ends while another pass's settle is under way SHALL share it and run none. A keeping pass whose configuration did not read SHALL settle all the same. A runner told to stop SHALL begin no settle (core.13; record 0029; Flume's 208).
+`boomdrive run` SHALL end each keeping pass, on its loop, and each part's control pass, on the part's thread, with one `flume --json settle --every <bound>`, awaited before that thread waits. The first keeping pass SHALL share the settles of the parts' first control passes. A pass that ends while another's settle is under way SHALL share it and run none. A keeping pass whose configuration did not read SHALL settle all the same, and a runner told to stop SHALL begin none (core.13; record 0029).
 
 #### Scenario: Passes back to back share one settle
 
