@@ -312,15 +312,16 @@ fn a_place_at_each_phase() {
 }
 
 #[test]
-fn a_live_agent_shows_in_its_pane() {
+fn a_live_place_shows_its_agents_pane() {
     let entry = only("status-live-agent.json");
     assert!(facts::live_or_making(&entry));
     assert_eq!(facts::mark(&entry), None);
     assert_eq!(
         facts::pane(&entry),
         Some(Pane {
-            id: "w17:p1".into(),
-            socket_file: "/Users/chuck/.config/herdr/sessions/flume/herdr.sock".into()
+            id: "w1:p1".into(),
+            socket_file: "/private/tmp/scratch/host/home/config/herdr/sessions/flume/herdr.sock"
+                .into()
         })
     );
 }

@@ -1,9 +1,9 @@
 # Flume 0.4.1's own answers
 
 Each file here is what Flume 0.4.1 printed on a scratch host, its
-trailing newline among it, every byte as Flume printed it but the scratch
-directory's prefix (the change boomdrives-tree-holds-nothing-private,
-design Decision 2): nothing else is stripped, reformatted or rewritten.
+trailing newline among it: nothing is stripped, reformatted or rewritten
+but, in the answers read on 2026-11-01, the scratch directory's prefix
+(the change boomdrives-tree-holds-nothing-private, design Decision 2).
 treefmt excludes the directory so that no formatter changes a byte
 (core.7). Each was read from a Flume that says `flume 0.4.1`.
 
@@ -68,13 +68,28 @@ was read of each:
 | `retry-refused.json` | `flume --json retry <fix--lexer>` | exit 1: its agent, printed and never run, is not quiet |
 | `usage.stderr` | `flume --json 'done <place>'`, the act and its place passed as one word | exit 2, nothing on standard output; this file is its standard error |
 
-## deneb's own Flume
+## The live place's pane
 
-`status-live-agent.json` is `flume --json status
-/Users/chuck/Code/github_agentplot/flywheel-runner/places/change--the-runner-carries-crews-work-into-flume`,
-read on deneb's own Flume under the user's configuration: the place this
-change was coded in, while its code stage's agent worked in herdr. It is
-the one answer here whose agent is live in a terminal that shows it, so
-its `clues.shown_at.agent` names a pane, `herdr:<pane>@<socket>`. Its host
-part is deneb's. Flume gives every value of an agent's environment as
-`<set>`.
+`status-live-agent.json` is `flume --json status <place>`, read on
+2026-11-07 on a scratch host rooted at `/private/tmp/scratch/host/`, its
+folders laid out as the scratch host's above, and nothing in it rewritten
+(the change boomdrives-tree-holds-nothing-private, design Decision 3).
+Flume 0.4.1 and its stand-in were built from the tag `v0.4.1` (`78cf178`)
+of agentplot/flume outside this tree and run by their paths, and herdr was
+0.9.5, the release Flume 0.4.1's terminal profile was checked against.
+
+Flume's configuration named herdr as its terminal, a pool of one account,
+`stand-in-1`, no bound on the host and no stream but `default`. herdr's
+server was Flume's own session, `flume`, which Flume started under the
+scratch `HOME`. The place, `fix--live`, was launched with a brief and no
+mark, and its agent, the stand-in as `claude`, started in a pane of that
+server. Flume 0.4.1 types the prompt into a herdr pane, while its
+stand-in acts only on a prompt on its command line, so the stand-in's
+session had ended, with no prompt, when status was read: its agent reads
+`stopped` and its code stage `never_begun`.
+
+The place is live, and it is the one answer here whose place shows its
+agent's pane, so its `clues.shown_at.agent` names that pane,
+`herdr:<pane>@<socket>`, at the server's socket under the scratch root.
+Its host part is unbounded with the one stream `default`. Flume gives
+every value of an agent's environment as `<set>`.
