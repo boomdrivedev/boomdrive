@@ -40,7 +40,7 @@ None.
 - Nothing else changes: no crate, no tool, no tracked file type, no message of the protocol, no control plane's implementation.
 - Outside this repository:
   - Flume cuts a place from a base no merge queue lands at the host's own `refs/heads/<base>` (its C.1), which no longer follows origin's in a clone the runner keeps. That is Flume's to reconcile with its clause 9.
-  - herdr.13 in afterthought/swancloud still has the host's default branch moved after a fetch. That is swancloud's to amend.
+  - herdr.13 in afterthought/swancloud still has the host's default branch moved after a fetch. That is afterthought/swancloud's to amend.
   - Both are told to the orchestrator.
 
 ## Touches

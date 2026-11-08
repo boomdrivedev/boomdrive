@@ -12,8 +12,8 @@ use common::{act, file, hello, launch, plan, pull, State, REQUESTS};
 use std::io::Write as _;
 use std::process::{Command, Stdio};
 
-const CREW: &str = "afterthought/crew";
-const BRANCH: &str = "madswan/runner/deneb";
+const CREW: &str = "example/crew";
+const BRANCH: &str = "home/runner/host-a";
 
 // crew's descriptors, copied from `plugin/lib/runner.py` at `9913f249`,
 // which `the-team-machinery-leaves` (`2b97ee57`) leaves as they are.
@@ -57,8 +57,8 @@ fn launched(answer: Answer, status: Option<(&str, &str)>) -> Launched {
     }
 }
 
-/// A state repository whose `madswan/main` holds launch 12 and its
-/// retry 13 for deneb, and the planner's role on deneb, and deneb's
+/// A state repository whose `home/main` holds launch 12 and its
+/// retry 13 for host-a, and the planner's role on host-a, and host-a's
 /// implementation, pulled once.
 fn pulled() -> (State, boomdrive_crew::Crew) {
     let state = State::new();
@@ -68,18 +68,18 @@ fn pulled() -> (State, boomdrive_crew::Crew) {
             &file(
                 REQUESTS,
                 &[
-                    launch(12, Some("deneb"), "unit/a", CREW, "a", &[]),
-                    act(13, "retry", Some("deneb"), "unit/a", 12, &[]),
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(13, "retry", Some("host-a"), "unit/a", 12, &[]),
                 ],
             ),
         ),
         ("plan.rec", &plan(&["a"], &[])),
         (
             "roles.rec",
-            &file(common::ROLES, &[common::role("planner", "deneb")]),
+            &file(common::ROLES, &[common::role("planner", "host-a")]),
         ),
     ]);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     pull(&mut crew, &hello(&[CREW], "4"));
     (state, crew)
 }
@@ -89,7 +89,7 @@ fn pulled() -> (State, boomdrive_crew::Crew) {
 fn report_launched(status: &str) -> Report {
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/12"),
+        Id::new("home/12"),
         launched(
             answer(
                 Outcome::Launched,
@@ -133,7 +133,7 @@ fn recfix(text: &str) -> Option<String> {
 #[test]
 fn the_first_report() {
     let (state, mut crew) = pulled();
-    let main = state.tip("madswan/main");
+    let main = state.tip("home/main");
     assert_eq!(state.tip(BRANCH), None);
     let reported = crew
         .report(&report_launched(r#"{"status":{}}"#))
@@ -142,15 +142,15 @@ fn the_first_report() {
     let runner = state.file(BRANCH, "runner.rec").expect("runner.rec");
     let body = runner.strip_prefix(RUNNER).expect("crew's descriptor");
     let since = body
-        .strip_prefix("\nHost: deneb\nVersion: boomdrive 0.0.0\nSince: ")
+        .strip_prefix("\nHost: host-a\nVersion: boomdrive 0.0.0\nSince: ")
         .and_then(|rest| rest.strip_suffix('\n'))
         .unwrap_or_else(|| panic!("{runner}"));
     assert!(At::parse(since).is_ok(), "{since}");
-    assert_eq!(state.tip("madswan/main"), main);
+    assert_eq!(state.tip("home/main"), main);
     let message = common::git(&state.bare(), &["log", "-1", "--format=%B", BRANCH], None);
     assert_eq!(
         message,
-        "runner, answers 12, places 12\n\nAsked-by: boomdrive@deneb\n\n"
+        "runner, answers 12, places 12\n\nAsked-by: boomdrive@host-a\n\n"
     );
 }
 
@@ -170,7 +170,7 @@ fn a_held_answer_becoming_launched() {
     let (state, mut crew) = pulled();
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/12"),
+        Id::new("home/12"),
         launched(
             answer(
                 Outcome::Held,
@@ -220,7 +220,7 @@ fn a_places_status_as_flume_gave_it() {
         .file(BRANCH, "runner.rec")
         .unwrap()
         .starts_with(RUNNER));
-    let read = host_read("deneb", &files(&state)).expect("crew reads it");
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
     assert_eq!(read.places[&12].get("Status"), Some(status.as_str()));
 }
 
@@ -229,9 +229,9 @@ fn an_acts_done() {
     let (state, mut crew) = pulled();
     let mut report = report_launched("{}");
     report.acts.insert(
-        Id::new("madswan/13"),
+        Id::new("home/13"),
         Acted {
-            launch: Id::new("madswan/12"),
+            launch: Id::new("home/12"),
             lease: 1,
             outcome: Outcome::Done,
             words: None,
@@ -239,7 +239,7 @@ fn an_acts_done() {
         },
     );
     crew.report(&report).expect("a report");
-    let read = host_read("deneb", &files(&state)).expect("crew reads it");
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
     let done = &read.answers[&13];
     assert_eq!(done.get("Outcome"), Some("done"));
     assert_eq!(done.get("At"), Some("2026-11-01T10:05:00Z"));
@@ -251,7 +251,7 @@ fn a_run_with_words() {
     let (state, mut crew) = pulled();
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/planner/1"),
+        Id::new("home/planner/1"),
         launched(
             answer(
                 Outcome::Refused,
@@ -266,7 +266,7 @@ fn a_run_with_words() {
     assert_eq!(
         state.file(BRANCH, "places.rec").unwrap(),
         format!(
-            "{PLACES}\n{RUNS}\nAddress: madswan/planner\nAt: 2026-11-01T10:00:00Z\n\
+            "{PLACES}\n{RUNS}\nAddress: home/planner\nAt: 2026-11-01T10:00:00Z\n\
              Words: no kind crew/crew-planner on this host\n"
         )
     );
@@ -296,7 +296,7 @@ fn only_the_runners_branch() {
         .collect();
     assert_eq!(added.len(), 1, "{after}");
     assert!(
-        added[0].ends_with(" refs/heads/madswan/runner/deneb"),
+        added[0].ends_with(" refs/heads/home/runner/host-a"),
         "{after}"
     );
     for line in before.lines() {
@@ -313,9 +313,9 @@ fn each_file_reads_as_crew_reads_it() {
     let (state, mut crew) = pulled();
     let mut report = report_launched(&common::status_code());
     report.acts.insert(
-        Id::new("madswan/13"),
+        Id::new("home/13"),
         Acted {
-            launch: Id::new("madswan/12"),
+            launch: Id::new("home/12"),
             lease: 1,
             outcome: Outcome::Refused,
             words: Some("its agent is not quiet".to_string()),
@@ -323,11 +323,11 @@ fn each_file_reads_as_crew_reads_it() {
         },
     );
     report.launches.insert(
-        Id::new("madswan/planner/2"),
+        Id::new("home/planner/2"),
         launched(
             answer(
                 Outcome::Launched,
-                Some("/places/crew-planner--madswan"),
+                Some("/places/crew-planner--home"),
                 None,
                 "2026-11-01T10:00:00Z",
             ),
@@ -335,13 +335,13 @@ fn each_file_reads_as_crew_reads_it() {
         ),
     );
     crew.report(&report).expect("a report");
-    let read = host_read("deneb", &files(&state)).expect("crew reads it");
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
     assert!(read.since.is_some());
     assert_eq!(read.answers.keys().copied().collect::<Vec<_>>(), [12, 13]);
     assert_eq!(read.places.keys().copied().collect::<Vec<_>>(), [12]);
     assert_eq!(
         read.runs.keys().cloned().collect::<Vec<_>>(),
-        ["madswan/planner"]
+        ["home/planner"]
     );
     let statuses = read
         .places
@@ -351,7 +351,7 @@ fn each_file_reads_as_crew_reads_it() {
     for status in statuses {
         serde_json::from_str::<serde_json::Value>(status).expect("Flume's JSON");
     }
-    assert!(host_read("vega", &files(&state)).is_err());
+    assert!(host_read("host-b", &files(&state)).is_err());
 }
 
 #[test]
@@ -359,7 +359,7 @@ fn the_report_comes_back_in_the_next_pull() {
     let (state, mut crew) = pulled();
     let report = report_launched(&common::status_code());
     crew.report(&report).expect("a report");
-    let (mut fresh, _) = state.crew("deneb");
+    let (mut fresh, _) = state.crew("host-a");
     let pulled = pull(&mut fresh, &hello(&[CREW], "4"));
     let back = pulled.report.expect("the report on the branch");
     assert_eq!(back, report);

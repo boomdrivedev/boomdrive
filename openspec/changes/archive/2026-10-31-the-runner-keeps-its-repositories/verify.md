@@ -126,7 +126,7 @@ The code meets the requirements that no scenario states outright:
 ## Rules
 
 - **core.1.** The runner starts no work. A Flume place in a dropped clone holds the clone and is never removed (`dropped::a_place_in_the_clone`).
-- **core.2.** Nothing in `crates/flywheel` names crew, its records or a hosted control plane. `afterthought/crew` appears only as an example address in a configuration test. A landing reaches the loop as `Event::Landed`.
+- **core.2.** Nothing in `crates/flywheel` names crew, its records or a hosted control plane. `example/crew` appears only as an example address in a configuration test. A landing reaches the loop as `Event::Landed`.
 - **core.3.** The code has no listener and `Cargo.lock` has no server crate (`no_listener`). The only connections are git's fetches.
 - **core.4.** The configuration refuses unknown keys, and a refusal never quotes the file's text (`a_token`, `a_broken_file_is_named_by_its_line_and_never_quoted`). git runs with `GIT_TERMINAL_PROMPT=0`, without either askpass variable, and with no `credential` argument. The string `ghp_n0t4r34lt0k3n` in `src/config.rs`'s tests is a stand-in that proves a value is never echoed. It is not a credential, and it is too short to match GitHub's token format.
 - **core.5.** Its detail was amended in 229a870, the same commit as the design that departs from it, as `CLAUDE.md` requires. A dropped clone is never fetched (`dropped::dropped_while_holding_work`). It is removed once nothing is held, and left and named while anything is.

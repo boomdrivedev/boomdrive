@@ -16,18 +16,18 @@ use std::path::Path;
 const FILE: &str = "/c/config.toml";
 
 /// Design Decision 4's example.
-const EXAMPLE: &str = r#"repositories = ["afterthought/crew", "agentplot/flume"]
+const EXAMPLE: &str = r#"repositories = ["example/crew", "agentplot/flume"]
 
 [control_plane]
 type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
-host = "deneb"
+host = "host-a"
 
 [[control_plane.crew.partitions]]
-label = "madswan"
-state_repository = "afterthought/madswan-state"
+label = "home"
+state_repository = "example/home-state"
 "#;
 
 /// Opens the control plane `text` names, keeping nothing anywhere: no
@@ -57,7 +57,7 @@ fn crew_named() {
 /// keys are the implementation's own to refuse.
 #[test]
 fn the_table_is_the_implementations() {
-    let refusal = open(&EXAMPLE.replace("host = \"deneb\"\n", ""))
+    let refusal = open(&EXAMPLE.replace("host = \"host-a\"\n", ""))
         .err()
         .unwrap();
     assert!(
@@ -65,8 +65,8 @@ fn the_table_is_the_implementations() {
         "{refusal}"
     );
     let refusal = open(&EXAMPLE.replace(
-        "host = \"deneb\"\n",
-        "host = \"deneb\"\nkinds = \"/k/kinds.toml\"\n",
+        "host = \"host-a\"\n",
+        "host = \"host-a\"\nkinds = \"/k/kinds.toml\"\n",
     ))
     .err()
     .unwrap();

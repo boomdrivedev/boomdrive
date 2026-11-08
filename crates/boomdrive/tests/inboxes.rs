@@ -26,7 +26,7 @@ use weir_capture::{CameIn, Capture, Key, RawFile, Taken};
 use weir_signals::{InboxAt, ReadSignal, Write};
 
 /// The repository whose branch holds the inbox.
-const CREW: &str = "afterthought/crew";
+const CREW: &str = "example/crew";
 
 const AT: &str = "2026-10-25T09:00:00Z";
 
@@ -64,9 +64,9 @@ fn weirs_inbox() -> InboxAt {
         event_at: "2026-10-10T14:02:11Z".into(),
         title: Some("mise 2026.10.10".into()),
         url: None,
-        pointer: Some(format!("deneb:/data/inbox/{KEY}")),
+        pointer: Some(format!("host-a:/data/inbox/{KEY}")),
         came_in: CameIn::Run("releases".into()),
-        machine: "deneb".into(),
+        machine: "host-a".into(),
         taken_at: "2026-10-17T04:30:05Z".into(),
         unread: true,
     };
@@ -97,7 +97,7 @@ fn weirs_inbox() -> InboxAt {
     after(&inbox, inbox.write_brief("shim-timeout", BRIEF))
 }
 
-/// A bench keeping `afterthought/crew`, whose forge `origin` on `scratch`
+/// A bench keeping `example/crew`, whose forge `origin` on `scratch`
 /// holds the inbox `files` committed on its `inbox` branch, its clone
 /// made by the runner's own `clone::make`.
 struct Host<'s> {
@@ -200,7 +200,7 @@ fn an_inbox_carried() {
     assert_eq!(
         lines,
         [format!(
-            "inbox/1: the inbox on inbox of afterthought/crew carried at {tip}"
+            "inbox/1: the inbox on inbox of example/crew carried at {tip}"
         )]
     );
     let carried = host.carried();
@@ -308,7 +308,7 @@ fn an_inbox_weir_refuses() {
     assert_eq!(
         lines,
         [format!(
-            "inbox/1: the inbox on inbox of afterthought/crew at {tip} is refused by weir: {words}"
+            "inbox/1: the inbox on inbox of example/crew at {tip} is refused by weir: {words}"
         )]
     );
     let carried = host.carried();
@@ -352,7 +352,7 @@ fn no_such_branch() {
     let mut plane = Fake::holding(vec![named(CREW)]);
     let (passed, lines) = host.bench.pass(&mut plane);
     assert!(passed.reported, "{lines:?}");
-    let words = "origin holds no branch inbox of afterthought/crew";
+    let words = "origin holds no branch inbox of example/crew";
     assert_eq!(lines, [format!("inbox/1: not carried: {words}")]);
     let carried = host.carried();
     assert_eq!(carried.words.as_deref(), Some(words));

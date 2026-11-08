@@ -279,19 +279,19 @@ fn a_retry_of_a_dropped_launch() {
 #[test]
 fn an_act_on_anothers_launch() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![act("madswan/100", "madswan/99", ActSort::Drop)]);
+    let mut plane = Fake::holding(vec![act("home/100", "home/99", ActSort::Drop)]);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(
-        acted(&bench, "madswan/100"),
+        acted(&bench, "home/100"),
         (
             Outcome::Refused,
-            Some("madswan/99 is no launch of this runner's".into())
+            Some("home/99 is no launch of this runner's".into())
         )
     );
     assert_eq!(bench.flume.calls(), [Call::Status]);
     assert_eq!(
         lines,
-        ["madswan/100: drop of madswan/99: refused: madswan/99 is no launch of this runner's"]
+        ["home/100: drop of home/99: refused: home/99 is no launch of this runner's"]
     );
 }
 

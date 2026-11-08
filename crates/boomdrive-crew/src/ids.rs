@@ -50,25 +50,19 @@ mod tests {
     #[test]
     fn each_id_names_what_it_was_given_for() {
         assert_eq!(
-            named("madswan", &request("madswan", 12)),
+            named("home", &request("home", 12)),
             Some(Named::Request(12))
         );
         assert_eq!(
-            named("madswan", &run("madswan", "planner", 3)),
+            named("home", &run("home", "planner", 3)),
             Some(Named::Run("planner".to_string(), 3))
         );
         assert_eq!(
-            named("madswan", &done("madswan", "planner", 3)),
+            named("home", &done("home", "planner", 3)),
             Some(Named::Done("planner".to_string(), 3))
         );
-        for other in [
-            "swancloud/12",
-            "madswan-x/1",
-            "madswan/x",
-            "madswan/1/2",
-            "fake/1",
-        ] {
-            assert_eq!(named("madswan", &Id::new(other)), None, "{other}");
+        for other in ["work/12", "home-x/1", "home/x", "home/1/2", "fake/1"] {
+            assert_eq!(named("home", &Id::new(other)), None, "{other}");
         }
     }
 }

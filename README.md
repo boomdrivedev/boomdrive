@@ -30,7 +30,7 @@ fetch_interval = "2m"
 # Whether each owner's views have a VS Code workspace, <repository_root>/<owner>/<owner>.code-workspace; false where none is named.
 code_workspaces = true
 # Each repository this host keeps, by its GitHub address.
-repositories = ["agentplot/flume", "afterthought/crew"]
+repositories = ["agentplot/flume", "example/crew"]
 ```
 
 `repositories` is required, so a host that keeps none says
@@ -328,11 +328,11 @@ type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
-host = "deneb"
+host = "host-a"
 
 [[control_plane.crew.partitions]]
-label = "madswan"
-state_repository = "afterthought/madswan-state"
+label = "home"
+state_repository = "example/home-state"
 ```
 
 `type` names the implementation, and is required. This binary carries
@@ -444,7 +444,7 @@ repositories = ["agentplot/flume"]
 
 [[control_plane.hosted.partitions]]
 label = "work"
-repositories = ["afterthought/crew", "agentplot/flume"]
+repositories = ["example/crew", "agentplot/flume"]
 ```
 
 `url` is the control plane's address: `https://`, or `http://` to a

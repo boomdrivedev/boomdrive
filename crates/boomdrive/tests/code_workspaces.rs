@@ -105,7 +105,7 @@ impl Drop for Mode {
 #[test]
 fn the_first_workspaces() {
     let scratch = Scratch::new();
-    let kept = ["agentplot/flume", "afterthought/crew", "agentplot/sluice"];
+    let kept = ["agentplot/flume", "example/crew", "agentplot/sluice"];
     for address in kept {
         scratch.origin(address);
     }
@@ -113,7 +113,7 @@ fn the_first_workspaces() {
     let (outcome, lines) = scratch.pass(&asking(&kept));
 
     let agentplot = workspace(&scratch, "agentplot");
-    let afterthought = workspace(&scratch, "afterthought");
+    let example = workspace(&scratch, "example");
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         json(&agentplot),
@@ -121,7 +121,7 @@ fn the_first_workspaces() {
     );
     assert_eq!(members(&json(&agentplot)), ["folders", "settings"]);
     assert_eq!(
-        json(&afterthought),
+        json(&example),
         json!({"folders": [{"path": "crew"}], "settings": {}})
     );
     assert_eq!(lines.len(), 8, "{lines:#?}");
@@ -129,7 +129,7 @@ fn the_first_workspaces() {
         lines[6..],
         [
             written(&agentplot, "flume, sluice"),
-            written(&afterthought, "crew"),
+            written(&example, "crew"),
         ]
     );
 }
@@ -268,12 +268,12 @@ fn a_dropped_repository_leaves_its_workspace() {
 fn a_quiet_pass_leaves_the_workspaces() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
-    scratch.origin("afterthought/crew");
-    let config = asking(&["agentplot/flume", "afterthought/crew"]);
+    scratch.origin("example/crew");
+    let config = asking(&["agentplot/flume", "example/crew"]);
     scratch.pass(&config);
     let files = [
         workspace(&scratch, "agentplot"),
-        workspace(&scratch, "afterthought"),
+        workspace(&scratch, "example"),
     ];
     let before: Vec<(Vec<u8>, u64)> = files
         .iter()
