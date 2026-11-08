@@ -29,8 +29,11 @@ let
   # its packages from the host's `pkgs` would install these.
   names = [
     "boomdrive"
+    "boomdrive-launcher"
     "crew"
     "flume"
+    "ghostty"
+    "herdr"
     "sluice"
   ];
   overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");

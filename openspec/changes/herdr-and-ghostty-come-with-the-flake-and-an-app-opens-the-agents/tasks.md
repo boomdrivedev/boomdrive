@@ -26,7 +26,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 3.3 `activate.sh plugins <herdr> <plugin>…` links each plugin with herdr's own `plugin link`, with no `HERDR_*` variable, says each refusal in one line and exits 0. The activation runs it as the runner's user on nix-darwin and on NixOS, where a herdr and a plugin are given. `herdr-plugin.nix`'s header says so. `tools.nix`'s nix-darwin comparison leaves the line out with the runner's link (design Decision 6; Task notes 3.3). True when `sluice exec main -- moon run nix:test` passes, proving:
   - the service-modules delta's "Each plugin linked", "A link herdr refuses", "The plugins linked on nix-darwin", "The plugins linked on NixOS", "No herdr of the set's" and the rest of "A host's own herdr";
   - the modified "The tools' activation is their own".
-- [ ] 3.4 The modules' default herdr, Ghostty and launcher are the flake's own whatever the host's `pkgs` (design Decision 8; Task notes 3.4). True when `sluice exec main -- moon run nix:test` passes, proving the binary-cache delta's "A host's own nixpkgs" on nix-darwin and on NixOS.
+- [x] 3.4 The modules' default herdr, Ghostty and launcher are the flake's own whatever the host's `pkgs` (design Decision 8; Task notes 3.4). True when `sluice exec main -- moon run nix:test` passes, proving the binary-cache delta's "A host's own nixpkgs" on nix-darwin and on NixOS.
 
 ## 4. The words
 
