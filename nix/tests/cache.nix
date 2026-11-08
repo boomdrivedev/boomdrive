@@ -119,8 +119,9 @@ in
     }
   ) "nixConfig is ${builtins.toJSON t.flake.nixConfig}, not ${substituter} and ${key} alone";
 
-  # The README names each tool's package option, which replaces
-  # services.boomdrive.tools (design Decision 6).
+  # The README names each option that installs a tool of the set, which
+  # replace services.boomdrive.tools, and the shell (design Decision 6;
+  # the change herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents).
   "The README's words" =
     lib.concatMap
       (
@@ -131,6 +132,11 @@ in
         "services.flume.package"
         "services.sluice.package"
         "services.crew.package"
+        "services.boomdrive.herdr.package"
+        "services.boomdrive.herdr.plugins"
+        "services.boomdrive.ghostty.package"
+        "services.boomdrive.launcher.package"
+        "nix develop github:agentplot/boomdrive"
       ]
     ++ t.expect (
       !lib.hasInfix "services.boomdrive.tools" (toString installing)
