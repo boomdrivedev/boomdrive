@@ -25,12 +25,13 @@ out each act and command once, and carries Flume's, sluice's and the
 inbox's records back as the tools gave them.
 
 The flake at the root, `flake.nix` and `flake.lock`, with everything
-else of it under `nix/`, gives the runner, Flume and sluice pinned
-together, and the runner's service as nix-darwin and NixOS modules,
-`services.boomdrive`, whose `settings` are the runner's file. The
-workflow `.github/workflows/cache.yml` builds every package of every
-system the flake gives and pushes it to the family's cache, `boomdrive`
-on Cachix, at each push to `main` and each tag `v*` (record 0020,
+else of it under `nix/`, gives the runner, Flume, sluice and crew
+pinned together, each tool's own module re-exported beside the runner's
+service, `services.boomdrive`, as nix-darwin and NixOS modules, whose
+`settings` are the runner's file. The workflow
+`.github/workflows/cache.yml` builds every package of every system the
+flake gives and pushes it to the family's cache, `boomdrive` on Cachix,
+at each push to `main` and each tag `v*` (records 0020 and 0023,
 core.44 to core.47).
 
 Boomdrive's versions are git-cliff's, from its Conventional Commits
