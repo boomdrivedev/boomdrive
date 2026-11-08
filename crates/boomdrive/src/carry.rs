@@ -13,7 +13,13 @@
 //! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
 //! `ControlPlane` (core.2), and acts on no place it did not launch. Work
 //! under a lease that has lapsed by the pass's clock waits for a live one
-//! (core.24). Each act is said on standard error, one line each, prefixed
+//! (core.24). A preview its control plane asks for is brought up in a
+//! repository the runner keeps by sluice's own preview command, after
+//! every launch the pull offers, its ask awaited no longer than the
+//! runner's patience; sluice's listing of it is carried until sluice lists
+//! it no more; and on its done, only what the runner asked sluice for is
+//! put away, by sluice's own release, with no output of a command carried
+//! (core.55). Each act is said on standard error, one line each, prefixed
 //! with its id, and a pass that changes nothing says nothing.
 
 use crate::config::{Address, Config};
