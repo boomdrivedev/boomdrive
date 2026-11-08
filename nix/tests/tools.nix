@@ -14,18 +14,44 @@ let
     "sluice"
   ];
 
+  # Each tool's file, by the name its module writes it under.
+  fileNames = {
+    crew = "crew-teams.json";
+    flume = "flume-config.toml";
+    sluice = "sluice-config.toml";
+  };
+
+  # nix-darwin's activation, as text: a regular expression may not hold a
+  # store path.
+  darwinActivation =
+    evaluated:
+    builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.postActivation.text;
+  # NixOS's user activation snippets, by name, as the modules define them:
+  # the option's value is the one script they make.
+  userScripts =
+    evaluated: lib.foldl' (a: b: a // b) { } evaluated.options.system.userActivationScripts.definitions;
+
   platforms = {
     "nix-darwin" = {
       modules = outputs.darwinModules;
       set = outputs.packages.aarch64-darwin;
       system = t.darwinSystem;
       systemOf = t.darwinOf;
+      # A tool's activation: the lines of the system's that name its file.
+      activationOf =
+        evaluated: tool:
+        lib.concatStringsSep "\n" (
+          lib.filter (lib.hasInfix fileNames.${tool}) (lib.splitString "\n" (darwinActivation evaluated))
+        );
     };
     NixOS = {
       modules = outputs.nixosModules;
       set = outputs.packages.x86_64-linux;
       system = t.nixosSystem;
       systemOf = t.nixosOf;
+      # A tool's activation: its user activation snippet's text.
+      activationOf =
+        evaluated: tool: builtins.unsafeDiscardStringContext ((userScripts evaluated).${tool}.text or "");
     };
   };
 
@@ -185,12 +211,87 @@ let
       { services.sluice.user = "bob"; }
     ];
   };
+
+  # A host's `enable` or `package` of a tool, over the Boomdrive module's
+  # (design Decision 5).
+  ownFlumeFile =
+    platform:
+    {
+      system,
+      set,
+      activationOf,
+      ...
+    }:
+    let
+      evaluated = system { services.flume.enable = false; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system that keeps its own Flume file fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (activationOf evaluated "flume" == "")
+        "the ${platform} activation of a host that keeps its own Flume file links Flume's: ${activationOf evaluated "flume"}"
+    ++ t.expect (
+      !builtins.elem set.flume.outPath (profileOf evaluated)
+    ) "the ${platform} system profile of a host that keeps its own Flume file holds the set's Flume";
+
+  ownCrew =
+    platform:
+    {
+      system,
+      set,
+      activationOf,
+      ...
+    }:
+    let
+      setOne = system crewOn;
+      own = system (
+        { pkgs, ... }:
+        {
+          imports = [ crewOn ];
+          # Laid out as crew's flake lays its package out.
+          services.crew.package = pkgs.runCommand "crew-own" { } ''
+            mkdir -p "$out/bin" "$out/plugin"
+            touch "$out/bin/crew"
+          '';
+        }
+      );
+      profile = profileOf own;
+      linked = activationOf own "crew";
+    in
+    t.expect (builtins.elem own.config.services.crew.package.outPath profile) "the ${platform} system profile holds no host's own crew"
+    ++ t.expect (
+      !builtins.elem set.crew.outPath profile
+    ) "the ${platform} system profile holds the set's crew beside the host's own"
+    ++ t.expect (lib.hasInfix fileNames.crew linked) "the ${platform} activation with the host's own crew links no crew's file"
+    ++
+      t.expect (linked == activationOf setOne "crew")
+        "the ${platform} activation of crew's file with the host's own crew is ${linked}, not ${activationOf setOne "crew"}";
+
+  noSluice =
+    platform:
+    {
+      system,
+      set,
+      activationOf,
+      ...
+    }:
+    let
+      evaluated = system { services.sluice.package = null; };
+    in
+    t.expect (
+      !builtins.elem set.sluice.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no sluice holds the set's sluice"
+    ++ t.expect (lib.hasInfix fileNames.sluice (activationOf evaluated "sluice")) "the ${platform} activation with no sluice links no sluice's file";
 in
 onEach "Each tool's options are its own flake's" ownOptions
 // onEach "The tools' modules re-exported" reExported
 // onEach "Imported twice" twice
 // onEach "A host with the runner alone" runnerAlone
 // onEach "The set's packages" setsPackages
+// onEach "A host that keeps its own Flume file" ownFlumeFile
+// onEach "A host's own crew" ownCrew
+// onEach "No sluice of the set's" noSluice
 // {
   "The tools' user on NixOS" =
     t.expect (
