@@ -13,7 +13,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 1.3 crew's flake is an input at its newest release tag whose flake gives `darwinModules.crew` and `nixosModules.crew`, following the flake's `nixpkgs` and `nix-darwin`. `packages.<system>.crew` is crew's flake's package, given its tag's version by `nix/packages/crew.nix` (design Decisions 2 and 3; Task notes 1.3). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages spec's "crew through its own flake".
 - [x] 1.4 The type check's set holds `crew` (Task notes 1.4). True when `sluice exec main -- moon run nix:typecheck` passes, proving the family-packages spec's "Every system's packages" with the six packages and `default`.
 - [x] 1.5 The tags check holds crew to a release tag (design Decision 2; Task notes 1.5). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages spec's "A tool named by no release tag".
-- [ ] 1.6 The runner's tests pass with the set's Flume and sluice at their new tags (design Decision 7; Task notes 1.6). True when `devenv shell -- cargo test -p boomdrive --test family` passes, proving the family-packages spec's "Each tool's version", "Flume's status of a scratch host", "A submission sluice has no record of" and "Not the host's tools".
+- [x] 1.6 The runner's tests pass with the set's Flume and sluice at their new tags (design Decision 7; Task notes 1.6). True when `devenv shell -- cargo test -p boomdrive --test family` passes, proving the family-packages spec's "Each tool's version", "Flume's status of a scratch host", "A submission sluice has no record of" and "Not the host's tools".
 
 ## 2. The modules
 
