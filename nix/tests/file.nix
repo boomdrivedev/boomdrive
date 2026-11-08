@@ -5,8 +5,9 @@
 # accounts.nix's `fileOf`; each drive's owners are turned into addresses; a
 # key named for a credential fails evaluation, naming its path; and a flat
 # `repositories` of before, the accounts in `settings`, a key in a drive
-# the module does not declare, or an owner and a name that make no
-# address, fails it too (record 0028).
+# the module does not declare, an owner and a name that make no address, a
+# drive's name under two accounts, or an address kept twice, fails it too
+# (record 0028).
 t:
 let
   inherit (t) lib;
@@ -80,6 +81,24 @@ let
   pool.accounts.own.drives.home.pool = "home";
   inner.accounts.own.drives.home.repositories."example/inner" = [ "alpha" ];
 
+  # A drive's name under two accounts, and a repository in two drives and
+  # twice in one.
+  drivesTwice.accounts = {
+    own.drives.home = { };
+    work.drives.home = { };
+  };
+  inTwo.accounts.own.drives = {
+    home.repositories.agentplot = [ "flume" ];
+    garden.repositories.agentplot = [ "flume" ];
+  };
+  inOne.accounts.own.drives.home.repositories.agentplot = [
+    "flume"
+    "flume"
+  ];
+  # A failure of `given` names every word of `words`.
+  namesAll =
+    given: words: lib.any (message: lib.all (word: lib.hasInfix word message) words) (failures given);
+
   # Two owners, the second's names out of their order.
   owners.accounts.own.drives.home.repositories = {
     example = [
@@ -137,6 +156,26 @@ in
   "An address of no repository" =
     t.expect (failures inner != [ ]) "the owner example/inner evaluates"
     ++ t.expect (says inner "example/inner/alpha") "the failure names no example/inner/alpha: ${toString (failures inner)}";
+
+  "A drive's name under two accounts" =
+    t.expect
+      (namesAll drivesTwice [
+        "drive home"
+        "own"
+        "work"
+      ])
+      "no failure names the drive home and the accounts own and work: ${toString (failures drivesTwice)}";
+
+  "A repository in two drives" =
+    t.expect (namesAll inTwo [
+      "agentplot/flume"
+      "home"
+      "garden"
+    ]) "no failure names agentplot/flume and the drives home and garden: ${toString (failures inTwo)}"
+    ++ t.expect (namesAll inOne [
+      "agentplot/flume"
+      "drives home and home"
+    ]) "no failure names agentplot/flume kept twice by the drive home: ${toString (failures inOne)}";
 
   "A host under crew" = rendersAs "crew";
 

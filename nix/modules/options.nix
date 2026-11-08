@@ -174,6 +174,31 @@ let
   noRepository = lib.filter (
     address: builtins.match "[A-Za-z0-9-]+/[A-Za-z0-9._-]+" address == null
   ) addresses;
+
+  # What is given more than once, each by what gives it (design Decision
+  # 6): a drive's name by its accounts, and an address by its drives, a
+  # drive named again for each time it keeps the address.
+  twice =
+    pairs:
+    lib.filterAttrs (_: givers: lib.length givers > 1) (
+      lib.mapAttrs (_: map (pair: pair.by)) (lib.groupBy (pair: pair.what) pairs)
+    );
+  said = givers: lib.concatStringsSep " and " givers;
+  drivesTwice = twice (
+    map (drive: {
+      what = drive.name;
+      by = drive.account;
+    }) drives
+  );
+  addressesTwice = twice (
+    lib.concatMap (
+      drive:
+      map (address: {
+        what = address;
+        by = drive.name;
+      }) drive.addresses
+    ) drives
+  );
 in
 {
   imports = [
@@ -236,6 +261,24 @@ in
       {
         assertion = noRepository == [ ];
         message = "services.boomdrive.accounts keeps ${lib.concatStringsSep ", " noRepository}, which is no GitHub repository's address, `<owner>/<name>`: each drive's repositories are named by their owner, repositories.<owner> = [ <names> ].";
+      }
+      {
+        assertion = drivesTwice == { };
+        message = "services.boomdrive.accounts names ${
+          lib.concatStringsSep "; " (
+            lib.mapAttrsToList (
+              drive: accounts: "the drive ${drive} under the accounts ${said accounts}"
+            ) drivesTwice
+          )
+        }: a drive's name is given once on the host (record 0028).";
+      }
+      {
+        assertion = addressesTwice == { };
+        message = "services.boomdrive.accounts keeps ${
+          lib.concatStringsSep "; " (
+            lib.mapAttrsToList (address: drives: "${address} in the drives ${said drives}") addressesTwice
+          )
+        }: a repository belongs to one drive, which names it once (record 0028).";
       }
     ];
   };
