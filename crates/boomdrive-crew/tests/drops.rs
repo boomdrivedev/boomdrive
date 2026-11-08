@@ -8,9 +8,10 @@ mod common;
 
 use boomdrive_control::{Answer, At, Carried, ControlPlane, Hello, Id, Launched, Outcome, Report};
 use boomdrive_crew::read::LEASE;
-use common::{act, file, hello, ids, launch, plan, State, REQUESTS};
+use common::{act, file, hello, ids, launch, plan, pull, State, REQUESTS};
 
 const CREW: &str = "afterthought/crew";
+const PLACE: &str = "/places/change--a";
 
 fn kept() -> Hello {
     hello(&[CREW], "4")
@@ -95,4 +96,64 @@ fn a_drop_naming_another_host() {
     let (mut deneb, _) = state.crew("deneb");
     let pulled = deneb.pull(&kept(), &held(12)).expect("a pull");
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+}
+
+/// "A held launch dropped": the drop, naming this host, is given while
+/// the plan holds the launch's unit, and the launch it names is not.
+#[test]
+fn a_held_launch_dropped() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+        ],
+        &["u"],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let pulled = deneb.pull(&kept(), &held(12)).expect("a pull");
+    assert_eq!(ids(&pulled), ["madswan/14"]);
+}
+
+/// "A dropped launch the runner launched": it is given still, so its
+/// place is followed to its end, and its drop with it.
+#[test]
+fn a_dropped_launch_the_runner_launched() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+        ],
+        &["u"],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let report = report_of(
+        12,
+        answered(Outcome::Launched, Some(PLACE), None, Some(true)),
+    );
+    let pulled = deneb.pull(&kept(), &report).expect("a pull");
+    assert_eq!(ids(&pulled), ["madswan/12", "madswan/14"]);
+}
+
+/// "A kit's launch dropped before it is claimed": no runner answers it,
+/// so it is claimed by no one, no branch is written, and neither it nor
+/// its drop is given.
+#[test]
+fn a_kits_launch_dropped_before_it_is_claimed() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(20, None, "unit/u", CREW, "u", &[]),
+            act(21, "drop", None, "unit/u", 20, &[]),
+        ],
+        &["u"],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let pulled = pull(&mut deneb, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+    assert_eq!(state.tip("madswan/runner/deneb"), None);
 }
