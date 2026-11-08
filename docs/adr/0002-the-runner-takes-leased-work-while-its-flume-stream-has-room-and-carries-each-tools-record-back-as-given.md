@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, twice: a pull's launches go ahead of its acts on places, and a launch waits on no act of the pass before its own. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, three times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; and crew's implementation offers a launch a drop names only where the runner launched it. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud at `24baa4e`: its records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022; its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39; and `design/domain-model.html`, with its Launch, Command and Host cards, its copies of a Flume place, a sluice entry, the inbox and a host's capacity (section 8), "One launch, start to finish" (section 10) and its ledger (section 13). Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -128,3 +128,41 @@ Not taken:
 - **Option 4.** That is record 0026's own change. While the partitions share one pass, option 2 keeps a backlog of acts from holding any partition's launches.
 
 core.50 holds it. The work-into-flume spec gains it through the chore `a-launch-waits-on-no-other-act`.
+
+## Amendment, 2026-11-07: crew's implementation offers a launch a drop names only where the runner launched it
+
+Status: the construct stage's own choice, on the brief of the change `a-dropped-launch-is-never-offered`, 2026-11-07. It changes what crew's implementation gives, read from crew's own records, and no rule of the runner's, so it is cheap to change and is not asked.
+
+The brief: "crew's implementation of the control plane gives no offer for a launch that a drop in requests.rec names, and lets go one the runner holds unlaunched as the interface's let-go has it, so no runner claims or launches a dropped launch; the runner's own rules are unchanged".
+
+### Context
+
+crew drops a launch by a drop request naming it, written in the commit that takes the launch's work out of its plan. crew reads a launch a drop names as no longer standing: its `plugin/lib/runner.py` at `130ce42b`, `standing` and `launch_of`. crew's implementation here read no drop. It offered and claimed a dropped launch as any other. It gave a request whose work had left the plan only where the runner already answered it, so a drop, written as its work leaves, was given to no runner.
+
+On 2026-11-07 a partition's request 425 dropped launch 398 at 20:34:58Z. A host's runner launched 398 at 20:50:03Z, from a pull made at 19:40, in a pass that carried out some 90 wants one after another, as runners did before core.50. No later pull gave request 425, and 398's place went on working.
+
+### Considered options
+
+1. No offer for any launch a drop names, as the brief's first clause reads alone.
+2. No offer and no claim for a dropped launch the runner has not launched, and one it holds unlaunched let go; a launched one still given, and its drop given to the runner that holds it, whatever the plan holds.
+3. The drop given ahead of its launch in the pull's wants, so the runner's own rule answers a drop of a launch it holds unlaunched.
+
+### Decision outcome
+
+Option 2.
+
+- **A launch is dropped as crew reads it**: a request `Act: drop` names its number as `Of`, whatever its `Host`, `Work` or place in the file.
+- **No offer and no claim** for a dropped launch that neither the runner's report nor its branch answers `launched`. A claim of it on the runner's branch leaves at the next write.
+- **Let go**: a dropped launch the runner's report holds answered `held`, `refused` or `done` is named in the report's let-go, whatever the plan holds.
+- **The drop reaches the runner that holds its launch**: a drop whose launch the runner's report or branch answers is given whatever the plan holds. The runner carries it out by its own rules, `flume drop` on a launched place or `done` from its report.
+
+Not taken:
+
+- **Option 1.** The runner carries a place's status only for a launch the pull gives (record 0021). A launched one's place would never be seen over or let go, and its drop would still never be given.
+- **Option 3.** crew's order is its requests'. A launch naming no host would still be claimed, and a dropped launch no runner held would still be offered.
+- **Every act on a launch the runner holds given whatever the plan holds.** crew writes no act but a drop for work that has left its plan, so this would change nothing crew writes and give an old act left unanswered a way back.
+
+### Consequences
+
+- A launch a runner takes from a pull made before its drop is still made. Its place is dropped once the next pull gives the drop. Since core.50 that window is a pass's first round.
+- core.1's details already allow it: an implementation gives what it reads from the control plane's own rule, in the control plane's own records. No rule changes. The crew-control-plane spec gains it through the change `a-dropped-launch-is-never-offered`.
