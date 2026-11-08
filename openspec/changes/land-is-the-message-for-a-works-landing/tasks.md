@@ -27,7 +27,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 4. Version 1 carries no land
 
-- [ ] 4.1 A want whose act is a land, as `boomdrive-control`'s types write it, fails version 1's `want`. Every act sort version 1 names still passes, and no protocol file changes (design Decision 7; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface` passes with `a_land_is_no_act_of_version_1` and `the_interfaces_values_pass`, proving the runner-protocol spec's "A land is no act of version 1" and "The interface's values pass".
+- [x] 4.1 A want whose act is a land, as `boomdrive-control`'s types write it, fails version 1's `want`. Every act sort version 1 names still passes, and no protocol file changes (design Decision 7; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface` passes with `a_land_is_no_act_of_version_1` and `the_interfaces_values_pass`, proving the runner-protocol spec's "A land is no act of version 1" and "The interface's values pass".
 
 ## 5. The words
 
