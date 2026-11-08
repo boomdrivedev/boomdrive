@@ -1,8 +1,8 @@
 //! The library's loop, run in a thread on the scratch host: a landing it
-//! is told of between passes, a failure that does not stop it, and the
-//! configuration read again at every pass, `code_workspaces` among it
-//! (the running spec, the clones spec's landings and the configuration
-//! spec's reading while running; design 10). The runner runs a stub
+//! is told of between passes or during one, a failure that does not stop
+//! it, and the configuration read again at every pass, `code_workspaces`
+//! among it (the running spec, the clones spec's landings and the
+//! configuration spec's reading while running; design 10). The runner runs a stub
 //! `flume` of the test's, and no Flume of the host's (record 0029).
 
 mod common;
@@ -11,7 +11,7 @@ mod fakes;
 use boomdrive::config::Address;
 use boomdrive::run::{Notices, Programs, Runner, Stopper};
 use common::{keeping, Scratch};
-use fakes::Stub;
+use fakes::{HeldFetch, Stub};
 use std::ffi::OsStr;
 use std::sync::mpsc::{self, Receiver};
 use std::thread::{self, JoinHandle};
@@ -58,7 +58,7 @@ impl Running {
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
         let thread = thread::spawn(move || {
-            runner.keep(&mut |line| {
+            runner.keep(&|line| {
                 let _ = said.send(line);
             })
         });
@@ -199,6 +199,40 @@ fn told_between_passes() {
         landed
     );
     assert_eq!(fetched(&scratch, "agentplot/sluice"), sluice_was);
+}
+
+/// The clones spec's "Told during a keeping pass": told of a landing on
+/// `agentplot/timber` while the pass keeps `agentplot/flume`, its fetch
+/// held, the runner keeps the landing after `agentplot/flume` and before
+/// `agentplot/sluice`.
+#[test]
+fn told_during_a_keeping_pass() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let sluice = scratch.origin("agentplot/sluice");
+    let timber = scratch.origin("agentplot/timber");
+    let kept = ["agentplot/flume", "agentplot/sluice", "agentplot/timber"];
+    scratch.configure(&every("4s", &kept));
+    let held = HeldFetch::new(&scratch.gitconfig, "agentplot/flume");
+    let running = Running::start(&scratch);
+    let [.., made] = cloned(&scratch, "agentplot/timber", &timber.tip("main"));
+    running.until(&made);
+
+    held.hold();
+    let sluice_moved = sluice.commit("main", "later", "kept by the pass\n");
+    let timber_landed = timber.commit("main", "landed", "a landing\n");
+    held.wait_held(PATIENCE);
+    running.notices.landed(address("agentplot/timber"));
+    held.let_go();
+
+    let [timber_line] = moved("agentplot/timber", &timber_landed);
+    let [sluice_line] = moved("agentplot/sluice", &sluice_moved);
+    assert_eq!(
+        running.until(&sluice_line),
+        [timber_line, sluice_line.clone()]
+    );
+    running.stop();
+    assert_eq!(fetched(&scratch, "agentplot/timber"), timber_landed);
 }
 
 #[test]

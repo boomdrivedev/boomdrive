@@ -3,12 +3,15 @@
 //! Decisions 5 to 7 and 9; the work-into-flume spec's hello, repository,
 //! launch and answer requirements; the control-plane-interface spec's
 //! "A pull that cannot be read", "An offer's lease kept with its answer"
-//! and "A report not sent"; Task notes 4.1). A repository the
+//! and "A report not sent"; the clones spec's "A clone's keep and a
+//! launch into it take turns on the clone's lock" and "A launch finds its
+//! clone again under the lock"; Task notes 4.1). A repository the
 //! configuration drops while a place the runner launched there has not
 //! ended is drained, and nothing more is launched there (record 0021).
 
 mod fakes;
 
+use boomdrive::config::Address;
 use boomdrive::flume::{Cli, Reply};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
@@ -17,8 +20,13 @@ use boomdrive_control::{
 };
 use fakes::{fixture, offer, place_of, Bench, Call, Stub, KEPT};
 use serde_json::json;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs;
+use std::rc::Rc;
+use std::sync::{mpsc, Arc};
+use std::thread;
+use std::time::Duration;
 
 fn id(text: &str) -> Id {
     Id::new(text)
@@ -309,7 +317,8 @@ fn flume_is_not_there() {
     assert_eq!(outcome(&bench, "home/16"), None);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
-        lines[0].starts_with("boomdrive: Flume's status could not be read: flume could not run:"),
+        lines[0]
+            .starts_with("boomdrive: home: Flume's status could not be read: flume could not run:"),
         "{lines:?}"
     );
     assert!(matches!(plane.hellos()[0].capacity, Capacity::Missing(_)));
@@ -349,7 +358,7 @@ fn a_pull_that_cannot_be_read() {
     assert!(!passed.reported);
     assert_eq!(
         lines,
-        ["boomdrive: the control plane could not be read: no network"]
+        ["boomdrive: home: the control plane could not be read: no network"]
     );
     assert_eq!(bench.flume.calls(), [Call::Status]);
     assert_eq!(plane.reports(), [] as [Report; 0]);
@@ -384,7 +393,7 @@ fn a_report_not_sent() {
     assert!(!passed.reported);
     assert_eq!(plane.reports(), [] as [Report; 0]);
     assert!(lines.contains(
-        &"boomdrive: the report could not be sent: offline: it is sent at the next pass"
+        &"boomdrive: home: the report could not be sent: offline: it is sent at the next pass"
             .to_string()
     ));
     let held = bench.report();
@@ -394,6 +403,120 @@ fn a_report_not_sent() {
     let reported = &plane.reports()[0].launches[&id("a")];
     assert_eq!(reported.answer, held.launches[&id("a")].answer);
     assert_eq!(bench.flume.launches().len(), 1);
+}
+
+/// How long the keeper of these tests holds a clone's lock.
+const KEEPING: Duration = Duration::from_millis(300);
+
+/// The keeper, on a thread of its own, holding `address`'s lock among
+/// `bench`'s for a while, doing `meanwhile` before it lets it go; given
+/// once it holds it.
+fn keeping(
+    bench: &Bench,
+    address: &str,
+    meanwhile: impl FnOnce() + Send + 'static,
+) -> thread::JoinHandle<()> {
+    let locks = Arc::clone(&bench.locks);
+    let address = Address::parse(address).unwrap();
+    let (held, holding) = mpsc::channel();
+    let keeper = thread::spawn(move || {
+        let kept = locks.keep(&address);
+        held.send(()).unwrap();
+        thread::sleep(KEEPING);
+        meanwhile();
+        drop(kept);
+    });
+    holding.recv().expect("the keeper holds the lock");
+    keeper
+}
+
+/// The clones spec's "A launch waits for its own repository's fetch
+/// alone": the keeper holds `agentplot/flume`'s lock for its fetch, and a
+/// pass offers a launch into `agentplot/flume`, then one into
+/// `agentplot/sluice`. The launch into `agentplot/sluice` is made at once,
+/// and the one into `agentplot/flume` once the fetch is done.
+#[test]
+fn a_launch_waits_for_its_own_repositorys_fetch_alone() {
+    let bench = Bench::new();
+    let container = bench.container("agentplot/sluice");
+    bench.clones.ready("agentplot/sluice", &container);
+    let mut sluice = offer("home/2", "b");
+    sluice.launch.repository = "agentplot/sluice".into();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a")), Want::Offer(sluice)]);
+    let keeper = keeping(&bench, KEPT, || {});
+
+    let began = std::time::Instant::now();
+    bench.pass(&mut plane);
+    let took = began.elapsed();
+    keeper.join().unwrap();
+
+    let launched: Vec<String> = bench
+        .flume
+        .launches()
+        .into_iter()
+        .map(|args| args.name)
+        .collect();
+    assert_eq!(launched, ["b", "a"], "sluice's at once, flume's once kept");
+    assert!(took >= KEEPING / 2, "flume's launch waited for the keep");
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
+}
+
+/// The clones spec's "Two parts launch into one clone at once": while
+/// `home`'s pass is launching into `agentplot/flume`, `work`'s pass offers
+/// a launch into it, which is made without waiting for `home`'s to end.
+#[test]
+fn two_parts_launch_into_one_clone_at_once() {
+    let home = Bench::new();
+    let mut work = Bench::new();
+    work.locks = Arc::clone(&home.locks);
+    let mut home_plane = Fake::owning("home/");
+    home_plane.set_wants(vec![Want::Offer(offer("home/1", "a"))]);
+    let mut work_plane = Fake::owning("work/");
+    work_plane.set_wants(vec![Want::Offer(offer("work/1", "b"))]);
+    let during: Rc<RefCell<Option<Vec<String>>>> = Rc::default();
+    let said = Rc::clone(&during);
+    home.flume.meanwhile(move |_| {
+        // home's `flume launch` is running, and holds the clone's lock.
+        let (_, lines) = work.pass_of("work", &work.flume, &mut work_plane, &|| false);
+        *said.borrow_mut() = Some(lines);
+    });
+
+    let (_, lines) = home.pass_of("home", &home.flume, &mut home_plane, &|| false);
+
+    let during = during
+        .borrow()
+        .clone()
+        .expect("work's pass ran during home's launch");
+    assert_eq!(
+        during,
+        [format!("work/1: launched at {}", fakes::place_of("b"))]
+    );
+    assert_eq!(
+        lines,
+        [format!("home/1: launched at {}", fakes::place_of("a"))]
+    );
+}
+
+/// The clones spec's "A clone let go before the launch": a pass finds
+/// `agentplot/flume`'s clone made, and the keeper removes it, as dropped,
+/// before the pass takes its lock. The offer is left unanswered, and no
+/// `flume launch` is run for it.
+#[test]
+fn a_clone_let_go_before_the_launch() {
+    let bench = Bench::new();
+    let container = bench.container(KEPT);
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a"))]);
+    let keeper = keeping(&bench, KEPT, move || {
+        fs::remove_dir_all(&container).expect("the clone removed");
+    });
+
+    let (_, lines) = bench.pass(&mut plane);
+    keeper.join().unwrap();
+
+    assert_eq!(outcome(&bench, "home/1"), None);
+    assert!(bench.flume.launches().is_empty());
+    assert_eq!(lines, [] as [String; 0]);
 }
 
 /// The repository a test drains.
