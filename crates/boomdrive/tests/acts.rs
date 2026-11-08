@@ -1,10 +1,10 @@
-//! A retry, a drop, a priority and a done are Flume's own commands on the
-//! launch's place, never forced, each answered as Flume answered it
-//! (design Decision 9; the work-into-flume spec's "A retry, a drop, a
-//! priority and a done are Flume's own commands on the launch's place";
-//! Task notes 4.5). They run over a stub `flume` whose listing is Flume
-//! 0.4.1's own, so each launch is found by the mark the scratch host's
-//! places carry.
+//! A retry, a land, a drop, a priority and a done are Flume's own
+//! commands on the launch's place, never forced, each answered as Flume
+//! answered it (design Decision 9; the work-into-flume spec's "A retry, a
+//! land, a drop, a priority and a done are Flume's own commands on the
+//! launch's place"; Task notes 4.5; core.53). They run over a stub
+//! `flume` whose listing is Flume 0.4.1's own, so each launch is found by
+//! the mark the scratch host's places carry.
 
 mod fakes;
 
@@ -100,6 +100,35 @@ fn a_retry_of_the_submission() {
     assert_eq!(
         calls_of(&stub, "retry"),
         [argv(&["--json", "retry", &p, "--submission"])]
+    );
+}
+
+/// The work-into-flume spec's "A land": a land of a `change` is Flume's
+/// retry of its place's submission, naming no stage and no words, and no
+/// other act (core.53). The listing is Flume 0.4.1's, its `change` place
+/// marked for the launch `home/12`.
+#[test]
+fn a_land() {
+    let stub = Stub::new();
+    let listing =
+        fakes::fixture("status.json").replace("\"flywheel:scratch/3\"", "\"boomdrive:home/12\"");
+    stub.answers_text("status", &listing, 0);
+    stub.answers("retry", "retry.json", 0);
+    let (_, outcome, words, lines) = acting(&stub, "home/12", "home/13", ActSort::Land);
+    let p = place("scratch/3");
+    assert_eq!(
+        calls_of(&stub, "retry"),
+        [argv(&["--json", "retry", &p, "--submission"])]
+    );
+    for other in ["drop", "priority", "done"] {
+        assert!(calls_of(&stub, other).is_empty(), "{other}");
+    }
+    assert_eq!((outcome, words), (Outcome::Done, None));
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.starts_with("home/13: land of home/12")),
+        "{lines:?}"
     );
 }
 

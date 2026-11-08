@@ -386,14 +386,14 @@ settles for both, so no launch waits behind a settle. A control pass:
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
   branch;
-- carries out each retry, drop, priority or done as Flume's own command
-  on the launch's place, once every launch the pull offers is taken,
-  and, once the next pass is due, no further act after its first, so no
-  launch waits behind an act. A place Flume's listing does not hold is
-  first asked of `flume --json status <place>`, which settles nothing,
-  and Flume's refusal of it is the act's answer. A bolt's send is a
-  retry naming its submission, `flume retry <place> --submission`,
-  whose answer is Flume's;
+- carries out each retry, land, drop, priority or done as Flume's own
+  command on the launch's place, once every launch the pull offers is
+  taken, and, once the next pass is due, no further act after its
+  first, so no launch waits behind an act. A place Flume's listing does
+  not hold is first asked of `flume --json status <place>`, which
+  settles nothing, and Flume's refusal of it is the act's answer. A
+  land is `flume retry <place> --submission`, whatever the launch's
+  kind, and a bolt is landed on a land, whose answer is Flume's;
 - refuses every command, naming its tool, `this binary does not carry
   <tool>'s commands`, a branch command's being sluice, and runs nothing
   for it;

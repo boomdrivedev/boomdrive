@@ -719,7 +719,9 @@ impl Work<'_> {
     /// Answers `act` on a launch the runner holds not yet launched, from
     /// the report, running no command. A priority is done, and the launch
     /// carries it when made; a drop is done, and the launch is never made;
-    /// a retry or a done is refused, naming where the launch stands.
+    /// a retry, a land or a done is refused, naming where the launch
+    /// stands, and a land so refused changes nothing of the launch when it
+    /// is made (core.53).
     fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
@@ -739,7 +741,7 @@ impl Work<'_> {
                     self.report.answer(&act.launch, lease, dropped);
                 }
             }
-            ActSort::Retry { .. } | ActSort::Done => {
+            ActSort::Retry { .. } | ActSort::Land | ActSort::Done => {
                 let outcome = match answer.outcome {
                     Outcome::Held => "held",
                     Outcome::Done => "done",
@@ -1243,6 +1245,13 @@ fn flume_act(what: &ActSort) -> flume::Act {
             words: words.clone(),
             submission: *submission,
         },
+        // A land is Flume's retry of the submission, naming no stage and
+        // no words, whatever the launch's kind (core.53).
+        ActSort::Land => flume::Act::Retry {
+            stage: None,
+            words: None,
+            submission: true,
+        },
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
@@ -1253,6 +1262,7 @@ fn flume_act(what: &ActSort) -> flume::Act {
 fn sort(what: &ActSort) -> String {
     match what {
         ActSort::Retry { .. } => "retry".to_string(),
+        ActSort::Land => "land".to_string(),
         ActSort::Drop => "drop".to_string(),
         ActSort::Priority(priority) => format!("priority {priority}"),
         ActSort::Done => "done".to_string(),

@@ -227,6 +227,37 @@ fn a_retry_of_the_submission() {
     );
 }
 
+/// The crew-control-plane spec's "A land": an act landing the launch its
+/// `Of` names, under lease 1 (core.53; crew record 0056).
+#[test]
+fn a_land_is_an_act_on_the_launch_it_names() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(17, "land", Some("host-a"), "unit/a", 12, &[]),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        pulled.wants[1..],
+        [Want::Act(Act {
+            id: Id::new("home/17"),
+            launch: Id::new("home/12"),
+            lease: 1,
+            what: ActSort::Land,
+        })]
+    );
+}
+
 #[test]
 fn an_act_crew_does_not_write() {
     let state = State::new();

@@ -116,6 +116,23 @@ The runner protocol's files and types SHALL be held in `crates/boomdrive-hosted`
 - **WHEN** the sources of `crates/boomdrive` but `planes.rs`, and every file of `crates/boomdrive-control` and `crates/boomdrive-crew`, are read, and every file under `crates/` outside `crates/boomdrive-hosted` is listed
 - **THEN** none names `boomdrive_hosted` or `boomdrive-hosted`, none's name ends `.schema.json`, `planes.rs` opens `boomdrive_hosted`, only `boomdrive` depends on `boomdrive-hosted`, and `boomdrive-hosted` depends on `boomdrive-control` alone of the tree's crates
 
+### Requirement: An act asks one thing of its launch's place
+
+An act SHALL ask one of these of its launch's place:
+
+- a retry, with its stage and its words where it names them, and whether it names the submission;
+- a land, which asks for the landing of its launch's work, and holds nothing but its launch;
+- a drop;
+- a priority, with its number;
+- a done.
+
+A land SHALL name no stage, no words and no other word of Flume's, and SHALL be written as the word `land` (core.53).
+
+#### Scenario: An act of each sort
+
+- **WHEN** an act of each sort, a land among them, is written by `boomdrive-control`'s types and read back
+- **THEN** each reads back equal, and the land's `what` is written as `"land"`, holding nothing more
+
 ### Requirement: An implementation serves its control plane as parts
 
 An implementation SHALL serve its control plane as one or more parts, in its table's order, each a `Part` holding a label, given once among its parts, and a `ControlPlane` of its own. crew's implementation SHALL give a part for each partition of its table, a drive, and the hosted implementation a part for each partition of its table, an account's enrollment (record 0026; record 0028; core.49).

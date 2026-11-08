@@ -155,11 +155,12 @@ The runner SHALL answer a launch `launched`, at the place Flume's answer names, 
 - **WHEN** the program the runner runs as `flume` does not exist
 - **THEN** the launch has no answer, the pass names the failure, and the next pass launches it once `flume` is there
 
-### Requirement: A retry, a drop, a priority and a done are Flume's own commands on the launch's place
+### Requirement: A retry, a land, a drop, a priority and a done are Flume's own commands on the launch's place
 
 The runner SHALL act on the place its report holds for the act's launch, never passing `--force`:
 
 - a retry is `flume retry <place>`, with `--stage` and `--words` where the act names them, and `--submission` where it asks for the submission;
+- a land is `flume retry <place> --submission`, naming no stage and no words, whatever the launch's kind (core.53; Flume's 203);
 - a drop is `flume drop <place>`;
 - a priority is `flume priority <place> <n>`;
 - a done is `flume done <place>`.
@@ -168,6 +169,11 @@ The runner SHALL act on the place its report holds for the act's launch, never p
 
 - **WHEN** an act retries launch `home/12` at stage `code` with the words `use the second option`, and `home/12` was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --stage code --words "use the second option"`, and the act is answered `done`
+
+#### Scenario: A land
+
+- **WHEN** an act `home/13` lands launch `home/12`, a launch of kind `change`, and `home/12` was launched at place `P`
+- **THEN** the stub `flume` is run as `flume --json retry P --submission` and as no other act, the act is answered `done`, and its line begins `home/13: land of home/12`
 
 #### Scenario: A done
 
@@ -188,14 +194,19 @@ An act whose launch the runner holds unlaunched SHALL run no command. A priority
 - **WHEN** launch `b` is held, and an act drops it
 - **THEN** the act is answered `done`, `b` is answered `done` with words naming the drop, and no `flume launch` is ever run for `b`
 
-### Requirement: A retry or a done of a launch not launched, and an act on another's launch, are refused
+### Requirement: A retry, a land or a done of a launch not launched, and an act on another's launch, are refused
 
-A retry or a done of a launch the runner holds unlaunched SHALL be answered `refused`, naming where the launch stands. An act whose launch is no launch of this runner's SHALL be answered `refused`, naming the launch. Neither SHALL run a command.
+A retry, a land or a done of a launch the runner holds unlaunched SHALL be answered `refused`, naming where the launch stands. An act whose launch is no launch of this runner's SHALL be answered `refused`, naming the launch. Neither SHALL run a command, and a land so refused SHALL change nothing of the launch when it is made (core.15, core.53).
 
 #### Scenario: A retry of a held launch
 
 - **WHEN** launch `b` is held on its After, and an act retries it
 - **THEN** the act is answered `refused`, its words saying `b` is held and naming what it waits on
+
+#### Scenario: A land of a held launch
+
+- **WHEN** launch `b` is held on its After, an act lands it, and at a later pass `b`'s After reads landed
+- **THEN** the land is answered `refused`, its words saying `b` is held and naming what it waits on, no `flume retry` is run, and `b` is then launched as its offer gives it
 
 #### Scenario: An act on another's launch
 
@@ -420,18 +431,18 @@ The runner SHALL take a launch of a kind that lands with no stages, as a bolt's 
 - **WHEN** a pull offers the bolt `home/bolt/3`, then its unit `home/14`, both with stream `home`, whose `room` is 1
 - **THEN** the bolt is launched and the unit is left unanswered; and at the next pass, whose listing gives `home` a `room` of 1 again, the unit is launched
 
-### Requirement: A bolt's send is a retry of its submission
+### Requirement: A bolt is landed on a land
 
-The runner SHALL carry out the send of a place whose kind lands with no stages, a retry naming the submission, as `flume retry <place> --submission`, as it carries out any retry. Flume's answer SHALL be the act's, a refusal while a place on its branch is live among them (core.1, core.11, core.52; Flume's 203).
+The runner SHALL carry out a land of a launch whose kind lands with no stages, as a bolt's base place is, as `flume retry <place> --submission`, as it carries out any land. Flume's answer SHALL be the act's, a refusal while a place on its branch is live among them (core.1, core.11, core.52, core.53; Flume's 203).
 
 #### Scenario: A bolt's send
 
-- **WHEN** an act retries the submission of launch `home/bolt/3`, which was launched at place `P`
+- **WHEN** an act lands launch `home/bolt/3`, which was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --submission`, and the act is answered `done`
 
 #### Scenario: A send Flume refuses
 
-- **WHEN** an act retries the submission of launch `home/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
+- **WHEN** an act lands launch `home/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
 - **THEN** the act is answered `refused` with the words `the places on bolt/x are live: Q`, and no `sluice` command is run
 
 ### Requirement: The hello names the repositories drained apart from those kept
