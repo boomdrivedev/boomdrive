@@ -2,7 +2,7 @@
 
 ### Requirement: The options are the runner's file, its accounts always written
 
-`services.boomdrive.accounts` and `services.boomdrive.settings` SHALL hold the runner's file: `accounts` its `accounts`, each drive's repositories named by owner, and `settings` every other key, each named as the file names it, among them `repository_root`, `fetch_interval`, `code_workspaces` and `control_plane`. Each module SHALL render them as TOML at evaluation, a key of `settings` written only where it is set, and `accounts`, each account's `drives` and each drive's `repositories` always, so the runner's own defaults hold for the rest. One `accounts` and `settings` SHALL render one text on either platform.
+`services.boomdrive.accounts` and `services.boomdrive.settings` SHALL hold the runner's file: `accounts` its `accounts`, and `settings` every other key, each named as the file names it. Each module SHALL render them as TOML at evaluation, a key of `settings` written only where it is set, so the runner's own default holds, and `accounts`, each account's `drives` and each drive's `repositories` always. One `accounts` and `settings` SHALL render one text on either platform.
 
 #### Scenario: Only accounts
 
