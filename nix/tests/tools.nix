@@ -286,7 +286,8 @@ let
 
   # The runner's system with crew on beside one of the tools' own modules
   # alone (design Decision 5): the Boomdrive module adds the runner's own
-  # link and nothing else to the tools' activations.
+  # link, and on nix-darwin herdr's plugins' links, and nothing else to the
+  # tools' activations.
   render = import ../modules/toml.nix { inherit lib; };
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
 
@@ -296,7 +297,10 @@ let
       /bin/sh ${../modules/activate.sh} link ${darwinRunner.pkgs.writeText "boomdrive-config.toml" (render darwinRunner.config.services.boomdrive.settings)} || true
   '';
   darwinText = darwinActivation darwinRunner;
-  darwinRest = linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText);
+  pluginsLink = line: lib.hasInfix "-activate.sh plugins " line;
+  darwinRest = lib.filter (line: !pluginsLink line) (
+    linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText)
+  );
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
   nixosRunner = userScripts (t.nixosSystem crewOn);
@@ -332,7 +336,7 @@ onEach "Each tool's options are its own flake's" ownOptions
     ++ t.expect (lib.hasInfix runnerLink darwinText) "the nix-darwin activation runs no `${runnerLink}`: ${darwinText}"
     ++
       t.expect (darwinRest == darwinTools)
-        "the nix-darwin activation less the runner's link is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
+        "the nix-darwin activation less the runner's link and the plugins' is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
 
   "The tools' activation is their own on NixOS" =
     t.expect (

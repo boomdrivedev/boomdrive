@@ -88,11 +88,13 @@ let
     base.pkgs.procps
     base.config.systemd.package
   ];
-  # alice's alone: the link, then keep with the unit's own command line,
-  # given ps and systemctl.
+  # alice's alone: the link, the set's herdr plugins' links with the set's
+  # herdr (way-in.nix), then keep with the unit's own command line, given
+  # ps and systemctl.
   keeps = builtins.unsafeDiscardStringContext ''
     if [ "$(id -un)" = alice ]; then
       ${runtimeShell} ${activate} link ${fileOf base} || true
+      ${runtimeShell} ${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} || true
       PATH=${keepPath}:$PATH \
         ${runtimeShell} ${activate} keep alice ${lib.escapeShellArgs (argumentsOf base)}
     fi
