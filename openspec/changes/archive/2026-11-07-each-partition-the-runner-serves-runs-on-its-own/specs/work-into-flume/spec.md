@@ -65,5 +65,5 @@ The runner SHALL keep its report in `<data>/control/report.json`, the whole repo
 
 #### Scenario: A launch found by its mark
 
-- **WHEN** the report file is missing, and an offer `madswan/12` is pulled whose mark `boomdrive:madswan/12` Flume's listing holds on place `P`
+- **WHEN** the report file is missing, and an offer `home/12` is pulled whose mark `boomdrive:home/12` Flume's listing holds on place `P`
 - **THEN** it is answered `launched` at `P`, and no `flume launch` is run

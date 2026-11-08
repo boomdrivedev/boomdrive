@@ -17,7 +17,7 @@ At each pull, for each partition, crew's implementation SHALL read `requests.rec
 
 #### Scenario: A file missing at the tip
 
-- **WHEN** `madswan/main`'s tip holds `requests.rec` and no `roles.rec`
+- **WHEN** `home/main`'s tip holds `requests.rec` and no `roles.rec`
 - **THEN** the pull gives the requests for this host, and offers no role's run
 
 #### Scenario: Two partitions of one state repository
