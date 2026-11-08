@@ -50,4 +50,4 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 7. The specs take the neutral names
 
-- [ ] 7.1 Each scenario of this change's deltas, `specs/crew-control-plane`, `work-into-flume`, `views`, `branch-commands` and `tool-records`, names the values its test names after groups 1 and 2; where a test took another neutral value, the delta takes the test's (design Decision 9). True when `sluice exec main -- moon run root:changes` passes.
+- [x] 7.1 Each scenario of this change's deltas, `specs/crew-control-plane`, `work-into-flume`, `views`, `branch-commands` and `tool-records`, names the values its test names after groups 1 and 2; where a test took another neutral value, the delta takes the test's (design Decision 9). True when `sluice exec main -- moon run root:changes` passes.
