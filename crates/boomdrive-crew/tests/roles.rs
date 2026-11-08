@@ -124,6 +124,7 @@ fn run(k: u64, outcome: Outcome, place: Option<&str>, status: Option<&str>) -> R
                 number: 1,
                 expires: None,
             },
+            repository: None,
             answer: Answer {
                 outcome,
                 place_dir: place.map(str::to_string),
@@ -347,6 +348,7 @@ fn a_roles_work_landed() {
                 number: 1,
                 expires: None,
             },
+            repository: None,
             answer: Answer {
                 outcome: Outcome::Launched,
                 place_dir: Some("/places/chore--record-0053".to_string()),

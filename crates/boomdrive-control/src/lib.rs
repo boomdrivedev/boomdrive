@@ -57,6 +57,12 @@ pub struct Hello {
     /// The addresses, `owner/name`, the runner keeps with their clones
     /// made.
     pub repositories: Vec<String>,
+    /// Apart from `repositories`, the addresses whose clones the runner
+    /// keeps while its configuration no longer names them, because a
+    /// place it launched there has not ended; no launch is taken in one.
+    /// Read as none where a hello lacks it.
+    #[serde(default)]
+    pub draining: Vec<String>,
     pub capacity: Capacity,
     /// Each launch's and each command's id with the lease number held.
     pub leases: BTreeMap<Id, u64>,

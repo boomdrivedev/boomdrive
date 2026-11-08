@@ -285,3 +285,32 @@ fn a_sluice_not_there() {
     assert!(passed.reported);
     assert!(entry(&bench).is_some(), "sluice is asked again");
 }
+
+/// The tool-records spec's "An entry carried from a repository drained":
+/// once the configuration drops the launch's repository, sluice is asked
+/// in its clone's container, which the runner drains (record 0021).
+#[test]
+fn an_entry_carried_from_a_repository_drained() {
+    let bench = Bench::new();
+    let kit = bench.container("example/kit");
+    fs::create_dir_all(&kit).unwrap();
+    bench.clones.ready("example/kit", &kit);
+    let mut parser = offer("scratch/1", "parser");
+    parser.launch.repository = "example/kit".to_string();
+    let mut plane = Fake::holding(vec![Want::Offer(parser)]);
+    bench.pass(&mut plane);
+    bench.clones.drop_named("example/kit");
+    submitted(&bench, "412");
+    let printed = as_if("status-landed.json", 412, "landed");
+    bench.sluice.answers_text("status", &printed, 0);
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(plane.hellos()[1].draining, ["example/kit"]);
+    assert_eq!(bench.sluice.calls(), [["status", "412", "--json"]]);
+    assert_eq!(bench.sluice.dir_of(1), Some(kit.canonicalize().unwrap()));
+    let entry = entry(&bench).expect("an entry carried");
+    let carried: Value = serde_json::from_str(&entry.text).unwrap();
+    assert_eq!(carried["id"], json!(412));
+    assert_eq!(carried["state"], json!("landed"));
+}
