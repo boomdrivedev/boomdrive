@@ -209,3 +209,46 @@ fn a_preview_whose_lease_lapsed() {
     assert!(plane.reports().iter().all(|sent| sent.previews.is_empty()));
     assert!(bench.sluice.calls().is_empty());
 }
+
+/// The previews spec's "A preview waiting at sluice's bound": the ask is
+/// interrupted at the runner's patience, the preview held and said once,
+/// and asked again at the next pass (design Decision 3).
+#[test]
+fn a_preview_waiting_at_sluices_bound() {
+    let bench = bench();
+    bench.sluice_patience.set(std::time::Duration::from_secs(1));
+    bench.sluice.waits("preview");
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    let began = std::time::Instant::now();
+    let (_, lines) = bench.pass(&mut plane);
+    assert!(began.elapsed() < std::time::Duration::from_secs(5));
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Held);
+    assert_eq!(previewed.text, None);
+    let waits =
+        "home/30: preview of main at R1: waits at sluice's bound, asked again at the next pass";
+    assert!(lines.contains(&waits.to_string()), "{lines:?}");
+
+    bench.sluice.waits_no_more("preview");
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let (_, lines) = bench.pass(&mut plane);
+    let call = ["preview", "main", "R1", "--json"]
+        .map(String::from)
+        .to_vec();
+    let asked: Vec<Vec<String>> = calls_of(&bench, "preview")
+        .into_iter()
+        .map(|(call, _)| call)
+        .collect();
+    assert_eq!(asked, [call.clone(), call]);
+    let previewed = &bench.report().previews[&id("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Done);
+    assert_eq!(previewed.text.as_deref(), Some(STARTING));
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.contains("waits at sluice's bound")),
+        "{lines:?}"
+    );
+}
