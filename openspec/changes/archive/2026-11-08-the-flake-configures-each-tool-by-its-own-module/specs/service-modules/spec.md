@@ -76,11 +76,25 @@ The modules' own activation SHALL link the runner's file alone. Flume's, sluice'
 - **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's and crew's own modules alone, each turned on with the same settings, packages and user
 - **THEN** on nix-darwin their activations are the same but for the runner's own link, and on NixOS their user activations are the same but for the runner's own
 
+### Requirement: The modules hold no option that installs another tool
+
+The modules SHALL hold no option of their own that installs another tool: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. The README's install with nix SHALL name each tool's `package` option, and no `services.boomdrive.tools`.
+
+#### Scenario: The tools option is gone
+
+- **WHEN** a system sets `services.boomdrive.tools = [ ]`
+- **THEN** evaluation fails, naming `services.flume.package` and `services.sluice.package`
+
+#### Scenario: The README's words
+
+- **WHEN** the README's install with nix is read
+- **THEN** it names `services.flume.package`, `services.sluice.package` and `services.crew.package`, and no `services.boomdrive.tools`
+
 ## MODIFIED Requirements
 
 ### Requirement: The runner finds its tools on the profiles' PATH
 
-Each module SHALL put `package` in the system profile, and each tool's own module SHALL put that tool's package there, the set's unless the host gives its own. The modules SHALL hold no option of their own that installs another tool: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. The service's `PATH` SHALL be the user's profiles, then the system's, then the operating system's folders, so the runner, what it launches and a person's shell run one copy of each tool. git and herdr SHALL be left to the host. The README's install with nix SHALL name each tool's `package` option, and no `services.boomdrive.tools`.
+Each module SHALL put `package` in the system profile, and each tool's own module SHALL put that tool's package there, the set's unless the host gives its own. The service's `PATH` SHALL be the user's profiles, then the system's, then the operating system's folders, so the runner, what it launches and a person's shell run one copy of each tool. git and herdr SHALL be left to the host.
 
 #### Scenario: The set's tools
 
@@ -92,20 +106,10 @@ Each module SHALL put `package` in the system profile, and each tool's own modul
 - **WHEN** the module is enabled with `services.flume.package` and `services.sluice.package` each `null`
 - **THEN** the system profile holds the package and no Flume or sluice of the set's
 
-#### Scenario: The tools option is gone
-
-- **WHEN** a system sets `services.boomdrive.tools = [ ]`
-- **THEN** evaluation fails, naming `services.flume.package` and `services.sluice.package`
-
 #### Scenario: The user's profile first
 
 - **WHEN** the module is enabled for `alice`
 - **THEN** the service's `PATH` names `/etc/profiles/per-user/alice/bin` and `alice`'s `~/.nix-profile/bin` before the system profile's `bin`, and holds no package's own folder
-
-#### Scenario: The README's words
-
-- **WHEN** the README's install with nix is read
-- **THEN** it names `services.flume.package`, `services.sluice.package` and `services.crew.package`, and no `services.boomdrive.tools`
 
 ### Requirement: A changed file or package restarts the runner, and nothing else does
 
