@@ -12,7 +12,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 2. The nix and the docs the bolt adds name no one's host
 
-- [ ] 2.1 The comment on a drive's stream defaults in `nix/modules/options.nix` cites record 0028 (design Decision 2). True when `sluice exec main -- moon run nix:format nix:lint` passes.
+- [x] 2.1 The comment on a drive's stream defaults in `nix/modules/options.nix` cites record 0028 (design Decision 2). True when `sluice exec main -- moon run nix:format nix:lint` passes.
 - [ ] 2.2 The archived changes `a-hosts-configuration-names-its-accounts-and-their-drives`, `the-flake-configures-each-tool-by-its-own-module`, `crews-partitions-give-the-runner-its-crew-table`, `each-repository-is-named-once-by-its-owner` and `herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents` name `example/crew` and a host's facts, and the user's words on a drive of another machine name no host or employer (design Decisions 1 and 3). True when `sluice exec main -- moon run root:format` passes.
 
 ## 3. The specs take the neutral names
