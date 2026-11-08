@@ -18,7 +18,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. Version 1 carries no preview
 
-- [ ] 2.1 The hosted implementation takes a preview as design Decision 11 has it:
+- [x] 2.1 The hosted implementation takes a preview as design Decision 11 has it:
   - `own_wants` withholds one naming a repository its account is not served;
   - `prefixed_want` gives its id the partition's prefix;
   - `part` takes the partition's previews, and `taken_back` gives none;
