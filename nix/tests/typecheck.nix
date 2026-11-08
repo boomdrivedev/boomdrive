@@ -10,6 +10,7 @@ let
   # The family-packages spec's set, for each system.
   set = [
     "boomdrive"
+    "boomdrive-launcher"
     "crew"
     "default"
     "flume"

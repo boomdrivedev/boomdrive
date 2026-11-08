@@ -116,6 +116,9 @@
         tools
         // {
           default = tools.boomdrive;
+          # The way in: an app on macOS and a desktop entry on Linux that
+          # runs `flume open` (design Decision 3).
+          boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
           flume-herdr-plugin = pluginOf tools.flume;
           sluice-herdr-plugin = pluginOf tools.sluice;
         };
