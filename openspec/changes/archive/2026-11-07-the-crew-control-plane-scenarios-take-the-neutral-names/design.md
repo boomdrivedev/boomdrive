@@ -9,6 +9,7 @@ What stands, read on 2026-11-07:
 - **The spec.** `openspec/specs/crew-control-plane/spec.md` on this bolt is main's, with what a-dropped-launch-is-never-offered changed: four requirements reworded, five added, and one scenario added. The scenarios of sixteen requirements name private values: thirteen requirements the bolt left as main has them, and three it reworded but whose scenarios it left as main had them. The fourth it reworded, "A claim stands until the runner answers its launch", took the neutral names with a-dropped-launchs-tests-take-the-neutral-names.
 - **The scrub fix.** fix/boomdrive-is-ready-to-go-public--takes-main-in-and-scrubs-it, which took main at `9b21d2c` into the public bolt, holds main's crew-control-plane spec scrubbed. Against main it differs only in scenarios' `WHEN` and `THEN` lines, and it names nothing private.
 - **Record 0002.** The bolt's own amendment of it names nothing private. Its amendment for the chore a-launch-waits-on-no-other-act, which main holds and the bolt carries, names the host it was seen on; the scrub fix says "On a host" there.
+- **The README.** The bolt adds a paragraph to it. Its examples of a configuration, which main holds and the bolt carries, name a host, a partition, its state repository and a repository under a personal account in five lines; the scrub fix gives each its neutral value, and changes nothing else of the README that this bolt carries.
 - **crew's tests** on this bolt name what the scrub's scenarios name: they took boomdrives-tree-holds-nothing-private's `ed66819` (a-dropped-launchs-tests-take-the-neutral-names, its Decision 1).
 
 There are no area pages, so `docs/architecture/core.md` binds every path this change touches. It relies on core.41 and no other rule.
@@ -17,12 +18,12 @@ There are no area pages, so `docs/architecture/core.md` binds every path this ch
 
 **Goals:**
 
-- Nothing private in the crew-control-plane spec or record 0002 as this bolt carries them.
+- Nothing private in the crew-control-plane spec, record 0002 or the README as this bolt carries them.
 - Where this bolt and the public bolt meet, the same lines, so each region either side changed alone merges as it is.
 
 **Non-Goals:**
 
-- **What the public bolt scrubs that this bolt carries unchanged from main**: the README's examples, the other records, `design/`, the other specs and the tests of the other crates. The scrub fix takes main in and scrubs it.
+- **What the public bolt scrubs that this bolt carries unchanged from main**: the other records, `design/`, the other specs and the tests of the other crates. The scrub fix takes main in and scrubs it.
 - **Record 0002's other text** that the public bolt rewrites, its citations of a private repository among it, which this bolt does not change.
 
 ## Decisions
@@ -41,6 +42,10 @@ Alternatives:
 ### 2. Record 0002's sentence takes the scrub fix's words
 
 The amendment for a-launch-waits-on-no-other-act says "On a host on 2026-11-07" where it named the host, the sentence otherwise unchanged, word for word as the scrub fix has it. The record's decision does not change.
+
+### 3. The README's examples take the scrub fix's lines
+
+Each of the five lines of the README's examples that names a private value takes the scrub fix's line, word for word: `host-a`, `home`, `example/home-state` and `example/crew`. The README then differs from the scrub fix's only by the paragraph a-dropped-launch-is-never-offered added.
 
 ## Risks / Trade-offs
 
