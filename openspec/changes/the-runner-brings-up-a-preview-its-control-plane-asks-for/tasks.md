@@ -28,7 +28,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 3. The control pass takes a preview
 
-- [ ] 3.1 `carry.rs` takes `Want::Preview` (design Decisions 7 and 8):
+- [x] 3.1 `carry.rs` takes `Want::Preview` (design Decisions 7 and 8):
   - in the first round, a preview the report holds `done` or `refused` is answered from the report, its lease the pull's, and one under a lapsed lease is left untaken;
   - a preview not marked done in a repository the runner neither keeps nor drains, or one it drains, is answered `refused` with `this host's configuration does not keep <repository>`;
   - one whose clone is not yet made is left unanswered;

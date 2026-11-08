@@ -21,7 +21,7 @@ use boomdrive::sluice;
 use boomdrive::terminal::{self, Relays};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
+    ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Preview, Report, ToolVersion, Want,
 };
 use serde_json::{json, Value};
 use std::cell::RefCell;
@@ -669,6 +669,22 @@ pub fn act(id: &str, launch: &str, what: ActSort) -> Want {
         launch: Id::new(launch),
         lease: 1,
         what,
+    })
+}
+
+/// A preview `id` of `branch` at `revision` in [`KEPT`], marked `done`
+/// or not, under lease 1 with no expiry.
+pub fn preview(id: &str, branch: &str, revision: &str, done: bool) -> Want {
+    Want::Preview(Preview {
+        id: Id::new(id),
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: KEPT.to_string(),
+        branch: branch.to_string(),
+        revision: revision.to_string(),
+        done,
     })
 }
 
