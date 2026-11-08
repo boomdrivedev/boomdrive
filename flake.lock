@@ -1,18 +1,52 @@
 {
   "nodes": {
-    "flume": {
-      "flake": false,
+    "crew": {
+      "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
       "locked": {
-        "lastModified": 1794069151,
-        "narHash": "sha256-utABZelBlYkcE0SJz/f/JLRQmt79zYHJCtBC07stVDE=",
+        "lastModified": 1794158472,
+        "narHash": "sha256-VPwFEVNVE+I66U3dFimDsWZNhDm50c8qIRhPCQ/obQc=",
         "owner": "agentplot",
-        "repo": "flume",
-        "rev": "4c6faa0283417eb6d49187fc1a4b55ad69bd033b",
+        "repo": "crew",
+        "rev": "2ae956170f149e4b80f8f6520d8e115693f50493",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.17.1",
+        "ref": "v0.44.8",
+        "repo": "crew",
+        "type": "github"
+      }
+    },
+    "flume": {
+      "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794157966,
+        "narHash": "sha256-cqlcgf2K5zZ0hvS8B/GfYxRRPs0XQfgR42jtJOsgAsA=",
+        "owner": "agentplot",
+        "repo": "flume",
+        "rev": "96e2b6777ed0f9ba7adba06b5328d765a7bfc743",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agentplot",
+        "ref": "v0.18.0",
         "repo": "flume",
         "type": "github"
       }
@@ -55,6 +89,7 @@
     },
     "root": {
       "inputs": {
+        "crew": "crew",
         "flume": "flume",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
@@ -84,6 +119,9 @@
     },
     "sluice": {
       "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -92,16 +130,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794082892,
-        "narHash": "sha256-XoArmaLEyKHVOqhDFToGFOMT6wiEg5F1ZMScOF45rEw=",
+        "lastModified": 1794156058,
+        "narHash": "sha256-XxWHb9Wk5Gafh9MfvxuWmD6RGARsooQ/l42yJfgwkLM=",
         "owner": "agentplot",
         "repo": "sluice",
-        "rev": "a476703c4c4fd20b9254c5252c4a87a46b7505fa",
+        "rev": "dd3fa01790048e816c764f7adc0acaef9ee8d1b5",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.74.3",
+        "ref": "v0.76.0",
         "repo": "sluice",
         "type": "github"
       }

@@ -1,11 +1,11 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, and Flume and sluice each at a release tag (record
-# 0020, core.44). A host's nix substitutes their binaries from the family's
+# runner at this tree, and Flume, sluice and crew each at a release tag
+# through its own flake (records 0020 and 0023, core.44). A host's nix substitutes their binaries from the family's
 # cache where it trusts it, and builds the same paths where it does not
 # (core.47). The development shell is devenv's (devenv.nix); everything
 # else of the flake's is under nix/, the moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume and sluice, pinned together";
+  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -26,14 +26,27 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.74.3";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
+      url = "github:agentplot/sluice/v0.76.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
+      };
     };
-    # Flume publishes no flake yet: nix/packages/flume.nix builds its tag.
     flume = {
-      url = "github:agentplot/flume/v0.17.1";
-      flake = false;
+      url = "github:agentplot/flume/v0.18.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
+      };
+    };
+    crew = {
+      url = "github:agentplot/crew/v0.44.8";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        nix-darwin.follows = "nix-darwin";
+      };
     };
     # The tests' nix-darwin. A host's configuration follows its own, which
     # changes none of the packages.
@@ -69,15 +82,17 @@
           };
           tools = {
             boomdrive = pkgs.callPackage ./nix/packages/boomdrive.nix { platforms = systems; };
-            flume = pkgs.callPackage ./nix/packages/flume.nix {
-              src = inputs.flume;
-              platforms = systems;
-            };
+            flume = inputs.flume.packages.${system}.flume;
             sluice = import ./nix/packages/sluice.nix {
               inherit lib;
               package = inputs.sluice.packages.${system}.default;
               src = inputs.sluice;
               tag = tagOf (import ./flake.nix).inputs.sluice.url;
+            };
+            crew = import ./nix/packages/crew.nix {
+              inherit lib;
+              package = inputs.crew.packages.${system}.crew;
+              tag = tagOf (import ./flake.nix).inputs.crew.url;
             };
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
@@ -89,19 +104,38 @@
           sluice-herdr-plugin = pluginOf tools.sluice;
         };
       packages = lib.genAttrs systems packagesOf;
+
+      # A platform's modules (design Decision 4): `boomdrive`, also
+      # `default`, is the runner's service, its options the runner's file
+      # (record 0020, core.46), with Flume's, sluice's and crew's own
+      # modules, each as its tool's flake gives it at the tag the lock
+      # names, none carried here (record 0023, core.18); and each tool's
+      # module again, as its flake gives it. Keyed, as Flume's is, so a
+      # system that imports `default` and `boomdrive` takes it once.
+      tools = [
+        "flume"
+        "sluice"
+        "crew"
+      ];
+      modulesOf =
+        platform: file:
+        let
+          toolOf = tool: inputs.${tool}."${platform}Modules".${tool};
+        in
+        rec {
+          boomdrive = {
+            _file = ./flake.nix;
+            key = "github:agentplot/boomdrive#${platform}Modules.boomdrive";
+            imports = [ (import file { inherit packages; }) ] ++ map toolOf tools;
+          };
+          default = boomdrive;
+        }
+        // lib.genAttrs tools toolOf;
     in
     {
       inherit packages;
 
-      # The runner's service, its options the runner's file (record 0020,
-      # core.46), its packages the flake's own above.
-      darwinModules = rec {
-        boomdrive = import ./nix/modules/darwin.nix { inherit packages; };
-        default = boomdrive;
-      };
-      nixosModules = rec {
-        boomdrive = import ./nix/modules/nixos.nix { inherit packages; };
-        default = boomdrive;
-      };
+      darwinModules = modulesOf "darwin" ./nix/modules/darwin.nix;
+      nixosModules = modulesOf "nixos" ./nix/modules/nixos.nix;
     };
 }

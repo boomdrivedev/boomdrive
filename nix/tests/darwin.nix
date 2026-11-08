@@ -82,7 +82,13 @@ let
   );
   otherPackage = newPackage.config.services.boomdrive.package.outPath;
 
-  own = t.darwinSystem { services.boomdrive.tools = [ ]; };
+  own = t.darwinSystem {
+    services.flume.package = null;
+    services.sluice.package = null;
+  };
+  gone = t.darwinSystem { services.boomdrive.tools = [ ]; };
+  saysGone = words: lib.hasInfix words (toString (t.failures gone));
+  ownFlume = t.darwinSystem { services.flume.package = null; };
 
   path = lib.splitString ":" agent.EnvironmentVariables.PATH;
   before =
@@ -178,8 +184,8 @@ in
     ++ t.expect (plistOf base != plistOf newPackage) "the agents' plists are one for two packages";
 
   "Nothing else changed on nix-darwin" = t.expect (
-    plistOf base == plistOf own
-  ) "the agent's plist changes with services.boomdrive.tools";
+    plistOf base == plistOf ownFlume
+  ) "the agent's plist changes with services.flume.package";
 
   "The set's tools on nix-darwin" =
     installs base "runner" set.boomdrive
@@ -190,6 +196,19 @@ in
     installs own "runner" set.boomdrive
     ++ installsNo own "Flume" set.flume
     ++ installsNo own "sluice" set.sluice;
+
+  "The tools option is gone on nix-darwin" =
+    t.expect (t.failures gone != [ ]) "services.boomdrive.tools = [ ] evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (saysGone words) "the failure of services.boomdrive.tools names no ${words}: ${toString (t.failures gone)}"
+        )
+        [
+          "services.flume.package"
+          "services.sluice.package"
+        ];
 
   "The user's profile first on nix-darwin" =
     before "/etc/profiles/per-user/alice/bin"

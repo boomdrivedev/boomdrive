@@ -22,6 +22,7 @@ let
       ) "${name}: flake.nix names ${show named}, and flake.lock locks ${show locked}"
       ++ lib.optional (
         builtins.elem name [
+          "crew"
           "flume"
           "sluice"
         ]

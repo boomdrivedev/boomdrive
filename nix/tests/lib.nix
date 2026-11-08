@@ -13,11 +13,83 @@ let
     inherit inputs outputs;
     _type = "flake";
   };
+
+  # A nix-darwin system of aarch64-darwin whose primary user is alice, at
+  # /Users/alice (Task notes 5.1), of the modules `given`.
+  darwinOf =
+    given:
+    inputs.nix-darwin.lib.darwinSystem {
+      modules = [
+        {
+          nixpkgs.hostPlatform = "aarch64-darwin";
+          system.primaryUser = "alice";
+          users.users.alice.home = "/Users/alice";
+          system.stateVersion = 6;
+        }
+      ]
+      ++ given;
+    };
+
+  # A NixOS system of x86_64-linux whose normal users are alice and bob
+  # (Task notes 6.1), of the modules `given`.
+  nixosOf =
+    given:
+    inputs.nixpkgs.lib.nixosSystem {
+      modules = [
+        {
+          nixpkgs.hostPlatform = "x86_64-linux";
+          users.users.alice.isNormalUser = true;
+          users.users.bob.isNormalUser = true;
+          boot.loader.grub.enable = false;
+          fileSystems."/" = {
+            device = "/dev/disk/by-label/nixos";
+            fsType = "ext4";
+          };
+          system.stateVersion = "26.11";
+        }
+      ]
+      ++ given;
+    };
+
+  # Flume's, sluice's and crew's own modules alone, each from its own
+  # flake, turned on with the set's packages, crew's settings for host-a,
+  # and on NixOS the user alice (design Decision 8).
+  settings = import ./settings.nix;
+  toolsOf =
+    platform: set: extra:
+    map (tool: inputs.${tool}."${platform}Modules".${tool}) [
+      "flume"
+      "sluice"
+      "crew"
+    ]
+    ++ [
+      {
+        services = {
+          flume = {
+            enable = true;
+            package = set.flume;
+          };
+          sluice = {
+            enable = true;
+            package = set.sluice;
+          };
+          crew = {
+            enable = true;
+            package = set.crew;
+            host = "host-a";
+            settings = settings.crewModule;
+          };
+        };
+      }
+      extra
+    ];
 in
 {
   inherit
+    darwinOf
     flake
     inputs
+    nixosOf
     outputs
     self
     ;
@@ -43,51 +115,43 @@ in
   # A failure where `holds` is false, as a list of what fails.
   expect = holds: what: if holds then [ ] else [ what ];
 
-  # A nix-darwin system of aarch64-darwin with the flake's module enabled
-  # for the primary user alice, at /Users/alice (Task notes 5.1), and the
-  # module `given`.
+  # A system of darwinOf's with the flake's module enabled for alice, and
+  # the module `given`.
   darwinSystem =
     given:
-    inputs.nix-darwin.lib.darwinSystem {
-      modules = [
-        outputs.darwinModules.default
-        {
-          nixpkgs.hostPlatform = "aarch64-darwin";
-          system.primaryUser = "alice";
-          users.users.alice.home = "/Users/alice";
-          system.stateVersion = 6;
-          services.boomdrive.enable = true;
-        }
-        given
-      ];
-    };
+    darwinOf [
+      outputs.darwinModules.default
+      { services.boomdrive.enable = true; }
+      given
+    ];
 
-  # A NixOS system of x86_64-linux with the flake's module enabled for the
-  # normal user alice, beside the normal user bob (Task notes 6.1), and
+  # A system of nixosOf's with the flake's module enabled for alice, and
   # the module `given`.
   nixosSystem =
     given:
-    inputs.nixpkgs.lib.nixosSystem {
-      modules = [
-        outputs.nixosModules.default
-        {
-          nixpkgs.hostPlatform = "x86_64-linux";
-          users.users.alice.isNormalUser = true;
-          users.users.bob.isNormalUser = true;
-          boot.loader.grub.enable = false;
-          fileSystems."/" = {
-            device = "/dev/disk/by-label/nixos";
-            fsType = "ext4";
-          };
-          system.stateVersion = "26.11";
-          services.boomdrive = {
-            enable = true;
-            user = "alice";
-          };
-        }
-        given
-      ];
-    };
+    nixosOf [
+      outputs.nixosModules.default
+      {
+        services.boomdrive = {
+          enable = true;
+          user = "alice";
+        };
+      }
+      given
+    ];
+
+  # A system of darwinOf's and one of nixosOf's of the tools' own modules
+  # alone, beside the runner's systems above.
+  toolsDarwinSystem = darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin { });
+  toolsNixosSystem = nixosOf (
+    toolsOf "nixos" outputs.packages.x86_64-linux {
+      services = {
+        flume.user = "alice";
+        sluice.user = "alice";
+        crew.user = "alice";
+      };
+    }
+  );
 
   # The messages of the assertions a system fails.
   failures =
