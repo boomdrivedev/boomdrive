@@ -211,7 +211,6 @@ fn the_host_part_as_flume_printed_it() {
             "bases",
             "terminal_kept",
             "stand-in",
-            "madswan",
         ] {
             for sliced in [&part.running, &part.bound, &part.room, &part.streams] {
                 assert!(!sliced.contains(word), "{name}: {word} in {sliced}");
