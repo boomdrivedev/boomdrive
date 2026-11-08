@@ -148,3 +148,54 @@ expect "$named" "Flume's PATH $given names /etc/profiles/per-user/alice/bin not 
 expect "$named" "Flume's PATH $given names $home/.nix-profile/bin not before /usr/bin" \
   before "$given" "$home/.nix-profile/bin" /usr/bin
 expect "$named" "Flume's PATH $given leaves out the PATH it was given" has "$given" :/usr/bin:/bin
+
+# The shell's hook, sourced by bash in the case's folder with a scratch
+# HOME and a stub of herdr first on PATH that records its arguments. bash
+# reads no startup file, so no host's bashrc moves PATH; its words about
+# job control, on standard error, are left unread.
+hook=$(cd "$(dirname "$0")/.." && pwd)/shell-hook.sh
+
+freshHook() {
+  fresh
+  cat >"$dir/bin/herdr" <<STUB
+#!/bin/sh
+echo "herdr \$#:\$*" >>"$calls"
+STUB
+  chmod +x "$dir/bin/herdr"
+}
+
+# bash with the flags `$1` sourcing the hook, then the words `$2`, with
+# the caller's HERDR_ENV unset unless `$3` gives it.
+source_hook() {
+  status=0
+  (
+    unset HERDR_ENV
+    if [ -n "${3:-}" ]; then
+      HERDR_ENV=$3
+      export HERDR_ENV
+    fi
+    HOME=$home PATH=$dir/bin:$PATH hook=$hook \
+      bash --norc --noprofile ${1:+"$1"} -c ". \"\$hook\"; $2" </dev/null >"$dir/out" 2>"$dir/err"
+  ) || status=$?
+  out=$(cat "$dir/out")
+}
+
+named="Entering the shell"
+freshHook
+source_hook -i "echo after"
+expect "$named" "the hook's shell exits $status" [ "$status" -eq 0 ]
+expect "$named" "the hook called $(called), not herdr once with no argument" holds "$calls" "herdr 0:"
+expect "$named" "the shell says \"$out\", not after once herdr exits" [ "$out" = after ]
+
+named="A command through the shell"
+freshHook
+source_hook "" "echo after"
+expect "$named" "the hook's shell exits $status" [ "$status" -eq 0 ]
+expect "$named" "the hook called $(called)" missing "$calls"
+expect "$named" "the shell says \"$out\", not after" [ "$out" = after ]
+
+named="Inside herdr already"
+freshHook
+source_hook -i "echo after" 1
+expect "$named" "the hook's shell exits $status" [ "$status" -eq 0 ]
+expect "$named" "the hook called $(called)" missing "$calls"

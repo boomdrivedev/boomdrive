@@ -76,6 +76,13 @@ in
 
   "Each tag is the lock's" = tags t.flake.inputs t.lock;
 
+  # Each system's shell, whose derivation's path evaluates.
+  "Every system's shell" = lib.concatMap (
+    system:
+    t.expect (builtins.tryEval (builtins.seq outputs.devShells.${system}.default.drvPath true)).success
+      "devShells.${system}.default does not evaluate to a derivation"
+  ) systems;
+
   # The nix-darwin module in a minimal system of its platform, whose
   # derivation throws on a failed assertion.
   "The nix-darwin module" =
