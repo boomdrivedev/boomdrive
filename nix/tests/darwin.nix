@@ -133,6 +133,10 @@ let
   writtenOut = crewWith gardenSettings settings.crewFleet;
   writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
   render = import ../modules/toml.nix { inherit lib; };
+  # Another control plane, or none, beside crew's module with one
+  # partition on host-a.
+  hostedBesideCrew = crewWith settings.hosted settings.crewModule;
+  noneBesideCrew = crewWith settings.empty settings.crewModule;
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
@@ -261,6 +265,18 @@ in
       t.expect (writtenTable == garden)
         "settings.control_plane.crew is ${builtins.toJSON writtenTable}, not the table written, ${builtins.toJSON garden}"
     ++ t.expect (writes writtenOut (render gardenSettings)) "the agent's --config is not the rendering of the settings with the table written";
+
+  "A hosted control plane beside crew on nix-darwin" =
+    t.expect (
+      t.failures hostedBesideCrew == [ ]
+    ) "a hosted control plane beside crew fails: ${toString (t.failures hostedBesideCrew)}"
+    ++ t.expect (writes hostedBesideCrew (builtins.readFile ./files/hosted.toml)) "the agent's --config beside crew is not the file of nix/tests/files/hosted.toml";
+
+  "No control plane beside crew on nix-darwin" =
+    t.expect (
+      t.failures noneBesideCrew == [ ]
+    ) "no control plane beside crew fails: ${toString (t.failures noneBesideCrew)}"
+    ++ t.expect (writes noneBesideCrew (builtins.readFile ./files/empty.toml)) "the agent's --config beside crew is not the file of nix/tests/files/empty.toml";
 
   "crew's partitions on this host on nix-darwin" =
     t.expect (
