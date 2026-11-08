@@ -17,9 +17,9 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. A drop reaches the runner that holds its launch
 
-- [ ] 2.1 A request whose work has left the plan, which the runner does not hold, is given nothing, as built (design Decision 5). True when `devenv shell -- cargo test -p boomdrive-crew --test drops work_gone_that_the_runner_does_not_hold` passes, proving "Work gone that the runner does not hold".
-- [ ] 2.2 `Pulling::current` passes a drop whose launch the runner's report or this host's branch answers, a claim apart, whatever the plan holds (design Decision 4; Task notes 1.4). True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_drop_written_as_its_work_leaves_the_plan` passes, proving "A drop written as its work leaves the plan".
-- [ ] 2.3 A drop naming no host goes to the runner that holds its launch, and to no other. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_kits_drop_goes_to_the_runner_holding_its_launch` passes, proving "A kit's drop goes to the runner holding its launch".
+- [x] 2.1 A request whose work has left the plan, which the runner does not hold, is given nothing, as built (design Decision 5). True when `devenv shell -- cargo test -p boomdrive-crew --test drops work_gone_that_the_runner_does_not_hold` passes, proving "Work gone that the runner does not hold".
+- [x] 2.2 `Pulling::current` passes a drop whose launch the runner's report or this host's branch answers, a claim apart, whatever the plan holds (design Decision 4; Task notes 1.4). True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_drop_written_as_its_work_leaves_the_plan` passes, proving "A drop written as its work leaves the plan".
+- [x] 2.3 A drop naming no host goes to the runner that holds its launch, and to no other. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_kits_drop_goes_to_the_runner_holding_its_launch` passes, proving "A kit's drop goes to the runner holding its launch".
 
 ## 3. A dropped launch the runner holds unlaunched is let go
 

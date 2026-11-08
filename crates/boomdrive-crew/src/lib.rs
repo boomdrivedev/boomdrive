@@ -214,11 +214,17 @@ impl Pulling<'_> {
 
     /// Whether request `number`'s work is still crew's, or the runner has
     /// answered it: such a request is given, so its place's status is
-    /// carried until it is let go.
+    /// carried until it is let go. A drop is current, whatever the plan
+    /// holds, while the runner answers the launch it names, since crew
+    /// writes a drop as its work leaves the plan.
     fn current(&self, request: &Request) -> bool {
         self.main.plans(request.work())
             || self.reported(request.number)
             || self.branch_answers(request.number, false)
+            || (request.act() == Some("drop")
+                && request
+                    .of()
+                    .is_some_and(|of| self.reported(of) || self.branch_answers(of, false)))
     }
 }
 

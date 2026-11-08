@@ -6,8 +6,11 @@
 
 mod common;
 
-use boomdrive_control::{Answer, At, Carried, ControlPlane, Hello, Id, Launched, Outcome, Report};
+use boomdrive_control::{
+    Answer, At, Carried, ControlPlane, Hello, Id, Launched, Outcome, Report, Want,
+};
 use boomdrive_crew::read::{host_read, RunnerFiles, LEASE};
+use boomdrive_crew::write;
 use common::{act, file, hello, ids, launch, plan, pull, State, REQUESTS};
 use std::collections::BTreeMap;
 use weir_capture::rec::Record;
@@ -193,4 +196,94 @@ fn a_claimed_launch_dropped() {
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
     deneb.report(&Report::default()).expect("a report");
     assert!(!answers(&state, "deneb").contains_key(&20));
+}
+
+/// "Work gone that the runner does not hold": a request whose work has
+/// left the plan, which no runner answers, is given nothing.
+#[test]
+fn work_gone_that_the_runner_does_not_hold() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[launch(12, Some("deneb"), "unit/u", CREW, "u", &[])],
+        &[],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let pulled = pull(&mut deneb, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+}
+
+/// "A drop written as its work leaves the plan": the runner holds the
+/// launch it names, so the drop is given though its work has left the
+/// plan.
+#[test]
+fn a_drop_written_as_its_work_leaves_the_plan() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(12, Some("deneb"), "unit/u", CREW, "u", &[]),
+            act(14, "drop", Some("deneb"), "unit/u", 12, &[]),
+        ],
+        &[],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    let report = report_of(
+        12,
+        answered(Outcome::Launched, Some(PLACE), None, Some(true)),
+    );
+    let pulled = deneb.pull(&kept(), &report).expect("a pull");
+    assert_eq!(ids(&pulled), ["madswan/12", "madswan/14"]);
+    assert!(
+        matches!(common::want(&pulled, "madswan/14"), Want::Act(_)),
+        "{:?}",
+        pulled.wants
+    );
+}
+
+/// "A kit's drop goes to the runner holding its launch": `deneb`'s branch
+/// answers the kit's launch, so `deneb` is given it and its drop, and
+/// `vega` neither.
+#[test]
+fn a_kits_drop_goes_to_the_runner_holding_its_launch() {
+    let state = State::new();
+    main_holding(
+        &state,
+        &[
+            launch(20, None, "unit/u", CREW, "u", &[]),
+            act(21, "drop", None, "unit/u", 20, &[]),
+        ],
+        &[],
+    );
+    let mut answer = Record::new();
+    answer.push("Request", "20");
+    answer.push("Outcome", "launched");
+    answer.push("Place", PLACE);
+    answer.push("At", "2026-11-01T09:40:00Z");
+    state.commit(
+        "madswan/runner/deneb",
+        &[
+            (
+                "runner.rec",
+                &write::runner_text("deneb", "boomdrive 0.0.0", "2026-11-01T09:00:00Z"),
+            ),
+            (
+                "answers.rec",
+                &write::answers_text(&[(20, answer)].into_iter().collect()),
+            ),
+            (
+                "places.rec",
+                &write::places_text(&BTreeMap::new(), &BTreeMap::new()),
+            ),
+        ],
+    );
+    let (mut deneb, _) = state.crew("deneb");
+    assert_eq!(
+        ids(&pull(&mut deneb, &kept())),
+        ["madswan/20", "madswan/21"]
+    );
+    let (mut vega, _) = state.crew("vega");
+    let pulled = pull(&mut vega, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+    assert_eq!(state.tip("madswan/runner/vega"), None);
 }
