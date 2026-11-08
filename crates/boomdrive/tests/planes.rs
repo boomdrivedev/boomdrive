@@ -54,7 +54,7 @@ fn open(text: &str) -> Result<Vec<Part>, String> {
 fn crew_named() {
     let parts = open(EXAMPLE).expect("opened");
     let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
-    assert_eq!(labels, ["madswan"]);
+    assert_eq!(labels, ["home"]);
 }
 
 /// Each part an implementation opens is handed a say made for its own
@@ -64,7 +64,7 @@ fn crew_named() {
 fn each_part_is_handed_its_own_say() {
     let text = format!(
         "{EXAMPLE}\n[[control_plane.crew.partitions]]\nlabel = \"work\"\n\
-         state_repository = \"afterthought/madswan-state\"\n"
+         state_repository = \"example/work-state\"\n"
     );
     let config = config::parse(&text, Path::new(FILE), Path::new("/h")).expect("a configuration");
     let table = config.control_plane.expect("a control plane named");
@@ -83,8 +83,8 @@ fn each_part_is_handed_its_own_say() {
     )
     .expect("opened");
     let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();
-    assert_eq!(labels, ["madswan", "work"]);
-    assert_eq!(asked.into_inner(), ["madswan", "work"]);
+    assert_eq!(labels, ["home", "work"]);
+    assert_eq!(asked.into_inner(), ["home", "work"]);
 }
 
 /// The table `type` names is handed to the implementation whole, so its

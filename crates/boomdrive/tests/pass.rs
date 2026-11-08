@@ -153,7 +153,7 @@ impl Host {
         let report = ReportFile::new(&control_dir);
         let locks = Locks::new();
         let carrier = Carrier {
-            label: "madswan",
+            label: "home",
             flume: &flume,
             sluice: &sluice,
             git: &git,

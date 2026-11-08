@@ -237,7 +237,7 @@ fn flumes_status_refused() {
     assert!(
         stderr(&output)
             .lines()
-            .any(|line| line.starts_with("boomdrive: madswan: Flume's status could not be read: ")),
+            .any(|line| line.starts_with("boomdrive: home: Flume's status could not be read: ")),
         "{}",
         stderr(&output)
     );
