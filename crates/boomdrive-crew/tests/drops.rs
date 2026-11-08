@@ -7,8 +7,10 @@
 mod common;
 
 use boomdrive_control::{Answer, At, Carried, ControlPlane, Hello, Id, Launched, Outcome, Report};
-use boomdrive_crew::read::LEASE;
+use boomdrive_crew::read::{host_read, RunnerFiles, LEASE};
 use common::{act, file, hello, ids, launch, plan, pull, State, REQUESTS};
+use std::collections::BTreeMap;
+use weir_capture::rec::Record;
 
 const CREW: &str = "afterthought/crew";
 const PLACE: &str = "/places/change--a";
@@ -23,6 +25,16 @@ fn main_holding(state: &State, requests: &[String], units: &[&str]) {
         ("requests.rec", &file(REQUESTS, requests)),
         ("plan.rec", &plan(units, &[])),
     ]);
+}
+
+/// `host`'s branch as crew reads it: its answers, by request.
+fn answers(state: &State, host: &str) -> BTreeMap<u64, Record> {
+    let branch = format!("madswan/runner/{host}");
+    let mut files = RunnerFiles::new();
+    for path in ["runner.rec", "answers.rec", "places.rec"] {
+        files.insert(path, state.file(&branch, path));
+    }
+    host_read(host, &files).expect("crew reads it").answers
 }
 
 fn at(text: &str) -> At {
@@ -156,4 +168,29 @@ fn a_kits_launch_dropped_before_it_is_claimed() {
     let pulled = pull(&mut deneb, &kept());
     assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
     assert_eq!(state.tip("madswan/runner/deneb"), None);
+}
+
+/// "A claimed launch dropped": a claim standing on this host's branch is
+/// not given once a drop names its launch, nor is the drop, and the
+/// report's write leaves the claim out.
+#[test]
+fn a_claimed_launch_dropped() {
+    let state = State::new();
+    let kit = launch(20, None, "unit/u", CREW, "u", &[]);
+    main_holding(&state, &[kit.clone()], &["u"]);
+    let (mut deneb, _) = state.crew("deneb");
+    assert_eq!(ids(&pull(&mut deneb, &kept())), ["madswan/20"]);
+    // The runner leaves the offer unanswered, its stream having no room.
+    deneb.report(&Report::default()).expect("a report");
+    assert!(answers(&state, "deneb").contains_key(&20));
+
+    main_holding(
+        &state,
+        &[kit, act(21, "drop", None, "unit/u", 20, &[])],
+        &["u"],
+    );
+    let pulled = pull(&mut deneb, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+    deneb.report(&Report::default()).expect("a report");
+    assert!(!answers(&state, "deneb").contains_key(&20));
 }

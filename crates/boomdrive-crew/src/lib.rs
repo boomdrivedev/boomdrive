@@ -415,12 +415,14 @@ impl Crew {
             }
         }
         let mut others = pulling.others;
+        // A claim of a launch a drop names is given nothing, so no act
+        // goes with it.
         let mut own_claims: BTreeSet<u64> = own
             .as_ref()
             .map(|own| {
                 own.answers
                     .iter()
-                    .filter(|(_, answer)| write::is_claim(answer, &host))
+                    .filter(|(n, answer)| write::is_claim(answer, &host) && !main.dropped(**n))
                     .map(|(n, _)| *n)
                     .collect()
             })
@@ -814,6 +816,7 @@ impl ControlPlane for Crew {
                     .filter(|(n, answer)| {
                         write::is_claim(answer, &host)
                             && !kept.launches.contains_key(&ids::request(label, *n))
+                            && !main.dropped(*n)
                             && main
                                 .request(*n)
                                 .is_some_and(|request| main.plans(request.work()))

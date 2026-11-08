@@ -12,8 +12,8 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 1.2 A held launch a drop names is given no offer, and its drop naming this host is given. The test's plan holds the launch's unit, so the plan alone gives the drop. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_held_launch_dropped` passes, proving "A held launch dropped".
 - [x] 1.3 A dropped launch the runner launched is still given, with its drop. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_dropped_launch_the_runner_launched` passes, proving "A dropped launch the runner launched".
 - [x] 1.4 A kit's launch a drop names is never claimed, and no branch is written for it. True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_kits_launch_dropped_before_it_is_claimed` passes, proving "A kit's launch dropped before it is claimed".
-- [ ] 1.5 A claim of a dropped launch is not given. No act naming no host goes with it, as `own_claims` leaves dropped launches out. The report's write keeps no claim of a dropped launch (design Decision 2; Task notes 1.3). True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_claimed_launch_dropped` passes, proving "A claimed launch dropped".
-- [ ] 1.6 The claims of launches no drop names stand as they were. True when `devenv shell -- cargo test -p boomdrive-crew --test claims` passes, proving the MODIFIED requirements' scenarios that design Decision 6 names in `tests/claims.rs`.
+- [x] 1.5 A claim of a dropped launch is not given. No act naming no host goes with it, as `own_claims` leaves dropped launches out. The report's write keeps no claim of a dropped launch (design Decision 2; Task notes 1.3). True when `devenv shell -- cargo test -p boomdrive-crew --test drops a_claimed_launch_dropped` passes, proving "A claimed launch dropped".
+- [x] 1.6 The claims of launches no drop names stand as they were. True when `devenv shell -- cargo test -p boomdrive-crew --test claims` passes, proving the MODIFIED requirements' scenarios that design Decision 6 names in `tests/claims.rs`.
 
 ## 2. A drop reaches the runner that holds its launch
 
