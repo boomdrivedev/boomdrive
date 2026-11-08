@@ -64,19 +64,21 @@ let
     ]
     ++ [
       {
-        services.flume = {
-          enable = true;
-          package = set.flume;
-        };
-        services.sluice = {
-          enable = true;
-          package = set.sluice;
-        };
-        services.crew = {
-          enable = true;
-          package = set.crew;
-          host = "host-a";
-          settings = settings.crewModule;
+        services = {
+          flume = {
+            enable = true;
+            package = set.flume;
+          };
+          sluice = {
+            enable = true;
+            package = set.sluice;
+          };
+          crew = {
+            enable = true;
+            package = set.crew;
+            host = "host-a";
+            settings = settings.crewModule;
+          };
         };
       }
       extra
@@ -143,9 +145,11 @@ in
   toolsDarwinSystem = darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin { });
   toolsNixosSystem = nixosOf (
     toolsOf "nixos" outputs.packages.x86_64-linux {
-      services.flume.user = "alice";
-      services.sluice.user = "alice";
-      services.crew.user = "alice";
+      services = {
+        flume.user = "alice";
+        sluice.user = "alice";
+        crew.user = "alice";
+      };
     }
   );
 

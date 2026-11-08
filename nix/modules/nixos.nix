@@ -87,9 +87,11 @@ in
 
     # Each tool's module links its file for the runner's user, unless the
     # host names another.
-    services.flume.user = lib.mkDefault user;
-    services.sluice.user = lib.mkDefault user;
-    services.crew.user = lib.mkDefault user;
+    services = {
+      flume.user = lib.mkDefault user;
+      sluice.user = lib.mkDefault user;
+      crew.user = lib.mkDefault user;
+    };
 
     users.users.${user}.linger = true;
 

@@ -27,13 +27,17 @@ in
 {
   config = lib.mkMerge [
     {
-      services.flume.package = lib.mkDefault set.flume;
-      services.sluice.package = lib.mkDefault set.sluice;
-      services.crew.package = lib.mkDefault set.crew;
+      services = {
+        flume.package = lib.mkDefault set.flume;
+        sluice.package = lib.mkDefault set.sluice;
+        crew.package = lib.mkDefault set.crew;
+      };
     }
     (lib.mkIf config.services.boomdrive.enable {
-      services.flume.enable = lib.mkDefault true;
-      services.sluice.enable = lib.mkDefault true;
+      services = {
+        flume.enable = lib.mkDefault true;
+        sluice.enable = lib.mkDefault true;
+      };
     })
   ];
 }
