@@ -80,6 +80,95 @@ let
     "crew"
     "herdr"
   ];
+
+  # The modules' way in, on each platform (design Decision 5).
+  platforms = {
+    "nix-darwin" = {
+      system = t.darwinSystem;
+      without = t.darwinOf [ outputs.darwinModules.default ];
+      set = outputs.packages.aarch64-darwin;
+    };
+    NixOS = {
+      system = t.nixosSystem;
+      without = t.nixosOf [ outputs.nixosModules.default ];
+      set = outputs.packages.x86_64-linux;
+    };
+  };
+  onEach =
+    scenario: check:
+    lib.mapAttrs' (platform: host: {
+      name = "${scenario} on ${platform}";
+      value = check platform host;
+    }) platforms;
+
+  profileOf = evaluated: map (p: p.outPath) evaluated.config.environment.systemPackages;
+  wayIn = [
+    "herdr"
+    "ghostty"
+    "boomdrive-launcher"
+  ];
+
+  withRunner =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+      profile = profileOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ lib.concatMap (
+      name:
+      t.expect (builtins.elem set.${name}.outPath
+        profile
+      ) "the ${platform} system profile holds no set's ${name}"
+    ) wayIn;
+
+  # A herdr of the host's own, laid out as a package with a bin.
+  ownHerdr =
+    { pkgs, ... }:
+    {
+      services.boomdrive.herdr.package = pkgs.runCommand "own-herdr" { } "mkdir -p $out/bin";
+    };
+  hostsHerdr =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownHerdr;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.herdr.package.outPath profile) "the ${platform} system profile holds no host's own herdr"
+    ++ t.expect (
+      !builtins.elem set.herdr.outPath profile
+    ) "the ${platform} system profile holds the set's herdr beside the host's own";
+
+  noGhostty =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.ghostty.package = null; };
+      profile = profileOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no Ghostty fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.ghostty.outPath profile
+    ) "the ${platform} system profile with no Ghostty holds the set's Ghostty";
+
+  withoutRunner =
+    platform:
+    { without, set, ... }:
+    let
+      profile = profileOf without;
+    in
+    lib.concatMap (
+      name:
+      t.expect (
+        !builtins.elem set.${name}.outPath profile
+      ) "the ${platform} system profile without the runner holds the set's ${name}"
+    ) wayIn;
 in
 {
   "The app on macOS" = appOnMacOS;
@@ -91,3 +180,7 @@ in
       }, not ${toString t.systems}"
     ++ lib.concatMap shellOf t.systems;
 }
+// onEach "The way in with the runner" withRunner
+// onEach "A host's own herdr" hostsHerdr
+// onEach "No Ghostty of the set's" noGhostty
+// onEach "Not without the runner" withoutRunner

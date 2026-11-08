@@ -44,6 +44,7 @@ in
   imports = [
     (import ./options.nix { inherit packages; })
     (import ./tools.nix { inherit packages; })
+    (import ./way-in.nix { inherit packages; })
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
