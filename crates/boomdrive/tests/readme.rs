@@ -125,3 +125,23 @@ fn the_readme_names_no_branch_command() {
         "README says every command is refused"
     );
 }
+
+/// core.55 and design Decision 13: README says how a preview is brought
+/// up and put away, by sluice's own commands.
+#[test]
+fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
+    let (text, _) = readme();
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flat.contains("sluice preview <branch> <revision>"),
+        "README names no sluice preview <branch> <revision>"
+    );
+    assert!(
+        flat.contains("sluice release <name>"),
+        "README names no sluice release <name>"
+    );
+    assert!(
+        flat.contains("previews.rec"),
+        "README names no previews.rec"
+    );
+}

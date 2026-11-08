@@ -152,6 +152,7 @@ impl ControlPlane for Fake {
             .chain(report.acts.keys())
             .chain(report.commands.keys())
             .chain(report.inboxes.keys())
+            .chain(report.previews.keys())
             .collect();
         let reported = Reported {
             let_go: ids
@@ -170,6 +171,7 @@ impl ControlPlane for Fake {
             held.acts.remove(id);
             held.commands.remove(id);
             held.inboxes.remove(id);
+            held.previews.remove(id);
         }
         self.held = Some(held);
         Ok(reported)

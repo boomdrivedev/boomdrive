@@ -1,16 +1,19 @@
 //! The runner's branch, `<label>/runner/<host>`, written in crew's formats
 //! by weir-branch's write (design Decision 17): `runner.rec`,
 //! `answers.rec` and `places.rec`, each opening with crew's own
-//! descriptor as `runner.py` holds it at `9913f249`, byte for byte, and
-//! formed from the runner's report and the claims standing alone. Nothing
-//! is written when the files' text equals the tip's, and no ref but the
-//! runner's branch is ever pushed, never with force.
+//! descriptor as `runner.py` holds it at `9913f249`, byte for byte, and,
+//! where a preview is or was answered, `previews.rec`, under the
+//! descriptor this repository proposes for crew to hold (design Decision
+//! 10; core.55); each formed from the runner's report and the claims
+//! standing alone. Nothing is written when the files' text equals the
+//! tip's, and no ref but the runner's branch is ever pushed, never with
+//! force.
 
 use crate::ids::{self, Named};
 use crate::read::{self, runner_branch, Main, Store};
 use crate::records::{self, under, whole};
 use crate::roles;
-use boomdrive_control::{Answer, Id, Outcome, Report};
+use boomdrive_control::{Answer, Id, Outcome, Previewed, Report};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 use time::OffsetDateTime;
@@ -56,24 +59,44 @@ pub const RUNS: &str = "\
 %allowed: Address Place At Status Words
 ";
 
+/// crew's descriptor of `previews.rec`, as this repository proposes it
+/// for crew's unit that moves its previews onto the runner to hold in
+/// `runner.py` byte for byte (design Decision 10).
+pub const PREVIEWS: &str = "\
+%rec: Preview
+%key: Request
+%type: Request int
+%type: Outcome enum held done refused
+%type: Listed enum yes no
+%type: At date
+%mandatory: Request Outcome At
+%allowed: Request Outcome Text Status Listed Words At
+";
+
 /// The age past which another writer's lock on the cache is stale.
 const STALE_AFTER: Duration = Duration::from_secs(5 * 60);
 
-/// The runner's three files' text.
+/// The runner's files' text: its three, and `previews.rec` where the
+/// branch is to hold one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Texts {
     pub runner: String,
     pub answers: String,
     pub places: String,
+    pub previews: Option<String>,
 }
 
 impl Texts {
-    fn by_path(&self) -> [(&'static str, &String); 3] {
-        [
+    fn by_path(&self) -> Vec<(&'static str, &String)> {
+        let mut paths = vec![
             ("runner.rec", &self.runner),
             ("answers.rec", &self.answers),
             ("places.rec", &self.places),
-        ]
+        ];
+        if let Some(previews) = &self.previews {
+            paths.push(("previews.rec", previews));
+        }
+        paths
     }
 }
 
@@ -138,11 +161,42 @@ pub fn places_text(places: &BTreeMap<u64, Record>, runs: &BTreeMap<String, Recor
     format!("{places}\n{runs}")
 }
 
+/// `previews.rec` of `previews`, by request.
+pub fn previews_text(previews: &BTreeMap<u64, Record>) -> String {
+    under(PREVIEWS, &previews.values().cloned().collect::<Vec<_>>())
+}
+
+/// A preview's record: its request, its outcome, sluice's answer as
+/// carried as its `Text`, sluice's listing as carried as its `Status`
+/// with `Listed`, its `Words`, and its `At`, the status's time where a
+/// status is carried, else the answer's (design Decision 10).
+fn preview_record(number: u64, previewed: &Previewed) -> Record {
+    let mut record = Record::new();
+    record.push("Request", number.to_string());
+    record.push("Outcome", outcome(previewed.outcome));
+    record.push_optional("Text", previewed.text.as_deref());
+    if let Some(status) = &previewed.status {
+        record.push("Status", status.text.as_str());
+        record.push("Listed", if status.listed { "yes" } else { "no" });
+    }
+    record.push_optional("Words", previewed.words.as_deref());
+    let at = previewed
+        .status
+        .as_ref()
+        .map_or(previewed.at, |status| status.at);
+    record.push("At", at.to_string());
+    record
+}
+
 /// The files of partition `label` on `host`'s branch, formed from
 /// `report` and the claims standing: one `Answer` per request the report
 /// answers and per claim whose launch it does not, one `Place` per
 /// request launched with a status, and one `Run` per role for its latest
-/// run, by its address in `addresses`.
+/// run, by its address in `addresses`; and `previews.rec`, one `Preview`
+/// per preview request the report answers, where the report holds one,
+/// or the descriptor alone where it holds none and the tip, as
+/// `previews_held` says, holds the file.
+#[allow(clippy::too_many_arguments)]
 pub fn texts(
     label: &str,
     host: &str,
@@ -151,6 +205,7 @@ pub fn texts(
     report: &Report,
     claims: &[Record],
     addresses: &BTreeMap<String, String>,
+    previews_held: bool,
 ) -> Texts {
     let mut answers: BTreeMap<u64, Record> = claims
         .iter()
@@ -178,6 +233,12 @@ pub fn texts(
             record.push_optional("Words", acted.words.as_deref());
             record.push("At", acted.at.to_string());
             answers.insert(n, record);
+        }
+    }
+    let mut previews = BTreeMap::new();
+    for (id, previewed) in &report.previews {
+        if let Some(Named::Request(n)) = ids::named(label, id) {
+            previews.insert(n, preview_record(n, previewed));
         }
     }
     let mut runs = BTreeMap::new();
@@ -211,6 +272,7 @@ pub fn texts(
         runner: runner_text(host, version, since),
         answers: answers_text(&answers),
         places: places_text(&places, &runs),
+        previews: (!previews.is_empty() || previews_held).then(|| previews_text(&previews)),
     }
 }
 
@@ -228,8 +290,8 @@ pub fn files_at(tip: Option<&Tip>) -> Result<read::RunnerFiles, String> {
 }
 
 /// What a write changes, as its commit names it: `runner`, then
-/// `answers <n>…`, `places <n>…` and `runs <address>…`; none where every
-/// file's text is the tip's.
+/// `answers <n>…`, `places <n>…`, `runs <address>…` and `previews <n>…`;
+/// none where every file's text is the tip's.
 pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
     let changed = new
         .by_path()
@@ -254,15 +316,17 @@ pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
         ("answers.rec", "Answer", "Request", "answers"),
         ("places.rec", "Place", "Request", "places"),
         ("places.rec", "Run", "Address", "runs"),
+        ("previews.rec", "Preview", "Request", "previews"),
     ] {
         let before = keyed(set, key, old.get(path).and_then(Option::as_ref));
         let after = keyed(
             set,
             key,
-            Some(match path {
-                "answers.rec" => &new.answers,
-                _ => &new.places,
-            }),
+            match path {
+                "answers.rec" => Some(&new.answers),
+                "previews.rec" => new.previews.as_ref(),
+                _ => Some(&new.places),
+            },
         );
         let mut keys: Vec<&String> = before
             .keys()
@@ -357,8 +421,11 @@ pub fn since_at(files: &read::RunnerFiles) -> Option<String> {
 /// has left crew's plan at `main`'s tip, and each a drop names that the
 /// runner holds unlaunched, whatever the plan holds, with its acts; each
 /// role's earlier run once a later one is recorded and its place is over;
-/// and a role's last run once its record has gone from `roles.rec` and
-/// its place is over, each run with its done.
+/// a role's last run once its record has gone from `roles.rec` and its
+/// place is over, each run with its done; and each preview whose work has
+/// left crew's plan and which holds no preview up: a done, a preview
+/// refused, or one brought up or held whose status sluice's listing no
+/// longer holds (design Decision 10).
 pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet<Id> {
     let mut gone = BTreeSet::new();
     let mut launches = BTreeSet::new();
@@ -395,6 +462,24 @@ pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet
             gone.insert(id.clone());
         }
     }
+    for (id, previewed) in &report.previews {
+        let Some(Named::Request(n)) = ids::named(label, id) else {
+            continue;
+        };
+        let Some(request) = main.request(n) else {
+            continue;
+        };
+        let unlisted = previewed
+            .status
+            .as_ref()
+            .is_some_and(|status| !status.listed);
+        let up = !previewed.done
+            && matches!(previewed.outcome, Outcome::Done | Outcome::Held)
+            && !unlisted;
+        if !up && !main.plans(request.work()) {
+            gone.insert(id.clone());
+        }
+    }
     let kept = roles::of_host(main, host);
     for (role, runs) in roles::runs(label, report) {
         let Some(latest) = runs.last().map(|run| run.k) else {
@@ -408,6 +493,10 @@ pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet
             }
         }
     }
-    gone.retain(|id| report.launches.contains_key(id) || report.acts.contains_key(id));
+    gone.retain(|id| {
+        report.launches.contains_key(id)
+            || report.acts.contains_key(id)
+            || report.previews.contains_key(id)
+    });
     gone
 }

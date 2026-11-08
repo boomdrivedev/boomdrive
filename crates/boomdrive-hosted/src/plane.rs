@@ -483,7 +483,9 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8).
+    /// it is offered (design Decision 8). Version 1 names no preview, so
+    /// no message holding one passes its check; one that reached here
+    /// would be withheld as an inbox is (core.26, core.42).
     fn own_wants(&mut self, wants: Vec<Want>, say: &connection::Say) -> Vec<Want> {
         let mut withheld = BTreeSet::new();
         let mut own = Vec::new();
@@ -495,6 +497,7 @@ impl Partition {
                     CommandSort::Other { .. } => None,
                 },
                 Want::Inbox(inbox) => Some(("inbox", &inbox.repository)),
+                Want::Preview(preview) => Some(("preview", &preview.repository)),
                 Want::Act(_) => None,
             };
             match named {
@@ -542,6 +545,10 @@ impl Partition {
                 inbox.id = self.prefixed(&inbox.id);
                 Want::Inbox(inbox)
             }
+            Want::Preview(mut preview) => {
+                preview.id = self.prefixed(&preview.id);
+                Want::Preview(preview)
+            }
         }
     }
 
@@ -549,7 +556,8 @@ impl Partition {
     /// under the partition's prefix: each launch's lease and answer, each
     /// act, command and inbox, and no launch's status or entry, which the
     /// control plane holds as their copies and not as the tools' answers
-    /// (design Decision 7).
+    /// (design Decision 7). Version 1's report holds no preview, so none
+    /// is taken back (core.42).
     fn taken_back(&self, report: v1::Report) -> Report {
         Report {
             launches: report
@@ -584,6 +592,7 @@ impl Partition {
                 .into_iter()
                 .map(|(id, inbox)| (self.prefixed(&id), inbox))
                 .collect(),
+            previews: BTreeMap::new(),
         }
     }
 
@@ -603,13 +612,15 @@ impl Partition {
             acts: own(&report.acts, &prefix),
             commands: own(&report.commands, &prefix),
             inboxes: own(&report.inboxes, &prefix),
+            previews: own(&report.previews, &prefix),
         }
     }
 
     /// `part` as version 1's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
-    /// (design Decision 9).
+    /// (design Decision 9). Its four parts alone go up: version 1 names no
+    /// previews, so a report's never do (core.42).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
         let mut launches = serde_json::Map::new();
@@ -710,6 +721,7 @@ impl Partition {
                 part.acts.remove(id);
                 part.commands.remove(id);
                 part.inboxes.remove(id);
+                part.previews.remove(id);
             }
             self.held = Some(part);
         }
@@ -724,6 +736,7 @@ fn merge(into: &mut Report, part: Report) {
     into.acts.extend(part.acts);
     into.commands.extend(part.commands);
     into.inboxes.extend(part.inboxes);
+    into.previews.extend(part.previews);
 }
 
 /// `value` as raw JSON, as version 1's host part carries each value.

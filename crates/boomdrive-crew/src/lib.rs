@@ -228,19 +228,27 @@ impl Pulling<'_> {
         ids::request(self.label, number)
     }
 
-    /// Whether the runner's report answers request `number`.
+    /// Whether the runner's report answers request `number`: a launch, an
+    /// act or a preview.
     fn reported(&self, number: u64) -> bool {
         let id = self.id(number);
-        self.report.launches.contains_key(&id) || self.report.acts.contains_key(&id)
+        self.report.launches.contains_key(&id)
+            || self.report.acts.contains_key(&id)
+            || self.report.previews.contains_key(&id)
     }
 
     /// Whether this host's branch answers request `number`, a claim
-    /// counting or not.
+    /// counting or not, in `answers.rec` or, a preview, in `previews.rec`
+    /// (design Decision 10).
     fn branch_answers(&self, number: u64, claims: bool) -> bool {
-        self.own
-            .as_ref()
-            .and_then(|own| own.answers.get(&number))
-            .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
+        let Some(own) = self.own.as_ref() else {
+            return false;
+        };
+        own.previews.contains_key(&number)
+            || own
+                .answers
+                .get(&number)
+                .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
     }
 
     /// Whether the runner launched request `number`: its report answers
@@ -395,16 +403,7 @@ impl Crew {
                         // Its repository among those the runner keeps, else
                         // those it drains, else its Repo as written (record
                         // 0021).
-                        let repository = request.get("Repo").and_then(|repo| {
-                            match read::kept(repo, &hello.repositories) {
-                                Kept::Address(address) => Some(address),
-                                Kept::No => match read::kept(repo, &hello.draining) {
-                                    Kept::Address(address) => Some(address),
-                                    _ => None,
-                                },
-                                Kept::Shared(_) => None,
-                            }
-                        });
+                        let repository = read::resolved(request, hello);
                         let want = read::want(&label, request, repository.as_deref())
                             .unwrap_or_else(|why| read::refused(&label, request, &why));
                         given.insert(request.number, want);
@@ -468,6 +467,14 @@ impl Crew {
                         kits.push((request, address));
                     }
                     (None, Some("retry" | "land" | "drop" | "priority")) => acts.push(request),
+                    // A preview is the ask of the one host its Host names:
+                    // two runners keeping its repository would each bring
+                    // it up (design Decision 10).
+                    (None, Some("preview")) => lines.say(format!(
+                        "{label}/{}: a preview names no Host, so no runner brings it up: \
+                         it is given nothing",
+                        request.number
+                    )),
                     (None, _) => lines.say(format!(
                         "{label}/{}: names no Host and an Act crew's implementation does not \
                          read, so no runner's answer to it is the one: it is given nothing",
@@ -710,7 +717,9 @@ impl Crew {
             lines.say(line);
         }
 
-        let back = own.as_ref().map(|own| read_back(&label, &host, &main, own));
+        let back = own
+            .as_ref()
+            .map(|own| read_back(&label, &host, &main, own, hello));
         let mut wants: Vec<Want> = given.into_values().collect();
         wants.extend(role_wants);
         drop(places);
@@ -793,14 +802,29 @@ fn claim_texts(
             .cloned()
             .flatten()
             .unwrap_or_else(|| write::places_text(&BTreeMap::new(), &BTreeMap::new())),
+        previews: old.get("previews.rec").cloned().flatten(),
     }
 }
 
 /// The runner's report as its branch of partition `label` holds it: each
 /// answer, as the request it answers would be given, its claims left
-/// out; a launch with its place's status.
-fn read_back(label: &str, host: &str, main: &Main, own: &Runner) -> Report {
+/// out; a launch with its place's status; and each preview of
+/// `previews.rec` as the preview its request names, its repository
+/// resolved against `hello` as at a pull (design Decision 10).
+fn read_back(label: &str, host: &str, main: &Main, own: &Runner, hello: &Hello) -> Report {
     let mut report = Report::default();
+    for (n, record) in &own.previews {
+        let Some(request) = main.request(*n) else {
+            continue;
+        };
+        let repository = read::resolved(request, hello);
+        let Ok(Want::Preview(preview)) = read::want(label, request, repository.as_deref()) else {
+            continue;
+        };
+        if let Some(previewed) = read::previewed(preview, record) {
+            report.previews.insert(ids::request(label, *n), previewed);
+        }
+    }
     for (n, record) in &own.answers {
         if write::is_claim(record, host) {
             continue;
@@ -853,6 +877,7 @@ impl ControlPlane for Crew {
                         let all = back.get_or_insert_with(Report::default);
                         all.launches.extend(held.launches);
                         all.acts.extend(held.acts);
+                        all.previews.extend(held.previews);
                     }
                 }
                 Err(why) => {
@@ -897,6 +922,7 @@ impl ControlPlane for Crew {
             let mut kept = report.clone();
             kept.launches.retain(|id, _| !gone.contains(id));
             kept.acts.retain(|id, _| !gone.contains(id));
+            kept.previews.retain(|id, _| !gone.contains(id));
             let addresses: BTreeMap<String, String> = main
                 .roles
                 .iter()
@@ -924,8 +950,16 @@ impl ControlPlane for Crew {
                     .map(|(_, claim)| claim)
                     .collect();
                 let since = write::since_at(old).unwrap_or_else(|| at.clone());
+                let previews_held = old.get("previews.rec").is_some_and(Option::is_some);
                 Ok(write::texts(
-                    label, &host, &version, &since, &kept, &claims, &addresses,
+                    label,
+                    &host,
+                    &version,
+                    &since,
+                    &kept,
+                    &claims,
+                    &addresses,
+                    previews_held,
                 ))
             });
             match written {

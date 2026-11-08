@@ -15,11 +15,11 @@ pub mod want;
 
 pub use report::{
     Acted, Answer, At, Carried, Carrying, Commanded, InboxCarried, InboxFile, Launched, Outcome,
-    Report,
+    Previewed, Report,
 };
 pub use want::{
     Act, ActSort, AgentSetting, Command, CommandSort, Hold, Id, Inbox, Input, Launch, Lease, Link,
-    Offer, Terminal, Want,
+    Offer, Preview, Terminal, Want,
 };
 
 use serde::{Deserialize, Serialize};
@@ -79,7 +79,8 @@ pub struct Hello {
     #[serde(default)]
     pub draining: Vec<String>,
     pub capacity: Capacity,
-    /// Each launch's and each command's id with the lease number held.
+    /// Each launch's, each command's and each preview's id with the lease
+    /// number held.
     pub leases: BTreeMap<Id, u64>,
 }
 

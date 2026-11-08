@@ -63,6 +63,10 @@ fn given(want: &Want) -> Want {
             inbox.id = bare(&inbox.id);
             Want::Inbox(inbox)
         }
+        Want::Preview(mut preview) => {
+            preview.id = bare(&preview.id);
+            Want::Preview(preview)
+        }
     }
 }
 
