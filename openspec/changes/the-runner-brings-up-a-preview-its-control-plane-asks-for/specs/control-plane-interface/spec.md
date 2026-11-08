@@ -11,7 +11,7 @@ A preview SHALL hold its id, a lease, its repository's address, a branch, a revi
 
 ### Requirement: The report holds what the runner answered of each preview
 
-The report's `previews` SHALL hold, by id, what the runner answered of each preview: its lease, the repository and revision it named, whether it was done, its outcome, `held`, `done` or `refused`, the tool's text and the words where it has them, the tool's listing of it where carried, and its time (core.55).
+The report's `previews` SHALL hold, by id, what the runner answered of each preview: its lease, the repository and revision it named, whether it was done, its outcome, `held`, `done` or `refused`, the tool's text and the words where it has them, the tool's listing of it where carried, and its time (core.55). A report holding no preview SHALL be written with no `previews`.
 
 #### Scenario: A report holding a preview
 
@@ -50,7 +50,7 @@ Every want SHALL carry an id the control plane gave, which the runner SHALL neve
 
 ### Requirement: The runner's report is reported whole
 
-A report SHALL take the runner's whole report: each launch with its lease number, the repository it was answered in where the runner recorded one, its answer and carried statuses, and each act, command, inbox and preview, by id. A report file or a message that names no repository for a launch SHALL read as recording none, and one that names no previews SHALL read as holding none. A report holding no preview SHALL be written with no `previews`. A second report of the same report SHALL change nothing the control plane holds.
+A report SHALL take the runner's whole report: each launch with its lease number, the repository it was answered in where the runner recorded one, its answer and carried statuses, and each act, command, inbox and preview, by id. A report file or a message that names no repository for a launch SHALL read as recording none, and one that names no previews SHALL read as holding none. A second report of the same report SHALL change nothing the control plane holds.
 
 #### Scenario: A report sent twice
 
