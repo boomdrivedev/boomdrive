@@ -46,7 +46,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 7. What the runner says of it
 
-- [ ] 7.1 README's control pass section says that the runner is one more recipient, `--recipient boomdrive`, of each launch that names recipients, so Flume holds each such place's end for it. It also says the runner carries the held record as the place's status and collects it by `flume inbox <record> --recipient boomdrive` once its report holds it, that a drained clone waits for the collection, and that no offer is launched below the least Flume, `0.20.0` (design Decisions 1 to 5). True when `sluice exec main -- moon run root:format` passes.
+- [x] 7.1 README's control pass section says that the runner is one more recipient, `--recipient boomdrive`, of each launch that names recipients, so Flume holds each such place's end for it. It also says the runner carries the held record as the place's status and collects it by `flume inbox <record> --recipient boomdrive` once its report holds it, that a drained clone waits for the collection, and that no offer is launched below the least Flume, `0.20.0` (design Decisions 1 to 5). True when `sluice exec main -- moon run root:format` passes.
 
 ## 8. The specs
 
