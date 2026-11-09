@@ -69,3 +69,43 @@ Collecting once the control plane has taken the report would hold a record acros
 - Neutral: a place launched before this record names no recipient of the runner's, so Flume holds nothing of it for the runner, and it is followed as before.
 - Neutral: one inbox shared across the family is weir's to design next, as the user's answer says. This record leaves it open.
 - This record adds core.54 and amends the details of core.1, core.13 and core.15. The work-into-flume, clones and family-packages specs say it, in this record's change.
+
+## Amendment, 2026-11-09: the runner confirms an end once its control plane has it
+
+Status: proposed on 2026-11-09 by the construct stage of the change `the-runner-confirms-an-end-once-its-control-plane-has-it`, on the bolt `the-runner-confirms-the-ends-it-carries`. The direction is the user's, in weir's record 0006, accepted on their card of 2026-11-08, which Flume's record 0061, accepted by agentplot-design on 2026-11-09, carries into Flume, and which the change's brief carries to the runner. How the runner meets it is the stage's own choice, made on this repository's rules and Flume's statement, and cheap to change: what counts as its control plane having an end, which ends it confirms, how it asks Flume, and the least Flume it runs with. It is accepted with this record.
+
+Deciders: the user, for weir's form ("So would we move a shared crate under Weir so that it's loose and Flume could use the same inbox system?", and on agentplot-design's card, "Runner as one more recipient now; one shared inbox in weir next"); agentplot-design, for Flume record 0061; the change's brief, for when the runner confirms; the construct stage, for the rest.
+Sources: the change's brief, 2026-11-09: "The runner confirms a place's end to Flume only once its control plane has taken it, so the end stays owed in Flume until then and losing the runner's report loses no end"; agentplot/weir record 0006; agentplot/flume record 0061 and Flume `v0.21.0` (`77d5b93`), which carries the bolt `flumes-ends-are-owed-until-confirmed`: `flume confirm <key>… --recipient`, the inbox and the wait handing an end over and confirming it only with `--confirm`, and each end's `delivery` and `pending_for` in status; Flume's statement, 43 and 62, the runner's row and S121, at blueprints `0c38f24`; rules core.10, core.11, core.25, core.35, core.38 and core.54.
+
+### Context
+
+Under Flume `v0.21.0` an end is a weir delivery, owed to each recipient until that recipient confirms it by its key. `flume inbox` hands an end over and confirms nothing without `--confirm` (Flume record 0061). So the runner's `flume inbox <location>@<at> --recipient boomdrive` no longer lets a record go. The record is handed over again at every pass, and each of its ends stays owed until it expires.
+
+This record had the runner collect a record once its report file holds it, before the report is sent. Of everything in the data directory, the report file alone is not made again from origin, Flume and the control plane (core.35). Between that save and the control plane taking the report, a collected end was owed in Flume no more and not yet held by the control plane, so a data directory lost then lost the end. weir's form has a reader confirm what it has acted on, and the runner acts on an end by carrying it to its control plane.
+
+### Decision outcome
+
+- **An end is owed to the runner until its control plane has it.** The runner confirms an end only once a report holding it is answered by the control plane, the answer naming the launch's status taken, and the report file holds the part's share after that answer. Until then the end stays owed in Flume, and Flume keeps a tidied place's record for it.
+- **What counts as taken is the implementation's to say.** The interface's answer to a report names each launch whose status the control plane took with it, `Reported::statuses_taken`. crew's implementation names each launch whose status `places.rec` holds once the runner's branch is written. The hosted implementation names each launch whose status went up as version 1's copy in the report the answer answers, and none whose copy went up null. No message of the protocol changes.
+- **Every end owed to the runner is confirmed, a live place's too.** For each launch the pull gives, whose clone stands, and whose carried status is listed and taken, the runner confirms each end the status gives pending for `boomdrive`, by its delivery key, in the status's order. It runs `flume --json confirm <key>… --recipient boomdrive`, one call for each launch, naming no repository. A live place's ends are confirmed as they are taken, so none stands owed long enough to show expired. A held record's last end keeps the record until that end is confirmed.
+- **No inbox hands the runner anything.** The runner reads each end from the place's status, which settles nothing, and confirms it with no hand-over before it, which Flume takes (weir 102).
+- **A confirmation Flume refuses, or cannot be run for,** is said in one line and made again at a later pass whose report is taken, since the carried status still gives the end pending. A key confirmed twice is answered with when it first was.
+- **Nothing is confirmed** for a launch whose lease was refused or which the control plane let go (core.10), in a pass whose report was not sent or not answered, or whose share could not be saved after its answer (core.25), or while Flume is older than the least.
+- **The least Flume is `0.21.0`**, the first whose ends a recipient confirms by key. The set takes it.
+
+Not taken:
+
+- **Confirming on receipt, by `flume inbox --confirm`, once the report file holds the end**, as Flume's statement's runner row and S121 had it after Flume record 0061. The end would leave Flume before the control plane holds it. The statement is amended with this record, on blueprints' branch `design/the-runner-confirms-an-end-once-its-control-plane-has-it`.
+- **Confirming at the next pull, once the control plane gives the report back holding the end.** The hosted implementation gives back what it last sent, not the control plane's copy, so the pull says no more than the report's answer, a pass later.
+- **The answer naming the statuses not taken.** It fails open: an implementation that names nothing would have every end confirmed.
+- **One `flume confirm` for every key of the pass.** Flume stops at a key it refuses, so one place's refusal would hold every other place's ends.
+
+### Consequences
+
+- Good: losing the runner's report loses no end. An end its control plane has not taken is owed in Flume, and the next pass carries it again from Flume's status.
+- Good: no end of a live place stands owed to the runner past its span while the control plane is reached, so the host's status lists none of the runner's expired.
+- Bad: while the control plane cannot be reached, or its version cannot carry a place's status, that place's ends stay owed. A tidied record stays on the host, a drained repository's clone with it, and Flume shows each end expired past its span, its name never confirmed under where it never was. Under version 1 of the hosted protocol a drop's or a done's end, `{"of":"over",…}`, and a hand-over by a session's start fail the copy, so such a place's ends stay owed until a later version carries them or a person confirms them as `boomdrive`.
+- Bad: an end of a launch the control plane let go before it took the end stays owed.
+- Bad: a pass that carries a new end runs one more Flume command for each place.
+- Neutral: crew's role runs name no recipient, so nothing of them is owed to the runner.
+- core.54's rule and details, and core.1's and core.13's details, read with it. The work-into-flume, clones, family-packages, control-plane-interface, crew-control-plane and hosted-control-plane specs say it, in this amendment's change.

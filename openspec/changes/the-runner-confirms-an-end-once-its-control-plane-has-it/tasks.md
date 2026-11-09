@@ -1,0 +1,58 @@
+# Tasks
+
+Work through the tasks in order. A task is true once the check it names passes, run as it names it. The groups are headings for reading.
+
+- This change takes Flume `v0.21.0` (`77d5b93`), which carries the bolt `flumes-ends-are-owed-until-confirmed` and Flume record 0061, and follows its spellings: `flume confirm <key>… --recipient <name>`, and each end's `delivery` and `pending_for` in status (design Context).
+- Every test runs on the crate's fakes and stubs, in a temporary folder, with neutral names and paths (core.41). No test runs a Flume of the host's: every Flume a test runs is a fake, a stub, or the set's on a scratch host.
+- No task adds a crate, a tool, a tracked file type, a configuration key, a field of the report file or a message of the protocol (core.7, core.8). Nothing outside the files proposal.md's Touches lists is changed.
+- Record 0030's amendment of 2026-11-09, core.54's rule and details, and core.1's and core.13's details are written with this change. A task that relies on a choice the design names cites its Decision.
+
+## 1. The set's Flume confirms an end by its key
+
+- [ ] 1.1 The set names Flume `v0.21.0`: `flake.nix`'s Flume `url`, the lock moved with it, `nix/packages/flume-git-crates.nix` holding `weir-capture`, `weir-delivery`, `weir-kinds` and `weir-pack` at `52b9552` with Flume's own hash, and README's override example at `v0.22.0` (design Decision 7; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test family each_tools_version_is_its_tags` passes.
+
+## 2. The interface names the statuses taken
+
+- [ ] 2.1 `Reported` gains `statuses_taken: BTreeSet<Id>`, serde `default` and skipped where empty, documented as each launch whose carried status the control plane took with the report the answer answers. This proves the control-plane-interface spec's "An answer from before" (design Decision 1; Task notes 2.1). True when `devenv shell -- cargo test -p boomdrive-control --test json a_reports_answer` passes, running `a_reports_answer` and `a_reports_answer_from_before_reads`.
+- [ ] 2.2 The fake control plane names taken each launch of a report that holds a status, but those `Fake::leave_status(id)` leaves until `Fake::take_status(id)`. This proves the control-plane-interface spec's "A status taken and one left" (design Decision 2). True when `devenv shell -- cargo test -p boomdrive-control --test fake a_status_taken_and_one_left` passes.
+
+## 3. Each implementation says what it took
+
+- [ ] 3.1 crew's implementation names taken, once the partition's branch is written or holds the same files already, each launch whose status `places.rec` holds, by `write::statuses_held`, which `write::texts` reads too. This proves the crew-control-plane spec's "A place's status as Flume gave it" (design Decision 2; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-crew --test write a_places_status_as_flume_gave_it` passes.
+- [ ] 3.2 The hosted implementation keeps, with the share it sends, the launches whose status went up as its copy, and names them taken in the answer to that report, and none in an answer to an earlier one. This proves the hosted-control-plane spec's "A value Flume adds" and "A status that goes up as its copy" (design Decision 2; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane -- a_value_flume_adds a_status_that_passes_goes_up_as_its_copy` passes.
+
+## 4. Flume's command line
+
+- [ ] 4.1 `Flume::confirm(recipient, keys)` runs `flume --json confirm <key>… --recipient <recipient>`, naming no repository, with `FLUME_RECIPIENT` unset, and reads the answer by Flume's exit as every call does. `FakeFlume` records each as `Call::Confirm(recipient, keys)` and answers it as `confirm_answers` scripts it, else as given, and `tests/once.rs`'s `Watching` passes it through. `tests/flume.rs`'s `a_collection_names_one_record_and_the_runner` gives way to `a_confirmation_names_its_keys_and_its_recipient`, which asserts the argv of a confirmation of two keys, a given answer and a refusal (design Decisions 5 and 8; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive --test flume a_confirmation_names_its_keys_and_its_recipient` passes.
+- [ ] 4.2 `facts::owed(entry, name)` gives, in the order of the entry's `ends`, the `delivery` of each end whose `pending_for` names `name`, leaving out an end with no `delivery` string. Its unit tests sit beside `pending_for`'s (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --lib facts::` passes.
+- [ ] 4.3 The set's Flume, on a scratch host, refuses `--json confirm fix--none/t/stage/code/1/delivered --recipient boomdrive` with its reason on exit 1, read by `flume::Cli` as `Reply::Refused`, beside the launch it already refuses. This proves the family-packages spec's "The set's Flume takes the runner as a recipient" (design Decision 8). True when `devenv shell -- cargo test -p boomdrive --test family the_sets_flume_takes_the_runner_as_a_recipient` passes.
+
+## 5. Each end confirmed once its control plane has it
+
+- [ ] 5.1 `FakeFlume`'s places and records hold `ends`, each with its `key`, `delivery` and `pending_for`, as design Decision 8 has it: `tidy_held` gives the record its landing, a drop or a done its `over/…` end, and `end(place, key, pending_for)` adds an end to a standing place. `confirm` takes the recipient out of each end it names, makes a record's phase `pending_for` again from its ends', removes a record pending for nobody, and refuses a key no end is under (design Decision 8). True when `devenv shell -- cargo test -p boomdrive --test statuses -- a_place_tidied a_place_tidied_while_the_pass_answers_its_wants` passes.
+- [ ] 5.2 `send` gives the control plane's answer where it took the report, with whether the file holds the share after it. `Carrier::pass` runs `Work::confirm` after it, by design Decision 3, where the answer came, the save after it held and Flume is at the least, and runs no `Work::collect`, which goes. `carry.rs`'s module documentation says the runner confirms. This proves the work-into-flume spec's "A landing held for the runner", "A drop held for the runner" and "A live place's end" (design Decisions 3 to 5; Task notes 5.2). True when `devenv shell -- cargo test -p boomdrive --test statuses -- a_landing_held_for_the_runner a_drop_held_for_the_runner a_live_places_end` passes.
+- [ ] 5.3 An end its control plane has not taken stays owed. This proves the work-into-flume spec's "A report not taken", "A status not taken" and "The report file lost" (design Decision 3; Task notes 5.3). True when `devenv shell -- cargo test -p boomdrive --test statuses -- a_report_not_taken a_status_not_taken the_report_file_lost` passes.
+- [ ] 5.4 Only an end owed to the runner is confirmed. This proves the work-into-flume spec's "A record pending for a recipient too" and "A record pending for no end of the runner's" (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --test statuses -- a_record_pending_for_a_recipient_too a_record_pending_for_no_end_of_the_runners` passes.
+- [ ] 5.5 A confirmation Flume refuses, or cannot be run for, is said in one line and made again at the next pass whose report is taken. `a_collection_flume_could_not_run` and `a_collection_flume_refuses` give way to `a_confirmation_flume_could_not_run` and `a_confirmation_flume_refuses`. Each compares the pass's lines with a slice borrowed by `std::slice::from_ref` where it compares one line. This proves the work-into-flume spec's "A confirmation Flume could not run" and "A confirmation Flume refuses" (design Decision 3). True when `devenv shell -- cargo test -p boomdrive --test statuses -- a_confirmation_flume_could_not_run a_confirmation_flume_refuses` passes.
+- [ ] 5.6 No end is confirmed for a launch whose lease the control plane refused. `a_lease_refused_before_its_end_was_collected` gives way to `a_lease_refused_before_its_end_was_confirmed`, and the file's helper that found a collection of a place finds a confirmation of its keys. This proves the work-into-flume spec's "A lease refused before its end was confirmed" and "A lease refused" (design Decision 3; core.10). True when `devenv shell -- cargo test -p boomdrive --test leases -- a_lease_refused_before_its_end_was_confirmed a_lease_refused` passes.
+- [ ] 5.7 An offer after a place Flume tidied, landed, and holds for the runner is launched at the next pass, and the record's landing is confirmed once taken. This proves the work-into-flume spec's "A dependent of a landing held for the runner" (design Decision 3). True when `devenv shell -- cargo test -p boomdrive --test after -- a_dependent_of_a_landing_held_for_the_runner a_dependent_held_then_launched` passes.
+- [ ] 5.8 `tests/once.rs` loses `a_held_record_is_collected_once_its_report_holds_it`, and its `Watching` documentation names the acts it watches (design Decision 8). True when `devenv shell -- cargo test -p boomdrive --test once` passes.
+- [ ] 5.9 `Flume::collect`, `Cli::collect`, and the fakes' `Call::Collect`, `collect`, `collect_answers`, `collect_as_flume` and `collects` go, so the runner runs no `flume inbox` (design Decision 5). True when `sluice exec main -- moon run boomdrive:lint` passes.
+
+## 6. The drain
+
+- [ ] 6.1 `report::ended`'s documentation says a drained clone waits for the runner to confirm the record's ends. `the_places_end_held_for_the_runner` reads the record pending for `boomdrive`, then for `scratch/planner` alone once confirmed. This proves the clones spec's "The place's end held for the runner", "The place tidied" and "The place no longer listed" (design Decision 6). True when `devenv shell -- cargo test -p boomdrive --test dropped -- the_places_end_held_for_the_runner the_place_tidied the_place_no_longer_listed` passes.
+
+## 7. The least Flume
+
+- [ ] 7.1 `flume::LEAST` is `(0, 21, 0)`, its documentation and `runs_with`'s words naming `0.21.0`, the first whose ends a recipient confirms by key, with its unit tests (design Decision 7). True when `devenv shell -- cargo test -p boomdrive --lib flume::` passes.
+- [ ] 7.2 Below the least no offer is launched, read from `flume 0.20.0`, and at it, `flume 0.21.0`, one is. This proves the work-into-flume spec's "A Flume older than the least", "A Flume at the least" and "Said once while it lasts" (design Decision 7). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_flume_older_than_the_least a_flume_at_the_least said_once_while_it_lasts` passes.
+- [ ] 7.3 Below the least nothing is confirmed. This proves the work-into-flume spec's "Nothing confirmed below the least" (design Decisions 3 and 7). True when `devenv shell -- cargo test -p boomdrive --test statuses nothing_confirmed_below_the_least` passes.
+
+## 8. What the runner says of it
+
+- [ ] 8.1 README's control pass section says that Flume owes the runner each end of a place it launches, live or tidied, and that the runner confirms each by `flume --json confirm <key>… --recipient boomdrive` only once its control plane has taken a report holding it, so the end stays owed until then. It says that a confirmation Flume refuses, or could not run, is said in one line and made again, and that the least Flume is `0.21.0`, below which nothing is launched or confirmed (design Decisions 3 and 7). True when `sluice exec main -- moon run root:format` passes.
+
+## 9. The specs
+
+- [ ] 9.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-confirms-an-end-once-its-control-plane-has-it --yes`, `sluice exec main -- moon run root:specs` passes.
