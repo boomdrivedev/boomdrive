@@ -178,7 +178,14 @@ fn the_first_report() {
     let reported = crew
         .report(&report_launched(r#"{"status":{}}"#))
         .expect("a report");
-    assert_eq!(reported, Reported::default());
+    assert_eq!(
+        reported,
+        Reported {
+            statuses_taken: BTreeSet::from([Id::new("home/12")]),
+            ..Reported::default()
+        },
+        "the status places.rec holds is taken, and nothing is let go or refused"
+    );
     let runner = state.file(BRANCH, "runner.rec").expect("runner.rec");
     let body = runner.strip_prefix(RUNNER).expect("crew's descriptor");
     let since = body
