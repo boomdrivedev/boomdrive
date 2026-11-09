@@ -91,6 +91,10 @@ impl Flume for Watching<'_> {
         self.held.borrow_mut().push(held);
         self.flume.collect(record)
     }
+
+    fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {
+        self.flume.confirm(recipient, keys)
+    }
 }
 
 /// The report is saved after each act, before the next is carried out.

@@ -85,6 +85,9 @@ pub enum Call {
     StatusOf(Option<PathBuf>, String),
     /// `inbox <record> --recipient boomdrive`.
     Collect(String),
+    /// `confirm <key>… --recipient <recipient>`: the recipient, then the
+    /// keys in the order given.
+    Confirm(String, Vec<String>),
 }
 
 /// Flume in memory.
@@ -108,6 +111,8 @@ struct State {
     statuses: BTreeMap<String, Result<Reply, Unrun>>,
     /// A collection's answer, by its record.
     collects: BTreeMap<String, Result<Reply, Unrun>>,
+    /// A confirmation's answer, by its first key.
+    confirms: BTreeMap<String, Result<Reply, Unrun>>,
     /// The recipients each place it launched was launched with, by its
     /// place, the runner's own among them where the launch named any.
     recipients: BTreeMap<String, Vec<String>>,
@@ -272,6 +277,21 @@ impl FakeFlume {
         self.state.borrow_mut().collects.remove(record);
     }
 
+    /// A confirmation whose first key is `key` answered with `reply`,
+    /// until the test says otherwise.
+    pub fn confirm_answers(&self, key: &str, reply: Result<Reply, Unrun>) {
+        self.state
+            .borrow_mut()
+            .confirms
+            .insert(key.to_string(), reply);
+    }
+
+    /// A confirmation whose first key is `key` answered as Flume answers
+    /// it again.
+    pub fn confirm_as_flume(&self, key: &str) {
+        self.state.borrow_mut().confirms.remove(key);
+    }
+
     /// `then` done to Flume while the next launch or act runs, as Flume's
     /// own settling moves a place on while the runner waits on a command.
     pub fn meanwhile(&self, then: impl FnOnce(&FakeFlume) + 'static) {
@@ -324,6 +344,17 @@ impl FakeFlume {
             .into_iter()
             .filter_map(|call| match call {
                 Call::Collect(record) => Some(record),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Each confirmation's keys, in order.
+    pub fn confirms(&self) -> Vec<Vec<String>> {
+        self.calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Confirm(_, keys) => Some(keys),
                 _ => None,
             })
             .collect()
@@ -487,6 +518,24 @@ impl Flume for FakeFlume {
             "ends": collected,
             "waiting": [],
         } }))))
+    }
+
+    fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {
+        let call = Call::Confirm(recipient.to_string(), keys.to_vec());
+        if let Some(unrun) = self.call(call) {
+            return Err(unrun);
+        }
+        let scripted = keys
+            .first()
+            .and_then(|first| self.state.borrow().confirms.get(first).cloned());
+        if let Some(reply) = scripted {
+            return reply;
+        }
+        let confirmed: Vec<Value> = keys
+            .iter()
+            .map(|key| json!({ "key": key, "at": "2026-11-09T12:00:00Z", "before": false }))
+            .collect();
+        Ok(Reply::Given(printed(&json!({ "confirmed": confirmed }))))
     }
 
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {

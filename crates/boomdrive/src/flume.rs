@@ -167,6 +167,13 @@ pub trait Flume {
     /// inbox <record> --recipient boomdrive`, naming no repository
     /// (core.54; record 0030).
     fn collect(&self, record: &str) -> Result<Reply, Unrun>;
+    /// Each end under `keys`, its delivery keys in the order given,
+    /// confirmed as `recipient`: `flume confirm <key>… --recipient
+    /// <recipient>`, naming no repository. The runner confirms as
+    /// [`RECIPIENT`], only once its control plane has taken the status
+    /// that gave the ends (design Decision 5; core.54; record 0030 as
+    /// amended on 2026-11-09; Flume record 0061).
+    fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun>;
 }
 
 /// Flume's command line, by the program at `program`: `flume` on the
@@ -253,6 +260,13 @@ impl Flume for Cli {
             "--recipient".into(),
             RECIPIENT.into(),
         ])
+    }
+
+    fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {
+        let mut args: Vec<OsString> = vec!["confirm".into()];
+        args.extend(keys.iter().map(OsString::from));
+        args.extend(["--recipient".into(), recipient.into()]);
+        self.run(args)
     }
 }
 
