@@ -804,9 +804,9 @@ impl Work<'_> {
     /// Answers `act` on a launch the runner holds not yet launched, from
     /// the report, running no command. A priority is done, and the launch
     /// carries it when made; a drop is done, and the launch is never made;
-    /// a retry, a land or a done is refused, naming where the launch
-    /// stands, and a land so refused changes nothing of the launch when it
-    /// is made (core.53).
+    /// a retry, a land, a confirm or a done is refused, naming where the
+    /// launch stands, and a land so refused changes nothing of the launch
+    /// when it is made (core.53, core.56).
     fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
@@ -826,7 +826,7 @@ impl Work<'_> {
                     self.report.answer(&act.launch, lease, dropped);
                 }
             }
-            ActSort::Retry { .. } | ActSort::Land | ActSort::Done => {
+            ActSort::Retry { .. } | ActSort::Land | ActSort::Confirm { .. } | ActSort::Done => {
                 let outcome = match answer.outcome {
                     Outcome::Held => "held",
                     Outcome::Done => "done",
@@ -1787,6 +1787,15 @@ fn flume_act(what: &ActSort) -> flume::Act {
             words: None,
             submission: true,
         },
+        // A confirm is Flume's confirm of exactly the keys it names, in
+        // its order, as the recipient it names (core.56).
+        ActSort::Confirm {
+            recipient,
+            deliveries,
+        } => flume::Act::Confirm {
+            recipient: recipient.clone(),
+            keys: deliveries.clone(),
+        },
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
@@ -1798,6 +1807,7 @@ fn sort(what: &ActSort) -> String {
     match what {
         ActSort::Retry { .. } => "retry".to_string(),
         ActSort::Land => "land".to_string(),
+        ActSort::Confirm { recipient, .. } => format!("confirm as {recipient}"),
         ActSort::Drop => "drop".to_string(),
         ActSort::Priority(priority) => format!("priority {priority}"),
         ActSort::Done => "done".to_string(),

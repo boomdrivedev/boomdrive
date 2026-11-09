@@ -11,7 +11,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. The runner carries out a confirm
 
-- [ ] 2.1 `crates/boomdrive/src/flume.rs`'s `Act` gains `Confirm { recipient, keys }`, whose arguments are `confirm --recipient=<recipient> -- <key>…`, naming no place. In `crates/boomdrive/src/carry.rs`:
+- [x] 2.1 `crates/boomdrive/src/flume.rs`'s `Act` gains `Confirm { recipient, keys }`, whose arguments are `confirm --recipient=<recipient> -- <key>…`, naming no place. In `crates/boomdrive/src/carry.rs`:
   - `flume_act` maps `ActSort::Confirm` to it, with the act's keys in its order;
   - `sort` names it `confirm as <recipient>`;
   - `act_unlaunched` refuses it, naming where the launch stands, as it refuses a retry, a land or a done.
