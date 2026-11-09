@@ -260,6 +260,55 @@ fn a_land_is_an_act_on_the_launch_it_names() {
     );
 }
 
+/// A delivery of launch 12's place.
+const K1: &str = "change--a/0a1b2c3d/stage/code/1/delivered";
+/// Another delivery of launch 12's place.
+const K2: &str = "change--a/0a1b2c3d/submission/1/landed";
+
+/// The crew-control-plane spec's "A confirm".
+#[test]
+fn a_confirm_is_an_act_on_the_launch_it_names() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(
+                        17,
+                        "confirm",
+                        Some("host-a"),
+                        "unit/a",
+                        12,
+                        &[
+                            ("Recipient", "scratch/planner"),
+                            ("Delivery", K1),
+                            ("Delivery", K2),
+                        ],
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        *want(&pulled, "home/17"),
+        Want::Act(Act {
+            id: Id::new("home/17"),
+            launch: Id::new("home/12"),
+            lease: 1,
+            what: ActSort::Confirm {
+                recipient: "scratch/planner".to_string(),
+                deliveries: vec![K1.to_string(), K2.to_string()],
+            },
+        })
+    );
+}
+
 #[test]
 fn an_act_crew_does_not_write() {
     let state = State::new();
