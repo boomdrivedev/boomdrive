@@ -466,7 +466,11 @@ impl Crew {
                         }
                         kits.push((request, address));
                     }
-                    (None, Some("retry" | "land" | "drop" | "priority")) => acts.push(request),
+                    // An act naming no host is the runner's that holds its
+                    // launch, a confirm among them (core.56).
+                    (None, Some("retry" | "land" | "confirm" | "drop" | "priority")) => {
+                        acts.push(request)
+                    }
                     // A preview is the ask of the one host its Host names:
                     // two runners keeping its repository would each bring
                     // it up (design Decision 10).

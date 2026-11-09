@@ -143,6 +143,19 @@ pub enum ActSort {
     /// of the hosted protocol names no land, a later version being the
     /// one to carry it (core.42).
     Land,
+    /// A reader's confirmation of ends of its launch's place, written as
+    /// `{"confirm": {"recipient": …, "deliveries": […]}}`. It asks that
+    /// each end of the place it names by its delivery's key be taken as
+    /// delivered to the one `recipient` it names; `deliveries` holds each
+    /// key as Flume gave it, in the control plane's order. The runner
+    /// carries it out as Flume's confirm of exactly those keys as that
+    /// recipient, each held to the launch's place (core.56). Version 1 of
+    /// the hosted protocol names no confirm, a later version being the one
+    /// to carry it (core.42).
+    Confirm {
+        recipient: String,
+        deliveries: Vec<String>,
+    },
     Drop,
     Priority(i64),
     Done,

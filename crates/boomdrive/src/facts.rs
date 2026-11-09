@@ -111,6 +111,20 @@ pub fn pending_for(entry: &Value, name: &str) -> bool {
         .is_some_and(|pending| pending.iter().any(|each| each.as_str() == Some(name)))
 }
 
+/// The delivery key of each end of a place, `ends[].delivery`, the key
+/// `flume confirm` takes, in Flume's order (Flume record 0061). An end
+/// naming none, or naming one that is not a string, gives none.
+pub fn deliveries(entry: &Value) -> Vec<&str> {
+    entry
+        .get("ends")
+        .and_then(Value::as_array)
+        .map_or_else(Vec::new, |ends| {
+            ends.iter()
+                .filter_map(|end| end.get("delivery")?.as_str())
+                .collect()
+        })
+}
+
 /// Why a place's work is over, Flume's `over`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Over {

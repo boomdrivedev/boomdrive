@@ -158,6 +158,7 @@ fn an_act_of_each_sort() {
             submission: false,
         },
         ActSort::Land,
+        confirm(),
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
@@ -181,6 +182,39 @@ fn an_act_of_each_sort() {
         serde_json::to_value(&land).unwrap(),
         serde_json::json!({"id": "home/2", "launch": "home/1", "lease": 3, "what": "land"}),
     );
+    // A confirm holds its recipient and its keys, in the order it was
+    // given them (the control-plane-interface spec's "A confirm's form";
+    // core.56).
+    let confirm = Act {
+        what: confirm(),
+        ..land
+    };
+    assert_eq!(
+        serde_json::to_value(&confirm).unwrap(),
+        serde_json::json!({
+            "id": "home/2",
+            "launch": "home/1",
+            "lease": 3,
+            "what": {"confirm": {
+                "recipient": "scratch/planner",
+                "deliveries": [
+                    "change--a/0a1b2c3d/stage/code/1/delivered",
+                    "change--a/0a1b2c3d/submission/1/landed",
+                ],
+            }},
+        }),
+    );
+}
+
+/// A confirm of two ends of one place, as `scratch/planner`.
+fn confirm() -> ActSort {
+    ActSort::Confirm {
+        recipient: "scratch/planner".to_string(),
+        deliveries: vec![
+            "change--a/0a1b2c3d/stage/code/1/delivered".to_string(),
+            "change--a/0a1b2c3d/submission/1/landed".to_string(),
+        ],
+    }
 }
 
 #[test]

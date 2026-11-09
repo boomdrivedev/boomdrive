@@ -3,9 +3,10 @@
 //! interface's shapes"; design Decision 6): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
 //! full length, passes its definition, every act sort version 1 names
-//! among them. A land apart: version 1 names none, and a release has
-//! spoken it, so a want whose act is a land fails its check (the
-//! runner-protocol spec's "Version 1 carries no land"; core.42, core.53).
+//! among them. A land and a confirm apart: version 1 names neither, and a
+//! release has spoken it, so a want whose act is a land or a confirm fails
+//! its check (the runner-protocol spec's "Version 1 carries no land" and
+//! "Version 1 carries no confirm"; core.42, core.53, core.56).
 
 mod common;
 
@@ -93,10 +94,31 @@ fn a_land_is_no_act_of_version_1() {
     );
 }
 
+/// The runner-protocol spec's "A confirm is no act of version 1".
+#[test]
+fn a_confirm_is_no_act_of_version_1() {
+    let confirm = Want::Act(Act {
+        id: Id::new("act-1"),
+        launch: Id::new("offer-1"),
+        lease: 3,
+        what: ActSort::Confirm {
+            recipient: "scratch/planner".to_string(),
+            deliveries: vec!["change--a/0a1b2c3d/stage/code/1/delivered".to_string()],
+        },
+    });
+    let json = serde_json::to_value(&confirm).unwrap();
+    refused(
+        &validator(&definition("wants.schema.json", "want")),
+        &json,
+        "a confirm",
+    );
+}
+
 /// One value of each want sort but a preview, which version 1 names not
-/// (`a_preview_is_no_want_of_version_1`), and of each act sort but a land
-/// (`a_land_is_no_act_of_version_1`) and each command sort, and each
-/// other value of the interface, passes its definition.
+/// (`a_preview_is_no_want_of_version_1`), and of each act sort version 1
+/// names, a land (`a_land_is_no_act_of_version_1`) and a confirm
+/// (`a_confirm_is_no_act_of_version_1`) apart, and each command sort, and
+/// each other value of the interface, passes its definition.
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
