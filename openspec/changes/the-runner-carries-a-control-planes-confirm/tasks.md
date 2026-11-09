@@ -22,7 +22,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 - [x] 2.4 A confirm of a tidied place's record Flume keeps is carried out, and a confirm on a place the listing does not hold is held to the status Flume gives for it (design Decision 3; Task notes 2.4). True when `devenv shell -- cargo test -p boomdrive --test confirms -- a_tidied_places_record_is_confirmed a_place_the_listing_does_not_hold_is_held_to_its_status` passes, proving the work-into-flume spec's "A tidied place's record" and "A place the listing does not hold".
 - [x] 2.5 `Work::act`, once the act's launch is the runner's and its lease is live, refuses a confirm whose recipient is `flume::RECIPIENT` or that names no key, each with design Decision 4's words, running no command (design Decision 4; Task notes 2.5). True when `devenv shell -- cargo test -p boomdrive --test confirms -- a_confirm_as_the_runner_is_refused a_confirm_of_no_key_is_refused` passes, proving the work-into-flume spec's "A confirm as the runner" and "A confirm of no key".
 - [x] 2.6 A confirm of a launch held on its After is refused with the words a retry of it is given, and runs no `flume confirm` (design Decision 5; Task notes 2.6). True when `devenv shell -- cargo test -p boomdrive --test after a_confirm_of_a_held_launch` passes, proving the work-into-flume spec's "A confirm of a held launch".
-- [ ] 2.7 The binary's sources and tests this group touched pass clippy with no warning. True when `sluice exec main -- moon run boomdrive:lint` passes.
+- [x] 2.7 The binary's sources and tests this group touched pass clippy with no warning. True when `sluice exec main -- moon run boomdrive:lint` passes.
 
 ## 3. crew's implementation reads a confirm
 
