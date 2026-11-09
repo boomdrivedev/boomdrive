@@ -9,7 +9,7 @@
 
 ### Requirement: The runner is one more recipient of a launch that names recipients, and no brief is left
 
-The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset, so a place's recipients are only those its launch names, or Flume's default where it names none. Where a launch names recipients, its `flume launch` SHALL name the runner one more, `--recipient boomdrive`, after them, so Flume holds the place's end for the runner after its tidy. It SHALL leave out none of the launch's recipients, add no other, and name itself on no launch that names none. It SHALL remove a launch's brief file once Flume answers (core.15, core.53; record 0030).
+The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset. Where a launch names recipients, its `flume launch` SHALL pass them as given and name the runner one more after them, `--recipient boomdrive`, so Flume holds the place's end for it; where it names none, it SHALL name none, so Flume's default stands. It SHALL remove a launch's brief file once Flume answers (core.15, core.53; record 0030).
 
 #### Scenario: A launch's environment and brief
 
