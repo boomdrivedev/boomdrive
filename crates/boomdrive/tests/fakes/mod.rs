@@ -375,6 +375,27 @@ pub fn place_of(name: &str) -> String {
     format!("/places/{name}")
 }
 
+/// A place's ends, one for each of `deliveries`, its delivery's key, each
+/// a stage's end owed to `scratch/planner`, as Flume's status gives them
+/// (Flume record 0061).
+pub fn ends(deliveries: &[&str]) -> Value {
+    let ends: Vec<Value> = deliveries
+        .iter()
+        .enumerate()
+        .map(|(i, delivery)| {
+            json!({
+                "of": "stage",
+                "key": format!("stage/code/{}/delivered", i + 1),
+                "delivery": delivery,
+                "owed": [{ "recipient": "scratch/planner", "expired": false, "known": true }],
+                "confirmed": [],
+                "pending_for": ["scratch/planner"],
+            })
+        })
+        .collect();
+    Value::Array(ends)
+}
+
 impl Flume for FakeFlume {
     fn launch(&self, args: &LaunchArgs, _brief_dir: &Path) -> Result<Reply, Unrun> {
         if let Some(unrun) = self.call(Call::Launch(args.clone())) {
@@ -414,6 +435,18 @@ impl Flume for FakeFlume {
         }
         let word = match act {
             Act::Retry { .. } => "retry",
+            // A confirm changes no place: Flume answers it with each key
+            // confirmed as the recipient (Flume record 0061).
+            Act::Confirm { recipient, keys } => {
+                let confirmed: Vec<Value> = keys
+                    .iter()
+                    .map(|key| json!({ "key": key, "at": 1794150000, "before": false }))
+                    .collect();
+                return Ok(Reply::Given(printed(&json!({ "confirmed": {
+                    "recipient": recipient,
+                    "confirmed": confirmed,
+                } }))));
+            }
             Act::Drop => "drop",
             Act::Priority(_) => "priority",
             Act::Done => "done",
@@ -433,7 +466,7 @@ impl Flume for FakeFlume {
             }
             Act::Drop | Act::Done => self.tidy(place),
             Act::Priority(priority) => self.set(place, "priority", json!(priority)),
-            Act::Retry { .. } => {}
+            Act::Retry { .. } | Act::Confirm { .. } => {}
         }
         Ok(Reply::Given(printed(
             &json!({ "acted": { "act": word, "place": place } }),
