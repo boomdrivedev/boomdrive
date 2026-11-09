@@ -523,9 +523,10 @@ fn the_report_file_lost() {
 }
 
 /// The work-into-flume spec's "A record pending for a recipient too": a
-/// record Flume holds for the runner and for `scratch/planner` is
-/// collected once, and at the next pass carried as Flume gives it,
-/// pending for `scratch/planner` alone, listed, and collected no more.
+/// record Flume holds for the runner and for `scratch/planner` has its
+/// landing confirmed once, and at the next pass is carried as Flume gives
+/// it, pending for `scratch/planner` alone, listed, and nothing more is
+/// confirmed (design Decision 4).
 #[test]
 fn a_record_pending_for_a_recipient_too() {
     let bench = Bench::new();
@@ -538,9 +539,13 @@ fn a_record_pending_for_a_recipient_too() {
         .tidy_held(&place, 1793559694, &["boomdrive", "scratch/planner"]);
     bench.flume.take_calls();
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [] as [String; 0], "no second inbox");
+    assert_eq!(
+        confirmed(&bench),
+        [] as [Vec<String>; 0],
+        "no second confirmation"
+    );
     let entry = carried_entry(&bench, "a");
     assert_eq!(entry["place"], record);
     assert_eq!(
@@ -552,8 +557,9 @@ fn a_record_pending_for_a_recipient_too() {
 
 /// The work-into-flume spec's "A record pending for no end of the
 /// runner's": a place launched naming no recipient, as one launched before
-/// the runner named itself one, tidied while an end of it is pending for
-/// `scratch/planner` alone, is carried as its record and never collected.
+/// the runner named itself one, tidied while its landing is pending for
+/// `scratch/planner` alone, is carried as its record and nothing of it is
+/// confirmed (design Decision 4).
 #[test]
 fn a_record_pending_for_no_end_of_the_runners() {
     let bench = Bench::new();
@@ -564,7 +570,7 @@ fn a_record_pending_for_no_end_of_the_runners() {
     bench.flume.take_calls();
     bench.pass(&mut plane);
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [] as [String; 0]);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
     let entry = carried_entry(&bench, "a");
     assert_eq!(entry["place"], format!("{place}@1793559694"));
     assert!(carried(&bench, "a").listed);
