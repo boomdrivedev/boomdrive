@@ -51,7 +51,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 8. What the runner says of it
 
-- [ ] 8.1 README's control pass section says that Flume owes the runner each end of a place it launches, live or tidied, and that the runner confirms each by `flume --json confirm <key>… --recipient boomdrive` only once its control plane has taken a report holding it, so the end stays owed until then. It says that a confirmation Flume refuses, or could not run, is said in one line and made again, and that the least Flume is `0.21.0`, below which nothing is launched or confirmed (design Decisions 3 and 7). True when `sluice exec main -- moon run root:format` passes.
+- [x] 8.1 README's control pass section says that Flume owes the runner each end of a place it launches, live or tidied, and that the runner confirms each by `flume --json confirm <key>… --recipient boomdrive` only once its control plane has taken a report holding it, so the end stays owed until then. It says that a confirmation Flume refuses, or could not run, is said in one line and made again, and that the least Flume is `0.21.0`, below which nothing is launched or confirmed (design Decisions 3 and 7). True when `sluice exec main -- moon run root:format` passes.
 
 ## 9. The specs
 

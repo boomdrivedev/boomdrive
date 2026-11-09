@@ -426,23 +426,29 @@ settles for both, so no launch waits behind a settle. A control pass:
   `<location>@<at>`.
 
 No pane holds the name `boomdrive`, so Flume sends it no notice and
-wakes nothing for it, and keeps each end of the place pending for it.
-Once the place is tidied, whatever tidied it, a landing, a drop or a
-done, Flume keeps its record, `<location>@<at>`, until the runner
-collects it. The runner carries that record as the place's status, so
-its control plane reads the place's end from its report, and once its
-report file holds the record, collects it by `flume --json inbox
-<location>@<at> --recipient boomdrive`, keeping nothing of the answer.
-A collection Flume refuses, or could not run, is said in one line and
-made again at the next pass. A dropped repository's clone stays while a
-place's record is pending for the runner. A launch that names no
-recipient is given none of the runner's, so Flume's default is its
-recipient, and Flume holds nothing of it for the runner.
+wakes nothing for it, and owes it each end of the place, a live place's
+and a tidied one's alike, each owed until the runner confirms it. Once
+the place is tidied, whatever tidied it, a landing, a drop or a done,
+Flume keeps its record, `<location>@<at>`, while an end of it is owed.
+The runner carries the place's status, that record among them, so its
+control plane reads every end of the place from its report. Only once
+its control plane has taken a report holding that status, and its report
+file holds the answer, does the runner confirm the ends the status gives
+pending for it, by `flume --json confirm <key>… --recipient boomdrive`,
+one call for each launch naming each end's delivery key, keeping nothing
+of the answer. Until then each end stays owed in Flume, so losing the
+runner's report loses no end. A confirmation Flume refuses, or could not
+run, is said in one line and made again at a later pass whose report is
+taken. A dropped repository's clone stays while a place's record is
+pending for the runner. A launch that names no recipient is given none
+of the runner's, so Flume's default is its recipient, and Flume owes the
+runner nothing of it.
 
-The runner launches with Flume 0.20.0 or later, the first that holds a
-place's end for it. Where `flume --version` names an older version, or
-none, no offer is launched, and the runner says so once until Flume's
-version changes; acts and statuses go on.
+The runner runs with Flume 0.21.0 or later, the first whose ends a
+recipient confirms by key. Where `flume --version` names an older
+version, or none, no offer is launched and nothing is confirmed, and the
+runner says so once until Flume's version changes; acts and statuses go
+on.
 
 Each launch, act and preview is carried out once, and each command
 answered once, across a restart: the runner's report is kept at
