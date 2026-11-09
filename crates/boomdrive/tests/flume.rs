@@ -4,7 +4,8 @@
 //! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), Flume
 //! 0.17.1's to the settle that keeps the host's watch (record 0029), and
 //! the runner named one more recipient, confirming a place's ends as
-//! that recipient (record 0030 as amended on 2026-11-09).
+//! that recipient (record 0030 as amended on 2026-11-09), and a control
+//! plane's confirm of a reader's ends as Flume's confirm (core.56).
 
 use boomdrive::flume::{Act, Cli, Flume, LaunchArgs, Reply};
 use std::fs;
@@ -417,6 +418,47 @@ fn each_acts_argv() {
             argv(&["--json", "done", "/places/P"]),
         ]
     );
+}
+
+#[test]
+fn a_confirms_argv() {
+    let stub = Stub::new();
+    stub.answers(Some("retry.json"), None, 0);
+    let cli = stub.cli();
+    let confirm = |recipient: &str, keys: &[&str]| Act::Confirm {
+        recipient: recipient.into(),
+        keys: keys.iter().map(|key| key.to_string()).collect(),
+    };
+    for act in [
+        confirm("scratch/planner", &["K1", "K2"]),
+        // Neither the recipient nor a key is read as a flag (core.56).
+        confirm("-x", &["--recipient=boomdrive", "K1"]),
+    ] {
+        let reply = cli.act("/places/P", &act).expect("flume answers");
+        assert!(matches!(reply, Reply::Given(_)), "{act:?}: {reply:?}");
+    }
+    assert_eq!(
+        stub.calls(),
+        [
+            argv(&[
+                "--json",
+                "confirm",
+                "--recipient=scratch/planner",
+                "--",
+                "K1",
+                "K2"
+            ]),
+            argv(&[
+                "--json",
+                "confirm",
+                "--recipient=-x",
+                "--",
+                "--recipient=boomdrive",
+                "K1"
+            ]),
+        ]
+    );
+    assert_eq!(stub.read("recipient-1").as_deref(), Some("unset\n"));
 }
 
 #[test]

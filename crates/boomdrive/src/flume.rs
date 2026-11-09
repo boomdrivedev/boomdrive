@@ -122,6 +122,14 @@ pub enum Act {
         words: Option<String>,
         submission: bool,
     },
+    /// Flume's confirm of each of `keys` as `recipient`, exactly those
+    /// keys in their order. It names no place, since Flume's key names its
+    /// own: the runner holds each key to its launch's place before it asks
+    /// (core.56; Flume record 0061).
+    Confirm {
+        recipient: String,
+        keys: Vec<String>,
+    },
     Drop,
     Priority(i64),
     Done,
@@ -308,7 +316,9 @@ fn launch_args(args: &LaunchArgs, brief_file: Option<&Path>) -> Vec<OsString> {
     words
 }
 
-/// The arguments of `act` on the place at `place`.
+/// The arguments of `act` on the place at `place`. A confirm is not
+/// passed the place, since `flume confirm` takes none and its keys name
+/// their own.
 fn act_args(place: &str, act: &Act) -> Vec<OsString> {
     match act {
         Act::Retry {
@@ -328,12 +338,27 @@ fn act_args(place: &str, act: &Act) -> Vec<OsString> {
             }
             args
         }
+        Act::Confirm { recipient, keys } => confirm_args(recipient, keys),
         Act::Drop => vec!["drop".into(), place.into()],
         Act::Priority(priority) => {
             vec!["priority".into(), place.into(), priority.to_string().into()]
         }
         Act::Done => vec!["done".into(), place.into()],
     }
+}
+
+/// The arguments of Flume's confirm of `keys` as `recipient`, `confirm
+/// --recipient=<recipient> -- <key>…`: the recipient joined to its flag
+/// and the keys after `--`, so that neither is read as a flag, and no
+/// place named (core.56; Flume record 0061).
+fn confirm_args(recipient: &str, keys: &[String]) -> Vec<OsString> {
+    let mut args: Vec<OsString> = vec![
+        "confirm".into(),
+        format!("--recipient={recipient}").into(),
+        "--".into(),
+    ];
+    args.extend(keys.iter().map(OsString::from));
+    args
 }
 
 /// Flume's `refused` answer, as it prints one on exit 1.
