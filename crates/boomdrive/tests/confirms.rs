@@ -11,7 +11,8 @@ mod fakes;
 use boomdrive::flume::{Act, Reply};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{ActSort, Id, Outcome, Want};
-use fakes::{act, offer, place_of, Bench};
+use fakes::{act, offer, place_of, Bench, Call};
+use serde_json::json;
 
 /// A delivery of launch `a`'s place.
 const K1: &str = "change--a/0a1b2c3d/stage/code/1/delivered";
@@ -130,4 +131,68 @@ fn a_key_of_no_end_of_the_launchs_place_is_refused() {
     assert!(words.contains(K3) && words.contains(&p), "{words}");
     assert!(!words.contains(K1), "{words}");
     assert_eq!(bench.flume.acts(), []);
+}
+
+/// The work-into-flume spec's "A tidied place's record".
+#[test]
+fn a_tidied_places_record_is_confirmed() {
+    let (bench, mut plane) = launched(&[K1]);
+    let p = place_of("a");
+    bench.flume.tidy_held(&p, 1794150000, &["scratch/planner"]);
+    pull(
+        &bench,
+        &mut plane,
+        "a/confirm",
+        confirm("scratch/planner", &[K1]),
+    );
+    assert_eq!(
+        bench.flume.acts(),
+        [(p, confirmed("scratch/planner", &[K1]))]
+    );
+    let acted = &bench.report().acts[&Id::new("a/confirm")];
+    assert_eq!(acted.outcome, Outcome::Done);
+}
+
+/// The work-into-flume spec's "A place the listing does not hold".
+#[test]
+fn a_place_the_listing_does_not_hold_is_held_to_its_status() {
+    let (bench, mut plane) = launched(&[K1]);
+    let p = place_of("a");
+    bench.flume.listing(Ok(Reply::Given(fakes::printed(
+        &json!({ "status": { "places": [], "host": fakes::unbounded() } }),
+    ))));
+    bench.flume.status_answers(
+        &p,
+        Ok(Reply::Given(fakes::printed(&json!({ "status": {
+            "places": [{ "place": p, "ends": fakes::ends(&[K1]) }],
+        } })))),
+    );
+    pull(
+        &bench,
+        &mut plane,
+        "a/confirm",
+        confirm("scratch/planner", &[K1]),
+    );
+    // The place's status is read for the confirm, ahead of it, and read
+    // again for the status carried once Flume ran it (record 0021).
+    assert_eq!(
+        bench.flume.commands()[..2],
+        [
+            Call::StatusOf(None, p.clone()),
+            Call::Act(p.clone(), confirmed("scratch/planner", &[K1])),
+        ]
+    );
+    let acted = &bench.report().acts[&Id::new("a/confirm")];
+    assert_eq!(acted.outcome, Outcome::Done);
+    pull(
+        &bench,
+        &mut plane,
+        "a/confirm-2",
+        confirm("scratch/planner", &[K3]),
+    );
+    assert_eq!(bench.flume.acts(), []);
+    let acted = &bench.report().acts[&Id::new("a/confirm-2")];
+    assert_eq!(acted.outcome, Outcome::Refused);
+    let words = acted.words.as_deref().expect("the runner's words");
+    assert!(words.contains(K3) && words.contains(&p), "{words}");
 }
