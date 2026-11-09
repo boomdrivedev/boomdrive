@@ -68,7 +68,7 @@ An offer whose `after` names a launch whose place has not read landed in Flume's
 
 ### Requirement: Room is read from Flume's status and counted down within a pass
 
-The runner SHALL read room from the pass's listing, the `flume --json status` it reads before its pull. The host SHALL have room while its `room` is `null` or above zero. A stream SHALL have room while the host has room, its own `room` is `null` or above zero, and its `queue` is empty. Each launch the pass makes SHALL count one against its stream's room and the host's.
+The runner SHALL read room from the pass's listing, the `flume --json status` it reads before its pull. The host SHALL have room while its `room` is `null` or above zero. A stream SHALL have room while the host has room, its own `room` is `null` or above zero, and its `queue` is empty. Each launch a part's pass makes SHALL count one against its stream's room and the host's, in that pass alone: the runner SHALL keep no count across parts (record 0026; core.9).
 
 #### Scenario: Room for one
 
@@ -90,6 +90,11 @@ The runner SHALL read room from the pass's listing, the `flume --json status` it
 - **WHEN** an offer names stream `default`, whose `room` and the host's are both `null`
 - **THEN** it is launched
 
+#### Scenario: Each part counts its own room
+
+- **WHEN** the runner carries `home` and `work`, each offering one launch naming no stream, and every listing Flume gives says the host's `room` is 1
+- **THEN** each part launches its own offer, each pass counting only its own launch
+
 ### Requirement: A launch is made only while the stream it runs in has room
 
 A launch that names a stream SHALL be launched only while that stream has room, and one that names none only while the host has room. Where Flume's status lists no stream of the name, the launch SHALL be made, so that Flume's refusal is its answer. An offer with no room SHALL be left unanswered, or left `held` with words naming the stream it waits for room in.
@@ -106,12 +111,12 @@ A launch that names a stream SHALL be launched only while that stream has room, 
 
 ### Requirement: A launch is one `flume launch` naming what the launch gives
 
-The runner SHALL turn a launch into one `flume --json launch --repository <the clone's container> --kind <kind> --name <name>`. It SHALL add `--base`, `--stream`, `--priority`, `--intent`, each `--recipient`, each `--hold`, `--hold-submission`, `--brief-file` and each `--agent` only where the launch gives it, and `--mark boomdrive:<id>`. It SHALL add no stream, priority or intent of its own.
+The runner SHALL turn a launch into one `flume --json launch --repository <the clone's container> --kind <kind> --name <name>`. It SHALL add `--base`, `--stream`, `--priority`, `--intent`, each `--recipient` with `--recipient boomdrive` after them, each `--hold`, `--hold-submission`, `--brief-file` and each `--agent` only where the launch gives it, and `--mark boomdrive:<id>`. It SHALL add no stream, priority or intent of its own.
 
 #### Scenario: A unit's launch
 
 - **WHEN** an offer `home/12` of `change` named `a` in `example/crew` on `bolt/x` is pulled, with stream `home`, priority 4, intent `home/x`, recipient `home/planner` and a brief, its clone is made, and its stream has room
-- **THEN** the stub `flume` is run once as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream home --priority 4 --intent home/x --recipient home/planner --brief-file <a file holding the brief> --mark boomdrive:home/12`
+- **THEN** the stub `flume` is run once as `flume --json launch --repository <the container> --kind change --name a --base bolt/x --stream home --priority 4 --intent home/x --recipient home/planner --recipient boomdrive --brief-file <a file holding the brief> --mark boomdrive:home/12`
 
 #### Scenario: A launch naming no stream, priority or intent
 
@@ -127,14 +132,19 @@ The runner SHALL pass a launch's kind to `--kind` as the launch gives it, a name
 - **WHEN** an offer `home/planner/1` of kind `crew/crew-planner` named `home` in `example/home-blueprints` is pulled with the agent setting `model=opus`, and its stream has room
 - **THEN** the stub `flume`'s arguments hold `--kind crew/crew-planner` and `--agent model=opus`, and no `--kinds`
 
-### Requirement: Flume runs with no recipient of the runner's own, and no brief is left
+### Requirement: The runner is one more recipient of a launch that names recipients, and no brief is left
 
-The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset, so a place's recipients are only those its launch names. It SHALL remove a launch's brief file once Flume answers.
+The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset. Where a launch names recipients, its `flume launch` SHALL pass them as given and name the runner one more after them, `--recipient boomdrive`, so Flume holds the place's end for it; where it names none, it SHALL name none, so Flume's default stands. It SHALL remove a launch's brief file once Flume answers (core.15, core.54; record 0030).
 
 #### Scenario: A launch's environment and brief
 
 - **WHEN** a launch with a brief is answered by the stub `flume`
 - **THEN** the stub's environment held no `FLUME_RECIPIENT`, and the brief's file no longer exists
+
+#### Scenario: The runner is one more recipient
+
+- **WHEN** an offer that names the recipient `home/planner` is launched, and then an offer that names no recipient
+- **THEN** the first launch's arguments hold `--recipient home/planner` then `--recipient boomdrive`, and no other `--recipient`; and the second's hold no `--recipient`
 
 ### Requirement: Every answer is Flume's
 
@@ -150,11 +160,12 @@ The runner SHALL answer a launch `launched`, at the place Flume's answer names, 
 - **WHEN** the program the runner runs as `flume` does not exist
 - **THEN** the launch has no answer, the pass names the failure, and the next pass launches it once `flume` is there
 
-### Requirement: A retry, a drop, a priority and a done are Flume's own commands on the launch's place
+### Requirement: A retry, a land, a drop, a priority and a done are Flume's own commands on the launch's place
 
 The runner SHALL act on the place its report holds for the act's launch, never passing `--force`:
 
 - a retry is `flume retry <place>`, with `--stage` and `--words` where the act names them, and `--submission` where it asks for the submission;
+- a land is `flume retry <place> --submission`, naming no stage and no words, whatever the launch's kind (core.53; Flume's 203);
 - a drop is `flume drop <place>`;
 - a priority is `flume priority <place> <n>`;
 - a done is `flume done <place>`.
@@ -163,6 +174,11 @@ The runner SHALL act on the place its report holds for the act's launch, never p
 
 - **WHEN** an act retries launch `home/12` at stage `code` with the words `use the second option`, and `home/12` was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --stage code --words "use the second option"`, and the act is answered `done`
+
+#### Scenario: A land
+
+- **WHEN** an act `home/13` lands launch `home/12`, a launch of kind `change`, and `home/12` was launched at place `P`
+- **THEN** the stub `flume` is run as `flume --json retry P --submission` and as no other act, the act is answered `done`, and its line begins `home/13: land of home/12`
 
 #### Scenario: A done
 
@@ -183,14 +199,19 @@ An act whose launch the runner holds unlaunched SHALL run no command. A priority
 - **WHEN** launch `b` is held, and an act drops it
 - **THEN** the act is answered `done`, `b` is answered `done` with words naming the drop, and no `flume launch` is ever run for `b`
 
-### Requirement: A retry or a done of a launch not launched, and an act on another's launch, are refused
+### Requirement: A retry, a land or a done of a launch not launched, and an act on another's launch, are refused
 
-A retry or a done of a launch the runner holds unlaunched SHALL be answered `refused`, naming where the launch stands. An act whose launch is no launch of this runner's SHALL be answered `refused`, naming the launch. Neither SHALL run a command.
+A retry, a land or a done of a launch the runner holds unlaunched SHALL be answered `refused`, naming where the launch stands. An act whose launch is no launch of this runner's SHALL be answered `refused`, naming the launch. Neither SHALL run a command, and a land so refused SHALL change nothing of the launch when it is made (core.15, core.53).
 
 #### Scenario: A retry of a held launch
 
 - **WHEN** launch `b` is held on its After, and an act retries it
 - **THEN** the act is answered `refused`, its words saying `b` is held and naming what it waits on
+
+#### Scenario: A land of a held launch
+
+- **WHEN** launch `b` is held on its After, an act lands it, and at a later pass `b`'s After reads landed
+- **THEN** the land is answered `refused`, its words saying `b` is held and naming what it waits on, no `flume retry` is run, and `b` is then launched as its offer gives it
 
 #### Scenario: An act on another's launch
 
@@ -199,7 +220,7 @@ A retry or a done of a launch the runner holds unlaunched SHALL be answered `ref
 
 ### Requirement: Each launch, act and command is carried out once
 
-The runner SHALL keep its report in `<data>/control/report.json`, written whole by rename after every act and command and before the next, and read at start. A want its report holds settled SHALL be answered from its report and not carried out again. An offer with no answer, whose mark `boomdrive:<id>` Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again. Where the report file is missing, the runner SHALL take the report the pull gives back.
+The runner SHALL keep its report in `<data>/control/report.json`, the whole report of every part, each part saving its share after every act and command and before the next. A want a part's share holds settled SHALL be answered from it and not carried out again. An offer with no answer, whose mark `boomdrive:<id>` Flume's listing holds on a place, SHALL be answered `launched` at that place and not launched again.
 
 #### Scenario: A retry not made twice
 
@@ -378,6 +399,29 @@ Before it runs an act's command on a place the pass's listing does not hold, the
 - **WHEN** the runner holds launch `a` at place `P`, Flume no longer stands `P` and cannot be run for `flume --json status P`, and a pull gives the offer `a`, then a drop of `a`
 - **THEN** no `flume drop P` is run, and the drop has no answer and is named not carried out; and at the next pass, Flume refusing `P`'s status, the drop is answered `refused` with Flume's words
 
+### Requirement: Each part saves its share of the one report file
+
+The report file SHALL name in `parts` the labels of the parts whose share it holds. A part's share SHALL be the entries its control plane owns. To save its share, a part SHALL take the file's own lock, held for that save alone, read the file, replace the part's entries, keep every other entry as it stands, add its label to `parts`, and write the whole by rename (record 0026; core.36).
+
+#### Scenario: A part's save keeps every other part's share
+
+- **WHEN** the report file holds `home`'s launch `home/1` and `work`'s act `work/2`, and `home` saves its share holding `home/1` and `home/3`
+- **THEN** the file holds `home/1`, `home/3` and `work/2`, and names `home` and `work` in `parts`
+
+### Requirement: A part the report file does not hold takes its share from its pull
+
+A report file with no `parts`, as a release before wrote it, SHALL hold every part's share. A part SHALL read its share from the file where the file names it in `parts` or names no `parts`. Where the file is missing, or names others in `parts` and not the part, the part SHALL take its share from the report its pull gives back (core.10).
+
+#### Scenario: A file from the release before
+
+- **WHEN** the report file has no `parts` and holds `work`'s act `work/2` settled, and `work` pulls `work/2` again
+- **THEN** `work/2` is answered from the file, and no `flume` command is run for it
+
+#### Scenario: A part the file does not hold
+
+- **WHEN** the report file names only `home` in `parts`, and `work`'s pull gives back a report holding `work/2` settled
+- **THEN** `work` takes `work/2` from its pull's report, answers it from there, and saves it with `work` named in `parts`
+
 ### Requirement: A bolt is a launch
 
 The runner SHALL take a launch of a kind that lands with no stages, as a bolt's base place is, as it takes any launch: under its lease, for a repository it keeps, while its stream has room as Flume's status gives it, counted against that room within the pass, and as one `flume launch` naming what the launch gives. It SHALL read no kind to tell such a launch from another, and SHALL ask no tool to make, move or remove a branch (core.9, core.15, core.52; Flume's 202).
@@ -392,18 +436,18 @@ The runner SHALL take a launch of a kind that lands with no stages, as a bolt's 
 - **WHEN** a pull offers the bolt `home/bolt/3`, then its unit `home/14`, both with stream `home`, whose `room` is 1
 - **THEN** the bolt is launched and the unit is left unanswered; and at the next pass, whose listing gives `home` a `room` of 1 again, the unit is launched
 
-### Requirement: A bolt's send is a retry of its submission
+### Requirement: A bolt is landed on a land
 
-The runner SHALL carry out the send of a place whose kind lands with no stages, a retry naming the submission, as `flume retry <place> --submission`, as it carries out any retry. Flume's answer SHALL be the act's, a refusal while a place on its branch is live among them (core.1, core.11, core.52; Flume's 203).
+The runner SHALL carry out a land of a launch whose kind lands with no stages, as a bolt's base place is, as `flume retry <place> --submission`, as it carries out any land. Flume's answer SHALL be the act's, a refusal while a place on its branch is live among them (core.1, core.11, core.52, core.53; Flume's 203).
 
 #### Scenario: A bolt's send
 
-- **WHEN** an act retries the submission of launch `home/bolt/3`, which was launched at place `P`
+- **WHEN** an act lands launch `home/bolt/3`, which was launched at place `P`
 - **THEN** the stub `flume` is run as `flume --json retry P --submission`, and the act is answered `done`
 
 #### Scenario: A send Flume refuses
 
-- **WHEN** an act retries the submission of launch `home/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
+- **WHEN** an act lands launch `home/bolt/3` at place `P`, and the stub `flume` exits 1 refusing it with the reason `the places on bolt/x are live: Q`
 - **THEN** the act is answered `refused` with the words `the places on bolt/x are live: Q`, and no `sluice` command is run
 
 ### Requirement: The hello names the repositories drained apart from those kept
@@ -450,3 +494,82 @@ The runner's report SHALL hold, with each launch it answers, the repository the 
 
 - **WHEN** offer `a` of a launch in `agentplot/flume` is launched, and a report file of before holds launch `b` launched with no repository
 - **THEN** the report file's `a` names `agentplot/flume`, and its `b` names the repository of `b`'s offer once a pull gives `b`
+
+### Requirement: A place's end is held for the runner until its report holds it
+
+Where Flume holds a place's record for the runner after its tidy, `<location>@<at>`, the runner SHALL carry it as the place's status, as it carries any. Once the report file holds that status, in the control pass that carried it, the runner SHALL collect the record by `flume --json inbox <location>@<at> --recipient boomdrive`, naming no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54; record 0030).
+
+#### Scenario: A landing held for the runner
+
+- **WHEN** the runner holds launch `a`, which names the recipient `scratch/planner`, at place `P`, carried live, and between two passes `P` lands and Flume tidies it, holding its record `P@<at>` for `boomdrive` alone
+- **THEN** the next pass carries Flume's answer for `P` as `a`'s status, naming `P@<at>`, tidied and landed, then runs `flume --json inbox P@<at> --recipient boomdrive` once, and the report file held that status when it ran; and at the pass after, Flume refusing `P`'s status, that status stands, not listed, and no inbox is run
+
+#### Scenario: A drop held for the runner
+
+- **WHEN** an act drops launch `a`, which names the recipient `scratch/planner`, at place `P`, and Flume tidies `P`, holding its record `P@<at>` for `boomdrive`
+- **THEN** the pass carries `P@<at>`, tidied and dropped, as `a`'s status, and collects it once
+
+### Requirement: Only a record pending for the runner is collected
+
+The runner SHALL collect a record only for a launch the pull gives, whose repository's clone stands, and whose carried status is listed and reads the place tidied, its `pending_for` naming `boomdrive`. It SHALL collect nothing for a launch whose lease the control plane refused, nor in a pass whose report could not be saved (core.10, core.25).
+
+#### Scenario: A record pending for a recipient too
+
+- **WHEN** Flume holds `P@<at>` for `boomdrive` and for `scratch/planner`, and the runner collects it
+- **THEN** at the next pass `P@<at>` is carried as Flume gives it, pending for `scratch/planner` alone, listed, and no second inbox is run
+
+#### Scenario: A record pending for no end of the runner's
+
+- **WHEN** the runner carries `P@<at>`, tidied and landed, pending for `scratch/planner` alone, as for a place launched before the runner named itself a recipient
+- **THEN** no inbox is run for it
+
+#### Scenario: A lease refused before its end was collected
+
+- **WHEN** the fake control plane refuses the report of launch `a` at place `P` as no longer this runner's, and Flume then tidies `P`, holding `P@<at>` for `boomdrive`
+- **THEN** `a` leaves the report, and no inbox names `P@<at>` at the passes after
+
+### Requirement: A collection Flume refuses or cannot run is made again
+
+Where Flume refuses a collection, the runner SHALL say one line, prefixed with the launch's id, naming the record and Flume's words; where Flume cannot be run for it, one line naming the record and why. It SHALL collect the record again at the next pass.
+
+#### Scenario: A collection Flume could not run
+
+- **WHEN** the runner carries `P@<at>` held for `boomdrive`, and `flume` cannot be run for the inbox
+- **THEN** the pass says one line beginning `a:` that names `P@<at>` and why; and the next pass, Flume running, collects it
+
+#### Scenario: A collection Flume refuses
+
+- **WHEN** the runner carries `P@<at>` held for `boomdrive`, and Flume refuses the inbox
+- **THEN** the pass says one line beginning `a:` that names `P@<at>` and Flume's words; and the next pass collects it again
+
+### Requirement: What waits on a place reads its landing from the record Flume holds
+
+An offer whose `after` names a launch whose place Flume has tidied, landed, and holds for the runner SHALL read that place landed from the record carried, and SHALL be launched at the first pass at which that holds and its stream has room, as for any place that reads landed.
+
+#### Scenario: A dependent of a landing held for the runner
+
+- **WHEN** offer `b` comes after `a`, `a` is launched at place `P` and held, and between two passes `P` lands and Flume tidies it, holding `P@<at>` for `boomdrive`
+- **THEN** the next pass launches `b`, its listing holding `P@<at>` landed, and carries `P@<at>`, tidied and landed, as `a`'s status
+
+### Requirement: No launch is made with a Flume older than the least
+
+The least Flume the runner runs with SHALL be `0.20.0`, the first that holds a drop's and a done's end for a recipient no pane holds. Where the first line of `flume --version`, as the hello reads it, names an older version, or none, the runner SHALL launch no offer, leaving each unanswered, or held where it was held, while acts and statuses go on. Where Flume is missing, a launch SHALL be tried as before (core.38; record 0030).
+
+#### Scenario: A Flume older than the least
+
+- **WHEN** an offer `a` is pulled with room for it, and the program the runner runs as `flume` prints `flume 0.18.0` for `--version`
+- **THEN** no `flume launch` is run, and `a` has no answer in the report
+
+#### Scenario: A Flume at the least
+
+- **WHEN** the same offer is pulled again, and `flume --version` now prints `flume 0.20.0`
+- **THEN** `a` is launched
+
+### Requirement: A Flume older than the least is said once
+
+The runner SHALL say one line naming what Flume said for `--version` and the least it runs with, at the first pass that reads it so, and nothing more of it until Flume's version changes.
+
+#### Scenario: Said once while it lasts
+
+- **WHEN** two passes in turn read `flume 0.18.0` for `--version`, with an offer pulled at each
+- **THEN** the first says one line naming `flume 0.18.0` and `0.20.0`, and the second says nothing of it

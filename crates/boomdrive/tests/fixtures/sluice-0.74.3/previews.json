@@ -1,0 +1,35 @@
+[
+  {
+    "addresses": {
+      "web": "http://web-124c789--main--repo.localhost:20001"
+    },
+    "branch": "main",
+    "checkout": "/private/tmp/scratch/host/repo/.git/sluice/.previews/preview+2F124c789156d0",
+    "made": "2026-11-08T19:54:52Z",
+    "name": "preview/124c789156d0",
+    "names": {
+      "SLUICE_NAME_WEB": "web-124c789--main--repo"
+    },
+    "output": "the stack did not come up: no database on port 20001\n",
+    "ports": {},
+    "revision": "124c789156d05fed6f36914a4d0a57ccbb92abe2",
+    "state": "failed"
+  },
+  {
+    "addresses": {
+      "web": "http://web-c2b7260--main--repo.localhost:20000"
+    },
+    "branch": "main",
+    "checkout": "/private/tmp/scratch/host/repo/.git/sluice/.previews/preview+2Fc2b72605d2ad",
+    "made": "2026-11-08T19:54:52Z",
+    "name": "preview/c2b72605d2ad",
+    "names": {
+      "SLUICE_NAME_WEB": "web-c2b7260--main--repo"
+    },
+    "ports": {
+      "SLUICE_PORT_WEB": "20000"
+    },
+    "revision": "c2b72605d2ad8471a98dfae00551852c527d4dcf",
+    "state": "up"
+  }
+]

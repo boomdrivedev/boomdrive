@@ -11,26 +11,29 @@
 
 #![allow(dead_code)]
 
-use boomdrive::carry::{Carrier, Clones, Keeping, Passed, Reach};
-use boomdrive::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
+use boomdrive::carry::{Carrier, Clones, Keeping, Least, Passed, Reach};
+use boomdrive::flume::{self, Act, Flume, LaunchArgs, Reply, Unrun};
 use boomdrive::git::Git;
 use boomdrive::hello::Tools;
-use boomdrive::report;
+use boomdrive::locks::Locks;
+use boomdrive::report::{self, ReportFile};
 use boomdrive::run::{Event, Notices};
 use boomdrive::sluice;
 use boomdrive::terminal::{self, Relays};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    ActSort, AgentSetting, Hold, Id, Launch, Lease, Offer, Report, ToolVersion, Want,
+    ActSort, AgentSetting, ControlPlane, Hold, Id, Launch, Lease, Offer, Preview, Report,
+    ToolVersion, Want,
 };
 use serde_json::{json, Value};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tempfile::TempDir;
 
 /// The repository every bench keeps with its clone made.
@@ -54,6 +57,16 @@ pub fn sluice_fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sluice-0.61.1")
 }
 
+/// A fixture of sluice 0.74.3's, a preview's, as it printed it.
+pub fn preview_fixture(name: &str) -> String {
+    fs::read_to_string(preview_fixtures().join(name)).expect("the fixture")
+}
+
+/// The directory of sluice 0.74.3's fixtures, a preview's.
+pub fn preview_fixtures() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sluice-0.74.3")
+}
+
 /// `value` as Flume prints JSON: on one line, ending in a newline.
 pub fn printed(value: &Value) -> String {
     serde_json::to_string(value).expect("JSON") + "\n"
@@ -70,6 +83,8 @@ pub enum Call {
     Status,
     /// `status <place>`, in the clone's container where one was named.
     StatusOf(Option<PathBuf>, String),
+    /// `inbox <record> --recipient boomdrive`.
+    Collect(String),
 }
 
 /// Flume in memory.
@@ -91,6 +106,13 @@ struct State {
     acts: BTreeMap<String, Result<Reply, Unrun>>,
     /// `status <place>`'s answer, by the place.
     statuses: BTreeMap<String, Result<Reply, Unrun>>,
+    /// A collection's answer, by its record.
+    collects: BTreeMap<String, Result<Reply, Unrun>>,
+    /// The recipients each place it launched was launched with, by its
+    /// place, the runner's own among them where the launch named any.
+    recipients: BTreeMap<String, Vec<String>>,
+    /// The time the next record of a drop or a done is tidied at.
+    tidied_at: u64,
     /// Every call left unrun, with these words.
     unrun: Option<String>,
     calls: Vec<Call>,
@@ -166,10 +188,28 @@ impl FakeFlume {
     /// while an end of it is pending for `scratch/planner`: Flume keeps its
     /// record as `<place>@<at>`, and answers `status <place>` with it.
     pub fn tidy_pending(&self, place: &str, at: u64) {
+        self.tidy_held(place, at, &["scratch/planner"]);
+    }
+
+    /// The place at `place`, landed at commit `c0ffee`, tidied at `at`
+    /// while an end of it is pending for each of `pending_for`: Flume keeps
+    /// its record as `<place>@<at>`, and answers `status <place>` with it.
+    pub fn tidy_held(&self, place: &str, at: u64, pending_for: &[&str]) {
+        self.tidy_over(
+            place,
+            json!({ "landed": { "commit": "c0ffee" } }),
+            at,
+            pending_for,
+        );
+    }
+
+    /// The place at `place`, its work over as `over`, tidied at `at` while
+    /// an end of it is pending for each of `pending_for`.
+    fn tidy_over(&self, place: &str, over: Value, at: u64, pending_for: &[&str]) {
         let tidied = json!({ "tidied": {
-            "over": { "landed": { "commit": "c0ffee" } },
+            "over": over,
             "at": at,
-            "pending_for": ["scratch/planner"],
+            "pending_for": pending_for,
         } });
         self.set(place, "phase", tidied);
         self.set(place, "place", json!(format!("{place}@{at}")));
@@ -218,6 +258,20 @@ impl FakeFlume {
             .insert(place.to_string(), reply);
     }
 
+    /// The collection of `record` answered with `reply`, until the test
+    /// says otherwise.
+    pub fn collect_answers(&self, record: &str, reply: Result<Reply, Unrun>) {
+        self.state
+            .borrow_mut()
+            .collects
+            .insert(record.to_string(), reply);
+    }
+
+    /// The collection of `record` answered as Flume answers it again.
+    pub fn collect_as_flume(&self, record: &str) {
+        self.state.borrow_mut().collects.remove(record);
+    }
+
     /// `then` done to Flume while the next launch or act runs, as Flume's
     /// own settling moves a place on while the runner waits on a command.
     pub fn meanwhile(&self, then: impl FnOnce(&FakeFlume) + 'static) {
@@ -264,6 +318,17 @@ impl FakeFlume {
             .collect()
     }
 
+    /// Each record collected, in order.
+    pub fn collects(&self) -> Vec<String> {
+        self.calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Collect(record) => Some(record),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Each launch's arguments, in order.
     pub fn launches(&self) -> Vec<LaunchArgs> {
         self.calls()
@@ -287,6 +352,16 @@ impl FakeFlume {
         if let Some(then) = meanwhile {
             then(self);
         }
+    }
+
+    /// Whether the place at `place` was launched with the runner among
+    /// its recipients.
+    fn held_for_runner(&self, place: &str) -> bool {
+        self.state
+            .borrow()
+            .recipients
+            .get(place)
+            .is_some_and(|named| named.iter().any(|name| name == flume::RECIPIENT))
     }
 
     fn listing_now(&self) -> Value {
@@ -320,6 +395,10 @@ impl Flume for FakeFlume {
             "stream": { "name": args.stream.as_deref().unwrap_or("default"), "from": "launch" },
         });
         self.stand(entry.clone());
+        self.state
+            .borrow_mut()
+            .recipients
+            .insert(place_of(&args.name), flume::recipients(&args.recipients));
         Ok(Reply::Given(printed(
             &json!({ "launched": { "place": entry } }),
         )))
@@ -340,6 +419,18 @@ impl Flume for FakeFlume {
             Act::Done => "done",
         };
         match act {
+            // A drop or a done is an end pending for the place's recipients
+            // that are no role's address, the runner's among them, and Flume
+            // keeps the place's record while it is (Flume record 0060).
+            Act::Drop | Act::Done if self.held_for_runner(place) => {
+                let over = if *act == Act::Drop { "dropped" } else { "done" };
+                let at = {
+                    let mut state = self.state.borrow_mut();
+                    state.tidied_at += 1;
+                    100 + state.tidied_at
+                };
+                self.tidy_over(place, json!(over), at, &[flume::RECIPIENT]);
+            }
             Act::Drop | Act::Done => self.tidy(place),
             Act::Priority(priority) => self.set(place, "priority", json!(priority)),
             Act::Retry { .. } => {}
@@ -357,6 +448,45 @@ impl Flume for FakeFlume {
             return reply.clone();
         }
         Ok(Reply::Given(printed(&self.listing_now())))
+    }
+
+    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
+        if let Some(unrun) = self.call(Call::Collect(record.to_string())) {
+            return Err(unrun);
+        }
+        if let Some(reply) = self.state.borrow().collects.get(record) {
+            return reply.clone();
+        }
+        let mut state = self.state.borrow_mut();
+        let Some(at) = state
+            .places
+            .iter()
+            .position(|entry| entry["place"] == record)
+        else {
+            return Ok(Reply::Refused(format!(
+                "no place {record} stands on this host"
+            )));
+        };
+        let entry = &mut state.places[at];
+        let mut collected = Vec::new();
+        if let Some(pending) = entry
+            .pointer_mut("/phase/tidied/pending_for")
+            .and_then(Value::as_array_mut)
+        {
+            let before = pending.len();
+            pending.retain(|name| name != flume::RECIPIENT);
+            if pending.len() < before {
+                collected.push(json!({ "place": record }));
+            }
+            if pending.is_empty() {
+                state.places.remove(at);
+            }
+        }
+        Ok(Reply::Given(printed(&json!({ "inbox": {
+            "recipient": flume::RECIPIENT,
+            "ends": collected,
+            "waiting": [],
+        } }))))
     }
 
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {
@@ -386,8 +516,10 @@ pub struct FakeClones {
 }
 
 impl FakeClones {
-    /// `address` named, its clone made in `container`.
+    /// `address` named, its clone made in `container`, which is made
+    /// where it is not there, so a launch finds the clone again.
     pub fn ready(&self, address: &str, container: &Path) {
+        fs::create_dir_all(container).expect("the clone's container");
         self.keep(address, Keeping::Ready(container.to_path_buf()));
     }
 
@@ -446,32 +578,49 @@ impl Clones for FakeClones {
     }
 }
 
-/// The tools' versions: each `<tool> 1.0.0`, but those a test names
-/// missing.
+/// The tools' versions: each `<tool> 1.0.0`, but as a test names one.
 #[derive(Default)]
 pub struct FakeTools {
-    missing: RefCell<Vec<String>>,
+    read: RefCell<BTreeMap<String, ToolVersion>>,
 }
 
 impl FakeTools {
+    /// `tool` read as missing, as when it could not run.
     pub fn missing(&self, tool: &str) {
-        self.missing.borrow_mut().push(tool.to_string());
+        self.reads(
+            tool,
+            ToolVersion::Missing(format!("{tool} could not run: not found")),
+        );
+    }
+
+    /// `tool`'s `--version` read as printing `line` first.
+    pub fn prints(&self, tool: &str, line: &str) {
+        self.reads(tool, ToolVersion::Printed(line.to_string()));
+    }
+
+    /// `tool`'s version read as `version`.
+    pub fn reads(&self, tool: &str, version: ToolVersion) {
+        self.read.borrow_mut().insert(tool.to_string(), version);
     }
 }
 
 impl Tools for FakeTools {
     fn version(&self, tool: &str) -> ToolVersion {
-        if self.missing.borrow().iter().any(|missing| missing == tool) {
-            return ToolVersion::Missing(format!("{tool} could not run: not found"));
+        match self.read.borrow().get(tool) {
+            Some(version) => version.clone(),
+            None => ToolVersion::Printed(format!("{tool} 1.0.0")),
         }
-        ToolVersion::Printed(format!("{tool} 1.0.0"))
     }
 }
 
+/// The label of the part a bench's passes are of, but where a test names
+/// another.
+pub const PART: &str = "home";
+
 /// A host for control passes: a fake Flume, a stub `sluice`, a stub
-/// `herdr` and the terminals relayed through it, clones and tools, and a
-/// data directory of its own, which keeps [`KEPT`] with its clone's
-/// container made.
+/// `herdr` and the terminals relayed through it, clones and tools, each
+/// clone's lock, the one report file, and a data directory of its own,
+/// which keeps [`KEPT`] with its clone's container made.
 pub struct Bench {
     /// Dropped first, so every terminal's thread ends before the stubs
     /// and the data directory go.
@@ -486,9 +635,20 @@ pub struct Bench {
     pub git: Git,
     pub clones: FakeClones,
     pub tools: FakeTools,
+    /// Each clone's lock, as the keeper and the launches take it.
+    pub locks: Arc<Locks>,
+    /// The one report file every part's pass keeps its share of.
+    pub report_file: ReportFile,
     /// Whether the last pull was read, kept across the bench's passes as
-    /// the loop keeps it.
+    /// a part's thread keeps it.
     reach: Reach,
+    /// What was last said of Flume's version, kept across the bench's
+    /// passes as the loop keeps it.
+    least: Least,
+    /// How long a pass awaits sluice's ask of a preview before it
+    /// interrupts it: [`sluice::PREVIEW_PATIENCE`], but where a test sets
+    /// another.
+    pub sluice_patience: Cell<Duration>,
     notices: Notices,
     events: Receiver<Event>,
 }
@@ -503,6 +663,7 @@ impl Bench {
         let relays = Relays::new(terminal::Cli::new(herdr.program()), move |line| {
             said.lock().expect("the relay's lines").push(line);
         });
+        let report_file = ReportFile::new(&report::control_dir(&dir.path().join("data")));
         let bench = Bench {
             relays,
             relay_lines,
@@ -513,7 +674,11 @@ impl Bench {
             git: Git::default(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
+            locks: Arc::new(Locks::new()),
+            report_file,
             reach: Reach::default(),
+            least: Least::default(),
+            sluice_patience: Cell::new(sluice::PREVIEW_PATIENCE),
             notices: Notices::new(events),
             events: received,
         };
@@ -535,7 +700,7 @@ impl Bench {
 
     /// The report file.
     pub fn report_file(&self) -> PathBuf {
-        report::file(&self.control_dir())
+        self.report_file.path().to_path_buf()
     }
 
     /// The container `address`'s clone is made in.
@@ -563,9 +728,23 @@ impl Bench {
         plane: &mut Fake,
         due: &dyn Fn() -> bool,
     ) -> (Passed, Vec<String>) {
+        self.pass_of(PART, flume, plane, due)
+    }
+
+    /// One control pass of the part `label`, whose control plane is
+    /// `plane`, over `flume`, the next pass due once `due` says so, and
+    /// the lines it said.
+    pub fn pass_of(
+        &self,
+        label: &str,
+        flume: &dyn Flume,
+        plane: &mut dyn ControlPlane,
+        due: &dyn Fn() -> bool,
+    ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
-        let sluice = sluice::Cli::new(self.sluice.program());
+        let sluice = sluice::Cli::new(self.sluice.program()).patient(self.sluice_patience.get());
         let carrier = Carrier {
+            label,
             flume,
             sluice: &sluice,
             git: &self.git,
@@ -573,8 +752,11 @@ impl Bench {
             tools: &self.tools,
             notices: &self.notices,
             control_dir: &control_dir,
+            report: &self.report_file,
+            locks: &self.locks,
             relays: &self.relays,
             reach: &self.reach,
+            least: &self.least,
             due,
         };
         let mut lines = Vec::new();
@@ -601,7 +783,7 @@ impl Bench {
             .try_iter()
             .filter_map(|event| match event {
                 Event::Landed(address) => Some(address.to_string()),
-                Event::Wake | Event::Stop => None,
+                Event::Stop => None,
             })
             .collect()
     }
@@ -669,6 +851,22 @@ pub fn act(id: &str, launch: &str, what: ActSort) -> Want {
         launch: Id::new(launch),
         lease: 1,
         what,
+    })
+}
+
+/// A preview `id` of `branch` at `revision` in [`KEPT`], marked `done`
+/// or not, under lease 1 with no expiry.
+pub fn preview(id: &str, branch: &str, revision: &str, done: bool) -> Want {
+    Want::Preview(Preview {
+        id: Id::new(id),
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: KEPT.to_string(),
+        branch: branch.to_string(),
+        revision: revision.to_string(),
+        done,
     })
 }
 
@@ -794,9 +992,14 @@ impl Stub {
 
 /// The stub `sluice`'s program. Each call writes its arguments,
 /// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
-/// It then prints the file `<what>.stdout` names, writes `<what>.stderr`
-/// on standard error, and exits with `<what>.exit`'s status, each where
-/// the test wrote one, `<what>` being its command.
+/// Where the test wrote `<what>.wait`, it waits, as sluice's ask of a
+/// preview waits at the host's bound, until it is sent SIGINT, then says
+/// it stopped on standard error and exits 130 with no document, as sluice
+/// does (Task notes 4.3); its wait is a `sleep` it awaits, so its trap
+/// runs at once, and which it ends. Otherwise it prints the file
+/// `<what>.stdout` names, writes `<what>.stderr` on standard error, and
+/// exits with `<what>.exit`'s status, each where the test wrote one,
+/// `<what>` being its command.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
@@ -804,6 +1007,13 @@ while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
 for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
 pwd -P > "$dir/dir-$n"
 what=$1
+if [ -e "$dir/$what.wait" ]; then
+  sleep 60 </dev/null >/dev/null 2>&1 &
+  sleeper=$!
+  trap 'kill "$sleeper" 2>/dev/null; echo "stopped: preview/$3 waits; ask for it again to start it" >&2; exit 130' INT
+  echo "waiting: the host is at its bound" >&2
+  wait "$sleeper"
+fi
 if [ -e "$dir/$what.stdout" ]; then cat "$(cat "$dir/$what.stdout")"; fi
 if [ -e "$dir/$what.stderr" ]; then cat "$dir/$what.stderr" >&2; fi
 if [ -e "$dir/$what.exit" ]; then exit "$(cat "$dir/$what.exit")"; fi
@@ -842,6 +1052,12 @@ impl SluiceStub {
         self.answers_text(what, &sluice_fixture(name), exit);
     }
 
+    /// `what`, a command, answered with sluice 0.74.3's fixture `name`,
+    /// a preview's, and the exit `exit`.
+    pub fn answers_preview(&self, what: &str, name: &str, exit: i32) {
+        self.answers_text(what, &preview_fixture(name), exit);
+    }
+
     /// `what`, a command, answered with `text` and the exit `exit`.
     pub fn answers_text(&self, what: &str, text: &str, exit: i32) {
         let dir = self.dir.path();
@@ -853,6 +1069,17 @@ impl SluiceStub {
         )
         .expect("the stub's answer");
         fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// `what`, a command, waiting until it is interrupted, as sluice's ask
+    /// of a preview waits at the host's bound.
+    pub fn waits(&self, what: &str) {
+        fs::write(self.dir.path().join(format!("{what}.wait")), "").expect("its wait");
+    }
+
+    /// `what`, a command, answering at once again.
+    pub fn waits_no_more(&self, what: &str) {
+        let _ = fs::remove_file(self.dir.path().join(format!("{what}.wait")));
     }
 
     /// `what`, a command, saying `words` on standard error.
@@ -1009,5 +1236,89 @@ impl CredsStub {
         self.calls()
             .iter()
             .any(|call| call.first().map(String::as_str) != Some("--version"))
+    }
+}
+
+/// A fetch of one repository held until the test lets it go: an
+/// upload-pack of the test's own, set as the scratch git configuration's
+/// `remote.origin.uploadpack`, which, for that repository alone, waits
+/// while a file the test makes is there, and runs git's own upload-pack
+/// for every repository once it is gone.
+pub struct HeldFetch {
+    dir: TempDir,
+}
+
+impl HeldFetch {
+    /// Sets the scratch git configuration `gitconfig` to hold the fetches
+    /// of the repository `address`, `<owner>/<name>`, while
+    /// [`HeldFetch::hold`] holds them.
+    pub fn new(gitconfig: &Path, address: &str) -> HeldFetch {
+        let held = HeldFetch {
+            dir: tempfile::tempdir().expect("the upload-pack's directory"),
+        };
+        let script = held.dir.path().join("upload-pack");
+        fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\n\
+                 case \"$*\" in\n\
+                 *'/{address}.git'*)\n\
+                 \tif [ -e '{hold}' ]; then\n\
+                 \t\ttouch '{waiting}'\n\
+                 \t\twhile [ -e '{hold}' ]; do sleep 0.05; done\n\
+                 \tfi ;;\n\
+                 esac\n\
+                 exec git upload-pack \"$@\"\n",
+                hold = held.hold_file().display(),
+                waiting = held.waiting_file().display(),
+            ),
+        )
+        .expect("the upload-pack written");
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755))
+            .expect("the upload-pack made runnable");
+        let mut config = fs::read_to_string(gitconfig).expect("the git configuration");
+        config.push_str(&format!(
+            "[remote \"origin\"]\n\tuploadpack = {}\n",
+            script.display()
+        ));
+        fs::write(gitconfig, config).expect("the git configuration written");
+        held
+    }
+
+    fn hold_file(&self) -> PathBuf {
+        self.dir.path().join("hold")
+    }
+
+    fn waiting_file(&self) -> PathBuf {
+        self.dir.path().join("waiting")
+    }
+
+    /// Holds every fetch of the repository from now on.
+    pub fn hold(&self) {
+        fs::write(self.hold_file(), "").expect("the hold made");
+    }
+
+    /// Waits until a fetch of the repository is held; panics where none
+    /// is within `patience`.
+    pub fn wait_held(&self, patience: std::time::Duration) {
+        let deadline = std::time::Instant::now() + patience;
+        while !self.waiting_file().exists() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "no fetch held in time"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    /// Lets every fetch held go on.
+    pub fn let_go(&self) {
+        let _ = fs::remove_file(self.hold_file());
+    }
+}
+
+impl Drop for HeldFetch {
+    fn drop(&mut self) {
+        self.let_go();
     }
 }

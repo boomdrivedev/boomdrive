@@ -1,6 +1,7 @@
 //! What the control plane wants of the host (design Decision 2): launches
 //! offered under leases, acts on a launch, commands and inboxes to carry,
-//! each under an id the control plane gave, and the terminals it opens.
+//! and previews to bring up or put away, each under an id the control
+//! plane gave, and the terminals it opens.
 //! Every value is plain data but a terminal's link, which is a channel.
 
 use crate::report::At;
@@ -51,6 +52,7 @@ pub enum Want {
     Act(Act),
     Command(Command),
     Inbox(Inbox),
+    Preview(Preview),
 }
 
 impl Want {
@@ -61,6 +63,7 @@ impl Want {
             Want::Act(act) => &act.id,
             Want::Command(command) => &command.id,
             Want::Inbox(inbox) => &inbox.id,
+            Want::Preview(preview) => &preview.id,
         }
     }
 }
@@ -133,6 +136,13 @@ pub enum ActSort {
         words: Option<String>,
         submission: bool,
     },
+    /// The landing of its launch's work, written as the word `land`. It
+    /// holds nothing but its launch, named by the act around it, and the
+    /// runner carries it out as Flume's retry of the submission of that
+    /// launch's place, naming no stage and no words (core.53). Version 1
+    /// of the hosted protocol names no land, a later version being the
+    /// one to carry it (core.42).
+    Land,
     Drop,
     Priority(i64),
     Done,
@@ -154,8 +164,8 @@ pub enum CommandSort {
     /// may still send it, as version 1 of the hosted protocol names it,
     /// which a release has spoken and which is never changed (core.42).
     /// This binary refuses it, naming sluice: a branch other places land
-    /// on is a Flume place's, launched as any launch and sent by a retry
-    /// of its submission (core.52).
+    /// on is a Flume place's, launched as any launch and landed on a land
+    /// (core.52, core.53).
     Branch {
         repository: String,
         branch: String,
@@ -173,6 +183,23 @@ pub struct Inbox {
     /// The repository's address, `owner/name`.
     pub repository: String,
     pub branch: String,
+}
+
+/// A preview of a branch at a revision, to bring up or, done, to put
+/// away, under a lease of its own (core.55). It names no word of the tool
+/// that keeps previews. Version 1 of the hosted protocol names no preview,
+/// and never will, a release having spoken it (core.42).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Preview {
+    pub id: Id,
+    pub lease: Lease,
+    /// The repository's address, `owner/name`.
+    pub repository: String,
+    pub branch: String,
+    /// The revision to bring up, a commit, as the control plane gave it.
+    pub revision: String,
+    /// Whether the preview of `revision` is to be put away.
+    pub done: bool,
 }
 
 /// A terminal the control plane opens on a launch's agent (cloud record

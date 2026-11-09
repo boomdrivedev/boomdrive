@@ -2,14 +2,14 @@
 //! launch not yet launched is answered from the report with no command
 //! run (design Decisions 7 and 9; the work-into-flume spec's "An offer
 //! waits for each launch it comes after", "A priority or a drop of a
-//! launch not yet launched is answered from its report" and "A retry or a
-//! done of a launch not launched, and an act on another's launch, are
-//! refused"; Task notes 4.3).
+//! launch not yet launched is answered from its report" and "A retry, a
+//! land or a done of a launch not launched, and an act on another's
+//! launch, are refused"; Task notes 4.3; core.53).
 
 mod fakes;
 
 use boomdrive::facts;
-use boomdrive::flume::Reply;
+use boomdrive::flume::{LaunchArgs, Reply};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{ActSort, Id, Offer, Outcome, Want};
 use fakes::{act, fixture, offer, place_of, printed, Bench, Call};
@@ -67,6 +67,41 @@ fn a_dependent_held_then_launched() {
     assert_eq!(answer(&bench, "b").0, Outcome::Launched);
     let names: Vec<_> = bench.flume.launches().into_iter().map(|a| a.name).collect();
     assert_eq!(names, ["a", "b"]);
+}
+
+/// The work-into-flume spec's "A dependent of a landing held for the
+/// runner": `a`'s place lands and is tidied between two passes, Flume
+/// holding its record for the runner, and the next pass launches `b`, its
+/// listing holding the record landed, carries the record as `a`'s status
+/// and collects it (design Decision 2; record 0030).
+#[test]
+fn a_dependent_of_a_landing_held_for_the_runner() {
+    let bench = Bench::new();
+    let mut planned = offer("a", "a");
+    planned.launch.recipients = vec!["scratch/planner".into()];
+    let mut plane = Fake::holding(vec![Want::Offer(planned), after("b", "b", &["a"])]);
+    bench.pass(&mut plane);
+    assert_eq!(answer(&bench, "b").0, Outcome::Held);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    assert_eq!(answer(&bench, "b").0, Outcome::Launched);
+    let names: Vec<_> = bench.flume.launches().into_iter().map(|a| a.name).collect();
+    assert_eq!(names, ["b"]);
+    let status = bench.report().launches[&Id::new("a")]
+        .status
+        .clone()
+        .expect("a's status carried");
+    let carried: Value = serde_json::from_str(&status.text).unwrap();
+    let entry = &carried["status"]["places"][0];
+    assert_eq!(entry["place"], record);
+    assert_eq!(
+        entry["phase"]["tidied"]["over"],
+        json!({ "landed": { "commit": "c0ffee" } })
+    );
+    assert_eq!(bench.flume.collects(), [record]);
 }
 
 /// Task notes 4.3's first case, over Flume 0.4.1's own answers: `a`'s
@@ -253,6 +288,55 @@ fn a_retry_or_a_done_of_a_held_launch() {
     assert_eq!(acted(&bench, "b/done"), (Outcome::Refused, Some(words)));
     assert_eq!(bench.flume.launches().len(), 1, "only a's launch");
     assert_eq!(bench.flume.acts(), []);
+}
+
+/// The work-into-flume spec's "A land of a held launch": the land is
+/// refused with the words a retry of it is given, runs no `flume retry`,
+/// and `b` is launched as its offer gives it, its submission still held,
+/// once `a` reads landed (core.15, core.53).
+#[test]
+fn a_land_of_a_held_launch() {
+    let bench = Bench::new();
+    let Want::Offer(mut b) = after("b", "b", &["a"]) else {
+        unreachable!()
+    };
+    b.launch.hold_submission = true;
+    let mut plane = Fake::holding(vec![
+        Want::Offer(offer("a", "a")),
+        Want::Offer(b),
+        act("b/retry", "b", retry()),
+        act("b/land", "b", ActSort::Land),
+    ]);
+    bench.pass(&mut plane);
+    let words = format!(
+        "b is held, not launched: waits on a (launched at {}, not landed)",
+        place_of("a")
+    );
+    assert_eq!(
+        acted(&bench, "b/retry"),
+        (Outcome::Refused, Some(words.clone()))
+    );
+    assert_eq!(acted(&bench, "b/land"), (Outcome::Refused, Some(words)));
+    assert_eq!(bench.flume.launches().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.acts(), []);
+
+    bench.flume.land(&place_of("a"));
+    bench.pass(&mut plane);
+    assert_eq!(answer(&bench, "b").0, Outcome::Launched);
+    let launches = bench.flume.launches();
+    assert_eq!(launches.len(), 2, "{launches:?}");
+    assert_eq!(
+        launches[1],
+        LaunchArgs {
+            container_dir: launches[0].container_dir.clone(),
+            kind: "change".to_string(),
+            name: "b".to_string(),
+            hold_submission: true,
+            mark: "boomdrive:b".to_string(),
+            ..LaunchArgs::default()
+        }
+    );
+    assert_eq!(bench.flume.acts(), [], "still no act run");
 }
 
 /// A retry of a launch dropped before it was launched is refused, naming

@@ -11,12 +11,15 @@
 
 mod fakes;
 
-use boomdrive::flume::{Cli, Unrun};
+use boomdrive::flume::{Cli, Reply, Unrun};
 use boomdrive_control::fake::Fake;
-use boomdrive_control::{At, Carried, Command, CommandSort, Id, Lease, Outcome, Want};
-use fakes::{fixture, offer, place_of, printed, Bench, Call, Stub, KEPT};
+use boomdrive_control::{
+    ActSort, At, Carried, Command, CommandSort, Id, Lease, Offer, Outcome, Want,
+};
+use fakes::{act, fixture, offer, place_of, printed, Bench, Call, Stub, KEPT};
 use serde_json::{json, Value};
 use std::fs;
+use std::slice;
 
 /// The status the report file carries for `launch`.
 fn carried(bench: &Bench, launch: &str) -> Carried {
@@ -24,6 +27,33 @@ fn carried(bench: &Bench, launch: &str) -> Carried {
         .status
         .clone()
         .expect("a status carried")
+}
+
+/// An offer naming the recipient `scratch/planner`, so its launch names
+/// the runner one more, and Flume holds its place's end for the runner.
+fn planned(id: &str, name: &str) -> Offer {
+    let mut planned = offer(id, name);
+    planned.launch.recipients = vec!["scratch/planner".into()];
+    planned
+}
+
+/// The entry of the one place the status carried for `launch` holds.
+fn carried_entry(bench: &Bench, launch: &str) -> Value {
+    let answer: Value = serde_json::from_str(&carried(bench, launch).text).unwrap();
+    answer["status"]["places"][0].clone()
+}
+
+/// Each record the fake Flume collected, forgotten once given.
+fn collected(bench: &Bench) -> Vec<String> {
+    bench
+        .flume
+        .take_calls()
+        .into_iter()
+        .filter_map(|call| match call {
+            Call::Collect(record) => Some(record),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The number of `status <place>` calls the stub was run for.
@@ -245,6 +275,204 @@ fn a_pass_that_answers_a_command_reads_the_listing_once() {
     );
 }
 
+/// The work-into-flume spec's "A landing held for the runner": a carried
+/// place that lands and is tidied between two passes, its record held for
+/// the runner alone, is carried as `<location>@<at>`, tidied and landed,
+/// then collected once as the runner, after its status is read and before
+/// the report goes; and at the pass after, Flume refusing the place's
+/// status, that status stands, not listed, and nothing is collected
+/// (design Decisions 2 and 3; Task notes 4.2 and 4.3).
+#[test]
+fn a_landing_held_for_the_runner() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    assert!(carried(&bench, "a").listed);
+    let place = place_of("a");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench.flume.take_calls();
+    let (_, lines) = bench.pass(&mut plane);
+    let calls = bench.flume.take_calls();
+    let record = format!("{place}@1793559694");
+    let status = carried(&bench, "a");
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert_eq!(
+        entry["phase"]["tidied"]["over"],
+        json!({ "landed": { "commit": "c0ffee" } })
+    );
+    assert_eq!(
+        entry["phase"]["tidied"]["pending_for"],
+        json!(["boomdrive"])
+    );
+    assert!(status.listed);
+    let read = calls
+        .iter()
+        .position(|call| matches!(call, Call::StatusOf(..)))
+        .expect("the place's status read");
+    let collects: Vec<_> = calls
+        .iter()
+        .enumerate()
+        .filter(|(_, call)| matches!(call, Call::Collect(_)))
+        .collect();
+    assert_eq!(collects.len(), 1, "{calls:?}");
+    assert_eq!(collects[0].1, &Call::Collect(record.clone()));
+    assert!(read < collects[0].0, "collected after its status is read");
+    assert_eq!(lines, [] as [String; 0]);
+    let sent = plane.reports().last().expect("the report sent");
+    assert_eq!(sent.launches[&Id::new("a")].status.as_ref(), Some(&status));
+
+    let (_, lines) = bench.pass(&mut plane);
+    let after = carried(&bench, "a");
+    assert_eq!((&after.text, after.at), (&status.text, status.at));
+    assert!(!after.listed, "Flume refuses the place's status");
+    assert_eq!(collected(&bench), [] as [String; 0]);
+    assert_eq!(lines, [] as [String; 0]);
+}
+
+/// The work-into-flume spec's "A drop held for the runner": an act drops
+/// a launch whose place Flume then tidies, holding its record for the
+/// runner, and the pass carries the record, tidied and dropped, as the
+/// launch's status and collects it once (design Decisions 2 and 3).
+#[test]
+fn a_drop_held_for_the_runner() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    plane.set_wants(vec![
+        Want::Offer(planned("a", "a")),
+        act("a/drop", "a", ActSort::Drop),
+    ]);
+    bench.flume.take_calls();
+    let (_, lines) = bench.pass(&mut plane);
+    let record = format!("{}@101", place_of("a"));
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert_eq!(entry["phase"]["tidied"]["over"], json!("dropped"));
+    assert_eq!(
+        entry["phase"]["tidied"]["pending_for"],
+        json!(["boomdrive"])
+    );
+    assert!(carried(&bench, "a").listed);
+    assert_eq!(collected(&bench), [record]);
+    assert_eq!(
+        lines,
+        [format!("a/drop: drop of a at {}: done", place_of("a"))]
+    );
+
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), [] as [String; 0], "collected once");
+    assert!(!carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A record pending for a recipient too": a
+/// record Flume holds for the runner and for `scratch/planner` is
+/// collected once, and at the next pass carried as Flume gives it,
+/// pending for `scratch/planner` alone, listed, and collected no more.
+#[test]
+fn a_record_pending_for_a_recipient_too() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench
+        .flume
+        .tidy_held(&place, 1793559694, &["boomdrive", "scratch/planner"]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), slice::from_ref(&record));
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), [] as [String; 0], "no second inbox");
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert_eq!(
+        entry["phase"]["tidied"]["pending_for"],
+        json!(["scratch/planner"])
+    );
+    assert!(carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A record pending for no end of the
+/// runner's": a place launched naming no recipient, as one launched before
+/// the runner named itself one, tidied while an end of it is pending for
+/// `scratch/planner` alone, is carried as its record and never collected.
+#[test]
+fn a_record_pending_for_no_end_of_the_runners() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    bench.flume.tidy_pending(&place, 1793559694);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), [] as [String; 0]);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], format!("{place}@1793559694"));
+    assert!(carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A collection Flume could not run": the
+/// pass says one line, prefixed with the launch's id, naming the record
+/// and why, and the next pass, Flume running, collects it.
+#[test]
+fn a_collection_flume_could_not_run() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench
+        .flume
+        .collect_answers(&record, Err(Unrun("flume was ended: signal: 9".into())));
+    bench.flume.take_calls();
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(
+        lines,
+        [format!(
+            "a: Flume's record {record} could not be collected: flume was ended: signal: 9"
+        )]
+    );
+    assert_eq!(collected(&bench), slice::from_ref(&record));
+    bench.flume.collect_as_flume(&record);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert!(
+        bench.flume.entry(&place).is_none(),
+        "Flume holds the record no more"
+    );
+}
+
+/// The work-into-flume spec's "A collection Flume refuses": the pass says
+/// one line, prefixed with the launch's id, naming the record and Flume's
+/// words, and the next pass collects it again.
+#[test]
+fn a_collection_flume_refuses() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench.flume.collect_answers(
+        &record,
+        Ok(Reply::Refused("the host's state is held by another".into())),
+    );
+    bench.flume.take_calls();
+    let refused =
+        format!("a: Flume refused the collection of {record}: the host's state is held by another");
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, slice::from_ref(&refused));
+    assert_eq!(collected(&bench), slice::from_ref(&record));
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [refused]);
+    assert_eq!(collected(&bench), [record], "collected again");
+}
+
 /// A place's status Flume could not be run for is named, and what was
 /// carried stands.
 #[test]
@@ -404,7 +632,9 @@ fn the_users_own_place() {
     bench.pass(&mut plane);
     for call in bench.flume.calls() {
         let named = match &call {
-            Call::Act(place, _) | Call::StatusOf(_, place) => Some(place.as_str()),
+            Call::Act(place, _) | Call::StatusOf(_, place) | Call::Collect(place) => {
+                Some(place.as_str())
+            }
             Call::Launch(_) | Call::Status => None,
         };
         assert!(

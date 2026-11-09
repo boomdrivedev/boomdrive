@@ -1,7 +1,10 @@
 //! Flume's command line (design Decision 9), the one way the runner
 //! reaches Flume (record 0001). Every call puts `--json` first and runs
 //! with `FLUME_RECIPIENT` unset, so a place's recipients are only those
-//! its launch names, and none passes `--force`. A launch passes its kind
+//! its launch names, and none passes `--force`. A launch that names
+//! recipients names the runner one more, [`RECIPIENT`], so Flume holds
+//! the place's end for it past its tidy until it collects it by `flume
+//! inbox` (core.54; record 0030). A launch passes its kind
 //! to `--kind` as the control plane gave it and never `--kinds`, since
 //! where a host's kinds come from is its Flume configuration's (core.5),
 //! and every other flag only where the launch gives it. Each answer is
@@ -17,6 +20,72 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
+
+/// The least Flume the runner launches with: 0.20.0, the first that holds
+/// a drop's and a done's end for a recipient no pane holds, and collects
+/// one place's by `flume inbox <place>` (core.38; record 0030; Flume
+/// record 0060).
+pub const LEAST: (u32, u32, u32) = (0, 20, 0);
+
+/// The runner's own name as a recipient of the places it launches: fixed
+/// and the same on every host, since one runner serves a host. No pane
+/// holds it, so Flume sends it no notice and wakes nothing for it, and
+/// holds each end of the place for it until it collects them (core.54;
+/// record 0030; Flume record 0060).
+pub const RECIPIENT: &str = "boomdrive";
+
+/// The recipients a launch naming `given` is launched with: `given`, as
+/// the launch gives them, then the runner's own, [`RECIPIENT`], where
+/// `given` names any and not it already. A launch naming none is given
+/// none, so Flume's default is its recipient, which naming any would drop
+/// (Flume's 7; core.15, core.54).
+pub fn recipients(given: &[String]) -> Vec<String> {
+    let mut named = given.to_vec();
+    if !given.is_empty() && !given.iter().any(|recipient| recipient == RECIPIENT) {
+        named.push(RECIPIENT.to_string());
+    }
+    named
+}
+
+/// The version `said`, the first line of `flume --version`, names:
+/// `flume <major>.<minor>.<patch>`, a suffix after the patch ignored, as
+/// [`crate::git::version`] reads git's.
+pub fn version(said: &str) -> Option<(u32, u32, u32)> {
+    let number = said
+        .trim()
+        .strip_prefix("flume ")?
+        .split_whitespace()
+        .next()?;
+    let mut parts = number.split('.').map(|part| {
+        let digits = part
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(part.len());
+        part[..digits].parse::<u32>().ok()
+    });
+    let major = parts.next()??;
+    let minor = parts.next()??;
+    let patch = parts.next().unwrap_or(Some(0))?;
+    Some((major, minor, patch))
+}
+
+/// Refused, naming what Flume said and the least the runner launches
+/// with, where `said`, the first line of `flume --version`, is no version
+/// or one older than [`LEAST`] (core.38).
+pub fn runs_with(said: &str) -> Result<(), String> {
+    let (major, minor, patch) = LEAST;
+    let least = format!(
+        "boomdrive launches with Flume {major}.{minor}.{patch} or later, \
+         the first that holds a place's end for the runner"
+    );
+    let said = said.trim();
+    match version(said) {
+        None => Err(format!(
+            "flume --version says {said:?}, which names no version: {least}"
+        )),
+        Some(found) if found < LEAST => Err(format!("flume --version says {said:?}: {least}")),
+        Some(_) => Ok(()),
+    }
+}
 
 /// What one `flume launch` is given, each field the flag of its name.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -93,6 +162,11 @@ pub trait Flume {
     /// The place at `place`, in the repository at `container_dir` where
     /// the runner keeps its clone, else by its location alone.
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun>;
+    /// Every end pending for the runner of the record at `record`, a
+    /// tidied place's `<location>@<at>`, collected as [`RECIPIENT`]: `flume
+    /// inbox <record> --recipient boomdrive`, naming no repository
+    /// (core.54; record 0030).
+    fn collect(&self, record: &str) -> Result<Reply, Unrun>;
 }
 
 /// Flume's command line, by the program at `program`: `flume` on the
@@ -171,10 +245,20 @@ impl Flume for Cli {
         args.push(place.into());
         self.run(args)
     }
+
+    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
+        self.run(vec![
+            "inbox".into(),
+            record.into(),
+            "--recipient".into(),
+            RECIPIENT.into(),
+        ])
+    }
 }
 
-/// `flume launch`'s arguments, in design Decision 9's order, the brief
-/// named by `brief_file`.
+/// `flume launch`'s arguments, in design Decision 9's order, the
+/// runner's own name after the launch's recipients, and the brief named
+/// by `brief_file`.
 fn launch_args(args: &LaunchArgs, brief_file: Option<&Path>) -> Vec<OsString> {
     let mut words: Vec<OsString> = vec![
         "launch".into(),
@@ -201,8 +285,8 @@ fn launch_args(args: &LaunchArgs, brief_file: Option<&Path>) -> Vec<OsString> {
     if let Some(intent) = &args.intent {
         flag("--intent", intent.clone());
     }
-    for recipient in &args.recipients {
-        flag("--recipient", recipient.clone());
+    for recipient in recipients(&args.recipients) {
+        flag("--recipient", recipient);
     }
     for (stage, hold) in &args.holds {
         flag("--hold", format!("{stage}={hold}"));
@@ -303,6 +387,67 @@ fn escaped(mark: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn named(recipients: &[&str]) -> Vec<String> {
+        recipients.iter().map(|named| named.to_string()).collect()
+    }
+
+    #[test]
+    fn the_runner_is_named_after_a_launchs_recipients() {
+        assert_eq!(
+            recipients(&named(&["home/planner"])),
+            named(&["home/planner", "boomdrive"])
+        );
+        assert_eq!(
+            recipients(&named(&["home/planner", "home/reviewer"])),
+            named(&["home/planner", "home/reviewer", "boomdrive"])
+        );
+        assert_eq!(recipients(&[]), named(&[]), "none named, none added");
+        assert_eq!(
+            recipients(&named(&["boomdrive", "home/planner"])),
+            named(&["boomdrive", "home/planner"]),
+            "the runner named once"
+        );
+    }
+
+    #[test]
+    fn versions_taken() {
+        for said in [
+            "flume 0.20.0",
+            "flume 0.20.0\n",
+            "flume 0.20.1 (9ab0e2c)",
+            "flume 0.21.0-dev",
+            "flume 0.21",
+            "flume 1.0.0",
+        ] {
+            assert_eq!(runs_with(said), Ok(()), "{said:?}");
+        }
+        assert_eq!(version("flume 0.20.1 (9ab0e2c)"), Some((0, 20, 1)));
+    }
+
+    #[test]
+    fn a_flume_older_than_the_least_is_refused() {
+        let least = "boomdrive launches with Flume 0.20.0 or later, \
+                     the first that holds a place's end for the runner";
+        assert_eq!(
+            runs_with("flume 0.18.0\n"),
+            Err(format!("flume --version says \"flume 0.18.0\": {least}"))
+        );
+        assert_eq!(
+            runs_with("flume 0.19.9"),
+            Err(format!("flume --version says \"flume 0.19.9\": {least}"))
+        );
+        for said in ["flume", "", "sluice 0.20.0", "flume x.y.z", "flume 0"] {
+            assert_eq!(
+                runs_with(said),
+                Err(format!(
+                    "flume --version says {:?}, which names no version: {least}",
+                    said.trim()
+                )),
+                "{said:?}"
+            );
+        }
+    }
 
     #[test]
     fn a_mark_names_one_file() {

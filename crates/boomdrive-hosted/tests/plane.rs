@@ -4,15 +4,19 @@
 //! partition's connection carries only its own repositories and work", "A
 //! report goes to each partition, answered by its id", "What goes up is
 //! version 1's copy, checked before it goes" and "A terminal the control
-//! plane opens is closed at once"; design Decisions 7, 8, 9 and 11). Two
+//! plane opens is closed at once"; the control-plane-interface spec's "An
+//! implementation serves its control plane as parts" and "A part says
+//! which ids are its own"; design Decisions 7, 8, 9 and 11, and Decision
+//! 8 of the change each-partition-the-runner-serves-runs-on-its-own). Two
 //! partitions, `home` and `work`, are served by one fake, each enrolled
-//! with a key of the test's own.
+//! with a key of the test's own, as parts or by one `Hosted` serving
+//! both.
 
 mod common;
 
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
-    Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Report,
+    Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part, Report,
     ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
@@ -63,7 +67,6 @@ fn table(fake: &Fake) -> Table {
 struct Plane {
     hosted: Hosted,
     lines: Arc<Mutex<Vec<String>>>,
-    wakes: Arc<AtomicUsize>,
 }
 
 impl Plane {
@@ -77,27 +80,86 @@ impl Plane {
                 .expect("kept");
         }
         let lines: Arc<Mutex<Vec<String>>> = Arc::default();
-        let wakes: Arc<AtomicUsize> = Arc::default();
-        let (said, woken) = (lines.clone(), wakes.clone());
+        let said = lines.clone();
         let hosted = Hosted::new(
             &table,
             Arc::new(store),
             POLL_INTERVAL,
             Box::new(move |line| said.lock().expect("the lines").push(line)),
-            Box::new(move || {
-                woken.fetch_add(1, Ordering::SeqCst);
-            }),
+            Box::new(|| {}),
         )
         .expect("opened");
-        Plane {
-            hosted,
+        Plane { hosted, lines }
+    }
+
+    fn lines(&self) -> Vec<String> {
+        self.lines.lock().expect("the lines").clone()
+    }
+}
+
+/// The hosted implementation over `fake` as parts, both partitions
+/// enrolled, each saying its lines and woken through its own.
+struct Parts {
+    parts: Vec<Part>,
+    lines: BTreeMap<String, Arc<Mutex<Vec<String>>>>,
+    wakes: BTreeMap<String, Arc<AtomicUsize>>,
+}
+
+impl Parts {
+    fn open(fake: &Fake) -> Parts {
+        let table = table(fake);
+        let store = Memory::default();
+        let mut lines = BTreeMap::new();
+        let mut wakes = BTreeMap::new();
+        for partition in ["home", "work"] {
+            fake.enrolled(partition, &key(partition).verifying_key());
+            store
+                .write(&table.key_name(partition), &key(partition))
+                .expect("kept");
+            lines.insert(partition.to_string(), Arc::default());
+            wakes.insert(partition.to_string(), Arc::default());
+        }
+        let parts = Hosted::parts(
+            &table,
+            Arc::new(store),
+            POLL_INTERVAL,
+            &|label| {
+                let said: Arc<Mutex<Vec<String>>> = Arc::clone(&lines[label]);
+                Box::new(move |line| said.lock().expect("the lines").push(line))
+            },
+            &|label| {
+                let woken: Arc<AtomicUsize> = Arc::clone(&wakes[label]);
+                Box::new(move || {
+                    woken.fetch_add(1, Ordering::SeqCst);
+                })
+            },
+        )
+        .expect("opened");
+        Parts {
+            parts,
             lines,
             wakes,
         }
     }
 
-    fn lines(&self) -> Vec<String> {
-        self.lines.lock().expect("the lines").clone()
+    /// The part `label`'s control plane.
+    fn part(&mut self, label: &str) -> &mut (dyn ControlPlane + Send) {
+        let part = self
+            .parts
+            .iter_mut()
+            .find(|part| part.label == label)
+            .expect("the part");
+        part.plane.as_mut()
+    }
+
+    /// The lines the part `label` said.
+    fn lines(&self, label: &str) -> Vec<String> {
+        self.lines[label].lock().expect("the lines").clone()
+    }
+
+    /// How many times the part `label` was woken.
+    fn woken(&self, label: &str) -> usize {
+        self.wakes[label].load(Ordering::SeqCst)
     }
 }
 
@@ -193,6 +255,37 @@ fn sent(taken: &[Taken], partition: &str, of: &str) -> bool {
         .any(|message| kind(message).as_deref() == Some(of))
 }
 
+/// The control-plane-interface spec's "The hosted partitions as parts":
+/// a table naming `home` and `work` opens two parts, `home` then `work`.
+#[test]
+fn the_hosted_partitions_as_parts() {
+    let fake = Fake::start();
+    let parts = Parts::open(&fake);
+    let labels: Vec<&str> = parts.parts.iter().map(|part| part.label.as_str()).collect();
+    assert_eq!(labels, ["home", "work"]);
+}
+
+/// The control-plane-interface spec's "The hosted ids by partition":
+/// each part owns its own launch `l-1`, and not the other's.
+#[test]
+fn the_hosted_ids_by_partition() {
+    let fake = Fake::start();
+    fake.set_wants("home", json!([offer("l-1", "example/app", &[])]));
+    fake.set_wants("work", json!([offer("l-1", "example/app", &[])]));
+    let mut parts = Parts::open(&fake);
+    let report = Report::default();
+    for label in ["home", "work"] {
+        let pulled = parts
+            .part(label)
+            .pull(&hello(&report), &report)
+            .expect("read");
+        assert_eq!(ids(&pulled.wants), [format!("{label}/l-1")]);
+    }
+    let (home, work) = (Id::new("home/l-1"), Id::new("work/l-1"));
+    assert!(parts.part("home").owns(&home) && !parts.part("home").owns(&work));
+    assert!(parts.part("work").owns(&work) && !parts.part("work").owns(&home));
+}
+
 #[test]
 fn ids_under_their_partition() {
     let fake = Fake::start();
@@ -204,29 +297,53 @@ fn ids_under_their_partition() {
         ]),
     );
     fake.set_wants("work", json!([offer("l-1", "example/app", &[])]));
-    let mut plane = Plane::open(&fake);
+    let mut parts = Parts::open(&fake);
     let report = Report::default();
-    let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
-    assert_eq!(ids(&pulled.wants), ["home/l-0", "home/l-1", "work/l-1"]);
-    let Want::Offer(after) = &pulled.wants[1] else {
-        panic!("an offer: {:?}", pulled.wants[1]);
+    let home = parts
+        .part("home")
+        .pull(&hello(&report), &report)
+        .expect("read");
+    assert_eq!(ids(&home.wants), ["home/l-0", "home/l-1"]);
+    let Want::Offer(after) = &home.wants[1] else {
+        panic!("an offer: {:?}", home.wants[1]);
     };
     assert_eq!(after.launch.after, [Id::new("home/l-0")]);
-    assert!(pulled.terminals.is_empty());
+    assert!(home.terminals.is_empty());
+    let work = parts
+        .part("work")
+        .pull(&hello(&report), &report)
+        .expect("read");
+    assert_eq!(ids(&work.wants), ["work/l-1"]);
 }
 
+/// The hosted-control-plane spec's "One partition unreachable": `home`'s
+/// part gives its offer without waiting on `work`'s connection, and
+/// `work`'s part is unread, its words not repeating its label.
 #[test]
 fn one_partition_unreachable() {
     let fake = Fake::start();
     fake.refuse_key("work", Some("this key is revoked"));
     fake.set_wants("home", json!([offer("l-1", "example/app", &[])]));
-    let mut plane = Plane::open(&fake);
+    let mut parts = Parts::open(&fake);
     let report = Report::default();
-    let pulled = plane
-        .hosted
+    let began = Instant::now();
+    let pulled = parts
+        .part("home")
         .pull(&hello(&report), &report)
-        .expect("not unread while home is read");
+        .expect("home's part read");
     assert_eq!(ids(&pulled.wants), ["home/l-1"]);
+    assert!(
+        began.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        began.elapsed()
+    );
+    let unread = parts
+        .part("work")
+        .pull(&hello(&report), &report)
+        .expect_err("work's part unread");
+    assert!(!unread.0.starts_with("work"), "{unread}");
+    let home = parts.lines("home");
+    assert!(home.iter().all(|line| !line.contains("work")), "{home:#?}");
 }
 
 #[test]
@@ -246,25 +363,38 @@ fn no_partition_read_is_unread_naming_each() {
     );
 }
 
+/// The hosted-control-plane spec's "Woken": a `pulled` between passes on
+/// `home`'s connection calls the wake handed for `home`, and not the one
+/// handed for `work`.
 #[test]
 fn woken() {
     let fake = Fake::start();
-    let mut plane = Plane::open(&fake);
+    let mut parts = Parts::open(&fake);
     let report = Report::default();
-    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for label in ["home", "work"] {
+        parts
+            .part(label)
+            .pull(&hello(&report), &report)
+            .expect("read");
+    }
     let deadline = Instant::now() + PATIENCE;
-    // Each first `pulled` wakes the runner, so the count settles at two.
-    while plane.wakes.load(Ordering::SeqCst) < 2 {
+    // Each first `pulled` wakes its own part.
+    while parts.woken("home") < 1 || parts.woken("work") < 1 {
         assert!(Instant::now() < deadline, "each first pulled wakes");
         std::thread::sleep(Duration::from_millis(5));
     }
-    let woken = plane.wakes.load(Ordering::SeqCst);
+    let (home, work) = (parts.woken("home"), parts.woken("work"));
     fake.set_wants("home", json!([offer("l-1", "example/app", &[])]));
-    while plane.wakes.load(Ordering::SeqCst) == woken {
+    while parts.woken("home") == home {
         assert!(Instant::now() < deadline, "a pulled between passes wakes");
         std::thread::sleep(Duration::from_millis(5));
     }
-    let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
+    std::thread::sleep(Duration::from_millis(200));
+    assert_eq!(parts.woken("work"), work, "work's wake is not called");
+    let pulled = parts
+        .part("home")
+        .pull(&hello(&report), &report)
+        .expect("read");
     assert_eq!(ids(&pulled.wants), ["home/l-1"]);
 }
 
@@ -388,10 +518,11 @@ fn another_partitions_repository() {
 fn a_lease_refused() {
     let fake = Fake::start();
     fake.answer_reports("home", &[], &[("l-1", "the lease is another host's")]);
-    let mut plane = Plane::open(&fake);
+    let mut parts = Parts::open(&fake);
     let report = launched(&["home/l-1"]);
-    plane.hosted.pull(&hello(&report), &report).expect("read");
-    let reported = plane.hosted.report(&report).expect("answered");
+    let home = parts.part("home");
+    home.pull(&hello(&report), &report).expect("read");
+    let reported = home.report(&report).expect("answered");
     assert_eq!(
         reported.refused,
         BTreeMap::from([(
@@ -405,9 +536,10 @@ fn a_lease_refused() {
 #[test]
 fn a_report_resent() {
     let fake = Fake::start();
-    let mut plane = Plane::open(&fake);
+    let mut parts = Parts::open(&fake);
     let report = launched(&["home/l-1"]);
-    plane.hosted.pull(&hello(&report), &report).expect("read");
+    let home = parts.part("home");
+    home.pull(&hello(&report), &report).expect("read");
     fake.withhold_reported("home", true);
     let reported = std::thread::scope(|scope| {
         scope.spawn(|| {
@@ -415,7 +547,7 @@ fn a_report_resent() {
             fake.withhold_reported("home", false);
             fake.drop_connection("home");
         });
-        plane.hosted.report(&report)
+        home.report(&report)
     });
     reported.expect("answered once resent");
     let home = messages(&fake.taken(), "home");
@@ -426,6 +558,42 @@ fn a_report_resent() {
         "the report resent under its id"
     );
     assert_eq!(home[3]["body"], home[1]["body"]);
+}
+
+/// The hosted-control-plane spec's "A report unanswered by another
+/// partition": `work`'s control plane takes a `report` and never answers
+/// it, and `home`'s part's report is answered at once, while `work`'s is
+/// unsent after 10 seconds.
+#[test]
+fn a_report_unanswered_by_another_partition() {
+    let fake = Fake::start();
+    let mut parts = Parts::open(&fake);
+    let report = launched(&["home/l-1", "work/l-2"]);
+    for label in ["home", "work"] {
+        parts
+            .part(label)
+            .pull(&hello(&report), &report)
+            .expect("read");
+    }
+    fake.withhold_reported("work", true);
+    let mut work = parts.parts.pop().expect("work's part");
+    assert_eq!(work.label, "work");
+    let began = Instant::now();
+    let (home, unsent) = std::thread::scope(|scope| {
+        let unsent = scope.spawn(|| {
+            let unsent = work.plane.report(&report);
+            (unsent, began.elapsed())
+        });
+        std::thread::sleep(Duration::from_millis(100));
+        let home = parts.part("home").report(&report);
+        let home = (home, began.elapsed());
+        (home, unsent.join().expect("work's report ends"))
+    });
+    home.0.expect("home's report answered");
+    assert!(home.1 < Duration::from_secs(5), "{:?}", home.1);
+    let words = unsent.0.expect_err("work's report unsent");
+    assert!(words.0.contains("did not answer"), "{words}");
+    assert!(unsent.1 >= Duration::from_secs(10), "{:?}", unsent.1);
 }
 
 #[test]
