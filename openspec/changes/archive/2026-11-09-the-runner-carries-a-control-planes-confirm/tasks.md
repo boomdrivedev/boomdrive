@@ -38,4 +38,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 5. The words
 
 - [x] 5.1 The README's control pass says the runner carries out each retry, land, confirm, drop, priority or done as Flume's own command on the launch's place. It says a confirm is `flume confirm --recipient=<recipient> -- <key>…`, of exactly the keys its control plane names, each the delivery of an end of the launch's place, as the reader it names and never as `boomdrive`. It says the runner confirms no end for another reader of its own accord (design Decision 10). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 5.2 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-carries-a-control-planes-confirm --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 5.2 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-carries-a-control-planes-confirm --yes`, `sluice exec main -- moon run root:specs` passes.
