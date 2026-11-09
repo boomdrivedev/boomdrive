@@ -511,6 +511,30 @@ fn the_report_file_lost() {
     assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
 }
 
+/// The work-into-flume spec's "Nothing confirmed below the least": with
+/// Flume older than the least, a record held for the runner is carried and
+/// reported, and no `flume confirm` is run (design Decisions 3 and 7).
+#[test]
+fn nothing_confirmed_below_the_least() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    bench.tools.prints("flume", "flume 0.20.0");
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(lines[0].contains("flume 0.20.0"), "{lines:?}");
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert!(carried(&bench, "a").listed);
+    let sent = plane.reports().last().expect("the report sent");
+    assert_eq!(
+        sent.launches[&Id::new("a")].status.as_ref(),
+        Some(&carried(&bench, "a"))
+    );
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    let held = bench.flume.entry(&place_of("a")).expect("Flume holds it");
+    assert_eq!(held["phase"]["tidied"]["pending_for"], json!(["boomdrive"]));
+}
+
 /// The work-into-flume spec's "A record pending for a recipient too": a
 /// record Flume holds for the runner and for `scratch/planner` has its
 /// landing confirmed once, and at the next pass is carried as Flume gives
