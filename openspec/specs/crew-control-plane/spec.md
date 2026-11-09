@@ -528,3 +528,12 @@ A confirm that names no `Recipient`, names two, or names no `Delivery` SHALL be 
 
 - **WHEN** request 18 confirms `Of: 12` with a `Delivery` and no `Recipient`, request 19 confirms it as `scratch/planner` with no `Delivery`, and request 20 names two `Recipient` lines, each naming this host
 - **THEN** the pull gives each as one the runner refuses, 18's and 20's words naming `Recipient` and 19's naming `Delivery`
+
+### Requirement: A report's answer names taken each status places.rec holds
+
+Once the runner's branch is written, or holds crew's files already, the answer to the report SHALL name taken each launch whose status `places.rec` holds, and no other (record 0030 as amended on 2026-11-09).
+
+#### Scenario: A status places.rec holds is taken
+
+- **WHEN** the report carries a place's status as a fixture's text, beside a request answered `held` with no status
+- **THEN** `places.rec`'s `Status` for its request is that text, and the report's answer names that launch's status taken and not the held request's
