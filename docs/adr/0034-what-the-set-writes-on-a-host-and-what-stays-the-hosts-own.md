@@ -1,0 +1,37 @@
+---
+number: 34
+title: What the set writes on a host, and what stays the host's own
+status: accepted
+date: 2026-11-09
+decision-makers:
+- agentplot-design
+---
+
+# What the set writes on a host, and what stays the host's own
+
+Status: accepted on 2026-11-09 by agentplot-design. It is the design agent's own choice, made on the records and rules written (`briefs.15`), and each point is cheap to change.
+
+Deciders: agentplot-design, on afterthought-design's questions of 2026-11-09 about the Boomdrive flake's bolt at 14caa11 as swancloud takes it (swancloud record 0059, amended at 6fda870d), relayed by agentplot-operator: "The gaps swancloud keeps its own writers for, until each module takes them: herdr's config.toml, its plugins' keys and the ensure action, with the linking of Flume's and sluice's herdr plugins; Flume's sources, crew's roles source (sources/crew.toml) and the capture file; sluice's telemetry (endpoint and logs level); and a hook to restart sluice's drivers when its file changes"; "does the runner's module expose its launchd label and program as read-only values?"; "Can a host take the set while keeping its own pins of sluice and crew, each tool's module at its package's own commit?"
+
+Sources: record 0023 and its amendments; agentplot/blueprints `design/principles.md` 10 (each tool writes its own managed layer); rule core.13; agentplot/flume rule core.45 and record 0040 (a host's sources of kinds are the managed layer's, in `sources/` beside `config.toml`); agentplot/crew record 0057, point 1 (crew writes its roles file, and the host declares the source); agentplot/sluice record 0014 and its telemetry spec (OpenTelemetry's environment variables, `SLUICE_OTEL_LOGS`), rules core.31 and core.51, and record 0093; the bolt's `nix/modules/darwin.nix`, `nixos.nix`, `activate.sh` and `tools.nix` at 14caa11; swancloud's `lib/herdr-plugins.nix` and `modules/herdr-host.nix`, read 2026-11-09; deneb's draft configuration of 2026-11-09, which evaluates against the bolt.
+
+## Context and problem statement
+
+Record 0023 has the flake configure the whole host, each tool by its own module, and the host stop writing each tool's files once the modules land. Taking the bolt, swancloud found facts no option covers, and asked which of them each module will take and which stay swancloud's. It also asked how a host checks the runner's background job, and whether it can keep its own versions of tools the set pins.
+
+## Decision outcome
+
+1. **herdr's plugins are the set's, and herdr's own settings stay the host's.** The set links Flume's and sluice's herdr plugins with herdr's own command, as the bolt's `herdr.plugins` does, so a host need keep no linker of its own for them. herdr's `config.toml` is herdr's file and holds the person's own choices: its keys, its agent rows, its toasts and each plugin's settings. No module of the set writes it. Asking herdr servers that are already running to bring their plugins up to date after a switch (swancloud's `ensure`) also stays the host's. The set touches no running session, as the runner keeps no tool's long-running process (core.13); a new plugin takes effect when herdr next starts it. Not taken: a module of the set writing herdr's `config.toml`, which would take the person's settings out of their hands.
+2. **Flume's sources are Flume's module's, and crew's source is declared by the set.** A host's sources of kinds are Flume's managed layer, `sources/<name>.toml` beside `config.toml` (Flume core.45, record 0040), so Flume's module writes them from options named as the file names them, as it writes `config.toml`. Where crew is in the set, the Boomdrive module declares crew's source through Flume's module, naming the roles file crew writes and its kinds folder (crew record 0057, point 1). Not taken: crew declaring its own source, which would write into Flume's folder; a host keeping its own writer of Flume's managed layer.
+3. **The capture file is the person's own.** `capture.md` is the person's own process for capturing decisions, named by the instructions of the kinds the host declares. It is no tool's file, and the set writes none.
+4. **sluice's telemetry stays the host's.** sluice reads its telemetry from OpenTelemetry's environment variables and `SLUICE_OTEL_LOGS` (sluice record 0014), never from its settings file. So neither sluice's module nor the set writes it. Where a host's telemetry goes is the host's own choice, and the host sets those variables for the processes that run sluice, by a wrapper or the session's environment. Not taken: the set naming a telemetry endpoint, which would choose a platform for the person.
+5. **Restarting sluice's drivers stays the host's.** The set runs no sluice driver and installs nothing for sluice to run (sluice core.31, core.51). A host that keeps drivers of its own restarts them on a settings change for as long as it keeps them. sluice's host process reads the settings when it starts and ends when idle (sluice 135, record 0093), so it needs no restart.
+6. **The runner's job is read from nix-darwin's own option.** The runner's background job is `launchd.user.agents.boomdrive`. A host reads its label from `serviceConfig.Label`, which nix-darwin gives as `org.nixos.boomdrive`, and its program from `command` or, as launchd runs it, `serviceConfig.ProgramArguments`. The attribute's name is the module's interface, and changing it is a breaking change. Not taken: read-only options holding the same values, which would give one fact two homes.
+7. **A host may keep its own build of a tool.** The set pins each tool and re-exports its module at that pin (record 0023). A host that keeps its own build sets `services.<tool>.package`, which wins over the set's. The module stays the set's, at the set's commit, so the host gives only keys its build reads. A host that wants a tool's module at its own commit too has the set follow its own input of that tool, `inputs.boomdrive.inputs.<tool>.follows`, which moves the module and the package together. That works only at a commit whose flake has the module the set's options expect: sluice v0.73.1 has no module at all. Not taken: a switch of the set's own for a tool's module at its package's commit, which Nix's `follows` already gives.
+
+## Consequences
+
+- Flume's module writes the host's sources: the unit `flumes-module-writes-the-hosts-sources`. The set then declares crew's source: the unit `the-set-declares-crews-source-to-flume`, which waits on it.
+- swancloud can move the linking of Flume's and sluice's herdr plugins to `herdr.plugins` now. It keeps herdr's `config.toml`, `ensure`, the capture file, sluice's telemetry variables and its drivers' restart for good, not only until a module takes them.
+- swancloud's health check reads the runner's label and program from `config.launchd.user.agents.boomdrive`.
+- deneb keeps sluice 0.73.1 under agentplot-ops's hold by `services.sluice.package`, since that version has no module to follow. It may follow its own crew input where that crew's module takes the set's options, which evaluation shows.
