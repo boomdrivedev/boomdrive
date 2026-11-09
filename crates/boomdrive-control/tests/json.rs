@@ -183,7 +183,8 @@ fn an_act_of_each_sort() {
         serde_json::json!({"id": "home/2", "launch": "home/1", "lease": 3, "what": "land"}),
     );
     // A confirm holds its recipient and its keys, in the order it was
-    // given them (core.56).
+    // given them (the control-plane-interface spec's "A confirm's form";
+    // core.56).
     let confirm = Act {
         what: confirm(),
         ..land
