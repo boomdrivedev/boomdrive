@@ -719,8 +719,10 @@ impl Work<'_> {
     /// Carries out or answers `act` on its launch (design Decision 9). An
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
-    /// core.24). One on its launch's place is carried out in the pass's
-    /// second round alone, after every launch the pull offers (core.50).
+    /// core.24). A confirm as the runner, or of no key, is refused at once,
+    /// running nothing (core.56). One on its launch's place is carried out
+    /// in the pass's second round alone, after every launch the pull offers
+    /// (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -735,6 +737,10 @@ impl Work<'_> {
             return;
         };
         if lapsed(launched.lease, self.now) {
+            return;
+        }
+        if let Some(words) = refused_confirm(&act.what) {
+            self.acted(act, Outcome::Refused, Some(words), None, say);
             return;
         }
         if launched.answer.outcome != Outcome::Launched {
@@ -1831,6 +1837,30 @@ fn flume_act(what: &ActSort) -> flume::Act {
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
+    }
+}
+
+/// The runner's words refusing `what`, where it is a confirm the runner
+/// carries out for no control plane: one made as the runner's own name,
+/// whose ends the runner carries and confirms itself (core.54), or one
+/// naming no key, which confirms nothing (core.56).
+fn refused_confirm(what: &ActSort) -> Option<String> {
+    let ActSort::Confirm {
+        recipient,
+        deliveries,
+    } = what
+    else {
+        return None;
+    };
+    if recipient == flume::RECIPIENT {
+        Some(format!(
+            "{} is the runner's own name, whose ends the runner confirms itself",
+            flume::RECIPIENT
+        ))
+    } else if deliveries.is_empty() {
+        Some("a confirm naming no delivery key confirms nothing".to_string())
+    } else {
+        None
     }
 }
 

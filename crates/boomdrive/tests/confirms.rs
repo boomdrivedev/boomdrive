@@ -196,3 +196,34 @@ fn a_place_the_listing_does_not_hold_is_held_to_its_status() {
     let words = acted.words.as_deref().expect("the runner's words");
     assert!(words.contains(K3) && words.contains(&p), "{words}");
 }
+
+/// The work-into-flume spec's "A confirm as the runner".
+#[test]
+fn a_confirm_as_the_runner_is_refused() {
+    let (bench, mut plane) = launched(&[K1]);
+    pull(&bench, &mut plane, "a/confirm", confirm("boomdrive", &[K1]));
+    assert_eq!(bench.flume.acts(), []);
+    let acted = &bench.report().acts[&Id::new("a/confirm")];
+    assert_eq!(acted.outcome, Outcome::Refused);
+    let words = acted.words.as_deref().expect("the runner's words");
+    assert!(words.contains("boomdrive"), "{words}");
+}
+
+/// The work-into-flume spec's "A confirm of no key".
+#[test]
+fn a_confirm_of_no_key_is_refused() {
+    let (bench, mut plane) = launched(&[K1]);
+    pull(
+        &bench,
+        &mut plane,
+        "a/confirm",
+        confirm("scratch/planner", &[]),
+    );
+    assert_eq!(bench.flume.acts(), []);
+    let acted = &bench.report().acts[&Id::new("a/confirm")];
+    assert_eq!(acted.outcome, Outcome::Refused);
+    assert_eq!(
+        acted.words.as_deref(),
+        Some("a confirm naming no delivery key confirms nothing")
+    );
+}
