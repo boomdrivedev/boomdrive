@@ -164,6 +164,7 @@ impl ControlPlane for Fake {
                 .iter()
                 .filter_map(|id| Some(((*id).clone(), self.refused.get(*id)?.clone())))
                 .collect(),
+            statuses_taken: BTreeSet::new(),
         };
         let mut held = report.clone();
         for id in reported.let_go.iter().chain(reported.refused.keys()) {

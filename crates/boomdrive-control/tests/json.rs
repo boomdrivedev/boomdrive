@@ -6,7 +6,7 @@
 use boomdrive_control::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 
 /// `value` read back from its JSON, and that JSON written again, equal
@@ -413,6 +413,17 @@ fn a_reports_answer() {
     round_trip(&Reported {
         let_go: vec![Id::new("home/1")],
         refused: BTreeMap::from([(Id::new("home/2"), "lease 3 is replaced by 4".to_string())]),
+        statuses_taken: BTreeSet::from([Id::new("home/3")]),
     });
     round_trip(&Reported::default());
+}
+
+/// An answer written before it named the statuses taken reads as naming
+/// none, and is written back as it was.
+#[test]
+fn a_reports_answer_from_before_reads() {
+    let before = r#"{"let_go":[],"refused":{}}"#;
+    let read: Reported = serde_json::from_str(before).expect("an answer of before reads");
+    assert!(read.statuses_taken.is_empty());
+    assert_eq!(serde_json::to_string(&read).unwrap(), before);
 }
