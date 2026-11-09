@@ -18,7 +18,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. Each implementation says what it took
 
-- [ ] 3.1 crew's implementation names taken, once the partition's branch is written or holds the same files already, each launch whose status `places.rec` holds, by `write::statuses_held`, which `write::texts` reads too. This proves the crew-control-plane spec's "A place's status as Flume gave it" (design Decision 2; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-crew --test write a_places_status_as_flume_gave_it` passes.
+- [x] 3.1 crew's implementation names taken, once the partition's branch is written or holds the same files already, each launch whose status `places.rec` holds, by `write::statuses_held`, which `write::texts` reads too. This proves the crew-control-plane spec's "A place's status as Flume gave it" (design Decision 2; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-crew --test write a_places_status_as_flume_gave_it` passes.
 - [ ] 3.2 The hosted implementation keeps, with the share it sends, the launches whose status went up as its copy, and names them taken in the answer to that report, and none in an answer to an earlier one. This proves the hosted-control-plane spec's "A value Flume adds" and "A status that goes up as its copy" (design Decision 2; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane -- a_value_flume_adds a_status_that_passes_goes_up_as_its_copy` passes.
 
 ## 4. Flume's command line

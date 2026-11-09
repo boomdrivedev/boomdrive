@@ -10,6 +10,7 @@ use boomdrive_control::{
 };
 use boomdrive_crew::read::{host_read, RunnerFiles};
 use common::{act, file, hello, launch, plan, pull, State, REQUESTS};
+use std::collections::BTreeSet;
 use std::io::Write as _;
 use std::process::{Command, Stdio};
 
@@ -242,7 +243,20 @@ fn a_held_answer_becoming_launched() {
 fn a_places_status_as_flume_gave_it() {
     let (state, mut crew) = pulled();
     let status = common::status_code();
-    crew.report(&report_launched(&status)).expect("a report");
+    let mut report = report_launched(&status);
+    report.launches.insert(
+        Id::new("home/14"),
+        launched(
+            answer(Outcome::Held, None, None, "2026-11-01T10:00:00Z"),
+            None,
+        ),
+    );
+    let reported = crew.report(&report).expect("a report");
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("home/12")]),
+        "the status places.rec holds is taken, and the held request has none"
+    );
     let places = state.file(BRANCH, "places.rec").unwrap();
     assert_eq!(
         places,

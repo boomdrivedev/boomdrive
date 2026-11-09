@@ -968,6 +968,9 @@ impl ControlPlane for Crew {
                         (self.say)(format!("crew: {}: {what}", runner_branch(label, &host)));
                     }
                     reported.let_go.extend(gone);
+                    reported
+                        .statuses_taken
+                        .extend(write::statuses_held(label, &kept));
                     branches_written += 1;
                 }
                 Err(why) => {
