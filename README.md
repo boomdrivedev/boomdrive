@@ -310,7 +310,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.21.0
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version is its tagged tree's. Its git crates are fetched by the hashes

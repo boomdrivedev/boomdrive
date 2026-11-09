@@ -9,7 +9,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The set's Flume confirms an end by its key
 
-- [ ] 1.1 The set names Flume `v0.21.0`: `flake.nix`'s Flume `url`, the lock moved with it, `nix/packages/flume-git-crates.nix` holding `weir-capture`, `weir-delivery`, `weir-kinds` and `weir-pack` at `52b9552` with Flume's own hash, and README's override example at `v0.22.0` (design Decision 7; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test family each_tools_version_is_its_tags` passes.
+- [x] 1.1 The set names Flume `v0.21.0`: `flake.nix`'s Flume `url`, the lock moved with it, `nix/packages/flume-git-crates.nix` holding `weir-capture`, `weir-delivery`, `weir-kinds` and `weir-pack` at `52b9552` with Flume's own hash, and README's override example at `v0.22.0` (design Decision 7; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test family each_tools_version_is_its_tags` passes.
 
 ## 2. The interface names the statuses taken
 

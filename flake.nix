@@ -33,7 +33,7 @@
     # nix/packages/flume.nix builds Flume's tag. Flume's own flake, which
     # it publishes since v0.18.0, comes with its module (record 0023).
     flume = {
-      url = "github:agentplot/flume/v0.20.0";
+      url = "github:agentplot/flume/v0.21.0";
       flake = false;
     };
     # The tests' nix-darwin. A host's configuration follows its own, which
