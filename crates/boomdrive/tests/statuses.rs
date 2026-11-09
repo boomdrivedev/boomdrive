@@ -43,19 +43,6 @@ fn carried_entry(bench: &Bench, launch: &str) -> Value {
     answer["status"]["places"][0].clone()
 }
 
-/// Each record the fake Flume collected, forgotten once given.
-fn collected(bench: &Bench) -> Vec<String> {
-    bench
-        .flume
-        .take_calls()
-        .into_iter()
-        .filter_map(|call| match call {
-            Call::Collect(record) => Some(record),
-            _ => None,
-        })
-        .collect()
-}
-
 /// The keys of each confirmation the fake Flume was asked, forgotten once
 /// given.
 fn confirmed(bench: &Bench) -> Vec<Vec<String>> {
@@ -576,64 +563,57 @@ fn a_record_pending_for_no_end_of_the_runners() {
     assert!(carried(&bench, "a").listed);
 }
 
-/// The work-into-flume spec's "A collection Flume could not run": the
+/// The work-into-flume spec's "A confirmation Flume could not run": the
 /// pass says one line, prefixed with the launch's id, naming the record
-/// and why, and the next pass, Flume running, collects it.
+/// and why, and the next pass, Flume running, confirms the landing (design
+/// Decision 3).
 #[test]
-fn a_collection_flume_could_not_run() {
-    let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
-    bench.pass(&mut plane);
-    let place = place_of("a");
-    let record = format!("{place}@1793559694");
-    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+fn a_confirmation_flume_could_not_run() {
+    let (bench, mut plane, record) = held_for_the_runner();
     bench
         .flume
-        .collect_answers(&record, Err(Unrun("flume was ended: signal: 9".into())));
-    bench.flume.take_calls();
+        .confirm_answers(LANDING, Err(Unrun("flume was ended: signal: 9".into())));
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
-    assert_eq!(
-        lines,
-        [format!(
-            "a: Flume's record {record} could not be collected: flume was ended: signal: 9"
-        )]
-    );
-    assert_eq!(collected(&bench), slice::from_ref(&record));
-    bench.flume.collect_as_flume(&record);
+    let unrun =
+        format!("a: the ends of {record} could not be confirmed: flume was ended: signal: 9");
+    assert_eq!(lines, slice::from_ref(&unrun));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
+    bench.flume.confirm_as_flume(LANDING);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, [] as [String; 0]);
-    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
     assert!(
-        bench.flume.entry(&place).is_none(),
+        bench.flume.entry(&place_of("a")).is_none(),
         "Flume holds the record no more"
     );
 }
 
-/// The work-into-flume spec's "A collection Flume refuses": the pass says
-/// one line, prefixed with the launch's id, naming the record and Flume's
-/// words, and the next pass collects it again.
+/// The work-into-flume spec's "A confirmation Flume refuses": the pass
+/// says one line, prefixed with the launch's id, naming the record and
+/// Flume's words, and the next pass confirms the landing again (design
+/// Decision 3).
 #[test]
-fn a_collection_flume_refuses() {
-    let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
-    bench.pass(&mut plane);
-    let place = place_of("a");
-    let record = format!("{place}@1793559694");
-    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
-    bench.flume.collect_answers(
-        &record,
+fn a_confirmation_flume_refuses() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    bench.flume.confirm_answers(
+        LANDING,
         Ok(Reply::Refused("the host's state is held by another".into())),
     );
-    bench.flume.take_calls();
-    let refused =
-        format!("a: Flume refused the collection of {record}: the host's state is held by another");
+    let refused = format!(
+        "a: Flume refused to confirm the ends of {record} as boomdrive: \
+         the host's state is held by another"
+    );
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, slice::from_ref(&refused));
-    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(lines, [refused]);
-    assert_eq!(collected(&bench), [record], "collected again");
+    assert_eq!(lines, slice::from_ref(&refused));
+    assert_eq!(
+        confirmed(&bench),
+        [vec![LANDING.to_string()]],
+        "confirmed again"
+    );
 }
 
 /// A place's status Flume could not be run for is named, and what was
