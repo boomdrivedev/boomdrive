@@ -175,7 +175,7 @@ None.
 
 ## What this change asks of others
 
-- **afterthought/swancloud**, once it takes the flake, can drop deneb's `control_plane.crew`. deneb's partitions in `services.crew.settings.partitions` and its `services.crew.host` give the same table (record 0023).
+- **afterthought/swancloud**, once it takes the flake, can drop its hosts' `control_plane.crew`. A host's partitions in `services.crew.settings.partitions` and its `services.crew.host` give the same table (record 0023).
 
 ## Risks / Trade-offs
 

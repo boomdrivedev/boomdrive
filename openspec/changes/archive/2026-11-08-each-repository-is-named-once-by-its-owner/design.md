@@ -9,7 +9,7 @@ services.boomdrive.accounts.personal.drives.agentplot.repositories.agentplot = [
 ```
 
 - A repository belongs to one drive. A drive's name is given once on the host, across its accounts.
-- Each drive has its stream, named after the drive unless the drive names another. Its room, priority and each label's reserve are the drive's `stream` keys, with the module's defaults, deneb's: four agents, a reserve of one for operation and two for planning.
+- Each drive has its stream, named after the drive unless the drive names another. Its room, priority and each label's reserve are the drive's `stream` keys, with the module's defaults, record 0028's: four agents, a reserve of one for operation and two for planning.
 - A drive whose `machine` names another computer gets no stream and no agents on this one, and this host keeps its repositories to read.
 - Record 0028's amendment of 2026-11-07, the keys of the runner's file: each drive's `repositories` is a list of addresses in the order kept, and the module turns its owners' names into addresses. The drive's stream and machine, and the account's state repository, are the modules' options and never keys of the runner's file (core.5).
 
@@ -102,14 +102,14 @@ A drive's `stream` holds `name`, `agents`, `priority` and `labels.<label>.reserv
 
 The stream's submodule sets each default label's `reserve` by `lib.mkDefault` in its `config`, so a drive that sets `labels.review.reserve` keeps `operation` and `planning`, and one that sets `labels.planning.reserve = 1` changes that alone. A label's `reserve` has no default of its own.
 
-Every other key of a stream, a label's `keep_free` among them, is Flume's own option, `services.flume.settings.streams.<stream>`, and merges with what the module gives (Decision 4). deneb's `keep_free = 0` is Flume's own default, so the module gives none.
+Every other key of a stream, a label's `keep_free` among them, is Flume's own option, `services.flume.settings.streams.<stream>`, and merges with what the module gives (Decision 4). A `keep_free` of 0 is Flume's own default, so the module gives none.
 
 Flume refuses a stream whose reserves pass its bound (flume record 0033). The module does not check it: Flume owns the rule and refuses at a start, naming the stream.
 
 Alternatives:
 
 - **A drive holding every key of Flume's stream.** Not taken: each would be a second option for one of Flume's keys, which core.46 has written by one option.
-- **`priority` given a default of the module's.** Not taken: record 0028's defaults are deneb's room and reserves, and deneb's priorities differ by drive.
+- **`priority` given a default of the module's.** Not taken: record 0028's defaults are a host's room and reserves, and a host's priorities may differ by drive.
 - **A label's `keep_free` in the drive.** Not taken: record 0028 names a label's reserve alone, and Flume's own option holds it.
 
 ### 4. What the module gives Flume
@@ -188,7 +188,7 @@ The bolt's unit `the-flake-configures-each-tool-by-its-own-module` is this branc
 
 ## What this change asks of others
 
-- **afterthought/swancloud**, once it takes the flake, passes deneb's accounts and drives as `services.boomdrive.accounts`, every drive's stream as its keys, the rest of each stream in `services.flume.settings.streams`, and drops the `[repos]` rules it writes into Flume's file by folder (record 0028). An account's `state` waits for the bolt's crew unit.
+- **afterthought/swancloud**, once it takes the flake, passes its hosts' accounts and drives as `services.boomdrive.accounts`, every drive's stream as its keys, the rest of each stream in `services.flume.settings.streams`, and drops the `[repos]` rules it writes into Flume's file by folder (record 0028). An account's `state` waits for the bolt's crew unit.
 
 ## Risks / Trade-offs
 

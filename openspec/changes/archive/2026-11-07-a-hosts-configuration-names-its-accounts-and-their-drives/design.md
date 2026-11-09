@@ -45,7 +45,7 @@ repository_root = "~/Code"
 code_workspaces = true
 
 [accounts.own.drives.home]
-repositories = ["agentplot/flume", "afterthought/crew"]
+repositories = ["agentplot/flume", "example/crew"]
 
 [accounts.own.drives.work]
 repositories = ["agentplot/sluice"]
@@ -169,7 +169,7 @@ The test settings and their files under `nix/tests/files` use neutral names (cor
 
 ### 12. README
 
-README's configuration example names one account with two drives and says what each level is. Its words on `code_workspaces` say one workspace per drive at the root, titled `— <drive> (Workspace)`, which goes with its drive. Its nix example sets `settings.accounts`. Its hosted section's example is read after the configuration's block, as `tests/readme.rs` reads it, and needs only the configuration's block to keep `agentplot/flume` and `afterthought/crew`.
+README's configuration example names one account with two drives and says what each level is. Its words on `code_workspaces` say one workspace per drive at the root, titled `— <drive> (Workspace)`, which goes with its drive. Its nix example sets `settings.accounts`. Its hosted section's example is read after the configuration's block, as `tests/readme.rs` reads it, and needs only the configuration's block to keep `agentplot/flume` and `example/crew`.
 
 ### 13. The local layer sets each drive's repositories
 
@@ -195,7 +195,7 @@ Record 0028 gains an amendment of 2026-11-07 holding these choices, the writing 
 
 ## Risks / Trade-offs
 
-- **Every host's file must be rewritten when its runner upgrades.** The refusal names `accounts`, and the runner keeps and removes nothing meanwhile. Hosts configured by Nix take the modules at the same commit as the runner. afterthought/swancloud passes deneb's accounts and drives once the modules land (record 0028's consequences).
+- **Every host's file must be rewritten when its runner upgrades.** The refusal names `accounts`, and the runner keeps and removes nothing meanwhile. Hosts configured by Nix take the modules at the same commit as the runner. afterthought/swancloud passes its hosts' accounts and drives once the modules land (record 0028's consequences).
 - **Sibling changes of the flake bolt touch the same files:**
   - `a-dropped-repository-is-drained-and-no-rename-is-followed` changes the pass's let-go. Decision 8's sweep reads the clones standing at the pass's end, whatever kept them.
   - `the-flake-configures-each-tool-by-its-own-module` edits `nix/modules/options.nix` and README.

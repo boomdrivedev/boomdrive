@@ -5,8 +5,8 @@
 Record 0023, accepted by the user on 2026-11-06, has a host name each repository once, under its owner, and the module give each repository its stream in Flume's module, with no folder written. In the user's words, "it just has one flat list of repos, but we should be able to configure the streams and the repos as well", and, of a repository's stream, "One block by owner". Record 0028, accepted by the user on 2026-11-07, puts the owner under its account's drive, and the drive gives the stream:
 
 - `services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner> = [ <names> ]`. A repository belongs to one drive.
-- Each drive has its stream, named after the drive unless the drive names another. Its room, priority and each label's reserve are the drive's `stream` keys, and the module gives a default for each, deneb's: four agents, a reserve of one for operation and two for planning.
-- A drive whose `machine` names another computer gets no stream and no agents on this one, and this host keeps its repositories to read. In the user's words, "Willdan work on DeNEB is just for reading and the work stays on the box".
+- Each drive has its stream, named after the drive unless the drive names another. Its room, priority and each label's reserve are the drive's `stream` keys, and the module gives a default for each, record 0028's: four agents, a reserve of one for operation and two for planning.
+- A drive whose `machine` names another computer gets no stream and no agents on this one, and this host keeps its repositories to read. In the user's words, such work "is just for reading and the work stays on the box".
 
 Today the module writes the runner's file from `services.boomdrive.settings` alone, each drive's repositories a list of addresses, and gives Flume nothing: a host writes each repository in the runner's file, and again in Flume's, by hand. Flume's set tag, v0.18.0, names a repository's `[repos."<owner>/<name>"]` by its address (flume record 0055), so the module can give Flume each address's stream with no folder.
 
@@ -50,7 +50,7 @@ None.
 - `docs/adr/0028-…` and `docs/architecture/core.md`, in the commit that writes this change.
 - The runner's code does not change, and neither does its file: every rendered file but its header line is the text it was, which `module_files.rs` reads.
 - No flake input or tag moves. No crate, tool or tracked file type is added (core.7, core.8).
-- Outside this repository: afterthought/swancloud passes deneb's accounts and drives as these options once it takes the flake (record 0028).
+- Outside this repository: afterthought/swancloud passes its hosts' accounts and drives as these options once it takes the flake (record 0028).
 
 ## Touches
 

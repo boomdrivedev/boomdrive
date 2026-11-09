@@ -42,7 +42,7 @@ None.
 - `README.md`: the install with nix.
 - `docs/adr/0023-…md`: the amendment, committed with this change's planning.
 - The runner's code does not change, and neither do its file's keys or any file under `nix/tests/files`. crew's table is the one crew's implementation already reads (core.2). No crate, tool or tracked file type is added (core.7, core.8). No rule changes: core.18's details already name this.
-- Outside this repository: afterthought/swancloud can drop deneb's `control_plane.crew` once it takes the flake, since deneb's partitions in crew's settings give it (record 0023).
+- Outside this repository: afterthought/swancloud can drop its hosts' `control_plane.crew` once it takes the flake, since a host's partitions in crew's settings give it (record 0023).
 
 ## Touches
 

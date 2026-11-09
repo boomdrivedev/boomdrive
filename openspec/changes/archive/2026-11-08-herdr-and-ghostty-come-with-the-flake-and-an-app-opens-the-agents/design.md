@@ -280,7 +280,7 @@ A host takes the change by moving its Boomdrive input. With `services.boomdrive.
 - **Flume's file** gains `[host] multiplexer = "herdr"` and `terminal_app = "ghostty"` unless the host's `services.flume.settings.host` names its own.
 - **The launcher.** `Boomdrive` appears in `/Applications/Nix Apps` or the desktop's applications.
 
-afterthought/swancloud, once it takes the flake, either drops deneb's own herdr and its plugin linker for the set's, or passes its own herdr through these options and keeps its linker (record 0023).
+afterthought/swancloud, once it takes the flake, either drops its hosts' own herdr and its plugin linker for the set's, or passes its own herdr through these options and keeps its linker (record 0023).
 
 ## Open Questions
 
