@@ -56,6 +56,27 @@ fn collected(bench: &Bench) -> Vec<String> {
         .collect()
 }
 
+/// The keys of each confirmation the fake Flume was asked, forgotten once
+/// given.
+fn confirmed(bench: &Bench) -> Vec<Vec<String>> {
+    bench
+        .flume
+        .take_calls()
+        .into_iter()
+        .filter_map(|call| match call {
+            Call::Confirm(_, keys) => Some(keys),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The delivery key of the landing of the place launched as `a`.
+const LANDING: &str = "a/t/submission/1/landed";
+
+/// The delivery key of the first code stage's end of the place launched
+/// as `a`.
+const CODE: &str = "a/t/stage/code/1/delivered";
+
 /// The number of `status <place>` calls the stub was run for.
 fn statuses_of(stub: &Stub) -> usize {
     stub.calls()
@@ -278,10 +299,11 @@ fn a_pass_that_answers_a_command_reads_the_listing_once() {
 /// The work-into-flume spec's "A landing held for the runner": a carried
 /// place that lands and is tidied between two passes, its record held for
 /// the runner alone, is carried as `<location>@<at>`, tidied and landed,
-/// then collected once as the runner, after its status is read and before
-/// the report goes; and at the pass after, Flume refusing the place's
-/// status, that status stands, not listed, and nothing is collected
-/// (design Decisions 2 and 3; Task notes 4.2 and 4.3).
+/// reported, and, once the control plane's answer names its status taken,
+/// its landing confirmed once as the runner, after its status is read and
+/// with no inbox; and at the pass after, Flume refusing the place's
+/// status, that status stands, not listed, and nothing is confirmed
+/// (design Decisions 3 to 5; Task notes 5.2).
 #[test]
 fn a_landing_held_for_the_runner() {
     let bench = Bench::new();
@@ -310,14 +332,21 @@ fn a_landing_held_for_the_runner() {
         .iter()
         .position(|call| matches!(call, Call::StatusOf(..)))
         .expect("the place's status read");
-    let collects: Vec<_> = calls
+    let confirms: Vec<_> = calls
         .iter()
         .enumerate()
-        .filter(|(_, call)| matches!(call, Call::Collect(_)))
+        .filter(|(_, call)| matches!(call, Call::Confirm(..)))
         .collect();
-    assert_eq!(collects.len(), 1, "{calls:?}");
-    assert_eq!(collects[0].1, &Call::Collect(record.clone()));
-    assert!(read < collects[0].0, "collected after its status is read");
+    assert_eq!(confirms.len(), 1, "{calls:?}");
+    assert_eq!(
+        confirms[0].1,
+        &Call::Confirm("boomdrive".into(), vec![LANDING.into()])
+    );
+    assert!(read < confirms[0].0, "confirmed after its status is read");
+    assert!(
+        !calls.iter().any(|call| matches!(call, Call::Collect(_))),
+        "no inbox: {calls:?}"
+    );
     assert_eq!(lines, [] as [String; 0]);
     let sent = plane.reports().last().expect("the report sent");
     assert_eq!(sent.launches[&Id::new("a")].status.as_ref(), Some(&status));
@@ -326,14 +355,15 @@ fn a_landing_held_for_the_runner() {
     let after = carried(&bench, "a");
     assert_eq!((&after.text, after.at), (&status.text, status.at));
     assert!(!after.listed, "Flume refuses the place's status");
-    assert_eq!(collected(&bench), [] as [String; 0]);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
     assert_eq!(lines, [] as [String; 0]);
 }
 
 /// The work-into-flume spec's "A drop held for the runner": an act drops
 /// a launch whose place Flume then tidies, holding its record for the
 /// runner, and the pass carries the record, tidied and dropped, as the
-/// launch's status and collects it once (design Decisions 2 and 3).
+/// launch's status and, once its answer names that status taken, confirms
+/// the drop's end once (design Decisions 3 to 5).
 #[test]
 fn a_drop_held_for_the_runner() {
     let bench = Bench::new();
@@ -354,15 +384,50 @@ fn a_drop_held_for_the_runner() {
         json!(["boomdrive"])
     );
     assert!(carried(&bench, "a").listed);
-    assert_eq!(collected(&bench), [record]);
+    assert_eq!(confirmed(&bench), [vec!["a/t/over/dropped".to_string()]]);
     assert_eq!(
         lines,
         [format!("a/drop: drop of a at {}: done", place_of("a"))]
     );
 
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [] as [String; 0], "collected once");
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0], "confirmed once");
     assert!(!carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A live place's end": a stage's end of a
+/// live place, pending for the runner and `scratch/planner`, is confirmed
+/// as the runner once the answer to the report names the status taken,
+/// and the next pass, Flume giving the end pending for `scratch/planner`
+/// alone, confirms nothing (design Decisions 3 and 4).
+#[test]
+fn a_live_places_end() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    bench.flume.end(
+        &place,
+        "stage/code/1/delivered",
+        &["boomdrive", "scratch/planner"],
+    );
+    bench.flume.take_calls();
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["phase"], json!("live"));
+    assert_eq!(
+        entry["ends"][0]["pending_for"],
+        json!(["boomdrive", "scratch/planner"])
+    );
+    assert_eq!(confirmed(&bench), [vec![CODE.to_string()]]);
+
+    bench.pass(&mut plane);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["ends"][0]["delivery"], CODE);
+    assert_eq!(entry["ends"][0]["pending_for"], json!(["scratch/planner"]));
+    assert!(carried(&bench, "a").listed);
 }
 
 /// The work-into-flume spec's "A record pending for a recipient too": a
