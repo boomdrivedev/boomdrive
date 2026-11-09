@@ -19,6 +19,7 @@ use boomdrive_control::{
 use fakes::{act, fixture, offer, place_of, printed, Bench, Call, Stub, KEPT};
 use serde_json::{json, Value};
 use std::fs;
+use std::slice;
 
 /// The status the report file carries for `launch`.
 fn carried(bench: &Bench, launch: &str) -> Carried {
@@ -380,7 +381,7 @@ fn a_record_pending_for_a_recipient_too() {
         .tidy_held(&place, 1793559694, &["boomdrive", "scratch/planner"]);
     bench.flume.take_calls();
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [record.clone()]);
+    assert_eq!(collected(&bench), slice::from_ref(&record));
     bench.pass(&mut plane);
     assert_eq!(collected(&bench), [] as [String; 0], "no second inbox");
     let entry = carried_entry(&bench, "a");
@@ -435,11 +436,11 @@ fn a_collection_flume_could_not_run() {
             "a: Flume's record {record} could not be collected: flume was ended: signal: 9"
         )]
     );
-    assert_eq!(collected(&bench), [record.clone()]);
+    assert_eq!(collected(&bench), slice::from_ref(&record));
     bench.flume.collect_as_flume(&record);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, [] as [String; 0]);
-    assert_eq!(collected(&bench), [record.clone()]);
+    assert_eq!(collected(&bench), slice::from_ref(&record));
     assert!(
         bench.flume.entry(&place).is_none(),
         "Flume holds the record no more"
@@ -465,8 +466,8 @@ fn a_collection_flume_refuses() {
     let refused =
         format!("a: Flume refused the collection of {record}: the host's state is held by another");
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(lines, [refused.clone()]);
-    assert_eq!(collected(&bench), [record.clone()]);
+    assert_eq!(lines, slice::from_ref(&refused));
+    assert_eq!(collected(&bench), slice::from_ref(&record));
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, [refused]);
     assert_eq!(collected(&bench), [record], "collected again");
