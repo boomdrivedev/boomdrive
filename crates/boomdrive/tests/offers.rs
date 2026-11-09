@@ -176,6 +176,8 @@ fn a_units_launch() {
             "home/x",
             "--recipient",
             "home/planner",
+            "--recipient",
+            "boomdrive",
             "--brief-file",
             brief_file.to_str().unwrap(),
             "--mark",
@@ -217,6 +219,37 @@ fn a_launch_naming_no_stream_priority_or_intent() {
             "--name",
             "b"
         ])
+    );
+}
+
+/// The work-into-flume spec's "The runner is one more recipient": the
+/// pass's launch of an offer naming `home/planner` names the runner after
+/// it, and its launch of an offer naming no recipient names none, so
+/// Flume's default is its recipient (core.15, core.53).
+#[test]
+fn the_runner_is_one_more_recipient() {
+    let bench = Bench::new();
+    let stub = Stub::new();
+    stub.answers("launch", "launch.json", 0);
+    let mut named = offer("home/12", "a");
+    named.launch.recipients = vec!["home/planner".into()];
+    let none = offer("home/13", "b");
+    let mut plane = Fake::holding(vec![Want::Offer(named), Want::Offer(none)]);
+    bench.pass_over(&Cli::new(stub.program()), &mut plane);
+    let recipients: Vec<Vec<String>> = stub
+        .calls()
+        .into_iter()
+        .filter(|call| call[1] == "launch")
+        .map(|call| {
+            call.windows(2)
+                .filter(|pair| pair[0] == "--recipient")
+                .map(|pair| pair[1].clone())
+                .collect()
+        })
+        .collect();
+    assert_eq!(
+        recipients,
+        [argv(&["home/planner", "boomdrive"]), Vec::<String>::new()]
     );
 }
 

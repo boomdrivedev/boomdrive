@@ -21,8 +21,8 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. Launches name the runner their caller
 
-- [ ] 3.1 The control pass's launches that name recipients name the runner one more. This proves the work-into-flume spec's "A unit's launch", "A launch naming no stream, priority or intent", "A launch's environment and brief" and "The runner is one more recipient" (design Decision 1). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_units_launch a_launch_naming_no_stream_priority_or_intent a_launchs_environment_and_brief the_runner_is_one_more_recipient` passes.
-- [ ] 3.2 A bolt and its unit, which name no recipient, are launched naming none of the runner's. This proves the work-into-flume spec's "A bolt and its unit" and "A bolt counts against its stream's room within its pass" (design Decision 1). True when `devenv shell -- cargo test -p boomdrive --test bolts -- a_bolt_and_its_unit a_bolt_counts_against_its_streams_room_within_its_pass` passes.
+- [x] 3.1 The control pass's launches that name recipients name the runner one more. This proves the work-into-flume spec's "A unit's launch", "A launch naming no stream, priority or intent", "A launch's environment and brief" and "The runner is one more recipient" (design Decision 1). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_units_launch a_launch_naming_no_stream_priority_or_intent a_launchs_environment_and_brief the_runner_is_one_more_recipient` passes.
+- [x] 3.2 A bolt and its unit, which name no recipient, are launched naming none of the runner's. This proves the work-into-flume spec's "A bolt and its unit" and "A bolt counts against its stream's room within its pass" (design Decision 1). True when `devenv shell -- cargo test -p boomdrive --test bolts -- a_bolt_and_its_unit a_bolt_counts_against_its_streams_room_within_its_pass` passes.
 
 ## 4. Each place's end, held and collected
 
