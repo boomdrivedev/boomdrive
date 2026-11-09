@@ -530,7 +530,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.18.1
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.21.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version and its git crates' hashes are Flume's own flake's, at the tag
@@ -597,7 +597,9 @@ settles for both, so no launch waits behind a settle. A control pass:
   keeps, and none in one it drains but a launch found by its mark, once
   each launch it comes after has landed and while its stream has room
   as Flume's status gives it. Each becomes one `flume launch`, naming its kind, stream, priority and intent only as
-  the launch gives them, marked `boomdrive:<id>`. A bolt is a launch
+  the launch gives them, its recipients as the launch gives them with
+  the runner one more after them, `--recipient boomdrive`, where it
+  names any, marked `boomdrive:<id>`. A bolt is a launch
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
   branch;
@@ -637,6 +639,25 @@ settles for both, so no launch waits behind a settle. A control pass:
   act, Flume's status is read again before the places' are carried, so
   a place tidied meanwhile is carried from Flume's record of it,
   `<location>@<at>`.
+
+No pane holds the name `boomdrive`, so Flume sends it no notice and
+wakes nothing for it, and keeps each end of the place pending for it.
+Once the place is tidied, whatever tidied it, a landing, a drop or a
+done, Flume keeps its record, `<location>@<at>`, until the runner
+collects it. The runner carries that record as the place's status, so
+its control plane reads the place's end from its report, and once its
+report file holds the record, collects it by `flume --json inbox
+<location>@<at> --recipient boomdrive`, keeping nothing of the answer.
+A collection Flume refuses, or could not run, is said in one line and
+made again at the next pass. A dropped repository's clone stays while a
+place's record is pending for the runner. A launch that names no
+recipient is given none of the runner's, so Flume's default is its
+recipient, and Flume holds nothing of it for the runner.
+
+The runner launches with Flume 0.20.0 or later, the first that holds a
+place's end for it. Where `flume --version` names an older version, or
+none, no offer is launched, and the runner says so once until Flume's
+version changes; acts and statuses go on.
 
 Each launch, act and preview is carried out once, and each command
 answered once, across a restart: the runner's report is kept at

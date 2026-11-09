@@ -94,6 +94,23 @@ pub fn ended(entry: &Value) -> bool {
     phase.len() == 1 && (phase.contains_key("tidied") || phase.contains_key("gone"))
 }
 
+/// Whether the place whose entry is `entry` is tidied and Flume keeps its
+/// record while an end of it is pending for `name`: its phase `{"tidied":
+/// {…, "pending_for": [<name>, …]}}` (flume's 43, 62; record 0030).
+pub fn pending_for(entry: &Value, name: &str) -> bool {
+    let Some(phase) = entry.get("phase").and_then(Value::as_object) else {
+        return false;
+    };
+    if phase.len() != 1 {
+        return false;
+    }
+    phase
+        .get("tidied")
+        .and_then(|tidied| tidied.get("pending_for"))
+        .and_then(Value::as_array)
+        .is_some_and(|pending| pending.iter().any(|each| each.as_str() == Some(name)))
+}
+
 /// Why a place's work is over, Flume's `over`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Over {
@@ -336,6 +353,33 @@ mod tests {
             assert!(!ended(&at(phase.clone())), "{phase} read ended");
         }
         assert!(!ended(&json!({})));
+    }
+
+    #[test]
+    fn a_record_pending_for_a_recipient() {
+        let at = |phase: Value| json!({ "place": "/p@1", "phase": phase });
+        let tidied = |pending: Value| {
+            at(json!({ "tidied": { "over": "dropped", "at": 1, "pending_for": pending } }))
+        };
+        assert!(pending_for(&tidied(json!(["boomdrive"])), "boomdrive"));
+        assert!(pending_for(
+            &tidied(json!(["scratch/planner", "boomdrive"])),
+            "boomdrive"
+        ));
+        for entry in [
+            tidied(json!(["scratch/planner"])),
+            tidied(json!([])),
+            tidied(json!("boomdrive")),
+            tidied(json!([7])),
+            at(json!({ "tidied": { "over": "done", "at": 1 } })),
+            at(json!({ "gone": { "over": "done", "pending_for": ["boomdrive"] } })),
+            at(json!({ "over": { "over": "done", "kept": null } })),
+            at(json!({ "tidied": { "pending_for": ["boomdrive"] }, "gone": {} })),
+            at(json!("live")),
+            json!({ "place": "/p" }),
+        ] {
+            assert!(!pending_for(&entry, "boomdrive"), "{entry} read pending");
+        }
     }
 
     #[test]

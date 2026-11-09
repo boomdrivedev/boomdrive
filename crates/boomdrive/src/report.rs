@@ -9,7 +9,7 @@
 //! labels of the parts whose share it holds (record 0026; core.36).
 
 use crate::config::Address;
-use crate::facts;
+use crate::{facts, flume};
 use boomdrive_control::{Id, Launched, Outcome, Report};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -199,8 +199,9 @@ pub fn holding(report: &Report, address: &Address) -> Vec<(Id, String)> {
 
 /// Whether the place at `place` has ended, by the status `launched`
 /// carries of it: the status stands not listed, or the place's entry in it
-/// reads its phase tidied or gone. A place with no status carried has not
-/// ended.
+/// reads its phase tidied or gone and its record pending for no end of
+/// the runner's, so that a drained clone waits for the runner to collect
+/// it (record 0030). A place with no status carried has not ended.
 fn ended(launched: &Launched, place: &str) -> bool {
     let Some(carried) = &launched.status else {
         return false;
@@ -212,7 +213,7 @@ fn ended(launched: &Launched, place: &str) -> bool {
         .ok()
         .as_ref()
         .and_then(|answer| facts::entry(answer, place))
-        .is_some_and(facts::ended)
+        .is_some_and(|entry| facts::ended(entry) && !facts::pending_for(entry, flume::RECIPIENT))
 }
 
 #[cfg(test)]
@@ -581,6 +582,41 @@ mod tests {
         let other = holding(&report, &Address::parse("example/other").unwrap());
         assert_eq!(other, [(Id::new("g"), "/p/g".to_string())]);
         assert!(holding(&report, &Address::parse("example/none").unwrap()).is_empty());
+    }
+
+    #[test]
+    fn a_place_pending_for_the_runner_has_not_ended() {
+        let tidied = |pending: &str| {
+            format!(r#"{{"tidied":{{"over":{{"landed":{{}}}},"at":7,"pending_for":{pending}}}}}"#)
+        };
+        let launches = [
+            ("a", tidied(r#"["boomdrive"]"#)),
+            ("b", tidied(r#"["scratch/planner","boomdrive"]"#)),
+            ("c", tidied(r#"["scratch/planner"]"#)),
+            ("d", tidied("[]")),
+        ];
+        let mut report = Report::default();
+        for (id, phase) in &launches {
+            let place = format!("/p/{id}");
+            let mut launched = launch(
+                Some("example/kit"),
+                Outcome::Launched,
+                &place,
+                Some((phase, true)),
+            );
+            if let Some(status) = launched.status.as_mut() {
+                status.text = status.text.replace(
+                    &format!(r#""place":"{place}""#),
+                    &format!(r#""place":"{place}@7""#),
+                );
+            }
+            report.launches.insert(Id::new(*id), launched);
+        }
+        let held: Vec<String> = holding(&report, &Address::parse("example/kit").unwrap())
+            .into_iter()
+            .map(|(id, _)| id.to_string())
+            .collect();
+        assert_eq!(held, ["a", "b"]);
     }
 
     #[test]
