@@ -4,8 +4,9 @@
 //! act on a place only once every launch the pull offers is taken, and
 //! none but the first once the next pass is due (record 0002; core.50),
 //! carries each place's status against Flume's listing as it stands once
-//! those answers are made (record 0027), opens each terminal pulled, and
-//! sends the whole report. An act on a place the listing read before the
+//! those answers are made (record 0027), collects each place's record
+//! Flume holds for the runner once the report file holds it (record
+//! 0030), opens each terminal pulled, and sends the whole report. An act on a place the listing read before the
 //! pull does not hold reads Flume's status of the place first, and takes
 //! Flume's refusal of it as its answer (record 0010; core.51). The runner
 //! takes only what it was
@@ -284,6 +285,12 @@ impl Carrier<'_> {
         }
         work.carry_statuses(say);
         work.carry_entries(say);
+        // A place's end Flume holds for the runner is collected only once
+        // the report file holds it, and in no pass whose report could not
+        // be saved (core.25, core.53; record 0030).
+        if work.save(say) {
+            work.collect(say);
+        }
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
@@ -898,6 +905,64 @@ impl Work<'_> {
                 say(format!(
                     "{id}: sluice's entry {submission} is refused: {refused}"
                 ));
+            }
+        }
+    }
+
+    /// Collects, as the runner, each place's record Flume holds for it past
+    /// its tidy, once the report file holds that record as the place's
+    /// status (design Decision 3; core.53; record 0030): for each launch
+    /// the pull gives, in its order, answered `launched` at a place in a
+    /// repository whose clone stands, named or dropped, whose carried
+    /// status is listed and reads the place tidied, its record pending for
+    /// [`flume::RECIPIENT`]. The record is the entry's own `place`,
+    /// `<location>@<at>`. Nothing of Flume's answer is carried or kept
+    /// (core.11). A collection Flume refuses, or could not be run for, is
+    /// said in one line and made again at the next pass, whose carried
+    /// status says the same. A launch the report no longer holds, its
+    /// lease refused, is collected for no more (core.10).
+    fn collect(&self, say: &mut dyn FnMut(String)) {
+        for offer in offers(self.wants) {
+            let id = &offer.id;
+            let Some(launched) = self.report.launches.get(id) else {
+                continue;
+            };
+            let (Outcome::Launched, Some(place)) = (
+                launched.answer.outcome,
+                launched.answer.place_dir.as_deref(),
+            ) else {
+                continue;
+            };
+            if matches!(
+                self.carrier.clones.keeping(&offer.launch.repository),
+                Keeping::NotYet | Keeping::NotNamed
+            ) {
+                continue;
+            }
+            if !launched
+                .status
+                .as_ref()
+                .is_some_and(|carried| carried.listed)
+            {
+                continue;
+            }
+            let Some(entry) = carried_entry(launched, place) else {
+                continue;
+            };
+            if !facts::pending_for(&entry, flume::RECIPIENT) {
+                continue;
+            }
+            let Some(record) = facts::location(&entry) else {
+                continue;
+            };
+            match self.carrier.flume.collect(record) {
+                Ok(Reply::Given(_)) => {}
+                Ok(Reply::Refused(words)) => say(format!(
+                    "{id}: Flume refused the collection of {record}: {words}"
+                )),
+                Err(Unrun(why)) => say(format!(
+                    "{id}: Flume's record {record} could not be collected: {why}"
+                )),
             }
         }
     }
