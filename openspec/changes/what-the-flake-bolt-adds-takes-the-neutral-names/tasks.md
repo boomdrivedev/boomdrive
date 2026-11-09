@@ -17,5 +17,5 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 3. The specs take the neutral names
 
-- [ ] 3.1 This change's deltas modify `configuration`'s *The local layer's repositories add to the managed layer's, and its partitions replace them*, *The managed layer may pin a key the local layer could set* and *The configuration names its accounts, each account's drives and each drive's repositories*, and `views`' *Each drive has a VS Code workspace at the repository root where the configuration asks*, each with the neutral names alone (design Decision 4). True when `sluice exec main -- moon run root:changes` passes.
+- [x] 3.1 This change's deltas modify `configuration`'s *The local layer's repositories add to the managed layer's, and its partitions replace them*, *The managed layer may pin a key the local layer could set* and *The configuration names its accounts, each account's drives and each drive's repositories*, and `views`' *Each drive has a VS Code workspace at the repository root where the configuration asks*, each with the neutral names alone (design Decision 4). True when `sluice exec main -- moon run root:changes` passes.
 - [ ] 3.2 The change is archived, so the specs take its deltas. True when `sluice exec main -- moon run root:specs` passes.
