@@ -22,11 +22,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-/// The least Flume the runner launches with: 0.20.0, the first that holds
-/// a drop's and a done's end for a recipient no pane holds, and collects
-/// one place's by `flume inbox <place>` (core.38; record 0030; Flume
-/// record 0060).
-pub const LEAST: (u32, u32, u32) = (0, 20, 0);
+/// The least Flume the runner launches and confirms with: 0.21.0, the
+/// first whose ends a recipient confirms by key, `flume confirm <key>…
+/// --recipient <name>`, each owed until it is (core.38; record 0030 as
+/// amended on 2026-11-09; Flume record 0061).
+pub const LEAST: (u32, u32, u32) = (0, 21, 0);
 
 /// The runner's own name as a recipient of the places it launches: fixed
 /// and the same on every host, since one runner serves a host. No pane
@@ -76,7 +76,7 @@ pub fn runs_with(said: &str) -> Result<(), String> {
     let (major, minor, patch) = LEAST;
     let least = format!(
         "boomdrive launches with Flume {major}.{minor}.{patch} or later, \
-         the first that holds a place's end for the runner"
+         the first whose ends a recipient confirms by key"
     );
     let said = said.trim();
     match version(said) {
@@ -414,29 +414,29 @@ mod tests {
     #[test]
     fn versions_taken() {
         for said in [
-            "flume 0.20.0",
-            "flume 0.20.0\n",
-            "flume 0.20.1 (9ab0e2c)",
-            "flume 0.21.0-dev",
+            "flume 0.21.0",
+            "flume 0.21.0\n",
+            "flume 0.21.1 (77d5b93)",
+            "flume 0.22.0-dev",
             "flume 0.21",
             "flume 1.0.0",
         ] {
             assert_eq!(runs_with(said), Ok(()), "{said:?}");
         }
-        assert_eq!(version("flume 0.20.1 (9ab0e2c)"), Some((0, 20, 1)));
+        assert_eq!(version("flume 0.21.1 (77d5b93)"), Some((0, 21, 1)));
     }
 
     #[test]
     fn a_flume_older_than_the_least_is_refused() {
-        let least = "boomdrive launches with Flume 0.20.0 or later, \
-                     the first that holds a place's end for the runner";
+        let least = "boomdrive launches with Flume 0.21.0 or later, \
+                     the first whose ends a recipient confirms by key";
         assert_eq!(
-            runs_with("flume 0.18.0\n"),
-            Err(format!("flume --version says \"flume 0.18.0\": {least}"))
+            runs_with("flume 0.20.0\n"),
+            Err(format!("flume --version says \"flume 0.20.0\": {least}"))
         );
         assert_eq!(
-            runs_with("flume 0.19.9"),
-            Err(format!("flume --version says \"flume 0.19.9\": {least}"))
+            runs_with("flume 0.20.9"),
+            Err(format!("flume --version says \"flume 0.20.9\": {least}"))
         );
         for said in ["flume", "", "sluice 0.20.0", "flume x.y.z", "flume 0"] {
             assert_eq!(

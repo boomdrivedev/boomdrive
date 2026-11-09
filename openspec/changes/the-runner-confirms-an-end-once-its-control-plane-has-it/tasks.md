@@ -45,7 +45,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 7. The least Flume
 
-- [ ] 7.1 `flume::LEAST` is `(0, 21, 0)`, its documentation and `runs_with`'s words naming `0.21.0`, the first whose ends a recipient confirms by key, with its unit tests (design Decision 7). True when `devenv shell -- cargo test -p boomdrive --lib flume::` passes.
+- [x] 7.1 `flume::LEAST` is `(0, 21, 0)`, its documentation and `runs_with`'s words naming `0.21.0`, the first whose ends a recipient confirms by key, with its unit tests (design Decision 7). True when `devenv shell -- cargo test -p boomdrive --lib flume::` passes.
 - [ ] 7.2 Below the least no offer is launched, read from `flume 0.20.0`, and at it, `flume 0.21.0`, one is. This proves the work-into-flume spec's "A Flume older than the least", "A Flume at the least" and "Said once while it lasts" (design Decision 7). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_flume_older_than_the_least a_flume_at_the_least said_once_while_it_lasts` passes.
 - [ ] 7.3 Below the least nothing is confirmed. This proves the work-into-flume spec's "Nothing confirmed below the least" (design Decisions 3 and 7). True when `devenv shell -- cargo test -p boomdrive --test statuses nothing_confirmed_below_the_least` passes.
 
