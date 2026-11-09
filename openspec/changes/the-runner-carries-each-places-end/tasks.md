@@ -41,8 +41,8 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 6. The least Flume
 
-- [ ] 6.1 Below the least Flume no offer is launched, and the runner says so once until Flume's version changes. `Least` is kept by the runner and by `Bench`, beside `Reach`. This proves the work-into-flume spec's "A Flume older than the least", "A Flume at the least" and "Said once while it lasts" (design Decision 5; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_flume_older_than_the_least a_flume_at_the_least said_once_while_it_lasts` passes.
-- [ ] 6.2 `tests/pass.rs` builds its `Carrier` with a `Least`. A Flume whose `--version` printed nothing, read as missing, has its launches tried as before (design Decision 5). True when `devenv shell -- cargo test -p boomdrive --test pass` passes.
+- [x] 6.1 Below the least Flume no offer is launched, and the runner says so once until Flume's version changes. `Least` is kept by the runner and by `Bench`, beside `Reach`. This proves the work-into-flume spec's "A Flume older than the least", "A Flume at the least" and "Said once while it lasts" (design Decision 5; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_flume_older_than_the_least a_flume_at_the_least said_once_while_it_lasts` passes.
+- [x] 6.2 `tests/pass.rs` builds its `Carrier` with a `Least`. A Flume whose `--version` printed nothing, read as missing, has its launches tried as before (design Decision 5). True when `devenv shell -- cargo test -p boomdrive --test pass` passes.
 
 ## 7. What the runner says of it
 

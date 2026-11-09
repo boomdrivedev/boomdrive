@@ -253,6 +253,63 @@ fn the_runner_is_one_more_recipient() {
     );
 }
 
+/// The words said, once, of a Flume that says `flume 0.18.0` for
+/// `--version` (design Decision 5).
+const BELOW_THE_LEAST: &str = "boomdrive: flume --version says \"flume 0.18.0\": \
+     boomdrive launches with Flume 0.20.0 or later, \
+     the first that holds a place's end for the runner";
+
+/// The work-into-flume spec's "A Flume older than the least": an offer
+/// pulled with room for it is not launched, and has no answer in the
+/// report (core.38).
+#[test]
+fn a_flume_older_than_the_least() {
+    let bench = Bench::new();
+    bench.tools.prints("flume", "flume 0.18.0");
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(bench.flume.launches(), []);
+    assert_eq!(outcome(&bench, "a"), None);
+    assert_eq!(lines, [BELOW_THE_LEAST]);
+}
+
+/// The work-into-flume spec's "A Flume at the least": the same offer,
+/// pulled again once `flume --version` prints the least, is launched.
+#[test]
+fn a_flume_at_the_least() {
+    let bench = Bench::new();
+    bench.tools.prints("flume", "flume 0.18.0");
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    assert_eq!(outcome(&bench, "a"), None);
+    bench.tools.prints("flume", "flume 0.20.0");
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(outcome(&bench, "a"), Some(Outcome::Launched));
+    let names: Vec<_> = bench.flume.launches().into_iter().map(|a| a.name).collect();
+    assert_eq!(names, ["a"]);
+    assert_eq!(lines, [format!("a: launched at {}", place_of("a"))]);
+}
+
+/// The work-into-flume spec's "Said once while it lasts": two passes in
+/// turn read `flume 0.18.0`, an offer pulled at each, and only the first
+/// says so (Task notes 6.1).
+#[test]
+fn said_once_while_it_lasts() {
+    let bench = Bench::new();
+    bench.tools.prints("flume", "flume 0.18.0");
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [BELOW_THE_LEAST]);
+    plane.set_wants(vec![
+        Want::Offer(offer("a", "a")),
+        Want::Offer(offer("b", "b")),
+    ]);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(bench.flume.launches(), []);
+}
+
 /// The work-into-flume spec's "A kind named by its identity".
 #[test]
 fn a_kind_named_by_its_identity() {

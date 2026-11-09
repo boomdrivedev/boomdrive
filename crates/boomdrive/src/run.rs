@@ -7,7 +7,7 @@
 //! clone at once. The runner opens no listening socket: every connection
 //! it makes is outgoing (core.3).
 
-use crate::carry::{Carrier, Configured, Passed, Reach};
+use crate::carry::{Carrier, Configured, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env};
 use crate::git::Git;
 use crate::pass::{self, Outcome};
@@ -160,6 +160,8 @@ struct Control {
     relays: Relays,
     /// Whether the last pull was read, kept across control passes.
     reach: Reach,
+    /// What was last said of Flume's version, kept across control passes.
+    least: Least,
 }
 
 impl Control {
@@ -187,6 +189,7 @@ impl Control {
             ),
             relays: programs.relays(),
             reach: Reach::default(),
+            least: Least::default(),
         }
     }
 }
@@ -499,6 +502,7 @@ impl Runner {
             plane: Ok(plane),
             relays,
             reach,
+            least,
             ..
         }) = &mut self.control
         else {
@@ -541,6 +545,7 @@ impl Runner {
             control_dir: &control_dir,
             relays,
             reach,
+            least,
             due,
         };
         Some(carrier.pass(plane.as_mut(), say))

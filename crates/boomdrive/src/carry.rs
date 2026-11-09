@@ -27,11 +27,11 @@ use crate::terminal::Relays;
 use crate::{clone, facts, inbox, report};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
-    Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Report, Reported, Unread,
-    Unsent, Want,
+    Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Report, Reported, ToolVersion,
+    Unread, Unsent, Want,
 };
 use serde_json::Value;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -141,6 +141,8 @@ pub struct Carrier<'a> {
     pub relays: &'a Relays,
     /// Whether the last pull was read, kept across passes.
     pub reach: &'a Reach,
+    /// What was last said of Flume's version, kept across passes.
+    pub least: &'a Least,
     /// Whether the next control pass is due, by the control timer or
     /// because the control plane woke the runner. Once it is, the pass
     /// carries out no further act on a place, after its first, and
@@ -174,6 +176,37 @@ impl Reach {
         if self.unread.replace(false) {
             say("boomdrive: the control plane is read again".to_string());
         }
+    }
+}
+
+/// What the runner last said of Flume's version, kept across control
+/// passes beside its reach, so a Flume older than the least the runner
+/// launches with is said once while it lasts: at the first pass that reads
+/// it so, and again only once what Flume says changes (design Decision 5;
+/// core.38).
+#[derive(Debug, Default)]
+pub struct Least {
+    said: RefCell<Option<String>>,
+}
+
+impl Least {
+    /// Takes Flume's `version` as the hello read it, and gives why no
+    /// launch is made, where Flume printed a version older than
+    /// [`flume::LEAST`] or none; else none, where it runs with the least,
+    /// or is missing, whose launch is tried and named as it fails.
+    fn read(&self, version: Option<&ToolVersion>, say: &mut dyn FnMut(String)) -> Option<String> {
+        let Some(ToolVersion::Printed(printed)) = version else {
+            return None;
+        };
+        let Err(words) = flume::runs_with(printed) else {
+            self.said.replace(None);
+            return None;
+        };
+        if self.said.borrow().as_deref() != Some(words.as_str()) {
+            say(format!("boomdrive: {words}"));
+            self.said.replace(Some(words.clone()));
+        }
+        Some(words)
     }
 }
 
@@ -239,6 +272,7 @@ impl Carrier<'_> {
             }
         };
         self.reach.read(say);
+        let below_least = self.least.read(hello.tool_versions.get("flume"), say);
         // A report file lost with the data directory is taken from the
         // control plane, which holds every answer the runner reported.
         let report = kept.or(pulled.report).unwrap_or_default();
@@ -250,6 +284,7 @@ impl Carrier<'_> {
             report,
             room: Room::read(listing.as_ref()),
             listing,
+            below_least,
             ran: false,
             now,
             round: Round::Wants,
@@ -318,6 +353,9 @@ struct Work<'p> {
     /// act of Flume's.
     listing: Option<Value>,
     room: Room,
+    /// Why no offer is launched this pass, where Flume is older than the
+    /// least the runner launches with (core.38).
+    below_least: Option<String>,
     /// Whether answering the wants ran a tool's command: a launch or an
     /// act of Flume's. A command runs none (record 0027).
     ran: bool,
@@ -440,6 +478,11 @@ impl Work<'_> {
             {
                 say(format!("{id}: held: {words}"));
             }
+            return;
+        }
+        // Below the least Flume nothing is launched: a new offer is left
+        // unanswered, and one held stays held (core.38; record 0030).
+        if self.below_least.is_some() {
             return;
         }
         self.launch(offer, &container, say);

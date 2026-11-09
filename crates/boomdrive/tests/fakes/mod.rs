@@ -11,7 +11,7 @@
 
 #![allow(dead_code)]
 
-use boomdrive::carry::{Carrier, Clones, Keeping, Passed, Reach};
+use boomdrive::carry::{Carrier, Clones, Keeping, Least, Passed, Reach};
 use boomdrive::flume::{self, Act, Flume, LaunchArgs, Reply, Unrun};
 use boomdrive::git::Git;
 use boomdrive::hello::Tools;
@@ -563,25 +563,38 @@ impl Clones for FakeClones {
     }
 }
 
-/// The tools' versions: each `<tool> 1.0.0`, but those a test names
-/// missing.
+/// The tools' versions: each `<tool> 1.0.0`, but as a test names one.
 #[derive(Default)]
 pub struct FakeTools {
-    missing: RefCell<Vec<String>>,
+    read: RefCell<BTreeMap<String, ToolVersion>>,
 }
 
 impl FakeTools {
+    /// `tool` read as missing, as when it could not run.
     pub fn missing(&self, tool: &str) {
-        self.missing.borrow_mut().push(tool.to_string());
+        self.reads(
+            tool,
+            ToolVersion::Missing(format!("{tool} could not run: not found")),
+        );
+    }
+
+    /// `tool`'s `--version` read as printing `line` first.
+    pub fn prints(&self, tool: &str, line: &str) {
+        self.reads(tool, ToolVersion::Printed(line.to_string()));
+    }
+
+    /// `tool`'s version read as `version`.
+    pub fn reads(&self, tool: &str, version: ToolVersion) {
+        self.read.borrow_mut().insert(tool.to_string(), version);
     }
 }
 
 impl Tools for FakeTools {
     fn version(&self, tool: &str) -> ToolVersion {
-        if self.missing.borrow().iter().any(|missing| missing == tool) {
-            return ToolVersion::Missing(format!("{tool} could not run: not found"));
+        match self.read.borrow().get(tool) {
+            Some(version) => version.clone(),
+            None => ToolVersion::Printed(format!("{tool} 1.0.0")),
         }
-        ToolVersion::Printed(format!("{tool} 1.0.0"))
     }
 }
 
@@ -606,6 +619,9 @@ pub struct Bench {
     /// Whether the last pull was read, kept across the bench's passes as
     /// the loop keeps it.
     reach: Reach,
+    /// What was last said of Flume's version, kept across the bench's
+    /// passes as the loop keeps it.
+    least: Least,
     notices: Notices,
     events: Receiver<Event>,
 }
@@ -631,6 +647,7 @@ impl Bench {
             clones: FakeClones::default(),
             tools: FakeTools::default(),
             reach: Reach::default(),
+            least: Least::default(),
             notices: Notices::new(events),
             events: received,
         };
@@ -692,6 +709,7 @@ impl Bench {
             control_dir: &control_dir,
             relays: &self.relays,
             reach: &self.reach,
+            least: &self.least,
             due,
         };
         let mut lines = Vec::new();
