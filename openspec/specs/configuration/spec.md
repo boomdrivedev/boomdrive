@@ -244,7 +244,7 @@ A drive both layers name under one account SHALL keep the managed layer's reposi
 
 #### Scenario: A drive only the local layer names
 
-- **WHEN** the managed layer keeps `agentplot/flume` in the account `own`'s drive `home`, and the local layer names `afterthought/crew` in the account `own`'s drive `work` and `agentplot/sluice` in the account `client`'s drive `garden`
+- **WHEN** the managed layer keeps `agentplot/flume` in the account `own`'s drive `home`, and the local layer names `example/crew` in the account `own`'s drive `work` and `agentplot/sluice` in the account `client`'s drive `garden`
 - **THEN** the runner keeps the drives `home`, `work` and `garden`, in that order, each with its repository
 
 #### Scenario: A repository the local layer drops
@@ -325,7 +325,7 @@ The managed layer MAY set `pin`, a list of keys in TOML's dotted spelling, each 
 
 #### Scenario: Repositories pinned
 
-- **WHEN** the managed layer says `pin = ["accounts"]` and keeps `agentplot/flume` in the drive `home`, and the local layer names `agentplot/sluice` in the drive `home` and `afterthought/crew` in the drive `work`
+- **WHEN** the managed layer says `pin = ["accounts"]` and keeps `agentplot/flume` in the drive `home`, and the local layer names `agentplot/sluice` in the drive `home` and `example/crew` in the drive `work`
 - **THEN** the runner keeps `agentplot/flume` alone, and names `accounts.own.drives.home.repositories` and `accounts.own.drives.work.repositories` as passed over, pinned by `accounts`
 
 #### Scenario: A table pinned
@@ -367,8 +367,8 @@ The configuration SHALL name what the host keeps under `accounts`: a table of ac
 
 #### Scenario: Drives of two accounts
 
-- **WHEN** the account `own`'s drive `home` names `agentplot/flume` and `afterthought/crew`, and then the account `client`'s drive `garden` names `agentplot/sluice`
-- **THEN** the runner keeps `agentplot/flume`, `afterthought/crew` and `agentplot/sluice`, in that order
+- **WHEN** the account `own`'s drive `home` names `agentplot/flume` and `example/crew`, and then the account `client`'s drive `garden` names `agentplot/sluice`
+- **THEN** the runner keeps `agentplot/flume`, `example/crew` and `agentplot/sluice`, in that order
 
 #### Scenario: A drive with no list
 
