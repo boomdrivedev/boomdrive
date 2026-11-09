@@ -33,6 +33,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 - [x] 4.5 A collection Flume refuses, or cannot be run for, is said in one line and made again at the next pass. This proves the work-into-flume spec's "A collection Flume could not run" and "A collection Flume refuses" (design Decision 3). True when `devenv shell -- cargo test -p boomdrive --test statuses -- a_collection_flume_could_not_run a_collection_flume_refuses` passes.
 - [x] 4.6 No record is collected for a launch whose lease the control plane refused. This proves the work-into-flume spec's "A lease refused before its end was collected" and "A lease refused" (design Decision 3; core.10). True when `devenv shell -- cargo test -p boomdrive --test leases -- a_lease_refused_before_its_end_was_collected a_lease_refused` passes.
 - [x] 4.7 An offer after a place Flume tidied, landed, and holds for the runner is launched at the next pass. This proves the work-into-flume spec's "A dependent of a landing held for the runner" and "A dependent held, then launched" (design Decision 2). True when `devenv shell -- cargo test -p boomdrive --test after -- a_dependent_of_a_landing_held_for_the_runner a_dependent_held_then_launched` passes.
+- [ ] 4.8 `tests/statuses.rs`'s `a_record_pending_for_a_recipient_too`, `a_collection_flume_could_not_run` and `a_collection_flume_refuses` compare what was collected, and the pass's lines, with a slice of one borrowed from `record` or `refused` by `std::slice::from_ref`, not with an array of a clone, so clippy's `cloned_ref_to_slice_refs` refuses none of them, and each proves what it proved (the verify report at c817fed). True when `sluice exec main -- moon run boomdrive:lint` passes.
 
 ## 5. The drain
 
@@ -43,6 +44,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 - [x] 6.1 Below the least Flume no offer is launched, and the runner says so once until Flume's version changes. `Least` is kept by the runner and by `Bench`, beside `Reach`. This proves the work-into-flume spec's "A Flume older than the least", "A Flume at the least" and "Said once while it lasts" (design Decision 5; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive --test offers -- a_flume_older_than_the_least a_flume_at_the_least said_once_while_it_lasts` passes.
 - [x] 6.2 `tests/pass.rs` builds its `Carrier` with a `Least`. A Flume whose `--version` printed nothing, read as missing, has its launches tried as before (design Decision 5). True when `devenv shell -- cargo test -p boomdrive --test pass` passes.
+- [ ] 6.3 Each part of the control plane keeps its own `Least` beside its `Reach`, through its passes on its thread and in `run --once`, as main at bbf088a keeps each part's reach, and says Flume's version below the least naming its label after `boomdrive:`, as every line of a part's pass does (record 0026; design Decision 5). True when `sluice exec main -- moon run boomdrive:test` passes.
 
 ## 7. What the runner says of it
 
@@ -50,4 +52,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 8. The specs
 
-- [x] 8.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-carries-each-places-end --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 8.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-carries-each-places-end --yes`, `sluice exec main -- moon run root:specs` passes.
