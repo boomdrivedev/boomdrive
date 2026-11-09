@@ -320,7 +320,8 @@ fn the_sets_flume_takes_the_runner_as_a_recipient() {
         "--mark",
         "m",
     ];
-    let confirm_argv = ["--json", "confirm", key, "--recipient", flume::RECIPIENT];
+    let recipient = format!("--recipient={}", flume::RECIPIENT);
+    let confirm_argv = ["--json", "confirm", &recipient, "--", key];
     for (reply, argv) in [(launched, &launch_argv[..]), (confirmed, &confirm_argv[..])] {
         let printed = family
             .scratch

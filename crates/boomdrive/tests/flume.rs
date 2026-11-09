@@ -282,9 +282,10 @@ fn the_runner_is_one_more_recipient() {
     );
 }
 
-/// A confirmation is one `flume confirm` naming each key in the order
-/// given, then the recipient, and no repository, its answer read by
-/// Flume's exit as every call's is (design Decisions 5 and 8).
+/// A confirmation is one `flume confirm` naming the recipient, then each
+/// key in the order given after `--`, and no repository, as a confirm act
+/// does, its answer read by Flume's exit as every call's is (design
+/// Decisions 5 and 8; core.56).
 #[test]
 fn a_confirmation_names_its_keys_and_its_recipient() {
     let stub = Stub::new();
@@ -304,17 +305,17 @@ fn a_confirmation_names_its_keys_and_its_recipient() {
             argv(&[
                 "--json",
                 "confirm",
+                "--recipient=boomdrive",
+                "--",
                 "change--a/t/stage/code/1/delivered",
-                "change--a/t/submission/1/landed",
-                "--recipient",
-                "boomdrive"
+                "change--a/t/submission/1/landed"
             ]),
             argv(&[
                 "--json",
                 "confirm",
-                "change--a/t/submission/1/landed",
-                "--recipient",
-                "boomdrive"
+                "--recipient=boomdrive",
+                "--",
+                "change--a/t/submission/1/landed"
             ]),
         ]
     );

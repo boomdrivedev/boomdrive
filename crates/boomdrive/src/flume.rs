@@ -23,9 +23,9 @@ use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
 /// The least Flume the runner launches and confirms with: 0.21.0, the
-/// first whose ends a recipient confirms by key, `flume confirm <key>…
-/// --recipient <name>`, each owed until it is (core.38; record 0030 as
-/// amended on 2026-11-09; Flume record 0061).
+/// first whose ends a recipient confirms by key, `flume confirm
+/// --recipient=<name> -- <key>…`, each owed until it is (core.38; record
+/// 0030 as amended on 2026-11-09; Flume record 0061).
 pub const LEAST: (u32, u32, u32) = (0, 21, 0);
 
 /// The runner's own name as a recipient of the places it launches: fixed
@@ -172,8 +172,9 @@ pub trait Flume {
     /// the runner keeps its clone, else by its location alone.
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun>;
     /// Each end under `keys`, its delivery keys in the order given,
-    /// confirmed as `recipient`: `flume confirm <key>… --recipient
-    /// <recipient>`, naming no repository. The runner confirms as
+    /// confirmed as `recipient`: `flume confirm --recipient=<recipient> --
+    /// <key>…`, by the arguments a confirm act runs, naming no repository
+    /// (core.56). The runner confirms as
     /// [`RECIPIENT`], only once its control plane has taken the status
     /// that gave the ends (design Decision 5; core.54; record 0030 as
     /// amended on 2026-11-09; Flume record 0061).
@@ -258,10 +259,7 @@ impl Flume for Cli {
     }
 
     fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {
-        let mut args: Vec<OsString> = vec!["confirm".into()];
-        args.extend(keys.iter().map(OsString::from));
-        args.extend(["--recipient".into(), recipient.into()]);
-        self.run(args)
+        self.run(confirm_args(recipient, keys))
     }
 }
 

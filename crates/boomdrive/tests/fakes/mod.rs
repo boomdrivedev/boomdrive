@@ -83,8 +83,8 @@ pub enum Call {
     Status,
     /// `status <place>`, in the clone's container where one was named.
     StatusOf(Option<PathBuf>, String),
-    /// `confirm <key>… --recipient <recipient>`: the recipient, then the
-    /// keys in the order given.
+    /// `confirm --recipient=<recipient> -- <key>…`: the recipient, then
+    /// the keys in the order given.
     Confirm(String, Vec<String>),
 }
 

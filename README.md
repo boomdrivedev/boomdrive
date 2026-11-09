@@ -439,7 +439,7 @@ The runner carries the place's status, that record among them, so its
 control plane reads every end of the place from its report. Only once
 its control plane has taken a report holding that status, and its report
 file holds the answer, does the runner confirm the ends the status gives
-pending for it, by `flume --json confirm <key>… --recipient boomdrive`,
+pending for it, by `flume --json confirm --recipient=boomdrive -- <key>…`,
 one call for each launch naming each end's delivery key, keeping nothing
 of the answer. Until then each end stays owed in Flume, so losing the
 runner's report loses no end. A confirmation Flume refuses, or could not
