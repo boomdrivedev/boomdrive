@@ -54,8 +54,8 @@ fn a_retry_not_made_twice() {
     assert_eq!(reported.acts[&Id::new("home/20")].outcome, Outcome::Done);
 }
 
-/// A Flume that reads the report file at every act it is asked, so a test
-/// sees what the file held when each act ran.
+/// A Flume that reads the report file at every act and every collection it
+/// is asked, so a test sees what the file held when each ran.
 struct Watching<'a> {
     flume: &'a FakeFlume,
     file: PathBuf,
@@ -79,6 +79,12 @@ impl Flume for Watching<'_> {
 
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {
         self.flume.status_of(container_dir, place)
+    }
+
+    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
+        let held = boomdrive::report::read(&self.file).unwrap().unwrap();
+        self.held.borrow_mut().push(held);
+        self.flume.collect(record)
     }
 }
 
