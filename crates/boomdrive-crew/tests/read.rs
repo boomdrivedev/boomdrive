@@ -309,6 +309,50 @@ fn a_confirm_is_an_act_on_the_launch_it_names() {
     );
 }
 
+/// The crew-control-plane spec's "A confirm naming no recipient, two, or
+/// no delivery".
+#[test]
+fn a_confirm_naming_no_recipient_two_or_no_delivery_is_refused() {
+    let state = State::new();
+    let confirm =
+        |n: u64, more: &[(&str, &str)]| act(n, "confirm", Some("host-a"), "unit/a", 12, more);
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    confirm(18, &[("Delivery", K1)]),
+                    confirm(19, &[("Recipient", "scratch/planner")]),
+                    confirm(
+                        20,
+                        &[
+                            ("Recipient", "scratch/planner"),
+                            ("Recipient", "scratch/reviewer"),
+                            ("Delivery", K1),
+                        ],
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    for (id, why) in [
+        ("home/18", "it names no Recipient"),
+        ("home/19", "it names no Delivery"),
+        ("home/20", "it names Recipient twice"),
+    ] {
+        let Want::Act(refused) = want(&pulled, id) else {
+            panic!("{id} is not one the runner refuses")
+        };
+        let number = id.trim_start_matches("home/");
+        assert_eq!(refused.launch.as_str(), format!("request {number} ({why})"));
+    }
+}
+
 #[test]
 fn an_act_crew_does_not_write() {
     let state = State::new();
