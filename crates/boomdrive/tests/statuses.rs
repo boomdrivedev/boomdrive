@@ -635,7 +635,7 @@ fn the_users_own_place() {
             Call::Act(place, _) | Call::StatusOf(_, place) | Call::Collect(place) => {
                 Some(place.as_str())
             }
-            Call::Launch(_) | Call::Status => None,
+            Call::Launch(_) | Call::Status | Call::Confirm(..) => None,
         };
         assert!(
             !matches!(named, Some("/places/mine" | "/places/theirs")),

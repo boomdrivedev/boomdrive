@@ -75,7 +75,7 @@ fn naming(calls: &[Call], place: &str) -> Vec<Call> {
         .filter(|call| match call {
             Call::Act(at, _) | Call::StatusOf(_, at) => at == place,
             Call::Collect(record) => record.split_once('@').map(|(at, _)| at) == Some(place),
-            Call::Launch(_) | Call::Status => false,
+            Call::Launch(_) | Call::Status | Call::Confirm(..) => false,
         })
         .cloned()
         .collect()

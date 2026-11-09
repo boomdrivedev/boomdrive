@@ -190,34 +190,65 @@ impl FakeFlume {
     }
 
     /// The place at `place`, landed at commit `c0ffee`, tidied at `at`
-    /// while an end of it is pending for `scratch/planner`: Flume keeps its
+    /// while its landing is pending for `scratch/planner`: Flume keeps its
     /// record as `<place>@<at>`, and answers `status <place>` with it.
     pub fn tidy_pending(&self, place: &str, at: u64) {
         self.tidy_held(place, at, &["scratch/planner"]);
     }
 
     /// The place at `place`, landed at commit `c0ffee`, tidied at `at`
-    /// while an end of it is pending for each of `pending_for`: Flume keeps
-    /// its record as `<place>@<at>`, and answers `status <place>` with it.
+    /// while its landing, the end `submission/1/landed`, is pending for
+    /// each of `pending_for`: Flume keeps its record as `<place>@<at>`, and
+    /// answers `status <place>` with it.
     pub fn tidy_held(&self, place: &str, at: u64, pending_for: &[&str]) {
         self.tidy_over(
             place,
             json!({ "landed": { "commit": "c0ffee" } }),
+            "submission/1/landed",
             at,
             pending_for,
         );
     }
 
     /// The place at `place`, its work over as `over`, tidied at `at` while
-    /// an end of it is pending for each of `pending_for`.
-    fn tidy_over(&self, place: &str, over: Value, at: u64, pending_for: &[&str]) {
-        let tidied = json!({ "tidied": {
+    /// its end `key` is pending for each of `pending_for`: the record's
+    /// phase is pending for each recipient an end of it is pending for.
+    fn tidy_over(&self, place: &str, over: Value, key: &str, at: u64, pending_for: &[&str]) {
+        self.end(place, key, pending_for);
+        let mut state = self.state.borrow_mut();
+        let entry = state
+            .places
+            .iter_mut()
+            .find(|entry| entry["place"] == place)
+            .expect("the place stands");
+        entry["phase"] = json!({ "tidied": {
             "over": over,
             "at": at,
-            "pending_for": pending_for,
+            "pending_for": pending_of(entry),
         } });
-        self.set(place, "phase", tidied);
-        self.set(place, "place", json!(format!("{place}@{at}")));
+        entry["place"] = json!(format!("{place}@{at}"));
+    }
+
+    /// Adds to the place standing at `place` its end `key`, pending for
+    /// each of `pending_for`, its delivery keyed `<name>/t/<key>`, `<name>`
+    /// the place's last path segment.
+    pub fn end(&self, place: &str, key: &str, pending_for: &[&str]) {
+        let mut state = self.state.borrow_mut();
+        let entry = state
+            .places
+            .iter_mut()
+            .find(|entry| entry["place"] == place)
+            .expect("the place stands");
+        let name = place.rsplit('/').next().unwrap_or(place);
+        let end = json!({
+            "key": key,
+            "delivery": format!("{name}/t/{key}"),
+            "pending_for": pending_for,
+        });
+        match entry["ends"].as_array_mut() {
+            Some(ends) => ends.push(end),
+            None => entry["ends"] = json!([end]),
+        }
     }
 
     /// The place at `place` tidied, with nothing pending: no listing holds
@@ -406,6 +437,23 @@ pub fn place_of(name: &str) -> String {
     format!("/places/{name}")
 }
 
+/// Each recipient an end of the place whose entry is `entry` is pending
+/// for, in the order of its ends.
+fn pending_of(entry: &Value) -> Vec<String> {
+    let mut pending: Vec<String> = Vec::new();
+    for end in entry["ends"].as_array().into_iter().flatten() {
+        for name in end["pending_for"].as_array().into_iter().flatten() {
+            if let Some(name) = name
+                .as_str()
+                .filter(|name| !pending.iter().any(|n| n == name))
+            {
+                pending.push(name.to_string());
+            }
+        }
+    }
+    pending
+}
+
 impl Flume for FakeFlume {
     fn launch(&self, args: &LaunchArgs, _brief_dir: &Path) -> Result<Reply, Unrun> {
         if let Some(unrun) = self.call(Call::Launch(args.clone())) {
@@ -422,6 +470,7 @@ impl Flume for FakeFlume {
             "name": args.name,
             "mark": args.mark,
             "phase": "live",
+            "ends": [],
             "priority": args.priority.unwrap_or(0),
             "stream": { "name": args.stream.as_deref().unwrap_or("default"), "from": "launch" },
         });
@@ -460,7 +509,8 @@ impl Flume for FakeFlume {
                     state.tidied_at += 1;
                     100 + state.tidied_at
                 };
-                self.tidy_over(place, json!(over), at, &[flume::RECIPIENT]);
+                let key = format!("over/{over}");
+                self.tidy_over(place, json!(over), &key, at, &[flume::RECIPIENT]);
             }
             Act::Drop | Act::Done => self.tidy(place),
             Act::Priority(priority) => self.set(place, "priority", json!(priority)),
@@ -531,10 +581,44 @@ impl Flume for FakeFlume {
         if let Some(reply) = scripted {
             return reply;
         }
-        let confirmed: Vec<Value> = keys
-            .iter()
-            .map(|key| json!({ "key": key, "at": "2026-11-09T12:00:00Z", "before": false }))
-            .collect();
+        let mut state = self.state.borrow_mut();
+        let mut confirmed = Vec::new();
+        for key in keys {
+            let under = |entry: &Value| {
+                entry["ends"]
+                    .as_array()
+                    .is_some_and(|ends| ends.iter().any(|end| end["delivery"] == key.as_str()))
+            };
+            let Some(at) = state.places.iter().position(under) else {
+                return Ok(Reply::Refused(format!(
+                    "the delivery key {key} was not confirmed as {recipient}: \
+                     no delivery is under it"
+                )));
+            };
+            let entry = &mut state.places[at];
+            let mut before = true;
+            for end in entry["ends"].as_array_mut().into_iter().flatten() {
+                if end["delivery"] != key.as_str() {
+                    continue;
+                }
+                if let Some(pending) = end["pending_for"].as_array_mut() {
+                    let was = pending.len();
+                    pending.retain(|name| name != recipient);
+                    before = pending.len() == was;
+                }
+            }
+            if entry["phase"].get("tidied").is_some() {
+                let pending = pending_of(entry);
+                // A record pending for nobody is removed, as the settle
+                // after would remove it.
+                if pending.is_empty() {
+                    state.places.remove(at);
+                } else {
+                    entry["phase"]["tidied"]["pending_for"] = json!(pending);
+                }
+            }
+            confirmed.push(json!({ "key": key, "at": "2026-11-09T12:00:00Z", "before": before }));
+        }
         Ok(Reply::Given(printed(&json!({ "confirmed": confirmed }))))
     }
 
