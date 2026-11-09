@@ -7,7 +7,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 1. The interface names a confirm
 
-- [ ] 1.1 `boomdrive-control`'s `ActSort` gains `Confirm { recipient: String, deliveries: Vec<String> }`, whose serde form is `{"confirm": {"recipient": …, "deliveries": […]}}`. Its documentation says it asks that each end of the launch's place it names by its delivery's key be taken as delivered to the one recipient it names, in the control plane's order, and that the runner carries it out as Flume's confirm of exactly those keys, each held to the launch's place (core.56). It also says version 1 of the hosted protocol names no confirm (design Decisions 1 and 7; Task notes 1.1). The binary's crate builds again at 2.1. True when `devenv shell -- cargo test -p boomdrive-control --test json an_act_of_each_sort` passes, proving the control-plane-interface spec's "An act of each sort".
+- [x] 1.1 `boomdrive-control`'s `ActSort` gains `Confirm { recipient: String, deliveries: Vec<String> }`, whose serde form is `{"confirm": {"recipient": …, "deliveries": […]}}`. Its documentation says it asks that each end of the launch's place it names by its delivery's key be taken as delivered to the one recipient it names, in the control plane's order, and that the runner carries it out as Flume's confirm of exactly those keys, each held to the launch's place (core.56). It also says version 1 of the hosted protocol names no confirm (design Decisions 1 and 7; Task notes 1.1). The binary's crate builds again at 2.1. True when `devenv shell -- cargo test -p boomdrive-control --test json an_act_of_each_sort` passes, proving the control-plane-interface spec's "An act of each sort".
 
 ## 2. The runner carries out a confirm
 
