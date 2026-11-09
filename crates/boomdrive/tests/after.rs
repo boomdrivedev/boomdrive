@@ -3,8 +3,8 @@
 //! run (design Decisions 7 and 9; the work-into-flume spec's "An offer
 //! waits for each launch it comes after", "A priority or a drop of a
 //! launch not yet launched is answered from its report" and "A retry, a
-//! land or a done of a launch not launched, and an act on another's
-//! launch, are refused"; Task notes 4.3; core.53).
+//! land, a confirm or a done of a launch not launched, and an act on
+//! another's launch, are refused"; Task notes 4.3; core.53, core.56).
 
 mod fakes;
 
@@ -287,6 +287,33 @@ fn a_retry_or_a_done_of_a_held_launch() {
     );
     assert_eq!(acted(&bench, "b/done"), (Outcome::Refused, Some(words)));
     assert_eq!(bench.flume.launches().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.acts(), []);
+}
+
+/// The work-into-flume spec's "A confirm of a held launch": the confirm
+/// is refused with the words a retry of it is given, and runs no `flume
+/// confirm` (core.56).
+#[test]
+fn a_confirm_of_a_held_launch() {
+    let bench = Bench::new();
+    let confirm = ActSort::Confirm {
+        recipient: "scratch/planner".to_string(),
+        deliveries: vec!["change--a/0a1b2c3d/stage/code/1/delivered".to_string()],
+    };
+    let mut plane = Fake::holding(vec![
+        Want::Offer(offer("a", "a")),
+        after("b", "b", &["a"]),
+        act("b/retry", "b", retry()),
+        act("b/confirm", "b", confirm),
+    ]);
+    bench.pass(&mut plane);
+    let retried = acted(&bench, "b/retry");
+    let words = format!(
+        "b is held, not launched: waits on a (launched at {}, not landed)",
+        place_of("a")
+    );
+    assert_eq!(retried, (Outcome::Refused, Some(words)));
+    assert_eq!(acted(&bench, "b/confirm"), retried);
     assert_eq!(bench.flume.acts(), []);
 }
 
