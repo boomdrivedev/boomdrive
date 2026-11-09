@@ -91,7 +91,7 @@ The gate SHALL run the set's own Flume and sluice, the flake's packages of its l
 
 #### Scenario: The set's Flume takes the runner as a recipient
 
-- **WHEN** the set's Flume, on a scratch host, is asked `--json launch` with `--recipient scratch/planner --recipient boomdrive` in a folder that holds no repository, and `--json inbox <a place> --recipient boomdrive` for a place the host does not hold, each as the runner asks it
+- **WHEN** the set's Flume, on a scratch host, is asked `--json launch` with `--recipient scratch/planner --recipient boomdrive` in a folder that holds no repository, and `--json confirm <a key no end is under> --recipient boomdrive`, each as the runner asks it
 - **THEN** each exits 1 with Flume's refusal, which the runner reads as Flume's reason, and neither is a usage error; and the set's Flume is no older than the least the runner names
 
 #### Scenario: A submission sluice has no record of

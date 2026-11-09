@@ -495,52 +495,24 @@ The runner's report SHALL hold, with each launch it answers, the repository the 
 - **WHEN** offer `a` of a launch in `agentplot/flume` is launched, and a report file of before holds launch `b` launched with no repository
 - **THEN** the report file's `a` names `agentplot/flume`, and its `b` names the repository of `b`'s offer once a pull gives `b`
 
-### Requirement: A place's end is held for the runner until its report holds it
+### Requirement: An end owed to the runner is confirmed by its key once its control plane has taken it
 
-Where Flume holds a place's record for the runner after its tidy, `<location>@<at>`, the runner SHALL carry it as the place's status, as it carries any. Once the report file holds that status, in the control pass that carried it, the runner SHALL collect the record by `flume --json inbox <location>@<at> --recipient boomdrive`, naming no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54; record 0030).
+Only once the answer to a report the pass sent names the launch's status taken, and the report file holds the part's share after that answer, SHALL the runner confirm the ends the status gives pending for `boomdrive`. It SHALL run `flume --json confirm <key>… --recipient boomdrive` once for each launch, naming the delivery key of each such end in the status's order and no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54).
 
 #### Scenario: A landing held for the runner
 
-- **WHEN** the runner holds launch `a`, which names the recipient `scratch/planner`, at place `P`, carried live, and between two passes `P` lands and Flume tidies it, holding its record `P@<at>` for `boomdrive` alone
-- **THEN** the next pass carries Flume's answer for `P` as `a`'s status, naming `P@<at>`, tidied and landed, then runs `flume --json inbox P@<at> --recipient boomdrive` once, and the report file held that status when it ran; and at the pass after, Flume refusing `P`'s status, that status stands, not listed, and no inbox is run
+- **WHEN** the runner holds launch `a`, which names the recipient `scratch/planner`, at place `P`, carried live, and between two passes `P` lands and Flume tidies it, holding its record `P@<at>` with its landing pending for `boomdrive` alone
+- **THEN** the next pass carries Flume's answer for `P` as `a`'s status, naming `P@<at>`, tidied and landed, reports it, and, the fake control plane's answer naming `a`'s status taken, runs `flume --json confirm <the landing's key> --recipient boomdrive` once and no `flume inbox`; and at the pass after, Flume refusing `P`'s status, that status stands, not listed, and nothing is confirmed
 
 #### Scenario: A drop held for the runner
 
-- **WHEN** an act drops launch `a`, which names the recipient `scratch/planner`, at place `P`, and Flume tidies `P`, holding its record `P@<at>` for `boomdrive`
-- **THEN** the pass carries `P@<at>`, tidied and dropped, as `a`'s status, and collects it once
+- **WHEN** an act drops launch `a`, which names the recipient `scratch/planner`, at place `P`, and Flume tidies `P`, holding `P@<at>` with its end `over/dropped` pending for `boomdrive`
+- **THEN** the pass carries `P@<at>`, tidied and dropped, as `a`'s status, and once the answer to its report names that status taken, confirms the drop's key once
 
-### Requirement: Only a record pending for the runner is collected
+#### Scenario: A live place's end
 
-The runner SHALL collect a record only for a launch the pull gives, whose repository's clone stands, and whose carried status is listed and reads the place tidied, its `pending_for` naming `boomdrive`. It SHALL collect nothing for a launch whose lease the control plane refused, nor in a pass whose report could not be saved (core.10, core.25).
-
-#### Scenario: A record pending for a recipient too
-
-- **WHEN** Flume holds `P@<at>` for `boomdrive` and for `scratch/planner`, and the runner collects it
-- **THEN** at the next pass `P@<at>` is carried as Flume gives it, pending for `scratch/planner` alone, listed, and no second inbox is run
-
-#### Scenario: A record pending for no end of the runner's
-
-- **WHEN** the runner carries `P@<at>`, tidied and landed, pending for `scratch/planner` alone, as for a place launched before the runner named itself a recipient
-- **THEN** no inbox is run for it
-
-#### Scenario: A lease refused before its end was collected
-
-- **WHEN** the fake control plane refuses the report of launch `a` at place `P` as no longer this runner's, and Flume then tidies `P`, holding `P@<at>` for `boomdrive`
-- **THEN** `a` leaves the report, and no inbox names `P@<at>` at the passes after
-
-### Requirement: A collection Flume refuses or cannot run is made again
-
-Where Flume refuses a collection, the runner SHALL say one line, prefixed with the launch's id, naming the record and Flume's words; where Flume cannot be run for it, one line naming the record and why. It SHALL collect the record again at the next pass.
-
-#### Scenario: A collection Flume could not run
-
-- **WHEN** the runner carries `P@<at>` held for `boomdrive`, and `flume` cannot be run for the inbox
-- **THEN** the pass says one line beginning `a:` that names `P@<at>` and why; and the next pass, Flume running, collects it
-
-#### Scenario: A collection Flume refuses
-
-- **WHEN** the runner carries `P@<at>` held for `boomdrive`, and Flume refuses the inbox
-- **THEN** the pass says one line beginning `a:` that names `P@<at>` and Flume's words; and the next pass collects it again
+- **WHEN** the runner holds launch `a` at place `P`, live, and Flume gives `P` a stage's end pending for `boomdrive` and `scratch/planner`
+- **THEN** the pass carries the status and, once the answer to its report names it taken, confirms that end's key as `boomdrive`; and the next pass, Flume giving the end pending for `scratch/planner` alone, confirms nothing
 
 ### Requirement: What waits on a place reads its landing from the record Flume holds
 
@@ -553,16 +525,16 @@ An offer whose `after` names a launch whose place Flume has tidied, landed, and 
 
 ### Requirement: No launch is made with a Flume older than the least
 
-The least Flume the runner runs with SHALL be `0.20.0`, the first that holds a drop's and a done's end for a recipient no pane holds. Where the first line of `flume --version`, as the hello reads it, names an older version, or none, the runner SHALL launch no offer, leaving each unanswered, or held where it was held, while acts and statuses go on. Where Flume is missing, a launch SHALL be tried as before (core.38; record 0030).
+The least Flume the runner runs with SHALL be `0.21.0`, the first whose ends a recipient confirms by key. Where the first line of `flume --version`, as the hello reads it, names an older version, or none, the runner SHALL launch no offer, leaving each unanswered, or held where it was held, while acts and statuses go on. Where Flume is missing, a launch SHALL be tried as before (core.38; record 0030 as amended on 2026-11-09).
 
 #### Scenario: A Flume older than the least
 
-- **WHEN** an offer `a` is pulled with room for it, and the program the runner runs as `flume` prints `flume 0.18.0` for `--version`
+- **WHEN** an offer `a` is pulled with room for it, and the program the runner runs as `flume` prints `flume 0.20.0` for `--version`
 - **THEN** no `flume launch` is run, and `a` has no answer in the report
 
 #### Scenario: A Flume at the least
 
-- **WHEN** the same offer is pulled again, and `flume --version` now prints `flume 0.20.0`
+- **WHEN** the same offer is pulled again, and `flume --version` now prints `flume 0.21.0`
 - **THEN** `a` is launched
 
 ### Requirement: A Flume older than the least is said once
@@ -571,5 +543,62 @@ The runner SHALL say one line naming what Flume said for `--version` and the lea
 
 #### Scenario: Said once while it lasts
 
-- **WHEN** two passes in turn read `flume 0.18.0` for `--version`, with an offer pulled at each
-- **THEN** the first says one line naming `flume 0.18.0` and `0.20.0`, and the second says nothing of it
+- **WHEN** two passes in turn read `flume 0.20.0` for `--version`, with an offer pulled at each
+- **THEN** the first says one line naming `flume 0.20.0` and `0.21.0`, and the second says nothing of it
+
+### Requirement: A place's ends are owed to the runner until its control plane has taken them
+
+The runner SHALL carry each place's status as it carries any, a record Flume holds after the place's tidy, `<location>@<at>`, among them. Each end the status gives pending for `boomdrive`, of a live place or of a held record, SHALL stay owed in Flume until the control plane has taken a report holding that status. It SHALL run no `flume inbox` and no `flume wait` (core.11, core.54; record 0030 as amended on 2026-11-09; weir record 0006; Flume record 0061).
+
+#### Scenario: A report not taken
+
+- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the fake control plane refuses the pass's report
+- **THEN** nothing is confirmed and `P@<at>` stays pending for `boomdrive`; and the next pass, its report taken, confirms the landing's key
+
+#### Scenario: A status not taken
+
+- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the fake control plane takes the pass's report but leaves `a`'s status
+- **THEN** nothing of `P@<at>` is confirmed; and at a later pass whose answer names `a`'s status taken, its landing's key is confirmed
+
+#### Scenario: The report file lost
+
+- **WHEN** the fake control plane took a report carrying `a` at `P` live, `P` then lands and is tidied, held for `boomdrive`, the next pass's report is refused, and the report file is then removed
+- **THEN** the pass after takes `a` from its pull, carries `P@<at>` from Flume as `a`'s status, still pending for `boomdrive`, and confirms its landing's key once the answer to its report names that status taken
+
+### Requirement: Only an end owed to the runner, in a status its control plane took, is confirmed
+
+The runner SHALL confirm only ends of a launch the pull gives, answered `launched` at a place whose clone stands, whose carried status is listed and named taken in the answer to the pass's report, the report file holding the part's share after that answer. It SHALL confirm nothing of a launch whose lease was refused or which was let go, nor while Flume is older than the least (core.10, core.25, core.38).
+
+#### Scenario: A record pending for a recipient too
+
+- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive` and for `scratch/planner`, and the runner confirms it
+- **THEN** at the next pass `P@<at>` is carried as Flume gives it, pending for `scratch/planner` alone, listed, and nothing more is confirmed
+
+#### Scenario: A record pending for no end of the runner's
+
+- **WHEN** the runner carries `P@<at>`, tidied and landed, its landing pending for `scratch/planner` alone, as for a place launched before the runner named itself a recipient
+- **THEN** nothing is confirmed for it
+
+#### Scenario: A lease refused before its end was confirmed
+
+- **WHEN** the fake control plane refuses the report of launch `a` at place `P` as no longer this runner's, and Flume then tidies `P`, holding `P@<at>` for `boomdrive`
+- **THEN** `a` leaves the report, and no confirmation names a key of `P@<at>` at the passes after
+
+#### Scenario: Nothing confirmed below the least
+
+- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the program the runner runs as `flume` prints `flume 0.20.0` for `--version`
+- **THEN** the pass carries `P@<at>` as `a`'s status and reports it, and runs no `flume confirm`
+
+### Requirement: A confirmation Flume refuses or cannot run is made again
+
+Where Flume refuses a confirmation, the runner SHALL say one line, prefixed with the launch's id, naming the place and Flume's words; where Flume cannot be run for it, one line naming the place and why. It SHALL confirm the ends the carried status still gives pending for `boomdrive` again at a later pass whose report is taken.
+
+#### Scenario: A confirmation Flume could not run
+
+- **WHEN** the runner carries `P@<at>` held for `boomdrive`, its report is taken, and `flume` cannot be run for the confirmation
+- **THEN** the pass says one line beginning `a:` that names `P@<at>` and why; and the next pass, Flume running, confirms the landing's key
+
+#### Scenario: A confirmation Flume refuses
+
+- **WHEN** the runner carries `P@<at>` held for `boomdrive`, its report is taken, and Flume refuses the confirmation
+- **THEN** the pass says one line beginning `a:` that names `P@<at>` and Flume's words; and the next pass confirms the landing's key again

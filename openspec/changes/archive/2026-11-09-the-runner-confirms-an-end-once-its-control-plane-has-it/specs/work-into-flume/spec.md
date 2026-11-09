@@ -3,13 +3,15 @@
 ## RENAMED Requirements
 
 - FROM: `### Requirement: A place's end is held for the runner until its report holds it`
-- TO: `### Requirement: A place's ends are owed to the runner until its control plane has taken them`
+- TO: `### Requirement: An end owed to the runner is confirmed by its key once its control plane has taken it`
 
 Each end a carried status gives pending for `boomdrive`, of a live place or of a record Flume holds after its tidy, SHALL stay owed in Flume until the control plane has taken a report holding that status. The runner SHALL then confirm those ends by `flume --json confirm <key>… --recipient boomdrive`, once for each launch, the keys in the status's order, reading the answer only by Flume's exit and keeping nothing of it. It SHALL run no `flume inbox` (core.11, core.54; record 0030 as amended on 2026-11-09).
 
-### Requirement: A place's ends are owed to the runner until its control plane has taken them
+## MODIFIED Requirements
 
-The runner SHALL carry each place's status as it carries any, a record Flume holds after the place's tidy, `<location>@<at>`, among them. Each end the status gives pending for `boomdrive`, of a live place or of a held record, SHALL stay owed in Flume until the control plane has taken a report holding that status. Only once a report the pass sent is answered, the answer naming the launch's status taken, and the report file holds the part's share after that answer, SHALL the runner confirm those ends. It SHALL run `flume --json confirm <key>… --recipient boomdrive` once for each launch, naming the delivery key of each such end in the status's order and no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it. It SHALL run no `flume inbox` and no `flume wait` (core.11, core.54; record 0030 as amended on 2026-11-09; weir record 0006; Flume record 0061).
+### Requirement: An end owed to the runner is confirmed by its key once its control plane has taken it
+
+Only once the answer to a report the pass sent names the launch's status taken, and the report file holds the part's share after that answer, SHALL the runner confirm the ends the status gives pending for `boomdrive`. It SHALL run `flume --json confirm <key>… --recipient boomdrive` once for each launch, naming the delivery key of each such end in the status's order and no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54).
 
 #### Scenario: A landing held for the runner
 
@@ -25,21 +27,6 @@ The runner SHALL carry each place's status as it carries any, a record Flume hol
 
 - **WHEN** the runner holds launch `a` at place `P`, live, and Flume gives `P` a stage's end pending for `boomdrive` and `scratch/planner`
 - **THEN** the pass carries the status and, once the answer to its report names it taken, confirms that end's key as `boomdrive`; and the next pass, Flume giving the end pending for `scratch/planner` alone, confirms nothing
-
-#### Scenario: A report not taken
-
-- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the fake control plane refuses the pass's report
-- **THEN** nothing is confirmed and `P@<at>` stays pending for `boomdrive`; and the next pass, its report taken, confirms the landing's key
-
-#### Scenario: A status not taken
-
-- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the fake control plane takes the pass's report but leaves `a`'s status
-- **THEN** nothing of `P@<at>` is confirmed; and at a later pass whose answer names `a`'s status taken, its landing's key is confirmed
-
-#### Scenario: The report file lost
-
-- **WHEN** the fake control plane took a report carrying `a` at `P` live, `P` then lands and is tidied, held for `boomdrive`, the next pass's report is refused, and the report file is then removed
-- **THEN** the pass after takes `a` from its pull, carries `P@<at>` from Flume as `a`'s status, still pending for `boomdrive`, and confirms its landing's key once the answer to its report names that status taken
 
 ### Requirement: No launch is made with a Flume older than the least
 
@@ -79,6 +66,25 @@ The runner SHALL say one line naming what Flume said for `--version` and the lea
 **Migration**: The work-into-flume spec's "A confirmation Flume refuses or cannot run is made again" says how a confirmation Flume refused, or could not run, is said and made again.
 
 ## ADDED Requirements
+
+### Requirement: A place's ends are owed to the runner until its control plane has taken them
+
+The runner SHALL carry each place's status as it carries any, a record Flume holds after the place's tidy, `<location>@<at>`, among them. Each end the status gives pending for `boomdrive`, of a live place or of a held record, SHALL stay owed in Flume until the control plane has taken a report holding that status. It SHALL run no `flume inbox` and no `flume wait` (core.11, core.54; record 0030 as amended on 2026-11-09; weir record 0006; Flume record 0061).
+
+#### Scenario: A report not taken
+
+- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the fake control plane refuses the pass's report
+- **THEN** nothing is confirmed and `P@<at>` stays pending for `boomdrive`; and the next pass, its report taken, confirms the landing's key
+
+#### Scenario: A status not taken
+
+- **WHEN** Flume holds `P@<at>` with its landing pending for `boomdrive`, and the fake control plane takes the pass's report but leaves `a`'s status
+- **THEN** nothing of `P@<at>` is confirmed; and at a later pass whose answer names `a`'s status taken, its landing's key is confirmed
+
+#### Scenario: The report file lost
+
+- **WHEN** the fake control plane took a report carrying `a` at `P` live, `P` then lands and is tidied, held for `boomdrive`, the next pass's report is refused, and the report file is then removed
+- **THEN** the pass after takes `a` from its pull, carries `P@<at>` from Flume as `a`'s status, still pending for `boomdrive`, and confirms its landing's key once the answer to its report names that status taken
 
 ### Requirement: Only an end owed to the runner, in a status its control plane took, is confirmed
 
