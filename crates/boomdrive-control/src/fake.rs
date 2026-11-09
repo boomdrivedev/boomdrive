@@ -2,6 +2,8 @@
 //! the wants and terminals a test sets, refuses a pull or a report when
 //! the test says so, records each hello and report, gives the report it
 //! holds back at every pull, and lets go and refuses what the test names.
+//! It takes each carried status of a report it takes, but those the test
+//! leaves.
 //! It owns every id, or, made by [`Fake::owning`], those under one prefix
 //! alone, so a test makes as many parts as it needs.
 
@@ -23,6 +25,8 @@ pub struct Fake {
     held: Option<Report>,
     let_go: BTreeSet<Id>,
     refused: BTreeMap<Id, String>,
+    /// The launches whose carried statuses it does not take.
+    left_statuses: BTreeSet<Id>,
     /// The prefix of every id it owns, none where it owns every id.
     owning: Option<String>,
 }
@@ -105,6 +109,18 @@ impl Fake {
         self.refused.insert(id, words.to_string());
     }
 
+    /// Leaves the carried status of launch `id`: an answer to a report
+    /// holding it does not name it taken, until [`Fake::take_status`].
+    pub fn leave_status(&mut self, id: Id) {
+        self.left_statuses.insert(id);
+    }
+
+    /// Takes the carried status of launch `id` again, as it takes every
+    /// other.
+    pub fn take_status(&mut self, id: Id) {
+        self.left_statuses.remove(&id);
+    }
+
     /// Each hello a pull the fake answered was handed, in order.
     pub fn hellos(&self) -> &[Hello] {
         &self.hellos
@@ -154,6 +170,17 @@ impl ControlPlane for Fake {
             .chain(report.inboxes.keys())
             .chain(report.previews.keys())
             .collect();
+        let statuses_taken = report
+            .launches
+            .iter()
+            .filter(|(id, launched)| {
+                launched.status.is_some()
+                    && !self.left_statuses.contains(*id)
+                    && !self.let_go.contains(*id)
+                    && !self.refused.contains_key(*id)
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
         let reported = Reported {
             let_go: ids
                 .iter()
@@ -164,7 +191,7 @@ impl ControlPlane for Fake {
                 .iter()
                 .filter_map(|id| Some(((*id).clone(), self.refused.get(*id)?.clone())))
                 .collect(),
-            statuses_taken: BTreeSet::new(),
+            statuses_taken,
         };
         let mut held = report.clone();
         for id in reported.let_go.iter().chain(reported.refused.keys()) {

@@ -14,7 +14,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 2. The interface names the statuses taken
 
 - [x] 2.1 `Reported` gains `statuses_taken: BTreeSet<Id>`, serde `default` and skipped where empty, documented as each launch whose carried status the control plane took with the report the answer answers. This proves the control-plane-interface spec's "An answer from before" (design Decision 1; Task notes 2.1). True when `devenv shell -- cargo test -p boomdrive-control --test json a_reports_answer` passes, running `a_reports_answer` and `a_reports_answer_from_before_reads`.
-- [ ] 2.2 The fake control plane names taken each launch of a report that holds a status, but those `Fake::leave_status(id)` leaves until `Fake::take_status(id)`. This proves the control-plane-interface spec's "A status taken and one left" (design Decision 2). True when `devenv shell -- cargo test -p boomdrive-control --test fake a_status_taken_and_one_left` passes.
+- [x] 2.2 The fake control plane names taken each launch of a report that holds a status, but those `Fake::leave_status(id)` leaves until `Fake::take_status(id)`. This proves the control-plane-interface spec's "A status taken and one left" (design Decision 2). True when `devenv shell -- cargo test -p boomdrive-control --test fake a_status_taken_and_one_left` passes.
 
 ## 3. Each implementation says what it took
 
