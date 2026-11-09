@@ -108,3 +108,26 @@ fn flumes_refusal_is_the_confirms_answer() {
     assert_eq!(acted.outcome, Outcome::Refused);
     assert_eq!(acted.words, Some(words));
 }
+
+/// The work-into-flume spec's "A key of another place".
+#[test]
+fn a_key_of_no_end_of_the_launchs_place_is_refused() {
+    let bench = Bench::new();
+    let offers = || vec![Want::Offer(offer("a", "a")), Want::Offer(offer("b", "b"))];
+    let mut plane = Fake::holding(offers());
+    bench.pass(&mut plane);
+    let (p, q) = (place_of("a"), place_of("b"));
+    bench.flume.set(&p, "ends", fakes::ends(&[K1]));
+    bench.flume.set(&q, "ends", fakes::ends(&[K3]));
+    let mut wants = offers();
+    wants.push(act("a/confirm", "a", confirm("scratch/planner", &[K1, K3])));
+    plane.set_wants(wants);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    let acted = &bench.report().acts[&Id::new("a/confirm")];
+    assert_eq!(acted.outcome, Outcome::Refused);
+    let words = acted.words.as_deref().expect("the runner's words");
+    assert!(words.contains(K3) && words.contains(&p), "{words}");
+    assert!(!words.contains(K1), "{words}");
+    assert_eq!(bench.flume.acts(), []);
+}

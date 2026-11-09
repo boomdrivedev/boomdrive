@@ -755,11 +755,13 @@ impl Work<'_> {
     /// place the pass's listing does not hold is first asked of Flume's
     /// status, which settles nothing: where Flume refuses it, that refusal
     /// is the act's answer, as Flume gave it, and the act's command is not
-    /// run (core.51). Otherwise the act is Flume's own command on the
-    /// place, never forced; once the next pass is due, the pass runs none
-    /// but its first, and leaves the act for that pass (core.50). Where
-    /// Flume could not be run, nothing is kept, and the next pass carries
-    /// it out.
+    /// run (core.51). A confirm naming a key that is the delivery of no end
+    /// of the place, as the listing or that status gives it, is refused in
+    /// the runner's words, naming the key, and runs nothing (core.56).
+    /// Otherwise the act is Flume's own command on the place, never forced;
+    /// once the next pass is due, the pass runs none but its first, and
+    /// leaves the act for that pass (core.50). Where Flume could not be
+    /// run, nothing is kept, and the next pass carries it out.
     fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
         let unrun = |words: String, say: &mut dyn FnMut(String)| {
             let what = sort(&act.what);
@@ -768,14 +770,23 @@ impl Work<'_> {
                 act.id, act.launch
             ));
         };
-        if !self.listed(place) {
+        let status = if self.listed(place) {
+            None
+        } else {
             match self.carrier.flume.status_of(None, place) {
-                Ok(Reply::Given(_)) => {}
+                Ok(Reply::Given(status)) => Some(status),
                 Ok(Reply::Refused(words)) => {
                     self.acted(act, Outcome::Refused, Some(words), Some(place), say);
                     return;
                 }
                 Err(Unrun(words)) => return unrun(words, say),
+            }
+        };
+        if let ActSort::Confirm { deliveries, .. } = &act.what {
+            if let Some(key) = self.unheld(deliveries, place, status.as_deref()) {
+                let words = format!("{key} is the delivery of no end of {place} as Flume gives it");
+                self.acted(act, Outcome::Refused, Some(words), None, say);
+                return;
             }
         }
         if self.acts_run > 0 && (self.carrier.due)() {
@@ -791,6 +802,27 @@ impl Work<'_> {
             }
             Err(Unrun(words)) => unrun(words, say),
         }
+    }
+
+    /// The first of `keys` that is the delivery of no end of the place at
+    /// `place`, as the pass's listing gives its entry, else `status`,
+    /// Flume's answer to the place's status, where the listing does not
+    /// hold it (core.56). The runner reads Flume's own field, and judges
+    /// nothing of the end: whom it is owed and whether it is owed are
+    /// Flume's to answer (Flume's 43).
+    fn unheld<'k>(&self, keys: &'k [String], place: &str, status: Option<&str>) -> Option<&'k str> {
+        let answer = status.and_then(|status| serde_json::from_str::<Value>(status).ok());
+        let entry = match &answer {
+            Some(answer) => facts::entry(answer, place),
+            None => self
+                .listing
+                .as_ref()
+                .and_then(|listing| facts::entry(listing, place)),
+        };
+        let held = entry.map(facts::deliveries).unwrap_or_default();
+        keys.iter()
+            .map(String::as_str)
+            .find(|key| !held.contains(key))
     }
 
     /// Whether the pass's listing holds the place at `place`, standing or
