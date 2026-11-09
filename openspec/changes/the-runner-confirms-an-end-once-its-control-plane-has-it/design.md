@@ -6,7 +6,8 @@ See proposal.md for why. The runner confirms each end Flume owes it only once it
 
 What stands:
 
-- **This repository**, at `0859e14`.
+- **This repository**, at `5fafc2e`, the bolt holding `the-runner-carries-a-control-planes-confirm` (#67).
+  - `Act::Confirm { recipient, keys }` runs Flume's confirm of a control plane's confirm by `flume::confirm_args`, `confirm --recipient=<name> -- <key>…`. `facts::deliveries(entry)` gives each end's delivery key (core.56).
   - `flume::RECIPIENT` is `"boomdrive"`, named after the recipients of every launch that names any (record 0030). `flume::LEAST` is `(0, 20, 0)`. The `Flume` trait has `launch`, `act`, `status`, `status_of` and `collect(record)`. `Cli::collect` runs `flume --json inbox <record> --recipient boomdrive`. The trait's implementations are `Cli`, `tests/fakes/mod.rs`'s `FakeFlume` and `tests/once.rs`'s `Watching`.
   - `Carrier::pass` (`crates/boomdrive/src/carry.rs`) carries statuses, entries and previews, then saves. Where the save holds, it runs `Work::collect`, opens the pull's terminals, and runs `send`. `send` saves, reports, takes the answer through `reported` (which forgets each id let go or refused), saves again, and gives whether the control plane took the report.
   - `Work::collect` walks the pull's offers in order. For each launch answered `launched` at a place, whose clone is `Keeping::Ready` or `Keeping::Dropped`, whose carried status is listed and whose entry (`carried_entry`) reads `facts::pending_for(entry, RECIPIENT)`, it runs `collect(<the entry's place>)`. A refusal or an unrun call is said in one line.
@@ -78,7 +79,7 @@ Every end owed to the runner is confirmed, a live place's among them, each stage
 
 ### 5. Flume's command line
 
-`Flume::collect` gives way to `Flume::confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun>`. `Cli::confirm` runs `flume --json confirm <key>… --recipient <recipient>`, naming no repository, with `FLUME_RECIPIENT` unset as for every call, and reads the answer by Flume's exit. It takes the recipient as Flume's command does. This change passes only `flume::RECIPIENT`. The runner runs no `flume inbox`.
+`Flume::collect` gives way to `Flume::confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun>`. `Cli::confirm` runs `flume --json confirm --recipient=<recipient> -- <key>…`, by `confirm_args`, the arguments a confirm act runs, so `flume.rs` holds one form of the command and neither the recipient nor a key is read as a flag (core.56). It names no repository, with `FLUME_RECIPIENT` unset as for every call, and reads the answer by Flume's exit. It takes the recipient as Flume's command does. This change passes only `flume::RECIPIENT`. The runner runs no `flume inbox`.
 
 ### 6. The drain
 
@@ -102,7 +103,7 @@ All run on the crate's fakes and stubs, with neutral names and paths (core.41).
   - `confirm_answers(key, reply)` scripts the answer to a confirmation whose first key is `key`, and `confirm_as_flume(key)` lifts it. `confirms()` gives each confirmation's keys.
   - `Call::Collect`, `collect`, `collect_answers`, `collect_as_flume` and `collects` go.
 - `Watching` (`tests/once.rs`) passes `confirm` through. Its test `a_held_record_is_collected_once_its_report_holds_it` goes: the file holding an end no longer lets it go. `tests/statuses.rs` proves when it goes, by the fake control plane's answer.
-- `the_sets_flume_takes_the_runner_as_a_recipient` (`tests/family.rs`) asks the set's Flume `flume --json confirm fix--none/t/stage/code/1/delivered --recipient boomdrive` on the scratch host, in place of the inbox. It must exit 1 with a JSON refusal, read by `flume::Cli` as `Reply::Refused` with Flume's reason, and not exit 2.
+- `the_sets_flume_takes_the_runner_as_a_recipient` (`tests/family.rs`) asks the set's Flume `flume --json confirm --recipient=boomdrive -- fix--none/t/stage/code/1/delivered` on the scratch host, in place of the inbox. It must exit 1 with a JSON refusal, read by `flume::Cli` as `Reply::Refused` with Flume's reason, and not exit 2.
 
 ### Rules relied on
 
@@ -126,7 +127,7 @@ All run on the crate's fakes and stubs, with neutral names and paths (core.41).
 - **Version 1 of the hosted protocol.** A status naming an end `{"of":"over",…}`, or a hand-over `by` `session_start`, fails version 1's copy and goes up null. Under a hosted control plane such a place's ends stay owed until a later version carries them, or a person confirms them as `boomdrive`. crew takes the status whole.
 - **A launch let go before its end was taken** leaves the end owed, its record on the host until a person confirms it.
 - **One more Flume command for each place with a new end in a pass.** Ends come a few at a time, and a pass with none runs none.
-- **The change `the-runner-carries-a-control-planes-confirm`, on the same bolt,** asks Flume's same command for a role's address, and needs Flume `v0.21.0` too. `Flume::confirm` takes the recipient so both run it through one call. Whichever lands on the bolt second takes the first's `confirm`, `LEAST` and set as they stand.
+- **The change `the-runner-carries-a-control-planes-confirm`, on the same bolt,** asks Flume's same command for a role's address, and needs Flume `v0.21.0` too. It is on the bolt before this change, so `Cli::confirm` runs its `confirm_args`, and this change moves `LEAST` and the set, which it leaves as they stood.
 
 ## Migration Plan
 

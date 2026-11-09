@@ -5,18 +5,18 @@
 - FROM: `### Requirement: A place's end is held for the runner until its report holds it`
 - TO: `### Requirement: An end owed to the runner is confirmed by its key once its control plane has taken it`
 
-Each end a carried status gives pending for `boomdrive`, of a live place or of a record Flume holds after its tidy, SHALL stay owed in Flume until the control plane has taken a report holding that status. The runner SHALL then confirm those ends by `flume --json confirm <key>… --recipient boomdrive`, once for each launch, the keys in the status's order, reading the answer only by Flume's exit and keeping nothing of it. It SHALL run no `flume inbox` (core.11, core.54; record 0030 as amended on 2026-11-09).
+Each end a carried status gives pending for `boomdrive`, of a live place or of a record Flume holds after its tidy, SHALL stay owed in Flume until the control plane has taken a report holding that status. The runner SHALL then confirm those ends by `flume --json confirm --recipient=boomdrive -- <key>…`, once for each launch, the keys in the status's order, reading the answer only by Flume's exit and keeping nothing of it. It SHALL run no `flume inbox` (core.11, core.54; record 0030 as amended on 2026-11-09).
 
 ## MODIFIED Requirements
 
 ### Requirement: An end owed to the runner is confirmed by its key once its control plane has taken it
 
-Only once the answer to a report the pass sent names the launch's status taken, and the report file holds the part's share after that answer, SHALL the runner confirm the ends the status gives pending for `boomdrive`. It SHALL run `flume --json confirm <key>… --recipient boomdrive` once for each launch, naming the delivery key of each such end in the status's order and no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54).
+Only once the answer to a report the pass sent names the launch's status taken, and the report file holds the part's share after that answer, SHALL the runner confirm the ends the status gives pending for `boomdrive`. It SHALL run `flume --json confirm --recipient=boomdrive -- <key>…` once for each launch, naming the delivery key of each such end in the status's order and no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54).
 
 #### Scenario: A landing held for the runner
 
 - **WHEN** the runner holds launch `a`, which names the recipient `scratch/planner`, at place `P`, carried live, and between two passes `P` lands and Flume tidies it, holding its record `P@<at>` with its landing pending for `boomdrive` alone
-- **THEN** the next pass carries Flume's answer for `P` as `a`'s status, naming `P@<at>`, tidied and landed, reports it, and, the fake control plane's answer naming `a`'s status taken, runs `flume --json confirm <the landing's key> --recipient boomdrive` once and no `flume inbox`; and at the pass after, Flume refusing `P`'s status, that status stands, not listed, and nothing is confirmed
+- **THEN** the next pass carries Flume's answer for `P` as `a`'s status, naming `P@<at>`, tidied and landed, reports it, and, the fake control plane's answer naming `a`'s status taken, runs `flume --json confirm --recipient=boomdrive -- <the landing's key>` once and no `flume inbox`; and at the pass after, Flume refusing `P`'s status, that status stands, not listed, and nothing is confirmed
 
 #### Scenario: A drop held for the runner
 
