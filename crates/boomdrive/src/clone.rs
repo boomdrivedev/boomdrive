@@ -311,19 +311,6 @@ pub fn fetch(git: &Git, bare: &Path) -> Result<(), Failure> {
     Ok(())
 }
 
-/// The commit origin's `branch` stands at, as `ls-remote` reads it from
-/// origin now, or none where origin holds no such branch (design Decision
-/// 15). Like a fetch, it never reaches origin by ssh.
-pub fn origin_commit(git: &Git, bare: &Path, branch: &str) -> Result<Option<String>, Failure> {
-    not_by_ssh(git, bare)?;
-    let name = format!("refs/heads/{branch}");
-    let listed = git.run(At::GitDir(bare), ["ls-remote", "origin", &name])?;
-    Ok(listed.lines().find_map(|line| {
-        let (commit, named) = line.split_once('\t')?;
-        (named == name).then(|| commit.to_string())
-    }))
-}
-
 /// Refused where the host's git would reach `bare`'s origin by ssh.
 fn not_by_ssh(git: &Git, bare: &Path) -> Result<(), Failure> {
     let url = git.run(At::GitDir(bare), ["ls-remote", "--get-url", "origin"])?;

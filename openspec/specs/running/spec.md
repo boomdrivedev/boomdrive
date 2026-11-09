@@ -21,12 +21,17 @@ How `boomdrive` runs on a host. It covers the version it prints, and `boomdrive 
 
 ### Requirement: boomdrive run keeps the repositories until it is stopped
 
-`boomdrive run` SHALL make a pass over the configuration at once and then one pass every `fetch_interval`, timed from the start of the pass before. Between passes it SHALL act on each landing it is told of. It SHALL run until it is sent SIGTERM or SIGINT. It SHALL then stop before the next repository it would keep and exit 0. A git call that fails SHALL be named and SHALL never stop it.
+`boomdrive run` SHALL make a pass over the configuration at once and then one every `fetch_interval`, timed from the start of the pass before. Between passes, and between two repositories of a pass, it SHALL act on each landing it is told of. It SHALL run until sent SIGTERM or SIGINT, then stop before the next repository it would keep, begin no part's pass, let each part end the pass in hand, and exit 0. A git call that fails SHALL be named and SHALL never stop it.
 
 #### Scenario: Stopped while waiting
 
 - **WHEN** `boomdrive run` has made its first pass and is sent SIGTERM
 - **THEN** it exits 0 within a second
+
+#### Scenario: Stopped with a part's pass under way
+
+- **WHEN** the runner is stopped while `home`'s control pass waits on its pull, and `work` waits for its next pass
+- **THEN** `work` begins no pass, `home`'s pass ends with its report saved, the runner says it stopped, and no pass begins after that line
 
 #### Scenario: Passes on the timer
 
@@ -40,7 +45,7 @@ How `boomdrive` runs on a host. It covers the version it prints, and `boomdrive 
 
 ### Requirement: boomdrive run --once makes one pass
 
-`boomdrive run --once` SHALL make one keeping pass, just as a pass of `boomdrive run`, then, where the configuration names a control plane, one control pass, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and the control pass both pulled and reported, and 1 otherwise. Something left and named as the specs say SHALL not be a failure: an offer left untaken for want of room, and a tool the control pass could not run or read, among it.
+`boomdrive run --once` SHALL make one keeping pass, as `boomdrive run` does, then, where the configuration names a control plane, one control pass of each part, side by side, then the settle that ends them, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and some part both pulled and reported, and 1 otherwise. What the specs leave and name SHALL be no failure: an offer left for want of room, a tool not run or read, a part unread while another reported.
 
 #### Scenario: Every repository kept
 
@@ -59,8 +64,8 @@ How `boomdrive` runs on a host. It covers the version it prints, and `boomdrive 
 
 #### Scenario: One control pass
 
-- **WHEN** `boomdrive run --once` runs with crew's control plane over a scratch state repository holding a launch for this host, and a stub `flume` that launches it
-- **THEN** it keeps the repositories, launches once, writes the runner's branch, and exits 0
+- **WHEN** `boomdrive run --once` runs with crew's control plane, `fetch_interval` two minutes and `poll_interval` one minute, over a scratch state repository holding a launch for this host, and a stub `flume` that launches it
+- **THEN** it keeps the repositories, launches once, writes the runner's branch, runs `flume --json settle --every 60s` after every other `flume` command, and exits 0
 
 #### Scenario: Flume's status refused
 
@@ -70,7 +75,17 @@ How `boomdrive` runs on a host. It covers the version it prints, and `boomdrive 
 #### Scenario: A control plane that cannot be read
 
 - **WHEN** `boomdrive run --once` runs with crew's control plane and no partition's state repository can be read
-- **THEN** it keeps the repositories, names the control plane as unread, runs no `flume` command but the hello's `flume --json status` and `flume --version`, and exits 1
+- **THEN** it keeps the repositories, names each part as unread, runs no `flume` command but each hello's `flume --json status` and `flume --version` and the settle that ends the pass, and exits 1
+
+#### Scenario: One part unread
+
+- **WHEN** `boomdrive run --once` runs with crew's control plane serving the partitions `home` and `work`, the state repository holds no `home/main`, and `work/main` holds a launch for this host
+- **THEN** it names `home` as unread, launches `work`'s launch once, writes `work`'s runner branch, and exits 0
+
+#### Scenario: A settle Flume refuses
+
+- **WHEN** `boomdrive run --once` keeps its repositories with no control plane, and a stub `flume` refuses its settle with the words `no store`
+- **THEN** it says `boomdrive: Flume refused the settle of every place: no store`, and exits 0
 
 ### Requirement: One runner per data directory
 
@@ -120,12 +135,12 @@ The runner SHALL open no listening socket of any kind. Every connection it makes
 
 ### Requirement: boomdrive run makes control passes on a timer of their own
 
-Where the configuration names a control plane, `boomdrive run` SHALL make a control pass after its first keeping pass, and the next `poll_interval` after the start of the one before. After a pass that reported, it SHALL make it sooner, by the midpoint between that pass's end and the earliest expiry of a lease it holds not yet lapsed. A lapsed lease, or a pass that did not report, SHALL hasten none. Control and keeping passes SHALL run on the one loop, one at a time (core.22).
+Where the configuration names a control plane, `boomdrive run` SHALL make each part's first control pass after its first keeping pass, and its next `poll_interval` after the start of the part's pass before. After a part's pass that reported, it SHALL make that part's next sooner, by the midpoint between that pass's end and the earliest expiry of a lease the part holds not yet lapsed. A lapsed lease, or a pass that did not report, SHALL hasten none (core.22).
 
 #### Scenario: On the control timer
 
-- **WHEN** `poll_interval` is one minute, `fetch_interval` two minutes, and a control pass began at 10:00:00
-- **THEN** the next control pass begins at 10:01:00, and the keeping passes keep their own two minutes
+- **WHEN** `poll_interval` is one minute, `fetch_interval` two minutes, and a control pass of `home` began at 10:00:00
+- **THEN** `home`'s next control pass begins at 10:01:00, and the keeping passes keep their own two minutes
 
 #### Scenario: A lapsed lease
 
@@ -137,14 +152,24 @@ Where the configuration names a control plane, `boomdrive run` SHALL make a cont
 - **WHEN** `poll_interval` is one minute, the runner holds a lease expiring 40 seconds after a control pass that began at 10:00:00, and that pass's report was not sent
 - **THEN** the next control pass begins at 10:01:00
 
+#### Scenario: Each part on its own timer
+
+- **WHEN** `poll_interval` is one minute, the runner carries `home` and `work`, and `work` holds a lease expiring 40 seconds after a pass of `work` that reported
+- **THEN** `work`'s next control pass begins 20 seconds after that pass ended, and `home`'s keeps its own minute
+
 ### Requirement: A control pass runs at once when its control plane wakes the runner
 
-`boomdrive run` SHALL make a control pass at once when its control plane's implementation wakes it, through the wake its opener was handed, and SHALL time the next one from that pass's start.
+`boomdrive run` SHALL make a part's control pass at once when its implementation wakes that part, through the wake its opener was handed for it, and SHALL time that part's next one from that pass's start. No other part's timer SHALL move.
 
 #### Scenario: Woken by the control plane
 
-- **WHEN** the implementation calls the wake its opener was handed, between two control passes
-- **THEN** a control pass runs at once, and the timer's next pass is `poll_interval` after its start
+- **WHEN** the implementation calls the wake its opener was handed for `home`, between two control passes
+- **THEN** a control pass of `home` runs at once, and its timer's next pass is `poll_interval` after its start
+
+#### Scenario: One part woken
+
+- **WHEN** the runner carries `home` and `work`, and the implementation calls the wake handed for `home` between two passes of each
+- **THEN** `home`'s control pass runs at once, and `work`'s next pass begins when its own timer says
 
 ### Requirement: A control pass after a broken configuration acts on nothing
 
@@ -157,9 +182,99 @@ A control pass that follows a reading of the configuration that failed SHALL nam
 
 ### Requirement: A control plane that cannot be read is said once until it is read again
 
-A control pass whose pull cannot be read SHALL say `the control plane could not be read`, with the pull's words, only where the pass before read it, or where it is the first. A pass that reads it after one that could not SHALL say `the control plane is read again`. Passes between SHALL say nothing of it (core.23).
+A part's control pass whose pull cannot be read SHALL say `boomdrive: <label>: the control plane could not be read`, with the pull's words, only where that part's pass before read it, or where it is the part's first. A part's pass that reads it after one that could not SHALL say `boomdrive: <label>: the control plane is read again`. That part's passes between SHALL say nothing of it, and no part's reach SHALL be said for another (core.23).
 
 #### Scenario: Three passes unread, then read
 
-- **WHEN** the fake control plane refuses three pulls in a row with the words `no network`, then gives the fourth
-- **THEN** one line names the control plane as unread with `no network`, and one line, at the fourth pass, says it is read again
+- **WHEN** the fake control plane's part `home` refuses three pulls in a row with the words `no network`, then gives the fourth
+- **THEN** one line names `home` as unread with `no network`, and one line, at the fourth pass, says `home` is read again
+
+#### Scenario: Each part's reach its own
+
+- **WHEN** the runner carries `home` and `work`, `home` refuses every pull, and `work` gives every pull
+- **THEN** one line names `home` as unread, and no line names `work`'s reach
+
+### Requirement: Each part of the control plane is carried on its own
+
+Where the configuration names a control plane and it opens, `boomdrive run` SHALL carry each part its implementation serves on a thread of its own, from the end of its first keeping pass until it stops. Each part's control passes SHALL pull, answer its wants, carry its statuses and report for that part alone. No part's pull, act, command or report SHALL wait on another part's, and no control pass SHALL wait on a keeping pass (record 0026; core.49).
+
+#### Scenario: A slow part
+
+- **WHEN** the runner carries two parts, `home` and `work`, `home`'s pull answers only after two minutes, and `work` offers a launch whose stream has room
+- **THEN** `work`'s launch is made and reported within seconds, and `work`'s next control pass begins `poll_interval` after the start of its last
+
+#### Scenario: A failing part
+
+- **WHEN** the runner carries `home` and `work`, `home` refuses every pull and report with the words `no network`, and `work` offers a launch whose stream has room
+- **THEN** `work`'s launch is made and reported, and one line says `boomdrive: home: the control plane could not be read: no network`
+
+#### Scenario: A keeping pass under way
+
+- **WHEN** a keeping pass is under way, its fetch of one repository held for a minute, and `work`'s control pass falls due
+- **THEN** `work`'s control pass pulls, answers and reports while the fetch is held
+
+### Requirement: The runner's lines of a part's pass name the part
+
+Each line the runner says of a part's control pass SHALL name the part's label after `boomdrive:`, as `boomdrive: <label>: <words>`. A line about one want SHALL begin with the want's id, as it does, the id being the part's own.
+
+#### Scenario: Acts left for the next pass
+
+- **WHEN** `home`'s next control pass falls due while its pass has two acts on places still to carry out
+- **THEN** one line says `boomdrive: home: the next control pass is due, so 1 act on a place waits for it`
+
+### Requirement: Each pass ends with a settle of every place
+
+`boomdrive run` SHALL end each keeping pass, on its loop, and each part's control pass, on the part's thread, with one `flume --json settle --every <bound>`, awaited before that thread waits. The first keeping pass SHALL share the settles of the parts' first control passes. A pass that ends while another's settle is under way SHALL share it and run none. A keeping pass whose configuration did not read SHALL settle all the same, and a runner told to stop SHALL begin none (core.13; record 0029).
+
+#### Scenario: Passes back to back share one settle
+
+- **WHEN** `fetch_interval` and `poll_interval` are an hour, and the runner's first keeping pass and its part's first control pass run back to back with a stub `flume`
+- **THEN** one `flume --json settle --every 3600s` runs, after every other `flume` command of the control pass, and no other settle runs before the next pass
+
+#### Scenario: Each control pass ends with a settle
+
+- **WHEN** `fetch_interval` is an hour and `poll_interval` a second, and the runner makes three control passes of its part with a stub `flume`
+- **THEN** each control pass's `flume` commands end with one `flume --json settle --every 1s`, before the next control pass reads Flume's status
+
+#### Scenario: Each keeping pass ends with a settle
+
+- **WHEN** the configuration names no control plane, `fetch_interval` is one second, and the runner makes three keeping passes with a stub `flume`
+- **THEN** each keeping pass is followed by one `flume --json settle --every 1s`, and the stub is asked nothing else
+
+#### Scenario: A pass on a broken configuration settles
+
+- **WHEN** the configuration of a running runner that keeps a repository each second is made invalid, with a stub `flume`
+- **THEN** each pass names the file and keeps nothing, and is followed by one `flume --json settle --every 1s` all the same
+
+#### Scenario: A pass ends while a settle is under way
+
+- **WHEN** one pass's settle is under way, and another pass ends
+- **THEN** the other pass runs no settle, and returns without waiting for the one under way to end
+
+### Requirement: The settle's bound is the runner's interval
+
+The bound of the settle SHALL be written `<n>s`, in whole seconds: `fetch_interval`, or the shorter of `fetch_interval` and `poll_interval` while the runner makes control passes, `fetch_interval` being the one the latest reading of the configuration gave (record 0029).
+
+#### Scenario: The shorter interval
+
+- **WHEN** `boomdrive run --once` runs with crew's control plane, `fetch_interval` two minutes and `poll_interval` one minute
+- **THEN** its settle is `flume --json settle --every 60s`
+
+#### Scenario: A control plane that could not be opened
+
+- **WHEN** the configuration says `[control_plane]` with `type = "elsewhere"` and names no `fetch_interval`
+- **THEN** `boomdrive run --once` runs no `flume` command but `flume --json settle --every 120s`
+
+### Requirement: The settle is the runner's own and said only when it changes
+
+The settle SHALL be no part of a control pass: no want's answer SHALL turn on it, and its answer SHALL be carried to no control plane and kept nowhere. Where a settle is refused, or gives no answer, the runner SHALL say so in one line only where the settle before was answered or it is the first, and SHALL say `boomdrive: Flume settles every place again` at the first settle answered after one that was not. No settle SHALL stop the runner or fail a pass (core.1, core.11, core.23).
+
+#### Scenario: A refusal said once until Flume settles again
+
+- **WHEN** Flume refuses three settles in a row with the words `no store`, then answers the fourth
+- **THEN** the first says `boomdrive: Flume refused the settle of every place: no store`, the fourth says `boomdrive: Flume settles every place again`, and the second and third say nothing
+
+#### Scenario: A settle with no answer
+
+- **WHEN** `flume` cannot be run for two settles in a row
+- **THEN** the first says `boomdrive: Flume gave no answer to the settle of every place: ` and why, and the second says nothing

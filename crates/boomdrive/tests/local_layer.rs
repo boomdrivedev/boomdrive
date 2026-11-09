@@ -6,10 +6,12 @@
 //! loop, and nothing let go while a local file stands that is not taken.
 
 mod common;
+mod fakes;
 
 use boomdrive::config;
-use boomdrive::run::{Runner, Stopper};
+use boomdrive::run::{Programs, Runner, Stopper};
 use common::{drives, keeping, Scratch};
+use fakes::Stub;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver};
@@ -24,11 +26,13 @@ struct Running {
     stopper: Stopper,
     lines: Receiver<String>,
     thread: JoinHandle<()>,
+    /// The `flume` the runner's settles run, held while it runs.
+    _flume: Stub,
 }
 
 impl Running {
     /// Starts the runner on the scratch host's default configuration
-    /// file, and its loop.
+    /// file, and its loop, its settles answered by a stub `flume`.
     fn start(scratch: &Scratch) -> Running {
         let overlay = scratch.overlay();
         let var = |name: &str| {
@@ -38,10 +42,16 @@ impl Running {
                 .map(|(_, value)| value.clone())
         };
         let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let flume = Stub::new();
+        runner.tools(Programs {
+            flume: flume.program(),
+            sluice: scratch.root.join("absent/sluice"),
+            herdr: scratch.root.join("absent/herdr"),
+        });
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
         let thread = thread::spawn(move || {
-            runner.keep(&mut |line| {
+            runner.keep(&|line| {
                 let _ = said.send(line);
             })
         });
@@ -49,6 +59,7 @@ impl Running {
             stopper,
             lines,
             thread,
+            _flume: flume,
         }
     }
 

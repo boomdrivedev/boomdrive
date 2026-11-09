@@ -61,7 +61,7 @@ None.
 - Outside this repository:
   - This change is built once Flume, sluice and crew each have a release tag whose flake gives its modules (design, Dependencies).
   - sluice's and crew's modules are asked to carry a `key`, as Flume's does, so a host may import a tool's module beside Boomdrive's (design, What this change asks of others).
-  - afterthought/swancloud passes deneb's facts as these options once it takes the flake (record 0023).
+  - afterthought/swancloud passes its hosts' facts as these options once it takes the flake (record 0023).
 
 ## Touches
 

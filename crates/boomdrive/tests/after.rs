@@ -2,14 +2,14 @@
 //! launch not yet launched is answered from the report with no command
 //! run (design Decisions 7 and 9; the work-into-flume spec's "An offer
 //! waits for each launch it comes after", "A priority or a drop of a
-//! launch not yet launched is answered from its report" and "A retry or a
-//! done of a launch not launched, and an act on another's launch, are
-//! refused"; Task notes 4.3).
+//! launch not yet launched is answered from its report" and "A retry, a
+//! land or a done of a launch not launched, and an act on another's
+//! launch, are refused"; Task notes 4.3; core.53).
 
 mod fakes;
 
 use boomdrive::facts;
-use boomdrive::flume::Reply;
+use boomdrive::flume::{LaunchArgs, Reply};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{ActSort, Id, Offer, Outcome, Want};
 use fakes::{act, fixture, offer, place_of, printed, Bench, Call};
@@ -255,6 +255,55 @@ fn a_retry_or_a_done_of_a_held_launch() {
     assert_eq!(bench.flume.acts(), []);
 }
 
+/// The work-into-flume spec's "A land of a held launch": the land is
+/// refused with the words a retry of it is given, runs no `flume retry`,
+/// and `b` is launched as its offer gives it, its submission still held,
+/// once `a` reads landed (core.15, core.53).
+#[test]
+fn a_land_of_a_held_launch() {
+    let bench = Bench::new();
+    let Want::Offer(mut b) = after("b", "b", &["a"]) else {
+        unreachable!()
+    };
+    b.launch.hold_submission = true;
+    let mut plane = Fake::holding(vec![
+        Want::Offer(offer("a", "a")),
+        Want::Offer(b),
+        act("b/retry", "b", retry()),
+        act("b/land", "b", ActSort::Land),
+    ]);
+    bench.pass(&mut plane);
+    let words = format!(
+        "b is held, not launched: waits on a (launched at {}, not landed)",
+        place_of("a")
+    );
+    assert_eq!(
+        acted(&bench, "b/retry"),
+        (Outcome::Refused, Some(words.clone()))
+    );
+    assert_eq!(acted(&bench, "b/land"), (Outcome::Refused, Some(words)));
+    assert_eq!(bench.flume.launches().len(), 1, "only a's launch");
+    assert_eq!(bench.flume.acts(), []);
+
+    bench.flume.land(&place_of("a"));
+    bench.pass(&mut plane);
+    assert_eq!(answer(&bench, "b").0, Outcome::Launched);
+    let launches = bench.flume.launches();
+    assert_eq!(launches.len(), 2, "{launches:?}");
+    assert_eq!(
+        launches[1],
+        LaunchArgs {
+            container_dir: launches[0].container_dir.clone(),
+            kind: "change".to_string(),
+            name: "b".to_string(),
+            hold_submission: true,
+            mark: "boomdrive:b".to_string(),
+            ..LaunchArgs::default()
+        }
+    );
+    assert_eq!(bench.flume.acts(), [], "still no act run");
+}
+
 /// A retry of a launch dropped before it was launched is refused, naming
 /// the drop.
 #[test]
@@ -279,19 +328,19 @@ fn a_retry_of_a_dropped_launch() {
 #[test]
 fn an_act_on_anothers_launch() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![act("madswan/100", "madswan/99", ActSort::Drop)]);
+    let mut plane = Fake::holding(vec![act("home/100", "home/99", ActSort::Drop)]);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(
-        acted(&bench, "madswan/100"),
+        acted(&bench, "home/100"),
         (
             Outcome::Refused,
-            Some("madswan/99 is no launch of this runner's".into())
+            Some("home/99 is no launch of this runner's".into())
         )
     );
     assert_eq!(bench.flume.calls(), [Call::Status]);
     assert_eq!(
         lines,
-        ["madswan/100: drop of madswan/99: refused: madswan/99 is no launch of this runner's"]
+        ["home/100: drop of home/99: refused: home/99 is no launch of this runner's"]
     );
 }
 

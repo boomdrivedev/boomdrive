@@ -81,7 +81,7 @@ fn an_entry_carried() {
     assert!(entry.listed && entry.at >= before);
     assert_eq!(
         entry.text,
-        r#"{"id":412,"branch":"main","head":"91aff4b74c91b37c374c46b43b35e87b128b0c65","state":"landed","landed_as":"3e61c31926e3e265212226d30fe3c5934665cc4d"}"#
+        r#"{"id":412,"branch":"main","head":"3cb12e20c76c17ef51cb8be1c32bec8671a7ab73","state":"landed","landed_as":"fdaaeaf1b1094b39db4ccea5f01e88a3bedb95d8"}"#
     );
     let carried: Value = serde_json::from_str(&entry.text).unwrap();
     let answer: Value = serde_json::from_str(&printed).unwrap();
@@ -120,15 +120,15 @@ fn a_failed_row_without_its_log() {
     for (name, id, task, hash) in [
         (
             "status-failed.json",
-            "45",
-            "flume:tools",
-            "e0e41e5811489647069b018088b150c920c426e67932fe2206b24c0ad6342f8d",
+            "2",
+            "sh check.sh",
+            "09e46ec47a28327f23dfc07c480bec754024a2e7",
         ),
         (
             "status-withdrawn.json",
-            "291",
-            "cli:test",
-            "ac52c612a1fb27a96a0e1b72b709852ef4267f1a3e53b5bbc43ded025ce0f2d1",
+            "4",
+            "sh check.sh",
+            "871867da54ed6ec660b7123312f2dc68760f7ec2",
         ),
     ] {
         let (bench, mut plane) = launched();
@@ -175,10 +175,10 @@ fn a_landed_entry() {
 #[test]
 fn an_entry_is_read_until_it_is_final() {
     let (bench, mut plane) = launched();
-    submitted(&bench, "45");
+    submitted(&bench, "2");
     bench
         .sluice
-        .answers_text("status", &as_if("status-failed.json", 45, "testing"), 0);
+        .answers_text("status", &as_if("status-failed.json", 2, "testing"), 0);
     bench.pass(&mut plane);
     let testing = entry(&bench).expect("an entry carried");
     assert!(
@@ -223,19 +223,19 @@ fn an_entry_is_read_until_it_is_final() {
 #[test]
 fn a_new_submission_is_read() {
     let (bench, mut plane) = launched();
-    submitted(&bench, "291");
+    submitted(&bench, "4");
     bench.sluice.answers("status", "status-withdrawn.json", 0);
     bench.pass(&mut plane);
-    submitted(&bench, "292");
+    submitted(&bench, "5");
     bench
         .sluice
-        .answers_text("status", &as_if("status-withdrawn.json", 292, "queued"), 0);
+        .answers_text("status", &as_if("status-withdrawn.json", 5, "queued"), 0);
     bench.pass(&mut plane);
-    assert_eq!(bench.sluice.calls()[1], ["status", "292", "--json"]);
+    assert_eq!(bench.sluice.calls()[1], ["status", "5", "--json"]);
     let carried: Value = serde_json::from_str(&entry(&bench).unwrap().text).unwrap();
     assert_eq!(
         (carried["id"].clone(), carried["state"].clone()),
-        (json!(292), json!("queued"))
+        (json!(5), json!("queued"))
     );
 }
 
@@ -244,8 +244,8 @@ fn a_new_submission_is_read() {
 #[test]
 fn an_entry_sluice_refuses_keeps_what_was_carried() {
     let (bench, mut plane) = launched();
-    submitted(&bench, "45");
-    let testing = as_if("status-failed.json", 45, "testing");
+    submitted(&bench, "2");
+    let testing = as_if("status-failed.json", 2, "testing");
     bench.sluice.answers_text("status", &testing, 0);
     bench.pass(&mut plane);
     let carried = entry(&bench).unwrap();
@@ -253,7 +253,7 @@ fn an_entry_sluice_refuses_keeps_what_was_carried() {
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(
         lines,
-        ["scratch/1: sluice's entry 45 is refused: no submission 99"]
+        ["scratch/1: sluice's entry 2 is refused: no submission 99"]
     );
     let refused = entry(&bench).unwrap();
     assert_eq!((&refused.text, refused.at), (&carried.text, carried.at));
@@ -284,4 +284,33 @@ fn a_sluice_not_there() {
     let (passed, _) = bench.pass(&mut plane);
     assert!(passed.reported);
     assert!(entry(&bench).is_some(), "sluice is asked again");
+}
+
+/// The tool-records spec's "An entry carried from a repository drained":
+/// once the configuration drops the launch's repository, sluice is asked
+/// in its clone's container, which the runner drains (record 0021).
+#[test]
+fn an_entry_carried_from_a_repository_drained() {
+    let bench = Bench::new();
+    let kit = bench.container("example/kit");
+    fs::create_dir_all(&kit).unwrap();
+    bench.clones.ready("example/kit", &kit);
+    let mut parser = offer("scratch/1", "parser");
+    parser.launch.repository = "example/kit".to_string();
+    let mut plane = Fake::holding(vec![Want::Offer(parser)]);
+    bench.pass(&mut plane);
+    bench.clones.drop_named("example/kit");
+    submitted(&bench, "412");
+    let printed = as_if("status-landed.json", 412, "landed");
+    bench.sluice.answers_text("status", &printed, 0);
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(plane.hellos()[1].draining, ["example/kit"]);
+    assert_eq!(bench.sluice.calls(), [["status", "412", "--json"]]);
+    assert_eq!(bench.sluice.dir_of(1), Some(kit.canonicalize().unwrap()));
+    let entry = entry(&bench).expect("an entry carried");
+    let carried: Value = serde_json::from_str(&entry.text).unwrap();
+    assert_eq!(carried["id"], json!(412));
+    assert_eq!(carried["state"], json!("landed"));
 }

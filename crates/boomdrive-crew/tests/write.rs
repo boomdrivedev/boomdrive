@@ -5,15 +5,16 @@
 mod common;
 
 use boomdrive_control::{
-    Acted, Answer, At, Carried, ControlPlane, Id, Launched, Lease, Outcome, Report, Reported,
+    Acted, Answer, At, Carried, ControlPlane, Id, Launched, Lease, Outcome, Previewed, Report,
+    Reported,
 };
 use boomdrive_crew::read::{host_read, RunnerFiles};
 use common::{act, file, hello, launch, plan, pull, State, REQUESTS};
 use std::io::Write as _;
 use std::process::{Command, Stdio};
 
-const CREW: &str = "afterthought/crew";
-const BRANCH: &str = "madswan/runner/deneb";
+const CREW: &str = "example/crew";
+const BRANCH: &str = "home/runner/host-a";
 
 // crew's descriptors, copied from `plugin/lib/runner.py` at `9913f249`,
 // which `the-team-machinery-leaves` (`2b97ee57`) leaves as they are.
@@ -26,6 +27,44 @@ const PLACES: &str = "%rec: Place\n%key: Request\n%type: Request int\n%type: At 
                       %mandatory: Request Place At Status\n%allowed: Request Place At Status\n";
 const RUNS: &str = "%rec: Run\n%key: Address\n%type: At date\n%mandatory: Address At\n\
                     %allowed: Address Place At Status Words\n";
+// The descriptor of `previews.rec` this repository proposes for crew to
+// hold (design Decision 10).
+const PREVIEWS: &str = "%rec: Preview\n%key: Request\n%type: Request int\n\
+                        %type: Outcome enum held done refused\n%type: Listed enum yes no\n\
+                        %type: At date\n%mandatory: Request Outcome At\n\
+                        %allowed: Request Outcome Text Status Listed Words At\n";
+
+/// What is carried of a preview sluice brought up, and of its listing.
+const TEXT: &str = r#"{"name":"preview/c2b72605d2ad","branch":"main","revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"starting","made":"2026-11-08T19:54:52Z","addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#;
+const STATUS: &str = r#"{"name":"preview/c2b72605d2ad","branch":"main","revision":"c2b72605d2ad8471a98dfae00551852c527d4dcf","state":"up","made":"2026-11-08T19:54:52Z","addresses":{"web":"http://web-c2b7260--main--repo.localhost:20000"}}"#;
+
+/// Preview 30 brought up, its text and its status carried, listed.
+fn brought_up() -> Previewed {
+    Previewed {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: CREW.to_string(),
+        revision: "c2b72605d2ad8471a98dfae00551852c527d4dcf".to_string(),
+        done: false,
+        outcome: Outcome::Done,
+        text: Some(TEXT.to_string()),
+        words: None,
+        status: Some(Carried {
+            text: STATUS.to_string(),
+            at: at("2026-11-01T10:07:00Z"),
+            listed: true,
+        }),
+        at: at("2026-11-01T10:06:00Z"),
+    }
+}
+
+/// `report` holding preview 30 brought up.
+fn with_preview(mut report: Report) -> Report {
+    report.previews.insert(Id::new("home/30"), brought_up());
+    report
+}
 
 fn at(text: &str) -> At {
     At::parse(text).unwrap()
@@ -46,6 +85,7 @@ fn launched(answer: Answer, status: Option<(&str, &str)>) -> Launched {
             number: 1,
             expires: None,
         },
+        repository: None,
         answer,
         status: status.map(|(text, when)| Carried {
             text: text.to_string(),
@@ -56,8 +96,8 @@ fn launched(answer: Answer, status: Option<(&str, &str)>) -> Launched {
     }
 }
 
-/// A state repository whose `madswan/main` holds launch 12 and its
-/// retry 13 for deneb, and the planner's role on deneb, and deneb's
+/// A state repository whose `home/main` holds launch 12 and its
+/// retry 13 for host-a, and the planner's role on host-a, and host-a's
 /// implementation, pulled once.
 fn pulled() -> (State, boomdrive_crew::Crew) {
     let state = State::new();
@@ -67,18 +107,18 @@ fn pulled() -> (State, boomdrive_crew::Crew) {
             &file(
                 REQUESTS,
                 &[
-                    launch(12, Some("deneb"), "unit/a", CREW, "a", &[]),
-                    act(13, "retry", Some("deneb"), "unit/a", 12, &[]),
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(13, "retry", Some("host-a"), "unit/a", 12, &[]),
                 ],
             ),
         ),
         ("plan.rec", &plan(&["a"], &[])),
         (
             "roles.rec",
-            &file(common::ROLES, &[common::role("planner", "deneb")]),
+            &file(common::ROLES, &[common::role("planner", "host-a")]),
         ),
     ]);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     pull(&mut crew, &hello(&[CREW], "4"));
     (state, crew)
 }
@@ -88,7 +128,7 @@ fn pulled() -> (State, boomdrive_crew::Crew) {
 fn report_launched(status: &str) -> Report {
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/12"),
+        Id::new("home/12"),
         launched(
             answer(
                 Outcome::Launched,
@@ -104,7 +144,7 @@ fn report_launched(status: &str) -> Report {
 
 fn files(state: &State) -> RunnerFiles {
     let mut files = RunnerFiles::new();
-    for path in ["runner.rec", "answers.rec", "places.rec"] {
+    for path in ["runner.rec", "answers.rec", "places.rec", "previews.rec"] {
         files.insert(path, state.file(BRANCH, path));
     }
     files
@@ -132,7 +172,7 @@ fn recfix(text: &str) -> Option<String> {
 #[test]
 fn the_first_report() {
     let (state, mut crew) = pulled();
-    let main = state.tip("madswan/main");
+    let main = state.tip("home/main");
     assert_eq!(state.tip(BRANCH), None);
     let reported = crew
         .report(&report_launched(r#"{"status":{}}"#))
@@ -141,15 +181,15 @@ fn the_first_report() {
     let runner = state.file(BRANCH, "runner.rec").expect("runner.rec");
     let body = runner.strip_prefix(RUNNER).expect("crew's descriptor");
     let since = body
-        .strip_prefix("\nHost: deneb\nVersion: boomdrive 0.0.0\nSince: ")
+        .strip_prefix("\nHost: host-a\nVersion: boomdrive 0.0.0\nSince: ")
         .and_then(|rest| rest.strip_suffix('\n'))
         .unwrap_or_else(|| panic!("{runner}"));
     assert!(At::parse(since).is_ok(), "{since}");
-    assert_eq!(state.tip("madswan/main"), main);
+    assert_eq!(state.tip("home/main"), main);
     let message = common::git(&state.bare(), &["log", "-1", "--format=%B", BRANCH], None);
     assert_eq!(
         message,
-        "runner, answers 12, places 12\n\nAsked-by: boomdrive@deneb\n\n"
+        "runner, answers 12, places 12\n\nAsked-by: boomdrive@host-a\n\n"
     );
 }
 
@@ -169,7 +209,7 @@ fn a_held_answer_becoming_launched() {
     let (state, mut crew) = pulled();
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/12"),
+        Id::new("home/12"),
         launched(
             answer(
                 Outcome::Held,
@@ -219,7 +259,7 @@ fn a_places_status_as_flume_gave_it() {
         .file(BRANCH, "runner.rec")
         .unwrap()
         .starts_with(RUNNER));
-    let read = host_read("deneb", &files(&state)).expect("crew reads it");
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
     assert_eq!(read.places[&12].get("Status"), Some(status.as_str()));
 }
 
@@ -228,9 +268,9 @@ fn an_acts_done() {
     let (state, mut crew) = pulled();
     let mut report = report_launched("{}");
     report.acts.insert(
-        Id::new("madswan/13"),
+        Id::new("home/13"),
         Acted {
-            launch: Id::new("madswan/12"),
+            launch: Id::new("home/12"),
             lease: 1,
             outcome: Outcome::Done,
             words: None,
@@ -238,7 +278,7 @@ fn an_acts_done() {
         },
     );
     crew.report(&report).expect("a report");
-    let read = host_read("deneb", &files(&state)).expect("crew reads it");
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
     let done = &read.answers[&13];
     assert_eq!(done.get("Outcome"), Some("done"));
     assert_eq!(done.get("At"), Some("2026-11-01T10:05:00Z"));
@@ -250,7 +290,7 @@ fn a_run_with_words() {
     let (state, mut crew) = pulled();
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/planner/1"),
+        Id::new("home/planner/1"),
         launched(
             answer(
                 Outcome::Refused,
@@ -265,7 +305,7 @@ fn a_run_with_words() {
     assert_eq!(
         state.file(BRANCH, "places.rec").unwrap(),
         format!(
-            "{PLACES}\n{RUNS}\nAddress: madswan/planner\nAt: 2026-11-01T10:00:00Z\n\
+            "{PLACES}\n{RUNS}\nAddress: home/planner\nAt: 2026-11-01T10:00:00Z\n\
              Words: no kind crew/crew-planner on this host\n"
         )
     );
@@ -274,7 +314,7 @@ fn a_run_with_words() {
 #[test]
 fn nothing_changed() {
     let (state, mut crew) = pulled();
-    let report = report_launched(&common::status_code());
+    let report = with_preview(report_launched(&common::status_code()));
     crew.report(&report).expect("a report");
     let tip = state.tip(BRANCH);
     crew.report(&report).expect("a report");
@@ -286,7 +326,7 @@ fn nothing_changed() {
 fn only_the_runners_branch() {
     let (state, mut crew) = pulled();
     let before = state.refs();
-    crew.report(&report_launched(&common::status_code()))
+    crew.report(&with_preview(report_launched(&common::status_code())))
         .expect("a report");
     let after = state.refs();
     let added: Vec<&str> = after
@@ -295,13 +335,13 @@ fn only_the_runners_branch() {
         .collect();
     assert_eq!(added.len(), 1, "{after}");
     assert!(
-        added[0].ends_with(" refs/heads/madswan/runner/deneb"),
+        added[0].ends_with(" refs/heads/home/runner/host-a"),
         "{after}"
     );
     for line in before.lines() {
         assert!(after.lines().any(|now| now == line), "{line} moved");
     }
-    for path in ["runner.rec", "answers.rec", "places.rec"] {
+    for path in ["runner.rec", "answers.rec", "places.rec", "previews.rec"] {
         let text = state.file(BRANCH, path).unwrap();
         assert_eq!(recfix(&text), None, "{path}: {text}");
     }
@@ -312,9 +352,9 @@ fn each_file_reads_as_crew_reads_it() {
     let (state, mut crew) = pulled();
     let mut report = report_launched(&common::status_code());
     report.acts.insert(
-        Id::new("madswan/13"),
+        Id::new("home/13"),
         Acted {
-            launch: Id::new("madswan/12"),
+            launch: Id::new("home/12"),
             lease: 1,
             outcome: Outcome::Refused,
             words: Some("its agent is not quiet".to_string()),
@@ -322,11 +362,11 @@ fn each_file_reads_as_crew_reads_it() {
         },
     );
     report.launches.insert(
-        Id::new("madswan/planner/2"),
+        Id::new("home/planner/2"),
         launched(
             answer(
                 Outcome::Launched,
-                Some("/places/crew-planner--madswan"),
+                Some("/places/crew-planner--home"),
                 None,
                 "2026-11-01T10:00:00Z",
             ),
@@ -334,13 +374,13 @@ fn each_file_reads_as_crew_reads_it() {
         ),
     );
     crew.report(&report).expect("a report");
-    let read = host_read("deneb", &files(&state)).expect("crew reads it");
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
     assert!(read.since.is_some());
     assert_eq!(read.answers.keys().copied().collect::<Vec<_>>(), [12, 13]);
     assert_eq!(read.places.keys().copied().collect::<Vec<_>>(), [12]);
     assert_eq!(
         read.runs.keys().cloned().collect::<Vec<_>>(),
-        ["madswan/planner"]
+        ["home/planner"]
     );
     let statuses = read
         .places
@@ -350,7 +390,7 @@ fn each_file_reads_as_crew_reads_it() {
     for status in statuses {
         serde_json::from_str::<serde_json::Value>(status).expect("Flume's JSON");
     }
-    assert!(host_read("vega", &files(&state)).is_err());
+    assert!(host_read("host-b", &files(&state)).is_err());
 }
 
 #[test]
@@ -358,8 +398,83 @@ fn the_report_comes_back_in_the_next_pull() {
     let (state, mut crew) = pulled();
     let report = report_launched(&common::status_code());
     crew.report(&report).expect("a report");
-    let (mut fresh, _) = state.crew("deneb");
+    let (mut fresh, _) = state.crew("host-a");
     let pulled = pull(&mut fresh, &hello(&[CREW], "4"));
     let back = pulled.report.expect("the report on the branch");
     assert_eq!(back, report);
+}
+
+/// The crew-control-plane spec's "A preview brought up": `previews.rec`
+/// opens with crew's descriptor of a `Preview`, byte for byte, and holds
+/// one `Preview` as the report answers it, passing `recfix --check`.
+#[test]
+fn a_preview_brought_up_is_written_in_previews_rec() {
+    let (state, mut crew) = pulled();
+    crew.report(&with_preview(Report::default()))
+        .expect("a report");
+    let previews = state.file(BRANCH, "previews.rec").expect("previews.rec");
+    assert_eq!(
+        previews,
+        format!(
+            "{PREVIEWS}\nRequest: 30\nOutcome: done\nText: {TEXT}\nStatus: {STATUS}\n\
+             Listed: yes\nAt: 2026-11-01T10:07:00Z\n"
+        )
+    );
+    assert_eq!(recfix(&previews), None, "{previews}");
+    let message = common::git(&state.bare(), &["log", "-1", "--format=%s", BRANCH], None);
+    assert!(message.contains("previews 30"), "{message}");
+}
+
+/// The crew-control-plane spec's "A branch with no preview".
+#[test]
+fn a_branch_with_no_preview() {
+    let (state, mut crew) = pulled();
+    crew.report(&report_launched("{}")).expect("a report");
+    assert!(state.file(BRANCH, "answers.rec").is_some());
+    assert_eq!(state.file(BRANCH, "previews.rec"), None);
+}
+
+/// The crew-control-plane spec's "A preview read back": a pull handed no
+/// report gives back the preview `previews.rec` holds, as its request
+/// names it, its repository resolved as at a pull.
+#[test]
+fn a_preview_read_back() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[common::preview(
+                    30,
+                    Some("host-a"),
+                    "unit/a",
+                    "crew",
+                    "main",
+                    "c2b72605d2ad8471a98dfae00551852c527d4dcf",
+                    false,
+                )],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    pull(&mut crew, &hello(&[CREW], "4"));
+    let report = with_preview(Report::default());
+    crew.report(&report).expect("a report");
+    let (mut fresh, _) = state.crew("host-a");
+    let pulled = pull(&mut fresh, &hello(&[CREW], "4"));
+    let back = pulled.report.expect("the report on the branch");
+    let previewed = &back.previews[&Id::new("home/30")];
+    let sent = &report.previews[&Id::new("home/30")];
+    assert_eq!(previewed.outcome, Outcome::Done);
+    assert_eq!(previewed.text, sent.text);
+    assert_eq!(previewed.words, None);
+    assert_eq!(previewed.status, sent.status);
+    assert_eq!(previewed.repository, CREW);
+    assert_eq!(previewed.revision, sent.revision);
+    assert!(!previewed.done);
+    assert_eq!(previewed.lease.number, 1);
+    let read = host_read("host-a", &files(&state)).expect("crew reads it");
+    assert_eq!(read.previews.keys().copied().collect::<Vec<_>>(), [30]);
 }

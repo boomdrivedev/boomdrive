@@ -41,7 +41,7 @@ All 19 tasks of `tasks.md`, groups 1 to 7, are ticked `[x]`, and none is open. W
   - `nix/tests/settings.nix` and the three files under `nix/tests/files` name the design's neutral accounts and drives.
   - `tests/module_files.rs` reads each file through `Config::accounts` and `Config::repositories()`.
 - **README** (3.1, 3.2).
-  - Its configuration example keeps `agentplot/flume` in the drive `home` and `afterthought/crew` in the drive `work`, both of the account `own`. Its words cover each point task 3.1 lists. Its nix example sets `settings.accounts.own.drives.home.repositories`, and no owner's-workspace words remain.
+  - Its configuration example keeps `agentplot/flume` in the drive `home` and `example/crew` in the drive `work`, both of the account `own`. Its words cover each point task 3.1 lists. Its nix example sets `settings.accounts.own.drives.home.repositories`, and no owner's-workspace words remain.
   - Its local layer section says the local layer sets each drive's `repositories`, how both layers' drives combine, and what is not taken. Its example adds `agentplot/sluice` to `home` and declares `garden`. Its pin words name `accounts`, a drive and a drive's `repositories`.
 - **The tests' configurations** (4.1, 4.2).
   - `tests/common/mod.rs`'s `keeping` writes under `own`'s drive `home`, and `drives` beside it writes several drives.

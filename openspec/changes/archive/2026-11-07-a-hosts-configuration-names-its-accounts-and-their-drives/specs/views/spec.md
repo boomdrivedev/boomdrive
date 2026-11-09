@@ -21,8 +21,8 @@ Where `code_workspaces` is true, each drive of the configuration SHALL have one 
 
 #### Scenario: The first workspaces
 
-- **WHEN** a pass keeps the drive `home`, naming `agentplot/flume` and `afterthought/crew`, and the drive `work`, naming `agentplot/sluice`, with `code_workspaces = true` and the repository root `/h/Code`, and no workspace is there
-- **THEN** `/h/Code/home.code-workspace` holds `{"folders": [{"path": "agentplot/flume"}, {"path": "afterthought/crew"}], "settings": {}}`, `/h/Code/work.code-workspace` holds `{"folders": [{"path": "agentplot/sluice"}], "settings": {}}`, and no owner's folder holds a workspace
+- **WHEN** a pass keeps the drive `home`, naming `agentplot/flume` and `example/crew`, and the drive `work`, naming `agentplot/sluice`, with `code_workspaces = true` and the repository root `/h/Code`, and no workspace is there
+- **THEN** `/h/Code/home.code-workspace` holds `{"folders": [{"path": "agentplot/flume"}, {"path": "example/crew"}], "settings": {}}`, `/h/Code/work.code-workspace` holds `{"folders": [{"path": "agentplot/sluice"}], "settings": {}}`, and no owner's folder holds a workspace
 
 #### Scenario: No workspace asked for
 

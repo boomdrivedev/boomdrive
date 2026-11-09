@@ -56,7 +56,7 @@ let
 
   # A drive's stream, which Flume's module is given (drives.nix): its name,
   # its room, its priority and each label's reserve, record 0028's keys,
-  # with deneb's room and reserves by default. Each default label's
+  # with that record's room and reserves by default. Each default label's
   # reserve is the module's own default, so a drive that sets another
   # label, or one of these, keeps the rest; a label's reserve has none of
   # its own. Any other key of a stream is Flume's own option,

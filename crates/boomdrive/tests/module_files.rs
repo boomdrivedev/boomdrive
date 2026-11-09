@@ -112,8 +112,8 @@ fn the_crew_file_opens_crews_implementation() {
         &file,
         &scratch.data(),
         table.poll_interval,
-        Box::new(|line| panic!("said {line:?} at its opening")),
-        Box::new(|| panic!("woken at its opening")),
+        &|_| Box::new(|line| panic!("said {line:?} at its opening")),
+        &|_| Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }

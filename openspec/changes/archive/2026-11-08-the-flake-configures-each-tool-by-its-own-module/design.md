@@ -210,7 +210,7 @@ The chore `the-sets-flume-and-sluice-are-their-latest-releases` of the same bolt
 ## What this change asks of others
 
 - **sluice and crew: a key on each module.** sluice's and crew's modules should each carry `_file` and `key = "github:agentplot/<tool>#<platform>Modules.<tool>"`, as Flume's Decision 4 does. Then a host that imports a tool's module beside Boomdrive's, or at Boomdrive's revision through Boomdrive's re-export, declares its options once. Without it, nix refuses the second declaration. It is the family's one rule for a module imported twice, Flume's, and is told to the orchestrator for sluice and crew.
-- **afterthought/swancloud**, once it takes this flake, passes deneb's facts as `services.flume.settings`, `services.sluice.settings` and `services.crew.settings` and stops writing those files (record 0023), in the same switch, since each module moves a hand-written file aside on its first link.
+- **afterthought/swancloud**, once it takes this flake, passes its hosts' facts as `services.flume.settings`, `services.sluice.settings` and `services.crew.settings` and stops writing those files (record 0023), in the same switch, since each module moves a hand-written file aside on its first link.
 
 ## Risks / Trade-offs
 

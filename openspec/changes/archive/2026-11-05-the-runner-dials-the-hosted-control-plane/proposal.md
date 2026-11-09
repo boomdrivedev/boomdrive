@@ -4,7 +4,7 @@
 
 The runner reaches its control plane through one interface, `ControlPlane`, and carries one implementation of it, crew's. The hosted control plane's is named and unbuilt: `type = "hosted"` is refused as a word this binary does not carry. `the-runner-keeps-its-protocol-as-one-json-schema-per-version` (landed as #4) wrote version 1 of the messages the two would speak, and the crate that holds them, `crates/boomdrive-hosted`, which implements nothing yet.
 
-boomdrive-cloud's wave 1 is a walking skeleton: a member enrolls their own machine, asks a drive to launch a kind on one of its repositories, and watches the launch run on that host and come back live. The cloud's half is its changes 1.4 to 1.13. The host's half is this change, the cloud roadmap's item 1.15, 8 points, under ruling D5, with research notes F10, F49 and F51. Until it lands, no host can dial the cloud: no enrollment, no socket, no copy of a place's status goes up.
+boomdrive-cloud's roadmap builds a walking skeleton of a hosted control plane, the cloud's half in its items 1.4 to 1.13. The host's half is this change, its item 1.15, under ruling D5, with research rows F10, F49 and F51. Until it lands, no host can dial the cloud: no enrollment, no socket, no copy of a place's status goes up.
 
 What it must hold to is already written:
 

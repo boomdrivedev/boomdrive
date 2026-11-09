@@ -14,10 +14,10 @@ pub mod roles;
 pub mod write;
 
 use boomdrive_control::{
-    Acted, Capacity, ControlPlane, Hello, Id, Launched, Pulled, Report, Reported, Unread, Unsent,
-    Want,
+    Acted, Capacity, ControlPlane, Hello, Id, Launched, Outcome, Part, Pulled, Report, Reported,
+    Unread, Unsent, Want,
 };
-use config::{Config, Partition};
+use config::{Config, Partition, StateRepository};
 use read::{runner_branch, Kept, Main, Request, Runner, Store};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -36,7 +36,8 @@ pub type Say = Box<dyn FnMut(String) + Send>;
 /// check.
 pub type Hook = Box<dyn FnMut() + Send>;
 
-/// crew's implementation, serving each partition of its table.
+/// crew's implementation, serving each partition of its table in turn.
+/// The runner opens one for each partition, by [`parts`].
 pub struct Crew {
     config: Config,
     /// The forge state repositories are reached on, ending in `/`.
@@ -60,15 +61,56 @@ pub struct Crew {
 }
 
 /// Opens crew's implementation from its table, `table`, of the
-/// configuration file `file`, keeping its caches under `data_dir`.
-pub fn open(table: &toml::Table, file: &Path, data_dir: &Path, say: Say) -> Result<Crew, String> {
-    Ok(Crew::new(config::read(table, file)?, GITHUB, data_dir, say))
+/// configuration file `file`, keeping its caches under `data_dir`, as its
+/// [`parts`], each saying through the say `say_for` makes for its label.
+pub fn open(
+    table: &toml::Table,
+    file: &Path,
+    data_dir: &Path,
+    say_for: &dyn Fn(&str) -> Say,
+) -> Result<Vec<Part>, String> {
+    Ok(parts(config::read(table, file)?, GITHUB, data_dir, say_for))
+}
+
+/// crew's implementation of `config` as parts, its state repositories
+/// reached on `forge`: one [`Crew`] of one partition for each partition
+/// of the table, in its order, each labelled by its partition and saying
+/// through the say `say_for` makes for that label. A partition is a
+/// drive, and each is pulled, answered and reported on its own, so one
+/// that cannot be read or written hides only its own work (record 0026;
+/// design Decision 7).
+pub fn parts(
+    config: Config,
+    forge: &str,
+    data_dir: &Path,
+    say_for: &dyn Fn(&str) -> Say,
+) -> Vec<Part> {
+    config
+        .partitions
+        .iter()
+        .map(|partition| {
+            let one = Config {
+                host: config.host.clone(),
+                partitions: vec![partition.clone()],
+            };
+            let say = say_for(&partition.label);
+            Part {
+                label: partition.label.clone(),
+                plane: Box::new(Crew::new(one, forge, data_dir, say)),
+            }
+        })
+        .collect()
 }
 
 impl Crew {
     /// crew's implementation of `config`, its state repositories reached
-    /// on `forge`, a base address ending in `/`.
-    pub fn new(config: Config, forge: &str, data_dir: &Path, say: Say) -> Crew {
+    /// on `forge`, a base address ending in `/`. The cache a release
+    /// before shared among every partition of a state repository is
+    /// removed where it is there, and said (design Decision 7).
+    pub fn new(config: Config, forge: &str, data_dir: &Path, mut say: Say) -> Crew {
+        for partition in &config.partitions {
+            remove_shared_cache(data_dir, &partition.state_repository, &mut say);
+        }
         Crew {
             config,
             forge: forge.to_string(),
@@ -98,19 +140,51 @@ impl Crew {
         self.before_claim = Some(Box::new(hook));
     }
 
-    /// The state repository of `partition`, through its bare cache,
-    /// `<data>/control/crew/<owner>/<name>.git`, outside `repositories/`
-    /// so the keeper never takes it for a clone.
+    /// The state repository of `partition`, through the partition's own
+    /// bare cache, `<data>/control/crew/<owner>/<name>/<label>.git`,
+    /// outside `repositories/` so the keeper never takes it for a clone.
+    /// Two partitions of one state repository share no git directory and
+    /// so no weir lock, and one's fetch or push holds no other's pull or
+    /// report (record 0026; design Decision 7).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
         Store {
-            cache: self
-                .data_dir
-                .join("control/crew")
+            cache: caches(&self.data_dir)
                 .join(&repository.owner)
-                .join(format!("{}.git", repository.name)),
+                .join(&repository.name)
+                .join(format!("{}.git", partition.label)),
             url: repository.url(&self.forge),
         }
+    }
+}
+
+/// Where crew's implementation keeps its caches, `<data>/control/crew`.
+fn caches(data_dir: &Path) -> PathBuf {
+    data_dir.join("control/crew")
+}
+
+/// Removes the cache a release before kept for `repository`, shared
+/// among every partition of it, `<data>/control/crew/<owner>/<name>.git`,
+/// where it is there, saying one line naming it. A cache is made again
+/// from the state repository (core.35).
+fn remove_shared_cache(data_dir: &Path, repository: &StateRepository, say: &mut Say) {
+    let shared = caches(data_dir)
+        .join(&repository.owner)
+        .join(format!("{}.git", repository.name));
+    if shared.symlink_metadata().is_err() {
+        return;
+    }
+    match std::fs::remove_dir_all(&shared) {
+        Ok(()) => say(format!(
+            "crew: removed {}, the cache of {repository} a release before shared among its \
+             partitions: each partition reads through a cache of its own",
+            shared.display()
+        )),
+        Err(error) => say(format!(
+            "crew: {}, the cache of {repository} a release before shared among its partitions, \
+             cannot be removed: {error}",
+            shared.display()
+        )),
     }
 }
 
@@ -154,19 +228,44 @@ impl Pulling<'_> {
         ids::request(self.label, number)
     }
 
-    /// Whether the runner's report answers request `number`.
+    /// Whether the runner's report answers request `number`: a launch, an
+    /// act or a preview.
     fn reported(&self, number: u64) -> bool {
         let id = self.id(number);
-        self.report.launches.contains_key(&id) || self.report.acts.contains_key(&id)
+        self.report.launches.contains_key(&id)
+            || self.report.acts.contains_key(&id)
+            || self.report.previews.contains_key(&id)
     }
 
     /// Whether this host's branch answers request `number`, a claim
-    /// counting or not.
+    /// counting or not, in `answers.rec` or, a preview, in `previews.rec`
+    /// (design Decision 10).
     fn branch_answers(&self, number: u64, claims: bool) -> bool {
+        let Some(own) = self.own.as_ref() else {
+            return false;
+        };
+        own.previews.contains_key(&number)
+            || own
+                .answers
+                .get(&number)
+                .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
+    }
+
+    /// Whether the runner launched request `number`: its report answers
+    /// it `launched`, or, where the report holds no answer to it, this
+    /// host's branch does. A claim is never launched.
+    fn launched(&self, number: u64) -> bool {
+        let id = self.id(number);
+        if let Some(launched) = self.report.launches.get(&id) {
+            return launched.answer.outcome == Outcome::Launched;
+        }
+        if self.report.acts.contains_key(&id) {
+            return false;
+        }
         self.own
             .as_ref()
             .and_then(|own| own.answers.get(&number))
-            .is_some_and(|answer| claims || !write::is_claim(answer, self.host))
+            .is_some_and(|answer| answer.get("Outcome") == Some("launched"))
     }
 
     /// Whether this host's branch holds its claim of request `number`.
@@ -197,11 +296,17 @@ impl Pulling<'_> {
 
     /// Whether request `number`'s work is still crew's, or the runner has
     /// answered it: such a request is given, so its place's status is
-    /// carried until it is let go.
+    /// carried until it is let go. A drop is current, whatever the plan
+    /// holds, while the runner answers the launch it names, since crew
+    /// writes a drop as its work leaves the plan.
     fn current(&self, request: &Request) -> bool {
         self.main.plans(request.work())
             || self.reported(request.number)
             || self.branch_answers(request.number, false)
+            || (request.act() == Some("drop")
+                && request
+                    .of()
+                    .is_some_and(|of| self.reported(of) || self.branch_answers(of, false)))
     }
 }
 
@@ -284,14 +389,21 @@ impl Crew {
                 if !pulling.current(request) {
                     continue;
                 }
+                // A launch a drop names no longer stands, as crew reads it:
+                // it is given only where the runner launched it, so its
+                // place is followed to its end, and is claimed by no one.
+                if request.is_launch()
+                    && main.dropped(request.number)
+                    && !pulling.launched(request.number)
+                {
+                    continue;
+                }
                 match (request.host(), request.act()) {
                     (Some(named), _) if named == host => {
-                        let repository = request.get("Repo").and_then(|repo| {
-                            match read::kept(repo, &hello.repositories) {
-                                Kept::Address(address) => Some(address),
-                                _ => None,
-                            }
-                        });
+                        // Its repository among those the runner keeps, else
+                        // those it drains, else its Repo as written (record
+                        // 0021).
+                        let repository = read::resolved(request, hello);
                         let want = read::want(&label, request, repository.as_deref())
                             .unwrap_or_else(|why| read::refused(&label, request, &why));
                         given.insert(request.number, want);
@@ -305,31 +417,44 @@ impl Crew {
                             ));
                             continue;
                         };
+                        let answered = pulling.reported(request.number)
+                            || pulling.branch_answers(request.number, false);
+                        let shared = |addresses: Vec<String>, how: &str, lines: &mut Lines| {
+                            lines.say(format!(
+                                "{label}/{}: Repo {repo} is the name of {}, which this \
+                                 host {how}, so it is given nothing",
+                                request.number,
+                                addresses.join(" and ")
+                            ));
+                        };
                         let address = match read::kept(repo, &hello.repositories) {
                             Kept::Address(address) => address,
+                            Kept::Shared(addresses) => {
+                                shared(addresses, "keeps", lines);
+                                continue;
+                            }
                             // A launch the runner answered is given while
-                            // it holds it, its Repo as written, so its
-                            // place is followed to its end though the
-                            // runner keeps the repository no more (record
-                            // 0021).
-                            _ if pulling.reported(request.number)
-                                || pulling.branch_answers(request.number, false) =>
-                            {
-                                if let Ok(want) = read::want(&label, request, None) {
-                                    given.insert(request.number, want);
+                            // the runner drains its repository, at its
+                            // address, so its place is followed to its end
+                            // through the clone the runner drains; where
+                            // the runner neither keeps nor drains it, it is
+                            // given nothing, and no old name is matched to
+                            // a new one (record 0021).
+                            Kept::No if answered => {
+                                match read::kept(repo, &hello.draining) {
+                                    Kept::Address(address) => {
+                                        if let Ok(want) =
+                                            read::want(&label, request, Some(&address))
+                                        {
+                                            given.insert(request.number, want);
+                                        }
+                                    }
+                                    Kept::Shared(addresses) => shared(addresses, "drains", lines),
+                                    Kept::No => {}
                                 }
                                 continue;
                             }
                             Kept::No => continue,
-                            Kept::Shared(addresses) => {
-                                lines.say(format!(
-                                    "{label}/{}: Repo {repo} is the name of {}, which this \
-                                     host keeps, so it is given nothing",
-                                    request.number,
-                                    addresses.join(" and ")
-                                ));
-                                continue;
-                            }
                         };
                         if let Err(why) = read::want(&label, request, Some(&address)) {
                             lines.say(format!(
@@ -341,7 +466,15 @@ impl Crew {
                         }
                         kits.push((request, address));
                     }
-                    (None, Some("retry" | "drop" | "priority")) => acts.push(request),
+                    (None, Some("retry" | "land" | "drop" | "priority")) => acts.push(request),
+                    // A preview is the ask of the one host its Host names:
+                    // two runners keeping its repository would each bring
+                    // it up (design Decision 10).
+                    (None, Some("preview")) => lines.say(format!(
+                        "{label}/{}: a preview names no Host, so no runner brings it up: \
+                         it is given nothing",
+                        request.number
+                    )),
                     (None, _) => lines.say(format!(
                         "{label}/{}: names no Host and an Act crew's implementation does not \
                          read, so no runner's answer to it is the one: it is given nothing",
@@ -389,12 +522,14 @@ impl Crew {
             }
         }
         let mut others = pulling.others;
+        // A claim of a launch a drop names is given nothing, so no act
+        // goes with it.
         let mut own_claims: BTreeSet<u64> = own
             .as_ref()
             .map(|own| {
                 own.answers
                     .iter()
-                    .filter(|(_, answer)| write::is_claim(answer, &host))
+                    .filter(|(n, answer)| write::is_claim(answer, &host) && !main.dropped(**n))
                     .map(|(n, _)| *n)
                     .collect()
             })
@@ -582,7 +717,9 @@ impl Crew {
             lines.say(line);
         }
 
-        let back = own.as_ref().map(|own| read_back(&label, &host, &main, own));
+        let back = own
+            .as_ref()
+            .map(|own| read_back(&label, &host, &main, own, hello));
         let mut wants: Vec<Want> = given.into_values().collect();
         wants.extend(role_wants);
         drop(places);
@@ -665,14 +802,29 @@ fn claim_texts(
             .cloned()
             .flatten()
             .unwrap_or_else(|| write::places_text(&BTreeMap::new(), &BTreeMap::new())),
+        previews: old.get("previews.rec").cloned().flatten(),
     }
 }
 
 /// The runner's report as its branch of partition `label` holds it: each
 /// answer, as the request it answers would be given, its claims left
-/// out; a launch with its place's status.
-fn read_back(label: &str, host: &str, main: &Main, own: &Runner) -> Report {
+/// out; a launch with its place's status; and each preview of
+/// `previews.rec` as the preview its request names, its repository
+/// resolved against `hello` as at a pull (design Decision 10).
+fn read_back(label: &str, host: &str, main: &Main, own: &Runner, hello: &Hello) -> Report {
     let mut report = Report::default();
+    for (n, record) in &own.previews {
+        let Some(request) = main.request(*n) else {
+            continue;
+        };
+        let repository = read::resolved(request, hello);
+        let Ok(Want::Preview(preview)) = read::want(label, request, repository.as_deref()) else {
+            continue;
+        };
+        if let Some(previewed) = read::previewed(preview, record) {
+            report.previews.insert(ids::request(label, *n), previewed);
+        }
+    }
     for (n, record) in &own.answers {
         if write::is_claim(record, host) {
             continue;
@@ -725,6 +877,7 @@ impl ControlPlane for Crew {
                         let all = back.get_or_insert_with(Report::default);
                         all.launches.extend(held.launches);
                         all.acts.extend(held.acts);
+                        all.previews.extend(held.previews);
                     }
                 }
                 Err(why) => {
@@ -769,6 +922,7 @@ impl ControlPlane for Crew {
             let mut kept = report.clone();
             kept.launches.retain(|id, _| !gone.contains(id));
             kept.acts.retain(|id, _| !gone.contains(id));
+            kept.previews.retain(|id, _| !gone.contains(id));
             let addresses: BTreeMap<String, String> = main
                 .roles
                 .iter()
@@ -788,6 +942,7 @@ impl ControlPlane for Crew {
                     .filter(|(n, answer)| {
                         write::is_claim(answer, &host)
                             && !kept.launches.contains_key(&ids::request(label, *n))
+                            && !main.dropped(*n)
                             && main
                                 .request(*n)
                                 .is_some_and(|request| main.plans(request.work()))
@@ -795,8 +950,16 @@ impl ControlPlane for Crew {
                     .map(|(_, claim)| claim)
                     .collect();
                 let since = write::since_at(old).unwrap_or_else(|| at.clone());
+                let previews_held = old.get("previews.rec").is_some_and(Option::is_some);
                 Ok(write::texts(
-                    label, &host, &version, &since, &kept, &claims, &addresses,
+                    label,
+                    &host,
+                    &version,
+                    &since,
+                    &kept,
+                    &claims,
+                    &addresses,
+                    previews_held,
                 ))
             });
             match written {
@@ -823,5 +986,13 @@ impl ControlPlane for Crew {
             true => Err(Unsent(unsent.join("; "))),
             false => Ok(reported),
         }
+    }
+
+    /// An id `ids::named` reads as one of its partitions'.
+    fn owns(&self, id: &Id) -> bool {
+        self.config
+            .partitions
+            .iter()
+            .any(|partition| ids::named(&partition.label, id).is_some())
     }
 }

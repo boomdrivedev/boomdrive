@@ -48,6 +48,22 @@ fn shared_a_settled_want_is_given() {
     shared::a_settled_want_is_given(&mut Fakes);
 }
 
+#[test]
+fn shared_each_id_given_is_owned() {
+    shared::each_id_given_is_owned(&mut Fakes);
+}
+
+/// A fake made owning a prefix owns the ids under it alone, and one made
+/// otherwise owns every id.
+#[test]
+fn a_fake_owns_its_prefix_alone() {
+    let home = Fake::owning("home/");
+    assert!(home.owns(&Id::new("home/1")));
+    assert!(!home.owns(&Id::new("work/1")));
+    assert!(!home.owns(&Id::new("homeward/1")));
+    assert!(Fake::new().owns(&Id::new("work/1")));
+}
+
 fn at(text: &str) -> At {
     At::parse(text).unwrap()
 }
@@ -88,6 +104,7 @@ fn launched(ids: &[&str]) -> Report {
             number: 1,
             expires: None,
         },
+        repository: None,
         answer: Answer {
             outcome: Outcome::Launched,
             place_dir: Some(format!("/places/{id}")),
@@ -152,12 +169,12 @@ fn a_pull_that_cannot_be_read() {
 
 #[test]
 fn an_offer_carries_its_id_and_lease() {
-    let mut fake = Fake::holding(vec![offer("madswan/7", 3, launch("a"))]);
+    let mut fake = Fake::holding(vec![offer("home/7", 3, launch("a"))]);
     let wants = pull(&mut fake).unwrap().wants;
     let Want::Offer(given) = &wants[0] else {
         panic!("an offer: {wants:?}");
     };
-    assert_eq!(given.id, Id::new("madswan/7"));
+    assert_eq!(given.id, Id::new("home/7"));
     assert_eq!(
         given.lease,
         Lease {
@@ -182,14 +199,14 @@ fn an_offer_with_every_field() {
             words: "wait".to_string(),
         }],
         hold_submission: true,
-        after: vec![Id::new("madswan/1")],
+        after: vec![Id::new("home/1")],
         agent_settings: vec![AgentSetting {
             field: "model".to_string(),
             value: "opus".to_string(),
         }],
         ..launch("planner")
     };
-    let want = offer("madswan/2", 1, every.clone());
+    let want = offer("home/2", 1, every.clone());
     let mut fake = Fake::holding(vec![want.clone()]);
     let wants = pull(&mut fake).unwrap().wants;
     assert_eq!(wants, [want]);
@@ -198,7 +215,7 @@ fn an_offer_with_every_field() {
     };
     assert_eq!(given.launch, every);
     assert_eq!(given.launch.kind, "crew/crew-planner");
-    let report = launched(&["madswan/2"]);
+    let report = launched(&["home/2"]);
     fake.report(&report).unwrap();
     let held = pull(&mut fake).unwrap().report.unwrap();
     let text = serde_json::to_string(&held).unwrap();

@@ -17,21 +17,7 @@ What stands:
   - It keeps each repository's view under the root `views` names, and lets a dropped repository go once nothing in it would be lost.
   - It runs one loop on one thread. `Event::Landed` keeps one repository at once (`pass::keep_one`), and `Notices` hands out the sender. `Event::Stop` stops the loop.
   - Its tests run under a scratch home, git configuration and forge (`tests/common`).
-- **The cloud**, agentplot/flywheel-cloud at `24baa4e`, read 2026-11-01:
-  - **Records.**
-    - 0002: a launch is the Flywheel's record of one Flume place it asked a runner to make.
-    - 0003: hosts are per account. Streams and each repository's stream are defined in each host's Flume configuration. A launch may name another stream. A runner takes work only while its host's stream has room.
-    - 0005: each host has one Host object, which holds the runner's socket, presence, capacity, the commands waiting and a copy of the leases held.
-    - 0007: a Flywheel's repositories are those the control plane registers.
-    - 0008: one launch per unit.
-    - 0009: one runner at a time holds a launch's numbered lease, renewed by its status, and a result under a replaced number is refused.
-    - 0013: a unit's estimate is in Flume's points, passed once Flume takes them.
-    - 0016: a launch's terminal is relayed through the Host object and the runner's socket, and never stored.
-    - 0017: a bolt's branch is made by a Command any host keeping its repository may take, and a branch already made counts as done.
-    - 0022: the runner contract is versioned, outbound and idempotent.
-    - 0025: the cloud talks only to the runner, and the runner invokes tools by their command lines.
-  - **Rules.** core.3 and core.4: no Git writes and no code in the cloud. core.13: the Host object. core.15: registration. core.18: terminal bytes are never stored. core.19: the bolt's branch. core.28: no log or transcript in the cloud. core.36 to core.39: the runner contract. core.47: tools reached only through the runner. core.52: a runner's hello carries its full state at every reconnect.
-  - **The domain model.** `design/domain-model.html` gives the Launch, Command and Host cards (sections 6 and 7). It gives the copies of a Flume place, a sluice entry, the inbox and a host's capacity (section 8), with what each copies and never copies. It walks one launch from start to finish (section 10), and its ledger is section 13.
+- **The cloud**, agentplot/flywheel-cloud, read 2026-11-01: its records 0002, 0003, 0005, 0007, 0008, 0009, 0013, 0016, 0017, 0022 and 0025, its rules core.3, core.4, core.13, core.15, core.18, core.19, core.28, core.36 to core.39, core.47 and core.52, and its `design/domain-model.html`. What this change takes from each is said where it is cited below.
 - **crew's side**, built and landed on crew's `bolt/crew-runs-its-work-through-flume` at `9913f249` (`plugin/lib/runner.py`, `plugin/lib/asks.py`), with `the-team-machinery-leaves` on `change/the-team-machinery-leaves` at `2b97ee57`:
   - **`requests.rec`** on `<label>/main` holds the record set `Request`, numbered from 1 and only ever appended to.
     - Every request has `Request`, `Act` (`launch`, `retry`, `drop`, `priority`), `Work`, `Date` and `By`.
@@ -134,18 +120,7 @@ Alternative: one crate with a module per implementation. Not taken: the compiler
 - **`pull(hello, report)`** gives what the control plane wants of the host now, or `Unread` with words saying why. The runner hands every pull its hello and its whole report. A pull is the hosted plane's hello at every reconnect (cloud core.52), and an implementation reads from the report what it has already been told.
 - **`report(report)`** takes the runner's whole report and gives `Reported`, or `Unsent` with words saying why. A report renews every lease it names (cloud record 0009). A second report of the same report changes nothing (cloud core.38).
 
-The cloud's message groups map onto it as follows:
-
-| the runner contract | in the interface |
-|---|---|
-| presence and capacity (Host object, cloud record 0005) | `Hello`, given to every pull |
-| a launch offered under a lease (cloud record 0009) | `Want::Offer` |
-| an answer or retry going down to a launch's place (cloud record 0008) | `Want::Act` |
-| a Command (the Command card; cloud record 0017) | `Want::Command` |
-| an inbox the control plane copies (c-inbox) | `Want::Inbox` |
-| a terminal from a launch's card (cloud record 0016) | `Pulled::terminals` |
-| events up: status, ends, entries, landings | the `Report`, sent whole |
-| a question raised by an agent | Flume's status of its place, which the report carries; the runner raises nothing of its own |
+Each exchange of the runner contract (the cloud's records 0005, 0008, 0009, 0016 and 0017, and the ledger's c-inbox items) has its part of the interface: the `Hello`, given to every pull; `Want::Offer`, `Want::Act`, `Want::Command` and `Want::Inbox`; `Pulled::terminals`; and the `Report`, sent whole, which carries Flume's status of each place, an agent's question among it. The runner raises nothing of its own.
 
 The types, each named for what it holds (core.12):
 
@@ -178,14 +153,14 @@ An `Id` is a string the control plane gives, unique among what it wants of the h
 Alternatives:
 
 - A call per message pushed into the runner. Not taken: a pull keeps every connection outgoing (core.3). It also lets crew's records be read whole at one tip, and needs no queue in the runner.
-- A "kept run" want, the control plane asking for one run standing while wanted. Not taken: the cloud models a role's run as a launch (the Launch card's "serves"), each with its own lease. So crew's implementation gives each run as an offer (Decision 19).
+- A "kept run" want, the control plane asking for one run standing while wanted. Not taken: the cloud models a role's run as a launch (its domain model), each with its own lease. So crew's implementation gives each run as an offer (Decision 19).
 
 ### 3. The configuration's keys say what they hold
 
 The landed configuration's keys take names that say what they hold (core.12). The configuration reads:
 
 ```toml
-repositories = ["afterthought/crew", "agentplot/flume"]
+repositories = ["example/crew", "agentplot/flume"]
 repository_root = "~/Code"
 fetch_interval = "2m"
 ```
@@ -210,11 +185,11 @@ type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
-host = "deneb"
+host = "host-a"
 
 [[control_plane.crew.partitions]]
-label = "madswan"
-state_repository = "afterthought/madswan-state"
+label = "home"
+state_repository = "example/home-state"
 ```
 
 - **`type`** is the implementation's word, and is required.
@@ -259,10 +234,10 @@ At every control pass the runner reads, and hands to the pull:
 
 - **`tool_versions`**: the first line of `flume --version`, `sluice --version`, `herdr --version` and `git --version` as each printed it. A tool not found reads as missing, with its words.
 - **`repositories`**: each address the configuration names whose clone is made (core.5). The control plane registers none of them by this (cloud record 0007).
-- **`capacity`**: the text of Flume's `status.host`'s `running`, `bound`, `room` and `streams` as Flume printed each, sliced from the pass's one `status --json` by `serde_json`'s `RawValue` and never re-serialised. `pools`, `addresses`, `bases` and `terminal_kept` are left out. They are Flume's bookkeeping, which the cloud sees only through its effect (domain model, section 11), and account names are among them.
+- **`capacity`**: the text of Flume's `status.host`'s `running`, `bound`, `room` and `streams` as Flume printed each, sliced from the pass's one `status --json` by `serde_json`'s `RawValue` and never re-serialised. `pools`, `addresses`, `bases` and `terminal_kept` are left out. They are Flume's bookkeeping, which the cloud sees only through its effect (the cloud's domain model), and account names are among them.
 - **`leases`**: each launch's and each command's id with its number.
 
-This is the Host object's copy of the host's capacity (the domain model's Host capacity; cloud record 0005), carried as Flume gave it. crew's implementation reads `repositories` and the host's `room` from it (Decision 18), and writes of it only `runner.rec`'s `Version` (Decision 17).
+This is the Host object's copy of the host's capacity (the cloud's domain model and record 0005), carried as Flume gave it. crew's implementation reads `repositories` and the host's `room` from it (Decision 18), and writes of it only `runner.rec`'s `Version` (Decision 17).
 
 ### 7. Taking an offer
 
@@ -345,7 +320,7 @@ A launch names its kind, and that is all the runner and its control plane say of
 
 - **crew's requests** name a kind by name alone, `change`, `chore` or `fix`, which Flume resolves among the repository's own kinds and Flume's.
 - **crew's role runs** are launched by their kind's identity, `<Kinds>/<Kind>` of the role record, `crew/crew-planner` for the planner. `Kinds` names the source and `Kind` the name, each as crew wrote it. crew writes no version, so Flume takes the one the host's lock records, else the newest of the source (flume record 0022). The source `crew` is crew's kinds, which the host's Flume configuration declares (*After deploy*).
-- **Later, a marketplace.** The cloud's plugin and app marketplace is to configure each host's Flume: its kind sources, the packages it holds and its locks. Nothing in the runner names any of them, so nothing here changes when it comes. Where the marketplace reaches a host through its hosted control plane, it does so by a command the runner carries out through Flume's own command line, as it carries a bolt's branch through sluice's (core.1; cloud record 0025). That command's sort is its own change's, and `Command::Other` refuses it until then.
+- **Later, a marketplace.** The cloud's marketplace may configure each host's Flume. Nothing in the runner names what it configures, so nothing here changes when it comes. Where the marketplace reaches a host through its hosted control plane, it does so by a command the runner carries out through Flume's own command line, as it carries a bolt's branch through sluice's (core.1; cloud record 0025). That command's sort is its own change's, and `Command::Other` refuses it until then.
 
 Alternative: a kinds file per implementation's table, passed as `--kinds`. Not taken: it makes the control plane, and the runner's configuration, say where a kind comes from, which is Flume's host configuration and later the marketplace's (core.5).
 
@@ -377,7 +352,7 @@ Flume's status of a place names the sluice entry its submission is: `submission.
 - `failed`, each row with only its `task`, `hash`, `flaky` and `system`;
 - `landed_as`.
 
-These are the copy's fields (the domain model's sluice entry). A row's `log`, which locates a task's output, is left out, and nothing is read from `refs/sluice/logs` or `refs/sluice/heads` (core.11; cloud core.4, core.28). The entry is read again at each pass until its `state` is `landed`, `failed`, `conflict` or `withdrawn`. It is carried anew only when the object changes.
+These are the copy's fields (the cloud's domain model). A row's `log`, which locates a task's output, is left out, and nothing is read from `refs/sluice/logs` or `refs/sluice/heads` (core.11; cloud core.4, core.28). The entry is read again at each pass until its `state` is `landed`, `failed`, `conflict` or `withdrawn`. It is carried anew only when the object changes.
 
 crew's records have no place for an entry. crew reads a submission from Flume's status, so crew's implementation writes nothing of it.
 
@@ -391,7 +366,7 @@ A `Want::Inbox` asks the runner to carry the inbox kept on `branch` of `reposito
 
 At each control pass, the runner reads the tip of `refs/remotes/origin/<branch>` in the clone, which the keeper's fetch brings, since the clone fetches every head. Where the tip has moved since the last carried, it reads the tip's files under `inbox/` by `git ls-tree -r` and `git cat-file` through the sibling's git builder, which fetches nothing, and checks them whole with `weir_signals::InboxAt`:
 
-- where weir takes them, it carries the tip's commit and every record file under `inbox/` by its path, its text as the tip holds it. Each item's `brief.md` is carried as `sha256:<hex>` of its bytes, since the copy of an item names its record and not its brief (domain model, Inbox);
+- where weir takes them, it carries the tip's commit and every record file under `inbox/` by its path, its text as the tip holds it. Each item's `brief.md` is carried as `sha256:<hex>` of its bytes, since the copy of an item names its record and not its brief (the cloud's domain model);
 - where weir refuses them, it carries the tip with weir's words, and the files carried before stand.
 
 An inbox holds no raw material: a capture holds a pointer to where its material was banked (weir's statement 17). The runner reads nothing a pointer names (core.11).
@@ -407,7 +382,7 @@ A `Command::Branch { repository, branch, from }` asks for `branch` to be made fr
 3. **A clone not yet made.** It is left untaken. Any host keeping the repository may take it, and with none it waits (cloud core.19).
 4. **Otherwise** it is taken under its lease. The runner runs `sluice branch create <branch> --from <from> --json` in the clone's container, with no room asked (core.9 "Not ruled out"). sluice's standard output is the command's `text`, as given, and its exit gives `Done` (0) or `Refused` (any other, with sluice's `message` or standard error as words). Then the runner reads `git ls-remote origin refs/heads/<branch>` through the sibling's git builder. The commit origin's branch stands at is `origin_commit`, or none where origin holds no such branch.
 
-A branch already there is refused by sluice, `already there`, and its `origin_commit` names the commit it stands at. The runner judges neither. The control plane counts the branch made from `origin_commit` (cloud record 0017: "a branch already made counts it done"; core.19 "a runner reporting that the branch was already made"). The runner never reads sluice's words for that. Where sluice refuses for want of a gate, the answer goes up as given, and what the bolt shows is the control plane's (cloud record 0017, *Left open*).
+A branch already there is refused by sluice, `already there`, and its `origin_commit` names the commit it stands at. The runner judges neither. The control plane counts the branch made from `origin_commit` (cloud record 0017 and core.19). The runner never reads sluice's words for that. Where sluice refuses for want of a gate, the answer goes up as given, and what the bolt shows is the control plane's (cloud record 0017).
 
 `Command::Other` is answered `Refused`, naming the tool and saying this binary does not carry it.
 
@@ -566,14 +541,14 @@ None.
 
 ### Departures from flywheel-next's design
 
-The original Flywheel's host (flywheel-next `definitions/engine/host.yaml`, `lease.yaml`) differs from this runner in six ways:
+The original Flywheel's host (flywheel-next's `definitions/engine/host.yaml` and `lease.yaml`) differs from this runner in six ways, each cited by flywheel-next's requirement:
 
-- **Who takes a lease.** flywheel-next's host took a lease itself, by compare-and-swap on the state store (its requirement 128), within what its manifest declared (149). Here the control plane offers each lease, and the runner takes or leaves only what it was offered (core.9; cloud records 0005, 0009). crew's implementation, standing in for a control plane with no arbiter, claims a kit's launch on the runner's own branch and gives it only once no other runner has (Decision 18).
-- **How a lease ends.** flywheel-next's lease went stale at five minutes, and expired at twenty-four hours or on a takeover, its old holder reading that it had lost. Here a lease ends at the expiry the control plane gave it, by the control plane's alarm, and the runner learns of it from a refused report (cloud core.39; Decision 11).
-- **Stray places.** flywheel-next's host reconciled its disk against the state and removed stray places (55, 222). Here the runner removes no place: a place whose lease it lost is left as Flume holds it, and named (core.10).
-- **The manifest.** flywheel-next's host declared the kinds, repositories and unit types it took (149). It cloned the state, the blueprints and every tracked repository at its join (205). Here the configuration names repositories alone and no kind or stream (core.5; cloud records 0003, 0007), and kinds are Flume's.
-- **The tick.** flywheel-next's host ran the machines, its tick being the scheduler (231). It was bound to the service side by an invocation contract of tick and request (297). Here the runner runs no machine. It reaches its control plane through one interface: crew's records now, and one outgoing socket later (core.2, core.3; cloud core.37).
-- **Capacity.** flywheel-next's host had a `bound` of sessions of its own. Here capacity is Flume's streams and room, as Flume reports them (cloud record 0003; Decision 6).
+- **Who takes a lease** (128, 149). Here the control plane offers each lease, and the runner takes or leaves only what it was offered (core.9; cloud records 0005, 0009). crew's implementation, standing in for a control plane with no arbiter, claims a kit's launch on the runner's own branch and gives it only once no other runner has (Decision 18).
+- **How a lease ends.** Here a lease ends at the expiry the control plane gave it, by the control plane's alarm, and the runner learns of it from a refused report (cloud core.39; Decision 11).
+- **Stray places** (55, 222). Here the runner removes no place: a place whose lease it lost is left as Flume holds it, and named (core.10).
+- **The manifest** (149, 205). Here the configuration names repositories alone and no kind or stream (core.5; cloud records 0003, 0007), and kinds are Flume's.
+- **The tick** (231, 297). Here the runner runs no machine. It reaches its control plane through one interface: crew's records now, and one outgoing socket later (core.2, core.3; cloud core.37).
+- **Capacity.** Here capacity is Flume's streams and room, as Flume reports them (cloud record 0003; Decision 6).
 
 ## What this change asks of others
 
@@ -611,7 +586,7 @@ The original Flywheel's host (flywheel-next `definitions/engine/host.yaml`, `lea
 
 No step here is a check this repository's gate can hold. Each is another repository's, or the host's.
 
-- **swancloud installs the runner with recutils, Flume 0.4.1 or later, sluice and herdr**, and writes its configuration with `repository_root` and `fetch_interval`, and its `[control_plane]` table for each host that serves a partition: the host's name as crew's hosts file has it, and each partition's label and state repository. Why not code here: the machine's configuration is swancloud's.
+- **afterthought/swancloud installs the runner with recutils, Flume 0.4.1 or later, sluice and herdr**, and writes its configuration with `repository_root` and `fetch_interval`, and its `[control_plane]` table for each host that serves a partition: the host's name as crew's hosts file has it, and each partition's label and state repository. Why not code here: the machine's configuration is afterthought/swancloud's.
 - **Flume's host configuration declares each stream crew's launches and roles name** (crew's `roles-run-as-flume-kinds`, *What this change rests on* 4), and maps each repository kept to its stream for crew's kit launches. Why not code here: streams are Flume's host configuration (core.5).
 - **Flume's host configuration declares the kind source `crew`**, crew's kinds in the crew release the host pins, once Flume's `a-host-declares-where-its-kinds-come-from` is released; later the marketplace configures it. Why not code here: kinds are Flume's host configuration (core.5).
 - **The host's git credential helper reaches each state repository over https.** Why not code here: the credential is the host's, never this repository's (core.4).
@@ -774,18 +749,18 @@ A test also asserts that the data directory holds no file the relay wrote and th
 - `recfix --check` passing on each file written;
 - each file parsed by a port of crew's `host_read` checks: one `Runner` naming the host, no request twice, and every `Status` JSON.
 
-**8.5** `src/claim.rs`: Decision 18. A launch naming no `Host` is matched to a kept repository by address or by name alone, against the hello's `repositories`. The claim's write and withdrawal go through `write.rs`, and the check reads every other runner's branch through `read.rs`. The wait after a withdrawal is a count of pulls per launch, held in the implementation. An act naming no `Host` is given where the report or the branch answers its launch. Tests run two implementations, `deneb` and `vega`, over one bare repository, with a hook between a claim's write and its check:
+**8.5** `src/claim.rs`: Decision 18. A launch naming no `Host` is matched to a kept repository by address or by name alone, against the hello's `repositories`. The claim's write and withdrawal go through `write.rs`, and the check reads every other runner's branch through `read.rs`. The wait after a withdrawal is a count of pulls per launch, held in the implementation. An act naming no `Host` is given where the report or the branch answers its launch. Tests run two implementations, `host-a` and `host-b`, over one bare repository, with a hook between a claim's write and its check:
 
-- a launch claimed alone: given as an offer, `held` with the claim's words on `deneb`'s branch;
-- a launch `vega` answered first: nothing claimed or given by `deneb`;
-- `vega`'s claim pushed between `deneb`'s write and its check: `deneb` withdraws and gives nothing;
-- both claiming before either checks: both withdraw, `deneb` claims again at its next pull and is given the launch, and `vega` sees its claim;
+- a launch claimed alone: given as an offer, `held` with the claim's words on `host-a`'s branch;
+- a launch `host-b` answered first: nothing claimed or given by `host-a`;
+- `host-b`'s claim pushed between `host-a`'s write and its check: `host-a` withdraws and gives nothing;
+- both claiming before either checks: both withdraw, `host-a` claims again at its next pull and is given the launch, and `host-b` sees its claim;
 - the hello's `room` 0: nothing claimed;
-- `Repo: crew` against `afterthought/crew`: given as `afterthought/crew`; against two addresses named `crew`: given nothing and logged;
+- `Repo: crew` against `example/crew`: given as `example/crew`; against two addresses named `crew`: given nothing and logged;
 - a repository not kept: given nothing and written nothing;
 - a claim left unanswered for want of room in its stream: kept by the report's write and given again;
-- an implementation opened afresh over a branch holding its claim: the launch given at once; and with `vega`'s branch answering it too: withdrawn;
-- an act naming no `Host` on a launch `vega` answered: given nothing; on a launch this branch answers: given.
+- an implementation opened afresh over a branch holding its claim: the launch given at once; and with `host-b`'s branch answering it too: withdrawn;
+- an act naming no `Host` on a launch `host-b` answered: given nothing; on a launch this branch answers: given.
 
 **8.6** `src/roles.rs`: Decision 19. It parses `roles.rec` and `asks.rec` as crew's `records` and `parse` do, and reads `waits_on` across every host's `places.rec`, its own host's from the report. Each role record for this host is given as an offer or a done. The cases are crew's `role-runs` scenarios and `tests/py/test_asks.py` at `9913f249`, written as crew's text into the bare repository:
 

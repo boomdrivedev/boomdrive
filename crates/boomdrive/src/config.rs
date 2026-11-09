@@ -1449,7 +1449,7 @@ mod tests {
     fn drives_of_two_accounts() {
         let config = read(
             "[accounts.own.drives.home]\n\
-             repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n\
+             repositories = [\"agentplot/flume\", \"example/crew\"]\n\
              \n\
              [accounts.client.drives.garden]\n\
              repositories = [\"agentplot/sluice\"]\n",
@@ -1460,7 +1460,7 @@ mod tests {
                 .repositories()
                 .map(Address::to_string)
                 .collect::<Vec<_>>(),
-            ["agentplot/flume", "afterthought/crew", "agentplot/sluice"]
+            ["agentplot/flume", "example/crew", "agentplot/sluice"]
         );
         assert_eq!(
             config
@@ -1961,7 +1961,7 @@ mod tests {
                  code_workspaces = true\n\
                  \n\
                  [accounts.own.drives.home]\n\
-                 repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n"
+                 repositories = [\"agentplot/flume\", \"example/crew\"]\n"
             ),
             Ok(Config {
                 repository_root: PathBuf::from("/srv/code"),
@@ -1971,10 +1971,7 @@ mod tests {
                     name: "own".to_string(),
                     drives: vec![Drive {
                         name: "home".to_string(),
-                        repositories: vec![
-                            address("agentplot/flume"),
-                            address("afterthought/crew")
-                        ],
+                        repositories: vec![address("agentplot/flume"), address("example/crew")],
                     }],
                 }],
                 control_plane: None,
@@ -1991,11 +1988,11 @@ type = \"crew\"
 poll_interval = \"1m\"
 
 [control_plane.crew]
-host = \"deneb\"
+host = \"host-a\"
 
 [[control_plane.crew.partitions]]
-label = \"madswan\"
-state_repository = \"afterthought/madswan-state\"
+label = \"home\"
+state_repository = \"example/home-state\"
 ";
 
     /// The configuration spec's "crew named": the table `type` names is
@@ -2004,8 +2001,8 @@ state_repository = \"afterthought/madswan-state\"
     fn the_control_plane_named() {
         let table = read(CONTROL_PLANE).unwrap().control_plane.unwrap();
         let own: Table = toml::from_str(
-            "host = \"deneb\"\n\n[[partitions]]\nlabel = \"madswan\"\n\
-             state_repository = \"afterthought/madswan-state\"\n",
+            "host = \"host-a\"\n\n[[partitions]]\nlabel = \"home\"\n\
+             state_repository = \"example/home-state\"\n",
         )
         .unwrap();
         assert_eq!(
@@ -2387,7 +2384,7 @@ state_repository = \"afterthought/madswan-state\"
         let config = layers(
             &in_drive("home", &["agentplot/flume"]),
             Some(
-                "[accounts.own.drives.work]\nrepositories = [\"afterthought/crew\"]\n\n\
+                "[accounts.own.drives.work]\nrepositories = [\"example/crew\"]\n\n\
                  [accounts.client.drives.garden]\nrepositories = [\"agentplot/sluice\"]\n\n\
                  [accounts.client.drives.allotment]\nrepositories = []\n",
             ),
@@ -2397,7 +2394,7 @@ state_repository = \"afterthought/madswan-state\"
             drives_of(&config),
             [
                 drive("own", "home", &["agentplot/flume"]),
-                drive("own", "work", &["afterthought/crew"]),
+                drive("own", "work", &["example/crew"]),
                 drive("client", "garden", &["agentplot/sluice"]),
                 drive("client", "allotment", &[]),
             ]
@@ -2425,7 +2422,7 @@ state_repository = \"afterthought/madswan-state\"
     fn a_repository_the_managed_layer_keeps_in_another_drive() {
         let config = layers(
             &in_drive("home", &["agentplot/flume"]),
-            Some(&in_drive("work", &["afterthought/crew", "AgentPlot/Flume"])),
+            Some(&in_drive("work", &["example/crew", "AgentPlot/Flume"])),
         )
         .unwrap();
         assert_eq!(
@@ -2773,7 +2770,7 @@ state_repository = \"afterthought/madswan-state\"
         );
         assert_eq!(
             config.control_plane.unwrap().implementation_table["host"].as_str(),
-            Some("deneb")
+            Some("host-a")
         );
 
         let config = layers("accounts = {}\n", Some(&hosted_local("", &["work"]))).unwrap();
@@ -2816,7 +2813,7 @@ state_repository = \"afterthought/madswan-state\"
             Some(&format!(
                 "{}{}",
                 in_drive("home", &["agentplot/sluice"]),
-                in_drive("work", &["afterthought/crew"])
+                in_drive("work", &["example/crew"])
             )),
         )
         .unwrap();
@@ -2849,7 +2846,7 @@ state_repository = \"afterthought/madswan-state\"
             Some(&format!(
                 "{}{}",
                 in_drive("home", &["agentplot/sluice"]),
-                in_drive("work", &["afterthought/crew"])
+                in_drive("work", &["example/crew"])
             )),
         )
         .unwrap();
@@ -2857,7 +2854,7 @@ state_repository = \"afterthought/madswan-state\"
             drives_of(&config),
             [
                 drive("own", "home", &["agentplot/flume"]),
-                drive("own", "work", &["afterthought/crew"]),
+                drive("own", "work", &["example/crew"]),
             ]
         );
         assert_eq!(

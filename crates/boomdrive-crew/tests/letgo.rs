@@ -5,23 +5,24 @@
 mod common;
 
 use boomdrive_control::{
-    Acted, Answer, At, Carried, ControlPlane, Hello, Id, Launched, Lease, Outcome, Report,
+    Acted, Answer, At, Carried, ControlPlane, Hello, Id, Launched, Lease, Outcome, Previewed,
+    Report, Want,
 };
 use boomdrive_crew::Crew;
-use common::{act, file, hello, launch, plan, rec, role, State, REQUESTS, ROLES};
+use common::{act, file, hello, launch, plan, preview, rec, role, State, REQUESTS, ROLES};
 
-const BRANCH: &str = "madswan/runner/deneb";
+const BRANCH: &str = "home/runner/host-a";
 const PLACE: &str = "/places/change--a";
 
 fn kept() -> Hello {
-    hello(&["afterthought/crew"], "4")
+    hello(&["example/crew"], "4")
 }
 
-/// `madswan/main` holding launch 12 of `work` and its priority 13 for
-/// deneb, the planner's role where `planner`, and `plan` as its plan.
+/// `home/main` holding launch 12 of `work` and its priority 13 for
+/// host-a, the planner's role where `planner`, and `plan` as its plan.
 fn main_with(state: &State, work: &str, plan_rec: &str, planner: bool) {
     let roles: Vec<String> = match planner {
-        true => vec![role("planner", "deneb")],
+        true => vec![role("planner", "host-a")],
         false => vec![],
     };
     state.main(&[
@@ -30,11 +31,11 @@ fn main_with(state: &State, work: &str, plan_rec: &str, planner: bool) {
             &file(
                 REQUESTS,
                 &[
-                    launch(12, Some("deneb"), work, "afterthought/crew", "a", &[]),
+                    launch(12, Some("host-a"), work, "example/crew", "a", &[]),
                     act(
                         13,
                         "priority",
-                        Some("deneb"),
+                        Some("host-a"),
                         work,
                         12,
                         &[("Priority", "4")],
@@ -59,6 +60,7 @@ fn launched(outcome: Outcome, place: Option<&str>, listed: Option<bool>) -> Laun
             number: 1,
             expires: None,
         },
+        repository: None,
         answer: Answer {
             outcome,
             place_dir: place.map(str::to_string),
@@ -82,13 +84,13 @@ fn launched(outcome: Outcome, place: Option<&str>, listed: Option<bool>) -> Laun
 fn report(listed: bool) -> Report {
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/12"),
+        Id::new("home/12"),
         launched(Outcome::Launched, Some(PLACE), Some(listed)),
     );
     report.acts.insert(
-        Id::new("madswan/13"),
+        Id::new("home/13"),
         Acted {
-            launch: Id::new("madswan/12"),
+            launch: Id::new("home/12"),
             lease: 1,
             outcome: Outcome::Done,
             words: None,
@@ -110,7 +112,7 @@ fn let_go(crew: &mut Crew, report: &Report) -> Vec<String> {
 fn a_unit_still_in_the_plan() {
     let state = State::new();
     main_with(&state, "unit/u", &plan(&["u"], &["b"]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     assert!(let_go(&mut crew, &report(false)).is_empty());
     let places = state.file(BRANCH, "places.rec").unwrap();
     assert!(
@@ -123,16 +125,13 @@ fn a_unit_still_in_the_plan() {
 fn a_unit_landed_and_gone_from_the_plan() {
     let state = State::new();
     main_with(&state, "unit/u", &plan(&["u"], &["b"]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     let_go(&mut crew, &report(true));
     main_with(&state, "unit/u", &plan(&[], &["b"]), false);
     // Still listed by Flume, it stays.
     assert!(let_go(&mut crew, &report(true)).is_empty());
     // Tidied, it goes, its acts with it.
-    assert_eq!(
-        let_go(&mut crew, &report(false)),
-        ["madswan/12", "madswan/13"]
-    );
+    assert_eq!(let_go(&mut crew, &report(false)), ["home/12", "home/13"]);
     let answers = state.file(BRANCH, "answers.rec").unwrap();
     let places = state.file(BRANCH, "places.rec").unwrap();
     assert!(!answers.contains("Request:"), "{answers}");
@@ -144,30 +143,27 @@ fn a_unit_landed_and_gone_from_the_plan() {
 }
 
 /// The crew-control-plane spec's "One partition missing at a report":
-/// `swancloud/main` unread, `madswan`'s branch is written all the same,
-/// its let-go given, and `swancloud`'s branch named as not written.
+/// `work/main` unread, `home`'s branch is written all the same,
+/// its let-go given, and `work`'s branch named as not written.
 #[test]
 fn one_partition_missing_at_a_report() {
     let state = State::new();
-    state.make("afterthought/swancloud-state");
+    state.make("example/work-state");
     main_with(&state, "unit/u", &plan(&[], &["b"]), false);
     let (mut crew, said) = state.crew_serving(
-        "deneb",
+        "host-a",
         &[
-            ("swancloud", "afterthought/swancloud-state"),
-            ("madswan", "afterthought/madswan-state"),
+            ("work", "example/work-state"),
+            ("home", "example/home-state"),
         ],
     );
-    assert_eq!(
-        let_go(&mut crew, &report(false)),
-        ["madswan/12", "madswan/13"]
-    );
+    assert_eq!(let_go(&mut crew, &report(false)), ["home/12", "home/13"]);
     let answers = state.file(BRANCH, "answers.rec").unwrap();
     assert!(!answers.contains("Request:"), "{answers}");
     assert!(
         said.holds(&[
-            "crew: swancloud/main has not been read",
-            "swancloud/runner/deneb is not written"
+            "crew: work/main has not been read",
+            "work/runner/host-a is not written"
         ]),
         "{:?}",
         said.lines()
@@ -179,10 +175,10 @@ fn one_partition_missing_at_a_report() {
 #[test]
 fn a_report_before_any_partition_is_read() {
     let state = State::new();
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     let unsent = crew.report(&report(false)).unwrap_err();
     assert!(
-        unsent.0.contains("madswan/main has not been read"),
+        unsent.0.contains("home/main has not been read"),
         "{}",
         unsent.0
     );
@@ -193,30 +189,27 @@ fn a_report_before_any_partition_is_read() {
 fn a_unit_gone_from_the_plan_is_still_given_while_the_runner_holds_it() {
     let state = State::new();
     main_with(&state, "unit/u", &plan(&[], &[]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     let given = crew.pull(&kept(), &report(true)).expect("a pull");
     let ids: Vec<String> = given.wants.iter().map(|w| w.id().to_string()).collect();
-    assert_eq!(ids, ["madswan/12", "madswan/13"]);
+    assert_eq!(ids, ["home/12", "home/13"]);
 }
 
 #[test]
 fn a_fix_on_a_bolt_gone_with_its_bolt() {
     let state = State::new();
     main_with(&state, "fix/b/x", &plan(&[], &["b"]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     assert!(let_go(&mut crew, &report(false)).is_empty());
     main_with(&state, "fix/b/x", &plan(&[], &[]), false);
-    assert_eq!(
-        let_go(&mut crew, &report(false)),
-        ["madswan/12", "madswan/13"]
-    );
+    assert_eq!(let_go(&mut crew, &report(false)), ["home/12", "home/13"]);
 }
 
 #[test]
 fn a_fix_of_main() {
     let state = State::new();
     main_with(&state, "fix/main/crew/x", &plan(&[], &[]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     assert!(let_go(&mut crew, &report(false)).is_empty());
     let places = state.file(BRANCH, "places.rec").unwrap();
     assert!(places.contains("\nRequest: 12\n"), "{places}");
@@ -226,13 +219,12 @@ fn a_fix_of_main() {
 fn a_refused_launch_of_work_gone_goes() {
     let state = State::new();
     main_with(&state, "unit/u", &plan(&[], &[]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     let mut refused = Report::default();
-    refused.launches.insert(
-        Id::new("madswan/12"),
-        launched(Outcome::Refused, None, None),
-    );
-    assert_eq!(let_go(&mut crew, &refused), ["madswan/12"]);
+    refused
+        .launches
+        .insert(Id::new("home/12"), launched(Outcome::Refused, None, None));
+    assert_eq!(let_go(&mut crew, &refused), ["home/12"]);
 }
 
 /// A report of the planner's runs, each `k` with its place listed live
@@ -243,14 +235,14 @@ fn runs(runs: &[(u64, bool)]) -> Report {
         let run = match live {
             true => launched(
                 Outcome::Launched,
-                Some("/places/crew-planner--madswan"),
+                Some("/places/crew-planner--home"),
                 Some(true),
             ),
             false => launched(Outcome::Refused, None, None),
         };
         report
             .launches
-            .insert(Id::new(format!("madswan/planner/{k}")), run);
+            .insert(Id::new(format!("home/planner/{k}")), run);
     }
     report
 }
@@ -259,15 +251,15 @@ fn runs(runs: &[(u64, bool)]) -> Report {
 fn a_roles_earlier_run_once_a_later_one_is_recorded() {
     let state = State::new();
     main_with(&state, "unit/u", &plan(&["u"], &[]), true);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     assert!(let_go(&mut crew, &runs(&[(1, false)])).is_empty());
     assert_eq!(
         let_go(&mut crew, &runs(&[(1, false), (2, true)])),
-        ["madswan/planner/1"]
+        ["home/planner/1"]
     );
     let places = state.file(BRANCH, "places.rec").unwrap();
     assert!(
-        places.contains("\nAddress: madswan/planner\nPlace: /places/crew-planner--madswan\n"),
+        places.contains("\nAddress: home/planner\nPlace: /places/crew-planner--home\n"),
         "{places}"
     );
 }
@@ -276,13 +268,10 @@ fn a_roles_earlier_run_once_a_later_one_is_recorded() {
 fn a_roles_last_run_once_its_role_has_gone_and_its_place_is_over() {
     let state = State::new();
     main_with(&state, "unit/u", &plan(&["u"], &[]), false);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     // Its place still live, it stays.
     assert!(let_go(&mut crew, &runs(&[(3, true)])).is_empty());
-    assert_eq!(
-        let_go(&mut crew, &runs(&[(3, false)])),
-        ["madswan/planner/3"]
-    );
+    assert_eq!(let_go(&mut crew, &runs(&[(3, false)])), ["home/planner/3"]);
     let places = state.file(BRANCH, "places.rec").unwrap();
     assert!(!places.contains("Address:"), "{places}");
 }
@@ -299,24 +288,146 @@ fn a_record_of_a_kind_crew_writes_is_left_as_it_stands() {
                 &[rec(&[
                     ("Request", "12"),
                     ("Act", "launch"),
-                    ("Host", "deneb"),
+                    ("Host", "host-a"),
                     ("Work", "role/planner/record-0053"),
-                    ("Repo", "afterthought/crew"),
+                    ("Repo", "example/crew"),
                     ("Kind", "chore"),
                     ("Name", "record-0053"),
                     ("Base", "main"),
                     ("Date", "2026-11-01T09:00:00Z"),
-                    ("By", "crew@deneb"),
+                    ("By", "crew@host-a"),
                 ])],
             ),
         ),
         ("plan.rec", &plan(&[], &[])),
     ]);
-    let (mut crew, _) = state.crew("deneb");
+    let (mut crew, _) = state.crew("host-a");
     let mut report = Report::default();
     report.launches.insert(
-        Id::new("madswan/12"),
+        Id::new("home/12"),
         launched(Outcome::Launched, Some(PLACE), Some(false)),
     );
     assert!(let_go(&mut crew, &report).is_empty());
+}
+
+/// `home/main` holding preview 30 of `unit/u` and its done 31, for
+/// host-a, and `plan` as its plan.
+fn main_with_previews(state: &State, plan_rec: &str) {
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    preview(
+                        30,
+                        Some("host-a"),
+                        "unit/u",
+                        "example/crew",
+                        "main",
+                        "R1",
+                        false,
+                    ),
+                    preview(
+                        31,
+                        Some("host-a"),
+                        "unit/u",
+                        "example/crew",
+                        "main",
+                        "R1",
+                        true,
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", plan_rec),
+    ]);
+}
+
+/// A preview of `R1` in `example/crew` answered `outcome`, done or not,
+/// its status listed or not where one is carried.
+fn previewed(outcome: Outcome, done: bool, listed: Option<bool>) -> Previewed {
+    Previewed {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: "example/crew".to_string(),
+        revision: "R1".to_string(),
+        done,
+        outcome,
+        text: Some(r#"{"name":"preview/r1","state":"starting"}"#.to_string()),
+        words: None,
+        status: listed.map(|listed| Carried {
+            text: r#"{"name":"preview/r1","state":"up"}"#.to_string(),
+            at: at("2026-11-01T10:06:00Z"),
+            listed,
+        }),
+        at: at("2026-11-01T10:05:00Z"),
+    }
+}
+
+/// The crew-control-plane spec's "A preview whose work has left the
+/// plan".
+#[test]
+fn a_preview_whose_work_has_left_the_plan() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    let mut report = Report::default();
+    report
+        .previews
+        .insert(Id::new("home/30"), previewed(Outcome::Done, false, None));
+    let pulled = crew.pull(&kept(), &report).expect("a pull");
+    let ids: Vec<String> = pulled.wants.iter().map(|w| w.id().to_string()).collect();
+    assert_eq!(ids, ["home/30"]);
+    assert!(matches!(pulled.wants[0], Want::Preview(_)));
+}
+
+/// The runner's report of preview 30 brought up, its status listed or
+/// not, and its done 31 where `done`.
+fn previews_report(listed: bool, done: bool) -> Report {
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/30"),
+        previewed(Outcome::Done, false, Some(listed)),
+    );
+    if done {
+        let mut put_away = previewed(Outcome::Done, true, None);
+        put_away.text = Some(r#"{"preview":"preview/r1","released":true}"#.to_string());
+        report.previews.insert(Id::new("home/31"), put_away);
+    }
+    report
+}
+
+/// The crew-control-plane spec's "A preview put away, its work gone":
+/// both leave the runner's files, `previews.rec` written as its
+/// descriptor alone.
+#[test]
+fn a_preview_put_away_its_work_gone() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&["u"], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    let report = previews_report(false, true);
+    assert!(let_go(&mut crew, &report).is_empty());
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
+    main_with_previews(&state, &plan(&[], &[]));
+    assert_eq!(let_go(&mut crew, &report), ["home/30", "home/31"]);
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(!previews.contains("Request: 30"), "{previews}");
+    assert!(!previews.contains("Request: 31"), "{previews}");
+    assert_eq!(previews, boomdrive_crew::write::PREVIEWS);
+}
+
+/// The crew-control-plane spec's "A preview still up, its work gone".
+#[test]
+fn a_preview_still_up_its_work_gone() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    let report = previews_report(true, false);
+    assert!(let_go(&mut crew, &report).is_empty());
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
 }

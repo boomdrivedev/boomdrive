@@ -1,10 +1,10 @@
-//! A retry, a drop, a priority and a done are Flume's own commands on the
-//! launch's place, never forced, each answered as Flume answered it
-//! (design Decision 9; the work-into-flume spec's "A retry, a drop, a
-//! priority and a done are Flume's own commands on the launch's place";
-//! Task notes 4.5). They run over a stub `flume` whose listing is Flume
-//! 0.4.1's own, so each launch is found by the mark the scratch host's
-//! places carry.
+//! A retry, a land, a drop, a priority and a done are Flume's own
+//! commands on the launch's place, never forced, each answered as Flume
+//! answered it (design Decision 9; the work-into-flume spec's "A retry, a
+//! land, a drop, a priority and a done are Flume's own commands on the
+//! launch's place"; Task notes 4.5; core.53). They run over a stub
+//! `flume` whose listing is Flume 0.4.1's own, so each launch is found by
+//! the mark the scratch host's places carry.
 
 mod fakes;
 
@@ -67,7 +67,7 @@ fn a_retry_with_words() {
         words: Some("use the second option".into()),
         submission: false,
     };
-    let (_, outcome, words, lines) = acting(&stub, "scratch/4", "madswan/20", retry);
+    let (_, outcome, words, lines) = acting(&stub, "scratch/4", "home/20", retry);
     let p = place("scratch/4");
     assert_eq!(
         calls_of(&stub, "retry"),
@@ -82,7 +82,7 @@ fn a_retry_with_words() {
         ])]
     );
     assert_eq!((outcome, words), (Outcome::Done, None));
-    assert!(lines.contains(&format!("madswan/20: retry of scratch/4 at {p}: done")));
+    assert!(lines.contains(&format!("home/20: retry of scratch/4 at {p}: done")));
 }
 
 /// A retry asking for the submission, with no stage or words.
@@ -95,11 +95,40 @@ fn a_retry_of_the_submission() {
         words: None,
         submission: true,
     };
-    acting(&stub, "scratch/4", "madswan/21", retry);
+    acting(&stub, "scratch/4", "home/21", retry);
     let p = place("scratch/4");
     assert_eq!(
         calls_of(&stub, "retry"),
         [argv(&["--json", "retry", &p, "--submission"])]
+    );
+}
+
+/// The work-into-flume spec's "A land": a land of a `change` is Flume's
+/// retry of its place's submission, naming no stage and no words, and no
+/// other act (core.53). The listing is Flume 0.4.1's, its `change` place
+/// marked for the launch `home/12`.
+#[test]
+fn a_land() {
+    let stub = Stub::new();
+    let listing =
+        fakes::fixture("status.json").replace("\"flywheel:scratch/3\"", "\"boomdrive:home/12\"");
+    stub.answers_text("status", &listing, 0);
+    stub.answers("retry", "retry.json", 0);
+    let (_, outcome, words, lines) = acting(&stub, "home/12", "home/13", ActSort::Land);
+    let p = place("scratch/3");
+    assert_eq!(
+        calls_of(&stub, "retry"),
+        [argv(&["--json", "retry", &p, "--submission"])]
+    );
+    for other in ["drop", "priority", "done"] {
+        assert!(calls_of(&stub, other).is_empty(), "{other}");
+    }
+    assert_eq!((outcome, words), (Outcome::Done, None));
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.starts_with("home/13: land of home/12")),
+        "{lines:?}"
     );
 }
 
@@ -108,7 +137,7 @@ fn a_retry_of_the_submission() {
 fn a_drop() {
     let stub = Stub::new();
     stub.answers("drop", "drop.json", 0);
-    let (_, outcome, _, _) = acting(&stub, "scratch/7", "madswan/22", ActSort::Drop);
+    let (_, outcome, _, _) = acting(&stub, "scratch/7", "home/22", ActSort::Drop);
     let p = place("scratch/7");
     assert_eq!(calls_of(&stub, "drop"), [argv(&["--json", "drop", &p])]);
     assert_eq!(outcome, Outcome::Done);
@@ -119,7 +148,7 @@ fn a_drop() {
 fn a_priority() {
     let stub = Stub::new();
     stub.answers("priority", "priority.json", 0);
-    let (_, outcome, _, _) = acting(&stub, "scratch/7", "madswan/23", ActSort::Priority(7));
+    let (_, outcome, _, _) = acting(&stub, "scratch/7", "home/23", ActSort::Priority(7));
     let p = place("scratch/7");
     assert_eq!(
         calls_of(&stub, "priority"),
@@ -134,7 +163,7 @@ fn a_priority() {
 fn a_done() {
     let stub = Stub::new();
     stub.answers("done", "done.json", 0);
-    let (_, outcome, _, _) = acting(&stub, "scratch/planner/1", "madswan/24", ActSort::Done);
+    let (_, outcome, _, _) = acting(&stub, "scratch/planner/1", "home/24", ActSort::Done);
     let p = place("scratch/planner/1");
     assert_eq!(calls_of(&stub, "done"), [argv(&["--json", "done", &p])]);
     assert_eq!(outcome, Outcome::Done);
@@ -151,7 +180,7 @@ fn a_refusal_carried_with_flumes_words() {
         words: None,
         submission: false,
     };
-    let (_, outcome, words, lines) = acting(&stub, "scratch/2", "madswan/25", retry);
+    let (_, outcome, words, lines) = acting(&stub, "scratch/2", "home/25", retry);
     let reason =
         "the agent flume:2867c6a5947d:fix--lexer:code:1 is not quiet; ask again forced to end it";
     assert_eq!(
@@ -160,7 +189,7 @@ fn a_refusal_carried_with_flumes_words() {
     );
     let p = place("scratch/2");
     assert!(lines.contains(&format!(
-        "madswan/25: retry of scratch/2 at {p}: refused by Flume: {reason}"
+        "home/25: retry of scratch/2 at {p}: refused by Flume: {reason}"
     )));
     for call in stub.calls() {
         assert!(!call.iter().any(|arg| arg == "--force"), "{call:?}");
@@ -424,7 +453,8 @@ fn acts_on_places_wait_for_the_next_pass_once_it_is_due() {
         [
             format!("c: launched at {}", place_of("c")),
             format!("a/priority: priority 3 of a at {pa}: done"),
-            "boomdrive: the next control pass is due, so 1 act on a place waits for it".to_string(),
+            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
+                .to_string(),
         ]
     );
     assert!(!bench.report().acts.contains_key(&Id::new("b/priority")));
@@ -443,6 +473,47 @@ fn acts_on_places_wait_for_the_next_pass_once_it_is_due() {
         "the next pass's launch goes first, then the act left"
     );
     assert!(lines.contains(&format!("b/priority: priority 4 of b at {pb}: done")));
+}
+
+/// The running spec's "Acts left for the next pass": `home`'s next
+/// control pass falls due while its pass has two acts on places still to
+/// carry out. One line says so, naming `home` after `boomdrive:`, and each
+/// line about one want begins with its id, `home`'s own.
+#[test]
+fn acts_left_for_the_next_pass() {
+    let bench = Bench::new();
+    let mut plane = Fake::owning("home/");
+    plane.set_wants(vec![
+        Want::Offer(offer("home/a", "a")),
+        Want::Offer(offer("home/b", "b")),
+    ]);
+    bench.pass_of("home", &bench.flume, &mut plane, &|| false);
+    let (pa, pb) = (place_of("a"), place_of("b"));
+    plane.set_wants(vec![
+        Want::Offer(offer("home/a", "a")),
+        Want::Offer(offer("home/b", "b")),
+        act("home/a/priority", "home/a", ActSort::Priority(3)),
+        act("home/b/priority", "home/b", ActSort::Priority(4)),
+    ]);
+    bench.flume.take_calls();
+    let due = || !bench.flume.acts().is_empty();
+    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane, &due);
+    assert_eq!(made(&bench), [format!("Priority(3) at {pa}")]);
+    assert_eq!(
+        lines,
+        [
+            format!("home/a/priority: priority 3 of home/a at {pa}: done"),
+            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
+                .to_string(),
+        ]
+    );
+    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane, &due);
+    assert_eq!(
+        lines,
+        [format!(
+            "home/b/priority: priority 4 of home/b at {pb}: done"
+        )]
+    );
 }
 
 /// An act ahead of its own launch in the control plane's order is

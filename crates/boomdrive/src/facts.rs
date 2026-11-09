@@ -83,6 +83,17 @@ pub fn live_or_making(entry: &Value) -> bool {
     }
 }
 
+/// Whether a place has ended, so Flume holds it no more but as a record:
+/// its phase `tidied` or `gone`, `{"tidied" | "gone": {…}}`. A place over,
+/// whose worktree may stand until Flume tidies it, or one that waits on
+/// its caller, has not ended (record 0021).
+pub fn ended(entry: &Value) -> bool {
+    let Some(phase) = entry.get("phase").and_then(Value::as_object) else {
+        return false;
+    };
+    phase.len() == 1 && (phase.contains_key("tidied") || phase.contains_key("gone"))
+}
+
 /// Why a place's work is over, Flume's `over`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Over {
@@ -294,6 +305,37 @@ mod tests {
             Some(Over::Landed(None))
         );
         assert_eq!(over(&at(json!("live"))), None);
+    }
+
+    #[test]
+    fn a_place_that_has_ended() {
+        let at = |phase: Value| json!({ "place": "/p", "phase": phase });
+        for phase in [
+            json!({ "tidied": { "over": "dropped", "at": 1, "pending_for": ["r"] } }),
+            json!({ "tidied": { "over": { "landed": { "commit": "c" } }, "at": 2 } }),
+            json!({ "gone": { "over": "done" } }),
+        ] {
+            assert!(ended(&at(phase.clone())), "{phase} read not ended");
+        }
+        let delivered = json!({
+            "place": "/p",
+            "phase": "live",
+            "waiting_on": { "why": "delivered" },
+        });
+        assert!(waits_delivered(&delivered));
+        assert!(!ended(&delivered), "a delivered wait read ended");
+        for phase in [
+            json!("live"),
+            json!({ "making": { "by": "launch" } }),
+            json!({ "over": { "over": "done", "kept": null } }),
+            json!({ "over": { "over": { "landed": {} }, "kept": null } }),
+            json!("tidied"),
+            json!({ "tidied": {}, "gone": {} }),
+            json!(null),
+        ] {
+            assert!(!ended(&at(phase.clone())), "{phase} read ended");
+        }
+        assert!(!ended(&json!({})));
     }
 
     #[test]

@@ -42,7 +42,7 @@ repositories = ["agentplot/flume"]
 
 # The account `own`'s drive `work`.
 [accounts.own.drives.work]
-repositories = ["afterthought/crew"]
+repositories = ["example/crew"]
 ```
 
 An account is what the runner enrolls with a control plane. A drive is
@@ -154,8 +154,12 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   left as it is;
 - lets go of each repository the configuration no longer names. It is
   never fetched again, and its clone and view are removed once neither
-  holds work the forge lacks; until then they are left, and named at
-  every pass;
+  holds work the forge lacks and no place the runner launched there is
+  left to end; until then they are left, and named at every pass. While
+  the runner's report holds a launch at a place there whose status, as
+  last carried, Flume still lists and has not read tidied or gone, the
+  repository is drained: nothing more is launched in it, and its place
+  is followed to its end through its clone;
 - where `code_workspaces` is true, keeps each drive's VS Code workspace
   at `<repository_root>/<drive>.code-workspace`, writing it only when its
   `folders` are not the drive's kept repositories, whole and renamed
@@ -164,10 +168,50 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
-nothing. Told of a landing, it keeps that one repository at once. It
-stops on SIGTERM or SIGINT before the next repository it would keep,
-and exits 0. It opens no listening socket: every connection it makes is
-outgoing.
+nothing. Told of a landing, it keeps that one repository at once,
+between passes or between two repositories of a pass. It stops on
+SIGTERM or SIGINT before the next repository it would keep, lets each
+part of its control plane end the pass it has in hand, and exits 0. It
+opens no listening socket: every connection it makes is outgoing.
+
+Where the configuration names a control plane, each part of it, a crew
+partition or a hosted partition, runs its control passes on its own,
+on a thread of its own from the end of the first keeping pass: on its
+own timer, at once when its control plane wakes it, and saying its own
+reach. No part's pull, act, command or report waits on another part's,
+or on a keeping pass. Each line the runner says of a part's pass names
+its label after `boomdrive:`, as `boomdrive: <label>: <words>`, or
+begins with the id of the want it is about. What the parts share on the
+host is a clone, which the keeper keeps and a launch goes into in turn,
+the report file, each part saving its own share of it, and Flume's
+room. A hosted partition is an account's enrollment, so the drives of
+one hosted account share that account's connection, in the order its
+control plane gives their work.
+
+Each pass ends, before its thread waits, with Flume's settle of every
+place, `flume --json settle --every <bound>`, run once and awaited: a
+keeping pass on the runner's loop, and each part's control pass on the
+part's thread. So the runner keeps Flume's watch over its host: while
+it runs, Flume runs unattended, and every place waiting on it, a
+submitted place with no agent among them, moves within the bound. The
+first keeping pass, which each part's first control pass follows at
+once, shares their settles, so no launch waits behind a settle. No two
+settles run at once: a pass that ends while another's settle is under
+way shares it, and waits for nothing. The bound is `fetch_interval` in
+whole seconds, or the shorter of it and `poll_interval` while the
+runner makes control passes. A keeping pass whose reading of the
+configuration failed settles all the same: the watch is the host's, not
+the file's. A landing kept between passes is followed by no settle, and
+a runner told to stop begins none. The runner reads
+nothing of the settle's answer, and carries and keeps none of it. It
+says nothing while Flume settles; it says one line when a settle is
+refused, `boomdrive: Flume refused the settle of every place: <words>`,
+or gives no answer, `boomdrive: Flume gave no answer to the settle of
+every place: <why>`, and one when Flume settles again, `boomdrive: Flume
+settles every place again`. A refused settle stops nothing. Flume offers
+no end to a watch, so once the runner stops, its last watch stands until
+twice its bound has passed since that settle began, and the host then
+runs attended: Flume settles every place at each command that acts.
 
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or
@@ -175,9 +219,12 @@ written. A repository left by rule, for a folder of the user's or work
 the forge lacks, is not a failure, nor is a workspace left because the
 runner cannot read it. Where
 the configuration names a control plane, `--once` makes one control
-pass after the keeping pass, and exits 1 too when that pass did not
-pull and report. A tool that pass could not run or read is named, and
-is not a failure.
+pass of each part after the keeping pass, side by side, and exits 1 too
+when no part both pulled and reported. A part that could not be read
+while another reported, or a tool a pass could not run or read, is
+named, and is not a failure. `--once` settles every place once, after
+its passes, and a settle Flume refused or gave no answer to is named,
+and is not a failure either.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
@@ -517,11 +564,11 @@ type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
-host = "deneb"
+host = "host-a"
 
 [[control_plane.crew.partitions]]
-label = "madswan"
-state_repository = "afterthought/madswan-state"
+label = "home"
+state_repository = "example/home-state"
 ```
 
 `type` names the implementation, and is required. This binary carries
@@ -538,39 +585,65 @@ A control pass runs after the first keeping pass, then each
 that reported, where a lease not yet lapsed would lapse first, and at
 once when the control plane wakes the runner. The runner says once that
 its control plane could not be read, and once that it is read again.
-A control pass:
+Each control pass ends with the settle of every place, on its part's
+thread, and the first, which follows the first keeping pass at once,
+settles for both, so no launch waits behind a settle. A control pass:
 
 - reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
-  Flume's host part as Flume printed it, and the leases the runner
-  holds;
+  apart from them those it drains, Flume's host part as Flume printed
+  it, and the leases the runner holds;
 - takes each launch offered under a lease, for a repository the runner
-  keeps, once each launch it comes after has landed and while its
-  stream has room as Flume's status gives it. Each becomes one
-  `flume launch`, naming its kind, stream, priority and intent only as
-  the launch gives them, marked `boomdrive:<id>`;
-- carries out each retry, drop, priority or done as Flume's own command
-  on the launch's place, once every launch the pull offers is taken,
-  and, once the next pass is due, no further act after its first, so no
-  launch waits behind an act. A place Flume's listing does not hold is
-  first asked of `flume --json status <place>`, which settles nothing,
-  and Flume's refusal of it is the act's answer. Each bolt's branch is
-  made by `sluice branch create` in the clone, where the pull puts it;
+  keeps, and none in one it drains but a launch found by its mark, once
+  each launch it comes after has landed and while its stream has room
+  as Flume's status gives it. Each becomes one `flume launch`, naming its kind, stream, priority and intent only as
+  the launch gives them, marked `boomdrive:<id>`. A bolt is a launch
+  like any other, of a kind that lands with no stages, whose branch
+  sluice makes at Flume's asking, and its units are launches on that
+  branch;
+- carries out each retry, land, drop, priority or done as Flume's own
+  command on the launch's place, once every launch the pull offers is
+  taken, and, once the next pass is due, no further act after its
+  first, so no launch waits behind an act. A place Flume's listing does
+  not hold is first asked of `flume --json status <place>`, which
+  settles nothing, and Flume's refusal of it is the act's answer. A
+  land is `flume retry <place> --submission`, whatever the launch's
+  kind, and a bolt is landed on a land, whose answer is Flume's;
+- refuses every command, naming its tool, `this binary does not carry
+  <tool>'s commands`, a branch command's being sluice, and runs nothing
+  for it;
+- brings up each preview the control plane asks for, of a branch at a
+  revision, in a repository it keeps, as
+  `sluice preview <branch> <revision>`, once every launch the pull
+  offers is taken, and, once the next pass is due, no further preview
+  after its first. It waits at
+  sluice's bound no longer than 20 seconds, then interrupts sluice,
+  which ends its wait and nothing else, and asks again at the next
+  pass. It carries sluice's listing of the preview, `sluice previews`,
+  until sluice lists it no more. On the control plane's done, it puts
+  away only a preview it asked sluice for, as `sluice release <name>`,
+  and refuses a done of any other, running nothing. It carries no
+  output of the preview's command;
 - carries back Flume's status of each place, sluice's entry of each
-  submission and each inbox the control plane names, each as the tool
-  gave it, and never a log; and relays a terminal on a launch's agent
-  through herdr, keeping nothing of it. A place is followed to its end,
-  over or tidied, even once the configuration no longer names its
-  repository: Flume is then asked for it by its location alone. Where
-  the pass ran a command, Flume's status is read again before the
-  places' are carried, so a place tidied meanwhile is carried from
-  Flume's record of it, `<location>@<at>`.
+  submission, sluice's word of each preview and each inbox the control
+  plane names, each as the tool gave it, and never a log; and relays a terminal on a launch's agent
+  through herdr, keeping nothing of it. A place is followed through its
+  repository's clone, as `flume --json status --repository <container>
+  <place>`, to its end, over or tidied, the clone of a repository the
+  configuration dropped among them while the runner drains it; where no
+  clone stands, Flume is asked nothing of it. No rename is followed: to
+  rename a repository, drain its work, drop it, rename it on the forge,
+  and add it back under its new name. Where the pass ran a launch or an
+  act, Flume's status is read again before the places' are carried, so
+  a place tidied meanwhile is carried from Flume's record of it,
+  `<location>@<at>`.
 
-Each launch, act and command is carried out once, across a restart: the
-runner's report is kept at `<data>/control/report.json`, and a launch
-whose answer was lost is found by its mark. An offer, an act or a
-command whose lease has lapsed by the runner's clock waits until a pull
-gives it under a live lease.
+Each launch, act and preview is carried out once, and each command
+answered once, across a restart: the runner's report is kept at
+`<data>/control/report.json`, and a launch whose answer was lost is
+found by its mark. An offer, an act, a command or a preview whose
+lease has lapsed by the runner's clock waits until a pull gives it under
+a live lease.
 
 ## A host from before the rename
 
@@ -591,9 +664,17 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `asks.rec` and `plan.rec` at `<label>/main`, keeping its caches under
 `<data>/control/crew/`. It answers on the runner's branch,
 `<label>/runner/<host>`, in crew's formats: `runner.rec`, `answers.rec`
-and `places.rec`. It pushes no other ref, and never with force. A
+and `places.rec`, and, once a preview is answered there, `previews.rec`,
+under the descriptor this repository proposes for crew to hold. A
+preview request names the host that brings it up, and one naming no
+host is given nothing. It pushes no other ref, and never with force. A
 kit's launch that names no host is claimed on that branch, and taken
-once no other runner's branch answers it.
+once no other runner's branch answers it. A launch a drop names no
+longer stands, as crew reads it: crew's implementation offers and
+claims no such launch unless the runner launched it, and lets go one
+the runner holds unlaunched. A drop is given to the runner that holds
+its launch, though its work has left the plan, so the runner answers
+it, dropping a launched place by Flume's own command.
 
 Kinds and streams are Flume's host configuration. The runner passes a
 launch's kind to `--kind` as the control plane gave it, a name or an
@@ -620,7 +701,7 @@ repositories = ["agentplot/flume"]
 
 [[control_plane.hosted.partitions]]
 label = "work"
-repositories = ["afterthought/crew", "agentplot/flume"]
+repositories = ["example/crew", "agentplot/flume"]
 ```
 
 `url` is the control plane's address: `https://`, or `http://` to a

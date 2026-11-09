@@ -249,7 +249,7 @@ mod tests {
         let config = config(
             "repository_root = \"/h/Code\"\n\
              [accounts.own.drives.home]\n\
-             repositories = [\"agentplot/flume\", \"afterthought/crew\"]\n\
+             repositories = [\"agentplot/flume\", \"example/crew\"]\n\
              [accounts.own.drives.work]\n\
              repositories = [\"agentplot/sluice\"]\n",
         );
@@ -259,7 +259,7 @@ mod tests {
                 Wanted {
                     drive: "home".to_string(),
                     file: PathBuf::from("/h/Code/home.code-workspace"),
-                    folders: folders(&["agentplot/flume", "afterthought/crew"]),
+                    folders: folders(&["agentplot/flume", "example/crew"]),
                 },
                 Wanted {
                     drive: "work".to_string(),

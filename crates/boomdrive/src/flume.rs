@@ -8,6 +8,7 @@
 //! read by Flume's exit and kept as Flume gave it: the runner rewrites,
 //! summarises and judges none (core.1).
 
+use crate::settle;
 use serde::de::IgnoredAny;
 use serde::Deserialize;
 use std::ffi::OsString;
@@ -15,6 +16,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::time::Duration;
 
 /// What one `flume launch` is given, each field the flag of its name.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -117,6 +119,18 @@ impl Cli {
             .output()
             .map_err(|error| Unrun(format!("flume could not run: {error}")))?;
         read(&output)
+    }
+
+    /// Flume's settle of every place as a caller's watch over the host,
+    /// `flume --json settle --every <bound>`, its bound in whole seconds
+    /// (core.13; record 0029). It is `Cli`'s own and on no trait: only the
+    /// runner's loop runs it, and the loop runs `Cli`.
+    pub fn settle_every(&self, bound: Duration) -> Result<Reply, Unrun> {
+        self.run(vec![
+            "settle".into(),
+            "--every".into(),
+            settle::every(bound).into(),
+        ])
     }
 }
 
@@ -292,7 +306,7 @@ mod tests {
 
     #[test]
     fn a_mark_names_one_file() {
-        assert_eq!(escaped("boomdrive:madswan/12"), "boomdrive%3Amadswan%2F12");
+        assert_eq!(escaped("boomdrive:home/12"), "boomdrive%3Ahome%2F12");
         assert_eq!(escaped("a%2F"), "a%252F");
         assert_ne!(escaped("a/b"), escaped("a%2Fb"));
     }

@@ -112,12 +112,12 @@ impl Drop for Mode {
 #[test]
 fn the_first_workspaces() {
     let scratch = Scratch::new();
-    for address in ["agentplot/flume", "afterthought/crew", "agentplot/sluice"] {
+    for address in ["agentplot/flume", "example/crew", "agentplot/sluice"] {
         scratch.origin(address);
     }
 
     let (outcome, lines) = scratch.pass(&asking_for(&[
-        ("home", &["agentplot/flume", "afterthought/crew"]),
+        ("home", &["agentplot/flume", "example/crew"]),
         ("work", &["agentplot/sluice"]),
     ]));
 
@@ -127,7 +127,7 @@ fn the_first_workspaces() {
     assert_eq!(
         json(&home),
         json!({
-            "folders": [{"path": "agentplot/flume"}, {"path": "afterthought/crew"}],
+            "folders": [{"path": "agentplot/flume"}, {"path": "example/crew"}],
             "settings": {},
         })
     );
@@ -145,7 +145,7 @@ fn the_first_workspaces() {
     assert_eq!(
         lines[6..],
         [
-            written(&home, "agentplot/flume, afterthought/crew"),
+            written(&home, "agentplot/flume, example/crew"),
             written(&work, "agentplot/sluice"),
         ]
     );
@@ -376,11 +376,8 @@ fn a_repository_moved_to_another_drive() {
 fn a_quiet_pass_leaves_the_workspaces() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
-    scratch.origin("afterthought/crew");
-    let config = asking_for(&[
-        ("home", &["agentplot/flume"]),
-        ("work", &["afterthought/crew"]),
-    ]);
+    scratch.origin("example/crew");
+    let config = asking_for(&[("home", &["agentplot/flume"]), ("work", &["example/crew"])]);
     scratch.pass(&config);
     let files = [workspace(&scratch, "home"), workspace(&scratch, "work")];
     let before: Vec<(Vec<u8>, u64)> = files
@@ -522,7 +519,9 @@ fn a_stopped_pass_writes_no_workspace() {
         &scratch.runner_git(),
         &scratch.data(),
         &config,
+        &boomdrive::locks::Locks::new(),
         &AtomicBool::new(true),
+        &mut || false,
         &mut |line| lines.push(line),
     );
 

@@ -68,7 +68,7 @@ This change is the unit `herdr-and-ghostty-come-with-the-flake-and-an-app-opens-
 - `nix/check.sh`, `README.md`, `CLAUDE.md` and `openspec/config.yaml`.
 - `docs/architecture/core.md`, in the commit that writes this change.
 - The runner's code does not change, and runs no herdr (core.29). No crate, tool of the gate or tracked file type is added (core.7, core.8): the cases run stubs of herdr, Flume and `osascript`.
-- Outside this repository: afterthought/swancloud, once it takes the flake, drops deneb's own herdr and its link of the set's plugins, or keeps its own through these options (record 0023).
+- Outside this repository: afterthought/swancloud, once it takes the flake, drops its hosts' own herdr and its link of the set's plugins, or keeps its own through these options (record 0023).
 
 ## Touches
 

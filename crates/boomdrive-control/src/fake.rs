@@ -2,6 +2,8 @@
 //! the wants and terminals a test sets, refuses a pull or a report when
 //! the test says so, records each hello and report, gives the report it
 //! holds back at every pull, and lets go and refuses what the test names.
+//! It owns every id, or, made by [`Fake::owning`], those under one prefix
+//! alone, so a test makes as many parts as it needs.
 
 use crate::want::{Id, Input, Link, Terminal, Want};
 use crate::{ControlPlane, Hello, Pulled, Report, Reported, Unread, Unsent};
@@ -21,6 +23,8 @@ pub struct Fake {
     held: Option<Report>,
     let_go: BTreeSet<Id>,
     refused: BTreeMap<Id, String>,
+    /// The prefix of every id it owns, none where it owns every id.
+    owning: Option<String>,
 }
 
 impl Fake {
@@ -33,6 +37,15 @@ impl Fake {
     pub fn holding(wants: Vec<Want>) -> Fake {
         Fake {
             wants,
+            ..Fake::default()
+        }
+    }
+
+    /// A control plane wanting nothing, owning only the ids under
+    /// `prefix`, such as `home/`: a part of its own among others.
+    pub fn owning(prefix: &str) -> Fake {
+        Fake {
+            owning: Some(prefix.to_string()),
             ..Fake::default()
         }
     }
@@ -139,6 +152,7 @@ impl ControlPlane for Fake {
             .chain(report.acts.keys())
             .chain(report.commands.keys())
             .chain(report.inboxes.keys())
+            .chain(report.previews.keys())
             .collect();
         let reported = Reported {
             let_go: ids
@@ -157,9 +171,16 @@ impl ControlPlane for Fake {
             held.acts.remove(id);
             held.commands.remove(id);
             held.inboxes.remove(id);
+            held.previews.remove(id);
         }
         self.held = Some(held);
         Ok(reported)
+    }
+
+    fn owns(&self, id: &Id) -> bool {
+        self.owning
+            .as_deref()
+            .is_none_or(|prefix| id.as_str().starts_with(prefix))
     }
 }
 

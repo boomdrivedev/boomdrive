@@ -1,6 +1,6 @@
 //! The runner's report (design Decision 2): what it answered of each
-//! launch, act, command and inbox, by id, with each tool's answer carried
-//! as the tool printed it (core.11). It is sent whole at every report and
+//! launch, act, command, inbox and preview, by id, with each tool's answer
+//! carried as the tool printed it (core.11). It is sent whole at every report and
 //! handed whole to every pull.
 
 use crate::want::{Id, Lease};
@@ -17,12 +17,22 @@ pub struct Report {
     pub acts: BTreeMap<Id, Acted>,
     pub commands: BTreeMap<Id, Commanded>,
     pub inboxes: BTreeMap<Id, InboxCarried>,
+    /// What the runner answered of each preview, read as none where a
+    /// report lacks it and written only where it holds one, so a report
+    /// holding none writes as before (core.36).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub previews: BTreeMap<Id, Previewed>,
 }
 
 /// A launch the runner answered.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Launched {
     pub lease: Lease,
+    /// The repository the offer named, as the offer wrote it, set when
+    /// the runner first answers the launch and never changed; none where
+    /// the runner recorded none, as in a report file of before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     pub answer: Answer,
     /// Flume's status of its place.
     pub status: Option<Carried>,
@@ -41,7 +51,7 @@ pub struct Answer {
 }
 
 /// How the runner answered. An act or a command is only `Done` or
-/// `Refused`.
+/// `Refused`, and a preview `Held`, `Done` or `Refused`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Outcome {
@@ -88,9 +98,36 @@ pub struct Commanded {
     /// The tool's answer as given, where a tool ran.
     pub text: Option<String>,
     pub words: Option<String>,
-    /// The commit the branch stands at on origin, or none where origin
-    /// holds no such branch.
+    /// The commit a branch command's branch stood at on origin, or none
+    /// where origin held no such branch. No command this release answers
+    /// fills it: it is kept for a branch command an earlier release
+    /// carried out, which the release before reads in `report.json`
+    /// (core.36), and version 1 of the hosted protocol carries it
+    /// (core.42).
     pub origin_commit: Option<String>,
+    pub at: At,
+}
+
+/// A preview the runner answered (core.55). Version 1 of the hosted
+/// protocol names none, and never will, a release having spoken it
+/// (core.42).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Previewed {
+    pub lease: Lease,
+    /// The repository and the revision, as the want named them.
+    pub repository: String,
+    pub revision: String,
+    /// Whether the want asked that the preview be put away.
+    pub done: bool,
+    /// `Held` while the tool that keeps previews waits at the host's
+    /// bound to bring it up; else `Done` or `Refused`.
+    pub outcome: Outcome,
+    /// The tool's answer, the fields carried, as the tool printed each.
+    pub text: Option<String>,
+    pub words: Option<String>,
+    /// The tool's listing of the preview, for one brought up or held.
+    pub status: Option<Carried>,
+    /// When the outcome, text or words last moved.
     pub at: At,
 }
 
@@ -125,6 +162,7 @@ impl Report {
                 id.clone(),
                 Launched {
                     lease,
+                    repository: None,
                     answer,
                     status: None,
                     entry: None,
@@ -174,12 +212,15 @@ impl Report {
         }
     }
 
-    /// Each launch's and each command's id with the lease number held.
+    /// Each launch's, each command's and each preview's id with the
+    /// lease number held.
     pub fn leases(&self) -> BTreeMap<Id, u64> {
         let launches = self.launches.iter().map(|(id, l)| (id, l.lease.number));
         let commands = self.commands.iter().map(|(id, c)| (id, c.lease.number));
+        let previews = self.previews.iter().map(|(id, p)| (id, p.lease.number));
         launches
             .chain(commands)
+            .chain(previews)
             .map(|(id, number)| (id.clone(), number))
             .collect()
     }
