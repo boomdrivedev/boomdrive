@@ -6,11 +6,11 @@
 # once Flume publishes a flake.
 {
   "weir-capture-0.0.0" = {
-    rev = "5562af52cb7e065e7de7109135dfd7eecb1d61c5";
-    hash = "sha256-2DFTZKoYQiYKggsaZTqWCWtcJpux7x9prTEaomLXk9k=";
+    rev = "daacda39e59469029b2841f889c6cbd8cd7839d9";
+    hash = "sha256-YJKuoW3lWl5wtEiu99oHlQF+dcdlJu1tdb/aeEvxHeM=";
   };
   "weir-kinds-0.0.0" = {
-    rev = "5562af52cb7e065e7de7109135dfd7eecb1d61c5";
-    hash = "sha256-2DFTZKoYQiYKggsaZTqWCWtcJpux7x9prTEaomLXk9k=";
+    rev = "daacda39e59469029b2841f889c6cbd8cd7839d9";
+    hash = "sha256-YJKuoW3lWl5wtEiu99oHlQF+dcdlJu1tdb/aeEvxHeM=";
   };
 }

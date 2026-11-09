@@ -276,6 +276,82 @@ fn the_sets_flume_keeps_the_runners_watch() {
     family.no_host_tool_ran();
 }
 
+/// The family-packages spec's "The set's Flume takes the runner as a
+/// recipient" (design Decision 6): the set's Flume, asked on a scratch
+/// host as the runner asks it, to launch in a folder that holds no
+/// repository naming the runner beside another recipient, and to collect
+/// for the runner a place it does not hold, refuses each on exit 1 with
+/// its reason, which `flume::Cli` reads as Flume's reason, and neither is
+/// a usage error; and its `--version` is no older than the least the
+/// runner launches with.
+#[test]
+fn the_sets_flume_takes_the_runner_as_a_recipient() {
+    let family = Family::new();
+    let set = family.set("flume");
+    let cli = flume::Cli::new(&set);
+    let nowhere = family.scratch.root.join("no-repository");
+    fs::create_dir_all(&nowhere).expect("a folder that holds no repository");
+    let launch = flume::LaunchArgs {
+        container_dir: nowhere.clone(),
+        kind: "change".into(),
+        name: "x".into(),
+        recipients: vec!["scratch/planner".into()],
+        mark: "m".into(),
+        ..flume::LaunchArgs::default()
+    };
+    let briefs = family.scratch.root.join("briefs");
+    let launched = cli.launch(&launch, &briefs);
+    let collected = cli.collect("/no/such/place@1");
+
+    let launch_argv = [
+        "--json",
+        "launch",
+        "--repository",
+        nowhere.to_str().expect("a path of words"),
+        "--kind",
+        "change",
+        "--name",
+        "x",
+        "--recipient",
+        "scratch/planner",
+        "--recipient",
+        flume::RECIPIENT,
+        "--mark",
+        "m",
+    ];
+    let inbox_argv = [
+        "--json",
+        "inbox",
+        "/no/such/place@1",
+        "--recipient",
+        flume::RECIPIENT,
+    ];
+    for (reply, argv) in [(launched, &launch_argv[..]), (collected, &inbox_argv[..])] {
+        let printed = family
+            .scratch
+            .command(&set)
+            .args(argv)
+            .output()
+            .expect("the set's Flume runs");
+        assert_eq!(printed.status.code(), Some(1), "{argv:?}: {printed:?}");
+        let answer: Value =
+            serde_json::from_slice(&printed.stdout).expect("Flume's refusal is JSON");
+        let reason = answer
+            .pointer("/refused/refusal/reason")
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| panic!("{argv:?}: no reason in {answer}"))
+            .to_string();
+        assert_eq!(reply, Ok(flume::Reply::Refused(reason)), "{argv:?}");
+    }
+
+    let tools = hello::Cli::on_path().with("flume", &set);
+    let ToolVersion::Printed(said) = tools.version("flume") else {
+        panic!("the set's Flume says no version");
+    };
+    assert_eq!(flume::runs_with(&said), Ok(()), "{said}");
+    family.no_host_tool_ran();
+}
+
 /// The family-packages spec's "A submission sluice has no record of": the
 /// set's sluice, asked in the runner's clone of a scratch repository for
 /// an entry it never recorded, refuses with its `not_found` answer, which

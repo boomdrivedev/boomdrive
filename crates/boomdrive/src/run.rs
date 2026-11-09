@@ -16,7 +16,7 @@
 //! once (record 0029). The runner opens no listening socket: every
 //! connection it makes is outgoing (core.3).
 
-use crate::carry::{Carrier, Configured, Passed, Reach};
+use crate::carry::{Carrier, Configured, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env};
 use crate::git::Git;
 use crate::locks::Locks;
@@ -595,8 +595,15 @@ impl Runner {
                             let (host, config) = (&host, config.clone());
                             scope.spawn(move || {
                                 let relays = host.programs.relays();
-                                let reach = Reach::default();
-                                host.carry(part, Ok(config), &relays, &reach, &|| false, say)
+                                let (reach, least) = (Reach::default(), Least::default());
+                                host.carry(
+                                    part,
+                                    Ok(config),
+                                    &relays,
+                                    (&reach, &least),
+                                    &|| false,
+                                    say,
+                                )
                             })
                         })
                         .collect();
@@ -760,12 +767,13 @@ impl Runner {
 impl Host<'_> {
     /// Carries `part` on the thread this runs on until the runner stops
     /// (design Decision 2): a pass at once, then each when its timer or
-    /// its wake, through `bell`, says, its own reach and terminals kept
-    /// across its passes, each pass followed by the settle of every place
-    /// (record 0029). Stopped, it begins no further pass and no settle.
+    /// its wake, through `bell`, says, its own reach, terminals and word
+    /// of Flume's version kept across its passes, each pass followed by the
+    /// settle of every place (record 0029). Stopped, it begins no further
+    /// pass and no settle.
     fn carry_on(&self, part: &mut Part, bell: &Bell, say: Say<'_>) {
         let relays = self.programs.relays();
-        let reach = Reach::default();
+        let (reach, least) = (Reach::default(), Least::default());
         let mut due = Instant::now();
         while bell.wait(due) == Rang::Due {
             let began = Instant::now();
@@ -773,7 +781,7 @@ impl Host<'_> {
             let read = config::read(self.file, self.home);
             let poll_interval = self.poll_interval;
             let is_due = || began.elapsed() >= poll_interval || bell.woken();
-            let passed = self.carry(part, read, &relays, &reach, &is_due, say);
+            let passed = self.carry(part, read, &relays, (&reach, &least), &is_due, say);
             due = passed.next_due(began, Instant::now(), poll_interval);
             // The control pass ends with the settle of every place, no
             // part of it, before the part waits (record 0029).
@@ -793,7 +801,7 @@ impl Host<'_> {
         part: &mut Part,
         read: Result<Config, String>,
         relays: &Relays,
-        reach: &Reach,
+        (reach, least): (&Reach, &Least),
         due: &dyn Fn() -> bool,
         say: Say<'_>,
     ) -> Passed {
@@ -838,6 +846,7 @@ impl Host<'_> {
             locks: self.locks,
             relays,
             reach,
+            least,
             due,
         };
         carrier.pass(part.plane.as_mut(), &mut |line| say(line))

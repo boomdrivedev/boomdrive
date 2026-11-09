@@ -609,6 +609,40 @@ fn the_place_tidied() {
     assert_gone(&scratch);
 }
 
+/// The clones spec's "The place's end held for the runner": its record
+/// `<place>@<at>` carried tidied and landed, pending for the runner, the
+/// next pass keeps the clone and view, named held by the place; once the
+/// carried record is pending for the runner no more, the pass after
+/// removes them (record 0030; Task notes 5.2).
+#[test]
+fn the_places_end_held_for_the_runner() {
+    let scratch = Scratch::new();
+    kept(&scratch);
+    report_holding(&scratch, PLACE, json!("live"), true);
+    let (_, lines) = scratch.pass(&keeping(&[]));
+    assert_eq!(lines, [HELD_BY_THE_PLACE]);
+
+    let tidied = |pending_for: Value| {
+        json!({ "tidied": {
+            "over": { "landed": { "commit": "c0ffee" } },
+            "at": 1793559694,
+            "pending_for": pending_for,
+        } })
+    };
+    let record = format!("{PLACE}@1793559694");
+    report_holding(&scratch, &record, tidied(json!(["boomdrive"])), true);
+    let (outcome, lines) = scratch.pass(&keeping(&[]));
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [HELD_BY_THE_PLACE]);
+    assert!(scratch.container("agentplot/flume").exists());
+
+    report_holding(&scratch, &record, tidied(json!(["scratch/planner"])), true);
+    let (outcome, lines) = scratch.pass(&keeping(&[]));
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [REMOVED]);
+    assert_gone(&scratch);
+}
+
 /// The clones spec's "The place no longer listed": its carried status
 /// standing not listed, the next pass removes the clone and view.
 #[test]

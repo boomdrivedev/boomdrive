@@ -4,8 +4,9 @@
 //! act on a place only once every launch the pull offers is taken, and
 //! none but the first once the next pass is due (record 0002; core.50),
 //! carries each place's status against Flume's listing as it stands once
-//! those answers are made (record 0027), opens each terminal pulled, and
-//! sends the whole report. An act on a place the listing read before the
+//! those answers are made (record 0027), collects each place's record
+//! Flume holds for the runner once the report file holds it (record
+//! 0030), opens each terminal pulled, and sends the whole report. An act on a place the listing read before the
 //! pull does not hold reads Flume's status of the place first, and takes
 //! Flume's refusal of it as its answer (record 0010; core.51). The runner
 //! takes only what it was
@@ -38,10 +39,10 @@ use crate::{clone, facts, inbox};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
     Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Preview, Previewed, Report,
-    Reported, Unread, Unsent, Want,
+    Reported, ToolVersion, Unread, Unsent, Want,
 };
 use serde_json::Value;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -159,6 +160,8 @@ pub struct Carrier<'a> {
     pub relays: &'a Relays,
     /// Whether the last pull was read, kept across passes.
     pub reach: &'a Reach,
+    /// What was last said of Flume's version, kept across passes.
+    pub least: &'a Least,
     /// Whether the next control pass is due, by the control timer or
     /// because the control plane woke the runner. Once it is, the pass
     /// carries out no further act on a place, after its first, and
@@ -195,6 +198,42 @@ impl Reach {
                 "boomdrive: {label}: the control plane is read again"
             ));
         }
+    }
+}
+
+/// What the runner last said of Flume's version, kept across control
+/// passes beside its reach, so a Flume older than the least the runner
+/// launches with is said once while it lasts: at the first pass that reads
+/// it so, and again only once what Flume says changes (design Decision 5;
+/// core.38).
+#[derive(Debug, Default)]
+pub struct Least {
+    said: RefCell<Option<String>>,
+}
+
+impl Least {
+    /// Takes Flume's `version` as the part `label`'s hello read it, and
+    /// gives why no launch is made, where Flume printed a version older
+    /// than [`flume::LEAST`] or none; else none, where it runs with the
+    /// least, or is missing, whose launch is tried and named as it fails.
+    fn read(
+        &self,
+        label: &str,
+        version: Option<&ToolVersion>,
+        say: &mut dyn FnMut(String),
+    ) -> Option<String> {
+        let Some(ToolVersion::Printed(printed)) = version else {
+            return None;
+        };
+        let Err(words) = flume::runs_with(printed) else {
+            self.said.replace(None);
+            return None;
+        };
+        if self.said.borrow().as_deref() != Some(words.as_str()) {
+            say(format!("boomdrive: {label}: {words}"));
+            self.said.replace(Some(words.clone()));
+        }
+        Some(words)
     }
 }
 
@@ -266,6 +305,9 @@ impl Carrier<'_> {
             }
         };
         self.reach.read(self.label, say);
+        let below_least = self
+            .least
+            .read(self.label, hello.tool_versions.get("flume"), say);
         // A share the report file does not hold, the file lost with the
         // data directory among it, is taken from the control plane, which
         // holds every answer the runner reported.
@@ -277,6 +319,7 @@ impl Carrier<'_> {
             report,
             room: Room::read(listing.as_ref()),
             listing,
+            below_least,
             ran: false,
             now,
             round: Round::Wants,
@@ -331,6 +374,12 @@ impl Carrier<'_> {
         work.carry_statuses(say);
         work.carry_entries(say);
         work.carry_previews(say);
+        // A place's end Flume holds for the runner is collected only once
+        // the report file holds it, and in no pass whose report could not
+        // be saved (core.25, core.54; record 0030).
+        if work.save(&*plane, say) {
+            work.collect(say);
+        }
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
@@ -358,6 +407,9 @@ struct Work<'p> {
     /// act of Flume's.
     listing: Option<Value>,
     room: Room,
+    /// Why no offer is launched this pass, where Flume is older than the
+    /// least the runner launches with (core.38).
+    below_least: Option<String>,
     /// Whether answering the wants ran a tool's command: a launch or an
     /// act of Flume's. A command runs none (record 0027).
     ran: bool,
@@ -497,6 +549,11 @@ impl Work<'_> {
             {
                 say(format!("{id}: held: {words}"));
             }
+            return;
+        }
+        // Below the least Flume nothing is launched: a new offer is left
+        // unanswered, and one held stays held (core.38; record 0030).
+        if self.below_least.is_some() {
             return;
         }
         let Ok(address) = Address::parse(repository) else {
@@ -1281,6 +1338,64 @@ impl Work<'_> {
                 say(format!(
                     "{id}: sluice's entry {submission} is refused: {refused}"
                 ));
+            }
+        }
+    }
+
+    /// Collects, as the runner, each place's record Flume holds for it past
+    /// its tidy, once the report file holds that record as the place's
+    /// status (design Decision 3; core.54; record 0030): for each launch
+    /// the pull gives, in its order, answered `launched` at a place in a
+    /// repository whose clone stands, named or dropped, whose carried
+    /// status is listed and reads the place tidied, its record pending for
+    /// [`flume::RECIPIENT`]. The record is the entry's own `place`,
+    /// `<location>@<at>`. Nothing of Flume's answer is carried or kept
+    /// (core.11). A collection Flume refuses, or could not be run for, is
+    /// said in one line and made again at the next pass, whose carried
+    /// status says the same. A launch the report no longer holds, its
+    /// lease refused, is collected for no more (core.10).
+    fn collect(&self, say: &mut dyn FnMut(String)) {
+        for offer in offers(self.wants) {
+            let id = &offer.id;
+            let Some(launched) = self.report.launches.get(id) else {
+                continue;
+            };
+            let (Outcome::Launched, Some(place)) = (
+                launched.answer.outcome,
+                launched.answer.place_dir.as_deref(),
+            ) else {
+                continue;
+            };
+            if matches!(
+                self.carrier.clones.keeping(&offer.launch.repository),
+                Keeping::NotYet | Keeping::NotNamed
+            ) {
+                continue;
+            }
+            if !launched
+                .status
+                .as_ref()
+                .is_some_and(|carried| carried.listed)
+            {
+                continue;
+            }
+            let Some(entry) = carried_entry(launched, place) else {
+                continue;
+            };
+            if !facts::pending_for(&entry, flume::RECIPIENT) {
+                continue;
+            }
+            let Some(record) = facts::location(&entry) else {
+                continue;
+            };
+            match self.carrier.flume.collect(record) {
+                Ok(Reply::Given(_)) => {}
+                Ok(Reply::Refused(words)) => say(format!(
+                    "{id}: Flume refused the collection of {record}: {words}"
+                )),
+                Err(Unrun(why)) => say(format!(
+                    "{id}: Flume's record {record} could not be collected: {why}"
+                )),
             }
         }
     }

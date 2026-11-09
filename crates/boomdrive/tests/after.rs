@@ -69,6 +69,41 @@ fn a_dependent_held_then_launched() {
     assert_eq!(names, ["a", "b"]);
 }
 
+/// The work-into-flume spec's "A dependent of a landing held for the
+/// runner": `a`'s place lands and is tidied between two passes, Flume
+/// holding its record for the runner, and the next pass launches `b`, its
+/// listing holding the record landed, carries the record as `a`'s status
+/// and collects it (design Decision 2; record 0030).
+#[test]
+fn a_dependent_of_a_landing_held_for_the_runner() {
+    let bench = Bench::new();
+    let mut planned = offer("a", "a");
+    planned.launch.recipients = vec!["scratch/planner".into()];
+    let mut plane = Fake::holding(vec![Want::Offer(planned), after("b", "b", &["a"])]);
+    bench.pass(&mut plane);
+    assert_eq!(answer(&bench, "b").0, Outcome::Held);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    assert_eq!(answer(&bench, "b").0, Outcome::Launched);
+    let names: Vec<_> = bench.flume.launches().into_iter().map(|a| a.name).collect();
+    assert_eq!(names, ["b"]);
+    let status = bench.report().launches[&Id::new("a")]
+        .status
+        .clone()
+        .expect("a's status carried");
+    let carried: Value = serde_json::from_str(&status.text).unwrap();
+    let entry = &carried["status"]["places"][0];
+    assert_eq!(entry["place"], record);
+    assert_eq!(
+        entry["phase"]["tidied"]["over"],
+        json!({ "landed": { "commit": "c0ffee" } })
+    );
+    assert_eq!(bench.flume.collects(), [record]);
+}
+
 /// Task notes 4.3's first case, over Flume 0.4.1's own answers: `a`'s
 /// place reads live as its launch answered, and landed as
 /// `status-landed-kept.json` reads it.

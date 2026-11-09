@@ -74,6 +74,7 @@ fn naming(calls: &[Call], place: &str) -> Vec<Call> {
         .iter()
         .filter(|call| match call {
             Call::Act(at, _) | Call::StatusOf(_, at) => at == place,
+            Call::Collect(record) => record.split_once('@').map(|(at, _)| at) == Some(place),
             Call::Launch(_) | Call::Status => false,
         })
         .cloned()
@@ -317,6 +318,36 @@ fn a_lease_refused() {
     );
     let last = plane.reports().last().unwrap();
     assert!(!last.launches.contains_key(&Id::new("a")));
+}
+
+/// The work-into-flume spec's "A lease refused before its end was
+/// collected": a launch whose report the control plane refused leaves the
+/// report, and once Flume tidies its place, holding the record for the
+/// runner, no inbox names that record at the passes after; the record is
+/// left on the host as Flume holds it (core.10; design Decision 3).
+#[test]
+fn a_lease_refused_before_its_end_was_collected() {
+    let bench = Bench::new();
+    let mut planned = offer("a", "a");
+    planned.launch.recipients = vec!["scratch/planner".into()];
+    let mut plane = Fake::holding(vec![Want::Offer(planned)]);
+    bench.pass(&mut plane);
+    plane.refuse(Id::new("a"), "lease 2 of a is host-b's");
+    bench.pass(&mut plane);
+    assert!(!bench.report().launches.contains_key(&Id::new("a")));
+    let p = place_of("a");
+    bench.flume.tidy_held(&p, 1793559694, &["boomdrive"]);
+    plane.set_wants(vec![Want::Offer(offer("b", "b"))]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    bench.pass(&mut plane);
+    assert_eq!(naming(&bench.flume.calls(), &p), []);
+    assert_eq!(bench.flume.collects(), [] as [String; 0]);
+    assert!(
+        bench.flume.entry(&p).is_some(),
+        "the record is left as Flume holds it"
+    );
+    assert!(!bench.report().launches.contains_key(&Id::new("a")));
 }
 
 /// The control-plane-interface spec's "A launch let go".
