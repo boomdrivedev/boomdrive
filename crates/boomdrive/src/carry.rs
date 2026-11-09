@@ -4,17 +4,19 @@
 //! act on a place only once every launch the pull offers is taken, and
 //! none but the first once the next pass is due (record 0002; core.50),
 //! carries each place's status against Flume's listing as it stands once
-//! those answers are made (record 0027), collects each place's record
-//! Flume holds for the runner once the report file holds it (record
-//! 0030), opens each terminal pulled, and sends the whole report. An act on a place the listing read before the
-//! pull does not hold reads Flume's status of the place first, and takes
-//! Flume's refusal of it as its answer (record 0010; core.51). The runner
-//! takes only what it was
+//! those answers are made (record 0027), opens each terminal pulled, and
+//! sends the whole report. Once its control plane has taken a report
+//! holding a place's status, it confirms to Flume, as the runner, each end
+//! that status gives owed to it, so no end leaves Flume before its control
+//! plane holds it (record 0030 as amended on 2026-11-09; core.54). An act
+//! on a place the listing read before the pull does not hold reads Flume's
+//! status of the place first, and takes Flume's refusal of it as its
+//! answer (record 0010; core.51). The runner takes only what it was
 //! offered, launches only through Flume's command line, and carries each
-//! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
-//! `ControlPlane` (core.2), and acts on no place it did not launch. Work
-//! under a lease that has lapsed by the pass's clock waits for a live one
-//! (core.24). A preview its control plane asks for is brought up in a
+//! answer as Flume gave it (core.1, core.9, core.10). It reaches its
+//! control plane only through `ControlPlane` (core.2), and acts on no
+//! place it did not launch. Work under a lease that has lapsed by the
+//! pass's clock waits for a live one (core.24). A preview its control plane asks for is brought up in a
 //! repository the runner keeps by sluice's own preview command, after
 //! every launch the pull offers, its ask awaited no longer than the
 //! runner's patience; sluice's listing of it is carried until sluice lists
@@ -374,19 +376,23 @@ impl Carrier<'_> {
         work.carry_statuses(say);
         work.carry_entries(say);
         work.carry_previews(say);
-        // A place's end Flume holds for the runner is collected only once
-        // the report file holds it, and in no pass whose report could not
-        // be saved (core.25, core.54; record 0030).
-        if work.save(&*plane, say) {
-            work.collect(say);
-        }
+        work.save(&*plane, say);
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
-        let reported = work.send(plane, say);
+        let sent = work.send(plane, say);
+        // An end Flume owes the runner is confirmed only once its control
+        // plane has taken the status that gives it, in a pass whose share
+        // the file holds after the answer, and never below the least Flume
+        // (core.25, core.38, core.54; record 0030 as amended on 2026-11-09).
+        if let Some((answer, true)) = &sent {
+            if work.below_least.is_none() {
+                work.confirm(answer, say);
+            }
+        }
         Passed {
             expires: expires(&work.report, At::now()),
-            reported,
+            reported: sent.is_some(),
         }
     }
 }
@@ -1380,21 +1386,26 @@ impl Work<'_> {
         }
     }
 
-    /// Collects, as the runner, each place's record Flume holds for it past
-    /// its tidy, once the report file holds that record as the place's
-    /// status (design Decision 3; core.54; record 0030): for each launch
-    /// the pull gives, in its order, answered `launched` at a place in a
-    /// repository whose clone stands, named or dropped, whose carried
-    /// status is listed and reads the place tidied, its record pending for
-    /// [`flume::RECIPIENT`]. The record is the entry's own `place`,
-    /// `<location>@<at>`. Nothing of Flume's answer is carried or kept
-    /// (core.11). A collection Flume refuses, or could not be run for, is
-    /// said in one line and made again at the next pass, whose carried
-    /// status says the same. A launch the report no longer holds, its
-    /// lease refused, is collected for no more (core.10).
-    fn collect(&self, say: &mut dyn FnMut(String)) {
+    /// Confirms to Flume, as the runner, each end of a place it owes the
+    /// runner, once the control plane's `answer` names the status that
+    /// gives it taken (design Decision 3; core.54; record 0030 as amended on
+    /// 2026-11-09): for each launch the pull gives, in its order, that the
+    /// report, after the answer, holds answered `launched` at a place in a
+    /// repository whose clone stands, named or dropped, whose carried status
+    /// is listed and named taken, the delivery key of each end the status
+    /// gives pending for [`flume::RECIPIENT`], in the status's order, by one
+    /// `flume confirm` for the launch. Nothing of Flume's answer is carried
+    /// or kept (core.11). A confirmation Flume refuses, or could not be run
+    /// for, is said in one line and made again at a later pass whose report
+    /// is taken, whose carried status gives the ends pending still. A
+    /// launch the report no longer holds, let go or its lease refused, has
+    /// nothing confirmed (core.10).
+    fn confirm(&self, answer: &Reported, say: &mut dyn FnMut(String)) {
         for offer in offers(self.wants) {
             let id = &offer.id;
+            if !answer.statuses_taken.contains(id) {
+                continue;
+            }
             let Some(launched) = self.report.launches.get(id) else {
                 continue;
             };
@@ -1420,19 +1431,19 @@ impl Work<'_> {
             let Some(entry) = carried_entry(launched, place) else {
                 continue;
             };
-            if !facts::pending_for(&entry, flume::RECIPIENT) {
+            let keys = facts::owed(&entry, flume::RECIPIENT);
+            if keys.is_empty() {
                 continue;
             }
-            let Some(record) = facts::location(&entry) else {
-                continue;
-            };
-            match self.carrier.flume.collect(record) {
+            let named = facts::location(&entry).unwrap_or(place);
+            let recipient = flume::RECIPIENT;
+            match self.carrier.flume.confirm(recipient, &keys) {
                 Ok(Reply::Given(_)) => {}
                 Ok(Reply::Refused(words)) => say(format!(
-                    "{id}: Flume refused the collection of {record}: {words}"
+                    "{id}: Flume refused to confirm the ends of {named} as {recipient}: {words}"
                 )),
                 Err(Unrun(why)) => say(format!(
-                    "{id}: Flume's record {record} could not be collected: {why}"
+                    "{id}: the ends of {named} could not be confirmed: {why}"
                 )),
             }
         }
@@ -1649,21 +1660,26 @@ impl Work<'_> {
     }
 
     /// Sends the part's share, which renews every lease it names, and
-    /// says whether the control plane took it; one not sent is kept in the
-    /// file, to be sent at the next pass.
-    fn send(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
+    /// gives the control plane's answer where it took it, with whether the
+    /// file holds the share once the answer is taken; one not sent gives
+    /// none, and is kept in the file, to be sent at the next pass.
+    fn send(
+        &mut self,
+        plane: &mut dyn ControlPlane,
+        say: &mut dyn FnMut(String),
+    ) -> Option<(Reported, bool)> {
         self.save(&*plane, say);
         match plane.report(&self.report) {
             Ok(reported) => {
                 self.reported(&reported, say);
-                self.save(&*plane, say);
-                true
+                let saved = self.save(&*plane, say);
+                Some((reported, saved))
             }
             Err(Unsent(words)) => {
                 say(self.carrier.line(&format!(
                     "the report could not be sent: {words}: it is sent at the next pass"
                 )));
-                false
+                None
             }
         }
     }

@@ -72,8 +72,9 @@ fn a_dependent_held_then_launched() {
 /// The work-into-flume spec's "A dependent of a landing held for the
 /// runner": `a`'s place lands and is tidied between two passes, Flume
 /// holding its record for the runner, and the next pass launches `b`, its
-/// listing holding the record landed, carries the record as `a`'s status
-/// and collects it (design Decision 2; record 0030).
+/// listing holding the record landed, carries the record as `a`'s status,
+/// and confirms its landing once the control plane has taken it (design
+/// Decision 3; record 0030 as amended on 2026-11-09).
 #[test]
 fn a_dependent_of_a_landing_held_for_the_runner() {
     let bench = Bench::new();
@@ -101,7 +102,10 @@ fn a_dependent_of_a_landing_held_for_the_runner() {
         entry["phase"]["tidied"]["over"],
         json!({ "landed": { "commit": "c0ffee" } })
     );
-    assert_eq!(bench.flume.collects(), [record]);
+    assert_eq!(
+        bench.flume.confirms(),
+        [vec!["a/t/submission/1/landed".to_string()]]
+    );
 }
 
 /// Task notes 4.3's first case, over Flume 0.4.1's own answers: `a`'s

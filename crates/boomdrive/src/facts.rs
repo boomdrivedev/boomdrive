@@ -111,6 +111,26 @@ pub fn pending_for(entry: &Value, name: &str) -> bool {
         .is_some_and(|pending| pending.iter().any(|each| each.as_str() == Some(name)))
 }
 
+/// The delivery key of each end of the place whose entry is `entry` that
+/// is pending for `name`, in the order of the entry's `ends`: each end
+/// `{"delivery": <key>, "pending_for": [<name>, …], …}`. An end with no
+/// `delivery` string is left out, since an end with no recipient has no
+/// delivery (design Decision 4; Flume record 0061).
+pub fn owed(entry: &Value, name: &str) -> Vec<String> {
+    let Some(ends) = entry.get("ends").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+    ends.iter()
+        .filter(|end| {
+            end.get("pending_for")
+                .and_then(Value::as_array)
+                .is_some_and(|pending| pending.iter().any(|each| each.as_str() == Some(name)))
+        })
+        .filter_map(|end| end.get("delivery").and_then(Value::as_str))
+        .map(str::to_string)
+        .collect()
+}
+
 /// The delivery key of each end of a place, `ends[].delivery`, the key
 /// `flume confirm` takes, in Flume's order (Flume record 0061). An end
 /// naming none, or naming one that is not a string, gives none.
@@ -393,6 +413,43 @@ mod tests {
             json!({ "place": "/p" }),
         ] {
             assert!(!pending_for(&entry, "boomdrive"), "{entry} read pending");
+        }
+    }
+
+    #[test]
+    fn the_ends_owed_to_a_recipient() {
+        let end = |key: &str, pending: Value| json!({ "key": key, "delivery": format!("change--a/t/{key}"), "pending_for": pending });
+        let entry = json!({ "place": "/p@1", "ends": [
+            end("stage/code/1/delivered", json!(["boomdrive", "scratch/planner"])),
+            end("stage/verify/1/delivered", json!(["scratch/planner"])),
+            end("submission/1/landed", json!(["boomdrive"])),
+            { "key": "stage/plan/1/delivered", "pending_for": ["boomdrive"] },
+            { "key": "x", "delivery": 7, "pending_for": ["boomdrive"] },
+            end("y", json!("boomdrive")),
+            end("z", json!([7])),
+        ] });
+        assert_eq!(
+            owed(&entry, "boomdrive"),
+            [
+                "change--a/t/stage/code/1/delivered",
+                "change--a/t/submission/1/landed"
+            ],
+            "in the order of the ends"
+        );
+        assert_eq!(
+            owed(&entry, "scratch/planner"),
+            [
+                "change--a/t/stage/code/1/delivered",
+                "change--a/t/stage/verify/1/delivered"
+            ]
+        );
+        assert!(owed(&entry, "ops").is_empty());
+        for entry in [
+            json!({ "place": "/p" }),
+            json!({ "place": "/p", "ends": "x" }),
+            json!({ "place": "/p", "ends": [] }),
+        ] {
+            assert!(owed(&entry, "boomdrive").is_empty(), "{entry}");
         }
     }
 

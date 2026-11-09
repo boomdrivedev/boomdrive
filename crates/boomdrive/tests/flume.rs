@@ -3,9 +3,9 @@
 //! its environment, the brief's file, and the reading of each answer by
 //! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), Flume
 //! 0.17.1's to the settle that keeps the host's watch (record 0029), and
-//! the runner named one more recipient, collecting a place's record as
-//! that recipient (record 0030), and a control plane's confirm of a
-//! reader's ends as Flume's confirm (core.56).
+//! the runner named one more recipient, confirming a place's ends as
+//! that recipient (record 0030 as amended on 2026-11-09), and a control
+//! plane's confirm of a reader's ends as Flume's confirm (core.56).
 
 use boomdrive::flume::{Act, Cli, Flume, LaunchArgs, Reply};
 use std::fs;
@@ -282,34 +282,40 @@ fn the_runner_is_one_more_recipient() {
     );
 }
 
-/// A collection is one `flume inbox` naming the record and the runner as
-/// its recipient, and no repository, its answer read by Flume's exit as
-/// every call's is (design Decision 3).
+/// A confirmation is one `flume confirm` naming the recipient, then each
+/// key in the order given after `--`, and no repository, as a confirm act
+/// does, its answer read by Flume's exit as every call's is (design
+/// Decisions 5 and 8; core.56).
 #[test]
-fn a_collection_names_one_record_and_the_runner() {
+fn a_confirmation_names_its_keys_and_its_recipient() {
     let stub = Stub::new();
     let cli = stub.cli();
+    let keys = [
+        "change--a/t/stage/code/1/delivered".to_string(),
+        "change--a/t/submission/1/landed".to_string(),
+    ];
     let listing = fs::read_to_string(fixture("status.json")).expect("the fixture");
-    assert_eq!(cli.collect("/places/P@1700"), Ok(Reply::Given(listing)));
+    assert_eq!(cli.confirm("boomdrive", &keys), Ok(Reply::Given(listing)));
     stub.answers(Some("retry-refused.json"), None, 1);
-    let refused = cli.collect("/places/Q@1700").expect("flume answers");
+    let refused = cli.confirm("boomdrive", &keys[1..]).expect("flume answers");
     assert!(matches!(refused, Reply::Refused(_)), "{refused:?}");
     assert_eq!(
         stub.calls(),
         [
             argv(&[
                 "--json",
-                "inbox",
-                "/places/P@1700",
-                "--recipient",
-                "boomdrive"
+                "confirm",
+                "--recipient=boomdrive",
+                "--",
+                "change--a/t/stage/code/1/delivered",
+                "change--a/t/submission/1/landed"
             ]),
             argv(&[
                 "--json",
-                "inbox",
-                "/places/Q@1700",
-                "--recipient",
-                "boomdrive"
+                "confirm",
+                "--recipient=boomdrive",
+                "--",
+                "change--a/t/submission/1/landed"
             ]),
         ]
     );
