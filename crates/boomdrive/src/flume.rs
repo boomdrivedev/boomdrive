@@ -18,6 +18,12 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
+/// The least Flume the runner launches with: 0.20.0, the first that holds
+/// a drop's and a done's end for a recipient no pane holds, and collects
+/// one place's by `flume inbox <place>` (core.38; record 0030; Flume
+/// record 0060).
+pub const LEAST: (u32, u32, u32) = (0, 20, 0);
+
 /// What one `flume launch` is given, each field the flag of its name.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LaunchArgs {
