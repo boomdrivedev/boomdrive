@@ -1,8 +1,10 @@
 //! Flume's command line against a stub `flume` written into each test's
 //! own temporary directory (design Decision 21): the argv it is given,
 //! its environment, the brief's file, and the reading of each answer by
-//! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), and
-//! Flume 0.17.1's to the settle that keeps the host's watch (record 0029).
+//! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), Flume
+//! 0.17.1's to the settle that keeps the host's watch (record 0029), and
+//! the runner named one more recipient, collecting a place's record as
+//! that recipient (record 0030).
 
 use boomdrive::flume::{Act, Cli, Flume, LaunchArgs, Reply};
 use std::fs;
@@ -170,6 +172,8 @@ fn a_launch_with_every_flag() {
             "home/planner",
             "--recipient",
             "home/reviewer",
+            "--recipient",
+            "boomdrive",
             "--hold",
             "code=the user reads the design",
             "--hold-submission",
@@ -219,6 +223,96 @@ fn a_launch_naming_no_stream_priority_or_intent() {
         ])]
     );
     assert!(!stub.brief_dir().exists(), "a folder made for no brief");
+}
+
+/// The work-into-flume spec's "The runner is one more recipient", at the
+/// command line: a launch that names a recipient names the runner after
+/// it, and one that names none names no recipient, so Flume's default is
+/// its recipient (core.15, core.54; Task notes 2.1).
+#[test]
+fn the_runner_is_one_more_recipient() {
+    let stub = Stub::new();
+    stub.answers(Some("launch.json"), None, 0);
+    let cli = stub.cli();
+    let named = LaunchArgs {
+        container_dir: "/d/repositories/example/crew".into(),
+        kind: "change".into(),
+        name: "a".into(),
+        recipients: vec!["home/planner".into()],
+        mark: "boomdrive:home/12".into(),
+        ..LaunchArgs::default()
+    };
+    cli.launch(&named, &stub.brief_dir())
+        .expect("flume answers");
+    let none = LaunchArgs {
+        name: "b".into(),
+        recipients: Vec::new(),
+        mark: "boomdrive:home/13".into(),
+        ..named.clone()
+    };
+    cli.launch(&none, &stub.brief_dir()).expect("flume answers");
+    let calls = stub.calls();
+    let recipients = |call: &[String]| -> Vec<String> {
+        call.windows(2)
+            .filter(|pair| pair[0] == "--recipient")
+            .map(|pair| pair[1].clone())
+            .collect()
+    };
+    assert_eq!(recipients(&calls[0]), argv(&["home/planner", "boomdrive"]));
+    assert_eq!(recipients(&calls[1]), Vec::<String>::new());
+    assert_eq!(
+        calls[0],
+        argv(&[
+            "--json",
+            "launch",
+            "--repository",
+            "/d/repositories/example/crew",
+            "--kind",
+            "change",
+            "--name",
+            "a",
+            "--recipient",
+            "home/planner",
+            "--recipient",
+            "boomdrive",
+            "--mark",
+            "boomdrive:home/12",
+        ])
+    );
+}
+
+/// A collection is one `flume inbox` naming the record and the runner as
+/// its recipient, and no repository, its answer read by Flume's exit as
+/// every call's is (design Decision 3).
+#[test]
+fn a_collection_names_one_record_and_the_runner() {
+    let stub = Stub::new();
+    let cli = stub.cli();
+    let listing = fs::read_to_string(fixture("status.json")).expect("the fixture");
+    assert_eq!(cli.collect("/places/P@1700"), Ok(Reply::Given(listing)));
+    stub.answers(Some("retry-refused.json"), None, 1);
+    let refused = cli.collect("/places/Q@1700").expect("flume answers");
+    assert!(matches!(refused, Reply::Refused(_)), "{refused:?}");
+    assert_eq!(
+        stub.calls(),
+        [
+            argv(&[
+                "--json",
+                "inbox",
+                "/places/P@1700",
+                "--recipient",
+                "boomdrive"
+            ]),
+            argv(&[
+                "--json",
+                "inbox",
+                "/places/Q@1700",
+                "--recipient",
+                "boomdrive"
+            ]),
+        ]
+    );
+    assert_eq!(stub.read("recipient-1").as_deref(), Some("unset\n"));
 }
 
 #[test]

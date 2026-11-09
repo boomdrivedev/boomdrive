@@ -116,3 +116,31 @@ Nothing else of the decision above changes. core.37's details are amended in thi
 
 - The runner runs nothing in a clone or a view to make it ready (core.14), and its setup, when built, has no step that reads a repository's pins.
 - A repository's pins are its own to install: in a place by sluice's equip, and for a person's or an agent's shell by the repository's own devenv task, as this repository's `boomdrive:proto:install` does.
+
+## Amendment, 2026-11-09: a person's own drive, set up by one command on a host Nix does not manage
+
+Status: the route and its timing are the user's, chosen on their card on 2026-11-09. The rest is agentplot-design's, each choice cheap to change and given with the path not taken.
+
+Deciders: the user, on their card "Colleagues running their own drive with crew: may Nix manage their Macs, and how soon?", who chose "No: Nix installs the programs, a setup command does the rest" and "With Boomdrive going public". Before it, in agentplot-design's pane on 2026-11-08, of colleagues on their own Macs: "The idea is that they would be able to start talking to crew and create work items that the runner pulls and schedules, with decisions put on pending-you. That is the same way I'm working today."; "They wouldn't be taking my work and they'd be doing their own work. They'd have to set up their own crew state."; "How do we assist them in that setup process?"
+
+Sources: the decision above and its amendment of 2026-11-06; records 0012, 0023 and 0028; agentplot/crew README, `crew main up` and `crew signal land`.
+
+### Decision outcome
+
+- **The programs from Nix, the rest by setup (the user's).** A person whose Mac Nix does not manage installs Boomdrive's programs with `nix profile add` and runs setup, which does the rest. It is ready when Boomdrive goes public. Not taken: a starter nix-darwin configuration for each person, which the user turned down.
+- **One command, which an agent can run.** Setup is this record's wizard, run as one command. Each of its questions is also a flag, and it reports in JSON, so an agent in the person's own session can run it for them. Run again with the same answers, it changes nothing. Not taken: a wizard with no flags, which an agent cannot run.
+- **What the person gives once.** Their account, their drive, the drive's repositories by owner, and the drive's crew state repository. Setup makes the state repository where none exists, under the person's account. Not taken: asking the person to make the state repository by hand first.
+- **What setup leaves.**
+  - The runner runs as the login's service, as the one install leaves it (record 0012).
+  - Each tool's managed layer is written for the person by the same keys Nix writes on a host it manages, so a host reads the same whichever wrote it.
+  - herdr's plugins are linked with herdr's own command.
+  - crew's file names this drive and its state, so the person can start crew's agents and talk to them.
+  - A file of the person's own already there is moved aside once and named, as the modules do. Not taken: a second set of keys for hosts set up without Nix.
+- **Later changes are setup's too.** Adding or removing a repository of the drive is a setup command, never a hand edit asked of the person.
+- **On a host Nix manages.** There, setup writes nothing Nix writes and says so.
+- **Sign-ins stay the person's.** Claude Code, GitHub and Pending You are each signed in to by the person. Setup checks each and names any that is missing.
+
+### Consequences
+
+- crew is asked to make a new drive's state and name the drive in its own file at setup's asking, since crew alone knows its state's layout.
+- A person's first drive needs no Flume setting of its own: its places run in Flume's default stream, as a laptop's do in record 0023.

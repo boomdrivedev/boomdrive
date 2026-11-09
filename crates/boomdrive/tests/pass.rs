@@ -17,12 +17,13 @@ mod fakes;
 #[path = "../../boomdrive-crew/tests/common/mod.rs"]
 mod records;
 
-use boomdrive::carry::{Carrier, Configured, Passed, Reach};
+use boomdrive::carry::{Carrier, Configured, Least, Passed, Reach};
 use boomdrive::locks::Locks;
 use boomdrive::report::ReportFile;
 use boomdrive::run::Notices;
 use boomdrive::terminal::{self, Relays};
 use boomdrive::{clone, config, facts, flume, report, sluice};
+use boomdrive_control::ToolVersion;
 use boomdrive_crew::config::{Config, Partition, StateRepository};
 use boomdrive_crew::Crew;
 use common::{keeping, Scratch};
@@ -75,14 +76,22 @@ impl Host {
             config::parse(&text, &scratch.config_file(), &scratch.home).expect("a configuration");
         let flume = Stub::absent();
         flume.write();
-        Host {
+        let host = Host {
             scratch,
             config,
             flume,
             sluice: SluiceStub::new(),
             herdr: HerdrStub::new(),
             tools: FakeTools::default(),
-        }
+        };
+        // The stub `flume` prints nothing for `--version`, which the hello
+        // reads as missing: its launches are tried as before (design
+        // Decision 5).
+        host.tools.reads(
+            "flume",
+            ToolVersion::Missing("flume --version printed nothing".to_string()),
+        );
+        host
     }
 
     /// crew's start of `a` and `b`, `b` after `a`: two launch requests of
@@ -150,6 +159,7 @@ impl Host {
         let control_dir = report::control_dir(&data);
         let relays = Relays::new(terminal::Cli::new(self.herdr.program()), |_| {});
         let reach = Reach::default();
+        let least = Least::default();
         let report = ReportFile::new(&control_dir);
         let locks = Locks::new();
         let carrier = Carrier {
@@ -165,6 +175,7 @@ impl Host {
             locks: &locks,
             relays: &relays,
             reach: &reach,
+            least: &least,
             due: &|| false,
         };
         let mut lines = Vec::new();

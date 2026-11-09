@@ -11,8 +11,8 @@
 
 #![allow(dead_code)]
 
-use boomdrive::carry::{Carrier, Clones, Keeping, Passed, Reach};
-use boomdrive::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
+use boomdrive::carry::{Carrier, Clones, Keeping, Least, Passed, Reach};
+use boomdrive::flume::{self, Act, Flume, LaunchArgs, Reply, Unrun};
 use boomdrive::git::Git;
 use boomdrive::hello::Tools;
 use boomdrive::locks::Locks;
@@ -83,6 +83,8 @@ pub enum Call {
     Status,
     /// `status <place>`, in the clone's container where one was named.
     StatusOf(Option<PathBuf>, String),
+    /// `inbox <record> --recipient boomdrive`.
+    Collect(String),
 }
 
 /// Flume in memory.
@@ -104,6 +106,13 @@ struct State {
     acts: BTreeMap<String, Result<Reply, Unrun>>,
     /// `status <place>`'s answer, by the place.
     statuses: BTreeMap<String, Result<Reply, Unrun>>,
+    /// A collection's answer, by its record.
+    collects: BTreeMap<String, Result<Reply, Unrun>>,
+    /// The recipients each place it launched was launched with, by its
+    /// place, the runner's own among them where the launch named any.
+    recipients: BTreeMap<String, Vec<String>>,
+    /// The time the next record of a drop or a done is tidied at.
+    tidied_at: u64,
     /// Every call left unrun, with these words.
     unrun: Option<String>,
     calls: Vec<Call>,
@@ -179,10 +188,28 @@ impl FakeFlume {
     /// while an end of it is pending for `scratch/planner`: Flume keeps its
     /// record as `<place>@<at>`, and answers `status <place>` with it.
     pub fn tidy_pending(&self, place: &str, at: u64) {
+        self.tidy_held(place, at, &["scratch/planner"]);
+    }
+
+    /// The place at `place`, landed at commit `c0ffee`, tidied at `at`
+    /// while an end of it is pending for each of `pending_for`: Flume keeps
+    /// its record as `<place>@<at>`, and answers `status <place>` with it.
+    pub fn tidy_held(&self, place: &str, at: u64, pending_for: &[&str]) {
+        self.tidy_over(
+            place,
+            json!({ "landed": { "commit": "c0ffee" } }),
+            at,
+            pending_for,
+        );
+    }
+
+    /// The place at `place`, its work over as `over`, tidied at `at` while
+    /// an end of it is pending for each of `pending_for`.
+    fn tidy_over(&self, place: &str, over: Value, at: u64, pending_for: &[&str]) {
         let tidied = json!({ "tidied": {
-            "over": { "landed": { "commit": "c0ffee" } },
+            "over": over,
             "at": at,
-            "pending_for": ["scratch/planner"],
+            "pending_for": pending_for,
         } });
         self.set(place, "phase", tidied);
         self.set(place, "place", json!(format!("{place}@{at}")));
@@ -231,6 +258,20 @@ impl FakeFlume {
             .insert(place.to_string(), reply);
     }
 
+    /// The collection of `record` answered with `reply`, until the test
+    /// says otherwise.
+    pub fn collect_answers(&self, record: &str, reply: Result<Reply, Unrun>) {
+        self.state
+            .borrow_mut()
+            .collects
+            .insert(record.to_string(), reply);
+    }
+
+    /// The collection of `record` answered as Flume answers it again.
+    pub fn collect_as_flume(&self, record: &str) {
+        self.state.borrow_mut().collects.remove(record);
+    }
+
     /// `then` done to Flume while the next launch or act runs, as Flume's
     /// own settling moves a place on while the runner waits on a command.
     pub fn meanwhile(&self, then: impl FnOnce(&FakeFlume) + 'static) {
@@ -277,6 +318,17 @@ impl FakeFlume {
             .collect()
     }
 
+    /// Each record collected, in order.
+    pub fn collects(&self) -> Vec<String> {
+        self.calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Collect(record) => Some(record),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Each launch's arguments, in order.
     pub fn launches(&self) -> Vec<LaunchArgs> {
         self.calls()
@@ -300,6 +352,16 @@ impl FakeFlume {
         if let Some(then) = meanwhile {
             then(self);
         }
+    }
+
+    /// Whether the place at `place` was launched with the runner among
+    /// its recipients.
+    fn held_for_runner(&self, place: &str) -> bool {
+        self.state
+            .borrow()
+            .recipients
+            .get(place)
+            .is_some_and(|named| named.iter().any(|name| name == flume::RECIPIENT))
     }
 
     fn listing_now(&self) -> Value {
@@ -333,6 +395,10 @@ impl Flume for FakeFlume {
             "stream": { "name": args.stream.as_deref().unwrap_or("default"), "from": "launch" },
         });
         self.stand(entry.clone());
+        self.state
+            .borrow_mut()
+            .recipients
+            .insert(place_of(&args.name), flume::recipients(&args.recipients));
         Ok(Reply::Given(printed(
             &json!({ "launched": { "place": entry } }),
         )))
@@ -353,6 +419,18 @@ impl Flume for FakeFlume {
             Act::Done => "done",
         };
         match act {
+            // A drop or a done is an end pending for the place's recipients
+            // that are no role's address, the runner's among them, and Flume
+            // keeps the place's record while it is (Flume record 0060).
+            Act::Drop | Act::Done if self.held_for_runner(place) => {
+                let over = if *act == Act::Drop { "dropped" } else { "done" };
+                let at = {
+                    let mut state = self.state.borrow_mut();
+                    state.tidied_at += 1;
+                    100 + state.tidied_at
+                };
+                self.tidy_over(place, json!(over), at, &[flume::RECIPIENT]);
+            }
             Act::Drop | Act::Done => self.tidy(place),
             Act::Priority(priority) => self.set(place, "priority", json!(priority)),
             Act::Retry { .. } => {}
@@ -370,6 +448,45 @@ impl Flume for FakeFlume {
             return reply.clone();
         }
         Ok(Reply::Given(printed(&self.listing_now())))
+    }
+
+    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
+        if let Some(unrun) = self.call(Call::Collect(record.to_string())) {
+            return Err(unrun);
+        }
+        if let Some(reply) = self.state.borrow().collects.get(record) {
+            return reply.clone();
+        }
+        let mut state = self.state.borrow_mut();
+        let Some(at) = state
+            .places
+            .iter()
+            .position(|entry| entry["place"] == record)
+        else {
+            return Ok(Reply::Refused(format!(
+                "no place {record} stands on this host"
+            )));
+        };
+        let entry = &mut state.places[at];
+        let mut collected = Vec::new();
+        if let Some(pending) = entry
+            .pointer_mut("/phase/tidied/pending_for")
+            .and_then(Value::as_array_mut)
+        {
+            let before = pending.len();
+            pending.retain(|name| name != flume::RECIPIENT);
+            if pending.len() < before {
+                collected.push(json!({ "place": record }));
+            }
+            if pending.is_empty() {
+                state.places.remove(at);
+            }
+        }
+        Ok(Reply::Given(printed(&json!({ "inbox": {
+            "recipient": flume::RECIPIENT,
+            "ends": collected,
+            "waiting": [],
+        } }))))
     }
 
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun> {
@@ -461,25 +578,38 @@ impl Clones for FakeClones {
     }
 }
 
-/// The tools' versions: each `<tool> 1.0.0`, but those a test names
-/// missing.
+/// The tools' versions: each `<tool> 1.0.0`, but as a test names one.
 #[derive(Default)]
 pub struct FakeTools {
-    missing: RefCell<Vec<String>>,
+    read: RefCell<BTreeMap<String, ToolVersion>>,
 }
 
 impl FakeTools {
+    /// `tool` read as missing, as when it could not run.
     pub fn missing(&self, tool: &str) {
-        self.missing.borrow_mut().push(tool.to_string());
+        self.reads(
+            tool,
+            ToolVersion::Missing(format!("{tool} could not run: not found")),
+        );
+    }
+
+    /// `tool`'s `--version` read as printing `line` first.
+    pub fn prints(&self, tool: &str, line: &str) {
+        self.reads(tool, ToolVersion::Printed(line.to_string()));
+    }
+
+    /// `tool`'s version read as `version`.
+    pub fn reads(&self, tool: &str, version: ToolVersion) {
+        self.read.borrow_mut().insert(tool.to_string(), version);
     }
 }
 
 impl Tools for FakeTools {
     fn version(&self, tool: &str) -> ToolVersion {
-        if self.missing.borrow().iter().any(|missing| missing == tool) {
-            return ToolVersion::Missing(format!("{tool} could not run: not found"));
+        match self.read.borrow().get(tool) {
+            Some(version) => version.clone(),
+            None => ToolVersion::Printed(format!("{tool} 1.0.0")),
         }
-        ToolVersion::Printed(format!("{tool} 1.0.0"))
     }
 }
 
@@ -512,6 +642,9 @@ pub struct Bench {
     /// Whether the last pull was read, kept across the bench's passes as
     /// a part's thread keeps it.
     reach: Reach,
+    /// What was last said of Flume's version, kept across the bench's
+    /// passes as the loop keeps it.
+    least: Least,
     /// How long a pass awaits sluice's ask of a preview before it
     /// interrupts it: [`sluice::PREVIEW_PATIENCE`], but where a test sets
     /// another.
@@ -544,6 +677,7 @@ impl Bench {
             locks: Arc::new(Locks::new()),
             report_file,
             reach: Reach::default(),
+            least: Least::default(),
             sluice_patience: Cell::new(sluice::PREVIEW_PATIENCE),
             notices: Notices::new(events),
             events: received,
@@ -622,6 +756,7 @@ impl Bench {
             locks: &self.locks,
             relays: &self.relays,
             reach: &self.reach,
+            least: &self.least,
             due,
         };
         let mut lines = Vec::new();
