@@ -2,14 +2,15 @@
 //! reaches Flume (record 0001). Every call puts `--json` first and runs
 //! with `FLUME_RECIPIENT` unset, so a place's recipients are only those
 //! its launch names, and none passes `--force`. A launch that names
-//! recipients names the runner one more, [`RECIPIENT`], so Flume holds
-//! the place's end for it past its tidy until it collects it by `flume
-//! inbox` (core.54; record 0030). A launch passes its kind
-//! to `--kind` as the control plane gave it and never `--kinds`, since
-//! where a host's kinds come from is its Flume configuration's (core.5),
-//! and every other flag only where the launch gives it. Each answer is
-//! read by Flume's exit and kept as Flume gave it: the runner rewrites,
-//! summarises and judges none (core.1).
+//! recipients names the runner one more, [`RECIPIENT`], so Flume owes it
+//! each end of the place, holding the place's record past its tidy, until
+//! the runner confirms each by `flume confirm` once its control plane has
+//! taken it (core.54; record 0030 as amended on 2026-11-09). A launch
+//! passes its kind to `--kind` as the control plane gave it and never
+//! `--kinds`, since where a host's kinds come from is its Flume
+//! configuration's (core.5), and every other flag only where the launch
+//! gives it. Each answer is read by Flume's exit and kept as Flume gave
+//! it: the runner rewrites, summarises and judges none (core.1).
 
 use crate::settle;
 use serde::de::IgnoredAny;
@@ -30,8 +31,8 @@ pub const LEAST: (u32, u32, u32) = (0, 20, 0);
 /// The runner's own name as a recipient of the places it launches: fixed
 /// and the same on every host, since one runner serves a host. No pane
 /// holds it, so Flume sends it no notice and wakes nothing for it, and
-/// holds each end of the place for it until it collects them (core.54;
-/// record 0030; Flume record 0060).
+/// owes it each end of the place until it confirms them (core.54; record
+/// 0030 as amended on 2026-11-09; Flume records 0060 and 0061).
 pub const RECIPIENT: &str = "boomdrive";
 
 /// The recipients a launch naming `given` is launched with: `given`, as
@@ -162,11 +163,6 @@ pub trait Flume {
     /// The place at `place`, in the repository at `container_dir` where
     /// the runner keeps its clone, else by its location alone.
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun>;
-    /// Every end pending for the runner of the record at `record`, a
-    /// tidied place's `<location>@<at>`, collected as [`RECIPIENT`]: `flume
-    /// inbox <record> --recipient boomdrive`, naming no repository
-    /// (core.54; record 0030).
-    fn collect(&self, record: &str) -> Result<Reply, Unrun>;
     /// Each end under `keys`, its delivery keys in the order given,
     /// confirmed as `recipient`: `flume confirm <key>… --recipient
     /// <recipient>`, naming no repository. The runner confirms as
@@ -251,15 +247,6 @@ impl Flume for Cli {
         }
         args.push(place.into());
         self.run(args)
-    }
-
-    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
-        self.run(vec![
-            "inbox".into(),
-            record.into(),
-            "--recipient".into(),
-            RECIPIENT.into(),
-        ])
     }
 
     fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {

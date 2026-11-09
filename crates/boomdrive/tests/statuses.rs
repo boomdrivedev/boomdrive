@@ -331,7 +331,9 @@ fn a_landing_held_for_the_runner() {
     );
     assert!(read < confirms[0].0, "confirmed after its status is read");
     assert!(
-        !calls.iter().any(|call| matches!(call, Call::Collect(_))),
+        calls
+            .iter()
+            .all(|call| matches!(call, Call::Status | Call::StatusOf(..) | Call::Confirm(..))),
         "no inbox: {calls:?}"
     );
     assert_eq!(lines, [] as [String; 0]);
@@ -775,9 +777,7 @@ fn the_users_own_place() {
     bench.pass(&mut plane);
     for call in bench.flume.calls() {
         let named = match &call {
-            Call::Act(place, _) | Call::StatusOf(_, place) | Call::Collect(place) => {
-                Some(place.as_str())
-            }
+            Call::Act(place, _) | Call::StatusOf(_, place) => Some(place.as_str()),
             Call::Launch(_) | Call::Status | Call::Confirm(..) => None,
         };
         assert!(

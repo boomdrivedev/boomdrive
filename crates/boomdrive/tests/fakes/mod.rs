@@ -83,8 +83,6 @@ pub enum Call {
     Status,
     /// `status <place>`, in the clone's container where one was named.
     StatusOf(Option<PathBuf>, String),
-    /// `inbox <record> --recipient boomdrive`.
-    Collect(String),
     /// `confirm <key>… --recipient <recipient>`: the recipient, then the
     /// keys in the order given.
     Confirm(String, Vec<String>),
@@ -109,8 +107,6 @@ struct State {
     acts: BTreeMap<String, Result<Reply, Unrun>>,
     /// `status <place>`'s answer, by the place.
     statuses: BTreeMap<String, Result<Reply, Unrun>>,
-    /// A collection's answer, by its record.
-    collects: BTreeMap<String, Result<Reply, Unrun>>,
     /// A confirmation's answer, by its first key.
     confirms: BTreeMap<String, Result<Reply, Unrun>>,
     /// The recipients each place it launched was launched with, by its
@@ -294,20 +290,6 @@ impl FakeFlume {
             .insert(place.to_string(), reply);
     }
 
-    /// The collection of `record` answered with `reply`, until the test
-    /// says otherwise.
-    pub fn collect_answers(&self, record: &str, reply: Result<Reply, Unrun>) {
-        self.state
-            .borrow_mut()
-            .collects
-            .insert(record.to_string(), reply);
-    }
-
-    /// The collection of `record` answered as Flume answers it again.
-    pub fn collect_as_flume(&self, record: &str) {
-        self.state.borrow_mut().collects.remove(record);
-    }
-
     /// A confirmation whose first key is `key` answered with `reply`,
     /// until the test says otherwise.
     pub fn confirm_answers(&self, key: &str, reply: Result<Reply, Unrun>) {
@@ -364,17 +346,6 @@ impl FakeFlume {
             .into_iter()
             .filter_map(|call| match call {
                 Call::Act(place, act) => Some((place, act)),
-                _ => None,
-            })
-            .collect()
-    }
-
-    /// Each record collected, in order.
-    pub fn collects(&self) -> Vec<String> {
-        self.calls()
-            .into_iter()
-            .filter_map(|call| match call {
-                Call::Collect(record) => Some(record),
                 _ => None,
             })
             .collect()
@@ -529,45 +500,6 @@ impl Flume for FakeFlume {
             return reply.clone();
         }
         Ok(Reply::Given(printed(&self.listing_now())))
-    }
-
-    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
-        if let Some(unrun) = self.call(Call::Collect(record.to_string())) {
-            return Err(unrun);
-        }
-        if let Some(reply) = self.state.borrow().collects.get(record) {
-            return reply.clone();
-        }
-        let mut state = self.state.borrow_mut();
-        let Some(at) = state
-            .places
-            .iter()
-            .position(|entry| entry["place"] == record)
-        else {
-            return Ok(Reply::Refused(format!(
-                "no place {record} stands on this host"
-            )));
-        };
-        let entry = &mut state.places[at];
-        let mut collected = Vec::new();
-        if let Some(pending) = entry
-            .pointer_mut("/phase/tidied/pending_for")
-            .and_then(Value::as_array_mut)
-        {
-            let before = pending.len();
-            pending.retain(|name| name != flume::RECIPIENT);
-            if pending.len() < before {
-                collected.push(json!({ "place": record }));
-            }
-            if pending.is_empty() {
-                state.places.remove(at);
-            }
-        }
-        Ok(Reply::Given(printed(&json!({ "inbox": {
-            "recipient": flume::RECIPIENT,
-            "ends": collected,
-            "waiting": [],
-        } }))))
     }
 
     fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {

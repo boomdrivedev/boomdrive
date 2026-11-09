@@ -87,10 +87,6 @@ impl Flume for Watching<'_> {
         self.flume.status_of(container_dir, place)
     }
 
-    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
-        self.flume.collect(record)
-    }
-
     fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {
         self.flume.confirm(recipient, keys)
     }
