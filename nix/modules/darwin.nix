@@ -11,7 +11,7 @@
 # or the file changes, and leaves it running when neither does. The
 # activation links the file at the runner's own path, as the primary user,
 # for the commands a person runs by hand, and links the herdr plugins
-# way-in.nix lists with herdr's own command (record 0023).
+# apps.nix lists with herdr's own command (record 0023).
 { packages }:
 {
   config,
@@ -26,7 +26,7 @@ let
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
-  # (way-in.nix).
+  # (apps.nix).
   linking = cfg.herdr.package != null && cfg.herdr.plugins != [ ];
   plugins = lib.escapeShellArgs (
     [
@@ -59,7 +59,7 @@ in
   imports = [
     (import ./options.nix { inherit packages; })
     (import ./tools.nix { inherit packages; })
-    (import ./way-in.nix { inherit packages; })
+    (import ./apps.nix { inherit packages; })
     ./drives.nix
   ];
 

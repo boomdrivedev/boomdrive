@@ -64,7 +64,7 @@ let
   # Flume's, sluice's and crew's own modules alone, each from its own
   # flake, turned on with the set's packages, crew's settings for host-a,
   # Flume's terminal and window as the Boomdrive module gives them
-  # (way-in.nix), and on NixOS the user alice (design Decision 8).
+  # (apps.nix), and on NixOS the user alice (design Decision 8).
   settings = import ./settings.nix;
   toolsOf =
     platform: set: extra:
