@@ -68,14 +68,19 @@ fn retry(launch: &str) -> Want {
     act(&format!("{launch}/retry"), launch, what)
 }
 
-/// Each call Flume was asked that names the place at `place`.
+/// Each call Flume was asked that names the place at `place`: an act on
+/// it, its status, or a confirmation of a key of its ends, each keyed
+/// under the place's name, its last path segment, in the fake.
 fn naming(calls: &[Call], place: &str) -> Vec<Call> {
+    let name = place.rsplit('/').next().unwrap_or(place);
+    let of_place = format!("{name}/");
     calls
         .iter()
         .filter(|call| match call {
             Call::Act(at, _) | Call::StatusOf(_, at) => at == place,
+            Call::Confirm(_, keys) => keys.iter().any(|key| key.starts_with(&of_place)),
             Call::Collect(record) => record.split_once('@').map(|(at, _)| at) == Some(place),
-            Call::Launch(_) | Call::Status | Call::Confirm(..) => false,
+            Call::Launch(_) | Call::Status => false,
         })
         .cloned()
         .collect()
@@ -321,12 +326,13 @@ fn a_lease_refused() {
 }
 
 /// The work-into-flume spec's "A lease refused before its end was
-/// collected": a launch whose report the control plane refused leaves the
+/// confirmed": a launch whose report the control plane refused leaves the
 /// report, and once Flume tidies its place, holding the record for the
-/// runner, no inbox names that record at the passes after; the record is
-/// left on the host as Flume holds it (core.10; design Decision 3).
+/// runner, no confirmation names a key of that record at the passes
+/// after; the record is left on the host as Flume holds it, owed (core.10;
+/// design Decision 3).
 #[test]
-fn a_lease_refused_before_its_end_was_collected() {
+fn a_lease_refused_before_its_end_was_confirmed() {
     let bench = Bench::new();
     let mut planned = offer("a", "a");
     planned.launch.recipients = vec!["scratch/planner".into()];
@@ -342,7 +348,7 @@ fn a_lease_refused_before_its_end_was_collected() {
     bench.pass(&mut plane);
     bench.pass(&mut plane);
     assert_eq!(naming(&bench.flume.calls(), &p), []);
-    assert_eq!(bench.flume.collects(), [] as [String; 0]);
+    assert_eq!(bench.flume.confirms(), [] as [Vec<String>; 0]);
     assert!(
         bench.flume.entry(&p).is_some(),
         "the record is left as Flume holds it"
