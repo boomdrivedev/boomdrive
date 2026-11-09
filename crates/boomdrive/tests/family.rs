@@ -277,10 +277,10 @@ fn the_sets_flume_keeps_the_runners_watch() {
 }
 
 /// The family-packages spec's "The set's Flume takes the runner as a
-/// recipient" (design Decision 6): the set's Flume, asked on a scratch
+/// recipient" (design Decision 8): the set's Flume, asked on a scratch
 /// host as the runner asks it, to launch in a folder that holds no
-/// repository naming the runner beside another recipient, and to collect
-/// for the runner a place it does not hold, refuses each on exit 1 with
+/// repository naming the runner beside another recipient, and to confirm
+/// as the runner a key no end is under, refuses each on exit 1 with
 /// its reason, which `flume::Cli` reads as Flume's reason, and neither is
 /// a usage error; and its `--version` is no older than the least the
 /// runner launches with.
@@ -301,7 +301,8 @@ fn the_sets_flume_takes_the_runner_as_a_recipient() {
     };
     let briefs = family.scratch.root.join("briefs");
     let launched = cli.launch(&launch, &briefs);
-    let collected = cli.collect("/no/such/place@1");
+    let key = "fix--none/t/stage/code/1/delivered";
+    let confirmed = cli.confirm(flume::RECIPIENT, &[key.to_string()]);
 
     let launch_argv = [
         "--json",
@@ -319,14 +320,8 @@ fn the_sets_flume_takes_the_runner_as_a_recipient() {
         "--mark",
         "m",
     ];
-    let inbox_argv = [
-        "--json",
-        "inbox",
-        "/no/such/place@1",
-        "--recipient",
-        flume::RECIPIENT,
-    ];
-    for (reply, argv) in [(launched, &launch_argv[..]), (collected, &inbox_argv[..])] {
+    let confirm_argv = ["--json", "confirm", key, "--recipient", flume::RECIPIENT];
+    for (reply, argv) in [(launched, &launch_argv[..]), (confirmed, &confirm_argv[..])] {
         let printed = family
             .scratch
             .command(&set)
