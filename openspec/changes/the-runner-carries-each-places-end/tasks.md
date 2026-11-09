@@ -36,8 +36,8 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. The drain
 
-- [ ] 5.1 `report::ended` reads a place tidied or gone as ended only where its record is not pending for `flume::RECIPIENT` (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --lib report::` passes.
-- [ ] 5.2 A drained repository's clone and view stay until the place's held record is collected. This proves the clones spec's "The place's end held for the runner", "The place tidied" and "The place no longer listed" (design Decision 4; Task notes 5.2). True when `devenv shell -- cargo test -p boomdrive --test dropped -- the_places_end_held_for_the_runner the_place_tidied the_place_no_longer_listed` passes.
+- [x] 5.1 `report::ended` reads a place tidied or gone as ended only where its record is not pending for `flume::RECIPIENT` (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --lib report::` passes.
+- [x] 5.2 A drained repository's clone and view stay until the place's held record is collected. This proves the clones spec's "The place's end held for the runner", "The place tidied" and "The place no longer listed" (design Decision 4; Task notes 5.2). True when `devenv shell -- cargo test -p boomdrive --test dropped -- the_places_end_held_for_the_runner the_place_tidied the_place_no_longer_listed` passes.
 
 ## 6. The least Flume
 
