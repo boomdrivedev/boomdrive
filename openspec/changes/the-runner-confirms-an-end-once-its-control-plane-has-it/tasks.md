@@ -41,7 +41,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 6. The drain
 
-- [ ] 6.1 `report::ended`'s documentation says a drained clone waits for the runner to confirm the record's ends. `the_places_end_held_for_the_runner` reads the record pending for `boomdrive`, then for `scratch/planner` alone once confirmed. This proves the clones spec's "The place's end held for the runner", "The place tidied" and "The place no longer listed" (design Decision 6). True when `devenv shell -- cargo test -p boomdrive --test dropped -- the_places_end_held_for_the_runner the_place_tidied the_place_no_longer_listed` passes.
+- [x] 6.1 `report::ended`'s documentation says a drained clone waits for the runner to confirm the record's ends. `the_places_end_held_for_the_runner` reads the record pending for `boomdrive`, then for `scratch/planner` alone once confirmed. This proves the clones spec's "The place's end held for the runner", "The place tidied" and "The place no longer listed" (design Decision 6). True when `devenv shell -- cargo test -p boomdrive --test dropped -- the_places_end_held_for_the_runner the_place_tidied the_place_no_longer_listed` passes.
 
 ## 7. The least Flume
 
