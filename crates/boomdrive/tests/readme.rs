@@ -52,8 +52,8 @@ fn the_readme_control_plane_opens_crews_implementation() {
         &readme,
         Path::new("/nowhere/boomdrive"),
         table.poll_interval,
-        Box::new(|line| panic!("said {line:?} at its opening")),
-        Box::new(|| panic!("woken at its opening")),
+        &|_| Box::new(|line| panic!("said {line:?} at its opening")),
+        &|_| Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }
@@ -123,5 +123,25 @@ fn the_readme_names_no_branch_command() {
     assert!(
         text.contains("refuses every command, naming its tool"),
         "README says every command is refused"
+    );
+}
+
+/// core.55 and design Decision 13: README says how a preview is brought
+/// up and put away, by sluice's own commands.
+#[test]
+fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
+    let (text, _) = readme();
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flat.contains("sluice preview <branch> <revision>"),
+        "README names no sluice preview <branch> <revision>"
+    );
+    assert!(
+        flat.contains("sluice release <name>"),
+        "README names no sluice release <name>"
+    );
+    assert!(
+        flat.contains("previews.rec"),
+        "README names no previews.rec"
     );
 }

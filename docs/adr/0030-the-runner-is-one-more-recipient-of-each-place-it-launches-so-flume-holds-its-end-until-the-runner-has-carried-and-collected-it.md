@@ -68,4 +68,4 @@ Collecting once the control plane has taken the report would hold a record acros
 - Bad: under Flume `0.20.0` a drop's or a done's end is in the place's status as an end `{"of":"over",…}`, which version 1 of the runner's protocol does not name. The hosted implementation's copy of such a status fails version 1's check and goes up null, and says so once. Carrying it to a hosted control plane is a version of the protocol of its own (core.42).
 - Neutral: a place launched before this record names no recipient of the runner's, so Flume holds nothing of it for the runner, and it is followed as before.
 - Neutral: one inbox shared across the family is weir's to design next, as the user's answer says. This record leaves it open.
-- This record adds core.53 and amends the details of core.1, core.13 and core.15. The work-into-flume, clones and family-packages specs say it, in this record's change.
+- This record adds core.54 and amends the details of core.1, core.13 and core.15. The work-into-flume, clones and family-packages specs say it, in this record's change.

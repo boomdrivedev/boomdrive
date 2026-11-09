@@ -228,7 +228,7 @@ fn a_launch_naming_no_stream_priority_or_intent() {
 /// The work-into-flume spec's "The runner is one more recipient", at the
 /// command line: a launch that names a recipient names the runner after
 /// it, and one that names none names no recipient, so Flume's default is
-/// its recipient (core.15, core.53; Task notes 2.1).
+/// its recipient (core.15, core.54; Task notes 2.1).
 #[test]
 fn the_runner_is_one_more_recipient() {
     let stub = Stub::new();

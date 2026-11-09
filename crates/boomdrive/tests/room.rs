@@ -3,7 +3,9 @@
 //! in has room, or the host where it names none (design Decision 8;
 //! core.9; the work-into-flume spec's "Room is read from Flume's status
 //! and counted down within a pass" and "A launch is made only while the
-//! stream it runs in has room"; Task notes 4.2).
+//! stream it runs in has room"; Task notes 4.2). Each part's pass counts
+//! its own launches against the room its own listing gives, and the
+//! runner keeps no count across parts (record 0026; core.9).
 
 mod fakes;
 
@@ -56,6 +58,27 @@ fn room_for_one() {
     assert_eq!(outcome(&bench, "home/2"), None);
     assert_eq!(bench.flume.launches().len(), 1);
     assert_eq!(lines, ["home/1: launched at /places/a"]);
+}
+
+/// The work-into-flume spec's "Each part counts its own room": `home`
+/// and `work` each offer one launch naming no stream, and every listing
+/// Flume gives says the host's `room` is 1. Each part launches its own
+/// offer, each pass counting only its own launch: where both read one
+/// room at once, Flume's own bound holds the later place.
+#[test]
+fn each_part_counts_its_own_room() {
+    let bench = Bench::new();
+    bench.flume.host(host(json!(1), json!([])));
+    let mut home = Fake::owning("home/");
+    home.set_wants(vec![in_stream("home/1", "a", None)]);
+    let mut work = Fake::owning("work/");
+    work.set_wants(vec![in_stream("work/1", "b", None)]);
+    let (_, home_lines) = bench.pass_of("home", &bench.flume, &mut home, &|| false);
+    let (_, work_lines) = bench.pass_of("work", &bench.flume, &mut work, &|| false);
+    assert_eq!(home_lines, ["home/1: launched at /places/a"]);
+    assert_eq!(work_lines, ["work/1: launched at /places/b"]);
+    assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
+    assert_eq!(outcome(&bench, "work/1"), Some(Outcome::Launched));
 }
 
 /// The work-into-flume spec's "A stream with a queue".

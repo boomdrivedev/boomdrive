@@ -18,6 +18,8 @@ mod fakes;
 mod records;
 
 use boomdrive::carry::{Carrier, Configured, Least, Passed, Reach};
+use boomdrive::locks::Locks;
+use boomdrive::report::ReportFile;
 use boomdrive::run::Notices;
 use boomdrive::terminal::{self, Relays};
 use boomdrive::{clone, config, facts, flume, report, sluice};
@@ -158,7 +160,10 @@ impl Host {
         let relays = Relays::new(terminal::Cli::new(self.herdr.program()), |_| {});
         let reach = Reach::default();
         let least = Least::default();
+        let report = ReportFile::new(&control_dir);
+        let locks = Locks::new();
         let carrier = Carrier {
+            label: "home",
             flume: &flume,
             sluice: &sluice,
             git: &git,
@@ -166,6 +171,8 @@ impl Host {
             tools: &self.tools,
             notices: &notices,
             control_dir: &control_dir,
+            report: &report,
+            locks: &locks,
             relays: &relays,
             reach: &reach,
             least: &least,

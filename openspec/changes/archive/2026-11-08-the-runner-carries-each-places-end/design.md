@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md for why. This change makes the runner one more recipient of each place it launches whose launch names recipients, so Flume holds the place's end for the runner past its tidy, and has the runner collect it once its report holds it. The decision is record 0030, with core.53 beside it and the details of core.1, core.13 and core.15 amended.
+See proposal.md for why. This change makes the runner one more recipient of each place it launches whose launch names recipients, so Flume holds the place's end for the runner past its tidy, and has the runner collect it once its report holds it. The decision is record 0030, with core.54 beside it and the details of core.1, core.13 and core.15 amended.
 
 What stands:
 
@@ -118,7 +118,7 @@ All run on the crate's fakes and stubs, with neutral names and paths (core.41).
 - **core.25**: a pass whose save failed collects nothing.
 - **core.27**: the hosted copy carries the held record's fields its schema names.
 - **core.38**: the least Flume.
-- **core.53**: this change's rule.
+- **core.54**: this change's rule.
 - **core.13**: the collection is the end of carrying a place, and no housekeeping of Flume's. Its details say so.
 
 ### Rules departed from
@@ -146,7 +146,7 @@ Once this runs on every host crew serves, crew's unit `crew-reads-each-pieces-en
 
 ## Task notes
 
-- **1.1** Record 0030 and core.53 say what the user's answer and agentplot-design's words decide, and Flume `v0.20.0` gives. The record is proposed until the user has seen it.
+- **1.1** Record 0030 and core.54 say what the user's answer and agentplot-design's words decide, and Flume `v0.20.0` gives. The record is proposed until the user has seen it.
 - **1.2** Move the set exactly as `4dd74ca` did: `flake.nix`'s Flume `url` tag, `nix flake lock --update-input flume` under the devenv shell, each of Flume's git crates' hashes at the new tag in `nix/packages/flume-git-crates.nix`, and README's `--override-input flume` example. Set `flume::LEAST` to the release's version in the same task.
 - **2.1** `flume_runs_with_no_recipient_of_the_runners_own` keeps its name: it proves `FLUME_RECIPIENT` unset. `the_runner_is_one_more_recipient` in `tests/flume.rs` asserts the argv of a launch with recipients and of one without.
 - **4.2** `Work::collect` reads the entry through `carried_entry`, and the record's id from the entry's `place`, never by joining the location and a time itself.

@@ -34,7 +34,7 @@ These are in `a_record_pending_for_a_recipient_too` (383), `a_collection_flume_c
 All 17 tasks of `tasks.md`, groups 1 to 8, are ticked `[x]`, and none is open. What they build is in the tree, as the design names it:
 
 - **The set's Flume** (1.1, 1.2):
-  - Record 0030 (`proposed`), core.53, and the amended details of core.1, core.13 and core.15 are in 803890f.
+  - Record 0030 (`proposed`), core.54, and the amended details of core.1, core.13 and core.15 are in 803890f.
   - `flake.nix` and `flake.lock` name Flume `v0.20.0` (`9ab0e2c`).
   - `nix/packages/flume-git-crates.nix` holds `weir-capture` and `weir-kinds` at `daacda39`.
   - README's override example names `v0.21.0`, one release past the set, as it named `v0.17.2` past `v0.17.1`.

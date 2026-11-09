@@ -1,14 +1,13 @@
-//! A bolt is a launch, and its send a retry of its submission: a launch
-//! of a kind that lands with no stages, as a bolt's base place is, is
-//! taken as any launch, counted against its stream's room within its pass
-//! and launched as one `flume launch`, and its units after it on its
-//! branch; its send is Flume's own retry naming the submission, whose
-//! answer is Flume's. The runner reads no kind and asks no tool for a
-//! branch (core.9, core.15, core.52; design Decisions 1 to 3; the
-//! work-into-flume spec's "A bolt is a launch" and "A bolt's send is a
-//! retry of its submission"; Task notes 3.1 and 3.2). It runs over the
-//! fake Flume and the stub `flume` and `sluice`, with the neutral kind
-//! `bolt`.
+//! A bolt is a launch, and it is landed on a land: a launch of a kind
+//! that lands with no stages, as a bolt's base place is, is taken as any
+//! launch, counted against its stream's room within its pass and launched
+//! as one `flume launch`, and its units after it on its branch; its send
+//! is its control plane's land, carried out as any land, by Flume's own
+//! retry naming the submission, whose answer is Flume's. The runner reads
+//! no kind and asks no tool for a branch (core.9, core.15, core.52,
+//! core.53; the work-into-flume spec's "A bolt is a launch" and "A bolt
+//! is landed on a land"). It runs over the fake Flume and the stub
+//! `flume` and `sluice`, with the neutral kind `bolt`.
 
 mod fakes;
 
@@ -52,14 +51,9 @@ fn unit() -> Want {
     Want::Offer(launch(UNIT, "change", "a", "bolt/x"))
 }
 
-/// The bolt's send: a retry of its launch's submission.
+/// The bolt's send: a land of its launch (core.53).
 fn send() -> Want {
-    let what = ActSort::Retry {
-        stage: None,
-        words: None,
-        submission: true,
-    };
-    act(&format!("{BOLT}/send"), BOLT, what)
+    act(&format!("{BOLT}/send"), BOLT, ActSort::Land)
 }
 
 /// A host part with no bound of its own and the stream `home`, whose
@@ -240,7 +234,7 @@ fn a_bolts_send() {
     assert_eq!(retries, [argv(&["--json", "retry", P, "--submission"])]);
     assert_eq!((outcome, words), (Outcome::Done, None));
     assert!(
-        lines.contains(&format!("{BOLT}/send: retry of {BOLT} at {P}: done")),
+        lines.contains(&format!("{BOLT}/send: land of {BOLT} at {P}: done")),
         "{lines:?}"
     );
     assert!(stub.call_of("launch").is_none(), "found by its mark");
@@ -265,7 +259,7 @@ fn a_send_flume_refuses() {
     );
     assert!(
         lines.contains(&format!(
-            "{BOLT}/send: retry of {BOLT} at {P}: refused by Flume: {reason}"
+            "{BOLT}/send: land of {BOLT} at {P}: refused by Flume: {reason}"
         )),
         "{lines:?}"
     );

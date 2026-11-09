@@ -4,7 +4,7 @@
 //! its launch names, and none passes `--force`. A launch that names
 //! recipients names the runner one more, [`RECIPIENT`], so Flume holds
 //! the place's end for it past its tidy until it collects it by `flume
-//! inbox` (core.53; record 0030). A launch passes its kind
+//! inbox` (core.54; record 0030). A launch passes its kind
 //! to `--kind` as the control plane gave it and never `--kinds`, since
 //! where a host's kinds come from is its Flume configuration's (core.5),
 //! and every other flag only where the launch gives it. Each answer is
@@ -30,7 +30,7 @@ pub const LEAST: (u32, u32, u32) = (0, 20, 0);
 /// The runner's own name as a recipient of the places it launches: fixed
 /// and the same on every host, since one runner serves a host. No pane
 /// holds it, so Flume sends it no notice and wakes nothing for it, and
-/// holds each end of the place for it until it collects them (core.53;
+/// holds each end of the place for it until it collects them (core.54;
 /// record 0030; Flume record 0060).
 pub const RECIPIENT: &str = "boomdrive";
 
@@ -38,7 +38,7 @@ pub const RECIPIENT: &str = "boomdrive";
 /// the launch gives them, then the runner's own, [`RECIPIENT`], where
 /// `given` names any and not it already. A launch naming none is given
 /// none, so Flume's default is its recipient, which naming any would drop
-/// (Flume's 7; core.15, core.53).
+/// (Flume's 7; core.15, core.54).
 pub fn recipients(given: &[String]) -> Vec<String> {
     let mut named = given.to_vec();
     if !given.is_empty() && !given.iter().any(|recipient| recipient == RECIPIENT) {
@@ -165,7 +165,7 @@ pub trait Flume {
     /// Every end pending for the runner of the record at `record`, a
     /// tidied place's `<location>@<at>`, collected as [`RECIPIENT`]: `flume
     /// inbox <record> --recipient boomdrive`, naming no repository
-    /// (core.53; record 0030).
+    /// (core.54; record 0030).
     fn collect(&self, record: &str) -> Result<Reply, Unrun>;
 }
 

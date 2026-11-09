@@ -9,7 +9,7 @@
 
 ### Requirement: The runner is one more recipient of a launch that names recipients, and no brief is left
 
-The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset. Where a launch names recipients, its `flume launch` SHALL pass them as given and name the runner one more after them, `--recipient boomdrive`, so Flume holds the place's end for it; where it names none, it SHALL name none, so Flume's default stands. It SHALL remove a launch's brief file once Flume answers (core.15, core.53; record 0030).
+The runner SHALL run every `flume` command with `FLUME_RECIPIENT` unset. Where a launch names recipients, its `flume launch` SHALL pass them as given and name the runner one more after them, `--recipient boomdrive`, so Flume holds the place's end for it; where it names none, it SHALL name none, so Flume's default stands. It SHALL remove a launch's brief file once Flume answers (core.15, core.54; record 0030).
 
 #### Scenario: A launch's environment and brief
 
@@ -39,7 +39,7 @@ The runner SHALL turn a launch into one `flume --json launch --repository <the c
 
 ### Requirement: A place's end is held for the runner until its report holds it
 
-Where Flume holds a place's record for the runner after its tidy, `<location>@<at>`, the runner SHALL carry it as the place's status, as it carries any. Once the report file holds that status, in the control pass that carried it, the runner SHALL collect the record by `flume --json inbox <location>@<at> --recipient boomdrive`, naming no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.53; record 0030).
+Where Flume holds a place's record for the runner after its tidy, `<location>@<at>`, the runner SHALL carry it as the place's status, as it carries any. Once the report file holds that status, in the control pass that carried it, the runner SHALL collect the record by `flume --json inbox <location>@<at> --recipient boomdrive`, naming no repository, and SHALL read the answer only by Flume's exit, carrying and keeping nothing of it (core.11, core.54; record 0030).
 
 #### Scenario: A landing held for the runner
 

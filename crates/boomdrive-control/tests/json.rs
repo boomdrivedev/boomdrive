@@ -157,6 +157,7 @@ fn an_act_of_each_sort() {
             words: None,
             submission: false,
         },
+        ActSort::Land,
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
@@ -169,6 +170,17 @@ fn an_act_of_each_sort() {
             what,
         }));
     }
+    // A land is the word `land`, holding nothing more (core.53).
+    let land = Act {
+        id: Id::new("home/2"),
+        launch: Id::new("home/1"),
+        lease: 3,
+        what: ActSort::Land,
+    };
+    assert_eq!(
+        serde_json::to_value(&land).unwrap(),
+        serde_json::json!({"id": "home/2", "launch": "home/1", "lease": 3, "what": "land"}),
+    );
 }
 
 #[test]
@@ -200,6 +212,37 @@ fn an_inbox() {
         repository: "agentplot/flume".to_string(),
         branch: "inbox".to_string(),
     }));
+}
+
+#[test]
+fn a_preview_of_each_kind() {
+    let up = Want::Preview(Preview {
+        id: Id::new("home/30"),
+        lease: lease(),
+        repository: "agentplot/flume".to_string(),
+        branch: "main".to_string(),
+        revision: "0123456789abcdef0123456789abcdef01234567".to_string(),
+        done: false,
+    });
+    round_trip(&up);
+    let written = serde_json::to_value(&up).unwrap();
+    assert_eq!(written["preview"]["done"], serde_json::json!(false));
+    let mut fields: Vec<&String> = written["preview"].as_object().unwrap().keys().collect();
+    fields.sort();
+    assert_eq!(
+        fields,
+        ["branch", "done", "id", "lease", "repository", "revision"]
+    );
+    let Want::Preview(preview) = up else {
+        unreachable!()
+    };
+    let done = Want::Preview(Preview {
+        id: Id::new("home/31"),
+        done: true,
+        ..preview
+    });
+    round_trip(&done);
+    assert_eq!(done.id(), &Id::new("home/31"));
 }
 
 #[test]
@@ -272,6 +315,7 @@ fn a_report() {
                 at: at("2026-11-01T10:04:00Z"),
             },
         )]),
+        previews: BTreeMap::new(),
     };
     round_trip(&launched);
     round_trip(&report);
@@ -287,12 +331,81 @@ fn a_report_from_before_reads() {
     let report = r#"{"launches":{"a":{"lease":{"number":1,"expires":null},"answer":{"outcome":"launched","place_dir":"/places/a","words":null,"at":"2026-11-01T10:00:00Z"},"status":null,"entry":null}},"acts":{},"commands":{},"inboxes":{}}"#;
     let read: Report = serde_json::from_str(report).expect("a report of before reads");
     assert_eq!(read.launches[&Id::new("a")].repository, None);
+    assert!(read.previews.is_empty());
     assert_eq!(serde_json::to_string(&read).unwrap(), report);
     round_trip(&read);
     let hello = r#"{"interface_version":1,"runner_version":"boomdrive 0.0.0","tool_versions":{},"repositories":["example/app"],"capacity":{"missing":"flume is not on PATH"},"leases":{}}"#;
     let read: Hello = serde_json::from_str(hello).expect("a hello of before reads");
     assert!(read.draining.is_empty());
     round_trip(&read);
+}
+
+fn previewed(lease: Lease, outcome: Outcome) -> Previewed {
+    Previewed {
+        lease,
+        repository: "agentplot/flume".to_string(),
+        revision: "0123456789abcdef0123456789abcdef01234567".to_string(),
+        done: false,
+        outcome,
+        text: None,
+        words: None,
+        status: Some(Carried {
+            text: r#"{"name":"preview/0123456","state":"waiting"}"#.to_string(),
+            at: at("2026-11-01T10:05:00Z"),
+            listed: true,
+        }),
+        at: at("2026-11-01T10:05:00Z"),
+    }
+}
+
+#[test]
+fn a_report_holding_a_preview() {
+    let report = Report {
+        previews: BTreeMap::from([(Id::new("home/30"), previewed(lease(), Outcome::Held))]),
+        ..Report::default()
+    };
+    round_trip(&report);
+    let written = serde_json::to_value(&report).unwrap();
+    assert_eq!(written["previews"]["home/30"]["outcome"], "held");
+    assert_eq!(
+        written["previews"]["home/30"]["status"]["listed"],
+        serde_json::json!(true)
+    );
+    assert!(serde_json::to_value(Report::default())
+        .unwrap()
+        .get("previews")
+        .is_none());
+}
+
+#[test]
+fn a_previews_lease_among_the_reports_leases() {
+    let lease_of = |number| Lease {
+        number,
+        expires: None,
+    };
+    let report = Report {
+        launches: BTreeMap::from([(
+            Id::new("a"),
+            Launched {
+                lease: lease_of(3),
+                repository: None,
+                answer: Answer {
+                    outcome: Outcome::Launched,
+                    place_dir: Some("/places/a".to_string()),
+                    words: None,
+                    at: at("2026-11-01T10:00:00Z"),
+                },
+                status: None,
+                entry: None,
+            },
+        )]),
+        previews: BTreeMap::from([(Id::new("p"), previewed(lease_of(5), Outcome::Done))]),
+        ..Report::default()
+    };
+    assert_eq!(
+        report.leases(),
+        BTreeMap::from([(Id::new("a"), 3), (Id::new("p"), 5)])
+    );
 }
 
 #[test]

@@ -12,7 +12,7 @@ The user answered agentplot-design's card on 2026-11-08: "Runner as one more rec
 
 ## What Changes
 
-- **Record 0030 and core.53**, with core.1's, core.13's and core.15's details amended.
+- **Record 0030 and core.54**, with core.1's, core.13's and core.15's details amended.
 - **The runner is one more recipient.** Each `flume launch` of a launch that names recipients names `--recipient boomdrive` after them. A launch that names none is passed with none, so Flume's default is its recipient.
 - **The held record is the place's status.** Where Flume holds a place's record for the runner after its tidy, `<location>@<at>`, the runner carries it as it carries any place's status, under the launch's lease number. A control plane reads the place's end from the runner's report.
 - **The runner collects a held record once its report holds it.** In the control pass that carries it, once the report file holds it, the runner runs `flume --json inbox <location>@<at> --recipient boomdrive` for each launch whose carried status is listed and reads the place tidied, its `pending_for` naming `boomdrive`. Nothing of the answer is carried or kept. A refused collection, or one Flume could not run, is said in one line and made again at the next pass. No record is collected for a launch whose lease the control plane refused.
@@ -34,7 +34,7 @@ None.
 
 ## Impact
 
-- `docs/adr/` gains record 0030. `docs/architecture/core.md` gains core.53 and amends the details of core.1, core.13 and core.15.
+- `docs/adr/` gains record 0030. `docs/architecture/core.md` gains core.54 and amends the details of core.1, core.13 and core.15.
 - `crates/boomdrive`:
   - `src/flume.rs`: `RECIPIENT`, the runner's `--recipient` after a launch's own, `Flume::collect`, `LEAST` and the reading of Flume's version;
   - `src/carry.rs`: the collection after the report is saved, and the least Flume before a launch;
