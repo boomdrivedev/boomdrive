@@ -11,7 +11,7 @@
 
 mod fakes;
 
-use boomdrive::flume::{Cli, Unrun};
+use boomdrive::flume::{Cli, Reply, Unrun};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
     ActSort, At, Carried, Command, CommandSort, Id, Lease, Offer, Outcome, Want,
@@ -362,6 +362,114 @@ fn a_drop_held_for_the_runner() {
     bench.pass(&mut plane);
     assert_eq!(collected(&bench), [] as [String; 0], "collected once");
     assert!(!carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A record pending for a recipient too": a
+/// record Flume holds for the runner and for `scratch/planner` is
+/// collected once, and at the next pass carried as Flume gives it,
+/// pending for `scratch/planner` alone, listed, and collected no more.
+#[test]
+fn a_record_pending_for_a_recipient_too() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench
+        .flume
+        .tidy_held(&place, 1793559694, &["boomdrive", "scratch/planner"]);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), [record.clone()]);
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), [] as [String; 0], "no second inbox");
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert_eq!(
+        entry["phase"]["tidied"]["pending_for"],
+        json!(["scratch/planner"])
+    );
+    assert!(carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A record pending for no end of the
+/// runner's": a place launched naming no recipient, as one launched before
+/// the runner named itself one, tidied while an end of it is pending for
+/// `scratch/planner` alone, is carried as its record and never collected.
+#[test]
+fn a_record_pending_for_no_end_of_the_runners() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    bench.flume.tidy_pending(&place, 1793559694);
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    bench.pass(&mut plane);
+    assert_eq!(collected(&bench), [] as [String; 0]);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], format!("{place}@1793559694"));
+    assert!(carried(&bench, "a").listed);
+}
+
+/// The work-into-flume spec's "A collection Flume could not run": the
+/// pass says one line, prefixed with the launch's id, naming the record
+/// and why, and the next pass, Flume running, collects it.
+#[test]
+fn a_collection_flume_could_not_run() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench
+        .flume
+        .collect_answers(&record, Err(Unrun("flume was ended: signal: 9".into())));
+    bench.flume.take_calls();
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(
+        lines,
+        [format!(
+            "a: Flume's record {record} could not be collected: flume was ended: signal: 9"
+        )]
+    );
+    assert_eq!(collected(&bench), [record.clone()]);
+    bench.flume.collect_as_flume(&record);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(collected(&bench), [record.clone()]);
+    assert!(
+        bench.flume.entry(&place).is_none(),
+        "Flume holds the record no more"
+    );
+}
+
+/// The work-into-flume spec's "A collection Flume refuses": the pass says
+/// one line, prefixed with the launch's id, naming the record and Flume's
+/// words, and the next pass collects it again.
+#[test]
+fn a_collection_flume_refuses() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench.flume.collect_answers(
+        &record,
+        Ok(Reply::Refused("the host's state is held by another".into())),
+    );
+    bench.flume.take_calls();
+    let refused =
+        format!("a: Flume refused the collection of {record}: the host's state is held by another");
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [refused.clone()]);
+    assert_eq!(collected(&bench), [record.clone()]);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [refused]);
+    assert_eq!(collected(&bench), [record], "collected again");
 }
 
 /// A place's status Flume could not be run for is named, and what was

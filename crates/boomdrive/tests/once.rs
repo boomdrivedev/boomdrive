@@ -117,6 +117,38 @@ fn the_report_is_saved_after_each_act() {
     assert_eq!(names, ["report.json"], "no partial file is left");
 }
 
+/// The work-into-flume spec's "A landing held for the runner", its report:
+/// the inbox for a record Flume holds for the runner runs only once the
+/// report file holds that record as the place's status, listed (design
+/// Decision 3; Task notes 4.3).
+#[test]
+fn a_held_record_is_collected_once_its_report_holds_it() {
+    let bench = Bench::new();
+    let mut planned = offer("a", "a");
+    planned.launch.recipients = vec!["scratch/planner".into()];
+    let mut plane = Fake::holding(vec![Want::Offer(planned)]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    let watching = Watching {
+        flume: &bench.flume,
+        file: bench.report_file(),
+        held: RefCell::new(Vec::new()),
+    };
+    bench.pass_over(&watching, &mut plane);
+    let held = watching.held.borrow();
+    assert_eq!(held.len(), 1, "one collection");
+    let status = held[0].launches[&Id::new("a")]
+        .status
+        .as_ref()
+        .expect("the file held a status");
+    let answer: Value = serde_json::from_str(&status.text).unwrap();
+    assert_eq!(answer["status"]["places"][0]["place"], record);
+    assert!(status.listed);
+    assert_eq!(bench.flume.collects(), [record]);
+}
+
 /// The work-into-flume spec's "A launch found by its mark from before the
 /// rename", over Flume 0.4.1's own listing, read before the rename (record
 /// 0016): `flywheel:scratch/4` marks `fix--tabs`, and `flywheel:scratch/1`
