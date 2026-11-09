@@ -9,7 +9,7 @@
 # stream (record 0028). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
-# the file at the runner's own path, links the herdr plugins way-in.nix
+# the file at the runner's own path, links the herdr plugins apps.nix
 # lists with herdr's own command (record 0023), then starts the unit where
 # it is not running and restarts it where the running runner's command
 # line is not the unit's; any other user's activation does nothing.
@@ -28,7 +28,7 @@ let
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
-  # (way-in.nix).
+  # (apps.nix).
   linking = cfg.herdr.package != null && cfg.herdr.plugins != [ ];
   plugins = lib.escapeShellArgs (
     [
@@ -76,7 +76,7 @@ in
   imports = [
     (import ./options.nix { inherit packages; })
     (import ./tools.nix { inherit packages; })
-    (import ./way-in.nix { inherit packages; })
+    (import ./apps.nix { inherit packages; })
     ./drives.nix
   ];
 

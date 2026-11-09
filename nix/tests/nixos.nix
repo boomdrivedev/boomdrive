@@ -130,7 +130,7 @@ let
     base.config.systemd.package
   ];
   # alice's alone: the link, the set's herdr plugins' links with the set's
-  # herdr (way-in.nix), then keep with the unit's own command line, given
+  # herdr (apps.nix), then keep with the unit's own command line, given
   # ps and systemctl.
   keeps = builtins.unsafeDiscardStringContext ''
     if [ "$(id -un)" = alice ]; then

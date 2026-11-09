@@ -1,5 +1,6 @@
-# The way in, the Boomdrive module's own options for what no tool's own
-# module installs (record 0023; design Decisions 5 and 7 of the change
+# The apps the Boomdrive module installs with the runner, which no tool's
+# own module installs, and its own options for them (record 0023; design
+# Decisions 5 and 7 of the change
 # herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents):
 # herdr and the plugins its activation links, Ghostty and the Boomdrive
 # launcher, since neither herdr nor Ghostty gives a nix-darwin or NixOS
