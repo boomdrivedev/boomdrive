@@ -84,5 +84,5 @@ Not taken:
   - Until millpond says so, a pass's tick waits for each adapter. A superfan's adapter is due at most once each four hours.
 - Bad: the runner gains a dependency on millpond. On a host whose configuration names no inbox, the tick is never run.
 - Bad: a dead runner stops the tick, so the superfans and the watches stop with it. The runner superfan cannot report its own runner's death. A lapsed adapter is shown from millpond's status (millpond 26), and the hosted control plane sees a missing runner by the protocol (record 0013).
-- Not decided here: what wakes the superfans before millpond's tick runs. It is a stopgap, the user's to choose, asked through agentplot-design.
+- Before millpond's tick runs, a `/loop` in one Claude session wakes the superfans every four hours. That is the user's ("could we use /loop in a claude session?"; crew record 0063, decision 10). It is no code, and the tick replaces it.
 - The rule on acceptance: core.13 names the tick beside the settle. The running and configuration specs, and the runner's watch adapter, follow in the change that builds them, once millpond's tick exists.
