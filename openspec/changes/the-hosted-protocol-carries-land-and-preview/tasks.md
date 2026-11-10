@@ -12,7 +12,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 1. A land
 
 - [x] 1.1 Version 2's `act_sort` takes `"land"`, and `examples/to-runner/pulled-with-a-land.json` holds an offer and a land on it. `tests/interface.rs`'s `a_land_is_no_act_of_version_2` is replaced by `a_land_is_an_act_of_version_2`, which checks a land, as the interface writes it, against version 2's `want`, and the example against `to-runner.schema.json`. This proves the runner-protocol spec's "A land is an act of version 2" (design Decision 1; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface a_land_is_an_act_of_version_2` passes.
-- [ ] 1.2 A land the fake control plane asks is given to the runner as an act under the partition's prefix, with no `message_refused` sent: `tests/plane.rs`'s `a_land_carried`. This proves the hosted-control-plane spec's "A land carried" (design Decision 6; Task notes 1.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane a_land_carried` passes.
+- [x] 1.2 A land the fake control plane asks is given to the runner as an act under the partition's prefix, with no `message_refused` sent: `tests/plane.rs`'s `a_land_carried`. This proves the hosted-control-plane spec's "A land carried" (design Decision 6; Task notes 1.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane a_land_carried` passes.
 
 ## 2. A preview
 

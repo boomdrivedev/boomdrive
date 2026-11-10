@@ -399,6 +399,30 @@ fn a_confirm_the_runner_refuses() {
     );
 }
 
+/// The hosted-control-plane spec's "A land carried" (design Decision 6): a
+/// land the control plane asks is given to the runner as an act under the
+/// partition's prefix, its launch under it too, and the hosted
+/// implementation reads nothing else of it (core.53).
+#[test]
+fn a_land_carried() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            offer("l-1", "example/app", &[]),
+            { "act": { "id": "land-1", "launch": "l-1", "lease": 1, "what": "land" } }
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", "home/land-1"]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(act.lease, 1);
+    assert_eq!(act.what, ActSort::Land);
+}
+
 /// The hosted-control-plane spec's "One partition unreachable": `home`'s
 /// part gives its offer without waiting on `work`'s connection, and
 /// `work`'s part is unread, its words not repeating its label.
