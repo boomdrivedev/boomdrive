@@ -9,7 +9,7 @@ were ceremony. What was worth keeping was the context a good diagram needs,
 and that context is the same every time. So this repository writes it down
 once, as a brief, and declares one kind of work for changing what the site
 shows: change it, then show it to the operator in the place's own site.
-(Signal `2026-10-26-madswan-operator-f16c114b/01`; `agentplot/blueprints
+(The operator's signal of 2026-10-26; `agentplot/blueprints
 design/flume/models/a-repositorys-content-kind.md`.)
 
 ## What Changes
