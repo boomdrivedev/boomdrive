@@ -95,6 +95,14 @@ pub fn place_status() -> &'static Validator {
     VALIDATOR.get_or_init(|| validator(crate::copy::PLACE_STATUS))
 }
 
+/// The validator of one end of a place's status copy,
+/// `place-status.schema.json`'s `end_record`: a form version 2 names, or
+/// an end's delivery alone.
+pub fn end_record() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::END_RECORD))
+}
+
 /// The validator of sluice's entry as its copy,
 /// `submission-entry.schema.json`'s `submission_entry`.
 pub fn submission_entry() -> &'static Validator {

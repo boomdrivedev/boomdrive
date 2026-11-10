@@ -635,7 +635,7 @@ impl Partition {
             let mut carried = |what: &'static str, carried: &Option<Carried>| {
                 let carried = carried.as_ref()?;
                 let copied = match what {
-                    "status" => copy::place_status(&carried.text),
+                    "status" => copy::place_status(&carried.text).map(|placed| placed.copy),
                     _ => copy::submission_entry(&carried.text),
                 };
                 match copied {
