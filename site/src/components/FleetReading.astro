@@ -1,0 +1,51 @@
+---
+import { url } from "../lib/url";
+import { getEntry } from "astro:content";
+
+// The Fleet's call on Home: "You can see it", beside the fleet's latest
+// collected reading of agents at the peak. A sample is never read here, so
+// until the collector's first point lands the reading says it is waiting.
+
+const record = await getEntry("measurements", "fleet-utilization");
+const series = record?.data.series ?? [];
+const collected = (name: string) => (series.find((s) => s.peakOf === name)?.points ?? []).filter((p) => !p.sample);
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const latest = collected("agents running").at(-1);
+// The busy peak of the same day, when there is one.
+const busyPeak = latest && collected("agents busy").find((p) => iso(p.date) === iso(latest.date));
+const running = latest?.value ?? 0;
+const busy = Math.min(running, busyPeak?.value ?? 0);
+---
+
+<section class="seeit" aria-labelledby="seeit-title">
+  <div class="stand">
+    <p class="eyebrow" id="seeit-title">You can see it</p>
+    <p class="call">The fleet measured, and everything on the record.</p>
+    <a class="go" href={url("/fleet/fleet-utilization/")}>Fleet utilization</a>
+  </div>
+  <div class="read">
+    <span class="k">Agents at the peak</span>
+    <span class:list={["num", { none: !running }]}>{running || "—"}</span>
+    <span class="band">{running ? `at most ${busy} busy at once` : "waits for the first collected reading"}</span>
+    {latest && <span class="when">Read on {iso(latest.date)}</span>}
+  </div>
+</section>
+
+<style>
+  .seeit {
+    margin: 64px 0 0; padding: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 48px;
+    border: 1px solid var(--ap-line); border-radius: var(--ap-radius); background: var(--ap-bg-2);
+  }
+  .call { margin: 4px 0 10px; font: 500 1.15rem/1.4 var(--ap-font-display); color: var(--ap-fg); }
+  .go { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .go::after { content: " →"; }
+  .read { display: grid; justify-items: end; gap: 2px; text-align: right; }
+  .k, .when { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .num { font: 700 2.6rem/1 var(--ap-font-display); letter-spacing: -0.03em; color: var(--ap-accent); font-variant-numeric: tabular-nums; }
+  .num.none { color: var(--ap-fg-3); }
+  .band { font: 600 0.95rem/1.3 var(--ap-font-display); color: var(--ap-fg-2); }
+  @media (max-width: 40rem) {
+    .seeit { padding: 20px 16px; }
+    .read { justify-items: start; text-align: left; }
+  }
+</style>

@@ -27,7 +27,7 @@ use common::example;
 use common::fake::{kind, Fake, Taken};
 use ed25519_dalek::SigningKey;
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -668,8 +668,13 @@ fn a_value_flume_adds() {
         listed: true,
     });
     plane.hosted.pull(&hello(&report), &report).expect("read");
-    plane.hosted.report(&report).expect("answered");
-    plane.hosted.report(&report).expect("answered");
+    for _ in 0..2 {
+        let reported = plane.hosted.report(&report).expect("answered");
+        assert!(
+            reported.statuses_taken.is_empty(),
+            "a status that went up null is not taken: {reported:?}"
+        );
+    }
     let taken = fake.taken();
     let reports: Vec<&Taken> = taken
         .iter()
@@ -717,7 +722,11 @@ fn a_status_that_passes_goes_up_as_its_copy() {
         listed: true,
     });
     plane.hosted.pull(&hello(&report), &report).expect("read");
-    plane.hosted.report(&report).expect("answered");
+    let reported = plane.hosted.report(&report).expect("answered");
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("home/l-1")])
+    );
     let taken = fake.taken();
     let report = messages(&taken, "home")
         .into_iter()

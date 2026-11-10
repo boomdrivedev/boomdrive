@@ -132,6 +132,7 @@ An act SHALL ask one of these of its launch's place:
 
 - a retry, with its stage and its words where it names them, and whether it names the submission;
 - a land, which asks for the landing of its launch's work, and holds nothing but its launch;
+- a confirm, which asks ends of the place taken as delivered to one recipient;
 - a drop;
 - a priority, with its number;
 - a done.
@@ -140,7 +141,7 @@ A land SHALL name no stage, no words and no other word of Flume's, and SHALL be 
 
 #### Scenario: An act of each sort
 
-- **WHEN** an act of each sort, a land among them, is written by `boomdrive-control`'s types and read back
+- **WHEN** an act of each sort, a land and a confirm among them, is written by `boomdrive-control`'s types and read back
 - **THEN** each reads back equal, and the land's `what` is written as `"land"`, holding nothing more
 
 ### Requirement: A preview names a repository, a branch and a revision, under a lease of its own
@@ -188,3 +189,26 @@ An implementation SHALL serve its control plane as one or more parts, in its tab
 
 - **WHEN** the hosted parts `home` and `work` each give a launch `l-1`
 - **THEN** `home` owns `home/l-1` and not `work/l-1`, and `work` owns `work/l-1` and not `home/l-1`
+
+### Requirement: A confirm holds the one recipient it confirms as and each delivery key
+
+A confirm SHALL ask that each end of its launch's place it names by its delivery's key be taken as delivered to the one recipient it names. It SHALL hold its `recipient` and its `deliveries`, each a delivery's key as Flume gave it, in the control plane's order, and nothing else, and SHALL be written as `{"confirm": {"recipient": …, "deliveries": […]}}` (core.56).
+
+#### Scenario: A confirm's form
+
+- **WHEN** a confirm of two keys as `scratch/planner` is written by `boomdrive-control`'s types and read back
+- **THEN** it reads back equal, and its `what` is written as `{"confirm": {"recipient": "scratch/planner", "deliveries": ["change--a/0a1b2c3d/stage/code/1/delivered", "change--a/0a1b2c3d/submission/1/landed"]}}`, its keys in the order it was given them
+
+### Requirement: A report's answer names which statuses were taken
+
+A report's answer SHALL name each launch whose carried status the control plane took with the report it answers, and no other, so the runner confirms an end only once its control plane has it (core.2, core.54; record 0030 as amended on 2026-11-09). An answer that names no statuses taken SHALL read as naming none.
+
+#### Scenario: A status taken and one left
+
+- **WHEN** the fake control plane is reported launches `a` and `b`, each with a carried status, and launch `c` with none, and the test leaves `b`'s status
+- **THEN** its answer names `a`'s status taken, and neither `b`'s nor `c`'s
+
+#### Scenario: An answer from before
+
+- **WHEN** a report's answer is written by `boomdrive-control`'s types naming a status taken, and an answer's JSON names no statuses taken
+- **THEN** the first round-trips unchanged; and the second reads as naming none, and is written back with no `statuses_taken`

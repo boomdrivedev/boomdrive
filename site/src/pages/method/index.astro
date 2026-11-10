@@ -1,0 +1,323 @@
+---
+import { url } from "../../lib/url";
+import { getCollection, getEntry, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import { inlineDiagram } from "../../lib/diagram";
+
+// The Method read one principle at a time: each principle takes the screen
+// in turn, its write-up beside its animated diagram, or alone until it has
+// one. With scripts off it is the principles in order, all of it visible.
+
+const statement = await getEntry("principles", "the-statement");
+const { Content: Statement } = statement ? await render(statement) : { Content: undefined };
+const principles = (await getCollection("principles", ({ data }) => data.status !== "retired" && data.order > 0)).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const notes = await getCollection("notes", ({ data }) => !data.draft);
+// A principle is a place on this page, never a page of its own. Its idea
+// reads open; how we do it today and where it is going, the notes that cite
+// it and its changes fold beneath, so the reading stays one per screen.
+const scenes = principles.map((p) => {
+  const html = p.rendered?.html ?? "";
+  const cut = html.search(/<h2[\s>]/);
+  return {
+    p,
+    idea: cut < 0 ? html : html.slice(0, cut),
+    practice: cut < 0 ? "" : html.slice(cut),
+    // Drawn into the page, so it takes the page's theme as every figure does.
+    diagram: p.data.diagram ? inlineDiagram(p.data.diagram.src, p.id, p.data.diagram.alt) : "",
+    citedBy: notes
+      .filter((n) => n.data.principles.some((r) => r.id === p.id))
+      .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+  };
+});
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const total = String(principles.length).padStart(2, "0");
+const no = (n: number) => String(n).padStart(2, "0");
+---
+
+<Base title="The Method" description="The principles we run our agent fleet by, read one at a time, each beside a diagram of its idea." wide>
+  <header class="opening">
+    <p class="eyebrow">The Method · v0.1</p>
+    <h1>The Method</h1>
+    {statement && <p class="claim">{statement.data.summary}</p>}
+    <div class="statement">{Statement && <Statement />}</div>
+    <ol class="toc" aria-label="The principles">
+      {
+        scenes.map(({ p }) => (
+          <li>
+            <a href={`#${p.id}`}>
+              <span class="n">{no(p.data.order)}</span>
+              <span class="t">{p.data.title}</span>
+              <span class="l">{p.data.line}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="hint">Each follows in turn, beside a diagram of its idea.</p>
+  </header>
+
+  <nav class="rail" aria-label="Principles" data-rail>
+    {
+      scenes.map(({ p }) => (
+        <a href={`#${p.id}`} title={p.data.title}>
+          {no(p.data.order)}
+        </a>
+      ))
+    }
+  </nav>
+
+  {
+    scenes.map(({ p, idea, practice, citedBy, diagram }) => (
+      <section id={p.id} class="scene" data-scene>
+        <div class="text">
+          <p class="count" aria-hidden="true">
+            <span>{no(p.data.order)}</span> / {total}
+          </p>
+          <h2>
+            <a href={`#${p.id}`}>{p.data.title}</a>
+          </h2>
+          <p class="claim">{p.data.summary}</p>
+          {idea && <div class="body" set:html={idea} />}
+          {p.data.tools.length > 0 && (
+            <p class="tools">
+              <span>In the tools</span>
+              {p.data.tools.map((t) => (t.href ? <a href={t.href}>{t.name}</a> : <span class="name">{t.name}</span>))}
+            </p>
+          )}
+          <details class="more">
+            <summary>Today, where it's going, and its record</summary>
+            <div class="body" set:html={practice} />
+            <h3>Notes that cite it</h3>
+            {citedBy.length ? (
+              <ul class="plain">
+                {citedBy.map((n) => (
+                  <li>
+                    <span class="muted">{iso(n.data.date)}</span> <a href={url(`/notes/${n.id}/`)}>{n.data.title}</a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p class="muted">No note cites it yet.</p>
+            )}
+            <h3>Changes</h3>
+            <p class="changes">
+              v{p.data.introducedIn}: introduced · reviewed {iso(p.data.lastReviewed)} · {p.data.status}
+            </p>
+          </details>
+        </div>
+        {diagram ? (
+          <figure class="fig">
+            <div class="dia" set:html={diagram} />
+          </figure>
+        ) : (
+          <div class="fig mark" aria-hidden="true">
+            {no(p.data.order)}
+          </div>
+        )}
+      </section>
+    ))
+  }
+</Base>
+
+<script>
+  // Light the rail's mark for the principle on screen, and bring each
+  // principle in as it arrives. Without this script nothing is hidden.
+  document.documentElement.classList.add("scrolly");
+  const rail = [...document.querySelectorAll<HTMLAnchorElement>("[data-rail] a")];
+  const scenes = [...document.querySelectorAll<HTMLElement>("[data-scene]")];
+  const arrive = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) if (e.isIntersecting) e.target.classList.add("in");
+    },
+    { rootMargin: "0px 0px -12% 0px" },
+  );
+  const current = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const i = scenes.indexOf(e.target as HTMLElement);
+        rail.forEach((a, n) => a.toggleAttribute("aria-current", n === i));
+      }
+    },
+    { rootMargin: "-45% 0px -50% 0px" },
+  );
+  for (const s of scenes) {
+    arrive.observe(s);
+    current.observe(s);
+  }
+
+  // Read, then look: once a principle's write-up has scrolled up past the
+  // middle of the screen, its diagram, still pinned, grows into the room the
+  // text has left and comes to the centre, and the text fades. The diagram
+  // scrolls away with its principle when the next one arrives. Only on a wide
+  // screen and with motion allowed; otherwise the layout stays as it is.
+  const wide = matchMedia("(min-width: 64rem)");
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+  const zoomers = scenes.filter((s) => s.querySelector(".fig .dia"));
+  // The masthead held at the top of the screen.
+  const masthead = document.querySelector<HTMLElement>(".masthead");
+  let queued = false;
+  const zoom = () => {
+    queued = false;
+    const on = wide.matches && !still.matches;
+    const vw = document.documentElement.clientWidth;
+    const vh = innerHeight;
+    const bar = masthead?.offsetHeight ?? 0;
+    for (const s of zoomers) {
+      s.classList.toggle("zoom", on);
+      const fig = s.querySelector<HTMLElement>(".fig")!;
+      const dia = fig.querySelector<HTMLElement>(".dia")!;
+      const text = s.querySelector<HTMLElement>(".text")!;
+      const box = s.getBoundingClientRect();
+      if (!on || box.bottom < -vh || box.top > 2 * vh) {
+        if (!on) {
+          dia.style.transform = "";
+          text.style.opacity = "";
+        }
+        continue;
+      }
+      const end = text.lastElementChild!.getBoundingClientRect().bottom;
+      const t = Math.min(1, Math.max(0, (vh * 0.6 - end) / (vh * 0.45)));
+      const e = t * t * (3 - 2 * t);
+      // Where the diagram sits while its figure is pinned, untransformed.
+      const pin = parseFloat(getComputedStyle(fig).top) || 84;
+      const w = dia.offsetWidth;
+      const h = dia.offsetHeight;
+      const r = dia.getBoundingClientRect();
+      const cx = (r.left + r.right) / 2 - (Number(dia.dataset.tx) || 0);
+      const cy = pin + h / 2;
+      const target = Math.min(vw - 96, ((vh - bar - 72) * w) / h, 1600);
+      const k = 1 + e * (target / w - 1);
+      const tx = e * (vw / 2 - cx);
+      const ty = e * (bar + (vh - bar) / 2 - cy);
+      dia.dataset.tx = String(tx);
+      dia.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(3)})`;
+      text.style.opacity = String(1 - 0.9 * e);
+    }
+  };
+  const later = () => {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(zoom);
+    }
+  };
+  addEventListener("scroll", later, { passive: true });
+  addEventListener("resize", zoom);
+  wide.addEventListener("change", zoom);
+  still.addEventListener("change", zoom);
+  zoom();
+</script>
+
+<style>
+  .opening { padding-bottom: 12vh; }
+  .opening > :not(.toc) { max-width: 44rem; }
+  .opening h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); margin: 10px 0 18px; }
+  .opening .claim { font: 500 clamp(1.15rem, 2.2vw, 1.45rem)/1.4 var(--ap-font-display); color: var(--ap-fg); letter-spacing: -0.01em; }
+  .toc { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 0 32px; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); max-width: none; }
+  .toc a { display: grid; grid-template-columns: 2.2rem 1fr; padding: 10px 0; border-top: 1px solid var(--ap-line-soft); text-decoration: none; }
+  .toc .n { grid-row: span 2; font: 11px/1.9 var(--ap-font-mono); color: var(--ap-accent); }
+  .toc .t { font: 500 1rem/1.35 var(--ap-font-display); color: var(--ap-fg); }
+  .toc .l { font-size: 15px; line-height: 1.45; color: var(--ap-fg-3); }
+  .toc a:hover .t { color: var(--ap-accent); }
+  .hint { font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin-top: 40px; }
+  .hint::after { content: " ↓"; color: var(--ap-accent); }
+
+  .rail {
+    position: fixed; left: 20px; top: 50%; transform: translateY(-50%); z-index: 10;
+    display: none; flex-direction: column; gap: 6px;
+  }
+  @media (min-width: 80rem) { .rail { display: flex; } }
+  .rail a {
+    font: 11px/1 var(--ap-font-mono); letter-spacing: 0.1em; color: var(--ap-fg-3); text-decoration: none;
+    padding: 6px 8px; border-left: 2px solid var(--ap-line); transition: color 0.2s, border-color 0.2s;
+  }
+  .rail a:hover, .rail a[aria-current] { color: var(--ap-accent); border-left-color: var(--ap-accent); }
+
+  .scene {
+    display: grid; gap: 32px 56px; align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
+    min-height: 92vh; padding: 14vh 0 10vh; border-top: 1px solid var(--ap-line-soft);
+  }
+  @media (max-width: 56rem) { .scene { grid-template-columns: 1fr; min-height: 0; padding: 72px 0 48px; } }
+
+  /* The principle's number, drawn in outline; the count after it is quieter. */
+  .count {
+    margin: 0; white-space: nowrap; font: 500 1rem/1 var(--ap-font-mono); letter-spacing: 0.1em; color: var(--ap-fg-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .count span {
+    font: 700 clamp(4rem, 9vw, 7rem)/0.9 var(--ap-font-display); letter-spacing: -0.05em;
+    color: transparent; -webkit-text-stroke: 1.2px var(--ap-accent); margin-right: 8px;
+  }
+  .scene h2 { margin: 18px 0 14px; font-size: clamp(1.7rem, 3.4vw, 2.4rem); }
+  .scene h2 a { color: var(--ap-fg); text-decoration: none; }
+  .scene h2 a:hover { color: var(--ap-accent); }
+  .scene .claim { font: 500 1.15rem/1.45 var(--ap-font-display); color: var(--ap-fg); letter-spacing: -0.01em; margin: 0 0 18px; }
+  .body :global(h2) { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 28px 0 6px; }
+  .body :global(p) { margin: 0 0 12px; }
+  /* The tools that do what the principle says, in the manner of the Tools
+     card's "In the Method"; a tool with no page of its own is named alone. */
+  .tools { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; margin: 6px 0 18px; }
+  .tools span:first-child {
+    flex-basis: 100%; font: 9.5px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3);
+  }
+  .tools a, .tools .name { font: 500 15px/1.35 var(--ap-font-display); }
+  .tools a { color: var(--accent-text); text-decoration: none; }
+  .tools a::after { content: "\a0↗"; }
+  .tools a:hover { color: var(--ap-fg); }
+  .tools .name { color: var(--ap-fg-2); }
+  .more { margin-top: 8px; border-top: 1px solid var(--ap-line-soft); padding-top: 10px; }
+  .more summary {
+    cursor: pointer; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3);
+  }
+  .more summary:hover { color: var(--ap-accent); }
+  .more[open] summary { margin-bottom: 4px; }
+  .more h3 { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 24px 0 6px; }
+  .more .plain li { padding: 6px 0; }
+  .changes { font: 12.5px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); margin: 0; }
+
+  .fig { margin: 0; position: sticky; top: max(calc(var(--ap-bar-height) + var(--row) + 36px), calc(50vh - 14rem)); }
+  .fig .dia { border-radius: 12px; border: 1px solid var(--ap-line); overflow: hidden; transform-origin: center; }
+  .dia :global(svg) { display: block; width: 100%; height: auto; }
+  /* While a diagram is zoomed it needs the screen the write-up has left: the
+     text column runs on past its end, and the scene leaves room below. */
+  .scene.zoom { padding-bottom: 24vh; }
+  .scene.zoom .text::after { content: ""; display: block; height: 100vh; }
+  .scene.zoom .fig { z-index: 2; }
+  .scene.zoom .fig .dia { will-change: transform; }
+  /* Until a principle has its diagram, its numeral holds the place. */
+  .mark {
+    display: grid; place-items: center; aspect-ratio: 900 / 446;
+    font: 700 clamp(8rem, 22vw, 18rem)/1 var(--ap-font-display); letter-spacing: -0.06em;
+    color: transparent; -webkit-text-stroke: 1px color-mix(in oklab, var(--ap-fg-3) 45%, transparent);
+    border: 1px dashed var(--ap-line-soft); border-radius: 12px;
+  }
+  /* On a phone the diagram comes straight after the claim. */
+  @media (max-width: 56rem) {
+    .scene { row-gap: 0; }
+    .text { display: contents; }
+    .count { order: 1; }
+    .scene h2 { order: 2; }
+    .scene .claim { order: 3; }
+    .fig { order: 4; position: static; margin: 4px 0 20px; }
+    .body { order: 5; }
+    .tools { order: 6; }
+    .mark { display: none; }
+  }
+
+  /* Each principle arrives as it reaches the middle of the screen. */
+  :global(html.scrolly) .scene .text > *, :global(html.scrolly) .scene .fig {
+    opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  :global(html.scrolly) .scene.in .text > *, :global(html.scrolly) .scene.in .fig { opacity: 1; transform: none; }
+  :global(html.scrolly) .scene.in .text > :nth-child(2) { transition-delay: 0.06s; }
+  :global(html.scrolly) .scene.in .text > :nth-child(3) { transition-delay: 0.12s; }
+  :global(html.scrolly) .scene.in .text > :nth-child(4) { transition-delay: 0.18s; }
+  :global(html.scrolly) .scene.in .fig { transition-delay: 0.2s; }
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.scrolly) .scene .text > *, :global(html.scrolly) .scene .fig { opacity: 1; transform: none; transition: none; }
+    .rail a { transition: none; }
+  }
+</style>

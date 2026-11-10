@@ -260,6 +260,99 @@ fn a_land_is_an_act_on_the_launch_it_names() {
     );
 }
 
+/// A delivery of launch 12's place.
+const K1: &str = "change--a/0a1b2c3d/stage/code/1/delivered";
+/// Another delivery of launch 12's place.
+const K2: &str = "change--a/0a1b2c3d/submission/1/landed";
+
+/// The crew-control-plane spec's "A confirm".
+#[test]
+fn a_confirm_is_an_act_on_the_launch_it_names() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(
+                        17,
+                        "confirm",
+                        Some("host-a"),
+                        "unit/a",
+                        12,
+                        &[
+                            ("Recipient", "scratch/planner"),
+                            ("Delivery", K1),
+                            ("Delivery", K2),
+                        ],
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        *want(&pulled, "home/17"),
+        Want::Act(Act {
+            id: Id::new("home/17"),
+            launch: Id::new("home/12"),
+            lease: 1,
+            what: ActSort::Confirm {
+                recipient: "scratch/planner".to_string(),
+                deliveries: vec![K1.to_string(), K2.to_string()],
+            },
+        })
+    );
+}
+
+/// The crew-control-plane spec's "A confirm naming no recipient, two, or
+/// no delivery".
+#[test]
+fn a_confirm_naming_no_recipient_two_or_no_delivery_is_refused() {
+    let state = State::new();
+    let confirm =
+        |n: u64, more: &[(&str, &str)]| act(n, "confirm", Some("host-a"), "unit/a", 12, more);
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    confirm(18, &[("Delivery", K1)]),
+                    confirm(19, &[("Recipient", "scratch/planner")]),
+                    confirm(
+                        20,
+                        &[
+                            ("Recipient", "scratch/planner"),
+                            ("Recipient", "scratch/reviewer"),
+                            ("Delivery", K1),
+                        ],
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    for (id, why) in [
+        ("home/18", "it names no Recipient"),
+        ("home/19", "it names no Delivery"),
+        ("home/20", "it names Recipient twice"),
+    ] {
+        let Want::Act(refused) = want(&pulled, id) else {
+            panic!("{id} is not one the runner refuses")
+        };
+        let number = id.trim_start_matches("home/");
+        assert_eq!(refused.launch.as_str(), format!("request {number} ({why})"));
+    }
+}
+
 #[test]
 fn an_act_crew_does_not_write() {
     let state = State::new();

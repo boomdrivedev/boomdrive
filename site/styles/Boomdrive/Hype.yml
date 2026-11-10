@@ -1,0 +1,16 @@
+extends: existence
+message: "'%s' is hype; say what it does instead."
+level: warning
+ignorecase: true
+tokens:
+  - revolutionary
+  - game[- ]chang(?:er|ing)
+  - seamless(?:ly)?
+  - effortless(?:ly)?
+  - blazing(?:ly)? fast
+  - cutting[- ]edge
+  - next[- ]gen(?:eration)?
+  - supercharge[ds]?
+  - unleash(?:es|ed)?
+  - magic(?:al|ally)?
+  - 10x

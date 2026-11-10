@@ -200,8 +200,9 @@ pub fn holding(report: &Report, address: &Address) -> Vec<(Id, String)> {
 /// Whether the place at `place` has ended, by the status `launched`
 /// carries of it: the status stands not listed, or the place's entry in it
 /// reads its phase tidied or gone and its record pending for no end of
-/// the runner's, so that a drained clone waits for the runner to collect
-/// it (record 0030). A place with no status carried has not ended.
+/// the runner's, so that a drained clone waits for the runner to confirm
+/// the record's ends and carry the status that follows (record 0030 as
+/// amended on 2026-11-09). A place with no status carried has not ended.
 fn ended(launched: &Launched, place: &str) -> bool {
     let Some(carried) = &launched.status else {
         return false;

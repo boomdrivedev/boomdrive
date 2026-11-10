@@ -6,7 +6,7 @@
 use boomdrive_control::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 
 /// `value` read back from its JSON, and that JSON written again, equal
@@ -158,6 +158,7 @@ fn an_act_of_each_sort() {
             submission: false,
         },
         ActSort::Land,
+        confirm(),
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
@@ -181,6 +182,39 @@ fn an_act_of_each_sort() {
         serde_json::to_value(&land).unwrap(),
         serde_json::json!({"id": "home/2", "launch": "home/1", "lease": 3, "what": "land"}),
     );
+    // A confirm holds its recipient and its keys, in the order it was
+    // given them (the control-plane-interface spec's "A confirm's form";
+    // core.56).
+    let confirm = Act {
+        what: confirm(),
+        ..land
+    };
+    assert_eq!(
+        serde_json::to_value(&confirm).unwrap(),
+        serde_json::json!({
+            "id": "home/2",
+            "launch": "home/1",
+            "lease": 3,
+            "what": {"confirm": {
+                "recipient": "scratch/planner",
+                "deliveries": [
+                    "change--a/0a1b2c3d/stage/code/1/delivered",
+                    "change--a/0a1b2c3d/submission/1/landed",
+                ],
+            }},
+        }),
+    );
+}
+
+/// A confirm of two ends of one place, as `scratch/planner`.
+fn confirm() -> ActSort {
+    ActSort::Confirm {
+        recipient: "scratch/planner".to_string(),
+        deliveries: vec![
+            "change--a/0a1b2c3d/stage/code/1/delivered".to_string(),
+            "change--a/0a1b2c3d/submission/1/landed".to_string(),
+        ],
+    }
 }
 
 #[test]
@@ -413,6 +447,17 @@ fn a_reports_answer() {
     round_trip(&Reported {
         let_go: vec![Id::new("home/1")],
         refused: BTreeMap::from([(Id::new("home/2"), "lease 3 is replaced by 4".to_string())]),
+        statuses_taken: BTreeSet::from([Id::new("home/3")]),
     });
     round_trip(&Reported::default());
+}
+
+/// An answer written before it named the statuses taken reads as naming
+/// none, and is written back as it was.
+#[test]
+fn a_reports_answer_from_before_reads() {
+    let before = r#"{"let_go":[],"refused":{}}"#;
+    let read: Reported = serde_json::from_str(before).expect("an answer of before reads");
+    assert!(read.statuses_taken.is_empty());
+    assert_eq!(serde_json::to_string(&read).unwrap(), before);
 }
