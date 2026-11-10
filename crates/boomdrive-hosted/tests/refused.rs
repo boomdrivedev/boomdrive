@@ -286,6 +286,45 @@ fn a_field_the_version_does_not_name() {
         pulled["body"]["pulled"]["wants"][1]["act"]["what"]["confirm"]["stage"] = json!("code");
     });
     refused(&to, &confirmed, "a field a confirm does not name");
+    let previewed = altered(
+        "to-runner",
+        "pulled-with-a-preview-and-its-done.json",
+        |pulled| pulled["body"]["pulled"]["wants"][0]["preview"]["port"] = json!(20000),
+    );
+    refused(&to, &previewed, "a field a preview does not name");
+    for (what, name, alter) in [
+        (
+            "what the runner answered of a preview",
+            "report-a-preview-brought-up.json",
+            (|previews| previews["preview-1"]["output"] = json!("up")) as fn(&mut Value),
+        ),
+        (
+            "a preview's copy",
+            "report-a-preview-brought-up.json",
+            |previews| previews["preview-1"]["copy"]["stack"] = json!("web"),
+        ),
+        (
+            "a release's copy",
+            "report-a-preview-put-away.json",
+            |previews| previews["preview-2"]["copy"]["at"] = json!("2026-11-01T10:30:00Z"),
+        ),
+    ] {
+        let added = altered("from-runner", name, |report| {
+            alter(&mut report["body"]["report"]["previews"])
+        });
+        refused(&from, &added, &format!("a field {what} does not name"));
+    }
+    let added = altered(
+        "from-runner",
+        "report-a-preview-brought-up.json",
+        |report| {
+            report["body"]["report"]["previews"]["preview-1"]["output"] = json!("up");
+        },
+    );
+    assert!(
+        serde_json::from_value::<Message<FromRunner>>(added).is_err(),
+        "the runner's types read a field what the runner answered of a preview does not name"
+    );
 }
 
 /// The runner-protocol spec's "An act's outcome": an act or a command is
@@ -310,6 +349,73 @@ fn an_acts_outcome() {
         &commanded,
         "a commanded whose outcome is launched",
     );
+}
+
+/// The runner-protocol spec's "A preview's outcome": what the runner
+/// answered of a preview is held, done or refused, never launched.
+#[test]
+fn a_previews_outcome() {
+    let validator = from_runner();
+    let name = "report-a-preview-brought-up.json";
+    passes(&validator, &example("from-runner", name), name);
+    let launched = altered("from-runner", name, |report| {
+        report["body"]["report"]["previews"]["preview-1"]["outcome"] = json!("launched");
+    });
+    refused(
+        &validator,
+        &launched,
+        "a previewed whose outcome is launched",
+    );
+}
+
+/// The runner-protocol spec's "A report with no previews": every report
+/// of version 2 holds its `previews`, empty where it answered none.
+#[test]
+fn a_report_with_no_previews() {
+    let validator = from_runner();
+    let unpreviewed = altered("from-runner", "report.json", |report| {
+        report["body"]["report"]
+            .as_object_mut()
+            .expect("a report")
+            .remove("previews");
+    });
+    refused(&validator, &unpreviewed, "a report with no previews");
+}
+
+/// The fields of sluice's preview no copy holds, nor its status's copy
+/// (design Decision 4 of the-hosted-protocol-carries-land-and-preview).
+const PREVIEW_OUTPUT: &[&str] = &[
+    "output",
+    "checkout",
+    "names",
+    "ports",
+    "exit",
+    "release_failed",
+];
+
+/// The runner-protocol spec's "A preview's output": neither a preview's
+/// copy nor its status's copy holds its command's output, its checkout,
+/// its names, its ports, its exit or whether its release failed (core.11,
+/// core.27, core.55).
+#[test]
+fn a_previews_output() {
+    let validator = from_runner();
+    let name = "report-a-preview-brought-up.json";
+    passes(&validator, &example("from-runner", name), name);
+    for field in PREVIEW_OUTPUT {
+        for (what, at) in [
+            ("a preview's copy", "/copy"),
+            ("a preview's status copy", "/status/copy"),
+        ] {
+            let held = altered("from-runner", name, |report| {
+                let copy = report
+                    .pointer_mut(&format!("/body/report/previews/preview-1{at}"))
+                    .expect("the copy");
+                copy[*field] = json!("printed");
+            });
+            refused(&validator, &held, &format!("{what} holding `{field}`"));
+        }
+    }
 }
 
 /// The runner-protocol spec's "A reported with no report named": a
