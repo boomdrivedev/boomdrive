@@ -27,7 +27,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. What the runner says of it
 
-- [ ] 4.1 README's pass says that a fetch, a new clone's among them, is stopped at thirty seconds with everything it started, as agentplot/sluice record 0109 bounds every try of a call to a remote. It says the repository is then named not fetched and fetched again at the next pass, while the pass keeps every other repository. README's crew section says the same of the listing of runner branches. README's and CLAUDE.md's lists of projects name `boomdrive-bounded` (design Decisions 1, 3 and 5). True when `sluice exec main -- moon run root:format` passes.
+- [x] 4.1 README's pass says that a fetch, a new clone's among them, is stopped at thirty seconds with everything it started, as agentplot/sluice record 0109 bounds every try of a call to a remote. It says the repository is then named not fetched and fetched again at the next pass, while the pass keeps every other repository. README's crew section says the same of the listing of runner branches. README's and CLAUDE.md's lists of projects name `boomdrive-bounded` (design Decisions 1, 3 and 5). True when `sluice exec main -- moon run root:format` passes.
 
 ## 5. The specs
 
