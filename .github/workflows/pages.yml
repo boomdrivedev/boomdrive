@@ -1,0 +1,74 @@
+# The workflow `pages` (record 0038, design Decision 11): at each push to
+# main that changes the site, this workflow, the devenv shell or
+# flake.lock, which names the flume tag whose site/packages.nix fetches
+# the site's packages, the site built in the devenv shell and published
+# to GitHub Pages under /boomdrive/. main holds only what the gate passed
+# (core.47), so it runs no check. site:workflow lints this file, and
+# site:test reads its trigger, its concurrency, its build and its deploy.
+name: pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - site/**
+      - .github/workflows/pages.yml
+      - devenv.nix
+      - devenv.yaml
+      - devenv.lock
+      - flake.lock
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, none cancelled: a Pages deploy cut short can
+# leave the site half published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # devenv's own cache, read only.
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: devenv
+
+      - name: Install devenv
+        run: nix profile add nixpkgs#devenv
+
+      # The site, built by the tools devenv.nix pins, as the gate builds it.
+      - name: Build the site
+        run: devenv shell -- moon run site:build
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

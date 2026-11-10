@@ -54,6 +54,20 @@ commit() {
   git -C "$dir" commit -q -m "$message"
 }
 
+# A commit of a file of its own under site/, and of one beside the root's
+# files too where `$1` is `both`, its message `$2`.
+site_commit() {
+  files=$((files + 1))
+  mkdir -p "$dir/site"
+  echo "$2" >"$dir/site/page-$files"
+  git -C "$dir" add "site/page-$files"
+  if [ "$1" = both ]; then
+    echo "$2" >"$dir/file-$files"
+    git -C "$dir" add "file-$files"
+  fi
+  git -C "$dir" commit -q -m "$2"
+}
+
 # What `release.sh next` prints in `$dir`; git-cliff's own lines go to
 # `$dir.log`.
 next() {
@@ -104,6 +118,30 @@ if [ -z "$got" ] && grep -q 'v0.1.0 is released already' "$scratch/nothing.log";
   pass "a chore and a test after v0.1.0 release nothing"
 else
   fail "a chore and a test after v0.1.0 release ${got:-nothing}, or say nothing of v0.1.0"
+fi
+
+# Scenario: A change to the site alone.
+repo site
+commit "feat: a start"
+git -C "$dir" tag v0.1.0
+site_commit alone "feat(site): a page"
+got=$(next)
+if [ -z "$got" ]; then
+  pass "a feature that changes only site/ after v0.1.0 releases nothing"
+else
+  fail "a feature that changes only site/ after v0.1.0 releases $got"
+fi
+
+# Scenario: A change to the site and the runner.
+repo both
+commit "feat: a start"
+git -C "$dir" tag v0.1.0
+site_commit both "fix: both"
+got=$(next)
+if [ "$got" = v0.1.1 ]; then
+  pass "a fix that changes site/ and a file outside it after v0.1.0 releases v0.1.1"
+else
+  fail "a fix that changes site/ and a file outside it after v0.1.0 releases ${got:-nothing}, not v0.1.1"
 fi
 
 # Scenario: A release's notes.
@@ -158,6 +196,23 @@ $preview"
   fi
 else
   fail "release-preview is not on PATH: run this in the devenv shell"
+fi
+
+# Scenario: The site's commit in no notes.
+repo sitenotes
+commit "feat: a start"
+git -C "$dir" tag v0.1.0
+commit "fix(nix): a fix"
+site_commit alone "feat(site): a page"
+site_notes=$(cd "$dir" && sh release.sh notes v0.1.1 2>>"$dir.log")
+fixes=$(printf '%s\n' "$site_notes" | grep -n -F -x -e "### Fixes" | head -n 1 | cut -d : -f 1)
+fix=$(printf '%s\n' "$site_notes" | grep -n '^- \*\*nix\*\*: A fix (\[' | head -n 1 | cut -d : -f 1)
+if [ -n "$fixes" ] && [ -n "$fix" ] && [ "$fixes" -lt "$fix" ] &&
+  ! printf '%s\n' "$site_notes" | grep -q -i 'a page'; then
+  pass "the notes hold the fix under Fixes and nothing of the site's page"
+else
+  fail "the notes do not hold the fix under Fixes, or hold the site's page:
+$site_notes"
 fi
 
 # Scenario: A commit that is not conventional.

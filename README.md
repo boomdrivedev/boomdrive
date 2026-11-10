@@ -583,5 +583,7 @@ decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
 `boomdrive-crew` and `boomdrive-hosted`, beside `nix`, which holds the
-flake, its modules and the cache's workflow, and `root`, which holds
-what spans the tree.
+flake, its modules and the cache's workflow, `site`, which holds the
+site, `site/`, and the workflow that publishes it, and `root`, which
+holds what spans the tree. The site's own rules are
+`docs/architecture/site.md` and `site/CLAUDE.md`.
