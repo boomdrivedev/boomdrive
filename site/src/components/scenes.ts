@@ -6,11 +6,19 @@
 // Budget: this module stays under 16 KB before compression, with no library.
 
 type Ctx = CanvasRenderingContext2D;
-export type Palette = Record<"ground" | "ground2" | "brass" | "mint" | "bone" | "rust" | "ink3" | "line", string>;
-export type Scene = { period: number; still: number; draw: (g: Ctx, p: Palette, t: number) => void };
+export type Palette = Record<
+  "ground" | "ground2" | "brass" | "mint" | "bone" | "rust" | "ink3" | "line",
+  string
+>;
+export type Scene = {
+  period: number;
+  still: number;
+  draw: (g: Ctx, p: Palette, t: number) => void;
+};
 
 // The drawing is 640 by 400; the canvas scales it.
-export const W = 640, H = 400;
+export const W = 640,
+  H = 400;
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 const seg = (t: number, a: number, b: number) => clamp((t - a) / (b - a));
@@ -18,7 +26,16 @@ const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2
 const lerp = (a: number, b: number, x: number) => a + (b - a) * x;
 
 // A block: a rounded tile with a soft shadow and a lit top edge.
-function block(g: Ctx, x: number, y: number, w: number, h: number, fill: string, alpha = 1, tilt = 0) {
+function block(
+  g: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: string,
+  alpha = 1,
+  tilt = 0,
+) {
   if (alpha <= 0) return;
   g.save();
   g.globalAlpha = alpha;
@@ -41,7 +58,15 @@ function block(g: Ctx, x: number, y: number, w: number, h: number, fill: string,
   g.restore();
 }
 
-function label(g: Ctx, s: string, x: number, y: number, fill: string, align: CanvasTextAlign = "left", size = 13) {
+function label(
+  g: Ctx,
+  s: string,
+  x: number,
+  y: number,
+  fill: string,
+  align: CanvasTextAlign = "left",
+  size = 13,
+) {
   g.font = `${size}px "IBM Plex Mono", ui-monospace, monospace`;
   g.fillStyle = fill;
   g.textAlign = align;
@@ -96,24 +121,41 @@ const capture: Scene = {
   draw(g, p, t) {
     const out = 1 - seg(t, 9.4, 10);
     const lanes = [100, 170, 240, 310];
-    const gate = 196, pile = 282, base = 330;
+    const gate = 196,
+      pile = 282,
+      base = 330;
     label(g, "SOURCES", 40, 52, p.ink3);
     label(g, "ADAPTERS", gate, 52, p.ink3, "center");
     label(g, "CAPTURES", pile + 26, 52, p.ink3, "center");
     label(g, "INTENTS", 600, 52, p.ink3, "right");
     // Each event is captured where it happened and kept; an adapter lights
     // as its capture passes.
-    const from = [0, 1, 2, 3, 1, 0], hot = [0, 0, 0, 0];
+    const from = [0, 1, 2, 3, 1, 0],
+      hot = [0, 0, 0, 0];
     const cards = from.map((j, k) => {
       const s = 0.3 + k * 0.6;
-      const a = ease(seg(t, s, s + 1)), b = ease(seg(t, s + 1, s + 1.7));
+      const a = ease(seg(t, s, s + 1)),
+        b = ease(seg(t, s + 1, s + 1.7));
       hot[j] = Math.max(hot[j], Math.sin(Math.PI * seg(t, s + 0.3, s + 0.9)));
-      return [lerp(lerp(136, gate + 26, a), pile, b), lerp(lanes[j] - 10, base - k * 24, b), seg(t, s, s + 0.3) * out];
+      return [
+        lerp(lerp(136, gate + 26, a), pile, b),
+        lerp(lanes[j] - 10, base - k * 24, b),
+        seg(t, s, s + 0.3) * out,
+      ];
     });
     ["meeting", "chat", "log", "pull request"].forEach((name, j) => {
       const y = lanes[j];
       label(g, name, 40, y + 4, p.ink3);
-      line(g, [[150, y], [gate + 34, y]], p.line, 1, [3, 5]);
+      line(
+        g,
+        [
+          [150, y],
+          [gate + 34, y],
+        ],
+        p.line,
+        1,
+        [3, 5],
+      );
       g.save();
       g.strokeStyle = p.brass;
       g.fillStyle = p.brass;
@@ -139,12 +181,15 @@ const capture: Scene = {
     // A session reads them into signals, and every signal moves.
     const top = base - 5 * 24;
     bot(g, pile + 26, top - 26, p, seg(t, 4.6, 5) * out);
-    const to = [0, 1, 2, 0, 2, 1, 0], slot = [0, 0, 0];
+    const to = [0, 1, 2, 0, 2, 1, 0],
+      slot = [0, 0, 0];
     to.forEach((n, i) => {
-      const s = 5.2 + i * 0.45, m = ease(seg(t, s, s + 0.8));
+      const s = 5.2 + i * 0.45,
+        m = ease(seg(t, s, s + 0.8));
       const k = slot[n]++;
       if (m <= 0) return;
-      const x = lerp(pile + 40, 476 + k * 26, m), y = lerp(top - 30, intents[n] + 30, m) - Math.sin(m * Math.PI) * 30;
+      const x = lerp(pile + 40, 476 + k * 26, m),
+        y = lerp(top - 30, intents[n] + 30, m) - Math.sin(m * Math.PI) * 30;
       block(g, x, y, 18, 12, p.mint, out);
     });
   },
@@ -161,12 +206,23 @@ const fleet: Scene = {
     label(g, "AGENTS", 300, 70, p.ink3);
     label(g, "DONE", 600, 70, p.ink3, "right");
     const lanes = [130, 210, 290];
-    for (const y of lanes) line(g, [[330, y], [600, y]], p.line, 1, [3, 5]);
+    for (const y of lanes)
+      line(
+        g,
+        [
+          [330, y],
+          [600, y],
+        ],
+        p.line,
+        1,
+        [3, 5],
+      );
     // Three numbered decisions fall onto the pile.
     for (let i = 0; i < 3; i++) {
       const a = ease(seg(t, 0.3 + i * 0.5, 0.9 + i * 0.5));
       const lift = ease(seg(t, 3 + i * 0.25, 3.8 + i * 0.25));
-      const x = lerp(64, 290, lift), y = lerp(lerp(-50, 220 - i * 16, a), lanes[i] - 9, lift);
+      const x = lerp(64, 290, lift),
+        y = lerp(lerp(-50, 220 - i * 16, a), lanes[i] - 9, lift);
       const fade = 1 - seg(t, 3.7 + i * 0.25, 4 + i * 0.25);
       block(g, x, y, 96, 34, p.bone, Math.min(a, fade) * out, lerp((i - 1) * 0.05, 0, lift));
       if (a > 0 && fade > 0) {
@@ -227,7 +283,16 @@ const same: Scene = {
     places.forEach((name, j) => {
       const y = 92 + j * 78;
       label(g, name, 40, y + 4, p.ink3);
-      line(g, [[130, y], [600, y]], p.line, 1, [3, 5]);
+      line(
+        g,
+        [
+          [130, y],
+          [600, y],
+        ],
+        p.line,
+        1,
+        [3, 5],
+      );
       g.save();
       g.strokeStyle = p.brass;
       g.globalAlpha = 0.55;
@@ -249,15 +314,28 @@ const proof: Scene = {
   period: 10,
   still: 7.4,
   draw(g, p, t) {
-    const belt = 230, gx = 300, gw = 84;
-    line(g, [[30, belt + 14], [610, belt + 14]], p.line, 1);
+    const belt = 230,
+      gx = 300,
+      gw = 84;
+    line(
+      g,
+      [
+        [30, belt + 14],
+        [610, belt + 14],
+      ],
+      p.line,
+      1,
+    );
     g.save();
     g.strokeStyle = p.brass;
     g.lineWidth = 1.5;
     g.strokeRect(gx, belt - 34, gw, 60);
     g.restore();
     label(g, "VERIFY", gx + gw / 2, belt - 44, p.ink3, "center");
-    const arc = Array.from({ length: 25 }, (_, i) => [lerp(gx - 24, gx + gw + 24, i / 24), belt - 12 - Math.sin((i / 24) * Math.PI) * 96]);
+    const arc = Array.from({ length: 25 }, (_, i) => [
+      lerp(gx - 24, gx + gw + 24, i / 24),
+      belt - 12 - Math.sin((i / 24) * Math.PI) * 96,
+    ]);
     line(g, arc, p.mint, 1, [4, 5]);
     label(g, "ALREADY PROVED", gx + gw / 2, belt - 118, p.ink3, "center");
     label(g, "TO YOU", 584, belt + 40, p.ink3, "center");
@@ -304,21 +382,41 @@ const ship: Scene = {
   period: 9,
   still: 6.8,
   draw(g, p, t) {
-    const main = 210, end = 500;
-    line(g, [[40, main], [end, main]], p.mint, 2);
+    const main = 210,
+      end = 500;
+    line(
+      g,
+      [
+        [40, main],
+        [end, main],
+      ],
+      p.mint,
+      2,
+    );
     label(g, "MAIN", 40, main - 14, p.ink3);
     label(g, "RELEASES", 572, 382, p.ink3, "center");
     const out = 1 - seg(t, 8.4, 9);
     let shipped = 0;
     for (let k = 0; k < 8; k++) {
       const s = 0.2 + k * 0.85;
-      const from = k % 2 ? 330 : 90, x0 = 90 + (k % 4) * 70;
+      const from = k % 2 ? 330 : 90,
+        x0 = 90 + (k % 4) * 70;
       const m = ease(seg(t, s, s + 0.8));
       const r = seg(t, s + 0.8, s + 0.8 + (end - x0 - 40) / 160);
-      let x = lerp(x0, x0 + 40, m), y = lerp(from, main, m) - 10;
+      let x = lerp(x0, x0 + 40, m),
+        y = lerp(from, main, m) - 10;
       if (r > 0) x = lerp(x0 + 40, end, r);
       if (m > 0 && r < 1) {
-        line(g, [[x0, from], [x0 + 40, main]], p.line, 1, [3, 4]);
+        line(
+          g,
+          [
+            [x0, from],
+            [x0 + 40, main],
+          ],
+          p.line,
+          1,
+          [3, 4],
+        );
         block(g, x - 14, y, 28, 20, p.bone, out);
       }
       if (r >= 1) shipped++;
@@ -334,7 +432,15 @@ const ship: Scene = {
       g.fillRect(540, y + 11, 64, 5);
       g.restore();
     }
-    line(g, [[end, main - 16], [end, main + 16]], p.brass, 2);
+    line(
+      g,
+      [
+        [end, main - 16],
+        [end, main + 16],
+      ],
+      p.brass,
+      2,
+    );
   },
 };
 

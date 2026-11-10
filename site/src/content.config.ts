@@ -99,7 +99,15 @@ const point = z.object({
 });
 
 // The roles an agent of the fleet plays, as Crew names them.
-export const roles = ["conductor", "team ops", "unit agent", "design", "planner", "dispatcher", "operator"] as const;
+export const roles = [
+  "conductor",
+  "team ops",
+  "unit agent",
+  "design",
+  "planner",
+  "dispatcher",
+  "operator",
+] as const;
 // The stages a unit passes through in flight, as Crew's plan names them.
 export const stages = ["construct", "awaiting approval", "code", "verify", "merge"] as const;
 
@@ -146,24 +154,33 @@ const measurements = defineCollection({
       .superRefine((all, ctx) => {
         const names = all.map((s) => s.name);
         names.forEach((n, i) => {
-          if (names.indexOf(n) !== i) ctx.addIssue({ code: "custom", message: `two series are named "${n}"` });
+          if (names.indexOf(n) !== i)
+            ctx.addIssue({ code: "custom", message: `two series are named "${n}"` });
         });
         for (const s of all) {
           if (s.peakOf && !names.includes(s.peakOf)) {
-            ctx.addIssue({ code: "custom", message: `"${s.name}" is the peak of "${s.peakOf}", which is not a series` });
+            ctx.addIssue({
+              code: "custom",
+              message: `"${s.name}" is the peak of "${s.peakOf}", which is not a series`,
+            });
           }
         }
         // A summed or counted total is the sum of each of its splits on every
         // day; a median's split need not be.
         const splitBy = ["role", "model", "kind", "drive", "stage"] as const;
-        for (const t of all.filter((s) => (s.statistic === "sum" || s.statistic === "count") && !splitBy.some((b) => s[b]))) {
+        for (const t of all.filter(
+          (s) => (s.statistic === "sum" || s.statistic === "count") && !splitBy.some((b) => s[b]),
+        )) {
           for (const by of splitBy) {
             const parts = all.filter((s) => s[by] && s.name === `${t.name}, ${s[by]}`);
             if (!parts.length) continue;
             t.points.forEach((p, i) => {
               const sum = parts.reduce((a, s) => a + (s.points[i]?.value ?? 0), 0);
               if (Math.abs(sum - p.value) > 0.005) {
-                ctx.addIssue({ code: "custom", message: `"${t.name}" by ${by} sums to ${sum}, not ${p.value}, on day ${i + 1}` });
+                ctx.addIssue({
+                  code: "custom",
+                  message: `"${t.name}" by ${by} sums to ${sum}, not ${p.value}, on day ${i + 1}`,
+                });
               }
             });
           }
@@ -216,4 +233,13 @@ const pages = defineCollection({
   }),
 });
 
-export const collections = { principles, notes, terms, components, measurements, rates, contexts, pages };
+export const collections = {
+  principles,
+  notes,
+  terms,
+  components,
+  measurements,
+  rates,
+  contexts,
+  pages,
+};

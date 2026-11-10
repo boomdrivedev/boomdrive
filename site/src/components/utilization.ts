@@ -30,7 +30,10 @@ export const iso = (d: Date) => d.toISOString().slice(0, 10);
 export function days(record: string, series: Series[]): Day[] {
   const find = (name: string, peak: boolean) => {
     const s = series.find((x) => (peak ? x.peakOf === name : x.name === name));
-    if (!s) throw new Error(`${record}: the utilization chart needs the series "${name}"${peak ? "'s peak" : ""}`);
+    if (!s)
+      throw new Error(
+        `${record}: the utilization chart needs the series "${name}"${peak ? "'s peak" : ""}`,
+      );
     return s;
   };
   const used = [
@@ -45,7 +48,9 @@ export function days(record: string, series: Series[]): Day[] {
   const dates = used[0].points.map((p) => iso(p.date));
   for (const s of used) {
     if (s.points.map((p) => iso(p.date)).join() !== dates.join()) {
-      throw new Error(`${record}: series "${s.name}" is not on the same dates as "${names.running}"`);
+      throw new Error(
+        `${record}: series "${s.name}" is not on the same dates as "${names.running}"`,
+      );
     }
   }
   const [rm, rp, bm, bp, cpu, mem, proc] = used;
@@ -72,4 +77,5 @@ export const fmt = {
 };
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-export const short = (date: string) => `${Number(date.slice(8))} ${months[Number(date.slice(5, 7)) - 1]}`;
+export const short = (date: string) =>
+  `${Number(date.slice(8))} ${months[Number(date.slice(5, 7)) - 1]}`;

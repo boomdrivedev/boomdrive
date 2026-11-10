@@ -59,7 +59,10 @@ export function inlineDiagram(src: string, name: string, label: string): string 
   const word = (w: string) => new RegExp(`(?<![\\w-])${w.replace(/[-]/g, "\\-")}(?![\\w-])`, "g");
   const rename = (text: string) => frames.reduce((t, f) => t.replace(word(f), `${p}-${f}`), text);
 
-  svg = svg.replace(/<style>([\s\S]*?)<\/style>/, (_, css: string) => `<style>.${p}{${palette}}${scope(css, `.${p}`, rename)}</style>`);
+  svg = svg.replace(
+    /<style>([\s\S]*?)<\/style>/,
+    (_, css: string) => `<style>.${p}{${palette}}${scope(css, `.${p}`, rename)}</style>`,
+  );
   for (const id of ids) {
     svg = svg
       .replaceAll(`id="${id}"`, `id="${p}-${id}"`)
