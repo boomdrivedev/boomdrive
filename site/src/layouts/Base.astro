@@ -1,0 +1,117 @@
+---
+import FamilyBar from "@agentplot/site-theme/FamilyBar.astro";
+import FamilyFooter from "@agentplot/site-theme/FamilyFooter.astro";
+import { member } from "@agentplot/site-theme";
+import { url } from "../lib/url";
+import "../styles/site.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  // Widens the page for numbers set beside prose, such as a measurement.
+  wide?: boolean;
+  // The family at the foot of the page; the Tools hub, which is the family,
+  // leaves it out.
+  family?: boolean;
+  // A section's own navigation joins the masthead through the "subnav" slot,
+  // held at the top with it.
+}
+const { title, description, wide = false, family = true } = Astro.props;
+// The family's bar, footer and diagram come from @agentplot/site-theme, and
+// so do the page, the type and the ink (site.css). <html> sets no theme, so
+// the page follows the reader's setting, light or dark, as every family
+// site does.
+const here = Astro.url.pathname;
+const sections = [
+  { href: url("/method/"), label: "The Method" },
+  { href: url("/fleet/"), label: "The Fleet" },
+  { href: url("/notes/"), label: "Notes" },
+  { href: url("/tools/"), label: "Tools" },
+  { href: url("/uses/"), label: "Uses" },
+  { href: url("/about/"), label: "About" },
+];
+// Boomdrive's mark, in the frame every family mark is drawn in (112 by 88):
+// the wheel and three things riding its rim in the accent's lighter tone
+// (--wheel, site.css), and the gold at the hub. The favicon is the same
+// drawing in the same tones by the reader's theme, from the family's list:
+// it cannot read the page's styles.
+const wheel = (ink: string, accent: string, ground: string) =>
+  `<circle cx="62" cy="60" r="36" fill="none" stroke="${ink}" stroke-width="7"/>` +
+  `<g fill="${ink}"><circle cx="62" cy="24" r="9"/><circle cx="93.2" cy="78" r="9"/><circle cx="30.8" cy="78" r="9"/></g>` +
+  `<circle cx="62" cy="60" r="18" fill="${accent}"/><circle cx="62" cy="60" r="5.5" fill="${ground}"/>`;
+const mark = wheel("var(--wheel)", "var(--ap-accent)", "var(--ap-bg)");
+const gold = member("boomdrive").accent;
+const favicon =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 16 112 88"><style>.i{--w:${gold.dark};--g:${gold.light};--k:#f7f6f2}` +
+      `@media (prefers-color-scheme:dark){.i{--w:color-mix(in oklab,${gold.dark} 42%,#f2f1ec);--g:${gold.dark};--k:#0e1116}}</style>` +
+      `<g class="i">${wheel("var(--w)", "var(--g)", "var(--k)")}</g></svg>`,
+  );
+const repo = "https://github.com/agentplot/boomdrive-web";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title === "Boomdrive" ? title : `${title} · Boomdrive`}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" href={favicon} />
+    <Fragment set:html={`<style>:root{--gold-bright:${gold.dark}}</style>`} />
+  </head>
+  <body class:list={[{ wide }]}>
+    <div class="masthead">
+      <FamilyBar current="boomdrive" />
+      <header class="topbar">
+        <div class="row">
+          <a class="site-title" href={url("/")}>
+            <svg viewBox="6 16 112 88" aria-hidden="true" set:html={mark} />
+            Boomdrive
+          </a>
+          <nav class="sections" aria-label="Sections">
+            {
+              sections.map((s) => (
+                <a href={s.href} aria-current={here.startsWith(s.href) ? "page" : undefined}>
+                  {s.label}
+                </a>
+              ))
+            }
+          </nav>
+          <a class="repo" href={repo} aria-label="boomdrive-web on GitHub">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+              <path
+                d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8 0 3.2.9.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1 .9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3"
+              ></path>
+            </svg>
+          </a>
+          <details class="menu">
+            <summary aria-label="Sections">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <path d="M4 7h16M4 12h16M4 17h16"></path>
+              </svg>
+            </summary>
+            <nav aria-label="Sections">
+              {
+                sections.map((s) => (
+                  <a href={s.href} aria-current={here.startsWith(s.href) ? "page" : undefined}>
+                    {s.label}
+                  </a>
+                ))
+              }
+            </nav>
+          </details>
+        </div>
+      </header>
+      <slot name="subnav" />
+    </div>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      {family && <FamilyFooter current="boomdrive" />}
+      <p class="colophon">Learning in public how to run a fleet of coding agents.</p>
+    </footer>
+  </body>
+</html>
