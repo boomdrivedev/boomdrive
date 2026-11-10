@@ -35,7 +35,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   `tests/letgo.rs`'s `a_preview_whose_work_has_left_the_plan` finds its pull gives `home/30` and `home/31`, by the done's rule.
 
   True when `devenv shell -- cargo test -p boomdrive-crew preview` passes. It proves the crew-control-plane spec's "A preview marked done", "A preview and its done the runner does not hold", "A done of a landed bolt's preview", "A done written before a later bring-up" and "A preview of a bolt gone that the runner does not hold".
-- [ ] 2.3 `let_go` (`crates/boomdrive-crew/src/write.rs`) lets each done the report holds go, whatever the plan holds. With it go the bring-ups the report holds before it of its `Host`, `Repo` and `Revision`. It lets a bring-up go by today's rule, its work gone and nothing up, with no done counted in that rule (design Decisions 1 and 4; Task notes 2.3).
+- [x] 2.3 `let_go` (`crates/boomdrive-crew/src/write.rs`) lets each done the report holds go, whatever the plan holds. With it go the bring-ups the report holds before it of its `Host`, `Repo` and `Revision`. It lets a bring-up go by today's rule, its work gone and nothing up, with no done counted in that rule (design Decisions 1 and 4; Task notes 2.3).
 
   In `tests/letgo.rs`, `a_preview_put_away_its_work_gone` keeps only its second half, the plan holding no `u`, its let-go `["home/30", "home/31"]` and `previews.rec` the descriptor alone. Its first half, the plan holding `u` and nothing let go, holds no more. The file gains:
   - `a_preview_put_away_its_work_still_in_the_plan`, the plan holding `u`, its let-go `["home/30", "home/31"]`;

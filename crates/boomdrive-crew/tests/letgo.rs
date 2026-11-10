@@ -333,33 +333,29 @@ fn a_record_of_a_kind_crew_writes_is_left_as_it_stands() {
 /// `home/main` holding preview 30 of `unit/u` and its done 31, for
 /// host-a, and `plan` as its plan.
 fn main_with_previews(state: &State, plan_rec: &str) {
+    main_with_preview_requests(state, "unit/u", &[(30, false), (31, true)], plan_rec);
+}
+
+/// `home/main` holding, for host-a, a preview request of `main` at `R1` in
+/// `example/crew` of `work` for each of `requests`, by its number and
+/// whether it is a done, and `plan` as its plan.
+fn main_with_preview_requests(state: &State, work: &str, requests: &[(u64, bool)], plan_rec: &str) {
+    let requests: Vec<String> = requests
+        .iter()
+        .map(|(n, done)| {
+            preview(
+                *n,
+                Some("host-a"),
+                work,
+                "example/crew",
+                "main",
+                "R1",
+                *done,
+            )
+        })
+        .collect();
     state.main(&[
-        (
-            "requests.rec",
-            &file(
-                REQUESTS,
-                &[
-                    preview(
-                        30,
-                        Some("host-a"),
-                        "unit/u",
-                        "example/crew",
-                        "main",
-                        "R1",
-                        false,
-                    ),
-                    preview(
-                        31,
-                        Some("host-a"),
-                        "unit/u",
-                        "example/crew",
-                        "main",
-                        "R1",
-                        true,
-                    ),
-                ],
-            ),
-        ),
+        ("requests.rec", &file(REQUESTS, &requests)),
         ("plan.rec", plan_rec),
     ]);
 }
@@ -422,24 +418,115 @@ fn previews_report(listed: bool, done: bool) -> Report {
     report
 }
 
+/// The runner's report of preview 30 up, sluice listing it, written to
+/// the runner's branch by `crew`, so its `previews.rec` holds it.
+fn brought_up(state: &State, crew: &mut Crew) {
+    assert!(let_go(crew, &previews_report(true, false)).is_empty());
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
+}
+
 /// The crew-control-plane spec's "A preview put away, its work gone":
 /// both leave the runner's files, `previews.rec` written as its
 /// descriptor alone.
 #[test]
 fn a_preview_put_away_its_work_gone() {
     let state = State::new();
-    main_with_previews(&state, &plan(&["u"], &[]));
-    let (mut crew, _) = state.crew("host-a");
-    let report = previews_report(false, true);
-    assert!(let_go(&mut crew, &report).is_empty());
-    let previews = state.file(BRANCH, "previews.rec").unwrap();
-    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
     main_with_previews(&state, &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    brought_up(&state, &mut crew);
+    let report = previews_report(false, true);
     assert_eq!(let_go(&mut crew, &report), ["home/30", "home/31"]);
     let previews = state.file(BRANCH, "previews.rec").unwrap();
     assert!(!previews.contains("Request: 30"), "{previews}");
     assert!(!previews.contains("Request: 31"), "{previews}");
     assert_eq!(previews, boomdrive_crew::write::PREVIEWS);
+}
+
+/// The crew-control-plane spec's "A preview put away, its work still in
+/// the plan": a done answered goes with the bring-up it put away,
+/// whatever the plan holds (record 0031 as amended on 2026-11-09).
+#[test]
+fn a_preview_put_away_its_work_still_in_the_plan() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&["u"], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    brought_up(&state, &mut crew);
+    let report = previews_report(false, true);
+    assert_eq!(let_go(&mut crew, &report), ["home/30", "home/31"]);
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert_eq!(previews, boomdrive_crew::write::PREVIEWS);
+}
+
+/// The crew-control-plane spec's "A bring-up written after the done
+/// stays": it is crew's new ask, which a later done puts away.
+#[test]
+fn a_preview_brought_up_after_its_done_stays() {
+    let state = State::new();
+    main_with_preview_requests(
+        &state,
+        "unit/u",
+        &[(30, false), (31, true), (32, false)],
+        &plan(&["u"], &[]),
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let mut report = previews_report(false, true);
+    report.previews.insert(
+        Id::new("home/32"),
+        previewed(Outcome::Done, false, Some(true)),
+    );
+    assert_eq!(let_go(&mut crew, &report), ["home/30", "home/31"]);
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 32\n"), "{previews}");
+    assert!(!previews.contains("Request: 30"), "{previews}");
+    assert!(!previews.contains("Request: 31"), "{previews}");
+}
+
+/// The crew-control-plane spec's "A preview sluice no longer lists, its
+/// work gone".
+#[test]
+fn a_preview_sluice_no_longer_lists_its_work_gone() {
+    let state = State::new();
+    main_with_previews(&state, &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    brought_up(&state, &mut crew);
+    assert_eq!(
+        let_go(&mut crew, &previews_report(false, false)),
+        ["home/30"]
+    );
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(!previews.contains("Request: 30"), "{previews}");
+}
+
+/// The runner's report of preview 30 refused.
+fn refused() -> Report {
+    let mut refusal = previewed(Outcome::Refused, false, None);
+    refusal.text = None;
+    refusal.words = Some("no [preview] table in .config/sluice.toml".to_string());
+    let mut report = Report::default();
+    report.previews.insert(Id::new("home/30"), refusal);
+    report
+}
+
+/// The crew-control-plane spec's "A refused preview, its bolt landed".
+#[test]
+fn a_refused_preview_its_bolt_landed() {
+    let state = State::new();
+    main_with_preview_requests(&state, "bolt/y", &[(30, false)], &plan(&[], &[]));
+    let (mut crew, _) = state.crew("host-a");
+    assert_eq!(let_go(&mut crew, &refused()), ["home/30"]);
+}
+
+/// The crew-control-plane spec's "A refused preview, its bolt still in
+/// the plan".
+#[test]
+fn a_refused_preview_its_bolt_still_in_the_plan() {
+    let state = State::new();
+    main_with_preview_requests(&state, "bolt/y", &[(30, false)], &plan(&[], &["y"]));
+    let (mut crew, _) = state.crew("host-a");
+    assert!(let_go(&mut crew, &refused()).is_empty());
+    let previews = state.file(BRANCH, "previews.rec").unwrap();
+    assert!(previews.contains("\nRequest: 30\n"), "{previews}");
 }
 
 /// The crew-control-plane spec's "A preview still up, its work gone".
