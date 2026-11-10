@@ -3,8 +3,9 @@
 //! Decision 4 of the-hosted-protocol-carries-land-and-preview names (the
 //! runner-protocol spec's "A place's status is carried as its copy", "The
 //! host's capacity is Flume's host part as values, its streams without
-//! their queues", "sluice's entry is carried as its copy" and "The copies'
-//! fields are the lists"; core.27). Each copy's field paths, read from the
+//! their queues", "sluice's entry is carried as its copy", "The copies'
+//! fields are the lists" and "sluice's answers of a preview as copies";
+//! core.27). Each copy's field paths, read from the
 //! schema, equal the list its decision gives, written here: a field added
 //! to a copy or taken from it fails, naming it.
 
@@ -237,6 +238,16 @@ const CUT_FROM_FLUME: &[&str] = &[
     "report-an-end-by-its-delivery-alone.json",
 ];
 
+/// The examples of what the runner answered of a preview, sluice's
+/// answers as their copies (design Decision 3 of
+/// the-hosted-protocol-carries-land-and-preview).
+const CUT_FROM_SLUICE: &[&str] = &[
+    "report-a-preview-brought-up.json",
+    "report-a-preview-held.json",
+    "report-a-preview-put-away.json",
+    "report-a-preview-sluice-refused.json",
+];
+
 /// Version 2's files by their addresses.
 struct Schema(BTreeMap<String, Value>);
 
@@ -360,6 +371,29 @@ fn flumes_answers_as_copies() {
                 .all(|launched| launched["status"]["copy"].is_object()),
             "{name} carries a status copy"
         );
+        passes(&validator, &report, name);
+    }
+}
+
+/// The runner-protocol spec's "sluice's answers of a preview as copies":
+/// each example of a preview passes version 2, and each preview's `copy`
+/// is an object or `null`, as is its status's.
+#[test]
+fn sluices_previews_as_copies() {
+    let validator = from_runner();
+    for name in CUT_FROM_SLUICE {
+        let report = example("from-runner", name);
+        let previews = report["body"]["report"]["previews"].as_object().unwrap();
+        assert!(!previews.is_empty(), "{name} holds a preview");
+        for previewed in previews.values() {
+            let copy = &previewed["copy"];
+            assert!(copy.is_object() || copy.is_null(), "{name}'s copy");
+            let status = &previewed["status"];
+            assert!(
+                status.is_null() || status["copy"].is_object(),
+                "{name}'s status"
+            );
+        }
         passes(&validator, &report, name);
     }
 }
