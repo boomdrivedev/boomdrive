@@ -33,7 +33,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. The site's tools and its project
 
-- [ ] 2.1 `devenv.nix` pins and adds to `packages`:
+- [x] 2.1 `devenv.nix` pins and adds to `packages`:
   - bun `1.4.2` and Node.js `24.20.0` (`nodejs_24`), each asserted as git is;
   - Vale `3.24.0` from Vale's release build, with boomdrive-web's four hashes.
 

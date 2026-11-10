@@ -75,11 +75,58 @@ let
   deadnixVersion = "1.3.2";
   actionlintVersion = "1.7.12";
 
-  # Biome, which formats the site's TypeScript, JavaScript and CSS through
-  # treefmt.nix (record 0037, core.7): nixpkgs' build, pinned by
-  # devenv.lock and asserted to be this version as git is. treefmt.nix's
-  # Biome is the same package.
+  # The site's tools (record 0037, design Decision 5): bun, which installs
+  # its packages and runs Astro, and Node.js, which runs Astro's bin under
+  # bun, nixpkgs' builds pinned by devenv.lock and asserted to be these
+  # versions as git is; and Biome, which formats the site's TypeScript,
+  # JavaScript and CSS through treefmt.nix, whose Biome is the same
+  # package (core.7).
+  bunVersion = "1.4.2";
+  nodeVersion = "24.20.0";
   biomeVersion = "2.5.13";
+
+  # Vale, which site:prose runs over the site's words (site.4), from its
+  # own release, as boomdrive-web's shell took it: nixpkgs trails it
+  # (3.17.1 against 3.24.0). Bump the version and the four hashes from the
+  # release's checksums file.
+  valeVersion = "3.24.0";
+  valeAssets = {
+    aarch64-darwin = {
+      os = "macOS_arm64";
+      sha256 = "87b513f26499f6657c15cf7175ba5b058a7c1ff2bb2d4e07265db2dd43451e44";
+    };
+    x86_64-darwin = {
+      os = "macOS_64-bit";
+      sha256 = "eeb39e86f1daac27cc2a77fef3af1824d50559bdc22329fb25fb921c80c79472";
+    };
+    aarch64-linux = {
+      os = "Linux_arm64";
+      sha256 = "104cbd349279e50c4cb40adb70adf345d93cc4a3a0191f9e68bdccb97086b582";
+    };
+    x86_64-linux = {
+      os = "Linux_64-bit";
+      sha256 = "867534ddb678abca7f214bc4706ead0922bd5252ffe8035fc227013f66c8b214";
+    };
+  };
+  vale =
+    let
+      system = pkgs.stdenv.hostPlatform.system;
+      asset = valeAssets.${system} or (throw "vale ${valeVersion}: no release build for ${system}");
+    in
+    pkgs.stdenvNoCC.mkDerivation {
+      pname = "vale";
+      version = valeVersion;
+      src = pkgs.fetchurl {
+        url = "https://github.com/errata-ai/vale/releases/download/v${valeVersion}/vale_${valeVersion}_${asset.os}.tar.gz";
+        inherit (asset) sha256;
+      };
+      sourceRoot = ".";
+      installPhase = ''
+        runHook preInstall
+        install -Dm755 vale $out/bin/vale
+        runHook postInstall
+      '';
+    };
 
   # The flake's inputs as flake.lock locks them, fetched by this shell
   # outside the gate's sandbox (design Decision 14).
@@ -146,8 +193,9 @@ in
   # The system tools are this file's, pinned by devenv.lock, and the
   # release's flake.lock's; moon and Rust are .prototools', installed by
   # the boomdrive:proto:install task on entering the shell and activated by
-  # enterShell. git, recutils, OpenSpec, the nix project's tools and the
-  # release's are the releases pinned above, never the host's (core.8).
+  # enterShell. git, recutils, OpenSpec, the nix project's tools, the
+  # release's and the site's are the releases pinned above, never the
+  # host's (core.8).
   packages = [
     (
       assert pkgs.git.version == gitVersion;
@@ -178,9 +226,18 @@ in
       pkgs.actionlint
     )
     (
+      assert pkgs.bun.version == bunVersion;
+      pkgs.bun
+    )
+    (
+      assert pkgs.nodejs_24.version == nodeVersion;
+      pkgs.nodejs_24
+    )
+    (
       assert pkgs.biome.version == biomeVersion;
       pkgs.biome
     )
+    vale
     (
       assert flakePkgs.git-cliff.version == gitCliffVersion;
       flakePkgs.git-cliff
