@@ -2,8 +2,9 @@
 # Every tool the gate runs is the version the tree pins, on every host
 # (rule core.8): rustc, cargo, clippy and rustfmt the build .prototools
 # pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec,
-# the nix project's nix, nixfmt, statix, deadnix and actionlint, and the
-# release's git-cliff and convco the releases devenv.nix pins, and
+# the nix project's nix, nixfmt, statix, deadnix and actionlint, the
+# release's git-cliff and convco, and the site's bun, Node.js, Vale and
+# Biome the releases devenv.nix pins (record 0038), and
 # OpenSpec's Claude Code skills its OpenSpec's (record 0022). A tool
 # found outside its pin, a runner's rustup default say, fails here rather
 # than holding the tree to another version's rules.
@@ -76,6 +77,10 @@ release deadnix "$(pinned deadnixVersion)" deadnix --version
 release actionlint "$(pinned actionlintVersion)" actionlint --version
 release git-cliff "$(pinned gitCliffVersion)" git-cliff --version
 release convco "$(pinned convcoVersion)" convco --version
+release bun "$(pinned bunVersion)" bun --version
+release node "$(pinned nodeVersion)" node --version
+release vale "$(pinned valeVersion)" vale --version
+release biome "$(pinned biomeVersion)" biome --version
 
 # statix answers no --version: its version is the name of the store path
 # its program is in.

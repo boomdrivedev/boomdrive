@@ -1,0 +1,54 @@
+# Every tool the fleet runs, ours or others'. The Uses page reads this.
+- id: claude-code
+  name: Claude Code
+  url: https://claude.com/claude-code
+  category: harness
+  role: The agent in every pane
+  status: in-use
+- id: herdr
+  name: Herdr
+  url: https://herdr.dev/
+  category: multiplexer
+  role: Workspaces, tabs and panes for the fleet, and the agents' states
+  status: in-use
+- id: worktrunk
+  name: Worktrunk
+  category: worktree-manager
+  role: One worktree per agent; merge hooks run the gates
+  status: in-use
+  serves: [one-agent-one-worktree]
+- id: secretspec
+  name: secretspec
+  category: secrets
+  role: Declares the secrets a repository needs, resolved from the provider at run time
+  status: in-use
+  serves: [secrets-by-declaration]
+- id: password-manager
+  name: 1Password
+  url: https://1password.com/
+  category: password-manager
+  role: Where secrets are resolved from for operations work
+  status: trialing
+  serves: [secrets-by-declaration]
+- id: devenv
+  name: devenv
+  url: https://devenv.sh/
+  category: toolchain
+  role: Declares every tool a repository's scripts run
+  status: in-use
+  serves: [one-shell]
+- id: moon
+  name: moon
+  url: https://moonrepo.dev/
+  category: task-graph
+  role: Runs every check, caching by inputs
+  status: in-use
+  serves: [never-prove-twice]
+- id: crew
+  name: Crew
+  category: ours
+  role: Teams of agents building one bolt at a time, the operator approving each unit
+  status: in-use
+  ours: true
+  becomes: boomdrive
+  serves: [intents-and-bolts, two-loops-one-gate]

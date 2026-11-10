@@ -1,0 +1,19 @@
+extends: conditional
+message: "Spell out '%s' the first time it appears."
+level: suggestion
+ignorecase: false
+first: '\b([A-Z]{3,5})\b'
+second: '(?:\b[A-Z][a-z]+ )+\(([A-Z]{3,5})\)'
+exceptions:
+  - API
+  - AWS
+  - CLI
+  - CSS
+  - DORA
+  - HTML
+  - HTTP
+  - JSON
+  - MCP
+  - OTEL
+  - URL
+  - YAML
