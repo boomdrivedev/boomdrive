@@ -1373,3 +1373,53 @@ fn previews_go_up_as_their_copies() {
         plane.lines()
     );
 }
+
+/// The hosted-control-plane spec's "A preview's copy that fails" (design
+/// Decision 5): a preview whose listing holds a `made` that is a number
+/// goes up with its `status` `null` and its `copy` as before, the report
+/// passing and sent, and one line names the preview and the path, and not
+/// the value, once while it fails (core.11).
+#[test]
+fn a_previews_copy_that_fails() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut row = the_up_row();
+    row["made"] = json!(1793750400);
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/preview-1"),
+        previewed(
+            false,
+            Outcome::Done,
+            Some(carried_of(
+                &sluice_answer("preview-starting.json"),
+                PREVIEW_FIELDS,
+            )),
+            None,
+            Some(carried_of(&row, PREVIEW_FIELDS)),
+        ),
+    );
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        plane.hosted.report(&report).expect("answered");
+    }
+    let sent = reports_sent(&fake);
+    assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
+    for (message, refused) in &sent {
+        assert_eq!(refused, &None, "the report passes version 2");
+        let previewed = &message["body"]["report"]["previews"]["preview-1"];
+        assert_eq!(previewed["status"], Value::Null);
+        assert_eq!(previewed["copy"]["state"], "starting");
+    }
+    let lines: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("home/preview-1"))
+        .collect();
+    assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
+    assert!(
+        lines[0].starts_with("home/preview-1: its status's copy") && lines[0].contains("/made"),
+        "{lines:?}"
+    );
+    assert!(!lines[0].contains("1793750400"), "{lines:?}");
+}
