@@ -63,3 +63,8 @@ tasks:
     inputs: ['dist/**/*', 'check-site.sh', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
     deps: ['~:build']
     tags: [check-fast]
+  # actionlint over the workflow pages, which publishes the site.
+  workflow:
+    command: 'actionlint ../.github/workflows/pages.yml'
+    inputs: ['/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
+    tags: [check-fast]
