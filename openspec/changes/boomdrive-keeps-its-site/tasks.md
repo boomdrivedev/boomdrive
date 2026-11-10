@@ -53,7 +53,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - `site/moon.yml` gains `build`, as Decision 3's table has it.
 
   True when `sluice exec main -- moon run site:build` passes, proving the site spec's "The site's build".
-- [ ] 2.6 `site/check-site.sh` reads every `.html` of `site/dist`. It fails, naming the page and the link, on an `href` or `src` that starts with `/` but not `/boomdrive/`. It fails on a page holding `/boomdrive-web/` or `agentplot/boomdrive-web`, or linking a repository but `https://github.com/agentplot/boomdrive`. `site/moon.yml` gains `test`, as Decision 3's table has it. True when `sluice exec main -- moon run site:test` passes, proving the site spec's "Every link under the base" and "boomdrive-web's name is gone".
+- [x] 2.6 `site/check-site.sh` reads every `.html` of `site/dist`. It fails, naming the page and the link, on an `href` or `src` that starts with `/` but not `/boomdrive/`. It fails on a page naming boomdrive-web but in the entries `@agentplot/site-theme`'s family gives, its Boomdrive member's `site` and its `hub`, which it reads from the theme, or linking a repository but `https://github.com/agentplot/boomdrive`. `site/moon.yml` gains `test`, as Decision 3's table has it. True when `sluice exec main -- moon run site:test` passes, proving the site spec's "Every link under the base" and "boomdrive-web's name is gone".
 
 ## 3. Publishing
 

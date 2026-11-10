@@ -47,7 +47,7 @@ The site's check-fast tasks SHALL be one check each: `check`, Astro's type check
 
 ### Requirement: The site is served under /boomdrive/
 
-The site SHALL be built for the base `/boomdrive/`, its repository's name, and every link and asset of its own pages SHALL be under that base. No built page SHALL name boomdrive-web's address or repository. The site's link to its repository SHALL be `https://github.com/agentplot/boomdrive` (site.6).
+The site SHALL be built for the base `/boomdrive/`, its repository's name, and every link and asset of its own pages SHALL be under that base. Nothing the site itself writes on a built page SHALL name boomdrive-web. The site's link to its repository SHALL be `https://github.com/agentplot/boomdrive` (site.6). The family's entries `@agentplot/site-theme` draws, its Boomdrive member's `site` and its `hub`, SHALL stand as the theme gives them, never overridden by the site (record 0039); they move at the opening, by the theme's release naming the new address.
 
 #### Scenario: Every link under the base
 
@@ -57,7 +57,7 @@ The site SHALL be built for the base `/boomdrive/`, its repository's name, and e
 #### Scenario: boomdrive-web's name is gone
 
 - **WHEN** `site:test` reads every page of `site/dist`
-- **THEN** no page holds `/boomdrive-web/` or `agentplot/boomdrive-web`, and every page that links the site's repository links `https://github.com/agentplot/boomdrive`
+- **THEN** no page names boomdrive-web but in the entries `@agentplot/site-theme`'s family gives, its Boomdrive member's `site` and its `hub`, and every page that links the site's repository links `https://github.com/agentplot/boomdrive`
 
 ### Requirement: The workflow pages publishes main's site
 

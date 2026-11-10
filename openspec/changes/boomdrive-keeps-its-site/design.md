@@ -273,6 +273,8 @@ These name boomdrive rather than boomdrive-web:
 
 The records, the archived changes and the field notes keep their text (site.3).
 
+The family's entries `@agentplot/site-theme` draws on every page, its Boomdrive member's `site` and its `hub`, stay as the theme gives them, `/boomdrive-web/` at v0.1.3, and the site does not override them (record 0039). They move at the opening, by a site-theme release naming the new address, which the opening carries (agentplot-design, 2026-11-09). `site:test` reads them from the theme, so what it holds the site to is everything else the site writes.
+
 ### 13. The site's working rules
 
 These are written with this change:

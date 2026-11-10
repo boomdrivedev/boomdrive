@@ -60,6 +60,6 @@ tasks:
   # pages, the content kind's prompts and the release command.
   test:
     command: 'sh check-site.sh'
-    inputs: ['dist/**/*', 'check-site.sh', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
+    inputs: ['dist/**/*', 'check-site.sh', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
     deps: ['~:build']
     tags: [check-fast]
