@@ -75,6 +75,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 5. Releases
 
 - [x] 5.1 `cliff.toml`'s `[git]` gains `exclude_paths = ["site/**", ".github/workflows/pages.yml"]`, with a comment citing core.48 and record 0038. `check-releases.sh` makes a commit that changes a file under `site/` alone, and one that changes a file under `site/` and one outside it. It gains the releases spec's three new scenarios (design Decision 7). True when `sluice exec main -- moon run root:releases` passes, proving the releases spec's "A change to the site alone", "A change to the site and the runner" and "The site's commit in no notes".
+- [ ] 5.2 The `releases` delta states the site's paths as a requirement of its own, "A commit that changes only the site releases nothing", holding the scenarios "A change to the site alone", "A change to the site and the runner" and "The site's commit in no notes", and modifies no requirement of the spec, so each requirement the archive writes is within openspec's 500 characters. True when `sluice exec main -- moon run root:changes` passes here and, in a scratch worktree of this branch with the change archived by `openspec archive boomdrive-keeps-its-site --yes`, `sluice exec main -- moon run root:specs` passes.
 
 ## 6. What the repository says of the site
 
