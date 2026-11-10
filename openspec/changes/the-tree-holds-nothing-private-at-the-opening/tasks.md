@@ -22,9 +22,9 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 3. The archived changes
 
-- [ ] 3.1 `openspec/changes/archive/2026-11-07-each-pass-ends-with-a-settle/proposal.md` quotes the planner's signal of 2026-11-06 with the drive's name cut, as record 0029 does after task 1.2 (design Decisions 4 and 7). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 3.2 `openspec/changes/archive/2026-11-08-the-runner-brings-up-a-preview-its-control-plane-asks-for/proposal.md` names the design agent by its role (design Decisions 1 and 7). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 3.3 `openspec/changes/archive/2026-11-08-the-runner-carries-each-places-end/proposal.md`, `design.md` and `tasks.md` name the design agent by its role wherever they named it after its drive, its words and the user's quoted as they stand (design Decisions 1 and 7). True when `sluice exec main -- moon run root:format` passes.
+- [x] 3.1 `openspec/changes/archive/2026-11-07-each-pass-ends-with-a-settle/proposal.md` quotes the planner's signal of 2026-11-06 with the drive's name cut, as record 0029 does after task 1.2 (design Decisions 4 and 7). True when `sluice exec main -- moon run root:format` passes.
+- [x] 3.2 `openspec/changes/archive/2026-11-08-the-runner-brings-up-a-preview-its-control-plane-asks-for/proposal.md` names the design agent by its role (design Decisions 1 and 7). True when `sluice exec main -- moon run root:format` passes.
+- [x] 3.3 `openspec/changes/archive/2026-11-08-the-runner-carries-each-places-end/proposal.md`, `design.md` and `tasks.md` name the design agent by its role wherever they named it after its drive, its words and the user's quoted as they stand (design Decisions 1 and 7). True when `sluice exec main -- moon run root:format` passes.
 
 ## 4. The change
 
