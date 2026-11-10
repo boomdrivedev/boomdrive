@@ -47,7 +47,7 @@ Option 1, the user's decision.
 
 ## Amendment, 2026-11-09: the site moves in before the opening
 
-Status: accepted on 2026-11-09 by agentplot-design, on the user's words that day in its pane: "If the Boomdrive web thing was already decided, how come it wasn't getting worked on?" The order is the design agent's own choice, cheap to change. The scrub landed on 2026-11-07, as the change `boomdrives-tree-holds-nothing-private`, and nothing put the opening to the user, so the site's move, held behind it, had no start.
+Status: accepted on 2026-11-09 by the design agent, on the user's words that day in its pane: "If the Boomdrive web thing was already decided, how come it wasn't getting worked on?" The order is the design agent's own choice, cheap to change. The scrub landed on 2026-11-07, as the change `boomdrives-tree-holds-nothing-private`, and nothing put the opening to the user, so the site's move, held behind it, had no start.
 
 - **The site moves into this repository now.** The change `boomdrive-keeps-its-site` brings boomdrive-web's tree and history under `site/` here, while this repository is still private. boomdrive-web takes no new work once that change takes its main, and keeps publishing the site as it stands until the opening.
 - **The opening carries the site across by hand.** The public repository's fresh root is made from the scrubbed tree without `site/`, and `site/`'s history, filtered to that path, is merged onto it. An agent does it, in a step the opening names, with no code for the move (principle 12). The site's history is boomdrive-web's, already public, and the commits made here that touch `site/` alone.
