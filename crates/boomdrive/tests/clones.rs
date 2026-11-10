@@ -8,6 +8,7 @@ mod common;
 use boomdrive::pass::Outcome;
 use common::{keeping, Scratch};
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 /// The names of the entries in `dir`, sorted; none where it is missing.
 fn entries(dir: &Path) -> Vec<String> {
@@ -436,6 +437,75 @@ fn one_fetch_fails() {
             &["rev-parse", "refs/remotes/origin/main"]
         ),
         commit
+    );
+}
+
+/// The words of a fetch stopped at a 500 ms limit (record 0042).
+const STOPPED: &str =
+    "git fetch with origin was still going after 500ms, the most a try may take, and was stopped";
+
+/// The clones spec's "A fetch whose origin never answers": the fetch is
+/// stopped at its limit and named, and the pass keeps the other
+/// repository.
+#[test]
+fn a_fetch_whose_origin_never_answers() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let sluice = scratch.origin("agentplot/sluice");
+    let config = keeping(&["agentplot/flume", "agentplot/sluice"]);
+    scratch.pass(&config);
+    scratch.silent("agentplot/flume");
+    let commit = sluice.commit("main", "README", "two\n");
+
+    let started = Instant::now();
+    let (outcome, lines) = scratch.pass_trying_for(&config, Duration::from_millis(500));
+    let took = started.elapsed();
+
+    assert!(took < Duration::from_secs(5), "the pass took {took:?}");
+    assert_eq!(outcome, Outcome::Failed);
+    assert_eq!(
+        lines,
+        [
+            format!("agentplot/flume: not fetched: {STOPPED}"),
+            view_moved("agentplot/sluice", "main", &commit),
+        ]
+    );
+    assert_eq!(
+        scratch.git(
+            &scratch.clone_of("agentplot/sluice"),
+            &["rev-parse", "refs/remotes/origin/main"]
+        ),
+        commit
+    );
+}
+
+/// The clones spec's "A clone whose origin never answers": the new
+/// clone's fetch is stopped at its limit and named, nothing of it is left,
+/// and the pass keeps the other repository.
+#[test]
+fn a_clone_whose_origin_never_answers() {
+    let scratch = Scratch::new();
+    scratch.silent("agentplot/flume");
+    let sluice = scratch.origin("agentplot/sluice");
+    let config = keeping(&["agentplot/flume", "agentplot/sluice"]);
+
+    let started = Instant::now();
+    let (outcome, lines) = scratch.pass_trying_for(&config, Duration::from_millis(500));
+    let took = started.elapsed();
+
+    assert!(took < Duration::from_secs(5), "the pass took {took:?}");
+    assert_eq!(outcome, Outcome::Failed);
+    assert_eq!(
+        lines,
+        [
+            format!("agentplot/flume: not cloned: {STOPPED}"),
+            "agentplot/sluice: cloned from https://github.com/agentplot/sluice.git".to_string(),
+            view_made(&scratch, "agentplot/sluice", &sluice.tip("main")),
+        ]
+    );
+    assert_eq!(
+        entries(&scratch.data().join("repositories/agentplot")),
+        ["sluice"]
     );
 }
 
