@@ -96,7 +96,17 @@
                       "by": "notice"
                     }
                   ],
-                  "pending_for": []
+                  "key": "stage/construct/1/delivered",
+                  "pending_for": [],
+                  "delivery": "change--parse-words/ae6dad43/stage/construct/1/delivered",
+                  "expires_at": 1794158071,
+                  "owed": [],
+                  "confirmed": [
+                    {
+                      "recipient": "operator",
+                      "at": 1793553272
+                    }
+                  ]
                 }
               ],
               "holds": [],

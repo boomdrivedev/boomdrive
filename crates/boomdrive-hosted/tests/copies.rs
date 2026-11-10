@@ -12,8 +12,10 @@ use common::{address, example, files, from_runner, passes, refused};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// The copy of a place's status (design Decision 7). A list's elements
-/// are `[]`, and each variant of a value is a field by its name.
+/// The copy of a place's status (design Decision 7 of
+/// the-runner-dials-the-hosted-control-plane, with each end's delivery
+/// and the end of a place's work that record 0037 adds). A list's
+/// elements are `[]`, and each variant of a value is a field by its name.
 const PLACE_STATUS: &[&str] = &[
     "place",
     "kind",
@@ -99,12 +101,25 @@ const PLACE_STATUS: &[&str] = &[
     "ends[].verdict.failed",
     "ends[].verdict.conflict",
     "ends[].verdict.refused",
+    "ends[].over",
+    "ends[].over.landed",
+    "ends[].over.landed.commit",
     "ends[].read_at",
     "ends[].deliveries",
     "ends[].deliveries[].recipient",
     "ends[].deliveries[].at",
     "ends[].deliveries[].by",
     "ends[].pending_for",
+    "ends[].key",
+    "ends[].delivery",
+    "ends[].expires_at",
+    "ends[].owed",
+    "ends[].owed[].recipient",
+    "ends[].owed[].expired",
+    "ends[].owed[].known",
+    "ends[].confirmed",
+    "ends[].confirmed[].recipient",
+    "ends[].confirmed[].at",
     "holds",
     "holds[].on",
     "holds[].stage",

@@ -73,9 +73,20 @@
                   },
                   "read_at": 1793559631,
                   "deliveries": [],
+                  "key": "stage/code/1/ended_short",
                   "pending_for": [
                     "example/planner"
-                  ]
+                  ],
+                  "delivery": "fix--tabs/ab861750/stage/code/1/ended_short",
+                  "expires_at": 1794164431,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
                 }
               ],
               "holds": [],

@@ -642,14 +642,48 @@ fn a_terminal_opened() {
     assert!(pulled.terminals.is_empty());
 }
 
-/// Flume's status of a place in code, as Flume 0.4.1 printed it, but that
-/// its code stage's state is `state`.
+/// Each end of `place`, as Flume 0.4.1 printed it, given the fields
+/// Flume 0.21.0 prints of it: its key, its delivery's key and expiry, the
+/// readers it is owed to, and those that confirmed it (design Decision 9
+/// of the-hosted-protocol-carries-every-end-of-a-place).
+fn ends_as_flume_0_21_0_prints_them(place: &mut Value) {
+    let short = format!(
+        "{}--{}",
+        place["kind"].as_str().expect("a kind"),
+        place["name"].as_str().expect("a name")
+    );
+    for end in place["ends"].as_array_mut().expect("ends") {
+        let key = match end["of"].as_str().expect("an of") {
+            "stage" => format!(
+                "stage/{}/{}/{}",
+                end["stage"].as_str().expect("a stage"),
+                end["start"],
+                end["state"].as_str().expect("a state")
+            ),
+            of => panic!("an end of {of} in the fixture"),
+        };
+        let pending: Vec<Value> = end["pending_for"].as_array().expect("pending").clone();
+        end["delivery"] = json!(format!("{short}/0a1b2c3d/{key}"));
+        end["expires_at"] = json!(end["read_at"].as_u64().expect("read") + 604_800);
+        end["owed"] = pending
+            .iter()
+            .map(|recipient| json!({ "recipient": recipient, "expired": false, "known": true }))
+            .collect();
+        end["confirmed"] = json!([]);
+        end["key"] = json!(key);
+    }
+}
+
+/// Flume's status of a place in code, as Flume 0.4.1 printed it, its ends
+/// as Flume 0.21.0 prints them, but that its code stage's state is
+/// `state`.
 fn status_in(state: &str) -> String {
     let file = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../boomdrive/tests/fixtures/flume-0.4.1/status-code.json");
     let mut status: Value =
         serde_json::from_str(&std::fs::read_to_string(file).expect("the fixture")).expect("JSON");
     status["status"]["places"][0]["stages"][1]["state"] = json!(state);
+    ends_as_flume_0_21_0_prints_them(&mut status["status"]["places"][0]);
     status.to_string()
 }
 

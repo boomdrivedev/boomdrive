@@ -73,9 +73,20 @@
                   },
                   "read_at": 1793559697,
                   "deliveries": [],
+                  "key": "stage/code/1/delivered",
                   "pending_for": [
                     "example/planner"
-                  ]
+                  ],
+                  "delivery": "fix--slow-gate/5dfd1389/stage/code/1/delivered",
+                  "expires_at": 1794164497,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
                 }
               ],
               "holds": [],

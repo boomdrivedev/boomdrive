@@ -71,7 +71,10 @@
                   },
                   "read_at": 1793559657,
                   "deliveries": [],
-                  "pending_for": []
+                  "key": "stage/turn/1/delivered",
+                  "pending_for": [],
+                  "owed": [],
+                  "confirmed": []
                 }
               ],
               "holds": [],

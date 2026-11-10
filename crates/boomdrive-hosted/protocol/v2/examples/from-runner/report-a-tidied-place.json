@@ -85,9 +85,20 @@
                   },
                   "read_at": 1793559675,
                   "deliveries": [],
+                  "key": "stage/code/1/delivered",
                   "pending_for": [
                     "example/planner"
-                  ]
+                  ],
+                  "delivery": "fix--gate/f95812ec/stage/code/1/delivered",
+                  "expires_at": 1794164475,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
                 },
                 {
                   "of": "submission",
@@ -101,9 +112,20 @@
                   },
                   "read_at": 1793559694,
                   "deliveries": [],
+                  "key": "submission/1/landed",
                   "pending_for": [
                     "example/planner"
-                  ]
+                  ],
+                  "delivery": "fix--gate/f95812ec/submission/1/landed",
+                  "expires_at": 1794164494,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
                 }
               ],
               "holds": [],

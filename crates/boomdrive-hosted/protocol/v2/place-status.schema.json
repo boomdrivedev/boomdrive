@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/place-status.schema.json",
-  "description": "The copy of a Flume place's status, flume status --json's one place cut to the fields the cloud keeps: its ids, states, times and counts, what it made, its pane's address, and the words a person reads to follow or answer it. Every value is as Flume 0.4.1 printed it. It holds no agent's last words, screen, printed command, notes, settings or mode, no task's text, no readiness, no group's title, no teardown's words, no end's report, no verdict's words, and no path but the place's own.",
+  "description": "The copy of a Flume place's status, flume status --json's one place cut to the fields the cloud keeps: its ids, states, times and counts, what it made, its pane's address, the words a person reads to follow or answer it, and each end's key, delivery, expiry, readers owed and confirmed, and hand-overs. Every value is as Flume printed it, in the forms Flume 0.21.0 prints. It holds no agent's last words, screen, printed command, notes, settings or mode, no task's text, no readiness, no group's title, no teardown's words, no end's report, no stall's move, answerer, stop-short or hold, no verdict's words, and no path but the place's own.",
   "$defs": {
     "place_status": {
       "type": "object",
@@ -627,7 +627,7 @@
       ]
     },
     "end_record": {
-      "description": "An end Flume holds for the place's recipients: a stage's, a submission's or a stall's, with when Flume read it, its deliveries and whom it is pending for.",
+      "description": "An end Flume holds for the place's recipients, each with its key, its delivery's key and expiry, and the readers it is owed to and those that confirmed it: a stage's, a submission's, a stall's, or the place's work's by a drop or a done; or, for an end of a form version 2 does not name, its delivery alone.",
       "oneOf": [
         {
           "type": "object",
@@ -640,7 +640,10 @@
             "end",
             "read_at",
             "deliveries",
-            "pending_for"
+            "pending_for",
+            "key",
+            "owed",
+            "confirmed"
           ],
           "properties": {
             "of": {
@@ -664,13 +667,37 @@
             "deliveries": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/delivery"
+                "$ref": "#/$defs/handover"
               }
             },
             "pending_for": {
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            },
+            "key": {
+              "description": "The end's key as callers name it, as Flume printed it.",
+              "type": "string"
+            },
+            "delivery": {
+              "description": "The key of the end's delivery, by which a reader confirms it, where Flume printed one.",
+              "type": "string"
+            },
+            "expires_at": {
+              "description": "When the end's delivery expires, where Flume printed it.",
+              "$ref": "#/$defs/seconds"
+            },
+            "owed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/owed"
+              }
+            },
+            "confirmed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/confirmation"
               }
             }
           }
@@ -684,7 +711,10 @@
             "verdict",
             "read_at",
             "deliveries",
-            "pending_for"
+            "pending_for",
+            "key",
+            "owed",
+            "confirmed"
           ],
           "properties": {
             "of": {
@@ -702,13 +732,37 @@
             "deliveries": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/delivery"
+                "$ref": "#/$defs/handover"
               }
             },
             "pending_for": {
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            },
+            "key": {
+              "description": "The end's key as callers name it, as Flume printed it.",
+              "type": "string"
+            },
+            "delivery": {
+              "description": "The key of the end's delivery, by which a reader confirms it, where Flume printed one.",
+              "type": "string"
+            },
+            "expires_at": {
+              "description": "When the end's delivery expires, where Flume printed it.",
+              "$ref": "#/$defs/seconds"
+            },
+            "owed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/owed"
+              }
+            },
+            "confirmed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/confirmation"
               }
             }
           }
@@ -720,7 +774,10 @@
             "of",
             "read_at",
             "deliveries",
-            "pending_for"
+            "pending_for",
+            "key",
+            "owed",
+            "confirmed"
           ],
           "properties": {
             "of": {
@@ -732,7 +789,7 @@
             "deliveries": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/delivery"
+                "$ref": "#/$defs/handover"
               }
             },
             "pending_for": {
@@ -740,12 +797,152 @@
               "items": {
                 "type": "string"
               }
+            },
+            "key": {
+              "description": "The end's key as callers name it, as Flume printed it.",
+              "type": "string"
+            },
+            "delivery": {
+              "description": "The key of the end's delivery, by which a reader confirms it, where Flume printed one.",
+              "type": "string"
+            },
+            "expires_at": {
+              "description": "When the end's delivery expires, where Flume printed it.",
+              "$ref": "#/$defs/seconds"
+            },
+            "owed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/owed"
+              }
+            },
+            "confirmed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/confirmation"
+              }
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "of",
+            "over",
+            "read_at",
+            "deliveries",
+            "pending_for",
+            "key",
+            "owed",
+            "confirmed"
+          ],
+          "properties": {
+            "of": {
+              "const": "over"
+            },
+            "over": {
+              "$ref": "#/$defs/over"
+            },
+            "read_at": {
+              "$ref": "#/$defs/seconds"
+            },
+            "deliveries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/handover"
+              }
+            },
+            "pending_for": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "key": {
+              "description": "The end's key as callers name it, as Flume printed it.",
+              "type": "string"
+            },
+            "delivery": {
+              "description": "The key of the end's delivery, by which a reader confirms it, where Flume printed one.",
+              "type": "string"
+            },
+            "expires_at": {
+              "description": "When the end's delivery expires, where Flume printed it.",
+              "$ref": "#/$defs/seconds"
+            },
+            "owed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/owed"
+              }
+            },
+            "confirmed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/confirmation"
+              }
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/end_delivery"
         }
       ]
     },
-    "delivery": {
+    "end_delivery": {
+      "description": "An end's delivery alone, for an end whose form version 2 does not name or whose fields it cannot carry: its of as Flume printed it, its key, when Flume read it, its delivery, the readers it is owed to and those that confirmed it, and whom it is pending for, never what ended or its hand-overs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "of",
+        "key",
+        "read_at",
+        "owed",
+        "confirmed",
+        "pending_for"
+      ],
+      "properties": {
+        "of": {
+          "description": "What ended, as Flume printed it.",
+          "type": "string"
+        },
+        "key": {
+          "description": "The end's key as callers name it, as Flume printed it.",
+          "type": "string"
+        },
+        "read_at": {
+          "$ref": "#/$defs/seconds"
+        },
+        "delivery": {
+          "description": "The key of the end's delivery, by which a reader confirms it, where Flume printed one.",
+          "type": "string"
+        },
+        "expires_at": {
+          "description": "When the end's delivery expires, where Flume printed it.",
+          "$ref": "#/$defs/seconds"
+        },
+        "owed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/owed"
+          }
+        },
+        "confirmed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/confirmation"
+          }
+        },
+        "pending_for": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "handover": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -764,8 +961,48 @@
           "enum": [
             "notice",
             "wait",
-            "inbox"
+            "inbox",
+            "session_start"
           ]
+        }
+      },
+      "description": "A hand-over of an end to one recipient: to whom, when, and by what, a notice, a wait, an inbox or a session's start collecting it."
+    },
+    "owed": {
+      "description": "A recipient an end is owed to, which has not confirmed it: whether its delivery has expired for it, and whether anything was ever confirmed under its name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recipient",
+        "expired",
+        "known"
+      ],
+      "properties": {
+        "recipient": {
+          "type": "string"
+        },
+        "expired": {
+          "type": "boolean"
+        },
+        "known": {
+          "type": "boolean"
+        }
+      }
+    },
+    "confirmation": {
+      "description": "A recipient's confirmation of an end, and when.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recipient",
+        "at"
+      ],
+      "properties": {
+        "recipient": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/seconds"
         }
       }
     },
