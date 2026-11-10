@@ -8,7 +8,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 1. The runner drops a preview let go
 
-- [ ] 1.1 `crates/boomdrive/tests/previews.rs` gains `a_preview_let_go`, as Task notes 1.1 have it. The runner's code is unchanged: `carry.rs`'s `forget` already drops a preview let go and runs nothing against it. True when `devenv shell -- cargo test -p boomdrive --test previews a_preview_let_go` passes, proving the control-plane-interface spec's "A preview let go".
+- [x] 1.1 `crates/boomdrive/tests/previews.rs` gains `a_preview_let_go`, as Task notes 1.1 have it. The runner's code is unchanged: `carry.rs`'s `forget` already drops a preview let go and runs nothing against it. True when `devenv shell -- cargo test -p boomdrive --test previews a_preview_let_go` passes, proving the control-plane-interface spec's "A preview let go".
 
 ## 2. crew's implementation lets a put-away preview go
 
