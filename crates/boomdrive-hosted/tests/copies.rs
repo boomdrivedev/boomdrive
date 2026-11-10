@@ -207,8 +207,11 @@ const SUBMISSION_ENTRY: &[&str] = &[
     "failed[].system",
 ];
 
-/// The examples whose copies are cut from Flume 0.4.1's places (design
-/// Decision 14).
+/// The examples whose copies are cut from Flume's places: Flume 0.4.1's,
+/// each end as Flume 0.21.0 prints it (design Decision 14 of
+/// the-runner-dials-the-hosted-control-plane), and Flume 0.21.0's ends of
+/// a place's work, hand-overs, readers and an end by its delivery alone
+/// (design Decision 1 of the-hosted-protocol-carries-every-end-of-a-place).
 const CUT_FROM_FLUME: &[&str] = &[
     "report-a-place-waiting-on-an-answer.json",
     "report-a-place-on-hold.json",
@@ -217,6 +220,11 @@ const CUT_FROM_FLUME: &[&str] = &[
     "report-a-landing-kept-by-a-failed-teardown.json",
     "report-a-tidied-place.json",
     "report-a-live-agent-with-its-pane.json",
+    "report-a-dropped-place-held-for-the-runner.json",
+    "report-a-done-place-held-for-the-runner.json",
+    "report-an-end-handed-over-at-a-sessions-start.json",
+    "report-an-end-owed-expired-and-one-confirmed.json",
+    "report-an-end-by-its-delivery-alone.json",
 ];
 
 /// Version 2's files by their addresses.

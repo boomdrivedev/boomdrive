@@ -1,0 +1,123 @@
+{
+  "protocol_version": 2,
+  "id": "runner:28",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-12": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--slow",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/fix--slow",
+              "kind": "fix",
+              "version": 1,
+              "declared": "flume",
+              "name": "slow",
+              "mark": "boomdrive:offer-12",
+              "branch": "fix/slow",
+              "base": "main",
+              "head": null,
+              "lands": true,
+              "delivered": null,
+              "stalled": false,
+              "priority": 0,
+              "current": "code",
+              "recipients": [
+                "example/planner",
+                "boomdrive"
+              ],
+              "stream": {
+                "name": "wide",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "17850c6f94f94e0b8ad7cece2dc917834c822d2a944b2aa7d0b50027717831b2"
+              },
+              "phase": "live",
+              "stages": [
+                {
+                  "name": "code",
+                  "state": "delivered",
+                  "starts": 1,
+                  "end": {
+                    "head": "7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  }
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "code",
+                  "start": 1,
+                  "state": "delivered",
+                  "end": {
+                    "head": "7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1792950000,
+                  "deliveries": [
+                    {
+                      "recipient": "example/planner",
+                      "at": 1792950002,
+                      "by": "notice"
+                    }
+                  ],
+                  "key": "stage/code/1/delivered",
+                  "pending_for": [
+                    "example/planner"
+                  ],
+                  "delivery": "fix--slow/2fa8c615/stage/code/1/delivered",
+                  "expires_at": 1793554800,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": true,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": [
+                    {
+                      "recipient": "boomdrive",
+                      "at": 1792950300
+                    }
+                  ]
+                }
+              ],
+              "holds": [],
+              "hold_words": {},
+              "waiting_on": null,
+              "submission": null,
+              "agent": null,
+              "clues": null,
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": null
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {}
+    }
+  }
+}
