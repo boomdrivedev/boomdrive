@@ -1,0 +1,11 @@
+extends: capitalization
+message: "Headings use sentence case: '%s'."
+level: warning
+scope: heading
+match: $sentence
+exceptions:
+  - Method
+  - Claude Code
+  - Herdr
+  - Worktrunk
+  - CI

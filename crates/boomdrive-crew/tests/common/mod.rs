@@ -22,7 +22,9 @@ use tempfile::TempDir;
 /// work names no `Host`, with what crew's unit that moves its previews
 /// onto the runner adds: `preview` among its `Act`s, `Done` a bool, and
 /// `Branch`, `Revision` and `Done` allowed (design Decision 10; Task notes
-/// 6.1).
+/// 6.1), and with what crew's change `crews-role-runs-confirm-what-they-
+/// collect` adds, as crew's main at `fa8501c1` holds it: `confirm` among
+/// its `Act`s, and `Delivery` allowed after `Words`.
 pub const REQUESTS: &str = "\
 # crew's requests of the runners: a launch of a Flume place for a started
 # bolt's work, a fix or a role's work that lands, or a retry, drop or priority
@@ -37,7 +39,7 @@ pub const REQUESTS: &str = "\
 %doc: A request for Work: a launch of a Flume place of Kind named Name, cut from Base of Repo, taken by a runner whose configuration names Repo, in the stream its host maps it to, or by Host's runner in Stream for a role's work; or a retry, drop or priority of the place the launch Of names launched, taken by the runner that took it.
 %key: Request
 %type: Request,Of,After,Priority int
-%type: Act enum launch retry land drop priority preview
+%type: Act enum launch retry land drop priority preview confirm
 %type: Kind enum change chore fix
 %type: Hold enum submission
 %type: Submission bool
@@ -45,7 +47,7 @@ pub const REQUESTS: &str = "\
 %type: Host regexp /^[a-z0-9][a-z0-9-]*$/
 %type: Date date
 %mandatory: Request Act Work Date By
-%allowed: Request Act Host Work Repo Kind Name Base Branch Revision Done Stream Priority Intent Recipient Hold After Brief Of Stage Submission Words Date By
+%allowed: Request Act Host Work Repo Kind Name Base Branch Revision Done Stream Priority Intent Recipient Hold After Brief Of Stage Submission Words Delivery Date By
 ";
 
 /// crew's header of `plan.rec`, as `plan.HEADER` holds it at `2b97ee57`.
@@ -230,8 +232,10 @@ pub fn preview(
 }
 
 /// The fields of crew's `runner.FIELDS`, in its order, with the fields of
-/// a preview after `Base`, as crew's unit writes them (Task notes 6.1).
-const FIELDS: [&str; 24] = [
+/// a preview after `Base`, as crew's unit writes them (Task notes 6.1), and
+/// a confirm's `Delivery` after `Words`, as crew's main at `fa8501c1`
+/// writes it.
+const FIELDS: [&str; 25] = [
     "Request",
     "Act",
     "Host",
@@ -254,6 +258,7 @@ const FIELDS: [&str; 24] = [
     "Stage",
     "Submission",
     "Words",
+    "Delivery",
     "Date",
     "By",
 ];

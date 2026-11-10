@@ -4,17 +4,19 @@
 //! act on a place only once every launch the pull offers is taken, and
 //! none but the first once the next pass is due (record 0002; core.50),
 //! carries each place's status against Flume's listing as it stands once
-//! those answers are made (record 0027), collects each place's record
-//! Flume holds for the runner once the report file holds it (record
-//! 0030), opens each terminal pulled, and sends the whole report. An act on a place the listing read before the
-//! pull does not hold reads Flume's status of the place first, and takes
-//! Flume's refusal of it as its answer (record 0010; core.51). The runner
-//! takes only what it was
+//! those answers are made (record 0027), opens each terminal pulled, and
+//! sends the whole report. Once its control plane has taken a report
+//! holding a place's status, it confirms to Flume, as the runner, each end
+//! that status gives owed to it, so no end leaves Flume before its control
+//! plane holds it (record 0030 as amended on 2026-11-09; core.54). An act
+//! on a place the listing read before the pull does not hold reads Flume's
+//! status of the place first, and takes Flume's refusal of it as its
+//! answer (record 0010; core.51). The runner takes only what it was
 //! offered, launches only through Flume's command line, and carries each
-//! answer as Flume gave it (core.1, core.9, core.10). It reaches its control plane only through
-//! `ControlPlane` (core.2), and acts on no place it did not launch. Work
-//! under a lease that has lapsed by the pass's clock waits for a live one
-//! (core.24). A preview its control plane asks for is brought up in a
+//! answer as Flume gave it (core.1, core.9, core.10). It reaches its
+//! control plane only through `ControlPlane` (core.2), and acts on no
+//! place it did not launch. Work under a lease that has lapsed by the
+//! pass's clock waits for a live one (core.24). A preview its control plane asks for is brought up in a
 //! repository the runner keeps by sluice's own preview command, after
 //! every launch the pull offers, its ask awaited no longer than the
 //! runner's patience; sluice's listing of it is carried until sluice lists
@@ -374,19 +376,23 @@ impl Carrier<'_> {
         work.carry_statuses(say);
         work.carry_entries(say);
         work.carry_previews(say);
-        // A place's end Flume holds for the runner is collected only once
-        // the report file holds it, and in no pass whose report could not
-        // be saved (core.25, core.54; record 0030).
-        if work.save(&*plane, say) {
-            work.collect(say);
-        }
+        work.save(&*plane, say);
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
-        let reported = work.send(plane, say);
+        let sent = work.send(plane, say);
+        // An end Flume owes the runner is confirmed only once its control
+        // plane has taken the status that gives it, in a pass whose share
+        // the file holds after the answer, and never below the least Flume
+        // (core.25, core.38, core.54; record 0030 as amended on 2026-11-09).
+        if let Some((answer, true)) = &sent {
+            if work.below_least.is_none() {
+                work.confirm(answer, say);
+            }
+        }
         Passed {
             expires: expires(&work.report, At::now()),
-            reported,
+            reported: sent.is_some(),
         }
     }
 }
@@ -716,8 +722,10 @@ impl Work<'_> {
     /// Carries out or answers `act` on its launch (design Decision 9). An
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
-    /// core.24). One on its launch's place is carried out in the pass's
-    /// second round alone, after every launch the pull offers (core.50).
+    /// core.24). A confirm as the runner, or of no key, is refused at once,
+    /// running nothing (core.56). One on its launch's place is carried out
+    /// in the pass's second round alone, after every launch the pull offers
+    /// (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -732,6 +740,10 @@ impl Work<'_> {
             return;
         };
         if lapsed(launched.lease, self.now) {
+            return;
+        }
+        if let Some(words) = refused_confirm(&act.what) {
+            self.acted(act, Outcome::Refused, Some(words), None, say);
             return;
         }
         if launched.answer.outcome != Outcome::Launched {
@@ -752,11 +764,13 @@ impl Work<'_> {
     /// place the pass's listing does not hold is first asked of Flume's
     /// status, which settles nothing: where Flume refuses it, that refusal
     /// is the act's answer, as Flume gave it, and the act's command is not
-    /// run (core.51). Otherwise the act is Flume's own command on the
-    /// place, never forced; once the next pass is due, the pass runs none
-    /// but its first, and leaves the act for that pass (core.50). Where
-    /// Flume could not be run, nothing is kept, and the next pass carries
-    /// it out.
+    /// run (core.51). A confirm naming a key that is the delivery of no end
+    /// of the place, as the listing or that status gives it, is refused in
+    /// the runner's words, naming the key, and runs nothing (core.56).
+    /// Otherwise the act is Flume's own command on the place, never forced;
+    /// once the next pass is due, the pass runs none but its first, and
+    /// leaves the act for that pass (core.50). Where Flume could not be
+    /// run, nothing is kept, and the next pass carries it out.
     fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
         let unrun = |words: String, say: &mut dyn FnMut(String)| {
             let what = sort(&act.what);
@@ -765,14 +779,23 @@ impl Work<'_> {
                 act.id, act.launch
             ));
         };
-        if !self.listed(place) {
+        let status = if self.listed(place) {
+            None
+        } else {
             match self.carrier.flume.status_of(None, place) {
-                Ok(Reply::Given(_)) => {}
+                Ok(Reply::Given(status)) => Some(status),
                 Ok(Reply::Refused(words)) => {
                     self.acted(act, Outcome::Refused, Some(words), Some(place), say);
                     return;
                 }
                 Err(Unrun(words)) => return unrun(words, say),
+            }
+        };
+        if let ActSort::Confirm { deliveries, .. } = &act.what {
+            if let Some(key) = self.unheld(deliveries, place, status.as_deref()) {
+                let words = format!("{key} is the delivery of no end of {place} as Flume gives it");
+                self.acted(act, Outcome::Refused, Some(words), None, say);
+                return;
             }
         }
         if self.acts_run > 0 && (self.carrier.due)() {
@@ -790,6 +813,27 @@ impl Work<'_> {
         }
     }
 
+    /// The first of `keys` that is the delivery of no end of the place at
+    /// `place`, as the pass's listing gives its entry, else `status`,
+    /// Flume's answer to the place's status, where the listing does not
+    /// hold it (core.56). The runner reads Flume's own field, and judges
+    /// nothing of the end: whom it is owed and whether it is owed are
+    /// Flume's to answer (Flume's 43).
+    fn unheld<'k>(&self, keys: &'k [String], place: &str, status: Option<&str>) -> Option<&'k str> {
+        let answer = status.and_then(|status| serde_json::from_str::<Value>(status).ok());
+        let entry = match &answer {
+            Some(answer) => facts::entry(answer, place),
+            None => self
+                .listing
+                .as_ref()
+                .and_then(|listing| facts::entry(listing, place)),
+        };
+        let held = entry.map(facts::deliveries).unwrap_or_default();
+        keys.iter()
+            .map(String::as_str)
+            .find(|key| !held.contains(key))
+    }
+
     /// Whether the pass's listing holds the place at `place`, standing or
     /// as the record Flume keeps of it tidied.
     fn listed(&self, place: &str) -> bool {
@@ -801,9 +845,9 @@ impl Work<'_> {
     /// Answers `act` on a launch the runner holds not yet launched, from
     /// the report, running no command. A priority is done, and the launch
     /// carries it when made; a drop is done, and the launch is never made;
-    /// a retry, a land or a done is refused, naming where the launch
-    /// stands, and a land so refused changes nothing of the launch when it
-    /// is made (core.53).
+    /// a retry, a land, a confirm or a done is refused, naming where the
+    /// launch stands, and a land so refused changes nothing of the launch
+    /// when it is made (core.53, core.56).
     fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
@@ -823,7 +867,7 @@ impl Work<'_> {
                     self.report.answer(&act.launch, lease, dropped);
                 }
             }
-            ActSort::Retry { .. } | ActSort::Land | ActSort::Done => {
+            ActSort::Retry { .. } | ActSort::Land | ActSort::Confirm { .. } | ActSort::Done => {
                 let outcome = match answer.outcome {
                     Outcome::Held => "held",
                     Outcome::Done => "done",
@@ -1339,21 +1383,26 @@ impl Work<'_> {
         }
     }
 
-    /// Collects, as the runner, each place's record Flume holds for it past
-    /// its tidy, once the report file holds that record as the place's
-    /// status (design Decision 3; core.54; record 0030): for each launch
-    /// the pull gives, in its order, answered `launched` at a place in a
-    /// repository whose clone stands, named or dropped, whose carried
-    /// status is listed and reads the place tidied, its record pending for
-    /// [`flume::RECIPIENT`]. The record is the entry's own `place`,
-    /// `<location>@<at>`. Nothing of Flume's answer is carried or kept
-    /// (core.11). A collection Flume refuses, or could not be run for, is
-    /// said in one line and made again at the next pass, whose carried
-    /// status says the same. A launch the report no longer holds, its
-    /// lease refused, is collected for no more (core.10).
-    fn collect(&self, say: &mut dyn FnMut(String)) {
+    /// Confirms to Flume, as the runner, each end of a place it owes the
+    /// runner, once the control plane's `answer` names the status that
+    /// gives it taken (design Decision 3; core.54; record 0030 as amended on
+    /// 2026-11-09): for each launch the pull gives, in its order, that the
+    /// report, after the answer, holds answered `launched` at a place in a
+    /// repository whose clone stands, named or dropped, whose carried status
+    /// is listed and named taken, the delivery key of each end the status
+    /// gives pending for [`flume::RECIPIENT`], in the status's order, by one
+    /// `flume confirm` for the launch. Nothing of Flume's answer is carried
+    /// or kept (core.11). A confirmation Flume refuses, or could not be run
+    /// for, is said in one line and made again at a later pass whose report
+    /// is taken, whose carried status gives the ends pending still. A
+    /// launch the report no longer holds, let go or its lease refused, has
+    /// nothing confirmed (core.10).
+    fn confirm(&self, answer: &Reported, say: &mut dyn FnMut(String)) {
         for offer in offers(self.wants) {
             let id = &offer.id;
+            if !answer.statuses_taken.contains(id) {
+                continue;
+            }
             let Some(launched) = self.report.launches.get(id) else {
                 continue;
             };
@@ -1379,19 +1428,19 @@ impl Work<'_> {
             let Some(entry) = carried_entry(launched, place) else {
                 continue;
             };
-            if !facts::pending_for(&entry, flume::RECIPIENT) {
+            let keys = facts::owed(&entry, flume::RECIPIENT);
+            if keys.is_empty() {
                 continue;
             }
-            let Some(record) = facts::location(&entry) else {
-                continue;
-            };
-            match self.carrier.flume.collect(record) {
+            let named = facts::location(&entry).unwrap_or(place);
+            let recipient = flume::RECIPIENT;
+            match self.carrier.flume.confirm(recipient, &keys) {
                 Ok(Reply::Given(_)) => {}
                 Ok(Reply::Refused(words)) => say(format!(
-                    "{id}: Flume refused the collection of {record}: {words}"
+                    "{id}: Flume refused to confirm the ends of {named} as {recipient}: {words}"
                 )),
                 Err(Unrun(why)) => say(format!(
-                    "{id}: Flume's record {record} could not be collected: {why}"
+                    "{id}: the ends of {named} could not be confirmed: {why}"
                 )),
             }
         }
@@ -1608,21 +1657,26 @@ impl Work<'_> {
     }
 
     /// Sends the part's share, which renews every lease it names, and
-    /// says whether the control plane took it; one not sent is kept in the
-    /// file, to be sent at the next pass.
-    fn send(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
+    /// gives the control plane's answer where it took it, with whether the
+    /// file holds the share once the answer is taken; one not sent gives
+    /// none, and is kept in the file, to be sent at the next pass.
+    fn send(
+        &mut self,
+        plane: &mut dyn ControlPlane,
+        say: &mut dyn FnMut(String),
+    ) -> Option<(Reported, bool)> {
         self.save(&*plane, say);
         match plane.report(&self.report) {
             Ok(reported) => {
                 self.reported(&reported, say);
-                self.save(&*plane, say);
-                true
+                let saved = self.save(&*plane, say);
+                Some((reported, saved))
             }
             Err(Unsent(words)) => {
                 say(self.carrier.line(&format!(
                     "the report could not be sent: {words}: it is sent at the next pass"
                 )));
-                false
+                None
             }
         }
     }
@@ -1784,9 +1838,42 @@ fn flume_act(what: &ActSort) -> flume::Act {
             words: None,
             submission: true,
         },
+        // A confirm is Flume's confirm of exactly the keys it names, in
+        // its order, as the recipient it names (core.56).
+        ActSort::Confirm {
+            recipient,
+            deliveries,
+        } => flume::Act::Confirm {
+            recipient: recipient.clone(),
+            keys: deliveries.clone(),
+        },
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
+    }
+}
+
+/// The runner's words refusing `what`, where it is a confirm the runner
+/// carries out for no control plane: one made as the runner's own name,
+/// whose ends the runner carries and confirms itself (core.54), or one
+/// naming no key, which confirms nothing (core.56).
+fn refused_confirm(what: &ActSort) -> Option<String> {
+    let ActSort::Confirm {
+        recipient,
+        deliveries,
+    } = what
+    else {
+        return None;
+    };
+    if recipient == flume::RECIPIENT {
+        Some(format!(
+            "{} is the runner's own name, whose ends the runner confirms itself",
+            flume::RECIPIENT
+        ))
+    } else if deliveries.is_empty() {
+        Some("a confirm naming no delivery key confirms nothing".to_string())
+    } else {
+        None
     }
 }
 
@@ -1795,6 +1882,7 @@ fn sort(what: &ActSort) -> String {
     match what {
         ActSort::Retry { .. } => "retry".to_string(),
         ActSort::Land => "land".to_string(),
+        ActSort::Confirm { recipient, .. } => format!("confirm as {recipient}"),
         ActSort::Drop => "drop".to_string(),
         ActSort::Priority(priority) => format!("priority {priority}"),
         ActSort::Done => "done".to_string(),
