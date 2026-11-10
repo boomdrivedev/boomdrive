@@ -19,24 +19,6 @@ The runner SHALL keep each configured repository in the bare-container layout un
 - **WHEN** a pass has cloned `agentplot/flume` with the repository root `~/Code`
 - **THEN** nothing of the clone's is under `~/Code` but the view
 
-### Requirement: A data directory from before the rename is kept
-
-Where `$XDG_DATA_HOME/boomdrive`, or `~/.local/share/boomdrive`, is not there and the data directory a runner kept before it was renamed, `flywheel` beside it, is, the runner SHALL keep that one as its data directory, and SHALL NOT move it (record 0016; core.14, core.36).
-
-#### Scenario: A data directory from before the rename
-
-- **WHEN** the runner starts with `XDG_DATA_HOME` set to `/x/data`, `/x/data/flywheel` a directory and `/x/data/boomdrive` not there
-- **THEN** its data directory is `/x/data/flywheel`, and once `/x/data/boomdrive` is there it is that one
-
-### Requirement: A clone's records from before the rename are carried over
-
-A clone whose bare repository records its address under `flywheel.address` and none under `boomdrive.address` SHALL have its records carried over before it is read: its `refs/flywheel/view` moved to `refs/boomdrive/view`, then its git config's section `flywheel` renamed `boomdrive` (record 0016; core.36). It SHALL then be the runner's clone as it was, its view where it stands.
-
-#### Scenario: A clone made before the rename
-
-- **WHEN** a pass finds `agentplot/flume`'s clone recording `flywheel.address` and `flywheel.view`, with `refs/flywheel/view` at its view's commit, and origin's `main` has moved on
-- **THEN** the clone is fetched and its view moved as any clone of the runner's, and it records `boomdrive.address`, `boomdrive.view` and `refs/boomdrive/view`, and nothing under `flywheel`
-
 ### Requirement: A clone that fails leaves nothing
 
 A clone SHALL be made in a folder of its own beside its container and moved into place only once its first fetch has succeeded. A clone that fails SHALL leave nothing in the data directory. It SHALL be named with git's words and tried again at the next pass. Every other repository SHALL still be kept in that pass.
@@ -48,7 +30,7 @@ A clone SHALL be made in a folder of its own beside its container and moved into
 
 ### Requirement: A folder the runner did not make is never touched
 
-The runner SHALL know a clone as its own by the address it recorded in the clone when it made it. A folder at a container's path that is not a clone the runner made SHALL be left untouched and named, and no clone SHALL be made over it. A folder in the data directory that is not a clone the runner made SHALL never be fetched or removed.
+The runner SHALL know a clone as its own by the address it recorded in the clone when it made it, under `boomdrive.address` and no other key (record 0035). A folder at a container's path that is not a clone the runner made SHALL be left untouched and named, and no clone SHALL be made over it. A folder in the data directory that is not a clone the runner made SHALL never be fetched or removed.
 
 #### Scenario: A folder already there
 
@@ -59,6 +41,11 @@ The runner SHALL know a clone as its own by the address it recorded in the clone
 
 - **WHEN** `<data>/repositories/someone/else` is a folder the runner did not make and no configured address is `someone/else`
 - **THEN** the pass neither fetches nor removes it
+
+#### Scenario: A clone recording its address under another name
+
+- **WHEN** `<data>/repositories/agentplot/flume` holds a bare repository `flume.git` whose own git config records `other.address` as `agentplot/flume` and no `boomdrive.address`, and `agentplot/flume` is configured
+- **THEN** the pass names the container as not a clone the runner made, makes no clone and no view of `agentplot/flume`, and the bare repository's config still records `other.address` and no `boomdrive.address`
 
 ### Requirement: A clone is fetched over https and never asks
 
@@ -204,7 +191,7 @@ The runner SHALL read every branch of a kept repository at origin's tracking ref
 
 #### Scenario: A new repository root while sluice keeps the branch
 
-- **WHEN** a clone made before the rename has its `main` guarded as sluice guards a branch it keeps and behind origin's, its view is clean under the old repository root, and the repository root changes
+- **WHEN** the runner's clone has its `main` guarded as sluice guards a branch it keeps and behind origin's, its view is clean under the old repository root, and the repository root changes
 - **THEN** the pass removes the old view, makes the view under the new root at `origin/main`, writes nothing to the clone's `main`, and fails nothing
 
 ### Requirement: A HEAD that cannot be settled leaves the view kept
@@ -275,3 +262,12 @@ Where there is no report file, no repository SHALL be drained. Where the report 
 
 - **WHEN** `agentplot/flume` is dropped holding nothing the forge lacks, and the report file does not read as a report
 - **THEN** after the next pass its view and its container are as they were, and it is named with the report file's path
+
+### Requirement: The data directory is Boomdrive's alone
+
+The runner's data directory SHALL be `$XDG_DATA_HOME/boomdrive`, or `~/.local/share/boomdrive` where `XDG_DATA_HOME` is unset or empty, and no other folder, whatever else is beside it. The runner SHALL read no folder on disk to choose it (record 0035; core.35, core.36).
+
+#### Scenario: The data directory is the runner's own
+
+- **WHEN** the runner starts with `XDG_DATA_HOME` set to a folder that holds a folder `other`, itself holding `repositories/` and `control/report.json`, and no folder `boomdrive`
+- **THEN** its data directory is `boomdrive` in that folder, and it still is once that folder is made

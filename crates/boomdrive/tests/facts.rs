@@ -120,18 +120,18 @@ fn the_listing_of_every_place() {
     assert_eq!(
         marks,
         [
-            "flywheel:scratch/3",
-            "flywheel:scratch/planner/1",
-            "flywheel:scratch/5",
-            "flywheel:scratch/7",
-            "flywheel:scratch/2",
-            "flywheel:scratch/1",
-            "flywheel:scratch/4",
+            "boomdrive:scratch/3",
+            "boomdrive:scratch/planner/1",
+            "boomdrive:scratch/5",
+            "boomdrive:scratch/7",
+            "boomdrive:scratch/2",
+            "boomdrive:scratch/1",
+            "boomdrive:scratch/4",
         ]
     );
-    let tabs = facts::marked(&listing, "flywheel:scratch/4").expect("fix--tabs by its mark");
+    let tabs = facts::marked(&listing, "boomdrive:scratch/4").expect("fix--tabs by its mark");
     assert_eq!(facts::location(tabs), Some(named("fix--tabs").as_str()));
-    assert_eq!(facts::marked(&listing, "flywheel:scratch/9"), None);
+    assert_eq!(facts::marked(&listing, "boomdrive:scratch/9"), None);
     assert_eq!(facts::marked(&listing, "scratch/4"), None);
 }
 
@@ -250,7 +250,7 @@ fn a_place_at_each_phase() {
             Some(format!("{dir}change--parse-words").as_str()),
             "{name}"
         );
-        assert_eq!(facts::mark(entry), Some("flywheel:scratch/3"), "{name}");
+        assert_eq!(facts::mark(entry), Some("boomdrive:scratch/3"), "{name}");
         assert!(facts::live_or_making(entry), "{name}");
         assert_eq!(facts::over(entry), None, "{name}");
         assert!(!facts::waits_delivered(entry), "{name}");
@@ -271,7 +271,7 @@ fn a_place_at_each_phase() {
     }
 
     let delivered = only("status-delivered.json");
-    assert_eq!(facts::mark(&delivered), Some("flywheel:scratch/planner/1"));
+    assert_eq!(facts::mark(&delivered), Some("boomdrive:scratch/planner/1"));
     assert!(facts::live_or_making(&delivered));
     assert!(facts::waits_delivered(&delivered));
     assert_eq!(facts::over(&delivered), None);
@@ -377,7 +377,7 @@ fn the_place_a_launch_names() {
         facts::location(place),
         Some(format!("{dir}fix--parser").as_str())
     );
-    assert_eq!(facts::mark(place), Some("flywheel:scratch/1"));
+    assert_eq!(facts::mark(place), Some("boomdrive:scratch/1"));
     assert!(facts::live_or_making(place));
     assert_eq!(facts::places(&launch), &[] as &[Value]);
 }
