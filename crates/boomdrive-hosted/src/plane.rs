@@ -717,14 +717,20 @@ impl Partition {
         })
     }
 
-    /// The launches of `part` whose status went up as its copy at the
-    /// last [`Partition::upward`]: each with a status, but those whose
-    /// copy failed and went up `null` (design Decision 2).
+    /// The launches of `part` whose status went up whole as its copy at
+    /// the last [`Partition::upward`]: each with a status, but those whose
+    /// copy failed and went up `null` (design Decision 2), and those that
+    /// went up with an end carried by its delivery alone or left out, so
+    /// no end the control plane holds only the delivery of is confirmed
+    /// (design Decision 3 of
+    /// the-hosted-protocol-carries-every-end-of-a-place; core.54).
     fn statuses_up(&self, part: &Report) -> BTreeSet<Id> {
         part.launches
             .iter()
             .filter(|(id, launched)| {
-                launched.status.is_some() && !self.failing.contains(&((*id).clone(), "status"))
+                launched.status.is_some()
+                    && !self.failing.contains(&((*id).clone(), "status"))
+                    && !self.partial.contains(*id)
             })
             .map(|(id, _)| id.clone())
             .collect()

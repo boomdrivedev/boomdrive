@@ -890,6 +890,79 @@ fn a_status_that_passes_goes_up_as_its_copy() {
     assert_eq!(status["at"], json!("2026-11-01T10:01:00Z"));
 }
 
+/// The hosted-control-plane spec's "A status with an end by its delivery
+/// alone" (design Decision 3 of
+/// the-hosted-protocol-carries-every-end-of-a-place): the status goes up
+/// with that end as its delivery alone, and the report's answer names no
+/// status of that launch taken, whatever the control plane answers.
+#[test]
+fn a_status_with_an_end_by_its_delivery_alone() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let status: Value = serde_json::from_str(&status_in("begun")).expect("JSON");
+    let passing = status["status"]["places"][0]["ends"][0].clone();
+    let mut moved = passing.clone();
+    moved["of"] = json!("moved");
+    let report = carrying(status_with_ends(json!([moved, passing])));
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        let reported = plane.hosted.report(&report).expect("answered");
+        assert!(
+            reported.statuses_taken.is_empty(),
+            "a status with an end by its delivery alone is not taken: {reported:?}"
+        );
+    }
+    let taken = fake.taken();
+    let report = messages(&taken, "home")
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("report"))
+        .expect("a report");
+    let ends = &report["body"]["report"]["launches"]["l-1"]["status"]["copy"]["ends"];
+    assert_eq!(ends[0]["of"], json!("moved"));
+    assert!(ends[0].get("deliveries").is_none(), "by its delivery alone");
+    assert!(ends[1].get("deliveries").is_some(), "whole");
+}
+
+/// The hosted-control-plane spec's "A drop held for the runner" (design
+/// Decisions 3 and 9 of the-hosted-protocol-carries-every-end-of-a-place):
+/// Flume 0.21.0's tidied place, dropped, goes up with its drop's end and
+/// the delivery's key Flume gave it, and the report's answer names that
+/// launch's status taken.
+#[test]
+fn a_drop_held_for_the_runner() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let file = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../boomdrive/tests/fixtures/flume-0.21.0/status-dropped-held.json");
+    let text = std::fs::read_to_string(file).expect("the fixture");
+    let printed: Value = serde_json::from_str(&text).expect("JSON");
+    let flumes = &printed["status"]["places"][0]["ends"][0];
+    let report = carrying(text.clone());
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    let reported = plane.hosted.report(&report).expect("answered");
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("home/l-1")])
+    );
+    let taken = fake.taken();
+    let report = messages(&taken, "home")
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("report"))
+        .expect("a report");
+    let end = &report["body"]["report"]["launches"]["l-1"]["status"]["copy"]["ends"][0];
+    assert_eq!(end["of"], json!("over"));
+    assert_eq!(end["over"], json!("dropped"));
+    assert_eq!(end["key"], json!("over/dropped"));
+    assert_eq!(end["delivery"], flumes["delivery"]);
+    assert!(end["delivery"].is_string());
+    assert_eq!(end["owed"], flumes["owed"]);
+    let lines = plane.lines();
+    assert!(
+        lines.iter().all(|line| !line.starts_with("home/l-1: ")),
+        "{lines:#?}"
+    );
+}
+
 #[test]
 fn a_report_that_fails_version_2_is_not_sent() {
     let fake = Fake::start();
