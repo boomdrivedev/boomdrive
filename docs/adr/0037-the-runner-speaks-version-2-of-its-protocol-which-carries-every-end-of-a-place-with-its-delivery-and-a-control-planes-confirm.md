@@ -1,7 +1,7 @@
 ---
 number: 37
 title: The runner speaks version 2 of its protocol, which carries every end of a place with its delivery and a control plane's confirm
-status: proposed
+status: accepted
 date: 2026-11-09
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner speaks version 2 of its protocol, which carries every end of a place with its delivery and a control plane's confirm
 
-Status: proposed on 2026-11-09 by the construct stage of the change `the-hosted-protocol-carries-every-end-of-a-place`, on the bolt `the-hosted-protocol-carries-every-end`. The direction is the change's brief. How version 2 meets it is the stage's own choice, made on this repository's rules. It is proposed until the user has seen it as a record, and accepted on their yes. Once a release of the runner speaks version 2, version 2 never changes (core.42), so its choices are cheap to change only until then. Amended on 2026-11-09, below: version 2 carries a land and a preview, with what the runner answered of each preview, so it carries everything crew's control plane can ask.
+Status: accepted by the user on 2026-11-10, on their card. Proposed on 2026-11-09 by the construct stage of the change `the-hosted-protocol-carries-every-end-of-a-place`, on the bolt `the-hosted-protocol-carries-every-end`. The direction is the change's brief. How version 2 meets it is the stage's own choice, made on this repository's rules. It is proposed until the user has seen it as a record, and accepted on their yes. Once a release of the runner speaks version 2, version 2 never changes (core.42), so its choices are cheap to change only until then. Amended on 2026-11-09, below: version 2 carries a land and a preview, with what the runner answered of each preview, so it carries everything crew's control plane can ask.
 
 Deciders: the change's brief, for the direction; the construct stage, for the rest.
 Sources: the change's brief, 2026-11-09: "A runner under the hosted control plane reports every end Flume gives a place, a drop and a done among them, each with its delivery's key, and carries the hosted control plane's confirm of a reader's ends as it carries crew's, in one protocol version that names them both, and a place whose end a version does not name never empties the rest of the host's status"; record 0015; agentplot/weir record 0006, accepted by the user on 2026-11-08; records 0002 and 0030 as amended on 2026-11-09, each accepted by the user that day; Flume `v0.21.0` (`77d5b93`), its `crates/flume-core/src/answer.rs` (`EndStatus`) and `crates/flume-seams/src/held.rs` (`EndOf`, `Over`, `Delivery`, `DeliveredBy`, `OwedTo`, `ConfirmedBy`); rules core.2, core.11, core.12, core.27, core.42, core.54 and core.56.
@@ -90,7 +90,7 @@ Option 1, with c, the statuses that went up whole, version 2 alone, and contexts
 
 ## Amendment, 2026-11-09: version 2 carries a land and a preview
 
-Status: proposed on 2026-11-09 by the construct stage of the change `the-hosted-protocol-carries-land-and-preview`, on a branch of the bolt `the-hosted-protocol-carries-every-end`, until the user sees it as a record. The direction is the change's brief: "Version 2 of the runner's protocol with a hosted control plane carries, before it is first released, everything crew's control plane can ask of the runner: launches, acts, a work's land, a preview with its done, and a confirm, beside every end with its delivery key, so a hosted control plane asks what crew's can and no later version is needed for them." How version 2 carries them is the stage's own choice, made on this repository's rules, and cheap to change until a release speaks version 2: the preview's revision left unbounded, `previews` required in every report, the copies of sluice's answers in a file of their own, and a preview's copy given back as its text.
+Status: accepted by the user on 2026-11-10, on their card. Proposed on 2026-11-09 by the construct stage of the change `the-hosted-protocol-carries-land-and-preview`, on a branch of the bolt `the-hosted-protocol-carries-every-end`, until the user sees it as a record. The direction is the change's brief: "Version 2 of the runner's protocol with a hosted control plane carries, before it is first released, everything crew's control plane can ask of the runner: launches, acts, a work's land, a preview with its done, and a confirm, beside every end with its delivery key, so a hosted control plane asks what crew's can and no later version is needed for them." How version 2 carries them is the stage's own choice, made on this repository's rules, and cheap to change until a release speaks version 2: the preview's revision left unbounded, `previews` required in every report, the copies of sluice's answers in a file of their own, and a preview's copy given back as its text.
 
 Sources: the change's brief; record 0015; records 0002 as amended on 2026-11-08 and 0031; rules core.2, core.11, core.12, core.26, core.27, core.42, core.53 and core.55; the control-plane-interface spec; sluice 0.74.3's answers of a preview, the binary's fixtures.
 
