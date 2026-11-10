@@ -1,7 +1,7 @@
 ---
 number: 31
 title: The runner brings up the preview its control plane asks for through sluice, and puts away only what it asked for
-status: proposed
+status: accepted
 date: 2026-11-08
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner brings up the preview its control plane asks for through sluice, and puts away only what it asked for
 
-Status: proposed on 2026-11-08 by the construct stage of the change `the-runner-brings-up-a-preview-its-control-plane-asks-for`. The direction is the user's, in their words of 2026-11-08 quoted below, which crew's record 0056 holds. That record's consequence on previews, agentplot-design's choice on its point 1, moves a card's preview onto the runner. How the runner meets it is the stage's choice, made on this repository's rules and sluice's statement: the want's shape, the patience at sluice's bound, what is carried, what a done puts away, and crew's file. The record is accepted when the user says yes to it.
+Status: accepted by the user on 2026-11-09, on their card, with its amendments of 2026-11-08 and 2026-11-09. Proposed on 2026-11-08 by the construct stage of the change `the-runner-brings-up-a-preview-its-control-plane-asks-for`. The direction is the user's, in their words of 2026-11-08 quoted below, which crew's record 0056 holds. That record's consequence on previews, agentplot-design's choice on its point 1, moves a card's preview onto the runner. How the runner meets it is the stage's choice, made on this repository's rules and sluice's statement: the want's shape, the patience at sluice's bound, what is carried, what a done puts away, and crew's file. The record is accepted when the user says yes to it.
 
 Deciders: the user, 2026-11-08, for the direction; the construct stage, for how it is met.
 Sources: crew's record 0056, as rewritten and accepted on 2026-11-08, and its consequence on previews, on crew's branch `design/previews-through-the-runner`; sluice's statement, clauses 98 to 103 and 150, and sluice's `preview` and `preview-release` specs, at sluice v0.74.3; records 0002, 0003, 0010, 0026 and 0027; rules core.1, core.3, core.5, core.10, core.11, core.13, core.16, core.24, core.42, core.49 and core.50; the control-plane-interface, crew-control-plane and runner-protocol specs.
@@ -85,7 +85,7 @@ The command sort was not taken: a command holds no carried answer, and its `Comm
 
 ## Amendment, 2026-11-08: a part's pass brings up its previews
 
-Status: proposed on 2026-11-08 by the code stage of the fix `the-runner-brings-up-previews--takes-main-in-1`, which took `main` into the bolt `the-runner-brings-up-previews`. It is the stage's own choice, within this record and record 0026 as they stand, and cheap to change, so it is not asked. It is accepted with this record.
+Status: accepted by the user on 2026-11-09, on their card, with the record. Proposed on 2026-11-08 by the code stage of the fix `the-runner-brings-up-previews--takes-main-in-1`, which took `main` into the bolt `the-runner-brings-up-previews`. It is the stage's own choice, within this record and record 0026 as they stand, and cheap to change, so it is not asked. It is accepted with this record.
 
 ### Context
 
@@ -111,7 +111,7 @@ Not taken:
 
 ## Amendment, 2026-11-09: a preview leaves the runner's report once its done is answered
 
-Status: proposed on 2026-11-09 by the construct stage of the change `a-put-away-preview-leaves-the-runners-report`. Its direction is that change's brief: "The runner's report keeps a preview only while its control plane still asks for it: once its done is answered, or the work it previewed has landed or been dropped, the preview is let go and leaves the runner's branch". How crew's implementation meets it is the stage's choice, made within this record and crew's record 0056, and cheap to change, so it is not asked. It is accepted with this record.
+Status: accepted by the user on 2026-11-09, on their card, with the record. Proposed that day by the construct stage of the change `a-put-away-preview-leaves-the-runners-report`. Its direction is that change's brief: "The runner's report keeps a preview only while its control plane still asks for it: once its done is answered, or the work it previewed has landed or been dropped, the preview is let go and leaves the runner's branch". How crew's implementation meets it is the stage's choice, made within this record and crew's record 0056, and cheap to change, so it is not asked. It is accepted with this record.
 
 ### Context
 
