@@ -508,19 +508,11 @@ pub fn config_path(arg: Option<&Path>, env: &Env) -> PathBuf {
 }
 
 /// The runner's data directory, `$XDG_DATA_HOME/boomdrive`, else
-/// `~/.local/share/boomdrive` (design 3). Where that is not there and the
-/// one a runner kept before the rename is, `flywheel` beside it, it is
-/// that one: its clones hold the places and views made in them, which
-/// moving it would break, and it holds the report (core.14, core.36;
-/// record 0016).
+/// `~/.local/share/boomdrive` (design 3), and no other, whatever else is
+/// beside it: nothing on disk is read to choose it (core.35, core.36;
+/// record 0035).
 pub fn data_dir(env: &Env) -> PathBuf {
-    let under = xdg(env.data_home.as_deref(), &env.home, ".local/share");
-    let dir = under.join("boomdrive");
-    let before = under.join(crate::BEFORE_RENAME);
-    if dir.symlink_metadata().is_err() && before.is_dir() {
-        return before;
-    }
-    dir
+    xdg(env.data_home.as_deref(), &env.home, ".local/share").join("boomdrive")
 }
 
 /// An XDG base directory: the variable's, else `under` the home. One that
@@ -1016,20 +1008,22 @@ state_repository = \"example/home-state\"
     }
 
     #[test]
-    fn a_data_directory_from_before_the_rename_is_kept() {
+    fn the_data_directory_is_the_runners_own() {
         let under = tempfile::tempdir().unwrap();
         let env = Env {
             home: PathBuf::from("/h"),
             config_home: None,
             data_home: Some(under.path().to_path_buf()),
         };
-        let now = under.path().join("boomdrive");
-        let before = under.path().join("flywheel");
-        assert_eq!(data_dir(&env), now, "neither is there");
-        std::fs::create_dir(&before).unwrap();
-        assert_eq!(data_dir(&env), before, "only the one from before is there");
-        std::fs::create_dir(&now).unwrap();
-        assert_eq!(data_dir(&env), now, "both are there");
+        let own = under.path().join("boomdrive");
+        assert_eq!(data_dir(&env), own, "nothing is there");
+        let other = under.path().join("other");
+        std::fs::create_dir_all(other.join("repositories")).unwrap();
+        std::fs::create_dir_all(other.join("control")).unwrap();
+        std::fs::write(other.join("control").join("report.json"), "{}").unwrap();
+        assert_eq!(data_dir(&env), own, "another folder is beside it");
+        std::fs::create_dir(&own).unwrap();
+        assert_eq!(data_dir(&env), own, "its own folder is made");
     }
 
     #[test]

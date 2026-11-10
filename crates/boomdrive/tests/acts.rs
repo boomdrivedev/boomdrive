@@ -15,12 +15,11 @@ use boomdrive_control::{ActSort, Id, Outcome, Want};
 use fakes::{act, offer, place_of, Bench, Call, Stub};
 use serde_json::Value;
 
-/// The location of the place `status.json` marks `flywheel:<id>`, as a
-/// runner marked it before the rename, when the listing was read (record
-/// 0016).
+/// The location of the place `status.json` marks with the runner's own
+/// mark, `boomdrive:<id>`, when the listing was read.
 fn place(id: &str) -> String {
     let listing: Value = serde_json::from_str(&fakes::fixture("status.json")).unwrap();
-    facts::marked(&listing, &format!("flywheel:{id}"))
+    facts::marked(&listing, &format!("boomdrive:{id}"))
         .and_then(facts::location)
         .expect("the place")
         .to_string()
@@ -111,7 +110,7 @@ fn a_retry_of_the_submission() {
 fn a_land() {
     let stub = Stub::new();
     let listing =
-        fakes::fixture("status.json").replace("\"flywheel:scratch/3\"", "\"boomdrive:home/12\"");
+        fakes::fixture("status.json").replace("\"boomdrive:scratch/3\"", "\"boomdrive:home/12\"");
     stub.answers_text("status", &listing, 0);
     stub.answers("retry", "retry.json", 0);
     let (_, outcome, words, lines) = acting(&stub, "home/12", "home/13", ActSort::Land);

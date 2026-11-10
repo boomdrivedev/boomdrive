@@ -5,7 +5,7 @@
 //! and never a file in the clear; and the contexts it signs, as the
 //! protocol's README gives their bytes.
 
-use crate::protocol::v1::SUBPROTOCOL;
+use crate::protocol::v2::SUBPROTOCOL;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
@@ -398,13 +398,13 @@ pub fn nonce() -> Result<[u8; NONCE_LENGTH], String> {
     Ok(nonce)
 }
 
-/// `bytes` in base64url without padding, as version 1 carries bytes.
+/// `bytes` in base64url without padding, as version 2 carries bytes.
 pub fn base64url(bytes: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
 /// The context `name` over `fields`: the UTF-8 bytes of
-/// `boomdrive.v1`, a space and `name`, then each field after a NUL
+/// `boomdrive.v2`, a space and `name`, then each field after a NUL
 /// byte, with nothing after the last (the protocol's README, *The
 /// signatures*).
 pub fn context(name: &str, fields: &[&[u8]]) -> Vec<u8> {

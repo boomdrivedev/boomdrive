@@ -237,15 +237,6 @@ The runner SHALL keep its report in `<data>/control/report.json`, the whole repo
 - **WHEN** the report file is missing, and an offer `home/12` is pulled whose mark `boomdrive:home/12` Flume's listing holds on place `P`
 - **THEN** it is answered `launched` at `P`, and no `flume launch` is run
 
-### Requirement: A launch marked before the rename is found by its old mark
-
-An offer with no answer, whose place Flume's listing marks `flywheel:<id>`, as a runner marked it before it was renamed, SHALL be answered `launched` at that place and not launched again, just as one marked `boomdrive:<id>` (record 0016; core.10).
-
-#### Scenario: A launch found by its mark from before the rename
-
-- **WHEN** an offer `scratch/4` is pulled with no answer, and Flume's listing holds the mark `flywheel:scratch/4` on place `P`
-- **THEN** it is answered `launched` at `P`, the line naming the mark `flywheel:scratch/4`, and no `flume launch` is run
-
 ### Requirement: A lease is renewed by every report and let go once refused
 
 Every report SHALL name each lease the runner holds with its work, and so renew it. Where a report's answer refuses an id because its lease is no longer the runner's, the runner SHALL drop it from its report, act on it no more, report it no more, run nothing against its place, and say in one line which place it leaves on the host (core.10).
@@ -299,12 +290,17 @@ The first pass that reads a carried place landed SHALL tell the keeper of a land
 
 ### Requirement: The runner acts only on its own places
 
-The runner SHALL carry and act on only the places its report holds, or whose mark Flume's listing gives as `boomdrive:<id>`, or `flywheel:<id>` from before the rename, for an offer it holds. Every other place on the host SHALL be read in the listing and left alone.
+The runner SHALL carry and act on only the places its report holds, or whose mark Flume's listing gives as `boomdrive:<id>` for an offer it holds, and SHALL find no place by any other mark (record 0035; core.10). Every other place on the host SHALL be read in the listing and left alone.
 
 #### Scenario: The user's own place
 
 - **WHEN** Flume's listing holds a place with no mark beside the runner's own
 - **THEN** no `flume` command names it, and no report carries it
+
+#### Scenario: A mark the runner does not give
+
+- **WHEN** an offer `scratch/4` is pulled with no answer, and Flume's listing holds the mark `other:scratch/4` on place `P` and no place marked `boomdrive:scratch/4`
+- **THEN** the offer is not answered `launched` at `P`, and no line names the mark `other:scratch/4`
 
 ### Requirement: The runner says each act, one line each
 

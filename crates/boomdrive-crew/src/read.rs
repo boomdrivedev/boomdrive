@@ -83,6 +83,25 @@ impl Request {
     pub fn of(&self) -> Option<u64> {
         self.get("Of").and_then(whole)
     }
+
+    /// A preview request's key, as crew keys its asks: its `Host`, `Repo`
+    /// and `Revision` as written, where it is a preview naming all three
+    /// (record 0031 as amended on 2026-11-09).
+    pub fn preview_key(&self) -> Option<(&str, &str, &str)> {
+        if self.act() != Some("preview") {
+            return None;
+        }
+        Some((self.host()?, self.get("Repo")?, self.get("Revision")?))
+    }
+
+    /// Whether a preview request is marked done, where it reads as a
+    /// preview by [`want`]'s rules: it has a key, names its `Branch`, and
+    /// its `Done` is yes or no. None where it does not read.
+    pub fn preview_done(&self) -> Option<bool> {
+        self.preview_key()?;
+        self.get("Branch")?;
+        yes_or_no(self, "Done").ok()
+    }
 }
 
 impl Main {
@@ -96,14 +115,33 @@ impl Main {
         self.dropped.contains(&number)
     }
 
+    /// Whether `request`, a preview request with a key, is crew's newest
+    /// of its `Host`, `Repo` and `Revision`: no request of a higher number
+    /// that reads as a preview names the same three. crew's ask of those
+    /// three is its newest preview request of them, so a done ends it
+    /// (record 0031 as amended on 2026-11-09). False where `request` has
+    /// no key.
+    pub fn newest_preview(&self, request: &Request) -> bool {
+        let Some(key) = request.preview_key() else {
+            return false;
+        };
+        !self.requests.iter().any(|later| {
+            later.number > request.number
+                && later.preview_key() == Some(key)
+                && later.preview_done().is_some()
+        })
+    }
+
     /// Whether the work a request serves is still in crew's plan:
     /// `unit/<u>` and `chore/<c>` while the plan holds `Unit: <u>`,
-    /// `fix/<bolt>/<name>` while it holds `Bolt: <bolt>`. A fix of main, a
-    /// role's work and any other the plan never holds always are.
+    /// `bolt/<bolt>` and `fix/<bolt>/<name>` while it holds `Bolt: <bolt>`.
+    /// A fix of main, a role's work and any other the plan never holds
+    /// always are (record 0031 as amended on 2026-11-09).
     pub fn plans(&self, work: Option<&str>) -> bool {
         let parts: Vec<&str> = work.unwrap_or_default().split('/').collect();
         match parts.as_slice() {
             ["unit" | "chore", unit] => self.units.contains(*unit),
+            ["bolt", bolt] => self.bolts.contains(*bolt),
             ["fix", bolt, _] if *bolt != "main" => self.bolts.contains(*bolt),
             _ => true,
         }

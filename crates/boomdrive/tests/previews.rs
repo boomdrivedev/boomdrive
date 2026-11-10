@@ -590,3 +590,30 @@ fn a_previews_lease_refused() {
     assert!(lines.contains(&line.to_string()), "{lines:?}");
     assert!(calls_of(&bench, "release").is_empty());
 }
+
+/// The control-plane-interface spec's "A preview let go": the preview
+/// leaves the report, and nothing is run against it (core.10; record
+/// 0031 as amended on 2026-11-09).
+#[test]
+fn a_preview_let_go() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
+    bench.pass(&mut plane);
+    assert!(bench.report().previews.contains_key(&id("home/30")));
+    plane.let_go(id("home/30"));
+    let (_, lines) = bench.pass(&mut plane);
+    assert!(
+        lines.contains(&"home/30: let go by the control plane".to_string()),
+        "{lines:?}"
+    );
+    assert!(!bench.report().previews.contains_key(&id("home/30")));
+    assert!(calls_of(&bench, "release").is_empty());
+    bench.pass(&mut plane);
+    let last = plane.reports().last().unwrap();
+    assert!(!last.previews.contains_key(&id("home/30")));
+    assert!(calls_of(&bench, "release").is_empty());
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+}

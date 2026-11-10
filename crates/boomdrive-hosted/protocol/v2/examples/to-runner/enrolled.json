@@ -1,0 +1,9 @@
+{
+  "protocol_version": 2,
+  "id": "plane:1",
+  "body": {
+    "enrolled": {
+      "host": "host-1"
+    }
+  }
+}
