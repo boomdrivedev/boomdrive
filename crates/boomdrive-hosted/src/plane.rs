@@ -496,9 +496,12 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8). Version 2 names no preview, so
-    /// no message holding one passes its check; one that reached here
-    /// would be withheld as an inbox is (core.26, core.42).
+    /// it is offered (design Decision 8). Version 2 carries a land among
+    /// the acts and a preview among the wants: a land is given as any act,
+    /// and a preview of a repository the partition is not served is
+    /// withheld as an offer is, every other field of it as given (design
+    /// Decision 6 of the-hosted-protocol-carries-land-and-preview; core.26,
+    /// core.53, core.55).
     fn own_wants(&mut self, wants: Vec<Want>, say: &connection::Say) -> Vec<Want> {
         let mut withheld = BTreeSet::new();
         let mut own = Vec::new();

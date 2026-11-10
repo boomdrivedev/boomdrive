@@ -593,6 +593,104 @@ fn each_report_its_own() {
     assert_eq!(launches("work"), ["l-2"]);
 }
 
+/// A preview `id` of `main` in `repository` at `revision`, done or not,
+/// under a lease of its own, as a control plane of version 2 asks it.
+fn preview(id: &str, repository: &str, revision: &str, done: bool) -> Value {
+    json!({ "preview": {
+        "id": id,
+        "lease": { "number": 1, "expires": "2026-11-01T11:00:00Z" },
+        "repository": repository, "branch": "main", "revision": revision, "done": done
+    } })
+}
+
+/// A full revision of the tests' own.
+const REVISION: &str = "0123456789abcdef0123456789abcdef01234567";
+
+/// The hosted-control-plane spec's "A preview carried" (design Decision
+/// 6): a preview and its done the control plane asks are given to the
+/// runner in its order, each id under the partition's prefix and every
+/// other field as given (core.55).
+#[test]
+fn a_preview_carried() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            preview("preview-1", "example/app", REVISION, false),
+            preview("preview-2", "example/app", REVISION, true)
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/preview-1", "home/preview-2"]);
+    for (want, done) in wants.iter().zip([false, true]) {
+        let Want::Preview(preview) = want else {
+            panic!("a preview: {want:?}");
+        };
+        assert_eq!(
+            preview.lease,
+            Lease {
+                number: 1,
+                expires: Some(At::parse("2026-11-01T11:00:00Z").expect("a time")),
+            }
+        );
+        assert_eq!(preview.repository, "example/app");
+        assert_eq!(preview.branch, "main");
+        assert_eq!(preview.revision, REVISION);
+        assert_eq!(preview.done, done);
+    }
+}
+
+/// The hosted-control-plane spec's "A preview of a revision that is not
+/// a commit" (design Decision 2): a preview at the revision `R1` is given
+/// as given, sluice's to answer.
+#[test]
+fn a_preview_of_a_revision_that_is_not_a_commit() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([preview("preview-1", "example/app", "R1", false)]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    let [Want::Preview(preview)] = &wants[..] else {
+        panic!("one preview: {wants:?}");
+    };
+    assert_eq!(preview.id, Id::new("home/preview-1"));
+    assert_eq!(preview.revision, "R1");
+}
+
+/// The hosted-control-plane spec's "A preview of a repository not
+/// served", beside `another_partitions_repository`: a preview of
+/// `example/service`, which `home` is not served, is given at neither of
+/// two pulls, and one line names it, `home` and `example/service`
+/// (core.26).
+#[test]
+fn a_preview_of_a_repository_not_served() {
+    let fake = Fake::start();
+    fake.set_wants(
+        "home",
+        json!([
+            preview("preview-9", "example/service", REVISION, false),
+            preview("preview-1", "example/app", REVISION, false)
+        ]),
+    );
+    let mut plane = Plane::open(&fake);
+    let report = Report::default();
+    for _ in 0..2 {
+        let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
+        assert_eq!(ids(&pulled.wants), ["home/preview-1"]);
+    }
+    let named: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("home/preview-9"))
+        .collect();
+    assert_eq!(named.len(), 1, "{:#?}", plane.lines());
+    assert!(
+        named[0].starts_with("home: ") && named[0].contains("example/service"),
+        "{named:?}"
+    );
+}
+
 #[test]
 fn another_partitions_repository() {
     let fake = Fake::start();
