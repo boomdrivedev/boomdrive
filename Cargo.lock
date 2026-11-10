@@ -176,6 +176,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "boomdrive-bounded"
+version = "0.0.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "boomdrive-control"
 version = "0.0.0"
 dependencies = [
