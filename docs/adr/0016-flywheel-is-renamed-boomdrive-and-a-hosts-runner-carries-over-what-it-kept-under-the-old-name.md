@@ -9,7 +9,7 @@ decision-makers:
 
 # Flywheel is renamed Boomdrive, and a host's runner carries over what it kept under the old name
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-04 by the code stage of the chore `flywheel-is-renamed-boomdrive`. The rename and its names are the user's decision, in their words below. How this repository carries it out is the stage's choice, made on the written rules.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-04 by the code stage of the chore `flywheel-is-renamed-boomdrive`. The rename and its names are the user's decision, in their words below. How this repository carries it out is the stage's choice, made on the written rules. Its first three points, which kept and read what a runner made under the old name, are replaced by record 0035, on the user's word of 2026-11-09; a host moves its data by hand.
 
 Deciders: the user, for the rename and its names; the code stage, for how this repository carries it out.
 Sources: the user's words in the brief of the chore `flywheel-is-renamed-boomdrive`, 2026-11-04; the names GitHub gives the repositories on that day; record 0001; rules core.5, core.10, core.14, core.17, core.19, core.31, core.33, core.34, core.36 and core.42; the clones and work-into-flume specs.
