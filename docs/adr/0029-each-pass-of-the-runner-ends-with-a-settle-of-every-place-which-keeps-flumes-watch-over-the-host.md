@@ -1,7 +1,7 @@
 ---
 number: 29
 title: Each pass of the runner ends with a settle of every place, which keeps Flume's watch over the host while the runner runs
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # Each pass of the runner ends with a settle of every place, which keeps Flume's watch over the host while the runner runs
 
-Status: proposed on 2026-11-07 by the construct stage of the change `each-pass-ends-with-a-settle`. The direction is the user's, in their words of 2026-11-06 quoted below. How the runner meets it, when in its loop the settle runs, the bound it states and what it says, is the stage's choice, made on this repository's rules and Flume's statement. The record is accepted when the user says yes to it.
+Status: accepted by the user on 2026-11-09, on their card, with its amendment of 2026-11-08. Proposed on 2026-11-07 by the construct stage of the change `each-pass-ends-with-a-settle`. The direction is the user's, in their words of 2026-11-06 quoted below. How the runner meets it, when in its loop the settle runs, the bound it states and what it says, is the stage's choice, made on this repository's rules and Flume's statement. The record is accepted when the user says yes to it.
 
 Deciders: the user, 2026-11-06, for the direction; the construct stage, for how it is met.
 Sources: Flume record 0051 and the design of Flume's change `every-place-waiting-on-the-merge-queue-is-settled-at-every-depth`, its named follow-up B1; Flume's statement, clauses 46, 119, 120 and 208 and section 9's runner; a planner's signal of 2026-11-06; Flume v0.17.0, the first release that takes `flume settle --every`; records 0002, 0003, 0010 and 0026; rules core.1, core.11, core.13, core.16, core.22 and core.50; the running spec.
@@ -62,7 +62,7 @@ Option 2 runs two settles back to back whenever both passes are due, and holds a
 
 ## Amendment, 2026-11-08: each pass settles on its own thread
 
-Status: proposed on 2026-11-08 by the code stage of the fix `the-runner-serves-each-partition-apart--take-main-e82cd25`, which took `main` into the bolt `the-runner-serves-each-partition-apart`, in its change `each-parts-pass-ends-with-a-settle`. It is the stage's own choice, within this record and record 0026 as they stand, and cheap to change, so it is not asked. It is accepted with this record.
+Status: accepted by the user on 2026-11-09, on their card, with the record. Proposed on 2026-11-08 by the code stage of the fix `the-runner-serves-each-partition-apart--take-main-e82cd25`, which took `main` into the bolt `the-runner-serves-each-partition-apart`, in its change `each-parts-pass-ends-with-a-settle`. It is the stage's own choice, within this record and record 0026 as they stand, and cheap to change, so it is not asked. It is accepted with this record.
 
 ### Context
 
