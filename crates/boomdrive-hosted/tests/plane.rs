@@ -16,8 +16,8 @@ mod common;
 
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
-    Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part, Report,
-    ToolVersion, Want, INTERFACE_VERSION,
+    ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part,
+    Report, ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
 use boomdrive_hosted::key::{Memory, Store};
@@ -314,6 +314,89 @@ fn ids_under_their_partition() {
         .pull(&hello(&report), &report)
         .expect("read");
     assert_eq!(ids(&work.wants), ["work/l-1"]);
+}
+
+/// An act `id` on the launch `launch`, under its lease, a confirm as
+/// `recipient` of `deliveries`, as a control plane of version 2 asks it.
+fn confirm(id: &str, launch: &str, recipient: &str, deliveries: &[&str]) -> Value {
+    json!({ "act": {
+        "id": id, "launch": launch, "lease": 1,
+        "what": { "confirm": { "recipient": recipient, "deliveries": deliveries } }
+    } })
+}
+
+/// `home`'s part's wants at its pull of `fake`, which asks `wants`, and
+/// whether `home` sent a `message_refused`.
+fn home_pulls(fake: &Fake, wants: Value) -> (Vec<Want>, bool) {
+    fake.set_wants("home", wants);
+    let mut parts = Parts::open(fake);
+    let report = Report::default();
+    let pulled = parts
+        .part("home")
+        .pull(&hello(&report), &report)
+        .expect("read");
+    let refused = sent(&fake.taken(), "home", "message_refused");
+    (pulled.wants, refused)
+}
+
+/// The hosted-control-plane spec's "A confirm carried" (design Decision 8
+/// of the-hosted-protocol-carries-every-end-of-a-place): a confirm the
+/// control plane asks is given to the runner as an act under the
+/// partition's prefix, its recipient and keys as given.
+#[test]
+fn a_confirm_carried() {
+    let fake = Fake::start();
+    let key = "change--a/0a1b2c3d/stage/code/1/delivered";
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            offer("l-1", "example/app", &[]),
+            confirm("c-1", "l-1", "scratch/planner", &[key])
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", "home/c-1"]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(act.lease, 1);
+    assert_eq!(
+        act.what,
+        ActSort::Confirm {
+            recipient: "scratch/planner".to_string(),
+            deliveries: vec![key.to_string()],
+        }
+    );
+}
+
+/// The hosted-control-plane spec's "A confirm the runner refuses": a
+/// confirm of no key reaches the runner as an act, the hosted
+/// implementation refusing nothing of it, and it is the runner's to
+/// refuse (core.56).
+#[test]
+fn a_confirm_the_runner_refuses() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            offer("l-1", "example/app", &[]),
+            confirm("c-2", "l-1", "scratch/planner", &[])
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", "home/c-2"]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(
+        act.what,
+        ActSort::Confirm {
+            recipient: "scratch/planner".to_string(),
+            deliveries: vec![],
+        }
+    );
 }
 
 /// The hosted-control-plane spec's "One partition unreachable": `home`'s
