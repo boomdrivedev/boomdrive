@@ -75,6 +75,12 @@ let
   deadnixVersion = "1.3.2";
   actionlintVersion = "1.7.12";
 
+  # Biome, which formats the site's TypeScript, JavaScript and CSS through
+  # treefmt.nix (record 0037, core.7): nixpkgs' build, pinned by
+  # devenv.lock and asserted to be this version as git is. treefmt.nix's
+  # Biome is the same package.
+  biomeVersion = "2.5.13";
+
   # The flake's inputs as flake.lock locks them, fetched by this shell
   # outside the gate's sandbox (design Decision 14).
   flakeInputs = import ./nix/inputs.nix { };
@@ -170,6 +176,10 @@ in
     (
       assert pkgs.actionlint.version == actionlintVersion;
       pkgs.actionlint
+    )
+    (
+      assert pkgs.biome.version == biomeVersion;
+      pkgs.biome
     )
     (
       assert flakePkgs.git-cliff.version == gitCliffVersion;
