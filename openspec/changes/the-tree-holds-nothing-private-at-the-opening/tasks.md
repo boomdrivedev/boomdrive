@@ -18,7 +18,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 2. The rules' details
 
-- [ ] 2.1 In `docs/architecture/core.md`, core.54's details name the design agent by its role in each of their three mentions, the quoted words as they stand, and core.57's details cite a host's draft of 2026-11-09, naming no host; no rule's text changes (design Decision 1). True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.1 In `docs/architecture/core.md`, core.54's details name the design agent by its role in each of their three mentions, the quoted words as they stand, and core.57's details cite a host's draft of 2026-11-09, naming no host; no rule's text changes (design Decision 1). True when `sluice exec main -- moon run root:format` passes.
 
 ## 3. The archived changes
 
