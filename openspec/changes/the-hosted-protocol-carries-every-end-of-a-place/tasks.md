@@ -10,7 +10,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The confirm bolt
 
-- [ ] 1.1 The branch takes `bolt/the-runner-confirms-the-ends-it-carries`: it merges `origin/main`, and, where `origin/main` does not hold that bolt's landing, `origin/bolt/the-runner-confirms-the-ends-it-carries` after it. Each conflict in records 0002 and 0030, or in core.54, takes the bolt's side; core.42's and core.27's details keep this change's text (design Decision 10; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test confirms` passes.
+- [x] 1.1 The branch takes `bolt/the-runner-confirms-the-ends-it-carries`: it merges `origin/main`, and, where `origin/main` does not hold that bolt's landing, `origin/bolt/the-runner-confirms-the-ends-it-carries` after it. Each conflict in records 0002 and 0030, or in core.54, takes the bolt's side; core.42's and core.27's details keep this change's text (design Decision 10; Task notes 1.1). True when `devenv shell -- cargo test -p boomdrive --test confirms` passes.
 
 ## 2. Version 2 beside version 1
 
