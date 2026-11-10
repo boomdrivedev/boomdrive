@@ -307,13 +307,42 @@ fn copy(report: &mut Value) -> &mut Value {
 /// and how it alters that example's copy.
 type Holding = (&'static str, &'static str, fn(&mut Value));
 
+/// The name `text_the_cloud_does_not_keep` gives the place waiting on an
+/// answer once its stall's end is added, as [`stalled`] makes it.
+const STALLED: &str = "a stalled place";
+
+/// Version 2's example of a place waiting on an answer, its copy holding
+/// the stall's end Flume 0.21.0 records, cut to what version 2 names of
+/// it: never its move, answerer, stop-short or hold (design Decision 1 of
+/// the-hosted-protocol-carries-every-end-of-a-place).
+fn stalled() -> Value {
+    altered(
+        "from-runner",
+        "report-a-place-waiting-on-an-answer.json",
+        |report| {
+            let ends = copy(report)["ends"].as_array_mut().expect("ends");
+            ends.push(json!({
+                "of": "stall",
+                "read_at": 1793559640,
+                "deliveries": [],
+                "key": "stall/1793559632",
+                "pending_for": ["example/planner"],
+                "delivery": "fix--tabs/0a1b2c3d/stall/1793559632",
+                "expires_at": 1794164440,
+                "owed": [{ "recipient": "example/planner", "expired": false, "known": true }],
+                "confirmed": []
+            }));
+        },
+    )
+}
+
 /// The runner-protocol spec's "Text the cloud does not keep": a place's
 /// status copy holds none of it (core.27).
 #[test]
 fn text_the_cloud_does_not_keep() {
     let validator = from_runner();
     let live = "report-a-live-agent-with-its-pane.json";
-    let cases: [Holding; 8] = [
+    let cases: [Holding; 10] = [
         ("an agent's last_words", live, |copy| {
             copy["agent"]["last_words"] = json!("Done.");
         }),
@@ -347,10 +376,31 @@ fn text_the_cloud_does_not_keep() {
                 copy["stages"][0]["end"]["report"] = json!("/home/runner/state/report.md");
             },
         ),
+        ("a stall's waiting", STALLED, |copy| {
+            copy["ends"][1]["waiting"] = json!("answer");
+        }),
+        ("a stall's stop_short", STALLED, |copy| {
+            copy["ends"][1]["stop_short"] = json!({
+                "words": "Which width is a tab: 4 or 8?",
+                "needs": "needs_answer",
+                "key": "stage/code/1/ended_short"
+            });
+        }),
     ];
+    passes(
+        &validator,
+        &stalled(),
+        "a status copy holding a stall's end",
+    );
     for (what, name, alter) in cases {
-        passes(&validator, &example("from-runner", name), name);
-        let holding = altered("from-runner", name, |report| alter(copy(report)));
+        let holding = if name == STALLED {
+            let mut report = stalled();
+            alter(copy(&mut report));
+            report
+        } else {
+            passes(&validator, &example("from-runner", name), name);
+            altered("from-runner", name, |report| alter(copy(report)))
+        };
         refused(
             &validator,
             &holding,
