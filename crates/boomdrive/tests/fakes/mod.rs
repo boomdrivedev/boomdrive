@@ -871,9 +871,10 @@ pub fn preview(id: &str, branch: &str, revision: &str, done: bool) -> Want {
 }
 
 /// The stub's program. Each call writes its arguments, NUL-terminated, to
-/// `call-<n>`, whole once there, so a test polling it never reads half a
-/// call, whether `FLUME_RECIPIENT` was set to `recipient-<n>`, and
-/// the brief its `--brief-file` names to `brief-<n>`. It then prints the
+/// `call-<n>`, whole once there, so a test that reads the calls while the
+/// runner runs never reads one half written. It writes whether
+/// `FLUME_RECIPIENT` was set to `recipient-<n>`, and the brief its
+/// `--brief-file` names to `brief-<n>`. It then prints the
 /// fixture `<what>.stdout` names and exits with `<what>.exit`'s status,
 /// each where the test wrote one, `<what>` being its command, or
 /// `status-of` for `status` with a place.
@@ -994,14 +995,15 @@ impl Stub {
 
 /// The stub `sluice`'s program. Each call writes its arguments,
 /// NUL-terminated, to `call-<n>`, whole once there, and the directory it
-/// ran in to `dir-<n>`. Where the test wrote `<what>.wait`, it waits, as
-/// sluice's ask of a preview waits at the host's bound, until it is sent
-/// SIGINT, then says it stopped on standard error and exits 130 with no
-/// document, as sluice does (Task notes 4.3); its wait is a `sleep` it
-/// awaits, so its trap runs at once, and which it ends. Otherwise it
-/// prints the file `<what>.stdout` names, writes `<what>.stderr` on
-/// standard error, and exits with `<what>.exit`'s status, each where the
-/// test wrote one, `<what>` being its command.
+/// ran in to `dir-<n>`.
+/// Where the test wrote `<what>.wait`, it waits, as sluice's ask of a
+/// preview waits at the host's bound, until it is sent SIGINT, then says
+/// it stopped on standard error and exits 130 with no document, as sluice
+/// does (Task notes 4.3); its wait is a `sleep` it awaits, so its trap
+/// runs at once, and which it ends. Otherwise it prints the file
+/// `<what>.stdout` names, writes `<what>.stderr` on standard error, and
+/// exits with `<what>.exit`'s status, each where the test wrote one,
+/// `<what>` being its command.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
