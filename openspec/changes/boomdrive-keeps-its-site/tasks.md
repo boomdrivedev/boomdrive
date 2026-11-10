@@ -10,7 +10,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 1. The site's history and its place in the tree
 
-- [ ] 1.1 boomdrive-web's history is merged under `site/`, as design Decision 1 has it:
+- [x] 1.1 boomdrive-web's history is merged under `site/`, as design Decision 1 has it:
   - In a scratch clone of `https://github.com/agentplot/boomdrive-web`, its `main` is rewritten by `nix run nixpkgs#git-filter-repo -- --to-subdirectory-filter site`.
   - The rewritten `main` is merged into this branch with `git merge --allow-unrelated-histories --no-ff`, as one commit, `chore(site): take boomdrive-web's history at <commit> under site/`, naming the commit taken, `4ed5fbe` at this writing.
   - The merge changes nothing outside `site/`. `git log --format=%ad -- site/src/content/notes/what-our-fleet-re-proves.md` reaches the commit that first published the note.
