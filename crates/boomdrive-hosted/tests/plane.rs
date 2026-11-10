@@ -1423,3 +1423,40 @@ fn a_previews_copy_that_fails() {
     );
     assert!(!lines[0].contains("1793750400"), "{lines:?}");
 }
+
+/// The hosted-control-plane spec's "A report taken back holds its
+/// previews" (design Decision 7), beside
+/// `a_report_taken_back_holds_no_status`: a preview of the report the
+/// control plane hands back is given to the runner under the partition's
+/// prefix, as held, its copy's JSON as its text and no status.
+#[test]
+fn a_report_taken_back_holds_its_previews() {
+    let fake = Fake::start();
+    let held = example("from-runner", "report-a-preview-brought-up.json")["body"]["report"].clone();
+    let (id, kept) = held["previews"]
+        .as_object()
+        .and_then(|previews| previews.iter().next())
+        .map(|(id, kept)| (id.clone(), kept.clone()))
+        .expect("a preview");
+    fake.set_report("home", held);
+    let mut plane = Plane::open(&fake);
+    let report = Report::default();
+    let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
+    let back = pulled
+        .report
+        .expect("the report home's control plane holds");
+    let previewed = &back.previews[&Id::new(format!("home/{id}"))];
+    let as_held: Lease = serde_json::from_value(kept["lease"].clone()).expect("a lease");
+    assert_eq!(previewed.lease, as_held);
+    assert_eq!(previewed.repository, kept["repository"]);
+    assert_eq!(previewed.revision, kept["revision"]);
+    assert_eq!(previewed.done, kept["done"]);
+    assert_eq!(json!(previewed.outcome), kept["outcome"]);
+    assert_eq!(json!(previewed.words), kept["words"]);
+    assert_eq!(json!(previewed.at), kept["at"]);
+    let text: Value = serde_json::from_str(previewed.text.as_deref().expect("its text"))
+        .expect("its text is JSON");
+    assert!(text.is_object(), "{text}");
+    assert_eq!(text["name"], kept["copy"]["name"]);
+    assert_eq!(previewed.status, None);
+}

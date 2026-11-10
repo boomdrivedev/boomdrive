@@ -17,8 +17,8 @@ use crate::key::{self, KeyName, Store};
 use crate::protocol::v2::{self, MessageId};
 use crate::table::{self, Table};
 use boomdrive_control::{
-    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Pulled, Report,
-    Reported, Unread, Unsent, Wake, Want,
+    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Previewed, Pulled,
+    Report, Reported, Unread, Unsent, Wake, Want,
 };
 use ed25519_dalek::SigningKey;
 use serde_json::value::RawValue;
@@ -573,8 +573,12 @@ impl Partition {
     /// under the partition's prefix: each launch's lease and answer, each
     /// act, command and inbox, and no launch's status or entry, which the
     /// control plane holds as their copies and not as the tools' answers
-    /// (design Decision 7). Version 2's report holds no preview, so none
-    /// is taken back (core.42).
+    /// (design Decision 7). Each preview is given back with its copy's
+    /// JSON as its text, so a done after the runner lost its report file
+    /// puts away the preview by the name sluice gave it, and no status,
+    /// which the runner reads again from sluice's listing (design Decision
+    /// 7 of the-hosted-protocol-carries-land-and-preview; core.10,
+    /// core.55).
     fn taken_back(&self, report: v2::Report) -> Report {
         Report {
             launches: report
@@ -609,7 +613,24 @@ impl Partition {
                 .into_iter()
                 .map(|(id, inbox)| (self.prefixed(&id), inbox))
                 .collect(),
-            previews: BTreeMap::new(),
+            previews: report
+                .previews
+                .into_iter()
+                .map(|(id, previewed)| {
+                    let previewed = Previewed {
+                        lease: previewed.lease,
+                        repository: previewed.repository,
+                        revision: previewed.revision,
+                        done: previewed.done,
+                        outcome: previewed.outcome,
+                        text: previewed.copy.map(|copy| copy.get().to_string()),
+                        words: previewed.words,
+                        status: None,
+                        at: previewed.at,
+                    };
+                    (self.prefixed(&id), previewed)
+                })
+                .collect(),
         }
     }
 
