@@ -3,9 +3,11 @@
 Verified on 2026-11-09 against `change/boomdrive-keeps-its-site` at
 `58e9929b`.
 
-**Verdict: archived.** The repository's whole checks pass. All 20 tasks
-are ticked and hold in the tree, and every requirement and scenario of the
-change's six specs is met.
+**Verdict: not archived.** The repository's whole checks pass. All 20
+tasks are ticked and hold in the tree, and every requirement and scenario
+of the change's six specs is met. But archiving the change writes a
+`releases` spec that `root:specs` refuses: its two modified requirements
+are too long for `openspec validate --strict`. See the finding below.
 
 ## The whole checks
 
@@ -64,7 +66,7 @@ All 20 tasks are ticked. Each was checked against the tree:
 ## Specs
 
 - **`site`**: every requirement and scenario is met, each proved by the site's task that the gate ran.
-- **`releases`**: the two modified requirements and their three new scenarios are met (`root:releases`).
+- **`releases`**: the two modified requirements and their three new scenarios are met (`root:releases`). Archived, though, the spec fails `root:specs`; see the finding below.
 - **`content-kind`**: met.
   - The declaration names sluice as the merge queue and the kind as the spec has it, and each prompt resolves under `site/docs/prompts/`.
   - The brief's paths exist, read from `site/` or, where it says so, from the root.
@@ -74,6 +76,42 @@ All 20 tasks are ticked. Each was checked against the tree:
 - **`method-tools`**: met. Each principle's strip in `site/src/content/principles/` names the tools the scenario "The tools each principle names" lists. `site:check` and `site:build` hold the strips' schemas.
 - **`method-diagrams`**: carried as boomdrive-web held it, its paths under `site/`. No task of this change changes a diagram, and the site builds.
 - **`tools-hub`**: met. Timber's card names Never prove twice, as the site shows it.
+
+## Finding: the archived releases spec fails root:specs
+
+`openspec archive boomdrive-keeps-its-site` applies cleanly, and
+`openspec validate boomdrive-keeps-its-site --strict` passes. The spec it
+writes, `openspec/specs/releases/spec.md`, then fails `root:specs`
+(`sluice exec main -- moon run root:specs`): "Totals: 21 passed, 1 failed
+(22 items)", `✗ spec/releases`. `openspec validate releases --type spec
+--strict` gives the reason:
+
+> requirements[0]: Requirement text is very long (>500 characters).
+> requirements[1]: Requirement text is very long (>500 characters).
+
+Each modified requirement adds a sentence for the site's paths to text
+that was already near the limit:
+
+| requirement | on `main` | with this change |
+|---|---|---|
+| The version is git-cliff's, from the commits since the newest release | 474 | 605 |
+| The notes are git-cliff's, for the same commits | 470 | 591 |
+
+The change itself validates under `--strict`, and `root:changes` passes.
+Only the spec the archive writes fails the length check, so the gate
+cannot see this before the archive.
+
+The archive commit was moved back out of the archive, so the change stands
+unarchived on this branch.
+
+**What must change:** keep each of the `releases` delta's requirements
+within 500 characters. One way is to state the site's paths as a
+requirement of their own, "A change to the site alone releases nothing",
+holding the scenarios "A change to the site alone", "A change to the site
+and the runner" and "The site's commit in no notes". Then the two MODIFIED
+requirements can keep their `main` text, or be dropped from the delta. A
+narrow proof is to archive in a scratch checkout and run
+`sluice exec main -- moon run root:specs`.
 
 ## Not blocking
 
