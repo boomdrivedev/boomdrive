@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topics on control planes and on the command line; the control-plane-interface, branch-commands and crew-control-plane specs; agentplot/boomdrive-cloud's records 0017, 0022 and 0026 and its rules core.36 to core.39, core.50 and core.52, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F49; rules core.1, core.2 and core.3.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topics on control planes and on the command line; the control-plane-interface, branch-commands and crew-control-plane specs; agentplot/boomdrive-cloud's records 0017, 0022 and 0026 and its rules core.36 to core.39, core.50 and core.52, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F49; rules core.1, core.2 and core.3.
 
 ## Context and problem statement
 

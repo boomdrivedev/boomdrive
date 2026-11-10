@@ -50,7 +50,7 @@ There are no area pages, so `docs/architecture/core.md` binds every path this ch
 
 `flume::RECIPIENT` is `"boomdrive"`: fixed, the same on every launch and every host. `flume::recipients(given)` gives the launch's recipients as given, then `RECIPIENT` where `given` names any and does not name it already. `Cli`'s `launch_args` passes `--recipient` for each of them, so every `flume launch` the runner runs holds the runner beside the recipients its launch names. `LaunchArgs::recipients` stays what the launch gives (core.15).
 
-A launch that names no recipient gets none of the runner's. Naming the runner alone would drop Flume's default, the answerer behind the stream among them (7), and that role would hear none of the place's ends. agentplot-design's ground for the answer was that naming the runner beside the role "drops no default recipient", and this keeps it. Such a place is followed as before.
+A launch that names no recipient gets none of the runner's. Naming the runner alone would drop Flume's default, the answerer behind the stream among them (7), and that role would hear none of the place's ends. The design agent's ground for the answer was that naming the runner beside the role "drops no default recipient", and this keeps it. Such a place is followed as before.
 
 Not taken: a caller apart from the recipients, `--caller`, which Flume record 0060 folds into the recipients and Flume does not take.
 
@@ -125,7 +125,7 @@ All run on the crate's fakes and stubs, with neutral names and paths (core.41).
 
 - **core.44**, for Flume: the set keeps this flake's recipe for Flume at `v0.20.0`, whose own flake builds it (Flume record 0055), where core.44 rules out "a recipe kept here for a tool whose own flake builds it". Taking Flume's package from its flake goes with taking its `services.flume` module, which record 0023 has the Boomdrive flake re-export from the tool's own flake. That is a change of its own, which moves the set's Flume, its tests and the modules together. Here the set's Flume moves only to the least the runner names, by its tag and its git crates' hashes as the recipe took every tag before.
 
-The work-into-flume spec's "Flume runs with no recipient of the runner's own" is amended in this change, as the user's answer and agentplot-design ask.
+The work-into-flume spec's "Flume runs with no recipient of the runner's own" is amended in this change, as the user's answer and the design agent ask.
 
 ## Risks / Trade-offs
 
@@ -146,7 +146,7 @@ Once this runs on every host crew serves, crew's unit `crew-reads-each-pieces-en
 
 ## Task notes
 
-- **1.1** Record 0030 and core.54 say what the user's answer and agentplot-design's words decide, and Flume `v0.20.0` gives. The record is proposed until the user has seen it.
+- **1.1** Record 0030 and core.54 say what the user's answer and the design agent's words decide, and Flume `v0.20.0` gives. The record is proposed until the user has seen it.
 - **1.2** Move the set exactly as `4dd74ca` did: `flake.nix`'s Flume `url` tag, `nix flake lock --update-input flume` under the devenv shell, each of Flume's git crates' hashes at the new tag in `nix/packages/flume-git-crates.nix`, and README's `--override-input flume` example. Set `flume::LEAST` to the release's version in the same task.
 - **2.1** `flume_runs_with_no_recipient_of_the_runners_own` keeps its name: it proves `FLUME_RECIPIENT` unset. `the_runner_is_one_more_recipient` in `tests/flume.rs` asserts the argv of a launch with recipients and of one without.
 - **4.2** `Work::collect` reads the entry through `carried_entry`, and the record's id from the entry's `place`, never by joining the location and a time itself.

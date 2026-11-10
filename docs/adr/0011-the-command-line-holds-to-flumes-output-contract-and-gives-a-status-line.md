@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topics on the command line and on what stays private; the running and work-into-flume specs; Flume's README and statement on its JSON form, refusals and exits, and sluice's on its own; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its page 8 and notes on the unit line; rule core.3.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topics on the command line and on what stays private; the running and work-into-flume specs; Flume's README and statement on its JSON form, refusals and exits, and sluice's on its own; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, its page 8 and notes on the unit line; rule core.3.
 
 ## Context and problem statement
 

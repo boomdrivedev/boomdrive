@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-09, below: one Boomdrive App for every host, its key held by the runner where no cloud holds it, and every tool's token from the runner.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; sluice record 0019; agentplot/boomdrive-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; sluice record 0019; agentplot/boomdrive-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
 
 ## Context and problem statement
 
@@ -52,7 +52,7 @@ Not taken: tokens narrowed for each call, and every mint as an event on the chai
 
 ## Amendment, 2026-11-09: one Boomdrive App, its key held by the runner where no cloud holds it
 
-Status: accepted by the user on 2026-11-09, on agentplot-design's card: "One Boomdrive App; the runner holds its key and gives every tool its tokens". They asked it in agentplot-design's pane that day, as the family moved to the boomdrivedev org: "Do we want to mimic the control plane cloud concept here and have a Boomdrive GitHub app that passes the credentials through from the cloud down to Sluice?" How it is built is agentplot-design's own choice, cheap to change.
+Status: accepted by the user on 2026-11-09, on the design agent's card: "One Boomdrive App; the runner holds its key and gives every tool its tokens". They asked it in the design agent's pane that day, as the family moved to the boomdrivedev org: "Do we want to mimic the control plane cloud concept here and have a Boomdrive GitHub app that passes the credentials through from the cloud down to Sluice?" How it is built is the design agent's own choice, cheap to change.
 
 - **One App.** The family's forge identity is one GitHub App named for the product, owned by the `boomdrivedev` org. It is the App the cloud holds once it serves hosts, and it replaces sluice's App and the older `agentplot-flywheel`. It asks for what sluice's App asks: contents, workflows, commit statuses, checks and pull requests to write, and metadata to read.
 - **Where no cloud holds it, the runner does.** On a host whose control plane is not hosted, crew's among them, the runner holds the App's key, a file named by a path in the runner's own settings, outside the Nix store, readable by its owner alone, as sluice's own key is (sluice core.51). The runner mints a short-lived installation token from it, for one repository at a time. Under a hosted control plane, no key is on the host and the cloud mints the token, as decided above.
