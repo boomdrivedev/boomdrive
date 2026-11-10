@@ -154,12 +154,12 @@ fn a_held_record_is_collected_once_its_report_holds_it() {
     assert_eq!(bench.flume.collects(), [record]);
 }
 
-/// The work-into-flume spec's "A launch found by its mark from before the
-/// rename", over Flume 0.4.1's own listing, read before the rename (record
-/// 0016): `flywheel:scratch/4` marks `fix--tabs`, and `flywheel:scratch/1`
-/// the record of `fix--parser`, tidied with an end pending, which is found
-/// at the place it stood. `a_launch_whose_answer_was_lost` finds a launch
-/// by the mark `boomdrive:<id>`.
+/// The work-into-flume spec's "A launch found by its mark", over Flume
+/// 0.4.1's own listing: `boomdrive:scratch/4` marks `fix--tabs`, and
+/// `boomdrive:scratch/1` the record of `fix--parser`, tidied with an end
+/// pending, which is found at the place it stood, and nothing is
+/// launched. `a_launch_whose_answer_was_lost` proves it over the fake's
+/// listing.
 #[test]
 fn a_launch_found_by_its_mark() {
     let bench = Bench::new();
@@ -172,10 +172,10 @@ fn a_launch_found_by_its_mark() {
     ]);
     let (_, lines) = bench.pass(&mut plane);
     let listing: Value = serde_json::from_str(&fixture("status.json")).unwrap();
-    let tabs = facts::marked(&listing, "flywheel:scratch/4")
+    let tabs = facts::marked(&listing, "boomdrive:scratch/4")
         .and_then(facts::location)
         .unwrap();
-    let parser = facts::marked(&listing, "flywheel:scratch/1")
+    let parser = facts::marked(&listing, "boomdrive:scratch/1")
         .and_then(facts::location)
         .unwrap();
     let (parser, at) = parser.rsplit_once('@').unwrap();
@@ -191,7 +191,7 @@ fn a_launch_found_by_its_mark() {
     assert_eq!(bench.flume.launches(), []);
     assert_eq!(
         lines[0],
-        format!("scratch/4: launched at {tabs}, as its mark flywheel:scratch/4 shows")
+        format!("scratch/4: launched at {tabs}, as its mark boomdrive:scratch/4 shows")
     );
 }
 

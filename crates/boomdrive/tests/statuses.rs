@@ -64,12 +64,12 @@ fn statuses_of(stub: &Stub) -> usize {
         .count()
 }
 
-/// `status.json` with the entry of the place marked `flywheel:scratch/4`
+/// `status.json` with the entry of the place marked `boomdrive:scratch/4`
 /// stalled, as a later listing would show it.
 fn stalled(answer: &str) -> String {
     let mut value: Value = serde_json::from_str(&fixture(answer)).unwrap();
     for entry in value["status"]["places"].as_array_mut().unwrap() {
-        if entry["mark"] == "flywheel:scratch/4" {
+        if entry["mark"] == "boomdrive:scratch/4" {
             entry["stalled"] = json!(true);
         }
     }
