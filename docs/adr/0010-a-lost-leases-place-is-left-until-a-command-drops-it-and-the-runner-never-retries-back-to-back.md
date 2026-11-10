@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-07, below: an act on a place Flume does not stand costs the reading of Flume's refusal.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topic on failure and offline behaviour; the clones, configuration, running and work-into-flume specs; the verify report of `the-runner-carries-crews-work-into-flume`, its observations; agentplot/boomdrive-cloud's rules core.13 and core.39, cited by id; rules core.9 and core.10.
 
 ## Context and problem statement
 
