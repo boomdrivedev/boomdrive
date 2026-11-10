@@ -215,10 +215,16 @@ fn io_failure(path: &Path, error: io::Error) -> Failure {
 /// which prunes the branches origin deleted and, by
 /// `remote.origin.followRemoteHEAD`, keeps `origin/HEAD` at origin's
 /// default. No fetch is run where the host's git would reach origin by
-/// ssh.
+/// ssh. The fetch is a call to a remote, stopped at its git's limit with
+/// everything it started, and fails then naming its command, `origin` and
+/// the limit (record 0042; core.58).
 pub fn fetch(git: &Git, bare: &Path) -> Result<(), Failure> {
     not_by_ssh(git, bare)?;
-    git.run(At::GitDir(bare), ["fetch", "--prune", "--quiet", "origin"])?;
+    git.call_remote(
+        At::GitDir(bare),
+        "origin",
+        ["fetch", "--prune", "--quiet", "origin"],
+    )?;
     Ok(())
 }
 

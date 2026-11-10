@@ -67,7 +67,12 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   directory, `$XDG_DATA_HOME/boomdrive`, else `~/.local/share/boomdrive`,
   at `repositories/<owner>/<name>/<name>.git`, in the bare-container
   layout flume reads; or fetches the clone it has, over https through
-  the host's own credential helper, never prompting;
+  the host's own credential helper, never prompting. A fetch, a new
+  clone's among them, still going at thirty seconds is stopped with
+  everything it started, as agentplot/sluice record 0109 bounds every
+  try of a call to a remote. The repository is then named not fetched,
+  or not cloned with nothing left, and is fetched again at the next
+  pass, while the pass keeps every other repository;
 - points the clone's HEAD at origin's default branch, making that
   branch at origin's tip where the clone lacks it. It moves no branch
   of the clone: it reads each at `origin/<branch>`, and the clone's own
@@ -467,9 +472,13 @@ each partition served: its `label`, and its `state_repository` as
 `owner/name`, reached over https through the host's own git credential
 helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `asks.rec` and `plan.rec` at `<label>/main`, keeping its caches under
-`<data>/control/crew/`. It answers on the runner's branch,
-`<label>/runner/<host>`, in crew's formats: `runner.rec`, `answers.rec`
-and `places.rec`, and, once a preview is answered there, `previews.rec`,
+`<data>/control/crew/`, and lists the runner branches,
+`<label>/runner/*`, by `git ls-remote`. A listing still going at thirty
+seconds is stopped with everything it started, as a fetch is, and the
+partition is named unread and pulled again at the next pull. It answers
+on the runner's branch, `<label>/runner/<host>`, in crew's formats:
+`runner.rec`, `answers.rec` and `places.rec`, and, once a preview is
+answered there, `previews.rec`,
 under the descriptor this repository proposes for crew to hold. A
 preview leaves the runner's branch once its done is answered, with what
 the done put away; or once its work has left crew's plan and it is no
@@ -594,8 +603,8 @@ The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
-`boomdrive-crew` and `boomdrive-hosted`, beside `nix`, which holds the
-flake, its modules and the cache's workflow, `site`, which holds the
-site, `site/`, and the workflow that publishes it, and `root`, which
-holds what spans the tree. The site's own rules are
+`boomdrive-crew`, `boomdrive-hosted` and `boomdrive-bounded`, beside
+`nix`, which holds the flake, its modules and the cache's workflow,
+`site`, which holds the site, `site/`, and the workflow that publishes
+it, and `root`, which holds what spans the tree. The site's own rules are
 `docs/architecture/site.md` and `site/CLAUDE.md`.

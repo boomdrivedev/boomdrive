@@ -2,29 +2,30 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # crew's implementation of the control-plane interface, boomdrive-crew.
 # Each check is one task, in the fast layer (core.7). Each builds
-# boomdrive-control too, so takes its sources; and the tests carry Flume's
-# own answers from boomdrive's fixtures, so all but format take those.
+# boomdrive-control and boomdrive-bounded too, so takes their sources; and
+# the tests carry Flume's own answers from boomdrive's fixtures, so all but
+# format take those.
 language: 'rust'
 layer: 'library'
 
 tasks:
   format:
     command: 'cargo fmt --check -p boomdrive-crew'
-    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-bounded/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   lint:
     command: 'cargo clippy -p boomdrive-crew --all-targets --all-features -- -D warnings'
-    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-bounded/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   typecheck:
     command: 'cargo check -p boomdrive-crew --all-targets --all-features'
-    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-bounded/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   test:
     command: 'cargo test -p boomdrive-crew'
-    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive-crew/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-bounded/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}

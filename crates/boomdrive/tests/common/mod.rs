@@ -13,9 +13,12 @@ use boomdrive::git::Git;
 use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
 use std::ffi::{OsStr, OsString};
+use std::io::Write;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
+use std::time::Duration;
 use tempfile::TempDir;
 
 /// A configuration keeping `addresses`, in order, with every other
@@ -236,14 +239,54 @@ impl Scratch {
         refused
     }
 
+    /// Makes `address`'s origin silent (record 0042's design Decision 6):
+    /// a listener on the loopback address of the test's own, which takes
+    /// every connection on a thread of its own and holds it open without a
+    /// byte, and GitHub's https address of `address` rewritten to it over
+    /// http, which git prefers to the forge's shorter rewrite. Nothing
+    /// reaches the network (core.4).
+    pub fn silent(&self, address: &str) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("a silent listener");
+        let port = listener.local_addr().expect("its address").port();
+        std::thread::spawn(move || {
+            let mut held = Vec::new();
+            for stream in listener.incoming().flatten() {
+                held.push(stream);
+            }
+        });
+        let mut gitconfig = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&self.gitconfig)
+            .expect("the scratch git configuration");
+        write!(
+            gitconfig,
+            "[url \"http://127.0.0.1:{port}/{address}\"]\n\
+             \tinsteadOf = https://github.com/{address}\n\
+             [protocol \"http\"]\n\
+             \tallow = always\n"
+        )
+        .expect("the silent origin's rewrite");
+    }
+
     /// One pass in-process over the configuration `text`, read as the
     /// default file: its outcome and the lines it said.
     pub fn pass(&self, text: &str) -> (Outcome, Vec<String>) {
+        self.pass_with(&self.runner_git(), text)
+    }
+
+    /// One pass as [`Scratch::pass`] makes it, whose git stops a call to
+    /// a remote at `limit` (record 0042's design Decision 6).
+    pub fn pass_trying_for(&self, text: &str, limit: Duration) -> (Outcome, Vec<String>) {
+        self.pass_with(&self.runner_git().trying_for(limit), text)
+    }
+
+    /// One pass in-process by `git` over the configuration `text`.
+    fn pass_with(&self, git: &Git, text: &str) -> (Outcome, Vec<String>) {
         let config = boomdrive::config::parse(text, &self.config_file(), &self.home)
             .expect("a configuration");
         let mut lines = Vec::new();
         let outcome = boomdrive::pass::pass(
-            &self.runner_git(),
+            git,
             &self.data(),
             &config,
             &Locks::new(),

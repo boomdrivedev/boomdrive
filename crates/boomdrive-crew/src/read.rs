@@ -14,6 +14,7 @@ use boomdrive_control::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::time::Duration;
 use weir_branch::{Branch, Tip};
 use weir_capture::rec::Record;
 
@@ -28,6 +29,9 @@ pub const LEASE: Lease = Lease {
 pub struct Store {
     pub cache: PathBuf,
     pub url: String,
+    /// How long one try of its listing may take: thirty seconds, or a
+    /// test's (record 0042).
+    pub try_for: Duration,
 }
 
 /// A partition's drive branch at one tip.
@@ -168,6 +172,16 @@ pub type RunnerFiles = BTreeMap<&'static str, Option<String>>;
 pub const FILES: [&str; 4] = ["runner.rec", "answers.rec", "places.rec", "previews.rec"];
 
 impl Store {
+    /// The state repository at `url` through the bare cache `cache`, its
+    /// listing stopped at [`boomdrive_bounded::TRY_FOR`] (record 0042).
+    pub fn new(cache: PathBuf, url: String) -> Store {
+        Store {
+            cache,
+            url,
+            try_for: boomdrive_bounded::TRY_FOR,
+        }
+    }
+
     /// The branch `name` of the state repository.
     pub fn branch(&self, name: &str) -> Branch {
         Branch::remote(name, &self.cache, &self.url)
@@ -230,7 +244,11 @@ impl Store {
 
     /// The hosts whose runner's branch, `<label>/runner/<host>`, the state
     /// repository lists, in name order, by `git ls-remote` through the
-    /// cache.
+    /// cache. The listing is a call to a remote: it runs in a process group
+    /// of its own and is stopped at `try_for` with everything it started,
+    /// failing then with words that name `git ls-remote`, the state
+    /// repository's URL and the limit, after git's last line where git
+    /// wrote one (record 0042; core.58).
     pub fn hosts(&self, label: &str) -> Result<Vec<String>, String> {
         let prefix = format!("refs/heads/{label}/runner/");
         let mut command = Command::new("git");
@@ -238,16 +256,23 @@ impl Store {
         for name in REDIRECTS {
             command.env_remove(name);
         }
-        let output = command
+        command
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
-            .stdin(Stdio::null())
-            .output()
+            .stdin(Stdio::null());
+        let output = boomdrive_bounded::output(&mut command, self.try_for)
             .map_err(|error| format!("git could not be run: {error}"))?;
+        let said = String::from_utf8_lossy(&output.stderr);
+        let last = said.lines().rfind(|line| !line.trim().is_empty());
+        if output.stopped {
+            let stopped = boomdrive_bounded::stopped("git ls-remote", &self.url, self.try_for);
+            return Err(match last {
+                Some(line) => format!("{}; {stopped}", line.trim()),
+                None => stopped,
+            });
+        }
         if !output.status.success() {
-            let said = String::from_utf8_lossy(&output.stderr);
-            let last = said.lines().rfind(|line| !line.trim().is_empty());
             return Err(format!(
                 "git ls-remote failed: {}",
                 last.unwrap_or("it said nothing")
