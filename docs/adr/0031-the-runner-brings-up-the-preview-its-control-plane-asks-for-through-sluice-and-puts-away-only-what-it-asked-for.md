@@ -108,3 +108,40 @@ Not taken:
 - Good: no part's launch waits on another part's preview, and none waits on a preview of its own part's beyond the order core.50 and core.55 give.
 - Bad: where a repository leaves the configuration while a part brings up a preview in it, the keeper may remove the clone under the new checkout; the preview is brought up and then freed by sluice, and with no clone its listing is read no more, its status left as it was last carried.
 - Record 0026's list of what parts share stands as it is: a preview takes neither lock but the report file's, at its part's save.
+
+## Amendment, 2026-11-09: a preview leaves the runner's report once its done is answered
+
+Status: proposed on 2026-11-09 by the construct stage of the change `a-put-away-preview-leaves-the-runners-report`. Its direction is that change's brief: "The runner's report keeps a preview only while its control plane still asks for it: once its done is answered, or the work it previewed has landed or been dropped, the preview is let go and leaves the runner's branch". How crew's implementation meets it is the stage's choice, made within this record and crew's record 0056, and cheap to change, so it is not asked. It is accepted with this record.
+
+### Context
+
+crew's implementation let a preview go only once its work had left crew's plan and the preview was no longer up. Two things kept previews on the runner's branch after crew had stopped asking for them:
+
+- **A bolt's work never left the plan.** crew asks for a landings row's preview as `bolt/<b>`. `Main::plans` read no `bolt/<b>` as leaving, so a bolt's previews and their dones never left. crew's design of `a-cards-preview-is-asked-of-the-runner` names this as a follow-up for this repository. On crew's `main`, `bolt/<b>` is also the work of a bolt's base place, whose records stayed too.
+- **A preview put away stayed while its work was in the plan,** and so did its done. crew's ask of a host, repository and revision stands while its newest preview request of them is a bring-up. A done ends it.
+
+crew's implementation gives every request whose work is in the plan. So a preview let go while its work is in the plan would be given again, and brought up again, unless the pull also stops giving it.
+
+### Decision outcome
+
+- **A done answered is let go with what it put away.** At each report, a done the runner's report holds leaves the runner's files, and is named in the let-go, whatever the plan holds. With it go the bring-ups the report holds of its `Host`, `Repo` and `Revision`, each written before it.
+- **A preview request is given while crew still asks for it, or while the runner holds it.** A request the runner does not hold is given only while it is crew's newest preview request of its `Host`, `Repo` and `Revision`. A bring-up is then given only while its work is in the plan. A done is then given whatever the plan holds, but only while the runner holds a bring-up of those three. So a preview and its done, once let go, are given no more. A bring-up crew put away before the runner answered it is never brought up.
+- **A bolt's work leaves the plan with its `Bolt` record,** as `fix/<b>/<n>` does. A bolt's refused preview leaves once the bolt lands or is dropped, and so does one sluice lists no more. Its base place leaves with its acts once Flume no longer lists the place, as a unit's does.
+- **A preview still up stays until its done,** whatever the plan holds. crew writes the done when the row ends, and the done is given whatever the plan holds.
+
+Not taken:
+
+- **Letting a preview go once its work leaves, up or not.** crew writes the done as the row ends, often after the bolt has left the plan. With the bring-up gone, the done finds nothing to put away. sluice's preview then stays up with no ask left to put it away (core.55).
+- **Keeping the done until its work leaves the plan.** A done is never given again once answered. Keeping it would leave a bolt's dones on its branch for the bolt's life.
+- **The runner dropping a preview it put away of its own accord.** What is let go is the control plane's to name (core.1, core.10). The runner keeps each answer until then, so it answers each want once.
+- **A done given whatever came after it.** A done puts away every preview of its repository and revision the report holds. So a done written before a later bring-up would put that bring-up away, though it is crew's ask.
+- **A done given while it is the newest, whatever the runner holds.** Once both were let go, it would be given and refused at every pass.
+- **`bolt/<b>` read as leaving for previews alone.** One work would then leave the plan for some requests and not others.
+
+### Consequences
+
+- Good: a put-away preview and its done leave the runner's branch at the report of the pass that put the preview away. A bolt's previews and its base place leave once the bolt lands or is dropped.
+- Good: a bring-up and its done written before the runner answers either bring up nothing.
+- Bad: a done crew writes with no bring-up the runner holds is never given, so never refused in the runner's words. crew writes a done only for an ask that stands, and reads no done's answer.
+- Bad: requests are matched by `Repo` as written, as crew keys its asks. Two spellings of one repository are two asks. crew writes each done with its ask's own `Repo`, so a done always matches its ask.
+- Rule core.55 stands as it is: it says what the runner brings up and puts away, and nothing of what an implementation lets go.
