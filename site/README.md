@@ -1,12 +1,13 @@
-# boomdrive-web
+# Boomdrive's site
 
 The site where we learn in public how to run a fleet of coding agents, from
 five agents to five hundred: a handbook with a lab notebook attached. The
 Method is kept current, field notes are dated and age honestly, and live fleet
 numbers show what is happening now.
 
-The site and the brand are Boomdrive
-(record 0039); the domain is not chosen.
+The site and the brand are Boomdrive (record 0039). The site is `site/` of
+agentplot/boomdrive, served at `https://agentplot.github.io/boomdrive/`; the
+domain is not chosen. Its paths below are read from `site/`.
 
 ## What is here
 
@@ -19,12 +20,13 @@ The site and the brand are Boomdrive
 
 ## Running it
 
-Every tool comes from devenv: `devenv shell`, or `devenv shell -- <cmd>`.
+Every tool comes from the repository's devenv: `devenv shell`, or
+`devenv shell -- <cmd>`.
 
 ```sh
 site-dev     # the site on localhost, drafts included
 prose        # the glossary into Vale's vocabulary, then Vale over src/content
-site-check   # the gate: astro check, prose, then the build
+site-check   # the site's checks: astro check, prose, the build and its tests
 ```
 
 | Path | What |

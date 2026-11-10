@@ -170,7 +170,7 @@ launches an item's work in a worktree, sounding, which works a question
 to a conclusion, and sluice, which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
 and its design book at `agentplot.github.io/blueprints/<book>/`; this site
 holds the hub every family site's footer links to,
-`agentplot.github.io/boomdrive-web/tools/`.
+`agentplot.github.io/boomdrive/tools/`.
 
 - **The family is one list, and it is not ours.** Every member, its line,
   its place in the loop, its status, its site, its design book and its
@@ -333,7 +333,7 @@ from: 2026-10-12
 agents: { peak: "[__]", typical: "[__]" }
 hosts: 1
 components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version]", crew: "[sha]", moon: "[version]" }
-repos: [flywheel-next, crew, boomdrive-web]
+repos: [flywheel-next, crew, boomdrive]
 ```
 
 ## Moving around the Fleet

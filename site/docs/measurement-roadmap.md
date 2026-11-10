@@ -207,4 +207,4 @@ series:
 ```
 
 Only our own repositories are measured: flywheel-next, crew and
-boomdrive-web.
+boomdrive.
