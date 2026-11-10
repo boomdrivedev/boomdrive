@@ -14,10 +14,6 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// The section of a clone's own git config that holds the runner's
-/// records of it.
-const SECTION: &str = "boomdrive";
-
 /// The key in a clone's own git config that records the address it was
 /// made for, as written then.
 const ADDRESS: &str = "boomdrive.address";
@@ -98,57 +94,18 @@ impl From<Words> for Failure {
 /// its container. A folder of `repositories/<owner>/` is the runner's
 /// clone only when its bare repository records an address and that
 /// address is the folder's own, ignoring case; any other folder is not
-/// the runner's, a partial one among them (design 3). A clone made before
-/// the rename has its records carried over first.
+/// the runner's, a partial one among them, and one that records its
+/// address under another name (design 3; record 0035).
 pub fn find(git: &Git, data: &Path) -> io::Result<Vec<(Address, PathBuf)>> {
     let mut clones = Vec::new();
     for owner in folders(&repositories(data))? {
         for container in folders(&owner)? {
-            carry_over(git, &container).map_err(|words| {
-                io::Error::other(format!(
-                    "{}: its records from before the rename are not carried over: {words}",
-                    container.display()
-                ))
-            })?;
             if let Some(address) = recorded(git, &container) {
                 clones.push((address, container));
             }
         }
     }
     Ok(clones)
-}
-
-/// Carries over the records of a clone a runner made in `container`
-/// before the rename, which name it `flywheel` (record 0016): its view's
-/// commit, `refs/flywheel/view`, moves to the view's ref, then its
-/// section, the address and the view's path, is renamed `boomdrive`. The
-/// clone is then the runner's as it was, its view where it stands
-/// (core.14, core.36). A folder whose bare repository records no address
-/// under the old name, or one under the new name too, is left as it is.
-pub fn carry_over(git: &Git, container: &Path) -> Result<(), Words> {
-    let bare = bare(container);
-    let at = At::GitDir(&bare);
-    let before = crate::BEFORE_RENAME;
-    let address = format!("{before}.address");
-    if !matches!(
-        git.ask(at, ["config", "--local", "--get", &address]),
-        Ok(Some(_))
-    ) || git
-        .ask(at, ["config", "--local", "--get", ADDRESS])?
-        .is_some()
-    {
-        return Ok(());
-    }
-    let view = format!("refs/{before}/view");
-    if let Some(commit) = git.ask(at, ["rev-parse", "--verify", "--quiet", &view])? {
-        git.run(at, ["update-ref", crate::view::COMMIT, commit.trim()])?;
-        git.run(at, ["update-ref", "-d", &view])?;
-    }
-    git.run(
-        at,
-        ["config", "--local", "--rename-section", before, SECTION],
-    )?;
-    Ok(())
 }
 
 /// The folders in `dir`, by name, none where `dir` is missing. A link is

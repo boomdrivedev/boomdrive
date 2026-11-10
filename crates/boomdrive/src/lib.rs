@@ -3,12 +3,6 @@
 //! control plane's work into Flume (design Decision 5), and enrolls each
 //! partition of its control plane once (`boomdrive enroll`).
 
-/// The runner's name before it was renamed `boomdrive` (record 0016): the
-/// name of the data directory, of the clone's records and of the mark a
-/// runner of that name kept on a host, which this runner carries over or
-/// still reads (core.36).
-pub const BEFORE_RENAME: &str = "flywheel";
-
 pub mod carry;
 pub mod clone;
 pub mod code_workspace;
