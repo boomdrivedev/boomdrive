@@ -43,18 +43,26 @@ fn carried_entry(bench: &Bench, launch: &str) -> Value {
     answer["status"]["places"][0].clone()
 }
 
-/// Each record the fake Flume collected, forgotten once given.
-fn collected(bench: &Bench) -> Vec<String> {
+/// The keys of each confirmation the fake Flume was asked, forgotten once
+/// given.
+fn confirmed(bench: &Bench) -> Vec<Vec<String>> {
     bench
         .flume
         .take_calls()
         .into_iter()
         .filter_map(|call| match call {
-            Call::Collect(record) => Some(record),
+            Call::Confirm(_, keys) => Some(keys),
             _ => None,
         })
         .collect()
 }
+
+/// The delivery key of the landing of the place launched as `a`.
+const LANDING: &str = "a/t/submission/1/landed";
+
+/// The delivery key of the first code stage's end of the place launched
+/// as `a`.
+const CODE: &str = "a/t/stage/code/1/delivered";
 
 /// The number of `status <place>` calls the stub was run for.
 fn statuses_of(stub: &Stub) -> usize {
@@ -278,10 +286,11 @@ fn a_pass_that_answers_a_command_reads_the_listing_once() {
 /// The work-into-flume spec's "A landing held for the runner": a carried
 /// place that lands and is tidied between two passes, its record held for
 /// the runner alone, is carried as `<location>@<at>`, tidied and landed,
-/// then collected once as the runner, after its status is read and before
-/// the report goes; and at the pass after, Flume refusing the place's
-/// status, that status stands, not listed, and nothing is collected
-/// (design Decisions 2 and 3; Task notes 4.2 and 4.3).
+/// reported, and, once the control plane's answer names its status taken,
+/// its landing confirmed once as the runner, after its status is read and
+/// with no inbox; and at the pass after, Flume refusing the place's
+/// status, that status stands, not listed, and nothing is confirmed
+/// (design Decisions 3 to 5; Task notes 5.2).
 #[test]
 fn a_landing_held_for_the_runner() {
     let bench = Bench::new();
@@ -310,14 +319,23 @@ fn a_landing_held_for_the_runner() {
         .iter()
         .position(|call| matches!(call, Call::StatusOf(..)))
         .expect("the place's status read");
-    let collects: Vec<_> = calls
+    let confirms: Vec<_> = calls
         .iter()
         .enumerate()
-        .filter(|(_, call)| matches!(call, Call::Collect(_)))
+        .filter(|(_, call)| matches!(call, Call::Confirm(..)))
         .collect();
-    assert_eq!(collects.len(), 1, "{calls:?}");
-    assert_eq!(collects[0].1, &Call::Collect(record.clone()));
-    assert!(read < collects[0].0, "collected after its status is read");
+    assert_eq!(confirms.len(), 1, "{calls:?}");
+    assert_eq!(
+        confirms[0].1,
+        &Call::Confirm("boomdrive".into(), vec![LANDING.into()])
+    );
+    assert!(read < confirms[0].0, "confirmed after its status is read");
+    assert!(
+        calls
+            .iter()
+            .all(|call| matches!(call, Call::Status | Call::StatusOf(..) | Call::Confirm(..))),
+        "no inbox: {calls:?}"
+    );
     assert_eq!(lines, [] as [String; 0]);
     let sent = plane.reports().last().expect("the report sent");
     assert_eq!(sent.launches[&Id::new("a")].status.as_ref(), Some(&status));
@@ -326,14 +344,15 @@ fn a_landing_held_for_the_runner() {
     let after = carried(&bench, "a");
     assert_eq!((&after.text, after.at), (&status.text, status.at));
     assert!(!after.listed, "Flume refuses the place's status");
-    assert_eq!(collected(&bench), [] as [String; 0]);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
     assert_eq!(lines, [] as [String; 0]);
 }
 
 /// The work-into-flume spec's "A drop held for the runner": an act drops
 /// a launch whose place Flume then tidies, holding its record for the
 /// runner, and the pass carries the record, tidied and dropped, as the
-/// launch's status and collects it once (design Decisions 2 and 3).
+/// launch's status and, once its answer names that status taken, confirms
+/// the drop's end once (design Decisions 3 to 5).
 #[test]
 fn a_drop_held_for_the_runner() {
     let bench = Bench::new();
@@ -354,21 +373,173 @@ fn a_drop_held_for_the_runner() {
         json!(["boomdrive"])
     );
     assert!(carried(&bench, "a").listed);
-    assert_eq!(collected(&bench), [record]);
+    assert_eq!(confirmed(&bench), [vec!["a/t/over/dropped".to_string()]]);
     assert_eq!(
         lines,
         [format!("a/drop: drop of a at {}: done", place_of("a"))]
     );
 
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [] as [String; 0], "collected once");
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0], "confirmed once");
     assert!(!carried(&bench, "a").listed);
 }
 
+/// The work-into-flume spec's "A live place's end": a stage's end of a
+/// live place, pending for the runner and `scratch/planner`, is confirmed
+/// as the runner once the answer to the report names the status taken,
+/// and the next pass, Flume giving the end pending for `scratch/planner`
+/// alone, confirms nothing (design Decisions 3 and 4).
+#[test]
+fn a_live_places_end() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    bench.flume.end(
+        &place,
+        "stage/code/1/delivered",
+        &["boomdrive", "scratch/planner"],
+    );
+    bench.flume.take_calls();
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["phase"], json!("live"));
+    assert_eq!(
+        entry["ends"][0]["pending_for"],
+        json!(["boomdrive", "scratch/planner"])
+    );
+    assert_eq!(confirmed(&bench), [vec![CODE.to_string()]]);
+
+    bench.pass(&mut plane);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["ends"][0]["delivery"], CODE);
+    assert_eq!(entry["ends"][0]["pending_for"], json!(["scratch/planner"]));
+    assert!(carried(&bench, "a").listed);
+}
+
+/// A bench that launched `a`, naming `scratch/planner`, at its place, and
+/// whose Flume then landed and tidied that place, holding its record with
+/// its landing pending for the runner alone; and the record.
+fn held_for_the_runner() -> (Bench, Fake, String) {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let place = place_of("a");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    bench.flume.take_calls();
+    (bench, plane, format!("{place}@1793559694"))
+}
+
+/// The work-into-flume spec's "A report not taken": a pass whose report
+/// the control plane refuses confirms nothing, and the record stays
+/// pending for the runner; the next pass, its report taken, confirms the
+/// landing (design Decision 3).
+#[test]
+fn a_report_not_taken() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    plane.refuse_reports("the control plane is away");
+    let (passed, _) = bench.pass(&mut plane);
+    assert!(!passed.reported);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    let held = bench.flume.entry(&place_of("a")).expect("Flume holds it");
+    assert_eq!(held["place"], record);
+    assert_eq!(held["phase"]["tidied"]["pending_for"], json!(["boomdrive"]));
+    plane.take_reports();
+    let (passed, _) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
+    assert!(bench.flume.entry(&place_of("a")).is_none());
+}
+
+/// The work-into-flume spec's "A status not taken": a report the control
+/// plane takes, leaving the launch's status, confirms nothing of it; a
+/// later pass whose answer names it taken confirms the landing (design
+/// Decision 3).
+#[test]
+fn a_status_not_taken() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    plane.leave_status(Id::new("a"));
+    for _ in 0..2 {
+        let (passed, _) = bench.pass(&mut plane);
+        assert!(passed.reported);
+        assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    }
+    let sent = plane.reports().last().expect("the report sent");
+    let status = sent.launches[&Id::new("a")].status.as_ref().unwrap();
+    assert!(status.text.contains(&record));
+    plane.take_status(Id::new("a"));
+    bench.pass(&mut plane);
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
+}
+
+/// The work-into-flume spec's "The report file lost": the control plane
+/// took a report carrying `a` live; its place then lands and is tidied,
+/// held for the runner; a pass whose report is refused confirms nothing;
+/// and with the report file removed, the next pass takes `a` from its
+/// pull, carries the record from Flume, still pending for the runner, and
+/// confirms its landing once its answer names the status taken (design
+/// Decision 3; Task notes 5.3).
+#[test]
+fn the_report_file_lost() {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
+    bench.pass(&mut plane);
+    let (passed, _) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    let live = plane.held().expect("the control plane holds the report");
+    assert_eq!(carried_entry(&bench, "a")["phase"], json!("live"));
+    assert!(live.launches[&Id::new("a")].status.is_some());
+    let place = place_of("a");
+    let record = format!("{place}@1793559694");
+    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+    plane.refuse_reports("the control plane is away");
+    bench.flume.take_calls();
+    bench.pass(&mut plane);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    fs::remove_file(bench.report_file()).expect("the report file removed");
+    plane.take_reports();
+    let (passed, _) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert_eq!(
+        entry["phase"]["tidied"]["pending_for"],
+        json!(["boomdrive"])
+    );
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
+}
+
+/// The work-into-flume spec's "Nothing confirmed below the least": with
+/// Flume older than the least, a record held for the runner is carried and
+/// reported, and no `flume confirm` is run (design Decisions 3 and 7).
+#[test]
+fn nothing_confirmed_below_the_least() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    bench.tools.prints("flume", "flume 0.20.0");
+    let (passed, lines) = bench.pass(&mut plane);
+    assert!(passed.reported);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(lines[0].contains("flume 0.20.0"), "{lines:?}");
+    let entry = carried_entry(&bench, "a");
+    assert_eq!(entry["place"], record);
+    assert!(carried(&bench, "a").listed);
+    let sent = plane.reports().last().expect("the report sent");
+    assert_eq!(
+        sent.launches[&Id::new("a")].status.as_ref(),
+        Some(&carried(&bench, "a"))
+    );
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
+    let held = bench.flume.entry(&place_of("a")).expect("Flume holds it");
+    assert_eq!(held["phase"]["tidied"]["pending_for"], json!(["boomdrive"]));
+}
+
 /// The work-into-flume spec's "A record pending for a recipient too": a
-/// record Flume holds for the runner and for `scratch/planner` is
-/// collected once, and at the next pass carried as Flume gives it,
-/// pending for `scratch/planner` alone, listed, and collected no more.
+/// record Flume holds for the runner and for `scratch/planner` has its
+/// landing confirmed once, and at the next pass is carried as Flume gives
+/// it, pending for `scratch/planner` alone, listed, and nothing more is
+/// confirmed (design Decision 4).
 #[test]
 fn a_record_pending_for_a_recipient_too() {
     let bench = Bench::new();
@@ -381,9 +552,13 @@ fn a_record_pending_for_a_recipient_too() {
         .tidy_held(&place, 1793559694, &["boomdrive", "scratch/planner"]);
     bench.flume.take_calls();
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [] as [String; 0], "no second inbox");
+    assert_eq!(
+        confirmed(&bench),
+        [] as [Vec<String>; 0],
+        "no second confirmation"
+    );
     let entry = carried_entry(&bench, "a");
     assert_eq!(entry["place"], record);
     assert_eq!(
@@ -395,8 +570,9 @@ fn a_record_pending_for_a_recipient_too() {
 
 /// The work-into-flume spec's "A record pending for no end of the
 /// runner's": a place launched naming no recipient, as one launched before
-/// the runner named itself one, tidied while an end of it is pending for
-/// `scratch/planner` alone, is carried as its record and never collected.
+/// the runner named itself one, tidied while its landing is pending for
+/// `scratch/planner` alone, is carried as its record and nothing of it is
+/// confirmed (design Decision 4).
 #[test]
 fn a_record_pending_for_no_end_of_the_runners() {
     let bench = Bench::new();
@@ -407,70 +583,63 @@ fn a_record_pending_for_no_end_of_the_runners() {
     bench.flume.take_calls();
     bench.pass(&mut plane);
     bench.pass(&mut plane);
-    assert_eq!(collected(&bench), [] as [String; 0]);
+    assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
     let entry = carried_entry(&bench, "a");
     assert_eq!(entry["place"], format!("{place}@1793559694"));
     assert!(carried(&bench, "a").listed);
 }
 
-/// The work-into-flume spec's "A collection Flume could not run": the
+/// The work-into-flume spec's "A confirmation Flume could not run": the
 /// pass says one line, prefixed with the launch's id, naming the record
-/// and why, and the next pass, Flume running, collects it.
+/// and why, and the next pass, Flume running, confirms the landing (design
+/// Decision 3).
 #[test]
-fn a_collection_flume_could_not_run() {
-    let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
-    bench.pass(&mut plane);
-    let place = place_of("a");
-    let record = format!("{place}@1793559694");
-    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
+fn a_confirmation_flume_could_not_run() {
+    let (bench, mut plane, record) = held_for_the_runner();
     bench
         .flume
-        .collect_answers(&record, Err(Unrun("flume was ended: signal: 9".into())));
-    bench.flume.take_calls();
+        .confirm_answers(LANDING, Err(Unrun("flume was ended: signal: 9".into())));
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
-    assert_eq!(
-        lines,
-        [format!(
-            "a: Flume's record {record} could not be collected: flume was ended: signal: 9"
-        )]
-    );
-    assert_eq!(collected(&bench), slice::from_ref(&record));
-    bench.flume.collect_as_flume(&record);
+    let unrun =
+        format!("a: the ends of {record} could not be confirmed: flume was ended: signal: 9");
+    assert_eq!(lines, slice::from_ref(&unrun));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
+    bench.flume.confirm_as_flume(LANDING);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, [] as [String; 0]);
-    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
     assert!(
-        bench.flume.entry(&place).is_none(),
+        bench.flume.entry(&place_of("a")).is_none(),
         "Flume holds the record no more"
     );
 }
 
-/// The work-into-flume spec's "A collection Flume refuses": the pass says
-/// one line, prefixed with the launch's id, naming the record and Flume's
-/// words, and the next pass collects it again.
+/// The work-into-flume spec's "A confirmation Flume refuses": the pass
+/// says one line, prefixed with the launch's id, naming the record and
+/// Flume's words, and the next pass confirms the landing again (design
+/// Decision 3).
 #[test]
-fn a_collection_flume_refuses() {
-    let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(planned("a", "a"))]);
-    bench.pass(&mut plane);
-    let place = place_of("a");
-    let record = format!("{place}@1793559694");
-    bench.flume.tidy_held(&place, 1793559694, &["boomdrive"]);
-    bench.flume.collect_answers(
-        &record,
+fn a_confirmation_flume_refuses() {
+    let (bench, mut plane, record) = held_for_the_runner();
+    bench.flume.confirm_answers(
+        LANDING,
         Ok(Reply::Refused("the host's state is held by another".into())),
     );
-    bench.flume.take_calls();
-    let refused =
-        format!("a: Flume refused the collection of {record}: the host's state is held by another");
+    let refused = format!(
+        "a: Flume refused to confirm the ends of {record} as boomdrive: \
+         the host's state is held by another"
+    );
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, slice::from_ref(&refused));
-    assert_eq!(collected(&bench), slice::from_ref(&record));
+    assert_eq!(confirmed(&bench), [vec![LANDING.to_string()]]);
     let (_, lines) = bench.pass(&mut plane);
-    assert_eq!(lines, [refused]);
-    assert_eq!(collected(&bench), [record], "collected again");
+    assert_eq!(lines, slice::from_ref(&refused));
+    assert_eq!(
+        confirmed(&bench),
+        [vec![LANDING.to_string()]],
+        "confirmed again"
+    );
 }
 
 /// A place's status Flume could not be run for is named, and what was
@@ -632,10 +801,8 @@ fn the_users_own_place() {
     bench.pass(&mut plane);
     for call in bench.flume.calls() {
         let named = match &call {
-            Call::Act(place, _) | Call::StatusOf(_, place) | Call::Collect(place) => {
-                Some(place.as_str())
-            }
-            Call::Launch(_) | Call::Status => None,
+            Call::Act(place, _) | Call::StatusOf(_, place) => Some(place.as_str()),
+            Call::Launch(_) | Call::Status | Call::Confirm(..) => None,
         };
         assert!(
             !matches!(named, Some("/places/mine" | "/places/theirs")),
