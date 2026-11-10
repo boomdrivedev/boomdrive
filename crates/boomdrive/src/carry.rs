@@ -526,11 +526,8 @@ impl Work<'_> {
         if keeping == Keeping::NotNamed || (matches!(keeping, Keeping::Dropped(_)) && !drained) {
             return refuse(self, say);
         }
-        let found = marks(id).into_iter().find_map(|mark| {
-            let place = facts::marked(listing, &mark).and_then(place_of)?;
-            Some((mark, place))
-        });
-        if let Some((mark, place)) = found {
+        let mark = mark(id);
+        if let Some(place) = facts::marked(listing, &mark).and_then(place_of) {
             say(format!(
                 "{id}: launched at {place}, as its mark {mark} shows"
             ));
@@ -1976,14 +1973,6 @@ fn count_down(room: &mut Option<facts::Room>) {
 /// (design Decision 11).
 pub fn mark(id: &Id) -> String {
     format!("boomdrive:{id}")
-}
-
-/// The marks a place launched for `id` may carry: the runner's, then the
-/// one a runner put on it before the rename, `flywheel:<id>`, so a launch
-/// made then is still found and never made again (core.10, core.36;
-/// record 0016).
-pub fn marks(id: &Id) -> [String; 2] {
-    [mark(id), format!("{}:{id}", crate::BEFORE_RENAME)]
 }
 
 /// What `flume launch` is given for `offer` in the clone at `container`:

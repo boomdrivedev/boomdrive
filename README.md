@@ -677,18 +677,6 @@ found by its mark. An offer, an act, a command or a preview whose
 lease has lapsed by the runner's clock waits until a pull gives it under
 a live lease.
 
-## A host from before the rename
-
-The runner was named `flywheel` until record 0016 renamed it. A host
-where a runner of that name ran keeps what it made: where
-`$XDG_DATA_HOME/boomdrive` is not there and `$XDG_DATA_HOME/flywheel`
-is, that is the data directory, and it is never moved, since its clones
-hold places and views. A clone recording itself under `flywheel` has
-its records carried over to `boomdrive` the first time a pass finds it,
-and a launch marked `flywheel:<id>` is found by that mark. The
-configuration is the host's own, and is read only where the new name
-puts it.
-
 crew's table names `host`, this host as crew's hosts file names it, and
 each partition served: its `label`, and its `state_repository` as
 `owner/name`, reached over https through the host's own git credential
@@ -698,8 +686,11 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `<label>/runner/<host>`, in crew's formats: `runner.rec`, `answers.rec`
 and `places.rec`, and, once a preview is answered there, `previews.rec`,
 under the descriptor this repository proposes for crew to hold. A
-preview request names the host that brings it up, and one naming no
-host is given nothing. It pushes no other ref, and never with force. A
+preview leaves the runner's branch once its done is answered, with what
+the done put away; or once its work has left crew's plan and it is no
+longer up, a bolt's work leaving with its `Bolt` record. A preview
+request names the host that brings it up, and one naming no host is
+given nothing. It pushes no other ref, and never with force. A
 kit's launch that names no host is claimed on that branch, and taken
 once no other runner's branch answers it. A launch a drop names no
 longer stands, as crew reads it: crew's implementation offers and
@@ -790,6 +781,27 @@ line when its control plane becomes unreachable, `<label>: the control
 plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
+
+The runner speaks version 2 of the protocol, `boomdrive.v2`, its schema
+under `crates/boomdrive-hosted/protocol/v2/`, which a control plane takes
+beside the version before it, version 1. Each upgrade asks for
+`boomdrive.v2` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v2`, and tried again at the backoff's cap.
+Each end of a place goes up with its delivery: its key, its delivery's
+key and expiry, the readers it is owed to and those that confirmed it,
+and each hand-over, the end of the place's work by a drop or a done
+among them. An end version 2 does not name goes up as its delivery
+alone, or is left out where even that fails, the rest of its status
+going up, with one line naming the launch and each end's path. Only a
+status that went up with every end in a form version 2 names is one the
+runner takes its control plane to hold, so it confirms none of the ends
+of a place whose status went up with an end by its delivery alone. A
+control plane's confirm of a reader's ends is an act, given to the
+runner under the partition's prefix and carried out as crew's is,
+by Flume's confirm of exactly its keys. A control plane's land and
+preview, with its done, are given to the runner as crew's are, and what
+the runner answered of each preview goes up with sluice's answer and
+listing as their copies.
 
 ## Rules and checks
 

@@ -17,7 +17,7 @@ serde_json.workspace = true
 # The hosted table, read from the configuration's TOML (design Decision 2).
 toml.workspace = true
 url.workspace = true
-# Every message checked against version 1 before it is read or sent
+# Every message checked against version 2 before it is read or sent
 # (design Decisions 9 and 10).
 jsonschema.workspace = true
 # The host's key, its stores and its signatures (design Decision 3).

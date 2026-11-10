@@ -1,0 +1,188 @@
+{
+  "protocol_version": 2,
+  "id": "runner:15",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-5": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--parser",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/fix--parser",
+              "kind": "fix",
+              "version": 1,
+              "declared": "flume",
+              "name": "parser",
+              "mark": "boomdrive:offer-5",
+              "branch": "fix/parser",
+              "base": "main",
+              "head": "2e21fd603235620865afd3cf889a086d7a5118f4",
+              "lands": true,
+              "delivered": true,
+              "stalled": false,
+              "priority": 4,
+              "current": "code",
+              "recipients": [
+                "example/planner"
+              ],
+              "stream": {
+                "name": "work",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "launch",
+                "name": "example/parser",
+                "digest": "fe201032c6eee63c5d7b4e79fd1eea18069c96fed7631dc23f77ffc4cfc740ad"
+              },
+              "phase": {
+                "over": {
+                  "over": {
+                    "landed": {
+                      "commit": "f3619e2249355c9ede2fb7b1d0a610e5ca42589c"
+                    }
+                  },
+                  "kept": {
+                    "teardown": {
+                      "step": "sluice release"
+                    }
+                  }
+                }
+              },
+              "stages": [
+                {
+                  "name": "code",
+                  "state": "delivered",
+                  "starts": 1,
+                  "end": {
+                    "head": "2e21fd603235620865afd3cf889a086d7a5118f4",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  }
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "code",
+                  "start": 1,
+                  "state": "delivered",
+                  "end": {
+                    "head": "2e21fd603235620865afd3cf889a086d7a5118f4",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1793559466,
+                  "deliveries": [],
+                  "key": "stage/code/1/delivered",
+                  "pending_for": [
+                    "example/planner"
+                  ],
+                  "delivery": "fix--parser/ef2ec606/stage/code/1/delivered",
+                  "expires_at": 1794164266,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                },
+                {
+                  "of": "submission",
+                  "submit": 1,
+                  "verdict": {
+                    "landed": {
+                      "commit": "f3619e2249355c9ede2fb7b1d0a610e5ca42589c",
+                      "place_removed": false,
+                      "branch_removed": false
+                    }
+                  },
+                  "read_at": 1793559469,
+                  "deliveries": [],
+                  "key": "submission/1/landed",
+                  "pending_for": [
+                    "example/planner"
+                  ],
+                  "delivery": "fix--parser/ef2ec606/submission/1/landed",
+                  "expires_at": 1794164269,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                }
+              ],
+              "holds": [],
+              "hold_words": {},
+              "waiting_on": null,
+              "submission": {
+                "held": false,
+                "submits": 1,
+                "send_backs": 0,
+                "waiting": null,
+                "verdict": {
+                  "landed": {
+                    "commit": "f3619e2249355c9ede2fb7b1d0a610e5ca42589c",
+                    "place_removed": false,
+                    "branch_removed": false
+                  }
+                },
+                "read": {
+                  "found": {
+                    "submission": {
+                      "id": "1",
+                      "branch": "fix/parser",
+                      "target": "main",
+                      "state": {
+                        "landed": {
+                          "commit": "f3619e2249355c9ede2fb7b1d0a610e5ca42589c"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "agent": null,
+              "clues": null,
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": {
+            "copy": {
+              "id": 1,
+              "branch": "main",
+              "head": "4837f21ade05fa337f67274dae81dde186daa010",
+              "state": "landed",
+              "landed_as": "f3619e2249355c9ede2fb7b1d0a610e5ca42589c"
+            },
+            "at": "2026-11-01T10:06:00Z",
+            "listed": true
+          }
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {},
+      "previews": {}
+    }
+  }
+}

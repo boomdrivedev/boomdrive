@@ -52,6 +52,11 @@ pub enum Want {
     Act(Act),
     Command(Command),
     Inbox(Inbox),
+    /// A preview to bring up or put away (core.55). Version 2 of the
+    /// hosted protocol carries it as this writes it, so a hosted control
+    /// plane's preview is carried out as crew's is; version 1 names none,
+    /// a release having spoken it (core.42; record 0037 as amended on
+    /// 2026-11-09).
     Preview(Preview),
 }
 
@@ -139,9 +144,11 @@ pub enum ActSort {
     /// The landing of its launch's work, written as the word `land`. It
     /// holds nothing but its launch, named by the act around it, and the
     /// runner carries it out as Flume's retry of the submission of that
-    /// launch's place, naming no stage and no words (core.53). Version 1
-    /// of the hosted protocol names no land, a later version being the
-    /// one to carry it (core.42).
+    /// launch's place, naming no stage and no words (core.53). Version 2
+    /// of the hosted protocol carries it as this writes it, so a hosted
+    /// control plane's land is carried out as crew's is; version 1 names
+    /// none, a release having spoken it (core.42; record 0037 as amended
+    /// on 2026-11-09).
     Land,
     /// A reader's confirmation of ends of its launch's place, written as
     /// `{"confirm": {"recipient": …, "deliveries": […]}}`. It asks that
@@ -149,9 +156,10 @@ pub enum ActSort {
     /// delivered to the one `recipient` it names; `deliveries` holds each
     /// key as Flume gave it, in the control plane's order. The runner
     /// carries it out as Flume's confirm of exactly those keys as that
-    /// recipient, each held to the launch's place (core.56). Version 1 of
-    /// the hosted protocol names no confirm, a later version being the one
-    /// to carry it (core.42).
+    /// recipient, each held to the launch's place (core.56). Version 2 of
+    /// the hosted protocol carries it as this writes it, so a hosted
+    /// control plane's confirm is carried out as crew's is; version 1
+    /// names none, a release having spoken it (core.42; record 0037).
     Confirm {
         recipient: String,
         deliveries: Vec<String>,
@@ -200,8 +208,9 @@ pub struct Inbox {
 
 /// A preview of a branch at a revision, to bring up or, done, to put
 /// away, under a lease of its own (core.55). It names no word of the tool
-/// that keeps previews. Version 1 of the hosted protocol names no preview,
-/// and never will, a release having spoken it (core.42).
+/// that keeps previews. Version 2 of the hosted protocol carries it as
+/// this writes it; version 1 names no preview, and never will, a release
+/// having spoken it (core.42; record 0037 as amended on 2026-11-09).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Preview {
     pub id: Id,

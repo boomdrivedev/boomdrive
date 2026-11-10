@@ -1,0 +1,37 @@
+{
+  "protocol_version": 2,
+  "id": "plane:14",
+  "body": {
+    "pulled": {
+      "wants": [
+        {
+          "preview": {
+            "id": "preview-1",
+            "lease": {
+              "number": 1,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "repository": "example/app",
+            "branch": "main",
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "done": false
+          }
+        },
+        {
+          "preview": {
+            "id": "preview-2",
+            "lease": {
+              "number": 1,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "repository": "example/app",
+            "branch": "main",
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "done": true
+          }
+        }
+      ],
+      "report": null
+    }
+  }
+}

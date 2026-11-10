@@ -1,0 +1,57 @@
+{
+  "protocol_version": 2,
+  "id": "plane:13",
+  "body": {
+    "pulled": {
+      "wants": [
+        {
+          "offer": {
+            "id": "offer-1",
+            "lease": {
+              "number": 2,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "launch": {
+              "repository": "example/app",
+              "kind": "fix",
+              "name": "parser",
+              "base": "main",
+              "brief": "Read a tab as the width the user names.\n",
+              "stream": "work",
+              "priority": 4,
+              "intent": "example/parser",
+              "recipients": [
+                "example/planner"
+              ],
+              "holds": [
+                {
+                  "stage": "code",
+                  "words": "the brief is read first"
+                }
+              ],
+              "hold_submission": true,
+              "after": [
+                "offer-0"
+              ],
+              "agent_settings": [
+                {
+                  "field": "model",
+                  "value": "opus"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "act": {
+            "id": "land-1",
+            "launch": "offer-1",
+            "lease": 2,
+            "what": "land"
+          }
+        }
+      ],
+      "report": null
+    }
+  }
+}
