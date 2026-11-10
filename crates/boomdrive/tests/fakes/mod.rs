@@ -871,7 +871,8 @@ pub fn preview(id: &str, branch: &str, revision: &str, done: bool) -> Want {
 }
 
 /// The stub's program. Each call writes its arguments, NUL-terminated, to
-/// `call-<n>`, whether `FLUME_RECIPIENT` was set to `recipient-<n>`, and
+/// `call-<n>`, whole once there, so a test polling it never reads half a
+/// call, whether `FLUME_RECIPIENT` was set to `recipient-<n>`, and
 /// the brief its `--brief-file` names to `brief-<n>`. It then prints the
 /// fixture `<what>.stdout` names and exits with `<what>.exit`'s status,
 /// each where the test wrote one, `<what>` being its command, or
@@ -880,7 +881,8 @@ const STUB: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
 while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
-for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
+mv "$dir/call-$n.part" "$dir/call-$n"
 if [ "${FLUME_RECIPIENT+set}" = set ]; then echo set; else echo unset; fi > "$dir/recipient-$n"
 previous=
 for arg in "$@"; do
@@ -991,20 +993,21 @@ impl Stub {
 }
 
 /// The stub `sluice`'s program. Each call writes its arguments,
-/// NUL-terminated, to `call-<n>` and the directory it ran in to `dir-<n>`.
-/// Where the test wrote `<what>.wait`, it waits, as sluice's ask of a
-/// preview waits at the host's bound, until it is sent SIGINT, then says
-/// it stopped on standard error and exits 130 with no document, as sluice
-/// does (Task notes 4.3); its wait is a `sleep` it awaits, so its trap
-/// runs at once, and which it ends. Otherwise it prints the file
-/// `<what>.stdout` names, writes `<what>.stderr` on standard error, and
-/// exits with `<what>.exit`'s status, each where the test wrote one,
-/// `<what>` being its command.
+/// NUL-terminated, to `call-<n>`, whole once there, and the directory it
+/// ran in to `dir-<n>`. Where the test wrote `<what>.wait`, it waits, as
+/// sluice's ask of a preview waits at the host's bound, until it is sent
+/// SIGINT, then says it stopped on standard error and exits 130 with no
+/// document, as sluice does (Task notes 4.3); its wait is a `sleep` it
+/// awaits, so its trap runs at once, and which it ends. Otherwise it
+/// prints the file `<what>.stdout` names, writes `<what>.stderr` on
+/// standard error, and exits with `<what>.exit`'s status, each where the
+/// test wrote one, `<what>` being its command.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
 while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
-for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
+mv "$dir/call-$n.part" "$dir/call-$n"
 pwd -P > "$dir/dir-$n"
 what=$1
 if [ -e "$dir/$what.wait" ]; then
