@@ -28,4 +28,4 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 4. The change
 
-- [ ] 4.1 The change, declaring `skip_specs`, archives with no spec delta into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-tree-holds-nothing-private-at-the-opening --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.1 The change, declaring `skip_specs`, archives with no spec delta into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-tree-holds-nothing-private-at-the-opening --yes`, `sluice exec main -- moon run root:specs` passes.
