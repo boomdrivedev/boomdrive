@@ -1,7 +1,7 @@
 ---
 number: 38
 title: The site keeps what boomdrive-web published, and its rules bind the site alone
-status: proposed
+status: accepted
 date: 2026-11-09
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The site keeps what boomdrive-web published, and its rules bind the site alone
 
-Status: proposed on 2026-11-09 by the construct stage of the change `boomdrive-keeps-its-site`, which carries out record 0025. What moves, and that the site's history and rules come with it, is record 0025's, which the user accepted on 2026-11-07. How three of the site's things meet this repository's rules is the stage's choice, made on those rules and on the family's other sites. The line our own fleet's names keep is the planner's, in its answer to the stage of 2026-11-09, on the user's ruling of 2026-10-26. The record is accepted when the user says yes to it.
+Status: accepted by the user on 2026-11-09, on their card. Proposed that day by the construct stage of the change `boomdrive-keeps-its-site`, which carries out record 0025. What moves, and that the site's history and rules come with it, is record 0025's, which the user accepted on 2026-11-07. How three of the site's things meet this repository's rules is the stage's choice, made on those rules and on the family's other sites. The line our own fleet's names keep is the planner's, in its answer to the stage of 2026-11-09, on the user's ruling of 2026-10-26. The record is accepted when the user says yes to it.
 
 Deciders: the user, 2026-11-07, for the move (record 0025), and 2026-10-26, that the site never presents a name of ours as the reader's own; the planner, 2026-11-09, for where our own names may stand; the construct stage, for how the site meets core.6, core.41 and core.48.
 Sources: record 0025, and its order as agentplot-design amends it on 2026-11-09, which moves the site into this repository while it is private, before the opening; the planner's answer to the construct stage of `boomdrive-keeps-its-site`, 2026-11-09; agentplot/blueprints `design/principles.md` 12; agentplot/boomdrive-web at `4ed5fbe`, its `CLAUDE.md`, `openspec/config.yaml`, `src/content/contexts/contexts.yaml`, `src/content/measurements/`, `src/content/rates/rates.yaml`, `docs/site-design.md` and `docs/measurement-roadmap.md`, and its history, each public; rules core.6, core.7, core.41 and core.48; git-cliff 2.14.2's `exclude_paths`, run on a scratch repository on 2026-11-09; convco 0.7.2 under `.versionrc`, run on boomdrive-web's 166 commits that are not merges, which all pass.
