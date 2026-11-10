@@ -1,0 +1,13 @@
+extends: existence
+message: "'%s' adds nothing; cut it."
+level: suggestion
+ignorecase: true
+tokens:
+  - simply
+  - just
+  - really
+  - very
+  - basically
+  - actually
+  - obviously
+  - of course
