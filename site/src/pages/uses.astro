@@ -1,0 +1,29 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+
+const components = await getCollection("components", ({ data }) => data.status !== "retired");
+const categories = [...new Set(components.map((c) => c.data.category))];
+---
+
+<Base title="Uses" description="The stack our fleet runs on, ours and others'.">
+  <h1>What the fleet runs on</h1>
+  {
+    categories.map((cat) => (
+      <>
+        <h2>{cat}</h2>
+        <ul class="plain">
+          {components
+            .filter((c) => c.data.category === cat)
+            .map((c) => (
+              <li>
+                {c.data.url ? <a href={c.data.url}>{c.data.name}</a> : c.data.name}{" "}
+                <span class="muted">· {c.data.status}{c.data.becomes ? ` · becomes ${c.data.becomes}` : ""}</span>
+                <div class="muted">{c.data.role}</div>
+              </li>
+            ))}
+        </ul>
+      </>
+    ))
+  }
+</Base>

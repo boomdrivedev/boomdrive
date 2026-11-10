@@ -237,7 +237,7 @@ The runner SHALL drain a dropped repository while its report holds a launch answ
 
 ### Requirement: A place has ended once the status carried of it says Flume holds it no more
 
-A place SHALL have ended once the status the report carries of it stands not listed, or reads the place's phase `tidied` or `gone` and does not name `boomdrive` among those its record is pending for. A place with no status carried SHALL not have ended. So a place whose record Flume holds for the runner SHALL not have ended until the runner has collected it (record 0030).
+A place SHALL have ended once the status the report carries of it stands not listed, or reads the place's phase `tidied` or `gone` and does not name `boomdrive` among those its record is pending for. A place with no status carried SHALL not have ended. So a place whose record Flume holds for the runner SHALL not have ended until the runner has confirmed the ends Flume owes it and carried the status that follows (record 0030 as amended on 2026-11-09).
 
 #### Scenario: The place tidied
 

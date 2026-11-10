@@ -23,7 +23,7 @@ pub use want::{
 };
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 /// This interface's version, which every hello names.
@@ -154,4 +154,11 @@ pub struct Reported {
     /// Each id whose report was refused, its lease no longer the
     /// runner's, with the control plane's words.
     pub refused: BTreeMap<Id, String>,
+    /// Each launch whose carried status the control plane took with the
+    /// report this answers, and no other: the runner confirms the ends
+    /// Flume owes it of a status only once it is named here (design
+    /// Decision 1; core.54; record 0030 as amended on 2026-11-09). An
+    /// answer of before, naming none, reads as naming none.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub statuses_taken: BTreeSet<Id>,
 }

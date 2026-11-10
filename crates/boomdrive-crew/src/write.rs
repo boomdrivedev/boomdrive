@@ -188,6 +188,30 @@ fn preview_record(number: u64, previewed: &Previewed) -> Record {
     record
 }
 
+/// The launches of partition `label` whose status `places.rec` holds, as
+/// [`texts`] forms it from `report`: each request launched at a place with
+/// a status, and each role's latest run with a status. The answer to a
+/// report whose branch is written names these taken (design Decision 2;
+/// record 0030 as amended on 2026-11-09).
+pub fn statuses_held(label: &str, report: &Report) -> BTreeSet<Id> {
+    let mut held: BTreeSet<Id> = report
+        .launches
+        .iter()
+        .filter(|(id, launched)| {
+            matches!(ids::named(label, id), Some(Named::Request(_)))
+                && launched.answer.place_dir.is_some()
+                && launched.status.is_some()
+        })
+        .map(|(id, _)| id.clone())
+        .collect();
+    for (role, runs) in roles::runs(label, report) {
+        if let Some(run) = runs.last().filter(|run| run.launched.status.is_some()) {
+            held.insert(ids::run(label, &role, run.k));
+        }
+    }
+    held
+}
+
 /// The files of partition `label` on `host`'s branch, formed from
 /// `report` and the claims standing: one `Answer` per request the report
 /// answers and per claim whose launch it does not, one `Place` per
@@ -211,11 +235,16 @@ pub fn texts(
         .iter()
         .filter_map(|claim| Some((claim.get("Request").and_then(whole)?, claim.clone())))
         .collect();
+    let statuses = statuses_held(label, report);
     let mut places = BTreeMap::new();
     for (id, launched) in &report.launches {
         if let Some(Named::Request(n)) = ids::named(label, id) {
             answers.insert(n, answer_record(n, &launched.answer));
-            if let (Some(place), Some(status)) = (&launched.answer.place_dir, &launched.status) {
+            if let (true, Some(place), Some(status)) = (
+                statuses.contains(id),
+                &launched.answer.place_dir,
+                &launched.status,
+            ) {
                 let mut record = Record::new();
                 record.push("Request", n.to_string());
                 record.push("Place", place.as_str());
@@ -249,7 +278,11 @@ pub fn texts(
             .cloned()
             .unwrap_or_else(|| format!("{label}/{role}"));
         let answer = &run.launched.answer;
-        let status = &run.launched.status;
+        let status = run
+            .launched
+            .status
+            .as_ref()
+            .filter(|_| statuses.contains(&ids::run(label, &role, run.k)));
         let refused = run
             .done
             .filter(|done| done.outcome == Outcome::Refused)
@@ -259,12 +292,9 @@ pub fn texts(
         record.push_optional("Place", answer.place_dir.as_deref());
         record.push(
             "At",
-            status
-                .as_ref()
-                .map_or(answer.at, |status| status.at)
-                .to_string(),
+            status.map_or(answer.at, |status| status.at).to_string(),
         );
-        record.push_optional("Status", status.as_ref().map(|status| status.text.as_str()));
+        record.push_optional("Status", status.map(|status| status.text.as_str()));
         record.push_optional("Words", refused.or(answer.words.as_deref()));
         runs.insert(address, record);
     }
