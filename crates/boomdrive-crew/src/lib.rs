@@ -294,19 +294,54 @@ impl Pulling<'_> {
         self.others.values().find_map(|read| read.as_ref().err())
     }
 
+    /// Whether the runner holds its answer to request `number`, in its
+    /// report or on this host's branch, a claim apart.
+    fn holds(&self, number: u64) -> bool {
+        self.reported(number) || self.branch_answers(number, false)
+    }
+
     /// Whether request `number`'s work is still crew's, or the runner has
     /// answered it: such a request is given, so its place's status is
     /// carried until it is let go. A drop is current, whatever the plan
     /// holds, while the runner answers the launch it names, since crew
-    /// writes a drop as its work leaves the plan.
+    /// writes a drop as its work leaves the plan. A preview request that
+    /// reads is current by its own rule, [`Pulling::preview_current`]
+    /// (record 0031 as amended on 2026-11-09).
     fn current(&self, request: &Request) -> bool {
+        if let Some(done) = request.preview_done() {
+            return self.preview_current(request, done);
+        }
         self.main.plans(request.work())
-            || self.reported(request.number)
-            || self.branch_answers(request.number, false)
-            || (request.act() == Some("drop")
-                && request
-                    .of()
-                    .is_some_and(|of| self.reported(of) || self.branch_answers(of, false)))
+            || self.holds(request.number)
+            || (request.act() == Some("drop") && request.of().is_some_and(|of| self.holds(of)))
+    }
+
+    /// Whether a preview request that reads, marked `done` or not, is
+    /// given: where the runner holds it; else only while it is crew's
+    /// newest preview request of its `Host`, `Repo` and `Revision`, as
+    /// crew keys its asks, and then a bring-up while its work is in the
+    /// plan, and a done, whatever the plan holds, while the runner holds a
+    /// bring-up of those three. So a bring-up and its done, once let go,
+    /// are given no more, and a bring-up crew put away before the runner
+    /// answered it is never brought up (record 0031 as amended on
+    /// 2026-11-09; design Decision 2).
+    fn preview_current(&self, request: &Request, done: bool) -> bool {
+        if self.holds(request.number) {
+            return true;
+        }
+        if !self.main.newest_preview(request) {
+            return false;
+        }
+        if !done {
+            return self.main.plans(request.work());
+        }
+        let key = request.preview_key();
+        self.main.requests.iter().any(|earlier| {
+            earlier.number < request.number
+                && earlier.preview_key() == key
+                && earlier.preview_done() == Some(false)
+                && self.holds(earlier.number)
+        })
     }
 }
 
@@ -385,6 +420,10 @@ impl Crew {
                 own: own.clone(),
                 others: std::mem::take(&mut others),
             };
+            // A request is given while its work is in the plan or the
+            // runner holds it, a preview request while crew still asks for
+            // it or the runner holds it (record 0031 as amended on
+            // 2026-11-09).
             for request in &main.requests {
                 if !pulling.current(request) {
                     continue;

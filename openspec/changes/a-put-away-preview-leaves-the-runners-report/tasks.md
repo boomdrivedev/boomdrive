@@ -18,7 +18,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - then the place tidied, its let-go `["home/12", "home/13"]`, and `answers.rec` and `places.rec` holding neither.
 
   True when `devenv shell -- cargo test -p boomdrive-crew --test letgo a_bolt_landed_and_gone_from_the_plan` passes, proving the crew-control-plane spec's "A bolt landed and gone from the plan".
-- [ ] 2.2 `Pulling::current` (`crates/boomdrive-crew/src/lib.rs`) gives a preview request that reads by its own rule (design Decision 2; Task notes 2.2):
+- [x] 2.2 `Pulling::current` (`crates/boomdrive-crew/src/lib.rs`) gives a preview request that reads by its own rule (design Decision 2; Task notes 2.2):
   - where the runner holds it, it is given;
   - otherwise it is given only while it is the newest of its `Host`, `Repo` and `Revision`;
   - a bring-up so given only while its work is in the plan;

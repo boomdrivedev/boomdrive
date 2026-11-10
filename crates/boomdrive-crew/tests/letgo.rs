@@ -388,7 +388,8 @@ fn previewed(outcome: Outcome, done: bool, listed: Option<bool>) -> Previewed {
 }
 
 /// The crew-control-plane spec's "A preview whose work has left the
-/// plan".
+/// plan": the bring-up the runner holds is given, and its done by the
+/// done's rule, whatever the plan holds.
 #[test]
 fn a_preview_whose_work_has_left_the_plan() {
     let state = State::new();
@@ -400,8 +401,9 @@ fn a_preview_whose_work_has_left_the_plan() {
         .insert(Id::new("home/30"), previewed(Outcome::Done, false, None));
     let pulled = crew.pull(&kept(), &report).expect("a pull");
     let ids: Vec<String> = pulled.wants.iter().map(|w| w.id().to_string()).collect();
-    assert_eq!(ids, ["home/30"]);
+    assert_eq!(ids, ["home/30", "home/31"]);
     assert!(matches!(pulled.wants[0], Want::Preview(_)));
+    assert!(matches!(&pulled.wants[1], Want::Preview(done) if done.done));
 }
 
 /// The runner's report of preview 30 brought up, its status listed or
