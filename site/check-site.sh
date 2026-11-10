@@ -119,4 +119,15 @@ for prompt in $prompts; do
   fi
 done
 
+# A release where nothing was served: site-stop, which sluice runs after
+# every candidate's checks, with a state folder that holds no port, exits
+# zero.
+state=$(mktemp -d "${TMPDIR:-/tmp}/site-stop.XXXXXX")
+if said=$(DEVENV_STATE=$state site-stop 2>&1); then
+  echo "check-site: site-stop exits zero where nothing was served"
+else
+  fail "site-stop fails where nothing was served: $said"
+fi
+rm -rf "$state"
+
 exit "$status"

@@ -63,7 +63,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. Content work and a place's site
 
 - [x] 4.1 `.config/flume.toml` declares `[kinds.content]` and its two stages as boomdrive-web's did, their prompts `../site/docs/prompts/content-change.md` and `../site/docs/prompts/content-preview.md`, and its comment says it declares `content` beside flume's built-in kinds. The prompts name `site/docs/content-brief.md`. The brief says at its top that its paths are read from `site/`, and writes the repository's own from its root (design Decision 10). `site/check-site.sh` resolves each `prompt` of `[kinds.content]` against `.config/` and fails where it names no file under `site/docs/prompts/`. True when `sluice exec main -- moon run site:test` passes, proving the site spec's "The kind's prompts".
-- [ ] 4.2 `devenv.nix` gains the scripts `vocab`, `prose`, `site-check`, `site-dev`, `site-serve` and `site-stop`, and the process `site`, as design Decision 10's table has them. `site-serve` prints the address under `/boomdrive/`.
+- [x] 4.2 `devenv.nix` gains the scripts `vocab`, `prose`, `site-check`, `site-dev`, `site-serve` and `site-stop`, and the process `site`, as design Decision 10's table has them. `site-serve` prints the address under `/boomdrive/`.
 
   `.config/sluice.toml` gains `release = "site-stop"` under `[tests]` and `[checkout] ports = ["web"]`, each with its comment.
 
