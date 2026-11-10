@@ -2,7 +2,7 @@
 
 ## Why
 
-crew brings up a card's preview itself today. `crew card preview` runs `sluice preview` on the work's host, reads it back with `sluice previews`, and puts it away with `sluice release`. That is crew calling sluice. On 2026-11-08 the user ruled that crew is the control plane and talks only to Boomdrive's runner: "crew doesn't know about Flume directly except for whatever the control plane contract allows", and "Everything has to happen from the Boom Drive runner." crew's record 0056, as rewritten that day, holds their words. Its consequence on previews, agentplot-design's choice on point 1, moves previews onto the runner:
+crew brings up a card's preview itself today. `crew card preview` runs `sluice preview` on the work's host, reads it back with `sluice previews`, and puts it away with `sluice release`. That is crew calling sluice. On 2026-11-08 the user ruled that crew is the control plane and talks only to Boomdrive's runner: "crew doesn't know about Flume directly except for whatever the control plane contract allows", and "Everything has to happen from the Boom Drive runner." crew's record 0056, as rewritten that day, holds their words. Its consequence on previews, the design agent's choice on point 1, moves previews onto the runner:
 
 - the control plane asks for a preview of a branch at a revision by one message, `preview`, and for its end by that message again, marked `done`;
 - the runner on the work's host, which keeps the repository, runs sluice's preview command for it once, and hands back what sluice answered;

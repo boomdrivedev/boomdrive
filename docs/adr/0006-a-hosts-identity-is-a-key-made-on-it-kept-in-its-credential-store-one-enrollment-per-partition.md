@@ -14,7 +14,7 @@ Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-0
 Amended by record 0028, accepted on 2026-11-07: it reads "account" where it said "partition", for what a runner enrolls, and is so written below. The file keeps its name.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; agentplot/boomdrive-cloud's records 0018, 0023 and 0040 and its rules core.13, core.14, core.21, core.24, core.33, core.43 and core.96, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F10; the design of `the-runner-carries-crews-work-into-flume`, Decision 20; rule core.4.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; agentplot/boomdrive-cloud's records 0018, 0023 and 0040 and its rules core.13, core.14, core.21, core.24, core.33, core.43 and core.96, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F10; the design of `the-runner-carries-crews-work-into-flume`, Decision 20; rule core.4.
 
 ## Context and problem statement
 

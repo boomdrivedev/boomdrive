@@ -12,7 +12,7 @@ decision-makers:
 Status: accepted by the user on 2026-11-06, in the design agent's pane, with its amendment of that day: "Other than that nitpick I approve them all". Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Deciders: the user, 2026-11-01.
-Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`), its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/boomdrive-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
+Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topics on control planes and on several hosts and partitions; record 0002, its first point; agentplot/boomdrive-cloud's records 0003 and 0007 and its rule core.15, cited by id; flume's change `a-host-declares-where-its-kinds-come-from` and its change on layers of an agent's settings; rules core.1 and core.5.
 
 ## Context and problem statement
 
@@ -53,7 +53,7 @@ core.5 stands: the configuration names every repository kept, its managed level 
 
 Status: accepted by the user on 2026-11-06, in the design agent's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).
 
-Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (agentplot/boomdrive-archive's `design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". The design agent for writing it here.
+Deciders: the user, in the research talk `research--the-flakes-configuration-holds-streams-and-repositories` on 2026-11-06 (agentplot/boomdrive's `design/research/the-flakes-configuration-holds-streams-and-repositories.md`), asking "once we have the cloud control plane, can a repository get added from the cloud and written into the other config file?", noting "we have a mismatch in terminology [...] in terms of what we call a managed config", and choosing the words, "Flume's: managed + local", what a local layer may set, "Flume's rule for all", and repositories under the cloud, "Add to Nix's". The design agent for writing it here.
 Sources: `design/the-flakes-configuration/design.md`; flume record 0032 (a managed and a local layer); record 0023; rules core.5, core.17 and core.18.
 
 ### Decision outcome
@@ -90,9 +90,9 @@ Nothing else of the decision above changes. core.37's details are amended in thi
 
 ## Amendment, 2026-11-09: a person's own drive, set up by one command on a host Nix does not manage
 
-Status: the route and its timing are the user's, chosen on their card on 2026-11-09. The rest is agentplot-design's, each choice cheap to change and given with the path not taken.
+Status: the route and its timing are the user's, chosen on their card on 2026-11-09. The rest is the design agent's, each choice cheap to change and given with the path not taken.
 
-Deciders: the user, on their card "Colleagues running their own drive with crew: may Nix manage their Macs, and how soon?", who chose "No: Nix installs the programs, a setup command does the rest" and "With Boomdrive going public". Before it, in agentplot-design's pane on 2026-11-08, of colleagues on their own Macs: "The idea is that they would be able to start talking to crew and create work items that the runner pulls and schedules, with decisions put on pending-you. That is the same way I'm working today."; "They wouldn't be taking my work and they'd be doing their own work. They'd have to set up their own crew state."; "How do we assist them in that setup process?"
+Deciders: the user, on their card "Colleagues running their own drive with crew: may Nix manage their Macs, and how soon?", who chose "No: Nix installs the programs, a setup command does the rest" and "With Boomdrive going public". Before it, in the design agent's pane on 2026-11-08, of colleagues on their own Macs: "The idea is that they would be able to start talking to crew and create work items that the runner pulls and schedules, with decisions put on pending-you. That is the same way I'm working today."; "They wouldn't be taking my work and they'd be doing their own work. They'd have to set up their own crew state."; "How do we assist them in that setup process?"
 
 Sources: the decision above and its amendment of 2026-11-06; records 0012, 0023 and 0028; agentplot/crew README, `crew main up` and `crew signal land`.
 
