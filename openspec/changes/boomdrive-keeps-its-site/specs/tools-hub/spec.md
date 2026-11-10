@@ -33,7 +33,7 @@ Each tool's card on the Tools page that names a principle under "In the Method" 
 #### Scenario: The cards as built
 
 - **WHEN** the Tools page is built
-- **THEN** headwater, eddy and millpond name Capture at the source, flume names One agent, one worktree, sounding names Measure the fleet, sluice names Order at landing, never at start, and timber names Two loops, one gate
+- **THEN** headwater, eddy and millpond name Capture at the source, flume names One agent, one worktree, sounding names Measure the fleet, sluice names Order at landing, never at start, and timber names Never prove twice
 
 #### Scenario: A card that disagrees
 
@@ -47,7 +47,7 @@ The Tools page SHALL show a card for timber after sluice's, in the form of every
 #### Scenario: Reading timber's card
 
 - **WHEN** a reader reaches the family on the Tools page
-- **THEN** after sluice's card they see timber's, its track lit at Deliver, its status "designed, not built" with an outlined dot, its line "Build once, sign everything, promote with proof, in your own account.", "In the Method" naming Two loops, one gate and linking that principle's place on the Method page, and links to timber's site and design book
+- **THEN** after sluice's card they see timber's, its track lit at Deliver, its status "designed, not built" with an outlined dot, its line "Build once, sign everything, promote with proof, in your own account.", "In the Method" naming Never prove twice and linking that principle's place on the Method page, and links to timber's site and design book
 
 #### Scenario: The page around the cards counts timber
 

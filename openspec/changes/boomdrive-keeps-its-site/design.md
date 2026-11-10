@@ -207,6 +207,7 @@ boomdrive-web's `content-kind`, `method-diagrams`, `method-tools` and `tools-hub
 - Their address is `/boomdrive/`.
 - `content-kind`'s brief is read from `site/`.
 - `content-kind`'s last requirement names `site/CLAUDE.md` and the `content` kind, and no crew chore, since flume runs this repository.
+- `tools-hub`'s timber card names Never prove twice and links its place, as the site has since boomdrive-web's chore `b0c23a52`, which carried the ruling of 2026-10-27 in the design note the-method-names-its-tools (agentplot/blueprints `1aeabbf`) and left boomdrive-web's spec naming Two loops, one gate.
 
 `openspec/specs/` gains them when this change is archived. They are never written there by hand.
 
