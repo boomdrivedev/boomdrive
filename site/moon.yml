@@ -44,3 +44,15 @@ tasks:
     inputs: ['src/content/**/*', '.vale.ini', 'styles/**/*', '/devenv.nix', '/devenv.lock', '/.prototools']
     deps: ['~:vocab']
     tags: [check-fast]
+  # The site built into dist, under the base /boomdrive/ (site.6), its
+  # content's schemas and references holding. It shares the mutex astro
+  # with check, and runs with Astro's telemetry off, as check does.
+  build:
+    command: 'bun run build'
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+    inputs: ['src/**/*', 'public/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
+    outputs: ['dist']
+    deps: ['~:install']
+    tags: [check-fast]
+    options: {mutex: 'astro'}

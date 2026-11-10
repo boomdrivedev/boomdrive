@@ -47,7 +47,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   True when `sluice exec main -- moon run site:install` passes in the gate's sandbox.
 - [x] 2.3 `site/moon.yml` gains `check`, as Decision 3's table has it, with `ASTRO_TELEMETRY_DISABLED=1` and the mutex `astro`. True when `sluice exec main -- moon run site:check` passes, proving the site spec's "The site's type check".
 - [x] 2.4 `site/moon.yml` gains `vocab` and `prose`, as Decision 3's table has it. True when `sluice exec main -- moon run site:prose` passes, proving the site spec's "The prose of the site".
-- [ ] 2.5 The site's address is `/boomdrive/` (design Decision 12):
+- [x] 2.5 The site's address is `/boomdrive/` (design Decision 12):
   - `site/astro.config.mjs`'s `base` is `/boomdrive`, and its comment and `site/src/lib/url.ts`'s name `/boomdrive/`.
   - `site/src/layouts/Base.astro` links `https://github.com/agentplot/boomdrive`, its label naming boomdrive.
   - `site/moon.yml` gains `build`, as Decision 3's table has it.
