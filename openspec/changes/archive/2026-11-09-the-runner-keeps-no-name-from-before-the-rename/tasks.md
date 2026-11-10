@@ -21,4 +21,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The specs
 
-- [ ] 3.1 The change's deltas archive into specs that pass openspec's strict check, and neither `openspec/specs/clones/spec.md` nor `openspec/specs/work-into-flume/spec.md` says the old name. True when, after `devenv shell -- openspec archive the-runner-keeps-no-name-from-before-the-rename --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 3.1 The change's deltas archive into specs that pass openspec's strict check, and neither `openspec/specs/clones/spec.md` nor `openspec/specs/work-into-flume/spec.md` says the old name. True when, after `devenv shell -- openspec archive the-runner-keeps-no-name-from-before-the-rename --yes`, `sluice exec main -- moon run root:specs` passes.
