@@ -27,15 +27,16 @@ fn settled() -> PathBuf {
 }
 
 /// The stub's program. Each call writes its arguments, NUL-terminated, to
-/// `call-<n>`; whether `FLUME_RECIPIENT` was set to `recipient-<n>`; and
-/// the brief its `--brief-file` names to `brief-<n>`. It then prints the
-/// file `stdout` names, writes `stderr`'s on standard error, and exits
-/// with `exit`'s status, each where the test wrote one.
+/// `call-<n>`, whole once there; whether `FLUME_RECIPIENT` was set to
+/// `recipient-<n>`; and the brief its `--brief-file` names to `brief-<n>`.
+/// It then prints the file `stdout` names, writes `stderr`'s on standard
+/// error, and exits with `exit`'s status, each where the test wrote one.
 const STUB: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
 while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
-for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n"
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
+mv "$dir/call-$n.part" "$dir/call-$n"
 if [ "${FLUME_RECIPIENT+set}" = set ]; then echo set; else echo unset; fi > "$dir/recipient-$n"
 previous=
 for arg in "$@"; do
