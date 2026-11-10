@@ -451,18 +451,6 @@ found by its mark. An offer, an act, a command or a preview whose
 lease has lapsed by the runner's clock waits until a pull gives it under
 a live lease.
 
-## A host from before the rename
-
-The runner was named `flywheel` until record 0016 renamed it. A host
-where a runner of that name ran keeps what it made: where
-`$XDG_DATA_HOME/boomdrive` is not there and `$XDG_DATA_HOME/flywheel`
-is, that is the data directory, and it is never moved, since its clones
-hold places and views. A clone recording itself under `flywheel` has
-its records carried over to `boomdrive` the first time a pass finds it,
-and a launch marked `flywheel:<id>` is found by that mark. The
-configuration is the host's own, and is read only where the new name
-puts it.
-
 crew's table names `host`, this host as crew's hosts file names it, and
 each partition served: its `label`, and its `state_repository` as
 `owner/name`, reached over https through the host's own git credential

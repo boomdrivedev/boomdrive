@@ -17,7 +17,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. What the runner says of it
 
-- [ ] 2.1 README's section "A host from before the rename" is gone, and no other line of README says the old name (proposal What Changes). True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.1 README's section "A host from before the rename" is gone, and no other line of README says the old name (proposal What Changes). True when `sluice exec main -- moon run root:format` passes.
 
 ## 3. The specs
 
