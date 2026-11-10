@@ -121,7 +121,7 @@ The answer to a part's report SHALL name taken each launch whose status went up 
 
 #### Scenario: A drop held for the runner
 
-- **WHEN** a place's status is Flume 0.21.0's fixture of a tidied place dropped, its ends pending for `scratch/planner` and `boomdrive`
+- **WHEN** a place's status is Flume 0.21.0's fixture of a tidied place dropped, launched naming `scratch/planner` and `boomdrive`, its drop's end pending for `boomdrive`
 - **THEN** its copy goes up with its drop's end, `over` `dropped`, and the delivery's key Flume gave it, and the report's answer names that launch's status taken
 
 ## ADDED Requirements
