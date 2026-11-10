@@ -52,4 +52,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 8. The specs
 
-- [x] 8.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-hosted-protocol-carries-every-end-of-a-place --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 8.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-hosted-protocol-carries-every-end-of-a-place --yes`, `sluice exec main -- moon run root:specs` passes.
