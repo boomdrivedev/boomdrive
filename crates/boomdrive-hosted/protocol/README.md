@@ -9,17 +9,21 @@ are sent against the version before reading it, and refuse one that
 fails whole.
 
 This repository's records and rules are the protocol's source: rule
-core.42 and record 0015, under `docs/`, and the change that wrote
-version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`.
-They cite boomdrive-cloud's records and rules by id.
+core.42 and records 0015 and 0037, under `docs/`, the change that wrote
+version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`,
+and the change that wrote version 2,
+`the-hosted-protocol-carries-every-end-of-a-place`. They cite
+boomdrive-cloud's records and rules by id.
 
 ## Versions
 
-Version 1 is `v1/`. A version may change until a release of the runner
-speaks it to a control plane. From that release on it never changes,
-and its directory is never removed: every change after it is a new
-version, in a directory of its own beside it. A control plane accepts
-the current version and the one before.
+Version 2 is `v2/`, and version 1, which it follows, is `v1/` (*Version
+1*, below). A version may change until a release of the runner speaks
+it to a control plane. From that release on it never changes, and its
+directory is never removed: every change after it is a new version, in
+a directory of its own beside it. A control plane accepts the current
+version and the one before. The runner speaks the current version
+alone.
 
 A connection asks for the WebSocket subprotocol `boomdrive.v2` at
 its upgrade, so a control plane that does not accept the version refuses
@@ -81,7 +85,7 @@ alike, so a validator in either language refuses the same strings.
 | `enroll_refused` | the control plane, answering `enroll` | the `enroll` message, by id, with words |
 | `hello` | the runner | the host's interface and runner versions, its tools' versions, the repositories it keeps for this control plane, its capacity, and the leases it holds |
 | `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, and each inbox it carried |
-| `pulled` | the control plane | the whole of what it wants, in its order, and the runner's report as it holds it, or `null` |
+| `pulled` | the control plane | the whole of what it wants, in its order: offers, acts on a launch's place (a retry, a drop, a done, a priority, or a confirm of a reader's ends by their delivery keys), commands and inboxes; and the runner's report as it holds it, or `null` |
 | `reported` | the control plane | the `report` message it answers, by id; the ids it lets go; the ids it refused, with its words |
 | `message_refused` | either | a message that failed its check, by id, with words |
 | `terminal_open` | the control plane | a terminal on a launch's agent, under the launch's lease number, with the browser's share |
@@ -115,9 +119,18 @@ the whole report, so a second delivery of either changes nothing. The
 socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
-Version 1 has no message for a forge token, for health, for the
-runner's own commands, or for a terminal's certificate. The changes
-that build them add them.
+Version 2 has no message for a forge token, for health, for the
+runner's own commands, or for a terminal's certificate, and no land and
+no preview among a `pulled`'s wants. The changes that build them add
+them, in a version of their own.
+
+**A confirm** is an act on a launch's place,
+`{"confirm":{"recipient":…,"deliveries":[…]}}`: a reader's confirmation
+of the ends of that place it names by their delivery keys, as the place's
+status gave them (*The copies*). The schema bounds neither its recipient
+nor its keys, so a confirm the runner refuses, of no key, as the runner
+itself or of a key no end of the place is under, reaches it as an act,
+and is answered as one, `refused` with its words.
 
 ## The paths
 
@@ -307,13 +320,35 @@ the cloud keeps, each as the tool printed it. The schema has no field
 for the rest, so the cloud's check refuses it.
 
 - **A place's status** (`place-status.schema.json`) is `flume status
-  --json`'s one place, as Flume 0.4.1 prints it, cut to its ids, states,
-  times and counts, what it made, its live agent's pane, and the words a
-  person reads to follow or answer it: an end's, a question's and a
-  hold's. It holds no agent's last words, screen, printed command,
-  notes, settings or mode; no task's text; no readiness; no task group's
-  title; no teardown's words; no end's report; no verdict's words; and
-  no path but the place's own. A field Flume adds after 0.4.1 is left
+  --json`'s one place, in the forms Flume 0.21.0 prints, cut to its ids,
+  states, times and counts, what it made, its live agent's pane, the
+  words a person reads to follow or answer it, an end's, a question's
+  and a hold's, and each end with its delivery. It holds no agent's last
+  words, screen, printed command, notes, settings or mode; no task's
+  text; no readiness; no task group's title; no teardown's words; no
+  end's report; no stall's move, answerer, stop-short or hold; no
+  verdict's words; and no path but the place's own. A field Flume adds
+  after 0.21.0 is left out.
+- **Each end of a place** (`end_record`) is a stage's, a submission's,
+  a stall's, or the end of the place's work by a drop or a done,
+  `{"of":"over","over":"dropped"|"done",…}`. Each carries its `key`, as
+  callers name it; its `delivery`, the key a reader confirms it by, and
+  `expires_at`, when its delivery expires, where Flume prints them; the
+  readers it is `owed` to, each with whether it `expired` for them and
+  whether anything was ever confirmed under their name, `known`; those
+  that `confirmed` it, and when; whom it is `pending_for`; and its
+  `deliveries`, each hand-over to a reader `by` a `notice`, a `wait`,
+  an `inbox` or a `session_start` collecting it.
+- **An end's delivery alone** (`end_delivery`) is how an end goes up
+  whose form version 2 does not name, or whose fields hold a value it
+  does not have: its `of` as Flume printed it, its `key`, `read_at`,
+  `delivery`, `expires_at`, `owed`, `confirmed` and `pending_for`, and
+  nothing of what ended and no hand-over. The runner copies each end on
+  its own: by the form its `of` names, else by its delivery alone, else
+  it leaves the end out, and the rest of the place's status goes up. The
+  runner takes a `reported` as holding a place's status only where every
+  end of it went up in a form version 2 names, so it confirms no end of
+  a place whose status went up with an end by its delivery alone or left
   out.
 - **The host's capacity** (`host_part` in `hello.schema.json`) is
   Flume's host part as values: the host's and each stream's room, a
@@ -360,3 +395,25 @@ them, and neither end keeps them.
 - **Closing.** `terminal_close` closes a terminal from the browser's
   end, and `terminal_closed` says the runner closed it, with its words.
   A terminal is closed with its socket.
+
+## Version 1
+
+Version 1, `v1/`, is what every release of the runner from `v0.1.0`,
+the first that dials a hosted control plane, to `v0.7.3` spoke. Its
+files and examples stay as those releases hold them, and a control
+plane may still take it as the version before the current one. It
+differs from version 2 in these alone:
+
+- **Its name** is `boomdrive.v1`: the subprotocol its connections ask
+  for, every message's `protocol_version` 1, and the start of each
+  context its keys sign, `boomdrive.v1 enroll`, `boomdrive.v1 connect`
+  and `boomdrive.v1 terminal share`. A key enrolled under version 1
+  stays its partition's, and proves itself under version 2's context.
+- **Its acts** are a retry, a drop, a done and a priority: no confirm.
+- **Its copy of a place's status** is of Flume 0.4.1's forms. An end is
+  a stage's, a submission's or a stall's, with no `key`, `delivery`,
+  `expires_at`, `owed` or `confirmed`; there is no end of a place's work
+  and no end's delivery alone; a hand-over, its definition named
+  `delivery`, is `by` a `notice`, a `wait` or an `inbox`. An end it
+  cannot carry fails the whole copy, and the place's status goes up
+  `null`.

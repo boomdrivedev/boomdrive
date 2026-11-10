@@ -167,3 +167,62 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
         key::base64url(&unhex(value(&values, "signature")))
     );
 }
+
+/// The README's section under the heading `## <heading>`, up to the next
+/// heading of its level.
+fn section<'a>(readme: &'a str, heading: &str) -> &'a str {
+    let after = readme
+        .split_once(&format!("\n## {heading}\n"))
+        .unwrap_or_else(|| panic!("the README has no section {heading:?}"))
+        .1;
+    after.split("\n## ").next().unwrap_or(after)
+}
+
+/// The runner-protocol spec's "The README of version 2" (design Decision
+/// 7 of the-hosted-protocol-carries-every-end-of-a-place): its envelope
+/// names `protocol_version` 2, its paths the subprotocol `boomdrive.v2`,
+/// its copies an end's `delivery` and an end's delivery alone, its
+/// messages a confirm, and a section `Version 1` names `boomdrive.v1`.
+#[test]
+fn the_readme_describes_version_2() {
+    let readme = readme();
+    assert!(
+        section(&readme, "The forms").contains(r#"{"protocol_version": 2, "id""#),
+        "the envelope names protocol_version 2"
+    );
+    let paths = section(&readme, "The paths");
+    assert!(paths.contains("subprotocol `boomdrive.v2`"), "{paths}");
+    assert!(!paths.contains("boomdrive.v1"), "{paths}");
+    let copies = section(&readme, "The copies");
+    for named in [
+        "`key`",
+        "`delivery`",
+        "`expires_at`",
+        "`owed`",
+        "`confirmed`",
+        "`session_start`",
+        r#"{"of":"over","over":"dropped"|"done",…}"#,
+        "**An end's delivery alone** (`end_delivery`)",
+    ] {
+        assert!(copies.contains(named), "the copies name {named}: {copies}");
+    }
+    let messages = section(&readme, "The messages");
+    assert!(
+        messages.contains("a confirm of a reader's ends"),
+        "{messages}"
+    );
+    assert!(
+        messages.contains(r#"`{"confirm":{"recipient":…,"deliveries":[…]}}`"#),
+        "{messages}"
+    );
+    let first = section(&readme, "Version 1");
+    assert!(first.contains("`boomdrive.v1`"), "{first}");
+    assert!(first.contains("`v0.7.3`"), "{first}");
+    for context in ["`boomdrive.v2 enroll`", "`boomdrive.v2 connect`"] {
+        assert!(readme.contains(context), "the README names {context}");
+    }
+    assert!(
+        !readme.replace(first, "").contains("boomdrive.v1"),
+        "only the section Version 1 names boomdrive.v1"
+    );
+}
