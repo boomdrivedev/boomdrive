@@ -72,6 +72,10 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../protocol/v2/submission-entry.schema.json"),
     ),
     (
+        "preview.schema.json",
+        include_str!("../../protocol/v2/preview.schema.json"),
+    ),
+    (
         "terminal.schema.json",
         include_str!("../../protocol/v2/terminal.schema.json"),
     ),
