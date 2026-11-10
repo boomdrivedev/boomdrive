@@ -32,7 +32,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. Every sort the interface names
 
-- [ ] 4.1 `tests/interface.rs`'s `every_sort_the_interface_names` checks a value of every `Want`, `ActSort` and `CommandSort`, each named by a match with no `_` arm, against version 2's `want`, and `the_interfaces_values_pass` checks a land and a preview of each kind beside what it checks now. This proves the runner-protocol spec's "Every sort the interface names" and "The interface's values pass" (design Decision 8; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface -- every_sort_the_interface_names the_interfaces_values_pass` passes.
+- [x] 4.1 `tests/interface.rs`'s `every_sort_the_interface_names` checks a value of every `Want`, `ActSort` and `CommandSort`, each named by a match with no `_` arm, against version 2's `want`, and `the_interfaces_values_pass` checks a land and a preview of each kind beside what it checks now. This proves the runner-protocol spec's "Every sort the interface names" and "The interface's values pass" (design Decision 8; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface -- every_sort_the_interface_names the_interfaces_values_pass` passes.
 
 ## 5. What the runner says of it
 

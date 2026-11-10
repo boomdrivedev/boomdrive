@@ -3,12 +3,13 @@
 //! interface's shapes"; design Decision 6 of
 //! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
-//! full length, passes its definition, every act sort version 2 names
-//! among them, a confirm and a land with them (the runner-protocol spec's
-//! "Version 2 carries a control plane's confirm", "Version 2 carries a
-//! land", and "Version 2 carries a preview and its done"; record 0037 as
-//! amended on 2026-11-09), a preview among the wants. Version 1 names no
-//! land, no confirm and no preview, and a release has spoken it, so a want
+//! full length, passes its definition, a value of every want, act and
+//! command sort the interface names among them, a preview, a land and a
+//! confirm with them (the runner-protocol spec's "Every sort the
+//! interface names", "Version 2 carries a control plane's confirm",
+//! "Version 2 carries a land" and "Version 2 carries a preview and its
+//! done"; record 0037 as amended on 2026-11-09). Version 1 names no land,
+//! no confirm and no preview, and a release has spoken it, so a want
 //! whose act is a land or a confirm, or a preview, fails its check of
 //! version 1 (the runner-protocol spec's "Version 1 carries no land" and
 //! "Version 1 carries no confirm"; core.42, core.53, core.55, core.56).
@@ -19,7 +20,7 @@ use boomdrive_control::*;
 use common::{address, definition, example, passes, refused, to_runner, validator, V1};
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// `value`, as the interface's types write it, passes the definition
 /// `name` of `file`.
@@ -120,12 +121,11 @@ fn a_confirm_is_no_act_of_version_1() {
     );
 }
 
-/// One value of each want sort but a preview, which no version names
-/// (`a_preview_is_no_want_of_version_2`), and of each act sort version 2
-/// names, a land (`a_land_is_no_act_of_version_2`) apart and a confirm
-/// among them, and each command sort, and each other value of the
-/// interface, passes its definition in version 2 (the runner-protocol
-/// spec's "The interface's values pass").
+/// One value of each want sort, a preview not done and one done among
+/// them, and of each act sort, a land and a confirm among them, and each
+/// command sort, and each other value of the interface, passes its
+/// definition in version 2 (the runner-protocol spec's "The interface's
+/// values pass").
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
@@ -158,8 +158,11 @@ fn the_interfaces_values_pass() {
             repository: "example/tools".to_string(),
             branch: "inbox".to_string(),
         }),
+        preview_of("0123456789abcdef0123456789abcdef01234567", false),
+        preview_of("0123456789abcdef0123456789abcdef01234567", true),
     ];
     let acts = [
+        ActSort::Land,
         ActSort::Retry {
             stage: Some("code".to_string()),
             words: Some("again".to_string()),
@@ -299,8 +302,16 @@ fn the_interfaces_values_pass() {
         )]),
         ..Report::default()
     };
-    passes_as("report.schema.json", "report", &report);
-    passes_as("report.schema.json", "report", &Report::default());
+    // Version 2 writes every part of a report, its `previews` among them,
+    // which the interface's file leaves out where it holds none (design
+    // Decision 3 of the-hosted-protocol-carries-land-and-preview).
+    let report_definition = validator(&definition("report.schema.json", "report"));
+    for report in [report, Report::default()] {
+        let mut json = serde_json::to_value(&report).unwrap();
+        assert!(json.get("previews").is_none(), "{json}");
+        json["previews"] = json!({});
+        passes(&report_definition, &json, &json.to_string());
+    }
 }
 
 /// A preview, as the interface's types write it, fails version 1's
@@ -450,4 +461,133 @@ fn a_preview_is_a_want_of_version_2() {
         [&json!(false), &json!(true)],
         "a preview and its done"
     );
+}
+
+/// The name of `want`'s sort, by a match with no `_` arm, so a sort the
+/// interface adds fails to build this test until it is named here.
+fn want_sort(want: &Want) -> &'static str {
+    match want {
+        Want::Offer(_) => "offer",
+        Want::Act(_) => "act",
+        Want::Command(_) => "command",
+        Want::Inbox(_) => "inbox",
+        Want::Preview(_) => "preview",
+    }
+}
+
+/// The name of `what`'s sort, by a match with no `_` arm.
+fn act_sort(what: &ActSort) -> &'static str {
+    match what {
+        ActSort::Retry { .. } => "retry",
+        ActSort::Land => "land",
+        ActSort::Confirm { .. } => "confirm",
+        ActSort::Drop => "drop",
+        ActSort::Priority(_) => "priority",
+        ActSort::Done => "done",
+    }
+}
+
+/// The name of `what`'s sort, by a match with no `_` arm.
+fn command_sort(what: &CommandSort) -> &'static str {
+    match what {
+        CommandSort::Branch { .. } => "branch",
+        CommandSort::Other { .. } => "other",
+    }
+}
+
+/// Every sort of `Want`, `ActSort` and `CommandSort`, each named as the
+/// matches above name it.
+const WANT_SORTS: [&str; 5] = ["offer", "act", "command", "inbox", "preview"];
+const ACT_SORTS: [&str; 6] = ["retry", "land", "confirm", "drop", "priority", "done"];
+const COMMAND_SORTS: [&str; 2] = ["branch", "other"];
+
+/// A value of every sort the interface names: an offer, an act of each
+/// act sort, a command of each command sort, an inbox and a preview, as
+/// the interface writes them.
+fn every_sort() -> Vec<Want> {
+    let acts = [
+        ActSort::Retry {
+            stage: None,
+            words: None,
+            submission: true,
+        },
+        ActSort::Land,
+        confirm_of(&["change--a/0a1b2c3d/stage/code/1/delivered"]),
+        ActSort::Drop,
+        ActSort::Priority(5),
+        ActSort::Done,
+    ];
+    let commands = [
+        CommandSort::Branch {
+            repository: "example/app".to_string(),
+            branch: "bolt/x".to_string(),
+            from: "main".to_string(),
+        },
+        CommandSort::Other {
+            tool: "boom".to_string(),
+            words: "accept".to_string(),
+        },
+    ];
+    let mut wants = vec![Want::Offer(Offer {
+        id: Id::new("offer-1"),
+        lease: lease(),
+        launch: launch(),
+    })];
+    wants.extend(acts.into_iter().map(|what| {
+        Want::Act(Act {
+            id: Id::new("act-1"),
+            launch: Id::new("offer-1"),
+            lease: 3,
+            what,
+        })
+    }));
+    wants.extend(commands.into_iter().map(|what| {
+        Want::Command(Command {
+            id: Id::new("command-1"),
+            lease: lease(),
+            what,
+        })
+    }));
+    wants.push(Want::Inbox(Inbox {
+        id: Id::new("inbox-1"),
+        repository: "example/tools".to_string(),
+        branch: "inbox".to_string(),
+    }));
+    wants.push(preview_of(
+        "0123456789abcdef0123456789abcdef01234567",
+        false,
+    ));
+    wants
+}
+
+/// The runner-protocol spec's "Every sort the interface names" (design
+/// Decision 8 of the-hosted-protocol-carries-land-and-preview): a value
+/// of every sort of `Want`, `ActSort` and `CommandSort`, each named by a
+/// match with no `_` arm, passes version 2's `want`, and the sorts named
+/// are every sort the interface has. A sort the interface adds fails to
+/// build the match until it is named, and then fails this test until a
+/// value of it is given and passes, so version 2 carries everything
+/// crew's control plane can ask (core.42).
+#[test]
+fn every_sort_the_interface_names() {
+    let want = validator(&definition("wants.schema.json", "want"));
+    let wants = every_sort();
+    let mut named = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
+    for value in &wants {
+        named.0.insert(want_sort(value));
+        match value {
+            Want::Act(act) => {
+                named.1.insert(act_sort(&act.what));
+            }
+            Want::Command(command) => {
+                named.2.insert(command_sort(&command.what));
+            }
+            Want::Offer(_) | Want::Inbox(_) | Want::Preview(_) => {}
+        }
+        let json = serde_json::to_value(value).unwrap();
+        passes(&want, &json, &json.to_string());
+    }
+    assert_eq!(named.0, BTreeSet::from(WANT_SORTS), "every want sort");
+    assert_eq!(named.1, BTreeSet::from(ACT_SORTS), "every act sort");
+    assert_eq!(named.2, BTreeSet::from(COMMAND_SORTS), "every command sort");
 }
