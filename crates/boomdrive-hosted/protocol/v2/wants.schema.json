@@ -80,6 +80,18 @@
               "$ref": "#/$defs/inbox"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preview"
+          ],
+          "properties": {
+            "preview": {
+              "$ref": "#/$defs/preview"
+            }
+          }
         }
       ]
     },
@@ -446,6 +458,40 @@
         },
         "branch": {
           "type": "string"
+        }
+      }
+    },
+    "preview": {
+      "description": "A preview of branch at revision in repository, under a lease of its own, brought up by sluice, or, where done, put away; the schema bounds neither the branch nor the revision, so a preview sluice refuses reaches the runner as a preview.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lease",
+        "repository",
+        "branch",
+        "revision",
+        "done"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "repository": {
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "done": {
+          "description": "Whether the preview is to be put away.",
+          "type": "boolean"
         }
       }
     }

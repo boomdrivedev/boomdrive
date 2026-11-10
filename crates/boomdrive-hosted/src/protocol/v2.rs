@@ -202,7 +202,8 @@ pub struct Hello {
     /// with their clones made (core.26).
     pub repositories: Vec<String>,
     pub capacity: Capacity,
-    /// Each launch's and each command's id with the lease number held.
+    /// Each launch's, each command's and each preview's id with the lease
+    /// number held.
     pub leases: BTreeMap<Id, u64>,
 }
 
