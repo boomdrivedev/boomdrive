@@ -1,5 +1,5 @@
 ---
-number: 39
+number: 40
 title: Flywheel is renamed Boomdrive
 status: proposed
 date: 2026-11-04
@@ -13,7 +13,7 @@ Recorded in agentplot/boomdrive-web as its record 0002.
 
 - Status: proposed
 - Date: 2026-11-04
-- Supersedes: [0038](0038-the-site-is-flywheel.md), whose reasons against
+- Supersedes: [0039](0039-the-site-is-flywheel.md), whose reasons against
   MadSwan and a personal name still hold
 
 ## Context and problem statement

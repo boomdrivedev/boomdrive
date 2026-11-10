@@ -9,7 +9,7 @@ merge_queue = "sluice"
 
 # content: the one kind of work that changes what the site shows, a
 # diagram, a page's words, a figure or a tools strip (site.5; record
-# 0037). change makes it and gets the checks green; preview serves the
+# 0038). change makes it and gets the checks green; preview serves the
 # place's own site and asks the operator whether it now says what the
 # task asked, a no going back to change with their words. The kind and its
 # prompts are the same in every family site; what tailors them here is

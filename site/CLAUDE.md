@@ -8,7 +8,7 @@ and plans; read `docs/site-design.md` first. The paths here are read from
 
 The site's rules are the area page `docs/architecture/site.md` at the
 repository's root, beside `core.md`, which binds wherever a change is made
-(record 0037):
+(record 0038):
 
 - Nothing commercial goes here: pricing, revenue and product plans live in the
   private strategy repository. Products appear on the site only as a waitlist
@@ -23,7 +23,7 @@ repository's root, beside `core.md`, which binds wherever a change is made
 - A change to what the site shows is content work, below (site.5).
 - Every internal link goes through `url()` in `src/lib/url.ts`, never a bare
   root path: the site is served under `/boomdrive/`, its repository's name
-  (site.6; record 0039).
+  (site.6; record 0040).
 - Our own fleet's drives and machines are named only on the measurement and
   field-note pages and the content they are built from, as ours. The guides,
   reference, glossary, quick start, the site's design and its archived changes

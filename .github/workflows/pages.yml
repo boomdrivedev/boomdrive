@@ -1,4 +1,4 @@
-# The workflow `pages` (record 0037, design Decision 11): at each push to
+# The workflow `pages` (record 0038, design Decision 11): at each push to
 # main that changes the site, this workflow, the devenv shell or
 # flake.lock, which names the flume tag whose site/packages.nix fetches
 # the site's packages, the site built in the devenv shell and published

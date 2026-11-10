@@ -4,7 +4,7 @@
 # pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec,
 # the nix project's nix, nixfmt, statix, deadnix and actionlint, the
 # release's git-cliff and convco, and the site's bun, Node.js, Vale and
-# Biome the releases devenv.nix pins (record 0037), and
+# Biome the releases devenv.nix pins (record 0038), and
 # OpenSpec's Claude Code skills its OpenSpec's (record 0022). A tool
 # found outside its pin, a runner's rustup default say, fails here rather
 # than holding the tree to another version's rules.

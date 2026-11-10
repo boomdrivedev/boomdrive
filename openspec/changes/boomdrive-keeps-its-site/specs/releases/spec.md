@@ -2,7 +2,7 @@
 
 ### Requirement: The version is git-cliff's, from the commits since the newest release
 
-`release.sh next` SHALL print the tag `v<version>` of the version git-cliff makes under `cliff.toml` from the commits since the newest tag `v<major>.<minor>.<patch>` in the history, `v0.1.0` where the history holds none. Before `1.0.0`, a feature or a breaking change SHALL bump the minor version, and any other commit the notes keep the patch. A commit that changes only the site's paths, `site/` and `.github/workflows/pages.yml`, SHALL bump nothing (core.48; record 0037). Where that version is tagged already, `release.sh next` SHALL print nothing and say so on standard error. It SHALL write nothing.
+`release.sh next` SHALL print the tag `v<version>` of the version git-cliff makes under `cliff.toml` from the commits since the newest tag `v<major>.<minor>.<patch>` in the history, `v0.1.0` where the history holds none. Before `1.0.0`, a feature or a breaking change SHALL bump the minor version, and any other commit the notes keep the patch. A commit that changes only the site's paths, `site/` and `.github/workflows/pages.yml`, SHALL bump nothing (core.48; record 0038). Where that version is tagged already, `release.sh next` SHALL print nothing and say so on standard error. It SHALL write nothing.
 
 #### Scenario: The first release
 
@@ -41,7 +41,7 @@
 
 ### Requirement: The notes are git-cliff's, for the same commits
 
-`release.sh notes <tag>` SHALL print git-cliff's notes, under `cliff.toml`, of the commits since the newest release tag, headed by the tag: breaking changes, features, fixes, performance, refactors and documentation, each a group of its own in that order, each commit a line of its scope, its subject and a link to it. A chore, a test, a build, CI, a style change or a commit git-cliff cannot read SHALL be in no group, nor SHALL a commit that changes only the site's paths, `site/` and `.github/workflows/pages.yml` (core.48; record 0037), and no line SHALL hold a `Co-Authored-By` trailer.
+`release.sh notes <tag>` SHALL print git-cliff's notes, under `cliff.toml`, of the commits since the newest release tag, headed by the tag: breaking changes, features, fixes, performance, refactors and documentation, each a group of its own in that order, each commit a line of its scope, its subject and a link to it. A chore, a test, a build, CI, a style change or a commit git-cliff cannot read SHALL be in no group, nor SHALL a commit that changes only the site's paths, `site/` and `.github/workflows/pages.yml` (core.48; record 0038), and no line SHALL hold a `Co-Authored-By` trailer.
 
 #### Scenario: A release's notes
 

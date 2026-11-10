@@ -1,6 +1,6 @@
 ## Purpose
 
-Boomdrive's site, `site/`: the Method, its field notes and the fleet's measurements, an Astro site that is a moon project of its own, checked in the gate's sandbox from packages the devenv shell fetches outside it, served at `https://agentplot.github.io/boomdrive/`, and published from `main` by the workflow `pages` (records 0025 and 0037; site.1 to site.7; core.7, core.8).
+Boomdrive's site, `site/`: the Method, its field notes and the fleet's measurements, an Astro site that is a moon project of its own, checked in the gate's sandbox from packages the devenv shell fetches outside it, served at `https://agentplot.github.io/boomdrive/`, and published from `main` by the workflow `pages` (records 0025 and 0038; site.1 to site.7; core.7, core.8).
 
 ## ADDED Requirements
 
@@ -47,7 +47,7 @@ The site's check-fast tasks SHALL be one check each: `check`, Astro's type check
 
 ### Requirement: The site is served under /boomdrive/
 
-The site SHALL be built for the base `/boomdrive/`, and every link and asset of its own pages SHALL be under it. Nothing the site writes SHALL name boomdrive-web, and its repository link SHALL be `https://github.com/agentplot/boomdrive` (site.6). The family's entries `@agentplot/site-theme` draws, its Boomdrive member's `site` and `hub`, SHALL stand as the theme gives them (record 0039), until its release at the opening.
+The site SHALL be built for the base `/boomdrive/`, and every link and asset of its own pages SHALL be under it. Nothing the site writes SHALL name boomdrive-web, and its repository link SHALL be `https://github.com/agentplot/boomdrive` (site.6). The family's entries `@agentplot/site-theme` draws, its Boomdrive member's `site` and `hub`, SHALL stand as the theme gives them (record 0040), until its release at the opening.
 
 #### Scenario: Every link under the base
 

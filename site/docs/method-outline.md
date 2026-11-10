@@ -301,7 +301,7 @@ the site's change entries take (principle, kind, summary, what prompted it).
   principles' words, their tool strips and their diagrams; Never prove
   twice's strip names timber once the site takes the theme's tag that
   renames it. Prompted by the
-  operator's rename (record 0039): "the
+  operator's rename (record 0040): "the
   ecosystem, the org, the branding, the cloud and the opensource runner
   tool are all boomdrive".
 

@@ -38,7 +38,7 @@ filter_unconventional = true
 # A commit that changes only the site, site/ and its workflow pages, is in
 # no release's notes and bumps no version, the runner's releases seeing
 # none of the site's commits; one that changes the site and anything else
-# is read as any commit (core.48, record 0037).
+# is read as any commit (core.48, record 0038).
 exclude_paths = ["site/**", ".github/workflows/pages.yml"]
 split_commits = false
 protect_breaking_commits = true

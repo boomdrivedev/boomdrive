@@ -1,6 +1,6 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
-# The site, site/ (record 0037): each check one task (core.7), run in site/
+# The site, site/ (record 0038): each check one task (core.7), run in site/
 # by the tools devenv.nix pins (core.8). Each declares the shell's files
 # among its inputs, so a candidate that changes none of the site's inputs
 # replays its checks.

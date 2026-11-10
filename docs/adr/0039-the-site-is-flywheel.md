@@ -1,7 +1,7 @@
 ---
-number: 38
+number: 39
 title: The site is Flywheel
-status: superseded by 0039
+status: superseded by 0040
 date: 2026-10-09
 decision-makers:
 - Chuck Swanberg
@@ -11,7 +11,7 @@ decision-makers:
 
 Recorded in agentplot/boomdrive-web as its record 0001.
 
-- Status: superseded by [0039](0039-flywheel-is-renamed-boomdrive.md)
+- Status: superseded by [0040](0040-flywheel-is-renamed-boomdrive.md)
 - Date: 2026-10-09
 
 ## Context and problem statement

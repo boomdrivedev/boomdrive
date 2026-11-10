@@ -9,9 +9,9 @@ content in git and built with Astro.
 Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
 
 - **The site is Boomdrive.** The name of the Method's home, of the fleet it
-  measures and of the ecosystem (record 0039).
+  measures and of the ecosystem (record 0040).
   MadSwan is the company and stays on the commercial side, and a personal
-  name would make this a blog (record 0038). The
+  name would make this a blog (record 0039). The
   domain is still open.
 - **Content in git** because the writers are us and our agents: a note is a
   pull request, reviewed at the gate, versioned with the Method.

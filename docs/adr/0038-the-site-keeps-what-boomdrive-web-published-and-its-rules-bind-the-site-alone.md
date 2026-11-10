@@ -1,5 +1,5 @@
 ---
-number: 37
+number: 38
 title: The site keeps what boomdrive-web published, and its rules bind the site alone
 status: proposed
 date: 2026-11-09

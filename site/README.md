@@ -5,7 +5,7 @@ five agents to five hundred: a handbook with a lab notebook attached. The
 Method is kept current, field notes are dated and age honestly, and live fleet
 numbers show what is happening now.
 
-The site and the brand are Boomdrive (record 0039). The site is `site/` of
+The site and the brand are Boomdrive (record 0040). The site is `site/` of
 agentplot/boomdrive, served at `https://agentplot.github.io/boomdrive/`; the
 domain is not chosen. Its paths below are read from `site/`.
 

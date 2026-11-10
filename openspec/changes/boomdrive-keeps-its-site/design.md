@@ -13,7 +13,7 @@ See proposal.md for why. `docs/architecture/core.md` binds every path this chang
 - core.48: the site's commits are in no release's notes and bump no version.
 - site.1 to site.7: the site's own rules.
 
-Record 0037 and the rules it changes are written with this change, beside this design:
+Record 0038 and the rules it changes are written with this change, beside this design:
 
 - the area page, rules `site.1` to `site.7`;
 - `core.md`'s opening, naming its one area page;
@@ -80,7 +80,7 @@ Not taken:
 |---|---|
 | `src/`, `public/`, `styles/`, `scripts/vocab.ts`, `.vale.ini`, `astro.config.mjs`, `package.json`, `bun.lock`, `tsconfig.json`, `README.md`, `CLAUDE.md`, `docs/` but `docs/adr/` | stay in `site/` |
 | `moon.yml` | stays in `site/`, rewritten (Decision 3) |
-| `docs/adr/0001` to `0003` | `docs/adr/0038` to `0040` (Decision 8) |
+| `docs/adr/0001` to `0003` | `docs/adr/0039` to `0041` (Decision 8) |
 | `openspec/changes/archive/*` | `openspec/changes/archive/` |
 | `openspec/specs/*` | this change's specs, made at its archive (Decision 9) |
 | `openspec/config.yaml` | joins `openspec/config.yaml` (Decision 9) |
@@ -179,17 +179,17 @@ A commit that changes only those paths is in no notes and bumps nothing. A commi
 
 `check-commits.sh` is unchanged. Every commit is held to the convention, and boomdrive-web's 166 commits pass. `check-releases.sh` gains the releases spec's three new scenarios. Its scratch repositories commit a file under `site/` beside its root files.
 
-Record 0037 records the choice, and the path not taken, a scope `site` skipped by a commit parser.
+Record 0038 records the choice, and the path not taken, a scope `site` skipped by a commit parser.
 
-### 8. boomdrive-web's records become records 0038 to 0040
+### 8. boomdrive-web's records become records 0039 to 0041
 
-The next free numbers after record 0037 are 0038 to 0040, as of this writing. `root:adrs` names the next free number if another branch takes one first.
+This change's record is 0038, and boomdrive-web's three take the numbers after it, in their order. `main` holds records to 0036, 0033 is another branch's, and 0037 is the hosted protocol bolt's, which lands first, as agentplot-design ruled on 2026-11-09. `root:adrs` fails where two records share a number.
 
 | boomdrive-web's | Here | Status |
 |---|---|---|
-| `0001-the-site-is-flywheel.md` | `0038-the-site-is-flywheel.md` | superseded by 0039 |
-| `0002-flywheel-is-renamed-boomdrive.md` | `0039-flywheel-is-renamed-boomdrive.md` | proposed |
-| `0003-the-site-declares-its-mcp-servers-in-its-devenv-and-approves-them.md` | `0040-the-site-declares-its-mcp-servers-in-its-devenv-and-approves-them.md` | as its own status line says |
+| `0001-the-site-is-flywheel.md` | `0039-the-site-is-flywheel.md` | superseded by 0040 |
+| `0002-flywheel-is-renamed-boomdrive.md` | `0040-flywheel-is-renamed-boomdrive.md` | proposed |
+| `0003-the-site-declares-its-mcp-servers-in-its-devenv-and-approves-them.md` | `0041-the-site-declares-its-mcp-servers-in-its-devenv-and-approves-them.md` | as its own status line says |
 
 Each record changes in these ways, and no other:
 
@@ -274,7 +274,7 @@ These name boomdrive rather than boomdrive-web:
 
 The records, the archived changes and the field notes keep their text (site.3).
 
-The family's entries `@agentplot/site-theme` draws on every page, its Boomdrive member's `site` and its `hub`, stay as the theme gives them, `/boomdrive-web/` at v0.1.3, and the site does not override them (record 0039). They move at the opening, by a site-theme release naming the new address, which the opening carries (agentplot-design, 2026-11-09). `site:test` reads them from the theme, so what it holds the site to is everything else the site writes.
+The family's entries `@agentplot/site-theme` draws on every page, its Boomdrive member's `site` and its `hub`, stay as the theme gives them, `/boomdrive-web/` at v0.1.3, and the site does not override them (record 0040). They move at the opening, by a site-theme release naming the new address, which the opening carries (agentplot-design, 2026-11-09). `site:test` reads them from the theme, so what it holds the site to is everything else the site writes.
 
 ### 13. The site's working rules
 
@@ -282,7 +282,7 @@ These are written with this change:
 
 - `docs/architecture/site.md` holds rules `site.1` to `site.6`, from boomdrive-web's `CLAUDE.md` and `openspec/config.yaml`, and `site.7`, where our own fleet's names may stand, each with its details.
 - core.6's details, core.7, core.41, core.48 and `core.md`'s opening name the site.
-- Record 0037, proposed, gives the reasons.
+- Record 0038, proposed, gives the reasons.
 
 `site/CLAUDE.md` is boomdrive-web's, for the site:
 
@@ -310,7 +310,7 @@ The root `CLAUDE.md` says what the site is, where it is served, and that its rul
 | `site/docs/measurement-roadmap.md`'s examples: `host: mac-studio` and `drive: madswan` | take this repository's neutral names, `host: host-a` and `drive: home` |
 | `site/docs/site-design.md`'s example of a split's name, `bolts open, madswan` | takes `bolts open, home` |
 | `openspec/changes/archive/2026-10-25-the-content-kind-and-its-brief/proposal.md`'s signal, cited by an id holding a drive's name | is cited as the operator's signal of 2026-10-26, with no id, as record 0022's deciders cite theirs |
-| MadSwan named as the company, in records 0038 and 0039, `site/docs/site-design.md` and `site/docs/audience-plan.md` | stays: a company is no drive or machine |
+| MadSwan named as the company, in records 0039 and 0040, `site/docs/site-design.md` and `site/docs/audience-plan.md` | stays: a company is no drive or machine |
 
 The guides, reference, glossary and quick start hold none of ours today, and `site.7` keeps them so. No check lists our names, since a check would have to hold them. The rule is a review's.
 

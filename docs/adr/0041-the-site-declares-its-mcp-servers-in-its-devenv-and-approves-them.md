@@ -1,5 +1,5 @@
 ---
-number: 40
+number: 41
 title: The site declares its MCP servers in its devenv and approves them
 status: accepted
 date: 2026-11-07

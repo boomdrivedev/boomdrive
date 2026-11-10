@@ -15,7 +15,7 @@ fail() {
 # page links is boomdrive's, and nothing the site writes names
 # boomdrive-web. The family's entries @agentplot/site-theme draws, its
 # Boomdrive member's site and its hub, stand as the theme gives them
-# (record 0039), read here from the theme itself, so they move with its
+# (record 0040), read here from the theme itself, so they move with its
 # release at the opening.
 theme=$(bun -e 'import { member, hub } from "@agentplot/site-theme/family"; console.log(member("boomdrive").site); console.log(hub);') ||
   fail "@agentplot/site-theme gave no Boomdrive site or hub"

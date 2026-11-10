@@ -75,7 +75,7 @@ let
   deadnixVersion = "1.3.2";
   actionlintVersion = "1.7.12";
 
-  # The site's tools (record 0037, design Decision 5): bun, which installs
+  # The site's tools (record 0038, design Decision 5): bun, which installs
   # its packages and runs Astro, and Node.js, which runs Astro's bin under
   # bun, nixpkgs' builds pinned by devenv.lock and asserted to be these
   # versions as git is; and Biome, which formats the site's TypeScript,
@@ -291,7 +291,7 @@ in
   # devenv's options, named here because a list of the repository's own
   # replaces devenv's default; and Astro's documentation, astro-docs, for
   # the Astro release site/package.json pins (records 0022, 0025 and
-  # 0040; design Decision 14). Every server named is
+  # 0041; design Decision 14). Every server named is
   # approved by name in the settings, so a session in a trusted folder, a
   # place among them, starts them and asks nothing. OpenSpec's skills and
   # commands under .claude/ are tracked, as the openspec pinned above

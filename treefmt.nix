@@ -86,7 +86,7 @@ in
   # values, never as bytes, so its layout changes nothing they hold.
   programs.jsonfmt.enable = true;
 
-  # Biome formats the site's TypeScript, JavaScript and CSS (record 0037):
+  # Biome formats the site's TypeScript, JavaScript and CSS (record 0038):
   # `biome format`, not `biome check`, since a lint of the site's code
   # would be a check of its own, not a formatter's side effect. jsonfmt
   # keeps the site's JSON, as it keeps the tree's. Its settings are here,

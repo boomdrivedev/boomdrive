@@ -14,11 +14,11 @@ The brief: "Boomdrive's site is the public repository's site/, its own project w
   - The shell gains the site's tools, each pinned and checked by `root:toolchain` (core.8): bun, Node.js, Vale, and Biome, which formats the site's TypeScript, JavaScript and CSS.
 - **The site is served under `/boomdrive/`**, the public repository's name, and links to `agentplot/boomdrive`. The workflow `pages` builds it in the devenv shell at each push to `main` that changes it, and publishes it.
 - **The site's working rules come with it, scoped to `site/`.** They are an area page, `docs/architecture/site.md`, rules `site.1` to `site.7`, and `site/CLAUDE.md`. Its OpenSpec context and rules join `openspec/config.yaml` for the site's specs and changes.
-- **Its records and specs come into this repository's.** Its records 0001 to 0003 become records 0038 to 0040. Its archived changes join `openspec/changes/archive/`. Its four specs, `content-kind`, `method-diagrams`, `method-tools` and `tools-hub`, come through this change.
+- **Its records and specs come into this repository's.** Its records 0001 to 0003 become records 0039 to 0041. Its archived changes join `openspec/changes/archive/`. Its four specs, `content-kind`, `method-diagrams`, `method-tools` and `tools-hub`, come through this change.
 - **Its content kind is the repository's.** `.config/flume.toml` declares `content`, its prompts under `site/docs/prompts/`. A place serves its own site on sluice's `web` port, and `site-stop` is sluice's release command.
 - **Its commits are in no release notes and move no version.** `cliff.toml` leaves out a commit that changes only `site/` and the workflow `pages` (core.48). The gate still holds every commit to the convention.
 - **Its devenv's MCP server joins this one's**, Astro's documentation beside devenv's (records 0022 and 0025).
-- **Record 0037**, proposed, says how the site meets core.6, core.41 and core.48. Our own fleet's drives and machines stay named, as ours, on the site's measurement and field-note pages, as boomdrive-web published them, and nowhere else of the site (`site.7`). The site's design takes neutral names in its examples. Its rules are an area page. Its commits are left out of the notes by path. core.6's details, core.7, core.41, core.48 and `core.md`'s opening name the site. They are written with this change.
+- **Record 0038**, proposed, says how the site meets core.6, core.41 and core.48. Our own fleet's drives and machines stay named, as ours, on the site's measurement and field-note pages, as boomdrive-web published them, and nowhere else of the site (`site.7`). The site's design takes neutral names in its examples. Its rules are an area page. Its commits are left out of the notes by path. core.6's details, core.7, core.41, core.48 and `core.md`'s opening name the site. They are written with this change.
 
 ## Capabilities
 
@@ -45,7 +45,7 @@ The brief: "Boomdrive's site is the public repository's site/, its own project w
     - `.claude/` and `scripts/openspec-skills.ts`;
     - `.config/`, `.github/` and `.gitignore`;
     - `openspec/`, once its archive has moved.
-- `docs/adr/0038-…` to `0040-…`: boomdrive-web's records 0001 to 0003.
+- `docs/adr/0039-…` to `0041-…`: boomdrive-web's records 0001 to 0003.
 - `openspec/changes/archive/2026-10-25-…` and `2026-10-27-…`: boomdrive-web's six archived changes.
 - `openspec/config.yaml`: the site's context and rules.
 - `.moon/workspace.yml`: the project `site`.
@@ -64,7 +64,7 @@ The brief: "Boomdrive's site is the public repository's site/, its own project w
 - `.gitignore`: the site's build outputs.
 - `CLAUDE.md` and `README.md`: the site and its project.
 - Written with this change:
-  - `docs/adr/0037-…`, the record, proposed;
+  - `docs/adr/0038-…`, the record, proposed;
   - `docs/architecture/site.md`, the area page;
   - `docs/architecture/core.md`: the opening, core.7, core.41 and core.48, and the details of core.6, core.7, core.41 and core.48.
 - No crate, flake output or module changes. No runner behavior changes.
