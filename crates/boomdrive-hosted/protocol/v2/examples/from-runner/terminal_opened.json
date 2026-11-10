@@ -1,0 +1,15 @@
+{
+  "protocol_version": 2,
+  "id": "runner:20",
+  "body": {
+    "terminal_opened": {
+      "terminal": "terminal-1",
+      "share": {
+        "suite": "example-suite",
+        "key": "fd8AShq37jwryXkcDi-ZNSIcO3OSb4X2qFjHjH_QM7A",
+        "signature": "TWBlkmVi5UZ8OeMuem_JMo3C2eYkPqUfmw8R04_q3BuHMMJcuwZJOtTFnUSzHaGQwEYrtljNCK1688EcgzMgzw",
+        "certificate": "dKAKTx2Ip8da4pVOZ42IACf-lW3yAOi09ZL_FidlEOXxB1qJEqyfTkr17W8iea3rGYFhY5L795oLuG8b7ZKMhzN7WQgF15lBZTx3j29DqLV9_IyWm4KPnaARczITx8ht"
+      }
+    }
+  }
+}
