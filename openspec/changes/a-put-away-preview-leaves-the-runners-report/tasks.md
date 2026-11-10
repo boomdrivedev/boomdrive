@@ -47,7 +47,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   `a_preview_still_up_its_work_gone` stands as it is.
 
   True when `devenv shell -- cargo test -p boomdrive-crew --test letgo preview` passes. It proves the crew-control-plane spec's "A preview put away, its work still in the plan", "A bring-up written after the done stays", "A preview put away, its work gone", "A preview sluice no longer lists, its work gone", "A preview still up, its work gone", "A refused preview, its bolt landed" and "A refused preview, its bolt still in the plan".
-- [ ] 2.4 crew's implementation passes the lint, its new functions documented, `let_go`'s and `Pulling::current`'s documentation citing record 0031's amendment. True when `sluice exec main -- moon run boomdrive-crew:lint` passes.
+- [x] 2.4 crew's implementation passes the lint, its new functions documented, `let_go`'s and `Pulling::current`'s documentation citing record 0031's amendment. True when `sluice exec main -- moon run boomdrive-crew:lint` passes.
 
 ## 3. The words
 
