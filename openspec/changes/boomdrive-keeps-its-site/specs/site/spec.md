@@ -1,6 +1,6 @@
 ## Purpose
 
-Boomdrive's site, `site/`: the Method, its field notes and the fleet's measurements, an Astro site that is a moon project of its own, checked in the gate's sandbox from packages the devenv shell fetches outside it, served at `https://agentplot.github.io/boomdrive/`, and published from `main` by the workflow `pages` (records 0025 and 0037; site.1 to site.6; core.7, core.8).
+Boomdrive's site, `site/`: the Method, its field notes and the fleet's measurements, an Astro site that is a moon project of its own, checked in the gate's sandbox from packages the devenv shell fetches outside it, served at `https://agentplot.github.io/boomdrive/`, and published from `main` by the workflow `pages` (records 0025 and 0037; site.1 to site.7; core.7, core.8).
 
 ## ADDED Requirements
 

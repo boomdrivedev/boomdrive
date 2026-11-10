@@ -8,18 +8,20 @@ See proposal.md for why. `docs/architecture/core.md` binds every path this chang
 - core.6: nothing commercial, as its details now read for the site.
 - core.7: every tracked file is owned by a formatter or excluded with its reason, and the site is a moon project of its own, one task per check.
 - core.8: every tool a gate task runs is the version the tree pins.
-- core.41: nothing private, as it now reads for the site's own fleet.
+- core.41: nothing private, as it now reads for the site's measurement and field-note pages.
 - core.47: `main` holds only what sluice's gate passed, so a workflow at a push to `main` checks nothing again.
 - core.48: the site's commits are in no release's notes and bump no version.
-- site.1 to site.6: the site's own rules.
+- site.1 to site.7: the site's own rules.
 
 Record 0037 and the rules it changes are written with this change, beside this design:
 
-- the area page, rules `site.1` to `site.6`;
+- the area page, rules `site.1` to `site.7`;
 - `core.md`'s opening, naming its one area page;
 - core.7, core.41 and core.48, and the details of core.6, core.7, core.41 and core.48.
 
 The change departs from no rule. It reaches no control plane, and changes no crate, flake output or module.
+
+It is built in this repository while it is private, before the opening. Record 0025's order, as agentplot-design amends it on 2026-11-09, moves the site here first. At the opening, an agent makes the public repository's fresh root from the scrubbed tree without `site/`, and merges `site/`'s history back on, filtered to that path, by hand (agentplot/blueprints `design/principles.md` 12). That step is the opening's, and no code of this change carries it.
 
 ### What stands
 
@@ -50,7 +52,7 @@ The change departs from no rule. It reaches no control plane, and changes no cra
 
 **Non-Goals:**
 
-- The opening: the public repository, its fresh history, the rename to `agentplot/boomdrive-archive`, and the repository's Pages source.
+- The opening: the public repository, its fresh root with `site/`'s history merged back on, the rename to `agentplot/boomdrive-archive`, and enabling the repository's Pages.
 - boomdrive-web's redirect to `/boomdrive/` and its archiving, which are boomdrive-web's.
 - Any change to what a page shows. Content work stays the `content` kind's (site.5).
 - Biome's lint over the site's code.
@@ -275,13 +277,13 @@ The records, the archived changes and the field notes keep their text (site.3).
 
 These are written with this change:
 
-- `docs/architecture/site.md` holds rules `site.1` to `site.6`, from boomdrive-web's `CLAUDE.md` and `openspec/config.yaml`, with their details.
+- `docs/architecture/site.md` holds rules `site.1` to `site.6`, from boomdrive-web's `CLAUDE.md` and `openspec/config.yaml`, and `site.7`, where our own fleet's names may stand, each with its details.
 - core.6's details, core.7, core.41, core.48 and `core.md`'s opening name the site.
 - Record 0037, proposed, gives the reasons.
 
 `site/CLAUDE.md` is boomdrive-web's, for the site:
 
-- It cites `site.1` to `site.6`.
+- It cites `site.1` to `site.7`.
 - It names the repository's devenv and gate, and `site-check`.
 - It says the workflow `pages` publishes `main`'s site at each push that changes it.
 - It drops its bare layout's line, its own devenv's MCP and OpenSpec lines, which are the repository's (record 0022), and the crew chore.
@@ -294,15 +296,27 @@ The root `CLAUDE.md` says what the site is, where it is served, and that its rul
 
 `devenv.nix`'s `claude.code.mcpServers` gains `astro-docs`, `https://mcp.docs.astro.build/mcp`, beside `mcp.devenv.sh`. It is approved by name as every server is, and its comment says what it serves: Astro's documentation for the release `site/package.json` pins (records 0022 and 0025).
 
+### 15. Our own fleet's names stand on the case study alone
+
+`site.7` holds the line. Our own drives and machines stay named, as ours, where the site shows our fleet as a case study, and nowhere else of the site:
+
+| Where | Names of ours |
+|---|---|
+| `site/src/content/measurements/`, `site/src/content/contexts/`, `site/src/content/notes/` and the pages built from them | stay, as boomdrive-web published them |
+| The history task 1.1 merges, the agents named after a drive in its messages among them | stays, as published (record 0025) |
+| `site/docs/measurement-roadmap.md`'s examples: `host: mac-studio` and `drive: madswan` | take this repository's neutral names, `host: host-a` and `drive: home` |
+| `site/docs/site-design.md`'s example of a split's name, `bolts open, madswan` | takes `bolts open, home` |
+| `openspec/changes/archive/2026-10-25-the-content-kind-and-its-brief/proposal.md`'s signal, cited by an id holding a drive's name | is cited as the operator's signal of 2026-10-26, with no id, as record 0022's deciders cite theirs |
+| MadSwan named as the company, in records 0038 and 0039, `site/docs/site-design.md` and `site/docs/audience-plan.md` | stays: a company is no drive or machine |
+
+The guides, reference, glossary and quick start hold none of ours today, and `site.7` keeps them so. No check lists our names, since a check would have to hold them. The rule is a review's.
+
 ## Risks / Trade-offs
 
-- **The opening's fresh history.** Record 0025 has the public repository start from the scrubbed tree with a fresh history, and the site move into it after. This repository is still private, with its history from 2026-10-31. Built here first, task 1.1's history is part of the tree's history, and a fresh root would drop it. The opening keeps it by making its fresh root from the tree without `site/`, then merging `site/`'s rewritten history onto it as task 1.1 does. The question is open (see Open Questions).
-- **Pages from a private repository.** The organization's plan publishes Pages only from a public repository. Until the opening, the workflow's deploy fails at each push that changes the site. boomdrive-web keeps publishing until it is archived, which is boomdrive-web's.
-- **boomdrive-web moving after the merge.** Task 1.1 takes boomdrive-web's `main` as it stands. Work landed there afterwards is not here. boomdrive-web takes no new work once task 1.1 is made, which is the orchestrator's to hold.
+- **The site's history at the opening.** Task 1.1's history is part of this repository's history, which the public repository does not take. The opening keeps it by its by-hand step, its fresh root from the scrubbed tree without `site/` with `site/`'s history merged back on. A fresh root made of the whole tree would drop it.
+- **Pages from a private repository.** The organization's plan publishes Pages only from a public repository. Until the opening, the workflow's deploy fails at each push that changes the site, which is expected; enabling Pages is part of the opening. boomdrive-web keeps publishing until the site publishes from here, and is archived then.
+- **boomdrive-web moving after the merge.** Task 1.1 takes boomdrive-web's `main` as it stands. boomdrive-web takes no new work from then on, which the orchestrator holds.
 - **The shell grows.** It now holds bun, Node.js, Vale, Biome and the site's packages, each fetched once per lock and substituted from caches after.
 - **flume's `packages.nix` at the set's tag.** A flume release that changes the function changes the site's install with it. The gate catches a break in the change that moves the tag (core.45).
 - **The gate's time.** `site:install` runs at each gate, `cache: false`, copying the cache and installing offline in seconds. The site's checks replay wherever their inputs are unchanged.
 
-## Open Questions
-
-- **Whether this change is built before the opening.** It is planned on this repository's branch, its history merged by task 1.1. The other way holds the code stage until the opening, then builds the change on the public repository. Its tasks are the same either way. Asked of the planner.
