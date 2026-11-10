@@ -52,4 +52,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 3. The words
 
 - [x] 3.1 The README's section on crew's implementation says when a preview leaves the runner's branch, beside `previews.rec` (design Decision 6). It leaves once its done is answered, with what the done put away. It also leaves once its work has left the plan and it is no longer up, a bolt's work leaving with its `Bolt` record. `tests/readme.rs`'s `the_readme_names_how_a_preview_is_brought_up_and_put_away` also fails where the flattened README lacks `leaves the runner's branch once its done is answered`. True when `devenv shell -- cargo test -p boomdrive --test readme the_readme_names_how_a_preview_is_brought_up_and_put_away` passes.
-- [ ] 3.2 The runner's tests that tasks 1.1 and 3.1 touched pass the lint. True when `sluice exec main -- moon run boomdrive:lint` passes.
+- [x] 3.2 The runner's tests that tasks 1.1 and 3.1 touched pass the lint. True when `sluice exec main -- moon run boomdrive:lint` passes.
