@@ -17,7 +17,7 @@ mod common;
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
     ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part,
-    Report, ToolVersion, Want, INTERFACE_VERSION,
+    Previewed, Report, ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
 use boomdrive_hosted::key::{Memory, Store};
@@ -1207,5 +1207,169 @@ fn a_report_that_fails_version_2_is_not_sent() {
     assert!(
         named.contains("/body/report/launches/l-1/lease/number"),
         "{named}"
+    );
+}
+
+/// sluice 0.74.3's answer `name`, the binary's fixture, as sluice printed
+/// it.
+fn sluice_answer(name: &str) -> Value {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../boomdrive/tests/fixtures/sluice-0.74.3")
+        .join(name);
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    serde_json::from_str(&text).expect("sluice's JSON")
+}
+
+/// The fields the runner carries of a preview, and of a release.
+const PREVIEW_FIELDS: &[&str] = &["name", "branch", "revision", "state", "made", "addresses"];
+const RELEASE_FIELDS: &[&str] = &["preview", "released"];
+
+/// What the runner carries of `answer`, a preview or a release as sluice
+/// printed it: a JSON object of `fields`, each where sluice printed it.
+fn carried_of(answer: &Value, fields: &[&str]) -> String {
+    let kept: serde_json::Map<String, Value> = fields
+        .iter()
+        .filter_map(|field| Some((field.to_string(), answer.get(*field)?.clone())))
+        .collect();
+    Value::Object(kept).to_string()
+}
+
+/// A preview of `example/app` at sluice's revision the runner answered
+/// with `outcome`, `text` and `words`, done or not, its listing `status`.
+fn previewed(
+    done: bool,
+    outcome: Outcome,
+    text: Option<String>,
+    words: Option<&str>,
+    status: Option<String>,
+) -> Previewed {
+    Previewed {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: "example/app".to_string(),
+        revision: "c2b72605d2ad8471a98dfae00551852c527d4dcf".to_string(),
+        done,
+        outcome,
+        text,
+        words: words.map(str::to_string),
+        status: status.map(|text| Carried {
+            text,
+            at: At::parse("2026-11-01T10:01:00Z").expect("a time"),
+            listed: true,
+        }),
+        at: At::parse("2026-11-01T10:00:30Z").expect("a time"),
+    }
+}
+
+/// sluice's listing's row of the preview it brought up, `up`.
+fn the_up_row() -> Value {
+    sluice_answer("previews.json")
+        .as_array()
+        .and_then(|rows| rows.iter().find(|row| row["state"] == "up").cloned())
+        .expect("a row up")
+}
+
+/// Each report `home` sent of `fake`'s, and whether the fake refused it.
+fn reports_sent(fake: &Fake) -> Vec<(Value, Option<String>)> {
+    fake.taken()
+        .into_iter()
+        .filter_map(|taken| match taken {
+            Taken::Message {
+                partition,
+                message,
+                refused,
+            } if partition == "home" && kind(&message).as_deref() == Some("report") => {
+                Some((message, refused))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// The keys of `value`, an object.
+fn keys(value: &Value) -> BTreeSet<&str> {
+    value
+        .as_object()
+        .map(|fields| fields.keys().map(String::as_str).collect())
+        .unwrap_or_default()
+}
+
+/// The hosted-control-plane spec's "Previews go up as their copies"
+/// (design Decisions 3 and 5): a preview brought up, its done answered
+/// with sluice's release, and a preview refused with sluice's words go up
+/// under their bare ids, sluice's answer and listing as their copies.
+#[test]
+fn previews_go_up_as_their_copies() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/preview-1"),
+        previewed(
+            false,
+            Outcome::Done,
+            Some(carried_of(
+                &sluice_answer("preview-starting.json"),
+                PREVIEW_FIELDS,
+            )),
+            None,
+            Some(carried_of(&the_up_row(), PREVIEW_FIELDS)),
+        ),
+    );
+    report.previews.insert(
+        Id::new("home/preview-2"),
+        previewed(
+            true,
+            Outcome::Done,
+            Some(carried_of(&sluice_answer("release.json"), RELEASE_FIELDS)),
+            None,
+            None,
+        ),
+    );
+    let words = sluice_answer("preview-no-table.json")["error"]["message"]
+        .as_str()
+        .expect("sluice's words")
+        .to_string();
+    report.previews.insert(
+        Id::new("home/preview-3"),
+        previewed(false, Outcome::Refused, None, Some(&words), None),
+    );
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    plane.hosted.report(&report).expect("answered");
+
+    let sent = reports_sent(&fake);
+    assert_eq!(sent.len(), 1, "{:#?}", fake.taken());
+    let (message, refused) = &sent[0];
+    assert_eq!(refused, &None, "the report passes version 2");
+    let previews = &message["body"]["report"]["previews"];
+    assert_eq!(
+        keys(previews),
+        BTreeSet::from(["preview-1", "preview-2", "preview-3"])
+    );
+    let brought_up = &previews["preview-1"];
+    let six = BTreeSet::from(["name", "branch", "revision", "state", "made", "addresses"]);
+    assert_eq!(keys(&brought_up["copy"]), six);
+    assert_eq!(brought_up["copy"]["state"], "starting");
+    assert_eq!(keys(&brought_up["status"]["copy"]), six);
+    assert_eq!(brought_up["status"]["copy"]["state"], "up");
+    assert_eq!(brought_up["status"]["listed"], true);
+    assert_eq!(brought_up["outcome"], "done");
+    let done = &previews["preview-2"];
+    assert_eq!(keys(&done["copy"]), BTreeSet::from(["preview", "released"]));
+    assert_eq!(done["copy"]["released"], true);
+    assert_eq!(done["done"], true);
+    let refused = &previews["preview-3"];
+    assert_eq!(
+        (&refused["copy"], &refused["status"]),
+        (&Value::Null, &Value::Null)
+    );
+    assert_eq!(refused["outcome"], "refused");
+    assert_eq!(refused["words"], words.as_str());
+    assert!(
+        plane.lines().iter().all(|line| !line.contains("preview-")),
+        "{:#?}",
+        plane.lines()
     );
 }

@@ -177,7 +177,8 @@
       },
       "acts": {},
       "commands": {},
-      "inboxes": {}
+      "inboxes": {},
+      "previews": {}
     }
   }
 }

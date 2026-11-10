@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/report.schema.json",
-  "description": "The runner's report as version 2 carries it, the interface's Report but that a place's status and sluice's entry go up as their copies, and reported, the control plane's answer to it.",
+  "description": "The runner's report as version 2 carries it, the interface's Report but that a place's status, sluice's entry, and sluice's answer and listing of a preview go up as their copies, and reported, the control plane's answer to it.",
   "$defs": {
     "report": {
       "description": "The runner's whole report, each part by the id of the want it answers. It renews every lease it names.",
@@ -11,7 +11,8 @@
         "launches",
         "acts",
         "commands",
-        "inboxes"
+        "inboxes",
+        "previews"
       ],
       "properties": {
         "launches": {
@@ -48,6 +49,15 @@
           },
           "additionalProperties": {
             "$ref": "#/$defs/inbox_carried"
+          }
+        },
+        "previews": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/previewed"
           }
         }
       }
@@ -167,6 +177,103 @@
         },
         "listed": {
           "type": "boolean"
+        }
+      }
+    },
+    "carried_preview": {
+      "description": "sluice's listing of a preview, carried as its copy, with when the runner first read it as it now stands and whether sluice's last listing held it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "copy",
+        "at",
+        "listed"
+      ],
+      "properties": {
+        "copy": {
+          "$ref": "preview.schema.json#/$defs/preview"
+        },
+        "at": {
+          "$ref": "shared.schema.json#/$defs/time"
+        },
+        "listed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "previewed": {
+      "description": "A preview the runner answered, with sluice's answer and its listing of the preview as their copies.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lease",
+        "repository",
+        "revision",
+        "done",
+        "outcome",
+        "copy",
+        "words",
+        "status",
+        "at"
+      ],
+      "properties": {
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "repository": {
+          "description": "The repository, as the preview named it.",
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "revision": {
+          "description": "The revision, as the preview named it.",
+          "type": "string"
+        },
+        "done": {
+          "description": "Whether the preview asked that it be put away.",
+          "type": "boolean"
+        },
+        "outcome": {
+          "description": "held while sluice waits at the host's bound to bring the preview up; else done or refused.",
+          "enum": [
+            "held",
+            "done",
+            "refused"
+          ]
+        },
+        "copy": {
+          "description": "sluice's answer as its copy: a preview's, for a preview brought up, or a release's, for a done; or null where sluice gave none.",
+          "oneOf": [
+            {
+              "$ref": "preview.schema.json#/$defs/preview"
+            },
+            {
+              "$ref": "preview.schema.json#/$defs/release"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "words": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "description": "sluice's listing of the preview, for one brought up or held.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/carried_preview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "at": {
+          "description": "When the outcome, copy or words last moved.",
+          "$ref": "shared.schema.json#/$defs/time"
         }
       }
     },

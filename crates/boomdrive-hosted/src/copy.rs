@@ -1,5 +1,6 @@
 //! The cut of a tool's answer to its copy (design Decision 9; core.11,
-//! core.27, core.42): a place's status, sluice's entry and Flume's host
+//! core.27, core.42): a place's status, sluice's entry, sluice's answer
+//! and listing of a preview and its answer to a release, and Flume's host
 //! part, each cut by walking version 2's own definition of its copy, so
 //! the schema is the one list of what goes up, then checked against that
 //! definition before it goes. The cut keeps each value as the tool printed
@@ -22,6 +23,13 @@ pub const SUBMISSION_ENTRY: &str = "submission-entry.schema.json#/$defs/submissi
 
 /// The definition Flume's host part is cut by.
 pub const HOST_PART: &str = "hello.schema.json#/$defs/host_part";
+
+/// The definition sluice's answer to a preview's ask, and each row of its
+/// listing, is cut by.
+pub const PREVIEW: &str = "preview.schema.json#/$defs/preview";
+
+/// The definition sluice's answer to a release is cut by.
+pub const RELEASE: &str = "preview.schema.json#/$defs/release";
 
 /// The definition an end of a place's status is checked against: one of
 /// its named forms, or its delivery alone.
@@ -153,6 +161,25 @@ pub fn submission_entry(text: &str) -> Result<Value, String> {
     let entry: Value =
         serde_json::from_str(text).map_err(|_| "sluice's entry is no JSON".to_string())?;
     checked(check::submission_entry(), cut(SUBMISSION_ENTRY, &entry))
+}
+
+/// The copy of a preview, `text` as the runner carries sluice's answer to
+/// a preview's ask or a row of its listing, cut and checked; or why it is
+/// none, naming a path and never a value (design Decision 5 of
+/// the-hosted-protocol-carries-land-and-preview).
+pub fn preview(text: &str) -> Result<Value, String> {
+    let preview: Value =
+        serde_json::from_str(text).map_err(|_| "sluice's preview is no JSON".to_string())?;
+    checked(check::preview(), cut(PREVIEW, &preview))
+}
+
+/// The copy of a release, `text` as the runner carries sluice's answer to
+/// it, cut and checked; or why it is none, naming a path and never a
+/// value.
+pub fn release(text: &str) -> Result<Value, String> {
+    let release: Value =
+        serde_json::from_str(text).map_err(|_| "sluice's release is no JSON".to_string())?;
+    checked(check::release(), cut(RELEASE, &release))
 }
 
 /// The copy of Flume's host part, each of `part`'s texts read as the JSON

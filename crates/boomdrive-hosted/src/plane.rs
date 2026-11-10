@@ -130,8 +130,9 @@ struct Partition {
     /// Each want withheld at the last pull for naming a repository the
     /// partition is not served, said once while it is offered.
     withheld: BTreeSet<Id>,
-    /// Each launch's carried answer whose copy failed at the last report,
-    /// said once while it fails.
+    /// Each launch's or preview's carried answer whose copy failed at the
+    /// last report, said once while it fails: a launch's `status` or
+    /// `entry`, a preview's `answer` or `status`.
     failing: BTreeSet<(Id, &'static str)>,
     /// Each launch whose status went up at the last report with an end
     /// carried by its delivery alone or left out, said once while it does
@@ -639,9 +640,13 @@ impl Partition {
     /// copied on its own, and one with an end carried by its delivery
     /// alone or left out is said once while it does, naming each end's
     /// path and never a value (design Decision 2 of
-    /// the-hosted-protocol-carries-every-end-of-a-place; core.11). Its
-    /// four parts alone go up: version 2 names no previews, so a report's
-    /// never do (core.42).
+    /// the-hosted-protocol-carries-every-end-of-a-place; core.11). Each
+    /// preview goes up with sluice's answer as its copy, a release's where
+    /// the preview is done and a preview's where it is not, and its
+    /// listing as `{copy, at, listed}`, each `null` where its copy fails,
+    /// which is said once while it fails, naming the preview and the path
+    /// and never a value (design Decision 5 of
+    /// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
         let mut partial = BTreeSet::new();
@@ -691,6 +696,54 @@ impl Partition {
                 }),
             );
         }
+        let mut previews = serde_json::Map::new();
+        for (id, previewed) in &part.previews {
+            let mut copied = |what: &'static str, text: &str, done: bool| {
+                let copied = match done {
+                    true => copy::release(text),
+                    false => copy::preview(text),
+                };
+                match copied {
+                    Ok(copy) => Some(copy),
+                    Err(words) => {
+                        if !self.failing.contains(&(id.clone(), what)) {
+                            say(format!(
+                                "{id}: its {what}'s copy fails version 2's check, so it goes up \
+                                 null: {words}"
+                            ));
+                        }
+                        failing.insert((id.clone(), what));
+                        None
+                    }
+                }
+            };
+            let answer = previewed
+                .text
+                .as_ref()
+                .and_then(|text| copied("answer", text, previewed.done));
+            let status = previewed.status.as_ref().and_then(|carried| {
+                let copy = copied("status", &carried.text, false)?;
+                Some(json!({
+                    "copy": copy,
+                    "at": carried.at,
+                    "listed": carried.listed,
+                }))
+            });
+            previews.insert(
+                self.bare(id),
+                json!({
+                    "lease": previewed.lease,
+                    "repository": previewed.repository,
+                    "revision": previewed.revision,
+                    "done": previewed.done,
+                    "outcome": previewed.outcome,
+                    "copy": answer,
+                    "words": previewed.words,
+                    "status": status,
+                    "at": previewed.at,
+                }),
+            );
+        }
         self.failing = failing;
         self.partial = partial;
         let acts: serde_json::Map<String, Value> = part
@@ -717,6 +770,7 @@ impl Partition {
             "acts": acts,
             "commands": commands,
             "inboxes": inboxes,
+            "previews": previews,
         })
     }
 

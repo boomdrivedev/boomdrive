@@ -14,7 +14,9 @@
 //! Nothing here converts the interface's values into version 2's or
 //! back.
 
-use boomdrive_control::{Acted, Answer, At, Commanded, Id, InboxCarried, Lease, ToolVersion, Want};
+use boomdrive_control::{
+    Acted, Answer, At, Commanded, Id, InboxCarried, Lease, Outcome, ToolVersion, Want,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::collections::BTreeMap;
@@ -240,6 +242,7 @@ pub struct Report {
     pub acts: BTreeMap<Id, Acted>,
     pub commands: BTreeMap<Id, Commanded>,
     pub inboxes: BTreeMap<Id, InboxCarried>,
+    pub previews: BTreeMap<Id, Previewed>,
 }
 
 /// A launch the runner answered, with its place's status and its
@@ -253,6 +256,31 @@ pub struct Launched {
     pub status: Option<Carried>,
     /// The copy of sluice's entry of its submission (design Decision 9).
     pub entry: Option<Carried>,
+}
+
+/// A preview the runner answered, with sluice's answer and its listing of
+/// the preview as their copies (design Decision 3 of
+/// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Previewed {
+    pub lease: Lease,
+    /// The repository and the revision, as the preview named them.
+    pub repository: String,
+    pub revision: String,
+    /// Whether the preview asked that it be put away.
+    pub done: bool,
+    /// `Held` while sluice waits at the host's bound to bring it up; else
+    /// `Done` or `Refused`. A check refuses any other.
+    pub outcome: Outcome,
+    /// sluice's answer as its copy: a preview's, or a release's for a
+    /// done (design Decision 4).
+    pub copy: Option<Box<RawValue>>,
+    pub words: Option<String>,
+    /// sluice's listing of the preview as its copy.
+    pub status: Option<Carried>,
+    /// When the outcome, copy or words last moved.
+    pub at: At,
 }
 
 /// A tool's answer carried as its copy, which goes up as the runner cut
