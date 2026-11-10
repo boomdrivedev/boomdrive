@@ -212,6 +212,15 @@ fn an_enroll_unsigned_or_holding_a_token() {
 fn a_field_the_version_does_not_name() {
     let from = from_runner();
     let to = to_runner();
+    for (direction, validator) in [("from-runner", &from), ("to-runner", &to)] {
+        for (name, value) in examples(direction) {
+            passes(
+                validator,
+                &value,
+                &format!("version 2's {direction}/{name}"),
+            );
+        }
+    }
     let enveloped = altered("from-runner", "hello.json", |hello| {
         hello["sent_at"] = json!("2026-11-01T10:00:00Z");
     });
@@ -247,6 +256,36 @@ fn a_field_the_version_does_not_name() {
         serde_json::from_value::<Message<ToRunner>>(shared).is_err(),
         "the runner's types read a field a key share does not name"
     );
+    for (what, name, alter) in [
+        (
+            "an end's delivery alone",
+            "report-an-end-by-its-delivery-alone.json",
+            (|copy| copy["ends"][1]["moved_to"] = json!("elsewhere")) as fn(&mut Value),
+        ),
+        (
+            "a reader an end is owed to",
+            "report-an-end-owed-expired-and-one-confirmed.json",
+            |copy| copy["ends"][0]["owed"][0]["since"] = json!(1792950000),
+        ),
+        (
+            "a reader's confirmation of an end",
+            "report-an-end-owed-expired-and-one-confirmed.json",
+            |copy| copy["ends"][0]["confirmed"][0]["by"] = json!("inbox"),
+        ),
+        (
+            "the end of a place's work",
+            "report-a-dropped-place-held-for-the-runner.json",
+            |copy| copy["ends"][1]["addressee"] = json!("example/planner"),
+        ),
+    ] {
+        let delivered = altered("from-runner", name, |report| alter(copy(report)));
+        refused(&from, &delivered, &format!("a field {what} does not name"));
+    }
+    let name = "pulled-with-a-confirm.json";
+    let confirmed = altered("to-runner", name, |pulled| {
+        pulled["body"]["pulled"]["wants"][1]["act"]["what"]["confirm"]["stage"] = json!("code");
+    });
+    refused(&to, &confirmed, "a field a confirm does not name");
 }
 
 /// The runner-protocol spec's "An act's outcome": an act or a command is
