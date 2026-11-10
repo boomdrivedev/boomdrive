@@ -30,3 +30,17 @@ tasks:
     deps: ['~:install']
     tags: [check-fast]
     options: {mutex: 'astro'}
+  # The glossary, src/content/terms/terms.yaml, is the one source of the
+  # vocabulary and terms Vale holds the site's words to (site.4).
+  vocab:
+    command: 'bun run scripts/vocab.ts'
+    inputs: ['src/content/terms/terms.yaml', 'scripts/vocab.ts', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
+    outputs: ['styles/config/vocabularies/Boomdrive/accept.txt', 'styles/Boomdrive/Terms.yml']
+    deps: ['~:install']
+  # Vale over the site's words, once vocab has written the vocabulary: an
+  # error fails it (site.4).
+  prose:
+    command: 'vale src/content'
+    inputs: ['src/content/**/*', '.vale.ini', 'styles/**/*', '/devenv.nix', '/devenv.lock', '/.prototools']
+    deps: ['~:vocab']
+    tags: [check-fast]
