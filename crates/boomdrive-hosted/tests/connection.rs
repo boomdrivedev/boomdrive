@@ -655,6 +655,52 @@ fn a_pulled_with_a_field_unnamed() {
     );
 }
 
+/// The hosted-control-plane spec's "A message of version 1": a `pulled`
+/// naming `protocol_version` 1 fails version 2's check, is answered with
+/// `message_refused` naming it, and the pull gives none of its wants
+/// (design Decision 4 of the-hosted-protocol-carries-every-end-of-a-place).
+#[test]
+fn a_message_of_version_1() {
+    let fake = Fake::start();
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    let mut offer = example("to-runner", "pulled.json")["body"]["pulled"]["wants"][0].clone();
+    offer["offer"]["id"] = json!("offer-9");
+    fake.set_wants("home", json!([offer]));
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let runtime = runtime();
+    let connection = Connection::open(
+        runtime.handle(),
+        dial(&fake, store(&fake, &key), &lines, &wakes),
+    );
+    connection.hand(&hello()).expect("handed");
+    let read = connection.read(PATIENCE).expect("home is read");
+    assert_eq!(read.wants.len(), 1);
+
+    let mut pulled = common::V1.example("to-runner", "pulled.json");
+    pulled["id"] = json!("plane:first");
+    assert_eq!(pulled["protocol_version"], 1);
+    assert!(fake.send("home", pulled));
+
+    let taken = fake.wait_until("a message_refused", |t| sent(t, "message_refused") == 1);
+    let refusal = messages(&taken)
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("message_refused"))
+        .expect("a refusal");
+    assert_eq!(refusal["body"]["message_refused"]["message"], "plane:first");
+    let words = refusal["body"]["message_refused"]["words"]
+        .as_str()
+        .expect("words");
+    assert!(
+        words.starts_with("it fails version 2's check: /"),
+        "{words}"
+    );
+
+    let read = connection.read(PATIENCE).expect("home is read");
+    let ids: Vec<&str> = read.wants.iter().map(|want| want.id().as_str()).collect();
+    assert_eq!(ids, ["offer-9"], "none of version 1's pulled's wants");
+}
+
 #[test]
 fn a_message_whose_id_cannot_be_read_closes_the_connection() {
     let fake = Fake::start();
