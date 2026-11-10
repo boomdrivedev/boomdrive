@@ -70,7 +70,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   `site/check-site.sh` runs `site-stop` with `DEVENV_STATE` an empty scratch folder and fails unless it exits zero.
 
   True when `sluice exec main -- moon run site:test` passes, proving the site spec's "A release where nothing was served".
-- [ ] 4.3 `devenv.nix`'s `claude.code.mcpServers` gains `astro-docs`, `https://mcp.docs.astro.build/mcp`, approved by name with the others, and its comment names what it serves (design Decision 14). True when `sluice exec main -- moon run root:toolchain` passes, the repository's OpenSpec skills still its pinned OpenSpec's.
+- [x] 4.3 `devenv.nix`'s `claude.code.mcpServers` gains `astro-docs`, `https://mcp.docs.astro.build/mcp`, approved by name with the others, and its comment names what it serves (design Decision 14). True when `sluice exec main -- moon run root:toolchain` passes, the repository's OpenSpec skills still its pinned OpenSpec's.
 
 ## 5. Releases
 
