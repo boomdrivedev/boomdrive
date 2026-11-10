@@ -1,7 +1,7 @@
 # The flake configures the whole host
 
 Status: proposed, from the talk of 2026-11-06
-(agentplot/boomdrive-archive's
+(agentplot/boomdrive's
 `design/research/the-flakes-configuration-holds-streams-and-repositories.md`,
 which holds the user's words). Not yet a record or a rule.
 
