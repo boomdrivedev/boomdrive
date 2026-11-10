@@ -1,7 +1,7 @@
 ---
 number: 3
 title: The runner starts no tool's process, shares the host's one clone, and asks nothing of Boom for a launch
-status: proposed
+status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner starts no tool's process, shares the host's one clone, and asks nothing of Boom for a launch
 
-Status: proposed on 2026-11-01, from the user's words in the constitution interview; accepted on the user's yes once they have read it as a record.
+Status: accepted by the user on 2026-11-09, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
 Revised 2026-11-06, still proposed, for sluice record 0093 (accepted by the user that day): sluice's queues move in sluice's own host process, so a host's service manager keeps no sluice process; the context's `sluice run` describes the tools as they stood on 2026-11-01.
 
