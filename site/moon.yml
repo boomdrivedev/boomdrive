@@ -17,3 +17,16 @@ tasks:
     command: 'sh scripts/install.sh'
     inputs: ['package.json', 'bun.lock', 'scripts/install.sh', '/flake.lock', '/nix/inputs.nix', '/devenv.nix', '/devenv.lock', '/.prototools']
     options: {cache: false}
+  # Astro's type check of the pages, components and content. It and build
+  # both write .astro/, so they share one mutex and never run at once.
+  # Astro keeps its telemetry setting in the user's home, which the gate's
+  # sandbox may refuse: with telemetry off it reads and writes nothing
+  # there. Node.js is on the shell's PATH, so bun runs Astro's bin with it.
+  check:
+    command: 'bun run check'
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+    inputs: ['src/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
+    deps: ['~:install']
+    tags: [check-fast]
+    options: {mutex: 'astro'}
