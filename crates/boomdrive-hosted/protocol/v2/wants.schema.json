@@ -260,12 +260,13 @@
       }
     },
     "act_sort": {
-      "description": "What an act asks of its launch's place: a drop, a done, a retry, a priority, or a confirm of a reader's ends by their delivery keys, which the schema bounds in neither its recipient nor its keys, so a confirm the runner refuses reaches it as an act.",
+      "description": "What an act asks of its launch's place: a drop, a done, a land of its work, which holds nothing but the act's launch and lease, a retry, a priority, or a confirm of a reader's ends by their delivery keys, which the schema bounds in neither its recipient nor its keys, so a confirm the runner refuses reaches it as an act.",
       "oneOf": [
         {
           "enum": [
             "drop",
-            "done"
+            "done",
+            "land"
           ]
         },
         {

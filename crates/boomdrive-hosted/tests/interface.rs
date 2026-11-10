@@ -4,14 +4,14 @@
 //! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
 //! full length, passes its definition, every act sort version 2 names
-//! among them, a confirm with them (the runner-protocol spec's "Version 2
-//! carries a control plane's confirm"; record 0037). A land and a preview
-//! apart: no version names either, and version 1 names no confirm, and a
-//! release has spoken it, so a want whose act is a land or a confirm fails
-//! its check of version 1, and a land or a preview its check of version 2
-//! (the runner-protocol spec's "Version 1 carries no land", "Version 1
-//! carries no confirm" and "Version 2 carries no land and no preview";
-//! core.42, core.53, core.55, core.56).
+//! among them, a confirm and a land with them (the runner-protocol spec's
+//! "Version 2 carries a control plane's confirm" and "Version 2 carries a
+//! land"; record 0037 as amended on 2026-11-09). A preview apart: version
+//! 2 names none yet. Version 1 names no land, no confirm and no preview,
+//! and a release has spoken it, so a want whose act is a land or a
+//! confirm, or a preview, fails its check of version 1 (the
+//! runner-protocol spec's "Version 1 carries no land" and "Version 1
+//! carries no confirm"; core.42, core.53, core.55, core.56).
 
 mod common;
 
@@ -378,19 +378,29 @@ fn a_confirm_is_an_act_of_version_2() {
     assert!(address("wants.schema.json").contains("/v2/"));
 }
 
-/// The runner-protocol spec's "A land is no act of version 2".
+/// The runner-protocol spec's "A land is an act of version 2": a land, as
+/// the interface writes it, passes version 2's `want`, its `what` the word
+/// `"land"`, holding nothing but its act's launch and lease (core.53); and
+/// a `pulled` holding it, and `pulled-with-a-land.json`, pass version 2's
+/// `to-runner.schema.json` (design Decision 1).
 #[test]
-fn a_land_is_no_act_of_version_2() {
+fn a_land_is_an_act_of_version_2() {
     let land = act_of(ActSort::Land);
-    refused(
+    assert_eq!(land["act"]["what"], json!("land"));
+    passes(
         &validator(&definition("wants.schema.json", "want")),
         &land,
-        "a land, against version 2",
+        "a land",
     );
-    refused(
-        &V1.validator(&V1.definition("wants.schema.json", "want")),
-        &land,
-        "a land, against version 1",
+    let mut pulled = example("to-runner", "pulled.json");
+    pulled["body"]["pulled"]["wants"] = json!([land]);
+    passes(&to_runner(), &pulled, "a pulled holding a land");
+    let example = example("to-runner", "pulled-with-a-land.json");
+    passes(&to_runner(), &example, "pulled-with-a-land.json");
+    assert_eq!(
+        example["body"]["pulled"]["wants"][1]["act"]["what"],
+        json!("land"),
+        "pulled-with-a-land.json holds a land"
     );
 }
 
