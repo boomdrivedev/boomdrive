@@ -11,8 +11,9 @@ fails whole.
 This repository's records and rules are the protocol's source: rule
 core.42 and records 0015 and 0037, under `docs/`, the change that wrote
 version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`,
-and the change that wrote version 2,
-`the-hosted-protocol-carries-every-end-of-a-place`. They cite
+and the changes that wrote version 2,
+`the-hosted-protocol-carries-every-end-of-a-place` and
+`the-hosted-protocol-carries-land-and-preview`. They cite
 boomdrive-cloud's records and rules by id.
 
 ## Versions
@@ -38,10 +39,11 @@ the connection before any message.
 | `shared.schema.json` | what both directions use: ids, a time, integers, a lease, a repository's address, a commit, a digest, bytes, and `message_refused` |
 | `enrollment.schema.json` | `enroll`, and its answers `enrolled` and `enroll_refused` |
 | `hello.schema.json` | the hello, a tool's version, and the copy of Flume's host part |
-| `wants.schema.json` | a want, an offer with its launch, an act, a command, an inbox, and `pulled` |
-| `report.schema.json` | the runner's report and `reported` |
+| `wants.schema.json` | a want, an offer with its launch, an act, a command, an inbox, a preview, and `pulled` |
+| `report.schema.json` | the runner's report, with what it answered of each preview, and `reported` |
 | `place-status.schema.json` | the copy of a Flume place's status |
 | `submission-entry.schema.json` | the copy of a sluice submission's entry |
+| `preview.schema.json` | the copies of sluice's answers of a preview and of a release |
 | `terminal.schema.json` | a key share and a terminal's messages |
 
 `examples/from-runner/` and `examples/to-runner/` hold whole messages
@@ -84,8 +86,8 @@ alike, so a validator in either language refuses the same strings.
 | `enrolled` | the control plane, answering `enroll` | its id for the host |
 | `enroll_refused` | the control plane, answering `enroll` | the `enroll` message, by id, with words |
 | `hello` | the runner | the host's interface and runner versions, its tools' versions, the repositories it keeps for this control plane, its capacity, and the leases it holds |
-| `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, and each inbox it carried |
-| `pulled` | the control plane | the whole of what it wants, in its order: offers, acts on a launch's place (a retry, a drop, a done, a priority, or a confirm of a reader's ends by their delivery keys), commands and inboxes; and the runner's report as it holds it, or `null` |
+| `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, each inbox it carried, and in `previews` each preview it answered, with sluice's answer and its listing of the preview as their copies |
+| `pulled` | the control plane | the whole of what it wants, in its order: offers, acts on a launch's place (a retry, a land of its work, `"land"`, a drop, a done, a priority, or a confirm of a reader's ends by their delivery keys), commands, inboxes and previews, each a preview to bring up or, where `done`, to put away; and the runner's report as it holds it, or `null` |
 | `reported` | the control plane | the `report` message it answers, by id; the ids it lets go; the ids it refused, with its words |
 | `message_refused` | either | a message that failed its check, by id, with words |
 | `terminal_open` | the control plane | a terminal on a launch's agent, under the launch's lease number, with the browser's share |
@@ -120,9 +122,27 @@ socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
 Version 2 has no message for a forge token, for health, for the
-runner's own commands, or for a terminal's certificate, and no land and
-no preview among a `pulled`'s wants. The changes that build them add
-them, in a version of their own.
+runner's own commands, or for a terminal's certificate. The changes that
+build them add them, in a version of their own.
+
+**A land** is an act on a launch's place, the word `"land"`: the
+landing of that launch's work. It holds nothing but its act's launch and
+lease, and the runner carries it out as Flume's retry of the submission
+of that launch's place. A retry naming the submission stays among the
+acts.
+
+**A preview** is a want,
+`{"preview":{"id","lease","repository","branch","revision","done"}}`,
+under a lease of its own: a preview of `branch` at `revision` in
+`repository`, brought up by sluice, or, where `done`, put away. The
+schema bounds neither its branch nor its revision, so a preview sluice
+cannot bring up reaches the runner as a preview, and is answered with
+sluice's refusal. The runner answers each in the report's `previews`, by
+its id: its `lease`, `repository`, `revision` and `done` as it named
+them; its `outcome`, `held` while sluice waits at the host's bound,
+else `done` or `refused`; its `copy`, sluice's answer as a preview's
+copy, or a release's for a done, or `null`; its `words`; its `status`,
+sluice's listing of it as `{copy, at, listed}`, or `null`; and `at`.
 
 **A confirm** is an act on a launch's place,
 `{"confirm":{"recipient":…,"deliveries":[…]}}`: a reader's confirmation
@@ -358,6 +378,13 @@ for the rest, so the cloud's check refuses it.
   <n> --json` cut to its `id`, `branch`, `head`, `state` and
   `landed_as`, and its failed rows' `task`, `hash`, `flaky` and
   `system`, never a row's `log`.
+- **A preview's copy** (`preview` in `preview.schema.json`) is `sluice
+  preview <branch> <revision> --json`, or a row of `sluice previews
+  --json`, cut to its `name`, `branch`, `revision`, `state`, `made` and
+  `addresses`, never its `checkout`, `names`, `ports`, `exit`, `output`
+  or `release_failed`. A state sluice adds goes up as it printed it.
+- **A release's copy** (`release` in `preview.schema.json`) is `sluice
+  release <name> --json` cut to its `preview` and `released`.
 
 ## A terminal
 
@@ -409,7 +436,9 @@ differs from version 2 in these alone:
   context its keys sign, `boomdrive.v1 enroll`, `boomdrive.v1 connect`
   and `boomdrive.v1 terminal share`. A key enrolled under version 1
   stays its partition's, and proves itself under version 2's context.
-- **Its acts** are a retry, a drop, a done and a priority: no confirm.
+- **Its acts** are a retry, a drop, a done and a priority: no land and
+  no confirm.
+- **Its wants** hold no preview, and its report no `previews`.
 - **Its copy of a place's status** is of Flume 0.4.1's forms. An end is
   a stage's, a submission's or a stall's, with no `key`, `delivery`,
   `expires_at`, `owed` or `confirmed`; there is no end of a place's work

@@ -17,8 +17,8 @@ use crate::key::{self, KeyName, Store};
 use crate::protocol::v2::{self, MessageId};
 use crate::table::{self, Table};
 use boomdrive_control::{
-    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Pulled, Report,
-    Reported, Unread, Unsent, Wake, Want,
+    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Previewed, Pulled,
+    Report, Reported, Unread, Unsent, Wake, Want,
 };
 use ed25519_dalek::SigningKey;
 use serde_json::value::RawValue;
@@ -130,8 +130,9 @@ struct Partition {
     /// Each want withheld at the last pull for naming a repository the
     /// partition is not served, said once while it is offered.
     withheld: BTreeSet<Id>,
-    /// Each launch's carried answer whose copy failed at the last report,
-    /// said once while it fails.
+    /// Each launch's or preview's carried answer whose copy failed at the
+    /// last report, said once while it fails: a launch's `status` or
+    /// `entry`, a preview's `answer` or `status`.
     failing: BTreeSet<(Id, &'static str)>,
     /// Each launch whose status went up at the last report with an end
     /// carried by its delivery alone or left out, said once while it does
@@ -496,9 +497,12 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8). Version 2 names no preview, so
-    /// no message holding one passes its check; one that reached here
-    /// would be withheld as an inbox is (core.26, core.42).
+    /// it is offered (design Decision 8). Version 2 carries a land among
+    /// the acts and a preview among the wants: a land is given as any act,
+    /// and a preview of a repository the partition is not served is
+    /// withheld as an offer is, every other field of it as given (design
+    /// Decision 6 of the-hosted-protocol-carries-land-and-preview; core.26,
+    /// core.53, core.55).
     fn own_wants(&mut self, wants: Vec<Want>, say: &connection::Say) -> Vec<Want> {
         let mut withheld = BTreeSet::new();
         let mut own = Vec::new();
@@ -569,8 +573,12 @@ impl Partition {
     /// under the partition's prefix: each launch's lease and answer, each
     /// act, command and inbox, and no launch's status or entry, which the
     /// control plane holds as their copies and not as the tools' answers
-    /// (design Decision 7). Version 2's report holds no preview, so none
-    /// is taken back (core.42).
+    /// (design Decision 7). Each preview is given back with its copy's
+    /// JSON as its text, so a done after the runner lost its report file
+    /// puts away the preview by the name sluice gave it, and no status,
+    /// which the runner reads again from sluice's listing (design Decision
+    /// 7 of the-hosted-protocol-carries-land-and-preview; core.10,
+    /// core.55).
     fn taken_back(&self, report: v2::Report) -> Report {
         Report {
             launches: report
@@ -605,7 +613,24 @@ impl Partition {
                 .into_iter()
                 .map(|(id, inbox)| (self.prefixed(&id), inbox))
                 .collect(),
-            previews: BTreeMap::new(),
+            previews: report
+                .previews
+                .into_iter()
+                .map(|(id, previewed)| {
+                    let previewed = Previewed {
+                        lease: previewed.lease,
+                        repository: previewed.repository,
+                        revision: previewed.revision,
+                        done: previewed.done,
+                        outcome: previewed.outcome,
+                        text: previewed.copy.map(|copy| copy.get().to_string()),
+                        words: previewed.words,
+                        status: None,
+                        at: previewed.at,
+                    };
+                    (self.prefixed(&id), previewed)
+                })
+                .collect(),
         }
     }
 
@@ -636,9 +661,13 @@ impl Partition {
     /// copied on its own, and one with an end carried by its delivery
     /// alone or left out is said once while it does, naming each end's
     /// path and never a value (design Decision 2 of
-    /// the-hosted-protocol-carries-every-end-of-a-place; core.11). Its
-    /// four parts alone go up: version 2 names no previews, so a report's
-    /// never do (core.42).
+    /// the-hosted-protocol-carries-every-end-of-a-place; core.11). Each
+    /// preview goes up with sluice's answer as its copy, a release's where
+    /// the preview is done and a preview's where it is not, and its
+    /// listing as `{copy, at, listed}`, each `null` where its copy fails,
+    /// which is said once while it fails, naming the preview and the path
+    /// and never a value (design Decision 5 of
+    /// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
         let mut partial = BTreeSet::new();
@@ -688,6 +717,54 @@ impl Partition {
                 }),
             );
         }
+        let mut previews = serde_json::Map::new();
+        for (id, previewed) in &part.previews {
+            let mut copied = |what: &'static str, text: &str, done: bool| {
+                let copied = match done {
+                    true => copy::release(text),
+                    false => copy::preview(text),
+                };
+                match copied {
+                    Ok(copy) => Some(copy),
+                    Err(words) => {
+                        if !self.failing.contains(&(id.clone(), what)) {
+                            say(format!(
+                                "{id}: its {what}'s copy fails version 2's check, so it goes up \
+                                 null: {words}"
+                            ));
+                        }
+                        failing.insert((id.clone(), what));
+                        None
+                    }
+                }
+            };
+            let answer = previewed
+                .text
+                .as_ref()
+                .and_then(|text| copied("answer", text, previewed.done));
+            let status = previewed.status.as_ref().and_then(|carried| {
+                let copy = copied("status", &carried.text, false)?;
+                Some(json!({
+                    "copy": copy,
+                    "at": carried.at,
+                    "listed": carried.listed,
+                }))
+            });
+            previews.insert(
+                self.bare(id),
+                json!({
+                    "lease": previewed.lease,
+                    "repository": previewed.repository,
+                    "revision": previewed.revision,
+                    "done": previewed.done,
+                    "outcome": previewed.outcome,
+                    "copy": answer,
+                    "words": previewed.words,
+                    "status": status,
+                    "at": previewed.at,
+                }),
+            );
+        }
         self.failing = failing;
         self.partial = partial;
         let acts: serde_json::Map<String, Value> = part
@@ -714,6 +791,7 @@ impl Partition {
             "acts": acts,
             "commands": commands,
             "inboxes": inboxes,
+            "previews": previews,
         })
     }
 

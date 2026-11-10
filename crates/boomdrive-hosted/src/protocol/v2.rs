@@ -1,20 +1,25 @@
-//! Version 2 of the runner's protocol (record 0037): its JSON Schema
-//! files, draft 2020-12, under `protocol/v2/`, and the runner's types for
-//! its messages. Version 2 is version 1 but for a place's ends, each with
-//! its delivery, and a control plane's confirm. A check of a message is
-//! built from [`FILES`] alone, each file under its `$id`, and fetches
-//! nothing (core.42).
+//! Version 2 of the runner's protocol (record 0037 as amended on
+//! 2026-11-09): its JSON Schema files, draft 2020-12, under
+//! `protocol/v2/`, and the runner's types for its messages. Version 2 is
+//! version 1 but for a place's ends, each with its delivery, a control
+//! plane's confirm and land among the acts, a preview among the wants,
+//! and a report's previews, what the runner answered of each. A check of
+//! a message is built from [`FILES`] alone, each file under its `$id`,
+//! and fetches nothing (core.42).
 //!
 //! The types reuse the interface's wherever version 2 carries a shape as
 //! the interface writes it, and are version 2's own where the wire
-//! differs: a place's status and sluice's entry go up as their copies,
-//! the host's capacity as values, and a terminal's link as sealed frames
-//! (design Decision 6 of the-runner-dials-the-hosted-control-plane). Each
+//! differs: a place's status, sluice's entry and sluice's answer and
+//! listing of a preview go up as their copies, the host's capacity as
+//! values, and a terminal's link as sealed frames (design Decision 6 of
+//! the-runner-dials-the-hosted-control-plane). Each
 //! struct of version 2's own reads no field the version does not name.
 //! Nothing here converts the interface's values into version 2's or
 //! back.
 
-use boomdrive_control::{Acted, Answer, At, Commanded, Id, InboxCarried, Lease, ToolVersion, Want};
+use boomdrive_control::{
+    Acted, Answer, At, Commanded, Id, InboxCarried, Lease, Outcome, ToolVersion, Want,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::collections::BTreeMap;
@@ -70,6 +75,10 @@ pub const FILES: &[(&str, &str)] = &[
     (
         "submission-entry.schema.json",
         include_str!("../../protocol/v2/submission-entry.schema.json"),
+    ),
+    (
+        "preview.schema.json",
+        include_str!("../../protocol/v2/preview.schema.json"),
     ),
     (
         "terminal.schema.json",
@@ -202,7 +211,8 @@ pub struct Hello {
     /// with their clones made (core.26).
     pub repositories: Vec<String>,
     pub capacity: Capacity,
-    /// Each launch's and each command's id with the lease number held.
+    /// Each launch's, each command's and each preview's id with the lease
+    /// number held.
     pub leases: BTreeMap<Id, u64>,
 }
 
@@ -235,6 +245,7 @@ pub struct Report {
     pub acts: BTreeMap<Id, Acted>,
     pub commands: BTreeMap<Id, Commanded>,
     pub inboxes: BTreeMap<Id, InboxCarried>,
+    pub previews: BTreeMap<Id, Previewed>,
 }
 
 /// A launch the runner answered, with its place's status and its
@@ -248,6 +259,31 @@ pub struct Launched {
     pub status: Option<Carried>,
     /// The copy of sluice's entry of its submission (design Decision 9).
     pub entry: Option<Carried>,
+}
+
+/// A preview the runner answered, with sluice's answer and its listing of
+/// the preview as their copies (design Decision 3 of
+/// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Previewed {
+    pub lease: Lease,
+    /// The repository and the revision, as the preview named them.
+    pub repository: String,
+    pub revision: String,
+    /// Whether the preview asked that it be put away.
+    pub done: bool,
+    /// `Held` while sluice waits at the host's bound to bring it up; else
+    /// `Done` or `Refused`. A check refuses any other.
+    pub outcome: Outcome,
+    /// sluice's answer as its copy: a preview's, or a release's for a
+    /// done (design Decision 4).
+    pub copy: Option<Box<RawValue>>,
+    pub words: Option<String>,
+    /// sluice's listing of the preview as its copy.
+    pub status: Option<Carried>,
+    /// When the outcome, copy or words last moved.
+    pub at: At,
 }
 
 /// A tool's answer carried as its copy, which goes up as the runner cut

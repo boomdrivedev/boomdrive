@@ -1,0 +1,28 @@
+{
+  "protocol_version": 2,
+  "id": "runner:43",
+  "body": {
+    "report": {
+      "launches": {},
+      "acts": {},
+      "commands": {},
+      "inboxes": {},
+      "previews": {
+        "preview-1": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "repository": "example/app",
+          "revision": "99248c2d4c1e7f0a3b5d6e8f9a0b1c2d3e4f5a6b",
+          "done": false,
+          "outcome": "refused",
+          "copy": null,
+          "words": "no [preview] table in .config/sluice.toml at 99248c2",
+          "status": null,
+          "at": "2026-11-01T10:00:30Z"
+        }
+      }
+    }
+  }
+}

@@ -110,6 +110,20 @@ pub fn submission_entry() -> &'static Validator {
     VALIDATOR.get_or_init(|| validator(crate::copy::SUBMISSION_ENTRY))
 }
 
+/// The validator of a preview as its copy, `preview.schema.json`'s
+/// `preview`.
+pub fn preview() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::PREVIEW))
+}
+
+/// The validator of a release as its copy, `preview.schema.json`'s
+/// `release`.
+pub fn release() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::RELEASE))
+}
+
 /// The validator of Flume's host part as its copy, `hello.schema.json`'s
 /// `host_part`.
 pub fn host_part() -> &'static Validator {

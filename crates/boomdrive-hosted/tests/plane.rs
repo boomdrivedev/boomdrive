@@ -17,7 +17,7 @@ mod common;
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
     ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part,
-    Report, ToolVersion, Want, INTERFACE_VERSION,
+    Previewed, Report, ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
 use boomdrive_hosted::key::{Memory, Store};
@@ -399,6 +399,30 @@ fn a_confirm_the_runner_refuses() {
     );
 }
 
+/// The hosted-control-plane spec's "A land carried" (design Decision 6): a
+/// land the control plane asks is given to the runner as an act under the
+/// partition's prefix, its launch under it too, and the hosted
+/// implementation reads nothing else of it (core.53).
+#[test]
+fn a_land_carried() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            offer("l-1", "example/app", &[]),
+            { "act": { "id": "land-1", "launch": "l-1", "lease": 1, "what": "land" } }
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", "home/land-1"]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(act.lease, 1);
+    assert_eq!(act.what, ActSort::Land);
+}
+
 /// The hosted-control-plane spec's "One partition unreachable": `home`'s
 /// part gives its offer without waiting on `work`'s connection, and
 /// `work`'s part is unread, its words not repeating its label.
@@ -567,6 +591,104 @@ fn each_report_its_own() {
     };
     assert_eq!(launches("home"), ["l-1"]);
     assert_eq!(launches("work"), ["l-2"]);
+}
+
+/// A preview `id` of `main` in `repository` at `revision`, done or not,
+/// under a lease of its own, as a control plane of version 2 asks it.
+fn preview(id: &str, repository: &str, revision: &str, done: bool) -> Value {
+    json!({ "preview": {
+        "id": id,
+        "lease": { "number": 1, "expires": "2026-11-01T11:00:00Z" },
+        "repository": repository, "branch": "main", "revision": revision, "done": done
+    } })
+}
+
+/// A full revision of the tests' own.
+const REVISION: &str = "0123456789abcdef0123456789abcdef01234567";
+
+/// The hosted-control-plane spec's "A preview carried" (design Decision
+/// 6): a preview and its done the control plane asks are given to the
+/// runner in its order, each id under the partition's prefix and every
+/// other field as given (core.55).
+#[test]
+fn a_preview_carried() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            preview("preview-1", "example/app", REVISION, false),
+            preview("preview-2", "example/app", REVISION, true)
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/preview-1", "home/preview-2"]);
+    for (want, done) in wants.iter().zip([false, true]) {
+        let Want::Preview(preview) = want else {
+            panic!("a preview: {want:?}");
+        };
+        assert_eq!(
+            preview.lease,
+            Lease {
+                number: 1,
+                expires: Some(At::parse("2026-11-01T11:00:00Z").expect("a time")),
+            }
+        );
+        assert_eq!(preview.repository, "example/app");
+        assert_eq!(preview.branch, "main");
+        assert_eq!(preview.revision, REVISION);
+        assert_eq!(preview.done, done);
+    }
+}
+
+/// The hosted-control-plane spec's "A preview of a revision that is not
+/// a commit" (design Decision 2): a preview at the revision `R1` is given
+/// as given, sluice's to answer.
+#[test]
+fn a_preview_of_a_revision_that_is_not_a_commit() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([preview("preview-1", "example/app", "R1", false)]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    let [Want::Preview(preview)] = &wants[..] else {
+        panic!("one preview: {wants:?}");
+    };
+    assert_eq!(preview.id, Id::new("home/preview-1"));
+    assert_eq!(preview.revision, "R1");
+}
+
+/// The hosted-control-plane spec's "A preview of a repository not
+/// served", beside `another_partitions_repository`: a preview of
+/// `example/service`, which `home` is not served, is given at neither of
+/// two pulls, and one line names it, `home` and `example/service`
+/// (core.26).
+#[test]
+fn a_preview_of_a_repository_not_served() {
+    let fake = Fake::start();
+    fake.set_wants(
+        "home",
+        json!([
+            preview("preview-9", "example/service", REVISION, false),
+            preview("preview-1", "example/app", REVISION, false)
+        ]),
+    );
+    let mut plane = Plane::open(&fake);
+    let report = Report::default();
+    for _ in 0..2 {
+        let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
+        assert_eq!(ids(&pulled.wants), ["home/preview-1"]);
+    }
+    let named: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("home/preview-9"))
+        .collect();
+    assert_eq!(named.len(), 1, "{:#?}", plane.lines());
+    assert!(
+        named[0].starts_with("home: ") && named[0].contains("example/service"),
+        "{named:?}"
+    );
 }
 
 #[test]
@@ -1086,4 +1208,255 @@ fn a_report_that_fails_version_2_is_not_sent() {
         named.contains("/body/report/launches/l-1/lease/number"),
         "{named}"
     );
+}
+
+/// sluice 0.74.3's answer `name`, the binary's fixture, as sluice printed
+/// it.
+fn sluice_answer(name: &str) -> Value {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../boomdrive/tests/fixtures/sluice-0.74.3")
+        .join(name);
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    serde_json::from_str(&text).expect("sluice's JSON")
+}
+
+/// The fields the runner carries of a preview, and of a release.
+const PREVIEW_FIELDS: &[&str] = &["name", "branch", "revision", "state", "made", "addresses"];
+const RELEASE_FIELDS: &[&str] = &["preview", "released"];
+
+/// What the runner carries of `answer`, a preview or a release as sluice
+/// printed it: a JSON object of `fields`, each where sluice printed it.
+fn carried_of(answer: &Value, fields: &[&str]) -> String {
+    let kept: serde_json::Map<String, Value> = fields
+        .iter()
+        .filter_map(|field| Some((field.to_string(), answer.get(*field)?.clone())))
+        .collect();
+    Value::Object(kept).to_string()
+}
+
+/// A preview of `example/app` at sluice's revision the runner answered
+/// with `outcome`, `text` and `words`, done or not, its listing `status`.
+fn previewed(
+    done: bool,
+    outcome: Outcome,
+    text: Option<String>,
+    words: Option<&str>,
+    status: Option<String>,
+) -> Previewed {
+    Previewed {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: "example/app".to_string(),
+        revision: "c2b72605d2ad8471a98dfae00551852c527d4dcf".to_string(),
+        done,
+        outcome,
+        text,
+        words: words.map(str::to_string),
+        status: status.map(|text| Carried {
+            text,
+            at: At::parse("2026-11-01T10:01:00Z").expect("a time"),
+            listed: true,
+        }),
+        at: At::parse("2026-11-01T10:00:30Z").expect("a time"),
+    }
+}
+
+/// sluice's listing's row of the preview it brought up, `up`.
+fn the_up_row() -> Value {
+    sluice_answer("previews.json")
+        .as_array()
+        .and_then(|rows| rows.iter().find(|row| row["state"] == "up").cloned())
+        .expect("a row up")
+}
+
+/// Each report `home` sent of `fake`'s, and whether the fake refused it.
+fn reports_sent(fake: &Fake) -> Vec<(Value, Option<String>)> {
+    fake.taken()
+        .into_iter()
+        .filter_map(|taken| match taken {
+            Taken::Message {
+                partition,
+                message,
+                refused,
+            } if partition == "home" && kind(&message).as_deref() == Some("report") => {
+                Some((message, refused))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// The keys of `value`, an object.
+fn keys(value: &Value) -> BTreeSet<&str> {
+    value
+        .as_object()
+        .map(|fields| fields.keys().map(String::as_str).collect())
+        .unwrap_or_default()
+}
+
+/// The hosted-control-plane spec's "Previews go up as their copies"
+/// (design Decisions 3 and 5): a preview brought up, its done answered
+/// with sluice's release, and a preview refused with sluice's words go up
+/// under their bare ids, sluice's answer and listing as their copies.
+#[test]
+fn previews_go_up_as_their_copies() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/preview-1"),
+        previewed(
+            false,
+            Outcome::Done,
+            Some(carried_of(
+                &sluice_answer("preview-starting.json"),
+                PREVIEW_FIELDS,
+            )),
+            None,
+            Some(carried_of(&the_up_row(), PREVIEW_FIELDS)),
+        ),
+    );
+    report.previews.insert(
+        Id::new("home/preview-2"),
+        previewed(
+            true,
+            Outcome::Done,
+            Some(carried_of(&sluice_answer("release.json"), RELEASE_FIELDS)),
+            None,
+            None,
+        ),
+    );
+    let words = sluice_answer("preview-no-table.json")["error"]["message"]
+        .as_str()
+        .expect("sluice's words")
+        .to_string();
+    report.previews.insert(
+        Id::new("home/preview-3"),
+        previewed(false, Outcome::Refused, None, Some(&words), None),
+    );
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    plane.hosted.report(&report).expect("answered");
+
+    let sent = reports_sent(&fake);
+    assert_eq!(sent.len(), 1, "{:#?}", fake.taken());
+    let (message, refused) = &sent[0];
+    assert_eq!(refused, &None, "the report passes version 2");
+    let previews = &message["body"]["report"]["previews"];
+    assert_eq!(
+        keys(previews),
+        BTreeSet::from(["preview-1", "preview-2", "preview-3"])
+    );
+    let brought_up = &previews["preview-1"];
+    let six = BTreeSet::from(["name", "branch", "revision", "state", "made", "addresses"]);
+    assert_eq!(keys(&brought_up["copy"]), six);
+    assert_eq!(brought_up["copy"]["state"], "starting");
+    assert_eq!(keys(&brought_up["status"]["copy"]), six);
+    assert_eq!(brought_up["status"]["copy"]["state"], "up");
+    assert_eq!(brought_up["status"]["listed"], true);
+    assert_eq!(brought_up["outcome"], "done");
+    let done = &previews["preview-2"];
+    assert_eq!(keys(&done["copy"]), BTreeSet::from(["preview", "released"]));
+    assert_eq!(done["copy"]["released"], true);
+    assert_eq!(done["done"], true);
+    let refused = &previews["preview-3"];
+    assert_eq!(
+        (&refused["copy"], &refused["status"]),
+        (&Value::Null, &Value::Null)
+    );
+    assert_eq!(refused["outcome"], "refused");
+    assert_eq!(refused["words"], words.as_str());
+    assert!(
+        plane.lines().iter().all(|line| !line.contains("preview-")),
+        "{:#?}",
+        plane.lines()
+    );
+}
+
+/// The hosted-control-plane spec's "A preview's copy that fails" (design
+/// Decision 5): a preview whose listing holds a `made` that is a number
+/// goes up with its `status` `null` and its `copy` as before, the report
+/// passing and sent, and one line names the preview and the path, and not
+/// the value, once while it fails (core.11).
+#[test]
+fn a_previews_copy_that_fails() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut row = the_up_row();
+    row["made"] = json!(1793750400);
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/preview-1"),
+        previewed(
+            false,
+            Outcome::Done,
+            Some(carried_of(
+                &sluice_answer("preview-starting.json"),
+                PREVIEW_FIELDS,
+            )),
+            None,
+            Some(carried_of(&row, PREVIEW_FIELDS)),
+        ),
+    );
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        plane.hosted.report(&report).expect("answered");
+    }
+    let sent = reports_sent(&fake);
+    assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
+    for (message, refused) in &sent {
+        assert_eq!(refused, &None, "the report passes version 2");
+        let previewed = &message["body"]["report"]["previews"]["preview-1"];
+        assert_eq!(previewed["status"], Value::Null);
+        assert_eq!(previewed["copy"]["state"], "starting");
+    }
+    let lines: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("home/preview-1"))
+        .collect();
+    assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
+    assert!(
+        lines[0].starts_with("home/preview-1: its status's copy") && lines[0].contains("/made"),
+        "{lines:?}"
+    );
+    assert!(!lines[0].contains("1793750400"), "{lines:?}");
+}
+
+/// The hosted-control-plane spec's "A report taken back holds its
+/// previews" (design Decision 7), beside
+/// `a_report_taken_back_holds_no_status`: a preview of the report the
+/// control plane hands back is given to the runner under the partition's
+/// prefix, as held, its copy's JSON as its text and no status.
+#[test]
+fn a_report_taken_back_holds_its_previews() {
+    let fake = Fake::start();
+    let held = example("from-runner", "report-a-preview-brought-up.json")["body"]["report"].clone();
+    let (id, kept) = held["previews"]
+        .as_object()
+        .and_then(|previews| previews.iter().next())
+        .map(|(id, kept)| (id.clone(), kept.clone()))
+        .expect("a preview");
+    fake.set_report("home", held);
+    let mut plane = Plane::open(&fake);
+    let report = Report::default();
+    let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
+    let back = pulled
+        .report
+        .expect("the report home's control plane holds");
+    let previewed = &back.previews[&Id::new(format!("home/{id}"))];
+    let as_held: Lease = serde_json::from_value(kept["lease"].clone()).expect("a lease");
+    assert_eq!(previewed.lease, as_held);
+    assert_eq!(previewed.repository, kept["repository"]);
+    assert_eq!(previewed.revision, kept["revision"]);
+    assert_eq!(previewed.done, kept["done"]);
+    assert_eq!(json!(previewed.outcome), kept["outcome"]);
+    assert_eq!(json!(previewed.words), kept["words"]);
+    assert_eq!(json!(previewed.at), kept["at"]);
+    let text: Value = serde_json::from_str(previewed.text.as_deref().expect("its text"))
+        .expect("its text is JSON");
+    assert!(text.is_object(), "{text}");
+    assert_eq!(text["name"], kept["copy"]["name"]);
+    assert_eq!(previewed.status, None);
 }

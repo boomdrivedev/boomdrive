@@ -996,7 +996,7 @@ fn answer_message(
             let set = state.partitions.get(partition).cloned().unwrap_or_default();
             let mut held = message["body"]["report"].clone();
             for id in set.let_go.iter().chain(set.refused.keys()) {
-                for part in ["launches", "acts", "commands", "inboxes"] {
+                for part in ["launches", "acts", "commands", "inboxes", "previews"] {
                     if let Some(entries) = held[part].as_object_mut() {
                         entries.remove(id);
                     }

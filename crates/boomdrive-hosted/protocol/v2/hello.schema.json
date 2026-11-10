@@ -47,7 +47,7 @@
           "$ref": "#/$defs/capacity"
         },
         "leases": {
-          "description": "Each launch's and each command's id with the lease number held.",
+          "description": "Each launch's, each command's and each preview's id with the lease number held.",
           "type": "object",
           "propertyNames": {
             "$ref": "shared.schema.json#/$defs/id"

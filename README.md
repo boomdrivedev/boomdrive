@@ -592,7 +592,10 @@ runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
 runner under the partition's prefix and carried out as crew's is,
-by Flume's confirm of exactly its keys.
+by Flume's confirm of exactly its keys. A control plane's land and
+preview, with its done, are given to the runner as crew's are, and what
+the runner answered of each preview goes up with sluice's answer and
+listing as their copies.
 
 ## Rules and checks
 

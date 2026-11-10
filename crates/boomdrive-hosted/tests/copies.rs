@@ -1,10 +1,13 @@
 //! The copies of Flume's and sluice's answers hold only the fields design
-//! Decisions 7 to 9 name (the runner-protocol spec's "A place's status is
-//! carried as its copy", "The host's capacity is Flume's host part as
-//! values, its streams without their queues" and "sluice's entry is
-//! carried as its copy"; core.27). Each copy's field paths, read from the
-//! schema, equal the list its decision gives, written here: a field added
-//! to a copy or taken from it fails, naming it.
+//! Decisions 7 to 9 name, and a preview's and a release's only those
+//! Decision 4 of the-hosted-protocol-carries-land-and-preview names (the
+//! runner-protocol spec's "A place's status is carried as its copy", "The
+//! host's capacity is Flume's host part as values, its streams without
+//! their queues", "sluice's entry is carried as its copy", "The copies'
+//! fields are the lists" and "sluice's answers of a preview as copies";
+//! core.27). Each copy's field paths, read from the schema, equal the
+//! list its decision gives, written here: a field added to a copy or
+//! taken from it fails, naming it.
 
 mod common;
 
@@ -207,6 +210,14 @@ const SUBMISSION_ENTRY: &[&str] = &[
     "failed[].system",
 ];
 
+/// The copy of a preview, sluice's answer to its ask or a row of its
+/// listing (design Decision 4 of
+/// the-hosted-protocol-carries-land-and-preview).
+const PREVIEW: &[&str] = &["name", "branch", "revision", "state", "made", "addresses"];
+
+/// The copy of a release, sluice's answer to it (design Decision 4).
+const RELEASE: &[&str] = &["preview", "released"];
+
 /// The examples whose copies are cut from Flume's places: Flume 0.4.1's,
 /// each end as Flume 0.21.0 prints it (design Decision 14 of
 /// the-runner-dials-the-hosted-control-plane), and Flume 0.21.0's ends of
@@ -225,6 +236,16 @@ const CUT_FROM_FLUME: &[&str] = &[
     "report-an-end-handed-over-at-a-sessions-start.json",
     "report-an-end-owed-expired-and-one-confirmed.json",
     "report-an-end-by-its-delivery-alone.json",
+];
+
+/// The examples of what the runner answered of a preview, sluice's
+/// answers as their copies (design Decision 3 of
+/// the-hosted-protocol-carries-land-and-preview).
+const CUT_FROM_SLUICE: &[&str] = &[
+    "report-a-preview-brought-up.json",
+    "report-a-preview-held.json",
+    "report-a-preview-put-away.json",
+    "report-a-preview-sluice-refused.json",
 ];
 
 /// Version 2's files by their addresses.
@@ -327,6 +348,18 @@ fn the_entrys_fields_are_the_list() {
 }
 
 #[test]
+fn the_previews_fields_are_the_list() {
+    let fields = Schema::new().fields("preview.schema.json", "preview");
+    holds_the_list("a preview's copy", fields, PREVIEW);
+}
+
+#[test]
+fn the_releases_fields_are_the_list() {
+    let fields = Schema::new().fields("preview.schema.json", "release");
+    holds_the_list("a release's copy", fields, RELEASE);
+}
+
+#[test]
 fn flumes_answers_as_copies() {
     let validator = from_runner();
     for name in CUT_FROM_FLUME {
@@ -338,6 +371,29 @@ fn flumes_answers_as_copies() {
                 .all(|launched| launched["status"]["copy"].is_object()),
             "{name} carries a status copy"
         );
+        passes(&validator, &report, name);
+    }
+}
+
+/// The runner-protocol spec's "sluice's answers of a preview as copies":
+/// each example of a preview passes version 2, and each preview's `copy`
+/// is an object or `null`, as is its status's.
+#[test]
+fn sluices_previews_as_copies() {
+    let validator = from_runner();
+    for name in CUT_FROM_SLUICE {
+        let report = example("from-runner", name);
+        let previews = report["body"]["report"]["previews"].as_object().unwrap();
+        assert!(!previews.is_empty(), "{name} holds a preview");
+        for previewed in previews.values() {
+            let copy = &previewed["copy"];
+            assert!(copy.is_object() || copy.is_null(), "{name}'s copy");
+            let status = &previewed["status"];
+            assert!(
+                status.is_null() || status["copy"].is_object(),
+                "{name}'s status"
+            );
+        }
         passes(&validator, &report, name);
     }
 }

@@ -63,7 +63,7 @@ Every object a version names SHALL take only the fields it names, at every depth
 
 #### Scenario: A field the version does not name
 
-- **WHEN** examples of version 2 with a field added at the envelope, in a launch, in a lease, in a place's status copy, in an end's delivery, in a confirm and in a key share are checked
+- **WHEN** examples of version 2 with a field added at the envelope, in a launch, in a lease, in a place's status copy, in an end's delivery, in a confirm, in a preview, in what the runner answered of a preview, in a preview's copy, in a release's copy and in a key share are checked
 - **THEN** each is refused
 
 #### Scenario: A time not in UTC to the second
@@ -78,12 +78,17 @@ Every object a version names SHALL take only the fields it names, at every depth
 
 ### Requirement: The messages carry the interface's shapes
 
-Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, a confirm among its acts, but no preview and no land, and its `Hello` and `Report` but for their copies and previews. Version 1 SHALL carry the same, but for a confirm. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037).
+Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names among them, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
 
 #### Scenario: The interface's values pass
 
-- **WHEN** one value of each want, act and command sort version 2 names, every want sort but a preview and every act sort but a land, a confirm among them, a lease with an expiry and one without, a launch with every field and one with none, each tool version, an acted, a commanded and an inbox carried are written by `boomdrive-control`'s types and checked against their definitions in version 2
+- **WHEN** one value of each want, act and command sort version 2 names, a preview not done and one done, a land and a confirm among them, a lease with an expiry and one without, a launch with every field and one with none, each tool version, an acted, a commanded and an inbox carried are written by `boomdrive-control`'s types and checked against their definitions in version 2
 - **THEN** each passes
+
+#### Scenario: Every sort the interface names
+
+- **WHEN** a value of every sort of `Want`, `ActSort` and `CommandSort`, each named by a match with no wildcard, is written by `boomdrive-control`'s types and checked against version 2's `want`
+- **THEN** the sorts named are every sort the interface has, and each value passes
 
 #### Scenario: An act's outcome
 
@@ -214,7 +219,7 @@ An `enroll` SHALL hold `key`, 32 bytes, `signature`, 64 bytes, each in base64url
 
 ### Requirement: The README names the two paths and the signatures' contexts
 
-The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, and the bytes each signature of enrollment and of a connection is made over, each context starting `boomdrive.v2`, with a worked example of each. It SHALL say how version 1 differs. The hosted implementation SHALL make each signature over exactly those bytes (records 0018 and 0037).
+The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, and the bytes each enrollment's and connection's signature covers, each context starting `boomdrive.v2`, with a worked example of each. It SHALL name what a `pulled` and a `report` hold, and how version 1 differs. The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
 
 #### Scenario: The README's worked contexts
 
@@ -224,7 +229,7 @@ The protocol's README SHALL describe version 2: `runner/enroll` and `runner/conn
 #### Scenario: The README of version 2
 
 - **WHEN** the protocol's README is read
-- **THEN** its envelope names `protocol_version` 2, its paths name the subprotocol `boomdrive.v2`, its copies name an end's `delivery` and an end's delivery alone, its messages name a confirm, and a section `Version 1` names `boomdrive.v1`
+- **THEN** its envelope names `protocol_version` 2; its paths name the subprotocol `boomdrive.v2`; its files name `preview.schema.json`; its copies name an end's `delivery`, an end's delivery alone and a preview's copy; its messages name a confirm and a land among a `pulled`'s acts, a preview among its wants, and `previews` in a `report`; and a section `Version 1` names `boomdrive.v1` and says it has no land and no preview
 
 ### Requirement: Version 1 carries no land
 
@@ -295,20 +300,6 @@ Version 2 SHALL name a confirm among the acts a `pulled` holds, `{"confirm":{"re
 - **WHEN** a want whose act is a confirm of two keys, and one of no key, as `boomdrive-control`'s types write them, are checked against version 2's `want`, and a `pulled` holding the first against version 2's `to-runner.schema.json`
 - **THEN** each passes
 
-### Requirement: Version 2 carries no land and no preview
-
-Version 2 SHALL name no land and no preview. A want whose act is a land, and a want that is a preview, SHALL fail version 2's check, and the runner's report SHALL go up in version 2 with no `previews` (core.42, core.53, core.55; record 0037).
-
-#### Scenario: A land is no act of version 2
-
-- **WHEN** a want whose act is a land, as `boomdrive-control`'s types write it, is checked against version 2's `want`
-- **THEN** it is refused
-
-#### Scenario: A preview is no want of version 2
-
-- **WHEN** a want that is a preview, as `boomdrive-control`'s types write it, is checked against version 2's `want`
-- **THEN** it is refused
-
 ### Requirement: Version 1 stays as a release spoke it
 
 Every file under `protocol/v1/`, its schemas and its examples, SHALL stay as release `v0.7.3` holds it, and no file SHALL be added there. Every example of version 1 SHALL still pass its direction's envelope of version 1. `boomdrive_hosted::protocol::v1` SHALL hold version 1's files and no type (core.42; record 0037).
@@ -322,3 +313,54 @@ Every file under `protocol/v1/`, its schemas and its examples, SHALL stay as rel
 
 - **WHEN** each example under version 1's `examples/` is checked against its direction's envelope of version 1
 - **THEN** each passes
+
+### Requirement: Version 2 carries a land
+
+Version 2 SHALL name a land among the acts a `pulled` holds, written as the word `land`, as `boomdrive-control`'s `ActSort::Land` writes it, holding nothing but its act's launch and lease. The retry naming the submission SHALL stay among version 2's acts (core.42, core.53; record 0037 as amended on 2026-11-09).
+
+#### Scenario: A land is an act of version 2
+
+- **WHEN** a want whose act is a land, as `boomdrive-control`'s types write it, is checked against version 2's `want`, and a `pulled` holding it against version 2's `to-runner.schema.json`
+- **THEN** each passes, the act's `what` being `"land"`
+
+### Requirement: Version 2 carries a preview and its done
+
+Version 2 SHALL name a preview among the wants a `pulled` holds, `{"preview":{"id","lease","repository","branch","revision","done"}}`, as `boomdrive-control`'s `Want::Preview` writes it, each field required. Its branch and its revision SHALL be any string, so that a preview sluice refuses reaches the runner as a preview, and not the whole `pulled` as a message (core.42, core.55; record 0037 as amended on 2026-11-09).
+
+#### Scenario: A preview is a want of version 2
+
+- **WHEN** a preview not done, one done, and one whose revision is `R1`, as `boomdrive-control`'s types write them, are checked against version 2's `want`, and a `pulled` holding a preview and its done against version 2's `to-runner.schema.json`
+- **THEN** each passes
+
+### Requirement: Version 2's report holds what the runner answered of each preview
+
+Every report of version 2 SHALL hold `previews`, by id, each preview the runner answered with its `lease`, `repository`, `revision`, `done`, `outcome` (`held`, `done` or `refused`), `copy`, `words`, `status` and `at`, each required: `copy` the copy of sluice's answer, a preview's or a release's, or `null`; `status` the copy of sluice's listing with its time and whether it was listed, or `null` (core.27, core.42, core.55; record 0037 as amended on 2026-11-09).
+
+#### Scenario: sluice's answers of a preview as copies
+
+- **WHEN** the `report` examples of version 2 are checked: a preview brought up, a preview held, a preview put away, and a preview sluice refused
+- **THEN** each passes
+
+#### Scenario: A report with no previews
+
+- **WHEN** a `report` of version 2 with no `previews` is checked
+- **THEN** it is refused
+
+#### Scenario: A preview's outcome
+
+- **WHEN** what the runner answered of a preview, its outcome `launched`, is checked against version 2
+- **THEN** it is refused
+
+### Requirement: A preview's copy holds no output of its command
+
+Version 2's `preview.schema.json` SHALL hold the copy of a preview, its `name`, required, `branch`, `revision`, `state`, `made` and `addresses`, a map of strings, and the copy of a release, its `preview`, required, and `released`, each as sluice printed it. Neither SHALL hold a preview's `checkout`, `names`, `ports`, `exit`, `output` or `release_failed` (core.11, core.27, core.55; record 0037 as amended on 2026-11-09).
+
+#### Scenario: The copies' fields are the lists
+
+- **WHEN** the field paths of `preview.schema.json`'s `preview` and `release` are read
+- **THEN** the first's are `name`, `branch`, `revision`, `state`, `made` and `addresses`, and the second's `preview` and `released`, which the tests hold
+
+#### Scenario: A preview's output
+
+- **WHEN** a report whose preview's copy, or whose preview's status copy, holds `output`, `checkout`, `names`, `ports`, `exit` or `release_failed` is checked against version 2
+- **THEN** each is refused

@@ -80,6 +80,18 @@
               "$ref": "#/$defs/inbox"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preview"
+          ],
+          "properties": {
+            "preview": {
+              "$ref": "#/$defs/preview"
+            }
+          }
         }
       ]
     },
@@ -260,12 +272,13 @@
       }
     },
     "act_sort": {
-      "description": "What an act asks of its launch's place: a drop, a done, a retry, a priority, or a confirm of a reader's ends by their delivery keys, which the schema bounds in neither its recipient nor its keys, so a confirm the runner refuses reaches it as an act.",
+      "description": "What an act asks of its launch's place: a drop, a done, a land of its work, which holds nothing but the act's launch and lease, a retry, a priority, or a confirm of a reader's ends by their delivery keys, which the schema bounds in neither its recipient nor its keys, so a confirm the runner refuses reaches it as an act.",
       "oneOf": [
         {
           "enum": [
             "drop",
-            "done"
+            "done",
+            "land"
           ]
         },
         {
@@ -445,6 +458,40 @@
         },
         "branch": {
           "type": "string"
+        }
+      }
+    },
+    "preview": {
+      "description": "A preview of branch at revision in repository, under a lease of its own, brought up by sluice, or, where done, put away; the schema bounds neither the branch nor the revision, so a preview sluice refuses reaches the runner as a preview.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lease",
+        "repository",
+        "branch",
+        "revision",
+        "done"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/id"
+        },
+        "lease": {
+          "$ref": "shared.schema.json#/$defs/lease"
+        },
+        "repository": {
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "done": {
+          "description": "Whether the preview is to be put away.",
+          "type": "boolean"
         }
       }
     }
