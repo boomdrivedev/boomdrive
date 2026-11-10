@@ -1,0 +1,105 @@
+---
+import { type Day, fmt, share } from "./utilization";
+
+// The reading as the headline: one tile per series, a peak shown as the
+// second number in the tile of the series it is the peak of. The latest day,
+// or the day picked on the chart.
+
+interface Props {
+  days: Day[];
+}
+const { days } = Astro.props;
+const d = days[days.length - 1];
+---
+
+<section class="tiles" aria-label="The reading" data-tiles>
+  <p class="when">
+    <span data-when-label>Latest reading</span> · <span data-when>{d.date}</span>
+    <span class="sample-chip" data-when-sample hidden={!d.sample}>sample</span>
+    <button type="button" class="back" data-back hidden>Back to the latest</button>
+  </p>
+  <div class="row" aria-live="polite">
+    <div class="tile">
+      <span class="name">Agents running</span>
+      <span class="value" data-v="running.median">{d.running.median}</span>
+      <span class="sub">median · peak <b data-v="running.peak">{d.running.peak}</b></span>
+    </div>
+    <div class="tile busy">
+      <span class="name">Agents busy</span>
+      <span class="value" data-v="busy.median">{d.busy.median}</span>
+      <span class="sub">median · peak <b data-v="busy.peak">{d.busy.peak}</b></span>
+      <span class="sub">
+        <b data-v="share.median">{share(d, "median")}%</b> of running · <b data-v="share.peak">{share(d, "peak")}%</b> at peak
+      </span>
+    </div>
+    <div class="tile">
+      <span class="name">CPU</span>
+      <span class="value" data-v="cpu">{fmt.cpu(d.cpu)}</span>
+      <span class="sub">median</span>
+    </div>
+    <div class="tile">
+      <span class="name">Memory</span>
+      <span class="value" data-v="memory">{fmt.memory(d.memory)}</span>
+      <span class="sub">median</span>
+    </div>
+    <div class="tile">
+      <span class="name">Processes</span>
+      <span class="value" data-v="processes">{fmt.processes(d.processes)}</span>
+      <span class="sub">median</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { fmt, share, type Day } from "./utilization";
+
+  const read: Record<string, (d: Day) => string> = {
+    "running.median": (d) => fmt.agents(d.running.median),
+    "running.peak": (d) => fmt.agents(d.running.peak),
+    "busy.median": (d) => fmt.agents(d.busy.median),
+    "busy.peak": (d) => fmt.agents(d.busy.peak),
+    "share.median": (d) => `${share(d, "median")}%`,
+    "share.peak": (d) => `${share(d, "peak")}%`,
+    cpu: (d) => fmt.cpu(d.cpu),
+    memory: (d) => fmt.memory(d.memory),
+    processes: (d) => fmt.processes(d.processes),
+  };
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-tiles]")) {
+    const back = root.querySelector<HTMLButtonElement>("[data-back]")!;
+    back.addEventListener("click", () => document.dispatchEvent(new CustomEvent("fleet:latest")));
+    document.addEventListener("fleet:pick", (e) => {
+      const { day, latest } = (e as CustomEvent<{ day: Day; latest: boolean }>).detail;
+      root.querySelector("[data-when-label]")!.textContent = latest ? "Latest reading" : "Picked";
+      root.querySelector("[data-when]")!.textContent = day.date;
+      root.querySelector<HTMLElement>("[data-when-sample]")!.hidden = !day.sample;
+      back.hidden = latest;
+      for (const el of root.querySelectorAll<HTMLElement>("[data-v]")) el.textContent = read[el.dataset.v!](day);
+    });
+  }
+</script>
+
+<style>
+  .tiles { margin: 28px 0 0; }
+  .when { margin: 0 0 10px; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .back {
+    all: unset; cursor: pointer; color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px;
+    letter-spacing: 0.08em; text-transform: none;
+  }
+  .back[hidden] { display: none; }
+  .back:hover { color: var(--ap-accent); }
+  .back:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 2px; }
+  .row {
+    display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    background: var(--ap-line); border: 1px solid var(--ap-line); border-radius: 12px; overflow: hidden;
+  }
+  .tile { background: var(--ap-bg-2); padding: 14px 16px 14px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+  .name { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .value {
+    font: 700 clamp(1.8rem, 4vw, 2.4rem)/1.1 var(--ap-font-display); letter-spacing: -0.03em; color: var(--ap-fg);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .busy .value { color: var(--ap-accent); }
+  .sub { font: 11.5px/1.5 var(--ap-font-mono); color: var(--ap-fg-3); }
+  .sub b { color: var(--ap-fg-2); font-weight: 500; }
+</style>

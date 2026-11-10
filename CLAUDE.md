@@ -48,6 +48,15 @@ building nothing, then runs `cache` at the tag. The version lives only
 in the tag. `devenv shell -- release-preview` shows what it would
 release.
 
+Boomdrive's site is `site/`: the Method, its field notes and the
+fleet's measurements, an Astro site on bun, the moon project `site`,
+served at `https://agentplot.github.io/boomdrive/` and published from
+`main` by the workflow `.github/workflows/pages.yml` at each push that
+changes it. Its rules are the area page `docs/architecture/site.md`,
+site.1 to site.7, and its working rules `site/CLAUDE.md` (record 0038).
+A commit that changes only the site is in no release's notes and bumps
+no version (core.48).
+
 ## The family
 
 **The family.** This tool works with the others of the Boomdrive family:
@@ -87,7 +96,7 @@ branch requires:
 
 | layer | what | who requires it |
 |---|---|---|
-| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, records, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint) | main |
+| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, records, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint); the site's type check (astro check), prose (Vale), build, tests and its workflow's lint (actionlint) | main |
 
 Run suites through sluice, so the agents on this host take turns under
 its bound: once your work is committed, `sluice exec main` for the
@@ -96,7 +105,8 @@ gate's checks, and while iterating `sluice exec main -- moon run
 `boomdrive` (`crates/boomdrive`), `boomdrive-control`
 (`crates/boomdrive-control`), `boomdrive-crew` (`crates/boomdrive-crew`),
 `boomdrive-hosted` (`crates/boomdrive-hosted`), `nix` (`nix/`, which
-owns the flake and `.github/workflows/cache.yml`) and `root`. A quick,
+owns the flake and `.github/workflows/cache.yml`), `site` (`site/`,
+which owns `.github/workflows/pages.yml`) and `root`. A quick,
 narrow call, `cargo check` or one unit test, is fine to run directly.
 `devenv shell -- moon run :#check-fast` runs the fast layer.
 

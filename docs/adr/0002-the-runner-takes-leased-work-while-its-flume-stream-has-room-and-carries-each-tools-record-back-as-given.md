@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3 and is proposed; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing, which is proposed. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud's records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022, its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39, and its `design/domain-model.html` with its ledger items 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -124,7 +124,7 @@ core.50 holds it. The work-into-flume spec gains it through the chore `a-launch-
 
 ## Amendment, 2026-11-07: a bolt is a launch, and the runner carries no branch command
 
-Status: proposed on 2026-11-07 by the construct stage of the change `a-bolt-is-a-launch`, until the user sees it as a record. The direction is the user's. On 2026-11-06 they accepted Flume's record 0051 on its card ("Approve: push the statement, start code, launch the follow-ups in order"). Its design names this repository's follow-up B1: "the runner keeps the host's watch, and a bolt is a launch". This amendment is that follow-up's second half, and it retires settled point 3 above, the user's own of 2026-11-01. The stage chose four things, each cheap to change: a bolt is judged by its stream's room as any launch is; its send is an act; a branch command is refused, naming sluice, whatever its repository; and the interface and version 1 of the protocol keep a branch command's shape.
+Status: accepted by the user on 2026-11-09, on their card, as the construct stage of the change `a-bolt-is-a-launch` proposed it on 2026-11-07. The direction is the user's. On 2026-11-06 they accepted Flume's record 0051 on its card ("Approve: push the statement, start code, launch the follow-ups in order"). Its design names this repository's follow-up B1: "the runner keeps the host's watch, and a bolt is a launch". This amendment is that follow-up's second half, and it retires settled point 3 above, the user's own of 2026-11-01. The stage chose four things, each cheap to change: a bolt is judged by its stream's room as any launch is; its send is an act; a branch command is refused, naming sluice, whatever its repository; and the interface and version 1 of the protocol keep a branch command's shape.
 
 The brief: "A control plane's bolt reaches the runner as a Flume launch of its caller's kind with no stages, and its send as a retry of that place's submission, so sluice alone makes and moves a bolt's branch and the runner keeps no branch command."
 
@@ -209,7 +209,7 @@ Not taken:
 
 ## Amendment, 2026-11-08: land is the message for a work's landing
 
-Status: proposed on 2026-11-08 by the construct stage of the change `land-is-the-message-for-a-works-landing`, until the user sees it as a record. The direction is the user's. On 2026-11-08 they rewrote crew's record 0056 on their own words and accepted it on its card ("Yes, that's it. Rewrite the record that way"). That record names the message `land`, and leaves the runner's half to a Boomdrive unit, which this amendment is. The stage chose three things, each cheap to change: a land of a launch held unlaunched is refused, as a retry is; the retry naming the submission stays beside the land; and version 1 of the hosted protocol carries no land.
+Status: accepted by the user on 2026-11-09, on their card, as the construct stage of the change `land-is-the-message-for-a-works-landing` proposed it on 2026-11-08. The direction is the user's. On 2026-11-08 they rewrote crew's record 0056 on their own words and accepted it on its card ("Yes, that's it. Rewrite the record that way"). That record names the message `land`, and leaves the runner's half to a Boomdrive unit, which this amendment is. The stage chose three things, each cheap to change: a land of a launch held unlaunched is refused, as a retry is; the retry naming the submission stays beside the land; and version 1 of the hosted protocol carries no land.
 
 The brief: "The runner takes land, naming a launch, as the control plane's message to land that work, and carries it out as Flume's retry of the work's submission, so a control plane names no Flume word for a landing."
 
@@ -258,3 +258,57 @@ core.53 holds it, and core.52 names it as how a branch other places land on is l
 - crew's implementation reads `Act: land`, with its `Of`, as a land of that launch. One naming no `Host` goes to the runner that holds its launch. crew posts it from the release that carries this. Until then crew lands as it does today.
 - boomdrive-cloud lands a bolt by version 1's retry naming the submission until a later version names `land`. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
 - Flume's statement names, in its section 9, crew's retry of a bolt's submission and the runner's retry its control plane asks. crew asks Flume nothing now, and the runner's retry is asked as a land. That is the statement's owner's to amend, and is told to the orchestrator.
+
+## Amendment, 2026-11-09: a control plane's confirm of a reader's ends
+
+Status: accepted by the user on 2026-11-09, on their card, as the construct stage of the change `the-runner-carries-a-control-planes-confirm` proposed it that day. The direction is the user's, in records they accepted. weir's record 0006, accepted on their card of 2026-11-08, has a reader confirm what it acted on, and a hand-over confirm nothing. crew's record 0056, point 1, accepted the same day, has crew talk only to the runner. Flume's record 0061, accepted on 2026-11-09, has Flume take a recipient's confirmation from the caller naming it, and never confirm for one itself. The stage chose four things, each cheap to change: each key a confirm names is held to its launch's place; a confirm as the runner's own name, or of no key, is refused; version 1 of the hosted protocol carries no confirm; and the least Flume moves with this bolt's other unit, not here.
+
+The brief: "A reader that talks only to its control plane, crew's role runs among them, has each end it acted on confirmed in Flume as that reader on whichever host holds the place, at its control plane's ask to the runner that holds the launch, and an end its control plane never named stays owed."
+
+Sources: weir's record 0006; crew's record 0056 and its change `crews-role-runs-confirm-what-they-collect`, landed on crew's main at 271e2c4; Flume's record 0061 and its commands reference at c010ad3f, `flume confirm`; `crates/boomdrive-control/src/want.rs`, `crates/boomdrive/src/carry.rs` and `crates/boomdrive/src/flume.rs` at 0859e14; rules core.1, core.2, core.10, core.26, core.42, core.50, core.51 and core.54; the control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs.
+
+### Context
+
+Flume now keeps each end of a place owed to each of its recipients until that recipient confirms it by its delivery's key, `flume confirm <key>… --recipient <name>`. A notice, a wait or the inbox hands an end over and confirms nothing. A tidied place's record stays while an end of it is owed, and an end nobody confirms expires and shows in status with its recipient. Flume keeps a host's deliveries in one document, so `flume confirm` names no place and takes any key on the host.
+
+crew names a role's address as the recipient of every place it launches, and its role runs act on those places' ends. A role's run that ends a turn now posts one `confirm` request per launch whose ends the turn took, naming the launch, the role's address and each end's delivery key, and no host. crew never calls Flume. In the user's words on crew's record 0056:
+
+> But crew is like the control plane. It doesn't talk to Flume. Remember, the Boom Drive runner is pulling from the control plane. Everything has to happen from the Boom Drive runner. There can be messages back and forth with the control plane but crew doesn't know about Flume directly except for whatever the control plane contract allows.
+
+The place may be on another host than crew's run, and only the runner that holds the launch reaches it. That runner reads no confirm today, so every end crew's roles act on stays owed, and Flume keeps every tidied place's record crew launched.
+
+### Considered options
+
+1. The control plane's reader confirms itself, by `flume confirm` on its own host.
+2. A confirm is an act of the interface's own, naming its launch, the one recipient it confirms as and each delivery key. The runner that holds the launch carries it out as Flume's confirm of exactly those keys as that recipient.
+3. The runner confirms, as each reader, what it reads the control plane's records to say that reader took.
+4. A confirm is a command, under a lease of its own, naming keys alone.
+
+### Decision outcome
+
+Option 2.
+
+- **A confirm is an act.** It names its launch, under that launch's lease, the one recipient it confirms as, and each delivery's key as Flume gave it, in the control plane's order. The interface writes it as `{"confirm": {"recipient": …, "deliveries": […]}}`.
+- **The runner carries it out as Flume's confirm.** It runs `flume confirm --recipient=<recipient> -- <key>…` on the host that holds the launch, as it carries out any act: once, in the pass's second round, after Flume's status of a place the listing does not hold, and never under a lapsed lease (core.10, core.24, core.50, core.51). Neither the recipient nor a key can be read as a flag. Flume's answer is the confirm's (core.1, core.11).
+- **The runner confirms exactly what it is asked.** It adds no key and no recipient, and confirms no end of its own accord for a reader its control plane did not name. An end a control plane never names stays owed until it expires, and Flume shows it.
+- **Each key is held to its launch's place.** It is the stage's choice. A key that is the `delivery` of no end of the launch's place, as the pass's listing or Flume's status of the place gives it, is refused, naming the key, and nothing runs. Since Flume confirms any key on the host, a confirm under one launch's lease could otherwise confirm another launch's end, another drive's or another account's, as a reader of that place (core.26).
+- **A confirm as the runner, or of no key, is refused**, running nothing. It is the stage's choice. The runner's own ends, as `boomdrive`, are the runner's to carry and collect (core.54), and this bolt's other unit confirms them once its control plane has them. A control plane confirming as the runner could have Flume let go of a record before the runner carried its end.
+- **A confirm of a launch held unlaunched is refused**, naming where the launch stands, as a retry, a land or a done is.
+- **Version 1 of the hosted protocol carries no confirm.** It is the stage's choice, within core.42. A release has spoken version 1, which names no confirm and no end's delivery key, so it never changes. A later version, the runner's and the cloud's together, may name both.
+- **The least Flume moves with this bolt's other unit.** It is the stage's choice. `flume confirm` is Flume's from `v0.21.0`, which the runner's own confirmation needs too, and that unit moves the floor and the set's Flume once for the bolt. A control plane names a key only from a status Flume gave, and an older Flume gives none.
+
+Not taken:
+
+- **Option 1.** crew would talk to Flume, which the user ruled out. A reader on one host cannot reach a place on another.
+- **Option 3.** Only an implementation reads its control plane's records (core.2). The runner would judge what a reader took, and nothing would record that a confirm was asked.
+- **Option 4.** A command names no launch, so no implementation could send it to the host that holds the place, and no lease would stop it. Every runner that took it would confirm any key on its host.
+- **One act confirming every end its recipient is owed on the place.** An end the control plane never named would be confirmed with the rest.
+- **Only the recipients the launch named.** Flume may owe an end to a reader the launch did not name, a stall's to its stream's answerer among them. Whom an end is owed to is Flume's to answer.
+
+core.56 holds it. The control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs gain it through the change `the-runner-carries-a-control-planes-confirm`.
+
+### Consequences
+
+- crew's implementation reads `Act: confirm`, with its `Of`, its one `Recipient` and each `Delivery`, as a confirm of that launch's ends. One naming no `Host` goes to the runner that holds its launch. crew's confirms written before a host runs the release that carries this are carried once it does.
+- A hosted control plane's readers confirm nothing through the runner until a later protocol version names a confirm and an end's delivery key. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
+- Flume's statement names, in its row of callers, a retry of a base place's submission as what the runner asks of Flume at its control plane's ask. A confirm its control plane asks, as the reader it names, joins it. That is the statement's owner's to amend, and is told to the orchestrator.

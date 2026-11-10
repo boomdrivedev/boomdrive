@@ -78,8 +78,8 @@ impl Request {
         self.act() == Some("launch")
     }
 
-    /// The launch a retry, land, drop or priority names, where `Of` is
-    /// whole.
+    /// The launch a retry, land, confirm, drop or priority names, where
+    /// `Of` is whole.
     pub fn of(&self) -> Option<u64> {
         self.get("Of").and_then(whole)
     }
@@ -390,7 +390,8 @@ pub type Unreadable = String;
 /// is given, the address its `Repo` names among those the runner keeps,
 /// else its `Repo` as written. A `preview` is a preview of its `Branch` at
 /// its `Revision`, done where its `Done` says so (design Decision 10;
-/// core.55).
+/// core.55). A `confirm` confirms each `Delivery`, in the order written,
+/// as its one `Recipient` (core.56).
 pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<Want, Unreadable> {
     let id = ids::request(label, request.number);
     let of = || -> Result<Id, Unreadable> {
@@ -441,6 +442,30 @@ pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<
         // A land reads its Of alone, and no other field of it (core.53;
         // crew record 0056).
         Some("land") => act(ActSort::Land),
+        // A confirm reads its Of, its one Recipient and each Delivery, in
+        // the order written, each as crew wrote it, and no other field of
+        // it (core.56; crew's change crews-role-runs-confirm-what-they-
+        // collect).
+        Some("confirm") => {
+            let recipient = match request.record.get_all("Recipient").as_slice() {
+                [] => return Err("it names no Recipient".to_string()),
+                [recipient] => recipient.to_string(),
+                _ => return Err("it names Recipient twice".to_string()),
+            };
+            let deliveries: Vec<String> = request
+                .record
+                .get_all("Delivery")
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+            if deliveries.is_empty() {
+                return Err("it names no Delivery".to_string());
+            }
+            act(ActSort::Confirm {
+                recipient,
+                deliveries,
+            })
+        }
         Some("drop") => act(ActSort::Drop),
         Some("priority") => act(ActSort::Priority(
             number(request, "Priority")?.ok_or("it names no Priority".to_string())?,

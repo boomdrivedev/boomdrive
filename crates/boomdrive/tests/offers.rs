@@ -261,11 +261,11 @@ fn the_runner_is_one_more_recipient() {
     );
 }
 
-/// The words said, once, of a Flume that says `flume 0.18.0` for
-/// `--version` (design Decision 5).
-const BELOW_THE_LEAST: &str = "boomdrive: home: flume --version says \"flume 0.18.0\": \
-     boomdrive launches with Flume 0.20.0 or later, \
-     the first that holds a place's end for the runner";
+/// The words said, once, of a Flume that says `flume 0.20.0` for
+/// `--version` (design Decision 7).
+const BELOW_THE_LEAST: &str = "boomdrive: home: flume --version says \"flume 0.20.0\": \
+     boomdrive launches with Flume 0.21.0 or later, \
+     the first whose ends a recipient confirms by key";
 
 /// The work-into-flume spec's "A Flume older than the least": an offer
 /// pulled with room for it is not launched, and has no answer in the
@@ -273,7 +273,7 @@ const BELOW_THE_LEAST: &str = "boomdrive: home: flume --version says \"flume 0.1
 #[test]
 fn a_flume_older_than_the_least() {
     let bench = Bench::new();
-    bench.tools.prints("flume", "flume 0.18.0");
+    bench.tools.prints("flume", "flume 0.20.0");
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
@@ -287,11 +287,11 @@ fn a_flume_older_than_the_least() {
 #[test]
 fn a_flume_at_the_least() {
     let bench = Bench::new();
-    bench.tools.prints("flume", "flume 0.18.0");
+    bench.tools.prints("flume", "flume 0.20.0");
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
     bench.pass(&mut plane);
     assert_eq!(outcome(&bench, "a"), None);
-    bench.tools.prints("flume", "flume 0.20.0");
+    bench.tools.prints("flume", "flume 0.21.0");
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(outcome(&bench, "a"), Some(Outcome::Launched));
     let names: Vec<_> = bench.flume.launches().into_iter().map(|a| a.name).collect();
@@ -300,12 +300,12 @@ fn a_flume_at_the_least() {
 }
 
 /// The work-into-flume spec's "Said once while it lasts": two passes in
-/// turn read `flume 0.18.0`, an offer pulled at each, and only the first
+/// turn read `flume 0.20.0`, an offer pulled at each, and only the first
 /// says so (Task notes 6.1).
 #[test]
 fn said_once_while_it_lasts() {
     let bench = Bench::new();
-    bench.tools.prints("flume", "flume 0.18.0");
+    bench.tools.prints("flume", "flume 0.20.0");
     let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, [BELOW_THE_LEAST]);
