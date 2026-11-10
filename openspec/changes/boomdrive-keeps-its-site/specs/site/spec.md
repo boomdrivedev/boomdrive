@@ -47,7 +47,7 @@ The site's check-fast tasks SHALL be one check each: `check`, Astro's type check
 
 ### Requirement: The site is served under /boomdrive/
 
-The site SHALL be built for the base `/boomdrive/`, its repository's name, and every link and asset of its own pages SHALL be under that base. Nothing the site itself writes on a built page SHALL name boomdrive-web. The site's link to its repository SHALL be `https://github.com/agentplot/boomdrive` (site.6). The family's entries `@agentplot/site-theme` draws, its Boomdrive member's `site` and its `hub`, SHALL stand as the theme gives them, never overridden by the site (record 0039); they move at the opening, by the theme's release naming the new address.
+The site SHALL be built for the base `/boomdrive/`, and every link and asset of its own pages SHALL be under it. Nothing the site writes SHALL name boomdrive-web, and its repository link SHALL be `https://github.com/agentplot/boomdrive` (site.6). The family's entries `@agentplot/site-theme` draws, its Boomdrive member's `site` and `hub`, SHALL stand as the theme gives them (record 0039), until its release at the opening.
 
 #### Scenario: Every link under the base
 
