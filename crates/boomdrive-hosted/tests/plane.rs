@@ -942,7 +942,11 @@ fn a_value_flume_adds() {
         .filter(|line| line.starts_with("home/l-1: "))
         .collect();
     assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
-    assert!(lines[0].contains("/stages/1/state"), "{lines:?}");
+    assert!(
+        lines[0].starts_with("home/l-1: the launch's status's copy")
+            && lines[0].contains("/stages/1/state"),
+        "{lines:?}"
+    );
     assert!(!lines[0].contains("dreaming"), "{lines:?}");
 }
 
@@ -1418,10 +1422,112 @@ fn a_previews_copy_that_fails() {
         .collect();
     assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
     assert!(
-        lines[0].starts_with("home/preview-1: its status's copy") && lines[0].contains("/made"),
+        lines[0].starts_with("home/preview-1: the preview's status's copy")
+            && lines[0].contains("/made"),
         "{lines:?}"
     );
     assert!(!lines[0].contains("1793750400"), "{lines:?}");
+}
+
+/// Beside `a_value_flume_adds` and `a_previews_copy_that_fails`: a launch
+/// and a preview whose ids are equal, each with a status whose copy fails,
+/// each go up with its `status` `null` at every report, and each is said
+/// once while it fails, its line naming its kind, since the record of
+/// failing copies is keyed by the kind and the id, never the bare id.
+#[test]
+fn a_launch_and_a_preview_of_one_id_both_failing() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut report = carrying(status_in("dreaming"));
+    report
+        .previews
+        .insert(Id::new("home/l-1"), a_preview_whose_status_fails());
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        let reported = plane.hosted.report(&report).expect("answered");
+        assert!(
+            reported.statuses_taken.is_empty(),
+            "a status that went up null is not taken: {reported:?}"
+        );
+    }
+    let sent = reports_sent(&fake);
+    assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
+    for (message, refused) in &sent {
+        assert_eq!(refused, &None, "the report passes version 2");
+        let report = &message["body"]["report"];
+        assert_eq!(report["launches"]["l-1"]["status"], Value::Null);
+        assert_eq!(report["previews"]["l-1"]["status"], Value::Null);
+        assert_eq!(report["previews"]["l-1"]["copy"]["state"], "starting");
+    }
+    let lines: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("home/l-1: "))
+        .collect();
+    assert_eq!(lines.len(), 2, "{:#?}", plane.lines());
+    let launch: Vec<&String> = lines
+        .iter()
+        .filter(|line| line.starts_with("home/l-1: the launch's status's copy"))
+        .collect();
+    let preview: Vec<&String> = lines
+        .iter()
+        .filter(|line| line.starts_with("home/l-1: the preview's status's copy"))
+        .collect();
+    assert_eq!((launch.len(), preview.len()), (1, 1), "{lines:#?}");
+    assert!(launch[0].contains("/stages/1/state"), "{launch:?}");
+    assert!(preview[0].contains("/made"), "{preview:?}");
+    assert!(
+        lines
+            .iter()
+            .all(|line| !line.contains("dreaming") && !line.contains("1793750400")),
+        "{lines:?}"
+    );
+}
+
+/// Beside `a_launch_and_a_preview_of_one_id_both_failing`: a preview's
+/// status whose copy fails keeps no launch's status of the same id from
+/// being taken, where the launch's passes (core.54).
+#[test]
+fn a_previews_failing_copy_keeps_no_launchs_status_of_its_id_from_being_taken() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let mut report = carrying(status_in("begun"));
+    report
+        .previews
+        .insert(Id::new("home/l-1"), a_preview_whose_status_fails());
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    let reported = plane.hosted.report(&report).expect("answered");
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("home/l-1")])
+    );
+    let lines: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("home/l-1: "))
+        .collect();
+    assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
+    assert!(
+        lines[0].starts_with("home/l-1: the preview's status's copy"),
+        "{lines:?}"
+    );
+}
+
+/// A preview the runner answered done with sluice's answer, whose listing
+/// holds a `made` that is a number, so its status's copy fails.
+fn a_preview_whose_status_fails() -> Previewed {
+    let mut row = the_up_row();
+    row["made"] = json!(1793750400);
+    previewed(
+        false,
+        Outcome::Done,
+        Some(carried_of(
+            &sluice_answer("preview-starting.json"),
+            PREVIEW_FIELDS,
+        )),
+        None,
+        Some(carried_of(&row, PREVIEW_FIELDS)),
+    )
 }
 
 /// The hosted-control-plane spec's "A report taken back holds its
