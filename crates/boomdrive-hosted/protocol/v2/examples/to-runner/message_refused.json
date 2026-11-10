@@ -1,0 +1,10 @@
+{
+  "protocol_version": 2,
+  "id": "plane:4",
+  "body": {
+    "message_refused": {
+      "message": "runner:9",
+      "words": "body/report/acts/act-1/outcome: \"launched\" is not an outcome of an act"
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/shared.schema.json",
+  "description": "The definitions both directions of version 2 use: the forms of values, a lease, and a message's refusal.",
+  "$defs": {
+    "message_id": {
+      "description": "A message's own id, given by its sender, unique among what that sender sends on its enrollment, and kept on a resend.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
+    },
+    "id": {
+      "description": "An id the control plane gave: an offer's, an act's, a command's, an inbox's, a terminal's or a host's. The runner never reads into it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
+    },
+    "time": {
+      "description": "A time of the runner's or the control plane's: RFC 3339 in UTC to the second.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    },
+    "unsigned_integer": {
+      "description": "An integer from 0 that JavaScript reads exactly.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "signed_integer": {
+      "description": "An integer that may be negative, within what JavaScript reads exactly.",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "lease_number": {
+      "description": "A lease's number, which the control plane moves when it gives the work again.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "lease": {
+      "description": "A lease the control plane gives with a launch or a command.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "expires"
+      ],
+      "properties": {
+        "number": {
+          "$ref": "#/$defs/lease_number"
+        },
+        "expires": {
+          "description": "When the lease runs out unless a report renews it, or null where the control plane never moves the work.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "repository": {
+      "description": "A repository's address, owner/name.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    },
+    "commit": {
+      "description": "A commit, by its id in lowercase hex.",
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "digest": {
+      "description": "sha256: and the hex of a file's bytes' digest, as an inbox's brief is carried.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "bytes": {
+      "description": "Bytes in base64url without padding: a key, a signature, a certificate or a sealed frame.",
+      "type": "string",
+      "minLength": 2,
+      "pattern": "^([A-Za-z0-9_-]{4})*([A-Za-z0-9_-]{2,3})?$"
+    },
+    "message_refused": {
+      "description": "Either end's answer to a message that failed its check: the message, by its id, with words. Nothing else is done with it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message",
+        "words"
+      ],
+      "properties": {
+        "message": {
+          "$ref": "#/$defs/message_id"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

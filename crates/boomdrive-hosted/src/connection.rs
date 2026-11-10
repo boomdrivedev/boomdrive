@@ -1,6 +1,6 @@
 //! One partition's connection (design Decisions 5, 6 and 10; core.3,
 //! core.21 to core.23, core.31, core.42): one outgoing WebSocket to
-//! `runner/connect`, upgraded on version 1's subprotocol with a statement
+//! `runner/connect`, upgraded on version 2's subprotocol with a statement
 //! of the partition's key signed for that attempt alone. Its first message
 //! at every connection is the partition's whole hello, and its hello goes
 //! again whenever it changes. It is kept alive by the WebSocket protocol's
@@ -8,7 +8,7 @@
 //! pong has not come by the next ping. A connection lost, refused or not
 //! made is tried again on a backoff with jitter whose cap stops at
 //! `poll_interval`, and its reach is said once each way. Every message it
-//! is sent is checked against version 1 before it is read, and every
+//! is sent is checked against version 2 before it is read, and every
 //! message it sends is checked before it is sent. A report goes under a
 //! message id of its own, and the last one no `reported` answered is sent
 //! again under that id after the hello of every connection (core.21). A
@@ -22,7 +22,7 @@
 
 use crate::check;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v1::{
+use crate::protocol::v2::{
     Hello, Message, MessageId, Pulled, Report, Reported, ToRunner, SUBPROTOCOL, VERSION,
 };
 use crate::table::Table;
@@ -204,7 +204,7 @@ enum Ended {
 /// What the connection's task holds that the runner's loop reads.
 #[derive(Default)]
 struct State {
-    /// The hello last handed, as version 1 writes it.
+    /// The hello last handed, as version 2 writes it.
     hello: Option<Value>,
     phase: Phase,
     /// The last `pulled` its connection took since its hello.
@@ -290,14 +290,14 @@ impl Connection {
 
     /// Hands the connection the partition's hello, which it sends first at
     /// every connection, and at once on a live connection where it differs
-    /// from the hello it sent; or why the hello fails version 1, which is
+    /// from the hello it sent; or why the hello fails version 2, which is
     /// then not handed.
     pub fn hand(&self, hello: &Hello) -> Result<(), String> {
         let hello = serde_json::to_value(hello)
             .map_err(|e| format!("the hello could not be written: {e}"))?;
         if let Some(words) = failure(check::hello(), "hello", &hello) {
             return Err(format!(
-                "the hello fails version 1's check, so it is not sent: {words}"
+                "the hello fails version 2's check, so it is not sent: {words}"
             ));
         }
         let changed = self.shared.change(|state| {
@@ -322,15 +322,15 @@ impl Connection {
         self.shared.lock().phase == Phase::Live
     }
 
-    /// Hands the connection the partition's report, version 1's body of a
+    /// Hands the connection the partition's report, version 2's body of a
     /// `report`, under a new message id, which it gives: sent at once on a
     /// live connection, and again under that id after the hello of every
     /// connection until it is answered or another is handed. A report that
-    /// fails version 1 is not handed, and why is given.
+    /// fails version 2 is not handed, and why is given.
     pub fn report(&self, report: &Value) -> Result<MessageId, String> {
         if let Some(words) = failure(check::report(), "report", report) {
             return Err(format!(
-                "the report fails version 1's check, so it is not sent: {words}"
+                "the report fails version 2's check, so it is not sent: {words}"
             ));
         }
         let (id, message) = envelope("report", report);
@@ -476,7 +476,7 @@ fn drawn(cap: Duration) -> Duration {
     Duration::from_millis(u64::try_from(random % millis + 1).unwrap_or(u64::MAX))
 }
 
-/// Why a message of `kind` holding `body` fails version 1: checked first
+/// Why a message of `kind` holding `body` fails version 2: checked first
 /// against `definition`, the body's own, so the words name the path deep
 /// in the message, and then whole against `from-runner.schema.json`.
 fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Option<String> {
@@ -487,7 +487,7 @@ fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Opti
     deep.or_else(|| check::failure(check::from_runner(), &envelope(kind, body).1))
 }
 
-/// A message of version 1 of `kind` holding `body`, under a new id of
+/// A message of version 2 of `kind` holding `body`, under a new id of
 /// its own, a UUID of version 7, time-ordered and random, so that no id
 /// is given twice (design Decision 7).
 fn envelope(kind: &str, body: &Value) -> (String, Value) {
@@ -701,7 +701,7 @@ impl Sender {
     ) -> Result<(), Failure> {
         if let Some(words) = check::failure(check::from_runner(), message) {
             (self.say)(format!(
-                "{}: the runner's {kind} fails version 1's check, so it is not sent: {words}",
+                "{}: the runner's {kind} fails version 2's check, so it is not sent: {words}",
                 self.label
             ));
             return Ok(());
@@ -717,9 +717,9 @@ impl Sender {
 
 /// What a frame of the control plane's text held.
 enum Received {
-    /// A message that passed version 1, read.
+    /// A message that passed version 2, read.
     Message(Message<ToRunner>),
-    /// A message that failed version 1, by its id, with words naming the
+    /// A message that failed version 2, by its id, with words naming the
     /// paths that failed and never a value.
     Failing { id: MessageId, words: String },
     /// A message whose id cannot be read, which cannot be named.
@@ -741,14 +741,14 @@ fn received(text: &str) -> Received {
     if let Some(words) = check::failure(check::to_runner(), &value) {
         return Received::Failing {
             id,
-            words: format!("it fails version 1's check: {words}"),
+            words: format!("it fails version 2's check: {words}"),
         };
     }
     match serde_json::from_value(value) {
         Ok(message) => Received::Message(message),
         Err(_) => Received::Failing {
             id,
-            words: "it passes version 1's check, but could not be read".to_string(),
+            words: "it passes version 2's check, but could not be read".to_string(),
         },
     }
 }
@@ -952,7 +952,7 @@ async fn refuse(
 }
 
 /// Closes a connection that was sent `what`, a message that cannot be
-/// named, with code 1007, its payload not version 1's (design Decision
+/// named, with code 1007, its payload not version 2's (design Decision
 /// 10).
 async fn unnamed(
     label: &str,
@@ -963,7 +963,7 @@ async fn unnamed(
     let close = CloseFrame {
         // 1007: the frame's data is not what the connection carries.
         code: CloseCode::Invalid,
-        reason: "a message of version 1 names its id".into(),
+        reason: "a message of version 2 names its id".into(),
     };
     let _ = sender.sink.send(Frame::Close(Some(close))).await;
     drop(frames);
@@ -1078,7 +1078,7 @@ mod tests {
     #[test]
     fn a_failing_message_is_named_and_its_words_hold_no_value() {
         let text = json!({
-            "protocol_version": 1,
+            "protocol_version": 2,
             "id": "plane:9",
             "body": { "pulled": { "wants": [], "report": null, "secret": "n0t-sh0wn" } }
         })

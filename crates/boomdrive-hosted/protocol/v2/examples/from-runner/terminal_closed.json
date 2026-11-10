@@ -1,0 +1,10 @@
+{
+  "protocol_version": 2,
+  "id": "runner:24",
+  "body": {
+    "terminal_closed": {
+      "terminal": "terminal-1",
+      "words": "no agent runs in change--parse-words"
+    }
+  }
+}

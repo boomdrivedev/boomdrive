@@ -209,6 +209,44 @@ fn a_folder_already_there() {
     );
 }
 
+/// A bare repository that records its address under another name than
+/// the runner's, `other.address`, is a folder the runner did not make: it
+/// is left as it is and named, and no clone or view is made over it
+/// (record 0035; core.14).
+#[test]
+fn a_clone_recording_its_address_under_another_name() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let container = scratch.container("agentplot/flume");
+    std::fs::create_dir_all(&container).expect("the container");
+    scratch.git(&container, &["init", "--quiet", "--bare", "flume.git"]);
+    let bare = container.join("flume.git");
+    scratch.git(
+        &bare,
+        &["config", "--local", "other.address", "agentplot/flume"],
+    );
+
+    let (outcome, lines) = scratch.pass(&keeping(&["agentplot/flume"]));
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [format!(
+            "agentplot/flume: left: {} is not a clone the runner made, so none is made",
+            container.display()
+        )]
+    );
+    assert_eq!(
+        scratch.git(&bare, &["config", "--local", "other.address"]),
+        "agentplot/flume"
+    );
+    assert!(!scratch.holds(&bare, &["config", "--local", "--get", "boomdrive.address"]));
+    assert!(
+        !scratch.home.join("Code").exists(),
+        "a view was made of a repository with no clone"
+    );
+}
+
 #[test]
 fn a_clone_left_unfinished_is_made_again() {
     let scratch = Scratch::new();

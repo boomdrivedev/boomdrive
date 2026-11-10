@@ -894,10 +894,41 @@ fn tidied(label: &str) -> Report {
 
 /// `home/main` holding `requests` and a plan of the unit `u`.
 fn with_requests(state: &State, requests: &[String]) {
+    with_requests_and_plan(state, requests, &plan(&["u"], &[]));
+}
+
+/// `home/main` holding `requests` and `plan_rec` as its plan.
+fn with_requests_and_plan(state: &State, requests: &[String], plan_rec: &str) {
     state.main(&[
         ("requests.rec", &file(REQUESTS, requests)),
-        ("plan.rec", &plan(&["u"], &[])),
+        ("plan.rec", plan_rec),
     ]);
+}
+
+/// The runner's report holding preview `home/30` of `R1` brought up,
+/// answered `done`, its status listed where `listed`.
+fn brought_up(listed: bool) -> Report {
+    let at = |text: &str| At::parse(text).unwrap();
+    let mut report = Report::default();
+    report.previews.insert(
+        Id::new("home/30"),
+        boomdrive_control::Previewed {
+            lease: LEASE,
+            repository: CREW.to_string(),
+            revision: "R1".to_string(),
+            done: false,
+            outcome: Outcome::Done,
+            text: Some(r#"{"name":"preview/r1","state":"starting"}"#.to_string()),
+            words: None,
+            status: listed.then(|| boomdrive_control::Carried {
+                text: r#"{"name":"preview/r1","state":"up"}"#.to_string(),
+                at: at("2026-11-01T10:06:00Z"),
+                listed: true,
+            }),
+            at: at("2026-11-01T10:05:00Z"),
+        },
+    );
+    report
 }
 
 /// The crew-control-plane spec's "A preview".
@@ -931,7 +962,8 @@ fn a_preview() {
     );
 }
 
-/// The crew-control-plane spec's "A preview marked done".
+/// The crew-control-plane spec's "A preview marked done": given while
+/// the runner holds the bring-up it puts away.
 #[test]
 fn a_preview_marked_done() {
     let state = State::new();
@@ -943,7 +975,7 @@ fn a_preview_marked_done() {
         ],
     );
     let (mut crew, _) = state.crew("host-a");
-    let pulled = pull(&mut crew, &kept());
+    let pulled = crew.pull(&kept(), &brought_up(false)).expect("a pull");
     assert_eq!(ids(&pulled), ["home/30", "home/31"]);
     let Want::Preview(done) = want(&pulled, "home/31") else {
         panic!("not a preview")
@@ -957,6 +989,90 @@ fn a_preview_marked_done() {
         ),
         (CREW, "main", "R1")
     );
+}
+
+/// The crew-control-plane spec's "A preview and its done the runner does
+/// not hold": crew put the preview away before the runner answered it,
+/// so neither is given.
+#[test]
+fn a_preview_and_its_done_the_runner_does_not_hold() {
+    let state = State::new();
+    with_requests(
+        &state,
+        &[
+            preview(30, Some("host-a"), "unit/u", "crew", "main", "R1", false),
+            preview(31, Some("host-a"), "unit/u", "crew", "main", "R1", true),
+        ],
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
+}
+
+/// The crew-control-plane spec's "A done of a landed bolt's preview": the
+/// done is given though the bolt has left the plan, while the runner
+/// holds the bring-up it puts away.
+#[test]
+fn a_done_of_a_landed_bolts_preview() {
+    let state = State::new();
+    with_requests_and_plan(
+        &state,
+        &[
+            preview(30, Some("host-a"), "bolt/y", "crew", "main", "R1", false),
+            preview(31, Some("host-a"), "bolt/y", "crew", "main", "R1", true),
+        ],
+        &plan(&[], &[]),
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = crew.pull(&kept(), &brought_up(true)).expect("a pull");
+    assert_eq!(ids(&pulled), ["home/30", "home/31"]);
+    let Want::Preview(done) = want(&pulled, "home/31") else {
+        panic!("not a preview")
+    };
+    assert!(done.done);
+}
+
+/// The crew-control-plane spec's "A done written before a later
+/// bring-up": the done is no longer crew's newest of its repository and
+/// revision, so it is not given, and would not put the later bring-up
+/// away.
+#[test]
+fn a_done_of_a_preview_written_before_a_later_bring_up() {
+    let state = State::new();
+    with_requests(
+        &state,
+        &[
+            preview(30, Some("host-a"), "unit/u", "crew", "main", "R1", false),
+            preview(31, Some("host-a"), "unit/u", "crew", "main", "R1", true),
+            preview(32, Some("host-a"), "unit/u", "crew", "main", "R1", false),
+        ],
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = crew.pull(&kept(), &brought_up(false)).expect("a pull");
+    assert_eq!(ids(&pulled), ["home/30", "home/32"]);
+}
+
+/// The crew-control-plane spec's "A preview of a bolt gone that the
+/// runner does not hold".
+#[test]
+fn a_preview_of_a_bolt_gone_that_the_runner_does_not_hold() {
+    let state = State::new();
+    with_requests_and_plan(
+        &state,
+        &[preview(
+            30,
+            Some("host-a"),
+            "bolt/y",
+            "crew",
+            "main",
+            "R1",
+            false,
+        )],
+        &plan(&[], &[]),
+    );
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert!(pulled.wants.is_empty(), "{:?}", ids(&pulled));
 }
 
 /// The crew-control-plane spec's "A preview with no revision": given as

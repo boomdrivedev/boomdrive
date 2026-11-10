@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/submission-entry.schema.json",
+  "description": "The copy of a sluice submission's entry, sluice status <n> --json cut to the fields the cloud keeps, each where sluice printed it and as sluice printed it. It holds no row's log.",
+  "$defs": {
+    "submission_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "landed_as": {
+          "type": "string"
+        },
+        "failed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/failed_row"
+          }
+        }
+      }
+    },
+    "failed_row": {
+      "description": "A task the submission failed on, without its log.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task"
+      ],
+      "properties": {
+        "task": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "flaky": {
+          "description": "The task's outcomes and times where its key held a pass and a fail, carried whole as sluice printed it, its form sluice's."
+        },
+        "system": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

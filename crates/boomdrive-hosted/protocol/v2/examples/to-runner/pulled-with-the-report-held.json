@@ -1,0 +1,93 @@
+{
+  "protocol_version": 2,
+  "id": "plane:2",
+  "body": {
+    "pulled": {
+      "wants": [
+        {
+          "offer": {
+            "id": "offer-1",
+            "lease": {
+              "number": 2,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "launch": {
+              "repository": "example/app",
+              "kind": "fix",
+              "name": "parser",
+              "base": "main",
+              "brief": null,
+              "stream": null,
+              "priority": null,
+              "intent": null,
+              "recipients": [],
+              "holds": [],
+              "hold_submission": false,
+              "after": [],
+              "agent_settings": []
+            }
+          }
+        }
+      ],
+      "report": {
+        "launches": {
+          "offer-1": {
+            "lease": {
+              "number": 2,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "answer": {
+              "outcome": "launched",
+              "place_dir": "/home/runner/places/fix--parser",
+              "words": null,
+              "at": "2026-11-01T10:00:00Z"
+            },
+            "status": null,
+            "entry": null
+          }
+        },
+        "acts": {},
+        "commands": {},
+        "inboxes": {},
+        "previews": {
+          "preview-1": {
+            "lease": {
+              "number": 1,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "repository": "example/app",
+            "revision": "c2b72605d2ad8471a98dfae00551852c527d4dcf",
+            "done": false,
+            "outcome": "done",
+            "copy": {
+              "name": "preview/c2b72605d2ad",
+              "branch": "main",
+              "revision": "c2b72605d2ad8471a98dfae00551852c527d4dcf",
+              "state": "starting",
+              "made": "2026-11-08T19:54:52Z",
+              "addresses": {
+                "web": "http://web-c2b7260--main--app.localhost:20000"
+              }
+            },
+            "words": null,
+            "status": {
+              "copy": {
+                "name": "preview/c2b72605d2ad",
+                "branch": "main",
+                "revision": "c2b72605d2ad8471a98dfae00551852c527d4dcf",
+                "state": "up",
+                "made": "2026-11-08T19:54:52Z",
+                "addresses": {
+                  "web": "http://web-c2b7260--main--app.localhost:20000"
+                }
+              },
+              "at": "2026-11-01T10:01:00Z",
+              "listed": true
+            },
+            "at": "2026-11-01T10:00:30Z"
+          }
+        }
+      }
+    }
+  }
+}

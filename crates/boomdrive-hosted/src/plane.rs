@@ -8,17 +8,17 @@
 //! share (record 0026; core.49). Every id a partition's control plane gives is handed to
 //! the runner as `<label>/<id>`, and has its prefix taken off as it goes
 //! up, so a partition's connection carries only its own repositories,
-//! leases and work. What goes up of each tool's answer is version 1's copy
+//! leases and work. What goes up of each tool's answer is version 2's copy
 //! of it, cut and checked.
 
 use crate::connection::{self, Answered, Connection, Dial};
 use crate::copy;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v1::{self, MessageId};
+use crate::protocol::v2::{self, MessageId};
 use crate::table::{self, Table};
 use boomdrive_control::{
-    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Pulled, Report,
-    Reported, Unread, Unsent, Wake, Want,
+    Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Previewed, Pulled,
+    Report, Reported, Unread, Unsent, Wake, Want,
 };
 use ed25519_dalek::SigningKey;
 use serde_json::value::RawValue;
@@ -130,9 +130,17 @@ struct Partition {
     /// Each want withheld at the last pull for naming a repository the
     /// partition is not served, said once while it is offered.
     withheld: BTreeSet<Id>,
-    /// Each launch's carried answer whose copy failed at the last report,
-    /// said once while it fails.
-    failing: BTreeSet<(Id, &'static str)>,
+    /// Each launch's or preview's carried answer whose copy failed at the
+    /// last report, said once while it fails, keyed by its kind, `launch`
+    /// or `preview`, its id and the answer: a launch's `status` or
+    /// `entry`, a preview's `answer` or `status`. A launch and a preview
+    /// whose ids are equal never share a key, so each is said.
+    failing: BTreeSet<(&'static str, Id, &'static str)>,
+    /// Each launch whose status went up at the last report with an end
+    /// carried by its delivery alone or left out, said once while it does
+    /// (design Decisions 2 and 3 of
+    /// the-hosted-protocol-carries-every-end-of-a-place).
+    partial: BTreeSet<Id>,
 }
 
 impl Hosted {
@@ -226,18 +234,18 @@ impl Hosted {
         }
     }
 
-    /// The host's capacity as version 1 carries it: Flume's host part as
+    /// The host's capacity as version 2 carries it: Flume's host part as
     /// its copy, or `missing` with words naming the path where the copy
     /// fails, said once while it fails (design Decision 9).
-    fn capacity(&mut self, capacity: &Capacity) -> v1::Capacity {
+    fn capacity(&mut self, capacity: &Capacity) -> v2::Capacity {
         let part = match capacity {
-            Capacity::Missing(words) => return v1::Capacity::Missing(words.clone()),
+            Capacity::Missing(words) => return v2::Capacity::Missing(words.clone()),
             Capacity::Printed(part) => part,
         };
         match copy::host_part(part) {
             Ok(copy) => {
                 self.host_part_failing = false;
-                v1::Capacity::Printed(v1::HostPart {
+                v2::Capacity::Printed(v2::HostPart {
                     running: raw(&copy["running"]),
                     bound: raw(&copy["bound"]),
                     room: raw(&copy["room"]),
@@ -245,11 +253,11 @@ impl Hosted {
                 })
             }
             Err(words) => {
-                let words = format!("the host part's copy fails version 1's check: {words}");
+                let words = format!("the host part's copy fails version 2's check: {words}");
                 if !std::mem::replace(&mut self.host_part_failing, true) {
                     (self.say)(format!("hosted: {words}, so it goes up missing"));
                 }
-                v1::Capacity::Missing(words)
+                v2::Capacity::Missing(words)
             }
         }
     }
@@ -442,6 +450,7 @@ impl Partition {
             sent: None,
             withheld: BTreeSet::new(),
             failing: BTreeSet::new(),
+            partial: BTreeSet::new(),
         }
     }
 
@@ -464,11 +473,11 @@ impl Partition {
 
     /// The runner's `hello` as this partition's control plane is told it
     /// (design Decision 8): only the repositories its table names, of
-    /// those kept, and none the runner drains, which version 1 cannot name
+    /// those kept, and none the runner drains, which version 2 cannot name
     /// (record 0021), and only its own leases, their prefixes taken off;
     /// the host's tools and capacity as every partition's.
-    fn hello(&self, hello: &Hello, capacity: v1::Capacity) -> v1::Hello {
-        v1::Hello {
+    fn hello(&self, hello: &Hello, capacity: v2::Capacity) -> v2::Hello {
+        v2::Hello {
             interface_version: hello.interface_version,
             runner_version: hello.runner_version.clone(),
             tool_versions: hello.tool_versions.clone(),
@@ -490,9 +499,12 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8). Version 1 names no preview, so
-    /// no message holding one passes its check; one that reached here
-    /// would be withheld as an inbox is (core.26, core.42).
+    /// it is offered (design Decision 8). Version 2 carries a land among
+    /// the acts and a preview among the wants: a land is given as any act,
+    /// and a preview of a repository the partition is not served is
+    /// withheld as an offer is, every other field of it as given (design
+    /// Decision 6 of the-hosted-protocol-carries-land-and-preview; core.26,
+    /// core.53, core.55).
     fn own_wants(&mut self, wants: Vec<Want>, say: &connection::Say) -> Vec<Want> {
         let mut withheld = BTreeSet::new();
         let mut own = Vec::new();
@@ -563,9 +575,13 @@ impl Partition {
     /// under the partition's prefix: each launch's lease and answer, each
     /// act, command and inbox, and no launch's status or entry, which the
     /// control plane holds as their copies and not as the tools' answers
-    /// (design Decision 7). Version 1's report holds no preview, so none
-    /// is taken back (core.42).
-    fn taken_back(&self, report: v1::Report) -> Report {
+    /// (design Decision 7). Each preview is given back with its copy's
+    /// JSON as its text, so a done after the runner lost its report file
+    /// puts away the preview by the name sluice gave it, and no status,
+    /// which the runner reads again from sluice's listing (design Decision
+    /// 7 of the-hosted-protocol-carries-land-and-preview; core.10,
+    /// core.55).
+    fn taken_back(&self, report: v2::Report) -> Report {
         Report {
             launches: report
                 .launches
@@ -599,7 +615,24 @@ impl Partition {
                 .into_iter()
                 .map(|(id, inbox)| (self.prefixed(&id), inbox))
                 .collect(),
-            previews: BTreeMap::new(),
+            previews: report
+                .previews
+                .into_iter()
+                .map(|(id, previewed)| {
+                    let previewed = Previewed {
+                        lease: previewed.lease,
+                        repository: previewed.repository,
+                        revision: previewed.revision,
+                        done: previewed.done,
+                        outcome: previewed.outcome,
+                        text: previewed.copy.map(|copy| copy.get().to_string()),
+                        words: previewed.words,
+                        status: None,
+                        at: previewed.at,
+                    };
+                    (self.prefixed(&id), previewed)
+                })
+                .collect(),
         }
     }
 
@@ -623,19 +656,49 @@ impl Partition {
         }
     }
 
-    /// `part` as version 1's `report` carries it: each id with its prefix
+    /// `part` as version 2's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
-    /// (design Decision 9). Its four parts alone go up: version 1 names no
-    /// previews, so a report's never do (core.42).
+    /// (design Decision 9). A status goes up with each end of the place
+    /// copied on its own, and one with an end carried by its delivery
+    /// alone or left out is said once while it does, naming each end's
+    /// path and never a value (design Decision 2 of
+    /// the-hosted-protocol-carries-every-end-of-a-place; core.11). Each
+    /// preview goes up with sluice's answer as its copy, a release's where
+    /// the preview is done and a preview's where it is not, and its
+    /// listing as `{copy, at, listed}`, each `null` where its copy fails,
+    /// which is said once while it fails, naming the preview and the path
+    /// and never a value (design Decision 5 of
+    /// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
+        let was_failing = std::mem::take(&mut self.failing);
+        let fails =
+            |failing: &mut BTreeSet<_>, key: (&'static str, Id, &'static str), words: &str| {
+                let (kind, id, what) = &key;
+                if !was_failing.contains(&key) {
+                    say(format!(
+                        "{id}: the {kind}'s {what}'s copy fails version 2's check, so it goes \
+                         up null: {words}"
+                    ));
+                }
+                failing.insert(key);
+            };
+        let mut partial = BTreeSet::new();
         let mut launches = serde_json::Map::new();
         for (id, launched) in &part.launches {
             let mut carried = |what: &'static str, carried: &Option<Carried>| {
                 let carried = carried.as_ref()?;
                 let copied = match what {
-                    "status" => copy::place_status(&carried.text),
+                    "status" => copy::place_status(&carried.text).map(|placed| {
+                        if !placed.whole() {
+                            if !self.partial.contains(id) {
+                                say(partial_words(id, &placed));
+                            }
+                            partial.insert(id.clone());
+                        }
+                        placed.copy
+                    }),
                     _ => copy::submission_entry(&carried.text),
                 };
                 match copied {
@@ -645,13 +708,7 @@ impl Partition {
                         "listed": carried.listed,
                     })),
                     Err(words) => {
-                        if !self.failing.contains(&(id.clone(), what)) {
-                            say(format!(
-                                "{id}: its {what}'s copy fails version 1's check, so it goes up \
-                                 null: {words}"
-                            ));
-                        }
-                        failing.insert((id.clone(), what));
+                        fails(&mut failing, ("launch", id.clone(), what), &words);
                         None
                     }
                 }
@@ -668,7 +725,50 @@ impl Partition {
                 }),
             );
         }
+        let mut previews = serde_json::Map::new();
+        for (id, previewed) in &part.previews {
+            let mut copied = |what: &'static str, text: &str, done: bool| {
+                let copied = match done {
+                    true => copy::release(text),
+                    false => copy::preview(text),
+                };
+                match copied {
+                    Ok(copy) => Some(copy),
+                    Err(words) => {
+                        fails(&mut failing, ("preview", id.clone(), what), &words);
+                        None
+                    }
+                }
+            };
+            let answer = previewed
+                .text
+                .as_ref()
+                .and_then(|text| copied("answer", text, previewed.done));
+            let status = previewed.status.as_ref().and_then(|carried| {
+                let copy = copied("status", &carried.text, false)?;
+                Some(json!({
+                    "copy": copy,
+                    "at": carried.at,
+                    "listed": carried.listed,
+                }))
+            });
+            previews.insert(
+                self.bare(id),
+                json!({
+                    "lease": previewed.lease,
+                    "repository": previewed.repository,
+                    "revision": previewed.revision,
+                    "done": previewed.done,
+                    "outcome": previewed.outcome,
+                    "copy": answer,
+                    "words": previewed.words,
+                    "status": status,
+                    "at": previewed.at,
+                }),
+            );
+        }
         self.failing = failing;
+        self.partial = partial;
         let acts: serde_json::Map<String, Value> = part
             .acts
             .iter()
@@ -693,17 +793,24 @@ impl Partition {
             "acts": acts,
             "commands": commands,
             "inboxes": inboxes,
+            "previews": previews,
         })
     }
 
-    /// The launches of `part` whose status went up as its copy at the
-    /// last [`Partition::upward`]: each with a status, but those whose
-    /// copy failed and went up `null` (design Decision 2).
+    /// The launches of `part` whose status went up whole as its copy at
+    /// the last [`Partition::upward`]: each with a status, but those whose
+    /// copy failed and went up `null` (design Decision 2), and those that
+    /// went up with an end carried by its delivery alone or left out, so
+    /// no end the control plane holds only the delivery of is confirmed
+    /// (design Decision 3 of
+    /// the-hosted-protocol-carries-every-end-of-a-place; core.54).
     fn statuses_up(&self, part: &Report) -> BTreeSet<Id> {
         part.launches
             .iter()
             .filter(|(id, launched)| {
-                launched.status.is_some() && !self.failing.contains(&((*id).clone(), "status"))
+                launched.status.is_some()
+                    && !self.failing.contains(&("launch", (*id).clone(), "status"))
+                    && !self.partial.contains(*id)
             })
             .map(|(id, _)| id.clone())
             .collect()
@@ -788,7 +895,28 @@ fn merge(into: &mut Report, part: Report) {
     into.previews.extend(part.previews);
 }
 
-/// `value` as raw JSON, as version 1's host part carries each value.
+/// The line said of the launch `id` whose status went up as `placed`,
+/// with an end carried by its delivery alone or left out: the launch and
+/// each such end's path in Flume's status, and never a value (core.11).
+fn partial_words(id: &Id, placed: &copy::PlaceCopy) -> String {
+    let ends: Vec<String> = placed
+        .by_delivery
+        .iter()
+        .map(|n| format!("/ends/{n} by its delivery alone"))
+        .chain(
+            placed
+                .left_out
+                .iter()
+                .map(|n| format!("/ends/{n} left out")),
+        )
+        .collect();
+    format!(
+        "{id}: its status goes up with ends version 2 does not name: {}",
+        ends.join(", ")
+    )
+}
+
+/// `value` as raw JSON, as version 2's host part carries each value.
 fn raw(value: &Value) -> Box<RawValue> {
     RawValue::from_string(value.to_string()).unwrap_or_else(|_| RawValue::NULL.to_owned())
 }
