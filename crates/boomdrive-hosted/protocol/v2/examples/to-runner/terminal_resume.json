@@ -1,0 +1,10 @@
+{
+  "protocol_version": 2,
+  "id": "plane:7",
+  "body": {
+    "terminal_resume": {
+      "terminal": "terminal-1",
+      "seen": 1536
+    }
+  }
+}

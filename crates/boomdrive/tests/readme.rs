@@ -202,7 +202,8 @@ fn the_readme_names_no_branch_command() {
 }
 
 /// core.55 and design Decision 13: README says how a preview is brought
-/// up and put away, by sluice's own commands.
+/// up and put away, by sluice's own commands, and when a preview leaves
+/// the runner's branch (record 0031 as amended on 2026-11-09).
 #[test]
 fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
     let (text, _) = readme();
@@ -218,5 +219,47 @@ fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
     assert!(
         flat.contains("previews.rec"),
         "README names no previews.rec"
+    );
+    assert!(
+        flat.contains("leaves the runner's branch once its done is answered"),
+        "README says not when a preview leaves the runner's branch"
+    );
+}
+
+/// Design Decisions 2, 4 and 8 of
+/// the-hosted-protocol-carries-every-end-of-a-place, and Decision 9 of
+/// the-hosted-protocol-carries-land-and-preview: README's hosted section
+/// says the runner speaks version 2, `boomdrive.v2`, that an end version
+/// 2 does not name goes up as its delivery alone, that a control plane's
+/// confirm is carried out as crew's is, and that its land and preview are
+/// given to the runner as crew's are, what the runner answered of each
+/// preview going up as their copies.
+#[test]
+fn the_readme_names_version_2_of_the_protocol() {
+    let (text, _) = readme();
+    let hosted = text
+        .split_once("## Dialing the hosted control plane\n")
+        .expect("README's hosted section")
+        .1;
+    let hosted = hosted.split("\n## ").next().unwrap_or(hosted);
+    let flat = hosted.split_whitespace().collect::<Vec<_>>().join(" ");
+    for named in [
+        "version 2 of the protocol, `boomdrive.v2`",
+        "the version before it, version 1",
+        "goes up as its delivery alone",
+        "the rest of its status going up",
+        "A control plane's confirm of a reader's ends is an act",
+        "carried out as crew's is",
+        "land and preview",
+        "as their copies",
+    ] {
+        assert!(
+            flat.contains(named),
+            "README's hosted section names no {named:?}"
+        );
+    }
+    assert!(
+        !flat.contains("boomdrive.v1"),
+        "README's hosted section names boomdrive.v1"
     );
 }

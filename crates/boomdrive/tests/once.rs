@@ -121,12 +121,12 @@ fn the_report_is_saved_after_each_act() {
     assert_eq!(names, ["report.json"], "no partial file is left");
 }
 
-/// The work-into-flume spec's "A launch found by its mark from before the
-/// rename", over Flume 0.4.1's own listing, read before the rename (record
-/// 0016): `flywheel:scratch/4` marks `fix--tabs`, and `flywheel:scratch/1`
-/// the record of `fix--parser`, tidied with an end pending, which is found
-/// at the place it stood. `a_launch_whose_answer_was_lost` finds a launch
-/// by the mark `boomdrive:<id>`.
+/// The work-into-flume spec's "A launch found by its mark", over Flume
+/// 0.4.1's own listing: `boomdrive:scratch/4` marks `fix--tabs`, and
+/// `boomdrive:scratch/1` the record of `fix--parser`, tidied with an end
+/// pending, which is found at the place it stood, and nothing is
+/// launched. `a_launch_whose_answer_was_lost` proves it over the fake's
+/// listing.
 #[test]
 fn a_launch_found_by_its_mark() {
     let bench = Bench::new();
@@ -139,10 +139,10 @@ fn a_launch_found_by_its_mark() {
     ]);
     let (_, lines) = bench.pass(&mut plane);
     let listing: Value = serde_json::from_str(&fixture("status.json")).unwrap();
-    let tabs = facts::marked(&listing, "flywheel:scratch/4")
+    let tabs = facts::marked(&listing, "boomdrive:scratch/4")
         .and_then(facts::location)
         .unwrap();
-    let parser = facts::marked(&listing, "flywheel:scratch/1")
+    let parser = facts::marked(&listing, "boomdrive:scratch/1")
         .and_then(facts::location)
         .unwrap();
     let (parser, at) = parser.rsplit_once('@').unwrap();
@@ -158,7 +158,35 @@ fn a_launch_found_by_its_mark() {
     assert_eq!(bench.flume.launches(), []);
     assert_eq!(
         lines[0],
-        format!("scratch/4: launched at {tabs}, as its mark flywheel:scratch/4 shows")
+        format!("scratch/4: launched at {tabs}, as its mark boomdrive:scratch/4 shows")
+    );
+}
+
+/// The work-into-flume spec's "A mark the runner does not give", over
+/// Flume 0.4.1's own listing with `fix--tabs` marked `other:scratch/4`
+/// in place of the runner's `boomdrive:scratch/4`: the offer `scratch/4`
+/// is not answered launched at `fix--tabs`, and no line names that mark
+/// (record 0035; core.10).
+#[test]
+fn a_mark_the_runner_does_not_give() {
+    let bench = Bench::new();
+    let listing = fixture("status.json").replace("\"boomdrive:scratch/4\"", "\"other:scratch/4\"");
+    bench.flume.listing(Ok(Reply::Given(listing.clone())));
+    let mut plane = Fake::holding(vec![Want::Offer(offer("scratch/4", "tabs"))]);
+    let (_, lines) = bench.pass(&mut plane);
+    let listing: Value = serde_json::from_str(&listing).unwrap();
+    let tabs = facts::marked(&listing, "other:scratch/4")
+        .and_then(facts::location)
+        .unwrap();
+    let answered = bench
+        .report()
+        .launches
+        .get(&Id::new("scratch/4"))
+        .map(|launch| (launch.answer.outcome, launch.answer.place_dir.clone()));
+    assert_ne!(answered, Some((Outcome::Launched, Some(tabs.to_string()))));
+    assert!(
+        lines.iter().all(|line| !line.contains("other:scratch/4")),
+        "{lines:?}"
     );
 }
 

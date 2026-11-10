@@ -1,0 +1,154 @@
+{
+  "protocol_version": 2,
+  "id": "runner:26",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-10": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/plan--week",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/plan--week@1793562000",
+              "kind": "plan",
+              "version": 1,
+              "declared": "flume",
+              "name": "week",
+              "mark": "boomdrive:offer-10",
+              "branch": "plan/week",
+              "base": "main",
+              "head": null,
+              "lands": false,
+              "delivered": true,
+              "stalled": false,
+              "priority": 0,
+              "current": "turn",
+              "recipients": [
+                "example/planner",
+                "boomdrive"
+              ],
+              "stream": {
+                "name": "wide",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "2b7e6a1f0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f"
+              },
+              "phase": {
+                "tidied": {
+                  "over": "done",
+                  "at": 1793562000,
+                  "pending_for": [
+                    "example/planner",
+                    "boomdrive"
+                  ]
+                }
+              },
+              "stages": [
+                {
+                  "name": "turn",
+                  "state": "delivered",
+                  "starts": 1,
+                  "end": {
+                    "head": "a3f1d2c4b5e6978801a2b3c4d5e6f708192a3b4c",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  }
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "turn",
+                  "start": 1,
+                  "state": "delivered",
+                  "end": {
+                    "head": "a3f1d2c4b5e6978801a2b3c4d5e6f708192a3b4c",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1793561700,
+                  "deliveries": [],
+                  "key": "stage/turn/1/delivered",
+                  "pending_for": [
+                    "example/planner",
+                    "boomdrive"
+                  ],
+                  "delivery": "plan--week/d41a7b3e/stage/turn/1/delivered",
+                  "expires_at": 1794166500,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    },
+                    {
+                      "recipient": "boomdrive",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                },
+                {
+                  "of": "over",
+                  "over": "done",
+                  "read_at": 1793561900,
+                  "deliveries": [],
+                  "key": "over/done",
+                  "pending_for": [
+                    "example/planner",
+                    "boomdrive"
+                  ],
+                  "delivery": "plan--week/d41a7b3e/over/done",
+                  "expires_at": 1794166700,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    },
+                    {
+                      "recipient": "boomdrive",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                }
+              ],
+              "holds": [],
+              "hold_words": {},
+              "waiting_on": null,
+              "submission": null,
+              "agent": null,
+              "clues": null,
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": null
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {},
+      "previews": {}
+    }
+  }
+}

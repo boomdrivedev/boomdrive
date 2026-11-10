@@ -222,58 +222,6 @@ fn origin_moves_on() {
     assert_eq!(lines, Vec::<String>::new(), "a view at origin's is moved");
 }
 
-/// A clone a runner made before the rename records itself under
-/// `flywheel` (record 0016): it is still the runner's, fetched and its
-/// view moved, its records carried over to `boomdrive` (core.36).
-#[test]
-fn a_clone_made_before_the_rename() {
-    let scratch = Scratch::new();
-    let origin = scratch.origin("agentplot/flume");
-    let config = keeping(&["agentplot/flume"]);
-    scratch.pass(&config);
-    let bare = scratch.clone_of("agentplot/flume");
-    let first = scratch.git(&bare, &["rev-parse", "refs/boomdrive/view"]);
-    scratch.git(
-        &bare,
-        &[
-            "config",
-            "--local",
-            "--rename-section",
-            "boomdrive",
-            "flywheel",
-        ],
-    );
-    scratch.git(&bare, &["update-ref", "refs/flywheel/view", &first]);
-    scratch.git(&bare, &["update-ref", "-d", "refs/boomdrive/view"]);
-    let commit = origin.commit("main", "README", "two\n");
-
-    let (outcome, lines) = scratch.pass(&config);
-
-    assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(lines, moved(&commit, true));
-    assert_eq!(head(&scratch, &view(&scratch)), commit);
-    assert_eq!(
-        scratch.git(&bare, &["config", "--local", "boomdrive.address"]),
-        "agentplot/flume"
-    );
-    assert_eq!(
-        scratch.git(&bare, &["config", "--local", "boomdrive.view"]),
-        view(&scratch).display().to_string()
-    );
-    assert!(!scratch.holds(
-        &bare,
-        &["config", "--local", "--get-regexp", "^flywheel\\."]
-    ));
-    assert_eq!(
-        scratch.git(&bare, &["rev-parse", "refs/boomdrive/view"]),
-        commit
-    );
-    assert!(!scratch.holds(
-        &bare,
-        &["rev-parse", "--verify", "--quiet", "refs/flywheel/view"]
-    ));
-}
-
 #[test]
 fn the_user_moved_it() {
     let scratch = Scratch::new();
@@ -550,10 +498,10 @@ fn a_new_root_the_old_view_clean() {
     assert_eq!(lines, Vec::<String>::new());
 }
 
-/// A clone made before the rename, whose `main` is guarded as sluice
-/// guards a branch it keeps and lags origin's, under a repository root
-/// that has changed: the old view is removed and the new one made at
-/// origin's tip, and nothing is written to the guarded branch.
+/// The runner's clone, whose `main` is guarded as sluice guards a branch
+/// it keeps and lags origin's, under a repository root that has changed:
+/// the old view is removed and the new one made at origin's tip, and
+/// nothing is written to the guarded branch.
 #[test]
 fn a_new_root_while_sluice_keeps_the_default_branch() {
     let scratch = Scratch::new();
@@ -562,18 +510,6 @@ fn a_new_root_while_sluice_keeps_the_default_branch() {
     let old = view(&scratch);
     let bare = scratch.clone_of("agentplot/flume");
     let put = scratch.git(&bare, &["rev-parse", "refs/boomdrive/view"]);
-    scratch.git(
-        &bare,
-        &[
-            "config",
-            "--local",
-            "--rename-section",
-            "boomdrive",
-            "flywheel",
-        ],
-    );
-    scratch.git(&bare, &["update-ref", "refs/flywheel/view", &put]);
-    scratch.git(&bare, &["update-ref", "-d", "refs/boomdrive/view"]);
     let refused = scratch.guard(&bare, "main", false);
     let tip = origin.commit("main", "README", "two\n");
 

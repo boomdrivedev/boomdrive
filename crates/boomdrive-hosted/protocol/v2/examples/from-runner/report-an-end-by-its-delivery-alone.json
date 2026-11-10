@@ -1,0 +1,143 @@
+{
+  "protocol_version": 2,
+  "id": "runner:29",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-13": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--moved",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/fix--moved",
+              "kind": "fix",
+              "version": 1,
+              "declared": "flume",
+              "name": "moved",
+              "mark": "boomdrive:offer-13",
+              "branch": "fix/moved",
+              "base": "main",
+              "head": null,
+              "lands": true,
+              "delivered": null,
+              "stalled": false,
+              "priority": 0,
+              "current": "code",
+              "recipients": [
+                "example/planner",
+                "boomdrive"
+              ],
+              "stream": {
+                "name": "wide",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "17850c6f94f94e0b8ad7cece2dc917834c822d2a944b2aa7d0b50027717831b2"
+              },
+              "phase": "live",
+              "stages": [
+                {
+                  "name": "code",
+                  "state": "delivered",
+                  "starts": 1,
+                  "end": {
+                    "head": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  }
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "code",
+                  "start": 1,
+                  "state": "delivered",
+                  "end": {
+                    "head": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1793560100,
+                  "deliveries": [],
+                  "key": "stage/code/1/delivered",
+                  "pending_for": [
+                    "example/planner",
+                    "boomdrive"
+                  ],
+                  "delivery": "fix--moved/b7d03e9a/stage/code/1/delivered",
+                  "expires_at": 1794164900,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    },
+                    {
+                      "recipient": "boomdrive",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                },
+                {
+                  "of": "moved",
+                  "key": "moved/1793560200",
+                  "read_at": 1793560200,
+                  "pending_for": [
+                    "example/planner",
+                    "boomdrive"
+                  ],
+                  "delivery": "fix--moved/b7d03e9a/moved/1793560200",
+                  "expires_at": 1794165000,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    },
+                    {
+                      "recipient": "boomdrive",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                }
+              ],
+              "holds": [],
+              "hold_words": {},
+              "waiting_on": null,
+              "submission": null,
+              "agent": null,
+              "clues": null,
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": null
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {},
+      "previews": {}
+    }
+  }
+}

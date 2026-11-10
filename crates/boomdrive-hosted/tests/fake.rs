@@ -2,7 +2,7 @@
 //! rest on (Task notes 3.4): it takes an upgrade only on a statement that
 //! proves an enrolled key, over its own origin, at a time within its
 //! window and with a nonce not seen; it checks every message against
-//! version 1; and it answers, withholds, drops and sends as a test asks.
+//! version 2; and it answers, withholds, drops and sends as a test asks.
 //! A client of the test's own dials it, on the loopback address.
 
 mod common;
@@ -45,7 +45,7 @@ fn home_key() -> SigningKey {
 }
 
 /// Dials `fake` with `statement` as the upgrade's `Authorization`, asking
-/// for version 1's subprotocol.
+/// for version 2's subprotocol.
 async fn dial(fake: &Fake, statement: &str) -> Result<Socket, Error> {
     let mut request = fake
         .connect_address()
@@ -85,7 +85,7 @@ async fn next(socket: &mut Socket) -> Option<Value> {
 
 /// `body` of `kind` as a runner's message under `id`.
 fn message(id: &str, kind: &str, body: Value) -> Frame {
-    Frame::text(json!({ "protocol_version": 1, "id": id, "body": { kind: body } }).to_string())
+    Frame::text(json!({ "protocol_version": 2, "id": id, "body": { kind: body } }).to_string())
 }
 
 /// The example hello's body.
@@ -220,7 +220,7 @@ fn the_subprotocol_refused() {
 }
 
 #[test]
-fn a_message_failing_version_1_is_refused() {
+fn a_message_failing_version_2_is_refused() {
     let fake = Fake::start();
     let key = home_key();
     fake.enrolled("home", &key.verifying_key());

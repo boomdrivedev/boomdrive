@@ -154,7 +154,7 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
     let values = values(&block(&readme, "### The enrollment's worked bytes", 0));
     let key = worked_key(&values);
     let file =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/v1/examples/from-runner/enroll.json");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/v2/examples/from-runner/enroll.json");
     let example: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(file).expect("the example")).expect("JSON");
     let enroll = &example["body"]["enroll"];
@@ -165,5 +165,96 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
     assert_eq!(
         enroll["signature"],
         key::base64url(&unhex(value(&values, "signature")))
+    );
+}
+
+/// The README's section under the heading `## <heading>`, up to the next
+/// heading of its level.
+fn section<'a>(readme: &'a str, heading: &str) -> &'a str {
+    let after = readme
+        .split_once(&format!("\n## {heading}\n"))
+        .unwrap_or_else(|| panic!("the README has no section {heading:?}"))
+        .1;
+    after.split("\n## ").next().unwrap_or(after)
+}
+
+/// The runner-protocol spec's "The README of version 2" (design Decision
+/// 7 of the-hosted-protocol-carries-every-end-of-a-place, and Decision 9
+/// of the-hosted-protocol-carries-land-and-preview): its envelope names
+/// `protocol_version` 2, its paths the subprotocol `boomdrive.v2`, its
+/// files `preview.schema.json`, its copies an end's `delivery`, an end's
+/// delivery alone and a preview's copy, its messages a confirm and a land
+/// among a `pulled`'s acts, a preview among its wants and `previews` in a
+/// `report`, and a section `Version 1` names `boomdrive.v1` and says it
+/// has no land and no preview.
+#[test]
+fn the_readme_describes_version_2() {
+    let readme = readme();
+    assert!(
+        section(&readme, "The forms").contains(r#"{"protocol_version": 2, "id""#),
+        "the envelope names protocol_version 2"
+    );
+    let paths = section(&readme, "The paths");
+    assert!(paths.contains("subprotocol `boomdrive.v2`"), "{paths}");
+    assert!(!paths.contains("boomdrive.v1"), "{paths}");
+    let copies = section(&readme, "The copies");
+    for named in [
+        "`key`",
+        "`delivery`",
+        "`expires_at`",
+        "`owed`",
+        "`confirmed`",
+        "`session_start`",
+        r#"{"of":"over","over":"dropped"|"done",…}"#,
+        "**An end's delivery alone** (`end_delivery`)",
+    ] {
+        assert!(copies.contains(named), "the copies name {named}: {copies}");
+    }
+    let files = section(&readme, "The files");
+    assert!(files.contains("`preview.schema.json`"), "{files}");
+    for named in ["**A preview's copy**", "**A release's copy**"] {
+        assert!(copies.contains(named), "the copies name {named}: {copies}");
+    }
+    let messages = section(&readme, "The messages");
+    assert!(
+        messages.contains("a confirm of a reader's ends"),
+        "{messages}"
+    );
+    let table: Vec<&str> = messages
+        .lines()
+        .filter(|line| line.starts_with('|'))
+        .collect();
+    let row = |kind: &str| {
+        table
+            .iter()
+            .find(|line| line.starts_with(&format!("| `{kind}` |")))
+            .unwrap_or_else(|| panic!("the messages table has no row {kind}"))
+            .to_string()
+    };
+    let pulled = row("pulled");
+    assert!(pulled.contains(r#"`"land"`"#), "{pulled}");
+    assert!(pulled.contains("preview"), "{pulled}");
+    let report = row("report");
+    assert!(report.contains("`previews`"), "{report}");
+    assert!(
+        !messages.contains("no land and no preview among"),
+        "{messages}"
+    );
+    assert!(
+        messages.contains(r#"`{"confirm":{"recipient":…,"deliveries":[…]}}`"#),
+        "{messages}"
+    );
+    let first = section(&readme, "Version 1");
+    assert!(first.contains("`boomdrive.v1`"), "{first}");
+    assert!(first.contains("`v0.7.3`"), "{first}");
+    for lacks in ["no land", "no preview", "no `previews`"] {
+        assert!(first.contains(lacks), "version 1 has {lacks}: {first}");
+    }
+    for context in ["`boomdrive.v2 enroll`", "`boomdrive.v2 connect`"] {
+        assert!(readme.contains(context), "the README names {context}");
+    }
+    assert!(
+        !readme.replace(first, "").contains("boomdrive.v1"),
+        "only the section Version 1 names boomdrive.v1"
     );
 }

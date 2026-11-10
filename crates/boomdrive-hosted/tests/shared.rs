@@ -82,7 +82,7 @@ impl Harness for Hosteds {
         let given: Vec<Want> = wants.iter().map(given).collect();
         self.fake.set_wants(
             "home",
-            serde_json::to_value(given).expect("the wants as version 1"),
+            serde_json::to_value(given).expect("the wants as version 2"),
         );
         let text = format!(
             "url = {:?}\n[[partitions]]\nlabel = \"home\"\nrepositories = [{REPOSITORY:?}]\n",

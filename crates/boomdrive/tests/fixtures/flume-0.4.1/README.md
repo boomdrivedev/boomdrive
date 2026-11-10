@@ -3,7 +3,8 @@
 Each file here is what Flume 0.4.1 printed on a scratch host, its
 trailing newline among it: nothing is stripped, reformatted or rewritten
 but, in the answers read on 2026-11-01, the scratch directory's prefix
-(the change boomdrives-tree-holds-nothing-private, design Decision 2).
+(the change boomdrives-tree-holds-nothing-private, design Decision 2) and
+the mark each place carries, the runner's own (record 0035).
 treefmt excludes the directory so that no formatter changes a byte
 (core.7). Each was read from a Flume that says `flume 0.4.1`.
 
@@ -19,8 +20,8 @@ The temporary directory's path, up to and including its `scratchpad/host/`,
 is written in each answer as `/private/tmp/scratch/host/`, in every form
 Flume gave it: in a path, in a command Flume printed, and in a state
 folder's name, where Flume joins the path's parts with `%`, as
-`private%tmp%scratch%host%`. No other byte is changed: no field, time,
-digest or newline. A digest Flume made of a path, such as the
+`private%tmp%scratch%host%`. No other byte is changed but each place's
+mark, below: no field, time, digest or newline. A digest Flume made of a path, such as the
 `2867c6a5947d` in each place's path, keeps the value Flume printed.
 
 - **Its Flume configuration** declared the printed command as its
@@ -43,13 +44,14 @@ digest or newline. A digest Flume made of a path, such as the
   one stage, `turn`, landing nothing, its deliverable a report in the
   place's state folder.
 
-The places, each launched with `--mark flywheel:scratch/<n>`, and what
-was read of each:
+The places, each carrying the runner's mark, `boomdrive:scratch/<n>`,
+the one word of Flume's answers that record 0035 rewrote in these
+fixtures, and what was read of each:
 
 | file | the command | what stood |
 |---|---|---|
-| `launch.json` | `flume --json launch --repository <repo> --kind fix --name parser --stream work --priority 4 --intent scratch/parser --recipient scratch/planner --brief-file <file> --mark flywheel:scratch/1` | exit 0: `fix--parser` launched, its code stage starting |
-| `launch-refused.json` | `flume --json launch --repository <repo> --kind fix --name nowhere --stream nosuch --mark flywheel:scratch/9` | exit 1: the stream `nosuch` is not declared |
+| `launch.json` | `flume --json launch --repository <repo> --kind fix --name parser --stream work --priority 4 --intent scratch/parser --recipient scratch/planner --brief-file <file> --mark boomdrive:scratch/1` | exit 0: `fix--parser` launched, its code stage starting |
+| `launch-refused.json` | `flume --json launch --repository <repo> --kind fix --name nowhere --stream nosuch --mark boomdrive:scratch/9` | exit 1: the stream `nosuch` is not declared |
 | `status.json` | `flume --json status` | every place: `change--parse-words` in code, `crew-planner--scratch` delivered, `fix--tabs` waiting on an answer, `fix--lexer` starting in `work`, `fix--indent` queued in `work`, and `fix--parser` and `fix--gate` tidied with an end pending; the host unbounded, `wide` with room 1, `default` unbounded, and `work` with no room and a queue |
 | `status-bounded.json` | `flume --json status` | the same places, read again after `[host] agents = 4`: the host's `bound` 4 and `room` 1. Only the host part differs from `status.json` |
 | `status-construct.json` | `flume --json status <change--parse-words>` | a change at construct, its stage begun and its agent working |
