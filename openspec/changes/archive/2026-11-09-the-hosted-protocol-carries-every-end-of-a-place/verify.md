@@ -1,37 +1,34 @@
 # Verify: the-hosted-protocol-carries-every-end-of-a-place
 
-I read the work on `change/the-hosted-protocol-carries-every-end-of-a-place` at f37d58a. The work meets its specs, but the gate fails, so the change goes back to its code stage:
+I read the work on `change/the-hosted-protocol-carries-every-end-of-a-place` at fa430b1. The gate passes and the work meets its specs, so the change stands archived:
 
-- **The gate fails at `boomdrive-hosted:lint`.** `sluice exec main` ran 25 `check-fast` tasks and exited 1. 24 passed. `boomdrive-hosted:lint` failed on two errors of clippy's `wrong_self_convention`, under `-D warnings`. Both are in `crates/boomdrive-hosted/tests/common/mod.rs`, which f131803c wrote for task 2.1:
-  - line 126, `pub fn from_runner(&self) -> Validator`: "methods called `from_*` usually take no `self`";
-  - line 131, `pub fn to_runner(&self) -> Validator`: "methods with the following characteristics: (`to_*` and `self` type is `Copy`) usually take `self` by value".
+- **The gate passes.** `sluice exec main` ran the 25 `check-fast` tasks fa430b1 affects and exited 0. All 25 passed, `boomdrive-hosted:lint` among them, which runs `cargo clippy -p boomdrive-hosted --all-targets --all-features -- -D warnings` over every test target that takes `mod common`.
+- **Every test passes.** 836 tests passed in the gate's test tasks, none failed and none were ignored: 513 of `boomdrive`, 156 of `boomdrive-hosted`, 123 of `boomdrive-crew` and 44 of `boomdrive-control`.
+- **Every scenario is asserted.** The change modifies 8 requirements of `runner-protocol` and adds 5, with 29 scenarios, and renames one. It modifies 6 requirements of `hosted-control-plane`, adds 2 and renames one, with 22 scenarios. For each scenario, a test that passed in this gate asserts its outcome, as the tables below give.
+- **Every task is ticked.** All 23 are ticked, and each one's check passed in this gate.
+- **The specs reconcile.** The code stage archived the change at fa430b1, as task 8.1 says to. `root:specs` passed in the gate, and `openspec validate --specs --strict` passes all 17 specs.
+- **Version 1 is as released.** `git diff v0.7.3 HEAD -- crates/boomdrive-hosted/protocol/v1` is empty, and `tests/files.rs`'s `version_1_is_as_released` passed in the gate.
 
-  Every test target that takes `mod common`, `copies`, `ends`, `shared` and `connection` among them, failed to compile under clippy. No task's own check runs `boomdrive-hosted:lint`, so each tick is true by its check, but the gate does not pass.
-- **Every test passes.** 836 tests passed in the gate's test tasks, none failed and none were ignored.
-- **Every scenario is asserted.** The change modifies 8 requirements of `runner-protocol` and adds 5, with 29 scenarios, and renames one. It modifies 6 requirements of `hosted-control-plane`, adds 2 and renames one, with 22 scenarios. For each scenario, a test that passed in this gate asserts its outcome.
-- **Every task is ticked.** All 22 are ticked.
-- **The specs reconcile.** The code stage archived the change at f37d58a, as task 8.1 says to, and `root:specs` passed in the gate.
-- **Version 1 is as released.** `git diff v0.7.3 HEAD -- crates/boomdrive-hosted/protocol/v1` is empty, and the 38 digests `tests/files.rs` holds in `RELEASED_V1` are exactly the SHA-256 of the 38 files under `protocol/v1/` at the tag `v0.7.3`, which I took from git apart from the test.
-
-The code stage archived the change at f37d58a, before this stage ran. This report sits beside that archive. This stage archives nothing and fixes nothing. The change goes back to its code stage, which mends the lint and runs the gate again.
+This report sits in the change's archive at fa430b1.
 
 ## Checks
 
-- **The gate.** `sluice exec main` at f37d58a ran the `check-fast` tasks that f37d58a affects against `main` at 2ce0b3f, and exited 1. sluice recorded the 25 results under their keys for f37d58a:
+- **The gate.** `sluice exec main` at fa430b1 ran the `check-fast` tasks fa430b1 affects against `main` at 2ce0b3f and exited 0. sluice recorded the 25 results under their keys for fa430b1:
   - `boomdrive:format`, `lint`, `typecheck` and `test` passed;
   - `boomdrive-control:format`, `lint`, `typecheck` and `test` passed;
   - `boomdrive-crew:format`, `lint`, `typecheck` and `test` passed;
-  - `boomdrive-hosted:format`, `typecheck` and `test` passed, and **`boomdrive-hosted:lint` failed**, as above;
+  - `boomdrive-hosted:format`, `lint`, `typecheck` and `test` passed;
   - `nix:format`, `lint`, `typecheck` and `test` passed;
   - `root:format`, `adrs`, `specs`, `changes` and `releases` passed.
-- **Warnings.** moon warned that it could not package task outputs into its cache, and the OTLP exporter could not shut down. Neither failed a task.
-- **Tasks.** All 22 tasks in `tasks.md` are ticked.
+- **Warnings.** moon warned that it could not package task outputs into its cache or store blobs in the shared cache, that it had no internet connection for the Rust toolchain's install, and the OTLP exporter could not shut down. None failed a task.
+- **Task 2.3.** `tests/common/mod.rs` names a version's validators `messages_from_runner` and `messages_to_runner`, taking `&self`. `from_runner` and `to_runner` remain free functions of the current version, taking no `self`. `examples.rs` and `refused.rs` call version 1's validators by the new names, and no call of `.from_runner()` or `.to_runner()` on a version remains. clippy's `wrong_self_convention` refuses neither under `-D warnings`.
+- **Since 11526af.** The code stage's fix changed `tests/common/mod.rs`, `tests/examples.rs` and `tests/refused.rs` and ticked task 2.3. The archive at fa430b1 then reconciled the same two specs, `hosted-control-plane` and `runner-protocol`, as the archive at f37d58a: `git diff f37d58a HEAD -- openspec/specs` is empty.
 - **Its bolts.**
-  - The branch was cut from `bolt/the-hosted-protocol-carries-every-end`, which stands at ecbe5fa on origin, an ancestor of f37d58a. The change lands on it as a fast-forward.
+  - The branch was cut from `bolt/the-hosted-protocol-carries-every-end`, which stands at ecbe5fa on origin, an ancestor of fa430b1. The change lands on it as a fast-forward.
   - Task 1.1 merged `origin/main` at cee700c (866c32f) and `origin/bolt/the-runner-confirms-the-ends-it-carries` at f3f693b (c7c533c). The confirm bolt's `tests/confirms.rs` passed in this gate.
 - **Since the merges.** Both have moved since task 1.1 took them. Neither move is of this change's work, and both are for the landing, not the code stage:
   - `origin/bolt/the-runner-confirms-the-ends-it-carries` stands at 4ff4702, which accepts record 0002's amendments of 2026-11-07 and 2026-11-08. `git merge-tree --write-tree HEAD 4ff4702` merges clean.
-  - `origin/main` stands at 2ce0b3f, which accepts records 0002, 0029 and 0031 and amends records 0025 and 0031. `git merge-tree --write-tree HEAD 2ce0b3f` conflicts in `docs/architecture/core.md`, at core.53's and core.55's status words beside core.56. That conflict is the confirm bolt's: `git merge-tree` of 4ff4702 and 2ce0b3f conflicts on the same lines. It falls to whichever landing first brings the confirm bolt onto `main`.
+  - `origin/main` stands at 2ce0b3f, which accepts records 0002, 0029 and 0031 and amends records 0025 and 0031. `git merge-tree --write-tree HEAD 2ce0b3f` conflicts in `docs/architecture/core.md`, and sluice said so at the gate's start. That conflict is the confirm bolt's: `git merge-tree` of 4ff4702 and 2ce0b3f conflicts on the same lines, core.53's and core.55's status words beside core.56. It falls to whichever landing first brings the confirm bolt onto `main`.
 - **Paths.** Since the confirm bolt's merge, c7c533c, the branch changes only these paths:
   - the paths the proposal's Touches lists;
   - `crates/boomdrive/tests/readme.rs`, which task 7.2 names;
@@ -108,6 +105,7 @@ The code stage archived the change at f37d58a, before this stage ran. This repor
 The tasks also name these tests, and each passed in the gate:
 
 - `boomdrive`'s `tests/confirms.rs` (1.1);
+- `boomdrive-hosted:lint` (2.3);
 - `copy::tests`' `a_copy_whose_ends_all_pass_is_whole` and `a_failure_outside_the_ends_fails_whole` (5.1);
 - `boomdrive`'s `tests/readme.rs` `the_readme_names_version_2_of_the_protocol` (7.2);
 - `boomdrive-control:lint` (6.4).
