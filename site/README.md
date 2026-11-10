@@ -6,7 +6,7 @@ Method is kept current, field notes are dated and age honestly, and live fleet
 numbers show what is happening now.
 
 The site and the brand are Boomdrive
-(`docs/adr/0002-flywheel-is-renamed-boomdrive.md`); the domain is not chosen.
+(record 0039); the domain is not chosen.
 
 ## What is here
 

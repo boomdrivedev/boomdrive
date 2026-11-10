@@ -16,7 +16,7 @@ fleet's measurements and the tools. `docs/` holds its design and plans; read
   both fail it, and a Vale warning is fixed, not ignored.
 - Claude Code's `.mcp.json` and `.claude/settings.json` are written by
   devenv from `claude.code` in `devenv.nix`, and git ignores them: a server
-  is declared and approved there, never in those files (`docs/adr/0003`).
+  is declared and approved there, never in those files (record 0040).
   OpenSpec's skills and commands under `.claude/` are the pinned OpenSpec's;
   when its pin moves, write them again with
   `openspec init --tools claude --profile custom`.
@@ -41,7 +41,7 @@ the task and the brief's path. It is not written up as an OpenSpec change.
   hand.
 - Every internal link goes through `url()` in `src/lib/url.ts`, never a bare
   root path: the site is served under `/boomdrive-web/`, its repository's
-  name, agentplot/boomdrive-web (`docs/adr/0002-flywheel-is-renamed-boomdrive.md`).
+  name, agentplot/boomdrive-web (record 0039).
 - Bare layout: `boomdrive-web.git/` beside `main/`.
 
 **Specs.** `openspec/specs/` changes only through an OpenSpec change: a

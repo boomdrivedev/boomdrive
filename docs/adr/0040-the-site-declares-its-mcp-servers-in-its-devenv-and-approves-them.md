@@ -1,4 +1,15 @@
+---
+number: 40
+title: The site declares its MCP servers in its devenv and approves them
+status: accepted
+date: 2026-11-07
+decision-makers:
+- Chuck Swanberg
+---
+
 # The site declares its MCP servers in its devenv and approves them
+
+Recorded in agentplot/boomdrive-web as its record 0003.
 
 - Status: accepted for what agentplot/boomdrive's record 0022 decides, which
   the user accepted on 2026-11-07; the shape below is the code stage's own,

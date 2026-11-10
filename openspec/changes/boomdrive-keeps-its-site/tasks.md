@@ -16,7 +16,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - The merge changes nothing outside `site/`. `git log --format=%ad -- site/src/content/notes/what-our-fleet-re-proves.md` reaches the commit that first published the note.
 
   True when `sluice exec main -- moon run root:commits` passes, holding the imported commits to the convention.
-- [ ] 1.2 `site/docs/adr/0001` to `0003` are moved by `git mv` to `docs/adr/0038` to `0040`, as design Decision 8 has them:
+- [x] 1.2 `site/docs/adr/0001` to `0003` are moved by `git mv` to `docs/adr/0038` to `0040`, as design Decision 8 has them:
   - each gains this repository's frontmatter, and its line naming its number in boomdrive-web;
   - each one's links to the others name their new files;
   - `site/CLAUDE.md`, `site/docs/` and `site/src/` cite them by their new numbers.

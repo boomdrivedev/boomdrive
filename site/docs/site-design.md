@@ -9,9 +9,9 @@ content in git and built with Astro.
 Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
 
 - **The site is Boomdrive.** The name of the Method's home, of the fleet it
-  measures and of the ecosystem (`adr/0002-flywheel-is-renamed-boomdrive.md`).
+  measures and of the ecosystem (record 0039).
   MadSwan is the company and stays on the commercial side, and a personal
-  name would make this a blog (`adr/0001-the-site-is-flywheel.md`). The
+  name would make this a blog (record 0038). The
   domain is still open.
 - **Content in git** because the writers are us and our agents: a note is a
   pull request, reviewed at the gate, versioned with the Method.
