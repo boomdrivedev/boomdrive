@@ -1,0 +1,6 @@
+extends: existence
+message: "The outline keeps the statements' clause numbers; say what the tool does, and let the principle's strip name it."
+level: warning
+ignorecase: true
+raw:
+  - '\bclauses? \d+[a-z]?\b'

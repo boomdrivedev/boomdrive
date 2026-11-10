@@ -310,7 +310,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.21.0
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version is its tagged tree's. Its git crates are fetched by the hashes
@@ -388,14 +388,19 @@ settles for both, so no launch waits behind a settle. A control pass:
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
   branch;
-- carries out each retry, land, drop, priority or done as Flume's own
-  command on the launch's place, once every launch the pull offers is
-  taken, and, once the next pass is due, no further act after its
-  first, so no launch waits behind an act. A place Flume's listing does
-  not hold is first asked of `flume --json status <place>`, which
-  settles nothing, and Flume's refusal of it is the act's answer. A
-  land is `flume retry <place> --submission`, whatever the launch's
-  kind, and a bolt is landed on a land, whose answer is Flume's;
+- carries out each retry, land, confirm, drop, priority or done as
+  Flume's own command on the launch's place, once every launch the
+  pull offers is taken, and, once the next pass is due, no further act
+  after its first, so no launch waits behind an act. A place Flume's
+  listing does not hold is first asked of
+  `flume --json status <place>`, which settles nothing, and Flume's
+  refusal of it is the act's answer. A land is
+  `flume retry <place> --submission`, whatever the launch's kind, and
+  a bolt is landed on a land, whose answer is Flume's. A confirm is
+  `flume confirm --recipient=<recipient> -- <key>…`, of exactly the
+  keys its control plane names, each the delivery of an end of the
+  launch's place, as the reader it names and never as `boomdrive`; the
+  runner confirms no end for another reader of its own accord;
 - refuses every command, naming its tool, `this binary does not carry
   <tool>'s commands`, a branch command's being sluice, and runs nothing
   for it;
@@ -426,23 +431,29 @@ settles for both, so no launch waits behind a settle. A control pass:
   `<location>@<at>`.
 
 No pane holds the name `boomdrive`, so Flume sends it no notice and
-wakes nothing for it, and keeps each end of the place pending for it.
-Once the place is tidied, whatever tidied it, a landing, a drop or a
-done, Flume keeps its record, `<location>@<at>`, until the runner
-collects it. The runner carries that record as the place's status, so
-its control plane reads the place's end from its report, and once its
-report file holds the record, collects it by `flume --json inbox
-<location>@<at> --recipient boomdrive`, keeping nothing of the answer.
-A collection Flume refuses, or could not run, is said in one line and
-made again at the next pass. A dropped repository's clone stays while a
-place's record is pending for the runner. A launch that names no
-recipient is given none of the runner's, so Flume's default is its
-recipient, and Flume holds nothing of it for the runner.
+wakes nothing for it, and owes it each end of the place, a live place's
+and a tidied one's alike, each owed until the runner confirms it. Once
+the place is tidied, whatever tidied it, a landing, a drop or a done,
+Flume keeps its record, `<location>@<at>`, while an end of it is owed.
+The runner carries the place's status, that record among them, so its
+control plane reads every end of the place from its report. Only once
+its control plane has taken a report holding that status, and its report
+file holds the answer, does the runner confirm the ends the status gives
+pending for it, by `flume --json confirm --recipient=boomdrive -- <key>…`,
+one call for each launch naming each end's delivery key, keeping nothing
+of the answer. Until then each end stays owed in Flume, so losing the
+runner's report loses no end. A confirmation Flume refuses, or could not
+run, is said in one line and made again at a later pass whose report is
+taken. A dropped repository's clone stays while a place's record is
+pending for the runner. A launch that names no recipient is given none
+of the runner's, so Flume's default is its recipient, and Flume owes the
+runner nothing of it.
 
-The runner launches with Flume 0.20.0 or later, the first that holds a
-place's end for it. Where `flume --version` names an older version, or
-none, no offer is launched, and the runner says so once until Flume's
-version changes; acts and statuses go on.
+The runner runs with Flume 0.21.0 or later, the first whose ends a
+recipient confirms by key. Where `flume --version` names an older
+version, or none, no offer is launched and nothing is confirmed, and the
+runner says so once until Flume's version changes; acts and statuses go
+on.
 
 Each launch, act and preview is carried out once, and each command
 answered once, across a restart: the runner's report is kept at
@@ -575,5 +586,7 @@ decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
 `boomdrive-crew` and `boomdrive-hosted`, beside `nix`, which holds the
-flake, its modules and the cache's workflow, and `root`, which holds
-what spans the tree.
+flake, its modules and the cache's workflow, `site`, which holds the
+site, `site/`, and the workflow that publishes it, and `root`, which
+holds what spans the tree. The site's own rules are
+`docs/architecture/site.md` and `site/CLAUDE.md`.

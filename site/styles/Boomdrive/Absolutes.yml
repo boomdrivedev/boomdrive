@@ -1,0 +1,11 @@
+extends: existence
+message: "'%s' is a strong claim; cite the measurement that shows it, or soften it."
+level: suggestion
+ignorecase: true
+tokens:
+  - always
+  - never
+  - proves?
+  - guarantee[sd]?
+  - every time
+  - impossible

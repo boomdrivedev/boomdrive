@@ -1,0 +1,461 @@
+# Site design: outline and content model
+
+A handbook with a lab notebook attached: a versioned Method kept current,
+dated field notes that age honestly, and live fleet numbers, all as typed
+content in git and built with Astro.
+
+## Decisions
+
+Plain Astro with content as Markdown and YAML in git, hosted on Cloudflare.
+
+- **The site is Boomdrive.** The name of the Method's home, of the fleet it
+  measures and of the ecosystem (record 0040).
+  MadSwan is the company and stays on the commercial side, and a personal
+  name would make this a blog (record 0039). The
+  domain is still open.
+- **Content in git** because the writers are us and our agents: a note is a
+  pull request, reviewed at the gate, versioned with the Method.
+- **Typed content collections** give every page type a schema; a broken
+  reference or a missing field fails the build.
+- **EmDash considered and deferred.** It is agent-ready (a built-in MCP server
+  with about 60 tools, a CLI, agent skills), but its content lives in a
+  database, agents publish around the gate, and it reached 1.0 on 2026-09-28.
+  Its themes are Astro projects, so moving later is realistic if an editor who
+  does not use git joins. Sources:
+  [GitHub](https://github.com/emdash-cms/emdash),
+  [InfoQ](https://www.infoq.com/news/2026/04/cloudflare-emdash-wordpress/),
+  [CMSWire on 1.0](https://www.cmswire.com/digital-experience/cloudflare-releases-emdash-1-0-cms-with-decentralized-plugin-registry/),
+  [Bitdoze review](https://www.bitdoze.com/emdash-cms-review/).
+- **Vale checks the prose; the schemas check the structure.** Agents' drafts
+  get Vale's findings and fix them before review, so the operator's attention
+  goes to the ideas. See "The house style" below.
+- **Video stays on YouTube**, embedded with a click-to-load player; images are
+  validated and optimized by Astro at build time.
+
+## The case: one person's attention
+
+The site's spine is one claim: running a fleet of coding agents is a people
+and process problem. One person can keep only so many agents in mind, and
+going from pane to pane to find the one that needs you is chaos. The Method
+is the process that keeps the work running reliably and brings the
+operator only the decisions, numbered, on one rail. Home opens on this case
+and shows it. The site never frames the fleet by how many agents it
+reaches, and never promises a number.
+
+## Site map
+
+Eight sections; version 1 launches with Home, the Method, Notes, Tools and
+About, and the first page of the Fleet.
+
+| Section | What it holds | How it ages | In version 1 |
+|---|---|---|---|
+| Home | Opens on the case: one person's attention is the limit, and the Method is the process that brings only the decisions to one rail, shown as one person going from agent pane to agent pane beside the same work arriving as decisions on a rail; then what the Method buys, six benefit scenes on a timer, the drive figure first; the fleet's latest reading with the Fleet's call; the latest field notes with a link to all; signup | Changes with each note and each fleet count | Yes |
+| The Method | One page: the statement, then each principle in turn as the reader scrolls, its write-up beside an animated diagram, how we do it today and where it is going, what measures it, the notes that cite it and its changelog (`method-outline.md`). A principle is a place on this page, never a page of its own | Living: versioned, last-reviewed date, changelog | Yes |
+| Notes | Dated field notes, filterable by principle and series | Snapshots: never rewritten, superseded with a banner | Yes |
+| The Fleet | A front page that frames the fleet (drives, machines, repositories, agents at peak) and reads utilization, work in flight and landed on one time axis; a page per measurement: its definition and version, its chart across fleet contexts, and the notes that cite it | Always current, rebuilt from data | The front page and fleet utilization; the rest as measurements arrive |
+| Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
+| Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
+| Tools | The hub of the Boomdrive family, at `/tools/`: the family's loop drawn, a card per member, and how each tool stands alone and the Method joins them (see "The Tools hub" below). Each tool's own documentation is on its own site; the shell, moon and hook configurations we publish join the hub as each is released | Changes when a member joins the family or its status changes | Yes |
+| About | Who we are, learning in public, how we treat client work | Rarely | Yes |
+
+## How Home and the Method read
+
+- **Home opens on the case, then shows what the Method buys.** One
+  headline: agents scale, and your attention doesn't. The deck says it
+  plainly: one person can keep only so many agents in mind, jumping
+  between their panes is chaos, and Boomdrive is the process that keeps the
+  work running and brings you only the decisions, on one rail. The
+  attention figure shows it under the calls to action. Then, under "What
+  the Method buys", one stage plays a sequence of benefit scenes on a
+  timer, each a short line, one sentence and a picture,
+  with a rail of the benefit names beside the stage that lights as it
+  plays: click any to jump, hover or focus pauses. Reduced motion turns it
+  into tabs with still pictures; with scripts off the benefits stack as a
+  list. Boomdrive is a context-management engine with a low-intensity
+  project-management method, and the scenes say what that buys:
+  1. *Nothing gets lost.* Close the laptop, come back, and you are exactly
+     where you were; every idea, decision and piece of work has a place,
+     across every repository you work in. The filing system for the way
+     you work. The first picture is the drive figure.
+  2. *No tickets to write.* A meeting, a chat, a log or a pull request is
+     captured where it happens, unattended, and its decisions wait beside
+     the work they bear on. Four sources feed adapters, captures pile up
+     and are kept, and a session reads them into signals that land on
+     intents.
+  3. *You run the fleet, not the keyboard.* Decisions come to you
+     numbered, one word starts a batch, agents do the work: managing a team
+     instead of one single-threaded session.
+  4. *Every day the same, for developers and agents.* The same check, the
+     same gate, the same answer, in a worktree, on a laptop, in CI, in a
+     release. This is the Method's promise, a scene and never the headline.
+  5. *Proof you can trust.* Work is verified before you see it, and never
+     proved twice.
+  6. *Built for teams that ship.* For teams that keep a product line
+     stable and mean to reach continuous delivery: agentic coding with the
+     continuous-delivery mindset. The closing scene says who this is for.
+  "You can see it", the fleet measured and everything on the record, is
+  not a scene: it is the Fleet's call to action and its teaser.
+  A scene says what the Method buys, in the present tense; where a benefit
+  is not yet built, the principle's place on the Method says so.
+- **The attention figure** shows the case beside the words. On the left,
+  nine agents in nine panes and the operator's attention, a ring marked
+  "you", going from pane to pane while the panes it is not on ask a
+  question, fail a test or wait for a plan, and wait unseen. On the right,
+  the same agents keep working in a row and only their decisions arrive,
+  numbered, on one rail, and one word answers them. It is a picture of a
+  way of working and holds no measured number. It is inline SVG with CSS
+  keyframes, so it moves with scripts off; reduced motion holds it at one
+  moment, three panes waiting and three decisions on the rail, and a
+  button pauses it.
+- **The drive figure** draws one drive's loop: the animated four-ring
+  flywheel from the archived agentplot/flywheel's site (`site/index.html`:
+  the operator's review on the outside, then intent, then bolts,
+  construction at the core, each ring's ticks turning at its own rate),
+  in `src/components/Drive.astro`. Its labels speak the Method's
+  words, never the original plugin's tool names: the operator's review on
+  the rim, intent and its settled decisions, bolts and their units, the
+  gate where the operator's word crosses the rings, the operator at the
+  core. Home does not list the principles; the Method is read in one place.
+- **Scenes are free-form; diagrams stay SVG.** Home's scenes may be drawn
+  with Canvas or WebGL and a motion library, real-world looking without
+  being realistic: things that pile, slide and flow. The Method's diagrams
+  stay SVG, because they explain. Every scene has a still, loads lazily,
+  stays within a size budget, honours reduced motion, and its words carry
+  the meaning, so the picture can be decoration.
+- **Home's calls and teaser.** A primary call to action to the Method and a
+  secondary one to fleet utilization, beside the case; the Fleet's "You
+  can see it" beside the fleet's latest reading, agents at the peak and at
+  most how many of them busy at once, which waits for the collector's
+  first point and never reads a sample; and the latest field notes, with a
+  link to all of them.
+- **The Method reads one principle at a time, in one place.** Scrolling
+  the Method moves through the principles in order, each taking the screen
+  in turn: the write-up (the claim, what it rules out, today, where it is
+  going, what measures it) beside an animated diagram of the idea, in the
+  manner of sluice's merge-queue diagram (`agentplot/sluice
+  docs/diagrams/sluice.svg`), which, as the site's own copy in Boomdrive's
+  brass, is the diagram for "Order at landing, never at start". A
+  principle is a place on the Method page, `/method/#<id>`, and every link
+  to a principle, from Home, a note or a term, goes there; there is no
+  separate principle page. Its place also holds how we do it today and
+  where it is going, the notes that cite it and its changelog, folded
+  until opened so the reading stays one principle per screen. After the
+  write-up and outside the fold, a strip, "In the tools", names the tools
+  that do what the principle says, each linked to the section of its own
+  product page that does it, or of its design book where the page has
+  none; a tool with neither is named alone. No clause number of any
+  statement appears on the site: a principle says what the tool does, and
+  `method-outline.md` keeps the clauses behind it.
+- **Every principle gets a diagram**, and each diagram's idea is agreed
+  with the user before it is drawn. A diagram is one SVG the principle
+  names, carrying its own styles, motion and reduced-motion rule, in the
+  family's diagram colours (`--bg`, `--panel`, `--fg`, `--muted`, `--rule`,
+  `--accent`, `--soft`, `--ok`, `--bad`, `--ink`), with alt text that says
+  what it shows. The page draws it inline (`src/lib/diagram.ts`): its
+  styles are scoped to it, its keyframes and ids are renamed after it, and
+  its colours are mapped onto the page's tokens, so every diagram follows
+  the page's theme as every other figure does. Until a principle's diagram is drawn, its numeral in
+  faint outline holds the diagram's place on a wide screen, and on a phone
+  the write-up stands alone.
+- **Motion never hides content.** Every diagram honours reduced motion. With
+  scripts off, Home is the case and its figure, the calls, the benefits
+  with the drive figure first, the fleet's reading and the notes, and the Method is the principles in order; nothing is
+  reachable only by scrolling or clicking.
+
+## The Tools hub
+
+Boomdrive is the umbrella of a family of tools: the Method and its engine,
+then headwater and eddy, which notice, millpond, the inbox, flume, which
+launches an item's work in a worktree, sounding, which works a question
+to a conclusion, and sluice, which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
+and its design book at `agentplot.github.io/blueprints/<book>/`; this site
+holds the hub every family site's footer links to,
+`agentplot.github.io/boomdrive/tools/`.
+
+- **The family is one list, and it is not ours.** Every member, its line,
+  its place in the loop, its status, its site, its design book and its
+  accent come from `@agentplot/site-theme`'s `family`, which every family
+  site reads. A new member, or a tool that ships, is an edit there, and the
+  hub, the bar and the footer follow.
+- **The hub reads in four parts.** A headline and a lede, with every
+  tool's status read from the list; the family's animated diagram of the
+  loop, drawn by the theme with Boomdrive highlighted, since the Method is
+  what the whole loop belongs to; a card per member, Boomdrive's spanning
+  the row above the tools in the loop's order, each with its place in
+  the loop lit, its status, its one line, the principle of the Method it
+  carries, one whose strip names the tool or the build fails, and links
+  to its site and design book (Boomdrive's card links
+  the Method instead: its design book is private); then two columns on how
+  each tool stands alone and how the Method joins them.
+- **Its words are content.** The lede and the two columns live in
+  `src/content/pages/tools.md`, so Vale reads them as it reads every page.
+  They are grounded in the capture design (`agentplot/blueprints
+  design/capture/design.md`): each tool stands alone with its own plugins,
+  the tools meet only at contracts, and moving from one setup to the next
+  changes the host and the curator while the adapters and the inbox stay
+  put.
+- **The site wears the family's look.** Its page, type and ink are the
+  theme's (`base.css`), and its accent is Boomdrive's brass, read from the
+  family's list, in two tones: links, the name, the mark's wheel and the
+  primary call take its lighter tone, as a Starlight site draws link text,
+  and the gold itself is kept for the mark's hub, the headline's highlight
+  and the figures. Its masthead is a family site's header: the bar, then a
+  row with Boomdrive's mark and name, the sections and the repository,
+  folding the sections under a round menu button on a phone. The footer
+  names each member with its line, status, site and design book; the hub
+  leaves it out, since the page is the family. What stays Boomdrive's own
+  is the manifesto's scale and the drive figure's mint and rust beside
+  the brass. Like every family site it follows the reader's light or dark
+  setting: `<html>` sets no theme, and the figure, the scenes and the
+  diagrams carry both.
+- **A status is never overstated.** A member designed and not built is
+  drawn as a ring and says so in words, on the card, in the bar and in the
+  footer, and its site and design book may come before the tool does.
+
+## Content model
+
+Principles are the living truth, notes are dated evidence, and measurements
+connect them; every arrow is a typed reference the build checks.
+
+```
+Note ──cites──▶ Measurement ──has──▶ its page in The Fleet
+  │  └─written under──▶ FleetContext ──lists──▶ Component (+ version)
+  ├─informs──▶ Principle ◀──released as── MethodVersion ◀── ChangeEntry ◀─prompted by── Note
+  ├─uses──▶ Term (glossary)
+  ├─has──▶ Video ──part of──▶ Series ◀──part of── Note
+  └─ships──▶ Release ──of──▶ Component (ours) ──implements──▶ Principle
+
+Principle ──has──▶ Practice (today vs target) ──delivered by──▶ RoadmapItem ──▶ Component (ours) | Product
+Product ──builds on──▶ Component (ours)
+```
+
+The loop over time: a note reports a finding under a fleet context and cites a
+measurement; a finding that changes our view prompts a change entry; the
+principle is revised in the next Method version; older notes keep the version
+they were written against.
+
+## The types
+
+Fifteen types; the first five are needed for version 1.
+
+| Type | Key fields | Why it exists |
+|---|---|---|
+| Principle | order, title, summary, line, tools (name, href), status (draft, stable, retired), introducedIn, lastReviewed, related, diagram (src, alt) | The Method pages, kept current in place. `summary` is the claim; `line` is the principle in one line, as Home and the statement list it (`method-outline.md` gives each); `tools` names the tools that do what the principle says, each with the full address of the section that does it, so the principle's strip is drawn from its own record and the Tools hub's cards are checked against it; `diagram` names the principle's animated SVG, once it has one |
+| Note | title (the claim), date, kind (finding, how-to, essay, incident), context, methodVersion, principles, measurements, artifacts, openQuestions, video, series, supersededBy | Dated evidence, never rewritten |
+| Component | name, url, category, role, status (trialing, in use, retired), since, serves, alternatives, partOf, ours, repo, becomes | Every tool in the fleet, ours or others' (Worktrunk, secretspec, password managers, Claude Code, Herdr and its plugins, Crew) |
+| Term | term, definition, principle | One vocabulary across pages and agent drafts |
+| Artifact | kind (repo, gist, release, config), url, runs | The thing a reader can run, in every note |
+| MethodVersion | version, date, changes | Makes "the Method as of v0.3" citable |
+| ChangeEntry | principle, kind (added, revised, retired), summary, promptedBy | The changelog, and the loop from evidence to method |
+| Practice | principle, asOf, today (how, components, shortcuts), target (how, delivers, status, design link) | Shows honestly how we do it now and where it is going |
+| RoadmapItem | title, status (idea, designing, building, preview, released), principle, delivers, design link, lastUpdated | Everything we know is coming, without dates |
+| FleetContext | id, from (it holds until the next context), drives (name, machine), repositories, source; later the components with versions a note's stack names | The frame the Fleet's front page opens with, and the conditions a note was true under. Read from Crew's team configuration, by hand or by a collector, naming its source and date, and never a sample. Repositories counts the kits the teams build in and the blueprints they plan from, never a state repository. Agents at peak is read from fleet utilization, never stored |
+| Measurement | id, name, definition, definitionVersion, principle, collector, series (name, unit, statistic, peakOf, host, drive, stage, points (date, value, context, sample)) | One definition, versioned once for all its series, cited by notes and charted on its own page (`measurement-roadmap.md`). A point is one value at one date; a series says which statistic of the day's samples its value is, a peak series names the series it is the peak of, and a series split by machine, drive or stage names which |
+| Video | youtubeId, title, recorded, duration, chapters, note, series | Videos as records, embedded and indexed |
+| Series | title, summary, items (ordered notes and videos) | An arc a reader can follow |
+| Release | component, version, date, launchNote, highlights | Every release is a launch |
+| Product | name, problem, status (idea, waitlist, beta, available), builtOn, principles | The paid side, shown only as a waitlist until it ships |
+
+A component, for example:
+
+```yaml
+# content/components/worktrunk.yaml
+name: Worktrunk
+category: worktree-manager   # harness | multiplexer | multiplexer-plugin | worktree-manager
+                             # | secrets | password-manager | toolchain | task-graph | model | ours
+role: One worktree per agent; merge hooks run the gates
+status: in-use
+since: 2026-05
+serves: [one-agent-one-worktree]
+alternatives: [git worktree by hand]
+```
+
+A Herdr plugin is a component with `partOf: herdr`; Crew is `ours: true` with
+`becomes: boomdrive`. A secrets component never records what it holds.
+
+## Today and where it's going
+
+Every principle's place on the Method page shows two panels, how we do it today with its shortcuts
+and where it is going, so ideas that are not built yet are shared honestly.
+
+```yaml
+# content/practices/never-prove-twice-2026-10.yaml
+principle: never-prove-twice
+asOf: 2026-10-05
+today:
+  how: moon's cache, shared by the worktrees of one repository; CI runs from cold
+  components: [moon, worktrunk, crew]
+  shortcuts:
+    - A pass on one machine is invisible to every other machine, and to CI
+    - Flaky checks are retried by hand, not recorded
+target:
+  how: A remote cache shared by every machine; agents read it, only CI writes to it
+  delivers: [moon]
+  status: designing
+```
+
+- **The Roadmap page** lists every target by status, never by date.
+- **When a tool ships**, its practice moves from shortcut to the real thing,
+  and that change is a field note.
+- **What stays private:** pricing and commercial plans. Products appear only as
+  a waitlist.
+
+## How measurements are collected
+
+A measurement is a definition plus a collector on a schedule; fleet contexts
+are captured, never written by hand.
+
+1. **Sample, every 5 minutes:** live agents, their repos and states
+   (`herdr agent list`), the host's footprint beside them: CPU and memory
+   in use and the number of processes, since agents run tests, dev servers
+   and containers, and the plan's state: bolts open and units in flight by
+   stage, per drive (Crew's plan). Raw samples stay private on the host.
+2. **Collect, nightly:** each collector reads its sources (Crew's plan and
+   its run record of merges and landings, git timestamps, moon's run logs).
+   A repository allowlist means only our own repositories are read.
+3. **Snapshot the context, nightly:** component versions, hosts, peak and
+   typical agents. A new fleet context is made only when the stack changes,
+   keyed by a hash of it.
+4. **Publish, weekly before Tuesday's note:** collectors roll up data points
+   and an agent opens a pull request appending them; we approve it at the
+   gate, the merge rebuilds the Fleet page, and the note cites those points.
+5. **Version definitions:** changing how a measurement is computed bumps its
+   definition version; old points keep theirs, so charts never mix
+   definitions silently.
+
+The collectors start as a launchd job on the fleet host and become a Boomdrive
+job later.
+
+```yaml
+# content/contexts/fleet-2026-10.yaml
+id: fleet-2026-10
+from: 2026-10-12
+agents: { peak: "[__]", typical: "[__]" }
+hosts: 1
+components: { claude-code: "[version]", herdr: "[version]", worktrunk: "[version]", crew: "[sha]", moon: "[version]" }
+repos: [flywheel-next, crew, boomdrive]
+```
+
+## Moving around the Fleet
+
+Every Fleet page carries the Fleet's views as tabs held under the masthead:
+the front page as Overview, then the three measurements it reads top to
+bottom, then every other measurement by name (`src/lib/fleet.ts`), the
+current one underlined in the accent. On a phone the tabs fold into one bar
+naming the current view, which opens to list them all, as a Starlight
+site's "On this page" does. Each page ends on previous and next in the same
+order. The front page stays the overview, the frame, the fleet's day and
+every measurement with what it says, and is never the only way between
+views.
+
+## A measurement page
+
+Each measurement has one page in The Fleet, at its id. It shows:
+
+- **The latest reading as the headline**, with when it was taken, one tile
+  per series; a peak series shows in the tile of the series it is the peak
+  of, as the second number.
+- **The chart:** every series over time, with the fleet context each point
+  was true under marked along the time axis, so a change of stack is
+  visible where it happened. A peak series is the upper edge of its series'
+  band, never a line of its own. A reader can pick a point and read its
+  value, date and context, and switch between a series' own unit and its
+  share where a share means something (busy agents of running agents; a
+  stage's hours of a unit's). A share is computed from the two values shown
+  at that point, busy divided by running, and the page says so beside the
+  switch, so every number on the page can be checked from the table of
+  points under it. Where a chart stacks series that are each a median of a
+  split (agents by role), the parts need not sum to the total's median, and
+  the page says so beside the stack; counted series (tokens, landed) do sum.
+- **A split is named after its total:** a series split from a total is
+  named `<total>, <part>` (`units in flight, construct`; `bolts open,
+  home`) and says what it is split by: machine, drive, stage, role,
+  model or kind. A counted or summed total equals the sum of its splits on
+  every day, and the build refuses one that does not.
+- **The definition beside the numbers:** the name, the definition in words,
+  its version and when each version began, the principle it serves and the
+  collector that produces it.
+- **The notes that cite it**, newest first.
+- **What it cannot show**, in a sentence, as the audience plan's honest
+  numbers ask.
+- A page with no points yet shows the definition and says the first points
+  are coming. A point may be flagged a sample so a page's shape can be seen
+  before its collector runs; a sample is marked wherever it appears, Home
+  never reads one, and collected points carry no flag. A number is never
+  passed off as measured.
+
+Fleet utilization is the first page, and the one Home reads: agents running
+and how many of them are busy, like cores on a machine, with each machine's
+CPU, memory and process count beside them (`measurement-roadmap.md`).
+
+## The Fleet's front page
+
+The Fleet opens on the fleet's day, so a reader sees in one look whether the
+agents were busy, what they were busy on, and what came out.
+
+- **The frame first.** The current fleet context as one line: how many
+  drives we operate, on how many machines, over how many repositories,
+  and the agents at peak. Every number beneath is read against it, and a
+  change to it is a new context, marked on every chart's time axis. A
+  drive is one loop we operate, with its own plan, teams, signals and
+  state; the glossary carries the term, and it is the word Crew already
+  uses for a partition's loop. When any point on the page is a sample, a
+  notice says so right under the frame.
+- **Three measurements on one time axis**, top to bottom: fleet
+  utilization, agents running with busy filled inside; work in flight,
+  units by stage stacked with bolts open as a line; landed, units merged
+  into their bolt and bolts landed on main, as bars. Each carries its
+  headline tile, which links to the measurement's own page. Under the
+  rows, the totals by drive as a table, then host load per machine,
+  then every measurement with a link to its page. A phone shows the last
+  14 days.
+- **Host load is per machine, never summed.** CPU, memory and processes
+  are one series per machine; agent counts, work in flight and landed are
+  fleet totals, with the split by machine or by drive readable on the
+  page.
+- **Only our own fleet appears.** Drives, machines and repositories
+  that carry client work are neither named nor counted, by the site's rule
+  that no measurement comes from client work.
+- **Leverage comes later.** Landed per agent or per hour of attention is
+  not computed across measurements on the page; once landed and
+  utilization have real points it becomes its own measurement with its own
+  collector (`measurement-roadmap.md`, agent-hours per landed unit).
+
+## The house style
+
+[Vale](https://docs.vale.sh) lints every page in `src/content/` against
+`.vale.ini` and the rules in `styles/Boomdrive/`. The same Vale, pinned in
+`devenv.nix`, runs in the editor, in an agent's worktree and in `site-check`.
+
+| Rule | Level | Binds | What it flags |
+|---|---|---|---|
+| `Vale.Terms` (from the glossary) | error | everything | A glossary term in the wrong form ("Worktree" mid-sentence is fine; "work tree" is not) |
+| `Terms` (generated) | warning | everything | A word the glossary replaces ("work tree" → worktree, "swarm" → fleet) |
+| `Hype` | warning | everything | revolutionary, seamless, effortless, cutting-edge, supercharge, 10x |
+| `NotXButY` | warning | everything | "It's not X, it's Y" |
+| `Clauses` | warning | everything | A statement's clause number ("clause 4"), which the outline keeps |
+| `SentenceLength` | warning | everything | Sentences over 30 words |
+| `Headings` | warning | everything | Headings not in sentence case |
+| `Exclamation` | warning | everything | Exclamation marks |
+| `Filler` | suggestion | everything | simply, just, really, very, basically, actually, obviously |
+| `Acronyms` | suggestion | everything | An acronym not spelled out on first use |
+| `Absolutes` | suggestion | field notes | always, never, proves, guarantees, impossible, without a cited measurement |
+| `UnsourcedNumber` | suggestion | field notes | A percentage or "3x faster" with no named measurement |
+
+- **The glossary is the one source.** `scripts/vocab.ts` turns
+  `src/content/terms/terms.yaml` into Vale's vocabulary and the `Terms`
+  substitution rule; a term marked `lowercase` stays lowercase even at
+  the start of a sentence.
+- **Rules ratchet.** A rule starts as a suggestion or warning and is promoted
+  to error once it has been quiet for a while; only errors fail `site-check`.
+- **Not yet on:** Vale's spelling check, until the vocabulary has grown past
+  the glossary; packaged styles (Google, Microsoft, write-good, proselint,
+  alex), which need `vale sync` and are tried one at a time.
+- **Structure is not Vale's job.** A required section in a note belongs in its
+  schema or a remark check.
+
+## Open questions
+
+- Is the Method's list of principles right (`method-outline.md`)?
+- The domain for Boomdrive?
+- Is a log a separate type from a field note, or a kind of note?
