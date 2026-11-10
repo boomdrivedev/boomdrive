@@ -1,0 +1,70 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The site, site/ (record 0038): each check one task (core.7), run in site/
+# by the tools devenv.nix pins (core.8). Each declares the shell's files
+# among its inputs, so a candidate that changes none of the site's inputs
+# replays its checks.
+language: 'typescript'
+layer: 'application'
+
+tasks:
+  # No layer: it checks nothing, and the tasks that need the packages run it
+  # first. It installs bun.lock's packages with no network, from bun's cache
+  # as the devenv shell fetched it outside the gate's sandbox by flume's
+  # site/packages.nix at the tag flake.lock names (scripts/install.sh;
+  # design Decision 4).
+  install:
+    command: 'sh scripts/install.sh'
+    inputs: ['package.json', 'bun.lock', 'scripts/install.sh', '/flake.lock', '/nix/inputs.nix', '/devenv.nix', '/devenv.lock', '/.prototools']
+    options: {cache: false}
+  # Astro's type check of the pages, components and content. It and build
+  # both write .astro/, so they share one mutex and never run at once.
+  # Astro keeps its telemetry setting in the user's home, which the gate's
+  # sandbox may refuse: with telemetry off it reads and writes nothing
+  # there. Node.js is on the shell's PATH, so bun runs Astro's bin with it.
+  check:
+    command: 'bun run check'
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+    inputs: ['src/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
+    deps: ['~:install']
+    tags: [check-fast]
+    options: {mutex: 'astro'}
+  # The glossary, src/content/terms/terms.yaml, is the one source of the
+  # vocabulary and terms Vale holds the site's words to (site.4).
+  vocab:
+    command: 'bun run scripts/vocab.ts'
+    inputs: ['src/content/terms/terms.yaml', 'scripts/vocab.ts', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
+    outputs: ['styles/config/vocabularies/Boomdrive/accept.txt', 'styles/Boomdrive/Terms.yml']
+    deps: ['~:install']
+  # Vale over the site's words, once vocab has written the vocabulary: an
+  # error fails it (site.4).
+  prose:
+    command: 'vale src/content'
+    inputs: ['src/content/**/*', '.vale.ini', 'styles/**/*', '/devenv.nix', '/devenv.lock', '/.prototools']
+    deps: ['~:vocab']
+    tags: [check-fast]
+  # The site built into dist, under the base /boomdrive/ (site.6), its
+  # content's schemas and references holding. It shares the mutex astro
+  # with check, and runs with Astro's telemetry off, as check does.
+  build:
+    command: 'bun run build'
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+    inputs: ['src/**/*', 'public/**/*', 'astro.config.mjs', 'tsconfig.json', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
+    outputs: ['dist']
+    deps: ['~:install']
+    tags: [check-fast]
+    options: {mutex: 'astro'}
+  # The site's tests (check-site.sh): the built pages' links, the workflow
+  # pages, the content kind's prompts and the release command.
+  test:
+    command: 'sh check-site.sh'
+    inputs: ['dist/**/*', 'check-site.sh', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
+    deps: ['~:build']
+    tags: [check-fast]
+  # actionlint over the workflow pages, which publishes the site.
+  workflow:
+    command: 'actionlint ../.github/workflows/pages.yml'
+    inputs: ['/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
+    tags: [check-fast]

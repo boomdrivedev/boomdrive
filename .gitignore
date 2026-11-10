@@ -13,3 +13,8 @@ devenv.local.nix
 # entry to the shell (record 0022)
 /.mcp.json
 /.claude/settings.json
+
+# The site's packages, its build and Astro's own files (site/)
+site/node_modules/
+site/dist/
+site/.astro/

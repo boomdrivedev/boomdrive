@@ -1,0 +1,561 @@
+---
+import { url } from "../../lib/url";
+import { getCollection, getEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import UtilizationChart from "../../components/UtilizationChart.astro";
+import UtilizationTiles from "../../components/UtilizationTiles.astro";
+import StackedBars from "../../components/StackedBars.astro";
+import TokensTiles from "../../components/TokensTiles.astro";
+import FleetNav from "../../components/FleetNav.astro";
+import FleetPager from "../../components/FleetPager.astro";
+import { days as toDays, fmt, share } from "../../components/utilization";
+import { fmt as amount, iso, isSplit, lastWeek, model, priced, split, splits as splitBy, total } from "../../components/measures";
+
+export async function getStaticPaths() {
+  const measurements = await getCollection("measurements");
+  return measurements.map((m) => ({ params: { id: m.id }, props: { m } }));
+}
+const { m } = Astro.props;
+const r = m.data;
+const principle = await getEntry(r.principle);
+const citedBy = (await getCollection("notes", ({ data }) => !data.draft && data.measurements.some((x) => x.id === m.id))).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+
+const points = r.series.flatMap((s) => s.points);
+const samples = points.filter((p) => p.sample).length;
+const measured = points.length - samples;
+
+// Every form reads the dates and the samples from its first series.
+const first = r.series[0].points;
+const dates = first.map((p) => iso(p.date));
+const sampled = dates.map((_, i) => r.series.some((s) => s.points[i]?.sample));
+
+// Fleet utilization: the counts and the host's load as days, and the counts
+// split by role.
+const days = r.chart === "utilization" && points.length ? toDays(m.id, r.series) : [];
+const runByRole = r.chart === "utilization" ? split(r.series, "agents running", "role") : [];
+const busyByRole = r.chart === "utilization" ? split(r.series, "agents busy", "role") : [];
+const runByDrive = r.chart === "utilization" ? split(r.series, "agents running", "drive") : [];
+const busyByDrive = r.chart === "utilization" ? split(r.series, "agents busy", "drive") : [];
+
+// Tokens by role: the totals, and the spend and the tokens split.
+const tok =
+  r.chart === "tokens" && points.length
+    ? {
+        dollars: total(r.series, "dollars").points.map((p) => p.value),
+        tokens: total(r.series, "tokens").points.map((p) => p.value),
+        byKind: split(r.series, "tokens", "kind"),
+        tokensByRole: split(r.series, "tokens", "role"),
+        tokensByModel: split(r.series, "tokens", "model"),
+        byRole: split(r.series, "dollars", "role"),
+        byModel: split(r.series, "dollars", "model").map((g) => ({ ...g, name: model(g.name) })),
+      }
+    : null;
+const cacheRead = tok?.byKind.find((g) => g.name === "cache read")?.values ?? [];
+
+// Work in flight: units by stage and by drive, bolts by drive.
+const flight =
+  r.chart === "flight" && points.length
+    ? {
+        units: total(r.series, "units in flight").points.map((p) => p.value),
+        bolts: total(r.series, "bolts open").points.map((p) => p.value),
+        repos: total(r.series, "repositories with work").points.map((p) => p.value),
+        byStage: split(r.series, "units in flight", "stage"),
+        unitsByDrive: split(r.series, "units in flight", "drive"),
+        boltsByDrive: split(r.series, "bolts open", "drive"),
+      }
+    : null;
+
+// Landed: units merged and bolts landed, each by drive.
+const landed =
+  r.chart === "landed" && points.length
+    ? {
+        units: total(r.series, "units merged").points.map((p) => p.value),
+        bolts: total(r.series, "bolts landed").points.map((p) => p.value),
+        unitsByDrive: split(r.series, "units merged", "drive"),
+        boltsByDrive: split(r.series, "bolts landed", "drive"),
+      }
+    : null;
+const rates = r.chart === "tokens" ? (await getCollection("rates")).sort((a, b) => a.data.model.localeCompare(b.data.model)) : [];
+if (r.chart === "tokens") priced(m.id, r.series, rates.map((x) => x.data));
+
+// The definition lists each total once, with the splits beside it; a peak is
+// read with the series it is the peak of.
+const listed = r.series
+  .filter((s) => !s.peakOf && !isSplit(s))
+  .map((s) => ({ ...s, peak: r.series.some((p) => p.peakOf === s.name) }));
+const splits = splitBy.filter((by) => r.series.some((s) => s[by]));
+
+// Text between backticks is code; everything else is escaped.
+const inline = (s: string) =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+---
+
+<Base title={r.name} description={r.summary} wide>
+  <FleetNav slot="subnav" current={m.id} />
+  <p class="eyebrow">Measurement · {r.dimension}</p>
+  <h1>{r.name}</h1>
+  <p class="lede">{r.summary}</p>
+
+  {
+    samples > 0 && measured === 0 && (
+      <p class="sample-notice">
+        <b>Every point on this page is a sample</b>, made up to show how the page will read. None is a measurement; the
+        first collected points will replace them.
+      </p>
+    )
+  }
+  {samples > 0 && measured > 0 && <p class="sample-notice">Points marked as samples are illustrations, not measurements.</p>}
+
+  {points.length === 0 && <p class="panel">No points yet; the first points are coming.</p>}
+  {points.length > 0 && r.chart === "utilization" && <UtilizationTiles days={days} />}
+  {
+    tok && (
+      <TokensTiles
+        dates={dates}
+        samples={sampled}
+        dollars={tok.dollars}
+        tokens={tok.tokens}
+        cacheRead={cacheRead}
+        byRole={tok.byRole}
+        byModel={tok.byModel}
+      />
+    )
+  }
+
+  {
+    flight && (
+      <dl class="tiles">
+        <div>
+          <dt>Units in flight</dt>
+          <dd>{flight.units.at(-1)}</dd>
+          <p>on {dates.at(-1)}{sampled.at(-1) && <span class="sample-chip">sample</span>}</p>
+        </div>
+        <div>
+          <dt>Bolts open</dt>
+          <dd>{flight.bolts.at(-1)}</dd>
+          <p>over {flight.repos.at(-1)} repositories with work</p>
+        </div>
+        <div>
+          <dt>Awaiting approval</dt>
+          <dd>{flight.byStage.find((g) => g.name === "awaiting approval")?.values.at(-1) ?? "—"}</dd>
+          <p>units waiting on the operator</p>
+        </div>
+      </dl>
+    )
+  }
+  {
+    landed && (
+      <dl class="tiles">
+        <div>
+          <dt>Units merged</dt>
+          <dd>{lastWeek(landed.units)}</dd>
+          <p>over the last 7 days{sampled.slice(-7).some(Boolean) && <span class="sample-chip">samples</span>}</p>
+        </div>
+        <div>
+          <dt>Bolts landed</dt>
+          <dd>{lastWeek(landed.bolts)}</dd>
+          <p>on main, over the last 7 days</p>
+        </div>
+        <div>
+          <dt>Days with a merge</dt>
+          <dd>{landed.units.slice(-7).filter((v) => v > 0).length} of 7</dd>
+          <p>how lumpy the week was</p>
+        </div>
+      </dl>
+    )
+  }
+
+  <div class="layout">
+    <div class="numbers">
+      {
+        points.length > 0 && r.chart === "utilization" && (
+          <>
+            <UtilizationChart days={days} />
+            {runByRole.length > 0 && (
+              <>
+                <StackedBars label="Agents running, by role" dates={dates} samples={sampled} groups={runByRole} format="agents" legend="latest" />
+                <StackedBars label="Agents busy, by role" dates={dates} samples={sampled} groups={busyByRole} format="agents" legend="latest" />
+              </>
+            )}
+            {runByDrive.length > 0 && (
+              <>
+                <StackedBars label="Agents running, by drive" dates={dates} samples={sampled} groups={runByDrive} format="agents" legend="latest" />
+                <StackedBars label="Agents busy, by drive" dates={dates} samples={sampled} groups={busyByDrive} format="agents" legend="latest" />
+              </>
+            )}
+            {(runByRole.length > 0 || runByDrive.length > 0) && (
+              <p class="aside-note">Each role's and each drive's value is its own median of the day, so the parts need not add up to the total's median.</p>
+            )}
+            <details class="points">
+              <summary>The points: median, and the peak where a count has one</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Running</th>
+                      <th>Busy</th>
+                      <th>Busy share</th>
+                      <th>CPU</th>
+                      <th>Memory</th>
+                      <th>Processes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...days].reverse().map((d) => (
+                      <tr>
+                        <td>
+                          {d.date} {d.sample && <span class="sample-chip">sample</span>}
+                        </td>
+                        <td>
+                          {d.running.median} <span class="pk">/ {d.running.peak}</span>
+                        </td>
+                        <td>
+                          {d.busy.median} <span class="pk">/ {d.busy.peak}</span>
+                        </td>
+                        <td>
+                          {share(d, "median")}% <span class="pk">/ {share(d, "peak")}%</span>
+                        </td>
+                        <td>{fmt.cpu(d.cpu)}</td>
+                        <td>{fmt.memory(d.memory)}</td>
+                        <td>{fmt.processes(d.processes)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            {runByRole.length > 0 && (
+              <details class="points">
+                <summary>By role, the latest day: running and busy, median</summary>
+                <div class="scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Role</th>
+                        <th>Running</th>
+                        <th>Busy</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runByRole.map((g, k) => (
+                        <tr>
+                          <td>{g.name}</td>
+                          <td>{g.values[dates.length - 1]}</td>
+                          <td>{busyByRole[k]?.values[dates.length - 1]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </>
+        )
+      }
+      {
+        tok && (
+          <>
+            <StackedBars label="Spend each day, by role" dates={dates} samples={sampled} groups={tok.byRole} format="usd" legend="week" />
+            <StackedBars label="Spend each day, by model" dates={dates} samples={sampled} groups={tok.byModel} format="usd" legend="week" />
+            <StackedBars label="Tokens each day, by kind" dates={dates} samples={sampled} groups={tok.byKind} format="tokens" legend="week" />
+            <details class="points">
+              <summary>The last 7 days, by role and by model</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Tokens</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tok.byRole.map((g, k) => (
+                      <tr>
+                        <td>{g.name}</td>
+                        <td>{amount.tokens(lastWeek(tok.tokensByRole[k].values))}</td>
+                        <td>{amount.usd(lastWeek(g.values))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Tokens</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tok.byModel.map((g, k) => (
+                      <tr>
+                        <td>{g.name}</td>
+                        <td>{amount.tokens(lastWeek(tok.tokensByModel[k].values))}</td>
+                        <td>{amount.usd(lastWeek(g.values))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            <details class="points">
+              <summary>The points: each day's totals</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Tokens</th>
+                      <th>Cache reads</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dates
+                      .map((date, i) => (
+                        <tr>
+                          <td>
+                            {date} {sampled[i] && <span class="sample-chip">sample</span>}
+                          </td>
+                          <td>{amount.tokens(tok.tokens[i])}</td>
+                          <td>{amount.tokens(cacheRead[i] ?? 0)}</td>
+                          <td>{amount.usd(tok.dollars[i])}</td>
+                        </tr>
+                      ))
+                      .reverse()}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            <details class="points">
+              <summary>The rates: list price, dollars per million tokens</summary>
+              {rates.some((x) => x.data.sample) && (
+                <p class="aside-note">
+                  <span class="sample-chip">sample</span> Some rates are placeholders until the table is filled from the published
+                  price list.
+                </p>
+              )}
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>From</th>
+                      <th>Input</th>
+                      <th>Cache write, 5 min</th>
+                      <th>Cache write, 1 h</th>
+                      <th>Cache read</th>
+                      <th>Output</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.map((x) => (
+                      <tr>
+                        <td>{x.data.model}</td>
+                        <td>{iso(x.data.from)}</td>
+                        <td>{x.data.input}</td>
+                        <td>{x.data.cacheWrite5m}</td>
+                        <td>{x.data.cacheWrite1h}</td>
+                        <td>{x.data.cacheRead}</td>
+                        <td>{x.data.output}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p class="aside-note">
+                {[...new Set(rates.map((x) => x.data.source))].map((src) => (
+                  <span>
+                    From <a href={src}>the published price list</a>, which gives no effective date: each entry carries the day it
+                    was read.
+                  </span>
+                ))}
+              </p>
+              <p class="aside-note">
+                A cache write is priced by its lifetime. A transcript that does not split its cache writes by lifetime is priced at
+                the 5-minute rate; every sample point is priced that way.
+              </p>
+            </details>
+          </>
+        )
+      }
+      {
+        flight && (
+          <>
+            <StackedBars label="Units in flight each day, by stage" dates={dates} samples={sampled} groups={flight.byStage} format="count" legend="latest" />
+            <StackedBars label="Units in flight each day, by drive" dates={dates} samples={sampled} groups={flight.unitsByDrive} format="count" legend="latest" />
+            <StackedBars label="Bolts open each day, by drive" dates={dates} samples={sampled} groups={flight.boltsByDrive} format="count" legend="latest" />
+            <p class="aside-note">Each stage's and each drive's value is its own median of the day, so the parts need not add up to the total's median.</p>
+            <details class="points">
+              <summary>The points: each day's median</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Units in flight</th>
+                      <th>Bolts open</th>
+                      <th>Repositories with work</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dates
+                      .map((date, i) => (
+                        <tr>
+                          <td>
+                            {date} {sampled[i] && <span class="sample-chip">sample</span>}
+                          </td>
+                          <td>{flight.units[i]}</td>
+                          <td>{flight.bolts[i]}</td>
+                          <td>{flight.repos[i]}</td>
+                        </tr>
+                      ))
+                      .reverse()}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )
+      }
+      {
+        landed && (
+          <>
+            <StackedBars label="Units merged each day, by drive" dates={dates} samples={sampled} groups={landed.unitsByDrive} format="count" legend="week" />
+            <StackedBars label="Bolts landed each day, by drive" dates={dates} samples={sampled} groups={landed.boltsByDrive} format="count" legend="week" />
+            <details class="points">
+              <summary>The points: each day's count</summary>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Units merged</th>
+                      <th>Bolts landed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dates
+                      .map((date, i) => (
+                        <tr>
+                          <td>
+                            {date} {sampled[i] && <span class="sample-chip">sample</span>}
+                          </td>
+                          <td>{landed.units[i]}</td>
+                          <td>{landed.bolts[i]}</td>
+                        </tr>
+                      ))
+                      .reverse()}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )
+      }
+    </div>
+
+    <aside>
+      <h2>The definition</h2>
+      <p class="definition" set:html={inline(r.definition)} />
+      <dl>
+        <dt>Version</dt>
+        <dd>{r.definitionVersion}{measured === 0 && " · no point collected under it yet"}</dd>
+        <dt>Series</dt>
+        <dd>
+          {listed.map((s, i) => (
+            <>
+              {i > 0 && ", "}
+              {s.name}{" "}
+              <span class="muted">
+                ({s.unit}, {s.statistic}
+                {s.peak && " and peak"}
+                {s.host && `, on ${s.host}`})
+              </span>
+            </>
+          ))}
+        </dd>
+        {
+          splits.length > 0 && (
+            <>
+              <dt>Split by</dt>
+              <dd>{splits.join(", ")}</dd>
+            </>
+          )
+        }
+        <dt>Principle</dt>
+        <dd>{principle && <a href={url(`/method/#${principle.id}`)}>{principle.data.title}</a>}</dd>
+        <dt>Source</dt>
+        <dd set:html={inline(r.source)} />
+        <dt>Collector</dt>
+        <dd>
+          <code>{r.collector}</code>
+          {measured === 0 && " · not running yet"}
+        </dd>
+      </dl>
+
+      <h2>What it argues</h2>
+      <p>{r.argues}</p>
+      <h2>What it cannot show</h2>
+      <p>{r.cannotShow}</p>
+
+      <h2>Notes that cite it</h2>
+      {
+        citedBy.length ? (
+          <ul class="plain">
+            {citedBy.map((n) => (
+              <li>
+                <span class="muted">{n.data.date.toISOString().slice(0, 10)}</span> <a href={url(`/notes/${n.id}/`)}>{n.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="muted">No note cites it yet.</p>
+        )
+      }
+    </aside>
+  </div>
+
+  <FleetPager current={m.id} />
+</Base>
+
+<style>
+  .lede { font: 500 clamp(1.05rem, 2vw, 1.3rem)/1.45 var(--ap-font-display); letter-spacing: -0.01em; color: var(--ap-fg); max-width: 44ch; margin: 0 0 24px; }
+  .layout { display: grid; gap: 32px 48px; grid-template-columns: minmax(0, 2.2fr) minmax(16rem, 1fr); margin-top: 32px; align-items: start; }
+  @media (max-width: 56rem) { .layout { grid-template-columns: 1fr; } }
+  .numbers { min-width: 0; }
+
+  aside { font-size: 16px; }
+  aside h2 { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); margin: 28px 0 8px; }
+  aside h2:first-child { margin-top: 0; }
+  aside p { margin: 0 0 8px; }
+  .definition { border-left: 2px solid var(--ap-accent); padding: 2px 0 2px 14px; color: var(--ap-fg); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 16px 0 0; font: 12.5px/1.6 var(--ap-font-mono); }
+  dt { color: var(--ap-fg-3); }
+  dd { margin: 0; color: var(--ap-fg-2); }
+
+  .points { margin-top: 20px; border-top: 1px solid var(--ap-line); padding-top: 12px; }
+  .points summary { cursor: pointer; font: 11px/1.6 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .points summary:hover { color: var(--ap-accent); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font: 12px/1.5 var(--ap-font-mono); font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--ap-fg-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--ap-line); white-space: nowrap; }
+  td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--ap-line-soft); white-space: nowrap; color: var(--ap-fg-2); }
+  .pk { color: var(--ap-fg-3); }
+  .aside-note { margin: 10px 0 0; font: 12px/1.6 var(--ap-font-mono); color: var(--ap-fg-3); display: flex; gap: 8px; align-items: baseline; }
+  .scroll table + table { margin-top: 18px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--ap-line); border: 1px solid var(--ap-line); border-radius: 12px; overflow: hidden; }
+  .tiles div { background: var(--ap-bg); padding: 14px 18px; }
+  .tiles dt { font: 10.5px/1.5 var(--ap-font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ap-fg-3); }
+  .tiles dd { margin: 2px 0 0; font: 700 2rem/1.1 var(--ap-font-display); letter-spacing: -0.02em; color: var(--ap-fg); font-variant-numeric: tabular-nums; }
+  .tiles p { margin: 4px 0 0; font: 11.5px/1.5 var(--ap-font-mono); color: var(--ap-fg-3); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  @media (max-width: 40rem) { .tiles { grid-template-columns: minmax(0, 1fr); } }
+</style>
