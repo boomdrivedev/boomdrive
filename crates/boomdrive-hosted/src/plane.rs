@@ -125,9 +125,8 @@ struct Partition {
     /// prefix, but for what it let go or refused: the report as its
     /// control plane holds it.
     held: Option<Report>,
-    /// The last report sent, by its message's id, with the part it holds,
-    /// until its answer comes.
-    sent: Option<(MessageId, Report)>,
+    /// The last report sent, until its answer comes.
+    sent: Option<Sent>,
     /// Each want withheld at the last pull for naming a repository the
     /// partition is not served, said once while it is offered.
     withheld: BTreeSet<Id>,
@@ -315,6 +314,8 @@ impl ControlPlane for Hosted {
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
         let mut reported = Reported::default();
         for partition in &mut self.partitions {
+            // An answer come since the last report names no status taken:
+            // the statuses it took may have changed since.
             for (id, answer) in partition.connection.answers() {
                 partition.answered(&id, answer, &mut reported);
             }
@@ -332,9 +333,14 @@ impl ControlPlane for Hosted {
             let partition = &mut self.partitions[at];
             let part = partition.part(report);
             let body = partition.upward(&part, &say);
+            let statuses = partition.statuses_up(&part);
             match partition.connection.report(&body) {
                 Ok(id) => {
-                    partition.sent = Some((id.clone(), part));
+                    partition.sent = Some(Sent {
+                        id: id.clone(),
+                        part,
+                        statuses,
+                    });
                     waiting.push((at, id));
                 }
                 Err(words) => {
@@ -352,7 +358,8 @@ impl ControlPlane for Hosted {
             match self.partitions[at].connection.answer(&id, patience) {
                 Some(answer @ Answered::Reported(_)) => {
                     answered += 1;
-                    self.partitions[at].answered(&id, answer, &mut reported);
+                    let taken = self.partitions[at].answered(&id, answer, &mut reported);
+                    reported.statuses_taken.extend(taken);
                 }
                 Some(Answered::Refused(words)) => {
                     let words = format!("the control plane refused it: {words}");
@@ -689,6 +696,19 @@ impl Partition {
         })
     }
 
+    /// The launches of `part` whose status went up as its copy at the
+    /// last [`Partition::upward`]: each with a status, but those whose
+    /// copy failed and went up `null` (design Decision 2).
+    fn statuses_up(&self, part: &Report) -> BTreeSet<Id> {
+        part.launches
+            .iter()
+            .filter(|(id, launched)| {
+                launched.status.is_some() && !self.failing.contains(&((*id).clone(), "status"))
+            })
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
     /// `id` with the partition's prefix taken off, where it carries it.
     fn bare(&self, id: &Id) -> String {
         self.unprefixed(id)
@@ -699,15 +719,23 @@ impl Partition {
     /// The control plane's `answer` to the report `id`: a `reported` adds
     /// its let-go and refused ids, under the partition's prefix, to
     /// `reported`, and where it answers the last report sent, that report
-    /// is what the control plane holds.
-    fn answered(&mut self, id: &MessageId, answer: Answered, reported: &mut Reported) {
-        let last = self.sent.as_ref().is_some_and(|(sent, _)| sent == id);
-        let part = match last {
-            true => self.sent.take().map(|(_, part)| part),
+    /// is what the control plane holds, and it gives each launch whose
+    /// status went up in it as its copy, but those let go or refused: the
+    /// statuses taken, which the caller names where the answer is the one
+    /// it waited for (design Decision 2).
+    fn answered(
+        &mut self,
+        id: &MessageId,
+        answer: Answered,
+        reported: &mut Reported,
+    ) -> BTreeSet<Id> {
+        let last = self.sent.as_ref().is_some_and(|sent| &sent.id == id);
+        let sent = match last {
+            true => self.sent.take(),
             false => None,
         };
         let Answered::Reported(answer) = answer else {
-            return;
+            return BTreeSet::new();
         };
         let let_go: Vec<Id> = answer.let_go.iter().map(|id| self.prefixed(id)).collect();
         let refused: BTreeMap<Id, String> = answer
@@ -715,7 +743,10 @@ impl Partition {
             .iter()
             .map(|(id, words)| (self.prefixed(id), words.clone()))
             .collect();
-        if let Some(mut part) = part {
+        let taken = if let Some(Sent {
+            mut part, statuses, ..
+        }) = sent
+        {
             for id in let_go.iter().chain(refused.keys()) {
                 part.launches.remove(id);
                 part.acts.remove(id);
@@ -723,11 +754,29 @@ impl Partition {
                 part.inboxes.remove(id);
                 part.previews.remove(id);
             }
+            let taken = statuses
+                .into_iter()
+                .filter(|id| part.launches.contains_key(id))
+                .collect();
             self.held = Some(part);
-        }
+            taken
+        } else {
+            BTreeSet::new()
+        };
         reported.let_go.extend(let_go);
         reported.refused.extend(refused);
+        taken
     }
+}
+
+/// A report a partition sent, until its answer comes.
+struct Sent {
+    /// Its message's id.
+    id: MessageId,
+    /// The part it holds, its ids under the partition's prefix.
+    part: Report,
+    /// Each launch of `part` whose status went up as its copy.
+    statuses: BTreeSet<Id>,
 }
 
 /// `part`'s entries added to `into`.

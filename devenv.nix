@@ -75,6 +75,59 @@ let
   deadnixVersion = "1.3.2";
   actionlintVersion = "1.7.12";
 
+  # The site's tools (record 0038, design Decision 5): bun, which installs
+  # its packages and runs Astro, and Node.js, which runs Astro's bin under
+  # bun, nixpkgs' builds pinned by devenv.lock and asserted to be these
+  # versions as git is; and Biome, which formats the site's TypeScript,
+  # JavaScript and CSS through treefmt.nix, whose Biome is the same
+  # package (core.7).
+  bunVersion = "1.4.2";
+  nodeVersion = "24.20.0";
+  biomeVersion = "2.5.13";
+
+  # Vale, which site:prose runs over the site's words (site.4), from its
+  # own release, as boomdrive-web's shell took it: nixpkgs trails it
+  # (3.17.1 against 3.24.0). Bump the version and the four hashes from the
+  # release's checksums file.
+  valeVersion = "3.24.0";
+  valeAssets = {
+    aarch64-darwin = {
+      os = "macOS_arm64";
+      sha256 = "87b513f26499f6657c15cf7175ba5b058a7c1ff2bb2d4e07265db2dd43451e44";
+    };
+    x86_64-darwin = {
+      os = "macOS_64-bit";
+      sha256 = "eeb39e86f1daac27cc2a77fef3af1824d50559bdc22329fb25fb921c80c79472";
+    };
+    aarch64-linux = {
+      os = "Linux_arm64";
+      sha256 = "104cbd349279e50c4cb40adb70adf345d93cc4a3a0191f9e68bdccb97086b582";
+    };
+    x86_64-linux = {
+      os = "Linux_64-bit";
+      sha256 = "867534ddb678abca7f214bc4706ead0922bd5252ffe8035fc227013f66c8b214";
+    };
+  };
+  vale =
+    let
+      system = pkgs.stdenv.hostPlatform.system;
+      asset = valeAssets.${system} or (throw "vale ${valeVersion}: no release build for ${system}");
+    in
+    pkgs.stdenvNoCC.mkDerivation {
+      pname = "vale";
+      version = valeVersion;
+      src = pkgs.fetchurl {
+        url = "https://github.com/errata-ai/vale/releases/download/v${valeVersion}/vale_${valeVersion}_${asset.os}.tar.gz";
+        inherit (asset) sha256;
+      };
+      sourceRoot = ".";
+      installPhase = ''
+        runHook preInstall
+        install -Dm755 vale $out/bin/vale
+        runHook postInstall
+      '';
+    };
+
   # The flake's inputs as flake.lock locks them, fetched by this shell
   # outside the gate's sandbox (design Decision 14).
   flakeInputs = import ./nix/inputs.nix { };
@@ -105,6 +158,19 @@ let
       };
     in
     outputs.packages.${pkgs.stdenv.hostPlatform.system};
+
+  # The packages site/bun.lock locks, as bun's install cache holds them,
+  # fetched by this shell outside the gate's sandbox, from which
+  # site:install installs with no network (design Decision 4). flume's
+  # function at the set's flume tag, flake.lock's input `flume`, which owns
+  # how a site's packages reach a sandboxed gate (flume's record 0059); a
+  # tag that changes its arguments fails this shell's evaluation in the
+  # change that moves it (core.45).
+  sitePackages = import "${flakeInputs.inputs.flume}/site/packages.nix" {
+    inherit pkgs lib;
+    lock = ./site/bun.lock;
+    manifest = ./site/package.json;
+  };
 
   # OpenSpec, which root:specs and root:changes validate with: flume's
   # release, built as nixpkgs builds its older one. Bump the version, then
@@ -140,8 +206,9 @@ in
   # The system tools are this file's, pinned by devenv.lock, and the
   # release's flake.lock's; moon and Rust are .prototools', installed by
   # the boomdrive:proto:install task on entering the shell and activated by
-  # enterShell. git, recutils, OpenSpec, the nix project's tools and the
-  # release's are the releases pinned above, never the host's (core.8).
+  # enterShell. git, recutils, OpenSpec, the nix project's tools, the
+  # release's and the site's are the releases pinned above, never the
+  # host's (core.8).
   packages = [
     (
       assert pkgs.git.version == gitVersion;
@@ -172,6 +239,19 @@ in
       pkgs.actionlint
     )
     (
+      assert pkgs.bun.version == bunVersion;
+      pkgs.bun
+    )
+    (
+      assert pkgs.nodejs_24.version == nodeVersion;
+      pkgs.nodejs_24
+    )
+    (
+      assert pkgs.biome.version == biomeVersion;
+      pkgs.biome
+    )
+    vale
+    (
       assert flakePkgs.git-cliff.version == gitCliffVersion;
       flakePkgs.git-cliff
     )
@@ -189,6 +269,10 @@ in
   # (design Decision 14).
   env.BOOMDRIVE_FLAKE_INPUTS = builtins.toJSON flakeInputs.paths;
 
+  # The site's packages, given to site:install by their store path
+  # (site/scripts/install.sh).
+  env.BOOMDRIVE_SITE_PACKAGES = "${sitePackages}";
+
   # The set's Flume and sluice, given to the runner's tests by their paths
   # (crates/boomdrive/tests/family.rs) and on no PATH, so a shell's `sluice
   # exec` still runs the host's sluice (design Decision 6). The shell
@@ -202,10 +286,12 @@ in
 
   # Claude Code's project files (record 0022): .mcp.json from the servers
   # below and .claude/settings.json, each a link devenv makes into the
-  # store and git ignores. The repository's one server is devenv's hosted
-  # one, which searches packages and devenv's options and starts no
-  # process on the host; it is named here because a list of the
-  # repository's own replaces devenv's default. Every server named is
+  # store and git ignores. The servers are hosted, need no sign-in and
+  # start no process on the host: devenv's, which searches packages and
+  # devenv's options, named here because a list of the repository's own
+  # replaces devenv's default; and Astro's documentation, astro-docs, for
+  # the Astro release site/package.json pins (records 0022, 0025 and
+  # 0041; design Decision 14). Every server named is
   # approved by name in the settings, so a session in a trusted folder, a
   # place among them, starts them and asks nothing. OpenSpec's skills and
   # commands under .claude/ are tracked, as the openspec pinned above
@@ -218,6 +304,10 @@ in
     mcpServers."mcp.devenv.sh" = {
       type = "http";
       url = "https://mcp.devenv.sh";
+    };
+    mcpServers.astro-docs = {
+      type = "http";
+      url = "https://mcp.docs.astro.build/mcp";
     };
   };
   files.${config.claude.code.settingsPath}.json.enabledMcpjsonServers =
@@ -295,6 +385,82 @@ in
       exec git-cliff --unreleased --bump --strip all "$@"
     '';
   };
+
+  # The site's scripts (design Decision 10), each run in site/, each check
+  # the gate's own task.
+  scripts.vocab = {
+    description = "The glossary into Vale's vocabulary and terms: moon run site:vocab";
+    exec = ''
+      cd "$DEVENV_ROOT/site"
+      exec moon run site:vocab "$@"
+    '';
+  };
+  scripts.prose = {
+    description = "Vale over the site's words, after vocab: moon run site:prose";
+    exec = ''
+      cd "$DEVENV_ROOT/site"
+      exec moon run site:prose "$@"
+    '';
+  };
+  scripts.site-check = {
+    description = "The site's checks: its type check, prose, build and tests";
+    exec = ''
+      cd "$DEVENV_ROOT/site"
+      exec moon run site:check site:prose site:build site:test "$@"
+    '';
+  };
+  scripts.site-dev = {
+    description = "The site on localhost, drafts included";
+    exec = ''
+      cd "$DEVENV_ROOT/site"
+      moon run site:install
+      exec bun run dev "$@"
+    '';
+  };
+  # The site served in a place, for a preview: run as `sluice exec <branch>
+  # -- site-serve`, on the port sluice holds for the worktree
+  # (.config/sluice.toml). devenv's process manager keeps it up once the
+  # command exits; `sluice release` runs site-stop.
+  scripts.site-serve = {
+    description = "The place's own site on its web port, for a preview";
+    exec = ''
+      if [ -z "''${SLUICE_PORT_WEB:-}" ]; then
+        echo "site-serve: SLUICE_PORT_WEB is unset; run it as \`sluice exec <branch> -- site-serve\`" >&2
+        exit 1
+      fi
+      mkdir -p "$DEVENV_STATE"
+      echo "$SLUICE_PORT_WEB" >"$DEVENV_STATE/site-port"
+      devenv up -d site || exit 1
+      for _ in $(seq 120); do
+        if (exec 3<>"/dev/tcp/127.0.0.1/$SLUICE_PORT_WEB") 2>/dev/null; then
+          echo "http://127.0.0.1:$SLUICE_PORT_WEB/boomdrive/"
+          exit 0
+        fi
+        sleep 0.5
+      done
+      echo "site-serve: nothing answered on port $SLUICE_PORT_WEB after a minute" >&2
+      exit 1
+    '';
+  };
+  # Nothing to do where nothing was served, which is every candidate's
+  # release. A port file left by a process manager that is gone (a reboot)
+  # is done once nothing answers on its port.
+  scripts.site-stop = {
+    description = "Stops the site site-serve served";
+    exec = ''
+      [ -f "$DEVENV_STATE/site-port" ] || exit 0
+      port="$(cat "$DEVENV_STATE/site-port")"
+      rm -f "$DEVENV_STATE/site-port"
+      devenv processes down 2>/dev/null ||
+        ! (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null
+    '';
+  };
+
+  # The dev server site-serve starts, on the port it wrote for the place.
+  processes.site.exec = ''
+    cd "$DEVENV_ROOT/site"
+    exec bun run dev --host 127.0.0.1 --port "$(cat "$DEVENV_STATE/site-port")"
+  '';
 
   treefmt.enable = true;
   treefmt.config = {

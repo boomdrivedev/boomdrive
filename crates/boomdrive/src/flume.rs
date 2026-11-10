@@ -2,14 +2,15 @@
 //! reaches Flume (record 0001). Every call puts `--json` first and runs
 //! with `FLUME_RECIPIENT` unset, so a place's recipients are only those
 //! its launch names, and none passes `--force`. A launch that names
-//! recipients names the runner one more, [`RECIPIENT`], so Flume holds
-//! the place's end for it past its tidy until it collects it by `flume
-//! inbox` (core.54; record 0030). A launch passes its kind
-//! to `--kind` as the control plane gave it and never `--kinds`, since
-//! where a host's kinds come from is its Flume configuration's (core.5),
-//! and every other flag only where the launch gives it. Each answer is
-//! read by Flume's exit and kept as Flume gave it: the runner rewrites,
-//! summarises and judges none (core.1).
+//! recipients names the runner one more, [`RECIPIENT`], so Flume owes it
+//! each end of the place, holding the place's record past its tidy, until
+//! the runner confirms each by `flume confirm` once its control plane has
+//! taken it (core.54; record 0030 as amended on 2026-11-09). A launch
+//! passes its kind to `--kind` as the control plane gave it and never
+//! `--kinds`, since where a host's kinds come from is its Flume
+//! configuration's (core.5), and every other flag only where the launch
+//! gives it. Each answer is read by Flume's exit and kept as Flume gave
+//! it: the runner rewrites, summarises and judges none (core.1).
 
 use crate::settle;
 use serde::de::IgnoredAny;
@@ -21,17 +22,17 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-/// The least Flume the runner launches with: 0.20.0, the first that holds
-/// a drop's and a done's end for a recipient no pane holds, and collects
-/// one place's by `flume inbox <place>` (core.38; record 0030; Flume
-/// record 0060).
-pub const LEAST: (u32, u32, u32) = (0, 20, 0);
+/// The least Flume the runner launches and confirms with: 0.21.0, the
+/// first whose ends a recipient confirms by key, `flume confirm
+/// --recipient=<name> -- <key>…`, each owed until it is (core.38; record
+/// 0030 as amended on 2026-11-09; Flume record 0061).
+pub const LEAST: (u32, u32, u32) = (0, 21, 0);
 
 /// The runner's own name as a recipient of the places it launches: fixed
 /// and the same on every host, since one runner serves a host. No pane
 /// holds it, so Flume sends it no notice and wakes nothing for it, and
-/// holds each end of the place for it until it collects them (core.54;
-/// record 0030; Flume record 0060).
+/// owes it each end of the place until it confirms them (core.54; record
+/// 0030 as amended on 2026-11-09; Flume records 0060 and 0061).
 pub const RECIPIENT: &str = "boomdrive";
 
 /// The recipients a launch naming `given` is launched with: `given`, as
@@ -75,7 +76,7 @@ pub fn runs_with(said: &str) -> Result<(), String> {
     let (major, minor, patch) = LEAST;
     let least = format!(
         "boomdrive launches with Flume {major}.{minor}.{patch} or later, \
-         the first that holds a place's end for the runner"
+         the first whose ends a recipient confirms by key"
     );
     let said = said.trim();
     match version(said) {
@@ -121,6 +122,14 @@ pub enum Act {
         words: Option<String>,
         submission: bool,
     },
+    /// Flume's confirm of each of `keys` as `recipient`, exactly those
+    /// keys in their order. It names no place, since Flume's key names its
+    /// own: the runner holds each key to its launch's place before it asks
+    /// (core.56; Flume record 0061).
+    Confirm {
+        recipient: String,
+        keys: Vec<String>,
+    },
     Drop,
     Priority(i64),
     Done,
@@ -162,11 +171,14 @@ pub trait Flume {
     /// The place at `place`, in the repository at `container_dir` where
     /// the runner keeps its clone, else by its location alone.
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun>;
-    /// Every end pending for the runner of the record at `record`, a
-    /// tidied place's `<location>@<at>`, collected as [`RECIPIENT`]: `flume
-    /// inbox <record> --recipient boomdrive`, naming no repository
-    /// (core.54; record 0030).
-    fn collect(&self, record: &str) -> Result<Reply, Unrun>;
+    /// Each end under `keys`, its delivery keys in the order given,
+    /// confirmed as `recipient`: `flume confirm --recipient=<recipient> --
+    /// <key>…`, by the arguments a confirm act runs, naming no repository
+    /// (core.56). The runner confirms as
+    /// [`RECIPIENT`], only once its control plane has taken the status
+    /// that gave the ends (design Decision 5; core.54; record 0030 as
+    /// amended on 2026-11-09; Flume record 0061).
+    fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun>;
 }
 
 /// Flume's command line, by the program at `program`: `flume` on the
@@ -246,13 +258,8 @@ impl Flume for Cli {
         self.run(args)
     }
 
-    fn collect(&self, record: &str) -> Result<Reply, Unrun> {
-        self.run(vec![
-            "inbox".into(),
-            record.into(),
-            "--recipient".into(),
-            RECIPIENT.into(),
-        ])
+    fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {
+        self.run(confirm_args(recipient, keys))
     }
 }
 
@@ -307,7 +314,9 @@ fn launch_args(args: &LaunchArgs, brief_file: Option<&Path>) -> Vec<OsString> {
     words
 }
 
-/// The arguments of `act` on the place at `place`.
+/// The arguments of `act` on the place at `place`. A confirm is not
+/// passed the place, since `flume confirm` takes none and its keys name
+/// their own.
 fn act_args(place: &str, act: &Act) -> Vec<OsString> {
     match act {
         Act::Retry {
@@ -327,12 +336,27 @@ fn act_args(place: &str, act: &Act) -> Vec<OsString> {
             }
             args
         }
+        Act::Confirm { recipient, keys } => confirm_args(recipient, keys),
         Act::Drop => vec!["drop".into(), place.into()],
         Act::Priority(priority) => {
             vec!["priority".into(), place.into(), priority.to_string().into()]
         }
         Act::Done => vec!["done".into(), place.into()],
     }
+}
+
+/// The arguments of Flume's confirm of `keys` as `recipient`, `confirm
+/// --recipient=<recipient> -- <key>…`: the recipient joined to its flag
+/// and the keys after `--`, so that neither is read as a flag, and no
+/// place named (core.56; Flume record 0061).
+fn confirm_args(recipient: &str, keys: &[String]) -> Vec<OsString> {
+    let mut args: Vec<OsString> = vec![
+        "confirm".into(),
+        format!("--recipient={recipient}").into(),
+        "--".into(),
+    ];
+    args.extend(keys.iter().map(OsString::from));
+    args
 }
 
 /// Flume's `refused` answer, as it prints one on exit 1.
@@ -413,29 +437,29 @@ mod tests {
     #[test]
     fn versions_taken() {
         for said in [
-            "flume 0.20.0",
-            "flume 0.20.0\n",
-            "flume 0.20.1 (9ab0e2c)",
-            "flume 0.21.0-dev",
+            "flume 0.21.0",
+            "flume 0.21.0\n",
+            "flume 0.21.1 (77d5b93)",
+            "flume 0.22.0-dev",
             "flume 0.21",
             "flume 1.0.0",
         ] {
             assert_eq!(runs_with(said), Ok(()), "{said:?}");
         }
-        assert_eq!(version("flume 0.20.1 (9ab0e2c)"), Some((0, 20, 1)));
+        assert_eq!(version("flume 0.21.1 (77d5b93)"), Some((0, 21, 1)));
     }
 
     #[test]
     fn a_flume_older_than_the_least_is_refused() {
-        let least = "boomdrive launches with Flume 0.20.0 or later, \
-                     the first that holds a place's end for the runner";
+        let least = "boomdrive launches with Flume 0.21.0 or later, \
+                     the first whose ends a recipient confirms by key";
         assert_eq!(
-            runs_with("flume 0.18.0\n"),
-            Err(format!("flume --version says \"flume 0.18.0\": {least}"))
+            runs_with("flume 0.20.0\n"),
+            Err(format!("flume --version says \"flume 0.20.0\": {least}"))
         );
         assert_eq!(
-            runs_with("flume 0.19.9"),
-            Err(format!("flume --version says \"flume 0.19.9\": {least}"))
+            runs_with("flume 0.20.9"),
+            Err(format!("flume --version says \"flume 0.20.9\": {least}"))
         );
         for said in ["flume", "", "sluice 0.20.0", "flume x.y.z", "flume 0"] {
             assert_eq!(

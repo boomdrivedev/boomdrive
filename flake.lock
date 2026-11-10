@@ -3,16 +3,16 @@
     "flume": {
       "flake": false,
       "locked": {
-        "lastModified": 1794185378,
-        "narHash": "sha256-uwEN0f5IqGkrQI33zThr0kTyciuFliPjepl5c0fOi3Y=",
+        "lastModified": 1794259847,
+        "narHash": "sha256-+/ohoYSlaAseUAyilMU80onRRytq3sFCU5tUHV7VE1I=",
         "owner": "agentplot",
         "repo": "flume",
-        "rev": "9ab0e2c8c8ff86e19608a16c3e186b1f44d71555",
+        "rev": "77d5b93a5a23eafd6529f63a5ccb82db908a8deb",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.20.0",
+        "ref": "v0.21.0",
         "repo": "flume",
         "type": "github"
       }
