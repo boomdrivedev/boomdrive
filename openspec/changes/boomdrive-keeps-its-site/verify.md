@@ -1,17 +1,17 @@
 # Verify: boomdrive-keeps-its-site
 
 Verified on 2026-11-09 against `change/boomdrive-keeps-its-site` at
-`cc855358`.
+`b105cf72`.
 
-**Verdict: archived.** The repository's whole checks pass. All 21 tasks
+**Verdict: archived.** The repository's whole checks pass. All 22 tasks
 are ticked and hold in the tree. Every requirement and scenario of the
 change's six specs is met. Archived, the change writes specs that
 `root:specs` passes.
 
 ## The whole checks
 
-`sluice exec main`, run once on `cc855358`, exited 0: "passed: 33 tasks,
-recorded 33 results under their keys for cc85535".
+`sluice exec main`, run once on `b105cf72`, exited 0: "passed: 33 tasks,
+recorded 33 results under their keys for b105cf7".
 
 | project | tasks passed |
 |---|---|
@@ -22,9 +22,10 @@ recorded 33 results under their keys for cc85535".
 
 The gate printed these lines for the change's checks:
 
+- `boomdrive:test`, with the other crates' tests: 498 passed, 0 failed, `loop.rs`'s `each_keeping_pass_ends_with_a_settle` among them.
 - `root:changes`: 1 passed, 0 failed.
 - `root:specs`: 17 passed, 0 failed, on the specs as they stand before the archive.
-- `root:commits`: no errors in 200 commits.
+- `root:commits`: no errors in 205 commits.
 - `root:format`: 244 files, 0 changed.
 - `root:releases`, the releases spec's new scenarios:
   - A feature that changes only `site/` after `v0.1.0` releases nothing.
@@ -47,7 +48,8 @@ from inside the sandbox. No task failed on it.
 
 ## The archive's specs
 
-Task 5.2's proof was run in a scratch worktree of `cc855358`:
+Task 5.2's proof was run in a scratch worktree of `cc855358`, whose tree
+differs from `b105cf72`'s only in the runner's test stubs and the tasks:
 
 1. `openspec archive boomdrive-keeps-its-site --yes` applied 33 additions,
    with nothing modified, removed or renamed.
@@ -62,7 +64,7 @@ nothing". That requirement's text is 349 characters, within openspec's
 
 ## Tasks
 
-All 21 tasks are ticked. Each was checked against the tree:
+All 22 tasks are ticked. Each was checked against the tree:
 
 - **1.1**: The merge `64a576df` takes boomdrive-web at `4ed5fbe`. It changes nothing outside `site/`. The history of `site/src/content/notes/what-our-fleet-re-proves.md` reaches boomdrive-web's first commit, of 2026-10-05. `root:commits` passes.
 - **1.2, 6.4**: This change's record is 0038, and boomdrive-web's records are 0039 to 0041. Each file's name and frontmatter `number` give it. Each of 0039 to 0041 says "Recorded in agentplot/boomdrive-web as its record 000N." No tracked file remains under `site/docs/adr/`. `root:adrs` passes.
@@ -86,6 +88,7 @@ All 21 tasks are ticked. Each was checked against the tree:
 - **6.1**: The root `CLAUDE.md` says what the site is and where its rules are, names the project `site`, and names the site's checks in the `check-fast` row. `README.md`'s "Rules and checks" names `site`. `site/CLAUDE.md` cites `site.1` to `site.7`.
 - **6.2**: `measurement-roadmap.md` uses `host: host-a` and `drive: home`. `site-design.md`'s example split is `bolts open, home`. MadSwan stands only as the company, as Decision 15 keeps it.
 - **6.3**: The `tools-hub` spec's scenarios "The cards as built" and "Reading timber's card" give timber's card Never prove twice, linking that principle's place on the Method page. That is what the site shows: `site/src/pages/tools.astro` maps `timber: "never-prove-twice"`.
+- **7.1**: In `crates/boomdrive/tests/fakes/mod.rs`, the stub `flume` and the stub `sluice` each write a call's arguments to `call-<n>.part` and move it to `call-<n>`, as the stub `systemd-creds` does. Their doc comments say each call is whole once there. `boomdrive:test` passes in the gate.
 
 ## Specs
 
