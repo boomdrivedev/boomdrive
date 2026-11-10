@@ -1,7 +1,7 @@
 ---
 number: 40
 title: Flywheel is renamed Boomdrive
-status: proposed
+status: accepted
 date: 2026-11-04
 decision-makers:
 - Chuck Swanberg
@@ -11,7 +11,7 @@ decision-makers:
 
 Recorded in agentplot/boomdrive-web as its record 0002.
 
-- Status: proposed
+- Status: accepted by the user on 2026-11-09, on their card, once carried into agentplot/boomdrive
 - Date: 2026-11-04
 - Supersedes: [0039](0039-the-site-is-flywheel.md), whose reasons against
   MadSwan and a personal name still hold
