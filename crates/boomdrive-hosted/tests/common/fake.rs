@@ -2,7 +2,7 @@
 //! test code alone, listening on the loopback address. It answers
 //! `runner/enroll` with HTTP written by hand, and upgrades `runner/connect`
 //! by tokio-tungstenite's handshake. It checks every message it is sent
-//! against version 1, verifies the enrollment's and each connection's
+//! against version 2, verifies the enrollment's and each connection's
 //! signature over its context, built here from the protocol's README and
 //! not from the crate's code, and records what it took, in order. It holds
 //! each partition's last report as a control plane does, but for what it
@@ -30,8 +30,8 @@ use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::{http, Message as Frame};
 
-/// The subprotocol of version 1, as the README names it.
-pub const SUBPROTOCOL: &str = "boomdrive.v1";
+/// The subprotocol of version 2, as the README names it.
+pub const SUBPROTOCOL: &str = "boomdrive.v2";
 
 /// The path the fake's address holds, under which its two paths go.
 const BASE_PATH: &str = "/boomdrive/";
@@ -50,7 +50,7 @@ pub enum Taken {
         /// The token it bore, as `Authorization: Bearer` carried it.
         bearer: Option<String>,
         message: Value,
-        /// Why the message failed version 1, where it did.
+        /// Why the message failed version 2, where it did.
         refused: Option<String>,
         /// Whether its signature checked over the enrollment's context.
         signed: bool,
@@ -75,7 +75,7 @@ pub enum Taken {
     Message {
         partition: String,
         message: Value,
-        /// Why it failed version 1, where it did.
+        /// Why it failed version 2, where it did.
         refused: Option<String>,
     },
     /// A WebSocket ping a partition's connection sent.
@@ -186,9 +186,9 @@ impl State {
         format!("plane:{}", self.next)
     }
 
-    /// A message of version 1 under a new id of the fake's.
+    /// A message of version 2 under a new id of the fake's.
     fn message(&mut self, kind: &str, body: Value) -> Value {
-        json!({ "protocol_version": 1, "id": self.id(), "body": { kind: body } })
+        json!({ "protocol_version": 2, "id": self.id(), "body": { kind: body } })
     }
 
     /// `partition`'s `pulled`, its wants and the report it holds.
@@ -222,7 +222,7 @@ impl Shared {
         self.taken.send_modify(|count| *count += 1);
     }
 
-    /// Why `message` fails version 1, where it does: each error's path
+    /// Why `message` fails version 2, where it does: each error's path
     /// in the message.
     fn refusal(&self, message: &Value) -> Option<String> {
         let errors: Vec<String> = self
@@ -996,7 +996,7 @@ fn answer_message(
             let set = state.partitions.get(partition).cloned().unwrap_or_default();
             let mut held = message["body"]["report"].clone();
             for id in set.let_go.iter().chain(set.refused.keys()) {
-                for part in ["launches", "acts", "commands", "inboxes"] {
+                for part in ["launches", "acts", "commands", "inboxes", "previews"] {
                     if let Some(entries) = held[part].as_object_mut() {
                         entries.remove(id);
                     }

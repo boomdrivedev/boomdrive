@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/preview.schema.json",
+  "description": "The copies of sluice's answers of a preview: its answer to a preview's ask, or a row of its listing, sluice preview <branch> <revision> --json or sluice previews --json, and its answer to a release, sluice release <name> --json, each cut to the fields the cloud keeps, each where sluice printed it and as sluice printed it. Neither holds a preview's checkout, names, ports, exit, output or release_failed.",
+  "$defs": {
+    "preview": {
+      "description": "The copy of a preview, as sluice's ask or its listing printed it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "description": "The name sluice gave the preview, which its release names.",
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "state": {
+          "description": "The preview's state, as sluice printed it.",
+          "type": "string"
+        },
+        "made": {
+          "type": "string"
+        },
+        "addresses": {
+          "description": "Each address of the preview's stack, by its name.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "release": {
+      "description": "The copy of a release, as sluice's release printed it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview"
+      ],
+      "properties": {
+        "preview": {
+          "description": "The name of the preview released.",
+          "type": "string"
+        },
+        "released": {
+          "description": "Whether sluice put a preview away.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

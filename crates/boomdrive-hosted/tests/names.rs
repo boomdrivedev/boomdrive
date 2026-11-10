@@ -1,15 +1,16 @@
-//! Version 1 names no grant and no credential (the runner-protocol spec's
-//! "Version 1 names no grant and no credential"; design Decision 14): a
-//! connection's account, and what it may do, come from its enrollment,
-//! never from a message (core.4; boomdrive-cloud records 0047 and 0065).
+//! No version names a grant or a credential (the runner-protocol spec's
+//! "No version names a grant or a credential"; design Decision 14 of
+//! the-runner-dials-the-hosted-control-plane): a connection's account, and
+//! what it may do, come from its enrollment, never from a message
+//! (core.4; boomdrive-cloud records 0047 and 0065).
 
 mod common;
 
-use common::files;
+use common::VERSIONS;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
-/// The words no name of version 1 holds.
+/// The words no name of any version holds.
 const UNNAMED: [&str; 7] = [
     "grant",
     "role",
@@ -53,19 +54,25 @@ fn unnamed_word(name: &str) -> Option<&'static str> {
 
 #[test]
 fn every_name_read() {
-    for (file, value) in files() {
-        let mut found = BTreeSet::new();
-        names(&value, &mut found);
-        for name in &found {
-            if let Some(word) = unnamed_word(name) {
-                panic!("{file} names {name:?}, a {word}'s name");
+    for version in VERSIONS {
+        let n = version.number;
+        for (file, value) in version.files() {
+            let mut found = BTreeSet::new();
+            names(&value, &mut found);
+            for name in &found {
+                if let Some(word) = unnamed_word(name) {
+                    panic!("version {n}'s {file} names {name:?}, a {word}'s name");
+                }
             }
         }
-    }
-    let mut all = BTreeSet::new();
-    files().iter().for_each(|(_, value)| names(value, &mut all));
-    for name in ["protocol_version", "hello", "share", "sealed", "lease"] {
-        assert!(all.contains(name), "the walk misses {name}");
+        let mut all = BTreeSet::new();
+        version
+            .files()
+            .iter()
+            .for_each(|(_, value)| names(value, &mut all));
+        for name in ["protocol_version", "hello", "share", "sealed", "lease"] {
+            assert!(all.contains(name), "the walk of version {n} misses {name}");
+        }
     }
     for name in ["forge_token", "roles", "grant", "Secret"] {
         assert!(unnamed_word(name).is_some(), "{name} is not caught");

@@ -1,4 +1,4 @@
-//! The forms of version 1's values (design Decision 4): a time of the
+//! The forms of version 2's values (design Decision 4): a time of the
 //! runner's or the control plane's is RFC 3339 in UTC to the second, and
 //! an integer is one JavaScript reads exactly, a lease's number 1 or more
 //! (the runner-protocol spec's "A message holds only what its version

@@ -567,6 +567,27 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
+The runner speaks version 2 of the protocol, `boomdrive.v2`, its schema
+under `crates/boomdrive-hosted/protocol/v2/`, which a control plane takes
+beside the version before it, version 1. Each upgrade asks for
+`boomdrive.v2` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v2`, and tried again at the backoff's cap.
+Each end of a place goes up with its delivery: its key, its delivery's
+key and expiry, the readers it is owed to and those that confirmed it,
+and each hand-over, the end of the place's work by a drop or a done
+among them. An end version 2 does not name goes up as its delivery
+alone, or is left out where even that fails, the rest of its status
+going up, with one line naming the launch and each end's path. Only a
+status that went up with every end in a form version 2 names is one the
+runner takes its control plane to hold, so it confirms none of the ends
+of a place whose status went up with an end by its delivery alone. A
+control plane's confirm of a reader's ends is an act, given to the
+runner under the partition's prefix and carried out as crew's is,
+by Flume's confirm of exactly its keys. A control plane's land and
+preview, with its done, are given to the runner as crew's are, and what
+the runner answered of each preview goes up with sluice's answer and
+listing as their copies.
+
 ## Rules and checks
 
 The rules every change keeps are `docs/architecture/core.md`; the

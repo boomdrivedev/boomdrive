@@ -1,0 +1,125 @@
+{
+  "protocol_version": 2,
+  "id": "runner:27",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-11": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--tabs",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/fix--tabs",
+              "kind": "fix",
+              "version": 1,
+              "declared": "flume",
+              "name": "tabs",
+              "mark": "boomdrive:offer-11",
+              "branch": "fix/tabs",
+              "base": "main",
+              "head": null,
+              "lands": true,
+              "delivered": null,
+              "stalled": false,
+              "priority": 0,
+              "current": "code",
+              "recipients": [
+                "example/planner",
+                "boomdrive"
+              ],
+              "stream": {
+                "name": "wide",
+                "from": "launch"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "17850c6f94f94e0b8ad7cece2dc917834c822d2a944b2aa7d0b50027717831b2"
+              },
+              "phase": "live",
+              "stages": [
+                {
+                  "name": "code",
+                  "state": "ended_short",
+                  "starts": 1,
+                  "end": {
+                    "head": null,
+                    "words": "Which width is a tab: 4 or 8?",
+                    "needs": "needs_answer",
+                    "commits": [],
+                    "made": []
+                  }
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "code",
+                  "start": 1,
+                  "state": "ended_short",
+                  "end": {
+                    "head": null,
+                    "words": "Which width is a tab: 4 or 8?",
+                    "needs": "needs_answer",
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1793559631,
+                  "deliveries": [
+                    {
+                      "recipient": "example/planner",
+                      "at": 1793559900,
+                      "by": "session_start"
+                    }
+                  ],
+                  "key": "stage/code/1/ended_short",
+                  "pending_for": [
+                    "example/planner",
+                    "boomdrive"
+                  ],
+                  "delivery": "fix--tabs/90b4e2d7/stage/code/1/ended_short",
+                  "expires_at": 1794164431,
+                  "owed": [
+                    {
+                      "recipient": "example/planner",
+                      "expired": false,
+                      "known": true
+                    },
+                    {
+                      "recipient": "boomdrive",
+                      "expired": false,
+                      "known": true
+                    }
+                  ],
+                  "confirmed": []
+                }
+              ],
+              "holds": [],
+              "hold_words": {},
+              "waiting_on": null,
+              "submission": null,
+              "agent": null,
+              "clues": null,
+              "tasks": null
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": null
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {},
+      "previews": {}
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "protocol_version": 2,
+  "id": "runner:3",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-1": {
+          "lease": {
+            "number": 2,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/fix--parser",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": null,
+          "entry": null
+        },
+        "offer-2": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "held",
+            "place_dir": null,
+            "words": "waits on offer-1, launched at a place not landed",
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": null,
+          "entry": null
+        }
+      },
+      "acts": {
+        "act-1": {
+          "launch": "offer-1",
+          "lease": 2,
+          "outcome": "done",
+          "words": null,
+          "at": "2026-11-01T10:02:00Z"
+        },
+        "act-2": {
+          "launch": "offer-1",
+          "lease": 2,
+          "outcome": "refused",
+          "words": "no stage review in fix",
+          "at": "2026-11-01T10:02:00Z"
+        }
+      },
+      "commands": {
+        "command-1": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "outcome": "done",
+          "text": "{\n  \"branch\": \"bolt/tabs\",\n  \"created\": \"a36aff8308c4a5e0f6ec7d911fbaab119afc8bd8\",\n  \"from\": \"main\"\n}\n",
+          "words": null,
+          "origin_commit": "a36aff8308c4a5e0f6ec7d911fbaab119afc8bd8",
+          "at": "2026-11-01T10:03:00Z"
+        }
+      },
+      "inboxes": {
+        "inbox-1": {
+          "tip": "2f17132a32f1e2a9a1ac33c1bf7efeb06da4df4b",
+          "files": {
+            "inbox/items/1/brief.md": {
+              "digest": "sha256:483959d724157396a2d4f457e643e68cc2b6e1c0c33a12dfa42844ef4e72e360"
+            },
+            "inbox/items/1/item.rec": {
+              "text": "Item: 1\nTitle: Read a tab as the width the user names\n"
+            }
+          },
+          "words": null,
+          "at": "2026-11-01T10:04:00Z"
+        }
+      },
+      "previews": {}
+    }
+  }
+}

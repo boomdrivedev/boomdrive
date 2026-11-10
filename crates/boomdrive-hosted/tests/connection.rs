@@ -11,7 +11,7 @@ mod common;
 
 use boomdrive_hosted::connection::{Connection, Dial, Say, Wake};
 use boomdrive_hosted::key::{Memory, Store};
-use boomdrive_hosted::protocol::v1::Hello;
+use boomdrive_hosted::protocol::v2::Hello;
 use boomdrive_hosted::table::Table;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
@@ -58,7 +58,7 @@ fn store(fake: &Fake, key: &SigningKey) -> Arc<dyn Store> {
     Arc::new(memory)
 }
 
-/// `home`'s hello, version 1's example of one.
+/// `home`'s hello, version 2's example of one.
 fn hello() -> Hello {
     serde_json::from_value(example("from-runner", "hello.json")["body"]["hello"].clone())
         .expect("the example is a hello")
@@ -309,6 +309,44 @@ async fn a_key_refused() {
     );
     assert!(lines[0].contains("`boomdrive enroll home`"), "{lines:#?}");
     // A refused key waits at the backoff's cap.
+    assert_eq!(Instant::now() - began, POLL_INTERVAL * 2);
+}
+
+/// The hosted-control-plane spec's "A control plane that speaks version
+/// 1 alone": an upgrade answered without `boomdrive.v2` is said once,
+/// naming the partition and `boomdrive.v2`, each later attempt waits for
+/// the backoff's cap, and no message is sent (design Decision 4 of
+/// the-hosted-protocol-carries-every-end-of-a-place; core.22, core.23).
+#[tokio::test(start_paused = true)]
+async fn a_control_plane_that_speaks_version_1_alone() {
+    let fake = Fake::start();
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    fake.refuse_subprotocol(true);
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let connection = Connection::open(
+        &Handle::current(),
+        dial(&fake, store(&fake, &key), &lines, &wakes),
+    );
+    connection.hand(&hello()).expect("handed");
+
+    let began = Instant::now();
+    let taken = fake
+        .until("three upgrades", |t| upgrades(t).len() == 3)
+        .await;
+
+    let lines = lines.all();
+    assert_eq!(lines.len(), 1, "{lines:#?}");
+    assert!(lines[0].starts_with("home: "), "{lines:#?}");
+    assert!(lines[0].contains("boomdrive.v2"), "{lines:#?}");
+    for upgrade in upgrades(&taken) {
+        let Taken::Upgrade { protocols, .. } = upgrade else {
+            unreachable!("an upgrade");
+        };
+        assert_eq!(protocols, &["boomdrive.v2".to_string()]);
+    }
+    assert!(messages(&taken).is_empty(), "{taken:#?}");
+    // A subprotocol refused waits at the backoff's cap.
     assert_eq!(Instant::now() - began, POLL_INTERVAL * 2);
 }
 
@@ -590,7 +628,7 @@ fn a_pulled_with_a_field_unnamed() {
         .as_str()
         .expect("words");
     assert!(
-        words.starts_with("it fails version 1's check: /"),
+        words.starts_with("it fails version 2's check: /"),
         "{words}"
     );
     assert!(!words.contains("n0t-sh0wn"), "{words}");
@@ -602,7 +640,7 @@ fn a_pulled_with_a_field_unnamed() {
                 ..
             }
         )),
-        "every message the runner sent passes version 1: {taken:#?}"
+        "every message the runner sent passes version 2: {taken:#?}"
     );
 
     let read = connection.read(PATIENCE).expect("home is read");
@@ -615,6 +653,52 @@ fn a_pulled_with_a_field_unnamed() {
             .any(|line| line.contains("plane:unnamed") && !line.contains("n0t-sh0wn")),
         "{lines:#?}"
     );
+}
+
+/// The hosted-control-plane spec's "A message of version 1": a `pulled`
+/// naming `protocol_version` 1 fails version 2's check, is answered with
+/// `message_refused` naming it, and the pull gives none of its wants
+/// (design Decision 4 of the-hosted-protocol-carries-every-end-of-a-place).
+#[test]
+fn a_message_of_version_1() {
+    let fake = Fake::start();
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    let mut offer = example("to-runner", "pulled.json")["body"]["pulled"]["wants"][0].clone();
+    offer["offer"]["id"] = json!("offer-9");
+    fake.set_wants("home", json!([offer]));
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let runtime = runtime();
+    let connection = Connection::open(
+        runtime.handle(),
+        dial(&fake, store(&fake, &key), &lines, &wakes),
+    );
+    connection.hand(&hello()).expect("handed");
+    let read = connection.read(PATIENCE).expect("home is read");
+    assert_eq!(read.wants.len(), 1);
+
+    let mut pulled = common::V1.example("to-runner", "pulled.json");
+    pulled["id"] = json!("plane:first");
+    assert_eq!(pulled["protocol_version"], 1);
+    assert!(fake.send("home", pulled));
+
+    let taken = fake.wait_until("a message_refused", |t| sent(t, "message_refused") == 1);
+    let refusal = messages(&taken)
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("message_refused"))
+        .expect("a refusal");
+    assert_eq!(refusal["body"]["message_refused"]["message"], "plane:first");
+    let words = refusal["body"]["message_refused"]["words"]
+        .as_str()
+        .expect("words");
+    assert!(
+        words.starts_with("it fails version 2's check: /"),
+        "{words}"
+    );
+
+    let read = connection.read(PATIENCE).expect("home is read");
+    let ids: Vec<&str> = read.wants.iter().map(|want| want.id().as_str()).collect();
+    assert_eq!(ids, ["offer-9"], "none of version 1's pulled's wants");
 }
 
 #[test]

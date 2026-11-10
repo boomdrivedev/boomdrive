@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/hello.schema.json",
+  "description": "The hello, the interface's Hello field for field, but that its capacity's printed part is the copy of Flume's host part.",
+  "$defs": {
+    "hello": {
+      "description": "What the runner tells the control plane of its host: first at every connection, whole, and again when it changes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interface_version",
+        "runner_version",
+        "tool_versions",
+        "repositories",
+        "capacity",
+        "leases"
+      ],
+      "properties": {
+        "interface_version": {
+          "description": "The interface's version, apart from the protocol's.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "runner_version": {
+          "description": "boomdrive --version's text.",
+          "type": "string"
+        },
+        "tool_versions": {
+          "description": "Each tool's version, by the tool's name.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/tool_name"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/tool_version"
+          }
+        },
+        "repositories": {
+          "description": "The addresses of the repositories the runner keeps for this partition, with their clones made.",
+          "type": "array",
+          "items": {
+            "$ref": "shared.schema.json#/$defs/repository"
+          }
+        },
+        "capacity": {
+          "$ref": "#/$defs/capacity"
+        },
+        "leases": {
+          "description": "Each launch's, each command's and each preview's id with the lease number held.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "shared.schema.json#/$defs/lease_number"
+          }
+        }
+      }
+    },
+    "tool_name": {
+      "description": "A tool's name, as the runner names it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$"
+    },
+    "tool_version": {
+      "description": "A tool's version as the runner read it: the first line of its --version as it printed it, or the words saying why it could not be run.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "printed"
+          ],
+          "properties": {
+            "printed": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "missing"
+          ],
+          "properties": {
+            "missing": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "capacity": {
+      "description": "The host's capacity, as Flume's status gives it, or the words saying why Flume's status could not be read.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "printed"
+          ],
+          "properties": {
+            "printed": {
+              "$ref": "#/$defs/host_part"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "missing"
+          ],
+          "properties": {
+            "missing": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "host_part": {
+      "description": "The copy of flume status --json's host part: its room and its streams', each value as Flume printed it. It holds no stream's queue, and none of Flume's pools, addresses, bases, host queue or watch.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "running",
+        "bound",
+        "room",
+        "streams"
+      ],
+      "properties": {
+        "running": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "bound": {
+          "$ref": "#/$defs/count_or_unbounded"
+        },
+        "room": {
+          "$ref": "#/$defs/count_or_unbounded"
+        },
+        "streams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stream"
+          }
+        }
+      }
+    },
+    "stream": {
+      "description": "One of Flume's streams on the host, without its queue.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "priority",
+        "running",
+        "bound",
+        "room"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "shared.schema.json#/$defs/signed_integer"
+        },
+        "running": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "bound": {
+          "$ref": "#/$defs/count_or_unbounded"
+        },
+        "room": {
+          "$ref": "#/$defs/count_or_unbounded"
+        }
+      }
+    },
+    "count_or_unbounded": {
+      "description": "A count as Flume printed it, or null where Flume names no bound.",
+      "oneOf": [
+        {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

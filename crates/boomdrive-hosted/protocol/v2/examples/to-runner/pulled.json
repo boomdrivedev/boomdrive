@@ -1,0 +1,165 @@
+{
+  "protocol_version": 2,
+  "id": "plane:1",
+  "body": {
+    "pulled": {
+      "wants": [
+        {
+          "offer": {
+            "id": "offer-1",
+            "lease": {
+              "number": 2,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "launch": {
+              "repository": "example/app",
+              "kind": "fix",
+              "name": "parser",
+              "base": "main",
+              "brief": "Read a tab as the width the user names.\n",
+              "stream": "work",
+              "priority": 4,
+              "intent": "example/parser",
+              "recipients": [
+                "example/planner"
+              ],
+              "holds": [
+                {
+                  "stage": "code",
+                  "words": "the brief is read first"
+                }
+              ],
+              "hold_submission": true,
+              "after": [
+                "offer-0"
+              ],
+              "agent_settings": [
+                {
+                  "field": "model",
+                  "value": "opus"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "offer": {
+            "id": "offer-2",
+            "lease": {
+              "number": 1,
+              "expires": null
+            },
+            "launch": {
+              "repository": "example/app",
+              "kind": "example/kinds/review@1",
+              "name": "tabs",
+              "base": null,
+              "brief": null,
+              "stream": null,
+              "priority": null,
+              "intent": null,
+              "recipients": [],
+              "holds": [],
+              "hold_submission": false,
+              "after": [],
+              "agent_settings": []
+            }
+          }
+        },
+        {
+          "act": {
+            "id": "act-1",
+            "launch": "offer-1",
+            "lease": 2,
+            "what": {
+              "retry": {
+                "stage": "code",
+                "words": "Four.",
+                "submission": false
+              }
+            }
+          }
+        },
+        {
+          "act": {
+            "id": "act-2",
+            "launch": "offer-1",
+            "lease": 2,
+            "what": {
+              "retry": {
+                "stage": null,
+                "words": null,
+                "submission": true
+              }
+            }
+          }
+        },
+        {
+          "act": {
+            "id": "act-3",
+            "launch": "offer-1",
+            "lease": 2,
+            "what": {
+              "priority": -2
+            }
+          }
+        },
+        {
+          "act": {
+            "id": "act-4",
+            "launch": "offer-2",
+            "lease": 1,
+            "what": "drop"
+          }
+        },
+        {
+          "act": {
+            "id": "act-5",
+            "launch": "offer-2",
+            "lease": 1,
+            "what": "done"
+          }
+        },
+        {
+          "command": {
+            "id": "command-1",
+            "lease": {
+              "number": 1,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "what": {
+              "branch": {
+                "repository": "example/app",
+                "branch": "bolt/tabs",
+                "from": "main"
+              }
+            }
+          }
+        },
+        {
+          "command": {
+            "id": "command-2",
+            "lease": {
+              "number": 1,
+              "expires": "2026-11-01T11:00:00Z"
+            },
+            "what": {
+              "other": {
+                "tool": "boom",
+                "words": "accept the unit"
+              }
+            }
+          }
+        },
+        {
+          "inbox": {
+            "id": "inbox-1",
+            "repository": "example/tools",
+            "branch": "inbox"
+          }
+        }
+      ],
+      "report": null
+    }
+  }
+}
