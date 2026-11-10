@@ -90,9 +90,9 @@ Nothing else of the decision above changes. core.37's details are amended in thi
 
 ## Amendment, 2026-11-09: a person's own drive, set up by one command on a host Nix does not manage
 
-Status: the route and its timing are the user's, chosen on their card on 2026-11-09. The rest is agentplot-design's, each choice cheap to change and given with the path not taken.
+Status: the route and its timing are the user's, chosen on their card on 2026-11-09. The rest is the design agent's, each choice cheap to change and given with the path not taken.
 
-Deciders: the user, on their card "Colleagues running their own drive with crew: may Nix manage their Macs, and how soon?", who chose "No: Nix installs the programs, a setup command does the rest" and "With Boomdrive going public". Before it, in agentplot-design's pane on 2026-11-08, of colleagues on their own Macs: "The idea is that they would be able to start talking to crew and create work items that the runner pulls and schedules, with decisions put on pending-you. That is the same way I'm working today."; "They wouldn't be taking my work and they'd be doing their own work. They'd have to set up their own crew state."; "How do we assist them in that setup process?"
+Deciders: the user, on their card "Colleagues running their own drive with crew: may Nix manage their Macs, and how soon?", who chose "No: Nix installs the programs, a setup command does the rest" and "With Boomdrive going public". Before it, in the design agent's pane on 2026-11-08, of colleagues on their own Macs: "The idea is that they would be able to start talking to crew and create work items that the runner pulls and schedules, with decisions put on pending-you. That is the same way I'm working today."; "They wouldn't be taking my work and they'd be doing their own work. They'd have to set up their own crew state."; "How do we assist them in that setup process?"
 
 Sources: the decision above and its amendment of 2026-11-06; records 0012, 0023 and 0028; agentplot/crew README, `crew main up` and `crew signal land`.
 
