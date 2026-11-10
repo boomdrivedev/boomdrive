@@ -741,6 +741,124 @@ fn a_value_flume_adds() {
     assert!(!lines[0].contains("dreaming"), "{lines:?}");
 }
 
+/// The report of `home/l-1` carrying the status `text`.
+fn carrying(text: String) -> Report {
+    let mut report = launched(&["home/l-1"]);
+    report
+        .launches
+        .get_mut(&Id::new("home/l-1"))
+        .expect("l-1")
+        .status = Some(Carried {
+        text,
+        at: At::parse("2026-11-01T10:01:00Z").expect("a time"),
+        listed: true,
+    });
+    report
+}
+
+/// Flume's status of a place in code, as [`status_in`] gives it with its
+/// code stage `begun`, but that its ends are `ends`.
+fn status_with_ends(ends: Value) -> String {
+    let mut status: Value = serde_json::from_str(&status_in("begun")).expect("JSON");
+    status["status"]["places"][0]["ends"] = ends;
+    status.to_string()
+}
+
+/// Four ends of a place: one whose `of` Flume 0.21.0 does not have, a
+/// stage's whose `state` it does not have, one with no key, as Flume
+/// 0.4.1 printed every end, and a submission's that passes.
+fn ends_flume_adds() -> Value {
+    let status: Value = serde_json::from_str(&status_in("begun")).expect("JSON");
+    let construct = status["status"]["places"][0]["ends"][0].clone();
+    let mut moved = construct.clone();
+    moved["of"] = json!("moved");
+    let mut dreaming = construct.clone();
+    dreaming["state"] = json!("dreaming");
+    dreaming["key"] = json!("stage/construct/1/dreaming");
+    let mut keyless = construct.clone();
+    keyless.as_object_mut().expect("an end").remove("key");
+    let mut submission = construct;
+    for field in ["stage", "start", "state", "end"] {
+        submission.as_object_mut().expect("an end").remove(field);
+    }
+    submission["of"] = json!("submission");
+    submission["submit"] = json!(1);
+    submission["verdict"] = json!({
+        "landed": {
+            "commit": "fdda3c771caf870178226852bb0bf8e9c8676da3",
+            "place_removed": false,
+            "branch_removed": false
+        }
+    });
+    submission["key"] = json!("submission/1/landed");
+    json!([moved, dreaming, keyless, submission])
+}
+
+/// The hosted-control-plane spec's "An end Flume adds" (design Decision 2
+/// of the-hosted-protocol-carries-every-end-of-a-place): each end is
+/// copied on its own, the rest of the status goes up as its copy, and
+/// one line names the launch and each end's path that went up by its
+/// delivery alone or was left out, once while it lasts, and no value.
+#[test]
+fn an_end_flume_adds() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let report = carrying(status_with_ends(ends_flume_adds()));
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        plane.hosted.report(&report).expect("answered");
+    }
+
+    let taken = fake.taken();
+    let reports: Vec<&Taken> = taken
+        .iter()
+        .filter(|taken| {
+            matches!(taken, Taken::Message { partition, message, .. }
+            if partition == "home" && kind(message).as_deref() == Some("report"))
+        })
+        .collect();
+    assert_eq!(reports.len(), 2);
+    for taken in reports {
+        let Taken::Message {
+            message, refused, ..
+        } = taken
+        else {
+            unreachable!();
+        };
+        assert_eq!(refused, &None, "the report passes version 2");
+        let copy = &message["body"]["report"]["launches"]["l-1"]["status"]["copy"];
+        assert_eq!(
+            copy["stages"][1]["state"],
+            json!("begun"),
+            "the rest goes up"
+        );
+        let ends = copy["ends"].as_array().expect("its ends");
+        assert_eq!(ends.len(), 3, "{ends:#?}");
+        assert_eq!(ends[0]["of"], json!("moved"));
+        assert_eq!(ends[1]["key"], json!("stage/construct/1/dreaming"));
+        for alone in &ends[..2] {
+            assert!(alone.get("deliveries").is_none(), "by its delivery alone");
+            assert!(alone["delivery"].is_string(), "{alone}");
+        }
+        assert_eq!(ends[2]["of"], json!("submission"));
+        assert!(ends[2].get("verdict").is_some(), "whole");
+    }
+    let lines: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("home/l-1: "))
+        .collect();
+    assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
+    assert_eq!(
+        lines[0],
+        "home/l-1: its status goes up with ends version 2 does not name: /ends/0 by its \
+         delivery alone, /ends/1 by its delivery alone, /ends/2 left out"
+    );
+    for value in ["moved", "dreaming", "construct", "scratch/planner"] {
+        assert!(!lines[0].contains(value), "{lines:?}");
+    }
+}
+
 #[test]
 fn a_status_that_passes_goes_up_as_its_copy() {
     let fake = Fake::start();

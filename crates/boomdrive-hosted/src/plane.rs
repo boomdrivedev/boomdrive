@@ -133,6 +133,11 @@ struct Partition {
     /// Each launch's carried answer whose copy failed at the last report,
     /// said once while it fails.
     failing: BTreeSet<(Id, &'static str)>,
+    /// Each launch whose status went up at the last report with an end
+    /// carried by its delivery alone or left out, said once while it does
+    /// (design Decisions 2 and 3 of
+    /// the-hosted-protocol-carries-every-end-of-a-place).
+    partial: BTreeSet<Id>,
 }
 
 impl Hosted {
@@ -442,6 +447,7 @@ impl Partition {
             sent: None,
             withheld: BTreeSet::new(),
             failing: BTreeSet::new(),
+            partial: BTreeSet::new(),
         }
     }
 
@@ -626,16 +632,30 @@ impl Partition {
     /// `part` as version 2's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
-    /// (design Decision 9). Its four parts alone go up: version 2 names no
-    /// previews, so a report's never do (core.42).
+    /// (design Decision 9). A status goes up with each end of the place
+    /// copied on its own, and one with an end carried by its delivery
+    /// alone or left out is said once while it does, naming each end's
+    /// path and never a value (design Decision 2 of
+    /// the-hosted-protocol-carries-every-end-of-a-place; core.11). Its
+    /// four parts alone go up: version 2 names no previews, so a report's
+    /// never do (core.42).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
+        let mut partial = BTreeSet::new();
         let mut launches = serde_json::Map::new();
         for (id, launched) in &part.launches {
             let mut carried = |what: &'static str, carried: &Option<Carried>| {
                 let carried = carried.as_ref()?;
                 let copied = match what {
-                    "status" => copy::place_status(&carried.text).map(|placed| placed.copy),
+                    "status" => copy::place_status(&carried.text).map(|placed| {
+                        if !placed.whole() {
+                            if !self.partial.contains(id) {
+                                say(partial_words(id, &placed));
+                            }
+                            partial.insert(id.clone());
+                        }
+                        placed.copy
+                    }),
                     _ => copy::submission_entry(&carried.text),
                 };
                 match copied {
@@ -669,6 +689,7 @@ impl Partition {
             );
         }
         self.failing = failing;
+        self.partial = partial;
         let acts: serde_json::Map<String, Value> = part
             .acts
             .iter()
@@ -786,6 +807,27 @@ fn merge(into: &mut Report, part: Report) {
     into.commands.extend(part.commands);
     into.inboxes.extend(part.inboxes);
     into.previews.extend(part.previews);
+}
+
+/// The line said of the launch `id` whose status went up as `placed`,
+/// with an end carried by its delivery alone or left out: the launch and
+/// each such end's path in Flume's status, and never a value (core.11).
+fn partial_words(id: &Id, placed: &copy::PlaceCopy) -> String {
+    let ends: Vec<String> = placed
+        .by_delivery
+        .iter()
+        .map(|n| format!("/ends/{n} by its delivery alone"))
+        .chain(
+            placed
+                .left_out
+                .iter()
+                .map(|n| format!("/ends/{n} left out")),
+        )
+        .collect();
+    format!(
+        "{id}: its status goes up with ends version 2 does not name: {}",
+        ends.join(", ")
+    )
 }
 
 /// `value` as raw JSON, as version 2's host part carries each value.
