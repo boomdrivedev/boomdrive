@@ -6,11 +6,19 @@
 # once Flume publishes a flake.
 {
   "weir-capture-0.0.0" = {
-    rev = "daacda39e59469029b2841f889c6cbd8cd7839d9";
-    hash = "sha256-YJKuoW3lWl5wtEiu99oHlQF+dcdlJu1tdb/aeEvxHeM=";
+    rev = "52b95528a495100e34fca39109d563d8bf75673a";
+    hash = "sha256-29h7paqrZ2AONJ/Xs2KBTF+9qYJWJMoJBZDE+OIxqoc=";
+  };
+  "weir-delivery-0.0.0" = {
+    rev = "52b95528a495100e34fca39109d563d8bf75673a";
+    hash = "sha256-29h7paqrZ2AONJ/Xs2KBTF+9qYJWJMoJBZDE+OIxqoc=";
   };
   "weir-kinds-0.0.0" = {
-    rev = "daacda39e59469029b2841f889c6cbd8cd7839d9";
-    hash = "sha256-YJKuoW3lWl5wtEiu99oHlQF+dcdlJu1tdb/aeEvxHeM=";
+    rev = "52b95528a495100e34fca39109d563d8bf75673a";
+    hash = "sha256-29h7paqrZ2AONJ/Xs2KBTF+9qYJWJMoJBZDE+OIxqoc=";
+  };
+  "weir-pack-0.0.0" = {
+    rev = "52b95528a495100e34fca39109d563d8bf75673a";
+    hash = "sha256-29h7paqrZ2AONJ/Xs2KBTF+9qYJWJMoJBZDE+OIxqoc=";
   };
 }

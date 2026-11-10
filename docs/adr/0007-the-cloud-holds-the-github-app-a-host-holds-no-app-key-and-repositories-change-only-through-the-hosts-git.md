@@ -9,7 +9,7 @@ decision-makers:
 
 # The cloud holds the GitHub App, a host holds no App key, and a repository changes only through the host's git
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-09, below: one Boomdrive App for every host, its key held by the runner where no cloud holds it, and every tool's token from the runner.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; sluice record 0019; agentplot/boomdrive-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
@@ -45,7 +45,27 @@ Not taken: tokens narrowed for each call, and every mint as an event on the chai
 
 ### Consequences
 
-- crew's hosts, which have no cloud, keep sluice's App and the host's own credential helper as they are.
+- crew's hosts, which have no cloud, hold the Boomdrive App's key in the runner, as the amendment of 2026-11-09 has it.
 - sluice is asked for an identity that runs a command for its token, as git runs a credential helper, naming no control plane (cloud core.47).
 - How an agent in a place on a cloud host reaches the forge, for a branch it pushes or a `gh` call, is still open. It is Flume's and the cloud's question, and the runner's only if a token comes through it.
 - As built, the runner and weir-branch run `git` for every call, so F52 holds already.
+
+## Amendment, 2026-11-09: one Boomdrive App, its key held by the runner where no cloud holds it
+
+Status: accepted by the user on 2026-11-09, on the design agent's card: "One Boomdrive App; the runner holds its key and gives every tool its tokens". They asked it in the design agent's pane that day, as the family moved to the boomdrivedev org: "Do we want to mimic the control plane cloud concept here and have a Boomdrive GitHub app that passes the credentials through from the cloud down to Sluice?" How it is built is the design agent's own choice, cheap to change.
+
+- **One App.** The family's forge identity is one GitHub App named for the product, owned by the `boomdrivedev` org. It is the App the cloud holds once it serves hosts, and it replaces sluice's App and the older `agentplot-flywheel`. It asks for what sluice's App asks: contents, workflows, commit statuses, checks and pull requests to write, and metadata to read.
+- **Where no cloud holds it, the runner does.** On a host whose control plane is not hosted, crew's among them, the runner holds the App's key, a file named by a path in the runner's own settings, outside the Nix store, readable by its owner alone, as sluice's own key is (sluice core.51). The runner mints a short-lived installation token from it, for one repository at a time. Under a hosted control plane, no key is on the host and the cloud mints the token, as decided above.
+- **Every tool asks the runner.** On a Boomdrive host, a tool that reaches the forge with the family's identity takes its token from `boomdrive forge-token`. It speaks git's credential-helper protocol, so it serves as a git credential helper set for one call, and sluice runs it the same way. It gives a token only for a repository of a drive the host serves, and only on standard output; no token is written to a file or a log. The runner's own git calls on a served repository take it the same way (core.34).
+- **`erase` drops a token and revokes nothing.** The runner keeps one token for each repository and hands it to every tool that asks, until it nears its end. A tool's `erase` of the token it was given drops that token from the runner's keeping, so the next `get` for that repository mints a fresh one and never gives the erased one again. It does not revoke the token at GitHub, so another tool still holding it goes on using it until GitHub refuses it or it ends. An `erase` of a token the runner no longer holds does nothing. The command's error output never carries a token. sluice reads `erase` this way, failing a renewal that gets back the token it erased (sluice record 0108 as amended).
+- **Which tools take it.** sluice takes it, to land, read the forge and post its check (sluice record 0108). The runner takes it for its clones and fetches. crew does not: it acts for the person, with the person's own credentials, on the person's cards and state, which no drive serves. An agent in a place keeps the person's credentials; how a cloud host's agent reaches the forge stays open, as above.
+- **sluice alone keeps its own key.** sluice used on a host without Boomdrive names its own App and key, as it does today.
+- **A cloud host's token waits on the protocol.** The runner's protocol carries no forge token through version 2. Until a version of its own does, `boomdrive forge-token` on a cloud host refuses, naming that.
+
+### Consequences of the amendment
+
+- Good: one key on a host, in one process, and the same path whether crew or the cloud is the control plane (blueprints principle 6).
+- Good: GitHub shows the product's name on every landing, check and request.
+- Bad: an agent running as the host's user can run `boomdrive forge-token` as it can read sluice's key today. The ruleset keeps agents off guarded branches because their git never asks for the token, not because they cannot (sluice record 0019).
+- Bad: until the runner gives tokens, a host keeps the App's key where sluice reads it today.
+

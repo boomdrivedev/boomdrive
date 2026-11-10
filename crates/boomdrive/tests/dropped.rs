@@ -610,10 +610,11 @@ fn the_place_tidied() {
 }
 
 /// The clones spec's "The place's end held for the runner": its record
-/// `<place>@<at>` carried tidied and landed, pending for the runner, the
-/// next pass keeps the clone and view, named held by the place; once the
-/// carried record is pending for the runner no more, the pass after
-/// removes them (record 0030; Task notes 5.2).
+/// `<place>@<at>` carried tidied and landed, pending for the runner and
+/// `scratch/planner`, the next pass keeps the clone and view, named held
+/// by the place; once the runner has confirmed its ends and the carried
+/// record is pending for `scratch/planner` alone, the pass after removes
+/// them (record 0030 as amended on 2026-11-09; design Decision 6).
 #[test]
 fn the_places_end_held_for_the_runner() {
     let scratch = Scratch::new();
@@ -630,7 +631,12 @@ fn the_places_end_held_for_the_runner() {
         } })
     };
     let record = format!("{PLACE}@1793559694");
-    report_holding(&scratch, &record, tidied(json!(["boomdrive"])), true);
+    report_holding(
+        &scratch,
+        &record,
+        tidied(json!(["boomdrive", "scratch/planner"])),
+        true,
+    );
     let (outcome, lines) = scratch.pass(&keeping(&[]));
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(lines, [HELD_BY_THE_PLACE]);

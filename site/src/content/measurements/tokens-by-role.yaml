@@ -1,0 +1,950 @@
+# Every point here is a sample until the collector runs: `sample: true` marks
+# it, and the page says so wherever it shows one. Collected points are
+# appended without the flag, and the samples are deleted.
+name: Tokens by role
+summary: >
+  What the fleet spends on tokens and where: by the role of the agent that
+  spent them, and by the model it ran.
+dimension: cost
+definitionVersion: 1
+definition: >
+  Each day, every session Crew started is joined by its session id to its
+  transcript. Its tokens are counted by kind (input, output, cache written,
+  cache read) and priced in list-price dollars. Both are split by role
+  (conductor, team ops, unit agent, design, planner, dispatcher, operator) and
+  by model, per drive and in total. Dollars come from a dated rate table
+  the site keeps, at the rates in force on the point's date; a price change
+  dates the table, never the definition.
+principle: measure-the-fleet
+source: "`crew usage --json` over Crew's session registry and the transcripts' per-message usage"
+collector: collectors/tokens-by-role
+argues: >
+  What the fleet costs and where: whether the spend sits with the agents that
+  build or the ones that manage, and which model earns its price.
+cannotShow: >
+  It prices tokens at list rates, not at what a plan charges, and it counts
+  what was spent, not what it bought: a costly day may land nothing.
+chart: tokens
+series:
+  - name: tokens
+    unit: tokens
+    statistic: sum
+    points:
+      - { date: 2026-09-12, value: 687591463, sample: true }
+      - { date: 2026-09-13, value: 938325436, sample: true }
+      - { date: 2026-09-14, value: 851227999, sample: true }
+      - { date: 2026-09-15, value: 732888327, sample: true }
+      - { date: 2026-09-16, value: 743815821, sample: true }
+      - { date: 2026-09-17, value: 691162134, sample: true }
+      - { date: 2026-09-18, value: 738296616, sample: true }
+      - { date: 2026-09-19, value: 856782302, sample: true }
+      - { date: 2026-09-20, value: 785630782, sample: true }
+      - { date: 2026-09-21, value: 720462195, sample: true }
+      - { date: 2026-09-22, value: 708318149, sample: true }
+      - { date: 2026-09-23, value: 748624373, sample: true }
+      - { date: 2026-09-24, value: 656690900, sample: true }
+      - { date: 2026-09-25, value: 726162961, sample: true }
+      - { date: 2026-09-26, value: 910705043, sample: true }
+      - { date: 2026-09-27, value: 788450421, sample: true }
+      - { date: 2026-09-28, value: 662665068, sample: true }
+      - { date: 2026-09-29, value: 898737320, sample: true }
+      - { date: 2026-09-30, value: 641232028, sample: true }
+      - { date: 2026-10-01, value: 834785382, sample: true }
+      - { date: 2026-10-02, value: 669043876, sample: true }
+      - { date: 2026-10-03, value: 662228307, sample: true }
+      - { date: 2026-10-04, value: 656201194, sample: true }
+      - { date: 2026-10-05, value: 845243866, sample: true }
+      - { date: 2026-10-06, value: 766157952, sample: true }
+      - { date: 2026-10-07, value: 794302574, sample: true }
+      - { date: 2026-10-08, value: 679751257, sample: true }
+      - { date: 2026-10-09, value: 646442653, sample: true }
+  - name: tokens, input
+    unit: tokens
+    statistic: sum
+    kind: input
+    points:
+      - { date: 2026-09-12, value: 4566069, sample: true }
+      - { date: 2026-09-13, value: 8564989, sample: true }
+      - { date: 2026-09-14, value: 7449021, sample: true }
+      - { date: 2026-09-15, value: 6548623, sample: true }
+      - { date: 2026-09-16, value: 4953057, sample: true }
+      - { date: 2026-09-17, value: 4145451, sample: true }
+      - { date: 2026-09-18, value: 4690760, sample: true }
+      - { date: 2026-09-19, value: 7260329, sample: true }
+      - { date: 2026-09-20, value: 5751633, sample: true }
+      - { date: 2026-09-21, value: 5681585, sample: true }
+      - { date: 2026-09-22, value: 4123016, sample: true }
+      - { date: 2026-09-23, value: 6542607, sample: true }
+      - { date: 2026-09-24, value: 4667551, sample: true }
+      - { date: 2026-09-25, value: 5699602, sample: true }
+      - { date: 2026-09-26, value: 7644294, sample: true }
+      - { date: 2026-09-27, value: 6227324, sample: true }
+      - { date: 2026-09-28, value: 4371843, sample: true }
+      - { date: 2026-09-29, value: 6454385, sample: true }
+      - { date: 2026-09-30, value: 4013011, sample: true }
+      - { date: 2026-10-01, value: 7102055, sample: true }
+      - { date: 2026-10-02, value: 5048484, sample: true }
+      - { date: 2026-10-03, value: 4954827, sample: true }
+      - { date: 2026-10-04, value: 4695350, sample: true }
+      - { date: 2026-10-05, value: 5575704, sample: true }
+      - { date: 2026-10-06, value: 6443014, sample: true }
+      - { date: 2026-10-07, value: 5612032, sample: true }
+      - { date: 2026-10-08, value: 5824864, sample: true }
+      - { date: 2026-10-09, value: 5189819, sample: true }
+  - name: tokens, output
+    unit: tokens
+    statistic: sum
+    kind: output
+    points:
+      - { date: 2026-09-12, value: 10154040, sample: true }
+      - { date: 2026-09-13, value: 12897412, sample: true }
+      - { date: 2026-09-14, value: 11903584, sample: true }
+      - { date: 2026-09-15, value: 8649939, sample: true }
+      - { date: 2026-09-16, value: 12216677, sample: true }
+      - { date: 2026-09-17, value: 10812347, sample: true }
+      - { date: 2026-09-18, value: 12622129, sample: true }
+      - { date: 2026-09-19, value: 13063289, sample: true }
+      - { date: 2026-09-20, value: 10394170, sample: true }
+      - { date: 2026-09-21, value: 11887885, sample: true }
+      - { date: 2026-09-22, value: 9689660, sample: true }
+      - { date: 2026-09-23, value: 9009624, sample: true }
+      - { date: 2026-09-24, value: 8699310, sample: true }
+      - { date: 2026-09-25, value: 11566336, sample: true }
+      - { date: 2026-09-26, value: 13454086, sample: true }
+      - { date: 2026-09-27, value: 12974033, sample: true }
+      - { date: 2026-09-28, value: 10475569, sample: true }
+      - { date: 2026-09-29, value: 14853878, sample: true }
+      - { date: 2026-09-30, value: 8831702, sample: true }
+      - { date: 2026-10-01, value: 12998246, sample: true }
+      - { date: 2026-10-02, value: 10196738, sample: true }
+      - { date: 2026-10-03, value: 10801875, sample: true }
+      - { date: 2026-10-04, value: 9724613, sample: true }
+      - { date: 2026-10-05, value: 13242511, sample: true }
+      - { date: 2026-10-06, value: 10345895, sample: true }
+      - { date: 2026-10-07, value: 10246368, sample: true }
+      - { date: 2026-10-08, value: 9852474, sample: true }
+      - { date: 2026-10-09, value: 10674304, sample: true }
+  - name: tokens, cache written
+    unit: tokens
+    statistic: sum
+    kind: cache written
+    points:
+      - { date: 2026-09-12, value: 30373585, sample: true }
+      - { date: 2026-09-13, value: 32336486, sample: true }
+      - { date: 2026-09-14, value: 37455427, sample: true }
+      - { date: 2026-09-15, value: 25480421, sample: true }
+      - { date: 2026-09-16, value: 30817863, sample: true }
+      - { date: 2026-09-17, value: 28405767, sample: true }
+      - { date: 2026-09-18, value: 31351788, sample: true }
+      - { date: 2026-09-19, value: 30762823, sample: true }
+      - { date: 2026-09-20, value: 30112930, sample: true }
+      - { date: 2026-09-21, value: 25622787, sample: true }
+      - { date: 2026-09-22, value: 31937678, sample: true }
+      - { date: 2026-09-23, value: 25608778, sample: true }
+      - { date: 2026-09-24, value: 29288869, sample: true }
+      - { date: 2026-09-25, value: 27138812, sample: true }
+      - { date: 2026-09-26, value: 40245688, sample: true }
+      - { date: 2026-09-27, value: 30891305, sample: true }
+      - { date: 2026-09-28, value: 23366411, sample: true }
+      - { date: 2026-09-29, value: 33343287, sample: true }
+      - { date: 2026-09-30, value: 24820504, sample: true }
+      - { date: 2026-10-01, value: 31954278, sample: true }
+      - { date: 2026-10-02, value: 29012647, sample: true }
+      - { date: 2026-10-03, value: 26933651, sample: true }
+      - { date: 2026-10-04, value: 28076899, sample: true }
+      - { date: 2026-10-05, value: 38276469, sample: true }
+      - { date: 2026-10-06, value: 28869757, sample: true }
+      - { date: 2026-10-07, value: 30272814, sample: true }
+      - { date: 2026-10-08, value: 25487859, sample: true }
+      - { date: 2026-10-09, value: 28814558, sample: true }
+  - name: tokens, cache read
+    unit: tokens
+    statistic: sum
+    kind: cache read
+    points:
+      - { date: 2026-09-12, value: 642497769, sample: true }
+      - { date: 2026-09-13, value: 884526549, sample: true }
+      - { date: 2026-09-14, value: 794419967, sample: true }
+      - { date: 2026-09-15, value: 692209344, sample: true }
+      - { date: 2026-09-16, value: 695828224, sample: true }
+      - { date: 2026-09-17, value: 647798569, sample: true }
+      - { date: 2026-09-18, value: 689631939, sample: true }
+      - { date: 2026-09-19, value: 805695861, sample: true }
+      - { date: 2026-09-20, value: 739372049, sample: true }
+      - { date: 2026-09-21, value: 677269938, sample: true }
+      - { date: 2026-09-22, value: 662567795, sample: true }
+      - { date: 2026-09-23, value: 707463364, sample: true }
+      - { date: 2026-09-24, value: 614035170, sample: true }
+      - { date: 2026-09-25, value: 681758211, sample: true }
+      - { date: 2026-09-26, value: 849360975, sample: true }
+      - { date: 2026-09-27, value: 738357759, sample: true }
+      - { date: 2026-09-28, value: 624451245, sample: true }
+      - { date: 2026-09-29, value: 844085770, sample: true }
+      - { date: 2026-09-30, value: 603566811, sample: true }
+      - { date: 2026-10-01, value: 782730803, sample: true }
+      - { date: 2026-10-02, value: 624786007, sample: true }
+      - { date: 2026-10-03, value: 619537954, sample: true }
+      - { date: 2026-10-04, value: 613704332, sample: true }
+      - { date: 2026-10-05, value: 788149182, sample: true }
+      - { date: 2026-10-06, value: 720499286, sample: true }
+      - { date: 2026-10-07, value: 748171360, sample: true }
+      - { date: 2026-10-08, value: 638586060, sample: true }
+      - { date: 2026-10-09, value: 601763972, sample: true }
+  - name: tokens, conductor
+    unit: tokens
+    statistic: sum
+    role: conductor
+    points:
+      - { date: 2026-09-12, value: 92737836, sample: true }
+      - { date: 2026-09-13, value: 94659992, sample: true }
+      - { date: 2026-09-14, value: 113128939, sample: true }
+      - { date: 2026-09-15, value: 95578046, sample: true }
+      - { date: 2026-09-16, value: 129398761, sample: true }
+      - { date: 2026-09-17, value: 159972468, sample: true }
+      - { date: 2026-09-18, value: 83035245, sample: true }
+      - { date: 2026-09-19, value: 148129548, sample: true }
+      - { date: 2026-09-20, value: 109689422, sample: true }
+      - { date: 2026-09-21, value: 103668529, sample: true }
+      - { date: 2026-09-22, value: 116462489, sample: true }
+      - { date: 2026-09-23, value: 84837341, sample: true }
+      - { date: 2026-09-24, value: 111597797, sample: true }
+      - { date: 2026-09-25, value: 100043055, sample: true }
+      - { date: 2026-09-26, value: 110851301, sample: true }
+      - { date: 2026-09-27, value: 86295792, sample: true }
+      - { date: 2026-09-28, value: 82631071, sample: true }
+      - { date: 2026-09-29, value: 159342293, sample: true }
+      - { date: 2026-09-30, value: 93605280, sample: true }
+      - { date: 2026-10-01, value: 138917551, sample: true }
+      - { date: 2026-10-02, value: 109910203, sample: true }
+      - { date: 2026-10-03, value: 82527986, sample: true }
+      - { date: 2026-10-04, value: 109328408, sample: true }
+      - { date: 2026-10-05, value: 88199511, sample: true }
+      - { date: 2026-10-06, value: 92593496, sample: true }
+      - { date: 2026-10-07, value: 108100200, sample: true }
+      - { date: 2026-10-08, value: 88809561, sample: true }
+      - { date: 2026-10-09, value: 80300199, sample: true }
+  - name: tokens, team ops
+    unit: tokens
+    statistic: sum
+    role: team ops
+    points:
+      - { date: 2026-09-12, value: 60048089, sample: true }
+      - { date: 2026-09-13, value: 87181302, sample: true }
+      - { date: 2026-09-14, value: 89869260, sample: true }
+      - { date: 2026-09-15, value: 48131360, sample: true }
+      - { date: 2026-09-16, value: 45444787, sample: true }
+      - { date: 2026-09-17, value: 46190178, sample: true }
+      - { date: 2026-09-18, value: 74257346, sample: true }
+      - { date: 2026-09-19, value: 73024893, sample: true }
+      - { date: 2026-09-20, value: 88374629, sample: true }
+      - { date: 2026-09-21, value: 76442344, sample: true }
+      - { date: 2026-09-22, value: 58290496, sample: true }
+      - { date: 2026-09-23, value: 49954735, sample: true }
+      - { date: 2026-09-24, value: 54630582, sample: true }
+      - { date: 2026-09-25, value: 79133870, sample: true }
+      - { date: 2026-09-26, value: 55020015, sample: true }
+      - { date: 2026-09-27, value: 59121904, sample: true }
+      - { date: 2026-09-28, value: 85292041, sample: true }
+      - { date: 2026-09-29, value: 79248480, sample: true }
+      - { date: 2026-09-30, value: 44223924, sample: true }
+      - { date: 2026-10-01, value: 77173446, sample: true }
+      - { date: 2026-10-02, value: 77452360, sample: true }
+      - { date: 2026-10-03, value: 83124496, sample: true }
+      - { date: 2026-10-04, value: 68851915, sample: true }
+      - { date: 2026-10-05, value: 89500989, sample: true }
+      - { date: 2026-10-06, value: 76763279, sample: true }
+      - { date: 2026-10-07, value: 68579802, sample: true }
+      - { date: 2026-10-08, value: 62624605, sample: true }
+      - { date: 2026-10-09, value: 78602248, sample: true }
+  - name: tokens, unit agent
+    unit: tokens
+    statistic: sum
+    role: unit agent
+    points:
+      - { date: 2026-09-12, value: 386823315, sample: true }
+      - { date: 2026-09-13, value: 590733563, sample: true }
+      - { date: 2026-09-14, value: 504395215, sample: true }
+      - { date: 2026-09-15, value: 451934500, sample: true }
+      - { date: 2026-09-16, value: 420598712, sample: true }
+      - { date: 2026-09-17, value: 353212521, sample: true }
+      - { date: 2026-09-18, value: 430196789, sample: true }
+      - { date: 2026-09-19, value: 459968825, sample: true }
+      - { date: 2026-09-20, value: 457976910, sample: true }
+      - { date: 2026-09-21, value: 389171480, sample: true }
+      - { date: 2026-09-22, value: 422645411, sample: true }
+      - { date: 2026-09-23, value: 472445864, sample: true }
+      - { date: 2026-09-24, value: 335741658, sample: true }
+      - { date: 2026-09-25, value: 412516175, sample: true }
+      - { date: 2026-09-26, value: 577450994, sample: true }
+      - { date: 2026-09-27, value: 504926970, sample: true }
+      - { date: 2026-09-28, value: 333309638, sample: true }
+      - { date: 2026-09-29, value: 519644048, sample: true }
+      - { date: 2026-09-30, value: 375237687, sample: true }
+      - { date: 2026-10-01, value: 439294277, sample: true }
+      - { date: 2026-10-02, value: 366767314, sample: true }
+      - { date: 2026-10-03, value: 312200309, sample: true }
+      - { date: 2026-10-04, value: 305755454, sample: true }
+      - { date: 2026-10-05, value: 539975701, sample: true }
+      - { date: 2026-10-06, value: 437990614, sample: true }
+      - { date: 2026-10-07, value: 440483346, sample: true }
+      - { date: 2026-10-08, value: 352673288, sample: true }
+      - { date: 2026-10-09, value: 314490045, sample: true }
+  - name: tokens, design
+    unit: tokens
+    statistic: sum
+    role: design
+    points:
+      - { date: 2026-09-12, value: 46449951, sample: true }
+      - { date: 2026-09-13, value: 99492323, sample: true }
+      - { date: 2026-09-14, value: 76843842, sample: true }
+      - { date: 2026-09-15, value: 44479606, sample: true }
+      - { date: 2026-09-16, value: 73196265, sample: true }
+      - { date: 2026-09-17, value: 73793179, sample: true }
+      - { date: 2026-09-18, value: 90367857, sample: true }
+      - { date: 2026-09-19, value: 96570016, sample: true }
+      - { date: 2026-09-20, value: 68786761, sample: true }
+      - { date: 2026-09-21, value: 72116616, sample: true }
+      - { date: 2026-09-22, value: 50161642, sample: true }
+      - { date: 2026-09-23, value: 76921669, sample: true }
+      - { date: 2026-09-24, value: 53992016, sample: true }
+      - { date: 2026-09-25, value: 71018059, sample: true }
+      - { date: 2026-09-26, value: 88027778, sample: true }
+      - { date: 2026-09-27, value: 79865585, sample: true }
+      - { date: 2026-09-28, value: 71343135, sample: true }
+      - { date: 2026-09-29, value: 83681349, sample: true }
+      - { date: 2026-09-30, value: 47327183, sample: true }
+      - { date: 2026-10-01, value: 80753869, sample: true }
+      - { date: 2026-10-02, value: 47399027, sample: true }
+      - { date: 2026-10-03, value: 79824921, sample: true }
+      - { date: 2026-10-04, value: 84882006, sample: true }
+      - { date: 2026-10-05, value: 59074925, sample: true }
+      - { date: 2026-10-06, value: 74381497, sample: true }
+      - { date: 2026-10-07, value: 90047280, sample: true }
+      - { date: 2026-10-08, value: 96024825, sample: true }
+      - { date: 2026-10-09, value: 90354938, sample: true }
+  - name: tokens, planner
+    unit: tokens
+    statistic: sum
+    role: planner
+    points:
+      - { date: 2026-09-12, value: 38322149, sample: true }
+      - { date: 2026-09-13, value: 34995219, sample: true }
+      - { date: 2026-09-14, value: 28832327, sample: true }
+      - { date: 2026-09-15, value: 34716878, sample: true }
+      - { date: 2026-09-16, value: 34248683, sample: true }
+      - { date: 2026-09-17, value: 32855538, sample: true }
+      - { date: 2026-09-18, value: 32312754, sample: true }
+      - { date: 2026-09-19, value: 30656311, sample: true }
+      - { date: 2026-09-20, value: 37822832, sample: true }
+      - { date: 2026-09-21, value: 43959747, sample: true }
+      - { date: 2026-09-22, value: 25435056, sample: true }
+      - { date: 2026-09-23, value: 26436251, sample: true }
+      - { date: 2026-09-24, value: 38725607, sample: true }
+      - { date: 2026-09-25, value: 23112915, sample: true }
+      - { date: 2026-09-26, value: 44009622, sample: true }
+      - { date: 2026-09-27, value: 23464977, sample: true }
+      - { date: 2026-09-28, value: 37064943, sample: true }
+      - { date: 2026-09-29, value: 24693068, sample: true }
+      - { date: 2026-09-30, value: 40288708, sample: true }
+      - { date: 2026-10-01, value: 38272423, sample: true }
+      - { date: 2026-10-02, value: 23195309, sample: true }
+      - { date: 2026-10-03, value: 47493367, sample: true }
+      - { date: 2026-10-04, value: 37535196, sample: true }
+      - { date: 2026-10-05, value: 44135878, sample: true }
+      - { date: 2026-10-06, value: 41652447, sample: true }
+      - { date: 2026-10-07, value: 45270635, sample: true }
+      - { date: 2026-10-08, value: 44131311, sample: true }
+      - { date: 2026-10-09, value: 26632295, sample: true }
+  - name: tokens, dispatcher
+    unit: tokens
+    statistic: sum
+    role: dispatcher
+    points:
+      - { date: 2026-09-12, value: 4043455, sample: true }
+      - { date: 2026-09-13, value: 5413309, sample: true }
+      - { date: 2026-09-14, value: 2432702, sample: true }
+      - { date: 2026-09-15, value: 4644119, sample: true }
+      - { date: 2026-09-16, value: 3359559, sample: true }
+      - { date: 2026-09-17, value: 2185876, sample: true }
+      - { date: 2026-09-18, value: 5252447, sample: true }
+      - { date: 2026-09-19, value: 5545679, sample: true }
+      - { date: 2026-09-20, value: 2201368, sample: true }
+      - { date: 2026-09-21, value: 5411359, sample: true }
+      - { date: 2026-09-22, value: 4157083, sample: true }
+      - { date: 2026-09-23, value: 2751039, sample: true }
+      - { date: 2026-09-24, value: 2480812, sample: true }
+      - { date: 2026-09-25, value: 2234025, sample: true }
+      - { date: 2026-09-26, value: 2770485, sample: true }
+      - { date: 2026-09-27, value: 5628513, sample: true }
+      - { date: 2026-09-28, value: 4481238, sample: true }
+      - { date: 2026-09-29, value: 2803194, sample: true }
+      - { date: 2026-09-30, value: 5134472, sample: true }
+      - { date: 2026-10-01, value: 5449922, sample: true }
+      - { date: 2026-10-02, value: 5138761, sample: true }
+      - { date: 2026-10-03, value: 4629992, sample: true }
+      - { date: 2026-10-04, value: 5790471, sample: true }
+      - { date: 2026-10-05, value: 2938684, sample: true }
+      - { date: 2026-10-06, value: 5132673, sample: true }
+      - { date: 2026-10-07, value: 5233137, sample: true }
+      - { date: 2026-10-08, value: 4566127, sample: true }
+      - { date: 2026-10-09, value: 2096764, sample: true }
+  - name: tokens, operator
+    unit: tokens
+    statistic: sum
+    role: operator
+    points:
+      - { date: 2026-09-12, value: 59166668, sample: true }
+      - { date: 2026-09-13, value: 25849728, sample: true }
+      - { date: 2026-09-14, value: 35725714, sample: true }
+      - { date: 2026-09-15, value: 53403818, sample: true }
+      - { date: 2026-09-16, value: 37569054, sample: true }
+      - { date: 2026-09-17, value: 22952374, sample: true }
+      - { date: 2026-09-18, value: 22874178, sample: true }
+      - { date: 2026-09-19, value: 42887030, sample: true }
+      - { date: 2026-09-20, value: 20778860, sample: true }
+      - { date: 2026-09-21, value: 29692120, sample: true }
+      - { date: 2026-09-22, value: 31165972, sample: true }
+      - { date: 2026-09-23, value: 35277474, sample: true }
+      - { date: 2026-09-24, value: 59522428, sample: true }
+      - { date: 2026-09-25, value: 38104862, sample: true }
+      - { date: 2026-09-26, value: 32574848, sample: true }
+      - { date: 2026-09-27, value: 29146680, sample: true }
+      - { date: 2026-09-28, value: 48543002, sample: true }
+      - { date: 2026-09-29, value: 29324888, sample: true }
+      - { date: 2026-09-30, value: 35414774, sample: true }
+      - { date: 2026-10-01, value: 54923894, sample: true }
+      - { date: 2026-10-02, value: 39180902, sample: true }
+      - { date: 2026-10-03, value: 52427236, sample: true }
+      - { date: 2026-10-04, value: 44057744, sample: true }
+      - { date: 2026-10-05, value: 21418178, sample: true }
+      - { date: 2026-10-06, value: 37643946, sample: true }
+      - { date: 2026-10-07, value: 36588174, sample: true }
+      - { date: 2026-10-08, value: 30921540, sample: true }
+      - { date: 2026-10-09, value: 53966164, sample: true }
+  - name: tokens, claude-opus-5-5
+    unit: tokens
+    statistic: sum
+    model: claude-opus-5-5
+    points:
+      - { date: 2026-09-12, value: 383495938, sample: true }
+      - { date: 2026-09-13, value: 508419144, sample: true }
+      - { date: 2026-09-14, value: 459260106, sample: true }
+      - { date: 2026-09-15, value: 417275961, sample: true }
+      - { date: 2026-09-16, value: 425250076, sample: true }
+      - { date: 2026-09-17, value: 397757238, sample: true }
+      - { date: 2026-09-18, value: 396139731, sample: true }
+      - { date: 2026-09-19, value: 470399812, sample: true }
+      - { date: 2026-09-20, value: 427295707, sample: true }
+      - { date: 2026-09-21, value: 393723311, sample: true }
+      - { date: 2026-09-22, value: 396193688, sample: true }
+      - { date: 2026-09-23, value: 417697313, sample: true }
+      - { date: 2026-09-24, value: 369647080, sample: true }
+      - { date: 2026-09-25, value: 388112413, sample: true }
+      - { date: 2026-09-26, value: 519574665, sample: true }
+      - { date: 2026-09-27, value: 433347787, sample: true }
+      - { date: 2026-09-28, value: 347701230, sample: true }
+      - { date: 2026-09-29, value: 496154086, sample: true }
+      - { date: 2026-09-30, value: 367593276, sample: true }
+      - { date: 2026-10-01, value: 458854770, sample: true }
+      - { date: 2026-10-02, value: 358742902, sample: true }
+      - { date: 2026-10-03, value: 350726728, sample: true }
+      - { date: 2026-10-04, value: 353500027, sample: true }
+      - { date: 2026-10-05, value: 464200016, sample: true }
+      - { date: 2026-10-06, value: 417836835, sample: true }
+      - { date: 2026-10-07, value: 439543781, sample: true }
+      - { date: 2026-10-08, value: 371772676, sample: true }
+      - { date: 2026-10-09, value: 334661519, sample: true }
+  - name: tokens, claude-sonnet-5-5
+    unit: tokens
+    statistic: sum
+    model: claude-sonnet-5-5
+    points:
+      - { date: 2026-09-12, value: 224584338, sample: true }
+      - { date: 2026-09-13, value: 325718334, sample: true }
+      - { date: 2026-09-14, value: 298605251, sample: true }
+      - { date: 2026-09-15, value: 243139166, sample: true }
+      - { date: 2026-09-16, value: 238870464, sample: true }
+      - { date: 2026-09-17, value: 221609873, sample: true }
+      - { date: 2026-09-18, value: 248969431, sample: true }
+      - { date: 2026-09-19, value: 279543820, sample: true }
+      - { date: 2026-09-20, value: 277959832, sample: true }
+      - { date: 2026-09-21, value: 240278792, sample: true }
+      - { date: 2026-09-22, value: 244800258, sample: true }
+      - { date: 2026-09-23, value: 249397862, sample: true }
+      - { date: 2026-09-24, value: 206017409, sample: true }
+      - { date: 2026-09-25, value: 250413096, sample: true }
+      - { date: 2026-09-26, value: 302749798, sample: true }
+      - { date: 2026-09-27, value: 269244859, sample: true }
+      - { date: 2026-09-28, value: 217817605, sample: true }
+      - { date: 2026-09-29, value: 311134243, sample: true }
+      - { date: 2026-09-30, value: 209133406, sample: true }
+      - { date: 2026-10-01, value: 271414388, sample: true }
+      - { date: 2026-10-02, value: 233896638, sample: true }
+      - { date: 2026-10-03, value: 207825667, sample: true }
+      - { date: 2026-10-04, value: 203297045, sample: true }
+      - { date: 2026-10-05, value: 305100825, sample: true }
+      - { date: 2026-10-06, value: 256708589, sample: true }
+      - { date: 2026-10-07, value: 256629259, sample: true }
+      - { date: 2026-10-08, value: 211549408, sample: true }
+      - { date: 2026-10-09, value: 204907650, sample: true }
+  - name: tokens, claude-haiku-4-5
+    unit: tokens
+    statistic: sum
+    model: claude-haiku-4-5
+    points:
+      - { date: 2026-09-12, value: 22057882, sample: true }
+      - { date: 2026-09-13, value: 31567700, sample: true }
+      - { date: 2026-09-14, value: 29393480, sample: true }
+      - { date: 2026-09-15, value: 19083527, sample: true }
+      - { date: 2026-09-16, value: 16992995, sample: true }
+      - { date: 2026-09-17, value: 16042929, sample: true }
+      - { date: 2026-09-18, value: 27529651, sample: true }
+      - { date: 2026-09-19, value: 27453146, sample: true }
+      - { date: 2026-09-20, value: 28713756, sample: true }
+      - { date: 2026-09-21, value: 28344062, sample: true }
+      - { date: 2026-09-22, value: 21644232, sample: true }
+      - { date: 2026-09-23, value: 17737460, sample: true }
+      - { date: 2026-09-24, value: 18869987, sample: true }
+      - { date: 2026-09-25, value: 25974186, sample: true }
+      - { date: 2026-09-26, value: 19276490, sample: true }
+      - { date: 2026-09-27, value: 23365084, sample: true }
+      - { date: 2026-09-28, value: 30068851, sample: true }
+      - { date: 2026-09-29, value: 26577738, sample: true }
+      - { date: 2026-09-30, value: 18401649, sample: true }
+      - { date: 2026-10-01, value: 28601956, sample: true }
+      - { date: 2026-10-02, value: 28374469, sample: true }
+      - { date: 2026-10-03, value: 29567341, sample: true }
+      - { date: 2026-10-04, value: 26446046, sample: true }
+      - { date: 2026-10-05, value: 29788981, sample: true }
+      - { date: 2026-10-06, value: 28161657, sample: true }
+      - { date: 2026-10-07, value: 25807078, sample: true }
+      - { date: 2026-10-08, value: 23353508, sample: true }
+      - { date: 2026-10-09, value: 25677439, sample: true }
+  - name: tokens, claude-fable-5-1
+    unit: tokens
+    statistic: sum
+    model: claude-fable-5-1
+    points:
+      - { date: 2026-09-12, value: 57453305, sample: true }
+      - { date: 2026-09-13, value: 72620258, sample: true }
+      - { date: 2026-09-14, value: 63969162, sample: true }
+      - { date: 2026-09-15, value: 53389673, sample: true }
+      - { date: 2026-09-16, value: 62702286, sample: true }
+      - { date: 2026-09-17, value: 55752094, sample: true }
+      - { date: 2026-09-18, value: 65657803, sample: true }
+      - { date: 2026-09-19, value: 79385524, sample: true }
+      - { date: 2026-09-20, value: 51661487, sample: true }
+      - { date: 2026-09-21, value: 58116030, sample: true }
+      - { date: 2026-09-22, value: 45679971, sample: true }
+      - { date: 2026-09-23, value: 63791738, sample: true }
+      - { date: 2026-09-24, value: 62156424, sample: true }
+      - { date: 2026-09-25, value: 61663266, sample: true }
+      - { date: 2026-09-26, value: 69104090, sample: true }
+      - { date: 2026-09-27, value: 62492691, sample: true }
+      - { date: 2026-09-28, value: 67077382, sample: true }
+      - { date: 2026-09-29, value: 64871253, sample: true }
+      - { date: 2026-09-30, value: 46103697, sample: true }
+      - { date: 2026-10-01, value: 75914268, sample: true }
+      - { date: 2026-10-02, value: 48029867, sample: true }
+      - { date: 2026-10-03, value: 74108571, sample: true }
+      - { date: 2026-10-04, value: 72958076, sample: true }
+      - { date: 2026-10-05, value: 46154044, sample: true }
+      - { date: 2026-10-06, value: 63450871, sample: true }
+      - { date: 2026-10-07, value: 72322456, sample: true }
+      - { date: 2026-10-08, value: 73075665, sample: true }
+      - { date: 2026-10-09, value: 81196045, sample: true }
+  - name: dollars
+    unit: USD
+    statistic: sum
+    points:
+      - { date: 2026-09-12, value: 451.93, sample: true }
+      - { date: 2026-09-13, value: 569.75, sample: true }
+      - { date: 2026-09-14, value: 540.22, sample: true }
+      - { date: 2026-09-15, value: 419.94, sample: true }
+      - { date: 2026-09-16, value: 504.11, sample: true }
+      - { date: 2026-09-17, value: 470.49, sample: true }
+      - { date: 2026-09-18, value: 499.54, sample: true }
+      - { date: 2026-09-19, value: 558.73, sample: true }
+      - { date: 2026-09-20, value: 466.44, sample: true }
+      - { date: 2026-09-21, value: 467.25, sample: true }
+      - { date: 2026-09-22, value: 441.45, sample: true }
+      - { date: 2026-09-23, value: 454.97, sample: true }
+      - { date: 2026-09-24, value: 427.67, sample: true }
+      - { date: 2026-09-25, value: 477.88, sample: true }
+      - { date: 2026-09-26, value: 603.89, sample: true }
+      - { date: 2026-09-27, value: 525.76, sample: true }
+      - { date: 2026-09-28, value: 424.65, sample: true }
+      - { date: 2026-09-29, value: 596.77, sample: true }
+      - { date: 2026-09-30, value: 397.05, sample: true }
+      - { date: 2026-10-01, value: 555.16, sample: true }
+      - { date: 2026-10-02, value: 443.46, sample: true }
+      - { date: 2026-10-03, value: 457, sample: true }
+      - { date: 2026-10-04, value: 447.84, sample: true }
+      - { date: 2026-10-05, value: 538.19, sample: true }
+      - { date: 2026-10-06, value: 476.51, sample: true }
+      - { date: 2026-10-07, value: 494.95, sample: true }
+      - { date: 2026-10-08, value: 458.61, sample: true }
+      - { date: 2026-10-09, value: 482.66, sample: true }
+  - name: dollars, conductor
+    unit: USD
+    statistic: sum
+    role: conductor
+    points:
+      - { date: 2026-09-12, value: 52.65, sample: true }
+      - { date: 2026-09-13, value: 53.63, sample: true }
+      - { date: 2026-09-14, value: 67.8, sample: true }
+      - { date: 2026-09-15, value: 55.41, sample: true }
+      - { date: 2026-09-16, value: 79.99, sample: true }
+      - { date: 2026-09-17, value: 104.8, sample: true }
+      - { date: 2026-09-18, value: 49.68, sample: true }
+      - { date: 2026-09-19, value: 101.32, sample: true }
+      - { date: 2026-09-20, value: 62.99, sample: true }
+      - { date: 2026-09-21, value: 58.2, sample: true }
+      - { date: 2026-09-22, value: 75.6, sample: true }
+      - { date: 2026-09-23, value: 46.67, sample: true }
+      - { date: 2026-09-24, value: 56.64, sample: true }
+      - { date: 2026-09-25, value: 62.67, sample: true }
+      - { date: 2026-09-26, value: 74.44, sample: true }
+      - { date: 2026-09-27, value: 61.13, sample: true }
+      - { date: 2026-09-28, value: 51.09, sample: true }
+      - { date: 2026-09-29, value: 99.79, sample: true }
+      - { date: 2026-09-30, value: 60.2, sample: true }
+      - { date: 2026-10-01, value: 74.4, sample: true }
+      - { date: 2026-10-02, value: 70.99, sample: true }
+      - { date: 2026-10-03, value: 52.29, sample: true }
+      - { date: 2026-10-04, value: 68.95, sample: true }
+      - { date: 2026-10-05, value: 51.62, sample: true }
+      - { date: 2026-10-06, value: 50.62, sample: true }
+      - { date: 2026-10-07, value: 61.29, sample: true }
+      - { date: 2026-10-08, value: 48.72, sample: true }
+      - { date: 2026-10-09, value: 42.26, sample: true }
+  - name: dollars, team ops
+    unit: USD
+    statistic: sum
+    role: team ops
+    points:
+      - { date: 2026-09-12, value: 18.16, sample: true }
+      - { date: 2026-09-13, value: 29.77, sample: true }
+      - { date: 2026-09-14, value: 30.87, sample: true }
+      - { date: 2026-09-15, value: 14.73, sample: true }
+      - { date: 2026-09-16, value: 13.62, sample: true }
+      - { date: 2026-09-17, value: 15.66, sample: true }
+      - { date: 2026-09-18, value: 26.22, sample: true }
+      - { date: 2026-09-19, value: 23.38, sample: true }
+      - { date: 2026-09-20, value: 25.98, sample: true }
+      - { date: 2026-09-21, value: 23.81, sample: true }
+      - { date: 2026-09-22, value: 21.01, sample: true }
+      - { date: 2026-09-23, value: 13.8, sample: true }
+      - { date: 2026-09-24, value: 19.12, sample: true }
+      - { date: 2026-09-25, value: 27.65, sample: true }
+      - { date: 2026-09-26, value: 19.61, sample: true }
+      - { date: 2026-09-27, value: 18.05, sample: true }
+      - { date: 2026-09-28, value: 28.02, sample: true }
+      - { date: 2026-09-29, value: 23.68, sample: true }
+      - { date: 2026-09-30, value: 12.21, sample: true }
+      - { date: 2026-10-01, value: 25.43, sample: true }
+      - { date: 2026-10-02, value: 22.36, sample: true }
+      - { date: 2026-10-03, value: 29.36, sample: true }
+      - { date: 2026-10-04, value: 19.63, sample: true }
+      - { date: 2026-10-05, value: 31.09, sample: true }
+      - { date: 2026-10-06, value: 21.15, sample: true }
+      - { date: 2026-10-07, value: 22.21, sample: true }
+      - { date: 2026-10-08, value: 18.01, sample: true }
+      - { date: 2026-10-09, value: 26.59, sample: true }
+  - name: dollars, unit agent
+    unit: USD
+    statistic: sum
+    role: unit agent
+    points:
+      - { date: 2026-09-12, value: 238.95, sample: true }
+      - { date: 2026-09-13, value: 300.58, sample: true }
+      - { date: 2026-09-14, value: 292.78, sample: true }
+      - { date: 2026-09-15, value: 219.45, sample: true }
+      - { date: 2026-09-16, value: 266.37, sample: true }
+      - { date: 2026-09-17, value: 194.05, sample: true }
+      - { date: 2026-09-18, value: 278.82, sample: true }
+      - { date: 2026-09-19, value: 250.14, sample: true }
+      - { date: 2026-09-20, value: 246.06, sample: true }
+      - { date: 2026-09-21, value: 241.09, sample: true }
+      - { date: 2026-09-22, value: 228.22, sample: true }
+      - { date: 2026-09-23, value: 224.09, sample: true }
+      - { date: 2026-09-24, value: 194.83, sample: true }
+      - { date: 2026-09-25, value: 232.26, sample: true }
+      - { date: 2026-09-26, value: 333.3, sample: true }
+      - { date: 2026-09-27, value: 301.79, sample: true }
+      - { date: 2026-09-28, value: 190.4, sample: true }
+      - { date: 2026-09-29, value: 303.96, sample: true }
+      - { date: 2026-09-30, value: 199.86, sample: true }
+      - { date: 2026-10-01, value: 264.02, sample: true }
+      - { date: 2026-10-02, value: 217.66, sample: true }
+      - { date: 2026-10-03, value: 188.72, sample: true }
+      - { date: 2026-10-04, value: 188.52, sample: true }
+      - { date: 2026-10-05, value: 335.25, sample: true }
+      - { date: 2026-10-06, value: 240.37, sample: true }
+      - { date: 2026-10-07, value: 221.64, sample: true }
+      - { date: 2026-10-08, value: 198.52, sample: true }
+      - { date: 2026-10-09, value: 204.49, sample: true }
+  - name: dollars, design
+    unit: USD
+    statistic: sum
+    role: design
+    points:
+      - { date: 2026-09-12, value: 56.24, sample: true }
+      - { date: 2026-09-13, value: 123.26, sample: true }
+      - { date: 2026-09-14, value: 92.76, sample: true }
+      - { date: 2026-09-15, value: 45.47, sample: true }
+      - { date: 2026-09-16, value: 82.32, sample: true }
+      - { date: 2026-09-17, value: 104.4, sample: true }
+      - { date: 2026-09-18, value: 94.78, sample: true }
+      - { date: 2026-09-19, value: 120.54, sample: true }
+      - { date: 2026-09-20, value: 86.13, sample: true }
+      - { date: 2026-09-21, value: 80.5, sample: true }
+      - { date: 2026-09-22, value: 66.33, sample: true }
+      - { date: 2026-09-23, value: 103.71, sample: true }
+      - { date: 2026-09-24, value: 59.92, sample: true }
+      - { date: 2026-09-25, value: 96.98, sample: true }
+      - { date: 2026-09-26, value: 100.59, sample: true }
+      - { date: 2026-09-27, value: 96.28, sample: true }
+      - { date: 2026-09-28, value: 78.67, sample: true }
+      - { date: 2026-09-29, value: 115.29, sample: true }
+      - { date: 2026-09-30, value: 60.9, sample: true }
+      - { date: 2026-10-01, value: 104.32, sample: true }
+      - { date: 2026-10-02, value: 69.61, sample: true }
+      - { date: 2026-10-03, value: 90.49, sample: true }
+      - { date: 2026-10-04, value: 94.68, sample: true }
+      - { date: 2026-10-05, value: 64.89, sample: true }
+      - { date: 2026-10-06, value: 95.8, sample: true }
+      - { date: 2026-10-07, value: 109.73, sample: true }
+      - { date: 2026-10-08, value: 121.97, sample: true }
+      - { date: 2026-10-09, value: 115.67, sample: true }
+  - name: dollars, planner
+    unit: USD
+    statistic: sum
+    role: planner
+    points:
+      - { date: 2026-09-12, value: 27.47, sample: true }
+      - { date: 2026-09-13, value: 26.54, sample: true }
+      - { date: 2026-09-14, value: 18.93, sample: true }
+      - { date: 2026-09-15, value: 23.31, sample: true }
+      - { date: 2026-09-16, value: 26.63, sample: true }
+      - { date: 2026-09-17, value: 24.2, sample: true }
+      - { date: 2026-09-18, value: 23.44, sample: true }
+      - { date: 2026-09-19, value: 19.95, sample: true }
+      - { date: 2026-09-20, value: 24.55, sample: true }
+      - { date: 2026-09-21, value: 27.4, sample: true }
+      - { date: 2026-09-22, value: 20.45, sample: true }
+      - { date: 2026-09-23, value: 17.67, sample: true }
+      - { date: 2026-09-24, value: 28.11, sample: true }
+      - { date: 2026-09-25, value: 14.39, sample: true }
+      - { date: 2026-09-26, value: 36.41, sample: true }
+      - { date: 2026-09-27, value: 16.81, sample: true }
+      - { date: 2026-09-28, value: 27.12, sample: true }
+      - { date: 2026-09-29, value: 15.25, sample: true }
+      - { date: 2026-09-30, value: 29.04, sample: true }
+      - { date: 2026-10-01, value: 27.88, sample: true }
+      - { date: 2026-10-02, value: 15.94, sample: true }
+      - { date: 2026-10-03, value: 37.36, sample: true }
+      - { date: 2026-10-04, value: 22.56, sample: true }
+      - { date: 2026-10-05, value: 29.75, sample: true }
+      - { date: 2026-10-06, value: 30.01, sample: true }
+      - { date: 2026-10-07, value: 30.97, sample: true }
+      - { date: 2026-10-08, value: 30.78, sample: true }
+      - { date: 2026-10-09, value: 17.8, sample: true }
+  - name: dollars, dispatcher
+    unit: USD
+    statistic: sum
+    role: dispatcher
+    points:
+      - { date: 2026-09-12, value: 0.93, sample: true }
+      - { date: 2026-09-13, value: 1.41, sample: true }
+      - { date: 2026-09-14, value: 0.6, sample: true }
+      - { date: 2026-09-15, value: 1.16, sample: true }
+      - { date: 2026-09-16, value: 0.69, sample: true }
+      - { date: 2026-09-17, value: 0.54, sample: true }
+      - { date: 2026-09-18, value: 1.13, sample: true }
+      - { date: 2026-09-19, value: 1.06, sample: true }
+      - { date: 2026-09-20, value: 0.49, sample: true }
+      - { date: 2026-09-21, value: 1.14, sample: true }
+      - { date: 2026-09-22, value: 0.95, sample: true }
+      - { date: 2026-09-23, value: 0.66, sample: true }
+      - { date: 2026-09-24, value: 0.57, sample: true }
+      - { date: 2026-09-25, value: 0.51, sample: true }
+      - { date: 2026-09-26, value: 0.59, sample: true }
+      - { date: 2026-09-27, value: 1.28, sample: true }
+      - { date: 2026-09-28, value: 0.91, sample: true }
+      - { date: 2026-09-29, value: 0.69, sample: true }
+      - { date: 2026-09-30, value: 1.07, sample: true }
+      - { date: 2026-10-01, value: 1.33, sample: true }
+      - { date: 2026-10-02, value: 1.15, sample: true }
+      - { date: 2026-10-03, value: 1.05, sample: true }
+      - { date: 2026-10-04, value: 1.32, sample: true }
+      - { date: 2026-10-05, value: 0.69, sample: true }
+      - { date: 2026-10-06, value: 1.29, sample: true }
+      - { date: 2026-10-07, value: 1.26, sample: true }
+      - { date: 2026-10-08, value: 0.96, sample: true }
+      - { date: 2026-10-09, value: 0.46, sample: true }
+  - name: dollars, operator
+    unit: USD
+    statistic: sum
+    role: operator
+    points:
+      - { date: 2026-09-12, value: 57.53, sample: true }
+      - { date: 2026-09-13, value: 34.56, sample: true }
+      - { date: 2026-09-14, value: 36.48, sample: true }
+      - { date: 2026-09-15, value: 60.41, sample: true }
+      - { date: 2026-09-16, value: 34.49, sample: true }
+      - { date: 2026-09-17, value: 26.84, sample: true }
+      - { date: 2026-09-18, value: 25.47, sample: true }
+      - { date: 2026-09-19, value: 42.34, sample: true }
+      - { date: 2026-09-20, value: 20.24, sample: true }
+      - { date: 2026-09-21, value: 35.11, sample: true }
+      - { date: 2026-09-22, value: 28.89, sample: true }
+      - { date: 2026-09-23, value: 48.37, sample: true }
+      - { date: 2026-09-24, value: 68.48, sample: true }
+      - { date: 2026-09-25, value: 43.42, sample: true }
+      - { date: 2026-09-26, value: 38.95, sample: true }
+      - { date: 2026-09-27, value: 30.42, sample: true }
+      - { date: 2026-09-28, value: 48.44, sample: true }
+      - { date: 2026-09-29, value: 38.11, sample: true }
+      - { date: 2026-09-30, value: 33.77, sample: true }
+      - { date: 2026-10-01, value: 57.78, sample: true }
+      - { date: 2026-10-02, value: 45.75, sample: true }
+      - { date: 2026-10-03, value: 57.73, sample: true }
+      - { date: 2026-10-04, value: 52.18, sample: true }
+      - { date: 2026-10-05, value: 24.9, sample: true }
+      - { date: 2026-10-06, value: 37.27, sample: true }
+      - { date: 2026-10-07, value: 47.85, sample: true }
+      - { date: 2026-10-08, value: 39.65, sample: true }
+      - { date: 2026-10-09, value: 75.39, sample: true }
+  - name: dollars, claude-opus-5-5
+    unit: USD
+    statistic: sum
+    model: claude-opus-5-5
+    points:
+      - { date: 2026-09-12, value: 281.7, sample: true }
+      - { date: 2026-09-13, value: 335.75, sample: true }
+      - { date: 2026-09-14, value: 327.77, sample: true }
+      - { date: 2026-09-15, value: 263.48, sample: true }
+      - { date: 2026-09-16, value: 322.93, sample: true }
+      - { date: 2026-09-17, value: 288.64, sample: true }
+      - { date: 2026-09-18, value: 304.14, sample: true }
+      - { date: 2026-09-19, value: 332.78, sample: true }
+      - { date: 2026-09-20, value: 287.64, sample: true }
+      - { date: 2026-09-21, value: 286.27, sample: true }
+      - { date: 2026-09-22, value: 278.64, sample: true }
+      - { date: 2026-09-23, value: 263.28, sample: true }
+      - { date: 2026-09-24, value: 256.62, sample: true }
+      - { date: 2026-09-25, value: 276.38, sample: true }
+      - { date: 2026-09-26, value: 383.71, sample: true }
+      - { date: 2026-09-27, value: 325.81, sample: true }
+      - { date: 2026-09-28, value: 246.14, sample: true }
+      - { date: 2026-09-29, value: 363.98, sample: true }
+      - { date: 2026-09-30, value: 253.58, sample: true }
+      - { date: 2026-10-01, value: 329.89, sample: true }
+      - { date: 2026-10-02, value: 268.07, sample: true }
+      - { date: 2026-10-03, value: 261.63, sample: true }
+      - { date: 2026-10-04, value: 259.58, sample: true }
+      - { date: 2026-10-05, value: 346.95, sample: true }
+      - { date: 2026-10-06, value: 286.24, sample: true }
+      - { date: 2026-10-07, value: 288.32, sample: true }
+      - { date: 2026-10-08, value: 260.67, sample: true }
+      - { date: 2026-10-09, value: 256.31, sample: true }
+  - name: dollars, claude-sonnet-5-5
+    unit: USD
+    statistic: sum
+    model: claude-sonnet-5-5
+    points:
+      - { date: 2026-09-12, value: 83.27, sample: true }
+      - { date: 2026-09-13, value: 108.11, sample: true }
+      - { date: 2026-09-14, value: 109.54, sample: true }
+      - { date: 2026-09-15, value: 76.21, sample: true }
+      - { date: 2026-09-16, value: 91.4, sample: true }
+      - { date: 2026-09-17, value: 79.36, sample: true }
+      - { date: 2026-09-18, value: 99.22, sample: true }
+      - { date: 2026-09-19, value: 98.83, sample: true }
+      - { date: 2026-09-20, value: 92.99, sample: true }
+      - { date: 2026-09-21, value: 89.26, sample: true }
+      - { date: 2026-09-22, value: 87.02, sample: true }
+      - { date: 2026-09-23, value: 75.04, sample: true }
+      - { date: 2026-09-24, value: 73.83, sample: true }
+      - { date: 2026-09-25, value: 90.99, sample: true }
+      - { date: 2026-09-26, value: 111.98, sample: true }
+      - { date: 2026-09-27, value: 100.41, sample: true }
+      - { date: 2026-09-28, value: 78.69, sample: true }
+      - { date: 2026-09-29, value: 112.18, sample: true }
+      - { date: 2026-09-30, value: 70.12, sample: true }
+      - { date: 2026-10-01, value: 99.19, sample: true }
+      - { date: 2026-10-02, value: 84.47, sample: true }
+      - { date: 2026-10-03, value: 79.63, sample: true }
+      - { date: 2026-10-04, value: 74.66, sample: true }
+      - { date: 2026-10-05, value: 117.51, sample: true }
+      - { date: 2026-10-06, value: 85.54, sample: true }
+      - { date: 2026-10-07, value: 83.73, sample: true }
+      - { date: 2026-10-08, value: 72.33, sample: true }
+      - { date: 2026-10-09, value: 79.56, sample: true }
+  - name: dollars, claude-haiku-4-5
+    unit: USD
+    statistic: sum
+    model: claude-haiku-4-5
+    points:
+      - { date: 2026-09-12, value: 4.83, sample: true }
+      - { date: 2026-09-13, value: 7.67, sample: true }
+      - { date: 2026-09-14, value: 7.09, sample: true }
+      - { date: 2026-09-15, value: 4.32, sample: true }
+      - { date: 2026-09-16, value: 3.62, sample: true }
+      - { date: 2026-09-17, value: 3.84, sample: true }
+      - { date: 2026-09-18, value: 6.61, sample: true }
+      - { date: 2026-09-19, value: 6.03, sample: true }
+      - { date: 2026-09-20, value: 6.11, sample: true }
+      - { date: 2026-09-21, value: 6.23, sample: true }
+      - { date: 2026-09-22, value: 5.33, sample: true }
+      - { date: 2026-09-23, value: 3.68, sample: true }
+      - { date: 2026-09-24, value: 4.57, sample: true }
+      - { date: 2026-09-25, value: 6.3, sample: true }
+      - { date: 2026-09-26, value: 4.68, sample: true }
+      - { date: 2026-09-27, value: 5.15, sample: true }
+      - { date: 2026-09-28, value: 6.86, sample: true }
+      - { date: 2026-09-29, value: 5.79, sample: true }
+      - { date: 2026-09-30, value: 3.74, sample: true }
+      - { date: 2026-10-01, value: 6.71, sample: true }
+      - { date: 2026-10-02, value: 5.99, sample: true }
+      - { date: 2026-10-03, value: 7.18, sample: true }
+      - { date: 2026-10-04, value: 5.59, sample: true }
+      - { date: 2026-10-05, value: 7.2, sample: true }
+      - { date: 2026-10-06, value: 5.93, sample: true }
+      - { date: 2026-10-07, value: 5.97, sample: true }
+      - { date: 2026-10-08, value: 4.87, sample: true }
+      - { date: 2026-10-09, value: 6.07, sample: true }
+  - name: dollars, claude-fable-5-1
+    unit: USD
+    statistic: sum
+    model: claude-fable-5-1
+    points:
+      - { date: 2026-09-12, value: 82.13, sample: true }
+      - { date: 2026-09-13, value: 118.22, sample: true }
+      - { date: 2026-09-14, value: 95.82, sample: true }
+      - { date: 2026-09-15, value: 75.93, sample: true }
+      - { date: 2026-09-16, value: 86.16, sample: true }
+      - { date: 2026-09-17, value: 98.65, sample: true }
+      - { date: 2026-09-18, value: 89.57, sample: true }
+      - { date: 2026-09-19, value: 121.09, sample: true }
+      - { date: 2026-09-20, value: 79.7, sample: true }
+      - { date: 2026-09-21, value: 85.49, sample: true }
+      - { date: 2026-09-22, value: 70.46, sample: true }
+      - { date: 2026-09-23, value: 112.97, sample: true }
+      - { date: 2026-09-24, value: 92.65, sample: true }
+      - { date: 2026-09-25, value: 104.21, sample: true }
+      - { date: 2026-09-26, value: 103.52, sample: true }
+      - { date: 2026-09-27, value: 94.39, sample: true }
+      - { date: 2026-09-28, value: 92.96, sample: true }
+      - { date: 2026-09-29, value: 114.82, sample: true }
+      - { date: 2026-09-30, value: 69.61, sample: true }
+      - { date: 2026-10-01, value: 119.37, sample: true }
+      - { date: 2026-10-02, value: 84.93, sample: true }
+      - { date: 2026-10-03, value: 108.56, sample: true }
+      - { date: 2026-10-04, value: 108.01, sample: true }
+      - { date: 2026-10-05, value: 66.53, sample: true }
+      - { date: 2026-10-06, value: 98.8, sample: true }
+      - { date: 2026-10-07, value: 116.93, sample: true }
+      - { date: 2026-10-08, value: 120.74, sample: true }
+      - { date: 2026-10-09, value: 140.72, sample: true }

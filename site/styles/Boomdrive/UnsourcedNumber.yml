@@ -1,0 +1,6 @@
+extends: existence
+message: "'%s': name the measurement and its fleet context, and link it."
+level: suggestion
+raw:
+  - '\b\d+(?:\.\d+)?\s?%'
+  - '\b\d+(?:\.\d+)?x (?:faster|slower|more|fewer|cheaper)\b'
