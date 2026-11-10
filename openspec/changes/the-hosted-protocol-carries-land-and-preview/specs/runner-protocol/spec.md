@@ -21,7 +21,7 @@ Every object a version names SHALL take only the fields it names, at every depth
 
 ### Requirement: The messages carry the interface's shapes
 
-Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want sort and every act sort the interface names among them, a preview, a land and a confirm, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same, but for a preview, a land and a confirm, and its `Report` with no `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
+Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names among them, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
 
 #### Scenario: The interface's values pass
 
@@ -40,7 +40,7 @@ Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Ans
 
 ### Requirement: The README names the two paths and the signatures' contexts
 
-The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, and the bytes each signature of enrollment and of a connection is made over, each context starting `boomdrive.v2`, with a worked example of each. It SHALL name what a `pulled` and a `report` hold, and SHALL say how version 1 differs. The hosted implementation SHALL make each signature over exactly those bytes (records 0018 and 0037).
+The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, and the bytes each enrollment's and connection's signature covers, each context starting `boomdrive.v2`, with a worked example of each. It SHALL name what a `pulled` and a `report` hold, and how version 1 differs. The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
 
 #### Scenario: The README's worked contexts
 
