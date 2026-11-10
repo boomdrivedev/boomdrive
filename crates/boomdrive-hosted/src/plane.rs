@@ -131,9 +131,11 @@ struct Partition {
     /// partition is not served, said once while it is offered.
     withheld: BTreeSet<Id>,
     /// Each launch's or preview's carried answer whose copy failed at the
-    /// last report, said once while it fails: a launch's `status` or
-    /// `entry`, a preview's `answer` or `status`.
-    failing: BTreeSet<(Id, &'static str)>,
+    /// last report, said once while it fails, keyed by its kind, `launch`
+    /// or `preview`, its id and the answer: a launch's `status` or
+    /// `entry`, a preview's `answer` or `status`. A launch and a preview
+    /// whose ids are equal never share a key, so each is said.
+    failing: BTreeSet<(&'static str, Id, &'static str)>,
     /// Each launch whose status went up at the last report with an end
     /// carried by its delivery alone or left out, said once while it does
     /// (design Decisions 2 and 3 of
@@ -670,6 +672,18 @@ impl Partition {
     /// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
+        let was_failing = std::mem::take(&mut self.failing);
+        let fails =
+            |failing: &mut BTreeSet<_>, key: (&'static str, Id, &'static str), words: &str| {
+                let (kind, id, what) = &key;
+                if !was_failing.contains(&key) {
+                    say(format!(
+                        "{id}: the {kind}'s {what}'s copy fails version 2's check, so it goes \
+                         up null: {words}"
+                    ));
+                }
+                failing.insert(key);
+            };
         let mut partial = BTreeSet::new();
         let mut launches = serde_json::Map::new();
         for (id, launched) in &part.launches {
@@ -694,13 +708,7 @@ impl Partition {
                         "listed": carried.listed,
                     })),
                     Err(words) => {
-                        if !self.failing.contains(&(id.clone(), what)) {
-                            say(format!(
-                                "{id}: its {what}'s copy fails version 2's check, so it goes up \
-                                 null: {words}"
-                            ));
-                        }
-                        failing.insert((id.clone(), what));
+                        fails(&mut failing, ("launch", id.clone(), what), &words);
                         None
                     }
                 }
@@ -727,13 +735,7 @@ impl Partition {
                 match copied {
                     Ok(copy) => Some(copy),
                     Err(words) => {
-                        if !self.failing.contains(&(id.clone(), what)) {
-                            say(format!(
-                                "{id}: its {what}'s copy fails version 2's check, so it goes up \
-                                 null: {words}"
-                            ));
-                        }
-                        failing.insert((id.clone(), what));
+                        fails(&mut failing, ("preview", id.clone(), what), &words);
                         None
                     }
                 }
@@ -807,7 +809,7 @@ impl Partition {
             .iter()
             .filter(|(id, launched)| {
                 launched.status.is_some()
-                    && !self.failing.contains(&((*id).clone(), "status"))
+                    && !self.failing.contains(&("launch", (*id).clone(), "status"))
                     && !self.partial.contains(*id)
             })
             .map(|(id, _)| id.clone())
