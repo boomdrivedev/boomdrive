@@ -312,6 +312,44 @@ async fn a_key_refused() {
     assert_eq!(Instant::now() - began, POLL_INTERVAL * 2);
 }
 
+/// The hosted-control-plane spec's "A control plane that speaks version
+/// 1 alone": an upgrade answered without `boomdrive.v2` is said once,
+/// naming the partition and `boomdrive.v2`, each later attempt waits for
+/// the backoff's cap, and no message is sent (design Decision 4 of
+/// the-hosted-protocol-carries-every-end-of-a-place; core.22, core.23).
+#[tokio::test(start_paused = true)]
+async fn a_control_plane_that_speaks_version_1_alone() {
+    let fake = Fake::start();
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    fake.refuse_subprotocol(true);
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let connection = Connection::open(
+        &Handle::current(),
+        dial(&fake, store(&fake, &key), &lines, &wakes),
+    );
+    connection.hand(&hello()).expect("handed");
+
+    let began = Instant::now();
+    let taken = fake
+        .until("three upgrades", |t| upgrades(t).len() == 3)
+        .await;
+
+    let lines = lines.all();
+    assert_eq!(lines.len(), 1, "{lines:#?}");
+    assert!(lines[0].starts_with("home: "), "{lines:#?}");
+    assert!(lines[0].contains("boomdrive.v2"), "{lines:#?}");
+    for upgrade in upgrades(&taken) {
+        let Taken::Upgrade { protocols, .. } = upgrade else {
+            unreachable!("an upgrade");
+        };
+        assert_eq!(protocols, &["boomdrive.v2".to_string()]);
+    }
+    assert!(messages(&taken).is_empty(), "{taken:#?}");
+    // A subprotocol refused waits at the backoff's cap.
+    assert_eq!(Instant::now() - began, POLL_INTERVAL * 2);
+}
+
 #[test]
 fn the_hello_first() {
     let fake = Fake::start();
