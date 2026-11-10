@@ -369,7 +369,7 @@ Each measurement has one page in The Fleet, at its id. It shows:
   the page says so beside the stack; counted series (tokens, landed) do sum.
 - **A split is named after its total:** a series split from a total is
   named `<total>, <part>` (`units in flight, construct`; `bolts open,
-  madswan`) and says what it is split by: machine, drive, stage, role,
+  home`) and says what it is split by: machine, drive, stage, role,
   model or kind. A counted or summed total equals the sum of its splits on
   every day, and the build refuses one that does not.
 - **The definition beside the numbers:** the name, the definition in words,

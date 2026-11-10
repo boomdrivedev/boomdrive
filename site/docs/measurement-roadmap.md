@@ -138,9 +138,9 @@ series:
   - { name: agents running, peak, unit: agents, statistic: max, peakOf: agents running, points: [] }
   - { name: agents busy, unit: agents, statistic: median, points: [] }
   - { name: agents busy, peak, unit: agents, statistic: max, peakOf: agents busy, points: [] }
-  - { name: cpu, unit: percent, statistic: median, host: mac-studio, points: [] }
-  - { name: memory, unit: GB, statistic: median, host: mac-studio, points: [] }
-  - { name: processes, unit: processes, statistic: median, host: mac-studio, points: [] }
+  - { name: cpu, unit: percent, statistic: median, host: host-a, points: [] }
+  - { name: memory, unit: GB, statistic: median, host: host-a, points: [] }
+  - { name: processes, unit: processes, statistic: median, host: host-a, points: [] }
 ```
 
 ```yaml
@@ -156,14 +156,14 @@ principle: intents-and-bolts
 collector: collectors/work-in-flight
 series:
   - { name: bolts open, unit: bolts, statistic: median, points: [] }
-  - { name: "bolts open, madswan", unit: bolts, statistic: median, drive: madswan, points: [] }
+  - { name: "bolts open, home", unit: bolts, statistic: median, drive: home, points: [] }
   - { name: units in flight, unit: units, statistic: median, points: [] }
   - { name: "units in flight, construct", unit: units, statistic: median, stage: construct, points: [] }
   - { name: "units in flight, awaiting approval", unit: units, statistic: median, stage: awaiting approval, points: [] }
   - { name: "units in flight, code", unit: units, statistic: median, stage: code, points: [] }
   - { name: "units in flight, verify", unit: units, statistic: median, stage: verify, points: [] }
   - { name: "units in flight, merge", unit: units, statistic: median, stage: merge, points: [] }
-  - { name: "units in flight, madswan", unit: units, statistic: median, drive: madswan, points: [] }
+  - { name: "units in flight, home", unit: units, statistic: median, drive: home, points: [] }
   - { name: repositories with work, unit: repositories, statistic: median, points: [] }
 ```
 
@@ -179,9 +179,9 @@ principle: intents-and-bolts
 collector: collectors/landed
 series:
   - { name: units merged, unit: units, statistic: count, points: [] }
-  - { name: "units merged, madswan", unit: units, statistic: count, drive: madswan, points: [] }
+  - { name: "units merged, home", unit: units, statistic: count, drive: home, points: [] }
   - { name: bolts landed, unit: bolts, statistic: count, points: [] }
-  - { name: "bolts landed, madswan", unit: bolts, statistic: count, drive: madswan, points: [] }
+  - { name: "bolts landed, home", unit: bolts, statistic: count, drive: home, points: [] }
 ```
 
 A series split by drive repeats with `drive: <name>` beside the
