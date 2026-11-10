@@ -147,10 +147,13 @@ fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
 }
 
 /// Design Decisions 2, 4 and 8 of
-/// the-hosted-protocol-carries-every-end-of-a-place: README's hosted
-/// section says the runner speaks version 2, `boomdrive.v2`, that an end
-/// version 2 does not name goes up as its delivery alone, and that a
-/// control plane's confirm is carried out as crew's is.
+/// the-hosted-protocol-carries-every-end-of-a-place, and Decision 9 of
+/// the-hosted-protocol-carries-land-and-preview: README's hosted section
+/// says the runner speaks version 2, `boomdrive.v2`, that an end version
+/// 2 does not name goes up as its delivery alone, that a control plane's
+/// confirm is carried out as crew's is, and that its land and preview are
+/// given to the runner as crew's are, what the runner answered of each
+/// preview going up as their copies.
 #[test]
 fn the_readme_names_version_2_of_the_protocol() {
     let (text, _) = readme();
@@ -167,6 +170,8 @@ fn the_readme_names_version_2_of_the_protocol() {
         "the rest of its status going up",
         "A control plane's confirm of a reader's ends is an act",
         "carried out as crew's is",
+        "land and preview",
+        "as their copies",
     ] {
         assert!(
             flat.contains(named),
