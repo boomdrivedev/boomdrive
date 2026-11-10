@@ -1,8 +1,10 @@
 //! The copies of Flume's and sluice's answers hold only the fields design
-//! Decisions 7 to 9 name (the runner-protocol spec's "A place's status is
-//! carried as its copy", "The host's capacity is Flume's host part as
-//! values, its streams without their queues" and "sluice's entry is
-//! carried as its copy"; core.27). Each copy's field paths, read from the
+//! Decisions 7 to 9 name, and a preview's and a release's only those
+//! Decision 4 of the-hosted-protocol-carries-land-and-preview names (the
+//! runner-protocol spec's "A place's status is carried as its copy", "The
+//! host's capacity is Flume's host part as values, its streams without
+//! their queues", "sluice's entry is carried as its copy" and "The copies'
+//! fields are the lists"; core.27). Each copy's field paths, read from the
 //! schema, equal the list its decision gives, written here: a field added
 //! to a copy or taken from it fails, naming it.
 
@@ -207,6 +209,14 @@ const SUBMISSION_ENTRY: &[&str] = &[
     "failed[].system",
 ];
 
+/// The copy of a preview, sluice's answer to its ask or a row of its
+/// listing (design Decision 4 of
+/// the-hosted-protocol-carries-land-and-preview).
+const PREVIEW: &[&str] = &["name", "branch", "revision", "state", "made", "addresses"];
+
+/// The copy of a release, sluice's answer to it (design Decision 4).
+const RELEASE: &[&str] = &["preview", "released"];
+
 /// The examples whose copies are cut from Flume's places: Flume 0.4.1's,
 /// each end as Flume 0.21.0 prints it (design Decision 14 of
 /// the-runner-dials-the-hosted-control-plane), and Flume 0.21.0's ends of
@@ -324,6 +334,18 @@ fn the_capacitys_fields_are_the_list() {
 fn the_entrys_fields_are_the_list() {
     let fields = Schema::new().fields("submission-entry.schema.json", "submission_entry");
     holds_the_list("sluice's entry", fields, SUBMISSION_ENTRY);
+}
+
+#[test]
+fn the_previews_fields_are_the_list() {
+    let fields = Schema::new().fields("preview.schema.json", "preview");
+    holds_the_list("a preview's copy", fields, PREVIEW);
+}
+
+#[test]
+fn the_releases_fields_are_the_list() {
+    let fields = Schema::new().fields("preview.schema.json", "release");
+    holds_the_list("a release's copy", fields, RELEASE);
 }
 
 #[test]
