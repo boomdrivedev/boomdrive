@@ -260,7 +260,7 @@
       }
     },
     "act_sort": {
-      "description": "What an act asks of its launch's place.",
+      "description": "What an act asks of its launch's place: a drop, a done, a retry, a priority, or a confirm of a reader's ends by their delivery keys, which the schema bounds in neither its recipient nor its keys, so a confirm the runner refuses reaches it as an act.",
       "oneOf": [
         {
           "enum": [
@@ -312,6 +312,36 @@
           "properties": {
             "priority": {
               "$ref": "shared.schema.json#/$defs/signed_integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "confirm"
+          ],
+          "properties": {
+            "confirm": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "recipient",
+                "deliveries"
+              ],
+              "properties": {
+                "recipient": {
+                  "description": "The reader the ends are confirmed as.",
+                  "type": "string"
+                },
+                "deliveries": {
+                  "description": "Each end's delivery key, as Flume's status gave it.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         }
