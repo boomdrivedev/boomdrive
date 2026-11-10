@@ -1,15 +1,18 @@
-//! Version 2 of the runner's protocol (record 0037): its JSON Schema
-//! files, draft 2020-12, under `protocol/v2/`, and the runner's types for
-//! its messages. Version 2 is version 1 but for a place's ends, each with
-//! its delivery, and a control plane's confirm. A check of a message is
-//! built from [`FILES`] alone, each file under its `$id`, and fetches
-//! nothing (core.42).
+//! Version 2 of the runner's protocol (record 0037 as amended on
+//! 2026-11-09): its JSON Schema files, draft 2020-12, under
+//! `protocol/v2/`, and the runner's types for its messages. Version 2 is
+//! version 1 but for a place's ends, each with its delivery, a control
+//! plane's confirm and land among the acts, a preview among the wants,
+//! and a report's previews, what the runner answered of each. A check of
+//! a message is built from [`FILES`] alone, each file under its `$id`,
+//! and fetches nothing (core.42).
 //!
 //! The types reuse the interface's wherever version 2 carries a shape as
 //! the interface writes it, and are version 2's own where the wire
-//! differs: a place's status and sluice's entry go up as their copies,
-//! the host's capacity as values, and a terminal's link as sealed frames
-//! (design Decision 6 of the-runner-dials-the-hosted-control-plane). Each
+//! differs: a place's status, sluice's entry and sluice's answer and
+//! listing of a preview go up as their copies, the host's capacity as
+//! values, and a terminal's link as sealed frames (design Decision 6 of
+//! the-runner-dials-the-hosted-control-plane). Each
 //! struct of version 2's own reads no field the version does not name.
 //! Nothing here converts the interface's values into version 2's or
 //! back.
