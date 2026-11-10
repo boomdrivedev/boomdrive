@@ -3,7 +3,7 @@
 //! spec's "A pull gives each partition's wants under its own ids", "A
 //! partition's connection carries only its own repositories and work", "A
 //! report goes to each partition, answered by its id", "What goes up is
-//! version 1's copy, checked before it goes" and "A terminal the control
+//! version 2's copy, checked before it goes" and "A terminal the control
 //! plane opens is closed at once"; the control-plane-interface spec's "An
 //! implementation serves its control plane as parts" and "A part says
 //! which ids are its own"; design Decisions 7, 8, 9 and 11, and Decision
@@ -16,8 +16,8 @@ mod common;
 
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
-    Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part, Report,
-    ToolVersion, Want, INTERFACE_VERSION,
+    ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part,
+    Report, ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
 use boomdrive_hosted::key::{Memory, Store};
@@ -27,7 +27,7 @@ use common::example;
 use common::fake::{kind, Fake, Taken};
 use ed25519_dalek::SigningKey;
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -187,7 +187,7 @@ fn hello(report: &Report) -> Hello {
     }
 }
 
-/// An offer of version 1 of the launch `id` of `repository`, after the
+/// An offer of version 2 of the launch `id` of `repository`, after the
 /// launches `after`.
 fn offer(id: &str, repository: &str, after: &[&str]) -> Value {
     json!({ "offer": {
@@ -316,6 +316,89 @@ fn ids_under_their_partition() {
     assert_eq!(ids(&work.wants), ["work/l-1"]);
 }
 
+/// An act `id` on the launch `launch`, under its lease, a confirm as
+/// `recipient` of `deliveries`, as a control plane of version 2 asks it.
+fn confirm(id: &str, launch: &str, recipient: &str, deliveries: &[&str]) -> Value {
+    json!({ "act": {
+        "id": id, "launch": launch, "lease": 1,
+        "what": { "confirm": { "recipient": recipient, "deliveries": deliveries } }
+    } })
+}
+
+/// `home`'s part's wants at its pull of `fake`, which asks `wants`, and
+/// whether `home` sent a `message_refused`.
+fn home_pulls(fake: &Fake, wants: Value) -> (Vec<Want>, bool) {
+    fake.set_wants("home", wants);
+    let mut parts = Parts::open(fake);
+    let report = Report::default();
+    let pulled = parts
+        .part("home")
+        .pull(&hello(&report), &report)
+        .expect("read");
+    let refused = sent(&fake.taken(), "home", "message_refused");
+    (pulled.wants, refused)
+}
+
+/// The hosted-control-plane spec's "A confirm carried" (design Decision 8
+/// of the-hosted-protocol-carries-every-end-of-a-place): a confirm the
+/// control plane asks is given to the runner as an act under the
+/// partition's prefix, its recipient and keys as given.
+#[test]
+fn a_confirm_carried() {
+    let fake = Fake::start();
+    let key = "change--a/0a1b2c3d/stage/code/1/delivered";
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            offer("l-1", "example/app", &[]),
+            confirm("c-1", "l-1", "scratch/planner", &[key])
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", "home/c-1"]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(act.lease, 1);
+    assert_eq!(
+        act.what,
+        ActSort::Confirm {
+            recipient: "scratch/planner".to_string(),
+            deliveries: vec![key.to_string()],
+        }
+    );
+}
+
+/// The hosted-control-plane spec's "A confirm the runner refuses": a
+/// confirm of no key reaches the runner as an act, the hosted
+/// implementation refusing nothing of it, and it is the runner's to
+/// refuse (core.56).
+#[test]
+fn a_confirm_the_runner_refuses() {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(
+        &fake,
+        json!([
+            offer("l-1", "example/app", &[]),
+            confirm("c-2", "l-1", "scratch/planner", &[])
+        ]),
+    );
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", "home/c-2"]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(
+        act.what,
+        ActSort::Confirm {
+            recipient: "scratch/planner".to_string(),
+            deliveries: vec![],
+        }
+    );
+}
+
 /// The hosted-control-plane spec's "One partition unreachable": `home`'s
 /// part gives its offer without waiting on `work`'s connection, and
 /// `work`'s part is unread, its words not repeating its label.
@@ -425,7 +508,7 @@ fn each_hello_its_own() {
 }
 
 /// The hosted-control-plane spec's "A repository drained goes up in no
-/// hello": version 1 names no repository drained, nor the repository a
+/// hello": version 2 names no repository drained, nor the repository a
 /// launch was answered in (record 0021; core.42).
 #[test]
 fn a_repository_draining_goes_up_in_no_hello() {
@@ -642,14 +725,48 @@ fn a_terminal_opened() {
     assert!(pulled.terminals.is_empty());
 }
 
-/// Flume's status of a place in code, as Flume 0.4.1 printed it, but that
-/// its code stage's state is `state`.
+/// Each end of `place`, as Flume 0.4.1 printed it, given the fields
+/// Flume 0.21.0 prints of it: its key, its delivery's key and expiry, the
+/// readers it is owed to, and those that confirmed it (design Decision 9
+/// of the-hosted-protocol-carries-every-end-of-a-place).
+fn ends_as_flume_0_21_0_prints_them(place: &mut Value) {
+    let short = format!(
+        "{}--{}",
+        place["kind"].as_str().expect("a kind"),
+        place["name"].as_str().expect("a name")
+    );
+    for end in place["ends"].as_array_mut().expect("ends") {
+        let key = match end["of"].as_str().expect("an of") {
+            "stage" => format!(
+                "stage/{}/{}/{}",
+                end["stage"].as_str().expect("a stage"),
+                end["start"],
+                end["state"].as_str().expect("a state")
+            ),
+            of => panic!("an end of {of} in the fixture"),
+        };
+        let pending: Vec<Value> = end["pending_for"].as_array().expect("pending").clone();
+        end["delivery"] = json!(format!("{short}/0a1b2c3d/{key}"));
+        end["expires_at"] = json!(end["read_at"].as_u64().expect("read") + 604_800);
+        end["owed"] = pending
+            .iter()
+            .map(|recipient| json!({ "recipient": recipient, "expired": false, "known": true }))
+            .collect();
+        end["confirmed"] = json!([]);
+        end["key"] = json!(key);
+    }
+}
+
+/// Flume's status of a place in code, as Flume 0.4.1 printed it, its ends
+/// as Flume 0.21.0 prints them, but that its code stage's state is
+/// `state`.
 fn status_in(state: &str) -> String {
     let file = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../boomdrive/tests/fixtures/flume-0.4.1/status-code.json");
     let mut status: Value =
         serde_json::from_str(&std::fs::read_to_string(file).expect("the fixture")).expect("JSON");
     status["status"]["places"][0]["stages"][1]["state"] = json!(state);
+    ends_as_flume_0_21_0_prints_them(&mut status["status"]["places"][0]);
     status.to_string()
 }
 
@@ -668,8 +785,13 @@ fn a_value_flume_adds() {
         listed: true,
     });
     plane.hosted.pull(&hello(&report), &report).expect("read");
-    plane.hosted.report(&report).expect("answered");
-    plane.hosted.report(&report).expect("answered");
+    for _ in 0..2 {
+        let reported = plane.hosted.report(&report).expect("answered");
+        assert!(
+            reported.statuses_taken.is_empty(),
+            "a status that went up null is not taken: {reported:?}"
+        );
+    }
     let taken = fake.taken();
     let reports: Vec<&Taken> = taken
         .iter()
@@ -686,7 +808,7 @@ fn a_value_flume_adds() {
         else {
             unreachable!();
         };
-        assert_eq!(refused, &None, "the report passes version 1");
+        assert_eq!(refused, &None, "the report passes version 2");
         assert_eq!(
             message["body"]["report"]["launches"]["l-1"]["status"],
             Value::Null
@@ -700,6 +822,124 @@ fn a_value_flume_adds() {
     assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
     assert!(lines[0].contains("/stages/1/state"), "{lines:?}");
     assert!(!lines[0].contains("dreaming"), "{lines:?}");
+}
+
+/// The report of `home/l-1` carrying the status `text`.
+fn carrying(text: String) -> Report {
+    let mut report = launched(&["home/l-1"]);
+    report
+        .launches
+        .get_mut(&Id::new("home/l-1"))
+        .expect("l-1")
+        .status = Some(Carried {
+        text,
+        at: At::parse("2026-11-01T10:01:00Z").expect("a time"),
+        listed: true,
+    });
+    report
+}
+
+/// Flume's status of a place in code, as [`status_in`] gives it with its
+/// code stage `begun`, but that its ends are `ends`.
+fn status_with_ends(ends: Value) -> String {
+    let mut status: Value = serde_json::from_str(&status_in("begun")).expect("JSON");
+    status["status"]["places"][0]["ends"] = ends;
+    status.to_string()
+}
+
+/// Four ends of a place: one whose `of` Flume 0.21.0 does not have, a
+/// stage's whose `state` it does not have, one with no key, as Flume
+/// 0.4.1 printed every end, and a submission's that passes.
+fn ends_flume_adds() -> Value {
+    let status: Value = serde_json::from_str(&status_in("begun")).expect("JSON");
+    let construct = status["status"]["places"][0]["ends"][0].clone();
+    let mut moved = construct.clone();
+    moved["of"] = json!("moved");
+    let mut dreaming = construct.clone();
+    dreaming["state"] = json!("dreaming");
+    dreaming["key"] = json!("stage/construct/1/dreaming");
+    let mut keyless = construct.clone();
+    keyless.as_object_mut().expect("an end").remove("key");
+    let mut submission = construct;
+    for field in ["stage", "start", "state", "end"] {
+        submission.as_object_mut().expect("an end").remove(field);
+    }
+    submission["of"] = json!("submission");
+    submission["submit"] = json!(1);
+    submission["verdict"] = json!({
+        "landed": {
+            "commit": "fdda3c771caf870178226852bb0bf8e9c8676da3",
+            "place_removed": false,
+            "branch_removed": false
+        }
+    });
+    submission["key"] = json!("submission/1/landed");
+    json!([moved, dreaming, keyless, submission])
+}
+
+/// The hosted-control-plane spec's "An end Flume adds" (design Decision 2
+/// of the-hosted-protocol-carries-every-end-of-a-place): each end is
+/// copied on its own, the rest of the status goes up as its copy, and
+/// one line names the launch and each end's path that went up by its
+/// delivery alone or was left out, once while it lasts, and no value.
+#[test]
+fn an_end_flume_adds() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let report = carrying(status_with_ends(ends_flume_adds()));
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        plane.hosted.report(&report).expect("answered");
+    }
+
+    let taken = fake.taken();
+    let reports: Vec<&Taken> = taken
+        .iter()
+        .filter(|taken| {
+            matches!(taken, Taken::Message { partition, message, .. }
+            if partition == "home" && kind(message).as_deref() == Some("report"))
+        })
+        .collect();
+    assert_eq!(reports.len(), 2);
+    for taken in reports {
+        let Taken::Message {
+            message, refused, ..
+        } = taken
+        else {
+            unreachable!();
+        };
+        assert_eq!(refused, &None, "the report passes version 2");
+        let copy = &message["body"]["report"]["launches"]["l-1"]["status"]["copy"];
+        assert_eq!(
+            copy["stages"][1]["state"],
+            json!("begun"),
+            "the rest goes up"
+        );
+        let ends = copy["ends"].as_array().expect("its ends");
+        assert_eq!(ends.len(), 3, "{ends:#?}");
+        assert_eq!(ends[0]["of"], json!("moved"));
+        assert_eq!(ends[1]["key"], json!("stage/construct/1/dreaming"));
+        for alone in &ends[..2] {
+            assert!(alone.get("deliveries").is_none(), "by its delivery alone");
+            assert!(alone["delivery"].is_string(), "{alone}");
+        }
+        assert_eq!(ends[2]["of"], json!("submission"));
+        assert!(ends[2].get("verdict").is_some(), "whole");
+    }
+    let lines: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("home/l-1: "))
+        .collect();
+    assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
+    assert_eq!(
+        lines[0],
+        "home/l-1: its status goes up with ends version 2 does not name: /ends/0 by its \
+         delivery alone, /ends/1 by its delivery alone, /ends/2 left out"
+    );
+    for value in ["moved", "dreaming", "construct", "scratch/planner"] {
+        assert!(!lines[0].contains(value), "{lines:?}");
+    }
 }
 
 #[test]
@@ -717,7 +957,11 @@ fn a_status_that_passes_goes_up_as_its_copy() {
         listed: true,
     });
     plane.hosted.pull(&hello(&report), &report).expect("read");
-    plane.hosted.report(&report).expect("answered");
+    let reported = plane.hosted.report(&report).expect("answered");
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("home/l-1")])
+    );
     let taken = fake.taken();
     let report = messages(&taken, "home")
         .into_iter()
@@ -729,8 +973,81 @@ fn a_status_that_passes_goes_up_as_its_copy() {
     assert_eq!(status["at"], json!("2026-11-01T10:01:00Z"));
 }
 
+/// The hosted-control-plane spec's "A status with an end by its delivery
+/// alone" (design Decision 3 of
+/// the-hosted-protocol-carries-every-end-of-a-place): the status goes up
+/// with that end as its delivery alone, and the report's answer names no
+/// status of that launch taken, whatever the control plane answers.
 #[test]
-fn a_report_that_fails_version_1_is_not_sent() {
+fn a_status_with_an_end_by_its_delivery_alone() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let status: Value = serde_json::from_str(&status_in("begun")).expect("JSON");
+    let passing = status["status"]["places"][0]["ends"][0].clone();
+    let mut moved = passing.clone();
+    moved["of"] = json!("moved");
+    let report = carrying(status_with_ends(json!([moved, passing])));
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    for _ in 0..2 {
+        let reported = plane.hosted.report(&report).expect("answered");
+        assert!(
+            reported.statuses_taken.is_empty(),
+            "a status with an end by its delivery alone is not taken: {reported:?}"
+        );
+    }
+    let taken = fake.taken();
+    let report = messages(&taken, "home")
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("report"))
+        .expect("a report");
+    let ends = &report["body"]["report"]["launches"]["l-1"]["status"]["copy"]["ends"];
+    assert_eq!(ends[0]["of"], json!("moved"));
+    assert!(ends[0].get("deliveries").is_none(), "by its delivery alone");
+    assert!(ends[1].get("deliveries").is_some(), "whole");
+}
+
+/// The hosted-control-plane spec's "A drop held for the runner" (design
+/// Decisions 3 and 9 of the-hosted-protocol-carries-every-end-of-a-place):
+/// Flume 0.21.0's tidied place, dropped, goes up with its drop's end and
+/// the delivery's key Flume gave it, and the report's answer names that
+/// launch's status taken.
+#[test]
+fn a_drop_held_for_the_runner() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let file = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../boomdrive/tests/fixtures/flume-0.21.0/status-dropped-held.json");
+    let text = std::fs::read_to_string(file).expect("the fixture");
+    let printed: Value = serde_json::from_str(&text).expect("JSON");
+    let flumes = &printed["status"]["places"][0]["ends"][0];
+    let report = carrying(text.clone());
+    plane.hosted.pull(&hello(&report), &report).expect("read");
+    let reported = plane.hosted.report(&report).expect("answered");
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("home/l-1")])
+    );
+    let taken = fake.taken();
+    let report = messages(&taken, "home")
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("report"))
+        .expect("a report");
+    let end = &report["body"]["report"]["launches"]["l-1"]["status"]["copy"]["ends"][0];
+    assert_eq!(end["of"], json!("over"));
+    assert_eq!(end["over"], json!("dropped"));
+    assert_eq!(end["key"], json!("over/dropped"));
+    assert_eq!(end["delivery"], flumes["delivery"]);
+    assert!(end["delivery"].is_string());
+    assert_eq!(end["owed"], flumes["owed"]);
+    let lines = plane.lines();
+    assert!(
+        lines.iter().all(|line| !line.starts_with("home/l-1: ")),
+        "{lines:#?}"
+    );
+}
+
+#[test]
+fn a_report_that_fails_version_2_is_not_sent() {
     let fake = Fake::start();
     let mut plane = Plane::open(&fake);
     let mut report = launched(&["home/l-1", "work/l-2"]);

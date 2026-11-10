@@ -1,0 +1,10 @@
+{
+  "protocol_version": 2,
+  "id": "runner:4",
+  "body": {
+    "message_refused": {
+      "message": "plane:7",
+      "words": "body/pulled/wants/0/offer/launch: \"stream_name\" is not a field of a launch in version 2"
+    }
+  }
+}

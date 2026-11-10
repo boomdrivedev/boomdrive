@@ -12,8 +12,10 @@ use common::{address, example, files, from_runner, passes, refused};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// The copy of a place's status (design Decision 7). A list's elements
-/// are `[]`, and each variant of a value is a field by its name.
+/// The copy of a place's status (design Decision 7 of
+/// the-runner-dials-the-hosted-control-plane, with each end's delivery
+/// and the end of a place's work that record 0037 adds). A list's
+/// elements are `[]`, and each variant of a value is a field by its name.
 const PLACE_STATUS: &[&str] = &[
     "place",
     "kind",
@@ -99,12 +101,25 @@ const PLACE_STATUS: &[&str] = &[
     "ends[].verdict.failed",
     "ends[].verdict.conflict",
     "ends[].verdict.refused",
+    "ends[].over",
+    "ends[].over.landed",
+    "ends[].over.landed.commit",
     "ends[].read_at",
     "ends[].deliveries",
     "ends[].deliveries[].recipient",
     "ends[].deliveries[].at",
     "ends[].deliveries[].by",
     "ends[].pending_for",
+    "ends[].key",
+    "ends[].delivery",
+    "ends[].expires_at",
+    "ends[].owed",
+    "ends[].owed[].recipient",
+    "ends[].owed[].expired",
+    "ends[].owed[].known",
+    "ends[].confirmed",
+    "ends[].confirmed[].recipient",
+    "ends[].confirmed[].at",
     "holds",
     "holds[].on",
     "holds[].stage",
@@ -192,8 +207,11 @@ const SUBMISSION_ENTRY: &[&str] = &[
     "failed[].system",
 ];
 
-/// The examples whose copies are cut from Flume 0.4.1's places (design
-/// Decision 14).
+/// The examples whose copies are cut from Flume's places: Flume 0.4.1's,
+/// each end as Flume 0.21.0 prints it (design Decision 14 of
+/// the-runner-dials-the-hosted-control-plane), and Flume 0.21.0's ends of
+/// a place's work, hand-overs, readers and an end by its delivery alone
+/// (design Decision 1 of the-hosted-protocol-carries-every-end-of-a-place).
 const CUT_FROM_FLUME: &[&str] = &[
     "report-a-place-waiting-on-an-answer.json",
     "report-a-place-on-hold.json",
@@ -202,9 +220,14 @@ const CUT_FROM_FLUME: &[&str] = &[
     "report-a-landing-kept-by-a-failed-teardown.json",
     "report-a-tidied-place.json",
     "report-a-live-agent-with-its-pane.json",
+    "report-a-dropped-place-held-for-the-runner.json",
+    "report-a-done-place-held-for-the-runner.json",
+    "report-an-end-handed-over-at-a-sessions-start.json",
+    "report-an-end-owed-expired-and-one-confirmed.json",
+    "report-an-end-by-its-delivery-alone.json",
 ];
 
-/// Version 1's files by their addresses.
+/// Version 2's files by their addresses.
 struct Schema(BTreeMap<String, Value>);
 
 impl Schema {

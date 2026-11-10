@@ -1,12 +1,14 @@
-//! Version 1's examples, each a whole message under
+//! Version 2's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
-//! back as it was (design Decisions 2, 13 and 14).
+//! back as it was (design Decisions 2, 13 and 14 of
+//! the-runner-dials-the-hosted-control-plane). Version 1's examples
+//! still pass version 1's envelopes (record 0037).
 
 mod common;
 
-use boomdrive_hosted::protocol::v1::{FromRunner, Message, MessageId, ToRunner};
-use common::{example, examples, from_runner, passes, to_runner, version_dir};
+use boomdrive_hosted::protocol::v2::{FromRunner, Message, MessageId, ToRunner};
+use common::{example, examples, from_runner, passes, to_runner, version_dir, V1};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -192,4 +194,31 @@ fn a_terminals_messages() {
     .map(|name| example("from-runner", name)["body"]["terminal_output"]["redraw"] == true)
     .collect();
     assert_eq!(redraws, [false, true], "a frame without and with a redraw");
+}
+
+/// The runner-protocol spec's "Version 1's examples still pass": each
+/// example of version 1 passes its direction's envelope of version 1,
+/// which the runner no longer speaks and a control plane may still take
+/// (core.42; record 0037).
+#[test]
+fn version_1s_examples_still_pass() {
+    let directions = [
+        ("from-runner", V1.messages_from_runner()),
+        ("to-runner", V1.messages_to_runner()),
+    ];
+    for (direction, validator) in directions {
+        let examples = V1.examples(direction);
+        assert!(!examples.is_empty(), "no example of version 1 {direction}");
+        for (name, value) in examples {
+            assert_eq!(
+                value["protocol_version"], 1,
+                "version 1's {direction}/{name}"
+            );
+            passes(
+                &validator,
+                &value,
+                &format!("version 1's {direction}/{name}"),
+            );
+        }
+    }
 }

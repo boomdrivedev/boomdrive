@@ -1,0 +1,9 @@
+{
+  "protocol_version": 2,
+  "id": "plane:8",
+  "body": {
+    "terminal_close": {
+      "terminal": "terminal-1"
+    }
+  }
+}

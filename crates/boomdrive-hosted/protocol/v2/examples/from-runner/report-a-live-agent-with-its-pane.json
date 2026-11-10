@@ -1,0 +1,183 @@
+{
+  "protocol_version": 2,
+  "id": "runner:17",
+  "body": {
+    "report": {
+      "launches": {
+        "offer-7": {
+          "lease": {
+            "number": 1,
+            "expires": "2026-11-01T11:00:00Z"
+          },
+          "answer": {
+            "outcome": "launched",
+            "place_dir": "/home/runner/places/change--parse-words",
+            "words": null,
+            "at": "2026-11-01T10:00:00Z"
+          },
+          "status": {
+            "copy": {
+              "place": "/home/runner/places/change--parse-words",
+              "kind": "change",
+              "version": 2,
+              "declared": "flume",
+              "name": "parse-words",
+              "mark": "boomdrive:offer-7",
+              "branch": "change/parse-words",
+              "base": "main",
+              "head": "c74125e693d3b770e25087f89e45473dade20caa",
+              "lands": true,
+              "delivered": false,
+              "stalled": false,
+              "priority": 0,
+              "current": "code",
+              "recipients": [
+                "operator"
+              ],
+              "stream": {
+                "name": "default",
+                "from": "default"
+              },
+              "intent": {
+                "from": "base",
+                "base": "main",
+                "digest": "17850c6f94f94e0b8ad7cece2dc917834c822d2a944b2aa7d0b50027717831b2"
+              },
+              "phase": "live",
+              "stages": [
+                {
+                  "name": "construct",
+                  "state": "delivered",
+                  "starts": 1,
+                  "end": {
+                    "head": "0e09b451e9dc112f99af58d27b7e74f964701a1d",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  }
+                },
+                {
+                  "name": "code",
+                  "state": "begun",
+                  "starts": 1,
+                  "end": null,
+                  "group": {
+                    "place": 2,
+                    "of": 3,
+                    "number": "2"
+                  }
+                },
+                {
+                  "name": "verify",
+                  "state": "not_reached",
+                  "starts": 0,
+                  "end": null
+                }
+              ],
+              "ends": [
+                {
+                  "of": "stage",
+                  "stage": "construct",
+                  "start": 1,
+                  "state": "delivered",
+                  "end": {
+                    "head": "0e09b451e9dc112f99af58d27b7e74f964701a1d",
+                    "words": null,
+                    "needs": null,
+                    "commits": [],
+                    "made": []
+                  },
+                  "read_at": 1793553271,
+                  "deliveries": [
+                    {
+                      "recipient": "operator",
+                      "at": 1793553272,
+                      "by": "notice"
+                    }
+                  ],
+                  "key": "stage/construct/1/delivered",
+                  "pending_for": [],
+                  "delivery": "change--parse-words/ae6dad43/stage/construct/1/delivered",
+                  "expires_at": 1794158071,
+                  "owed": [],
+                  "confirmed": [
+                    {
+                      "recipient": "operator",
+                      "at": 1793553272
+                    }
+                  ]
+                }
+              ],
+              "holds": [],
+              "hold_words": {
+                "code": "Wait for the operator to approve the proposal."
+              },
+              "waiting_on": null,
+              "submission": {
+                "held": false,
+                "submits": 0,
+                "send_backs": 0,
+                "waiting": null,
+                "verdict": null,
+                "read": "none"
+              },
+              "agent": {
+                "identity": "flume:5e1f0c2a9b7d:change--parse-words:code:1",
+                "stage": "code",
+                "program": "claude",
+                "account": {
+                  "pool": "pool-a",
+                  "name": "account-1",
+                  "from": "affinity"
+                },
+                "state": "working",
+                "started": "yes",
+                "asking": "no",
+                "own_work": "no",
+                "past_limit": false
+              },
+              "clues": {
+                "shown_at": {
+                  "agent": "herdr:w2:p1@/run/user/1000/herdr/herdr.sock"
+                }
+              },
+              "tasks": [
+                {
+                  "ticked": true,
+                  "group": 0
+                },
+                {
+                  "ticked": true,
+                  "group": 0
+                },
+                {
+                  "ticked": true,
+                  "group": 1
+                },
+                {
+                  "ticked": false,
+                  "group": 1
+                },
+                {
+                  "ticked": false,
+                  "group": 2
+                },
+                {
+                  "ticked": false,
+                  "group": 2
+                }
+              ]
+            },
+            "at": "2026-11-01T10:05:00Z",
+            "listed": true
+          },
+          "entry": null
+        }
+      },
+      "acts": {},
+      "commands": {},
+      "inboxes": {}
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "protocol_version": 2,
+  "id": "plane:5",
+  "body": {
+    "terminal_open": {
+      "terminal": "terminal-1",
+      "launch": "offer-7",
+      "lease": 1,
+      "share": {
+        "suite": "example-suite",
+        "key": "IUeNaoy0mJc52RvbHZcNcSzH8m_hpKDbe1-b4GRKt8g",
+        "signature": "_zAVU_lXLItkXyf7-RnfoCbE3ZyIIOiME6JX7e5IBteTT6gGzA-K8yPX4vmUD5A8Gu-i_uLlIkm916jm_A5XMg",
+        "certificate": "wMz63r9gXj3JsMEZfNgfrv65OLch2gKeq4FyM4i7eGXRDvKwGrC9Ev1EvgvVH-OCGONzcEbg-gyelb8fRBIrsf3R9NOrKXwsocZJ22ZKvYLDVcOpBoZnXoel-grXy3gp"
+      }
+    }
+  }
+}

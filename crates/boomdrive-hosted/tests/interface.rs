@@ -1,17 +1,24 @@
-//! Version 1 carries the interface's shapes as `boomdrive-control`'s serde
+//! Version 2 carries the interface's shapes as `boomdrive-control`'s serde
 //! types write them (the runner-protocol spec's "The messages carry the
-//! interface's shapes"; design Decision 6): each value below, built as
+//! interface's shapes"; design Decision 6 of
+//! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
-//! full length, passes its definition, every act sort version 1 names
-//! among them. A land apart: version 1 names none, and a release has
-//! spoken it, so a want whose act is a land fails its check (the
-//! runner-protocol spec's "Version 1 carries no land"; core.42, core.53).
+//! full length, passes its definition, every act sort version 2 names
+//! among them, a confirm with them (the runner-protocol spec's "Version 2
+//! carries a control plane's confirm"; record 0037). A land and a preview
+//! apart: no version names either, and version 1 names no confirm, and a
+//! release has spoken it, so a want whose act is a land or a confirm fails
+//! its check of version 1, and a land or a preview its check of version 2
+//! (the runner-protocol spec's "Version 1 carries no land", "Version 1
+//! carries no confirm" and "Version 2 carries no land and no preview";
+//! core.42, core.53, core.55, core.56).
 
 mod common;
 
 use boomdrive_control::*;
-use common::{definition, passes, refused, validator};
+use common::{address, definition, example, passes, refused, to_runner, validator, V1};
 use serde::Serialize;
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 /// `value`, as the interface's types write it, passes the definition
@@ -87,16 +94,38 @@ fn a_land_is_no_act_of_version_1() {
     });
     let json = serde_json::to_value(&land).unwrap();
     refused(
-        &validator(&definition("wants.schema.json", "want")),
+        &V1.validator(&V1.definition("wants.schema.json", "want")),
         &json,
         "a land",
     );
 }
 
-/// One value of each want sort but a preview, which version 1 names not
-/// (`a_preview_is_no_want_of_version_1`), and of each act sort but a land
-/// (`a_land_is_no_act_of_version_1`) and each command sort, and each
-/// other value of the interface, passes its definition.
+/// The runner-protocol spec's "A confirm is no act of version 1".
+#[test]
+fn a_confirm_is_no_act_of_version_1() {
+    let confirm = Want::Act(Act {
+        id: Id::new("act-1"),
+        launch: Id::new("offer-1"),
+        lease: 3,
+        what: ActSort::Confirm {
+            recipient: "scratch/planner".to_string(),
+            deliveries: vec!["change--a/0a1b2c3d/stage/code/1/delivered".to_string()],
+        },
+    });
+    let json = serde_json::to_value(&confirm).unwrap();
+    refused(
+        &V1.validator(&V1.definition("wants.schema.json", "want")),
+        &json,
+        "a confirm",
+    );
+}
+
+/// One value of each want sort but a preview, which no version names
+/// (`a_preview_is_no_want_of_version_2`), and of each act sort version 2
+/// names, a land (`a_land_is_no_act_of_version_2`) apart and a confirm
+/// among them, and each command sort, and each other value of the
+/// interface, passes its definition in version 2 (the runner-protocol
+/// spec's "The interface's values pass").
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
@@ -144,6 +173,7 @@ fn the_interfaces_values_pass() {
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
+        confirm_of(&["change--a/0a1b2c3d/stage/code/1/delivered"]),
     ];
     wants.extend(acts.into_iter().map(|what| {
         Want::Act(Act {
@@ -290,9 +320,102 @@ fn a_preview_is_no_want_of_version_1() {
         });
         let json = serde_json::to_value(&preview).unwrap();
         refused(
-            &validator(&definition("wants.schema.json", "want")),
+            &V1.validator(&V1.definition("wants.schema.json", "want")),
             &json,
             "a preview",
         );
+    }
+}
+
+/// A confirm as `scratch/planner` of `keys`, as the interface writes it.
+fn confirm_of(keys: &[&str]) -> ActSort {
+    ActSort::Confirm {
+        recipient: "scratch/planner".to_string(),
+        deliveries: keys.iter().map(|key| key.to_string()).collect(),
+    }
+}
+
+/// A want whose act on `offer-1` is `what`, as the interface writes it.
+fn act_of(what: ActSort) -> Value {
+    serde_json::to_value(Want::Act(Act {
+        id: Id::new("act-1"),
+        launch: Id::new("offer-1"),
+        lease: 3,
+        what,
+    }))
+    .unwrap()
+}
+
+/// The runner-protocol spec's "A confirm is an act of version 2": a
+/// confirm of two keys, and one of no key, pass version 2's `want`, which
+/// bounds neither, so a confirm the runner refuses reaches it as an act
+/// (core.56); and a `pulled` holding the first passes version 2's
+/// `to-runner.schema.json`.
+#[test]
+fn a_confirm_is_an_act_of_version_2() {
+    let want = validator(&definition("wants.schema.json", "want"));
+    let two = act_of(confirm_of(&[
+        "change--a/0a1b2c3d/stage/code/1/delivered",
+        "change--a/0a1b2c3d/submission/1/landed",
+    ]));
+    passes(&want, &two, "a confirm of two keys");
+    passes(&want, &act_of(confirm_of(&[])), "a confirm of no key");
+    let mut pulled = example("to-runner", "pulled.json");
+    pulled["body"]["pulled"]["wants"] = json!([two]);
+    passes(&to_runner(), &pulled, "a pulled holding a confirm");
+    passes(
+        &to_runner(),
+        &example("to-runner", "pulled-with-a-confirm.json"),
+        "pulled-with-a-confirm.json",
+    );
+    let mut unnamed = act_of(confirm_of(&["k"]));
+    unnamed["act"]["what"]["confirm"]["stage"] = json!("code");
+    refused(
+        &want,
+        &unnamed,
+        "a confirm holding a field version 2 does not name",
+    );
+    assert!(address("wants.schema.json").contains("/v2/"));
+}
+
+/// The runner-protocol spec's "A land is no act of version 2".
+#[test]
+fn a_land_is_no_act_of_version_2() {
+    let land = act_of(ActSort::Land);
+    refused(
+        &validator(&definition("wants.schema.json", "want")),
+        &land,
+        "a land, against version 2",
+    );
+    refused(
+        &V1.validator(&V1.definition("wants.schema.json", "want")),
+        &land,
+        "a land, against version 1",
+    );
+}
+
+/// The runner-protocol spec's "A preview is no want of version 2".
+#[test]
+fn a_preview_is_no_want_of_version_2() {
+    for done in [false, true] {
+        let preview = Want::Preview(Preview {
+            id: Id::new("preview-1"),
+            lease: lease(),
+            repository: "example/app".to_string(),
+            branch: "main".to_string(),
+            revision: "0123456789abcdef0123456789abcdef01234567".to_string(),
+            done,
+        });
+        let json = serde_json::to_value(&preview).unwrap();
+        for (version, want) in [
+            (2, validator(&definition("wants.schema.json", "want"))),
+            (1, V1.validator(&V1.definition("wants.schema.json", "want"))),
+        ] {
+            refused(
+                &want,
+                &json,
+                &format!("a preview, against version {version}"),
+            );
+        }
     }
 }

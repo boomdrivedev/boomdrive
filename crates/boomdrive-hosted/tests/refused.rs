@@ -1,11 +1,12 @@
-//! What version 1 refuses (design Decision 14): each case a valid example
+//! What version 2 refuses (design Decision 14 of
+//! the-runner-dials-the-hosted-control-plane): each case a valid example
 //! altered, checked against its direction's envelope, refused, and named
 //! in its assertion.
 
 mod common;
 
-use boomdrive_hosted::protocol::v1::{FromRunner, Message, ToRunner};
-use common::{example, examples, from_runner, passes, refused, to_runner};
+use boomdrive_hosted::protocol::v2::{FromRunner, Message, ToRunner};
+use common::{example, examples, from_runner, passes, refused, to_runner, V1};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -37,24 +38,38 @@ fn a_message_with_no_id() {
 }
 
 /// The runner-protocol spec's "A message of another version": every
-/// message of version 1 names it.
+/// message of version 2 names it, and one naming 2 is no message of
+/// version 1.
 #[test]
 fn a_message_of_another_version() {
     let validator = from_runner();
-    for version in [json!(2), json!(0), json!("1")] {
+    for version in [json!(1), json!(3), json!(0), json!("2")] {
         let other = altered("from-runner", "hello.json", |hello| {
             hello["protocol_version"] = version.clone();
         });
         refused(
             &validator,
             &other,
-            &format!("a hello naming protocol_version {version}"),
+            &format!("a hello naming protocol_version {version}, against version 2"),
         );
     }
+    let first = V1.messages_from_runner();
+    passes(
+        &first,
+        &V1.example("from-runner", "hello.json"),
+        "version 1's hello against version 1",
+    );
+    let mut second = V1.example("from-runner", "hello.json");
+    second["protocol_version"] = json!(2);
+    refused(
+        &first,
+        &second,
+        "a hello naming protocol_version 2, against version 1",
+    );
 }
 
 /// The runner-protocol spec's "A body of two kinds, or of none": a body
-/// holds exactly one kind version 1 has.
+/// holds exactly one kind version 2 has.
 #[test]
 fn a_body_of_two_kinds_or_of_none() {
     let validator = from_runner();
@@ -79,7 +94,7 @@ fn a_body_of_two_kinds_or_of_none() {
     refused(
         &validator,
         &unknown,
-        "a body of goodbye, a kind version 1 lacks",
+        "a body of goodbye, a kind version 2 lacks",
     );
 }
 
@@ -191,12 +206,21 @@ fn an_enroll_unsigned_or_holding_a_token() {
 }
 
 /// The runner-protocol spec's "A field the version does not name": every
-/// object version 1 names is closed, at every depth. The runner's types
-/// read no such field of version 1's own objects either.
+/// object version 2 names is closed, at every depth. The runner's types
+/// read no such field of version 2's own objects either.
 #[test]
 fn a_field_the_version_does_not_name() {
     let from = from_runner();
     let to = to_runner();
+    for (direction, validator) in [("from-runner", &from), ("to-runner", &to)] {
+        for (name, value) in examples(direction) {
+            passes(
+                validator,
+                &value,
+                &format!("version 2's {direction}/{name}"),
+            );
+        }
+    }
     let enveloped = altered("from-runner", "hello.json", |hello| {
         hello["sent_at"] = json!("2026-11-01T10:00:00Z");
     });
@@ -232,6 +256,36 @@ fn a_field_the_version_does_not_name() {
         serde_json::from_value::<Message<ToRunner>>(shared).is_err(),
         "the runner's types read a field a key share does not name"
     );
+    for (what, name, alter) in [
+        (
+            "an end's delivery alone",
+            "report-an-end-by-its-delivery-alone.json",
+            (|copy| copy["ends"][1]["moved_to"] = json!("elsewhere")) as fn(&mut Value),
+        ),
+        (
+            "a reader an end is owed to",
+            "report-an-end-owed-expired-and-one-confirmed.json",
+            |copy| copy["ends"][0]["owed"][0]["since"] = json!(1792950000),
+        ),
+        (
+            "a reader's confirmation of an end",
+            "report-an-end-owed-expired-and-one-confirmed.json",
+            |copy| copy["ends"][0]["confirmed"][0]["by"] = json!("inbox"),
+        ),
+        (
+            "the end of a place's work",
+            "report-a-dropped-place-held-for-the-runner.json",
+            |copy| copy["ends"][1]["addressee"] = json!("example/planner"),
+        ),
+    ] {
+        let delivered = altered("from-runner", name, |report| alter(copy(report)));
+        refused(&from, &delivered, &format!("a field {what} does not name"));
+    }
+    let name = "pulled-with-a-confirm.json";
+    let confirmed = altered("to-runner", name, |pulled| {
+        pulled["body"]["pulled"]["wants"][1]["act"]["what"]["confirm"]["stage"] = json!("code");
+    });
+    refused(&to, &confirmed, "a field a confirm does not name");
 }
 
 /// The runner-protocol spec's "An act's outcome": an act or a command is
@@ -292,13 +346,42 @@ fn copy(report: &mut Value) -> &mut Value {
 /// and how it alters that example's copy.
 type Holding = (&'static str, &'static str, fn(&mut Value));
 
+/// The name `text_the_cloud_does_not_keep` gives the place waiting on an
+/// answer once its stall's end is added, as [`stalled`] makes it.
+const STALLED: &str = "a stalled place";
+
+/// Version 2's example of a place waiting on an answer, its copy holding
+/// the stall's end Flume 0.21.0 records, cut to what version 2 names of
+/// it: never its move, answerer, stop-short or hold (design Decision 1 of
+/// the-hosted-protocol-carries-every-end-of-a-place).
+fn stalled() -> Value {
+    altered(
+        "from-runner",
+        "report-a-place-waiting-on-an-answer.json",
+        |report| {
+            let ends = copy(report)["ends"].as_array_mut().expect("ends");
+            ends.push(json!({
+                "of": "stall",
+                "read_at": 1793559640,
+                "deliveries": [],
+                "key": "stall/1793559632",
+                "pending_for": ["example/planner"],
+                "delivery": "fix--tabs/0a1b2c3d/stall/1793559632",
+                "expires_at": 1794164440,
+                "owed": [{ "recipient": "example/planner", "expired": false, "known": true }],
+                "confirmed": []
+            }));
+        },
+    )
+}
+
 /// The runner-protocol spec's "Text the cloud does not keep": a place's
 /// status copy holds none of it (core.27).
 #[test]
 fn text_the_cloud_does_not_keep() {
     let validator = from_runner();
     let live = "report-a-live-agent-with-its-pane.json";
-    let cases: [Holding; 8] = [
+    let cases: [Holding; 10] = [
         ("an agent's last_words", live, |copy| {
             copy["agent"]["last_words"] = json!("Done.");
         }),
@@ -332,10 +415,31 @@ fn text_the_cloud_does_not_keep() {
                 copy["stages"][0]["end"]["report"] = json!("/home/runner/state/report.md");
             },
         ),
+        ("a stall's waiting", STALLED, |copy| {
+            copy["ends"][1]["waiting"] = json!("answer");
+        }),
+        ("a stall's stop_short", STALLED, |copy| {
+            copy["ends"][1]["stop_short"] = json!({
+                "words": "Which width is a tab: 4 or 8?",
+                "needs": "needs_answer",
+                "key": "stage/code/1/ended_short"
+            });
+        }),
     ];
+    passes(
+        &validator,
+        &stalled(),
+        "a status copy holding a stall's end",
+    );
     for (what, name, alter) in cases {
-        passes(&validator, &example("from-runner", name), name);
-        let holding = altered("from-runner", name, |report| alter(copy(report)));
+        let holding = if name == STALLED {
+            let mut report = stalled();
+            alter(copy(&mut report));
+            report
+        } else {
+            passes(&validator, &example("from-runner", name), name);
+            altered("from-runner", name, |report| alter(copy(report)))
+        };
         refused(
             &validator,
             &holding,

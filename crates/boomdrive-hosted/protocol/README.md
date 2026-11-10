@@ -9,19 +9,23 @@ are sent against the version before reading it, and refuse one that
 fails whole.
 
 This repository's records and rules are the protocol's source: rule
-core.42 and record 0015, under `docs/`, and the change that wrote
-version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`.
-They cite boomdrive-cloud's records and rules by id.
+core.42 and records 0015 and 0037, under `docs/`, the change that wrote
+version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`,
+and the change that wrote version 2,
+`the-hosted-protocol-carries-every-end-of-a-place`. They cite
+boomdrive-cloud's records and rules by id.
 
 ## Versions
 
-Version 1 is `v1/`. A version may change until a release of the runner
-speaks it to a control plane. From that release on it never changes,
-and its directory is never removed: every change after it is a new
-version, in a directory of its own beside it. A control plane accepts
-the current version and the one before.
+Version 2 is `v2/`, and version 1, which it follows, is `v1/` (*Version
+1*, below). A version may change until a release of the runner speaks
+it to a control plane. From that release on it never changes, and its
+directory is never removed: every change after it is a new version, in
+a directory of its own beside it. A control plane accepts the current
+version and the one before. The runner speaks the current version
+alone.
 
-A connection asks for the WebSocket subprotocol `boomdrive.v1` at
+A connection asks for the WebSocket subprotocol `boomdrive.v2` at
 its upgrade, so a control plane that does not accept the version refuses
 the connection before any message.
 
@@ -52,7 +56,7 @@ alike, so a validator in either language refuses the same strings.
 
 ## The forms
 
-- **Every message** is `{"protocol_version": 1, "id": …, "body": {"<kind>": {…}}}`.
+- **Every message** is `{"protocol_version": 2, "id": …, "body": {"<kind>": {…}}}`.
   The `id` is the sender's own for the message, 1 to 128 letters, digits
   and `._:/-`, unique among what that sender sends on its enrollment, and
   kept when the message is sent again. The body holds exactly one kind,
@@ -81,7 +85,7 @@ alike, so a validator in either language refuses the same strings.
 | `enroll_refused` | the control plane, answering `enroll` | the `enroll` message, by id, with words |
 | `hello` | the runner | the host's interface and runner versions, its tools' versions, the repositories it keeps for this control plane, its capacity, and the leases it holds |
 | `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, and each inbox it carried |
-| `pulled` | the control plane | the whole of what it wants, in its order, and the runner's report as it holds it, or `null` |
+| `pulled` | the control plane | the whole of what it wants, in its order: offers, acts on a launch's place (a retry, a drop, a done, a priority, or a confirm of a reader's ends by their delivery keys), commands and inboxes; and the runner's report as it holds it, or `null` |
 | `reported` | the control plane | the `report` message it answers, by id; the ids it lets go; the ids it refused, with its words |
 | `message_refused` | either | a message that failed its check, by id, with words |
 | `terminal_open` | the control plane | a terminal on a launch's agent, under the launch's lease number, with the browser's share |
@@ -115,9 +119,18 @@ the whole report, so a second delivery of either changes nothing. The
 socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
-Version 1 has no message for a forge token, for health, for the
-runner's own commands, or for a terminal's certificate. The changes
-that build them add them.
+Version 2 has no message for a forge token, for health, for the
+runner's own commands, or for a terminal's certificate, and no land and
+no preview among a `pulled`'s wants. The changes that build them add
+them, in a version of their own.
+
+**A confirm** is an act on a launch's place,
+`{"confirm":{"recipient":…,"deliveries":[…]}}`: a reader's confirmation
+of the ends of that place it names by their delivery keys, as the place's
+status gave them (*The copies*). The schema bounds neither its recipient
+nor its keys, so a confirm the runner refuses, of no key, as the runner
+itself or of a key no end of the place is under, reaches it as an act,
+and is answered as one, `refused` with its words.
 
 ## The paths
 
@@ -128,7 +141,7 @@ ends without one:
 | path | how | the kinds it takes |
 |---|---|---|
 | `runner/enroll` | one HTTPS `POST` | the runner's `enroll`, answered by the control plane's `enrolled`, `enroll_refused` or `message_refused` |
-| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `boomdrive.v1` | every other kind, each direction's its own |
+| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `boomdrive.v2` | every other kind, each direction's its own |
 
 Under the `url` `https://control.example/boomdrive`, they are
 `https://control.example/boomdrive/runner/enroll` and
@@ -145,7 +158,7 @@ plane refuses an `enroll` on the socket, and any other kind on
 
 Each partition's key is an Ed25519 key pair the runner makes on the
 host, whose private key never leaves it. It signs a context: the UTF-8
-bytes of `boomdrive.v1`, a space and the context's name, then
+bytes of `boomdrive.v2`, a space and the context's name, then
 each of the context's fields after a NUL byte, with nothing after the
 last. A signature is Ed25519's as RFC 8032 gives it, 64 bytes, over the
 context's bytes themselves, never a digest of them.
@@ -173,7 +186,7 @@ POST <url>/runner/enroll
 Authorization: Bearer <token>
 Content-Type: application/json
 
-{"protocol_version":1,"id":"<the message's id>","body":{"enroll":{"key":"…","signature":"…","machine":"…"}}}
+{"protocol_version":2,"id":"<the message's id>","body":{"enroll":{"key":"…","signature":"…","machine":"…"}}}
 ```
 
 - **`key`** is the partition's public key, 32 bytes, 43 characters in
@@ -190,7 +203,7 @@ the key's 32 bytes. It binds the key to this control plane and this
 token, so no key is registered by one who does not hold it, and no
 signature is taken with another token.
 
-**The answer** is a message of version 1, which the runner checks
+**The answer** is a message of version 2, which the runner checks
 against `to-runner.schema.json` before it reads it:
 
 - `200`, with `enrolled`, holding `host`, the control plane's id for
@@ -221,20 +234,20 @@ url          https://control.example/boomdrive
 address      https://control.example/boomdrive/runner/enroll
 origin       https://control.example
 digest       sha256:2ff0ff8cabe082ca9b667090071b2f438a8c1665b25f655d7b305293a75fef7f
-context      626f6f6d64726976652e763120656e726f6c6c0068747470733a2f2f636f6e74
+context      626f6f6d64726976652e763220656e726f6c6c0068747470733a2f2f636f6e74
              726f6c2e6578616d706c65007368613235363a32666630666638636162653038
              3263613962363637303930303731623266343338613863313636356232356636
              3535643762333035323933613735666566376600d75a980182b10ab7d54bfed3
              c964073a0ee172f3daa62325af021a68f707511a
-signature    16502207e301fa460323eb35ccbcd795ee38582d54d59a994ca56d30b6c0fb31
-             89e4406b382256d157aa48194c924a398734f8b342e2d6a451d07b7bc1869b0a
+signature    0e6bff11a9f56950bda1bcae4e545acc36673900ab5f7e023e37ad0c1254963a
+             9fae82f31487839fb7fc955d6acca19266ec2a7ac3ced20ebb4577a1a6d34b09
 ```
 
-Read as text, the context's 148 bytes are `boomdrive.v1 enroll`, a NUL,
+Read as text, the context's 148 bytes are `boomdrive.v2 enroll`, a NUL,
 the origin, a NUL, the digest, a NUL and the public key's bytes. In
 base64url, as `examples/from-runner/enroll.json` carries them, the key
 is `11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo` and the signature
-`FlAiB-MB-kYDI-s1zLzXle44WC1U1ZqZTKVtMLbA-zGJ5EBrOCJW0VeqSBlMkko5hzT4s0Li1qRR0Ht7wYabCg`.
+`Dmv_Ean1aVC9obyuTlRazDZnOQCrX34CPjetDBJUljqfroLzFIeDn7f8lV1qzKGSZuwqesPO0g67RXehptNLCQ`.
 
 ## The connection's proof
 
@@ -244,7 +257,7 @@ header:
 
 ```text
 GET <url>/runner/connect
-Sec-WebSocket-Protocol: boomdrive.v1
+Sec-WebSocket-Protocol: boomdrive.v2
 Authorization: BoomdriveHost <key>.<time>.<nonce>.<signature>
 ```
 
@@ -268,7 +281,7 @@ It refuses the upgrade:
 
 - with `401` or `403` where it does not take the key: the partition is
   enrolled again with a new token;
-- without `boomdrive.v1` where it does not speak the version,
+- without `boomdrive.v2` where it does not speak the version,
   which the runner takes as a refusal.
 
 ### The connection's worked bytes
@@ -284,20 +297,20 @@ address      wss://control.example/boomdrive/runner/connect
 origin       https://control.example
 time         1793750400
 nonce        000102030405060708090a0b0c0d0e0f
-context      626f6f6d64726976652e763120636f6e6e6563740068747470733a2f2f636f6e
+context      626f6f6d64726976652e763220636f6e6e6563740068747470733a2f2f636f6e
              74726f6c2e6578616d706c6500d75a980182b10ab7d54bfed3c964073a0ee172
              f3daa62325af021a68f707511a00313739333735303430300000010203040506
              0708090a0b0c0d0e0f
-signature    884279e06d1a3e54d54432d832bd8943f875a26148876d83989112145c1fc516
-             3b9caf477c7f071d3dd9fea675739d8d6aa58abdfb89abfae8c65d77ab85430d
+signature    327a949d8406fb2d925ccb715732396bb6f8bb09fdc2385be9407dc4ca70e58f
+             c00d9d2f6b5e067d7a51bd8e52293fdf8e37a8a150cf745702e4dc71e3bec609
 ```
 
-Read as text, the context's 105 bytes are `boomdrive.v1 connect`,
+Read as text, the context's 105 bytes are `boomdrive.v2 connect`,
 a NUL, the origin, a NUL, the public key's bytes, a NUL, the time's
 digits, a NUL and the nonce's bytes. Its header is:
 
 ```text
-Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.iEJ54G0aPlTVRDLYMr2JQ_h1omFIh22DmJESFFwfxRY7nK9HfH8HHT3Z_qZ1c52NaqWKvfuJq_roxl13q4VDDQ
+Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.MnqUnYQG-y2SXMtxVzI5a7b4uwn9wjhb6UB9xMpw5Y_ADZ0va14GfXpRvY5SKT_fjjeooVDPdFcC5Nxx477GCQ
 ```
 
 ## The copies
@@ -307,13 +320,35 @@ the cloud keeps, each as the tool printed it. The schema has no field
 for the rest, so the cloud's check refuses it.
 
 - **A place's status** (`place-status.schema.json`) is `flume status
-  --json`'s one place, as Flume 0.4.1 prints it, cut to its ids, states,
-  times and counts, what it made, its live agent's pane, and the words a
-  person reads to follow or answer it: an end's, a question's and a
-  hold's. It holds no agent's last words, screen, printed command,
-  notes, settings or mode; no task's text; no readiness; no task group's
-  title; no teardown's words; no end's report; no verdict's words; and
-  no path but the place's own. A field Flume adds after 0.4.1 is left
+  --json`'s one place, in the forms Flume 0.21.0 prints, cut to its ids,
+  states, times and counts, what it made, its live agent's pane, the
+  words a person reads to follow or answer it, an end's, a question's
+  and a hold's, and each end with its delivery. It holds no agent's last
+  words, screen, printed command, notes, settings or mode; no task's
+  text; no readiness; no task group's title; no teardown's words; no
+  end's report; no stall's move, answerer, stop-short or hold; no
+  verdict's words; and no path but the place's own. A field Flume adds
+  after 0.21.0 is left out.
+- **Each end of a place** (`end_record`) is a stage's, a submission's,
+  a stall's, or the end of the place's work by a drop or a done,
+  `{"of":"over","over":"dropped"|"done",…}`. Each carries its `key`, as
+  callers name it; its `delivery`, the key a reader confirms it by, and
+  `expires_at`, when its delivery expires, where Flume prints them; the
+  readers it is `owed` to, each with whether it `expired` for them and
+  whether anything was ever confirmed under their name, `known`; those
+  that `confirmed` it, and when; whom it is `pending_for`; and its
+  `deliveries`, each hand-over to a reader `by` a `notice`, a `wait`,
+  an `inbox` or a `session_start` collecting it.
+- **An end's delivery alone** (`end_delivery`) is how an end goes up
+  whose form version 2 does not name, or whose fields hold a value it
+  does not have: its `of` as Flume printed it, its `key`, `read_at`,
+  `delivery`, `expires_at`, `owed`, `confirmed` and `pending_for`, and
+  nothing of what ended and no hand-over. The runner copies each end on
+  its own: by the form its `of` names, else by its delivery alone, else
+  it leaves the end out, and the rest of the place's status goes up. The
+  runner takes a `reported` as holding a place's status only where every
+  end of it went up in a form version 2 names, so it confirms no end of
+  a place whose status went up with an end by its delivery alone or left
   out.
 - **The host's capacity** (`host_part` in `hello.schema.json`) is
   Flume's host part as values: the host's and each stream's room, a
@@ -360,3 +395,25 @@ them, and neither end keeps them.
 - **Closing.** `terminal_close` closes a terminal from the browser's
   end, and `terminal_closed` says the runner closed it, with its words.
   A terminal is closed with its socket.
+
+## Version 1
+
+Version 1, `v1/`, is what every release of the runner from `v0.1.0`,
+the first that dials a hosted control plane, to `v0.7.3` spoke. Its
+files and examples stay as those releases hold them, and a control
+plane may still take it as the version before the current one. It
+differs from version 2 in these alone:
+
+- **Its name** is `boomdrive.v1`: the subprotocol its connections ask
+  for, every message's `protocol_version` 1, and the start of each
+  context its keys sign, `boomdrive.v1 enroll`, `boomdrive.v1 connect`
+  and `boomdrive.v1 terminal share`. A key enrolled under version 1
+  stays its partition's, and proves itself under version 2's context.
+- **Its acts** are a retry, a drop, a done and a priority: no confirm.
+- **Its copy of a place's status** is of Flume 0.4.1's forms. An end is
+  a stage's, a submission's or a stall's, with no `key`, `delivery`,
+  `expires_at`, `owed` or `confirmed`; there is no end of a place's work
+  and no end's delivery alone; a hand-over, its definition named
+  `delivery`, is `by` a `notice`, a `wait` or an `inbox`. An end it
+  cannot carry fails the whole copy, and the place's status goes up
+  `null`.

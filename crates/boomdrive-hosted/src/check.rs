@@ -1,10 +1,10 @@
-//! The validators of version 1 (design Decisions 9 and 10; core.42):
+//! The validators of version 2 (design Decisions 9 and 10; core.42):
 //! built once from its files alone, each under its `$id`, with every other
 //! address refused, so nothing is fetched. A check's words name the
 //! instance's path and the schema's, and never a value, since a value may
 //! be text the control plane must not hold (core.11).
 
-use crate::protocol::v1::{ADDRESS, FILES};
+use crate::protocol::v2::{ADDRESS, FILES};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::sync::OnceLock;
@@ -18,7 +18,7 @@ impl Retrieve for Refuse {
         &self,
         uri: &Uri<String>,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-        Err(format!("{uri} is none of version 1's files, and nothing is fetched").into())
+        Err(format!("{uri} is none of version 2's files, and nothing is fetched").into())
     }
 }
 
@@ -31,13 +31,13 @@ fn registry() -> &'static Registry<'static> {
             let value: Value = serde_json::from_str(text).unwrap_or(Value::Null);
             (format!("{ADDRESS}{name}"), Resource::from_contents(value))
         });
-        // Version 1's files are the crate's own, which its tests build.
+        // Version 2's files are the crate's own, which its tests build.
         Registry::new()
             .draft(Draft::Draft202012)
             .retriever(Refuse)
             .extend(resources)
             .and_then(|builder| builder.prepare())
-            .expect("version 1's files make a registry, as its tests check")
+            .expect("version 2's files make a registry, as its tests check")
     })
 }
 
@@ -49,7 +49,7 @@ fn validator(reference: &str) -> Validator {
         .with_registry(registry())
         .with_retriever(Refuse)
         .build(&serde_json::json!({ "$ref": format!("{ADDRESS}{reference}") }))
-        .expect("each of version 1's references resolves among its files, as its tests check")
+        .expect("each of version 2's references resolves among its files, as its tests check")
 }
 
 /// The validator of every message a runner sends, its envelope
@@ -95,6 +95,14 @@ pub fn place_status() -> &'static Validator {
     VALIDATOR.get_or_init(|| validator(crate::copy::PLACE_STATUS))
 }
 
+/// The validator of one end of a place's status copy,
+/// `place-status.schema.json`'s `end_record`: a form version 2 names, or
+/// an end's delivery alone.
+pub fn end_record() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| validator(crate::copy::END_RECORD))
+}
+
 /// The validator of sluice's entry as its copy,
 /// `submission-entry.schema.json`'s `submission_entry`.
 pub fn submission_entry() -> &'static Validator {
@@ -130,7 +138,7 @@ mod tests {
     #[test]
     fn a_message_of_each_direction_passes_its_own() {
         let enrolled = json!({
-            "protocol_version": 1,
+            "protocol_version": 2,
             "id": "plane:1",
             "body": { "enrolled": { "host": "h-1" } }
         });
@@ -141,11 +149,11 @@ mod tests {
     #[test]
     fn a_failure_names_paths_and_no_value() {
         let refused = json!({
-            "protocol_version": 1,
+            "protocol_version": 2,
             "id": "plane:1",
             "body": { "enroll_refused": { "enroll": "runner:1", "words": "lapsed", "secret": "n0t-sh0wn" } }
         });
-        let words = failure(to_runner(), &refused).expect("a field version 1 does not name fails");
+        let words = failure(to_runner(), &refused).expect("a field version 2 does not name fails");
         assert!(words.starts_with('/'), "{words}");
         assert!(words.contains("fails the schema's"), "{words}");
         assert!(!words.contains("n0t-sh0wn"), "{words}");
