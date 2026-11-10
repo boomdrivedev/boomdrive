@@ -10,7 +10,7 @@ decision-makers:
 
 # Boomdrive opens now, and its site moves into it from boomdrive-web
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below: the site moves in before the opening.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below, twice: the site moves in before the opening; and Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move.
 
 Deciders: the user, 2026-11-07, in the design agent's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The order, the names and how the site's rules come over are the design agent's, each cheap to change before the move.
 
@@ -55,4 +55,21 @@ Status: accepted on 2026-11-09 by agentplot-design, on the user's words that day
 - **The opening waits only on the user's word** to make the repository public, the scrub having landed.
 
 The *Bad* consequence that the site waits on the scrub and the opening no longer holds: only its deploy waits, on the opening.
+
+## Amendment, 2026-11-09: Boomdrive opens in the boomdrivedev org, and the family's public tools move there
+
+Status: accepted by the user on 2026-11-09, on agentplot-design's card: the org's name, "boomdrivedev"; which repositories move, "Every public tool: boomdrive, flume, sluice, timber, weir, crew, blueprints"; and the go to publish Boomdrive there once ops' last check and secrets scan pass. Their plan came first, relayed that day by afterthought-design, once agentplot's free Actions minutes for November were spent on this repository's Mac builds: a new GitHub org for Boomdrive, "the org will be public anyway". How it is carried out is agentplot-design's own choice, cheap to change.
+
+- **The org.** The family's public repositories live in the GitHub org `boomdrivedev`, public, on the free plan. agentplot keeps every other repository.
+- **Boomdrive opens there with a fresh history.** `boomdrivedev/boomdrive` starts from this repository's scrubbed tree. Before that, ops reads the tree against core.41 again and scans for secrets what goes public: the tree, and `site/`'s history carried across from boomdrive-web, which is public already, so a secret found there is rotated. This repository stays private as the archive, under its own name, `agentplot/boomdrive`, and is not renamed. The opening waits only on the scrub. Each open bolt is replayed onto the new root with its merges, since that root's tree is this repository's main, and the site's bolt goes with them.
+- **The other tools move whole.** flume, sluice, timber, weir, crew and blueprints are public, with nothing to scrub, so each is transferred to `boomdrivedev` with its history, branches and refs. GitHub redirects a transferred repository's old address for git and the web, but not its Pages site.
+- **Every address moves once.** After its move, each repository's own change rewrites its `agentplot/` addresses to `boomdrivedev/`: flake inputs, its site's address, READMEs, policies and skills. The shared site theme's family list moves with a release of its own. Each host's clones, the runner's configuration and crew's kits are moved by hand (principle 12). swancloud's are swancloud's own, and it is told.
+- **What the user does.** They create the org, and install on it the GitHub Apps the tools use: `madswan-agentplot`, sluice's, and `agentplot-flywheel`. They give `boomdrivedev/boomdrive` the secret its cache workflow reads, `OP_SERVICE_ACCOUNT_TOKEN`.
+- **The order.** The org comes first, then the transfers, which nothing waits on. Boomdrive opens once the scrub lands, and each repository's addresses change after its own move.
+
+Consequences:
+
+- Good: every public tool's Actions run free, and Boomdrive's releases resume once it is public.
+- Bad: each site's old address under `agentplot.github.io` stops serving once its repository moves.
+- Bad: until each host's data is moved by hand, its clones and records name the old addresses, which GitHub's redirect still serves for git.
 
