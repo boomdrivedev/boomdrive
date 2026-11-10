@@ -154,7 +154,7 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
     let values = values(&block(&readme, "### The enrollment's worked bytes", 0));
     let key = worked_key(&values);
     let file =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/v1/examples/from-runner/enroll.json");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/v2/examples/from-runner/enroll.json");
     let example: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(file).expect("the example")).expect("JSON");
     let enroll = &example["body"]["enroll"];

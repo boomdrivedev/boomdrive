@@ -2,13 +2,13 @@
 //! its key made in memory, registered with the control plane by one
 //! `POST runner/enroll` that bears the one-time token, and kept in the
 //! host's credential store only once `enrolled` answers. The answer is
-//! checked against version 1 before it is read (design Decision 10). The
+//! checked against version 2 before it is read (design Decision 10). The
 //! enrollment writes no configuration and nothing in the data directory
 //! (core.35), and no output of it holds the token (core.4).
 
 use crate::check;
 use crate::key::{self, Store};
-use crate::protocol::v1::{Enroll, FromRunner, Message, MessageId, ToRunner};
+use crate::protocol::v2::{Enroll, FromRunner, Message, MessageId, ToRunner};
 use crate::table::Table;
 use serde_json::Value;
 use std::time::Duration;
@@ -115,7 +115,7 @@ pub fn enroll(
         .map_err(|e| Refusal::host(format!("the enrollment could not be written: {e}")))?;
     if let Some(words) = check::failure(check::from_runner(), &body) {
         return Err(Refusal::host(format!(
-            "the enrollment fails version 1's check, so is not sent: {words}"
+            "the enrollment fails version 2's check, so is not sent: {words}"
         )));
     }
 
@@ -151,12 +151,12 @@ pub fn enroll(
         })?;
     let answer: Value = serde_json::from_str(&text).map_err(|_| {
         Refusal::control_plane(format!(
-            "the control plane answered {status} with no message of version 1"
+            "the control plane answered {status} with no message of version 2"
         ))
     })?;
     if let Some(words) = check::failure(check::to_runner(), &answer) {
         return Err(Refusal::control_plane(format!(
-            "the control plane's answer, {status}, fails version 1's check: {words}"
+            "the control plane's answer, {status}, fails version 2's check: {words}"
         )));
     }
     let kind = answer

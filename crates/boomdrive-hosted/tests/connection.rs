@@ -11,7 +11,7 @@ mod common;
 
 use boomdrive_hosted::connection::{Connection, Dial, Say, Wake};
 use boomdrive_hosted::key::{Memory, Store};
-use boomdrive_hosted::protocol::v1::Hello;
+use boomdrive_hosted::protocol::v2::Hello;
 use boomdrive_hosted::table::Table;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
@@ -58,7 +58,7 @@ fn store(fake: &Fake, key: &SigningKey) -> Arc<dyn Store> {
     Arc::new(memory)
 }
 
-/// `home`'s hello, version 1's example of one.
+/// `home`'s hello, version 2's example of one.
 fn hello() -> Hello {
     serde_json::from_value(example("from-runner", "hello.json")["body"]["hello"].clone())
         .expect("the example is a hello")
@@ -590,7 +590,7 @@ fn a_pulled_with_a_field_unnamed() {
         .as_str()
         .expect("words");
     assert!(
-        words.starts_with("it fails version 1's check: /"),
+        words.starts_with("it fails version 2's check: /"),
         "{words}"
     );
     assert!(!words.contains("n0t-sh0wn"), "{words}");
@@ -602,7 +602,7 @@ fn a_pulled_with_a_field_unnamed() {
                 ..
             }
         )),
-        "every message the runner sent passes version 1: {taken:#?}"
+        "every message the runner sent passes version 2: {taken:#?}"
     );
 
     let read = connection.read(PATIENCE).expect("home is read");

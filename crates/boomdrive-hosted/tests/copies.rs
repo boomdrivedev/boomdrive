@@ -204,7 +204,7 @@ const CUT_FROM_FLUME: &[&str] = &[
     "report-a-live-agent-with-its-pane.json",
 ];
 
-/// Version 1's files by their addresses.
+/// Version 2's files by their addresses.
 struct Schema(BTreeMap<String, Value>);
 
 impl Schema {

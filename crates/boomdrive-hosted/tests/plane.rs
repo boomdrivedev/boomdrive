@@ -3,7 +3,7 @@
 //! spec's "A pull gives each partition's wants under its own ids", "A
 //! partition's connection carries only its own repositories and work", "A
 //! report goes to each partition, answered by its id", "What goes up is
-//! version 1's copy, checked before it goes" and "A terminal the control
+//! version 2's copy, checked before it goes" and "A terminal the control
 //! plane opens is closed at once"; the control-plane-interface spec's "An
 //! implementation serves its control plane as parts" and "A part says
 //! which ids are its own"; design Decisions 7, 8, 9 and 11, and Decision
@@ -187,7 +187,7 @@ fn hello(report: &Report) -> Hello {
     }
 }
 
-/// An offer of version 1 of the launch `id` of `repository`, after the
+/// An offer of version 2 of the launch `id` of `repository`, after the
 /// launches `after`.
 fn offer(id: &str, repository: &str, after: &[&str]) -> Value {
     json!({ "offer": {
@@ -425,7 +425,7 @@ fn each_hello_its_own() {
 }
 
 /// The hosted-control-plane spec's "A repository drained goes up in no
-/// hello": version 1 names no repository drained, nor the repository a
+/// hello": version 2 names no repository drained, nor the repository a
 /// launch was answered in (record 0021; core.42).
 #[test]
 fn a_repository_draining_goes_up_in_no_hello() {
@@ -691,7 +691,7 @@ fn a_value_flume_adds() {
         else {
             unreachable!();
         };
-        assert_eq!(refused, &None, "the report passes version 1");
+        assert_eq!(refused, &None, "the report passes version 2");
         assert_eq!(
             message["body"]["report"]["launches"]["l-1"]["status"],
             Value::Null
@@ -739,7 +739,7 @@ fn a_status_that_passes_goes_up_as_its_copy() {
 }
 
 #[test]
-fn a_report_that_fails_version_1_is_not_sent() {
+fn a_report_that_fails_version_2_is_not_sent() {
     let fake = Fake::start();
     let mut plane = Plane::open(&fake);
     let mut report = launched(&["home/l-1", "work/l-2"]);

@@ -87,7 +87,7 @@ fn a_partition_enrolled() {
         panic!("one enrollment taken: {taken:#?}");
     };
     assert_eq!(bearer.as_deref(), Some(TOKEN), "the request bore the token");
-    assert_eq!(refused, &None, "its enroll passed version 1");
+    assert_eq!(refused, &None, "its enroll passed version 2");
     assert!(signed, "its signature checked");
     assert_eq!(*status, 200);
     assert_eq!(message["body"]["enroll"]["machine"], json!("host-a"));
@@ -244,7 +244,7 @@ fn the_enrollments_message_refused() {
     fake.answer_enrollment(
         400,
         json!({
-            "protocol_version": 1,
+            "protocol_version": 2,
             "id": "plane:1",
             "body": { "message_refused": { "message": "runner:1", "words": "/body/enroll/machine is too long" } }
         }),
@@ -266,12 +266,12 @@ fn the_enrollments_message_refused() {
 }
 
 #[test]
-fn an_answer_that_fails_version_1() {
+fn an_answer_that_fails_version_2() {
     let fake = Fake::start();
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 1,
+            "protocol_version": 2,
             "id": "plane:1",
             "body": { "enrolled": { "host": "h-1", "certificate": "n0t-r34d" } }
         }),
@@ -285,7 +285,7 @@ fn an_answer_that_fails_version_1() {
     assert!(
         refusal
             .words
-            .starts_with("the control plane's answer, 200, fails version 1's check: "),
+            .starts_with("the control plane's answer, 200, fails version 2's check: "),
         "{}",
         refusal.words
     );
@@ -299,7 +299,7 @@ fn an_answer_of_another_kind() {
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 1,
+            "protocol_version": 2,
             "id": "plane:1",
             "body": { "pulled": { "wants": [], "report": null } }
         }),

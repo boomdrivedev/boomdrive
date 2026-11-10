@@ -8,13 +8,13 @@
 //! share (record 0026; core.49). Every id a partition's control plane gives is handed to
 //! the runner as `<label>/<id>`, and has its prefix taken off as it goes
 //! up, so a partition's connection carries only its own repositories,
-//! leases and work. What goes up of each tool's answer is version 1's copy
+//! leases and work. What goes up of each tool's answer is version 2's copy
 //! of it, cut and checked.
 
 use crate::connection::{self, Answered, Connection, Dial};
 use crate::copy;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v1::{self, MessageId};
+use crate::protocol::v2::{self, MessageId};
 use crate::table::{self, Table};
 use boomdrive_control::{
     Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Pulled, Report,
@@ -226,18 +226,18 @@ impl Hosted {
         }
     }
 
-    /// The host's capacity as version 1 carries it: Flume's host part as
+    /// The host's capacity as version 2 carries it: Flume's host part as
     /// its copy, or `missing` with words naming the path where the copy
     /// fails, said once while it fails (design Decision 9).
-    fn capacity(&mut self, capacity: &Capacity) -> v1::Capacity {
+    fn capacity(&mut self, capacity: &Capacity) -> v2::Capacity {
         let part = match capacity {
-            Capacity::Missing(words) => return v1::Capacity::Missing(words.clone()),
+            Capacity::Missing(words) => return v2::Capacity::Missing(words.clone()),
             Capacity::Printed(part) => part,
         };
         match copy::host_part(part) {
             Ok(copy) => {
                 self.host_part_failing = false;
-                v1::Capacity::Printed(v1::HostPart {
+                v2::Capacity::Printed(v2::HostPart {
                     running: raw(&copy["running"]),
                     bound: raw(&copy["bound"]),
                     room: raw(&copy["room"]),
@@ -245,11 +245,11 @@ impl Hosted {
                 })
             }
             Err(words) => {
-                let words = format!("the host part's copy fails version 1's check: {words}");
+                let words = format!("the host part's copy fails version 2's check: {words}");
                 if !std::mem::replace(&mut self.host_part_failing, true) {
                     (self.say)(format!("hosted: {words}, so it goes up missing"));
                 }
-                v1::Capacity::Missing(words)
+                v2::Capacity::Missing(words)
             }
         }
     }
@@ -464,11 +464,11 @@ impl Partition {
 
     /// The runner's `hello` as this partition's control plane is told it
     /// (design Decision 8): only the repositories its table names, of
-    /// those kept, and none the runner drains, which version 1 cannot name
+    /// those kept, and none the runner drains, which version 2 cannot name
     /// (record 0021), and only its own leases, their prefixes taken off;
     /// the host's tools and capacity as every partition's.
-    fn hello(&self, hello: &Hello, capacity: v1::Capacity) -> v1::Hello {
-        v1::Hello {
+    fn hello(&self, hello: &Hello, capacity: v2::Capacity) -> v2::Hello {
+        v2::Hello {
             interface_version: hello.interface_version,
             runner_version: hello.runner_version.clone(),
             tool_versions: hello.tool_versions.clone(),
@@ -490,7 +490,7 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8). Version 1 names no preview, so
+    /// it is offered (design Decision 8). Version 2 names no preview, so
     /// no message holding one passes its check; one that reached here
     /// would be withheld as an inbox is (core.26, core.42).
     fn own_wants(&mut self, wants: Vec<Want>, say: &connection::Say) -> Vec<Want> {
@@ -563,9 +563,9 @@ impl Partition {
     /// under the partition's prefix: each launch's lease and answer, each
     /// act, command and inbox, and no launch's status or entry, which the
     /// control plane holds as their copies and not as the tools' answers
-    /// (design Decision 7). Version 1's report holds no preview, so none
+    /// (design Decision 7). Version 2's report holds no preview, so none
     /// is taken back (core.42).
-    fn taken_back(&self, report: v1::Report) -> Report {
+    fn taken_back(&self, report: v2::Report) -> Report {
         Report {
             launches: report
                 .launches
@@ -623,10 +623,10 @@ impl Partition {
         }
     }
 
-    /// `part` as version 1's `report` carries it: each id with its prefix
+    /// `part` as version 2's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
-    /// (design Decision 9). Its four parts alone go up: version 1 names no
+    /// (design Decision 9). Its four parts alone go up: version 2 names no
     /// previews, so a report's never do (core.42).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
         let mut failing = BTreeSet::new();
@@ -647,7 +647,7 @@ impl Partition {
                     Err(words) => {
                         if !self.failing.contains(&(id.clone(), what)) {
                             say(format!(
-                                "{id}: its {what}'s copy fails version 1's check, so it goes up \
+                                "{id}: its {what}'s copy fails version 2's check, so it goes up \
                                  null: {words}"
                             ));
                         }
@@ -788,7 +788,7 @@ fn merge(into: &mut Report, part: Report) {
     into.previews.extend(part.previews);
 }
 
-/// `value` as raw JSON, as version 1's host part carries each value.
+/// `value` as raw JSON, as version 2's host part carries each value.
 fn raw(value: &Value) -> Box<RawValue> {
     RawValue::from_string(value.to_string()).unwrap_or_else(|_| RawValue::NULL.to_owned())
 }

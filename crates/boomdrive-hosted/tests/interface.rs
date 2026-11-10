@@ -1,8 +1,9 @@
-//! Version 1 carries the interface's shapes as `boomdrive-control`'s serde
+//! Version 2 carries the interface's shapes as `boomdrive-control`'s serde
 //! types write them (the runner-protocol spec's "The messages carry the
-//! interface's shapes"; design Decision 6): each value below, built as
+//! interface's shapes"; design Decision 6 of
+//! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
-//! full length, passes its definition, every act sort version 1 names
+//! full length, passes its definition, every act sort version 2 names
 //! among them. A land and a confirm apart: version 1 names neither, and a
 //! release has spoken it, so a want whose act is a land or a confirm fails
 //! its check (the runner-protocol spec's "Version 1 carries no land" and
@@ -11,7 +12,7 @@
 mod common;
 
 use boomdrive_control::*;
-use common::{definition, passes, refused, validator};
+use common::{definition, passes, refused, validator, V1};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -88,7 +89,7 @@ fn a_land_is_no_act_of_version_1() {
     });
     let json = serde_json::to_value(&land).unwrap();
     refused(
-        &validator(&definition("wants.schema.json", "want")),
+        &V1.validator(&V1.definition("wants.schema.json", "want")),
         &json,
         "a land",
     );
@@ -108,17 +109,17 @@ fn a_confirm_is_no_act_of_version_1() {
     });
     let json = serde_json::to_value(&confirm).unwrap();
     refused(
-        &validator(&definition("wants.schema.json", "want")),
+        &V1.validator(&V1.definition("wants.schema.json", "want")),
         &json,
         "a confirm",
     );
 }
 
-/// One value of each want sort but a preview, which version 1 names not
-/// (`a_preview_is_no_want_of_version_1`), and of each act sort version 1
+/// One value of each want sort but a preview, which no version names
+/// (`a_preview_is_no_want_of_version_1`), and of each act sort version 2
 /// names, a land (`a_land_is_no_act_of_version_1`) and a confirm
 /// (`a_confirm_is_no_act_of_version_1`) apart, and each command sort, and
-/// each other value of the interface, passes its definition.
+/// each other value of the interface, passes its definition in version 2.
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
@@ -312,7 +313,7 @@ fn a_preview_is_no_want_of_version_1() {
         });
         let json = serde_json::to_value(&preview).unwrap();
         refused(
-            &validator(&definition("wants.schema.json", "want")),
+            &V1.validator(&V1.definition("wants.schema.json", "want")),
             &json,
             "a preview",
         );

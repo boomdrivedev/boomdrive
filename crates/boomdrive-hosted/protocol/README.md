@@ -21,7 +21,7 @@ and its directory is never removed: every change after it is a new
 version, in a directory of its own beside it. A control plane accepts
 the current version and the one before.
 
-A connection asks for the WebSocket subprotocol `boomdrive.v1` at
+A connection asks for the WebSocket subprotocol `boomdrive.v2` at
 its upgrade, so a control plane that does not accept the version refuses
 the connection before any message.
 
@@ -52,7 +52,7 @@ alike, so a validator in either language refuses the same strings.
 
 ## The forms
 
-- **Every message** is `{"protocol_version": 1, "id": …, "body": {"<kind>": {…}}}`.
+- **Every message** is `{"protocol_version": 2, "id": …, "body": {"<kind>": {…}}}`.
   The `id` is the sender's own for the message, 1 to 128 letters, digits
   and `._:/-`, unique among what that sender sends on its enrollment, and
   kept when the message is sent again. The body holds exactly one kind,
@@ -128,7 +128,7 @@ ends without one:
 | path | how | the kinds it takes |
 |---|---|---|
 | `runner/enroll` | one HTTPS `POST` | the runner's `enroll`, answered by the control plane's `enrolled`, `enroll_refused` or `message_refused` |
-| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `boomdrive.v1` | every other kind, each direction's its own |
+| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `boomdrive.v2` | every other kind, each direction's its own |
 
 Under the `url` `https://control.example/boomdrive`, they are
 `https://control.example/boomdrive/runner/enroll` and
@@ -145,7 +145,7 @@ plane refuses an `enroll` on the socket, and any other kind on
 
 Each partition's key is an Ed25519 key pair the runner makes on the
 host, whose private key never leaves it. It signs a context: the UTF-8
-bytes of `boomdrive.v1`, a space and the context's name, then
+bytes of `boomdrive.v2`, a space and the context's name, then
 each of the context's fields after a NUL byte, with nothing after the
 last. A signature is Ed25519's as RFC 8032 gives it, 64 bytes, over the
 context's bytes themselves, never a digest of them.
@@ -173,7 +173,7 @@ POST <url>/runner/enroll
 Authorization: Bearer <token>
 Content-Type: application/json
 
-{"protocol_version":1,"id":"<the message's id>","body":{"enroll":{"key":"…","signature":"…","machine":"…"}}}
+{"protocol_version":2,"id":"<the message's id>","body":{"enroll":{"key":"…","signature":"…","machine":"…"}}}
 ```
 
 - **`key`** is the partition's public key, 32 bytes, 43 characters in
@@ -190,7 +190,7 @@ the key's 32 bytes. It binds the key to this control plane and this
 token, so no key is registered by one who does not hold it, and no
 signature is taken with another token.
 
-**The answer** is a message of version 1, which the runner checks
+**The answer** is a message of version 2, which the runner checks
 against `to-runner.schema.json` before it reads it:
 
 - `200`, with `enrolled`, holding `host`, the control plane's id for
@@ -221,20 +221,20 @@ url          https://control.example/boomdrive
 address      https://control.example/boomdrive/runner/enroll
 origin       https://control.example
 digest       sha256:2ff0ff8cabe082ca9b667090071b2f438a8c1665b25f655d7b305293a75fef7f
-context      626f6f6d64726976652e763120656e726f6c6c0068747470733a2f2f636f6e74
+context      626f6f6d64726976652e763220656e726f6c6c0068747470733a2f2f636f6e74
              726f6c2e6578616d706c65007368613235363a32666630666638636162653038
              3263613962363637303930303731623266343338613863313636356232356636
              3535643762333035323933613735666566376600d75a980182b10ab7d54bfed3
              c964073a0ee172f3daa62325af021a68f707511a
-signature    16502207e301fa460323eb35ccbcd795ee38582d54d59a994ca56d30b6c0fb31
-             89e4406b382256d157aa48194c924a398734f8b342e2d6a451d07b7bc1869b0a
+signature    0e6bff11a9f56950bda1bcae4e545acc36673900ab5f7e023e37ad0c1254963a
+             9fae82f31487839fb7fc955d6acca19266ec2a7ac3ced20ebb4577a1a6d34b09
 ```
 
-Read as text, the context's 148 bytes are `boomdrive.v1 enroll`, a NUL,
+Read as text, the context's 148 bytes are `boomdrive.v2 enroll`, a NUL,
 the origin, a NUL, the digest, a NUL and the public key's bytes. In
 base64url, as `examples/from-runner/enroll.json` carries them, the key
 is `11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo` and the signature
-`FlAiB-MB-kYDI-s1zLzXle44WC1U1ZqZTKVtMLbA-zGJ5EBrOCJW0VeqSBlMkko5hzT4s0Li1qRR0Ht7wYabCg`.
+`Dmv_Ean1aVC9obyuTlRazDZnOQCrX34CPjetDBJUljqfroLzFIeDn7f8lV1qzKGSZuwqesPO0g67RXehptNLCQ`.
 
 ## The connection's proof
 
@@ -244,7 +244,7 @@ header:
 
 ```text
 GET <url>/runner/connect
-Sec-WebSocket-Protocol: boomdrive.v1
+Sec-WebSocket-Protocol: boomdrive.v2
 Authorization: BoomdriveHost <key>.<time>.<nonce>.<signature>
 ```
 
@@ -268,7 +268,7 @@ It refuses the upgrade:
 
 - with `401` or `403` where it does not take the key: the partition is
   enrolled again with a new token;
-- without `boomdrive.v1` where it does not speak the version,
+- without `boomdrive.v2` where it does not speak the version,
   which the runner takes as a refusal.
 
 ### The connection's worked bytes
@@ -284,20 +284,20 @@ address      wss://control.example/boomdrive/runner/connect
 origin       https://control.example
 time         1793750400
 nonce        000102030405060708090a0b0c0d0e0f
-context      626f6f6d64726976652e763120636f6e6e6563740068747470733a2f2f636f6e
+context      626f6f6d64726976652e763220636f6e6e6563740068747470733a2f2f636f6e
              74726f6c2e6578616d706c6500d75a980182b10ab7d54bfed3c964073a0ee172
              f3daa62325af021a68f707511a00313739333735303430300000010203040506
              0708090a0b0c0d0e0f
-signature    884279e06d1a3e54d54432d832bd8943f875a26148876d83989112145c1fc516
-             3b9caf477c7f071d3dd9fea675739d8d6aa58abdfb89abfae8c65d77ab85430d
+signature    327a949d8406fb2d925ccb715732396bb6f8bb09fdc2385be9407dc4ca70e58f
+             c00d9d2f6b5e067d7a51bd8e52293fdf8e37a8a150cf745702e4dc71e3bec609
 ```
 
-Read as text, the context's 105 bytes are `boomdrive.v1 connect`,
+Read as text, the context's 105 bytes are `boomdrive.v2 connect`,
 a NUL, the origin, a NUL, the public key's bytes, a NUL, the time's
 digits, a NUL and the nonce's bytes. Its header is:
 
 ```text
-Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.iEJ54G0aPlTVRDLYMr2JQ_h1omFIh22DmJESFFwfxRY7nK9HfH8HHT3Z_qZ1c52NaqWKvfuJq_roxl13q4VDDQ
+Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.MnqUnYQG-y2SXMtxVzI5a7b4uwn9wjhb6UB9xMpw5Y_ADZ0va14GfXpRvY5SKT_fjjeooVDPdFcC5Nxx477GCQ
 ```
 
 ## The copies

@@ -1,13 +1,13 @@
 //! The cut of a tool's answer to its copy (design Decision 9; core.11,
 //! core.27, core.42): a place's status, sluice's entry and Flume's host
-//! part, each cut by walking version 1's own definition of its copy, so
+//! part, each cut by walking version 2's own definition of its copy, so
 //! the schema is the one list of what goes up, then checked against that
 //! definition before it goes. The cut keeps each value as the tool printed
-//! it and writes none again. Because every object of version 1 is closed,
+//! it and writes none again. Because every object of version 2 is closed,
 //! the check holds the line and the cut only makes a copy that passes.
 
 use crate::check;
-use crate::protocol::v1::{ADDRESS, FILES};
+use crate::protocol::v2::{ADDRESS, FILES};
 use boomdrive_control::HostPart;
 use jsonschema::Validator;
 use serde_json::{Map, Value};
@@ -71,7 +71,7 @@ fn checked(validator: &Validator, copy: Value) -> Result<Value, String> {
     }
 }
 
-/// `value` cut by the definition `reference`, a file of version 1 and a
+/// `value` cut by the definition `reference`, a file of version 2 and a
 /// JSON pointer in it, `<file>#<pointer>`:
 ///
 /// - an object keeps only the properties its definition names, each cut
@@ -81,7 +81,7 @@ fn checked(validator: &Validator, copy: Value) -> Result<Value, String> {
 /// - a `oneOf` cuts by the one branch whose form the value takes: a
 ///   constant by its value, an object by its keys and their constants,
 ///   `null` by its type;
-/// - a `$ref` is followed within version 1's files;
+/// - a `$ref` is followed within version 2's files;
 /// - every other value, and one its definition carries whole, is kept as
 ///   the tool printed it.
 ///
@@ -94,7 +94,7 @@ pub fn cut(reference: &str, value: &Value) -> Value {
     }
 }
 
-/// Each of version 1's files by its name, read once.
+/// Each of version 2's files by its name, read once.
 fn files() -> &'static BTreeMap<&'static str, Value> {
     static FILES_READ: OnceLock<BTreeMap<&'static str, Value>> = OnceLock::new();
     FILES_READ.get_or_init(|| {
@@ -110,7 +110,7 @@ fn files() -> &'static BTreeMap<&'static str, Value> {
 
 /// What `reference` names, read from the file `from` where it names no
 /// file of its own, with the name of the file it is in; none where it is
-/// outside version 1's files.
+/// outside version 2's files.
 fn resolve(from: Option<&'static str>, reference: &str) -> Option<(&'static str, &'static Value)> {
     let reference = reference.strip_prefix(ADDRESS).unwrap_or(reference);
     let (file, pointer) = reference.split_once('#').unwrap_or((reference, ""));

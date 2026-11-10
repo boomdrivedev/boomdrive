@@ -1,11 +1,12 @@
-//! What version 1 refuses (design Decision 14): each case a valid example
+//! What version 2 refuses (design Decision 14 of
+//! the-runner-dials-the-hosted-control-plane): each case a valid example
 //! altered, checked against its direction's envelope, refused, and named
 //! in its assertion.
 
 mod common;
 
-use boomdrive_hosted::protocol::v1::{FromRunner, Message, ToRunner};
-use common::{example, examples, from_runner, passes, refused, to_runner};
+use boomdrive_hosted::protocol::v2::{FromRunner, Message, ToRunner};
+use common::{example, examples, from_runner, passes, refused, to_runner, V1};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -37,24 +38,38 @@ fn a_message_with_no_id() {
 }
 
 /// The runner-protocol spec's "A message of another version": every
-/// message of version 1 names it.
+/// message of version 2 names it, and one naming 2 is no message of
+/// version 1.
 #[test]
 fn a_message_of_another_version() {
     let validator = from_runner();
-    for version in [json!(2), json!(0), json!("1")] {
+    for version in [json!(1), json!(3), json!(0), json!("2")] {
         let other = altered("from-runner", "hello.json", |hello| {
             hello["protocol_version"] = version.clone();
         });
         refused(
             &validator,
             &other,
-            &format!("a hello naming protocol_version {version}"),
+            &format!("a hello naming protocol_version {version}, against version 2"),
         );
     }
+    let first = V1.from_runner();
+    passes(
+        &first,
+        &V1.example("from-runner", "hello.json"),
+        "version 1's hello against version 1",
+    );
+    let mut second = V1.example("from-runner", "hello.json");
+    second["protocol_version"] = json!(2);
+    refused(
+        &first,
+        &second,
+        "a hello naming protocol_version 2, against version 1",
+    );
 }
 
 /// The runner-protocol spec's "A body of two kinds, or of none": a body
-/// holds exactly one kind version 1 has.
+/// holds exactly one kind version 2 has.
 #[test]
 fn a_body_of_two_kinds_or_of_none() {
     let validator = from_runner();
@@ -79,7 +94,7 @@ fn a_body_of_two_kinds_or_of_none() {
     refused(
         &validator,
         &unknown,
-        "a body of goodbye, a kind version 1 lacks",
+        "a body of goodbye, a kind version 2 lacks",
     );
 }
 
@@ -191,8 +206,8 @@ fn an_enroll_unsigned_or_holding_a_token() {
 }
 
 /// The runner-protocol spec's "A field the version does not name": every
-/// object version 1 names is closed, at every depth. The runner's types
-/// read no such field of version 1's own objects either.
+/// object version 2 names is closed, at every depth. The runner's types
+/// read no such field of version 2's own objects either.
 #[test]
 fn a_field_the_version_does_not_name() {
     let from = from_runner();

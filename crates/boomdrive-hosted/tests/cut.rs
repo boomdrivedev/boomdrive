@@ -1,9 +1,9 @@
-//! What goes up is version 1's copy (the hosted-control-plane spec's
-//! "What goes up is version 1's copy, checked before it goes", its
+//! What goes up is version 2's copy (the hosted-control-plane spec's
+//! "What goes up is version 2's copy, checked before it goes", its
 //! scenario "Flume's places cut"; design Decisions 9 and 14): each place
 //! of Flume 0.4.1's fixtures, each entry of sluice 0.61.1's and Flume's
-//! host part, cut by walking version 1's schema, passes its definition
-//! and holds nothing version 1 leaves out. The fixtures are the
+//! host part, cut by walking version 2's schema, passes its definition
+//! and holds nothing version 2 leaves out. The fixtures are the
 //! binary's, read where they are kept.
 
 mod common;
