@@ -203,8 +203,8 @@ fn a_terminals_messages() {
 #[test]
 fn version_1s_examples_still_pass() {
     let directions = [
-        ("from-runner", V1.from_runner()),
-        ("to-runner", V1.to_runner()),
+        ("from-runner", V1.messages_from_runner()),
+        ("to-runner", V1.messages_to_runner()),
     ];
     for (direction, validator) in directions {
         let examples = V1.examples(direction);

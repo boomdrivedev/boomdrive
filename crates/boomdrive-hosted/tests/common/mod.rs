@@ -123,12 +123,12 @@ impl Version {
     }
 
     /// The validator of a runner's messages.
-    pub fn from_runner(&self) -> Validator {
+    pub fn messages_from_runner(&self) -> Validator {
         self.validator(&self.address("from-runner.schema.json"))
     }
 
     /// The validator of a control plane's messages.
-    pub fn to_runner(&self) -> Validator {
+    pub fn messages_to_runner(&self) -> Validator {
         self.validator(&self.address("to-runner.schema.json"))
     }
 
@@ -193,12 +193,12 @@ pub fn validator(reference: &str) -> Validator {
 
 /// The validator of a runner's messages in the current version.
 pub fn from_runner() -> Validator {
-    CURRENT.from_runner()
+    CURRENT.messages_from_runner()
 }
 
 /// The validator of a control plane's messages in the current version.
 pub fn to_runner() -> Validator {
-    CURRENT.to_runner()
+    CURRENT.messages_to_runner()
 }
 
 /// Why `validator` refuses `value`, one line for each error, or nothing

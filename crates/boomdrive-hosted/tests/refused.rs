@@ -53,7 +53,7 @@ fn a_message_of_another_version() {
             &format!("a hello naming protocol_version {version}, against version 2"),
         );
     }
-    let first = V1.from_runner();
+    let first = V1.messages_from_runner();
     passes(
         &first,
         &V1.example("from-runner", "hello.json"),
