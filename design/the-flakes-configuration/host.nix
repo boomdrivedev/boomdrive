@@ -1,6 +1,6 @@
 # Sketch, proposed: one host's whole configuration through the Boomdrive
 # flake, its runner and its Flume, as the talk of 2026-11-06 shapes it
-# (agentplot/boomdrive-archive's
+# (agentplot/boomdrive's
 # design/research/the-flakes-configuration-holds-streams-and-repositories.md).
 # Not evaluated: the shape of the options, not their code.
 { boomdrive, pkgs, ... }:

@@ -18,7 +18,7 @@ What stands:
   - Its records 0005, 0009, 0016, 0022 and 0043 to 0049, 0056 and 0059, and its rules core.13, core.18, core.21, core.24, core.36 to core.39, core.50, core.52, core.106, core.108, core.118 and core.121. All are cited by id, and none is quoted (core.41).
   - Its first run, `design/the-first-run-from-an-empty-account.md`: FR3 and FR7, and the install command's `--keep`.
   - Its items 1.4 to 1.7 are designed beside or after this one, so this change sets the runner's half of each path and says what 1.7 builds to meet it.
-- **This repository's constitution interview**, agentplot/boomdrive-archive's `design/research/the-constitution-interview.md`, *The roadmap's changes*: it lists this change as its seventh.
+- **This repository's constitution interview**, agentplot/boomdrive's `design/research/the-constitution-interview.md`, *The roadmap's changes*: it lists this change as its seventh.
 
 There are no area pages, so `docs/architecture/core.md` binds every path this change touches.
 
