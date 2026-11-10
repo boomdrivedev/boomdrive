@@ -196,6 +196,7 @@ dependencies = [
 name = "boomdrive-crew"
 version = "0.0.0"
 dependencies = [
+ "boomdrive-bounded",
  "boomdrive-control",
  "serde_json",
  "tempfile",
