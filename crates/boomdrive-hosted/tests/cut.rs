@@ -3,9 +3,11 @@
 //! scenario "Flume's places cut"; design Decisions 9 and 14 of
 //! the-runner-dials-the-hosted-control-plane, and Decisions 2 and 9 of
 //! the-hosted-protocol-carries-every-end-of-a-place): each place of Flume
-//! 0.21.0's and Flume 0.4.1's fixtures, each entry of sluice 0.61.1's and
-//! Flume's host part, cut by walking version 2's schema, passes its
-//! definition and holds nothing version 2 leaves out. Each end of Flume
+//! 0.21.0's and Flume 0.4.1's fixtures, each entry of sluice 0.61.1's,
+//! each preview and release of sluice 0.74.3's (Decision 4 of
+//! the-hosted-protocol-carries-land-and-preview) and Flume's host part,
+//! cut by walking version 2's schema, passes its definition and holds
+//! nothing version 2 leaves out. Each end of Flume
 //! 0.21.0's goes up in a form version 2 names, and each of Flume 0.4.1's,
 //! which has no key, is left out. The fixtures are the binary's, read
 //! where they are kept.
@@ -22,8 +24,8 @@ use std::path::{Path, PathBuf};
 /// spec's "A place's status is carried as its copy").
 const LEFT_OUT: &[&str] = &["last_words", "screen", "printed", "readiness", "repository"];
 
-/// The directory of one tool's fixtures, `flume-0.21.0`, `flume-0.4.1`
-/// or `sluice-0.61.1`.
+/// The directory of one tool's fixtures, `flume-0.21.0`, `flume-0.4.1`,
+/// `sluice-0.61.1` or `sluice-0.74.3`.
 fn fixtures(tool: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../boomdrive/tests/fixtures")
@@ -190,6 +192,61 @@ fn a_status_cut_keeps_each_value_as_flume_printed_it() {
     }
     assert_eq!(copy["phase"], place["phase"]);
     assert_eq!(copy["submission"], place["submission"]);
+}
+
+/// The fields of sluice's preview no copy holds (the runner-protocol
+/// spec's "A preview's copy holds no output of its command").
+const PREVIEW_LEFT_OUT: &[&str] = &["checkout", "names", "ports", "exit", "output"];
+
+/// The hosted-control-plane spec's "sluice's previews cut" (design
+/// Decision 4 of the-hosted-protocol-carries-land-and-preview): sluice
+/// 0.74.3's answer of a preview brought up and each row of its listing,
+/// cut as a preview's copy, and its answers of a release, cut as a
+/// release's, each pass their definition, keep sluice's `state` or
+/// `released`, and hold no preview's checkout, names, ports, exit or
+/// output (core.11, core.55).
+#[test]
+fn sluices_previews_cut() {
+    let read = |name: &str| {
+        std::fs::read_to_string(fixtures("sluice-0.74.3").join(name))
+            .unwrap_or_else(|e| panic!("{name}: {e}"))
+    };
+    let preview = validator(&definition("preview.schema.json", "preview"));
+    let mut previews = vec![(
+        "preview-starting.json".to_string(),
+        read("preview-starting.json"),
+    )];
+    let rows: Vec<Value> = serde_json::from_str(&read("previews.json")).unwrap();
+    previews.extend(
+        rows.iter()
+            .enumerate()
+            .map(|(n, row)| (format!("previews.json's row {n}"), row.to_string())),
+    );
+    for (name, text) in &previews {
+        let printed: Value = serde_json::from_str(text).unwrap();
+        let copy = copy::preview(text).unwrap_or_else(|words| panic!("{name}: {words}"));
+        let refused = errors(&preview, &copy);
+        assert!(refused.is_empty(), "{name}'s copy is refused: {refused:#?}");
+        for field in PREVIEW_LEFT_OUT {
+            assert!(copy.get(*field).is_none(), "{name}'s copy holds `{field}`");
+        }
+        assert_eq!(copy["state"], printed["state"], "{name}");
+    }
+    let release = validator(&definition("preview.schema.json", "release"));
+    let releases = ["release.json", "release-nothing.json"];
+    for name in releases {
+        let text = read(name);
+        let printed: Value = serde_json::from_str(&text).unwrap();
+        let copy = copy::release(&text).unwrap_or_else(|words| panic!("{name}: {words}"));
+        let refused = errors(&release, &copy);
+        assert!(refused.is_empty(), "{name}'s copy is refused: {refused:#?}");
+        assert_eq!(copy["released"], printed["released"], "{name}");
+    }
+    assert_eq!(
+        (previews.len(), releases.len()),
+        (3, 2),
+        "sluice's previews and releases cut"
+    );
 }
 
 #[test]

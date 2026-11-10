@@ -5,9 +5,9 @@
 //! host's capacity is Flume's host part as values, its streams without
 //! their queues", "sluice's entry is carried as its copy", "The copies'
 //! fields are the lists" and "sluice's answers of a preview as copies";
-//! core.27). Each copy's field paths, read from the
-//! schema, equal the list its decision gives, written here: a field added
-//! to a copy or taken from it fails, naming it.
+//! core.27). Each copy's field paths, read from the schema, equal the
+//! list its decision gives, written here: a field added to a copy or
+//! taken from it fails, naming it.
 
 mod common;
 
