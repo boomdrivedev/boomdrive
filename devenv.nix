@@ -159,6 +159,19 @@ let
     in
     outputs.packages.${pkgs.stdenv.hostPlatform.system};
 
+  # The packages site/bun.lock locks, as bun's install cache holds them,
+  # fetched by this shell outside the gate's sandbox, from which
+  # site:install installs with no network (design Decision 4). flume's
+  # function at the set's flume tag, flake.lock's input `flume`, which owns
+  # how a site's packages reach a sandboxed gate (flume's record 0059); a
+  # tag that changes its arguments fails this shell's evaluation in the
+  # change that moves it (core.45).
+  sitePackages = import "${flakeInputs.inputs.flume}/site/packages.nix" {
+    inherit pkgs lib;
+    lock = ./site/bun.lock;
+    manifest = ./site/package.json;
+  };
+
   # OpenSpec, which root:specs and root:changes validate with: flume's
   # release, built as nixpkgs builds its older one. Bump the version, then
   # each hash from the mismatch the build reports.
@@ -255,6 +268,10 @@ in
   # their store paths, which they read with no network and no nix daemon
   # (design Decision 14).
   env.BOOMDRIVE_FLAKE_INPUTS = builtins.toJSON flakeInputs.paths;
+
+  # The site's packages, given to site:install by their store path
+  # (site/scripts/install.sh).
+  env.BOOMDRIVE_SITE_PACKAGES = "${sitePackages}";
 
   # The set's Flume and sluice, given to the runner's tests by their paths
   # (crates/boomdrive/tests/family.rs) and on no PATH, so a shell's `sluice

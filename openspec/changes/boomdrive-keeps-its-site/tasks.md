@@ -38,7 +38,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - Vale `3.24.0` from Vale's release build, with boomdrive-web's four hashes.
 
   `check-toolchain.sh` checks bun, Node.js, Vale and Biome each by `--version`, and its comment names them (design Decision 5). True when `sluice exec main -- moon run root:toolchain` passes.
-- [ ] 2.2 The site's packages install with no network (design Decision 4):
+- [x] 2.2 The site's packages install with no network (design Decision 4):
   - `devenv.nix` gives `BOOMDRIVE_SITE_PACKAGES` from flume's `site/packages.nix` at the flake's `flume` input, called with `site/bun.lock` and `site/package.json`.
   - `site/scripts/install.sh` installs from a writable copy of it, `--offline`, and fails naming the variable where it is unset.
   - `.moon/workspace.yml` lists `site: 'site'`, and its comment names the project. `site/moon.yml` is rewritten with `language: 'typescript'` and the task `install`, as Decision 3's table has it.

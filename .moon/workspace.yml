@@ -8,6 +8,8 @@
 #                     holds the runner's protocol
 #   nix                the flake: the family's packages, the service's
 #                     modules and the cache's workflow (record 0020)
+#   site               the site: the Method, its field notes and the
+#                     fleet's measurements (record 0037)
 # Each check is tagged with its layer, which a branch's policy requires by
 # tag (.config/sluice.toml):
 #   check-fast    each crate's and the flake's format, lint, type check
@@ -26,6 +28,7 @@ projects:
   boomdrive-crew: 'crates/boomdrive-crew'
   boomdrive-hosted: 'crates/boomdrive-hosted'
   nix: 'nix'
+  site: 'site'
   root: '.'
 
 # --affected compares against the merge-base with main.
