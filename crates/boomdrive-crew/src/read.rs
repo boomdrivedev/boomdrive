@@ -98,12 +98,14 @@ impl Main {
 
     /// Whether the work a request serves is still in crew's plan:
     /// `unit/<u>` and `chore/<c>` while the plan holds `Unit: <u>`,
-    /// `fix/<bolt>/<name>` while it holds `Bolt: <bolt>`. A fix of main, a
-    /// role's work and any other the plan never holds always are.
+    /// `bolt/<bolt>` and `fix/<bolt>/<name>` while it holds `Bolt: <bolt>`.
+    /// A fix of main, a role's work and any other the plan never holds
+    /// always are (record 0031 as amended on 2026-11-09).
     pub fn plans(&self, work: Option<&str>) -> bool {
         let parts: Vec<&str> = work.unwrap_or_default().split('/').collect();
         match parts.as_slice() {
             ["unit" | "chore", unit] => self.units.contains(*unit),
+            ["bolt", bolt] => self.bolts.contains(*bolt),
             ["fix", bolt, _] if *bolt != "main" => self.bolts.contains(*bolt),
             _ => true,
         }

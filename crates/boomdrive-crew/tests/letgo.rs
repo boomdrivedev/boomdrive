@@ -142,6 +142,26 @@ fn a_unit_landed_and_gone_from_the_plan() {
     assert!(pulled.wants.is_empty(), "{:?}", pulled.wants);
 }
 
+/// The crew-control-plane spec's "A bolt landed and gone from the plan":
+/// a bolt's base place, a launch of `bolt/b`, leaves with its act once
+/// the plan holds no `Bolt: b` and Flume no longer lists its place.
+#[test]
+fn a_bolt_landed_and_gone_from_the_plan() {
+    let state = State::new();
+    main_with(&state, "bolt/b", &plan(&[], &["b"]), false);
+    let (mut crew, _) = state.crew("host-a");
+    let_go(&mut crew, &report(true));
+    main_with(&state, "bolt/b", &plan(&[], &[]), false);
+    // Still listed by Flume, it stays.
+    assert!(let_go(&mut crew, &report(true)).is_empty());
+    // Tidied, it goes, its act with it.
+    assert_eq!(let_go(&mut crew, &report(false)), ["home/12", "home/13"]);
+    let answers = state.file(BRANCH, "answers.rec").unwrap();
+    let places = state.file(BRANCH, "places.rec").unwrap();
+    assert!(!answers.contains("Request:"), "{answers}");
+    assert!(!places.contains("Request:"), "{places}");
+}
+
 /// The crew-control-plane spec's "One partition missing at a report":
 /// `work/main` unread, `home`'s branch is written all the same,
 /// its let-go given, and `work`'s branch named as not written.

@@ -12,7 +12,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. crew's implementation lets a put-away preview go
 
-- [ ] 2.1 `Main::plans` (`crates/boomdrive-crew/src/read.rs`) reads `bolt/<bolt>` as in the plan while `plan.rec` holds `Bolt: <bolt>`, and its documentation says so (design Decision 3; Task notes 2.1). `tests/letgo.rs` gains `a_bolt_landed_and_gone_from_the_plan`, as `a_unit_landed_and_gone_from_the_plan` is:
+- [x] 2.1 `Main::plans` (`crates/boomdrive-crew/src/read.rs`) reads `bolt/<bolt>` as in the plan while `plan.rec` holds `Bolt: <bolt>`, and its documentation says so (design Decision 3; Task notes 2.1). `tests/letgo.rs` gains `a_bolt_landed_and_gone_from_the_plan`, as `a_unit_landed_and_gone_from_the_plan` is:
   - `main_with` of `bolt/b`, the plan holding the bolt `b`;
   - then the plan holding no bolt, the place still listed, its let-go empty;
   - then the place tidied, its let-go `["home/12", "home/13"]`, and `answers.rec` and `places.rec` holding neither.
