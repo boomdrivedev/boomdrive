@@ -141,3 +141,79 @@ fn an_end_with_no_key() {
         "a stage's end with no delivery, as Flume prints one with no recipient",
     );
 }
+
+/// An end `of` Flume adds, `moved`, by its delivery alone: its key, when
+/// Flume read it, its delivery and its readers, and nothing else.
+fn moved() -> Value {
+    json!({
+        "of": "moved",
+        "key": "moved/1793559690",
+        "read_at": 1793559690,
+        "pending_for": ["boomdrive"],
+        "delivery": "fix--gate/0a1b2c3d/moved/1793559690",
+        "expires_at": 1794164490,
+        "owed": [{ "recipient": "boomdrive", "expired": false, "known": true }],
+        "confirmed": [{ "recipient": "scratch/planner", "at": 1793559695 }]
+    })
+}
+
+/// The runner-protocol spec's "An end of a form unnamed" (the
+/// requirement "An end of a form version 2 does not name goes up as its
+/// delivery alone").
+#[test]
+fn an_end_of_a_form_unnamed() {
+    let validator = place_status();
+    passes(
+        &validator,
+        &copy_with(json!([moved()])),
+        "a status copy whose end is of a form unnamed, by its delivery alone",
+    );
+    let mut bare = moved();
+    for field in ["delivery", "expires_at"] {
+        bare.as_object_mut().unwrap().remove(field);
+    }
+    passes(
+        &validator,
+        &copy_with(json!([bare])),
+        "an end by its delivery alone with no delivery, as Flume prints one with no recipient",
+    );
+    let mut stage = moved();
+    stage["of"] = json!("stage");
+    stage["key"] = json!("stage/code/1/dreaming");
+    passes(
+        &validator,
+        &copy_with(json!([stage, over("done")])),
+        "a stage's end by its delivery alone, beside an end that passes whole",
+    );
+    for field in ["of", "key", "read_at", "owed", "confirmed", "pending_for"] {
+        let mut end = moved();
+        end.as_object_mut().unwrap().remove(field);
+        refused(
+            &validator,
+            &copy_with(json!([end])),
+            &format!("an end by its delivery alone with no {field}"),
+        );
+    }
+}
+
+/// The runner-protocol spec's "Content beside a delivery alone".
+#[test]
+fn content_beside_a_delivery_alone() {
+    let validator = place_status();
+    for (field, value) in [
+        (
+            "deliveries",
+            json!([{ "recipient": "scratch/planner", "at": 1793559695, "by": "notice" }]),
+        ),
+        ("stage", json!("code")),
+        ("words", json!("the agent's words")),
+    ] {
+        let mut end = moved();
+        end[field] = value;
+        refused(
+            &validator,
+            &copy_with(json!([end])),
+            &format!("an end by its delivery alone holding its {field}"),
+        );
+    }
+}
