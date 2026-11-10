@@ -471,8 +471,11 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `<label>/runner/<host>`, in crew's formats: `runner.rec`, `answers.rec`
 and `places.rec`, and, once a preview is answered there, `previews.rec`,
 under the descriptor this repository proposes for crew to hold. A
-preview request names the host that brings it up, and one naming no
-host is given nothing. It pushes no other ref, and never with force. A
+preview leaves the runner's branch once its done is answered, with what
+the done put away; or once its work has left crew's plan and it is no
+longer up, a bolt's work leaving with its `Bolt` record. A preview
+request names the host that brings it up, and one naming no host is
+given nothing. It pushes no other ref, and never with force. A
 kit's launch that names no host is claimed on that branch, and taken
 once no other runner's branch answers it. A launch a drop names no
 longer stands, as crew reads it: crew's implementation offers and
