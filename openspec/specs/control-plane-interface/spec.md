@@ -79,6 +79,11 @@ A report's answer SHALL name the ids the control plane carries no more, which th
 - **WHEN** the fake control plane answers a report naming launch `a` as carried no more
 - **THEN** `a` leaves the runner's report, and later reports do not carry it
 
+#### Scenario: A preview let go
+
+- **WHEN** the runner has brought up the preview `home/30`, and the fake control plane answers a report naming `home/30` as carried no more
+- **THEN** a line reads `home/30: let go by the control plane`; `home/30` leaves the runner's report, and later reports do not carry it; and no `sluice release` is run
+
 ### Requirement: The configuration chooses the implementation
 
 The runner SHALL open the implementation the configuration's `[control_plane]` `type` names, from the list in `planes.rs`, handing it the table of that name, the `poll_interval`, and, for each part it opens, a say and a wake of that part's own, which it calls to wake that part when its control plane pushes the part's work. This binary SHALL carry `crew` and `hosted`. Any other word SHALL be refused at start, naming the words this binary carries.
