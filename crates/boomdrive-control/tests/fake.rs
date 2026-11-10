@@ -5,7 +5,7 @@
 use boomdrive_control::fake::{Fake, Sent};
 use boomdrive_control::shared::{self, Harness};
 use boomdrive_control::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 /// The shared cases' harness over [`Fake`], seeing the report it holds.
@@ -260,6 +260,30 @@ fn a_launch_let_go() {
     let pulled = pull(&mut fake).unwrap();
     assert_eq!(pulled.report, Some(launched(&["b"])));
     assert_eq!(pulled.wants, [offer("b", 1, launch("b"))]);
+}
+
+/// The fake takes the status of each launch that carries one, but those
+/// the test leaves, until it takes them again.
+#[test]
+fn a_status_taken_and_one_left() {
+    let mut fake = Fake::new();
+    let mut report = launched(&["a", "b", "c"]);
+    for id in ["a", "b"] {
+        report.launches.get_mut(&Id::new(id)).unwrap().status = Some(Carried {
+            text: format!("{{\"place\":\"{id}\"}}"),
+            at: at("2026-11-01T10:01:00Z"),
+            listed: true,
+        });
+    }
+    fake.leave_status(Id::new("b"));
+    let reported = fake.report(&report).unwrap();
+    assert_eq!(reported.statuses_taken, BTreeSet::from([Id::new("a")]));
+    fake.take_status(Id::new("b"));
+    let reported = fake.report(&report).unwrap();
+    assert_eq!(
+        reported.statuses_taken,
+        BTreeSet::from([Id::new("a"), Id::new("b")])
+    );
 }
 
 #[test]

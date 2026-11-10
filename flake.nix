@@ -37,7 +37,7 @@
       };
     };
     flume = {
-      url = "github:agentplot/flume/v0.20.1";
+      url = "github:agentplot/flume/v0.21.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";

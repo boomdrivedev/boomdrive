@@ -1,8 +1,34 @@
 # flume's binding for this repository: its places are plain git
 # worktrees, its changes OpenSpec's, and its work lands through sluice. It
-# declares no kinds of its own, so a launch here runs flume's own fix,
+# declares one kind of its own, content, beside flume's built-in fix,
 # chore and change.
 [profiles]
 place = "git-worktree"
 change = "openspec"
 merge_queue = "sluice"
+
+# content: the one kind of work that changes what the site shows, a
+# diagram, a page's words, a figure or a tools strip (site.5; record
+# 0038). change makes it and gets the checks green; preview serves the
+# place's own site and asks the operator whether it now says what the
+# task asked, a no going back to change with their words. The kind and its
+# prompts are the same in every family site; what tailors them here is
+# site/docs/content-brief.md and the task line. Each prompt is read from
+# this file's folder.
+[kinds.content]
+branch = "content"
+lands = true
+
+[[kinds.content.stages]]
+name = "change"
+prompt = "../site/docs/prompts/content-change.md"
+deliverables = ["commits"]
+agents = [{ program = "claude" }]
+
+[[kinds.content.stages]]
+name = "preview"
+prompt = "../site/docs/prompts/content-preview.md"
+conversation = true
+wait = true
+agents = [{ beside = "operator" }]
+on_fail = "change"

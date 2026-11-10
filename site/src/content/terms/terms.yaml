@@ -1,0 +1,130 @@
+# The glossary: one vocabulary for every page and every agent's draft.
+# scripts/vocab.ts turns it into Vale's vocabulary and substitution rule.
+- id: shell
+  term: shell
+  definition: The environment a repository declares and every command runs in, such as devenv, a container image or mise.
+  principle: one-shell
+- id: intent
+  term: intent
+  definition: What someone wants built, captured before anyone decides how.
+  principle: intents-and-bolts
+- id: bolt
+  term: bolt
+  definition: A body of work landed as one, built from units.
+  principle: intents-and-bolts
+- id: unit
+  term: unit
+  definition: One reviewable change inside a bolt.
+  principle: intents-and-bolts
+- id: gate
+  term: gate
+  definition: A named point where work may proceed, such as a merge, a version or a deploy.
+  principle: two-loops-one-gate
+  insteadOf: [checkpoint, quality gate]
+- id: worktree
+  term: worktree
+  definition: A checkout of its own for one agent's work.
+  principle: one-agent-one-worktree
+  insteadOf: [work tree, work-tree]
+- id: remote-cache
+  term: remote cache
+  definition: The task runner's cache every machine reads; only the confined executor, which holds its write credential, writes to it.
+  principle: never-prove-twice
+- id: fleet
+  term: fleet
+  definition: The agents working at once across our machines.
+  principle: measure-the-fleet
+  insteadOf: [swarm]
+- id: drive
+  term: drive
+  definition: One loop we operate, with its own plan, teams, signals and state; Crew's word for a partition's loop.
+  principle: measure-the-fleet
+- id: operator
+  term: operator
+  definition: The person who decides at the gate.
+  principle: two-loops-one-gate
+- id: secret
+  term: secret
+  definition: A credential a repository declares and the shell resolves from a password manager for one task.
+  principle: secrets-by-declaration
+- id: line
+  term: line
+  definition: A branch that lands work, either the shared line or a bolt's line off it.
+  principle: order-at-landing
+- id: submission
+  term: submission
+  definition: A session's finished head offered to a line, naming what it lands after; the session never merges it itself.
+  principle: one-agent-one-worktree
+- id: candidate
+  term: candidate
+  definition: The line plus every entry ahead of one submission, in order, tested exactly as it would land.
+  principle: order-at-landing
+- id: culprit
+  term: culprit
+  definition: The one submission a failed candidate is attributed to, the newest entry of the first candidate that failed.
+  principle: order-at-landing
+- id: confined-executor
+  term: confined executor
+  definition: The runner that could read nothing beyond a check's declared inputs, and the only writer of the remote cache.
+  principle: never-prove-twice
+- id: capture
+  term: capture
+  definition: One source event as recorded, such as a meeting or a day of a chat channel, holding its provenance and a pointer to the raw material.
+  principle: capture-at-the-source
+- id: signal
+  term: signal
+  definition: One piece of input read from a capture, such as a constraint, an ask or a question; never work on its own.
+  principle: capture-at-the-source
+- id: adapter
+  term: adapter
+  definition: What enumerates a source's events and writes one capture per event, unattended.
+  principle: capture-at-the-source
+- id: curation
+  term: curation
+  definition: The judgment that moves each signal onto an intent, a claim, a chore, or off with a reason.
+  principle: capture-at-the-source
+- id: item
+  term: item
+  definition: The unit of work curation makes from one or more signals; it goes to one worktree or into a plan.
+  principle: capture-at-the-source
+- id: inbox
+  term: inbox
+  definition: Where captures, signals, moves and items are kept, as files in a git repository.
+  principle: capture-at-the-source
+# The Boomdrive family's tools, named in lowercase as their own sites name
+# them; the one list of the family is @agentplot/site-theme's.
+- id: headwater
+  term: headwater
+  definition: The tool that reports releases and advisories for what a repository declares.
+  principle: capture-at-the-source
+  lowercase: true
+- id: eddy
+  term: eddy
+  definition: The tool that lists recorded meetings across meeting services.
+  principle: capture-at-the-source
+  lowercase: true
+- id: millpond
+  term: millpond
+  definition: The inbox tool, which keeps captures and signals and sends an item to a worktree.
+  principle: capture-at-the-source
+  lowercase: true
+- id: flume
+  term: flume
+  definition: The tool that launches one agent in one worktree for an item, runs its stages, and tidies the place once the work lands.
+  principle: one-agent-one-worktree
+  lowercase: true
+- id: sounding
+  term: sounding
+  definition: The tool that works one question in one session and ends on a conclusion the operator accepts, sends back or drops.
+  principle: two-loops-one-gate
+  lowercase: true
+- id: sluice
+  term: sluice
+  definition: The merge queue, which tests a change as merged and lands it.
+  principle: order-at-landing
+  lowercase: true
+- id: timber
+  term: timber
+  definition: The tool that carries what the merge queue lands into a store you own, keeps its channels and the environments that follow them, and serves consumers.
+  principle: never-prove-twice
+  lowercase: true

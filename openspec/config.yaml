@@ -35,23 +35,42 @@ context: |
   the tree pins (core.8). sluice gates every merge onto main on the
   layers .config/sluice.toml requires.
 
+  The site is site/, the Method, its field notes and the fleet's
+  measurements: an Astro site on bun, the moon project site, whose
+  content is Markdown and YAML under site/src/content/, each type a
+  collection with a schema in site/src/content.config.ts, served under
+  /boomdrive/ and published from main by the workflow pages. Its design
+  is site/docs/site-design.md (read it first), with the Method's
+  principles in site/docs/method-outline.md; its rules are
+  docs/architecture/site.md's, site.1 to site.7, beside core.md, and its
+  working rules site/CLAUDE.md. A change to what the site shows is the
+  content kind's work, never an OpenSpec change (site.5).
+
   Commits: stage by pathspec and commit the paths you wrote, git add
   <paths>, then git commit -m "<subject>" -- <paths>; never -a, never
   add .. Conventional Commits subjects, scoped to the part of the tree
   touched.
 
 rules:
+  proposal:
+    - "For the site's specs and changes: name the part of site/docs/site-design.md or site/docs/method-outline.md the change carries out. A diagram's proposal cites the idea site/docs/method-outline.md records as agreed with the operator."
   specs:
     - "A spec changes only through a delta in the change that builds it, and each scenario is one a moon task proves. A scenario no existing check proves is a check this change adds, in its tasks; never a step done by hand."
+    - "For the site's specs and changes: requirements use the glossary's words (site/src/content/terms/terms.yaml) and say what a reader sees, each scenario proved by a task of the site's or, where a page's look is the point, by what a browser shows. Where the change draws something that moves or has colour, its scenarios cover light and dark, phone width, scripts off and reduced motion."
   design:
     - "Cite by id the rules in docs/architecture/ that this design relies on. Where the design departs from a rule, name the rule and say why."
     - "Where the design reaches the control plane, it goes through the one control-plane interface and names the implementation that serves it (core.2)."
+    - "For the site's specs and changes: name each section of site/docs/site-design.md the design relies on. Where it departs from a decision there, name the decision and say why."
+    - "For the site's specs and changes: a new page type is a collection with a schema in site/src/content.config.ts, and a reference between types is one the build checks."
   tasks:
     - "Each task says what must be true and names the narrowest check that shows that task done, one of the gate's: one test by name of a crate's test task, run as `devenv shell -- cargo test -p <crate> <test>`, as CLAUDE.md has a quick, narrow call run directly, where a test shows it; else one project's task, its tests or the lint of what the task touched, run as `sluice exec main -- moon run <project>:<task>` (flume record 0054). No task is a step done by hand, a deploy or work after the landing."
     - "A task that adds a crate adds it to the cargo workspace's `members` and as a moon project of its own in .moon/workspace.yml, with its language declared and check-fast tasks for format, lint, type check and test, one task per check, each declaring its inputs, /devenv.nix, /devenv.lock and /.prototools among them (core.7)."
     - "A task that adds a tool pins its version in devenv.nix or .prototools, never a range, and runs it from there in every task (core.8)."
     - "A task that adds a file type has treefmt.nix claim it with a formatter or name it in an exclude, with its reason, in the same task (core.7)."
     - "No task runs the repository's whole checks, `sluice exec main` or a layer of them, and no task checks a task group or the projects the change touches: a group is a heading, for reading, and the change's verify runs the repository's whole checks once, before sluice runs its gate at the merge (flume record 0054)."
+    - "For the site's specs and changes: each task names how it is proved, a check-fast task of the site's, a command and what it reports, or what a browser shows (light and dark, phone width, scripts off, reduced motion) where the page's look is the point."
+    - "For the site's specs and changes: a task that writes words under site/src/content/ proves Vale reports no error or warning on them."
+    - "For the site's specs and changes: no task deploys, pushes to main or a bolt/* branch, or is done by hand after the landing."
 
 operations:
   apply:
@@ -59,3 +78,6 @@ operations:
       - "Tick a task only once the check it names passes, run as the task names it."
       - "Where a task leaves a detail open, decide it the way a careful engineer would from docs/architecture, openspec/specs, CLAUDE.md and the code, in that order, and name each choice in your summary. An open detail is not a reason to pause."
       - "Pause only when the same check still fails after two attempts, or when passing would mean changing a rule in docs/architecture or a spec under openspec/specs that the task does not tell you to change."
+      - "For the site's specs and changes: where a task leaves a detail open, decide it from site/docs/site-design.md, openspec/specs, site/CLAUDE.md and the code, in that order, hold similar things to the same rule (a new diagram as the drawn ones are made, a new page as its neighbours), and name each choice in your summary. An open detail is not a reason to pause."
+      - "For the site's specs and changes: fix every Vale warning in the words you wrote, as site:prose reports it."
+      - "For the site's specs and changes: pause only when the same check still fails after two attempts, or when passing would mean changing a decision in site/docs/site-design.md, an idea agreed in site/docs/method-outline.md, or a spec under openspec/specs that the task does not tell you to change."
