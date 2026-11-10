@@ -195,6 +195,34 @@ fn a_launch_found_by_its_mark() {
     );
 }
 
+/// The work-into-flume spec's "A mark the runner does not give", over
+/// Flume 0.4.1's own listing with `fix--tabs` marked `other:scratch/4`
+/// in place of the runner's `boomdrive:scratch/4`: the offer `scratch/4`
+/// is not answered launched at `fix--tabs`, and no line names that mark
+/// (record 0035; core.10).
+#[test]
+fn a_mark_the_runner_does_not_give() {
+    let bench = Bench::new();
+    let listing = fixture("status.json").replace("\"boomdrive:scratch/4\"", "\"other:scratch/4\"");
+    bench.flume.listing(Ok(Reply::Given(listing.clone())));
+    let mut plane = Fake::holding(vec![Want::Offer(offer("scratch/4", "tabs"))]);
+    let (_, lines) = bench.pass(&mut plane);
+    let listing: Value = serde_json::from_str(&listing).unwrap();
+    let tabs = facts::marked(&listing, "other:scratch/4")
+        .and_then(facts::location)
+        .unwrap();
+    let answered = bench
+        .report()
+        .launches
+        .get(&Id::new("scratch/4"))
+        .map(|launch| (launch.answer.outcome, launch.answer.place_dir.clone()));
+    assert_ne!(answered, Some((Outcome::Launched, Some(tabs.to_string()))));
+    assert!(
+        lines.iter().all(|line| !line.contains("other:scratch/4")),
+        "{lines:?}"
+    );
+}
+
 /// The report file lost, and a launch's mark in Flume's listing: it is
 /// answered launched at its place, and launched no second time.
 #[test]
