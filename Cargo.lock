@@ -159,6 +159,7 @@ dependencies = [
 name = "boomdrive"
 version = "0.0.0"
 dependencies = [
+ "boomdrive-bounded",
  "boomdrive-control",
  "boomdrive-crew",
  "boomdrive-hosted",

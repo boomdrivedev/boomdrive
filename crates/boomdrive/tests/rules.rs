@@ -235,7 +235,7 @@ fn only_crews_crate_names_crew() {
 /// tree's crates; and the binary's crate on the interface and the
 /// implementations it lists. Record 0042 and core.58: `boomdrive-bounded`,
 /// which runs a git call to a remote to its limit, depends on none of the
-/// tree's crates.
+/// tree's crates, and the binary's crate depends on it beside them.
 #[test]
 fn the_crates_depend_as_decision_1_has_them() {
     let by_path: BTreeMap<String, BTreeSet<String>> = crates()
@@ -248,7 +248,12 @@ fn the_crates_depend_as_decision_1_has_them() {
         BTreeMap::from([
             (
                 "boomdrive".to_string(),
-                set(&["boomdrive-control", "boomdrive-crew", "boomdrive-hosted"])
+                set(&[
+                    "boomdrive-bounded",
+                    "boomdrive-control",
+                    "boomdrive-crew",
+                    "boomdrive-hosted"
+                ])
             ),
             ("boomdrive-bounded".to_string(), set(&[])),
             ("boomdrive-control".to_string(), set(&[])),
@@ -466,6 +471,7 @@ fn moons_files_are_read() {
         built("boomdrive"),
         BTreeSet::from([
             "boomdrive".to_string(),
+            "boomdrive-bounded".to_string(),
             "boomdrive-control".to_string(),
             "boomdrive-crew".to_string(),
             "boomdrive-hosted".to_string()

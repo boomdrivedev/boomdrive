@@ -22,6 +22,9 @@ boomdrive-control = { path = "../boomdrive-control" }
 # and 4; core.2).
 boomdrive-crew = { path = "../boomdrive-crew" }
 boomdrive-hosted = { path = "../boomdrive-hosted" }
+# A clone's fetch run to its limit, in a process group of its own (record
+# 0042; core.58).
+boomdrive-bounded = { path = "../boomdrive-bounded" }
 # `boomdrive enroll`'s token, read without echo where standard input is a
 # terminal (design Decision 4).
 rpassword.workspace = true
