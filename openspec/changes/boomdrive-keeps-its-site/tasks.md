@@ -74,7 +74,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 5. Releases
 
-- [ ] 5.1 `cliff.toml`'s `[git]` gains `exclude_paths = ["site/**", ".github/workflows/pages.yml"]`, with a comment citing core.48 and record 0037. `check-releases.sh` makes a commit that changes a file under `site/` alone, and one that changes a file under `site/` and one outside it. It gains the releases spec's three new scenarios (design Decision 7). True when `sluice exec main -- moon run root:releases` passes, proving the releases spec's "A change to the site alone", "A change to the site and the runner" and "The site's commit in no notes".
+- [x] 5.1 `cliff.toml`'s `[git]` gains `exclude_paths = ["site/**", ".github/workflows/pages.yml"]`, with a comment citing core.48 and record 0037. `check-releases.sh` makes a commit that changes a file under `site/` alone, and one that changes a file under `site/` and one outside it. It gains the releases spec's three new scenarios (design Decision 7). True when `sluice exec main -- moon run root:releases` passes, proving the releases spec's "A change to the site alone", "A change to the site and the runner" and "The site's commit in no notes".
 
 ## 6. What the repository says of the site
 
