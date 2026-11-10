@@ -57,7 +57,7 @@ page when that part exists.
 - **[core.49]** No drive's backlog, slow answer, refusal or failure delays another drive's launches, acts or reports; what drives share on a host is a cap or a synchronization its owner designs.
 - **[core.27]** To a hosted control plane, the runner carries of a tool's status only the fields the protocol's copy of it names, each as the tool printed it, and leaves out the rest.
 - **[core.28]** Nothing leaves a host from the runner but its control plane's protocol, git's calls and an OTLP export to a collector the host's configuration names, and what goes as health holds only ids, names, statuses, times, counts and digests.
-- **[core.54]** Every launch that names a recipient names the runner one more, `boomdrive`, so Flume holds the place's end for the runner past its tidy; the runner carries the record Flume holds as the place's status, and collects it as that recipient only once the report that holds it is saved, so a control plane reads the place's end from the runner's report, whatever tidied the place. (Record 0030, proposed.)
+- **[core.54]** Every launch that names a recipient names the runner one more, `boomdrive`, so Flume holds the place's end for the runner past its tidy; the runner carries the record Flume holds as the place's status, and collects it as that recipient only once the report that holds it is saved, so a control plane reads the place's end from the runner's report, whatever tidied the place. (Record 0030, accepted by the user on 2026-11-09.)
 
 ### Terminals
 
