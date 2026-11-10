@@ -58,7 +58,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 3. Publishing
 
 - [x] 3.1 `.github/workflows/pages.yml` is design Decision 11's, each action pinned by its commit with its version in a comment. `site/moon.yml` gains `workflow`, as Decision 3's table has it. True when `sluice exec main -- moon run site:workflow` passes, proving the site spec's "The workflow's lint".
-- [ ] 3.2 `site/check-site.sh` reads `.github/workflows/pages.yml` line by line, as `check-releases.sh` reads the workflow `release`. It checks the trigger, the push to `main` limited to Decision 11's paths and `workflow_dispatch`, and the concurrency group `pages` with `cancel-in-progress: false`. It checks that the build runs `devenv shell -- moon run site:build` and uploads `site/dist`, and that the deploy is to `github-pages`. True when `sluice exec main -- moon run site:test` passes, proving the site spec's "The workflow's trigger" and "The workflow's build".
+- [x] 3.2 `site/check-site.sh` reads `.github/workflows/pages.yml` line by line, as `check-releases.sh` reads the workflow `release`. It checks the trigger, the push to `main` limited to Decision 11's paths and `workflow_dispatch`, and the concurrency group `pages` with `cancel-in-progress: false`. It checks that the build runs `devenv shell -- moon run site:build` and uploads `site/dist`, and that the deploy is to `github-pages`. True when `sluice exec main -- moon run site:test` passes, proving the site spec's "The workflow's trigger" and "The workflow's build".
 
 ## 4. Content work and a place's site
 

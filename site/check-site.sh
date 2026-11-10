@@ -42,4 +42,62 @@ for page in $pages; do
 done
 [ "$status" -ne 0 ] || echo "check-site: $(printf '%s\n' "$pages" | wc -l | tr -d ' ') pages, every link under /boomdrive/ and none of boomdrive-web's but the theme's"
 
+# The workflow's trigger, The workflow's build: the workflow pages read
+# line by line, as check-releases.sh reads the workflow release, and as
+# yamlfmt lays it out.
+workflow=../.github/workflows/pages.yml
+# The lines of the top-level block `$1`, less the empty ones and comments.
+block() {
+  awk -v key="$1:" '
+    $0 == key { inside = 1; next }
+    inside && /^[^ #]/ { exit }
+    inside && !/^ *(#|$)/ { print }
+  ' "$workflow"
+}
+on=$(block on)
+want_on="  push:
+    branches:
+      - main
+    paths:
+      - site/**
+      - .github/workflows/pages.yml
+      - devenv.nix
+      - devenv.yaml
+      - devenv.lock
+      - flake.lock
+  workflow_dispatch:"
+if [ "$on" = "$want_on" ]; then
+  echo "check-site: the workflow pages runs on a push to main that changes the site, its shell or flake.lock, and when dispatched"
+else
+  fail "the workflow pages runs on more or less than a push to main that changes the site, its shell or flake.lock, and a dispatch:
+$on"
+fi
+concurrency=$(block concurrency)
+want_concurrency="  group: pages
+  cancel-in-progress: false"
+if [ "$concurrency" = "$want_concurrency" ]; then
+  echo "check-site: the workflow pages runs one at a time, none cancelled"
+else
+  fail "the workflow pages is not one run at a time, none cancelled:
+$concurrency"
+fi
+# Each line `$1` matches, as a basic regular expression, once.
+once() {
+  [ "$(grep -c -e "$1" "$workflow")" -eq 1 ]
+}
+if once '^        run: devenv shell -- moon run site:build$' &&
+  once '^      - uses: actions/upload-pages-artifact@[0-9a-f]\{40\} # v' &&
+  once '^          path: site/dist$' &&
+  once '^      name: github-pages$' &&
+  once '^        uses: actions/deploy-pages@[0-9a-f]\{40\} # v'; then
+  echo "check-site: the workflow pages builds the site in the devenv shell, uploads site/dist and deploys it to github-pages"
+else
+  fail "the workflow pages does not build the site in the devenv shell, upload site/dist and deploy it to github-pages"
+fi
+if grep -n -E 'run: .*(site-check|site:(check|prose|test|workflow)|moon run :|sluice)' "$workflow"; then
+  fail "the workflow pages runs a check"
+else
+  echo "check-site: the workflow pages runs no check"
+fi
+
 exit "$status"
