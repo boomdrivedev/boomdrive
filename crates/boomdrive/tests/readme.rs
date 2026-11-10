@@ -127,7 +127,8 @@ fn the_readme_names_no_branch_command() {
 }
 
 /// core.55 and design Decision 13: README says how a preview is brought
-/// up and put away, by sluice's own commands.
+/// up and put away, by sluice's own commands, and when a preview leaves
+/// the runner's branch (record 0031 as amended on 2026-11-09).
 #[test]
 fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
     let (text, _) = readme();
@@ -143,5 +144,9 @@ fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
     assert!(
         flat.contains("previews.rec"),
         "README names no previews.rec"
+    );
+    assert!(
+        flat.contains("leaves the runner's branch once its done is answered"),
+        "README says not when a preview leaves the runner's branch"
     );
 }

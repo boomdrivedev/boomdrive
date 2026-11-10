@@ -422,10 +422,15 @@ pub fn since_at(files: &read::RunnerFiles) -> Option<String> {
 /// runner holds unlaunched, whatever the plan holds, with its acts; each
 /// role's earlier run once a later one is recorded and its place is over;
 /// a role's last run once its record has gone from `roles.rec` and its
-/// place is over, each run with its done; and each preview whose work has
-/// left crew's plan and which holds no preview up: a done, a preview
-/// refused, or one brought up or held whose status sluice's listing no
-/// longer holds (design Decision 10).
+/// place is over, each run with its done. Of the previews: each done the
+/// report holds, whatever the plan holds, with each bring-up the report
+/// holds whose request names the done's `Host`, `Repo` and `Revision`, as
+/// written, and was written before it, which the done put away or found
+/// gone; then each other bring-up whose work has left crew's plan and
+/// which holds no preview up, one refused, or one brought up or held whose
+/// status sluice's listing no longer holds. A bring-up written after a
+/// done is crew's new ask, and stays (design Decision 10; record 0031 as
+/// amended on 2026-11-09).
 pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet<Id> {
     let mut gone = BTreeSet::new();
     let mut launches = BTreeSet::new();
@@ -462,22 +467,41 @@ pub fn let_go(label: &str, host: &str, main: &Main, report: &Report) -> BTreeSet
             gone.insert(id.clone());
         }
     }
-    for (id, previewed) in &report.previews {
-        let Some(Named::Request(n)) = ids::named(label, id) else {
+    // Each preview the report holds of a request `main` names, a done or
+    // a bring-up.
+    let previews: Vec<(&Id, &Previewed, &read::Request)> = report
+        .previews
+        .iter()
+        .filter_map(|(id, previewed)| {
+            let Some(Named::Request(n)) = ids::named(label, id) else {
+                return None;
+            };
+            Some((id, previewed, main.request(n)?))
+        })
+        .collect();
+    // A done answered goes, with the bring-ups before it of its key.
+    for (id, _, done) in previews.iter().filter(|(_, previewed, _)| previewed.done) {
+        gone.insert((*id).clone());
+        let Some(key) = done.preview_key() else {
             continue;
         };
-        let Some(request) = main.request(n) else {
+        let put_away = previews.iter().filter(|(_, previewed, request)| {
+            !previewed.done && request.number < done.number && request.preview_key() == Some(key)
+        });
+        gone.extend(put_away.map(|(earlier, _, _)| (*earlier).clone()));
+    }
+    // A bring-up goes once its work has left the plan and it is not up.
+    for (id, previewed, request) in &previews {
+        if previewed.done || gone.contains(*id) {
             continue;
-        };
+        }
         let unlisted = previewed
             .status
             .as_ref()
             .is_some_and(|status| !status.listed);
-        let up = !previewed.done
-            && matches!(previewed.outcome, Outcome::Done | Outcome::Held)
-            && !unlisted;
+        let up = matches!(previewed.outcome, Outcome::Done | Outcome::Held) && !unlisted;
         if !up && !main.plans(request.work()) {
-            gone.insert(id.clone());
+            gone.insert((*id).clone());
         }
     }
     let kept = roles::of_host(main, host);
