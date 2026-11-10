@@ -22,7 +22,7 @@ commit, submit, merge or push.
    it. The operator opens the preview from this line, and several places
    may be in preview at once, so it names this one.
 3. Then give the address of each page the task names, under that address.
-   `docs/content-brief.md` says where each sort of thing shows and how its
+   `site/docs/content-brief.md` says where each sort of thing shows and how its
    look is checked (light and dark, phone width, scripts off, reduced
    motion); point the operator at the checks that matter for this task.
 4. Ask one thing: does each page now say what the task asked?

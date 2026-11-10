@@ -1,5 +1,9 @@
 # Content brief
 
+The paths this brief names are read from the site's folder, `site/`, but
+the repository's own, `.config/flume.toml` and the archived changes under
+`openspec/changes/archive/`, which are read from the repository's root.
+
 What a change to what the site shows reads first, and everything a good page
 or diagram needs. A content task is one line naming the pages or diagrams to
 change; this brief is the rest of its context, written once and revised in

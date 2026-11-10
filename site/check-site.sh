@@ -100,4 +100,23 @@ else
   echo "check-site: the workflow pages runs no check"
 fi
 
+# The kind's prompts (site.5): each stage's prompt of [kinds.content] in
+# .config/flume.toml, resolved against that file's own folder as flume
+# resolves it, is a file under site/docs/prompts/.
+flume=../.config/flume.toml
+prompts=$(awk '
+  /^\[/ { inside = ($0 == "[kinds.content]" || $0 == "[[kinds.content.stages]]") }
+  inside && /^prompt *= *"/ { sub(/^prompt *= *"/, ""); sub(/".*$/, ""); print }
+' "$flume")
+[ -n "$prompts" ] || fail "$flume gives [kinds.content] no prompt"
+here=$(cd docs/prompts && pwd -P)
+for prompt in $prompts; do
+  folder=$(cd "../.config/$(dirname "$prompt")" 2>/dev/null && pwd -P) || folder=""
+  if [ "$folder" = "$here" ] && [ -f "$folder/$(basename "$prompt")" ]; then
+    echo "check-site: the content kind's prompt $prompt is site/docs/prompts/$(basename "$prompt")"
+  else
+    fail "the content kind's prompt $prompt names no file under site/docs/prompts/"
+  fi
+done
+
 exit "$status"

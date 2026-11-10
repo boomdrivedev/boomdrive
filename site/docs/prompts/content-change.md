@@ -6,7 +6,7 @@ You are in the place `{{place}}`, on the branch `{{branch}}`, cut from
 `{{base}}`. The task changes what this repository's site shows: a diagram, a
 page's words, a figure or a tools strip, one of them or several.
 
-1. Read `docs/content-brief.md` whole before you edit anything. It says what
+1. Read `site/docs/content-brief.md` whole before you edit anything. It says what
    to read first, where the agreed ideas are, the conventions of each sort of
    thing the site shows with finished examples, where each lands, and what
    proves a change.
