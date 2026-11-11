@@ -144,3 +144,47 @@ Sources: the decision above and its amendment of 2026-11-06; records 0012, 0023 
 
 - crew is asked to make a new drive's state and name the drive in its own file at setup's asking, since crew alone knows its state's layout.
 - A person's first drive needs no Flume setting of its own: its places run in Flume's default stream, as a laptop's do in record 0023.
+
+## Amendment, 2026-11-11: how setup is built
+
+Status: the writing agent's, made on 2026-11-11 within the amendment of 2026-11-09 above. Each choice is cheap to change and turns on no word of the user's.
+
+Deciders: the agent writing the change `a-persons-drive-is-set-up-by-one-command`, from its brief of 2026-11-10: "A person who has Boomdrive's programs from Nix, on a Mac Nix does not manage, runs one setup command, which an agent can run for them, that takes their account, drive, repositories and crew state once and leaves the runner running for their login and crew's agents ready to talk to, setting each role through crew drive set's --runs <role> standing|on-demand and the batches through --review <after_changes> <after_hours>, never --flume; adding or removing a repository later is setup's too".
+Sources: the amendment of 2026-11-09 above; the change's design, its Decisions 1 to 12 and its Risks; agentplot/crew records 0064 (as amended 2026-11-09) and 0065, at crew v0.59.0; the modules' agent, file and activation (`nix/modules/darwin.nix`, `accounts.nix`, `toml.nix`, `activate.sh`); Flume's `host/config.rs` at Flume's main `e2973d57`; rules core.2, core.13, core.16, core.17, core.18, core.28, core.29, core.35, core.39 and core.57.
+
+### Context and problem statement
+
+The amendment of 2026-11-09 says what setup takes and leaves. It leaves open:
+
+- how its answers are given on a second run;
+- what it passes crew that the person is not asked;
+- who makes the state repository, and how;
+- how a file Nix renders and one setup writes stay the same;
+- where a person's profile holds herdr's plugins;
+- what the agent runs.
+
+Two facts bear on it:
+
+- Each of the set's herdr plugin packages is its tool's plugin folder at its top, so one Nix profile cannot hold both.
+- Flume with no file of its own runs the printed command, and only Boomdrive's module gives it herdr.
+
+### Decision outcome
+
+- **One command, its answers from its flags, a terminal, the host, then its own.** `boomdrive setup` takes every answer as a flag. On a terminal it asks for the account, the drive, the state repository and the repositories where no flag or file gives them. `--add-repository` and `--remove-repository` change the drive's repositories as the host holds them. Not taken: subcommands for a repository, which would give one drive's setup two command lines.
+- **What the host holds is the answer not given.** The account, the drive, its repositories and the state repository are read from the runner's file setup wrote. The blueprints, each role's runs and the review are read from crew's file, by crew's implementation. Not taken: a file of setup's own answers, which core.35 does not list, and which could disagree with the files it describes.
+- **Setup's own values.** The blueprints are the drive's first repository, each role is `standing`, and the review is five changes or four hours, as every drive of the user's runs in crew's test of its module. Not taken: `on-demand` by default, which runs a role in a Flume stream setup does not write.
+- **crew is given the Mac's own values.** The machine and the one host are this host as `hostname -s` gives it, of kind `darwin`. The session is the drive's name, and the folder is the runner's repository root. Each role's Claude account is the account's name, and each repository's folders are the runner's clone and view (core.57). Never `--flume`, `--roles` or `--console`. Not taken: one more flag for the Claude account's name, which the person is not asked.
+- **The state repository is made by gh, private.** crew's implementation reads it with `gh repo view`, and makes it with `gh repo create --private` where gh cannot resolve it. GitHub's sign-in is checked before anything is written. Not taken: a call of the runner's own to GitHub, which would need the person's token in the runner (core.4).
+- **The runner's file is Nix's byte for byte, but its first line.** It holds `accounts` and `[control_plane]` with the implementation's own table, rendered as `toml.nix` renders them. One test holds the two to one rendered file. Its first line names setup, which is how setup knows its own file. A person's file is moved aside to `config.toml.before-setup`. Not taken: the local layer, which is a control plane's.
+- **A host Nix manages is refused, untouched.** Where the runner's file is a link, setup runs nothing and names `services.boomdrive.accounts`. Not taken: making the state repository and running crew there, which would end in crew's refusal of its linked file.
+- **The set gives its herdr plugins in one package.** `herdr-plugins` holds each at `share/herdr/plugins/<tool>`. Setup links each from the person's profile with `herdr plugin link`, skipping one herdr already lists. Not taken: `herdr plugin install` from GitHub, which takes a plugin other than the set's.
+- **The agent is nix-darwin's, under setup's own label.** `io.github.agentplot.boomdrive` runs `boomdrive` by name on a fixed `PATH` of the person's profiles and the Mac's usual folders. It is loaded into the login's domain, and booted out first only where its plist changed. Not taken: the runner's store path, which a profile's garbage collection may remove under the agent.
+- **GitHub's sign-in refuses, the others are named.** Claude Code's and Pending You's are named with how the person signs in, and setup goes on.
+- **crew's implementation carries a drive's setup.** It is reached through `planes` as enrollment is (core.2).
+
+core.29's text gains setup's link of the set's herdr plugins by herdr's own command. core.5's, core.16's, core.18's and core.28's details gain what setup does. Each is amended in this record's commit.
+
+### Consequences
+
+- Flume is asked for a command that sets its managed layer's host keys, a drive's stream and a source at setup's asking, as crew was asked for `crew drive set`. That is the reach of this record's first consequence, which asked Flume for commands that declare a stream and a kind source. Until Flume has it, a drive set up here has crew's standing agents to talk to, and the runner's launches into Flume print their commands rather than run them. The amendment of 2026-11-09 said a first drive needs no Flume setting of its own. That holds of its stream alone: Flume's host keys come from Boomdrive's module on a host Nix manages, and from nothing on one it does not.
+- Setup runs crew v0.59.0's flags, which the bolt `the-sets-crew-pin-takes-its-new-names` brings into the set.
