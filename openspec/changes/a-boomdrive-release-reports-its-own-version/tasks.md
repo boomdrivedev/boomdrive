@@ -23,7 +23,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The flake
 
-- [ ] 4.1 `nix/tests/packages.nix` gains the case "The runner at its tree's version": for each system, `packages.<system>.boomdrive.version` is `Cargo.toml`'s `[workspace.package]` version, read from the tree, proving the family-packages spec's "The runner at its tree's version" (design Decision 7). True when `sluice exec main -- moon run nix:test` passes.
+- [x] 4.1 `nix/tests/packages.nix` gains the case "The runner at its tree's version": for each system, `packages.<system>.boomdrive.version` is `Cargo.toml`'s `[workspace.package]` version, read from the tree, proving the family-packages spec's "The runner at its tree's version" (design Decision 7). True when `sluice exec main -- moon run nix:test` passes.
 
 ## 5. What the tree says of it
 
