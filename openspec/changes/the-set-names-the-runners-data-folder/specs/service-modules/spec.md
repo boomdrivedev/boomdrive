@@ -2,7 +2,7 @@
 
 ### Requirement: On nix-darwin the runner is a launchd agent of the primary user's login
 
-With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `<package>/bin/boomdrive run --config <the file>`, start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, be given `HOME` and `PATH` alone of the module's environment, beside any variable the host gives the job, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
+With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `<package>/bin/boomdrive run --config <the file>`, start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, be given `HOME` and `PATH` alone by the module, beside any variable the host gives the job, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
 
 #### Scenario: The agent
 
