@@ -1,10 +1,11 @@
 #!/bin/sh
 # The releases spec (record 0024, core.48), proven in scratch repositories
 # made in a temporary directory: release.sh's next tag and its notes under
-# the tree's cliff.toml, release-preview beside them, check-commits.sh
-# under the tree's .versionrc, set-version.sh and check-versions.sh on
-# scratch copies of the tree's manifests, and the workflow release read
-# line by line.
+# the tree's cliff.toml, after a tag on main and after one on a release
+# commit off it, release-preview beside them, check-commits.sh under the
+# tree's .versionrc, set-version.sh and check-versions.sh on scratch
+# copies of the tree's manifests, release.sh's release commit of a main
+# that commits them, and the workflow release read line by line.
 # The scratch repositories' git reads no configuration of the host's, and
 # their names are neutral (core.41).
 set -eu
@@ -37,7 +38,7 @@ repo() {
   dir="$scratch/$1"
   git init -q -b main "$dir"
   cp "$tree/cliff.toml" "$tree/.versionrc" "$tree/release.sh" \
-    "$tree/check-commits.sh" "$dir/"
+    "$tree/set-version.sh" "$tree/check-commits.sh" "$dir/"
   files=0
 }
 
@@ -448,6 +449,79 @@ else
   *0.8.0*boomdrive-control* | *boomdrive-control*0.8.0*) pass "check-versions.sh fails a Cargo.lock that gives boomdrive-control 0.8.0, naming the crate and 0.8.0" ;;
   *) fail "check-versions.sh fails a Cargo.lock that gives boomdrive-control 0.8.0 without naming the crate and 0.8.0: $said" ;;
   esac
+fi
+
+# Scenarios: The release commit, main is left as it was, A tag that
+# exists, What is not a tag. A repository whose main commits the tree's
+# manifests beside a file, and a change to that file left uncommitted.
+repo releasecommit
+manifests releasecommit
+git -C "$dir" add Cargo.toml Cargo.lock crates
+commit "feat: a start"
+echo "an edit left uncommitted" >>"$dir/file-1"
+# What a release commit leaves as it was: main's tip, the branch checked
+# out, every branch, the index, the working tree and git status.
+state() {
+  git -C "$dir" rev-parse main
+  git -C "$dir" symbolic-ref HEAD
+  git -C "$dir" for-each-ref --format='%(refname) %(objectname)' refs/heads
+  git -C "$dir" ls-files -s
+  git -C "$dir" diff
+  git -C "$dir" status --porcelain --untracked-files=all
+}
+# The objects git holds loose, which a commit made adds to.
+objects() {
+  git -C "$dir" count-objects | cut -d ' ' -f 1
+}
+main_tip=$(git -C "$dir" rev-parse main)
+before=$(state)
+if (cd "$dir" && sh release.sh commit v0.2.0 2>"$dir.log"); then
+  released=$(git -C "$dir" rev-parse -q --verify "refs/tags/v0.2.0^{commit}" || true)
+  mkdir -p "$scratch/released"
+  if [ -n "$released" ]; then
+    git -C "$dir" cat-file blob "$released:Cargo.toml" >"$scratch/released/Cargo.toml"
+    git -C "$dir" cat-file blob "$released:Cargo.lock" >"$scratch/released/Cargo.lock"
+  fi
+  others=$(lock_crates "$scratch/released" | awk '$2 != "0.2.0"')
+  if [ -n "$released" ] &&
+    [ "$(git -C "$dir" rev-list --parents -n 1 "$released")" = "$released $main_tip" ] &&
+    [ "$(git -C "$dir" log -1 --format=%s "$released")" = "chore(release): v0.2.0" ] &&
+    [ "$(git -C "$dir" diff --name-only main "$released" | tr '\n' ' ')" = "Cargo.lock Cargo.toml " ] &&
+    [ "$(workspace_version "$scratch/released")" = 0.2.0 ] &&
+    [ -n "$(lock_crates "$scratch/released")" ] && [ -z "$others" ] &&
+    grep -q "release: v0.2.0 names $released, cut from $main_tip" "$dir.log"; then
+    pass "release.sh commit v0.2.0 tags a commit cut from main, chore(release): v0.2.0, changing Cargo.toml and Cargo.lock alone to give 0.2.0, and says so"
+  else
+    fail "release.sh commit v0.2.0 does not tag a commit cut from main, chore(release): v0.2.0, changing Cargo.toml and Cargo.lock alone to give 0.2.0, or does not say so: $(cat "$dir.log")"
+  fi
+  if [ "$(state)" = "$before" ]; then
+    pass "release.sh commit v0.2.0 leaves main, the branch checked out, the index, the working tree and git status as they were"
+  else
+    fail "release.sh commit v0.2.0 changes main, the branch checked out, the index, the working tree or git status:
+$(state)"
+  fi
+else
+  fail "release.sh commit v0.2.0 fails on main: $(cat "$dir.log")"
+fi
+held=$(objects)
+code=0
+said=$(cd "$dir" && sh release.sh commit v0.2.0 2>&1) || code=$?
+if [ "$code" -eq 1 ] && [ "$(objects)" = "$held" ] &&
+  [ "$(git -C "$dir" rev-parse -q --verify "refs/tags/v0.2.0^{commit}")" = "$released" ]; then
+  case $said in
+  *v0.2.0*) pass "release.sh commit v0.2.0 exits 1 where v0.2.0 is a tag, naming it, and makes no commit" ;;
+  *) fail "release.sh commit v0.2.0 exits 1 where v0.2.0 is a tag without naming it: $said" ;;
+  esac
+else
+  fail "release.sh commit v0.2.0 exits $code where v0.2.0 is a tag, or makes a commit: $said"
+fi
+tags=$(git -C "$dir" tag --list)
+code=0
+said=$(cd "$dir" && sh release.sh commit 0.2.0 2>&1) || code=$?
+if [ "$code" -eq 2 ] && [ "$(objects)" = "$held" ] && [ "$(git -C "$dir" tag --list)" = "$tags" ]; then
+  pass "release.sh commit 0.2.0 exits 2 and makes no commit and no tag"
+else
+  fail "release.sh commit 0.2.0 exits $code, or makes a commit or a tag: $said"
 fi
 
 # Scenarios: The workflow's trigger, A release. The workflow as yamlfmt
