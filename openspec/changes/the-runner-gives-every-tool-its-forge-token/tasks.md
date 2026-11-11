@@ -100,7 +100,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - `a_failed_fetch_drops_its_token`.
 
   These prove the clones spec's "A repository the App is not installed on" and "A mint refused is named after git's words", and the forge-tokens spec's "A token kept across passes" and "A failed fetch drops its token". Every other scenario of the clones spec still holds, "Git asks no one" and "The host rewrites https to ssh" among them (design Decision 5). True when `devenv shell -- cargo test -p boomdrive --test clones` passes.
-- [ ] 4.4 `Runner` gains `forge: Forge`, made by `Forge::new()` once when it starts. The loop's `pass::pass` and the landing's `pass::keep_one` are given it, so a token is kept across passes. Every other caller of `pass::pass`, `pass::keep_one`, `clone::fetch` and `clone::make`, in the sources and the tests, passes what it now takes (design Decisions 3 and 5). True when `sluice exec main -- moon run boomdrive:typecheck` passes.
+- [x] 4.4 `Runner` gains `forge: Forge`, made by `Forge::new()` once when it starts. The loop's `pass::pass` and the landing's `pass::keep_one` are given it, so a token is kept across passes. Every other caller of `pass::pass`, `pass::keep_one`, `clone::fetch` and `clone::make`, in the sources and the tests, passes what it now takes (design Decisions 3 and 5). True when `sluice exec main -- moon run boomdrive:typecheck` passes.
 
 ## 5. The modules
 
