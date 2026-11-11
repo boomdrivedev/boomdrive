@@ -16,8 +16,8 @@ mod common;
 
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
-    ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Outcome, Part,
-    Previewed, Report, ToolVersion, Want, INTERFACE_VERSION,
+    ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, KeptRepository, Launched, Lease,
+    Outcome, Part, Previewed, Report, ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
 use boomdrive_hosted::key::{Memory, Store};
@@ -530,6 +530,40 @@ fn each_hello_its_own() {
     );
     assert_eq!(work["leases"], json!({ "l-2": 1 }));
     assert_eq!(home["capacity"]["printed"]["streams"][0].get("queue"), None);
+}
+
+/// The hosted-control-plane spec's "No drive or folder goes up": the
+/// runner's hello names the drive `family` with `example/app` at its
+/// clone's folder, and `home`'s hello names `example/app` and neither the
+/// drive nor the folder, since version 2 carries neither (design Decision
+/// 6 of the-runner-names-each-repository-it-keeps; core.27, core.42).
+#[test]
+fn no_drive_or_folder_goes_up() {
+    let fake = Fake::start();
+    let mut parts = Parts::open(&fake);
+    let report = Report::default();
+    let mut hello = hello(&report);
+    hello.drives = BTreeMap::from([(
+        "family".to_string(),
+        vec![KeptRepository {
+            address: "example/app".to_string(),
+            container_dir: "/data/repositories/example/app".to_string(),
+        }],
+    )]);
+    parts.part("home").pull(&hello, &report).expect("read");
+    let taken = fake.taken();
+    let first = messages(&taken, "home")
+        .into_iter()
+        .next()
+        .expect("a message from home");
+    assert_eq!(kind(&first).as_deref(), Some("hello"), "{first}");
+    assert_eq!(
+        first["body"]["hello"]["repositories"],
+        json!(["example/app"])
+    );
+    let text = first.to_string();
+    assert!(!text.contains("family"), "{text}");
+    assert!(!text.contains("/data/repositories"), "{text}");
 }
 
 /// The hosted-control-plane spec's "A repository drained goes up in no

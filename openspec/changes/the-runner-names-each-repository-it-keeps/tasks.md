@@ -19,7 +19,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The hosted implementation sends neither
 
-- [ ] 3.1 `crates/boomdrive-hosted/tests/plane.rs`'s `no_drive_or_folder_goes_up` proves the hosted-control-plane spec's "No drive or folder goes up", and `each_hello_its_own` still passes. The hosted implementation's source is unchanged (design Decision 6; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane -- each_hello_its_own no_drive_or_folder_goes_up` passes.
+- [x] 3.1 `crates/boomdrive-hosted/tests/plane.rs`'s `no_drive_or_folder_goes_up` proves the hosted-control-plane spec's "No drive or folder goes up", and `each_hello_its_own` still passes. The hosted implementation's source is unchanged (design Decision 6; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane -- each_hello_its_own no_drive_or_folder_goes_up` passes.
 
 ## 4. crew's implementation writes repositories.rec
 
