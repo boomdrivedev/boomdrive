@@ -104,7 +104,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 5. The modules
 
-- [ ] 5.1 `nix/modules/options.nix` declares `settings.forge`, unset by default and rendered only where set, as a table of `app_id`, `types.ints.positive`, and `key_file`, `types.str`. Each option's description says what it holds, the key file outside the Nix store and readable by its owner alone, citing record 0007 as amended on 2026-11-11. An assertion fails evaluation where `key_file` begins with `builtins.storeDir`, with design Decision 7's words. `nix/tests/settings.nix`'s crew value gains `forge = { app_id = 1; key_file = "~/.config/boomdrive/app.pem"; }`, and `nix/tests/files/crew.toml` is rendered again from it. `nix/tests/file.nix` gains three cases:
+- [x] 5.1 `nix/modules/options.nix` declares `settings.forge`, unset by default and rendered only where set, as a table of `app_id`, `types.ints.positive`, and `key_file`, `types.str`. Each option's description says what it holds, the key file outside the Nix store and readable by its owner alone, citing record 0007 as amended on 2026-11-11. An assertion fails evaluation where `key_file` begins with `builtins.storeDir`, with design Decision 7's words. `nix/tests/settings.nix`'s crew value gains `forge = { app_id = 1; key_file = "~/.config/boomdrive/app.pem"; }`, and `nix/tests/files/crew.toml` is rendered again from it. `nix/tests/file.nix` gains three cases:
   - the crew value renders `[forge]` with `app_id = 1` and its `key_file`, which the credential guard passes;
   - a `key_file` of `"/nix/store/abc-app.pem"` fails evaluation, naming `services.boomdrive.settings.forge.key_file` and the Nix store;
   - a `key_file` given as a Nix path value fails evaluation.
