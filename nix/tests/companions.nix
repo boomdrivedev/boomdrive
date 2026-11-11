@@ -4,7 +4,8 @@
 # Pending You as it publishes it on npm, held to the version its address
 # names; Plannotator and plannotator-tui through numtide/llm-agents.nix,
 # held to their release tags; and their herdr plugins, each held to the
-# version of the set's tool it runs.
+# version of the set's tool it runs; and the set's marketplace of their
+# Claude Code plugins (design Decision 5).
 t:
 let
   inherit (t) inputs lib outputs;
@@ -110,6 +111,95 @@ let
     lib.hasInfix (builtins.unsafeDiscardStringContext needle) (
       builtins.unsafeDiscardStringContext text
     );
+
+  # The hooks Pending You's `init` gives Claude Code, `{ event, sub }` in
+  # its order, as its dist/claude.js gives them as text (Task notes 2.1):
+  # each event of HOOKS, then each of PERMISSION_HOOKS.
+  ownHooks =
+    text:
+    let
+      lines = lib.splitString "\n" text;
+      after =
+        marker:
+        lib.drop (1 + lib.lists.findFirstIndex (lib.hasPrefix marker) (builtins.length lines) lines) lines;
+      upTo =
+        list:
+        lib.take (lib.lists.findFirstIndex (
+          line: lib.hasPrefix "}" line || lib.hasPrefix "]" line
+        ) (builtins.length list) list) list;
+      sessions = lib.concatMap (
+        line:
+        let
+          found = builtins.match " *([A-Za-z]+): '([a-z-]+)',?" line;
+        in
+        lib.optional (found != null) {
+          event = builtins.elemAt found 0;
+          sub = builtins.elemAt found 1;
+        }
+      ) (upTo (after "export const HOOKS = {"));
+      permissions = lib.concatMap (
+        line:
+        let
+          found = builtins.match ".*event: '([A-Za-z]+)', sub: '([a-z-]+)'.*" line;
+        in
+        lib.optional (found != null) {
+          event = builtins.elemAt found 0;
+          sub = builtins.elemAt found 1;
+        }
+      ) (upTo (after "export const PERMISSION_HOOKS = ["));
+    in
+    sessions ++ permissions;
+
+  # Each `{ event, sub }` of `own` among `hooks`, the plugin's, each
+  # missing one failing, naming its event and subcommand.
+  hooksHeld =
+    system: own: hooks:
+    lib.concatMap (
+      hook:
+      t.expect
+        (builtins.any (
+          group: builtins.any (h: has " ${hook.sub} --app claude-code " h.command) group.hooks
+        ) (hooks.${hook.event} or [ ]))
+        "packages.${system}.boomdrive-claude-plugins' pendingyou plugin holds no ${hook.event} hook running ${hook.sub}, which Pending You's init gives Claude Code"
+    ) own;
+
+  # The plugin's hooks, as the spec gives them: each event's groups, each
+  # a subcommand and its matcher.
+  expectedHooks = {
+    SessionStart = [ { sub = "pickup"; } ];
+    UserPromptSubmit = [ { sub = "handoff"; } ];
+    Stop = [ { sub = "stopcheck"; } ];
+    SessionEnd = [
+      { sub = "presence"; }
+      { sub = "permission-done"; }
+    ];
+    PermissionRequest = [ { sub = "permission"; } ];
+    PostToolUse = [ { sub = "permission-done"; } ];
+    PostToolUseFailure = [ { sub = "permission-done"; } ];
+    Notification = [
+      {
+        sub = "notify";
+        matcher = "permission_prompt";
+      }
+    ];
+  };
+  lineOf = sub: ''"$HOME/.config/pendingyou/bin/pendingyou-hook" ${sub} --app claude-code || true'';
+  groupOf =
+    event: expected:
+    lib.optionalAttrs (expected ? matcher) { inherit (expected) matcher; }
+    // {
+      hooks = [
+        (
+          {
+            type = "command";
+            command = lineOf expected.sub;
+          }
+          // lib.optionalAttrs (event != "SessionEnd") { timeout = 10; }
+        )
+      ];
+    };
+
+  marketplaceOf = system: outputs.packages.${system}.boomdrive-claude-plugins;
 
   readTrimmed = path: lib.trim (builtins.readFile path);
   nixpkgsOf = system: inputs.nixpkgs.legacyPackages.${system};
@@ -245,6 +335,139 @@ in
     ++
       annotateHeld system (readTrimmed "${source}/plannotator-tui.version")
         packages.plannotator-tui.version
+  );
+
+  "The marketplace's two plugins" = each (
+    system: packages:
+    let
+      market = packages.boomdrive-claude-plugins;
+      given = map (plugin: {
+        inherit (plugin) name version source;
+      }) market.plugins;
+      expected = [
+        {
+          name = "pendingyou";
+          inherit (packages.pendingyou) version;
+          source = "./plugins/pendingyou";
+        }
+        {
+          name = "plannotator";
+          inherit (packages.plannotator) version;
+          source = "./plugins/plannotator";
+        }
+      ];
+    in
+    t.expect (market.marketplace.name == "boomdrive")
+      "packages.${system}.boomdrive-claude-plugins is the marketplace ${market.marketplace.name}, not boomdrive"
+    ++ t.expect (
+      market.marketplace.plugins == market.plugins
+    ) "packages.${system}.boomdrive-claude-plugins' marketplace.json lists other plugins than it gives"
+    ++
+      t.expect (given == expected)
+        "packages.${system}.boomdrive-claude-plugins lists ${builtins.toJSON given}, not ${builtins.toJSON expected}"
+  );
+
+  "Pending You's hooks" = each (
+    system: packages:
+    let
+      market = packages.boomdrive-claude-plugins;
+      expected = lib.mapAttrs (event: map (groupOf event)) expectedHooks;
+    in
+    t.expect (market.hooks == expected)
+      "packages.${system}.boomdrive-claude-plugins' pendingyou hooks are ${builtins.toJSON market.hooks}, not ${builtins.toJSON expected}"
+    ++ t.expect (
+      market.pendingyou.hooksFile.hooks == market.hooks
+    ) "packages.${system}.boomdrive-claude-plugins' hooks.json holds other hooks than it gives"
+    ++
+      t.expect (market.pendingyou.hooksFile.modules == [ "./register.js" ])
+        "packages.${system}.boomdrive-claude-plugins' hooks.json names ${builtins.toJSON market.pendingyou.hooksFile.modules}, not ./register.js, as its module"
+    ++
+      lib.concatMap
+        (
+          file:
+          t.expect (builtins.elem file market.pendingyou.files) "packages.${system}.boomdrive-claude-plugins' pendingyou plugin holds no ${file}"
+        )
+        [
+          "hooks/register.js"
+          "hooks/wake.js"
+          "skills/pendingyou/SKILL.md"
+        ]
+    ++ t.expect (has "${packages.pendingyou.mod}/hooks/register.js" market.buildCommand) "packages.${system}.boomdrive-claude-plugins' wake mod is not the set's Pending You's"
+    ++ t.expect (has "${../packages/pendingyou-skill.md}" market.buildCommand) "packages.${system}.boomdrive-claude-plugins' skill is not nix/packages/pendingyou-skill.md"
+  );
+
+  "Pending You's hooks against its own" =
+    each (
+      system: packages:
+      let
+        own = ownHooks (builtins.readFile "${packages.pendingyou.src}/dist/claude.js");
+      in
+      t.expect (builtins.length own == 9)
+        "the set's Pending You's dist/claude.js gives ${builtins.toJSON own}, not the nine hooks of HOOKS and PERMISSION_HOOKS"
+      ++ hooksHeld system own packages.boomdrive-claude-plugins.hooks
+    )
+    ++
+      failsNaming "a Pending You whose init gives a PreCompact hook running compact"
+        (hooksHeld "x86_64-linux" (ownHooks ''
+          export const HOOKS = {
+              SessionStart: 'pickup',
+          };
+          export const PERMISSION_HOOKS = [
+              { event: 'PreCompact', sub: 'compact' },
+          ];
+        '') (marketplaceOf "x86_64-linux").hooks)
+        [
+          "PreCompact"
+          "compact"
+        ];
+
+  "No MCP server in the plugin" = each (
+    system: packages:
+    let
+      market = packages.boomdrive-claude-plugins;
+    in
+    t.expect (
+      !builtins.elem ".mcp.json" market.pendingyou.files
+    ) "packages.${system}.boomdrive-claude-plugins' pendingyou plugin holds a .mcp.json"
+    ++ t.expect (
+      !(market.pendingyou.manifest ? mcpServers)
+    ) "packages.${system}.boomdrive-claude-plugins' pendingyou plugin's manifest names an MCP server"
+    ++ t.expect (
+      !has ".mcp.json" market.buildCommand
+    ) "packages.${system}.boomdrive-claude-plugins' build writes a .mcp.json"
+  );
+
+  "Plannotator's plugin from its command's source" = each (
+    system: packages:
+    let
+      market = packages.boomdrive-claude-plugins;
+      source = "${packages.plannotator.src}/apps/hook";
+    in
+    t.expect
+      (
+        builtins.unsafeDiscardStringContext market.sources.plannotator
+        == builtins.unsafeDiscardStringContext source
+      )
+      "packages.${system}.boomdrive-claude-plugins' plannotator plugin is of ${market.sources.plannotator}, not ${source}"
+    ++ t.expect (has "cp -RL ${source} \"$out/plugins/plannotator\"" market.buildCommand) "packages.${system}.boomdrive-claude-plugins does not copy ${source} whole"
+  );
+
+  "No link into the store" = each (
+    system: packages:
+    let
+      inherit (packages.boomdrive-claude-plugins) buildCommand;
+      copies = lib.filter (line: builtins.match " *cp .*" line != null) (
+        lib.splitString "\n" buildCommand
+      );
+    in
+    lib.concatMap (
+      line:
+      t.expect (builtins.match " *cp -R?L .*" line != null)
+        "packages.${system}.boomdrive-claude-plugins copies without following links: ${builtins.unsafeDiscardStringContext line}"
+    ) copies
+    ++ t.expect (
+      has "links=$(find \"$out\" -type l)" buildCommand && has "exit 1" buildCommand
+    ) "packages.${system}.boomdrive-claude-plugins' build does not fail on a link"
   );
 
   "Annotate other than the set's plannotator-tui" =

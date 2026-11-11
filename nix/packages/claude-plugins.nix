@@ -20,7 +20,8 @@
 # versioned.
 #
 # `plugins` gives the marketplace's list and `hooks` Pending You's hooks,
-# each event's groups as hooks.json holds them, for the evaluated cases.
+# each event's groups as hooks.json holds them; `marketplace`, `pendingyou`
+# and `sources` give the rest of what is written, for the evaluated cases.
 {
   lib,
   runCommand,
@@ -114,7 +115,7 @@ let
   ];
 
   json = name: value: writeText name (builtins.toJSON value);
-  marketplace = json "marketplace.json" {
+  marketplace = {
     name = "boomdrive";
     description = "The Boomdrive set's Claude Code plugins of crew's companions, Pending You and Plannotator";
     owner.name = "agentplot";
@@ -123,19 +124,21 @@ let
 
   # Pending You's plugin, file by file: its manifest names no MCP server,
   # and it holds no .mcp.json.
+  manifest = {
+    name = "pendingyou";
+    inherit (pendingyou) version;
+    description = "Pending You's hooks, wake mod and skill, for the set's Pending You";
+    author.name = "recordplane";
+    homepage = "https://www.pendingyou.com";
+  };
+  hooksFile = {
+    description = "Pending You's hooks, and its wake mod, which wakes this session when your person answers one of its cards.";
+    inherit hooks;
+    modules = [ "./register.js" ];
+  };
   pendingyouFiles = {
-    ".claude-plugin/plugin.json" = json "plugin.json" {
-      name = "pendingyou";
-      inherit (pendingyou) version;
-      description = "Pending You's hooks, wake mod and skill, for the set's Pending You";
-      author.name = "recordplane";
-      homepage = "https://www.pendingyou.com";
-    };
-    "hooks/hooks.json" = json "hooks.json" {
-      description = "Pending You's hooks, and its wake mod, which wakes this session when your person answers one of its cards.";
-      inherit hooks;
-      modules = [ "./register.js" ];
-    };
+    ".claude-plugin/plugin.json" = json "plugin.json" manifest;
+    "hooks/hooks.json" = json "hooks.json" hooksFile;
     "hooks/register.js" = "${pendingyou.mod}/hooks/register.js";
     "hooks/wake.js" = "${pendingyou.mod}/hooks/wake.js";
     "skills/pendingyou/SKILL.md" = skill;
@@ -146,8 +149,11 @@ runCommand "boomdrive-claude-plugins"
   {
     nativeBuildInputs = [ jq ];
     passthru = {
-      inherit hooks plugins;
-      files.pendingyou = builtins.attrNames pendingyouFiles;
+      inherit hooks plugins marketplace;
+      pendingyou = {
+        inherit manifest hooksFile;
+        files = builtins.attrNames pendingyouFiles;
+      };
       sources.plannotator = plannotatorHook;
     };
     meta = {
@@ -160,7 +166,7 @@ runCommand "boomdrive-claude-plugins"
   }
   ''
     mkdir -p "$out/.claude-plugin" "$out/plugins/pendingyou"
-    cp -L ${marketplace} "$out/.claude-plugin/marketplace.json"
+    cp -L ${json "marketplace.json" marketplace} "$out/.claude-plugin/marketplace.json"
     ${lib.concatStrings (
       lib.mapAttrsToList (path: source: ''
         install -D -m 0644 ${source} "$out/plugins/pendingyou/${path}"
