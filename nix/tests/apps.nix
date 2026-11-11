@@ -3,7 +3,8 @@
 # herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents):
 # herdr and the plugins the activation links, Ghostty and the launcher,
 # and Flume's terminal and window. Each case runs on nix-darwin and on
-# NixOS, unless it names a platform.
+# NixOS, unless it names a platform. portless's cases are design Decisions
+# 5 and 6 of the change portless-comes-with-the-flake.
 t:
 let
   inherit (t) lib outputs;
@@ -204,6 +205,57 @@ let
       multiplexer = null;
     };
 
+  # portless, installed with the runner (design Decision 5 of the change
+  # portless-comes-with-the-flake).
+  portlessWithRunner =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (builtins.elem set.portless.outPath (profileOf evaluated)) "the ${platform} system profile holds no set's portless";
+
+  # A portless of the host's own, laid out as a package with a bin.
+  ownPortless =
+    { pkgs, ... }:
+    {
+      services.boomdrive.portless.package = pkgs.runCommand "own-portless" { } "mkdir -p $out/bin";
+    };
+  hostsPortless =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownPortless;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.portless.package.outPath profile) "the ${platform} system profile holds no host's own portless"
+    ++ t.expect (
+      !builtins.elem set.portless.outPath profile
+    ) "the ${platform} system profile holds the set's portless beside the host's own";
+
+  noPortless =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.portless.package = null; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no portless fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.portless.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no portless holds the set's portless";
+
+  portlessWithoutRunner =
+    platform:
+    { without, set, ... }:
+    t.expect (
+      !builtins.elem set.portless.outPath (profileOf without)
+    ) "the ${platform} system profile without the runner holds the set's portless";
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -225,6 +277,10 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own window" hostsWindow
 // onEach "The word of before" wordOfBefore
 // onEach "No herdr of the set's" noSetsHerdr
+// onEach "portless with the runner" portlessWithRunner
+// onEach "A host's own portless" hostsPortless
+// onEach "No portless of the set's" noPortless
+// onEach "No portless without the runner" portlessWithoutRunner
 // {
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
