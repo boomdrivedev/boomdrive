@@ -315,6 +315,32 @@ else
   fail "check-commits.sh fails 'Add a feature' before v0.1.0: $said"
 fi
 
+# Scenario: Before a release commit.
+repo cutbefore
+commit "Add a feature"
+commit "feat: a start"
+cut_release v0.1.0
+commit "fix: a fix"
+if said=$(cd "$dir" && sh check-commits.sh 2>&1); then
+  pass "check-commits.sh passes 'Add a feature' before v0.1.0's release commit"
+else
+  fail "check-commits.sh fails 'Add a feature' before v0.1.0's release commit: $said"
+fi
+
+# Scenario: After a release commit.
+repo cutafter
+commit "feat: a start"
+cut_release v0.1.0
+commit "Add a feature"
+if said=$(cd "$dir" && sh check-commits.sh 2>&1); then
+  fail "check-commits.sh passes 'Add a feature' after v0.1.0's release commit"
+else
+  case $said in
+  *"Add a feature"*) pass "check-commits.sh fails 'Add a feature' after v0.1.0's release commit, naming it" ;;
+  *) fail "check-commits.sh fails 'Add a feature' after v0.1.0's release commit without naming it: $said" ;;
+  esac
+fi
+
 # A scratch copy `$1` of the tree's Cargo.toml, Cargo.lock and each
 # crate's Cargo.toml, laid out as the tree lays them. It is `$copy`.
 manifests() {
