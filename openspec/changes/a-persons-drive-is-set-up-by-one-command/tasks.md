@@ -68,7 +68,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 5. The host
 
-- [ ] 5.1 `setup::check_host(host)` refuses, before any program runs:
+- [x] 5.1 `setup::check_host(host)` refuses, before any program runs:
   - a system other than `macos`, naming it and `services.boomdrive`, as the host's to fix;
   - a runner's managed file that is a link, as Nix's, never the host's to fix, naming the file and `services.boomdrive.accounts`;
   - each of `gh`, `herdr` and `launchctl` not found on the `PATH`, with where it comes from, as the host's to fix;

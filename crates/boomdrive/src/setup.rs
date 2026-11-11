@@ -1490,3 +1490,114 @@ mod answers {
         assert!(answers(&every, &[], &none, None).is_ok());
     }
 }
+
+/// `check_host`'s tests, named by it (task 5.1).
+#[cfg(test)]
+mod check_host {
+    use super::*;
+
+    /// A scratch home whose runner's file is at its default path.
+    struct Home {
+        dir: tempfile::TempDir,
+    }
+
+    impl Home {
+        fn new() -> Home {
+            Home {
+                dir: tempfile::tempdir().unwrap(),
+            }
+        }
+
+        fn home(&self) -> PathBuf {
+            self.dir.path().to_path_buf()
+        }
+
+        fn managed(&self) -> PathBuf {
+            self.home().join(".config/boomdrive/config.toml")
+        }
+
+        fn write(&self, path: &Path, text: &str) {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        }
+
+        /// `check_host` on `system`, finding every program but `lacking`.
+        fn check(&self, system: &str, lacking: &[&str]) -> Result<(), Refusal> {
+            let find = |name: &str| {
+                Some(PathBuf::from("/stand-in").join(name)).filter(|_| !lacking.contains(&name))
+            };
+            check_host(&Host {
+                system,
+                home: &self.home(),
+                managed: &self.managed(),
+                find: &find,
+            })
+        }
+    }
+
+    /// The setup spec's "On Linux".
+    #[test]
+    fn on_linux_setup_is_refused() {
+        let home = Home::new();
+        let refusal = home.check("linux", &[]).unwrap_err();
+        assert!(refusal.host_to_fix);
+        for words in ["linux", "`services.boomdrive`"] {
+            assert!(refusal.words.contains(words), "{}", refusal.words);
+        }
+        assert_eq!(home.check("macos", &[]), Ok(()));
+    }
+
+    /// A runner's file that is a link is Nix's: refused, never as the
+    /// host's to fix, naming the file and `services.boomdrive.accounts`.
+    #[test]
+    fn a_linked_runner_file_is_nixs() {
+        let home = Home::new();
+        let target = home.home().join("store-file.toml");
+        home.write(&target, "[accounts]\n");
+        std::fs::create_dir_all(home.managed().parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&target, home.managed()).unwrap();
+        let refusal = home.check("macos", &[]).unwrap_err();
+        assert!(!refusal.host_to_fix);
+        let file = home.managed().display().to_string();
+        for words in [file.as_str(), "`services.boomdrive.accounts`"] {
+            assert!(refusal.words.contains(words), "{}", refusal.words);
+        }
+    }
+
+    /// Each program missing is named with where it comes from.
+    #[test]
+    fn a_program_missing_is_named() {
+        let home = Home::new();
+        let refusal = home.check("macos", &["herdr"]).unwrap_err();
+        assert!(refusal.host_to_fix);
+        for words in ["`herdr`", "github:agentplot/boomdrive#herdr"] {
+            assert!(refusal.words.contains(words), "{}", refusal.words);
+        }
+        let refusal = home.check("macos", &["gh", "launchctl"]).unwrap_err();
+        for words in ["`gh`", "`launchctl`", "/bin/launchctl"] {
+            assert!(refusal.words.contains(words), "{}", refusal.words);
+        }
+    }
+
+    /// The setup spec's "Both files there", as the host's to fix; and a
+    /// person's file alone, or setup's beside an aside, passed.
+    #[test]
+    fn both_files_there_are_named() {
+        let home = Home::new();
+        home.write(&home.managed(), "[accounts]\n");
+        assert_eq!(home.check("macos", &[]), Ok(()));
+        let aside = home.managed().with_file_name(ASIDE);
+        home.write(&aside, "[accounts]\n");
+        let refusal = home.check("macos", &[]).unwrap_err();
+        assert!(refusal.host_to_fix);
+        let (file, aside_text) = (
+            home.managed().display().to_string(),
+            aside.display().to_string(),
+        );
+        for words in [file.as_str(), aside_text.as_str()] {
+            assert!(refusal.words.contains(words), "{}", refusal.words);
+        }
+        home.write(&home.managed(), &format!("{FIRST_LINE}\n[accounts]\n"));
+        assert_eq!(home.check("macos", &[]), Ok(()));
+    }
+}
