@@ -278,3 +278,22 @@ fn setup_sets_up_the_drive_as_written() {
         )]
     );
 }
+
+/// The quick-start spec's "Made as setup makes it": setup, over the
+/// stand-ins where gh finds no `your-github-name/drive-state`, makes it
+/// by one `gh repo create`, and NixOS's state step is that call, word for
+/// word.
+#[cfg(target_os = "macos")]
+#[test]
+fn the_state_repository_is_made_as_setup_makes_it() {
+    let stand = Stand::new();
+    stand.set_up(&answers(&["--json"]));
+    let made: Vec<String> = stand
+        .calls("gh")
+        .into_iter()
+        .filter(|call| call.starts_with("repo create "))
+        .map(|call| format!("gh {call}"))
+        .collect();
+    assert_eq!(made.len(), 1, "{:?}", stand.calls("gh"));
+    assert_eq!(lines("nixos/state.sh"), made);
+}
