@@ -7,8 +7,9 @@ mod common;
 mod github;
 
 use boomdrive::config::{Address, ForgeApp};
-use boomdrive::forge::{Forge, Minted, Refused};
+use boomdrive::forge::{Asked, Forge, Minted, Refused};
 use boomdrive::forge_token::{self, Operation};
+use boomdrive::git::Credential;
 use common::{keeping, Scratch};
 use github::{GitHub, Key};
 use std::io::Write;
@@ -732,4 +733,127 @@ fn the_binary_refuses_a_repository_no_drive_serves() {
             "boomdrive forge-token: someone/else is a repository of no drive this host serves\n"
         )
     );
+}
+
+/// The runner's own ask for `agentplot/flume`'s credential, the App `app`.
+fn ask_for_flume(forge: &Forge, app: &ForgeApp) -> Asked {
+    forge.credential(Some(app), &address("agentplot/flume"))
+}
+
+/// The token a credential gives.
+fn token_of(asked: &Asked) -> String {
+    match &asked.credential {
+        Credential::Token(token) => token.clone(),
+        other => panic!("no token: {other:?}"),
+    }
+}
+
+/// The forge-tokens spec's "A token kept across passes", asked of the
+/// forge: the token is given again, and no App named gives the host's
+/// own helpers.
+#[test]
+fn a_token_is_given_again_until_five_minutes_before_its_end() {
+    let scratch = Scratch::new();
+    let github = GitHub::start();
+    github.install("agentplot/flume", 7);
+    let app = app(Key::App.write(&scratch.home, 0o600));
+    let forge = forge(&github);
+
+    let first = ask_for_flume(&forge, &app);
+    let second = ask_for_flume(&forge, &app);
+
+    assert_eq!(first.refused, None);
+    assert_eq!(token_of(&first), github.tokens()[0]);
+    assert_eq!(second, first);
+    assert_eq!(github.tokens().len(), 1);
+    assert_eq!(
+        forge.credential(None, &address("agentplot/flume")),
+        Asked {
+            credential: Credential::Host,
+            refused: None
+        }
+    );
+    assert_eq!(github.tokens().len(), 1);
+}
+
+/// The forge-tokens spec's "A token near its end".
+#[test]
+fn a_token_near_its_end_is_bought_again() {
+    let scratch = Scratch::new();
+    let github = GitHub::start();
+    github
+        .install("agentplot/flume", 7)
+        .lasting(Duration::from_secs(4 * 60));
+    let app = app(Key::App.write(&scratch.home, 0o600));
+    let forge = forge(&github);
+
+    let first = token_of(&ask_for_flume(&forge, &app));
+    let second = token_of(&ask_for_flume(&forge, &app));
+
+    assert_eq!(github.tokens(), [first, second]);
+}
+
+/// A token dropped, as a failed fetch drops it, is bought again.
+#[test]
+fn a_dropped_token_is_bought_again() {
+    let scratch = Scratch::new();
+    let github = GitHub::start();
+    github.install("agentplot/flume", 7);
+    let app = app(Key::App.write(&scratch.home, 0o600));
+    let forge = forge(&github);
+
+    let first = token_of(&ask_for_flume(&forge, &app));
+    forge.drop(&address("AgentPlot/Flume"));
+    let second = token_of(&ask_for_flume(&forge, &app));
+
+    assert_eq!(github.tokens(), [first, second]);
+}
+
+/// The forge-tokens spec's "Another App".
+#[test]
+fn another_app_drops_every_token() {
+    let scratch = Scratch::new();
+    let github = GitHub::start();
+    github.install("agentplot/flume", 7);
+    let first_app = app(Key::App.write(&scratch.home, 0o600));
+    let other_app = app(Key::Other.write(&scratch.home, 0o600));
+    let forge = forge(&github);
+
+    let first = token_of(&ask_for_flume(&forge, &first_app));
+    let second = token_of(&ask_for_flume(&forge, &other_app));
+
+    assert_eq!(github.tokens(), [first, second]);
+    let signers: Vec<_> = github
+        .requests()
+        .iter()
+        .map(|request| request.signed_by)
+        .collect();
+    assert_eq!(
+        signers,
+        [
+            Some(Key::App),
+            Some(Key::App),
+            Some(Key::Other),
+            Some(Key::Other)
+        ]
+    );
+}
+
+/// The forge-tokens spec's "The App's absence kept".
+#[test]
+fn the_apps_absence_is_kept() {
+    let scratch = Scratch::new();
+    let github = GitHub::start();
+    let app = app(Key::App.write(&scratch.home, 0o600));
+    let forge = forge(&github);
+
+    let first = ask_for_flume(&forge, &app);
+    let second = ask_for_flume(&forge, &app);
+
+    let nothing = Asked {
+        credential: Credential::Nothing,
+        refused: None,
+    };
+    assert_eq!((first, second), (nothing.clone(), nothing));
+    assert_eq!(github.calls(), ["GET /repos/agentplot/flume/installation"]);
 }

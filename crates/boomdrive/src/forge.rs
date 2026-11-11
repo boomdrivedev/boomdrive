@@ -11,15 +11,21 @@
 //! No token is kept but in a [`Forge`]'s memory, for the process that
 //! minted it: nothing is written to a file, the data directory, the host's
 //! credential store or a log, and no refusal's words hold a token, the JWT
-//! or the key (core.4, core.35).
+//! or the key (core.4, core.35). The running runner holds one `Forge`
+//! across its passes, which keeps one token for each repository for its
+//! own git calls until [`RENEW_BEFORE`] its end, and GitHub's word that the
+//! App is not installed on one for as long (design Decision 3).
 
 use crate::config::{Address, ForgeApp};
+use crate::git::Credential;
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -36,6 +42,11 @@ pub const CALL_FOR: Duration = Duration::from_secs(10);
 /// How long before its end a kept token is minted again, as sluice's
 /// `REFRESH` has it.
 pub const RENEW_BEFORE: Duration = Duration::from_secs(5 * 60);
+
+/// How long GitHub's word that the App is not installed on a repository is
+/// kept: the hour of a token less [`RENEW_BEFORE`], so such a repository
+/// costs one call an hour.
+const NOT_INSTALLED_FOR: Duration = Duration::from_secs(55 * 60);
 
 /// How far back a JWT is dated, for a host clock a little ahead.
 const JWT_SKEW: i64 = 60;
@@ -113,11 +124,35 @@ impl Refused {
     }
 }
 
-/// What mints the App's tokens: the API it calls and how long each call
-/// may take.
+/// What the runner's own call to a remote is given for a repository, and
+/// the mint's words where a mint was refused, which its line names where
+/// the call fails.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Asked {
+    pub credential: Credential,
+    pub refused: Option<String>,
+}
+
+/// What mints the App's tokens: the API it calls, how long each call may
+/// take, and what it keeps for the runner's own git calls.
 pub struct Forge {
     api: String,
     call_for: Duration,
+    kept: Mutex<Kept>,
+}
+
+/// What a forge keeps: each repository's token, or GitHub's word that the
+/// App is not installed on it, for the App they were minted for.
+#[derive(Default)]
+struct Kept {
+    app: Option<ForgeApp>,
+    answers: HashMap<Address, Answer>,
+}
+
+/// A repository's kept answer.
+enum Answer {
+    Token(Token),
+    NotInstalled { until: OffsetDateTime },
 }
 
 impl Default for Forge {
@@ -139,6 +174,7 @@ impl Forge {
         Forge {
             api: api.trim_end_matches('/').to_string(),
             call_for: CALL_FOR,
+            kept: Mutex::default(),
         }
     }
 
@@ -148,6 +184,81 @@ impl Forge {
             call_for: limit,
             ..self
         }
+    }
+
+    /// What the runner's own call to `address` is given, the App `app`
+    /// where the configuration names one (design Decisions 3 and 5): the
+    /// host's own helpers where it names none; else the token kept for
+    /// `address` while it ends more than [`RENEW_BEFORE`] from now, or one
+    /// minted and kept; no credential where the App is not installed
+    /// there, kept for [`NOT_INSTALLED_FOR`]; and no credential with the
+    /// mint's words where a mint was refused, which is kept not at all. An
+    /// App other than the one held empties what is kept first.
+    pub fn credential(&self, app: Option<&ForgeApp>, address: &Address) -> Asked {
+        let Some(app) = app else {
+            return Asked {
+                credential: Credential::Host,
+                refused: None,
+            };
+        };
+        let now = OffsetDateTime::now_utc();
+        {
+            let mut kept = self.kept();
+            if kept.app.as_ref() != Some(app) {
+                kept.app = Some(app.clone());
+                kept.answers.clear();
+            }
+            match kept.answers.get(address) {
+                Some(Answer::Token(token)) if token.ends > now + RENEW_BEFORE => {
+                    return Asked::token(token);
+                }
+                Some(Answer::NotInstalled { until }) if *until > now => return Asked::nothing(),
+                _ => {}
+            }
+        }
+        // The lock is not held while GitHub is called, so no other
+        // repository's keep waits on this one's mint.
+        let minted = self.mint(app, address);
+        let mut kept = self.kept();
+        let held = kept.app.as_ref() == Some(app);
+        match minted {
+            Ok(Minted::Token(token)) => {
+                let asked = Asked::token(&token);
+                if held {
+                    kept.answers.insert(address.clone(), Answer::Token(token));
+                }
+                asked
+            }
+            Ok(Minted::NotInstalled) => {
+                if held {
+                    let until = now + NOT_INSTALLED_FOR;
+                    kept.answers
+                        .insert(address.clone(), Answer::NotInstalled { until });
+                }
+                Asked::nothing()
+            }
+            Err(refused) => {
+                if held {
+                    kept.answers.remove(address);
+                }
+                Asked {
+                    credential: Credential::Nothing,
+                    refused: Some(refused.words),
+                }
+            }
+        }
+    }
+
+    /// Drops `address`'s kept token or answer, so the next ask mints
+    /// again: a fetch with it failed.
+    pub fn drop(&self, address: &Address) {
+        self.kept().answers.remove(address);
+    }
+
+    /// What this forge keeps, whatever a thread that panicked holding it
+    /// left.
+    fn kept(&self) -> MutexGuard<'_, Kept> {
+        self.kept.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Mints a token for `address` from the App `app`'s key (design
@@ -247,6 +358,24 @@ impl Forge {
             .read_to_string(&mut text)
             .map_err(|error| unreachable(&error))?;
         Ok((status, serde_json::from_str(&text).unwrap_or(Value::Null)))
+    }
+}
+
+impl Asked {
+    /// `token`'s secret, given alone.
+    fn token(token: &Token) -> Asked {
+        Asked {
+            credential: Credential::Token(token.secret.clone()),
+            refused: None,
+        }
+    }
+
+    /// No credential.
+    fn nothing() -> Asked {
+        Asked {
+            credential: Credential::Nothing,
+            refused: None,
+        }
     }
 }
 

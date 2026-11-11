@@ -84,7 +84,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - `a_credentials_debug_holds_no_token`.
 
   The existing `git_asks_no_one` holds for `Host`. True when `devenv shell -- cargo test -p boomdrive --lib git::` passes.
-- [ ] 4.2 `Forge` keeps the runner's own tokens, as design Decision 3 has it. It holds a `Mutex` of each address's kept token or `NotInstalled` answer, with the `ForgeApp` they were minted for, and has two methods:
+- [x] 4.2 `Forge` keeps the runner's own tokens, as design Decision 3 has it. It holds a `Mutex` of each address's kept token or `NotInstalled` answer, with the `ForgeApp` they were minted for, and has two methods:
   - `Forge::credential(Option<&ForgeApp>, &Address) -> Asked`. It gives `Credential::Host` where no App is named. It gives the kept token while it ends more than `RENEW_BEFORE` from now, else mints and keeps. It gives `Credential::Nothing` for a kept or new `NotInstalled`, kept for fifty-five minutes. It gives `Credential::Nothing` with the mint's words for a refused mint, kept not at all. A `ForgeApp` other than the one held empties what is kept first;
   - `Forge::drop(&Address)`.
 
