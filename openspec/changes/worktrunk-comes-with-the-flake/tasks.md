@@ -14,6 +14,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - "No tool of the host's own";
   - each tag the lock's.
 - [x] 1.2 The test holds the set's worktrunk to its flake's package, its source, dependencies, program and version, and to its tag as its `git describe`. It holds it to the worktrunk sluice's `devenv.nix` pins at sluice's locked tag. `tags.nix` holds worktrunk to a release tag (design Decisions 1 and 2; Task notes 1.2). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages delta's "worktrunk through its own flake", "worktrunk is sluice's", "worktrunk other than sluice's" and "worktrunk named by no release tag".
+- [x] 1.3 "The runner from this tree" lists the tree's top-level entries but those `.gitignore` names at the top, which git never tracks, so the flake's own tree never holds one. A `target/` that `boomdrive:test` makes while the case evaluates is asked of the source's filter no more, whose own read of the root may not have seen it. `nix:test` reads `.gitignore` among its inputs. True when `sluice exec main -- moon run nix:test` passes, proving the family-packages spec's "The runner from this tree".
 
 ## 2. The modules and the shell
 

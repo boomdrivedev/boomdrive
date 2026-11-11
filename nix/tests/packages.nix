@@ -26,7 +26,19 @@ let
 
   # The runner's source: this tree's top-level entries, and every file
   # under crates/, each as the source's filter takes it or leaves it.
-  entries = builtins.readDir ../..;
+  # The entries leave out those .gitignore names at the top of the tree:
+  # git tracks none of them, so the flake's own tree never holds one, and
+  # a task beside the check may make one while it runs, as cargo makes
+  # target/. The filter reads the root apart from this listing, and
+  # takes an entry its read did not see, so such an entry made between
+  # the two reads failed the case.
+  ignored = lib.pipe (builtins.readFile ../../.gitignore) [
+    (lib.splitString "\n")
+    (lib.filter (line: line != "" && !lib.hasPrefix "#" line))
+    (map (line: lib.removeSuffix "/" (lib.removePrefix "/" line)))
+    (lib.filter (name: !lib.hasInfix "/" name))
+  ];
+  entries = removeAttrs (builtins.readDir ../..) ignored;
   held = [
     "Cargo.lock"
     "Cargo.toml"

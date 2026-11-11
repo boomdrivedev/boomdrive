@@ -33,6 +33,6 @@ tasks:
   # The evaluated tests of the change's specs, under nix/tests.
   test:
     command: 'sh nix/check.sh test'
-    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/README.md']
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/README.md', '/.gitignore']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
