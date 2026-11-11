@@ -1,14 +1,15 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, and Flume, sluice, crew, herdr and worktrunk each at
-# a release tag through its own flake (records 0020 and 0023, core.44).
-# git is the host's own. A host's nix substitutes their binaries from the
-# family's cache where it trusts it, and builds the same paths where it
-# does not (core.47). Its shell, devShells.<system>.default, puts the set on PATH and
+# runner at this tree, Flume, sluice, crew, herdr and worktrunk each at a
+# release tag through its own flake, and portless at its release tag
+# through this flake's recipe (records 0020 and 0023, core.44). git is the
+# host's own. A host's nix substitutes their binaries from the family's
+# cache where it trusts it, and builds the same paths where it does not
+# (core.47). Its shell, devShells.<system>.default, puts the set on PATH and
 # starts herdr (record 0023); the repository's own development shell is
 # devenv's (devenv.nix). Everything else of the flake's is under nix/, the
 # moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together, with herdr and worktrunk";
+  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together, with herdr, Ghostty, portless and worktrunk";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -59,6 +60,13 @@
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
       };
+    };
+    # portless publishes no flake, so the set builds it from its source at
+    # its release tag by this flake's recipe, nix/packages/portless.nix
+    # (record 0023, core.44).
+    portless = {
+      url = "github:vercel-labs/portless/v0.17.0";
+      flake = false;
     };
     # The worktrunk sluice's tree pins at its tag, which sluice's worktree
     # driver was checked against (record 0023; design Decision 1).
@@ -132,6 +140,9 @@
             # macOS, where nothing builds its app from source, Ghostty's own
             # release as `ghostty-bin` gives it (design Decision 2).
             ghostty = if pkgs.stdenv.hostPlatform.isDarwin then pkgs.ghostty-bin else pkgs.ghostty;
+            # portless by this flake's recipe from its source at its release
+            # tag, as it publishes no flake (core.44).
+            portless = pkgs.callPackage ./nix/packages/portless.nix { src = inputs.portless; };
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
         in

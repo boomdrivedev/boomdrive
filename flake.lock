@@ -144,6 +144,23 @@
         "type": "github"
       }
     },
+    "portless": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1794164167,
+        "narHash": "sha256-kvQYBP/gBlS0aBaaXQPi09CZGbq2pyc/GRU237cZhi8=",
+        "owner": "vercel-labs",
+        "repo": "portless",
+        "rev": "1d2dbbc96a10cda39501bae3f786f9329f650dc9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "vercel-labs",
+        "ref": "v0.17.0",
+        "repo": "portless",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "crew": "crew",
@@ -151,6 +168,7 @@
         "herdr": "herdr",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
+        "portless": "portless",
         "rust-overlay": "rust-overlay",
         "sluice": "sluice",
         "worktrunk": "worktrunk"

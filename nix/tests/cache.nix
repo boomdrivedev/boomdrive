@@ -30,6 +30,7 @@ let
     "flume"
     "ghostty"
     "herdr"
+    "portless"
     "sluice"
     "worktrunk"
   ];
@@ -132,6 +133,7 @@ in
         "services.boomdrive.herdr.package"
         "services.boomdrive.herdr.plugins"
         "services.boomdrive.ghostty.package"
+        "services.boomdrive.portless.package"
         "services.boomdrive.worktrunk.package"
         "services.boomdrive.launcher.package"
         "nix develop github:agentplot/boomdrive"
@@ -156,6 +158,20 @@ in
     ++ t.expect (
       !lib.hasInfix "settings.accounts" (toString installing)
     ) "the README's Installing with nix names settings.accounts";
+
+  # The README says portless's proxy is started by portless's own
+  # command, and its trust is the person's (design Decision 6 of the
+  # change portless-comes-with-the-flake).
+  "The README's proxy" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
+      )
+      [
+        "portless service install"
+        "portless trust"
+      ];
 
   "The README's lines" =
     t.expect (installing != null) "the README has no section ## Installing with nix"

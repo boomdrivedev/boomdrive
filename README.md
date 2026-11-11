@@ -260,7 +260,11 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   release as nixpkgs' `ghostty-bin` gives it;
 - the Boomdrive launcher, `boomdrive-launcher`, of this tree: an app,
   `Boomdrive`, on macOS and a desktop entry on Linux, which runs `flume
-  open` to show the host's agents.
+  open` to show the host's agents;
+- portless, from its source at its release tag, built by this flake's
+  recipe, as portless publishes no flake, and run on the flake's
+  Node.js 24. It gives each worktree's dev server a `.localhost`
+  address, and crew's board reads its routes.
 
 Each tool reports its tag's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
@@ -272,7 +276,8 @@ host runs crew:
     nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
 
 The same line may add `github:agentplot/boomdrive#herdr`,
-`github:agentplot/boomdrive#ghostty` and
+`github:agentplot/boomdrive#ghostty`,
+`github:agentplot/boomdrive#portless` and
 `github:agentplot/boomdrive#worktrunk`.
 
 An older nix spells it `nix profile install`. nix asks whether to
@@ -484,19 +489,36 @@ host a way to see its agents:
   to `ghostty`, unless the host names its own in
   `services.flume.settings.host`. Where the host writes Flume's older
   `host.terminal`, it sets no `multiplexer`.
+- It installs portless, `services.boomdrive.portless.package`, where a
+  dev server's `portless run` and crew's board find it.
+- It installs worktrunk's `wt`, `services.boomdrive.worktrunk.package`,
+  which crew and sluice's worktree driver call.
 
-It also installs worktrunk's `wt`, which crew and sluice's worktree
-driver call.
-
-Each of the four is the set's by default, and each may name the host's
+Each of the five is the set's by default, and each may name the host's
 own package instead, or `null` for none:
 
 ```nix
 services.boomdrive.herdr.package = null;
 services.boomdrive.ghostty.package = null;
-services.boomdrive.worktrunk.package = null;
 services.boomdrive.launcher.package = null;
+services.boomdrive.portless.package = null;
+services.boomdrive.worktrunk.package = null;
 ```
+
+portless's proxy, which serves each dev server at its `.localhost`
+name, is portless's own: the modules start none and trust no
+certificate authority of it. The first `portless run` at a terminal
+starts it, asking for `sudo` to serve port 443 and to trust its
+certificate authority. `portless service install` instead makes it a
+service of the host's own that starts at boot; it runs the portless it
+was run with, by its store path, so run it again after a switch that
+moves portless. An agent's `portless run` in a place has no terminal to
+ask for `sudo` in, so it starts no proxy and says how to start one:
+start the proxy once on a host before its agents' dev servers answer at
+their names. `portless trust` trusts its certificate authority, and is
+yours to run. On NixOS, whose trust store the host's configuration
+writes, `portless trust` fails: add portless's certificate authority to
+`security.pki` yourself, or run portless with `--no-tls`.
 
 With no herdr package, or no plugin, nothing is linked. A host with a
 herdr of its own may give it as `services.boomdrive.herdr.package`, and
@@ -513,15 +535,16 @@ worktrunk's own `wt config shell install`: neither the modules nor the
 shell install it.
 
 The flake also gives a shell, its `PATH` the set's runner, Flume,
-sluice, crew, herdr and worktrunk, that starts herdr on entering and
-leaves you in the shell when herdr ends:
+sluice, crew, herdr, portless and worktrunk, that starts herdr on
+entering and leaves you in the shell when herdr ends:
 
     nix develop github:agentplot/boomdrive
 
 A command run through it, `nix develop github:agentplot/boomdrive
 --command <command>`, starts no herdr, and neither does a shell entered
-from inside herdr. The shell links no plugin: the modules do. This
-repository's own development shell is devenv's.
+from inside herdr. The shell links no plugin: the modules do. It starts
+no proxy of portless's. This repository's own development shell is
+devenv's.
 
 Under a hosted control plane, enroll each partition after the switch,
 on the host, as the service's user, the token on standard input:

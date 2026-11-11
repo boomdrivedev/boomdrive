@@ -2,9 +2,10 @@
 # the runner (apps.nix; design Decisions 5 to 7 of the change
 # herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents):
 # herdr and the plugins the activation links, Ghostty and the launcher,
-# and Flume's terminal and window; and worktrunk (design Decision 3 of the
-# change worktrunk-comes-with-the-flake). Each case runs on nix-darwin and
-# on NixOS, unless it names a platform.
+# and Flume's terminal and window. Each case runs on nix-darwin and on
+# NixOS, unless it names a platform. portless's cases are design Decisions
+# 5 and 6 of the change portless-comes-with-the-flake, and worktrunk's
+# design Decision 3 of the change worktrunk-comes-with-the-flake.
 t:
 let
   inherit (t) lib outputs;
@@ -205,6 +206,120 @@ let
       multiplexer = null;
     };
 
+  # portless, installed with the runner (design Decision 5 of the change
+  # portless-comes-with-the-flake).
+  portlessWithRunner =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (builtins.elem set.portless.outPath (profileOf evaluated)) "the ${platform} system profile holds no set's portless";
+
+  # A portless of the host's own, laid out as a package with a bin.
+  ownPortless =
+    { pkgs, ... }:
+    {
+      services.boomdrive.portless.package = pkgs.runCommand "own-portless" { } "mkdir -p $out/bin";
+    };
+  hostsPortless =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownPortless;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.portless.package.outPath profile) "the ${platform} system profile holds no host's own portless"
+    ++ t.expect (
+      !builtins.elem set.portless.outPath profile
+    ) "the ${platform} system profile holds the set's portless beside the host's own";
+
+  noPortless =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.portless.package = null; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no portless fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.portless.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no portless holds the set's portless";
+
+  portlessWithoutRunner =
+    platform:
+    { without, set, ... }:
+    t.expect (
+      !builtins.elem set.portless.outPath (profileOf without)
+    ) "the ${platform} system profile without the runner holds the set's portless";
+
+  # No launchd job, systemd unit or activation step of the modules' runs
+  # portless (design Decision 6 of the change
+  # portless-comes-with-the-flake): each one's text, as text, holds no
+  # path of the set's portless, and a failure names the one that does.
+  textOf =
+    value:
+    builtins.unsafeDiscardStringContext (
+      if builtins.isString value then value else toString (value.text or "")
+    );
+  launchdOf =
+    kind: jobs:
+    lib.mapAttrs' (name: job: {
+      name = "launchd ${kind} ${name}";
+      value = builtins.unsafeDiscardStringContext (
+        toString (job.serviceConfig.Program or "")
+        + " "
+        + toString (job.serviceConfig.ProgramArguments or [ ])
+      );
+    }) jobs;
+  systemdOf =
+    kind: units:
+    lib.mapAttrs' (name: unit: {
+      name = "systemd ${kind} ${name}";
+      value = builtins.unsafeDiscardStringContext (
+        toString (unit.script or "") + " " + toString (unit.serviceConfig.ExecStart or "")
+      );
+    }) units;
+  stepsOf =
+    platform: evaluated:
+    let
+      inherit (evaluated) config;
+    in
+    if platform == "nix-darwin" then
+      {
+        "activation script" = textOf config.system.activationScripts.script;
+      }
+      // launchdOf "daemon" config.launchd.daemons
+      // launchdOf "agent" config.launchd.agents
+      // launchdOf "user agent" config.launchd.user.agents
+    else
+      lib.mapAttrs' (name: step: {
+        name = "activation step ${name}";
+        value = textOf step;
+      }) config.system.activationScripts
+      // lib.mapAttrs' (name: step: {
+        name = "user activation step ${name}";
+        value = textOf step;
+      }) (userScripts evaluated)
+      // systemdOf "service" config.systemd.services
+      // systemdOf "user service" config.systemd.user.services;
+  noProxy =
+    platform:
+    { system, set, ... }:
+    let
+      portless = builtins.unsafeDiscardStringContext set.portless.outPath;
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: text:
+        t.expect (!lib.hasInfix portless text) "the ${platform} system's ${name} runs the set's portless"
+      ) (stepsOf platform (system { }))
+    );
+
   # worktrunk, installed with the runner (design Decision 3 of the change
   # worktrunk-comes-with-the-flake).
   worktrunkWithRunner =
@@ -277,6 +392,11 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own window" hostsWindow
 // onEach "The word of before" wordOfBefore
 // onEach "No herdr of the set's" noSetsHerdr
+// onEach "portless with the runner" portlessWithRunner
+// onEach "A host's own portless" hostsPortless
+// onEach "No portless of the set's" noPortless
+// onEach "No portless without the runner" portlessWithoutRunner
+// onEach "No proxy of the modules'" noProxy
 // onEach "worktrunk with the runner" worktrunkWithRunner
 // onEach "A host's own worktrunk" hostsWorktrunk
 // onEach "No worktrunk of the set's" noWorktrunk
