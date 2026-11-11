@@ -195,6 +195,52 @@ let
     platform:
     { system, ... }:
     gives (withCrew system [ ]) null "${platform}, no repository kept";
+
+  hostSets =
+    platform:
+    { system, ... }:
+    lib.concatMap
+      (
+        field:
+        let
+          kept = keptOf (
+            withCrew system [
+              home
+              { services.crew.settings.repositories."agentplot/flume".${field} = "/srv/flume"; }
+            ]
+          );
+        in
+        t.expect (!(kept ? repositories))
+          "${platform}, a host's ${field} /srv/flume for agentplot/flume: services.crew.settings.repositories ${shown kept}"
+      )
+      [
+        "dir"
+        "checkout"
+      ];
+
+  hostsOwn =
+    platform:
+    { system, homeDir, ... }:
+    gives
+      (withCrew system [
+        home
+        {
+          services.crew.settings.repositories."example/own" = {
+            dir = "/srv/own";
+            checkout = "/srv/own/main";
+          };
+        }
+      ])
+      (
+        homeKept homeDir
+        // {
+          "example/own" = {
+            dir = "/srv/own";
+            checkout = "/srv/own/main";
+          };
+        }
+      )
+      "${platform}, a host's own example/own";
 in
 {
   "The runner's own view rule" = lib.concatMap (
@@ -225,3 +271,5 @@ in
 // onEach "crew's module off" crewOff
 // onEach "The runner not enabled" runnerOff
 // onEach "No repository kept beside crew" noneKept
+// onEach "A host that gives a kept repository another folder" hostSets
+// onEach "A host's own kept repository" hostsOwn
