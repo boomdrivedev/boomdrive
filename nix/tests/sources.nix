@@ -160,7 +160,9 @@ let
     if crews == null then
       [ "crew's plugin/lib/source.py has no line ${prefix} = Path.home() / \"<path>\"" ]
     else
-      t.expect (given == crews) "the source's ${key} is ${toString given}, not crew's ${prefix}, ${crews}";
+      t.expect (
+        given == crews
+      ) "the source's ${key} is ${toString given}, not crew's ${prefix}, ${crews}";
 in
 onEach "crew's source with crew on" crewOnSource
 // onEach "No source of crew's with crew off" crewOff
