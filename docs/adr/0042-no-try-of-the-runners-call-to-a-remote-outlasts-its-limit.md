@@ -49,3 +49,33 @@ Option 1.
 - A fetch that needs longer than thirty seconds, a first clone of a large repository on a slow link, is stopped at every pass until `TRY_FOR` is raised.
 - weir-branch's own `git fetch` and `git push` of crew's state repository, which crew's implementation runs by `read` and `write`, still have no limit. A silent state repository still holds its partition's part at the read of `<label>/main`, before the listing, on that part's thread alone (core.49). Flume's `fetch_branch` has none either, as record 0109 says. Each is its own tool's to bound. The family has no shared owner of a git call's limit, so this is told to the orchestrator.
 - This record adds core.58. The change `no-try-of-the-runners-call-to-a-remote-outlasts-its-limit` builds it.
+
+## Amendment, 2026-11-11: the runner's stop ends its try in flight
+
+Status: accepted. The direction is the brief of the change `the-runners-stop-ends-its-try-in-flight` and agentplot-design's ruling of 2026-11-10, both quoted below. Its form here is the construct stage's own choice, cheap to change, and is accepted with the record.
+
+Deciders: agentplot-design, ruling on 2026-11-10 ("a read stopped is harmless, so the stop ends it; no service manager's stop timeout is raised for it"); the construct stage of `change/the-runners-stop-ends-its-try-in-flight`, from its brief: "A stop of the runner ends a call to a remote it has in flight as that call's limit would, asked to end and killed two seconds later, so the runner stops within a few seconds under any service manager and leaves no git running after it."
+
+Sources: the brief; agentplot-design's ruling of 2026-11-10; agentplot/sluice record 0109, its Ctrl-C point; `crates/boomdrive/src/run.rs` `Stopper` and `Runner::once`; `nix/modules/darwin.nix`'s `AbandonProcessGroup` and `nix/modules/nixos.nix`'s `KillMode`; rules core.2, core.13, core.20, core.39, core.46, core.49 and core.58; the OpenSpec change `the-runners-stop-ends-its-try-in-flight`, whose design gives each point below.
+
+### Context
+
+This record's point "Ctrl-C and a stop" read the runner's stop between repositories, so a try in flight ran to its end or its limit, up to thirty seconds and two of grace. It did not take ending the group in flight, since "the stop is already bounded by one try". launchd kills a job twenty seconds after it asks the job to stop. The darwin module keeps that default, and, like the NixOS module, ends the runner alone, so a `flume launch` in flight runs to its end. A runner killed with a try in flight leaves that try's git running in its own group, and nothing then ends it, since its limit was the runner's to enforce. `boomdrive run --once` took no signal of its own, so a Ctrl-C ended it at once and left its try's git running the same way.
+
+### Decision outcome
+
+This amendment replaces the point "Ctrl-C and a stop" and the consequence that a SIGTERM stops the runner within one try's limit and grace.
+
+- **A halt ends a try as its limit does.** `boomdrive-bounded` holds a `Halt`, one shared flag that a stop sets. A try runs to its limit and its halt. At whichever comes first its group is asked to end, given `GRACE`, then killed, by the one ending the limit uses. A try begun once its halt is set runs no process. Not taken: a halt in a static of the crate, since tests run many runners in one process; a registry of groups in flight that the stop signals, since the wait already polls each try and a registry could signal a reused group id; `SIGKILL` at once, which can leave git's lock files in the clone.
+- **The runner makes one halt, and its stop sets it.** `Runner::start` gives it to the runner's git and, through `planes.rs`'s opener, to crew's implementation, which gives it to each part's store. The stop sets the runner's stop flag, then its halt. Not taken: the halt in `boomdrive-control`'s interface, which assumes no git and whose hosted implementation makes no git call.
+- **The words.** A halted try fails with `git <fetch|ls-remote> with <remote> was stopped as the runner stopped`, after git's last line on standard error and `; ` where git wrote one. Its repository is named not fetched, or not cloned with nothing left, or its partition unread, as for any failed try. Not taken: the limit's words, which would say a try was still going after thirty seconds when it was not.
+- **`boomdrive run --once` stops on SIGTERM and SIGINT as `boomdrive run` does.** Its try in flight is halted, it begins no part's pass and no settle once stopped, says `boomdrive: stopped` and exits 1 (core.39). Not taken: the signals' default, which leaves its try's git running.
+- **No service manager's stop timeout changes,** as the ruling has it. `AbandonProcessGroup` and `KillMode=process` stay, so a `flume launch` in flight still runs to its end. Not taken: `ExitTimeOut` raised past a try's limit and grace.
+
+### Consequences
+
+- A runner sent SIGTERM or SIGINT with only a try in hand stops within the try's grace and a margin, well inside launchd's twenty seconds, and nothing the try started outlives it.
+- A stop still lets a tool's command in hand end: a `flume launch`, sluice's preview ask within its patience, weir-branch's read or write of crew's state repository. weir-branch's calls have no limit, so a silent state repository can still hold a part past launchd's twenty seconds, as this record's consequences already say.
+- A runner killed outright still leaves its try running. macOS has no call that ends a child with its parent.
+- sluice still ends any command but a wait at once on Ctrl-C and leaves its try's git to end by itself. The ending is the family's one design, sluice's. Only its trigger differs in the runner. Whether sluice takes the same trigger is sluice's to decide, and the construct stage tells it to the orchestrator.
+- core.58's rule and details read with this amendment. The clones, crew-control-plane and running specs say it, in the change `the-runners-stop-ends-its-try-in-flight`.

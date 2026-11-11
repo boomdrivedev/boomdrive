@@ -13,12 +13,13 @@ use boomdrive::git::Git;
 use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
 use std::ffi::{OsStr, OsString};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
-use std::time::Duration;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 /// A configuration keeping `addresses`, in order, in the account `own`'s
@@ -277,17 +278,28 @@ impl Scratch {
 
     /// Makes `address`'s origin silent (record 0042's design Decision 6):
     /// a listener on the loopback address of the test's own, which takes
-    /// every connection on a thread of its own and holds it open without a
-    /// byte, and GitHub's https address of `address` rewritten to it over
-    /// http, which git prefers to the forge's shorter rewrite. Nothing
-    /// reaches the network (core.4).
-    pub fn silent(&self, address: &str) {
+    /// every connection and holds it open without a byte, reading it on a
+    /// thread of its own until the far end closes it, and GitHub's https
+    /// address of `address` rewritten to it over http, which git prefers to
+    /// the forge's shorter rewrite. Nothing reaches the network (core.4).
+    /// The [`Silent`] it gives says when a connection is taken and when
+    /// every one taken is closed, so a test sees a try's helper end through
+    /// its connection (record 0042's amendment of 2026-11-11, its design
+    /// Decision 9).
+    pub fn silent(&self, address: &str) -> Silent {
         let listener = TcpListener::bind("127.0.0.1:0").expect("a silent listener");
         let port = listener.local_addr().expect("its address").port();
+        let silent = Silent::default();
+        let noted = silent.clone();
         std::thread::spawn(move || {
-            let mut held = Vec::new();
-            for stream in listener.incoming().flatten() {
-                held.push(stream);
+            for mut stream in listener.incoming().flatten() {
+                noted.note(|connections| connections.taken += 1);
+                let noted = noted.clone();
+                std::thread::spawn(move || {
+                    let mut chunk = [0u8; 1024];
+                    while matches!(stream.read(&mut chunk), Ok(n) if n > 0) {}
+                    noted.note(|connections| connections.closed += 1);
+                });
             }
         });
         let mut gitconfig = std::fs::OpenOptions::new()
@@ -302,6 +314,7 @@ impl Scratch {
              \tallow = always\n"
         )
         .expect("the silent origin's rewrite");
+        silent
     }
 
     /// One pass in-process over the configuration `text`, read as the
@@ -479,5 +492,58 @@ impl Origin<'_> {
             &self.bare,
             &["symbolic-ref", "HEAD", &format!("refs/heads/{branch}")],
         );
+    }
+}
+
+/// How many connections a silent origin took, and how many of them their
+/// far end closed.
+#[derive(Debug, Default)]
+struct Connections {
+    taken: usize,
+    closed: usize,
+}
+
+/// A silent origin's connections as it notes them (record 0042's
+/// amendment of 2026-11-11, its design Decision 9).
+#[derive(Clone, Debug, Default)]
+pub struct Silent(Arc<(Mutex<Connections>, Condvar)>);
+
+impl Silent {
+    /// `change` made to the connections, and every waiter told.
+    fn note(&self, change: impl FnOnce(&mut Connections)) {
+        let (connections, changed) = &*self.0;
+        change(&mut connections.lock().unwrap_or_else(|e| e.into_inner()));
+        changed.notify_all();
+    }
+
+    /// Whether the connections came to hold `holds` within `within`.
+    fn waits(&self, within: Duration, holds: impl Fn(&Connections) -> bool) -> bool {
+        let until = Instant::now() + within;
+        let (connections, changed) = &*self.0;
+        let mut connections = connections.lock().unwrap_or_else(|e| e.into_inner());
+        while !holds(&connections) {
+            let left = until.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                return false;
+            }
+            connections = changed
+                .wait_timeout(connections, left)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+        true
+    }
+
+    /// Whether the origin takes a connection within `within`.
+    pub fn taken(&self, within: Duration) -> bool {
+        self.waits(within, |connections| connections.taken > 0)
+    }
+
+    /// Whether every connection the origin took is closed by its far end
+    /// within `within`.
+    pub fn closed(&self, within: Duration) -> bool {
+        self.waits(within, |connections| {
+            connections.closed == connections.taken
+        })
     }
 }

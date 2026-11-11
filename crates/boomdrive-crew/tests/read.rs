@@ -4,6 +4,7 @@
 
 mod common;
 
+use boomdrive_bounded::Halt;
 use boomdrive_control::{
     Act, ActSort, Answer, At, ControlPlane, Id, Launch, Launched, Lease, Offer, Outcome, Preview,
     Report, Want,
@@ -651,6 +652,76 @@ fn a_state_repository_that_never_answers_the_listing() {
              was stopped"
         )),
         "{failed}"
+    );
+}
+
+/// The crew-control-plane spec's "A listing in flight when the runner
+/// stops" and "A listing's words at the runner's stop": a listing of a
+/// state repository that never answers, its limit thirty seconds, ends
+/// within five seconds of the runner's stop, failing naming `git
+/// ls-remote`, the state repository's URL and the stop (record 0042 as
+/// amended on 2026-11-11).
+#[test]
+fn a_listing_in_flight_when_the_runner_stops() {
+    let state = State::new();
+    let cache = state.root.join("cache.git");
+    std::fs::create_dir_all(&cache).unwrap();
+    git(&cache, &["init", "--quiet", "--bare"], None);
+    let url = format!("{}/state.git", silent());
+    let mut store = Store::new(cache, url.clone());
+    store.try_for = Duration::from_secs(30);
+    let halt = store.halt.clone();
+    let halter = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(300));
+        halt.halt();
+    });
+
+    let started = Instant::now();
+    let failed = store.hosts("home").expect_err("a listing halted");
+    let took = started.elapsed();
+    halter.join().unwrap();
+
+    assert!(took < Duration::from_secs(5), "the listing took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git ls-remote with {url} was stopped as the runner stopped"
+        )),
+        "{failed}"
+    );
+}
+
+/// The crew-control-plane spec's "A pull after the runner's stop": a part
+/// whose halt is already set reads `home/main`, which holds a launch for
+/// this host, and lists nothing, so its pull is unread with the stop's
+/// words and gives no want (record 0042 as amended on 2026-11-11).
+#[test]
+fn a_pull_after_the_runners_stop_is_unread() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[launch(1, Some("host-a"), "unit/a", CREW, "a", &[])],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let halt = Halt::default();
+    halt.halt();
+    let (mut parts, _) = state.parts_halted_by("host-a", &[("home", "example/home-state")], &halt);
+
+    let unread = parts[0]
+        .plane
+        .pull(&kept(), &Report::default())
+        .expect_err("an unread pull");
+
+    let url = format!("{}example/home-state.git", state.url());
+    assert!(
+        unread.0.contains(&format!(
+            "git ls-remote with {url} was stopped as the runner stopped"
+        )),
+        "{unread}"
     );
 }
 

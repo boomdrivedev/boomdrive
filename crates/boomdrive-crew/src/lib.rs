@@ -13,6 +13,7 @@ pub mod records;
 pub mod roles;
 pub mod write;
 
+use boomdrive_bounded::Halt;
 use boomdrive_control::{
     Acted, Capacity, ControlPlane, Hello, Id, Launched, Outcome, Part, Pulled, Report, Reported,
     Unread, Unsent, Want,
@@ -58,18 +59,31 @@ pub struct Crew {
     said: BTreeSet<String>,
     before_claim: Option<Hook>,
     between_claim_and_check: Option<Hook>,
+    /// The runner's stop, which ends each listing in flight and lets none
+    /// begin: never set but by the runner's own (record 0042 as amended on
+    /// 2026-11-11).
+    halt: Halt,
 }
 
 /// Opens crew's implementation from its table, `table`, of the
 /// configuration file `file`, keeping its caches under `data_dir`, as its
-/// [`parts`], each saying through the say `say_for` makes for its label.
+/// [`parts`], each saying through the say `say_for` makes for its label
+/// and its listing ended at `halt`, the runner's stop (record 0042 as
+/// amended on 2026-11-11).
 pub fn open(
     table: &toml::Table,
     file: &Path,
     data_dir: &Path,
     say_for: &dyn Fn(&str) -> Say,
+    halt: &Halt,
 ) -> Result<Vec<Part>, String> {
-    Ok(parts(config::read(table, file)?, GITHUB, data_dir, say_for))
+    Ok(parts(
+        config::read(table, file)?,
+        GITHUB,
+        data_dir,
+        say_for,
+        halt,
+    ))
 }
 
 /// crew's implementation of `config` as parts, its state repositories
@@ -78,12 +92,15 @@ pub fn open(
 /// through the say `say_for` makes for that label. A partition is a
 /// drive, and each is pulled, answered and reported on its own, so one
 /// that cannot be read or written hides only its own work (record 0026;
-/// design Decision 7).
+/// design Decision 7). Each part's listing is ended at `halt`, the
+/// runner's stop, and begun after it runs nothing (record 0042 as amended
+/// on 2026-11-11).
 pub fn parts(
     config: Config,
     forge: &str,
     data_dir: &Path,
     say_for: &dyn Fn(&str) -> Say,
+    halt: &Halt,
 ) -> Vec<Part> {
     config
         .partitions
@@ -96,7 +113,7 @@ pub fn parts(
             let say = say_for(&partition.label);
             Part {
                 label: partition.label.clone(),
-                plane: Box::new(Crew::new(one, forge, data_dir, say)),
+                plane: Box::new(Crew::new(one, forge, data_dir, say).halted_by(halt.clone())),
             }
         })
         .collect()
@@ -106,7 +123,8 @@ impl Crew {
     /// crew's implementation of `config`, its state repositories reached
     /// on `forge`, a base address ending in `/`. The cache a release
     /// before shared among every partition of a state repository is
-    /// removed where it is there, and said (design Decision 7).
+    /// removed where it is there, and said (design Decision 7). Its halt
+    /// is never set.
     pub fn new(config: Config, forge: &str, data_dir: &Path, mut say: Say) -> Crew {
         for partition in &config.partitions {
             remove_shared_cache(data_dir, &partition.state_repository, &mut say);
@@ -123,7 +141,15 @@ impl Crew {
             said: BTreeSet::new(),
             before_claim: None,
             between_claim_and_check: None,
+            halt: Halt::default(),
         }
+    }
+
+    /// This implementation, each listing it makes ended at `halt`, the
+    /// runner's stop, and begun after it running nothing (record 0042 as
+    /// amended on 2026-11-11).
+    pub fn halted_by(self, halt: Halt) -> Crew {
+        Crew { halt, ..self }
     }
 
     /// Runs `hook` at every pull that claims, between the claim's write
@@ -146,16 +172,20 @@ impl Crew {
     /// Two partitions of one state repository share no git directory and
     /// so no weir lock, and one's fetch or push holds no other's pull or
     /// report (record 0026; design Decision 7). Its listing is stopped at
-    /// thirty seconds (record 0042).
+    /// thirty seconds or at this implementation's halt, the runner's stop
+    /// (record 0042 as amended on 2026-11-11).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
-        Store::new(
-            caches(&self.data_dir)
-                .join(&repository.owner)
-                .join(&repository.name)
-                .join(format!("{}.git", partition.label)),
-            repository.url(&self.forge),
-        )
+        Store {
+            halt: self.halt.clone(),
+            ..Store::new(
+                caches(&self.data_dir)
+                    .join(&repository.owner)
+                    .join(&repository.name)
+                    .join(format!("{}.git", partition.label)),
+                repository.url(&self.forge),
+            )
+        }
     }
 }
 

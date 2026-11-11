@@ -7,6 +7,7 @@
 
 use crate::ids;
 use crate::records::{self, whole, Sets};
+use boomdrive_bounded::{Halt, Stopped};
 use boomdrive_control::{
     Act, ActSort, Answer, At, Carried, Hello, Id, Launch, Launched, Lease, Offer, Outcome, Preview,
     Previewed, Want,
@@ -32,6 +33,10 @@ pub struct Store {
     /// How long one try of its listing may take: thirty seconds, or a
     /// test's (record 0042).
     pub try_for: Duration,
+    /// The runner's stop, which ends its listing in flight and lets none
+    /// begin: never set but by the runner's own, or a test's (record 0042
+    /// as amended on 2026-11-11).
+    pub halt: Halt,
 }
 
 /// A partition's drive branch at one tip.
@@ -173,12 +178,14 @@ pub const FILES: [&str; 4] = ["runner.rec", "answers.rec", "places.rec", "previe
 
 impl Store {
     /// The state repository at `url` through the bare cache `cache`, its
-    /// listing stopped at [`boomdrive_bounded::TRY_FOR`] (record 0042).
+    /// listing stopped at [`boomdrive_bounded::TRY_FOR`], its halt never
+    /// set (record 0042).
     pub fn new(cache: PathBuf, url: String) -> Store {
         Store {
             cache,
             url,
             try_for: boomdrive_bounded::TRY_FOR,
+            halt: Halt::default(),
         }
     }
 
@@ -245,10 +252,12 @@ impl Store {
     /// The hosts whose runner's branch, `<label>/runner/<host>`, the state
     /// repository lists, in name order, by `git ls-remote` through the
     /// cache. The listing is a call to a remote: it runs in a process group
-    /// of its own and is stopped at `try_for` with everything it started,
-    /// failing then with words that name `git ls-remote`, the state
-    /// repository's URL and the limit, after git's last line where git
-    /// wrote one (record 0042; core.58).
+    /// of its own and is stopped at `try_for` or at `halt`, the runner's
+    /// stop, whichever comes first, with everything it started, failing
+    /// then with words that name `git ls-remote`, the state repository's
+    /// URL and the limit, or the runner's stop, after git's last line where
+    /// git wrote one; a listing begun once `halt` is set runs nothing and
+    /// fails so (record 0042 as amended on 2026-11-11; core.58).
     pub fn hosts(&self, label: &str) -> Result<Vec<String>, String> {
         let prefix = format!("refs/heads/{label}/runner/");
         let mut command = Command::new("git");
@@ -261,18 +270,24 @@ impl Store {
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
             .stdin(Stdio::null());
-        let output = boomdrive_bounded::output(&mut command, self.try_for)
+        let output = boomdrive_bounded::output(&mut command, self.try_for, &self.halt)
             .map_err(|error| format!("git could not be run: {error}"))?;
         let said = String::from_utf8_lossy(&output.stderr);
         let last = said.lines().rfind(|line| !line.trim().is_empty());
-        if output.stopped {
-            let stopped = boomdrive_bounded::stopped("git ls-remote", &self.url, self.try_for);
-            return Err(match last {
-                Some(line) => format!("{}; {stopped}", line.trim()),
-                None => stopped,
-            });
-        }
-        if !output.status.success() {
+        let status = match (output.stopped, output.status) {
+            (None, Some(status)) => status,
+            (stopped, _) => {
+                let stopped = match stopped {
+                    Some(Stopped::Halted) => boomdrive_bounded::halted("git ls-remote", &self.url),
+                    _ => boomdrive_bounded::stopped("git ls-remote", &self.url, self.try_for),
+                };
+                return Err(match last {
+                    Some(line) => format!("{}; {stopped}", line.trim()),
+                    None => stopped,
+                });
+            }
+        };
+        if !status.success() {
             return Err(format!(
                 "git ls-remote failed: {}",
                 last.unwrap_or("it said nothing")
