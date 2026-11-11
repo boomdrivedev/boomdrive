@@ -628,9 +628,9 @@ else
 fi
 pushes=$(grep -c -E 'git([[:space:]].*)?[[:space:]]push([[:space:]]|$)' "$workflow" || true)
 if [ "$pushes" -eq 1 ] && once "$push_line"; then
-  pass "the workflow release's one push pushes refs/tags/\$TAG alone, with no force"
+  pass "the workflow release's one push pushes the release's tag alone, with no force"
 else
-  fail "the workflow release pushes more than refs/tags/\$TAG, or with force"
+  fail "the workflow release pushes more than the release's tag, or with force"
 fi
 
 exit "$status"
