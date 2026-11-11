@@ -15,8 +15,10 @@
 # line is not the unit's; any other user's activation does nothing. Beside
 # `user`, the module declares `dataDir`, the runner's data folder by the
 # runner's own rule (data-dir.nix) from that user's home and the unit's
-# own `XDG_DATA_HOME`: read-only, read wherever a host names the folder or
-# a clone in it, and set by none (record 0036 as amended on 2026-11-11).
+# own `XDG_DATA_HOME`, and clones.nix declares `cloneDirs`, each kept
+# repository's clone folder in it: each read-only, read wherever a host
+# names the folder or a clone's, and set by none (record 0036 as amended
+# on 2026-11-11).
 { packages }:
 {
   config,
@@ -114,8 +116,9 @@ in
       report, by the runner's own rule: `$XDG_DATA_HOME/boomdrive` where the
       unit's own environment gives an absolute `XDG_DATA_HOME`, else
       `~/.local/share/boomdrive` under the home of `services.boomdrive.user`.
-      It is read-only: a host reads it wherever it names the folder or a
-      clone in it, and sets it nowhere. An `XDG_DATA_HOME` the unit takes
+      It is read-only: a host reads it wherever it names the folder, a
+      clone's folder in it being `services.boomdrive.cloneDirs`'s, and sets
+      it nowhere. An `XDG_DATA_HOME` the unit takes
       from outside its declaration, such as the user manager's
       `environment.d`, is not seen: a host that moves the runner's data
       gives the unit its own `XDG_DATA_HOME` in
