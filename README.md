@@ -692,9 +692,14 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 seconds is stopped with everything it started, as a fetch is, and the
 partition is named unread and pulled again at the next pull. It answers
 on the runner's branch, `<label>/runner/<host>`, in crew's formats:
-`runner.rec`, `answers.rec` and `places.rec`, and, once a preview is
-answered there, `previews.rec`,
-under the descriptor this repository proposes for crew to hold. A
+`runner.rec`, `answers.rec`, `places.rec` and `repositories.rec`, and,
+once a preview is answered there, `previews.rec`,
+under the descriptor this repository proposes for crew to hold. At
+every write of the branch, `repositories.rec` names each repository of
+the partition's drive the runner keeps, the drive named by the
+partition's label, by its address with its clone's folder, where Flume
+cuts its places, and none of another drive's; where no drive of the
+configuration has the label, it names none, and one line says so. A
 preview leaves the runner's branch once its done is answered, with what
 the done put away; or once its work has left crew's plan and it is no
 longer up, a bolt's work leaving with its `Bolt` record. A preview

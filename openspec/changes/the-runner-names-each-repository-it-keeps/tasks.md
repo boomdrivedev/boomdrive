@@ -34,7 +34,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 6. What the runner says of it
 
-- [ ] 6.1 README's crew section names `repositories.rec` among the files of the runner's branch. It says the file names each repository of the partition's drive the runner keeps, by its address with its clone's folder, at every write of the branch, and none of another drive's. `crates/boomdrive/tests/readme.rs`'s `the_readme_names_the_repositories_each_drive_keeps` asserts README, read with its whitespace folded, holds `repositories.rec` and `each repository of the partition's drive` (design Decision 3). True when `devenv shell -- cargo test -p boomdrive --test readme -- the_readme_names_the_repositories_each_drive_keeps` passes.
+- [x] 6.1 README's crew section names `repositories.rec` among the files of the runner's branch. It says the file names each repository of the partition's drive the runner keeps, by its address with its clone's folder, at every write of the branch, and none of another drive's. `crates/boomdrive/tests/readme.rs`'s `the_readme_names_the_repositories_each_drive_keeps` asserts README, read with its whitespace folded, holds `repositories.rec` and `each repository of the partition's drive` (design Decision 3). True when `devenv shell -- cargo test -p boomdrive --test readme -- the_readme_names_the_repositories_each_drive_keeps` passes.
 
 ## 7. The specs
 
