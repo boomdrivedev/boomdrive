@@ -52,7 +52,7 @@ None. No requirement of the setup, service-modules, family-packages or site spec
   - `src/content/terms/terms.yaml`: a term the steps' words take, where Vale asks for one;
   - `check-site.sh` and `moon.yml`: the quick start's checks and their inputs;
   - `docs/site-design.md` and `CLAUDE.md`: written with the plan.
-- `crates/boomdrive/tests/quick_start.rs`, new; `crates/boomdrive/moon.yml`: the test's inputs, the steps' files among them.
+- `crates/boomdrive/tests/quick_start.rs`, new; `crates/boomdrive/tests/stand-in/claude.rs`, new, the stand-in agent, a binary `crates/boomdrive/Cargo.toml` builds only under its feature `stand-in`; `crates/boomdrive/moon.yml`: the test's inputs, the steps' files among them, and the feature its test names.
 - `nix/tests/quick-start.nix`, new; `nix/tests/default.nix`; `nix/moon.yml`: the steps' files as inputs.
 - `treefmt.nix`: taplo claims the steps' TOML files, and the steps' shell files need no shebang (core.7).
 - `README.md`: the quick start's address.
@@ -78,6 +78,8 @@ site/moon.yml
 site/docs/site-design.md
 site/CLAUDE.md
 crates/boomdrive/tests/quick_start.rs
+crates/boomdrive/tests/stand-in/claude.rs
+crates/boomdrive/Cargo.toml
 crates/boomdrive/moon.yml
 nix/tests/quick-start.nix
 nix/tests/default.nix
