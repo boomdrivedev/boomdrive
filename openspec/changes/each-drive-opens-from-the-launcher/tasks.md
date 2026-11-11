@@ -9,7 +9,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The script
 
-- [ ] 1.1 `nix/packages/launcher.sh` runs `flume open -- <session>` given one argument and `flume open` given none. Given more than one, it runs nothing, says `boomdrive-launcher: one session at most` on standard error and exits 2. Its profiles, its alert and its exit on a refusal stay as they are. `nix/tests/way-in.sh` passes a case's arguments to the launcher, and gains "A drive's session opened" and "More than one session" (design Decision 2; Task notes 1.1). True when `devenv shell -- sh nix/tests/way-in.sh` prints nothing, proving the way-in delta's "Opened", "A drive's session opened", "More than one session" and "The profiles first", and the refusals' cases as they stand.
+- [x] 1.1 `nix/packages/launcher.sh` runs `flume open -- <session>` given one argument and `flume open` given none. Given more than one, it runs nothing, says `boomdrive-launcher: one session at most` on standard error and exits 2. Its profiles, its alert and its exit on a refusal stay as they are. `nix/tests/way-in.sh` passes a case's arguments to the launcher, and gains "A drive's session opened" and "More than one session" (design Decision 2; Task notes 1.1). True when `devenv shell -- sh nix/tests/way-in.sh` prints nothing, proving the way-in delta's "Opened", "A drive's session opened", "More than one session" and "The profiles first", and the refusals' cases as they stand.
 
 ## 2. The launcher
 
