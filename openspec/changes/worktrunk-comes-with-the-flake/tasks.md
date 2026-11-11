@@ -10,7 +10,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 1. worktrunk in the set
 
 - [x] 1.1 worktrunk's flake is an input at `v0.80.0`, following the flake's `nixpkgs` and `rust-overlay`, and the lock locks it. `packages.<system>.worktrunk` is its flake's package, given its tag as `VERGEN_GIT_DESCRIBE` by `nix/packages/worktrunk.nix`. The type check's set holds `worktrunk` (design Decisions 1 and 2; Task notes 1.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving:
-  - the family-packages delta's "Every system's packages", with `worktrunk` among the ten;
+  - the family-packages delta's "Every system's packages", with `worktrunk` among the eleven;
   - "No tool of the host's own";
   - each tag the lock's.
 - [x] 1.2 The test holds the set's worktrunk to its flake's package, its source, dependencies, program and version, and to its tag as its `git describe`. It holds it to the worktrunk sluice's `devenv.nix` pins at sluice's locked tag. `tags.nix` holds worktrunk to a release tag (design Decisions 1 and 2; Task notes 1.2). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages delta's "worktrunk through its own flake", "worktrunk is sluice's", "worktrunk other than sluice's" and "worktrunk named by no release tag".
@@ -20,7 +20,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 - [x] 2.1 `nix/modules/apps.nix` declares `services.boomdrive.worktrunk.package`, the set's `worktrunk` by default. With the runner enabled it installs it where it is not `null`, and without the runner it installs none (design Decision 3; Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "worktrunk with the runner", "A host's own worktrunk", "No worktrunk of the set's" and "No worktrunk without the runner" on nix-darwin and on NixOS.
 - [x] 2.2 The modules' default worktrunk is the flake's own whatever the host's `pkgs` (design Decision 3; core.47; Task notes 2.2). True when `sluice exec main -- moon run nix:test` passes, proving the binary-cache delta's "A host's own nixpkgs" with `worktrunk` on nix-darwin and on NixOS.
-- [x] 2.3 `devShells.<system>.default` holds the set's worktrunk beside the runner, Flume, sluice, crew and herdr (design Decision 4; Task notes 2.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with six packages.
+- [x] 2.3 `devShells.<system>.default` holds the set's worktrunk beside the runner, Flume, sluice, crew, herdr and portless (design Decision 4; Task notes 2.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with seven packages.
 
 ## 3. The words
 
@@ -36,3 +36,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. The specs
 
 - [x] 4.1 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive worktrunk-comes-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 4.2 The change stands beside portless, which `main` holds at `73cb3ae4` from `portless-comes-with-the-flake` and which this branch merges: the set gives eleven packages and the shell seven, the modules install portless and worktrunk with the runner, and the README, CLAUDE.md, `openspec/config.yaml`, record 0023, core.44 and core.46 name both. Each delta's modified requirement is main's with worktrunk added, family-packages' under the name portless gave it (design Sequencing). True when `sluice exec main -- moon run nix:typecheck nix:test` passes and, after `devenv shell -- openspec archive worktrunk-comes-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.

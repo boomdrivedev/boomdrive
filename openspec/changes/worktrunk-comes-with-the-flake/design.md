@@ -27,11 +27,11 @@ What worktrunk gives, at its release tag `v0.80.0`:
 - **Its `--version`.** `wt --version` prints vergen's `VERGEN_GIT_DESCRIBE` where it is set, and Cargo's version where it is not (`src/cli/mod.rs`, `version_str`). worktrunk's flake sets it to its source's short revision, `b49ca7e` at `v0.80.0`. A release build, made in a checkout at the tag, gets `v0.80.0` from `git describe`. nixpkgs' recipe sets none, so its `wt` says `0.80.0`.
 - **Under the checks.** With the flake's `nixpkgs` and `rust-overlay` followed, the package evaluates on each of the three systems against the nix project's dummy store, offline and read-only. Its `Cargo.lock` holds no git source, so its vendored crates need no network at evaluation. The flake's locked `rust-overlay` carries `1.97.0`. Seen on 2026-11-11 with a scratch lock of this flake and worktrunk's input.
 
-The flake today, after the bolt `the-boomdrive-flake-configures-the-whole-host`:
+The flake today, on `main` at `73cb3ae4`, after the bolt `the-boomdrive-flake-configures-the-whole-host` and this bolt's unit `portless-comes-with-the-flake`:
 
-- **The set** is `boomdrive`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `sluice` and `sluice-herdr-plugin`, with `default` the runner's.
-- **`nix/modules/apps.nix`** declares the Boomdrive module's own options for herdr, its plugins, Ghostty and the launcher, each `installed` from the set by default, a host's own replacing it and `null` dropping it. With the runner enabled, each non-null package goes in `environment.systemPackages`.
-- **The shell**, `nix/shell.nix`, holds the set's runner, Flume, sluice, crew and herdr.
+- **The set** is `boomdrive`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `portless`, `sluice` and `sluice-herdr-plugin`, with `default` the runner's.
+- **`nix/modules/apps.nix`** declares the Boomdrive module's own options for herdr, its plugins, Ghostty, portless and the launcher, each `installed` from the set by default, a host's own replacing it and `null` dropping it. With the runner enabled, each non-null package goes in `environment.systemPackages`.
+- **The shell**, `nix/shell.nix`, holds the set's runner, Flume, sluice, crew, herdr and portless.
 - **The cache's workflow** builds every package `nix eval` lists for each system, so a package the set gains is built and pushed with no change of the workflow's.
 
 This change is the unit `worktrunk-comes-with-the-flake` of the bolt `the-flake-brings-its-companion-tools`.
@@ -52,7 +52,7 @@ This change is the unit `worktrunk-comes-with-the-flake` of the bolt `the-flake-
   - worktrunk's shell integration, which lets `wt switch` change the shell's folder, and which the person installs with worktrunk's own `wt config shell install`.
 - `git wt`, which worktrunk's `worktrunk-with-git-wt` gives for Windows, where `wt` is Windows Terminal's.
 - Holding worktrunk to a floor of crew's, which pins none.
-- portless, the bolt's other unit, `portless-comes-with-the-flake`.
+- portless, which the bolt's other unit, `portless-comes-with-the-flake`, brought to the set.
 - Any change to the runner's code, its file, its service, or what the runner's tests prove of the set.
 
 ## Decisions
@@ -105,7 +105,7 @@ Alternatives:
 |---|---|---|
 | `services.boomdrive.worktrunk.package` | package or `null` | the set's `worktrunk` for the host's system |
 
-With `services.boomdrive.enable`, `environment.systemPackages` holds it where it is not `null`, beside herdr, Ghostty and the launcher. A host's own package replaces the set's, and `null` drops it for the host's own. Without the runner none is installed. Its description says what calls it, and its `defaultText` names the set's package as its neighbours' do.
+With `services.boomdrive.enable`, `environment.systemPackages` holds it where it is not `null`, beside herdr, Ghostty, portless and the launcher. A host's own package replaces the set's, and `null` drops it for the host's own. Without the runner none is installed. Its description says what calls it, and its `defaultText` names the set's package as its neighbours' do.
 
 The option is the Boomdrive module's own because worktrunk gives no nix-darwin or NixOS module, and neither crew's nor sluice's module installs it. The service-modules requirement that the modules hold no option installing a tool its own module installs lets it, as it lets herdr's.
 
@@ -115,12 +115,12 @@ Alternatives:
 
 - **worktrunk's `homeModules.default`.** Not taken: it is a home-manager module, which nix-darwin's and NixOS's system modules cannot import, and a host may run no home-manager. Its `programs.worktrunk` also writes the person's shell integration, which is their own.
 - **sluice's module installing it.** Not taken: crew calls `wt` too, and sluice's module is sluice's repository's. It would ask another repository for what this flake can do with the worktrunk it pins.
-- **`programs.worktrunk` as the option's name.** Not taken: a later nixpkgs or nix-darwin module of that name would collide with it, and the option sits under `services.boomdrive` beside herdr's, Ghostty's and the launcher's.
+- **`programs.worktrunk` as the option's name.** Not taken: a later nixpkgs or nix-darwin module of that name would collide with it, and the option sits under `services.boomdrive` beside herdr's, Ghostty's, portless's and the launcher's.
 - **Installed whether or not the runner is enabled.** Not taken: a host that imports the module for one tool alone would get a `wt` it did not ask for.
 
 ### 4. The shell holds worktrunk
 
-`nix/shell.nix`'s `packages` gain `set.worktrunk`, after `set.herdr`, and its header says so. crew and sluice are on the shell's `PATH` and call `wt`: `wt submit` runs sluice's `wt-submit` only with a `wt` beside it.
+`nix/shell.nix`'s `packages` gain `set.worktrunk`, after `set.portless`, and its header says so. crew and sluice are on the shell's `PATH` and call `wt`: `wt submit` runs sluice's `wt-submit` only with a `wt` beside it.
 
 Alternative: **leaving it out, as Ghostty is.** Not taken: Ghostty is a window the person in the shell is already in, and `wt` is a command the shell's tools run.
 
@@ -128,14 +128,14 @@ Alternative: **leaving it out, as Ghostty is.** Not taken: Ghostty is a window t
 
 Every evaluated case is under `nix/tests`, run by `nix:typecheck` or `nix:test` against no store (record 0020's Decision 14), with core.41's neutral names. No case builds or runs worktrunk. The lock's new nodes reach the checks through `nix/inputs.nix`, which reads every node of the lock, with no change of its own.
 
-- **`typecheck.nix`.** The set gains `worktrunk`, so "Every system's packages" holds the ten and `default`.
+- **`typecheck.nix`.** The set gains `worktrunk`, so "Every system's packages" holds the eleven and `default`.
 - **`packages.nix`** holds the family-packages delta's cases:
   - "worktrunk through its own flake" and "worktrunk named by no release tag";
   - "worktrunk is sluice's" and "worktrunk other than sluice's", through a function called with the set's values and with given ones.
 - **`tags.nix`'s** tools named by a release tag gain `worktrunk`.
 - **`apps.nix`** holds the service-modules delta's added cases, each on nix-darwin and on NixOS. Each case's name is new to the tests, since `default.nix` merges every file's cases into one set.
 - **`cache.nix`.** The host's overlay `names` gain `worktrunk`, so "A host's own nixpkgs" holds it to the flake's own. "The README's words" reads `services.boomdrive.worktrunk.package`.
-- **`way-in.nix`.** "Every system's shell" holds the shell's six packages.
+- **`way-in.nix`.** "Every system's shell" holds the shell's seven packages.
 - **"The runner is pushed with its tools"** holds as it stands: `workflow.nix` holds the workflow to build every package `nix eval` lists, and `typecheck.nix` holds `worktrunk` among them.
 
 ### Rules relied on
@@ -163,7 +163,7 @@ None.
 
 ## Sequencing
 
-The bolt's sibling unit `portless-comes-with-the-flake` adds another tool to the set the same way. It touches the same lines:
+The bolt's sibling unit `portless-comes-with-the-flake` adds another tool to the set the same way, and landed first, on `main` at `73cb3ae4`. It touches the same lines:
 
 - `flake.nix`'s inputs and set, and `flake.lock`;
 - `nix/modules/apps.nix`'s options and `environment.systemPackages`;
@@ -172,7 +172,7 @@ The bolt's sibling unit `portless-comes-with-the-flake` adds another tool to the
 - core.44's and core.46's details, and record 0023;
 - in the specs, family-packages' "The flake gives the family's host tools as packages", service-modules' "The modules hold no option that installs a tool its own module installs" and both binary-cache requirements, which each change modifies whole.
 
-Whichever lands second merges those lines to hold both tools, locks the merged `flake.nix` with `nix flake lock`, and writes its modified requirements over the first's archived specs, naming both tools. Its `nix:typecheck` and `nix:test` hold both. Each change keeps its own options' cases under names of its own, so neither's cases replace the other's.
+This change merges `73cb3ae4` and those lines to hold both tools, and locks the merged `flake.nix` with `nix flake lock`. It writes its modified requirements over portless's archived specs, naming both tools. family-packages' requirement on where each package is made from carries the name portless gave it, "Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs". Its `nix:typecheck` and `nix:test` hold both. Each change keeps its own options' cases under names of its own, so neither's cases replace the other's.
 
 ## Risks / Trade-offs
 
@@ -249,16 +249,16 @@ The file's header names worktrunk and this change.
 
 **2.2** In `nix/tests/cache.nix`, `names` gains `"worktrunk"` in name order, so the host's overlay gives a `worktrunk` of its own, and "A host's own nixpkgs" holds the profile to the set's.
 
-**2.3** `nix/shell.nix`'s `packages` gain `set.worktrunk` after `set.herdr`. Its header names worktrunk among the set's tools on `PATH`, which crew and sluice call. In `nix/tests/way-in.nix`, `shellTools` gains `"worktrunk"`. `flake.nix`'s comment on `devShells` stays true as it stands.
+**2.3** `nix/shell.nix`'s `packages` gain `set.worktrunk` after `set.portless`. Its header names worktrunk among the set's tools on `PATH`, which crew and sluice call. In `nix/tests/way-in.nix`, `shellTools` gains `"worktrunk"`. `flake.nix`'s comment on `devShells` stays true as it stands.
 
 **3.1** The README's **Installing with nix**:
 
 - **The set.** worktrunk joins it: through its own flake at the release sluice's tag pins, which sluice's worktree driver was checked against. The profile line may add `github:agentplot/boomdrive#worktrunk`.
 - **The modules.** With `services.boomdrive.enable` they install worktrunk's `wt`, which crew and sluice's driver call.
 - **Replacing or dropping.** The block of `null`s gains `services.boomdrive.worktrunk.package = null;`. A host with a `wt` of its own, in a user's profile or home-manager's `programs.worktrunk`, sets it `null` or to its own, so one `wt` runs.
-- **The shell.** It names worktrunk with the set's runner, Flume, sluice, crew and herdr.
+- **The shell.** It names worktrunk with the set's runner, Flume, sluice, crew, herdr and portless.
 - **Shell integration.** worktrunk's shell integration, which lets `wt switch` change the shell's folder, is the person's to install with `wt config shell install`. Neither the modules nor the shell install it.
 
-In `nix/tests/cache.nix`, "The README's words"' list gains `"services.boomdrive.worktrunk.package"`, after Ghostty's.
+In `nix/tests/cache.nix`, "The README's words"' list gains `"services.boomdrive.worktrunk.package"`, after portless's.
 
-**3.2** CLAUDE.md's paragraph on the flake reads "gives the runner, Flume, sluice and crew pinned together, with herdr, its plugins, Ghostty and worktrunk, …". Its modules "install herdr, Ghostty, worktrunk and the Boomdrive launcher". `openspec/config.yaml`'s stack line names the same.
+**3.2** CLAUDE.md's paragraph on the flake reads "gives the runner, Flume, sluice and crew pinned together, with herdr, its plugins, Ghostty, portless and worktrunk, …". Its modules "install herdr, Ghostty, portless, worktrunk and the Boomdrive launcher". `openspec/config.yaml`'s stack line names the same.

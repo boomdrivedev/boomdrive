@@ -4,12 +4,12 @@
 
 ### Requirement: The flake gives the family's host tools as packages
 
-The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `sluice`, `sluice-herdr-plugin` and `worktrunk`, with `default` the runner's. It SHALL give no package of git, which is the host's own, and none of a tool a repository pins.
+The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `portless`, `sluice`, `sluice-herdr-plugin` and `worktrunk`, with `default` the runner's. It SHALL give no package of git, which is the host's own, and none of a tool a repository pins.
 
 #### Scenario: Every system's packages
 
 - **WHEN** the flake's outputs are evaluated for each of the three systems
-- **THEN** each gives the ten packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
+- **THEN** each gives the eleven packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
 
 #### Scenario: No tool of the host's own
 
@@ -18,7 +18,7 @@ The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-
 
 ### Requirement: The flake and its lock name one set
 
-Each tool of the set that comes through its own flake, Flume, sluice, crew, herdr and worktrunk, SHALL be named in `flake.nix` by a release tag, and the lock SHALL lock that tag. A tag in `flake.nix` that the lock does not lock SHALL fail the flake's type check, naming the tool and both tags. A tool of the set named by anything but a release tag SHALL fail it, naming the tool and what names it.
+Each tool of the set that comes through its own flake or its own source, Flume, sluice, crew, herdr, portless and worktrunk, SHALL be named in `flake.nix` by a release tag, and the lock SHALL lock that tag. A tag in `flake.nix` that the lock does not lock SHALL fail the flake's type check, naming the tool and both tags. A tool of the set named by anything but a release tag SHALL fail it, naming the tool and what names it.
 
 #### Scenario: A tag moved without the lock
 
@@ -35,14 +35,19 @@ Each tool of the set that comes through its own flake, Flume, sluice, crew, herd
 - **WHEN** `flake.nix` and the lock name herdr by `main`
 - **THEN** the flake's type check fails, naming herdr and `main`
 
+#### Scenario: portless named by no release tag
+
+- **WHEN** `flake.nix` and the lock name portless by `main`
+- **THEN** the flake's type check fails, naming portless and `main`
+
 #### Scenario: worktrunk named by no release tag
 
 - **WHEN** `flake.nix` and the lock name worktrunk by `main`
 - **THEN** the flake's type check fails, naming worktrunk and `main`
 
-### Requirement: Each package is made from this tree, its tool's own flake at its release tag, or the flake's nixpkgs
+### Requirement: Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs
 
-Each package SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's and worktrunk's of the tool's release tag, each through its own flake, with no recipe of this flake's; and Ghostty's of the flake's own nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree where it carries it, and from the flake's tag where it does not.
+Each package SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's and worktrunk's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe, as it publishes no flake; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree where it holds one, else from the flake's tag.
 
 #### Scenario: Flume through its own flake
 
@@ -68,6 +73,16 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 
 - **WHEN** the lock names worktrunk's tag `v0.80.0`
 - **THEN** the `worktrunk` package is worktrunk's flake's own `worktrunk` for that system, its source and dependencies unchanged, its program `wt` and its version `0.80.0`, and its build is given `v0.80.0` as its `git describe`, as worktrunk's release build gets it
+
+#### Scenario: portless from its source
+
+- **WHEN** the lock names portless's tag `v0.17.0`
+- **THEN** the `portless` package of each system is this flake's recipe's build of that tag's source, its program `portless`, and its version `0.17.0`, read from the tagged tree's `packages/portless/package.json`
+
+#### Scenario: portless other than its tag
+
+- **WHEN** portless's tagged tree says `0.17.1` and the lock names portless's tag `v0.17.0`
+- **THEN** the flake's test fails, naming `0.17.1` and `0.17.0`
 
 #### Scenario: The runner from this tree
 
