@@ -222,7 +222,7 @@ Alternatives:
 
 `activate.sh` gains `pendingyou <source> <folder>`.
 
-- **Each file whole.** For each file of `<source>`, by its path under it, it writes `<folder>/<path>` with the source's mode, by a copy into a temporary file beside it renamed over the path. It writes only where no regular file there has the same bytes and mode, and replaces a link standing there.
+- **Each file whole.** For each file of `<source>`, by its path under it, it writes `<folder>/<path>` with the source's mode made writable by its owner, 0755 where the source runs and 0644 where it does not, as Decision 7 names them, by a copy into a temporary file beside it renamed over the path. It writes only where no regular file there has the same bytes and mode, and replaces a link standing there.
 - **New folders.** It makes the folder with mode 0700 where it is missing, and each folder under it with 0755.
 - **Nothing else.** It reads, writes and removes nothing else under `<folder>`: the sign-ins, the key, `permission-cards/` and the state are the command line's.
 - **What it says.** It says one line where it wrote a file, naming it, and nothing where none differed.

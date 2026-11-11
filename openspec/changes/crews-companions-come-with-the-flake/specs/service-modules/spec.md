@@ -113,12 +113,12 @@ The folder's files SHALL be four: `bin/pendingyou-hook` and `bin/pendingyou-mcp-
 
 ### Requirement: The folder's step writes only what differs
 
-The step SHALL write each file of the folder's source whole, with the source's mode, by a temporary file renamed over its path, only where no regular file there has the same bytes and mode, and SHALL replace a link standing at its path. It SHALL make the folder with mode 0700 where it is missing, and say one line for each file it wrote and nothing where none differed.
+The step SHALL write each file of the folder's source whole, with the source's mode made writable by its owner, 0755 where the source runs and 0644 where it does not, by a temporary file renamed over its path, only where no regular file there has the same bytes and mode, and SHALL replace a link standing at its path. It SHALL make the folder with mode 0700 where it is missing, and say one line for each file it wrote and nothing where none differed.
 
 #### Scenario: A fresh home
 
 - **WHEN** the step runs in a home with no `.config/pendingyou`
-- **THEN** the folder is made with mode 0700, holds the four files as regular files with the source's modes, and one line names each
+- **THEN** the folder is made with mode 0700, holds the four files as regular files, the launcher and the helper 0755 and the manifest and the sign-in's Claude folder 0644, and one line names each
 
 #### Scenario: Nothing differs
 
