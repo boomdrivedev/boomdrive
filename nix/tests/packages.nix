@@ -414,4 +414,32 @@ in
         "main"
       ]
     ) "flake.nix and the lock naming herdr by main give ${builtins.toJSON found}";
+
+  "portless named by no release tag" =
+    let
+      inherit (t) lock;
+      node = lock.nodes.${lock.root}.inputs.portless;
+      named = flake.inputs // {
+        portless = flake.inputs.portless // {
+          url = "github:vercel-labs/portless/main";
+        };
+      };
+      locked = lock // {
+        nodes = lock.nodes // {
+          ${node} = lock.nodes.${node} // {
+            original = lock.nodes.${node}.original // {
+              ref = "main";
+            };
+          };
+        };
+      };
+      found = tags named locked;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "portless"
+        "main"
+      ]
+    ) "flake.nix and the lock naming portless by main give ${builtins.toJSON found}";
 }
