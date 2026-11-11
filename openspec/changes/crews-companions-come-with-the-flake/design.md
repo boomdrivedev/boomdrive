@@ -2,12 +2,12 @@
 
 ## Context
 
-Record 0044 holds agentplot-design's rulings of 2026-11-11 and this stage's choices:
+Record 0044 holds agentplot-design's rulings of 2026-11-11, the user's answer of that day and this stage's choices:
 
 - **Claude Code loads the companions itself.** The set installs them as plugins of a marketplace of its own (points 1 and 2).
-- **The install into Claude Code's homes waits** on the user's card `req_020ff29dc00c49ec98e8` (point 3).
+- **The install into Claude Code's homes is a unit of its own,** `the-companions-load-in-claude-codes-sessions`, for every session on the accounts, the user's own included, as the user answered (point 3).
 - **Pending You's MCP server is not in its plugin** (point 4).
-- **The wake mod rides in Pending You's plugin**, and presence and herdr's pane marks are lost (point 5).
+- **The wake mod is written into Pending You's folder,** and loaded from there through `CLAUDE_CODE_PLUGIN_DIRS`, so presence, the loaded note and herdr's pane marks hold (point 5).
 - **Where each companion comes from** (point 6).
 - **The Boomdrive module stands as Pending You's module for its folder** (point 7).
 - **The companions come with the runner and crew** (point 8).
@@ -65,8 +65,8 @@ This change is the unit `crews-companions-come-with-the-flake` of the bolt `the-
 
 **Non-Goals:**
 
-- **The install into Claude Code's homes,** with Pending You's MCP server. It waits (Decision 12; task 5.1).
-- **Presence, the loaded note and herdr's pane marks** from the wake mod (record 0044, point 5).
+- **The install into Claude Code's homes,** with Pending You's MCP server. It is the unit `the-companions-load-in-claude-codes-sessions` (Decision 12).
+- **Loading the folder's wake mod in each session,** by `CLAUDE_CODE_PLUGIN_DIRS` in each environment. It is the same unit's (record 0044, point 5).
 - **plannotator-tui's own settings.** Its `~/.config/plannotator-tui/config.toml`, where a review pane opens, is the person's, as herdr's `config.toml` is (record 0034, point 1).
 - **Plannotator's skills.** Plannotator installs them apart from its plugin.
 - **plannotator-tui's own herdr plugin, `plannotator-tui`.** `plannotator-tui herdr open` opens Annotate's pane, not this one.
@@ -151,9 +151,7 @@ Alternatives:
 ```
 .claude-plugin/marketplace.json     name "boomdrive", owner "agentplot", plugins pendingyou and plannotator, each source "./plugins/<name>"
 plugins/pendingyou/.claude-plugin/plugin.json   name "pendingyou", version the set's Pending You's
-plugins/pendingyou/hooks/hooks.json             Pending You's hooks and "modules": ["./register.js"]
-plugins/pendingyou/hooks/register.js            the wake mod's, from the set's Pending You's mod/hooks
-plugins/pendingyou/hooks/wake.js                the same
+plugins/pendingyou/hooks/hooks.json             Pending You's hooks, and no module
 plugins/pendingyou/skills/pendingyou/SKILL.md   Pending You's skill
 plugins/plannotator/…                           apps/hook of Plannotator's source, whole
 ```
@@ -171,7 +169,7 @@ plugins/plannotator/…                           apps/hook of Plannotator's sou
   - **The command.** Each is `"$HOME/.config/pendingyou/bin/pendingyou-hook" <sub> --app claude-code || true`. The command names the folder's launcher by the session's `HOME` rather than a host's path, so one marketplace serves every host and the cache holds it.
   - **Timeouts.** Each has `init`'s 10-second timeout, and the two SessionEnd hooks have none.
   - **Where they stand.** They are kept in the recipe beside a comment naming `dist/claude.js`, and the test holds them to it (Task notes 2.1).
-- **The wake mod.** The plugin carries the mod's module, so Claude Code loads it with the plugin. Named `pendingyou`, its copy wakes its session on an answer and finds no folder (record 0044, point 5).
+- **No wake mod.** The plugin carries no module: the wake mod is the folder's (Decision 7; record 0044, point 5).
 - **The skill** is `nix/packages/pendingyou-skill.md`, the text `https://www.pendingyou.com/skill-stub.md` served on the day task 2.1 writes it, unchanged. Its first line is Pending You's own. The recipe's comment names its address and day. treefmt excludes `*.md` already, so no formatter rewrites it.
 - **No MCP server.** The plugin holds no `.mcp.json` and names no server (record 0044, point 4).
 - **Plannotator's plugin** is its source's `apps/hook`, copied whole, as Plannotator's own marketplace gives it. Its version is its `plugin.json`'s, which the test holds to the set's `plannotator`.
@@ -181,7 +179,7 @@ plugins/plannotator/…                           apps/hook of Plannotator's sou
 Alternatives:
 
 - **The marketplace made by the module with the host's home in each hook line.** Not taken: it would be no package of the set, so the cache would hold none, and each host would build its own.
-- **The wake mod as a plugin of its own, `pendingyou-wake`.** Not taken: by that name its copy still finds no folder, its root being Claude Code's cache, and one plugin is one install.
+- **The wake mod in the marketplace,** in Pending You's plugin or as a plugin of its own, `pendingyou-wake`. Not taken: either copy runs from Claude Code's cache, finds no folder, and says no presence, writes no loaded note and marks no herdr pane.
 
 ### 6. The modules' options and installs, with the runner and crew
 
@@ -200,7 +198,7 @@ Each is the set's for the host's system by default, with its `defaultText`.
 
 ### 7. Pending You's folder
 
-`nix/modules/pendingyou-folder.nix` is a function, not a module, which `darwin.nix` and `nixos.nix` call in their `let` with the runner's user's `home` and `services.boomdrive.pendingyou.package`. It gives one store folder of four files:
+`nix/modules/pendingyou-folder.nix` is a function, not a module, which `darwin.nix` and `nixos.nix` call in their `let` with the runner's user's `home` and `services.boomdrive.pendingyou.package`. It gives one store folder of four files and the wake mod:
 
 - `bin/pendingyou-hook`, mode 0755. It runs as `init`'s launcher does (`dist/shim.js`), with what deneb's adds for crew:
   - it exports `PENDINGYOU_CONFIG_DIR` as `<home>/.config/pendingyou`;
@@ -211,7 +209,7 @@ Each is the set's for the host's system by default, with its `defaultText`.
 - `claude-code.json`, mode 0644. It is the manifest in `installClaude`'s shape. It names the origin `https://www.pendingyou.com`, the helper at the folder's path, the hook lines of Decision 5 by the folder's path, permission cards on, `mcpAdded` false, and no skill and no command-line copy.
 - `signin/.claude.json`, mode 0644. It names the server `pendingyou`, of type `http`, at `https://www.pendingyou.com/mcp`, with the folder's helper as its `headersHelper`. It is the Claude folder the sign-in command signs in with.
 
-The folder holds no copy of the wake mod (record 0044, point 5).
+- `mod/`, the given package's wake mod, copied whole, each file 0644, as `init` copies it into the folder: `passthru.mod` where the package gives one, else its `lib/node_modules/pendingyou/mod`. Its manifest names it `pendingyou-wake` and its root ends in `/mod`, so a session that loads it from there finds the folder (record 0044, point 5).
 
 Alternatives:
 
@@ -223,6 +221,7 @@ Alternatives:
 `activate.sh` gains `pendingyou <source> <folder>`.
 
 - **Each file whole.** For each file of `<source>`, by its path under it, it writes `<folder>/<path>` with the source's mode made writable by its owner, 0755 where the source runs and 0644 where it does not, as Decision 7 names them, by a copy into a temporary file beside it renamed over the path. It writes only where no regular file there has the same bytes and mode, and replaces a link standing there.
+- **The wake mod's order.** It writes the wake mod's `hooks/wake.js`, `hooks/register.js` and `hooks/hooks.json` first, in that order, as `init` does, so a session that reloads the mod finds the modules its `hooks.json` names; then the other files by their paths.
 - **New folders.** It makes the folder with mode 0700 where it is missing, and each folder under it with 0755.
 - **Nothing else.** It reads, writes and removes nothing else under `<folder>`: the sign-ins, the key, `permission-cards/` and the state are the command line's.
 - **What it says.** It says one line where it wrote a file, naming it, and nothing where none differed.
@@ -251,22 +250,19 @@ The person runs it once for the computer. Each approval is theirs, in the browse
   - names the three options, their `null`, and that they come with the runner where crew's module is on;
   - names Pending You's folder and what stays the command line's;
   - names `pendingyou-signin` as the person's one sign-in;
-  - says that the companions' Claude Code plugins are not yet installed into any Claude Code home, which waits on the user's answer (record 0044, point 3).
+  - says that the companions' Claude Code plugins are not yet installed into any Claude Code home, which is the unit `the-companions-load-in-claude-codes-sessions` (record 0044, point 3).
 - **CLAUDE.md and `openspec/config.yaml`** name the companions in the flake's set and among what the modules install with the runner.
 
-### 12. The install into Claude Code's homes waits
+### 12. The install into Claude Code's homes is a unit of its own
 
-Task 5.1 is the install. It waits on the user's answer to `req_020ff29dc00c49ec98e8` and on the unit that answer puts first:
+The user answered their card `req_020ff29dc00c49ec98e8`, which asked which sessions get the companions: "Every session on those accounts, mine included". They approved the install as Boomdrive's unit `the-companions-load-in-claude-codes-sessions` (proposal 144), after a Flume unit that names each account's configuration home in its status. That unit, for each `home` Flume's status gives:
 
-- **Every session on the accounts.** Flume names each account's configuration home in its status. Then activation installs into each home, for each `home` Flume's status gives:
-  - `claude plugin marketplace add` of `boomdrive-claude-plugins`, or `update` where it is added;
-  - `claude plugin install` or `update` of `pendingyou@boomdrive` and `plannotator@boomdrive`, at user scope;
-  - `claude mcp add-json --scope user pendingyou` with the folder's helper, where the home names none.
+- adds `boomdrive-claude-plugins` by `claude plugin marketplace add`, or `update`s it where it is added;
+- installs or updates `pendingyou@boomdrive` and `plannotator@boomdrive`, at user scope;
+- adds `claude mcp add-json --scope user pendingyou` with the folder's helper, where the home names none;
+- puts the folder's `mod` on `CLAUDE_CODE_PLUGIN_DIRS` in each session's environment (record 0044, point 5).
 
-  Each runs with `CLAUDE_CONFIG_DIR` that home, idempotently, and changes nothing else. The person's default home is installed into only behind an option that is off.
-- **crew's and Flume's sessions alone.** crew and Flume pass the plugins at launch. This change's task then gives crew the marketplace's folders.
-
-The code stage leaves task 5.1 unticked and stops short at it, naming it, until the answer and that unit's tag are in. The task writes its own spec delta then, from the answer.
+This change builds none of it: no task of its runs `claude`, writes into a Claude Code home or sets `CLAUDE_CODE_PLUGIN_DIRS`.
 
 ## Rules relied on
 
@@ -279,7 +275,8 @@ The code stage leaves task 5.1 unticked and stops short at it, naming it, until 
 
 ## Risks / Trade-offs
 
-- **The wake mod's loss.** A session waits on its card without presence or a marked pane (record 0044, point 5). agentplot-design raises it with Pending You.
+- **The wake mod waits for its unit.** The folder holds it, and no session loads it from the set until `the-companions-load-in-claude-codes-sessions` puts the folder's `mod` on `CLAUDE_CODE_PLUGIN_DIRS`.
+- **A folder written twice.** A host whose own configuration also writes Pending You's folder, as swancloud's `home-pendingyou.nix` does on deneb, writes the same paths: the activation replaces a link it finds there with a regular file. The host drops its own (record 0044's consequences).
 - **llm-agents.nix's pace.** A Plannotator release reaches the set only once llm-agents.nix carries it, or the input moves to a commit that does.
 - **The marketplace's `$HOME`.** A session whose `HOME` is not the runner's user's home finds no launcher, and its hooks do nothing, each line ending `|| true`.
 - **The `npx` fallback.** Pending You for Herdr's `npx` fallback fetches from npm only where the folder was never written: a host whose Pending You is `null` but whose plugin list keeps the plugin.

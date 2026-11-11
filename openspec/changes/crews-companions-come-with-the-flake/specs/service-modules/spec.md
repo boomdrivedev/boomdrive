@@ -90,21 +90,26 @@ Where the companions are installed and Pending You's package is not `null`, each
 #### Scenario: The folder written on nix-darwin
 
 - **WHEN** a nix-darwin system whose primary user is `alice`, at `/Users/alice`, turns on `services.boomdrive` and `services.crew`
-- **THEN** its activation runs, as `alice`, the step that writes the folder's four files into `/Users/alice/.config/pendingyou`, before the step that links the plugins
+- **THEN** its activation runs, as `alice`, the step that writes the folder's four files and its wake mod into `/Users/alice/.config/pendingyou`, before the step that links the plugins
 
 #### Scenario: The folder written on NixOS
 
 - **WHEN** a NixOS system turns on `services.boomdrive` and `services.crew` for `alice`
 - **THEN** `alice`'s user activation runs the step that writes the folder into her home's `.config/pendingyou`, before the plugins' step, and another user's runs none
 
-### Requirement: Pending You's folder holds its launchers and its manifest, and no wake mod
+### Requirement: Pending You's folder holds its launchers, its manifest and its wake mod
 
-The folder's files SHALL be four: `bin/pendingyou-hook` and `bin/pendingyou-mcp-headers`, each exporting `PENDINGYOU_CONFIG_DIR` as the folder and running the given Pending You; `claude-code.json`, Pending You's manifest, naming the origin `https://www.pendingyou.com` and the folder's helper; and `signin/.claude.json`, naming the MCP server `pendingyou` with that helper. The folder SHALL hold no copy of the wake mod.
+The folder SHALL hold four files and the wake mod: `bin/pendingyou-hook` and `bin/pendingyou-mcp-headers`, each exporting `PENDINGYOU_CONFIG_DIR` as the folder and running the given Pending You; `claude-code.json`, Pending You's manifest, naming the origin `https://www.pendingyou.com` and the folder's helper; `signin/.claude.json`, naming the MCP server `pendingyou` with that helper; and `mod`, the given Pending You's wake mod, copied whole, as Pending You's `init` copies it into the folder.
 
 #### Scenario: The launchers run the given Pending You
 
 - **WHEN** `services.boomdrive.pendingyou.package` is a package of the host's own
 - **THEN** both launchers run that package's `pendingyou`, and both export the folder as `PENDINGYOU_CONFIG_DIR`
+
+#### Scenario: The wake mod in the folder
+
+- **WHEN** the folder is read
+- **THEN** its `mod` is the given Pending You's `mod`, copied whole
 
 #### Scenario: A crew session's stop check
 
@@ -118,12 +123,21 @@ The step SHALL write each file of the folder's source whole, with the source's m
 #### Scenario: A fresh home
 
 - **WHEN** the step runs in a home with no `.config/pendingyou`
-- **THEN** the folder is made with mode 0700, holds the four files as regular files, the launcher and the helper 0755 and the manifest and the sign-in's Claude folder 0644, and one line names each
+- **THEN** the folder is made with mode 0700, holds the four files and the wake mod's as regular files, the launcher and the helper 0755 and the rest 0644, and one line names each
 
 #### Scenario: Nothing differs
 
 - **WHEN** the step runs again with the same source
 - **THEN** no file is written and nothing is said
+
+### Requirement: The folder's step writes the wake mod's modules before its hooks
+
+The step SHALL write the wake mod's `hooks/wake.js`, `hooks/register.js` and `hooks/hooks.json` before the folder's other files, in that order, as Pending You's `init` does, so a session that reloads the mod finds the modules its hooks name.
+
+#### Scenario: The wake mod's order
+
+- **WHEN** the step writes the wake mod into a fresh home
+- **THEN** it writes `mod/hooks/wake.js`, `mod/hooks/register.js` and `mod/hooks/hooks.json` first, in that order
 
 ### Requirement: The folder's step touches nothing else of the folder and stops nothing
 
@@ -162,7 +176,7 @@ No activation step, launchd job or systemd unit of the modules SHALL run `claude
 - **WHEN** `pendingyou-signin`'s script is read
 - **THEN** given `--force` it runs `pendingyou login --app claude-code --force` with `CLAUDE_CONFIG_DIR` the folder's `signin`, then `pendingyou app login herdr` with no `--force`
 
-### Requirement: The README names the companions and the install that waits
+### Requirement: The README names the companions and that no Claude Code home is installed into yet
 
 The README's install with nix SHALL name Pending You, Plannotator and plannotator-tui in the set, and their herdr plugins. It SHALL say that they come with the runner where crew's module is on, and that the modules write Pending You's folder and leave its sign-ins, key and state the command line's. It SHALL name `pendingyou-signin` as the person's one sign-in, and say that the companions' Claude Code plugins are installed into no Claude Code home yet.
 

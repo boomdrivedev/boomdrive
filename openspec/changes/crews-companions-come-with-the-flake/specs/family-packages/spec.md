@@ -145,19 +145,24 @@ The `pendingyou` package's program SHALL run its `dist/cli.js` on the flake's ni
 - **WHEN** the marketplace's build is read
 - **THEN** it copies every file with links followed, and fails where any file of its output is a link
 
-### Requirement: Pending You's plugin holds its hooks, its wake mod and its skill, and no MCP server
+### Requirement: Pending You's plugin holds its hooks and its skill, and no wake mod and no MCP server
 
-The `pendingyou` plugin SHALL hold Pending You's hooks, each `"$HOME/.config/pendingyou/bin/pendingyou-hook" <sub> --app claude-code || true`, for the events and subcommands Pending You's `init` gives Claude Code, in its order, each with a 10-second timeout but SessionEnd's, which have none. It SHALL hold the wake mod's `register.js` and `wake.js` from the set's Pending You, named as the hooks' one module, and Pending You's skill. It SHALL hold no MCP server.
+The `pendingyou` plugin SHALL hold Pending You's hooks, each `"$HOME/.config/pendingyou/bin/pendingyou-hook" <sub> --app claude-code || true`, for the events and subcommands Pending You's `init` gives Claude Code, in its order, each with a 10-second timeout but SessionEnd's, which have none. It SHALL hold Pending You's skill. It SHALL hold no wake mod, which is Pending You's folder's, and no MCP server.
 
 #### Scenario: Pending You's hooks
 
 - **WHEN** the `pendingyou` plugin's hooks are read
-- **THEN** they are SessionStart `pickup`, UserPromptSubmit `handoff`, Stop `stopcheck`, SessionEnd `presence`, PermissionRequest `permission`, PostToolUse and PostToolUseFailure `permission-done`, SessionEnd `permission-done` and Notification `notify` matching `permission_prompt`, each running the launcher by `$HOME` with `--app claude-code`, and the hooks name `./register.js` as their module
+- **THEN** they are SessionStart `pickup`, UserPromptSubmit `handoff`, Stop `stopcheck`, SessionEnd `presence`, PermissionRequest `permission`, PostToolUse and PostToolUseFailure `permission-done`, SessionEnd `permission-done` and Notification `notify` matching `permission_prompt`, each running the launcher by `$HOME` with `--app claude-code`
 
 #### Scenario: Pending You's hooks against its own
 
 - **WHEN** the set's Pending You's `dist/claude.js` gives Claude Code a hook the plugin does not hold
 - **THEN** the flake's test fails, naming the hook's event and subcommand
+
+#### Scenario: No wake mod in the plugin
+
+- **WHEN** the `pendingyou` plugin is read
+- **THEN** it holds no `register.js` and no `wake.js`, and its hooks name no module
 
 #### Scenario: No MCP server in the plugin
 
