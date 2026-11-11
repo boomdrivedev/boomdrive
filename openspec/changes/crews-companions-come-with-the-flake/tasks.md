@@ -20,7 +20,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The set's marketplace
 
-- [ ] 2.1 `nix/packages/pendingyou-skill.md` is the text `https://www.pendingyou.com/skill-stub.md` serves, unchanged. `packages.<system>.boomdrive-claude-plugins` is `nix/packages/claude-plugins.nix`'s marketplace `boomdrive`. It holds:
+- [x] 2.1 `nix/packages/pendingyou-skill.md` is the text `https://www.pendingyou.com/skill-stub.md` serves, unchanged. `packages.<system>.boomdrive-claude-plugins` is `nix/packages/claude-plugins.nix`'s marketplace `boomdrive`. It holds:
   - the plugin `pendingyou`: Pending You's hooks, naming the launcher by `$HOME`, and the skill. No wake mod and no MCP server.
   - the plugin `plannotator`: the `apps/hook` of the set's Plannotator's `src`.
 

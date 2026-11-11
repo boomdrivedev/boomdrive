@@ -5,11 +5,12 @@
 # 2026-11-11), from which Claude Code's own commands install each plugin.
 # Nothing is compiled. It holds two plugins:
 #
-# - `pendingyou`: Pending You's hooks, the wake mod's module and Pending
-#   You's skill, and no MCP server, since Claude Code renames a plugin's
-#   server and Pending You's hooks and words call `mcp__pendingyou__*`.
-#   Each hook runs the launcher in Pending You's folder by the session's
-#   `HOME`, so one marketplace serves every host.
+# - `pendingyou`: Pending You's hooks and its skill, and no wake mod, which
+#   is Pending You's folder's, loaded from there (record 0044, point 5),
+#   and no MCP server, since Claude Code renames a plugin's server and
+#   Pending You's hooks and words call `mcp__pendingyou__*`. Each hook runs
+#   the launcher in Pending You's folder by the session's `HOME`, so one
+#   marketplace serves every host.
 # - `plannotator`: the `apps/hook` of the source the given Plannotator is
 #   built from, whole, as Plannotator's own marketplace names it. Its
 #   build fails where that folder's plugin.json says another version.
@@ -104,7 +105,7 @@ let
       name = "pendingyou";
       source = "./plugins/pendingyou";
       inherit (pendingyou) version;
-      description = "Pending You: ask your person on a card, and wake when they answer";
+      description = "Pending You: ask your person on a card, and pick up their answer";
     }
     {
       name = "plannotator";
@@ -123,24 +124,21 @@ let
   };
 
   # Pending You's plugin, file by file: its manifest names no MCP server,
-  # and it holds no .mcp.json.
+  # it holds no .mcp.json, and its hooks name no module.
   manifest = {
     name = "pendingyou";
     inherit (pendingyou) version;
-    description = "Pending You's hooks, wake mod and skill, for the set's Pending You";
+    description = "Pending You's hooks and skill, for the set's Pending You";
     author.name = "recordplane";
     homepage = "https://www.pendingyou.com";
   };
   hooksFile = {
-    description = "Pending You's hooks, and its wake mod, which wakes this session when your person answers one of its cards.";
+    description = "Pending You's hooks, which run the launcher in Pending You's folder.";
     inherit hooks;
-    modules = [ "./register.js" ];
   };
   pendingyouFiles = {
     ".claude-plugin/plugin.json" = json "plugin.json" manifest;
     "hooks/hooks.json" = json "hooks.json" hooksFile;
-    "hooks/register.js" = "${pendingyou.mod}/hooks/register.js";
-    "hooks/wake.js" = "${pendingyou.mod}/hooks/wake.js";
     "skills/pendingyou/SKILL.md" = skill;
   };
   plannotatorHook = "${plannotator.src}/apps/hook";
