@@ -14,9 +14,10 @@
 # apps.nix lists with herdr's own command (record 0023). Beside `logFile`,
 # the agent's log, the module declares `dataDir`, the runner's data folder
 # by the runner's own rule (data-dir.nix) from the primary user's home and
-# the agent's own `XDG_DATA_HOME`: read-only, read wherever a host names
-# the folder or a clone in it, and set by none (record 0036 as amended on
-# 2026-11-11).
+# the agent's own `XDG_DATA_HOME`, and clones.nix declares `cloneDirs`,
+# each kept repository's clone folder in it: each read-only, read wherever
+# a host names the folder or a clone's, and set by none (record 0036 as
+# amended on 2026-11-11).
 { packages }:
 {
   config,
@@ -67,6 +68,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     ./drives.nix
+    ./clones.nix
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
@@ -98,8 +100,9 @@ in
       report, by the runner's own rule: `$XDG_DATA_HOME/boomdrive` where the
       agent's own environment gives an absolute `XDG_DATA_HOME`, else
       `~/.local/share/boomdrive` under the primary user's home. It is
-      read-only: a host reads it wherever it names the folder or a clone in
-      it, and sets it nowhere. An `XDG_DATA_HOME` the agent takes from
+      read-only: a host reads it wherever it names the folder, a clone's
+      folder in it being `services.boomdrive.cloneDirs`'s, and sets it
+      nowhere. An `XDG_DATA_HOME` the agent takes from
       outside its declaration, such as launchd's user domain, is not seen:
       a host that moves the runner's data gives the agent its own
       `XDG_DATA_HOME` in `launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables`.

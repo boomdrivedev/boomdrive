@@ -8,10 +8,15 @@
 //! the data folder the modules name, `services.boomdrive.dataDir`, to the
 //! runner's own rule, `config::data_dir`, by `nix/tests/data-dirs.json`,
 //! the table `nix:test` holds the modules' rule to (the service-modules
-//! spec's "The runner's own rule").
+//! spec's "The runner's own rule"). And it holds the clone folders the
+//! modules name, `services.boomdrive.cloneDirs`, to the runner's own
+//! `clone::container`, by `nix/tests/clone-dirs.json`, the table
+//! `nix:test` holds the modules' clone rule to (the service-modules spec's
+//! "The runner's own clone rule").
 
 mod common;
 
+use boomdrive::clone;
 use boomdrive::config::{self, Config};
 use boomdrive::planes;
 use common::Scratch;
@@ -185,6 +190,32 @@ fn the_modules_data_folder_is_the_runners() {
             config::data_dir(&env),
             Path::new(folder),
             "the runner's data folder of {row}"
+        );
+    }
+}
+
+/// "The runner's own clone rule": for each row of
+/// `nix/tests/clone-dirs.json`, the runner's clone folder of the row's
+/// `address` under its `dataDir` is the row's `folder`, which the modules'
+/// `cloneDirs` gives of the same row.
+#[test]
+fn the_modules_clone_folders_are_the_runners() {
+    let table = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../nix/tests/clone-dirs.json");
+    let text = std::fs::read_to_string(&table).expect("nix/tests/clone-dirs.json");
+    let rows: Vec<serde_json::Value> = serde_json::from_str(&text).expect("a list of rows");
+    assert!(!rows.is_empty(), "nix/tests/clone-dirs.json holds no row");
+    for row in &rows {
+        let field = |name: &str| {
+            row[name]
+                .as_str()
+                .unwrap_or_else(|| panic!("{row}: no {name}"))
+        };
+        let address = config::Address::parse(field("address"))
+            .unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+        assert_eq!(
+            clone::container(Path::new(field("dataDir")), &address),
+            Path::new(field("folder")),
+            "the runner's clone folder of {row}"
         );
     }
 }
