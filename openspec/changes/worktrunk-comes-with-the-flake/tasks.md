@@ -30,7 +30,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
   - worktrunk's shell integration as the person's own `wt config shell install`.
 
   `cache.nix`'s "The README's words" reads the option (Task notes 3.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's words".
-- [ ] 3.2 CLAUDE.md and `openspec/config.yaml` name worktrunk in the flake's set and among what its modules install (Task notes 3.2). True when `sluice exec main -- moon run root:format` passes.
+- [x] 3.2 CLAUDE.md and `openspec/config.yaml` name worktrunk in the flake's set and among what its modules install (Task notes 3.2). True when `sluice exec main -- moon run root:format` passes.
 
 ## 4. The specs
 
