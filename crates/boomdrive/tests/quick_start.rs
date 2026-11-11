@@ -188,3 +188,93 @@ fn flumes_file_opens_agents_in_herdr() {
         assert_eq!(default[part]["from"], "host", "{default}");
     }
 }
+
+/// The step's shell file at `path`, run as `sh <file>` on the stand's
+/// scratch home: its `PATH` a folder linking `boomdrive` to the binary
+/// cargo built for the test, then the stand-ins, then the test's own.
+#[cfg(target_os = "macos")]
+fn run_on_stand(stand: &Stand, path: &str) -> Output {
+    let runner = stand.scratch.root.join("runner");
+    std::fs::create_dir_all(&runner).expect("the runner's folder");
+    let link = runner.join("boomdrive");
+    if !link.exists() {
+        std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_boomdrive"), &link)
+            .expect("the runner linked");
+    }
+    let mut search = runner.into_os_string();
+    search.push(":");
+    search.push(stand.folder());
+    if let Some(own) = std::env::var_os("PATH") {
+        search.push(":");
+        search.push(own);
+    }
+    stand
+        .scratch
+        .command("sh")
+        .arg(step_file(path))
+        .env("PATH", search)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("sh runs")
+}
+
+/// The quick-start spec's "Setup as written": the Mac's setup step, run
+/// through `sh` with GitHub signed in and no state repository, exits 0,
+/// and the runner's file it wrote, read as the runner reads it, names the
+/// account `me`'s drive `home` keeping `your-github-name/your-repository`,
+/// and crew's table the partition `home` with
+/// `your-github-name/drive-state`.
+#[cfg(target_os = "macos")]
+#[test]
+fn setup_sets_up_the_drive_as_written() {
+    let stand = Stand::new();
+    let output = run_on_stand(&stand, "mac/setup.sh");
+    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
+
+    let config = boomdrive::config::read(&stand.config(), stand.home())
+        .unwrap_or_else(|error| panic!("the runner's file: {error}"));
+    let drives: Vec<(String, String, Vec<String>)> = config
+        .accounts
+        .iter()
+        .flat_map(|account| {
+            account.drives.iter().map(|drive| {
+                (
+                    account.name.clone(),
+                    drive.name.clone(),
+                    drive.repositories.iter().map(ToString::to_string).collect(),
+                )
+            })
+        })
+        .collect();
+    assert_eq!(
+        drives,
+        [(
+            "me".to_string(),
+            "home".to_string(),
+            vec!["your-github-name/your-repository".to_string()]
+        )]
+    );
+
+    let table = config.control_plane.expect("a control plane");
+    assert_eq!(table.implementation, "crew");
+    let crew = boomdrive_crew::config::read(&table.implementation_table, &stand.config())
+        .unwrap_or_else(|error| panic!("crew's table: {error}"));
+    let partitions: Vec<(String, String)> = crew
+        .partitions
+        .iter()
+        .map(|partition| {
+            let state = &partition.state_repository;
+            (
+                partition.label.clone(),
+                format!("{}/{}", state.owner, state.name),
+            )
+        })
+        .collect();
+    assert_eq!(
+        partitions,
+        [(
+            "home".to_string(),
+            "your-github-name/drive-state".to_string()
+        )]
+    );
+}
