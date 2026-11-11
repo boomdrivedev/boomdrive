@@ -9,7 +9,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 1. worktrunk in the set
 
-- [ ] 1.1 worktrunk's flake is an input at `v0.80.0`, following the flake's `nixpkgs` and `rust-overlay`, and the lock locks it. `packages.<system>.worktrunk` is its flake's package, given its tag as `VERGEN_GIT_DESCRIBE` by `nix/packages/worktrunk.nix`. The type check's set holds `worktrunk` (design Decisions 1 and 2; Task notes 1.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving:
+- [x] 1.1 worktrunk's flake is an input at `v0.80.0`, following the flake's `nixpkgs` and `rust-overlay`, and the lock locks it. `packages.<system>.worktrunk` is its flake's package, given its tag as `VERGEN_GIT_DESCRIBE` by `nix/packages/worktrunk.nix`. The type check's set holds `worktrunk` (design Decisions 1 and 2; Task notes 1.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving:
   - the family-packages delta's "Every system's packages", with `worktrunk` among the ten;
   - "No tool of the host's own";
   - each tag the lock's.
