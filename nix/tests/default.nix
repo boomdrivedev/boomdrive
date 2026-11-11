@@ -29,5 +29,6 @@ in
     // import ./apps.nix t
     // import ./way-in.nix t
     // import ./data-dir.nix t
+    // import ./clone-dirs.nix t
   );
 }
