@@ -83,10 +83,21 @@ let
     "nix-darwin" = {
       system = t.darwinSystem;
       homeDir = "/Users/alice";
+      # The platform's module imported, the runner not enabled.
+      unenabled = given: t.darwinOf ([ t.outputs.darwinModules.default ] ++ given);
     };
     NixOS = {
       system = t.nixosSystem;
       homeDir = "/home/alice";
+      unenabled =
+        given:
+        t.nixosOf (
+          [
+            t.outputs.nixosModules.default
+            { services.boomdrive.user = "alice"; }
+          ]
+          ++ given
+        );
     };
   };
 
@@ -119,7 +130,7 @@ let
 
   anotherMachine =
     platform:
-    { system, homeDir }:
+    { system, homeDir, ... }:
     let
       evaluated = withCrew system [ garden ];
       read = builtins.tryEval (
@@ -138,7 +149,7 @@ let
 
   underRoot =
     platform:
-    { system, homeDir }:
+    { system, homeDir, ... }:
     let
       checkoutOf =
         root:
@@ -166,6 +177,24 @@ let
           "${platform}, repository_root ${root}: services.crew.settings.repositories gives agentplot/flume the checkout ${builtins.toJSON gave}, not ${checkout}"
       ) given
     );
+
+  crewOff =
+    platform:
+    { system, ... }:
+    gives (system home) null "${platform}, crew's module off";
+
+  runnerOff =
+    platform:
+    { unenabled, ... }:
+    gives (unenabled [
+      crewOn
+      home
+    ]) null "${platform}, the runner not enabled";
+
+  noneKept =
+    platform:
+    { system, ... }:
+    gives (withCrew system [ ]) null "${platform}, no repository kept";
 in
 {
   "The runner's own view rule" = lib.concatMap (
@@ -193,3 +222,6 @@ in
 }
 // onEach "crew's kept repository of another machine's drive" anotherMachine
 // onEach "crew's checkouts under the host's repository root" underRoot
+// onEach "crew's module off" crewOff
+// onEach "The runner not enabled" runnerOff
+// onEach "No repository kept beside crew" noneKept
