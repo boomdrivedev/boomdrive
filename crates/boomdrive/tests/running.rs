@@ -301,6 +301,38 @@ fn stopped_with_a_fetch_in_flight() {
     );
 }
 
+/// The running spec's "Stopped with a fetch in flight", for `boomdrive
+/// run --once`: SIGINT stops it as SIGTERM stops `boomdrive run`, its
+/// fetch ended, named, and nothing of the clone left; it runs no `flume`
+/// command, no settle among them, and exits 1 (record 0042 as amended on
+/// 2026-11-11, its design Decision 6).
+#[test]
+fn once_stopped_with_a_fetch_in_flight() {
+    let scratch = Scratch::new();
+    let calls = scratch.root.join("flume-calls");
+    let flume = scratch.bin.join("flume");
+    std::fs::write(
+        &flume,
+        format!("#!/bin/sh\necho \"$*\" >> '{}'\nexit 1\n", calls.display()),
+    )
+    .expect("the noting flume");
+    let stopped = stopped_in_flight(&scratch, &["run", "--once"], libc::SIGINT);
+    assert_eq!(stopped.status.code(), Some(1), "{:?}", stopped.lines);
+    assert!(stopped.took < Duration::from_secs(5), "{:?}", stopped.took);
+    assert_eq!(
+        stopped.lines,
+        [
+            format!("agentplot/flume: not cloned: {HALTED}"),
+            "boomdrive: stopped".to_string(),
+        ]
+    );
+    assert!(
+        !calls.exists(),
+        "flume was run: {}",
+        std::fs::read_to_string(&calls).unwrap_or_default()
+    );
+}
+
 #[test]
 fn a_quiet_pass() {
     let scratch = Scratch::new();
