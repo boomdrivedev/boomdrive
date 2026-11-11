@@ -18,6 +18,8 @@ let
     "ghostty"
     "herdr"
     "pendingyou"
+    "plannotator"
+    "plannotator-tui"
     "portless"
     "sluice"
     "sluice-herdr-plugin"

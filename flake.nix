@@ -162,6 +162,10 @@
             # crew's companions (record 0044, point 6): Pending You as it
             # publishes it on npm, run on the flake's Node.js 24.
             pendingyou = pkgs.callPackage ./nix/packages/pendingyou.nix { src = inputs.pendingyou; };
+            # Plannotator and plannotator-tui, unchanged, through
+            # numtide/llm-agents.nix's flake, which builds each from its
+            # source at its release tag, since neither publishes a flake.
+            inherit (inputs.llm-agents.packages.${system}) plannotator plannotator-tui;
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
         in
