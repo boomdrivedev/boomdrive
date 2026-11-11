@@ -3,11 +3,20 @@
 //! repository or a folder, never asks anyone, and is given no credential:
 //! the host's own credential helper answers, or the call fails (core.4). A
 //! failure is named by the last line git wrote on standard error.
+//!
+//! A call that reaches a remote, a clone's fetch, is bounded: it runs in a
+//! process group of its own and is stopped at the git's limit, thirty
+//! seconds, with everything it started, failing with words that name its
+//! command, its remote and the limit (record 0042; core.58). Every other
+//! call reaches no remote and runs to its end.
 
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
+use std::time::Duration;
+
+use boomdrive_bounded::TRY_FOR;
 
 /// The least git the runner runs with: 2.48, the first whose fetch keeps
 /// origin's HEAD current (`remote.origin.followRemoteHEAD`, design 6).
@@ -46,16 +55,61 @@ impl fmt::Display for Words {
 
 /// git as the runner runs it: the host's, under the caller's environment
 /// overlay, which is empty on a host and holds the scratch git
-/// configuration in a test (design 11).
-#[derive(Clone, Debug, Default)]
+/// configuration in a test (design 11), its call to a remote stopped at
+/// its limit.
+#[derive(Clone, Debug)]
 pub struct Git {
     overlay: Vec<(OsString, OsString)>,
+    /// How long one try of a call to a remote may take: [`TRY_FOR`], or a
+    /// test's (record 0042).
+    try_for: Duration,
+}
+
+impl Default for Git {
+    fn default() -> Git {
+        Git::new(Vec::new())
+    }
 }
 
 impl Git {
-    /// git with `overlay` added to its environment.
+    /// git with `overlay` added to its environment, its call to a remote
+    /// stopped at [`TRY_FOR`].
     pub fn new(overlay: Vec<(OsString, OsString)>) -> Git {
-        Git { overlay }
+        Git {
+            overlay,
+            try_for: TRY_FOR,
+        }
+    }
+
+    /// This git, its call to a remote stopped at `limit`: a test's
+    /// shorter limit, which no host sets (record 0042).
+    pub fn trying_for(self, limit: Duration) -> Git {
+        Git {
+            try_for: limit,
+            ..self
+        }
+    }
+
+    /// git's standard output from `args` at `at`, a call that reaches
+    /// `remote`, or its words where it failed. It runs in a process group
+    /// of its own and is stopped at this git's limit with everything it
+    /// started; a call stopped so fails naming its command, `remote` and
+    /// the limit, after git's last line on standard error where git wrote
+    /// one, and its standard output is not read (record 0042; core.58).
+    pub fn call_remote<I, S>(&self, at: At, remote: &str, args: I) -> Result<String, Words>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let args: Vec<OsString> = args
+            .into_iter()
+            .map(|arg| arg.as_ref().to_os_string())
+            .collect();
+        let call = match args.first() {
+            Some(verb) => format!("git {}", verb.to_string_lossy()),
+            None => "git".to_string(),
+        };
+        bounded(self.command(at, &args), &call, remote, self.try_for)
     }
 
     /// git's standard output from `args` at `at`, or its words where it
@@ -153,6 +207,36 @@ fn answer(command: Command) -> Result<Option<String>, Words> {
         Some(1) => Ok(None),
         _ => Err(failure(&output)),
     }
+}
+
+/// `command`, the call `call` to `remote`, run to `limit`: its standard
+/// output where it ended by itself and succeeded, its words otherwise, a
+/// stopped call's naming `call`, `remote` and `limit` (record 0042).
+fn bounded(
+    mut command: Command,
+    call: &str,
+    remote: &str,
+    limit: Duration,
+) -> Result<String, Words> {
+    let ended = boomdrive_bounded::output(&mut command, limit)
+        .map_err(|error| Words(format!("git could not run: {error}")))?;
+    if ended.stopped {
+        let stopped = boomdrive_bounded::stopped(call, remote, limit);
+        let stderr = String::from_utf8_lossy(&ended.stderr);
+        return Err(Words(match last_line(&stderr) {
+            Some(line) => format!("{line}; {stopped}"),
+            None => stopped,
+        }));
+    }
+    let output = Output {
+        status: ended.status,
+        stdout: ended.stdout,
+        stderr: ended.stderr,
+    };
+    if output.status.success() {
+        return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
+    }
+    Err(failure(&output))
 }
 
 /// `command` run to its end, or why it could not run.
@@ -318,6 +402,59 @@ mod tests {
         assert_eq!(output(saying("warning: kept\\n", 0)), Ok("out\n".into()));
         let silent = output(saying("", 1)).unwrap_err();
         assert!(silent.0.ends_with("and said nothing"), "{silent}");
+    }
+
+    /// The clones spec's "The limit is thirty seconds": a git tries a call
+    /// to a remote for the family's limit, and a test's for its own.
+    #[test]
+    fn a_git_tries_for_the_familys_limit() {
+        assert_eq!(Git::default().try_for, TRY_FOR);
+        assert_eq!(Git::new(Vec::new()).try_for, TRY_FOR);
+        let short = Duration::from_millis(300);
+        assert_eq!(Git::default().trying_for(short).try_for, short);
+    }
+
+    /// A command that writes `stderr` and then never ends, standing in
+    /// for git whose remote never answers.
+    fn hanging(stderr: &str) -> Command {
+        let mut command = Command::new("sh");
+        command
+            .args(["-c", &format!("printf '%b' '{stderr}' >&2; sleep 60")])
+            .stdin(Stdio::null());
+        command
+    }
+
+    /// Record 0042's design Decision 3: a call to a remote stopped at its
+    /// limit fails naming its command, its remote and the limit, after
+    /// git's last line where git wrote one; one that ends by itself is
+    /// read as `run`'s is.
+    #[test]
+    fn a_call_to_a_remote_stopped_at_its_limit() {
+        let limit = Duration::from_millis(300);
+        let ample = Duration::from_secs(10);
+        let stopped = "git fetch with origin was still going after 300ms, the most a try may \
+                       take, and was stopped";
+        assert_eq!(
+            bounded(hanging("fatal: half\\n"), "git fetch", "origin", limit),
+            Err(Words(format!("fatal: half; {stopped}")))
+        );
+        assert_eq!(
+            bounded(hanging(""), "git fetch", "origin", limit),
+            Err(Words(stopped.to_string()))
+        );
+        assert_eq!(
+            bounded(saying("warning: kept\\n", 0), "git fetch", "origin", ample),
+            Ok("out\n".into())
+        );
+        assert_eq!(
+            bounded(
+                saying("fatal: refused\\n", 128),
+                "git fetch",
+                "origin",
+                ample
+            ),
+            Err(Words("fatal: refused".into()))
+        );
     }
 
     #[test]

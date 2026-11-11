@@ -1,13 +1,13 @@
-//! Each owner's VS Code workspace beside its views, where the
-//! configuration asks: its folders the owner's kept repositories, set at
+//! Each drive's VS Code workspace at the repository root, where the
+//! configuration asks: its folders the drive's kept repositories, set at
 //! every pass, the rest of the file kept, and a file the runner cannot
-//! read left as it is and named (the views spec; core.43; design
-//! Decisions 1, 3 to 6).
+//! read left as it is and named (the views spec; core.43; record 0017 as
+//! revised; design Decision 1).
 
 mod common;
 
 use boomdrive::pass::Outcome;
-use common::{keeping, Scratch};
+use common::{drives, keeping, Scratch};
 use serde_json::{json, Value};
 use std::ffi::OsStr;
 use std::fs;
@@ -15,19 +15,24 @@ use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-/// A configuration keeping `addresses`, in order, that asks for the
-/// workspaces.
+/// A configuration keeping `addresses`, in order, in the drive `home`,
+/// that asks for the workspaces.
 fn asking(addresses: &[&str]) -> String {
     format!("code_workspaces = true\n{}", keeping(addresses))
 }
 
-/// `owner`'s workspace under the default repository root.
-fn workspace(scratch: &Scratch, owner: &str) -> PathBuf {
+/// A configuration keeping each of `kept`'s drives with its addresses,
+/// that asks for the workspaces.
+fn asking_for(kept: &[(&str, &[&str])]) -> String {
+    format!("code_workspaces = true\n{}", drives(kept))
+}
+
+/// `drive`'s workspace at the default repository root.
+fn workspace(scratch: &Scratch, drive: &str) -> PathBuf {
     scratch
         .home
         .join("Code")
-        .join(owner)
-        .join(format!("{owner}.code-workspace"))
+        .join(format!("{drive}.code-workspace"))
 }
 
 /// The JSON the file at `path` holds.
@@ -67,7 +72,7 @@ fn of_workspaces(lines: &[String]) -> Vec<&String> {
         .collect()
 }
 
-/// Every file under `dir` whose name ends in `.code-workspace`.
+/// Every file under `dir` whose name ends in `.code-workspace`, sorted.
 fn workspaces_under(dir: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     let Ok(read) = fs::read_dir(dir) else {
@@ -82,6 +87,7 @@ fn workspaces_under(dir: &Path) -> Vec<PathBuf> {
             found.push(path);
         }
     }
+    found.sort();
     found
 }
 
@@ -102,38 +108,50 @@ impl Drop for Mode {
     }
 }
 
+/// The views spec's "The first workspaces".
 #[test]
 fn the_first_workspaces() {
     let scratch = Scratch::new();
-    let kept = ["agentplot/flume", "example/crew", "agentplot/sluice"];
-    for address in kept {
+    for address in ["agentplot/flume", "example/crew", "agentplot/sluice"] {
         scratch.origin(address);
     }
 
-    let (outcome, lines) = scratch.pass(&asking(&kept));
+    let (outcome, lines) = scratch.pass(&asking_for(&[
+        ("home", &["agentplot/flume", "example/crew"]),
+        ("work", &["agentplot/sluice"]),
+    ]));
 
-    let agentplot = workspace(&scratch, "agentplot");
-    let example = workspace(&scratch, "example");
+    let home = workspace(&scratch, "home");
+    let work = workspace(&scratch, "work");
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
-        json(&agentplot),
-        json!({"folders": [{"path": "flume"}, {"path": "sluice"}], "settings": {}})
+        json(&home),
+        json!({
+            "folders": [{"path": "agentplot/flume"}, {"path": "example/crew"}],
+            "settings": {},
+        })
     );
-    assert_eq!(members(&json(&agentplot)), ["folders", "settings"]);
+    assert_eq!(members(&json(&home)), ["folders", "settings"]);
     assert_eq!(
-        json(&example),
-        json!({"folders": [{"path": "crew"}], "settings": {}})
+        json(&work),
+        json!({"folders": [{"path": "agentplot/sluice"}], "settings": {}})
+    );
+    assert_eq!(
+        workspaces_under(&scratch.home.join("Code")),
+        [home.clone(), work.clone()],
+        "no owner's folder holds a workspace"
     );
     assert_eq!(lines.len(), 8, "{lines:#?}");
     assert_eq!(
         lines[6..],
         [
-            written(&agentplot, "flume, sluice"),
-            written(&example, "crew"),
+            written(&home, "agentplot/flume, example/crew"),
+            written(&work, "agentplot/sluice"),
         ]
     );
 }
 
+/// The views spec's "No workspace asked for".
 #[test]
 fn no_workspace_asked_for() {
     let scratch = Scratch::new();
@@ -150,6 +168,7 @@ fn no_workspace_asked_for() {
     assert_eq!(of_workspaces(&lines), [] as [&String; 0]);
 }
 
+/// The views spec's "A kept repository with no view".
 #[test]
 fn a_kept_repository_with_no_view() {
     let scratch = Scratch::new();
@@ -158,29 +177,75 @@ fn a_kept_repository_with_no_view() {
 
     let (outcome, lines) = scratch.pass(&asking(&["agentplot/flume", "agentplot/empty"]));
 
-    let file = workspace(&scratch, "agentplot");
+    let file = workspace(&scratch, "home");
     assert_eq!(outcome, Outcome::Kept);
     assert!(!scratch.home.join("Code/agentplot/empty").exists());
     assert_eq!(
         json(&file)["folders"],
-        json!([{"path": "flume"}, {"path": "empty"}])
+        json!([{"path": "agentplot/flume"}, {"path": "agentplot/empty"}])
     );
-    assert_eq!(of_workspaces(&lines), [&written(&file, "flume, empty")]);
+    assert_eq!(
+        of_workspaces(&lines),
+        [&written(&file, "agentplot/flume, agentplot/empty")]
+    );
 }
 
+/// The views spec's "A drive keeping none".
+#[test]
+fn a_drive_keeping_none() {
+    let scratch = Scratch::new();
+
+    let (outcome, lines) = scratch.pass(&asking_for(&[("garden", &[])]));
+
+    let file = workspace(&scratch, "garden");
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(json(&file), json!({"folders": [], "settings": {}}));
+    assert_eq!(lines, [written(&file, "no folders")]);
+}
+
+/// The views spec's "A new root": the drive's workspace is made afresh
+/// at the new root, and the one at the old root is left as it was.
+#[test]
+fn a_new_root() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let under = |root: &str| {
+        format!(
+            "repository_root = {root:?}\n{}",
+            asking(&["agentplot/flume"])
+        )
+    };
+    scratch.pass(&under("~/Code"));
+    let old = workspace(&scratch, "home");
+    let before = fs::read(&old).expect("the old root's workspace");
+
+    let (outcome, lines) = scratch.pass(&under("~/src"));
+
+    let new = scratch.home.join("src/home.code-workspace");
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        json(&new),
+        json!({"folders": [{"path": "agentplot/flume"}], "settings": {}})
+    );
+    assert_eq!(fs::read(&old).expect("the old root's workspace"), before);
+    assert!(scratch.home.join("src/agentplot/flume").exists());
+    assert_eq!(of_workspaces(&lines), [&written(&new, "agentplot/flume")]);
+}
+
+/// The views spec's "The user's settings kept".
 #[test]
 fn the_users_settings_kept() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
     scratch.origin("agentplot/sluice");
     scratch.pass(&asking(&["agentplot/flume"]));
-    let file = workspace(&scratch, "agentplot");
+    let file = workspace(&scratch, "home");
     fs::write(
         &file,
         "{\n\
          \t\"folders\": [\n\
          \t\t{\n\
-         \t\t\t\"path\": \"flume\"\n\
+         \t\t\t\"path\": \"agentplot/flume\"\n\
          \t\t}\n\
          \t],\n\
          \t\"settings\": {\n\
@@ -201,14 +266,18 @@ fn the_users_settings_kept() {
     assert_eq!(
         value,
         json!({
-            "folders": [{"path": "flume"}, {"path": "sluice"}],
+            "folders": [{"path": "agentplot/flume"}, {"path": "agentplot/sluice"}],
             "settings": {"editor.tabSize": 2},
             "extensions": {"recommendations": ["rust-lang.rust-analyzer"]},
         })
     );
-    assert_eq!(of_workspaces(&lines), [&written(&file, "flume, sluice")]);
+    assert_eq!(
+        of_workspaces(&lines),
+        [&written(&file, "agentplot/flume, agentplot/sluice")]
+    );
 }
 
+/// The views spec's "Folders edited by hand".
 #[test]
 fn folders_edited_by_hand() {
     let scratch = Scratch::new();
@@ -216,9 +285,9 @@ fn folders_edited_by_hand() {
     scratch.origin("agentplot/sluice");
     let config = asking(&["agentplot/flume", "agentplot/sluice"]);
     scratch.pass(&config);
-    let file = workspace(&scratch, "agentplot");
+    let file = workspace(&scratch, "home");
     let mut edited = json(&file);
-    edited["folders"] = json!([{"path": "sluice"}]);
+    edited["folders"] = json!([{"path": "agentplot/sluice"}]);
     fs::write(
         &file,
         serde_json::to_string_pretty(&edited).expect("the edit"),
@@ -228,13 +297,17 @@ fn folders_edited_by_hand() {
     let (outcome, lines) = scratch.pass(&config);
 
     assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(lines, [written(&file, "flume, sluice")]);
+    assert_eq!(lines, [written(&file, "agentplot/flume, agentplot/sluice")]);
     assert_eq!(
         json(&file),
-        json!({"folders": [{"path": "flume"}, {"path": "sluice"}], "settings": {}})
+        json!({
+            "folders": [{"path": "agentplot/flume"}, {"path": "agentplot/sluice"}],
+            "settings": {},
+        })
     );
 }
 
+/// The views spec's "A dropped repository leaves its workspace".
 #[test]
 fn a_dropped_repository_leaves_its_workspace() {
     let scratch = Scratch::new();
@@ -247,16 +320,16 @@ fn a_dropped_repository_leaves_its_workspace() {
 
     let (outcome, lines) = scratch.pass(&asking(&["agentplot/flume"]));
 
-    let file = workspace(&scratch, "agentplot");
+    let file = workspace(&scratch, "home");
     assert_eq!(outcome, Outcome::Kept);
     assert_eq!(
         lines,
         [
             "agentplot/sluice: left: held by the view's changes in 1 file".to_string(),
-            written(&file, "flume"),
+            written(&file, "agentplot/flume"),
         ]
     );
-    assert_eq!(json(&file)["folders"], json!([{"path": "flume"}]));
+    assert_eq!(json(&file)["folders"], json!([{"path": "agentplot/flume"}]));
     assert_eq!(
         fs::read_to_string(sluice.join("README")).expect("the change"),
         "mine\n"
@@ -264,17 +337,49 @@ fn a_dropped_repository_leaves_its_workspace() {
     assert_eq!(scratch.git(&sluice, &["rev-parse", "HEAD"]), put);
 }
 
+/// The views spec's "A repository moved to another drive".
+#[test]
+fn a_repository_moved_to_another_drive() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
+    scratch.pass(&asking(&["agentplot/flume", "agentplot/sluice"]));
+    let sluice = scratch.home.join("Code/agentplot/sluice");
+    let put = scratch.git(&sluice, &["rev-parse", "HEAD"]);
+
+    let (outcome, lines) = scratch.pass(&asking_for(&[
+        ("home", &["agentplot/flume"]),
+        ("work", &["agentplot/sluice"]),
+    ]));
+
+    let home = workspace(&scratch, "home");
+    let work = workspace(&scratch, "work");
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(json(&home)["folders"], json!([{"path": "agentplot/flume"}]));
+    assert_eq!(
+        json(&work)["folders"],
+        json!([{"path": "agentplot/sluice"}])
+    );
+    assert_eq!(
+        of_workspaces(&lines),
+        [
+            &written(&home, "agentplot/flume"),
+            &written(&work, "agentplot/sluice"),
+        ]
+    );
+    assert_eq!(scratch.git(&sluice, &["rev-parse", "HEAD"]), put);
+    assert!(scratch.clone_of("agentplot/sluice").exists());
+}
+
+/// The views spec's "A quiet pass leaves the workspaces".
 #[test]
 fn a_quiet_pass_leaves_the_workspaces() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
     scratch.origin("example/crew");
-    let config = asking(&["agentplot/flume", "example/crew"]);
+    let config = asking_for(&[("home", &["agentplot/flume"]), ("work", &["example/crew"])]);
     scratch.pass(&config);
-    let files = [
-        workspace(&scratch, "agentplot"),
-        workspace(&scratch, "example"),
-    ];
+    let files = [workspace(&scratch, "home"), workspace(&scratch, "work")];
     let before: Vec<(Vec<u8>, u64)> = files
         .iter()
         .map(|file| {
@@ -298,18 +403,19 @@ fn a_quiet_pass_leaves_the_workspaces() {
     }
 }
 
+/// The views spec's "A comment in the workspace".
 #[test]
 fn a_comment_in_the_workspace() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
     scratch.origin("agentplot/sluice");
     scratch.pass(&asking(&["agentplot/flume"]));
-    let file = workspace(&scratch, "agentplot");
+    let file = workspace(&scratch, "home");
     let mine = "{\n\
                 \t// mine\n\
                 \t\"folders\": [\n\
                 \t\t{\n\
-                \t\t\t\"path\": \"flume\"\n\
+                \t\t\t\"path\": \"agentplot/flume\"\n\
                 \t\t}\n\
                 \t]\n\
                 }\n";
@@ -333,6 +439,7 @@ fn a_comment_in_the_workspace() {
     assert_eq!(fs::read_to_string(&file).expect("the workspace"), mine);
 }
 
+/// The views spec's "A link at the workspace's path".
 #[test]
 fn a_link_at_the_workspaces_path() {
     let scratch = Scratch::new();
@@ -341,8 +448,8 @@ fn a_link_at_the_workspaces_path() {
     let theirs = "{\"folders\": [{\"path\": \"..\"}]}\n";
     fs::create_dir_all(elsewhere.parent().expect("its folder")).expect("a folder elsewhere");
     fs::write(&elsewhere, theirs).expect("a workspace elsewhere");
-    let file = workspace(&scratch, "agentplot");
-    fs::create_dir_all(file.parent().expect("the owner's folder")).expect("the owner's folder");
+    let file = workspace(&scratch, "home");
+    fs::create_dir_all(file.parent().expect("the root")).expect("the repository root");
     std::os::unix::fs::symlink(&elsewhere, &file).expect("a link at the workspace's path");
 
     let (outcome, lines) = scratch.pass(&asking(&["agentplot/flume"]));
@@ -360,17 +467,19 @@ fn a_link_at_the_workspaces_path() {
     assert_eq!(fs::read_to_string(&elsewhere).expect("its target"), theirs);
 }
 
+/// The views spec's "A workspace that cannot be written": no file can be
+/// made at the repository root.
 #[test]
 fn a_workspace_that_cannot_be_written() {
     let scratch = Scratch::new();
     scratch.origin("agentplot/flume");
     let config = asking(&["agentplot/flume"]);
     scratch.pass(&config);
-    let file = workspace(&scratch, "agentplot");
+    let file = workspace(&scratch, "home");
     let edited = "{\"folders\": [], \"settings\": {}}\n";
     fs::write(&file, edited).expect("the folders edited");
-    let owner = file.parent().expect("the owner's folder");
-    let _mode = Mode::set(owner, 0o555);
+    let root = file.parent().expect("the repository root");
+    let _mode = Mode::set(root, 0o555);
 
     let (outcome, lines) = scratch.pass(&config);
 
@@ -379,8 +488,8 @@ fn a_workspace_that_cannot_be_written() {
     let prefix = format!("boomdrive: workspace not written at {}: ", file.display());
     assert!(lines[0].starts_with(&prefix), "{lines:#?}");
     assert_eq!(fs::read_to_string(&file).expect("the workspace"), edited);
-    let mut held: Vec<String> = fs::read_dir(owner)
-        .expect("the owner's folder")
+    let mut held: Vec<String> = fs::read_dir(root)
+        .expect("the repository root")
         .map(|entry| {
             entry
                 .expect("an entry")
@@ -390,9 +499,10 @@ fn a_workspace_that_cannot_be_written() {
         })
         .collect();
     held.sort();
-    assert_eq!(held, ["agentplot.code-workspace", "flume"]);
+    assert_eq!(held, ["agentplot", "home.code-workspace"]);
 }
 
+/// A pass that is stopped writes no workspace.
 #[test]
 fn a_stopped_pass_writes_no_workspace() {
     let scratch = Scratch::new();

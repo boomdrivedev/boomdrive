@@ -4,6 +4,7 @@
 #
 #   activate.sh link <file>
 #   activate.sh keep <user> <program> <argument>...
+#   activate.sh plugins <herdr> <plugin>...
 #
 # links ~/.config/boomdrive/config.toml to the module's file, so
 # `boomdrive enroll` and `boomdrive run --once` run by hand read what the
@@ -20,11 +21,22 @@
 # by any other user, it does nothing. It waits for no job, since it runs
 # inside the user's nixos-activation.service, and says a line only where
 # it started or restarted the unit.
+#
+# plugins links each herdr plugin, in order, with herdr's own command,
+# `<herdr> plugin link <plugin>`, which records it in herdr's own file and
+# starts no server (record 0023; design Decision 6 of the change
+# herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents). herdr
+# runs with standard input from /dev/null and every HERDR_* variable of
+# its caller's unset, so it reaches the user's own herdr home and no
+# server's. herdr's answer is left unsaid where the link holds; a link herdr
+# refuses is said in one line naming the plugin and herdr's words, and
+# stops no other. It exits 0.
 set -eu
 
 usage() {
   echo "usage: activate.sh link <file>" >&2
   echo "       activate.sh keep <user> <program> <argument>..." >&2
+  echo "       activate.sh plugins <herdr> <plugin>..." >&2
   exit 2
 }
 
@@ -71,6 +83,25 @@ keep() {
   fi
 }
 
+plugins() {
+  herdr=$1
+  shift
+  for plugin in "$@"; do
+    if ! words=$(
+      names=$(env | while IFS= read -r line; do
+        case $line in HERDR_*=*) echo "${line%%=*}" ;; esac
+      done)
+      for name in $names; do
+        unset "$name"
+      done
+      "$herdr" plugin link "$plugin" </dev/null 2>&1
+    ); then
+      words=$(printf '%s\n' "$words" | tr '\n' ' ')
+      echo "boomdrive: herdr did not link $plugin: ${words% }" >&2
+    fi
+  done
+}
+
 case ${1:-} in
 link)
   [ $# -eq 2 ] || usage
@@ -80,6 +111,11 @@ keep)
   [ $# -ge 3 ] || usage
   shift
   keep "$@"
+  ;;
+plugins)
+  [ $# -ge 3 ] || usage
+  shift
+  plugins "$@"
   ;;
 *) usage ;;
 esac

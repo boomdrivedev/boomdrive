@@ -1,7 +1,8 @@
-# The runner's file, rendered from services.boomdrive.settings at
-# evaluation (design Decision 9): so the gate compares the text a module
-# writes without building it, and one `settings` gives one text on either
-# platform. Top-level keys come before tables, each sorted by name. A key
+# The runner's file, rendered at evaluation from services.boomdrive.accounts
+# and services.boomdrive.settings, as accounts.nix's `fileOf` joins them
+# (design Decision 9): so the gate compares the text a module writes
+# without building it, and one `accounts` and `settings` give one text on
+# either platform. Top-level keys come before tables, each sorted by name. A key
 # whose value is null is unset, and left out, so the runner's own default
 # holds (design Decision 8). Any value but a string, a boolean, an
 # integer, a list of strings, a table or a list of tables fails, naming its
@@ -28,7 +29,7 @@ let
     optionals
     ;
 
-  header = "# Written by the boomdrive flake's module from services.boomdrive.settings; a change goes there.";
+  header = "# Written by the boomdrive flake's module from services.boomdrive.accounts and services.boomdrive.settings; a change goes there.";
 
   # TOML's basic string: `"`, `\` and every control character escaped.
   hex = n: lib.fixedWidthString 4 "0" (lib.toHexString n);

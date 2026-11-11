@@ -8,11 +8,13 @@ use boomdrive_control::{
     Act, ActSort, Answer, At, ControlPlane, Id, Launch, Launched, Lease, Offer, Outcome, Preview,
     Report, Want,
 };
-use boomdrive_crew::read::LEASE;
+use boomdrive_crew::read::{Store, LEASE};
 use common::{
     act, commit_to, file, git, hello, ids, launch, plan, preview, pull, want, State, REQUESTS,
 };
+use std::net::TcpListener;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 const CREW: &str = "example/crew";
 
@@ -606,6 +608,57 @@ fn a_state_repository_that_cannot_be_reached_is_named_on_one_line() {
     for line in said.lines() {
         assert!(!line.contains('\n'), "{line}");
     }
+}
+
+/// A state repository that takes every connection and never answers: a
+/// listener on the loopback address of the test's own, which holds each
+/// connection open on a thread of its own without a byte (record 0042's
+/// design Decision 6). Its address, `http://127.0.0.1:<port>`.
+fn silent() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("a silent listener");
+    let port = listener.local_addr().expect("its address").port();
+    std::thread::spawn(move || {
+        let mut held = Vec::new();
+        for stream in listener.incoming().flatten() {
+            held.push(stream);
+        }
+    });
+    format!("http://127.0.0.1:{port}")
+}
+
+/// The crew-control-plane spec's "A state repository that never answers
+/// the listing": the listing is stopped at its limit and fails naming
+/// `git ls-remote`, the state repository's URL and the limit (record
+/// 0042).
+#[test]
+fn a_state_repository_that_never_answers_the_listing() {
+    let state = State::new();
+    let cache = state.root.join("cache.git");
+    std::fs::create_dir_all(&cache).unwrap();
+    git(&cache, &["init", "--quiet", "--bare"], None);
+    let url = format!("{}/state.git", silent());
+    let mut store = Store::new(cache, url.clone());
+    store.try_for = Duration::from_millis(500);
+
+    let started = Instant::now();
+    let failed = store.hosts("home").expect_err("a listing stopped");
+    let took = started.elapsed();
+
+    assert!(took < Duration::from_secs(5), "the listing took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git ls-remote with {url} was still going after 500ms, the most a try may take, and \
+             was stopped"
+        )),
+        "{failed}"
+    );
+}
+
+/// The crew-control-plane spec's "The listing's limit is thirty seconds".
+#[test]
+fn a_stores_listing_tries_for_thirty_seconds() {
+    let store = Store::new("cache.git".into(), "https://example.invalid/s.git".into());
+    assert_eq!(store.try_for, Duration::from_secs(30));
 }
 
 #[test]

@@ -15,45 +15,119 @@ the runner's protocol with it, one JSON Schema per version under
 
 ## The configuration
 
-`boomdrive` reads one TOML file: the one `--config <file>` names, else
+`boomdrive` reads its configuration in two layers of TOML, in Flume's
+words. The managed layer is the file `--config <file>` names, else
 `$XDG_CONFIG_HOME/boomdrive/config.toml`, else
-`~/.config/boomdrive/config.toml`. It names the repositories the host
-keeps by their GitHub address, the root their views are kept under, how
-often they are fetched and whether each owner's views have a VS Code
-workspace:
+`~/.config/boomdrive/config.toml`, written by Nix, a fleet or a person.
+The local layer is `config.local.toml` in that same directory,
+`$XDG_CONFIG_HOME/boomdrive/` or `~/.config/boomdrive/`, whatever
+`--config` names, written by the operator or a control plane and read
+over the managed one. A host with no local file reads the managed layer
+alone. The managed layer names the accounts the host serves, each
+account's drives and each drive's repositories by their GitHub address,
+the root their views are kept under, how often they are fetched and
+whether each drive has a VS Code workspace:
 
 ```toml
 # The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
 repository_root = "~/Code"
 # How often every repository is fetched; 2m where none is named.
 fetch_interval = "2m"
-# Whether each owner's views have a VS Code workspace, <repository_root>/<owner>/<owner>.code-workspace; false where none is named.
+# Whether each drive has a VS Code workspace, <repository_root>/<drive>.code-workspace; false where none is named.
 code_workspaces = true
-# Each repository this host keeps, by its GitHub address.
-repositories = ["agentplot/flume", "example/crew"]
+
+# The account `own`'s drive `home`: each repository it keeps, by its GitHub address.
+[accounts.own.drives.home]
+repositories = ["agentplot/flume"]
+
+# The account `own`'s drive `work`.
+[accounts.own.drives.work]
+repositories = ["example/crew"]
 ```
 
-`repositories` is required, so a host that keeps none says
-`repositories = []`. Addresses are compared without case, so two that
-differ only in case are refused as one repository named twice.
-`repository_root` is an absolute path or begins with `~/`.
-`fetch_interval` is `<n>s`, `<n>m` or `<n>h`. A key the runner does not
-read is refused, so the file has no place for a credential: the host's
-own git credential helper answers every fetch. A file written for an
-earlier runner is refused with what to write instead: `views` is
-`repository_root` now, and `fetch_every` is `fetch_interval`. Nor does
-the file name a stream or a kind: those are each host's Flume
-configuration, and a key naming one is refused, saying so.
+An account is what the runner enrolls with a control plane. A drive is
+one account's body of work, `[accounts.<account>.drives.<drive>]`, and
+its `repositories` are the repositories it keeps, in the order kept.
+The runner keeps every drive's repositories, in the file's order.
+`accounts`, each account's `drives` and each drive's `repositories` are
+required, and each may be empty: a host that keeps none says
+`accounts = {}`, and a drive that keeps none yet says
+`repositories = []`. An account holds only its `drives` and a drive
+only its `repositories`. An account's or a drive's name is 1 to 32
+lower-case letters, digits and `-`, starting with a letter, and a
+drive's name is given once on the host, across its accounts. A
+repository belongs to one drive: addresses are compared without case,
+and two that differ only in case, in one drive or in two, are refused
+as one repository named twice. `repository_root` is an absolute path or
+begins with `~/`. `fetch_interval` is `<n>s`, `<n>m` or `<n>h`. A key the
+runner does not read is refused, so the file has no place for a
+credential: the host's own git credential helper answers every fetch. A
+file written for an earlier runner is refused with what to write
+instead: `views` is `repository_root` now, `fetch_every` is
+`fetch_interval`, and a flat `repositories` is `accounts`, each
+repository named under its drive. Nor does the file name a stream or a
+kind, at its top, in an account or in a drive: those are each host's
+Flume configuration, and a key naming one is refused, saying so.
 
-`code_workspaces = true` asks for one VS Code workspace for each owner
-of the kept repositories, beside the owner's views, so VS Code titles
-its window `— <owner> (Workspace)`. Its `folders` are the owner's kept
-repositories, in the file's order, set at every pass; the rest of the
-file, the settings VS Code writes into it, is kept. A file there the
-runner cannot read as a JSON object, one with comments in it say, is
-left as it is and named at every pass. `code_workspaces` is `true` or
-`false`, and where it is absent or `false` the runner writes and removes
-no workspace.
+`code_workspaces = true` asks for one VS Code workspace for each drive,
+at the repository root under the drive's name,
+`<repository_root>/<drive>.code-workspace`, so VS Code titles its window
+`— <drive> (Workspace)`. Its `folders` are the drive's kept
+repositories, each by its view's path from the root, `<owner>/<name>`,
+in the file's order, set at every pass; the rest of the file, the
+settings VS Code writes into it, is kept. A drive's workspace goes with
+its drive: once the drive has left the configuration and no clone the
+runner holds was kept for it, the runner removes the workspace, and no
+other. A file there the runner cannot read as a JSON object, one with
+comments in it say, is left as it is and named at every pass.
+`code_workspaces` is `true` or `false`, and where it is absent or
+`false` the runner writes and removes no workspace.
+
+The local layer sets each drive's `repositories`,
+`accounts.<account>.drives.<drive>.repositories`, and in a control
+plane's table, `[control_plane.<type>]`, its `partitions`, and nothing
+else; each is read whole, as the managed layer's is. Its repositories
+add to the managed layer's: a drive both layers name keeps the managed
+layer's repositories, in their order, then each of the local layer's
+the managed layer does not name, and a drive or an account only the
+local layer names is declared by it, after the managed layer's. So a
+control plane that drops a drive drops only the repositories it wrote.
+A repository is still in one drive on the host, and a drive's name is
+given once: a local layer that names a repository the managed layer
+keeps in another drive, or a drive the managed layer holds under
+another account, is not taken. Its `partitions` replace the managed
+layer's. A local layer a control plane might write:
+
+```toml
+# Added to the managed layer's drive `home`.
+[accounts.own.drives.home]
+repositories = ["agentplot/sluice"]
+
+# A drive the managed layer does not name, declared here.
+[accounts.own.drives.garden]
+repositories = ["agentplot/timber"]
+```
+
+The managed layer may pin a key the local layer could set: `pin`, at its
+top, lists keys in TOML's dotted spelling, such as
+`"accounts.own.drives.home.repositories"` or
+`"control_plane.hosted.partitions"`, or a table holding one, such as
+`"accounts"`, `"accounts.own.drives.home"` or `"control_plane"`. A
+pinned key the local layer sets is passed over and named, and the rest
+of the local layer is taken. A pin of anything else is refused as the
+managed layer's fault.
+
+A local file that sets any other key, `repository_root`, `pin`, a flat
+`repositories`, a key of an account or a drive other than `drives` and
+`repositories`, or a control plane's `type` among them, that is not
+TOML, or that holds a value the runner or the control plane's
+implementation refuses, is not taken at all, and the managed layer is
+read alone. While such a file stands, a pass keeps the managed layer's
+repositories, lets go of none and sets or removes no workspace, since
+the layer it could not take may name them. Removing the file lets go of
+what only it named. Each pass says one line of the local file where its
+reading changes: taken, with each key passed over; not taken, with why;
+or gone.
 
 ## Running on a host
 
@@ -67,7 +141,12 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   directory, `$XDG_DATA_HOME/boomdrive`, else `~/.local/share/boomdrive`,
   at `repositories/<owner>/<name>/<name>.git`, in the bare-container
   layout flume reads; or fetches the clone it has, over https through
-  the host's own credential helper, never prompting;
+  the host's own credential helper, never prompting. A fetch, a new
+  clone's among them, still going at thirty seconds is stopped with
+  everything it started, as agentplot/sluice record 0109 bounds every
+  try of a call to a remote. The repository is then named not fetched,
+  or not cloned with nothing left, and is fetched again at the next
+  pass, while the pass keeps every other repository;
 - points the clone's HEAD at origin's default branch, making that
   branch at origin's tip where the clone lacks it. It moves no branch
   of the clone: it reads each at `origin/<branch>`, and the clone's own
@@ -86,10 +165,11 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   last carried, Flume still lists and has not read tidied or gone, the
   repository is drained: nothing more is launched in it, and its place
   is followed to its end through its clone;
-- where `code_workspaces` is true, keeps each owner's VS Code workspace
-  at `<repository_root>/<owner>/<owner>.code-workspace`, writing it only
-  when its `folders` are not the owner's kept repositories, whole and
-  renamed over the old one.
+- where `code_workspaces` is true, keeps each drive's VS Code workspace
+  at `<repository_root>/<drive>.code-workspace`, writing it only when its
+  `folders` are not the drive's kept repositories, whole and renamed
+  over the old one, and removes the workspace of a drive that has gone
+  with its last clone.
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
@@ -164,16 +244,33 @@ throttle keeps it from spinning.
 ## Installing with nix
 
 The flake at this repository's root, `github:agentplot/boomdrive`,
-gives the family's host tools pinned together: the runner from this
-tree, Flume and sluice each at a release tag, and each tool's herdr
-plugin from its tag, for `aarch64-darwin`, `aarch64-linux` and
-`x86_64-linux`. Each reports its tag's version, and the set is the one
-the runner's tests pass with. nixpkgs builds nothing for an Intel Mac,
-so the flake gives it nothing. herdr and git are the host's own.
+gives the family's host tools pinned together, for `aarch64-darwin`,
+`aarch64-linux` and `x86_64-linux`:
 
-To put the runner, Flume and sluice in your profile:
+- the runner, from this tree;
+- Flume, sluice and crew, each at a release tag through its own flake,
+  and Flume's and sluice's herdr plugins from their tags;
+- herdr, through its own flake at the release Flume's tag pins, which
+  Flume's terminal profile was checked against;
+- Ghostty, from the flake's nixpkgs at the release Flume's window
+  profile was checked against: built from source on Linux, and on
+  macOS, where nothing builds its app from source, Ghostty's own
+  release as nixpkgs' `ghostty-bin` gives it;
+- the Boomdrive launcher, `boomdrive-launcher`, of this tree: an app,
+  `Boomdrive`, on macOS and a desktop entry on Linux, which runs `flume
+  open` to show the host's agents.
 
-    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice
+Each tool reports its tag's version, and the set is the one the
+runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
+the flake gives it nothing. git alone is the host's own.
+
+To put the runner, Flume and sluice in your profile, and crew where the
+host runs crew:
+
+    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
+
+The same line may add `github:agentplot/boomdrive#herdr` and
+`github:agentplot/boomdrive#ghostty`.
 
 An older nix spells it `nix profile install`. nix asks whether to
 accept the flake's `nixConfig`, which names the family's cache,
@@ -217,8 +314,26 @@ run passed:
 
 A host's configuration imports its platform's module,
 `darwinModules.default` for nix-darwin or `nixosModules.default` for
-NixOS, and writes the runner's file as `services.boomdrive.settings`,
-each key as the file names it:
+NixOS, names its accounts in `services.boomdrive.accounts`, and writes
+the rest of the runner's file as `services.boomdrive.settings`, each key
+as the file names it. The module brings Flume's, sluice's and
+crew's own modules, `services.flume`, `services.sluice` and
+`services.crew`, each from its tool's flake at the tag this flake names,
+and the flake gives each again as `darwinModules.<tool>` and
+`nixosModules.<tool>`. Each writes its own tool's file from its
+`settings`, each key as that file names it, and links it at the tool's
+own path, `~/.config/flume/config.toml`, `~/.config/sluice/config.toml`
+and `~/.config/crew/teams.json`. A file of your own there is moved once
+to `config.toml.before-nix`, and crew's to `teams.json.before-nix`, so
+move its values into the tool's `settings` in the switch that takes this
+flake. `services.boomdrive.enable` turns on Flume's and sluice's
+modules; a host that runs crew turns on crew's, with its `host` and its
+partitions. Where `control_plane.type` is `crew` and no
+`control_plane.crew` is written, the module writes the runner's
+`[control_plane.crew]` from crew's partitions: its `host` is
+`services.crew.host`, and it holds each partition whose `machine` is
+that host, by its `label`, with its `state` as `state_repository`. A
+table written out wins, whole:
 
 ```nix
 {
@@ -241,15 +356,28 @@ each key as the file names it:
             # The rest of the host's configuration, system.primaryUser among it.
             services.boomdrive = {
               enable = true;
+              accounts.own.drives.home.repositories.agentplot = [ "flume" "sluice" ];
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
-                repositories = [ "agentplot/flume" "agentplot/sluice" ];
-                control_plane = {
-                  type = "crew";
-                  crew = { host = "host-a"; partitions = [ { label = "home"; state_repository = "example/state"; } ]; };
-                };
+                control_plane.type = "crew";
               };
+            };
+            services.crew = {
+              enable = true;
+              host = "host-a";
+              settings.partitions = [
+                {
+                  label = "home";
+                  partition = "home";
+                  blueprints = [ "example/blueprints" ];
+                  state = "example/state";
+                  machine = "host-a";
+                  session = "home";
+                  review = { every = 5; hours = 4; };
+                  flume = { design = false; planner = false; reviewer = false; ops = false; operator = false; };
+                }
+              ];
             };
           }
         ];
@@ -257,6 +385,45 @@ each key as the file names it:
     };
 }
 ```
+
+Each drive names its repositories by owner,
+`services.boomdrive.accounts.<account>.drives.<drive>.repositories.<owner>`,
+the names of the owner's repositories it keeps, and the module writes
+them into the runner's file as their addresses, `<owner>/<name>`, owner
+by owner in the order of the owners' names, each owner's names in the
+order given. A repository is named once on the host, and a drive's name
+once across the host's accounts, or evaluation fails. Each drive has its
+stream in Flume, and the module gives Flume's module the drive's
+`stream`, and each of the drive's repositories that stream, by its
+address:
+
+```nix
+services.boomdrive.accounts.own.drives.home = {
+  stream = {
+    name = "home";                  # the drive's name where unset
+    agents = 4;                     # 4 where unset
+    priority = 11;                  # Flume's own where unset
+    labels.review.reserve = 1;      # beside operation 1 and planning 2
+  };
+  repositories.agentplot = [ "flume" "sluice" ];
+};
+```
+
+A stream's `agents`, `priority` and each label's `reserve` are the
+drive's, and a label the drive does not set keeps the module's reserve,
+`operation` 1 and `planning` 2. A drive's reserves are within its room:
+Flume refuses a stream whose reserves pass its `agents`, naming it. Any
+other key of a stream, a label's `keep_free` among them, is Flume's own,
+set in `services.flume.settings.streams.<stream>`, beside the drive's;
+and a value the host sets there, or in a repository's
+`services.flume.settings.repos."<owner>/<name>"`, wins over the
+drive's. Two drives of this host that give one stream fail evaluation. A
+drive whose work runs on another computer names it, `machine = "host-b"`,
+as crew's partitions name a host, and the module compares it with
+`services.crew.host`, which the host sets whether or not crew runs
+there: a drive of another machine gives Flume nothing, and the runner
+still keeps its repositories, to read. A drive that names a `machine`
+where `services.crew.host` is not set fails evaluation.
 
 On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
@@ -268,23 +435,81 @@ lingers, so it runs from boot. The file is written into the store, the
 service runs `boomdrive run --config <that file>`, and each switch
 links `~/.config/boomdrive/config.toml` to it, so a command run by hand
 reads it too. A file of your own there is moved once to
-`config.toml.before-nix`. A switch that changes the file or the runner
-restarts it. A key of `settings` named for a credential, `token`, `key`,
-`secret` or `password`, or one ending in `_token`, `_key`, `_secret` or
-`_password`, fails evaluation, since every user reads the store.
+`config.toml.before-nix`, and the local layer, `config.local.toml`
+beside it, is left as it is. A host pins a key through
+`services.boomdrive.settings.pin`. A switch that changes the file or the
+runner restarts it. `accounts` is always written, each account's
+`drives` and each drive's `repositories` with it, and a key in an
+account or a drive that the module does not declare fails evaluation.
+The accounts are named in `services.boomdrive.accounts` alone: accounts
+written in `settings` fail evaluation, as a flat `settings.repositories`
+of before does. A key of `settings` named
+for a credential, `token`, `key`, `secret` or `password`, or one ending
+in `_token`, `_key`, `_secret` or `_password`, fails evaluation, since
+every user reads the store.
 
-The module puts the runner and the set's Flume and sluice in the system
-profile, and the runner's `PATH` is the user's profiles, then the
-system's, so the runner, the agents Flume launches and your shell run
-one copy of each tool. A host that installs its own Flume and sluice
-says so:
+The runner's module puts the runner in the system profile, and each
+tool's module puts its tool there, the set's unless the host gives its
+own. The runner's `PATH` is the user's profiles, then the system's, so
+the runner, the agents Flume launches and your shell run one copy of
+each tool. A host that installs its own Flume and sluice says so in
+each tool's `package`, `null` for none:
 
 ```nix
-services.boomdrive.tools = [ ];
+services.flume.package = null;
+services.sluice.package = null;
 ```
 
-`tools` may name the host's own packages instead, and
-`services.boomdrive.package` replaces the runner.
+Each tool's `package`, `services.crew.package` among them, may name the
+host's own package instead, and `services.boomdrive.package` replaces
+the runner. A host that keeps a tool's file its own sets that tool's
+`enable = false`, and installs the tool itself.
+
+With `services.boomdrive.enable`, the runner's module also gives the
+host a way to see its agents:
+
+- It installs herdr, Ghostty and the Boomdrive launcher, `Boomdrive`
+  in `/Applications/Nix Apps` on macOS or in the desktop's applications
+  on Linux. A click on it runs `flume open`, which shows the default
+  stream's own session, and shows Flume's words where Flume refuses.
+- At each switch it links each plugin of
+  `services.boomdrive.herdr.plugins`, by default the set's Flume and
+  sluice plugins, into the runner's user's herdr with herdr's own
+  `herdr plugin link`, which starts no server. A relink enables a plugin
+  you disabled, so leave one you want off out of the list. A plugin
+  left out stays linked until `herdr plugin unlink`. A herdr already
+  running takes a new plugin at its next start.
+- It sets Flume's `host.multiplexer` to `herdr` and `host.terminal_app`
+  to `ghostty`, unless the host names its own in
+  `services.flume.settings.host`. Where the host writes Flume's older
+  `host.terminal`, it sets no `multiplexer`.
+
+Each of the three is the set's by default, and each may name the host's
+own package instead, or `null` for none:
+
+```nix
+services.boomdrive.herdr.package = null;
+services.boomdrive.ghostty.package = null;
+services.boomdrive.launcher.package = null;
+```
+
+With no herdr package, or no plugin, nothing is linked. A host with a
+herdr of its own may give it as `services.boomdrive.herdr.package`, and
+the plugins are linked with it. A host with no display sets Ghostty and
+the launcher `null`, and Flume's `host.terminal_app` its own. A Mac that
+keeps a Ghostty of its own in `/Applications` sets the set's `null`, so
+macOS opens one Ghostty.
+
+The flake also gives a shell, its `PATH` the set's runner, Flume,
+sluice, crew and herdr, that starts herdr on entering and leaves you in
+the shell when herdr ends:
+
+    nix develop github:agentplot/boomdrive
+
+A command run through it, `nix develop github:agentplot/boomdrive
+--command <command>`, starts no herdr, and neither does a shell entered
+from inside herdr. The shell links no plugin: the modules do. This
+repository's own development shell is devenv's.
 
 Under a hosted control plane, enroll each partition after the switch,
 on the host, as the service's user, the token on standard input:
@@ -300,9 +525,9 @@ Mac whose only git is Apple's, where that is older, puts a newer one in
 a profile, as `environment.systemPackages = [ pkgs.git ];` does.
 
 The set gives each tool's herdr plugin, `flume-herdr-plugin` and
-`sluice-herdr-plugin`, at its tool's tag. herdr's own command links
-one. Build it to a link of your own, which keeps nix's garbage
-collector from it, and link that:
+`sluice-herdr-plugin`, at its tool's tag, which the modules link. A host
+without them links one with herdr's own command. Build it to a link of
+your own, which keeps nix's garbage collector from it, and link that:
 
     nix build github:agentplot/boomdrive#flume-herdr-plugin --out-link ~/.local/state/herdr-plugins/flume
     herdr plugin link ~/.local/state/herdr-plugins/flume
@@ -315,29 +540,24 @@ line:
     nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
-version is its tagged tree's. Its git crates are fetched by the hashes
-the flake holds for the tag it names, in
-`nix/packages/flume-git-crates.nix`, so a tag whose weir differs fails
-to build, and needs a package of the host's own in `tools`. sluice's
-tagged tree says `0.0.0`, and the set gives sluice the version of the
-tag `flake.nix` names, so an overridden sluice is given its own version
-beside it:
+version and its git crates' hashes are Flume's own flake's, at the tag
+it names. sluice's tagged tree says `0.0.0`, and crew's carries no
+version, so the set gives each the version of the tag `flake.nix`
+names, and an overridden sluice or crew is given its own version beside
+it, in that tool's `package`:
 
 ```nix
 # In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.75.0";
+boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.77.0";
 ```
 
 ```nix
 # In its configuration:
-services.boomdrive.tools = [
-  boomdrive.packages.aarch64-darwin.flume
-  (boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
-    __intentionallyOverridingVersion = true;
-    version = "0.75.0";
-    env = old.env // { SLUICE_VERSION = "0.75.0"; };
-  }))
-];
+services.sluice.package = boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
+  __intentionallyOverridingVersion = true;
+  version = "0.77.0";
+  env = old.env // { SLUICE_VERSION = "0.77.0"; };
+});
 ```
 
 ## Carrying the control plane's work
@@ -469,9 +689,13 @@ each partition served: its `label`, and its `state_repository` as
 `owner/name`, reached over https through the host's own git credential
 helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `asks.rec` and `plan.rec` at `<label>/main`, keeping its caches under
-`<data>/control/crew/`. It answers on the runner's branch,
-`<label>/runner/<host>`, in crew's formats: `runner.rec`, `answers.rec`
-and `places.rec`, and, once a preview is answered there, `previews.rec`,
+`<data>/control/crew/`, and lists the runner branches,
+`<label>/runner/*`, by `git ls-remote`. A listing still going at thirty
+seconds is stopped with everything it started, as a fetch is, and the
+partition is named unread and pulled again at the next pull. It answers
+on the runner's branch, `<label>/runner/<host>`, in crew's formats:
+`runner.rec`, `answers.rec` and `places.rec`, and, once a preview is
+answered there, `previews.rec`,
 under the descriptor this repository proposes for crew to hold. A
 preview leaves the runner's branch once its done is answered, with what
 the done put away; or once its work has left crew's plan and it is no
@@ -596,8 +820,8 @@ The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
-`boomdrive-crew` and `boomdrive-hosted`, beside `nix`, which holds the
-flake, its modules and the cache's workflow, `site`, which holds the
-site, `site/`, and the workflow that publishes it, and `root`, which
-holds what spans the tree. The site's own rules are
+`boomdrive-crew`, `boomdrive-hosted` and `boomdrive-bounded`, beside
+`nix`, which holds the flake, its modules and the cache's workflow,
+`site`, which holds the site, `site/`, and the workflow that publishes
+it, and `root`, which holds what spans the tree. The site's own rules are
 `docs/architecture/site.md` and `site/CLAUDE.md`.
