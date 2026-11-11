@@ -57,7 +57,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 4. The command and its answers
 
-- [ ] 4.1 `src/main.rs` gains `Setup`, with the setup spec's nine flags and `--json`:
+- [x] 4.1 `src/main.rs` gains `Setup`, with the setup spec's nine flags and `--json`:
   - `--runs` takes two values and may be given again;
   - `--review` takes two values;
   - `--repository` conflicts with `--add-repository` and `--remove-repository`.
