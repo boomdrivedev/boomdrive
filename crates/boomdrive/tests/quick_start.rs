@@ -7,11 +7,15 @@
 //! to what setup names for it, setup run over `common::stand`'s stand-ins.
 //! The family's tools are the runner cargo built for the test and the
 //! set's Flume and sluice by the paths the devenv shell gives (core.45),
-//! never stubs of them. Every test runs on a `Scratch` home, and nothing
-//! reaches the network. A test that runs setup is macOS's, where setup
-//! runs and the gate runs.
+//! never stubs of them; the agent is the stand-in for Claude Code built
+//! under the feature `stand-in` (design Decision 6). Every test runs on a
+//! `Scratch` home, and nothing reaches the network. A test that runs
+//! setup is macOS's, where setup runs and the gate runs.
 
 mod common;
+#[cfg(target_os = "macos")]
+#[path = "../../boomdrive-crew/tests/common/mod.rs"]
+mod records;
 
 #[cfg(target_os = "macos")]
 use common::stand::{refused, Stand};
@@ -99,8 +103,13 @@ fn said(output: &Output) -> String {
 
 /// Writes the step's file at `path` to `to`, its folders made.
 fn write_step(path: &str, to: &Path) {
+    write_text(&step(path), to);
+}
+
+/// Writes `text` to `to`, its folders made.
+fn write_text(text: &str, to: &Path) {
     std::fs::create_dir_all(to.parent().expect("the file's folder")).expect("its folder");
-    std::fs::write(to, step(path)).expect("the step's file written");
+    std::fs::write(to, text).expect("the file written");
 }
 
 /// The quick start's answers to setup, then `extra`.
@@ -424,4 +433,241 @@ fn the_drives_agents_start_as_setup_says() {
         .as_str()
         .unwrap_or_else(|| panic!("setup's answer gives no start: {answer}"));
     assert_eq!(lines("both/start.sh"), [start]);
+}
+
+/// The stand-in for Claude Code, which cargo builds under the feature
+/// `stand-in` (design Decision 6).
+#[cfg(feature = "stand-in")]
+fn stand_in() -> PathBuf {
+    PathBuf::from(env!("CARGO_BIN_EXE_boomdrive-stand-in"))
+}
+
+/// Without the feature `stand-in` there is no stand-in agent, and the
+/// test that needs one fails, saying so.
+#[cfg(not(feature = "stand-in"))]
+fn stand_in() -> PathBuf {
+    panic!(
+        "the stand-in for Claude Code is built under the feature stand-in: \
+         `cargo test -p boomdrive --features stand-in`, as `moon run boomdrive:test` runs it"
+    )
+}
+
+/// The scratch host's Flume file for the last step: the drive's stream,
+/// `default`, takes its agents from a pool whose one account's program is
+/// `claude`, and no multiplexer is named, so Flume prints each agent's
+/// command where the gate can run no multiplexer's server.
+const FLUME_FILE: &str = "\
+[streams.default]
+pool = \"stand-in\"
+
+[pools.stand-in]
+strategy = \"fill-first\"
+accounts = [{ name = \"stand-in-1\", program = \"claude\" }]
+";
+
+/// How long the last step's test waits for the change to land.
+const LANDING_WITHIN: std::time::Duration = std::time::Duration::from_secs(120);
+
+/// The fix crew writes for the drive `home`, of
+/// `your-github-name/your-repository`'s main, as `crew main fix`
+/// appends it: request 1, for the stand-ins' host `host-a`, its
+/// submission held for the reader's send.
+#[cfg(target_os = "macos")]
+fn fix_of_main() -> String {
+    records::launch(
+        1,
+        Some("host-a"),
+        "fix/main/your-repository/one",
+        "your-github-name/your-repository",
+        "main--one",
+        &[
+            ("Kind", "fix"),
+            ("Base", "main"),
+            ("Priority", "1"),
+            ("Intent", "home/main/your-repository"),
+            ("Recipient", "home/ops"),
+            ("Hold", "submission"),
+            ("Brief", "Make the stand-in's change."),
+        ],
+    )
+}
+
+/// The reader's send of the fix's held submission, as crew appends it on
+/// their word: request 2, a retry of launch 1 naming its submission.
+#[cfg(target_os = "macos")]
+fn send_of_fix() -> String {
+    records::act(
+        2,
+        "retry",
+        Some("host-a"),
+        "fix/main/your-repository/one",
+        1,
+        &[("Submission", "yes")],
+    )
+}
+
+/// The place's status that request `request`'s `Status` on the runner's
+/// branch of the state repository `state` carries, as Flume's
+/// `--json status <place>` gives it, where the branch holds one.
+#[cfg(target_os = "macos")]
+fn carried(scratch: &Scratch, state: &Path, request: u64) -> Option<Value> {
+    if !scratch.holds(
+        state,
+        &["rev-parse", "--verify", "--quiet", "home/runner/host-a"],
+    ) {
+        return None;
+    }
+    let places = scratch.git(state, &["show", "home/runner/host-a:places.rec"]);
+    let mut status = None;
+    let mut ours = false;
+    for line in places.lines() {
+        if let Some(number) = line.strip_prefix("Request: ") {
+            ours = number == request.to_string();
+        } else if let Some(text) = line.strip_prefix("Status: ").filter(|_| ours) {
+            status = Some(text.to_string());
+        } else if let Some(more) = line.strip_prefix("+ ").filter(|_| ours) {
+            if let Some(status) = status.as_mut() {
+                status.push('\n');
+                status.push_str(more);
+            }
+        }
+    }
+    status.map(|text| {
+        let status: Value = serde_json::from_str(&text).expect("a carried status is JSON");
+        status["status"]["places"][0].clone()
+    })
+}
+
+/// The commit a place's status gives it landed as, its phase `over` and
+/// landed, or tidied once over and landed; none for any other phase.
+#[cfg(target_os = "macos")]
+fn landed_commit(status: &Value) -> Option<&Value> {
+    let phase = &status["phase"];
+    [&phase["over"], &phase["tidied"]["over"]]
+        .into_iter()
+        .map(|over| &over["landed"]["commit"])
+        .find(|commit| commit.is_string())
+}
+
+/// The quick-start spec's "From crew's launch to main" (design Decision
+/// 6): setup writes the runner's file for the quick start's answers over
+/// the stand-ins; origin's `main` is as the landing step leaves it; crew's
+/// state repository holds, on `home/main`, a fix of `main` for this host.
+/// The runner's passes, over the set's Flume and sluice, launch it; the
+/// test runs each agent command Flume prints, whose `claude` is the
+/// stand-in; once the runner's branch carries the fix's code delivered
+/// and its submission held, crew's send of it is appended, as the
+/// reader's approval appends it. Within two minutes origin's `main` holds
+/// the stand-in's change, and the runner's branch carries the place's
+/// status as the set's Flume gives it, landed. Then the watch step, run
+/// through `sh` on the same host, is answered by the set's Flume.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_change_the_drive_is_given_lands() {
+    let stand = Stand::new();
+    stand.set_up(&answers(&["--json"]));
+    let scratch = &stand.scratch;
+    let origin = landed(scratch);
+    let state = scratch.empty_origin("your-github-name/drive-state");
+    state.commit(
+        "home/main",
+        "requests.rec",
+        &records::file(records::REQUESTS, &[fix_of_main()]),
+    );
+    state.commit("home/main", "plan.rec", &records::plan(&[], &[]));
+    write_text(
+        &format!("{FLUME_FILE}\n[streams.home]\npool = \"stand-in\"\n"),
+        &scratch.home.join(".config/flume/config.toml"),
+    );
+    write_text("kinds_dir = \"~/.local/share/flume/kinds/crew\"\nroles = \"~/.local/state/crew/flume/roles.toml\"\n", &scratch.home.join(".config/flume/sources/crew.toml"));
+    std::fs::create_dir_all(scratch.home.join(".local/share/flume/kinds/crew")).unwrap();
+    write_text("[roles.\"home/ops\"]\nagent = \"home-ops\"\nsession = \"home\"\nanswers = \"A live system, a deploy or a landing.\"\n\n[roles.\"home/operator\"]\nagent = \"home-operator\"\nsession = \"home\"\nanswerer = true\n", &scratch.home.join(".local/state/crew/flume/roles.toml"));
+    let agent = scratch.root.join("agent");
+    std::fs::create_dir_all(&agent).expect("the agent's folder");
+    std::os::unix::fs::symlink(stand_in(), agent.join("claude")).expect("the agent linked");
+    let path = format!("{}:{}", agent.display(), set_path(&["flume", "sluice"]));
+    // Flume runs a place's steps, sluice's among them, under the login
+    // shell's PATH, which a reader's nix profile gives the set; the
+    // scratch home's login profile gives it the set's.
+    write_text(
+        &format!("PATH='{}'\nexport PATH\n", set_path(&["flume", "sluice"])),
+        &scratch.home.join(".profile"),
+    );
+
+    let began = std::time::Instant::now();
+    let mut said_last = String::new();
+    let mut ran: Vec<String> = Vec::new();
+    let mut sent = false;
+    let landed = loop {
+        let status = carried(scratch, &state.bare, 1);
+        if let Some(status) = status
+            .as_ref()
+            .filter(|status| landed_commit(status).is_some())
+        {
+            break status.clone();
+        }
+        assert!(
+            began.elapsed() < LANDING_WITHIN,
+            "the fix is not carried landed within {LANDING_WITHIN:?}; the agents run: {ran:?}; \
+             the last pass: {said_last}; the runner's branch carries: {}",
+            status.map(|status| status.to_string()).unwrap_or_default()
+        );
+        if status.is_some_and(|status| status["submission"]["held"] == true) && !sent {
+            state.commit(
+                "home/main",
+                "requests.rec",
+                &records::file(records::REQUESTS, &[fix_of_main(), send_of_fix()]),
+            );
+            sent = true;
+        }
+        let output = on_scratch(scratch, env!("CARGO_BIN_EXE_boomdrive"), &path)
+            .args(["run", "--once"])
+            .output()
+            .expect("the runner runs");
+        said_last = said(&output);
+        let listed = on_scratch(scratch, set_program("flume"), &path)
+            .args(["--json", "status"])
+            .output()
+            .expect("the set's Flume runs");
+        let listed: Value = serde_json::from_slice(&listed.stdout).expect("Flume's status is JSON");
+        for place in listed["status"]["places"].as_array().into_iter().flatten() {
+            let Some(printed) = place["agent"]["printed"].as_str() else {
+                continue;
+            };
+            if ran.iter().any(|run| run == printed) {
+                continue;
+            }
+            let output = on_scratch(scratch, "sh", &path)
+                .args(["-c", printed])
+                .output()
+                .expect("sh runs");
+            assert_eq!(
+                output.status.code(),
+                Some(0),
+                "{printed}: {}",
+                said(&output)
+            );
+            ran.push(printed.to_string());
+        }
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    };
+    assert!(sent, "the fix landed with no send: {landed}");
+    assert_eq!(ran.len(), 1, "{ran:?}");
+    assert_eq!(landed["identity"], "flume/fix@1", "{landed}");
+    assert_eq!(landed["mark"], "boomdrive:home/1", "{landed}");
+    assert_eq!(
+        landed_commit(&landed),
+        Some(&Value::from(origin.tip("main"))),
+        "{landed}"
+    );
+    assert_eq!(
+        scratch.git(&origin.bare, &["show", "main:change.txt"]) + "\n",
+        "the stand-in's change\n"
+    );
+
+    let output = on_scratch(scratch, "sh", &path)
+        .arg(step_file("both/watch.sh"))
+        .output()
+        .expect("sh runs");
+    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
 }
