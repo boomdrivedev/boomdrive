@@ -36,7 +36,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - its outputs, of `{ nixpkgs, boomdrive, ... }`, give `nixosConfigurations.your-host` from `./configuration.nix`, `boomdrive.nixosModules.default` and `./boomdrive.nix`.
 
   The case `"quick start: NixOS's flake"` imports it and reads `inputs.boomdrive.url` as README's address. It calls `outputs` with a `nixpkgs` whose `lib.nixosSystem` gives back its arguments, and a `boomdrive` whose `nixosModules.default` is a marker. The configuration's `modules` are then `./configuration.nix`, the marker and the path of `site/src/start/nixos/boomdrive.nix`. This proves "The host's flake" (design Decision 8). Done when `sluice exec main -- moon run nix:test` passes.
-- [ ] 3.2 `site/src/start/nixos/boomdrive.nix` is the module of design Decision 4. It sets:
+- [x] 3.2 `site/src/start/nixos/boomdrive.nix` is the module of design Decision 4. It sets:
   - the cache and its key as the root's `flake.nix` `nixConfig` names them;
   - nixpkgs' `git`, `gh` and `nodejs` in the system's packages;
   - `services.boomdrive`, with `user = "you"`, the account `me`'s drive `home` keeping `your-github-name`'s `your-repository`, and `control_plane.type = "crew"`;

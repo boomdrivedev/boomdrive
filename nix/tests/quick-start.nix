@@ -105,8 +105,73 @@ let
         "nixos/flake.nix's your-host is of ${
           if builtins.isList modules then lib.concatMapStringsSep ", " describe modules else "no modules"
         }, not ${lib.concatMapStringsSep ", " describe want}";
+  # NixOS's drive: a system of x86_64-linux whose normal user is you, of
+  # the set's module and the drive step's file alone, as the host's flake
+  # gives them (design Decision 8).
+  render = import ../modules/toml.nix { inherit lib; };
+  inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
+  drive = t.nixosOf [
+    { users.users.you.isNormalUser = true; }
+    t.outputs.nixosModules.default
+    (start + "/nixos/boomdrive.nix")
+  ];
+  nixosDrive =
+    let
+      inherit (drive) config;
+      file = builtins.fromTOML (render (fileOf config.services.boomdrive));
+      crewTable = file.control_plane.crew or null;
+      partitions = map (partition: {
+        inherit (partition) label state machine;
+      }) config.services.crew.settings.partitions;
+      holdsEach =
+        setting: wanted:
+        t.expect (lib.all (value: builtins.elem value (config.nix.settings.${setting} or [ ])) wanted)
+          "the drive's system's nix.settings.${setting} is ${
+            toString (config.nix.settings.${setting} or [ ])
+          }, not nixConfig's ${toString wanted}";
+    in
+    t.expect (t.failures drive == [ ]) "the drive's system fails: ${toString (t.failures drive)}"
+    ++ t.expect (
+      config.services.boomdrive.user == "you"
+    ) "the runner's user is ${config.services.boomdrive.user}, not you"
+    ++ t.expect (
+      file.accounts == {
+        me.drives.home.repositories = [ "your-github-name/your-repository" ];
+      }
+    ) "the runner's file's accounts are ${builtins.toJSON file.accounts}"
+    ++ t.expect (
+      (file.control_plane.type or null) == "crew"
+    ) "the runner's file's control plane is no crew"
+    ++ t.expect (
+      crewTable == {
+        host = "your-host";
+        partitions = [
+          {
+            label = "home";
+            state_repository = "your-github-name/drive-state";
+          }
+        ];
+      }
+    ) "the runner's file's crew table is ${builtins.toJSON crewTable}"
+    ++ t.expect (
+      partitions == [
+        {
+          label = "home";
+          state = "your-github-name/drive-state";
+          machine = "your-host";
+        }
+      ]
+    ) "crew's partitions are ${builtins.toJSON partitions}"
+    ++
+      t.expect ((config.services.flume.settings.host.multiplexer or null) == "herdr")
+        "Flume's host multiplexer is ${
+          toString (config.services.flume.settings.host.multiplexer or "none")
+        }, not herdr"
+    ++ holdsEach "extra-substituters" t.flake.nixConfig.extra-substituters
+    ++ holdsEach "extra-trusted-public-keys" t.flake.nixConfig.extra-trusted-public-keys;
 in
 {
   "quick start: the Mac's install" = macInstall;
   "quick start: NixOS's flake" = nixosFlake;
+  "quick start: NixOS's drive" = nixosDrive;
 }
