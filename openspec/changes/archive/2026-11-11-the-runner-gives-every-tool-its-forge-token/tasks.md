@@ -126,4 +126,4 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 7. The specs
 
-- [ ] 7.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-gives-every-tool-its-forge-token --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 7.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runner-gives-every-tool-its-forge-token --yes`, `sluice exec main -- moon run root:specs` passes.

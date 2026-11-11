@@ -150,7 +150,7 @@ Not taken:
 boomdrive forge-token [--config <file>] <get|erase>
 ```
 
-The operation is a `clap::ValueEnum`, so any other, `store` among them, is clap's usage error on standard error, exit 2. `forge_token::main(config, operation)` runs it. `forge_token::answer(config, operation, input, output, forge) -> Result<(), Refused>` is the whole of it but the reading of the configuration, so the tests run it in-process against a fake API (Decision 9).
+The operation is a `clap::ValueEnum`, so any other, `store` among them, is clap's usage error on standard error, exit 2. clap's error for a value names no usage, so `main` adds the subcommand's usage to it. `forge_token::main(config, operation)` runs it. `forge_token::answer(config, operation, input, output, forge) -> Result<(), Refused>` is the whole of it but the reading of the configuration, so the tests run it in-process against a fake API (Decision 9).
 
 In order:
 
@@ -234,7 +234,7 @@ Not taken: **comparing `[control_plane]`'s `type` with `"hosted"`** in `config.r
 - `app_id`, `types.ints.positive`;
 - `key_file`, `types.str`. A Nix path value fails the type, so a key is never copied into the store.
 
-An assertion fails evaluation where `key_file` begins with the store directory, `builtins.storeDir`. Its words: `services.boomdrive.settings.forge.key_file lies in the Nix store, which every user reads: name the App's key by a path outside it, absolute or under ~/`. The credential guard passes `key_file`, which ends in no credential's word.
+An assertion fails evaluation where `key_file` begins with the store directory, `builtins.storeDir`, or with `/nix/store`, which the runner refuses too: the gate's checks evaluate against a store directory of their own. Its words: `services.boomdrive.settings.forge.key_file lies in the Nix store, which every user reads: name the App's key by a path outside it, absolute or under ~/`. The credential guard passes `key_file`, which ends in no credential's word.
 
 `nix/tests/settings.nix`'s crew value gains `forge = { app_id = 1; key_file = "~/.config/boomdrive/app.pem"; }`. `nix/tests/files/crew.toml` is rendered again with it, and `tests/module_files.rs` reads it with the runner's reader. The runner refuses `[forge]` beside a hosted control plane, one home for that refusal, as sluice's core.51 leaves a value sluice refuses to sluice. The module does not refuse it too.
 

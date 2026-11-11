@@ -1,3 +1,9 @@
+# Forge tokens
+
+## Purpose
+
+How the runner gives every tool on its host a short-lived forge token for a served repository, on a host whose control plane does not hold the Boomdrive App: it mints one from the App's key its configuration's `[forge]` names, gives it in git's credential-helper protocol by `boomdrive forge-token`, keeps one for each repository for its own fetches, and refuses on a cloud host until the protocol carries a token (record 0007 as amended on 2026-11-09 and 2026-11-11; core.28, core.33).
+
 ## ADDED Requirements
 
 ### Requirement: The runner mints a token for one repository from the App's key
