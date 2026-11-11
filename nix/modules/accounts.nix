@@ -5,10 +5,13 @@
 # order, as `{ account, name, machine, stream, addresses }`, its addresses
 # `<owner>/<name>`, owner by owner in the order of the owners' names, each
 # owner's names in the order given: nix keeps no order of an attribute
-# set's names, so the owners' names give it. `fileOf` is the table the
-# runner's file is rendered from: `settings`, with `accounts` from
-# `accounts`, every account's `drives` and every drive's `repositories`
-# always written. A drive's stream and machine are the modules' options,
+# set's names, so the owners' names give it. `hereOf host` keeps the
+# drives of this host, those that name no machine or name `host`, which
+# Flume's streams and the launcher's entries are both made from (design
+# Decision 5 of the change each-drive-opens-from-the-launcher). `fileOf` is
+# the table the runner's file is rendered from: `settings`, with `accounts`
+# from `accounts`, every account's `drives` and every drive's
+# `repositories` always written. A drive's stream and machine are the modules' options,
 # never keys of the runner's file (core.5).
 { lib }:
 let
@@ -30,6 +33,10 @@ in
         }) drives
       ) accounts
     );
+
+  # The drives of this host: those that name no machine, or `host`, this
+  # host's name as services.crew.host gives it, null where it is not set.
+  hereOf = host: lib.filter (drive: drive.machine == null || drive.machine == host);
 
   fileOf =
     cfg:
