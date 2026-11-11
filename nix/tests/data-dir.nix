@@ -87,22 +87,19 @@ in
 
   "The data folder on NixOS" = gives (t.nixosSystem { }) nixosHomeData "NixOS";
 
-  "The data folder of another user on NixOS" =
-    gives
-      (t.nixosOf [
-        t.outputs.nixosModules.default
-        {
-          services.boomdrive = {
-            enable = true;
-            user = "bob";
-          };
-        }
-      ])
-      "/home/bob/.local/share/boomdrive"
-      "NixOS, the user bob";
+  "The data folder of another user on NixOS" = gives (t.nixosOf [
+    t.outputs.nixosModules.default
+    {
+      services.boomdrive = {
+        enable = true;
+        user = "bob";
+      };
+    }
+  ]) "/home/bob/.local/share/boomdrive" "NixOS, the user bob";
 
   "A job given its own XDG_DATA_HOME on NixOS" =
-    gives (nixosGiven "/srv/data") "/srv/data/boomdrive" "NixOS, XDG_DATA_HOME /srv/data";
+    gives (nixosGiven "/srv/data") "/srv/data/boomdrive"
+      "NixOS, XDG_DATA_HOME /srv/data";
 
   "An XDG_DATA_HOME the runner takes as unset on NixOS" =
     gives (nixosGiven "data") nixosHomeData "NixOS, XDG_DATA_HOME data"
