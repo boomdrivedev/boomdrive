@@ -10,16 +10,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794191286,
-        "narHash": "sha256-mrUXq4IRqupGcs/K+XqtL6UmKgjm3OxTtELXcYtgvUs=",
+        "lastModified": 1794337313,
+        "narHash": "sha256-9mLvHrFTa5d9xx4v5VuaasRe5I6rcowrlTeMYeGyU6M=",
         "owner": "agentplot",
         "repo": "crew",
-        "rev": "0563aa90dcd1bc4b781211f4e4db6173f41d46a5",
+        "rev": "6698fdaef7c6eb2b1ec34808f1d7a9c016d85622",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.50.2",
+        "ref": "v0.59.0",
         "repo": "crew",
         "type": "github"
       }

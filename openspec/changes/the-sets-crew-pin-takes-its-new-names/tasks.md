@@ -7,7 +7,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The set's crew, by crew's names
 
-- [ ] 1.1 `flake.nix` names crew `v0.59.0`, and the lock moves with it alone. `flake.nix` takes `inputs.crew.packages.<system>.crew` unchanged, and `nix/packages/crew.nix` is removed (design Decisions 1 and 2; Task notes 1.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving "Every system's packages" and "Each tag is the lock's".
+- [x] 1.1 `flake.nix` names crew `v0.59.0`, and the lock moves with it alone. `flake.nix` takes `inputs.crew.packages.<system>.crew` unchanged, and `nix/packages/crew.nix` is removed (design Decisions 1 and 2; Task notes 1.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving "Every system's packages" and "Each tag is the lock's".
 - [ ] 1.2 `options.nix` writes the runner's crew table from crew's `drives` whose `machine` is `services.crew.host`, in label order, and its failures, descriptions and comments name crew's drives. `settings.nix`'s fixtures give crew's settings by crew's names, with `hosts`. The cases on crew's partitions take crew's drives, and `packages.nix`'s crew case holds the set's crew to crew's flake's own derivation (design Decisions 2, 3, 5 and 7; Task notes 1.2). True when `sluice exec main -- moon run nix:test` passes, proving:
   - "crew through its own flake";
   - "crew's drives on this host" and "A table written out wins", each on nix-darwin and on NixOS;
