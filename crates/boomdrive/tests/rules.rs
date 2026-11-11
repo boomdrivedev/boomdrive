@@ -233,10 +233,10 @@ fn only_crews_crate_names_crew() {
 /// implementation; `boomdrive-crew` on `boomdrive-control`, weir-branch and
 /// weir-capture; `boomdrive-hosted` on `boomdrive-control` alone of the
 /// tree's crates; and the binary's crate on the interface and the
-/// implementations it lists. Record 0042 and core.58: `boomdrive-bounded`,
-/// which runs a git call to a remote to its limit, depends on none of the
-/// tree's crates, and the binary's crate and crew's implementation depend
-/// on it.
+/// implementations it lists. Record 0042 as amended on 2026-11-11 and
+/// core.58: weir's crate `weir-bounded`, which runs a git call to a remote
+/// to the family's limit, is the binary's crate's and crew's
+/// implementation's, and no crate of the tree's own holds it.
 #[test]
 fn the_crates_depend_as_decision_1_has_them() {
     let by_path: BTreeMap<String, BTreeSet<String>> = crates()
@@ -249,30 +249,32 @@ fn the_crates_depend_as_decision_1_has_them() {
         BTreeMap::from([
             (
                 "boomdrive".to_string(),
-                set(&[
-                    "boomdrive-bounded",
-                    "boomdrive-control",
-                    "boomdrive-crew",
-                    "boomdrive-hosted"
-                ])
+                set(&["boomdrive-control", "boomdrive-crew", "boomdrive-hosted"])
             ),
-            ("boomdrive-bounded".to_string(), set(&[])),
             ("boomdrive-control".to_string(), set(&[])),
-            (
-                "boomdrive-crew".to_string(),
-                set(&["boomdrive-bounded", "boomdrive-control"])
-            ),
+            ("boomdrive-crew".to_string(), set(&["boomdrive-control"])),
             ("boomdrive-hosted".to_string(), set(&["boomdrive-control"])),
         ])
     );
     let crew = manifest("boomdrive-crew");
     let dependencies = crew["dependencies"].as_table().expect("its dependencies");
-    for name in ["boomdrive-control", "weir-branch", "weir-capture"] {
+    for name in [
+        "boomdrive-control",
+        "weir-branch",
+        "weir-capture",
+        "weir-bounded",
+    ] {
         assert!(
             dependencies.contains_key(name),
             "boomdrive-crew lacks {name}"
         );
     }
+    let binary = manifest("boomdrive");
+    let dependencies = binary["dependencies"].as_table().expect("its dependencies");
+    assert!(
+        dependencies.contains_key("weir-bounded"),
+        "boomdrive lacks weir-bounded"
+    );
 }
 
 /// core.2 and core.42, the control-plane-interface spec's "Only the
@@ -475,7 +477,6 @@ fn moons_files_are_read() {
         built("boomdrive"),
         BTreeSet::from([
             "boomdrive".to_string(),
-            "boomdrive-bounded".to_string(),
             "boomdrive-control".to_string(),
             "boomdrive-crew".to_string(),
             "boomdrive-hosted".to_string()
