@@ -75,6 +75,12 @@ ureq = { version = "3", default-features = false, features = [
   "rustls",
   "platform-verifier",
 ] }
+# A mint's JWT, signed with the Boomdrive App's key, RS256, as sluice signs
+# one (record 0007 as amended on 2026-11-11).
+jsonwebtoken = "9"
+# The tests' key for the App, made at run time from the system's randomness
+# and written as PEM, since no key is committed (core.4).
+rsa = { version = "0.9", features = ["getrandom", "pem"] }
 # The host's key in the macOS keychain, by keyring v4's macOS store, and
 # keyring's mock store, which a test keeps it in (design Decisions 3 and
 # 14; core.32).
@@ -101,3 +107,8 @@ futures-util = { version = "0.3", default-features = false, features = [
 # `boomdrive enroll`'s one-time token, read without echo where standard
 # input is a terminal (design Decision 4; core.4).
 rpassword = "7"
+
+# The tests' key for the App, made at run time, in well under a second
+# with its arithmetic optimized (record 0007 as amended on 2026-11-11).
+[profile.dev.package.num-bigint-dig]
+opt-level = 3
