@@ -135,7 +135,8 @@ in
 
   # The README names each option that installs a tool of the set, which
   # replace services.boomdrive.tools, and the shell (design Decision 6;
-  # the change herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents).
+  # the change herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents),
+  # crew's companions' among them.
   "The README's words" =
     lib.concatMap
       (
@@ -151,6 +152,9 @@ in
         "services.boomdrive.ghostty.package"
         "services.boomdrive.portless.package"
         "services.boomdrive.launcher.package"
+        "services.boomdrive.pendingyou.package"
+        "services.boomdrive.plannotator.package"
+        "services.boomdrive.plannotator-tui.package"
         "nix develop github:agentplot/boomdrive"
       ]
     ++ t.expect (
@@ -186,6 +190,33 @@ in
       [
         "portless service install"
         "portless trust"
+      ];
+
+  # The README names crew's companions, their sign-in, Pending You's
+  # folder and the set's marketplace, and says no Claude Code home is
+  # installed into yet (design Decision 11 of the change
+  # crews-companions-come-with-the-flake).
+  "The README's companions" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
+      )
+      [
+        "Pending You"
+        "Plannotator"
+        "plannotator-tui"
+        "pendingyou-herdr-plugin"
+        "plannotator-herdr-plugin"
+        "github:agentplot/boomdrive#pendingyou"
+        "github:agentplot/boomdrive#plannotator"
+        "github:agentplot/boomdrive#plannotator-tui"
+        "pendingyou-signin"
+        "boomdrive-claude-plugins"
+        "~/.config/pendingyou"
+        "crew's module is on"
+        "stay the command line's own"
+        "installed into no Claude Code home yet"
       ];
 
   "The README's lines" =

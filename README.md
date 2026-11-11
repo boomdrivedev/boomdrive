@@ -262,9 +262,23 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
 - portless, from its source at its release tag, built by this flake's
   recipe, as portless publishes no flake, and run on the flake's
   Node.js 24. It gives each worktree's dev server a `.localhost`
-  address, and crew's board reads its routes.
+  address, and crew's board reads its routes;
+- crew's companions: Pending You, which posts the cards a session waits
+  on a person for and wakes the session when one is answered, as
+  Pending You publishes it on npm, since its source tags no release, and
+  run on the flake's Node.js 24; Plannotator, which reviews a plan in
+  the browser, and plannotator-tui, which reviews a document in a herdr
+  pane beside the agent's, each through numtide/llm-agents.nix's flake,
+  which builds it from its source at its release tag;
+- their herdr plugins, Pending You for Herdr, `pendingyou-herdr-plugin`,
+  and Annotate, `plannotator-herdr-plugin`, at the commits the lock
+  names: Annotate's `bin` holds its runtime, built from its own source,
+  and the set's plannotator-tui, so herdr's link fetches nothing;
+- the set's marketplace of the companions' Claude Code plugins,
+  `boomdrive-claude-plugins`: a marketplace named `boomdrive` holding
+  Pending You's hooks, wake mod and skill, and Plannotator's own plugin.
 
-Each tool reports its tag's version, and the set is the one the
+Each tool reports its release's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
 the flake gives it nothing. git alone is the host's own.
 
@@ -274,8 +288,11 @@ host runs crew:
     nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
 
 The same line may add `github:agentplot/boomdrive#herdr`,
-`github:agentplot/boomdrive#ghostty` and
-`github:agentplot/boomdrive#portless`.
+`github:agentplot/boomdrive#ghostty`,
+`github:agentplot/boomdrive#portless`, and crew's companions,
+`github:agentplot/boomdrive#pendingyou`,
+`github:agentplot/boomdrive#plannotator` and
+`github:agentplot/boomdrive#plannotator-tui`.
 
 An older nix spells it `nix profile install`. nix asks whether to
 accept the flake's `nixConfig`, which names the family's cache,
@@ -514,6 +531,51 @@ yours to run. On NixOS, whose trust store the host's configuration
 writes, `portless trust` fails: add portless's certificate authority to
 `security.pki` yourself, or run portless with `--no-tls`.
 
+Where crew's module is on too, `services.crew.enable`, the runner's
+module also installs crew's companions:
+
+- It installs Pending You, Plannotator and plannotator-tui,
+  `services.boomdrive.pendingyou.package`,
+  `services.boomdrive.plannotator.package` and
+  `services.boomdrive.plannotator-tui.package`, and adds their herdr
+  plugins, Pending You for Herdr and Annotate, to the plugins' default
+  after Flume's and sluice's.
+- At each switch, as the runner's user, it writes Pending You's folder,
+  `~/.config/pendingyou`, before it links the plugins: the launcher
+  Pending You's hooks run, `bin/pendingyou-hook`, and its MCP server's
+  headers helper, `bin/pendingyou-mcp-headers`, each running the
+  Pending You it installs; the manifest, `claude-code.json`; and the
+  sign-in's Claude folder, `signin/.claude.json`. Each is a regular file,
+  written whole and only where it differs, and a missing folder is made
+  for you alone. Pending You's sign-ins, the computer's key, its cards
+  and its state stay the command line's own, and the switch touches none
+  of them. In a session crew started, the launcher runs Pending You's
+  Stop check and throws its verdict away, since an agent's last words
+  are for its conductor.
+- It installs `pendingyou-signin`, the one command you run, once for the
+  computer, to sign Pending You in: Claude Code's connection, with the
+  folder's own Claude folder, then herdr's popup. Each approval is
+  yours, in the browser or by a code on your phone, and no switch runs
+  it.
+
+Each of the three is the set's by default, and each may name the host's
+own package instead, or `null` for none. With Pending You `null`, no
+folder is written and no `pendingyou-signin` installed. Without the
+runner or without crew, none of them is installed:
+
+```nix
+services.boomdrive.pendingyou.package = null;
+services.boomdrive.plannotator.package = null;
+services.boomdrive.plannotator-tui.package = null;
+```
+
+The companions' Claude Code plugins, the set's marketplace
+`boomdrive-claude-plugins`, are installed into no Claude Code home yet:
+no switch runs `claude` or writes into a Claude Code home, and Claude
+Code stays yours. Which sessions get the plugins, and Pending You's MCP
+server with them, waits on a decision, point 3 of record 0044, and until
+it is made the set installs them into no home.
+
 With no herdr package, or no plugin, nothing is linked. A host with a
 herdr of its own may give it as `services.boomdrive.herdr.package`, and
 the plugins are linked with it. A host with no display sets Ghostty and
@@ -522,15 +584,16 @@ keeps a Ghostty of its own in `/Applications` sets the set's `null`, so
 macOS opens one Ghostty.
 
 The flake also gives a shell, its `PATH` the set's runner, Flume,
-sluice, crew, herdr and portless, that starts herdr on entering and
-leaves you in the shell when herdr ends:
+sluice, crew, herdr, portless, Pending You, Plannotator and
+plannotator-tui, that starts herdr on entering and leaves you in the
+shell when herdr ends:
 
     nix develop github:agentplot/boomdrive
 
 A command run through it, `nix develop github:agentplot/boomdrive
 --command <command>`, starts no herdr, and neither does a shell entered
-from inside herdr. The shell links no plugin: the modules do. It starts
-no proxy of portless's. This repository's own development shell is
+from inside herdr. The shell links no plugin and writes no folder of
+Pending You's: the modules do. It starts no proxy of portless's. This repository's own development shell is
 devenv's.
 
 Under a hosted control plane, enroll each partition after the switch,
@@ -547,7 +610,9 @@ Mac whose only git is Apple's, where that is older, puts a newer one in
 a profile, as `environment.systemPackages = [ pkgs.git ];` does.
 
 The set gives each tool's herdr plugin, `flume-herdr-plugin` and
-`sluice-herdr-plugin`, at its tool's tag, which the modules link. A host
+`sluice-herdr-plugin`, at its tool's tag, and crew's companions',
+`pendingyou-herdr-plugin` and `plannotator-herdr-plugin`, at the
+commits the lock names, which the modules link. A host
 without them links one with herdr's own command. Build it to a link of
 your own, which keeps nix's garbage collector from it, and link that:
 
