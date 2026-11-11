@@ -120,6 +120,21 @@ let
           builtins.toJSON ((sourcesOf evaluated).crew or null)
         }, not ${builtins.toJSON crewSource}";
 
+  # A host's own kinds folder for crew, at the normal priority (design
+  # Decision 4).
+  hostsOwn =
+    platform:
+    { system, ... }:
+    holds platform
+      (system {
+        imports = [ crewOn ];
+        services.flume.sources.crew.kinds_dir = "/srv/kinds/crew";
+      })
+      {
+        kinds_dir = "/srv/kinds/crew";
+        inherit (crewSource) roles;
+      };
+
   # The path crew's own source, at the crew the lock names, gives the line
   # `<prefix> = Path.home() / "<path>"`, as `~/<path>`; null where no line
   # of it matches (design Decision 5).
@@ -150,6 +165,7 @@ in
 onEach "crew's source with crew on" crewOnSource
 // onEach "No source of crew's with crew off" crewOff
 // onEach "crew's source without the runner" runnerOff
+// onEach "A host's own kinds folder for crew" hostsOwn
 // {
   "The paths the set's crew writes" =
     writtenBy "roles" "ROLES_FILE" ++ writtenBy "kinds_dir" "KINDS_DIR";
