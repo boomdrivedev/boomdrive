@@ -19,7 +19,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The words
 
-- [ ] 3.1 The README's **Installing with nix**, after the paragraph on the agent and the unit, names `services.boomdrive.dataDir` as design Decision 5 has it. `nix/tests/data-dir.nix` gains the case "The README's data folder", which holds `t.installing` to naming `services.boomdrive.dataDir` and saying `read-only` (design Decision 5). True when `sluice exec main -- moon run nix:test` passes, proving "The README's data folder". "The README's words" and "The README's accounts" must still hold.
+- [x] 3.1 The README's **Installing with nix**, after the paragraph on the agent and the unit, names `services.boomdrive.dataDir` as design Decision 5 has it. `nix/tests/data-dir.nix` gains the case "The README's data folder", which holds `t.installing` to naming `services.boomdrive.dataDir` and saying `read-only` (design Decision 5). True when `sluice exec main -- moon run nix:test` passes, proving "The README's data folder". "The README's words" and "The README's accounts" must still hold.
 - [ ] 3.2 The table keeps to the tree's formatters. True when `devenv shell -- treefmt --ci nix/tests/data-dirs.json` passes.
 
 ## 4. The specs

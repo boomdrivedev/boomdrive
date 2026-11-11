@@ -108,4 +108,8 @@ in
   "A host that sets the data folder on NixOS" = refuses (t.nixosSystem {
     services.boomdrive.dataDir = "/srv/boomdrive";
   }) "NixOS";
+
+  "The README's data folder" =
+    t.expect (lib.hasInfix "services.boomdrive.dataDir" (toString t.installing)) "the README's Installing with nix names no services.boomdrive.dataDir"
+    ++ t.expect (lib.hasInfix "read-only" (toString t.installing)) "the README's Installing with nix does not say services.boomdrive.dataDir is read-only";
 }
