@@ -452,15 +452,32 @@ folder, which each module names as `services.boomdrive.dataDir`:
 `$XDG_DATA_HOME/boomdrive` where the runner's job is given an absolute
 `XDG_DATA_HOME`, in the agent's `EnvironmentVariables` on nix-darwin
 and in the unit's `environment` on NixOS. The option is read-only: read
-it wherever the host names the folder or a clone in it, and set it
-nowhere, since evaluation fails where a host sets it. An
-`XDG_DATA_HOME` the job takes from elsewhere, launchd's user domain or
-the user manager's own environment, is not seen, so a host that moves
-the runner's data gives the job its own:
+it wherever the host names the folder, a clone's folder in it being
+`services.boomdrive.cloneDirs`'s, and set it nowhere, since evaluation
+fails where a host sets it. An `XDG_DATA_HOME` the job takes from
+elsewhere, launchd's user domain or the user manager's own environment,
+is not seen, so a host that moves the runner's data gives the job its
+own:
 
 ```nix
 launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables.XDG_DATA_HOME = "/srv/data";  # nix-darwin
 systemd.user.services.boomdrive.environment.XDG_DATA_HOME = "/srv/data";                       # NixOS
+```
+
+Each module states each kept repository's clone folder as
+`services.boomdrive.cloneDirs`: one entry for each address of
+`services.boomdrive.accounts`, every drive's of every account, another
+machine's drives among them, keyed by the address, `<owner>/<name>`,
+its folder `<dataDir>/repositories/<owner>/<name>`, the folder
+`flume launch --repository` names. It holds only the repositories
+`services.boomdrive.accounts` names, and none the runner's local layer
+alone adds. The option is read-only: read it wherever the host names a
+clone's folder, and set it nowhere, since evaluation fails where a host
+sets it or an entry of it. git run in the folder finds the bare
+repository by the folder's own `.git` file:
+
+```nix
+config.services.boomdrive.cloneDirs."agentplot/flume"  # ~/.local/share/boomdrive/repositories/agentplot/flume
 ```
 
 The runner's module puts the runner in the system profile, and each

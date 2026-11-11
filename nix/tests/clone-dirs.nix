@@ -156,6 +156,9 @@ in
       "agentplot/flume"
       "/Users/alice/.local/share/boomdrive/repositories/agentplot/flume"
       "nix-darwin, the runner not enabled";
+
+  "The README's clone folders" =
+    t.expect (lib.hasInfix "services.boomdrive.cloneDirs" (toString t.installing)) "the README's Installing with nix names no services.boomdrive.cloneDirs";
 }
 // onEach "The clone folder of another machine's drive" anotherMachine
 // onEach "The clone folders follow the data folder" followsData

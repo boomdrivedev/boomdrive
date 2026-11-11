@@ -20,7 +20,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The words
 
-- [ ] 3.1 The README's **Installing with nix** names `services.boomdrive.cloneDirs` as design Decision 6 has it, in a paragraph after `dataDir`'s with the reader's line as a nix block, and `dataDir`'s paragraph says a clone's folder is `cloneDirs`'s. `nix/tests/clone-dirs.nix` gains the case "The README's clone folders", which holds `t.installing` to naming `services.boomdrive.cloneDirs` (design Decision 6). True when `sluice exec main -- moon run nix:test` passes, proving "The README's clone folders" and the modified "The README's data folder". "The README's words" and "The README's accounts" must still hold.
+- [x] 3.1 The README's **Installing with nix** names `services.boomdrive.cloneDirs` as design Decision 6 has it, in a paragraph after `dataDir`'s with the reader's line as a nix block, and `dataDir`'s paragraph says a clone's folder is `cloneDirs`'s. `nix/tests/clone-dirs.nix` gains the case "The README's clone folders", which holds `t.installing` to naming `services.boomdrive.cloneDirs` (design Decision 6). True when `sluice exec main -- moon run nix:test` passes, proving "The README's clone folders" and the modified "The README's data folder". "The README's words" and "The README's accounts" must still hold.
 
 ## 4. The specs
 
