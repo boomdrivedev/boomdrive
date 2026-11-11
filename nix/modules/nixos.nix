@@ -6,7 +6,8 @@
 # own module, which flake.nix imports beside this one; tools.nix sets
 # their options, and each tool's user is the runner's unless the host
 # names its own (record 0023); drives.nix gives Flume's module each drive's
-# stream (record 0028). The unit runs `boomdrive run --config`
+# stream (record 0028), and sources.nix declares crew's source to Flume's
+# module (record 0034). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
 # the file at the runner's own path, links the herdr plugins apps.nix
@@ -78,6 +79,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     ./drives.nix
+    ./sources.nix
   ];
 
   options.services.boomdrive.user = lib.mkOption {
