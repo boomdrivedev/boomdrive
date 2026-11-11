@@ -24,4 +24,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The specs
 
-- [ ] 4.1 The change's delta archives into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-set-names-the-runners-data-folder --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.1 The change's delta archives into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-set-names-the-runners-data-folder --yes`, `sluice exec main -- moon run root:specs` passes.
