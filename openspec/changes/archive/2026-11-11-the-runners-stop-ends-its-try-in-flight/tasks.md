@@ -28,4 +28,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. The specs
 
-- [ ] 5.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runners-stop-ends-its-try-in-flight --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 5.1 The change's deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-runners-stop-ends-its-try-in-flight --yes`, `sluice exec main -- moon run root:specs` passes.
