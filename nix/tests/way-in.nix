@@ -78,6 +78,7 @@ let
     "sluice"
     "crew"
     "herdr"
+    "worktrunk"
   ];
 in
 {

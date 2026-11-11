@@ -19,7 +19,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 - [x] 2.1 `nix/modules/apps.nix` declares `services.boomdrive.worktrunk.package`, the set's `worktrunk` by default. With the runner enabled it installs it where it is not `null`, and without the runner it installs none (design Decision 3; Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "worktrunk with the runner", "A host's own worktrunk", "No worktrunk of the set's" and "No worktrunk without the runner" on nix-darwin and on NixOS.
 - [x] 2.2 The modules' default worktrunk is the flake's own whatever the host's `pkgs` (design Decision 3; core.47; Task notes 2.2). True when `sluice exec main -- moon run nix:test` passes, proving the binary-cache delta's "A host's own nixpkgs" with `worktrunk` on nix-darwin and on NixOS.
-- [ ] 2.3 `devShells.<system>.default` holds the set's worktrunk beside the runner, Flume, sluice, crew and herdr (design Decision 4; Task notes 2.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with six packages.
+- [x] 2.3 `devShells.<system>.default` holds the set's worktrunk beside the runner, Flume, sluice, crew and herdr (design Decision 4; Task notes 2.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with six packages.
 
 ## 3. The words
 
