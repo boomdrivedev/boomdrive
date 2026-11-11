@@ -13,6 +13,12 @@
 # the runner enabled, Flume's module is told herdr and Ghostty, its
 # `host.multiplexer` and `host.terminal_app`, each by default, so a host's
 # own wins, and whether or not the host keeps the set's herdr and Ghostty.
+# portless, which gives each worktree's dev server a `.localhost` address
+# and whose routes crew's board reads, is installed the same way, since it
+# gives no nix-darwin or NixOS module; the modules start no proxy of it and
+# trust no certificate authority of it, which are the person's (record
+# 0023 as amended on 2026-11-11; design Decisions 5 and 6 of the change
+# portless-comes-with-the-flake).
 { packages }:
 {
   config,
@@ -62,6 +68,7 @@ in
     };
     ghostty.package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed with the runner; a host's own replaces it, and `null` installs none.";
     launcher.package = installed "boomdrive-launcher" "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS and the desktop's applications on Linux, installed with the runner; a host's own replaces it, and `null` installs none.";
+    portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed with the runner; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
   };
 
   config = lib.mkIf cfg.enable {
@@ -69,6 +76,7 @@ in
       cfg.herdr.package
       cfg.ghostty.package
       cfg.launcher.package
+      cfg.portless.package
     ];
 
     # Flume's terminal and window (design Decision 7). `terminal` is the word

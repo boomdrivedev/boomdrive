@@ -25,6 +25,7 @@ let
           "crew"
           "flume"
           "herdr"
+          "portless"
           "sluice"
         ]
         && builtins.match "v[0-9]+\\.[0-9]+\\.[0-9]+" (show named) == null

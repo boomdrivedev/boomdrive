@@ -17,6 +17,7 @@ let
     "flume-herdr-plugin"
     "ghostty"
     "herdr"
+    "portless"
     "sluice"
     "sluice-herdr-plugin"
   ];
