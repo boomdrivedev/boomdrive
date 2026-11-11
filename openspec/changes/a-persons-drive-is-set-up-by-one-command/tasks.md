@@ -30,7 +30,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 3. crew's implementation sets up a drive
 
-- [ ] 3.1 `crates/boomdrive-crew/src/setup.rs` holds `ROLES`, crew's five roles in crew's order, `design`, `planner`, `reviewer`, `ops` and `operator`, and `Asked`: the state repository, blueprints, runs and review as setup's flags gave them, as text.
+- [x] 3.1 `crates/boomdrive-crew/src/setup.rs` holds `ROLES`, crew's five roles in crew's order, `design`, `planner`, `reviewer`, `ops` and `operator`, and `Asked`: the state repository, blueprints, runs and review as setup's flags gave them, as text.
   - **`held(table, teams_file, drive)`** reads, for the drive, the state repository from its partition in crew's table of the runner's file, and the blueprints, each role's runs and the review from the drive's entry in crew's file at version 6. A missing file, another version, or a drive the file does not name gives none of the file's.
   - **`settle(asked, held, repositories)`** fills each answer not asked from what is held, then from its own values: the first repository, `standing` for each role, `5` and `4`. A `--runs` changes its role alone. It refuses, as the host's to fix:
     - an address out of form;
@@ -39,7 +39,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
     - a review whose changes are not a whole number of at least 1, or whose hours are not a number above 0.
 
   `lib.rs` declares the module, its documentation citing record 0009's amendment of 2026-11-11 and design Decisions 2, 3 and 11. Its unit tests prove the setup spec's "The first setup's own answers", "A later setup keeps what crew's file holds", "One role changed", "A blueprints repository the drive does not keep", "A role crew does not have" and "A review of nothing". They are `the_first_setups_own_answers`, `a_later_setup_keeps_what_crews_file_holds`, `one_role_changed`, `a_blueprints_repository_the_drive_does_not_keep`, `a_role_crew_does_not_have` and `a_review_of_nothing`, with `held` reading a file the test writes. Done when `devenv shell -- cargo test -p boomdrive-crew --lib setup::` passes.
-- [ ] 3.2 `drive_set(settled, drive, account, host, folder, kept)` gives `crew drive set`'s arguments. They are `drive set <drive> --json`, then each flag in the order the setup spec's "crew names the drive by its own command" lists. `kept` is each repository with its clone's folder and its view, and no `--flume`, `--roles` or `--console` is ever given (design Decision 4). Its unit tests are:
+- [x] 3.2 `drive_set(settled, drive, account, host, folder, kept)` gives `crew drive set`'s arguments. They are `drive set <drive> --json`, then each flag in the order the setup spec's "crew names the drive by its own command" lists. `kept` is each repository with its clone's folder and its view, and no `--flume`, `--roles` or `--console` is ever given (design Decision 4). Its unit tests are:
   - `crews_flags_are_the_drives_answers`, which proves "crew's flags" with `/h` as the home;
   - `no_flume_is_ever_passed`, which proves "No --flume for any role" over every role run either way.
 

@@ -11,6 +11,10 @@ pub mod ids;
 pub mod read;
 pub mod records;
 pub mod roles;
+/// A drive's setup under crew, crew's side of `boomdrive setup` (record
+/// 0009 as amended 2026-11-11; design Decisions 2, 3 and 11 of the change
+/// a-persons-drive-is-set-up-by-one-command).
+pub mod setup;
 pub mod write;
 
 use boomdrive_control::{
