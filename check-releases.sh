@@ -2,8 +2,9 @@
 # The releases spec (record 0024, core.48), proven in scratch repositories
 # made in a temporary directory: release.sh's next tag and its notes under
 # the tree's cliff.toml, release-preview beside them, check-commits.sh
-# under the tree's .versionrc, set-version.sh on scratch copies of the
-# tree's manifests, and the workflow release read line by line.
+# under the tree's .versionrc, set-version.sh and check-versions.sh on
+# scratch copies of the tree's manifests, and the workflow release read
+# line by line.
 # The scratch repositories' git reads no configuration of the host's, and
 # their names are neutral (core.41).
 set -eu
@@ -356,6 +357,43 @@ if [ "$code" -eq 1 ] && cmp -s "$scratch/nowhere.Cargo.toml" "$copy/Cargo.toml" 
   esac
 else
   fail "set-version.sh exits $code on a Cargo.toml with no version, or changes it: $said"
+fi
+
+# check-versions.sh passes on a copy of the tree's manifests, which
+# root:versions holds to main's.
+manifests main
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  pass "check-versions.sh passes a copy of the tree's manifests"
+else
+  fail "check-versions.sh fails a copy of the tree's manifests: $said"
+fi
+
+# Scenario: A version where main's should be.
+manifests released
+sh "$tree/set-version.sh" 0.8.0 "$copy" 2>>"$copy.log"
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  fail "check-versions.sh passes a copy that set-version.sh 0.8.0 wrote"
+else
+  case $said in
+  *Cargo.toml*0.8.0*) pass "check-versions.sh fails a copy that set-version.sh 0.8.0 wrote, naming Cargo.toml and 0.8.0" ;;
+  *) fail "check-versions.sh fails a copy that set-version.sh 0.8.0 wrote without naming Cargo.toml and 0.8.0: $said" ;;
+  esac
+fi
+
+# Scenario: A crate's entry that differs.
+manifests differs
+awk '
+  /^name = "/ { entry = $0 }
+  entry == "name = \"boomdrive-control\"" && /^version = "/ { $0 = "version = \"0.8.0\""; entry = "" }
+  { print }
+' "$tree/Cargo.lock" >"$copy/Cargo.lock"
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  fail "check-versions.sh passes a Cargo.lock that gives boomdrive-control 0.8.0"
+else
+  case $said in
+  *0.8.0*boomdrive-control* | *boomdrive-control*0.8.0*) pass "check-versions.sh fails a Cargo.lock that gives boomdrive-control 0.8.0, naming the crate and 0.8.0" ;;
+  *) fail "check-versions.sh fails a Cargo.lock that gives boomdrive-control 0.8.0 without naming the crate and 0.8.0: $said" ;;
+  esac
 fi
 
 # Scenarios: The workflow's trigger, A release. The workflow as yamlfmt
