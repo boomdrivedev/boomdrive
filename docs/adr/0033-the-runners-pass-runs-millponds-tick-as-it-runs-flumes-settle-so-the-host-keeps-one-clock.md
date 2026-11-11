@@ -1,7 +1,7 @@
 ---
 number: 33
 title: The runner's pass runs millpond's tick as it runs Flume's settle, so the host keeps one clock
-status: proposed
+status: accepted
 date: 2026-11-09
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # The runner's pass runs millpond's tick as it runs Flume's settle, so the host keeps one clock
 
-Status: proposed on 2026-11-09 by the research talk `the-superfan-watches-the-family-at-work` (agentplot/crew, branch `research/the-superfan-watches-the-family-at-work`), until the user has seen it as a record and says yes. No unit is queued from it while it is proposed, and none before millpond's tick exists.
+Status: accepted by the user on 2026-11-11, on their card "Make the superfan plan official: a read-only Claude session per tool every 4 hours, reporting what it finds?": "Approved". Proposed on 2026-11-09 by the research talk `the-superfan-watches-the-family-at-work` (agentplot/crew, branch `research/the-superfan-watches-the-family-at-work`). No unit is queued from it before millpond's tick exists.
 
 What the clock serves is the user's: one superfan for each tool, every four hours, its findings in millpond's capture pattern, and a watch beside the passes. Who runs the clock, and the runner's own watch, are the talk's, from the rules, with the paths not taken.
 
