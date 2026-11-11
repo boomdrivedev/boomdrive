@@ -649,6 +649,46 @@ let
       steps == [ ]
     ) "the ${platform} activation with no Pending You writes its folder: ${builtins.toJSON steps}";
 
+  # No activation step, launchd job or systemd unit of the modules' runs
+  # `claude` or names a Claude Code home or the set's marketplace (record
+  # 0044, point 3; design Decision 12 of the change
+  # crews-companions-come-with-the-flake): each one's text, as text, with
+  # the runner and crew on.
+  claudeWords = [
+    {
+      what = "runs claude";
+      holds = text: builtins.match "(.*[^A-Za-z0-9_.-])?claude([^A-Za-z0-9_.-].*)?" text != null;
+    }
+    {
+      what = "names .claude";
+      holds = text: builtins.match "(.*[^A-Za-z0-9_-])?\\.claude([^A-Za-z0-9_.-].*)?" text != null;
+    }
+    {
+      what = "names CLAUDE_CONFIG_DIR";
+      holds = lib.hasInfix "CLAUDE_CONFIG_DIR";
+    }
+  ];
+  noClaudeCode =
+    platform:
+    { system, set, ... }:
+    let
+      marketplace = builtins.unsafeDiscardStringContext set.boomdrive-claude-plugins.outPath;
+      steps = stepsOf platform (system crewOn);
+      oneLine = text: lib.replaceStrings [ "\n" ] [ " " ] text;
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: text:
+        lib.concatMap (
+          word: t.expect (!word.holds (oneLine text)) "the ${platform} system's ${name} ${word.what}"
+        ) claudeWords
+        ++ t.expect (
+          !lib.hasInfix marketplace text && !lib.hasInfix "boomdrive-claude-plugins" text
+        ) "the ${platform} system's ${name} names the set's marketplace"
+      ) steps
+    )
+    ++ t.expect (steps != { }) "the ${platform} system has no step, job or unit to read";
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -682,6 +722,7 @@ onEach "The way in with the runner" withRunner
 // onEach "The sign-in's two commands" signinRead
 // onEach "The launchers run the given Pending You" launchersRunGiven
 // onEach "No Pending You of the set's" noSetsPendingyou
+// onEach "No Claude Code of the modules'" noClaudeCode
 // {
   "The folder written on nix-darwin" = folderWritten "nix-darwin";
   "The folder written on NixOS" = folderOnNixOS;
