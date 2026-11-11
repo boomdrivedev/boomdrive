@@ -67,3 +67,18 @@ Amends point 1, whose `dir` each reader would otherwise join under `dataDir` its
 Consequences: the change `the-set-states-the-runners-folders` builds this amendment, and the change `the-set-gives-crew-each-kept-repositorys-folders` reads `cloneDirs` for each entry's `dir`. afterthought/swancloud reads `cloneDirs` in its doctor's manifest and its sluice drivers' jobs, and crew's kept repositories once the set gives them, once it takes a set that carries it. It then computes no clone's folder (its record 0059, decision 4).
 
 core.57's text and details are amended in this amendment's commit.
+
+## Amendment, 2026-11-11: crew's kept repositories
+
+Status: decided on 2026-11-11 by the construct stage of the change `the-set-gives-crew-each-kept-repositorys-folders`, on its brief, which builds point 1: "With crew's module on, the Boomdrive module gives crew's repositories an entry for each address the host's runner keeps, every drive's of every account, its dir the runner's clone and its checkout the runner's view, a check of the set failing where either differs from the runner's own, so a host writes none." The forms below are choices made on principle 14 and this record, each cheap to change. The change's design gives the path not taken for each.
+
+Gives point 1 its forms.
+
+- **With the runner and crew's module on.** Each platform module gives `services.crew.settings.repositories` one entry for each address of `services.boomdrive.cloneDirs`, its `dir` read from `cloneDirs` and its `checkout` the runner's view, only where the runner is enabled and crew's module is on. Each module gives it with its own user's home, since the view reads the job's home. Not taken: the map given with the runner off, which would name folders nothing makes, or with crew's module off, which nothing reads.
+- **The view by the runner's own rule.** The view is `<repository_root>/<owner>/<name>`: `~/Code` under the home where the runner's file names no root, a root beginning with `~/` under the home, and an absolute root as written, each join Rust's `PathBuf::push` (`crates/boomdrive/src/config.rs`, `view_path` and `root_path`). A root the runner refuses fails evaluation where the map reads it. A table of cases in the tree, each a home, a root, an address and the folder, is read by the flake's tests and by the runner's, as the clone folder's table holds `container`. Not taken: a read-only option stating each view beside `cloneDirs`, which no reader but crew's map needs today.
+- **A host writes none.** Each entry is given at the module's own priority, so a host that gives a kept address another `dir` or `checkout` fails evaluation, as nixpkgs fails an option given two values. A host's own entry for an address the runner does not keep stands beside, since that repository is the host's own. Not taken: `lib.mkDefault`, under which a host's other folder would win silently; an assertion over crew's final map, which would add only a refusal of a host's `lib.mkForce`.
+- **Nothing where nothing is kept.** Where `cloneDirs` names no address, crew's map is given nothing, so crew's file names no repositories where the host names none. Not taken: an empty map, which would write an empty `repositories` into crew's file.
+
+Consequences: the change `the-set-gives-crew-each-kept-repositorys-folders` builds this amendment. afterthought/swancloud drops its own `services.crew.settings.repositories` once it takes a set that carries it. An entry of its that names another folder for a kept address, the folder of before the rename among them (record 0035), then fails its evaluation.
+
+core.57's details are amended in this amendment's commit.
