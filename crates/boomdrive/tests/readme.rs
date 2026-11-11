@@ -124,11 +124,9 @@ fn the_readme_control_plane_opens_crews_implementation() {
     assert_eq!(table.implementation, "crew");
     assert_eq!(table.poll_interval, Duration::from_secs(60));
     let opened = planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         &readme,
         Path::new("/nowhere/boomdrive"),
-        table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
         &Halt::default(),

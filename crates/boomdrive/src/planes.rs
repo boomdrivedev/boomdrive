@@ -6,6 +6,7 @@
 //! reaches the control plane through `ControlPlane` alone, served as
 //! parts, and `boomdrive enroll` through [`enroll`].
 
+use crate::config::ControlPlaneTable;
 use boomdrive_bounded::Halt;
 use boomdrive_control::{Part, Wake};
 use std::path::Path;
@@ -195,29 +196,28 @@ fn listed<'a>(entries: impl Iterator<Item = &'a Entry>) -> String {
     words.join(", ")
 }
 
-/// Opens the implementation whose word is `word` from its own table,
-/// `table`, of the configuration file `file`, keeping what it keeps under
-/// `data_dir`, each part making a control pass each `poll_interval`, as
-/// its parts, each handed the say and the wake `say_for` and `wake_for`
-/// make for its label, and the runner's halt, `halt`, which ends each try
-/// of a git call to a remote it makes (record 0042 as amended on
-/// 2026-11-11); or why it could not be opened. A word this binary does
-/// not carry is refused, naming those it does.
+/// Opens the implementation `[control_plane]`'s table, `control_plane`,
+/// of the configuration file `file` names by its `type`, from its own
+/// table, keeping what it keeps under `data_dir`, each part making a
+/// control pass each `poll_interval`, as its parts, each handed the say
+/// and the wake `say_for` and `wake_for` make for its label, and the
+/// runner's halt, `halt`, which ends each try of a git call to a remote it
+/// makes (record 0042 as amended on 2026-11-11); or why it could not be
+/// opened. A word this binary does not carry is refused, naming those it
+/// does.
 pub fn open(
-    word: &str,
-    table: &toml::Table,
+    control_plane: &ControlPlaneTable,
     file: &Path,
     data_dir: &Path,
-    poll_interval: Duration,
     say_for: SayFor<'_>,
     wake_for: WakeFor<'_>,
     halt: &Halt,
 ) -> Result<Vec<Part>, String> {
-    (entry(word, file)?.open)(
-        table,
+    (entry(&control_plane.implementation, file)?.open)(
+        &control_plane.implementation_table,
         file,
         data_dir,
-        poll_interval,
+        control_plane.poll_interval,
         say_for,
         wake_for,
         halt,

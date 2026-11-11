@@ -38,11 +38,9 @@ fn open(text: &str) -> Result<Vec<Part>, String> {
     let config = config::parse(text, Path::new(FILE), Path::new("/h")).expect("a configuration");
     let table = config.control_plane.expect("a control plane named");
     planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         Path::new(FILE),
         Path::new("/nowhere/boomdrive"),
-        table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
         &Halt::default(),
@@ -72,11 +70,9 @@ fn each_part_is_handed_its_own_say() {
     let table = config.control_plane.expect("a control plane named");
     let asked = std::cell::RefCell::new(Vec::new());
     let parts = planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         Path::new(FILE),
         Path::new("/nowhere/boomdrive"),
-        table.poll_interval,
         &|label| {
             asked.borrow_mut().push(label.to_string());
             Box::new(|line| panic!("said {line:?} at its opening"))

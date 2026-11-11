@@ -108,11 +108,9 @@ fn the_crew_file_opens_crews_implementation() {
     assert_eq!(table.poll_interval, Duration::from_secs(60));
     assert_eq!(table.implementation_table["host"].as_str(), Some("host-a"));
     let opened = planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         &file,
         &scratch.data(),
-        table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
         &Halt::default(),

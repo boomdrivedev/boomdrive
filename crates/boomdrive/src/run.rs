@@ -276,11 +276,9 @@ impl Control {
         Control {
             poll_interval: table.poll_interval,
             parts: planes::open(
-                &table.implementation,
-                &table.implementation_table,
+                table,
                 file,
                 data,
-                table.poll_interval,
                 &|_| Box::new(|line| eprintln!("{line}")),
                 &|label| bells.waker(label),
                 halt,
