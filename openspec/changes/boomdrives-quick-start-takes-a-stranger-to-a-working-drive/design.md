@@ -90,7 +90,7 @@ The words tell the reader to put their own. Each is of the form setup and the mo
 |---|---|---|---|---|
 | Mac 1 | `mac-install` | `mac/install.sh` | the set, git, gh and Node.js in the profile | `nix`: `quick start: the Mac's install` |
 | Mac 2, NixOS 4 | `sign-in` | `both/sign-in.sh` | GitHub, Claude Code and Pending You signed in | `boomdrive`: `the_sign_ins_are_the_ones_setup_names` |
-| Mac 3 | `mac-flume` | `mac/flume.toml`, writes `~/.config/flume/config.toml` | Flume opening agents in herdr | `boomdrive`: `flumes_file_opens_agents_in_herdr` |
+| Mac 3 | `mac-flume` | `mac/flume.toml`, writes `~/.config/flume/config.toml`; `mac/crew-source.toml`, writes `~/.config/flume/sources/crew.toml` | Flume opening agents in herdr, in the drive's stream, where crew's roles answer | `boomdrive`: `flumes_file_opens_agents_in_herdr` |
 | Mac 4 | `mac-setup` | `mac/setup.sh` | the drive set up, the runner running | `boomdrive`: `setup_sets_up_the_drive_as_written` |
 | NixOS 1 | `nixos-flake` | `nixos/flake.nix`, writes `/etc/nixos/flake.nix` | the host's flake taking the set | `nix`: `quick start: NixOS's flake` |
 | NixOS 2 | `nixos-drive` | `nixos/boomdrive.nix`, writes `/etc/nixos/boomdrive.nix` | the drive in the runner's, crew's and Flume's files | `nix`: `quick start: NixOS's drive` |
@@ -104,7 +104,8 @@ What each file holds:
 
 - **`mac/install.sh`**: one `nix profile add` of `github:agentplot/boomdrive` and its `#flume`, `#sluice`, `#herdr`, `#herdr-plugins` and `#crew`, then `nixpkgs#git`, `nixpkgs#gh` and `nixpkgs#nodejs`. git, since the runner needs 2.48 at least and a Mac's own may be older; gh, which setup and the sign-in need; Node.js for `npx`. The words say to answer `y` to nix's question about the flake's settings, and that a user nix does not trust builds the same programs from source.
 - **`both/sign-in.sh`**: `gh auth login`, `claude auth login`, `npx -y pendingyou@latest init`, one a line, in the order setup checks them.
-- **`mac/flume.toml`**: `[host]` with `multiplexer = "herdr"` and `terminal_app = "terminal"`, nothing else. A launch naming no stream runs in the stream Flume gives its repository, `default` here, so the drive needs no stream of its own. Terminal.app is on every Mac, and the profile's Ghostty is in no folder `open` reads (record 0043). The words say a host Nix manages has these from the module, and that this step goes once Flume and setup can set them.
+- **`mac/flume.toml`**: `[host]` with `multiplexer = "herdr"` and `terminal_app = "terminal"`; the drive's stream, `[streams.home]`, named as the drive names it; and `[repos."your-github-name/your-repository"]` with `stream = "home"`, so the repository's work runs in the drive's stream, as `drives.nix` gives a host Nix manages (record 0028). crew declares its roles at `<label>/<role>`, `home/ops` among them, and Flume declares a role only on a stream the host declares, so without the stream every launch crew writes is refused, its recipient waking nothing. Terminal.app is on every Mac, and the profile's Ghostty is in no folder `open` reads (record 0043). The words say a host Nix manages has these from the module, and that this step goes once Flume and setup can set them.
+- **`mac/crew-source.toml`**: Flume's source `crew`, `kinds_dir = "~/.local/share/flume/kinds/crew"` and `roles = "~/.local/state/crew/flume/roles.toml"`, the two keys the set's module gives Flume where crew is on (`nix/modules/sources.nix`; record 0034, point 2). crew writes the roles file and makes the folder, and the host declares the source alone (crew record 0057), so on a Mac the reader writes it, as they write Flume's file. No setup command writes a file of Flume's (core.18). `nix:test` holds the file's keys equal to the module's, so the two never drift (Decision 8).
 - **`mac/setup.sh`**: `boomdrive setup --account me --drive home --state-repository your-github-name/drive-state --repository your-github-name/your-repository`. Every other answer is setup's own. The words name `launchctl kickstart -k gui/$(id -u)/io.github.agentplot.boomdrive` after a `nix profile upgrade`, as README does.
 - **`nixos/flake.nix`**: inputs `nixpkgs`, `github:NixOS/nixpkgs/nixos-unstable`, and `boomdrive`, the address README's install names, its `nixpkgs` its own, as README asks. Outputs `nixosConfigurations.your-host = nixpkgs.lib.nixosSystem { modules = [ ./configuration.nix boomdrive.nixosModules.default ./boomdrive.nix ]; }`. The lambda takes `{ nixpkgs, boomdrive, ... }`, so deadnix finds nothing unused.
 - **`nixos/boomdrive.nix`**: a module of `{ pkgs, ... }`. It sets:
@@ -113,14 +114,14 @@ What each file holds:
   - `services.boomdrive`, with `enable`, `user = "you"`, `accounts.me.drives.home.repositories.your-github-name = [ "your-repository" ]` and `settings.control_plane.type = "crew"`;
   - `services.crew`, with `enable`, `host = "your-host"`, and one partition `home` whose state is `your-github-name/drive-state`, whose machine is `your-host` and whose blueprints are the drive's repository, by the keys crew's module takes on this branch.
 
-  Flume's host keys come from the set's module (record 0023).
+  Flume's host keys come from the set's module (record 0023), the drive's stream and its repository's from `drives.nix` (record 0028), and crew's source from `sources.nix` (record 0034, point 2), so the file writes none of them.
 - **`nixos/switch.sh`**: `sudo nixos-rebuild switch --flake /etc/nixos#your-host`.
 - **`nixos/state.sh`**: `gh repo create your-github-name/drive-state --private`, the call setup's crew implementation makes on a Mac.
 - **`both/sluice.toml`**: the smallest policy the set's sluice takes that lands `main` on `origin` after one command: a command runner whose command runs in any repository, and `[branches.main]` naming `origin`. Its comment and the step's words tell the reader to put their own tests' command.
 - **`both/flume.toml`**: `[profiles]` with `merge_queue = "sluice"`, the repository's binding of its merge queue. Flume reads it from `.config/flume.toml` at the repository's default branch alone, and guesses none from another tool's files (Flume's 105 and its Part C), so without it Flume refuses every launch of a kind that lands. Its comment and the `landing` step's words say that a drive taking crew's changes binds `change = "openspec"` too, in a repository that holds OpenSpec: crew's units launch Flume's change kinds, which Flume refuses unless the change tool is bound. The quick start's own test lands a fix (Decision 6).
 - **`both/land.sh`**: run in a clone of the reader's repository holding both files: `git add .config/sluice.toml .config/flume.toml`, a Conventional Commit of them, and `git push origin HEAD:main`.
 - **`both/start.sh`**: `crew main up home`.
-- **`both/watch.sh`**: `flume open`. The words of `ask` say to tell the drive's agents the change wanted, approve its plan on the reader's rail, and watch it build and land in the window `flume open` shows. On NixOS the Boomdrive launcher opens the same.
+- **`both/watch.sh`**: `flume open home`, the drive's stream's session, where its agents run. The words of `ask` say to tell the drive's agents the change wanted, approve its plan on the reader's rail, and watch it build and land in the window `flume open home` shows.
 
 ### 5. The Rust tests run the shell steps through sh
 
@@ -138,7 +139,7 @@ The stand-ins are those `tests/setup.rs` writes: `gh`, `crew`, `herdr`, `launchc
   - `the_drives_agents_start_as_setup_says`: the `--json` answer's `start` is the file's one line.
 - **Run as written.**
   - `setup_sets_up_the_drive_as_written` runs `mac/setup.sh` and reads the runner's file and crew's table it left.
-  - `flumes_file_opens_agents_in_herdr` writes `mac/flume.toml` as the scratch home's Flume file and reads the set's Flume's `--json status`.
+  - `flumes_file_opens_agents_in_herdr` writes `mac/flume.toml` and `mac/crew-source.toml` where the reader writes them in the scratch home, with crew's roles file as crew's follower writes it, and reads the set's Flume's `--json status`. No crew runs in the gate and crew has no command that writes its roles file alone, so the test writes it in crew's stead, in crew record 0057's form.
   - `sluices_file_lands_on_main` writes `both/sluice.toml` and `both/flume.toml` into a scratch clone of a bare origin, where the reader writes them, and runs `both/land.sh` there. In a second clone, it asks the set's sluice to read `main`'s policy by the command sluice's reference at the set's tag gives for it. There the set's Flume launches a fix with its stage held, so no agent starts: Flume reads the binding at the default branch alone, and the launch lands and takes its base from the merge queue, where without the binding Flume refuses it.
 
 ### 6. The last step's test runs a change from crew's records to main
@@ -175,11 +176,12 @@ Its frontmatter is read with the YAML package the site holds, through `bun`, as 
 
 ### 8. The nix tests evaluate the Nix steps and the Mac's install
 
-`nix/tests/quick-start.nix` holds four cases, reading each file by its path, `../../site/src/start/…`:
+`nix/tests/quick-start.nix` holds five cases, reading each file by its path, `../../site/src/start/…`:
 
 - **`quick start: the Mac's install`.** It splits `mac/install.sh` into words: `nix profile add`, then exactly the nine installables. Each `github:` one names the address README's install names, read as `cache.nix` reads it, and a package of `t.outputs.packages.aarch64-darwin`, `default` for none. Each `nixpkgs#` one names a package of the lock's nixpkgs for `aarch64-darwin`.
 - **`quick start: NixOS's flake`.** It imports `nixos/flake.nix`. Its `inputs.boomdrive.url` is README's address. Its `outputs` are called with a stand-in `nixpkgs`, whose `lib.nixosSystem` gives back its arguments, and a stand-in `boomdrive`, whose `nixosModules.default` is a marker. `nixosConfigurations.your-host.modules` is then `./configuration.nix`, the marker and `./boomdrive.nix`, the last the drive step's file by its path.
-- **`quick start: NixOS's drive`.** It evaluates `t.nixosSystem` with the user `you` and `nixos/boomdrive.nix` imported. The runner's rendered file names the account `me`'s drive `home` keeping `your-github-name/your-repository`, under crew with host `your-host`. crew's partition `home` names `your-github-name/drive-state`, Flume's `settings.host.multiplexer` is `herdr`, and the substituter and key are those the root's `flake.nix` `nixConfig` gives.
+- **`quick start: NixOS's drive`.** It evaluates `t.nixosSystem` with the user `you` and `nixos/boomdrive.nix` imported. The runner's rendered file names the account `me`'s drive `home` keeping `your-github-name/your-repository`, under crew with host `your-host`. crew's partition `home` names `your-github-name/drive-state`, Flume's `settings.host.multiplexer` is `herdr`, Flume is given the stream `home` and the repository's `stream = "home"` (`drives.nix`) and the source `crew` (`sources.nix`), and the substituter and key are those the root's `flake.nix` `nixConfig` gives.
+- **`quick start: the Mac's crew source`.** `mac/crew-source.toml`, read by `builtins.fromTOML`, is the drive's system's `services.flume.sources.crew`, key for key, so the file a Mac's reader writes and the source the module gives never drift.
 - **`quick start: NixOS's switch`.** `nixos/switch.sh` is `sudo nixos-rebuild switch --flake /etc/nixos#your-host`. The drive's system's `config.system.build.toplevel.drvPath` evaluates; the test gives it a root file system and a boot loader where `t.nixosSystem`'s base has none.
 
 `nix/tests/default.nix` imports it, and `nix:test`'s inputs gain `/site/src/start/**/*`.

@@ -1,5 +1,12 @@
-# Flume opens each agent in herdr, in a Terminal window. A host Nix
-# manages has these two from the set's module.
+# Flume opens each agent in herdr, in a Terminal window, and runs the
+# repository's work in the drive's stream, home, where crew's roles
+# stand. A host Nix manages has these from the set's module. Put your own
+# names for your-github-name and your-repository.
 [host]
 multiplexer = "herdr"
 terminal_app = "terminal"
+
+[streams.home]
+
+[repos."your-github-name/your-repository"]
+stream = "home"

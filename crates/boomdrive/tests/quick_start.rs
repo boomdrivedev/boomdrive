@@ -164,18 +164,76 @@ fn the_sign_ins_are_the_ones_setup_names() {
     assert_eq!(lines("both/sign-in.sh"), want);
 }
 
+/// The Mac's Flume step's files and where the reader writes each, under
+/// their home (design Decision 4).
+const MAC_FLUME: [(&str, &str); 2] = [
+    ("mac/flume.toml", ".config/flume/config.toml"),
+    ("mac/crew-source.toml", ".config/flume/sources/crew.toml"),
+];
+
+/// crew's roles file for the drive `home` on the host `host-a`, as crew's
+/// follower writes it from the teams file setup gives (crew record 0057;
+/// crew's `source.text`): a standing agent's entry for each of the
+/// partition's five roles, at `home/<role>`, the operator its stream's
+/// answerer. No crew runs in the gate and crew has no command that writes
+/// the file alone, so the tests write it in crew's stead.
+const CREWS_ROLES: &str = r#"# crew's roles for Flume on host-a, written whole from crew's teams file by crew's follower and each start
+# of a main-level role, and renamed over the old one: an edit by hand is lost at the next write. Each role
+# that stands, of each partition whose main level runs on this host, at <label>/<role> (crew record 0057).
+
+[roles."home/design"]
+agent = "home-design"
+session = "home"
+answers = "the design"
+
+[roles."home/planner"]
+agent = "home-planner"
+session = "home"
+answers = "the plan"
+
+[roles."home/reviewer"]
+agent = "home-reviewer"
+session = "home"
+
+[roles."home/ops"]
+agent = "home-ops"
+session = "home"
+answers = "a live system, a deploy or a landing"
+
+[roles."home/operator"]
+agent = "home-operator"
+session = "home"
+answerer = true
+"#;
+
+/// The Mac's Flume step's files written as the scratch home's, where the
+/// reader writes them, and crew's roles file and kinds folder made in
+/// crew's stead, where crew keeps them.
+fn flumes_files(scratch: &Scratch) {
+    for (path, writes) in MAC_FLUME {
+        write_step(path, &scratch.home.join(writes));
+    }
+    write_text(
+        CREWS_ROLES,
+        &scratch.home.join(".local/state/crew/flume/roles.toml"),
+    );
+    std::fs::create_dir_all(scratch.home.join(".local/share/flume/kinds/crew"))
+        .expect("crew's kinds folder");
+}
+
 /// The quick-start spec's "The set's Flume takes the file": the Mac's
-/// Flume file written as the scratch home's, at Flume's own path, and the
-/// set's Flume's `--json status` there answers with no refusal, its
-/// default stream's part giving the multiplexer `herdr` and the terminal
-/// app `terminal` from the host's keys.
+/// Flume step's files written as the scratch home's, at Flume's own paths,
+/// beside crew's roles file as crew writes it, and the set's Flume's
+/// `--json status` there answers with no refusal. Its default stream and
+/// the drive's stream, `home`, each give the multiplexer `herdr` and the
+/// terminal app `terminal` from the host's keys; the source `crew` names
+/// crew's kinds folder and roles file under the home, and reads from it
+/// the five roles of the drive's stream, which a stream the host did not
+/// declare would leave undeclared.
 #[test]
 fn flumes_file_opens_agents_in_herdr() {
     let scratch = Scratch::new();
-    write_step(
-        "mac/flume.toml",
-        &scratch.home.join(".config/flume/config.toml"),
-    );
+    flumes_files(&scratch);
     let output = on_scratch(&scratch, set_program("flume"), "/usr/bin:/bin")
         .args(["--json", "status"])
         .output()
@@ -183,19 +241,55 @@ fn flumes_file_opens_agents_in_herdr() {
     assert_eq!(output.status.code(), Some(0), "{}", said(&output));
     let answer: Value = serde_json::from_slice(&output.stdout).expect("Flume's status is JSON");
     assert!(answer.get("refused").is_none(), "{answer}");
-    let streams = answer
-        .pointer("/status/host/streams")
-        .and_then(Value::as_array)
-        .unwrap_or_else(|| panic!("no streams in Flume's status: {answer}"));
-    let default = streams
-        .iter()
-        .find(|stream| stream["name"] == "default")
-        .unwrap_or_else(|| panic!("no default stream: {answer}"));
-    assert_eq!(default["refused"], Value::Null, "{default}");
-    for (part, profile) in [("multiplexer", "herdr"), ("terminal_app", "terminal")] {
-        assert_eq!(default[part]["profile"], profile, "{default}");
-        assert_eq!(default[part]["from"], "host", "{default}");
+    let host = &answer["status"]["host"];
+    for name in ["default", "home"] {
+        let stream = host["streams"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|stream| stream["name"] == name)
+            .unwrap_or_else(|| panic!("no stream {name} in Flume's status: {answer}"));
+        assert_eq!(stream["refused"], Value::Null, "{stream}");
+        for (part, profile) in [("multiplexer", "herdr"), ("terminal_app", "terminal")] {
+            assert_eq!(stream[part]["profile"], profile, "{stream}");
+            assert_eq!(stream[part]["from"], "host", "{stream}");
+        }
     }
+    let sources = host["sources"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no sources in Flume's status: {answer}"));
+    assert_eq!(sources.len(), 1, "{answer}");
+    let crew = &sources[0];
+    let home = |path: &str| Value::from(scratch.home.join(path).to_string_lossy().into_owned());
+    assert_eq!(crew["name"], "crew", "{crew}");
+    assert_eq!(
+        crew["kinds_dir"],
+        home(".local/share/flume/kinds/crew"),
+        "{crew}"
+    );
+    assert_eq!(
+        crew["roles_file"],
+        home(".local/state/crew/flume/roles.toml"),
+        "{crew}"
+    );
+    let mut roles: Vec<&str> = crew["roles"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    roles.sort_unstable();
+    assert_eq!(
+        roles,
+        [
+            "home/design",
+            "home/operator",
+            "home/ops",
+            "home/planner",
+            "home/reviewer"
+        ],
+        "{crew}"
+    );
 }
 
 /// The step's shell file at `path`, run as `sh <file>` on the stand's

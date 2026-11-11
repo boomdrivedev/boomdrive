@@ -96,14 +96,19 @@ The sign-in step SHALL be one line for each sign-in setup checks, each the fix s
 - **WHEN** `boomdrive:test` runs setup over stand-ins where GitHub, Claude Code and Pending You are each signed out, and reads `site/src/start/both/sign-in.sh`
 - **THEN** the file's lines are, in order, the command setup's refusal names for GitHub and the fixes its answer names for Claude Code and Pending You
 
-### Requirement: A Mac's Flume file opens agents in herdr
+### Requirement: A Mac's Flume files open agents in herdr, where crew's roles answer
 
-The Mac's Flume step SHALL write `~/.config/flume/config.toml` with the `[host]` keys `multiplexer = "herdr"` and `terminal_app = "terminal"` alone, which the set's Flume SHALL take with no refusal, until Flume has a command that sets them, which setup runs (record 0043; principle 11).
+The Mac's Flume step SHALL write `~/.config/flume/config.toml` with the `[host]` keys `multiplexer = "herdr"` and `terminal_app = "terminal"`, the drive's stream `home` and the repository's work in it, and `~/.config/flume/sources/crew.toml` naming crew's kinds folder and roles file as the set's module names them, which the set's Flume SHALL take with no refusal, until Flume has a command that sets them, which setup runs (record 0043; principle 11).
 
 #### Scenario: The set's Flume takes the file
 
-- **WHEN** `boomdrive:test` writes `site/src/start/mac/flume.toml` as the Flume file of a scratch home and runs the set's Flume `--json status` there
-- **THEN** Flume answers with no refusal, and its default stream's part gives the multiplexer `herdr` and the terminal app `terminal`
+- **WHEN** `boomdrive:test` writes `site/src/start/mac/flume.toml` and `site/src/start/mac/crew-source.toml` where the reader writes them in a scratch home, beside crew's roles file as crew writes it, and runs the set's Flume `--json status` there
+- **THEN** Flume answers with no refusal, its default stream and the stream `home` each give the multiplexer `herdr` and the terminal app `terminal`, and its source `crew` names crew's kinds folder and roles file under the home and reads the five roles of `home` from it
+
+#### Scenario: The Mac's source is the set's
+
+- **WHEN** `nix:test` evaluates the NixOS drive's system and reads `site/src/start/mac/crew-source.toml`
+- **THEN** the file's keys are exactly those the set's module gives Flume as the source `crew`
 
 ### Requirement: The Mac's setup sets up the drive as written
 
@@ -130,7 +135,7 @@ The NixOS drive step SHALL give `/etc/nixos/boomdrive.nix`, a module that trusts
 #### Scenario: The drive on NixOS
 
 - **WHEN** `nix:test` evaluates a system of `x86_64-linux` with the user `you`, the set's NixOS module and `site/src/start/nixos/boomdrive.nix`
-- **THEN** the runner's file names the account `me`'s drive `home` keeping `your-github-name/your-repository` under crew with host `your-host`, crew's partition `home` names `your-github-name/drive-state`, Flume's host multiplexer is `herdr`, and the cache and its key are the flake's `nixConfig`'s
+- **THEN** the runner's file names the account `me`'s drive `home` keeping `your-github-name/your-repository` under crew with host `your-host`, crew's partition `home` names `your-github-name/drive-state`, Flume's host multiplexer is `herdr`, Flume is given the stream `home` with the repository's work in it and crew's source, and the cache and its key are the flake's `nixConfig`'s
 
 ### Requirement: NixOS's switch builds the configuration the flake gives
 
@@ -170,9 +175,9 @@ The start step SHALL be the one line setup's answer gives as `start` for the dri
 
 ### Requirement: A change the drive is given lands
 
-A change the drive's control plane gives SHALL land on the drive's repository's `main` through the runner, the set's Flume and the set's sluice, under the landing step's policy, and the last step's line SHALL be one the set's Flume answers on that host.
+A change the drive's control plane gives SHALL land on the drive's repository's `main` through the runner, the set's Flume and the set's sluice, under the landing step's policy and the Mac's Flume files, and the last step's line SHALL open the drive's stream's session through the set's Flume on that host.
 
 #### Scenario: From crew's launch to main
 
-- **WHEN** `boomdrive:test` puts a launch of kind `fix` for `your-github-name/your-repository` in a scratch state repository as crew writes it, runs the runner over the set's Flume and sluice with a stand-in agent that commits one change, and runs `site/src/start/both/watch.sh`
-- **THEN** the repository's origin holds the change on `main`, the runner's report carries the place's status as the set's Flume gives it once the change landed, and the set's Flume answers the watch line, exiting 0
+- **WHEN** `boomdrive:test` puts a fix of `main` for `your-github-name/your-repository` in a scratch state repository as crew writes it, then crew's send of it, runs the runner over the set's Flume and sluice under the Mac's Flume files with a stand-in agent that commits one change, the drive's stream printing its agents' commands where the gate runs no multiplexer, and runs `site/src/start/both/watch.sh`
+- **THEN** the repository's origin holds the change on `main`, the runner's report carries the place's status as the set's Flume gives it once the change landed, and the set's Flume answers the watch line for the drive's stream with its own refusal under the printed command, which holds no session a window could show

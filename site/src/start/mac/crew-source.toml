@@ -1,0 +1,5 @@
+# Flume reads the drive's roles from the file crew keeps, and crew's kinds
+# from its folder, so crew's work reaches the roles it names. A host Nix
+# manages has this from the set's module.
+kinds_dir = "~/.local/share/flume/kinds/crew"
+roles = "~/.local/state/crew/flume/roles.toml"
