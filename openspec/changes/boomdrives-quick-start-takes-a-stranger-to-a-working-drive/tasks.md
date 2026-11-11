@@ -72,7 +72,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 5. The page
 
-- [ ] 5.1 `site/src/content/pages/start.md` holds the title `Quick start`, a description and the page's words. Its lede says where the steps end: a drive whose agents build and land a change. A list says what the reader brings, each linked to its own installer or guide:
+- [x] 5.1 `site/src/content/pages/start.md` holds the title `Quick start`, a description and the page's words. Its lede says where the steps end: a drive whose agents build and land a change. A list says what the reader brings, each linked to its own installer or guide:
   - an Apple silicon Mac with Nix and its flakes on, or a NixOS machine whose configuration is a flake;
   - a GitHub account;
   - Claude Code.
