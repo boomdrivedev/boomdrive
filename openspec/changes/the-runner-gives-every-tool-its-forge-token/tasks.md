@@ -114,7 +114,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 6. What is said
 
-- [ ] 6.1 README's configuration block, the first ```toml block, shows `[forge]` with `app_id` and `key_file`, each with a comment line as its neighbours have. Its words say:
+- [x] 6.1 README's configuration block, the first ```toml block, shows `[forge]` with `app_id` and `key_file`, each with a comment line as its neighbours have. Its words say:
   - what the table holds;
   - that `key_file` is a path outside the Nix store, readable by its owner alone, and is read at each mint;
   - that the table is refused beside a hosted control plane;
