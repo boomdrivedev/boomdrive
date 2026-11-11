@@ -480,6 +480,20 @@ mod tests {
         );
     }
 
+    /// Record 0042's amendment of 2026-11-11, its design Decision 5: a
+    /// halted call names its call, its remote and the runner's stop.
+    #[test]
+    fn a_halted_calls_words_name_its_call_and_remote() {
+        assert_eq!(
+            halted("git fetch", "origin"),
+            "git fetch with origin was stopped as the runner stopped"
+        );
+        assert_eq!(
+            halted("git ls-remote", "https://example.invalid/s.git"),
+            "git ls-remote with https://example.invalid/s.git was stopped as the runner stopped"
+        );
+    }
+
     /// Design Decision 1: the limit and the grace are sluice's.
     #[test]
     fn the_limit_and_grace_are_sluices() {
