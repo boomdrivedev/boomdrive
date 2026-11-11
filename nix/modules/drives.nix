@@ -22,7 +22,7 @@
 }:
 let
   cfg = config.services.boomdrive;
-  inherit (import ./accounts.nix { inherit lib; }) drivesOf;
+  inherit (import ./accounts.nix { inherit lib; }) drivesOf hereOf;
   drives = drivesOf cfg.accounts;
 
   # This host, as crew names it, whether or not crew is on; null where it
@@ -32,7 +32,7 @@ let
   # The drives of this host: those that name no machine, or this one. A
   # drive of another machine gives Flume nothing, and the runner's file
   # still keeps its repositories, to read.
-  here = lib.filter (drive: drive.machine == null || drive.machine == host) drives;
+  here = hereOf host drives;
 
   # The drives that name a machine where this host has no name to compare.
   unplaced = lib.filter (drive: drive.machine != null && host == null) drives;
