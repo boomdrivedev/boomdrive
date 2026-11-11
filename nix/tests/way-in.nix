@@ -79,6 +79,7 @@ let
     "crew"
     "herdr"
     "portless"
+    "worktrunk"
   ];
 in
 {

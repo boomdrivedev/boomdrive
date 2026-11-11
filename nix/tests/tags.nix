@@ -1,6 +1,7 @@
 # Each input's ref in flake.nix against the one flake.lock locks for it,
-# and each tool of the set named by a release tag (core.45; Task notes
-# 2.5). Each failure names the input and both refs.
+# and each tool of the set named by a release tag, Flume, sluice, crew,
+# herdr and worktrunk (core.45; Task notes 2.5). Each failure names the
+# input and both refs.
 { lib }:
 inputs: lock:
 let
@@ -27,6 +28,7 @@ let
           "herdr"
           "portless"
           "sluice"
+          "worktrunk"
         ]
         && builtins.match "v[0-9]+\\.[0-9]+\\.[0-9]+" (show named) == null
       ) "${name}: flake.nix names it by ${show named}, which is no release tag";

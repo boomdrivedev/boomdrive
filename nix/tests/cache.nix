@@ -32,6 +32,7 @@ let
     "herdr"
     "portless"
     "sluice"
+    "worktrunk"
   ];
   overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
   # The host's overlay, and crew turned on with its host and partitions.
@@ -133,6 +134,7 @@ in
         "services.boomdrive.herdr.plugins"
         "services.boomdrive.ghostty.package"
         "services.boomdrive.portless.package"
+        "services.boomdrive.worktrunk.package"
         "services.boomdrive.launcher.package"
         "nix develop github:agentplot/boomdrive"
       ]

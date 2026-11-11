@@ -252,6 +252,8 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   and Flume's and sluice's herdr plugins from their tags;
 - herdr, through its own flake at the release Flume's tag pins, which
   Flume's terminal profile was checked against;
+- worktrunk, through its own flake at the release sluice's tag pins,
+  which sluice's worktree driver was checked against;
 - Ghostty, from the flake's nixpkgs at the release Flume's window
   profile was checked against: built from source on Linux, and on
   macOS, where nothing builds its app from source, Ghostty's own
@@ -274,8 +276,9 @@ host runs crew:
     nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
 
 The same line may add `github:agentplot/boomdrive#herdr`,
-`github:agentplot/boomdrive#ghostty` and
-`github:agentplot/boomdrive#portless`.
+`github:agentplot/boomdrive#ghostty`,
+`github:agentplot/boomdrive#portless` and
+`github:agentplot/boomdrive#worktrunk`.
 
 An older nix spells it `nix profile install`. nix asks whether to
 accept the flake's `nixConfig`, which names the family's cache,
@@ -488,8 +491,10 @@ host a way to see its agents:
   `host.terminal`, it sets no `multiplexer`.
 - It installs portless, `services.boomdrive.portless.package`, where a
   dev server's `portless run` and crew's board find it.
+- It installs worktrunk's `wt`, `services.boomdrive.worktrunk.package`,
+  which crew and sluice's worktree driver call.
 
-Each of the four is the set's by default, and each may name the host's
+Each of the five is the set's by default, and each may name the host's
 own package instead, or `null` for none:
 
 ```nix
@@ -497,6 +502,7 @@ services.boomdrive.herdr.package = null;
 services.boomdrive.ghostty.package = null;
 services.boomdrive.launcher.package = null;
 services.boomdrive.portless.package = null;
+services.boomdrive.worktrunk.package = null;
 ```
 
 portless's proxy, which serves each dev server at its `.localhost`
@@ -519,11 +525,18 @@ herdr of its own may give it as `services.boomdrive.herdr.package`, and
 the plugins are linked with it. A host with no display sets Ghostty and
 the launcher `null`, and Flume's `host.terminal_app` its own. A Mac that
 keeps a Ghostty of its own in `/Applications` sets the set's `null`, so
-macOS opens one Ghostty.
+macOS opens one Ghostty. A host with a `wt` of its own, in a user's
+profile or home-manager's `programs.worktrunk`, sets
+`services.boomdrive.worktrunk.package` to `null` or to its own, so one
+`wt` runs: a user's own comes ahead of the system profile's on `PATH`,
+and the set's goes unused. worktrunk's shell integration, which lets
+`wt switch` change your shell's folder, is yours to install with
+worktrunk's own `wt config shell install`: neither the modules nor the
+shell install it.
 
 The flake also gives a shell, its `PATH` the set's runner, Flume,
-sluice, crew, herdr and portless, that starts herdr on entering and
-leaves you in the shell when herdr ends:
+sluice, crew, herdr, portless and worktrunk, that starts herdr on
+entering and leaves you in the shell when herdr ends:
 
     nix develop github:agentplot/boomdrive
 

@@ -1,14 +1,15 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, Flume, sluice, crew and herdr each at a release tag
-# through its own flake, and portless at its release tag through this
-# flake's recipe (records 0020 and 0023, core.44). git is the host's own. A host's nix substitutes their binaries from the family's
+# runner at this tree, Flume, sluice, crew, herdr and worktrunk each at a
+# release tag through its own flake, and portless at its release tag
+# through this flake's recipe (records 0020 and 0023, core.44). git is the
+# host's own. A host's nix substitutes their binaries from the family's
 # cache where it trusts it, and builds the same paths where it does not
 # (core.47). Its shell, devShells.<system>.default, puts the set on PATH and
 # starts herdr (record 0023); the repository's own development shell is
 # devenv's (devenv.nix). Everything else of the flake's is under nix/, the
 # moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together";
+  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together, with herdr, Ghostty, portless and worktrunk";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -67,6 +68,15 @@
       url = "github:vercel-labs/portless/v0.17.0";
       flake = false;
     };
+    # The worktrunk sluice's tree pins at its tag, which sluice's worktree
+    # driver was checked against (record 0023; design Decision 1).
+    worktrunk = {
+      url = "github:max-sixty/worktrunk/v0.80.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+      };
+    };
     # The tests' nix-darwin. A host's configuration follows its own, which
     # changes none of the packages.
     nix-darwin = {
@@ -121,6 +131,10 @@
               tag = tagOf (import ./flake.nix).inputs.crew.url;
             };
             inherit (inputs.herdr.packages.${system}) herdr;
+            worktrunk = import ./nix/packages/worktrunk.nix {
+              package = inputs.worktrunk.packages.${system}.worktrunk;
+              tag = tagOf (import ./flake.nix).inputs.worktrunk.url;
+            };
             # Ghostty from the flake's nixpkgs, at the release Flume's window
             # profile was checked against: built from source on Linux, and on
             # macOS, where nothing builds its app from source, Ghostty's own
