@@ -31,4 +31,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 6. The specs
 
-- [ ] 6.1 The change's deltas archive into specs that pass openspec's strict check. After the archive, the clause of `openspec/specs/releases/spec.md`'s Purpose on the workflow `release` says it tags a release commit, cut from the commit of `main` that was pushed, which writes the version into the tree, and publishes its notes, building nothing (design, Risks). True when, after `devenv shell -- openspec archive a-boomdrive-release-reports-its-own-version --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 6.1 The change's deltas archive into specs that pass openspec's strict check. After the archive, the clause of `openspec/specs/releases/spec.md`'s Purpose on the workflow `release` says it tags a release commit, cut from the commit of `main` that was pushed, which writes the version into the tree, and publishes its notes, building nothing (design, Risks). True when, after `devenv shell -- openspec archive a-boomdrive-release-reports-its-own-version --yes`, `sluice exec main -- moon run root:specs` passes.
