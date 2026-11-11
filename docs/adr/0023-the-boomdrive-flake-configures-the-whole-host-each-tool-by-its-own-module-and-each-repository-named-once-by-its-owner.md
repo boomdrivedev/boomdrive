@@ -74,7 +74,7 @@ Status: decided on 2026-11-11 by the construct stage of the change `portless-com
 
 ## Amendment, 2026-11-11: how Pending You and Plannotator come with the flake
 
-Status: agentplot-design's rulings and the construct stage's choices of 2026-11-11, written as record 0044, each cheap to change.
+Status: agentplot-design's rulings, the user's answer and the construct stage's choices of 2026-11-11, written as record 0044, each cheap to change.
 
 - **Record 0044 holds them.** The set brings Pending You, Plannotator, plannotator-tui and their herdr plugins, Pending You's own folder, one sign-in command and a marketplace of the set's own holding Pending You's and Plannotator's Claude Code plugins, with the runner where crew's module is on.
-- **Claude Code stays the person's own.** The flake still installs no Claude Code and writes none of its files. Claude Code loads the companions itself, once the set installs them into its homes with Claude Code's own commands. That step waits on the user's answer to which sessions get them (record 0044, point 3).
+- **Claude Code stays the person's own.** The flake still installs no Claude Code and writes none of its files. Claude Code loads the companions itself, once the set installs them into its homes with Claude Code's own commands. That step is the unit `the-companions-load-in-claude-codes-sessions`, for every session on the accounts, the user's own included, as the user answered (record 0044, point 3).
