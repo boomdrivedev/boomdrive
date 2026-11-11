@@ -96,6 +96,16 @@ let
     t.expect (package.version == checked)
       "packages.${system}.ghostty is Ghostty ${package.version}, not ${checked}, the release Flume's window profile was checked against";
 
+  # The set's portless against its tag (design Decision 1): `version` is
+  # the package's, read from its tagged tree, and `locked` the lock's tag
+  # without the v.
+  portlessHeld =
+    system: version: locked:
+    t.expect (version == locked) "packages.${system}.portless says ${version}, not its tag's ${locked}";
+
+  # Each system's portless.
+  portlessOf = system: outputs.packages.${system}.portless;
+
   # Each of the set's herdr plugins' floors, from its manifest.
   floorsOf =
     packages:
@@ -327,6 +337,85 @@ in
         "0.9.5"
       ]
     ) "a plugin asking for herdr 0.9.9 of a set's 0.9.5 gives ${builtins.toJSON found}";
+
+  "portless from its source" = each (
+    system: packages:
+    let
+      inherit (packages) portless;
+      source = inputs.portless.outPath;
+    in
+    t.expect (
+      toString portless.src == source
+    ) "packages.${system}.portless is of ${toString portless.src}, not ${source}"
+    ++
+      t.expect ((portless.meta.mainProgram or null) == "portless")
+        "packages.${system}.portless's program is ${
+          toString (portless.meta.mainProgram or "none")
+        }, not portless"
+    ++ portlessHeld system portless.version (t.lockedVersion "portless")
+  );
+
+  "portless other than its tag" =
+    let
+      found = portlessHeld "x86_64-linux" "0.17.1" "0.17.0";
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "0.17.1"
+        "0.17.0"
+      ]
+    ) "a portless 0.17.1 under the lock's tag v0.17.0 gives ${builtins.toJSON found}";
+
+  # Under pnpm 11 the fetch holds every platform's optional packages, so
+  # its one hash is every system's (design Decision 3).
+  "One fetch for every system" =
+    let
+      fetches = map (system: (portlessOf system).pnpmDeps) systems;
+      hashes = lib.unique (map (deps: deps.outputHash) fetches);
+    in
+    t.expect (
+      builtins.length hashes == 1
+    ) "portless's fetches have the hashes ${toString hashes}, not one for every system"
+    ++ lib.concatMap (
+      system:
+      let
+        deps = (portlessOf system).pnpmDeps;
+        major = lib.versions.major deps.pnpm.version;
+      in
+      t.expect (deps.pnpmWorkspaces == [ "portless" ])
+        "packages.${system}.portless fetches ${builtins.toJSON deps.pnpmWorkspaces}, not the package portless alone"
+      ++ t.expect (
+        major == "11"
+      ) "packages.${system}.portless is fetched with pnpm ${deps.pnpm.version}, not pnpm 11"
+    ) systems;
+
+  "The flake's Node.js" = lib.concatMap (
+    system:
+    t.expect
+      ((portlessOf system).node.drvPath == inputs.nixpkgs.legacyPackages.${system}.nodejs_24.drvPath)
+      "packages.${system}.portless runs on ${(portlessOf system).node.name}, not the flake's nixpkgs' nodejs_24"
+  ) systems;
+
+  # git is the host's own (records 0012 and 0023): portless's PATH is
+  # given the flake's openssl, procps, which and hostname alone.
+  "portless runs the host's git" = lib.concatMap (
+    system:
+    let
+      given = (portlessOf system).runtimeInputs;
+      nixpkgs = inputs.nixpkgs.legacyPackages.${system};
+      expected = [
+        nixpkgs.openssl
+        nixpkgs.procps
+        nixpkgs.which
+        nixpkgs.hostname
+      ];
+      names = map lib.getName given;
+    in
+    t.expect (map (p: p.drvPath) given == map (p: p.drvPath) expected)
+      "packages.${system}.portless's PATH is given ${toString names}, not the flake's nixpkgs' openssl, procps, which and hostname"
+    ++ t.expect (!builtins.elem "git" names) "packages.${system}.portless's PATH is given git"
+  ) systems;
 
   "Flume's plugin moves with Flume" = each (pluginOf "flume");
   "sluice's plugin moves with sluice" = each (pluginOf "sluice");
