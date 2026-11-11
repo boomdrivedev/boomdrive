@@ -30,6 +30,7 @@ let
     "flume"
     "ghostty"
     "herdr"
+    "portless"
     "sluice"
   ];
   overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
