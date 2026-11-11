@@ -378,6 +378,66 @@ let
         "host-b"
       ];
 
+  # Whether crew's teams file, as crew's module renders it in `evaluated`,
+  # evaluates whole: the module system throws for an option used with no
+  # value and for a definition of an option a submodule does not declare,
+  # and tryEval catches both, so success alone is read (design Decision 6).
+  loads =
+    evaluated: (builtins.tryEval (builtins.deepSeq evaluated.config.services.crew.settings true)).success;
+
+  # A host on the set's crew loads crew's teams file at version 6, written
+  # here as 6 and not read from crew, so a crew release that moves it fails
+  # this case in the change that moves the pin (core.45; design Decision 6).
+  setsCrew =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system crewOn;
+      inherit (evaluated.config.services.crew.settings) version;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system on the set's crew fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (loads evaluated) "crew's teams file of a ${platform} system on the set's crew does not evaluate"
+    ++ t.expect (
+      version == 6
+    ) "crew's teams file of a ${platform} system on the set's crew is version ${toString version}, not 6";
+
+  # crew's `hosts`, and the drive `home`'s `runs` and `review`, are what
+  # the host wrote: the module adds and changes none of them (design
+  # Decision 4).
+  crewsKeys =
+    platform:
+    { system, ... }:
+    let
+      given = settings.crewModule;
+      written = (system crewOn).config.services.crew.settings;
+    in
+    t.expect (
+      written.hosts == given.hosts
+    ) "crew's hosts on ${platform} are ${builtins.toJSON written.hosts}, not ${builtins.toJSON given.hosts}"
+    ++ t.expect (
+      written.drives.home.runs == given.drives.home.runs
+    ) "the drive home's runs on ${platform} are ${builtins.toJSON written.drives.home.runs}, not ${builtins.toJSON given.drives.home.runs}"
+    ++ t.expect (
+      written.drives.home.review == given.drives.home.review
+    ) "the drive home's review on ${platform} is ${builtins.toJSON written.drives.home.review}, not ${builtins.toJSON given.drives.home.review}";
+
+  # crew's old names, its teams file's version 5's, fail evaluation (design
+  # Decision 6).
+  oldRuns =
+    platform:
+    { system, ... }:
+    t.expect (
+      !loads (system (crewOf settings.crewOldRuns))
+    ) "a ${platform} system whose crew drive names flume in place of runs evaluates";
+  oldReview =
+    platform:
+    { system, ... }:
+    t.expect (
+      !loads (system (crewOf settings.crewOldReview))
+    ) "a ${platform} system whose crew drive's review is every and hours evaluates";
+
   nixosRunner = userScripts (t.nixosSystem crewOn);
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
@@ -394,6 +454,10 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "crew's drives in label order" crewOrder
 // onEach "Under crew with neither" neither
 // onEach "No drive of crew's on this host" elsewhere
+// onEach "A host on the set's crew" setsCrew
+// onEach "crew's keys stay the host's" crewsKeys
+// onEach "crew's old way of running" oldRuns
+// onEach "crew's old batch names" oldReview
 // {
   # The README's install with nix writes no crew table beside crew's
   # drives, and says the module writes it (design Decision 8).

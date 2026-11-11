@@ -148,4 +148,31 @@ in
     inherit hosts;
     drives.away = driveOf "away" "host-b" "example/away";
   };
+
+  # crewModule by crew's old way of running, version 5's: `home` names
+  # `flume`, each of its five roles false, in place of `runs`.
+  crewOldRuns = {
+    inherit hosts;
+    drives.home = removeAttrs (driveOf "home" "host-a" "example/state") [ "runs" ] // {
+      flume = {
+        design = false;
+        planner = false;
+        reviewer = false;
+        ops = false;
+        operator = false;
+      };
+    };
+  };
+
+  # crewModule by crew's old batch names, version 5's: `home`'s `review`
+  # is `every` and `hours`.
+  crewOldReview = {
+    inherit hosts;
+    drives.home = driveOf "home" "host-a" "example/state" // {
+      review = {
+        every = 5;
+        hours = 4;
+      };
+    };
+  };
 }
