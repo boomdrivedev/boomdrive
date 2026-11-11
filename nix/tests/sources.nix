@@ -119,7 +119,38 @@ let
         "the ${platform} system with the runner off gives Flume the source crew ${
           builtins.toJSON ((sourcesOf evaluated).crew or null)
         }, not ${builtins.toJSON crewSource}";
+
+  # The path crew's own source, at the crew the lock names, gives the line
+  # `<prefix> = Path.home() / "<path>"`, as `~/<path>`; null where no line
+  # of it matches (design Decision 5).
+  crewSourcePy = builtins.readFile "${t.inputs.crew}/plugin/lib/source.py";
+  crewsPath =
+    prefix:
+    let
+      matched = lib.findFirst (match: match != null) null (
+        map (builtins.match "${prefix} = Path\\.home\\(\\) / \"([^\"]+)\"") (
+          lib.splitString "\n" crewSourcePy
+        )
+      );
+    in
+    if matched == null then null else "~/${lib.head matched}";
+
+  # The source's key `key` held to crew's line `prefix`.
+  writtenBy =
+    key: prefix:
+    let
+      given = (sourcesOf (t.darwinSystem crewOn)).crew.${key} or null;
+      crews = crewsPath prefix;
+    in
+    if crews == null then
+      [ "crew's plugin/lib/source.py has no line ${prefix} = Path.home() / \"<path>\"" ]
+    else
+      t.expect (given == crews) "the source's ${key} is ${toString given}, not crew's ${prefix}, ${crews}";
 in
 onEach "crew's source with crew on" crewOnSource
 // onEach "No source of crew's with crew off" crewOff
 // onEach "crew's source without the runner" runnerOff
+// {
+  "The paths the set's crew writes" =
+    writtenBy "roles" "ROLES_FILE" ++ writtenBy "kinds_dir" "KINDS_DIR";
+}
