@@ -113,8 +113,8 @@ pub fn capacity(status: &Result<Reply, Unrun>) -> Capacity {
 
 /// The hello for a pull: the tools' versions as `tools` reads them, the
 /// addresses kept with their clones made, the host's capacity, and each
-/// lease `report` holds. It names no repository drained: the pass sets
-/// them apart, from [`draining`].
+/// lease `report` holds. It names no repository drained and no drive: the
+/// pass sets them apart, from [`draining`] and the clones' drives.
 pub fn hello(
     tools: &dyn Tools,
     repositories: Vec<String>,
@@ -130,6 +130,7 @@ pub fn hello(
             .collect(),
         repositories,
         draining: Vec::new(),
+        drives: BTreeMap::new(),
         capacity,
         leases: report.leases(),
     }

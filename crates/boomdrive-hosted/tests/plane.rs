@@ -175,6 +175,7 @@ fn hello(report: &Report) -> Hello {
         )]),
         repositories: vec!["example/app".to_string(), "example/service".to_string()],
         draining: vec![],
+        drives: BTreeMap::new(),
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),
