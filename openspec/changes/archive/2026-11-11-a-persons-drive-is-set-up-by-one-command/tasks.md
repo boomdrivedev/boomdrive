@@ -136,4 +136,4 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 9. The specs
 
-- [ ] 9.1 The change's deltas archive into specs that pass openspec's strict check. Done when, after `devenv shell -- openspec archive a-persons-drive-is-set-up-by-one-command --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 9.1 The change's deltas archive into specs that pass openspec's strict check. Done when, after `devenv shell -- openspec archive a-persons-drive-is-set-up-by-one-command --yes`, `sluice exec main -- moon run root:specs` passes.

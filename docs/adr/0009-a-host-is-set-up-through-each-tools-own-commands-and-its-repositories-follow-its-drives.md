@@ -188,3 +188,17 @@ core.29's text gains setup's link of the set's herdr plugins by herdr's own comm
 
 - Flume is asked for a command that sets its managed layer's host keys, a drive's stream and a source at setup's asking, as crew was asked for `crew drive set`. That is the reach of this record's first consequence, which asked Flume for commands that declare a stream and a kind source. Until Flume has it, a drive set up here has crew's standing agents to talk to, and the runner's launches into Flume print their commands rather than run them. The amendment of 2026-11-09 said a first drive needs no Flume setting of its own. That holds of its stream alone: Flume's host keys come from Boomdrive's module on a host Nix manages, and from nothing on one it does not.
 - Setup runs crew v0.59.0's flags, which the bolt `the-sets-crew-pin-takes-its-new-names` brings into the set.
+
+## Amendment, 2026-11-11: what the build of setup decided
+
+Status: the writing agent's, made on 2026-11-11 by the code stage of the change `a-persons-drive-is-set-up-by-one-command`, within the amendment above. Each choice is cheap to change and turns on no word of the user's.
+
+Deciders: the code stage of `a-persons-drive-is-set-up-by-one-command`, building the amendment above and the change's setup spec.
+
+### Decision outcome
+
+- **A drive's repositories are ordered owner by owner before crew is given them.** Nix's module, and setup's file with it, write a drive's repositories owner by owner in the order of the owners' names. Setup orders them so before it runs `crew drive set`, so a second run reads from its file the order it gave crew, and gives crew the same flags. Not taken: crew given the order the flags gave, under which a run again could change crew's file.
+- **Each blueprints repository is one the drive keeps.** crew checks the first alone. Setup refuses any `--blueprints`, or any blueprints crew's file gives the drive, that the drive does not keep, naming it, and asks for `--blueprints` where crew's file gave it. Not taken: the first alone, which would leave a later blueprints repository the runner keeps no clone of.
+- **A drive is one account's.** A `--account` other than the one setup's file keeps the drive under is a usage error, naming both, as Nix's module refuses a drive's name under two accounts.
+- **An implementation's setup is opaque to the runner.** `planes` carries what crew's implementation holds, settles and finds from one step to the next as values only that implementation reads, and the runner reads of them only the state repository the host holds, to know whether to ask a terminal for it (core.2).
+- **What setup's answer holds.** `control_plane` is crew's: `state_repository` with its `repository` and `outcome`, `made` or `there`; `drive`, crew's JSON as crew printed it; and `start`. `config` holds the file, its `outcome`, `written` or `unchanged`, and `aside`, the path a person's file was moved to, or null. `service` holds the plist, `plist`, `written` or `unchanged`, and `outcome`, `loaded`, `reloaded` or `running`. `plugins` lists each plugin with its folder and its `outcome`, `linked`, `there` or `refused` with herdr's `words`. `missing` lists each sign-in, and the set's herdr plugins where no profile holds them, as `{"what", "fix"}`.
