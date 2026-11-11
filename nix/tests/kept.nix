@@ -265,6 +265,9 @@ in
   "crew's kept repositories on nix-darwin" = eachKept "nix-darwin";
 
   "crew's kept repositories on NixOS" = eachKept "NixOS";
+
+  "The README's kept repositories" =
+    t.expect (lib.hasInfix "services.crew.settings.repositories" (toString t.installing)) "the README's Installing with nix names no services.crew.settings.repositories";
 }
 // onEach "crew's kept repository of another machine's drive" anotherMachine
 // onEach "crew's checkouts under the host's repository root" underRoot

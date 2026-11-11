@@ -21,7 +21,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The words
 
-- [ ] 3.1 The README's **Installing with nix** names `services.crew.settings.repositories` as design Decision 7 has it, in a paragraph after `cloneDirs`'s, with no nix block. `nix/tests/kept.nix` gains the case "The README's kept repositories", which holds `t.installing` to naming `services.crew.settings.repositories` (design Decision 7). True when `sluice exec main -- moon run nix:test` passes, proving "The README's kept repositories". "The README's words", "The README's accounts", "The README's data folder", "The README's clone folders" and "The README's crew table" must still hold.
+- [x] 3.1 The README's **Installing with nix** names `services.crew.settings.repositories` as design Decision 7 has it, in a paragraph after `cloneDirs`'s, with no nix block. `nix/tests/kept.nix` gains the case "The README's kept repositories", which holds `t.installing` to naming `services.crew.settings.repositories` (design Decision 7). True when `sluice exec main -- moon run nix:test` passes, proving "The README's kept repositories". "The README's words", "The README's accounts", "The README's data folder", "The README's clone folders" and "The README's crew table" must still hold.
 
 ## 4. The specs
 
