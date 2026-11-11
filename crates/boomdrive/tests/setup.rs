@@ -21,7 +21,8 @@ use std::process::Output;
 /// A stand-in program's script: its arguments appended to `<name>.calls`
 /// beside it, one call a line, each `HERDR_` variable it was given to
 /// `<name>.env`, and the answer put for its first two arguments,
-/// `<name>.<first>-<second>.*`, else its own, `<name>.*`: `.out` on
+/// `<name>.<first>-<second>.*`, the second up to its first `/`, else its
+/// own, `<name>.*`: `.out` on
 /// standard output, `.err` on standard error and `.exit` its exit, 0 where
 /// none is put.
 const SCRIPT: &str = r#"#!/bin/sh
@@ -29,7 +30,7 @@ d=$(dirname "$0")
 n=$(basename "$0")
 printf '%s\n' "$*" >> "$d/$n.calls"
 env | grep '^HERDR_' >> "$d/$n.env"
-k="$n.$1-$2"
+k="$n.$1-${2%%/*}"
 [ -e "$d/$k.exit" ] || k="$n"
 [ -e "$d/$k.out" ] && cat "$d/$k.out"
 [ -e "$d/$k.err" ] && cat "$d/$k.err" >&2
