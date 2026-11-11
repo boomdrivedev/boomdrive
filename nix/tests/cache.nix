@@ -132,6 +132,7 @@ in
         "services.boomdrive.herdr.package"
         "services.boomdrive.herdr.plugins"
         "services.boomdrive.ghostty.package"
+        "services.boomdrive.worktrunk.package"
         "services.boomdrive.launcher.package"
         "nix develop github:agentplot/boomdrive"
       ]

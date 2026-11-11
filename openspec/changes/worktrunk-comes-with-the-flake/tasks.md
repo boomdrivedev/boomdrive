@@ -23,7 +23,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 3. The words
 
-- [ ] 3.1 The README's **Installing with nix** names:
+- [x] 3.1 The README's **Installing with nix** names:
   - worktrunk in the set, and `#worktrunk` on the profile line;
   - `services.boomdrive.worktrunk.package`, and setting it `null` or to a host's own;
   - worktrunk in the shell;
