@@ -1,6 +1,6 @@
 //! README's examples are what the runner reads (task 1.2, Task notes
-//! 9.4, task 6.4): its configuration, and with it its `[control_plane]`
-//! table, which opens crew's implementation, and its hosted table, which
+//! 9.4, task 6.4): its configuration, the local layer over it, and with
+//! it its `[control_plane]` table, which opens crew's implementation, and its hosted table, which
 //! the hosted implementation reads. It names no branch command the
 //! runner runs (core.52).
 
@@ -24,11 +24,87 @@ fn toml_block(text: &str) -> &str {
     block
 }
 
+/// The ```toml block after the first of `text`, the local layer's.
+fn second_toml_block(text: &str) -> &str {
+    let (_, after) = text
+        .split_once("```toml\n")
+        .expect("README holds a ```toml block");
+    let (_, after) = after.split_once("```").expect("the block is closed");
+    toml_block(after)
+}
+
+/// The local layer README shows, read over its configuration, keeps both
+/// layers' repositories and is taken: it adds to a drive the managed
+/// layer names, and declares one it does not.
+#[test]
+fn the_readme_local_layer_reads() {
+    let (text, readme) = readme();
+    let config = config::parse_layers(
+        toml_block(&text),
+        &readme,
+        Some(second_toml_block(&text)),
+        &readme.with_file_name("config.local.toml"),
+        Path::new("/h"),
+    )
+    .unwrap();
+    assert_eq!(
+        config.local,
+        config::LocalLayer::Taken {
+            passed_over: vec![]
+        }
+    );
+    let managed = config::parse(toml_block(&text), &readme, Path::new("/h")).unwrap();
+    assert!(config.repositories().count() > managed.repositories().count());
+    for address in managed.repositories() {
+        assert_eq!(
+            config.drive_of(address).map(|drive| &drive.name),
+            managed.drive_of(address).map(|drive| &drive.name),
+            "{address}"
+        );
+    }
+    let added_to: Vec<&str> = config
+        .drives()
+        .filter(|drive| {
+            managed.drives().any(|kept| {
+                kept.name == drive.name && kept.repositories.len() < drive.repositories.len()
+            })
+        })
+        .map(|drive| drive.name.as_str())
+        .collect();
+    assert_eq!(added_to, ["home"]);
+    let declared: Vec<&str> = config
+        .drives()
+        .filter(|drive| managed.drives().all(|kept| kept.name != drive.name))
+        .map(|drive| drive.name.as_str())
+        .collect();
+    assert_eq!(declared, ["garden"]);
+}
+
 #[test]
 fn the_readme_configuration_reads() {
     let (text, readme) = readme();
     let config = config::parse(toml_block(&text), &readme, Path::new("/h")).unwrap();
-    assert!(!config.repositories.is_empty());
+    let drives: Vec<(&str, &str, Vec<String>)> = config
+        .accounts
+        .iter()
+        .flat_map(|account| {
+            account.drives.iter().map(|drive| {
+                let repositories = drive.repositories.iter().map(ToString::to_string);
+                (
+                    account.name.as_str(),
+                    drive.name.as_str(),
+                    repositories.collect(),
+                )
+            })
+        })
+        .collect();
+    assert_eq!(
+        drives,
+        [
+            ("own", "home", vec!["agentplot/flume".to_string()]),
+            ("own", "work", vec!["example/crew".to_string()]),
+        ]
+    );
     assert!(config.code_workspaces);
     assert_eq!(config.control_plane, None);
 }
@@ -71,12 +147,11 @@ fn the_readme_hosted_table_reads() {
         .expect("README says how the runner dials the hosted control plane");
     let file = format!("{}\n{}", toml_block(&text), toml_block(dialing));
     let config = config::parse(&file, &readme, Path::new("/h")).unwrap();
-    let table = config.control_plane.expect("a control plane named");
+    let table = config.control_plane.clone().expect("a control plane named");
     assert_eq!(table.implementation, "hosted");
     assert_eq!(table.poll_interval, Duration::from_secs(60));
     let kept: Vec<String> = config
-        .repositories
-        .iter()
+        .repositories()
         .map(|address| format!("{}/{}", address.owner(), address.name()))
         .collect();
     let partitions = table.implementation_table["partitions"]

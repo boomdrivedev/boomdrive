@@ -6,7 +6,10 @@
 # systemctl and ps first on PATH that record their calls, and of id. The
 # stubs answer from the case's folder: id the user running it, alice
 # unless `user` says another; systemctl's show the unit's MainPID, 0
-# unless `MainPID` says another; and ps the command line in `args`. It
+# unless `MainPID` says another; and ps the command line in `args`. The
+# plugins' cases add a stub of herdr, run by its path as the modules run
+# it, that records its arguments and the HERDR_* variables it sees, and
+# refuses the plugin `refuse` names, saying `manifest not found`. It
 # prints each failure as one line, nix: <case>: <what>, and nothing where
 # every case holds.
 set -eu
@@ -171,6 +174,20 @@ expect "$named" "link's refusal \"$err\" names not both paths" \
 expect "$named" "link says \"$out\"" [ -z "$out" ]
 quiet "$named"
 
+named="A local layer beside it"
+fresh
+local=$home/.config/boomdrive/config.local.toml
+mkdir -p "$(dirname "$local")"
+echo 'repositories = ["example/local"]' >"$local"
+run link "$file"
+expect "$named" "link exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$target is no link to $file" linked
+expect "$named" "link changed $local" holds "$local" 'repositories = ["example/local"]'
+expect "$named" "link made $local a link" [ ! -L "$local" ]
+expect "$named" "link moved something aside" missing "$aside"
+expect "$named" "link moved $local aside" missing "$local.before-nix"
+quiet "$named"
+
 named="Not running on NixOS"
 fresh
 run keep alice "$program" run --config "$file"
@@ -226,3 +243,55 @@ fresh
 run keep alice
 expect "$named" "keep with no program exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "keep with no program called $(called)" missing "$calls"
+
+# A case's herdr stub, and two plugins in its store.
+freshPlugins() {
+  fresh
+  herdr=$dir/store/herdr/bin/herdr
+  first=$dir/store/flume-herdr-plugin
+  second=$dir/store/sluice-herdr-plugin
+  mkdir -p "$(dirname "$herdr")" "$first" "$second"
+  : >"$dir/refuse"
+  cat >"$herdr" <<STUB
+#!/bin/sh
+echo "herdr \$*" >>"$calls"
+env | grep '^HERDR_' >>"$dir/herdr-env" || true
+if [ "\$3" = "\$(cat "$dir/refuse")" ]; then
+  echo "manifest not found" >&2
+  exit 1
+fi
+echo "linked \$3"
+STUB
+  chmod +x "$herdr"
+}
+
+named="Each plugin linked"
+freshPlugins
+HERDR_SOCKET_PATH=$dir/herdr.sock
+HERDR_ENV=1
+export HERDR_SOCKET_PATH HERDR_ENV
+run plugins "$herdr" "$first" "$second"
+unset HERDR_SOCKET_PATH HERDR_ENV
+expect "$named" "plugins exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "plugins called $(called), not herdr plugin link for each plugin in order" \
+  holds "$calls" "herdr plugin link $first
+herdr plugin link $second"
+expect "$named" "herdr saw $(cat "$dir/herdr-env" 2>/dev/null)" [ ! -s "$dir/herdr-env" ]
+expect "$named" "plugins says \"$out$err\"" [ -z "$out$err" ]
+
+named="A link herdr refuses"
+freshPlugins
+echo "$first" >"$dir/refuse"
+run plugins "$herdr" "$first" "$second"
+expect "$named" "plugins exits $status, not 0" [ "$status" -eq 0 ]
+expect "$named" "plugins said \"$err\", not one line naming $first and manifest not found" \
+  [ "$err" = "boomdrive: herdr did not link $first: manifest not found" ]
+expect "$named" "plugins called $(called), not the second plugin's link after the first" \
+  holds "$calls" "herdr plugin link $first
+herdr plugin link $second"
+
+named="plugins' usage"
+freshPlugins
+run plugins "$herdr"
+expect "$named" "plugins with no plugin exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "plugins with no plugin called $(called)" missing "$calls"

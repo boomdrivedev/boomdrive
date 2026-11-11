@@ -1,28 +1,28 @@
-//! Each owner's VS Code workspace beside its views (core.43; design
-//! Decisions 1, 3, 4 and 5): `<repository_root>/<owner>/<owner>.code-workspace`,
-//! whose `folders` are exactly the owner's kept repositories and whose
+//! Each drive's VS Code workspace at the repository root (core.43; record
+//! 0017 as revised; design Decision 1): `<repository_root>/<drive>.code-workspace`,
+//! whose `folders` are exactly the drive's kept repositories and whose
 //! other members are kept as they were. A file the runner cannot read as
 //! a JSON object, a link or a folder at its path is left as it is and
 //! named, never with the file's text (core.11).
 
 use crate::config::Config;
-use crate::view;
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
-use serde_json::{json, Serializer, Value};
+use serde_json::{json, Map, Serializer, Value};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-/// An owner's workspace as the configuration wants it.
+/// A drive's workspace as the configuration wants it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Wanted {
-    /// The owner, as its first repository in the file writes it.
-    pub owner: String,
-    /// The workspace's file, `<repository_root>/<owner>/<owner>.code-workspace`.
+    /// The drive, as the file names it.
+    pub drive: String,
+    /// The workspace's file, `<repository_root>/<drive>.code-workspace`.
     pub file: PathBuf,
-    /// The path of each of the owner's kept repositories' view from the
-    /// file's folder, in the file's order.
+    /// The path of each of the drive's kept repositories' view from the
+    /// repository root, `<owner>/<name>` as the file writes it, in the
+    /// file's order.
     pub folders: Vec<String>,
 }
 
@@ -50,43 +50,35 @@ pub enum Act {
     Name(String),
 }
 
-/// Each owner of `config`'s repositories, compared without case, with its
-/// workspace's file and folders, in the order its first repository stands
-/// in the file. A repository whose owner is written as the first one's is
-/// `<name>`, and one written otherwise `../<owner as written>/<name>`,
-/// where `config::view_path` puts its view.
+/// Each drive of `config`, in the file's order, with its workspace's file
+/// at the repository root and its folders: each of its repositories by
+/// the path of its view from the root, `<owner>/<name>` as the file
+/// writes it, where `config::view_path` puts it. A drive keeping none has
+/// no folders.
 pub fn wanted(config: &Config) -> Vec<Wanted> {
-    let mut wanted: Vec<Wanted> = Vec::new();
-    for address in &config.repositories {
-        let owner = address.owner();
-        let at = match wanted
-            .iter()
-            .position(|kept| kept.owner.eq_ignore_ascii_case(owner))
-        {
-            Some(at) => at,
-            None => {
-                wanted.push(Wanted {
-                    owner: owner.to_string(),
-                    file: config.repository_root.join(owner).join(file_name(owner)),
-                    folders: Vec::new(),
-                });
-                wanted.len() - 1
-            }
-        };
-        let workspace = &mut wanted[at];
-        let folder = if workspace.owner == owner {
-            address.name().to_string()
-        } else {
-            format!("../{owner}/{}", address.name())
-        };
-        workspace.folders.push(folder);
-    }
-    wanted
+    config
+        .drives()
+        .map(|drive| Wanted {
+            drive: drive.name.clone(),
+            file: file(config, &drive.name),
+            folders: drive
+                .repositories
+                .iter()
+                .map(|address| format!("{}/{}", address.owner(), address.name()))
+                .collect(),
+        })
+        .collect()
 }
 
-/// The workspace file's name in the folder of `owner`, `<owner>.code-workspace`.
-pub fn file_name(owner: &str) -> String {
-    format!("{owner}.code-workspace")
+/// The workspace of the drive `drive` at `config`'s repository root,
+/// `<repository_root>/<drive>.code-workspace`.
+pub fn file(config: &Config, drive: &str) -> PathBuf {
+    config.repository_root.join(file_name(drive))
+}
+
+/// The workspace file's name for `name`, `<name>.code-workspace`.
+pub fn file_name(name: &str) -> String {
+    format!("{name}.code-workspace")
 }
 
 /// What stands at `path`, read with `symlink_metadata`, so a link is seen
@@ -120,23 +112,35 @@ pub fn decide(stands: &Stands, folders: &[String]) -> Act {
             .map(|folder| json!({ "path": folder }))
             .collect(),
     );
-    match stands {
-        Stands::Missing => Act::Write(text(&json!({ "folders": wanted, "settings": {} }))),
-        Stands::Link => Act::Name("it is a link".to_string()),
-        Stands::Other => Act::Name("it is not a file".to_string()),
-        Stands::File(bytes) => match serde_json::from_slice::<Value>(bytes) {
-            Err(error) => Act::Name(format!("it is not JSON the runner reads: {error}")),
-            Ok(Value::Object(mut members)) => {
-                match members.get_mut("folders") {
-                    Some(folders) if *folders == wanted => return Act::Leave,
-                    Some(folders) => *folders = wanted,
-                    None => {
-                        members.shift_insert(0, "folders".to_string(), wanted);
-                    }
+    match object(stands) {
+        Ok(None) => Act::Write(text(&json!({ "folders": wanted, "settings": {} }))),
+        Ok(Some(mut members)) => {
+            match members.get_mut("folders") {
+                Some(folders) if *folders == wanted => return Act::Leave,
+                Some(folders) => *folders = wanted,
+                None => {
+                    members.shift_insert(0, "folders".to_string(), wanted);
                 }
-                Act::Write(text(&Value::Object(members)))
             }
-            Ok(_) => Act::Name("it is not a JSON object".to_string()),
+            Act::Write(text(&Value::Object(members)))
+        }
+        Err(wrong) => Act::Name(wrong),
+    }
+}
+
+/// The JSON object a workspace's path holds, as `stands` there reads,
+/// none where nothing is there; or what is wrong with what stands, never
+/// with the file's text (core.11): a link, no file, a file the runner
+/// does not read as JSON, or JSON that is not an object.
+pub fn object(stands: &Stands) -> Result<Option<Map<String, Value>>, String> {
+    match stands {
+        Stands::Missing => Ok(None),
+        Stands::Link => Err("it is a link".to_string()),
+        Stands::Other => Err("it is not a file".to_string()),
+        Stands::File(bytes) => match serde_json::from_slice::<Value>(bytes) {
+            Err(error) => Err(format!("it is not JSON the runner reads: {error}")),
+            Ok(Value::Object(members)) => Ok(Some(members)),
+            Ok(_) => Err("it is not a JSON object".to_string()),
         },
     }
 }
@@ -163,31 +167,6 @@ pub fn partial(path: &Path) -> PathBuf {
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default();
     path.with_file_name(format!(".{name}.partial"))
-}
-
-/// The workspace an owner's `folder` holds, `<folder's name>.code-workspace`,
-/// where it is a regular file and the folder holds nothing else but its
-/// partial file (design Decision 7). Each entry is compared as
-/// `view::same_path` compares, so an owner written in another case finds
-/// its file where the file system ignores case. None where the folder
-/// holds anything else, or cannot be read.
-pub fn alone_in(folder: &Path) -> Option<PathBuf> {
-    let file = folder.join(file_name(folder.file_name()?.to_str()?));
-    let partial = partial(&file);
-    let mut found = false;
-    for entry in fs::read_dir(folder).ok()? {
-        let entry = entry.ok()?;
-        if !entry.file_type().ok()?.is_file() {
-            return None;
-        }
-        let path = entry.path();
-        if view::same_path(&path, &file) {
-            found = true;
-        } else if !view::same_path(&path, &partial) {
-            return None;
-        }
-    }
-    found.then_some(file)
 }
 
 /// Writes `text` as the workspace at `path`, whole, to its partial file,
@@ -263,45 +242,66 @@ mod tests {
             .collect()
     }
 
+    /// Two drives sharing the owner `agentplot`: each lists its own
+    /// repositories, in the file's order, by their paths from the root.
     #[test]
-    fn two_owners() {
+    fn two_drives_sharing_an_owner() {
         let config = config(
             "repository_root = \"/h/Code\"\n\
-             repositories = [\"agentplot/flume\", \"example/crew\", \"agentplot/sluice\"]\n",
+             [accounts.own.drives.home]\n\
+             repositories = [\"agentplot/flume\", \"example/crew\"]\n\
+             [accounts.own.drives.work]\n\
+             repositories = [\"agentplot/sluice\"]\n",
         );
         assert_eq!(
             wanted(&config),
             [
                 Wanted {
-                    owner: "agentplot".to_string(),
-                    file: PathBuf::from("/h/Code/agentplot/agentplot.code-workspace"),
-                    folders: folders(&["flume", "sluice"]),
+                    drive: "home".to_string(),
+                    file: PathBuf::from("/h/Code/home.code-workspace"),
+                    folders: folders(&["agentplot/flume", "example/crew"]),
                 },
                 Wanted {
-                    owner: "example".to_string(),
-                    file: PathBuf::from("/h/Code/example/example.code-workspace"),
-                    folders: folders(&["crew"]),
+                    drive: "work".to_string(),
+                    file: PathBuf::from("/h/Code/work.code-workspace"),
+                    folders: folders(&["agentplot/sluice"]),
                 },
             ]
         );
     }
 
+    /// An owner written in two cases: each folder is its view's path as
+    /// the file writes its address.
     #[test]
-    fn owners_differing_in_case() {
-        let config = config("repositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n");
+    fn an_owner_written_in_two_cases() {
+        let config = config(
+            "[accounts.own.drives.home]\n\
+             repositories = [\"AgentPlot/flume\", \"agentplot/sluice\"]\n",
+        );
         assert_eq!(
             wanted(&config),
             [Wanted {
-                owner: "AgentPlot".to_string(),
-                file: PathBuf::from("/h/Code/AgentPlot/AgentPlot.code-workspace"),
-                folders: folders(&["flume", "../agentplot/sluice"]),
+                drive: "home".to_string(),
+                file: PathBuf::from("/h/Code/home.code-workspace"),
+                folders: folders(&["AgentPlot/flume", "agentplot/sluice"]),
             }]
         );
     }
 
+    /// A drive keeping none has its workspace, with no folders; a host
+    /// with no drive has none.
     #[test]
-    fn keeping_none() {
-        assert_eq!(wanted(&config("repositories = []\n")), []);
+    fn a_drive_keeping_none() {
+        let config = config("[accounts.client.drives.garden]\nrepositories = []\n");
+        assert_eq!(
+            wanted(&config),
+            [Wanted {
+                drive: "garden".to_string(),
+                file: PathBuf::from("/h/Code/garden.code-workspace"),
+                folders: vec![],
+            }]
+        );
+        assert_eq!(wanted(&self::config("accounts = {}\n")), []);
     }
 
     #[test]
@@ -471,51 +471,17 @@ mod tests {
     }
 
     #[test]
-    fn a_write_makes_the_owners_folder() {
+    fn a_write_makes_the_repository_root() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("Code/o/o.code-workspace");
+        let path = dir.path().join("Code/home.code-workspace");
 
         write(&path, "{}\n").unwrap();
 
         assert_eq!(fs::read_to_string(&path).unwrap(), "{}\n");
         assert_eq!(
             partial(&path),
-            dir.path().join("Code/o/.o.code-workspace.partial")
+            dir.path().join("Code/.home.code-workspace.partial")
         );
         assert!(!partial(&path).exists());
-    }
-
-    #[test]
-    fn a_workspace_alone_in_its_owners_folder() {
-        let dir = tempfile::tempdir().unwrap();
-        let folder = dir.path().join("o");
-        let file = folder.join("o.code-workspace");
-        fs::create_dir(&folder).unwrap();
-        assert_eq!(alone_in(&folder), None, "an empty folder");
-        fs::write(partial(&file), "half a fi").unwrap();
-        assert_eq!(alone_in(&folder), None, "only the partial file");
-        fs::write(&file, "{}").unwrap();
-        assert_eq!(
-            alone_in(&folder),
-            Some(file.clone()),
-            "with its partial file"
-        );
-        fs::remove_file(partial(&file)).unwrap();
-        assert_eq!(alone_in(&folder), Some(file.clone()));
-        fs::write(folder.join("notes"), "mine\n").unwrap();
-        assert_eq!(alone_in(&folder), None, "beside a file of the user's");
-        fs::remove_file(folder.join("notes")).unwrap();
-        fs::create_dir(folder.join("flume")).unwrap();
-        assert_eq!(alone_in(&folder), None, "beside a folder");
-        fs::remove_dir(folder.join("flume")).unwrap();
-        fs::remove_file(&file).unwrap();
-        fs::write(folder.join("other.code-workspace"), "{}").unwrap();
-        assert_eq!(alone_in(&folder), None, "another owner's name");
-        fs::remove_file(folder.join("other.code-workspace")).unwrap();
-        let elsewhere = dir.path().join("elsewhere.json");
-        fs::write(&elsewhere, "{}").unwrap();
-        std::os::unix::fs::symlink(&elsewhere, &file).unwrap();
-        assert_eq!(alone_in(&folder), None, "a link");
-        assert_eq!(alone_in(&dir.path().join("gone")), None, "no folder");
     }
 }

@@ -1,12 +1,17 @@
-# The nix-darwin module, darwinModules.default: services.boomdrive as a
-# launchd agent of the primary user's login (design Decision 10), since
-# nix-darwin installs user agents for that user alone, with the runner and
-# its tools in the system profile and the service's PATH the profiles'
-# (design Decision 11). Once the Nix store is mounted, the agent runs
-# `boomdrive run --config` with the file rendered from `settings` (design
-# Decision 9), so nix-darwin reloads it when the package or the file
-# changes, and leaves it running when neither does. The activation links the file at the runner's own path,
-# as the primary user, for the commands a person runs by hand.
+# The runner's nix-darwin module, in darwinModules.default: services.boomdrive
+# as a launchd agent of the primary user's login (design Decision 10),
+# since nix-darwin installs user agents for that user alone, with the
+# runner in the system profile and the service's PATH the profiles' (design
+# Decision 11). Each tool of the set is installed by its own module, which
+# flake.nix imports beside this one, and tools.nix sets their options
+# (record 0023); drives.nix gives Flume's module each drive's stream (record
+# 0028). Once the Nix store is mounted, the agent runs
+# `boomdrive run --config` with the file rendered from `accounts` and
+# `settings` (design Decision 9), so nix-darwin reloads it when the package
+# or the file changes, and leaves it running when neither does. The
+# activation links the file at the runner's own path, as the primary user,
+# for the commands a person runs by hand, and links the herdr plugins
+# apps.nix lists with herdr's own command (record 0023).
 { packages }:
 {
   config,
@@ -17,7 +22,19 @@
 let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
-  file = pkgs.writeText "boomdrive-config.toml" (render cfg.settings);
+  inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
+
+  # herdr's own link of each plugin, where a herdr and a plugin are given
+  # (apps.nix).
+  linking = cfg.herdr.package != null && cfg.herdr.plugins != [ ];
+  plugins = lib.escapeShellArgs (
+    [
+      "plugins"
+      (lib.getExe' cfg.herdr.package "herdr")
+    ]
+    ++ map toString cfg.herdr.plugins
+  );
 
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
@@ -39,7 +56,12 @@ let
   ];
 in
 {
-  imports = [ (import ./options.nix { inherit packages; }) ];
+  imports = [
+    (import ./options.nix { inherit packages; })
+    (import ./tools.nix { inherit packages; })
+    (import ./apps.nix { inherit packages; })
+    ./drives.nix
+  ];
 
   options.services.boomdrive.logFile = lib.mkOption {
     type = lib.types.path;
@@ -58,7 +80,7 @@ in
       }
     ];
 
-    environment.systemPackages = [ cfg.package ] ++ cfg.tools;
+    environment.systemPackages = [ cfg.package ];
 
     launchd.user.agents.boomdrive = {
       # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store
@@ -91,10 +113,14 @@ in
 
     # Activation runs as root, with root's HOME, so the link is made as the
     # primary user under their own home. A link that fails says why and
-    # stops nothing else: the agent reads its own --config either way.
+    # stops nothing else: the agent reads its own --config either way. The
+    # plugins are linked the same way, each refusal said and stopping none.
     system.activationScripts.postActivation.text = ''
       sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
         /bin/sh ${./activate.sh} link ${file} || true
+    ''
+    + lib.optionalString linking ''
+      sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
     '';
   };
 }

@@ -1,11 +1,14 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, and Flume and sluice each at a release tag (record
-# 0020, core.44). A host's nix substitutes their binaries from the family's
+# runner at this tree, and Flume, sluice, crew and herdr each at a release
+# tag through its own flake (records 0020 and 0023, core.44). git is the
+# host's own. A host's nix substitutes their binaries from the family's
 # cache where it trusts it, and builds the same paths where it does not
-# (core.47). The development shell is devenv's (devenv.nix); everything
-# else of the flake's is under nix/, the moon project `nix`.
+# (core.47). Its shell, devShells.<system>.default, puts the set on PATH and
+# starts herdr (record 0023); the repository's own development shell is
+# devenv's (devenv.nix). Everything else of the flake's is under nix/, the
+# moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume and sluice, pinned together";
+  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -18,7 +21,7 @@
   };
 
   # A tool's tag moves only with the lock, in a change the gate passes
-  # (core.45).
+  # (core.45). git is the host's own (record 0023).
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay = {
@@ -26,15 +29,36 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.74.3";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
+      url = "github:agentplot/sluice/v0.78.1";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
+      };
     };
-    # nix/packages/flume.nix builds Flume's tag. Flume's own flake, which
-    # it publishes since v0.18.0, comes with its module (record 0023).
     flume = {
-      url = "github:agentplot/flume/v0.21.0";
-      flake = false;
+      url = "github:agentplot/flume/v0.21.2";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
+      };
+    };
+    crew = {
+      url = "github:agentplot/crew/v0.50.2";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        nix-darwin.follows = "nix-darwin";
+      };
+    };
+    # The herdr Flume's tree pins at its tag, which Flume's terminal profile
+    # was checked against (record 0023; design Decision 1).
+    herdr = {
+      url = "github:herdrdev/herdr/v0.9.5";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+      };
     };
     # The tests' nix-darwin. A host's configuration follows its own, which
     # changes none of the packages.
@@ -58,51 +82,97 @@
       ];
       tagOf = import ./nix/packages/tag.nix { inherit lib; };
 
+      # The flake's own nixpkgs for one system, which the set and the shell
+      # are made with, so their paths are the ones the family's cache holds
+      # (design Decision 4).
+      pkgsOf =
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ rust-overlay.overlays.default ];
+        };
+
       # The set for one system (design Decisions 2 and 3), made with the
       # flake's own nixpkgs, so its paths are the ones the family's cache
-      # holds (design Decision 4). herdr and git are the host's own.
+      # holds (design Decision 4). git is the host's own (record 0023).
       packagesOf =
         system:
         let
-          pkgs = import nixpkgs {
-            inherit system;
-            overlays = [ rust-overlay.overlays.default ];
-          };
+          pkgs = pkgsOf system;
           tools = {
             boomdrive = pkgs.callPackage ./nix/packages/boomdrive.nix { platforms = systems; };
-            flume = pkgs.callPackage ./nix/packages/flume.nix {
-              src = inputs.flume;
-              platforms = systems;
-            };
+            flume = inputs.flume.packages.${system}.flume;
             sluice = import ./nix/packages/sluice.nix {
               inherit lib;
               package = inputs.sluice.packages.${system}.default;
               src = inputs.sluice;
               tag = tagOf (import ./flake.nix).inputs.sluice.url;
             };
+            crew = import ./nix/packages/crew.nix {
+              inherit lib;
+              package = inputs.crew.packages.${system}.crew;
+              tag = tagOf (import ./flake.nix).inputs.crew.url;
+            };
+            inherit (inputs.herdr.packages.${system}) herdr;
+            # Ghostty from the flake's nixpkgs, at the release Flume's window
+            # profile was checked against: built from source on Linux, and on
+            # macOS, where nothing builds its app from source, Ghostty's own
+            # release as `ghostty-bin` gives it (design Decision 2).
+            ghostty = if pkgs.stdenv.hostPlatform.isDarwin then pkgs.ghostty-bin else pkgs.ghostty;
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
         in
         tools
         // {
           default = tools.boomdrive;
+          # The way in: an app on macOS and a desktop entry on Linux that
+          # runs `flume open` (design Decision 3).
+          boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
           flume-herdr-plugin = pluginOf tools.flume;
           sluice-herdr-plugin = pluginOf tools.sluice;
         };
       packages = lib.genAttrs systems packagesOf;
+
+      # A platform's modules (design Decision 4): `boomdrive`, also
+      # `default`, is the runner's service, its options the runner's file
+      # (record 0020, core.46), with Flume's, sluice's and crew's own
+      # modules, each as its tool's flake gives it at the tag the lock
+      # names, none carried here (record 0023, core.18); and each tool's
+      # module again, as its flake gives it. Keyed, as Flume's is, so a
+      # system that imports `default` and `boomdrive` takes it once.
+      tools = [
+        "flume"
+        "sluice"
+        "crew"
+      ];
+      modulesOf =
+        platform: file:
+        let
+          toolOf = tool: inputs.${tool}."${platform}Modules".${tool};
+        in
+        rec {
+          boomdrive = {
+            _file = ./flake.nix;
+            key = "github:agentplot/boomdrive#${platform}Modules.boomdrive";
+            imports = [ (import file { inherit packages; }) ] ++ map toolOf tools;
+          };
+          default = boomdrive;
+        }
+        // lib.genAttrs tools toolOf;
     in
     {
       inherit packages;
 
-      # The runner's service, its options the runner's file (record 0020,
-      # core.46), its packages the flake's own above.
-      darwinModules = rec {
-        boomdrive = import ./nix/modules/darwin.nix { inherit packages; };
-        default = boomdrive;
-      };
-      nixosModules = rec {
-        boomdrive = import ./nix/modules/nixos.nix { inherit packages; };
-        default = boomdrive;
-      };
+      # A host's way in: the set on PATH, starting herdr on entering
+      # (record 0023). The repository's own development shell is devenv's.
+      devShells = lib.genAttrs systems (system: {
+        default = import ./nix/shell.nix {
+          pkgs = pkgsOf system;
+          set = packages.${system};
+        };
+      });
+
+      darwinModules = modulesOf "darwin" ./nix/modules/darwin.nix;
+      nixosModules = modulesOf "nixos" ./nix/modules/nixos.nix;
     };
 }

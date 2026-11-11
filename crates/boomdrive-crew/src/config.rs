@@ -18,6 +18,11 @@ const TABLE: &str = "[control_plane.crew]";
 const KEYS: [&str; 2] = ["host", "partitions"];
 const PARTITION_KEYS: [&str; 2] = ["label", "state_repository"];
 
+/// The keys of this table the runner's local layer may set, each taken
+/// whole over the managed layer's (record 0009 as amended 2026-11-06 and
+/// 2026-11-07; core.17).
+pub const LOCAL_KEYS: [&str; 1] = ["partitions"];
+
 /// crew's table, read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {

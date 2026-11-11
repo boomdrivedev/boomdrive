@@ -82,7 +82,13 @@ let
   );
   otherPackage = newPackage.config.services.boomdrive.package.outPath;
 
-  own = t.darwinSystem { services.boomdrive.tools = [ ]; };
+  own = t.darwinSystem {
+    services.flume.package = null;
+    services.sluice.package = null;
+  };
+  gone = t.darwinSystem { services.boomdrive.tools = [ ]; };
+  saysGone = words: lib.hasInfix words (toString (t.failures gone));
+  ownFlume = t.darwinSystem { services.flume.package = null; };
 
   path = lib.splitString ":" agent.EnvironmentVariables.PATH;
   before =
@@ -94,7 +100,48 @@ let
     t.expect (at != null && system != null && at < system)
       "the agent's PATH does not name ${entry} before /run/current-system/sw/bin: ${agent.EnvironmentVariables.PATH}";
 
-  crew = t.darwinSystem { services.boomdrive.settings = settings.crew; };
+  crew = t.darwinSystem { services.boomdrive = settings.crew; };
+  # The runner's `accounts` and `settings` `given`, beside crew's module
+  # turned on with the host `host-a` and crew's settings `teams`.
+  crewWith =
+    given: teams:
+    t.darwinSystem {
+      services.boomdrive = given;
+      services.crew = {
+        enable = true;
+        host = "host-a";
+        settings = teams;
+      };
+    };
+  fleet = crewWith settings.crewUnwritten settings.crewFleet;
+  # "A host under crew" whose crew table, written out, is the partition
+  # `garden` alone, beside crew's fleet.
+  garden = {
+    host = "host-a";
+    partitions = [
+      {
+        label = "garden";
+        state_repository = "example/garden";
+      }
+    ];
+  };
+  gardenSettings = settings.crew // {
+    settings = settings.crew.settings // {
+      control_plane = settings.crew.settings.control_plane // {
+        crew = garden;
+      };
+    };
+  };
+  writtenOut = crewWith gardenSettings settings.crewFleet;
+  writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
+  render = import ../modules/toml.nix { inherit lib; };
+  # The table the runner's file is rendered from, `accounts` joined to
+  # `settings` (accounts.nix).
+  tableOf = (import ../modules/accounts.nix { inherit lib; }).fileOf;
+  # Another control plane, or none, beside crew's module with one
+  # partition on host-a.
+  hostedBesideCrew = crewWith settings.hosted settings.crewModule;
+  noneBesideCrew = crewWith settings.empty settings.crewModule;
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
@@ -178,8 +225,8 @@ in
     ++ t.expect (plistOf base != plistOf newPackage) "the agents' plists are one for two packages";
 
   "Nothing else changed on nix-darwin" = t.expect (
-    plistOf base == plistOf own
-  ) "the agent's plist changes with services.boomdrive.tools";
+    plistOf base == plistOf ownFlume
+  ) "the agent's plist changes with services.flume.package";
 
   "The set's tools on nix-darwin" =
     installs base "runner" set.boomdrive
@@ -191,6 +238,19 @@ in
     ++ installsNo own "Flume" set.flume
     ++ installsNo own "sluice" set.sluice;
 
+  "The tools option is gone on nix-darwin" =
+    t.expect (t.failures gone != [ ]) "services.boomdrive.tools = [ ] evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (saysGone words) "the failure of services.boomdrive.tools names no ${words}: ${toString (t.failures gone)}"
+        )
+        [
+          "services.flume.package"
+          "services.sluice.package"
+        ];
+
   "The user's profile first on nix-darwin" =
     before "/etc/profiles/per-user/alice/bin"
     ++ before "/Users/alice/.nix-profile/bin"
@@ -201,6 +261,33 @@ in
   "A host under crew on nix-darwin" =
     t.expect (t.failures crew == [ ]) "crew's settings fail: ${toString (t.failures crew)}"
     ++ t.expect (writes crew (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
+
+  "A table written out wins on nix-darwin" =
+    t.expect (
+      t.failures writtenOut == [ ]
+    ) "a table written out fails: ${toString (t.failures writtenOut)}"
+    ++
+      t.expect (writtenTable == garden)
+        "settings.control_plane.crew is ${builtins.toJSON writtenTable}, not the table written, ${builtins.toJSON garden}"
+    ++ t.expect (writes writtenOut (render (tableOf gardenSettings))) "the agent's --config is not the rendering of the settings with the table written";
+
+  "A hosted control plane beside crew on nix-darwin" =
+    t.expect (
+      t.failures hostedBesideCrew == [ ]
+    ) "a hosted control plane beside crew fails: ${toString (t.failures hostedBesideCrew)}"
+    ++ t.expect (writes hostedBesideCrew (builtins.readFile ./files/hosted.toml)) "the agent's --config beside crew is not the file of nix/tests/files/hosted.toml";
+
+  "No control plane beside crew on nix-darwin" =
+    t.expect (
+      t.failures noneBesideCrew == [ ]
+    ) "no control plane beside crew fails: ${toString (t.failures noneBesideCrew)}"
+    ++ t.expect (writes noneBesideCrew (builtins.readFile ./files/empty.toml)) "the agent's --config beside crew is not the file of nix/tests/files/empty.toml";
+
+  "crew's partitions on this host on nix-darwin" =
+    t.expect (
+      t.failures fleet == [ ]
+    ) "crew's partitions on this host fail: ${toString (t.failures fleet)}"
+    ++ t.expect (writes fleet (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
 
   "The activation links the file on nix-darwin" =
     t.expect (lib.hasInfix link activation) "the activation runs no `${link}`: ${activation}";

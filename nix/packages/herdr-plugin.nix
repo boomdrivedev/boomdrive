@@ -2,7 +2,10 @@
 # package, copied whole with the tool's version, so a plugin and its tool
 # are one release (design Decision 3). Nothing in it is rewritten, its
 # scripts' interpreters among them: they find the tool on the user's
-# PATH. Linking it into herdr is herdr's own command, the host's to run.
+# PATH. The modules link it into the runner's user's herdr at each
+# activation with herdr's own command, `herdr plugin link` (record 0023;
+# design Decision 6 of the change
+# herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents).
 {
   stdenvNoCC,
   tool,

@@ -321,6 +321,8 @@ fn a_repository_added_while_running() {
     assert!(scratch.home.join("Code/agentplot/sluice").exists());
 }
 
+/// The configuration spec's "Workspaces asked for while running": the
+/// next pass writes the drive `home`'s workspace at the repository root.
 #[test]
 fn workspaces_asked_for_while_running() {
     let scratch = Scratch::new();
@@ -328,7 +330,7 @@ fn workspaces_asked_for_while_running() {
     scratch.configure(&every("1s", &["agentplot/flume"]));
     let running = Running::start(&scratch);
     running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    let file = scratch.home.join("Code/agentplot/agentplot.code-workspace");
+    let file = scratch.home.join("Code/home.code-workspace");
     assert!(!file.exists(), "a workspace not asked for");
 
     rewrite(
@@ -339,7 +341,10 @@ fn workspaces_asked_for_while_running() {
         ),
     );
 
-    let written = format!("boomdrive: workspace written at {}: flume", file.display());
+    let written = format!(
+        "boomdrive: workspace written at {}: agentplot/flume",
+        file.display()
+    );
     assert_eq!(running.until(&written), [written.as_str()]);
     assert_eq!(
         running.stop().last().map(String::as_str),
@@ -347,7 +352,10 @@ fn workspaces_asked_for_while_running() {
     );
     let workspace: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&file).expect("the workspace")).expect("JSON");
-    assert_eq!(workspace["folders"], serde_json::json!([{"path": "flume"}]));
+    assert_eq!(
+        workspace["folders"],
+        serde_json::json!([{"path": "agentplot/flume"}])
+    );
 }
 
 #[test]
@@ -361,10 +369,10 @@ fn a_file_broken_while_running() {
 
     rewrite(
         &scratch,
-        "fetch_interval = \"1s\"\nrepositories = [\"flume\"]\n",
+        "fetch_interval = \"1s\"\naccounts.own.drives.home.repositories = [\"flume\"]\n",
     );
     let broken = format!(
-        "boomdrive: {}:2: `repositories` entry \"flume\": an address is `owner/name`: nothing kept this pass",
+        "boomdrive: {}:2: `accounts.own.drives.home.repositories` entry \"flume\": an address is `owner/name`: nothing kept this pass",
         scratch.config_file().display()
     );
     assert_eq!(running.until(&broken), [broken.as_str()]);

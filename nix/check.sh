@@ -7,8 +7,8 @@
 # neither the network nor the nix daemon, which the gate's sandbox denies.
 # Its configuration, caches and state are a scratch folder's, never the
 # host's or the home's. The test also runs the activation's cases,
-# nix/tests/activate.sh, by sh in scratch folders. Each failure is one
-# line, nix: <case>: <what>.
+# nix/tests/activate.sh, and the way in's, nix/tests/way-in.sh, by sh in
+# scratch folders. Each failure is one line, nix: <case>: <what>.
 set -eu
 
 case ${1:-} in
@@ -43,7 +43,8 @@ failures=$(nix eval --raw --offline --read-only --impure \
   --file nix/tests "$check")
 if [ "$check" = test ]; then
   activation=$(sh nix/tests/activate.sh)
-  failures=$(printf '%s\n%s\n' "$failures" "$activation" | sed '/^$/d')
+  wayIn=$(sh nix/tests/way-in.sh)
+  failures=$(printf '%s\n%s\n%s\n' "$failures" "$activation" "$wayIn" | sed '/^$/d')
 fi
 
 if [ -n "$failures" ]; then

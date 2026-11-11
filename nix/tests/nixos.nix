@@ -44,13 +44,59 @@ let
       !builtins.elem package.outPath (profileOf evaluated)
     ) "the system profile holds the set's ${name}";
 
-  own = t.nixosSystem { services.boomdrive.tools = [ ]; };
-  crew = t.nixosSystem { services.boomdrive.settings = settings.crew; };
-  hosted = t.nixosSystem { services.boomdrive.settings = settings.hosted; };
+  own = t.nixosSystem {
+    services.flume.package = null;
+    services.sluice.package = null;
+  };
+  gone = t.nixosSystem { services.boomdrive.tools = [ ]; };
+  saysGone = words: lib.hasInfix words (toString (t.failures gone));
+  crew = t.nixosSystem { services.boomdrive = settings.crew; };
+  hosted = t.nixosSystem { services.boomdrive = settings.hosted; };
+  # The runner's `accounts` and `settings` `given`, beside crew's module
+  # turned on with the host `host-a` and crew's settings `teams`.
+  crewWith =
+    given: teams:
+    t.nixosSystem {
+      services.boomdrive = given;
+      services.crew = {
+        enable = true;
+        host = "host-a";
+        settings = teams;
+      };
+    };
+  fleet = crewWith settings.crewUnwritten settings.crewFleet;
+  # "A host under crew" whose crew table, written out, is the partition
+  # `garden` alone, beside crew's fleet.
+  garden = {
+    host = "host-a";
+    partitions = [
+      {
+        label = "garden";
+        state_repository = "example/garden";
+      }
+    ];
+  };
+  gardenSettings = settings.crew // {
+    settings = settings.crew.settings // {
+      control_plane = settings.crew.settings.control_plane // {
+        crew = garden;
+      };
+    };
+  };
+  writtenOut = crewWith gardenSettings settings.crewFleet;
+  writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
+  render = import ../modules/toml.nix { inherit lib; };
+  # The table the runner's file is rendered from, `accounts` joined to
+  # `settings` (accounts.nix).
+  tableOf = (import ../modules/accounts.nix { inherit lib; }).fileOf;
+  # Another control plane, or none, beside crew's module with one
+  # partition on host-a.
+  hostedBesideCrew = crewWith settings.hosted settings.crewModule;
+  noneBesideCrew = crewWith settings.empty settings.crewModule;
   oldSystemd = t.nixosSystem (
     { pkgs, ... }:
     {
-      services.boomdrive.settings = settings.hosted;
+      services.boomdrive = settings.hosted;
       systemd.package = pkgs.systemd.overrideAttrs {
         version = "255";
         __intentionallyOverridingVersion = true;
@@ -83,11 +129,13 @@ let
     base.pkgs.procps
     base.config.systemd.package
   ];
-  # alice's alone: the link, then keep with the unit's own command line,
-  # given ps and systemctl.
+  # alice's alone: the link, the set's herdr plugins' links with the set's
+  # herdr (apps.nix), then keep with the unit's own command line, given
+  # ps and systemctl.
   keeps = builtins.unsafeDiscardStringContext ''
     if [ "$(id -un)" = alice ]; then
       ${runtimeShell} ${activate} link ${fileOf base} || true
+      ${runtimeShell} ${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} || true
       PATH=${keepPath}:$PATH \
         ${runtimeShell} ${activate} keep alice ${lib.escapeShellArgs (argumentsOf base)}
     fi
@@ -151,6 +199,19 @@ in
     ++ installsNo own "Flume" set.flume
     ++ installsNo own "sluice" set.sluice;
 
+  "The tools option is gone on NixOS" =
+    t.expect (t.failures gone != [ ]) "services.boomdrive.tools = [ ] evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (saysGone words) "the failure of services.boomdrive.tools names no ${words}: ${toString (t.failures gone)}"
+        )
+        [
+          "services.flume.package"
+          "services.sluice.package"
+        ];
+
   "The user's profile first on NixOS" =
     before "/etc/profiles/per-user/alice/bin"
     ++ before "/home/alice/.nix-profile/bin"
@@ -164,6 +225,33 @@ in
   "A host under crew on NixOS" =
     t.expect (t.failures crew == [ ]) "crew's settings fail: ${toString (t.failures crew)}"
     ++ t.expect (runs crew (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
+
+  "A table written out wins on NixOS" =
+    t.expect (
+      t.failures writtenOut == [ ]
+    ) "a table written out fails: ${toString (t.failures writtenOut)}"
+    ++
+      t.expect (writtenTable == garden)
+        "settings.control_plane.crew is ${builtins.toJSON writtenTable}, not the table written, ${builtins.toJSON garden}"
+    ++ t.expect (runs writtenOut (render (tableOf gardenSettings))) "the unit's --config is not the rendering of the settings with the table written";
+
+  "A hosted control plane beside crew on NixOS" =
+    t.expect (
+      t.failures hostedBesideCrew == [ ]
+    ) "a hosted control plane beside crew fails: ${toString (t.failures hostedBesideCrew)}"
+    ++ t.expect (runs hostedBesideCrew (builtins.readFile ./files/hosted.toml)) "the unit's --config beside crew is not the file of nix/tests/files/hosted.toml";
+
+  "No control plane beside crew on NixOS" =
+    t.expect (
+      t.failures noneBesideCrew == [ ]
+    ) "no control plane beside crew fails: ${toString (t.failures noneBesideCrew)}"
+    ++ t.expect (runs noneBesideCrew (builtins.readFile ./files/empty.toml)) "the unit's --config beside crew is not the file of nix/tests/files/empty.toml";
+
+  "crew's partitions on this host on NixOS" =
+    t.expect (
+      t.failures fleet == [ ]
+    ) "crew's partitions on this host fail: ${toString (t.failures fleet)}"
+    ++ t.expect (runs fleet (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
 
   "The user activation on NixOS" =
     t.expect (lib.hasInfix keeps activation) "the user activation is not `${keeps}`: ${activation}";

@@ -86,10 +86,13 @@ pub struct Configured {
 
 impl Configured {
     /// `clones`, as `clone::find` gives them, against `config`.
-    pub fn new(config: &Config, clones: Vec<(Address, PathBuf)>) -> Configured {
+    pub fn new(config: &Config, clones: Vec<clone::Found>) -> Configured {
         Configured {
-            named: config.repositories.clone(),
-            clones,
+            named: config.repositories().cloned().collect(),
+            clones: clones
+                .into_iter()
+                .map(|found| (found.address, found.container))
+                .collect(),
         }
     }
 
@@ -2057,6 +2060,7 @@ fn expires(report: &Report, now: At) -> Option<At> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{Account, Drive};
     use std::path::Path;
 
     fn at(text: &str) -> At {
@@ -2153,11 +2157,28 @@ mod tests {
             repository_root: PathBuf::from("/code"),
             fetch_interval: std::time::Duration::from_secs(120),
             code_workspaces: false,
-            repositories: repositories
-                .iter()
-                .map(|address| Address::parse(address).unwrap())
-                .collect(),
+            accounts: vec![Account {
+                name: "own".to_string(),
+                drives: vec![Drive {
+                    name: "home".to_string(),
+                    repositories: repositories
+                        .iter()
+                        .map(|address| Address::parse(address).unwrap())
+                        .collect(),
+                }],
+            }],
             control_plane: None,
+            local: crate::config::LocalLayer::NoFile,
+        }
+    }
+
+    /// The clone of `address` in `container`, as `clone::find` finds one
+    /// that records no drive.
+    fn found(address: Address, container: &str) -> clone::Found {
+        clone::Found {
+            address,
+            container: PathBuf::from(container),
+            drive: None,
         }
     }
 
@@ -2166,7 +2187,7 @@ mod tests {
         let flume = Address::parse("agentplot/flume").unwrap();
         let clones = Configured::new(
             &config(&["example/crew", "agentplot/flume"]),
-            vec![(flume, PathBuf::from("/d/repositories/agentplot/flume"))],
+            vec![found(flume, "/d/repositories/agentplot/flume")],
         );
         assert_eq!(
             clones.keeping("Agentplot/Flume"),
@@ -2185,8 +2206,8 @@ mod tests {
         let clones = Configured::new(
             &config(&["example/crew"]),
             vec![
-                (flume, PathBuf::from("/d/repositories/agentplot/flume")),
-                (crew, PathBuf::from("/d/repositories/example/crew")),
+                found(flume, "/d/repositories/agentplot/flume"),
+                found(crew, "/d/repositories/example/crew"),
             ],
         );
         assert_eq!(

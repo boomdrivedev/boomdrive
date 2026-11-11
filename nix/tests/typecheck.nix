@@ -10,9 +10,13 @@ let
   # The family-packages spec's set, for each system.
   set = [
     "boomdrive"
+    "boomdrive-launcher"
+    "crew"
     "default"
     "flume"
     "flume-herdr-plugin"
+    "ghostty"
+    "herdr"
     "sluice"
     "sluice-herdr-plugin"
   ];
@@ -45,11 +49,9 @@ let
       ) "packages.${system}.default is not packages.${system}.boomdrive"
     );
 
-  # The host's own tools, which the set holds none of (record 0012).
-  hosts = [
-    "git"
-    "herdr"
-  ];
+  # The host's own tools, which the set holds none of: git alone, since
+  # herdr joined the set (records 0012 and 0023).
+  hosts = [ "git" ];
   ownedBy =
     system: name: package:
     lib.concatMap (
@@ -73,6 +75,13 @@ in
   ) systems;
 
   "Each tag is the lock's" = tags t.flake.inputs t.lock;
+
+  # Each system's shell, whose derivation's path evaluates.
+  "Every system's shell" = lib.concatMap (
+    system:
+    t.expect (builtins.tryEval (builtins.seq outputs.devShells.${system}.default.drvPath true)).success
+      "devShells.${system}.default does not evaluate to a derivation"
+  ) systems;
 
   # The nix-darwin module in a minimal system of its platform, whose
   # derivation throws on a failed assertion.

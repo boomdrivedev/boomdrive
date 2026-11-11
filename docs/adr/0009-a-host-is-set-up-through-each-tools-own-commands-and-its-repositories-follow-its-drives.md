@@ -49,6 +49,35 @@ core.5 stands: the configuration names every repository kept, its managed level 
 - On a nix host, nix writes the host's level of defaults and stops writing what the control plane manages.
 - In what order a host takes up a drive's repositories, and whether Boom's repositories are among them, is still open.
 
+## Amendment, 2026-11-07: how the runner reads its two layers
+
+Status: the writing agent's, made on 2026-11-07 within the amendment of 2026-11-06 below, which the user accepted. Each choice is cheap to change and turns on no word of the user's.
+
+Deciders: the agent writing the change `the-runner-reads-a-local-layer-over-its-managed-one`, from its brief of 2026-11-07: "The runner reads its local layer, config.local.toml, over its managed one, taking from it only the keys it lists for it, its repositories added to the managed layer's, and a key the managed layer pins kept."
+Sources: the amendment of 2026-11-06 below; flume record 0032 and Flume's reading of its two layers, `HostConfig::layers_in`; the change's design, its Decisions 1 to 7; rules core.2, core.5, core.12, core.17, core.18, core.23 and core.43.
+
+### Context and problem statement
+
+The amendment of 2026-11-06 gives the runner a managed layer and a local one, in Flume's words, and says what the local layer may set. It leaves open where the runner finds its local file when `--config` names a store path, which keys of a control plane's table are the local layer's, how the two layers' partitions meet, where a pin is written, and what a pass does while a local file stands that it cannot take.
+
+### Decision outcome
+
+- **The local file is in the runner's own configuration directory.** It is `$XDG_CONFIG_HOME/boomdrive/config.local.toml`, else `~/.config/boomdrive/config.local.toml`, whatever `--config` names. Not taken: the file beside the one `--config` names, as Flume's is, since a Nix host's service names a store path and nothing can be written beside it; and a `--local-config` option, which the service and every command run by hand would have to pass alike.
+- **Each implementation lists its own keys.** The local layer may set `repositories`, and in `[control_plane.<type>]` each key that implementation lists, `partitions` for crew's and for the hosted one's, each one key taken whole. The runner takes each list from the implementation, and names none of their keys (core.2). Not taken: `partitions` for the hosted control plane alone, since a host under crew is configured by hand (core.17) and its operator's local layer may name a partition as a control plane's would; and the runner listing the implementations' keys itself.
+- **Repositories add, and partitions replace.** The repositories are the managed layer's, in their order, then each of the local layer's the managed layer does not name, in its order; a repository both name is kept once, with the managed layer's spelling, and neither layer is refused for it. A local layer's `partitions` replace the managed layer's whole, as every unit of Flume's does. Not taken: partitions added as repositories are, which the amendment of 2026-11-06 says of repositories alone.
+- **The reading, in order.** The managed layer is read as one file is, and any fault of it refuses the configuration. A local file that is not TOML, that sets any key the local layer may not set, naming each by its dotted path and never its value, or whose units leave a table the runner's reading or the implementation's own refuses, is not taken, and the managed layer runs alone. Not taken: a local layer half taken, its good keys read and its bad ones dropped, which Flume does not do either.
+- **A local layer not taken lets go of nothing.** While a local file stands that is not taken, a keeping pass keeps the managed layer's repositories, lets go of none and sets no workspace, since the layer it could not take may name them; a local file that does not exist is no layer, and what only it named is let go. Not taken: the managed layer alone letting go as it says, which would remove the clones and views of every drive a control plane added at one bad write; and the whole configuration refused, as a broken managed file is, which would stop the managed layer's repositories too.
+- **`pin` stands at the managed layer's top.** It is a list of dotted keys in TOML's spelling, each a key the local layer may set or a table holding one; a pin of anything else is the managed layer's fault, and the local layer may not set `pin`. The runner has no `[host]` table, so Flume's word and spelling are kept at the top. Not taken: a `[local]` table or `pinned_keys`, a second word for one thing across the family (core.12).
+- **Said once each way.** A keeping pass says one line naming the local file where its reading differs from the last one said: taken, with each key passed over and its pin; not taken, with each key or the fault; or gone. Not taken: a line at every pass, since a pinned key passed over is a steady state a host may keep, and core.23 says the runner's reach once each way for the same reason.
+
+core.17's details are amended in this record's commit with what this amendment rules out and allows. core.5's and core.46's details read the local layer where they said the managed level of the decision above.
+
+### Consequences
+
+- A hosted control plane writes the repositories and partitions of the drives a host serves into `config.local.toml`, and Nix's `config.toml` stays as Nix wrote it (core.18).
+- A control plane writes the file whole and renames it into place, so a pass never reads it half written.
+- Removing the local file lets go of what only it named; a person who means to keep those repositories moves them into the managed layer first.
+
 ## Amendment, 2026-11-06: two layers in every tool, in Flume's words
 
 Status: accepted by the user on 2026-11-06, in the design agent's pane: "Other than that nitpick I approve them all" (the nitpick being flume record 0055's).

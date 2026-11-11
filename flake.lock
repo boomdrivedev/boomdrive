@@ -1,19 +1,77 @@
 {
   "nodes": {
-    "flume": {
-      "flake": false,
+    "crew": {
+      "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
       "locked": {
-        "lastModified": 1794259847,
-        "narHash": "sha256-+/ohoYSlaAseUAyilMU80onRRytq3sFCU5tUHV7VE1I=",
+        "lastModified": 1794191286,
+        "narHash": "sha256-mrUXq4IRqupGcs/K+XqtL6UmKgjm3OxTtELXcYtgvUs=",
         "owner": "agentplot",
-        "repo": "flume",
-        "rev": "77d5b93a5a23eafd6529f63a5ccb82db908a8deb",
+        "repo": "crew",
+        "rev": "0563aa90dcd1bc4b781211f4e4db6173f41d46a5",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.21.0",
+        "ref": "v0.50.2",
+        "repo": "crew",
+        "type": "github"
+      }
+    },
+    "flume": {
+      "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794275970,
+        "narHash": "sha256-Z5xc84YtN1Uzpyq8Mf1WkuNF0FVLVCFwkSpo0SDr1bk=",
+        "owner": "agentplot",
         "repo": "flume",
+        "rev": "65911c262b27556ce4a6dccb2bae943e8c314417",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agentplot",
+        "ref": "v0.21.2",
+        "repo": "flume",
+        "type": "github"
+      }
+    },
+    "herdr": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791993401,
+        "narHash": "sha256-N7e7oCKxeCoxek6UT8Lweq16rSsQQi34QMb7C2iNpm8=",
+        "owner": "herdrdev",
+        "repo": "herdr",
+        "rev": "2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "herdrdev",
+        "ref": "v0.9.5",
+        "repo": "herdr",
         "type": "github"
       }
     },
@@ -55,7 +113,9 @@
     },
     "root": {
       "inputs": {
+        "crew": "crew",
         "flume": "flume",
+        "herdr": "herdr",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay",
@@ -84,6 +144,9 @@
     },
     "sluice": {
       "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -92,16 +155,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794082892,
-        "narHash": "sha256-XoArmaLEyKHVOqhDFToGFOMT6wiEg5F1ZMScOF45rEw=",
+        "lastModified": 1794187086,
+        "narHash": "sha256-pwIqQ2IX6I+7rs5EXukDLd1KltQkSRBggHcimLndHrc=",
         "owner": "agentplot",
         "repo": "sluice",
-        "rev": "a476703c4c4fd20b9254c5252c4a87a46b7505fa",
+        "rev": "ec862b8bc9076831e1b281c64aec50c7fd243175",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.74.3",
+        "ref": "v0.78.1",
         "repo": "sluice",
         "type": "github"
       }
