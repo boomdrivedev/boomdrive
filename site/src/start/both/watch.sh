@@ -1,1 +1,1 @@
-flume open
+flume open home

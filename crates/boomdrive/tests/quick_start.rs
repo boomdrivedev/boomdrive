@@ -546,18 +546,11 @@ fn stand_in() -> PathBuf {
     )
 }
 
-/// The scratch host's Flume file for the last step: the drive's stream,
-/// `default`, takes its agents from a pool whose one account's program is
-/// `claude`, and no multiplexer is named, so Flume prints each agent's
-/// command where the gate can run no multiplexer's server.
-const FLUME_FILE: &str = "\
-[streams.default]
-pool = \"stand-in\"
-
-[pools.stand-in]
-strategy = \"fill-first\"
-accounts = [{ name = \"stand-in-1\", program = \"claude\" }]
-";
+/// The scratch host's local layer of Flume's file for the last step, over
+/// the Mac's Flume step's files as they stand: the drive's stream prints
+/// its agents' commands, where the gate runs no multiplexer's server
+/// (site.8).
+const PRINTED: &str = "[streams.home]\nmultiplexer = \"printed\"\n";
 
 /// How long the last step's test waits for the change to land.
 const LANDING_WITHIN: std::time::Duration = std::time::Duration::from_secs(120);
@@ -651,10 +644,14 @@ fn landed_commit(status: &Value) -> Option<&Value> {
 /// test runs each agent command Flume prints, whose `claude` is the
 /// stand-in; once the runner's branch carries the fix's code delivered
 /// and its submission held, crew's send of it is appended, as the
-/// reader's approval appends it. Within two minutes origin's `main` holds
-/// the stand-in's change, and the runner's branch carries the place's
-/// status as the set's Flume gives it, landed. Then the watch step, run
-/// through `sh` on the same host, is answered by the set's Flume.
+/// reader's approval appends it. Flume's files are the Mac's step's as
+/// they stand, with crew's roles file as crew writes it, and a local
+/// layer that prints the drive's stream's commands. Within two minutes
+/// origin's `main` holds the stand-in's change, and the runner's branch
+/// carries the place's status as the set's Flume gives it, landed. Then
+/// the watch step, run through `sh` on the same host, reaches the drive's
+/// stream's session, which the set's Flume refuses in its own words under
+/// the printed command: a window is what the gate cannot reach (site.8).
 #[cfg(target_os = "macos")]
 #[test]
 fn a_change_the_drive_is_given_lands() {
@@ -669,13 +666,11 @@ fn a_change_the_drive_is_given_lands() {
         &records::file(records::REQUESTS, &[fix_of_main()]),
     );
     state.commit("home/main", "plan.rec", &records::plan(&[], &[]));
+    flumes_files(scratch);
     write_text(
-        &format!("{FLUME_FILE}\n[streams.home]\npool = \"stand-in\"\n"),
-        &scratch.home.join(".config/flume/config.toml"),
+        PRINTED,
+        &scratch.home.join(".config/flume/config.local.toml"),
     );
-    write_text("kinds_dir = \"~/.local/share/flume/kinds/crew\"\nroles = \"~/.local/state/crew/flume/roles.toml\"\n", &scratch.home.join(".config/flume/sources/crew.toml"));
-    std::fs::create_dir_all(scratch.home.join(".local/share/flume/kinds/crew")).unwrap();
-    write_text("[roles.\"home/ops\"]\nagent = \"home-ops\"\nsession = \"home\"\nanswers = \"A live system, a deploy or a landing.\"\n\n[roles.\"home/operator\"]\nagent = \"home-operator\"\nsession = \"home\"\nanswerer = true\n", &scratch.home.join(".local/state/crew/flume/roles.toml"));
     let agent = scratch.root.join("agent");
     std::fs::create_dir_all(&agent).expect("the agent's folder");
     std::os::unix::fs::symlink(stand_in(), agent.join("claude")).expect("the agent linked");
@@ -763,5 +758,11 @@ fn a_change_the_drive_is_given_lands() {
         .arg(step_file("both/watch.sh"))
         .output()
         .expect("sh runs");
-    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
+    assert_eq!(output.status.code(), Some(1), "{}", said(&output));
+    assert!(
+        String::from_utf8_lossy(&output.stdout)
+            .starts_with("refused: the printed command holds no session a person can be shown"),
+        "{}",
+        said(&output)
+    );
 }
