@@ -110,7 +110,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - a `key_file` given as a Nix path value fails evaluation.
 
   These prove the service-modules spec's "The App's key is named by a path outside the store" (core.46; design Decision 7). True when `sluice exec main -- moon run nix:test` passes.
-- [ ] 5.2 `tests/module_files.rs` reads `crew.toml`'s App: `app_id` 1, and `key_file` at `.config/boomdrive/app.pem` under the scratch home. This proves the service-modules scenario "The App named". True when `devenv shell -- cargo test -p boomdrive --test module_files` passes.
+- [x] 5.2 `tests/module_files.rs` reads `crew.toml`'s App: `app_id` 1, and `key_file` at `.config/boomdrive/app.pem` under the scratch home. This proves the service-modules scenario "The App named". True when `devenv shell -- cargo test -p boomdrive --test module_files` passes.
 
 ## 6. What is said
 
