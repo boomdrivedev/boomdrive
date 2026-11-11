@@ -54,7 +54,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   3. in a second clone, asks the set's sluice to read `main`'s policy, by the command its reference gives for that.
 
   Origin's `main` holds the file, and sluice refuses nothing. This proves "The policy on main" (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test quick_start sluices_file_lands_on_main` passes.
-- [ ] 4.2 `site/src/start/both/start.sh` is `crew main up home`. The test `the_drives_agents_start_as_setup_says`, macOS's, runs setup with `--json` over the stand-ins for the drive `home`. The answer's `start` is the file's one line. This proves "Started as setup says" (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test quick_start the_drives_agents_start_as_setup_says` passes.
+- [x] 4.2 `site/src/start/both/start.sh` is `crew main up home`. The test `the_drives_agents_start_as_setup_says`, macOS's, runs setup with `--json` over the stand-ins for the drive `home`. The answer's `start` is the file's one line. This proves "Started as setup says" (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test quick_start the_drives_agents_start_as_setup_says` passes.
 - [ ] 4.3 `site/src/start/both/watch.sh` is `flume open`. The test `a_change_the_drive_is_given_lands` is design Decision 6, on `tests/control.rs`'s scratch forge and crew's `records` module, with the set's Flume and sluice:
   - the bare origin of `your-github-name/your-repository` holds `main` as task 4.1 leaves it;
   - the scratch state repository holds, on `home/main`, a launch request of kind `fix` for it naming the test's host, as crew writes one once a plan is approved;

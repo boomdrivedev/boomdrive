@@ -347,3 +347,17 @@ fn sluices_file_lands_on_main() {
     assert_eq!(answer["revision"], origin.tip("main"), "{answer}");
     assert!(answer.get("refused").is_none(), "{answer}");
 }
+
+/// The quick-start spec's "Started as setup says": setup, with `--json`
+/// over the stand-ins for the drive `home`, answers the line that starts
+/// the drive's agents as `start`, and the start step is that one line.
+#[cfg(target_os = "macos")]
+#[test]
+fn the_drives_agents_start_as_setup_says() {
+    let stand = Stand::new();
+    let answer = stand.set_up(&answers(&["--json"]));
+    let start = answer["control_plane"]["start"]
+        .as_str()
+        .unwrap_or_else(|| panic!("setup's answer gives no start: {answer}"));
+    assert_eq!(lines("both/start.sh"), [start]);
+}
