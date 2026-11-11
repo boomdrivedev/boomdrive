@@ -30,5 +30,6 @@ in
     // import ./way-in.nix t
     // import ./data-dir.nix t
     // import ./clone-dirs.nix t
+    // import ./kept.nix t
   );
 }

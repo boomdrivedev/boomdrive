@@ -480,6 +480,17 @@ repository by the folder's own `.git` file:
 config.services.boomdrive.cloneDirs."agentplot/flume"  # ~/.local/share/boomdrive/repositories/agentplot/flume
 ```
 
+With `services.boomdrive.enable` and crew's module on, each module
+gives crew's kept repositories, `services.crew.settings.repositories`,
+one entry for each address of `services.boomdrive.cloneDirs`: its `dir`
+the clone's folder, `cloneDirs`'s, and its `checkout` the runner's view,
+`<repository_root>/<owner>/<name>`, its root `~/Code` where
+`settings.repository_root` is unset and `~` the home of the runner's
+user. A host writes none of them: an entry the host gives a kept
+repository with another `dir` or `checkout` fails evaluation. A
+repository of the host's own that the runner does not keep stays the
+host's to name in crew's `repositories`, beside the module's entries.
+
 The runner's module puts the runner in the system profile, and each
 tool's module puts its tool there, the set's unless the host gives its
 own. The runner's `PATH` is the user's profiles, then the system's, so

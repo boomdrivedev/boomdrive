@@ -1,0 +1,56 @@
+[
+  {
+    "home": "/h",
+    "repository_root": null,
+    "address": "agentplot/flume",
+    "folder": "/h/Code/agentplot/flume"
+  },
+  {
+    "home": "/h/",
+    "repository_root": null,
+    "address": "example/alpha",
+    "folder": "/h/Code/example/alpha"
+  },
+  {
+    "home": "/h",
+    "repository_root": "~/src",
+    "address": "agentplot/flume",
+    "folder": "/h/src/agentplot/flume"
+  },
+  {
+    "home": "/h",
+    "repository_root": "~/",
+    "address": "Example-1/a.b_c",
+    "folder": "/h/Example-1/a.b_c"
+  },
+  {
+    "home": "/h",
+    "repository_root": "~//srv/code",
+    "address": "example/alpha",
+    "folder": "/srv/code/example/alpha"
+  },
+  {
+    "home": "/h",
+    "repository_root": "/srv/code",
+    "address": "example/alpha",
+    "folder": "/srv/code/example/alpha"
+  },
+  {
+    "home": "/h",
+    "repository_root": "/srv/code/",
+    "address": "example/alpha",
+    "folder": "/srv/code/example/alpha"
+  },
+  {
+    "home": "/h",
+    "repository_root": "src",
+    "address": "agentplot/flume",
+    "folder": null
+  },
+  {
+    "home": "/h",
+    "repository_root": "$HOME/Code",
+    "address": "agentplot/flume",
+    "folder": null
+  }
+]

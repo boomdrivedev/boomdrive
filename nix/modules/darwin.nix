@@ -17,7 +17,12 @@
 # the agent's own `XDG_DATA_HOME`, and clones.nix declares `cloneDirs`,
 # each kept repository's clone folder in it: each read-only, read wherever
 # a host names the folder or a clone's, and set by none (record 0036 as
-# amended on 2026-11-11).
+# amended on 2026-11-11). With crew's module on, the module gives crew's
+# kept repositories, `services.crew.settings.repositories`, one entry for
+# each address of `cloneDirs`, its `dir` the clone's folder and its
+# `checkout` the runner's view under the primary user's home (kept.nix),
+# at the module's own priority, so a host writes none (record 0036 as
+# amended a third time on 2026-11-11).
 { packages }:
 {
   config,
@@ -30,6 +35,7 @@ let
   render = import ./toml.nix { inherit lib; };
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
   dataDirOf = import ./data-dir.nix { inherit lib; };
+  keptOf = import ./kept.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -120,6 +126,16 @@ in
     ];
 
     environment.systemPackages = [ cfg.package ];
+
+    # crew's kept repositories, where crew's module is on and the runner
+    # keeps a repository (design Decisions 1, 4 and 6).
+    services.crew.settings.repositories =
+      lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { })
+        (keptOf {
+          inherit (cfg) cloneDirs;
+          inherit home;
+          root = cfg.settings.repository_root;
+        });
 
     launchd.user.agents.boomdrive = {
       # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store

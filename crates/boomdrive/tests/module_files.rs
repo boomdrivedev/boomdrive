@@ -12,7 +12,12 @@
 //! modules name, `services.boomdrive.cloneDirs`, to the runner's own
 //! `clone::container`, by `nix/tests/clone-dirs.json`, the table
 //! `nix:test` holds the modules' clone rule to (the service-modules spec's
-//! "The runner's own clone rule").
+//! "The runner's own clone rule"). And it holds the views the modules give
+//! crew, each kept repository's `checkout`, to the runner's own
+//! `config::view_path`, by `nix/tests/view-dirs.json`, the table
+//! `nix:test` holds the modules' view rule to (the service-modules spec's
+//! "The runner's own view rule" and "A repository root the runner
+//! refuses").
 
 mod common;
 
@@ -217,5 +222,48 @@ fn the_modules_clone_folders_are_the_runners() {
             Path::new(field("folder")),
             "the runner's clone folder of {row}"
         );
+    }
+}
+
+/// "The runner's own view rule" and "A repository root the runner
+/// refuses": for each row of `nix/tests/view-dirs.json`, the runner's file
+/// with the row's `repository_root`, read with the row's `home`, is
+/// refused where the row's `folder` is `null`, and else its view of the
+/// row's `address` is the row's `folder` as text, which the modules give
+/// crew as the address's `checkout`.
+#[test]
+fn the_modules_views_are_the_runners() {
+    let table = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../nix/tests/view-dirs.json");
+    let text = std::fs::read_to_string(&table).expect("nix/tests/view-dirs.json");
+    let rows: Vec<serde_json::Value> = serde_json::from_str(&text).expect("a list of rows");
+    assert!(!rows.is_empty(), "nix/tests/view-dirs.json holds no row");
+    for row in &rows {
+        let field = |name: &str| {
+            row[name]
+                .as_str()
+                .unwrap_or_else(|| panic!("{row}: no {name}"))
+        };
+        let mut file = String::from("accounts = {}\n");
+        if let Some(root) = row["repository_root"].as_str() {
+            let root = toml::Value::String(root.to_owned());
+            file.push_str(&format!("repository_root = {root}\n"));
+        }
+        let parsed = config::parse(&file, Path::new("view-dirs.toml"), Path::new(field("home")));
+        match row["folder"].as_str() {
+            None => assert!(
+                parsed.is_err(),
+                "the runner takes the repository root of {row}"
+            ),
+            Some(folder) => {
+                let config = parsed.unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+                let address = config::Address::parse(field("address"))
+                    .unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+                assert_eq!(
+                    config::view_path(&config, &address).to_str(),
+                    Some(folder),
+                    "the runner's view of {row}"
+                );
+            }
+        }
     }
 }
