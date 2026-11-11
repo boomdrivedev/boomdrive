@@ -33,6 +33,15 @@ rpassword.workspace = true
 # Decision 3; core.55).
 libc.workspace = true
 serde.workspace = true
+# A mint's JWT, signed with the Boomdrive App's key, RS256 (record 0007 as
+# amended on 2026-11-11; design Decision 2).
+jsonwebtoken.workspace = true
+# A mint's two calls to GitHub's API, over rustls with the host's own
+# roots, each stopped at its limit (design Decision 2; core.28).
+ureq.workspace = true
+# A token's end, GitHub's `expires_at` read as RFC 3339 (design Decision
+# 2).
+time.workspace = true
 # Each owner's VS Code workspace is read and written with its members in
 # their order (design Decision 4).
 serde_json = { workspace = true, features = ["preserve_order"] }
@@ -42,5 +51,8 @@ toml.workspace = true
 weir-signals.workspace = true
 
 [dev-dependencies]
+# The tests' key for the App, made at run time, since no key is committed
+# (core.4; design Decision 9).
+rsa.workspace = true
 tempfile.workspace = true
 weir-capture.workspace = true
