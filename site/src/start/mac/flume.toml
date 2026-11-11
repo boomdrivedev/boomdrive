@@ -1,0 +1,5 @@
+# Flume opens each agent in herdr, in a Terminal window. A host Nix
+# manages has these two from the set's module.
+[host]
+multiplexer = "herdr"
+terminal_app = "terminal"

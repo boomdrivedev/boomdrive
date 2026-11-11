@@ -15,7 +15,10 @@ mod common;
 
 #[cfg(target_os = "macos")]
 use common::stand::{refused, Stand};
+use common::Scratch;
+use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
 
 /// The quick start's answers to setup, by its placeholders (design
 /// Decision 3): the account `me`'s drive `home`, keeping
@@ -50,6 +53,54 @@ fn step(path: &str) -> String {
 /// The lines of the step's file at `path`.
 fn lines(path: &str) -> Vec<String> {
     step(path).lines().map(str::to_string).collect()
+}
+
+/// The set's program of `tool`, `flume` or `sluice`, by the path the
+/// devenv shell gives it, as `tests/family.rs` reads it; where the shell
+/// gives none, the test fails, saying so.
+fn set_program(tool: &str) -> PathBuf {
+    let variable = format!("BOOMDRIVE_SET_{}", tool.to_uppercase());
+    match std::env::var_os(&variable) {
+        Some(program) if !program.is_empty() => PathBuf::from(program),
+        _ => panic!(
+            "{variable} is not set: the devenv shell gives the set's {tool} by its path \
+             (devenv.nix); run the tests in it, `devenv shell -- moon run boomdrive:test`"
+        ),
+    }
+}
+
+/// `program` on the scratch host alone: none of the tests' own
+/// environment but the scratch one, its state, cache and `TMPDIR` the
+/// scratch host's, and `path` its `PATH`.
+fn on_scratch(scratch: &Scratch, program: impl AsRef<std::ffi::OsStr>, path: &str) -> Command {
+    let tmp = scratch.root.join("tmp");
+    std::fs::create_dir_all(&tmp).expect("the scratch TMPDIR");
+    let mut command = Command::new(program);
+    command
+        .env_clear()
+        .envs(scratch.overlay())
+        .env("XDG_STATE_HOME", scratch.home.join(".local/state"))
+        .env("XDG_CACHE_HOME", scratch.home.join(".cache"))
+        .env("TMPDIR", tmp)
+        .env("PATH", path)
+        .current_dir(&scratch.home);
+    command
+}
+
+/// What a run said, for a failing assertion.
+fn said(output: &Output) -> String {
+    format!(
+        "exit: {:?}\nstdout: {}\nstderr: {}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
+}
+
+/// Writes the step's file at `path` to `to`, its folders made.
+fn write_step(path: &str, to: &Path) {
+    std::fs::create_dir_all(to.parent().expect("the file's folder")).expect("its folder");
+    std::fs::write(to, step(path)).expect("the step's file written");
 }
 
 /// The quick start's answers to setup, then `extra`.
@@ -102,4 +153,38 @@ fn the_sign_ins_are_the_ones_setup_names() {
     let mut want = vec![github];
     want.extend(fixes);
     assert_eq!(lines("both/sign-in.sh"), want);
+}
+
+/// The quick-start spec's "The set's Flume takes the file": the Mac's
+/// Flume file written as the scratch home's, at Flume's own path, and the
+/// set's Flume's `--json status` there answers with no refusal, its
+/// default stream's part giving the multiplexer `herdr` and the terminal
+/// app `terminal` from the host's keys.
+#[test]
+fn flumes_file_opens_agents_in_herdr() {
+    let scratch = Scratch::new();
+    write_step(
+        "mac/flume.toml",
+        &scratch.home.join(".config/flume/config.toml"),
+    );
+    let output = on_scratch(&scratch, set_program("flume"), "/usr/bin:/bin")
+        .args(["--json", "status"])
+        .output()
+        .expect("the set's Flume runs");
+    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
+    let answer: Value = serde_json::from_slice(&output.stdout).expect("Flume's status is JSON");
+    assert!(answer.get("refused").is_none(), "{answer}");
+    let streams = answer
+        .pointer("/status/host/streams")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| panic!("no streams in Flume's status: {answer}"));
+    let default = streams
+        .iter()
+        .find(|stream| stream["name"] == "default")
+        .unwrap_or_else(|| panic!("no default stream: {answer}"));
+    assert_eq!(default["refused"], Value::Null, "{default}");
+    for (part, profile) in [("multiplexer", "herdr"), ("terminal_app", "terminal")] {
+        assert_eq!(default[part]["profile"], profile, "{default}");
+        assert_eq!(default[part]["from"], "host", "{default}");
+    }
 }
