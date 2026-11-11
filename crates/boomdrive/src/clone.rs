@@ -197,8 +197,14 @@ pub fn record_drive(git: &Git, bare: &Path, drive: &str) -> Result<(), Words> {
 /// left by an earlier run removed first, and renamed into place once its
 /// first fetch is in. A step that fails removes the partial folder, and
 /// the owner's folder where that leaves it empty, so a failed clone
-/// leaves nothing in the data directory.
-pub fn make(git: &Git, data: &Path, address: &Address) -> Result<PathBuf, Failure> {
+/// leaves nothing in the data directory. Its first fetch is given
+/// `credential`.
+pub fn make(
+    git: &Git,
+    data: &Path,
+    address: &Address,
+    credential: &Credential,
+) -> Result<PathBuf, Failure> {
     let container = container(data, address);
     let partial = partial(data, address);
     if recorded(git, &partial).is_some() {
@@ -210,7 +216,7 @@ pub fn make(git: &Git, data: &Path, address: &Address) -> Result<PathBuf, Failur
     if partial.symlink_metadata().is_ok() {
         fs::remove_dir_all(&partial).map_err(|error| io_failure(&partial, error))?;
     }
-    let made = make_in(git, &partial, &container, address);
+    let made = make_in(git, &partial, &container, address, credential);
     if made.is_err() {
         let _ = fs::remove_dir_all(&partial);
         if let Some(owner) = partial.parent() {
@@ -221,7 +227,13 @@ pub fn make(git: &Git, data: &Path, address: &Address) -> Result<PathBuf, Failur
 }
 
 /// Design 4's steps in `partial`, then the rename to `container`.
-fn make_in(git: &Git, partial: &Path, container: &Path, address: &Address) -> Result<(), Failure> {
+fn make_in(
+    git: &Git,
+    partial: &Path,
+    container: &Path,
+    address: &Address,
+    credential: &Credential,
+) -> Result<(), Failure> {
     fs::create_dir_all(partial).map_err(|error| io_failure(partial, error))?;
     let name = format!("{}.git", address.name());
     git.run(At::Dir(partial), ["init", "--quiet", "--bare", &name])?;
@@ -237,7 +249,7 @@ fn make_in(git: &Git, partial: &Path, container: &Path, address: &Address) -> Re
     ] {
         git.run(At::GitDir(&bare), ["config", key, &value])?;
     }
-    fetch(git, &bare)?;
+    fetch(git, &bare, credential)?;
     if let Some(default) = default_of(git, &bare)? {
         settle_head(git, &bare, &default)?;
     }
@@ -263,14 +275,16 @@ fn io_failure(path: &Path, error: io::Error) -> Failure {
 /// default. No fetch is run where the host's git would reach origin by
 /// ssh. The fetch is a call to a remote, stopped at its git's limit with
 /// everything it started, and fails then naming its command, `origin` and
-/// the limit (record 0042; core.58).
-pub fn fetch(git: &Git, bare: &Path) -> Result<(), Failure> {
+/// the limit (record 0042; core.58). It is given `credential`: the host's
+/// own helpers, the App's token alone, or no credential (record 0007 as
+/// amended on 2026-11-11; design Decision 5).
+pub fn fetch(git: &Git, bare: &Path, credential: &Credential) -> Result<(), Failure> {
     not_by_ssh(git, bare)?;
     git.call_remote(
         At::GitDir(bare),
         "origin",
         ["fetch", "--prune", "--quiet", "origin"],
-        &Credential::Host,
+        credential,
     )?;
     Ok(())
 }

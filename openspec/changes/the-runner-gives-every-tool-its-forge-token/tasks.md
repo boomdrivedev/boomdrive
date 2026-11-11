@@ -89,7 +89,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - `Forge::drop(&Address)`.
 
   `tests/forge_tokens.rs` gains, over the fake: `a_token_is_given_again_until_five_minutes_before_its_end`, `a_token_near_its_end_is_bought_again` (an `expires_at` four minutes on), `a_dropped_token_is_bought_again`, `another_app_drops_every_token` (a second key, its JWT verified by its own public half) and `the_apps_absence_is_kept` (one call to find the installation and none to buy a token for two asks). True when `devenv shell -- cargo test -p boomdrive --test forge_tokens -- a_token_is_given_again_until_five_minutes_before_its_end a_token_near_its_end_is_bought_again a_dropped_token_is_bought_again another_app_drops_every_token the_apps_absence_is_kept` passes.
-- [ ] 4.3 `clone::fetch(git, bare, &Credential)` and `clone::make(git, data, address, &Credential)` pass the credential to their fetch. `pass::pass` and `pass::keep_one` take `&Forge` after their git. `keep_configured` asks `forge.credential(config.forge.as_ref(), address)` and hands what it gives to `keep`. In `keep`:
+- [x] 4.3 `clone::fetch(git, bare, &Credential)` and `clone::make(git, data, address, &Credential)` pass the credential to their fetch. `pass::pass` and `pass::keep_one` take `&Forge` after their git. `keep_configured` asks `forge.credential(config.forge.as_ref(), address)` and hands what it gives to `keep`. In `keep`:
   - a fetch or a clone that fails drops the address's kept token by `forge.drop`;
   - its line gives git's words, then `; no forge token: ` and the mint's words where the mint was refused.
 
