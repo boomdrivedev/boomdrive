@@ -155,8 +155,9 @@ impl Crew {
     /// outside `repositories/` so the keeper never takes it for a clone.
     /// Two partitions of one state repository share no git directory and
     /// so no weir lock, and one's fetch or push holds no other's pull or
-    /// report (record 0026; design Decision 7). Its listing is stopped at
-    /// thirty seconds (record 0042).
+    /// report (record 0026; design Decision 7). Its listing, and each try
+    /// of weir-branch's fetch, listing and push, is stopped at thirty
+    /// seconds (record 0042 as amended on 2026-11-11).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
         Store::new(
