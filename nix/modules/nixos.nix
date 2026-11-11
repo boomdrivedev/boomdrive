@@ -83,6 +83,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     ./drives.nix
+    ./clones.nix
   ];
 
   options.services.boomdrive.user = lib.mkOption {
