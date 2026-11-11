@@ -175,6 +175,12 @@
           # The way in: an app on macOS and a desktop entry on Linux that
           # runs `flume open` (design Decision 3).
           boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
+          # The set's marketplace of crew's companions' Claude Code plugins
+          # (record 0044, point 2), which no module installs yet.
+          boomdrive-claude-plugins = pkgs.callPackage ./nix/packages/claude-plugins.nix {
+            inherit (tools) pendingyou plannotator;
+            skill = ./nix/packages/pendingyou-skill.md;
+          };
           flume-herdr-plugin = pluginOf tools.flume;
           sluice-herdr-plugin = pluginOf tools.sluice;
           # The companions' herdr plugins, each at the commit the lock names
