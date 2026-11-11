@@ -11,7 +11,9 @@ use boomdrive::forge::{Forge, Minted, Refused};
 use boomdrive::forge_token::{self, Operation};
 use common::{keeping, Scratch};
 use github::{GitHub, Key};
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 /// The App `1`, its key at `key_file`.
@@ -567,4 +569,167 @@ fn nothing_is_left_behind() {
     let token = &github.tokens()[0];
     assert!(!refused.words.contains(token.as_str()), "{}", refused.words);
     assert_eq!((files(&scratch.data()), files(&config_dir)), before);
+}
+
+/// The runner's binary run as `boomdrive forge-token <args>` on the scratch
+/// host, `input` its standard input.
+fn run(scratch: &Scratch, args: &[&str], input: &str) -> std::process::Output {
+    let mut child = scratch
+        .boomdrive()
+        .arg("forge-token")
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the runner run");
+    child
+        .stdin
+        .take()
+        .expect("its standard input")
+        .write_all(input.as_bytes())
+        .expect("the request written");
+    child.wait_with_output().expect("its answer")
+}
+
+/// What `output` exits with, its standard output, which every refusal
+/// leaves empty, and its standard error.
+fn refusal(output: &std::process::Output) -> (Option<i32>, String, String) {
+    (
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+        String::from_utf8_lossy(&output.stderr).into_owned(),
+    )
+}
+
+/// The forge-tokens spec's "git asks it to store".
+#[test]
+fn a_store_is_a_usage_error() {
+    let scratch = Scratch::new();
+    scratch.configure(&naming_the_app(&scratch));
+
+    let (code, stdout, stderr) = refusal(&run(&scratch, &["store"], &for_path("agentplot/flume")));
+
+    assert_eq!((code, stdout.as_str()), (Some(2), ""));
+    assert!(stderr.contains("Usage:"), "{stderr}");
+    assert!(stderr.contains("forge-token"), "{stderr}");
+}
+
+/// The forge-tokens spec's "No [forge]".
+#[test]
+fn no_forge_must_be_fixed() {
+    let scratch = Scratch::new();
+    scratch.configure(&keeping(&["agentplot/flume"]));
+
+    let (code, stdout, stderr) = refusal(&run(&scratch, &["get"], &for_path("agentplot/flume")));
+
+    assert_eq!((code, stdout.as_str()), (Some(2), ""));
+    assert_eq!(
+        stderr,
+        "boomdrive forge-token: the configuration names no [forge], the Boomdrive App's app_id \
+         and key_file\n"
+    );
+}
+
+/// The forge-tokens spec's "A configuration it cannot read".
+#[test]
+fn a_configuration_it_cannot_read_must_be_fixed() {
+    let scratch = Scratch::new();
+    let file = scratch.configure("accounts = [\n");
+
+    let (code, stdout, stderr) = refusal(&run(&scratch, &["get"], &for_path("agentplot/flume")));
+
+    assert_eq!((code, stdout.as_str()), (Some(2), ""));
+    assert!(
+        stderr.starts_with(&format!("boomdrive forge-token: {}", file.display())),
+        "{stderr}"
+    );
+    assert_eq!(stderr.lines().count(), 1, "{stderr}");
+}
+
+/// A configuration naming the hosted control plane, keeping
+/// `agentplot/flume` in the drive `home`.
+fn hosted() -> String {
+    format!(
+        "{}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+         url = \"https://control.example\"\n\n[[control_plane.hosted.partitions]]\n\
+         label = \"home\"\nrepositories = [\"agentplot/flume\"]\n",
+        keeping(&["agentplot/flume"])
+    )
+}
+
+/// The forge-tokens spec's "A get on a cloud host".
+#[test]
+fn a_get_on_a_cloud_host_is_refused() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+
+    let (code, stdout, stderr) = refusal(&run(&scratch, &["get"], &for_path("agentplot/flume")));
+
+    assert_eq!(
+        (code, stdout.as_str(), stderr),
+        (
+            Some(1),
+            "",
+            format!(
+                "boomdrive forge-token: {}\n",
+                boomdrive_hosted::NO_FORGE_TOKEN
+            )
+        )
+    );
+    assert_eq!(
+        boomdrive_hosted::NO_FORGE_TOKEN,
+        "the hosted control plane mints this host's forge tokens, and version 2 of its \
+         protocol carries none yet"
+    );
+}
+
+/// The forge-tokens spec's "An erase on a cloud host".
+#[test]
+fn an_erase_on_a_cloud_host_is_refused() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+
+    let (code, stdout, stderr) = refusal(&run(
+        &scratch,
+        &["erase"],
+        "protocol=https\nhost=github.com\npath=agentplot/flume\nusername=x-access-token\n\
+         password=ghs_n0t4r34lt0k3n\n",
+    ));
+
+    assert_eq!(
+        (code, stdout.as_str(), stderr),
+        (
+            Some(1),
+            "",
+            format!(
+                "boomdrive forge-token: {}\n",
+                boomdrive_hosted::NO_FORGE_TOKEN
+            )
+        )
+    );
+}
+
+/// The forge-tokens spec's "A repository no drive serves", by the binary,
+/// whose `--config` names the file.
+#[test]
+fn the_binary_refuses_a_repository_no_drive_serves() {
+    let scratch = Scratch::new();
+    let file = scratch.root.join("elsewhere.toml");
+    std::fs::write(&file, naming_the_app(&scratch)).expect("the configuration written");
+
+    let (code, stdout, stderr) = refusal(&run(
+        &scratch,
+        &["--config", &file.to_string_lossy(), "get"],
+        &for_path("someone/else.git"),
+    ));
+
+    assert_eq!(
+        (code, stdout.as_str(), stderr.as_str()),
+        (
+            Some(1),
+            "",
+            "boomdrive forge-token: someone/else is a repository of no drive this host serves\n"
+        )
+    );
 }
