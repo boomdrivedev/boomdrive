@@ -326,9 +326,14 @@ to `config.toml.before-nix`, and crew's to `teams.json.before-nix`, so
 move its values into the tool's `settings` in the switch that takes this
 flake. `services.boomdrive.enable` turns on Flume's and sluice's
 modules; a host that runs crew turns on crew's, with its `host` and its
-partitions. Where `control_plane.type` is `crew` and no
-`control_plane.crew` is written, the module writes the runner's
-`[control_plane.crew]` from crew's partitions: its `host` is
+partitions. With crew's module on, the module declares crew's source of
+kinds to Flume, `services.flume.sources.crew`, naming the roles file
+crew writes, `~/.local/state/crew/flume/roles.toml`, and crew's kinds
+folder, `~/.local/share/flume/kinds/crew`. Flume's module writes the
+source at `~/.config/flume/sources/crew.toml`, so a host writes no file
+for it, and a key the host sets there wins. Where `control_plane.type`
+is `crew` and no `control_plane.crew` is written, the module writes the
+runner's `[control_plane.crew]` from crew's partitions: its `host` is
 `services.crew.host`, and it holds each partition whose `machine` is
 that host, by its `label`, with its `state` as `state_repository`. A
 table written out wins, whole:
