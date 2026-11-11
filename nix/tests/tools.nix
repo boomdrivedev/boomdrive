@@ -151,7 +151,7 @@ let
       settings = teams;
     };
   };
-  # crew turned on, with its host and one partition.
+  # crew turned on, with its host, one drive and its hosts.
   crewOn = crewOf settings.crewModule;
 
   profileOf = evaluated: map (p: p.outPath) evaluated.config.environment.systemPackages;
@@ -307,8 +307,8 @@ let
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
   # The runner's crew table, under crew with no table written, for crew's
-  # partitions `garden` and `home` on host-a with `away` on host-b between
-  # them (design Decision 3).
+  # drives `garden` and `home` on host-a with `away` on host-b written
+  # between them: the table holds them in label order (design Decision 3).
   crewOrder =
     platform:
     { system, ... }:
@@ -334,7 +334,7 @@ let
     in
     t.expect (
       t.failures evaluated == [ ]
-    ) "a ${platform} system of crew's order fails: ${toString (t.failures evaluated)}"
+    ) "a ${platform} system of crew's drives in label order fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
@@ -362,12 +362,12 @@ let
         "services.crew"
       ];
 
-  # Under crew, with no crew table written and crew's one partition on
-  # host-b while crew's host is host-a (design Decision 6).
+  # Under crew, with no crew table written and crew's one drive on host-b
+  # while crew's host is host-a (design Decision 6).
   elsewhere =
     platform:
     { system, ... }:
-    failsNaming "a ${platform} system under crew with no partition on its host"
+    failsNaming "a ${platform} system under crew with no drive of crew's on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
         services.boomdrive = settings.crewUnwritten;
@@ -391,12 +391,12 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
-// onEach "crew's order" crewOrder
+// onEach "crew's drives in label order" crewOrder
 // onEach "Under crew with neither" neither
-// onEach "No partition on this host" elsewhere
+// onEach "No drive of crew's on this host" elsewhere
 // {
   # The README's install with nix writes no crew table beside crew's
-  # partitions, and says the module writes it (design Decision 8).
+  # drives, and says the module writes it (design Decision 8).
   "The README's crew table" =
     t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
     ++ t.expect (

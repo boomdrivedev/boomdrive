@@ -33,7 +33,8 @@ let
     "sluice"
   ];
   overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
-  # The host's overlay, and crew turned on with its host and partitions.
+  # The host's overlay, and crew turned on with its host, its drives and
+  # its hosts.
   host = {
     nixpkgs.overlays = [ overlay ];
     services.crew = {

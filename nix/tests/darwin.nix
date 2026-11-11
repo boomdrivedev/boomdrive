@@ -114,8 +114,8 @@ let
       };
     };
   fleet = crewWith settings.crewUnwritten settings.crewFleet;
-  # "A host under crew" whose crew table, written out, is the partition
-  # `garden` alone, beside crew's fleet.
+  # "A host under crew" whose crew table, written out, is the runner's
+  # partition `garden` alone, beside crew's fleet of drives.
   garden = {
     host = "host-a";
     partitions = [
@@ -138,8 +138,8 @@ let
   # The table the runner's file is rendered from, `accounts` joined to
   # `settings` (accounts.nix).
   tableOf = (import ../modules/accounts.nix { inherit lib; }).fileOf;
-  # Another control plane, or none, beside crew's module with one
-  # partition on host-a.
+  # Another control plane, or none, beside crew's module with one drive
+  # on host-a.
   hostedBesideCrew = crewWith settings.hosted settings.crewModule;
   noneBesideCrew = crewWith settings.empty settings.crewModule;
 
@@ -283,10 +283,10 @@ in
     ) "no control plane beside crew fails: ${toString (t.failures noneBesideCrew)}"
     ++ t.expect (writes noneBesideCrew (builtins.readFile ./files/empty.toml)) "the agent's --config beside crew is not the file of nix/tests/files/empty.toml";
 
-  "crew's partitions on this host on nix-darwin" =
+  "crew's drives on this host on nix-darwin" =
     t.expect (
       t.failures fleet == [ ]
-    ) "crew's partitions on this host fail: ${toString (t.failures fleet)}"
+    ) "crew's drives on this host fail: ${toString (t.failures fleet)}"
     ++ t.expect (writes fleet (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
 
   "The activation links the file on nix-darwin" =

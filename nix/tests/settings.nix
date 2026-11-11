@@ -2,26 +2,51 @@
 # `enable`, its `accounts` and `settings`, each rendered to its file under
 # nix/tests/files, and crew's own, by the names of core.41: the accounts
 # `own`, `home` and `work`, the drives `home` and `garden`, the owner
-# `agentplot`, and crew's hosts `host-a` and `host-b`.
+# `agentplot`, and crew's hosts `host-a` and `host-b`. crew's are written
+# by crew's names at the lock's crew, its teams file's version 6 (crew
+# record 0064 as amended on 2026-11-09): its drives keyed by label, each
+# with `runs` and `review`'s `after_changes` and `after_hours`, beside
+# `hosts`, `host-a` and `host-b`, each with its `ssh` name and `kind`.
 let
-  # A partition of crew's teams file, services.crew.settings, on the
-  # machine `machine`, its state at `state`: every key crew's module asks
-  # for at its tag (design Decision 8).
-  partitionOf = label: machine: state: {
-    inherit label machine state;
-    partition = label;
+  # A drive of crew's teams file, services.crew.settings.drives.<label>,
+  # on the machine `machine`, its state at `state`: every key crew's module
+  # requires at its tag (design Decision 5). `label` is crew's own,
+  # read-only, the drive's name.
+  driveOf = label: machine: state: {
+    inherit machine state;
     blueprints = [ "example/blueprints" ];
     session = label;
-    review = {
-      every = 5;
-      hours = 4;
+    folder = "/srv/crew/${label}";
+    repos = [ ];
+    accounts = {
+      design = "example";
+      planner = "example";
+      reviewer = "example";
+      ops = "example";
+      operator = "example";
     };
-    flume = {
-      design = false;
-      planner = false;
-      reviewer = false;
-      ops = false;
-      operator = false;
+    runs = {
+      design = "standing";
+      planner = "standing";
+      reviewer = "on-demand";
+      ops = "on-demand";
+      operator = "standing";
+    };
+    review = {
+      after_changes = 5;
+      after_hours = 4;
+    };
+  };
+
+  # Each host crew reaches, every drive's machine among them.
+  hosts = {
+    host-a = {
+      ssh = "host-a";
+      kind = "darwin";
+    };
+    host-b = {
+      ssh = "host-b";
+      kind = "nixos";
     };
   };
 
@@ -91,32 +116,36 @@ in
     };
   };
 
-  # crew's teams file for one partition, `home`, on `host-a`.
+  # crew's teams file for one drive, `home`, on `host-a`.
   crewModule = {
-    partitions = [ (partitionOf "home" "host-a" "example/state") ];
+    inherit hosts;
+    drives.home = driveOf "home" "host-a" "example/state";
   };
 
   # crew's teams file for a fleet of two machines: `home` on `host-a`, and
   # `away` on `host-b`.
   crewFleet = {
-    partitions = [
-      (partitionOf "home" "host-a" "example/state")
-      (partitionOf "away" "host-b" "example/away")
-    ];
+    inherit hosts;
+    drives = {
+      home = driveOf "home" "host-a" "example/state";
+      away = driveOf "away" "host-b" "example/away";
+    };
   };
 
-  # crew's teams file whose partitions on `host-a` are not in label order,
-  # with one of `host-b`'s between them.
+  # crew's teams file whose drives on `host-a`, `garden` and `home`, are
+  # written out of label order, with one of `host-b`'s between them.
   crewOrder = {
-    partitions = [
-      (partitionOf "garden" "host-a" "example/garden")
-      (partitionOf "away" "host-b" "example/away")
-      (partitionOf "home" "host-a" "example/state")
-    ];
+    inherit hosts;
+    drives = {
+      garden = driveOf "garden" "host-a" "example/garden";
+      away = driveOf "away" "host-b" "example/away";
+      home = driveOf "home" "host-a" "example/state";
+    };
   };
 
-  # crew's teams file with no partition on `host-a`.
+  # crew's teams file with no drive on `host-a`.
   crewElsewhere = {
-    partitions = [ (partitionOf "away" "host-b" "example/away") ];
+    inherit hosts;
+    drives.away = driveOf "away" "host-b" "example/away";
   };
 }
