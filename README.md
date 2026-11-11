@@ -174,10 +174,15 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
 nothing. Told of a landing, it keeps that one repository at once,
-between passes or between two repositories of a pass. It stops on
-SIGTERM or SIGINT before the next repository it would keep, lets each
-part of its control plane end the pass it has in hand, and exits 0. It
-opens no listening socket: every connection it makes is outgoing.
+between passes or between two repositories of a pass. Sent SIGTERM or
+SIGINT, it ends a fetch or a listing it has in flight as that call's
+limit would, asked to end and killed two seconds later, and begins none
+after. A fetch so ended is named not fetched, or not cloned with
+nothing left, as `git fetch with origin was stopped as the runner
+stopped`, and is fetched again when the runner next starts. It then
+stops before the next repository it would keep, lets each part of its
+control plane end the pass it has in hand, and exits 0. It opens no
+listening socket: every connection it makes is outgoing.
 
 Where the configuration names a control plane, each part of it, a crew
 partition or a hosted partition, runs its control passes on its own,
@@ -229,7 +234,12 @@ when no part both pulled and reported. A part that could not be read
 while another reported, or a tool a pass could not run or read, is
 named, and is not a failure. `--once` settles every place once, after
 its passes, and a settle Flume refused or gave no answer to is named,
-and is not a failure either.
+and is not a failure either. Sent SIGTERM or SIGINT, `--once` stops as
+`boomdrive run` does: it ends a fetch or a listing it has in flight as
+that call's limit would, asked to end and killed two seconds later,
+begins none after, keeps no further repository, begins no part's pass
+and no settle, lets each part end the pass in hand, says `boomdrive:
+stopped` and exits 1.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
@@ -690,7 +700,11 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `<data>/control/crew/`, and lists the runner branches,
 `<label>/runner/*`, by `git ls-remote`. A listing still going at thirty
 seconds is stopped with everything it started, as a fetch is, and the
-partition is named unread and pulled again at the next pull. It answers
+partition is named unread and pulled again at the next pull. A listing
+in flight when the runner is stopped is ended as its limit would end
+it, asked to end and killed two seconds later, and none begins after
+the stop: the partition is named unread, `git ls-remote with <url> was
+stopped as the runner stopped`. It answers
 on the runner's branch, `<label>/runner/<host>`, in crew's formats:
 `runner.rec`, `answers.rec` and `places.rec`, and, once a preview is
 answered there, `previews.rec`,

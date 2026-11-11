@@ -23,7 +23,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. What the runner says of it
 
-- [ ] 4.1 README's running section says the runner, sent SIGTERM or SIGINT, ends a fetch or a listing it has in flight as its limit would, asked to end and killed two seconds later, and begins none after, before it stops as it does today. It says that `run --once` stops so too and exits 1. README's crew section says a listing in flight is ended at the stop. Neither adds a module option or says a service manager's stop timeout changes (design Decisions 6 and 7). True when `sluice exec main -- moon run root:format` passes.
+- [x] 4.1 README's running section says the runner, sent SIGTERM or SIGINT, ends a fetch or a listing it has in flight as its limit would, asked to end and killed two seconds later, and begins none after, before it stops as it does today. It says that `run --once` stops so too and exits 1. README's crew section says a listing in flight is ended at the stop. Neither adds a module option or says a service manager's stop timeout changes (design Decisions 6 and 7). True when `sluice exec main -- moon run root:format` passes.
 
 ## 5. The specs
 
