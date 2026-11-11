@@ -169,9 +169,28 @@ let
         }, not herdr"
     ++ holdsEach "extra-substituters" t.flake.nixConfig.extra-substituters
     ++ holdsEach "extra-trusted-public-keys" t.flake.nixConfig.extra-trusted-public-keys;
+  # NixOS's switch: the folder the flake step writes to and the
+  # configuration it gives, and the drive's system's derivation, which
+  # evaluates and is never built (design Decision 8; Risk 6). nixosOf's
+  # base gives the system its root file system and its boot loader.
+  nixosSwitch =
+    let
+      words = wordsOf (builtins.readFile (start + "/nixos/switch.sh"));
+      want = [
+        "sudo"
+        "nixos-rebuild"
+        "switch"
+        "--flake"
+        "/etc/nixos#your-host"
+      ];
+      toplevel = builtins.tryEval (builtins.seq drive.config.system.build.toplevel.drvPath true);
+    in
+    t.expect (words == want) "nixos/switch.sh is ${toString words}, not ${toString want}"
+    ++ t.expect toplevel.success "the drive's system's toplevel does not evaluate to a derivation";
 in
 {
   "quick start: the Mac's install" = macInstall;
   "quick start: NixOS's flake" = nixosFlake;
   "quick start: NixOS's drive" = nixosDrive;
+  "quick start: NixOS's switch" = nixosSwitch;
 }
