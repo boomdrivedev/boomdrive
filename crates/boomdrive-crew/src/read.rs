@@ -261,18 +261,25 @@ impl Store {
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
             .stdin(Stdio::null());
-        let output = boomdrive_bounded::output(&mut command, self.try_for)
-            .map_err(|error| format!("git could not be run: {error}"))?;
+        let output = boomdrive_bounded::output(
+            &mut command,
+            self.try_for,
+            &boomdrive_bounded::Halt::default(),
+        )
+        .map_err(|error| format!("git could not be run: {error}"))?;
         let said = String::from_utf8_lossy(&output.stderr);
         let last = said.lines().rfind(|line| !line.trim().is_empty());
-        if output.stopped {
-            let stopped = boomdrive_bounded::stopped("git ls-remote", &self.url, self.try_for);
-            return Err(match last {
-                Some(line) => format!("{}; {stopped}", line.trim()),
-                None => stopped,
-            });
-        }
-        if !output.status.success() {
+        let status = match (output.stopped, output.status) {
+            (None, Some(status)) => status,
+            _ => {
+                let stopped = boomdrive_bounded::stopped("git ls-remote", &self.url, self.try_for);
+                return Err(match last {
+                    Some(line) => format!("{}; {stopped}", line.trim()),
+                    None => stopped,
+                });
+            }
+        };
+        if !status.success() {
             return Err(format!(
                 "git ls-remote failed: {}",
                 last.unwrap_or("it said nothing")

@@ -16,7 +16,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-use boomdrive_bounded::TRY_FOR;
+use boomdrive_bounded::{Halt, TRY_FOR};
 
 /// The least git the runner runs with: 2.48, the first whose fetch keeps
 /// origin's HEAD current (`remote.origin.followRemoteHEAD`, design 6).
@@ -218,18 +218,21 @@ fn bounded(
     remote: &str,
     limit: Duration,
 ) -> Result<String, Words> {
-    let ended = boomdrive_bounded::output(&mut command, limit)
+    let ended = boomdrive_bounded::output(&mut command, limit, &Halt::default())
         .map_err(|error| Words(format!("git could not run: {error}")))?;
-    if ended.stopped {
-        let stopped = boomdrive_bounded::stopped(call, remote, limit);
-        let stderr = String::from_utf8_lossy(&ended.stderr);
-        return Err(Words(match last_line(&stderr) {
-            Some(line) => format!("{line}; {stopped}"),
-            None => stopped,
-        }));
-    }
+    let status = match (ended.stopped, ended.status) {
+        (None, Some(status)) => status,
+        _ => {
+            let stopped = boomdrive_bounded::stopped(call, remote, limit);
+            let stderr = String::from_utf8_lossy(&ended.stderr);
+            return Err(Words(match last_line(&stderr) {
+                Some(line) => format!("{line}; {stopped}"),
+                None => stopped,
+            }));
+        }
+    };
     let output = Output {
-        status: ended.status,
+        status,
         stdout: ended.stdout,
         stderr: ended.stderr,
     };
