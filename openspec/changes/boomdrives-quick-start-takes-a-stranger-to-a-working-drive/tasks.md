@@ -48,7 +48,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 4. The steps both ways share
 
-- [ ] 4.1 `site/src/start/both/sluice.toml` is the smallest policy the set's sluice takes that lands `main` on `origin` after one command. The command is one any repository runs, and its comment tells the reader to put their own tests' command. Its keys are those sluice's configuration reference gives at the set's tag. `site/src/start/both/land.sh` holds `git add .config/sluice.toml`, a Conventional Commit of it, and `git push origin HEAD:main`. The test `sluices_file_lands_on_main`:
+- [x] 4.1 `site/src/start/both/sluice.toml` is the smallest policy the set's sluice takes that lands `main` on `origin` after one command. The command is one any repository runs, and its comment tells the reader to put their own tests' command. Its keys are those sluice's configuration reference gives at the set's tag. `site/src/start/both/land.sh` holds `git add .config/sluice.toml`, a Conventional Commit of it, and `git push origin HEAD:main`. The test `sluices_file_lands_on_main`:
   1. writes the policy as `.config/sluice.toml` in a scratch clone of a bare origin;
   2. runs `land.sh` there through `sh`;
   3. in a second clone, asks the set's sluice to read `main`'s policy, by the command its reference gives for that.

@@ -297,3 +297,53 @@ fn the_state_repository_is_made_as_setup_makes_it() {
     assert_eq!(made.len(), 1, "{:?}", stand.calls("gh"));
     assert_eq!(lines("nixos/state.sh"), made);
 }
+
+/// The scratch host's `PATH` for a step's line and the set's tools: the
+/// tests' own, whose git is the gate's.
+fn own_path() -> String {
+    std::env::var("PATH").unwrap_or_default()
+}
+
+/// The quick-start spec's "The policy on main": the landing step's policy
+/// written as `.config/sluice.toml` in a scratch clone of a bare origin,
+/// its `land.sh` run there through `sh`, and in a second clone the set's
+/// sluice reads `main`'s policy, as `sluice equip main` reads it at the
+/// branch's revision, and refuses nothing.
+#[test]
+fn sluices_file_lands_on_main() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("your-github-name/your-repository");
+    let first = scratch.root.join("clones/first");
+    std::fs::create_dir_all(first.parent().expect("the clones' folder")).expect("the folder");
+    scratch.git(
+        &scratch.root,
+        &["clone", "--quiet", &origin.url(), &first.to_string_lossy()],
+    );
+    write_step("both/sluice.toml", &first.join(".config/sluice.toml"));
+    let output = on_scratch(&scratch, "sh", &own_path())
+        .arg(step_file("both/land.sh"))
+        .current_dir(&first)
+        .output()
+        .expect("sh runs");
+    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
+    assert_eq!(
+        scratch.git(&origin.bare, &["show", "main:.config/sluice.toml"]) + "\n",
+        step("both/sluice.toml")
+    );
+
+    let second = scratch.root.join("clones/second");
+    scratch.git(
+        &scratch.root,
+        &["clone", "--quiet", &origin.url(), &second.to_string_lossy()],
+    );
+    let output = on_scratch(&scratch, set_program("sluice"), &own_path())
+        .args(["equip", "main", "--json"])
+        .current_dir(&second)
+        .output()
+        .expect("the set's sluice runs");
+    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
+    let answer: Value = serde_json::from_slice(&output.stdout).expect("sluice's answer is JSON");
+    assert_eq!(answer["branch"], "main", "{answer}");
+    assert_eq!(answer["revision"], origin.tip("main"), "{answer}");
+    assert!(answer.get("refused").is_none(), "{answer}");
+}
