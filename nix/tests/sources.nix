@@ -171,4 +171,21 @@ onEach "crew's source with crew on" crewOnSource
 // {
   "The paths the set's crew writes" =
     writtenBy "roles" "ROLES_FILE" ++ writtenBy "kinds_dir" "KINDS_DIR";
+
+  # The README's install with nix names crew's source, and no nix block of
+  # it declares a source (Task notes 2.1).
+  "The README's words on crew's source" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString t.installing)) "the README's Installing with nix says no ${words}"
+      )
+      [
+        "services.flume.sources.crew"
+        "~/.local/state/crew/flume/roles.toml"
+        "~/.local/share/flume/kinds/crew"
+      ]
+    ++ t.expect (
+      !lib.any (lib.hasInfix "services.flume.sources") t.nixBlocks
+    ) "a nix block of the README's Installing with nix sets services.flume.sources";
 }
