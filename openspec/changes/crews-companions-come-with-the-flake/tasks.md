@@ -52,7 +52,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - `boomdrive-claude-plugins`, installed into no Claude Code home yet.
 
   True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's words" and "The README's companions".
-- [ ] 4.3 CLAUDE.md and `openspec/config.yaml` name the companions in the flake's set and among what the modules install with the runner and crew. True when `sluice exec main -- moon run root:format` passes.
+- [x] 4.3 CLAUDE.md and `openspec/config.yaml` name the companions in the flake's set and among what the modules install with the runner and crew. True when `sluice exec main -- moon run root:format` passes.
 
 ## 5. The install that waits, and the specs
 
