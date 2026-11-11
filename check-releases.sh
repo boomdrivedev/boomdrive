@@ -217,6 +217,60 @@ else
 $site_notes"
 fi
 
+# A release commit tagged `$1`, cut from main's tip in `$dir` as the
+# workflow cuts one: main's tree with a file of its own giving the
+# version, main's tip its one parent, and main left where it was, so the
+# tag is off main's history.
+cut_release() {
+  blob=$(printf '%s\n' "${1#v}" | git -C "$dir" hash-object -w --stdin)
+  GIT_INDEX_FILE="$dir.index" git -C "$dir" read-tree HEAD
+  GIT_INDEX_FILE="$dir.index" git -C "$dir" update-index --add --cacheinfo "100644,$blob,version"
+  cut_tree=$(GIT_INDEX_FILE="$dir.index" git -C "$dir" write-tree)
+  rm -f "$dir.index"
+  cut_commit=$(git -C "$dir" commit-tree "$cut_tree" -p HEAD -m "chore(release): $1")
+  git -C "$dir" tag "$1" "$cut_commit"
+}
+
+# Scenario: A fix after a release commit.
+repo cutfix
+commit "feat: a start"
+cut_release v0.1.0
+commit "fix: a fix"
+got=$(next)
+if [ "$got" = v0.1.1 ]; then
+  pass "'fix: a fix' after v0.1.0's release commit releases v0.1.1"
+else
+  fail "'fix: a fix' after v0.1.0's release commit releases ${got:-nothing}, not v0.1.1"
+fi
+
+# Scenario: Nothing to release after a release commit.
+repo cutnothing
+commit "feat: a start"
+cut_release v0.1.0
+commit "chore: a chore"
+got=$(next)
+if [ -z "$got" ] && grep -q 'v0.1.0 is released already' "$scratch/cutnothing.log"; then
+  pass "a chore after v0.1.0's release commit releases nothing"
+else
+  fail "a chore after v0.1.0's release commit releases ${got:-nothing}, or says nothing of v0.1.0"
+fi
+
+# Scenario: The notes after a release commit.
+repo cutnotes
+commit "feat: a start"
+cut_release v0.1.0
+commit "fix(nix): a fix"
+cut_notes=$(cd "$dir" && sh release.sh notes v0.1.1 2>>"$dir.log")
+fixes=$(printf '%s\n' "$cut_notes" | grep -n -F -x -e "### Fixes" | head -n 1 | cut -d : -f 1)
+fix=$(printf '%s\n' "$cut_notes" | grep -n '^- \*\*nix\*\*: A fix (\[' | head -n 1 | cut -d : -f 1)
+if [ -n "$fixes" ] && [ -n "$fix" ] && [ "$fixes" -lt "$fix" ] &&
+  ! printf '%s\n' "$cut_notes" | grep -q -i 'a start'; then
+  pass "the notes after v0.1.0's release commit hold the fix under Fixes and nothing of the start"
+else
+  fail "the notes after v0.1.0's release commit do not hold the fix under Fixes, or hold the start:
+$cut_notes"
+fi
+
 # Scenario: A commit that is not conventional.
 repo unconventional
 commit "feat: a start"
