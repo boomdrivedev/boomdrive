@@ -51,6 +51,60 @@ let
     ) "packages.${system}.${tool}-herdr-plugin says ${plugin.version}, not ${tool}'s ${version}"
     ++ t.expect (plugin.dontFixup or false
     ) "packages.${system}.${tool}-herdr-plugin rewrites the plugin's files";
+
+  # The set's herdr against the herdr Flume's tree pins and each plugin's
+  # floor (design Decision 1): `pinned` and `herdr` are versions, and
+  # `plugins` maps a plugin's name to its manifest's `min_herdr_version`.
+  herdrHeld =
+    {
+      pinned,
+      herdr,
+      plugins,
+    }:
+    t.expect (herdr == pinned)
+      "the set's herdr is ${herdr}, and Flume's tree pins ${pinned}, the herdr its terminal profile was checked against"
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        name: floor:
+        t.expect (
+          !lib.versionOlder herdr floor
+        ) "${name} asks for herdr ${floor}, and the set's herdr is ${herdr}"
+      ) plugins
+    );
+
+  # The herdr Flume's devenv.nix pins at the tag the lock names for Flume,
+  # `herdrVersion = "<v>";`, or null where no line names one.
+  flumesDevenv = "${inputs.flume.outPath}/devenv.nix";
+  flumesHerdr =
+    let
+      found = lib.concatMap (
+        line:
+        let
+          matched = builtins.match ''[[:space:]]*herdrVersion = "([^"]+)";[[:space:]]*'' line;
+        in
+        lib.optional (matched != null) (builtins.head matched)
+      ) (lib.splitString "\n" (builtins.readFile flumesDevenv));
+    in
+    if builtins.length found == 1 then builtins.head found else null;
+
+  # A system's Ghostty against the release Flume's ghostty window profile
+  # was checked against (Flume's statement, C.8; design Decision 2). Flume's
+  # tree pins no Ghostty to read, so the constant moves only with a check
+  # of Flume's profile.
+  checked = "1.4.0";
+  ghosttyHeld =
+    system: package:
+    t.expect (package.version == checked)
+      "packages.${system}.ghostty is Ghostty ${package.version}, not ${checked}, the release Flume's window profile was checked against";
+
+  # Each of the set's herdr plugins' floors, from its manifest.
+  floorsOf =
+    packages:
+    lib.genAttrs [ "flume-herdr-plugin" "sluice-herdr-plugin" ] (
+      name:
+      (builtins.fromTOML (builtins.readFile "${packages.${name}.src}/herdr-plugin.toml"))
+      .min_herdr_version
+    );
 in
 {
   "The runner from this tree" = each (
@@ -92,10 +146,6 @@ in
 
   "The runner's git crates" = gitCrates "nix/packages/git-crates.nix" runnerLock runnerCrates;
 
-  "Flume's git crates" = gitCrates "nix/packages/flume-git-crates.nix" (builtins.fromTOML (
-    builtins.readFile "${inputs.flume.outPath}/Cargo.lock"
-  )) (import ../packages/flume-git-crates.nix);
-
   "weir moved without its hash" =
     let
       moved = "1111111111111111111111111111111111111111";
@@ -126,30 +176,21 @@ in
       t.expect (named crate) "a Cargo.lock that moves weir fails naming neither ${crate} nor both revisions"
     ) (builtins.attrNames runnerCrates);
 
-  "Flume at its tag" = each (
+  # Flume's flake builds Flume's tagged tree, which carries its version
+  # (design Decision 3): the set's Flume is that package, unchanged.
+  "Flume through its own flake" = each (
     system: packages:
     let
       inherit (packages) flume;
+      own = inputs.flume.packages.${system}.flume;
       version = t.lockedVersion "flume";
     in
-    t.expect (toString flume.src == inputs.flume.outPath)
-      "packages.${system}.flume is made from ${toString flume.src}, not the lock's Flume, ${inputs.flume.outPath}"
+    t.expect (
+      flume.drvPath == own.drvPath
+    ) "packages.${system}.flume is not Flume's flake's packages.${system}.flume"
     ++ t.expect (
       flume.version == version
     ) "packages.${system}.flume says ${flume.version}, not its tag's ${version}"
-  );
-
-  "An overridden input" = eachOf (flake.outputs (inputs // { inherit self; } // { flume = tree; })) (
-    system: packages:
-    let
-      inherit (packages) flume;
-    in
-    t.expect (
-      toString flume.src == tree.outPath
-    ) "packages.${system}.flume, Flume's input replaced, is made from ${toString flume.src}"
-    ++ t.expect (
-      flume.version == "9.9.9"
-    ) "packages.${system}.flume, Flume's input replaced by a tree of 9.9.9, says ${flume.version}"
   );
 
   "sluice through its own flake" = each (
@@ -174,6 +215,25 @@ in
     ) "packages.${system}.sluice's build is given SLUICE_VERSION ${given}, not its tag's ${version}"
   );
 
+  # crew keeps its version in no file, so the set gives crew's flake's
+  # package its tag's (design Decision 3).
+  "crew through its own flake" = each (
+    system: packages:
+    let
+      inherit (packages) crew;
+      own = inputs.crew.packages.${system}.crew;
+      version = t.lockedVersion "crew";
+    in
+    t.expect (
+      toString crew.src == toString own.src
+      && crew.pname == own.pname
+      && crew.meta.homepage == own.meta.homepage
+    ) "packages.${system}.crew is not crew's flake's package"
+    ++ t.expect (
+      crew.version == version
+    ) "packages.${system}.crew says ${crew.version}, not its tag's ${version}"
+  );
+
   # Where sluice's tree carries a version of its own, the package is
   # sluice's flake's, unchanged (design Decision 3).
   "sluice's version from its tree" = lib.concatMap (
@@ -192,6 +252,95 @@ in
       && (given.drvAttrs.SLUICE_VERSION or null) == (own.drvAttrs.SLUICE_VERSION or null)
     ) "sluice of a tree that says 9.9.9 is given ${given.version}, not left as its flake's"
   ) systems;
+
+  "herdr through its own flake" = each (
+    system: packages:
+    let
+      inherit (packages) herdr;
+      own = inputs.herdr.packages.${system}.herdr;
+      version = t.lockedVersion "herdr";
+    in
+    t.expect (
+      herdr.drvPath == own.drvPath
+    ) "packages.${system}.herdr is not herdr's flake's packages.${system}.herdr"
+    ++ t.expect (
+      herdr.version == version
+    ) "packages.${system}.herdr says ${herdr.version}, not its tag's ${version}"
+  );
+
+  "Ghostty on each system" = each (
+    system: packages:
+    let
+      nixpkgs = inputs.nixpkgs.legacyPackages.${system};
+      own = if lib.hasSuffix "-darwin" system then nixpkgs.ghostty-bin else nixpkgs.ghostty;
+      named = if lib.hasSuffix "-darwin" system then "ghostty-bin" else "ghostty";
+    in
+    t.expect (
+      packages.ghostty.drvPath == own.drvPath
+    ) "packages.${system}.ghostty is not the flake's nixpkgs' ${named}"
+    ++ ghosttyHeld system packages.ghostty
+  );
+
+  "Ghostty moved with nixpkgs" =
+    let
+      found = ghosttyHeld "x86_64-linux" { version = "1.5.0"; };
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "x86_64-linux"
+        "1.5.0"
+        "1.4.0"
+      ]
+    ) "a Ghostty 1.5.0 gives ${builtins.toJSON found}";
+
+  "herdr is Flume's" =
+    if flumesHerdr == null then
+      [
+        "Flume's pin of herdr could not be read: ${flumesDevenv} holds no one line herdrVersion = \"<version>\";"
+      ]
+    else
+      each (
+        _: packages:
+        herdrHeld {
+          pinned = flumesHerdr;
+          herdr = packages.herdr.version;
+          plugins = floorsOf packages;
+        }
+      );
+
+  "herdr other than Flume's" =
+    let
+      found = herdrHeld {
+        pinned = "0.9.6";
+        herdr = "0.9.5";
+        plugins = { };
+      };
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "0.9.6"
+        "0.9.5"
+      ]
+    ) "a herdr 0.9.5 beside Flume's pin of 0.9.6 gives ${builtins.toJSON found}";
+
+  "A plugin newer than herdr" =
+    let
+      found = herdrHeld {
+        pinned = "0.9.5";
+        herdr = "0.9.5";
+        plugins.flume-herdr-plugin = "0.9.9";
+      };
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "flume-herdr-plugin"
+        "0.9.9"
+        "0.9.5"
+      ]
+    ) "a plugin asking for herdr 0.9.9 of a set's 0.9.5 gives ${builtins.toJSON found}";
 
   "Flume's plugin moves with Flume" = each (pluginOf "flume");
   "sluice's plugin moves with sluice" = each (pluginOf "sluice");
@@ -223,4 +372,60 @@ in
         "v0.67.0"
       ]
     ) "flake.nix's sluice v0.68.0 under a lock of v0.67.0 gives ${builtins.toJSON found}";
+
+  "A tool named by no release tag" =
+    let
+      inherit (t) lock;
+      node = lock.nodes.${lock.root}.inputs.crew;
+      named = flake.inputs // {
+        crew = flake.inputs.crew // {
+          url = "github:agentplot/crew/main";
+        };
+      };
+      locked = lock // {
+        nodes = lock.nodes // {
+          ${node} = lock.nodes.${node} // {
+            original = lock.nodes.${node}.original // {
+              ref = "main";
+            };
+          };
+        };
+      };
+      found = tags named locked;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "crew"
+        "main"
+      ]
+    ) "flake.nix and the lock naming crew by main give ${builtins.toJSON found}";
+
+  "herdr named by no release tag" =
+    let
+      inherit (t) lock;
+      node = lock.nodes.${lock.root}.inputs.herdr;
+      named = flake.inputs // {
+        herdr = flake.inputs.herdr // {
+          url = "github:herdrdev/herdr/main";
+        };
+      };
+      locked = lock // {
+        nodes = lock.nodes // {
+          ${node} = lock.nodes.${node} // {
+            original = lock.nodes.${node}.original // {
+              ref = "main";
+            };
+          };
+        };
+      };
+      found = tags named locked;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "herdr"
+        "main"
+      ]
+    ) "flake.nix and the lock naming herdr by main give ${builtins.toJSON found}";
 }

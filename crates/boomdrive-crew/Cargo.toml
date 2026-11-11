@@ -12,6 +12,9 @@ doctest = false
 # The interface it implements, and the one crate that names crew (design
 # Decision 1; core.2).
 boomdrive-control = { path = "../boomdrive-control" }
+# A state repository's listing run to its limit, in a process group of its
+# own (record 0042; core.58).
+boomdrive-bounded = { path = "../boomdrive-bounded" }
 serde_json.workspace = true
 time.workspace = true
 toml.workspace = true

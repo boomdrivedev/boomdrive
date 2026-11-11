@@ -159,6 +159,7 @@ dependencies = [
 name = "boomdrive"
 version = "0.0.0"
 dependencies = [
+ "boomdrive-bounded",
  "boomdrive-control",
  "boomdrive-crew",
  "boomdrive-hosted",
@@ -176,6 +177,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "boomdrive-bounded"
+version = "0.0.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "boomdrive-control"
 version = "0.0.0"
 dependencies = [
@@ -188,6 +196,7 @@ dependencies = [
 name = "boomdrive-crew"
 version = "0.0.0"
 dependencies = [
+ "boomdrive-bounded",
  "boomdrive-control",
  "serde_json",
  "tempfile",

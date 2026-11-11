@@ -13,19 +13,43 @@ use boomdrive::git::Git;
 use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
 use std::ffi::{OsStr, OsString};
+use std::io::Write;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
+use std::time::Duration;
 use tempfile::TempDir;
 
-/// A configuration keeping `addresses`, in order, with every other
-/// setting its default.
+/// A configuration keeping `addresses`, in order, in the account `own`'s
+/// drive `home`, with every other setting its default. Its keys are
+/// dotted, so a key of the top level may be written before it and a table
+/// after it.
 pub fn keeping(addresses: &[&str]) -> String {
-    let entries: Vec<String> = addresses
+    drives(&[("home", addresses)])
+}
+
+/// A configuration keeping each of `drives` of the account `own`, in
+/// order, each with its addresses in order, and every other setting its
+/// default; with none, the account keeps no drive. Its keys are dotted,
+/// as `keeping`'s are.
+pub fn drives(drives: &[(&str, &[&str])]) -> String {
+    if drives.is_empty() {
+        return "accounts.own.drives = {}\n".to_string();
+    }
+    drives
         .iter()
-        .map(|address| format!("{address:?}"))
-        .collect();
-    format!("repositories = [{}]\n", entries.join(", "))
+        .map(|(drive, addresses)| {
+            let entries: Vec<String> = addresses
+                .iter()
+                .map(|address| format!("{address:?}"))
+                .collect();
+            format!(
+                "accounts.own.drives.{drive}.repositories = [{}]\n",
+                entries.join(", ")
+            )
+        })
+        .collect()
 }
 
 /// The scratch host's stub `flume`: it answers `--json settle` with Flume
@@ -177,6 +201,21 @@ impl Scratch {
         file
     }
 
+    /// The runner's local layer, `config.local.toml` beside the default
+    /// file, where it reads it whatever `--config` names.
+    pub fn local_file(&self) -> PathBuf {
+        self.home.join(".config/boomdrive/config.local.toml")
+    }
+
+    /// Writes `text` as the runner's local layer and gives its path.
+    pub fn configure_local(&self, text: &str) -> PathBuf {
+        let file = self.local_file();
+        std::fs::create_dir_all(file.parent().expect("the file's folder"))
+            .expect("the configuration's folder");
+        std::fs::write(&file, text).expect("the local layer written");
+        file
+    }
+
     /// The runner's data directory, under `XDG_DATA_HOME`.
     pub fn data(&self) -> PathBuf {
         self.home.join(".local/share/boomdrive")
@@ -236,14 +275,54 @@ impl Scratch {
         refused
     }
 
+    /// Makes `address`'s origin silent (record 0042's design Decision 6):
+    /// a listener on the loopback address of the test's own, which takes
+    /// every connection on a thread of its own and holds it open without a
+    /// byte, and GitHub's https address of `address` rewritten to it over
+    /// http, which git prefers to the forge's shorter rewrite. Nothing
+    /// reaches the network (core.4).
+    pub fn silent(&self, address: &str) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("a silent listener");
+        let port = listener.local_addr().expect("its address").port();
+        std::thread::spawn(move || {
+            let mut held = Vec::new();
+            for stream in listener.incoming().flatten() {
+                held.push(stream);
+            }
+        });
+        let mut gitconfig = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&self.gitconfig)
+            .expect("the scratch git configuration");
+        write!(
+            gitconfig,
+            "[url \"http://127.0.0.1:{port}/{address}\"]\n\
+             \tinsteadOf = https://github.com/{address}\n\
+             [protocol \"http\"]\n\
+             \tallow = always\n"
+        )
+        .expect("the silent origin's rewrite");
+    }
+
     /// One pass in-process over the configuration `text`, read as the
     /// default file: its outcome and the lines it said.
     pub fn pass(&self, text: &str) -> (Outcome, Vec<String>) {
+        self.pass_with(&self.runner_git(), text)
+    }
+
+    /// One pass as [`Scratch::pass`] makes it, whose git stops a call to
+    /// a remote at `limit` (record 0042's design Decision 6).
+    pub fn pass_trying_for(&self, text: &str, limit: Duration) -> (Outcome, Vec<String>) {
+        self.pass_with(&self.runner_git().trying_for(limit), text)
+    }
+
+    /// One pass in-process by `git` over the configuration `text`.
+    fn pass_with(&self, git: &Git, text: &str) -> (Outcome, Vec<String>) {
         let config = boomdrive::config::parse(text, &self.config_file(), &self.home)
             .expect("a configuration");
         let mut lines = Vec::new();
         let outcome = boomdrive::pass::pass(
-            &self.runner_git(),
+            git,
             &self.data(),
             &config,
             &Locks::new(),

@@ -22,7 +22,9 @@ let
       ) "${name}: flake.nix names ${show named}, and flake.lock locks ${show locked}"
       ++ lib.optional (
         builtins.elem name [
+          "crew"
           "flume"
+          "herdr"
           "sluice"
         ]
         && builtins.match "v[0-9]+\\.[0-9]+\\.[0-9]+" (show named) == null

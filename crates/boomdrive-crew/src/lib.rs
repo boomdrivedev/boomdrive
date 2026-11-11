@@ -145,16 +145,17 @@ impl Crew {
     /// outside `repositories/` so the keeper never takes it for a clone.
     /// Two partitions of one state repository share no git directory and
     /// so no weir lock, and one's fetch or push holds no other's pull or
-    /// report (record 0026; design Decision 7).
+    /// report (record 0026; design Decision 7). Its listing is stopped at
+    /// thirty seconds (record 0042).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
-        Store {
-            cache: caches(&self.data_dir)
+        Store::new(
+            caches(&self.data_dir)
                 .join(&repository.owner)
                 .join(&repository.name)
                 .join(format!("{}.git", partition.label)),
-            url: repository.url(&self.forge),
-        }
+            repository.url(&self.forge),
+        )
     }
 }
 

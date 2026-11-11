@@ -1041,8 +1041,8 @@ fn the_configuration_broken_while_running() {
 
     rewrite(&scratch, &valid.replace(&format!("{KEPT:?}"), "\"flume\""));
     let broken = format!(
-        "boomdrive: home: {}:2: `repositories` entry \"flume\": an address is `owner/name`: \
-         nothing carried this pass",
+        "boomdrive: home: {}:2: `accounts.own.drives.home.repositories` entry \"flume\": an \
+         address is `owner/name`: nothing carried this pass",
         scratch.config_file().display()
     );
     running.until(&broken);

@@ -237,6 +237,36 @@ fn no_control_plane() {
     host.kept_nothing();
 }
 
+/// The configuration spec's "A partition enrolled from the local layer":
+/// `work`, which only the local layer's hosted partitions name, is
+/// enrolled as one the managed layer names would be, refused as the
+/// control plane unreachable, exiting 1, and not as a label the table
+/// does not name.
+#[test]
+fn a_partition_of_the_local_layer() {
+    let url = loopback_with_nothing_on_it();
+    let host = Host::configured(&format!(
+        "{}[control_plane]\ntype = \"hosted\"\n\n\
+         [control_plane.hosted]\nurl = {url:?}\n\n\
+         [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n",
+        keeping(&["example/app"])
+    ));
+    host.scratch.configure_local(
+        "[[control_plane.hosted.partitions]]\nlabel = \"work\"\n\
+         repositories = [\"example/service\"]\n",
+    );
+
+    let output = host.enroll(&["work"], &format!("{TOKEN}\n"));
+
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    assert!(
+        stderr(&output).contains("is unreachable"),
+        "{}",
+        stderr(&output)
+    );
+    host.kept_nothing();
+}
+
 /// A usage error, the label missing, exits 2.
 #[test]
 fn no_label() {
