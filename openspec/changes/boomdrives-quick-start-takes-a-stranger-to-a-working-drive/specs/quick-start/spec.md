@@ -150,14 +150,14 @@ The NixOS state step SHALL be one line, the `gh` command setup runs on a Mac to 
 - **WHEN** `boomdrive:test` runs setup over stand-ins where gh finds no `your-github-name/drive-state`, and reads `site/src/start/nixos/state.sh`
 - **THEN** the file's one line is the `gh repo create` call setup made, word for word
 
-### Requirement: The landing step's policy is one sluice lands main by
+### Requirement: The landing step's files are the ones sluice and Flume land main by
 
-The landing step SHALL give `.config/sluice.toml` for the drive's repository, a policy that lands `main` on `origin` after one command any repository runs, and the lines that commit it and push it to `main`, which SHALL leave a `main` the set's sluice reads with no refusal.
+The landing step SHALL give, for the drive's repository, `.config/sluice.toml`, a policy that lands `main` on `origin` after one command any repository runs, and `.config/flume.toml`, binding sluice as the repository's merge queue, and the lines that commit both and push them to `main`. They SHALL leave a `main` whose policy the set's sluice reads with no refusal, and whose binding the set's Flume reads, so a kind that lands launches there.
 
 #### Scenario: The policy on main
 
-- **WHEN** `boomdrive:test` writes `site/src/start/both/sluice.toml` into a scratch clone of a bare origin, runs `site/src/start/both/land.sh` there through `sh`, and asks the set's sluice of `main` in another clone
-- **THEN** origin's `main` holds the file, and sluice reads `main`'s policy and refuses nothing
+- **WHEN** `boomdrive:test` writes `site/src/start/both/sluice.toml` and `site/src/start/both/flume.toml` into a scratch clone of a bare origin, runs `site/src/start/both/land.sh` there through `sh`, and, in another clone, asks the set's sluice of `main` and launches a fix with the set's Flume, its stage held
+- **THEN** origin's `main` holds both files, sluice reads `main`'s policy and refuses nothing, and Flume launches the fix to land, its base from the merge queue
 
 ### Requirement: The drive's agents start as setup says
 

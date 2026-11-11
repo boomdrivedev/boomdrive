@@ -304,14 +304,34 @@ fn own_path() -> String {
     std::env::var("PATH").unwrap_or_default()
 }
 
-/// The quick-start spec's "The policy on main": the landing step's policy
-/// written as `.config/sluice.toml` in a scratch clone of a bare origin,
-/// its `land.sh` run there through `sh`, and in a second clone the set's
-/// sluice reads `main`'s policy, as `sluice equip main` reads it at the
-/// branch's revision, and refuses nothing.
-#[test]
-fn sluices_file_lands_on_main() {
-    let scratch = Scratch::new();
+/// The landing step's files and where the reader writes each, in its
+/// clone of the drive's repository (design Decision 4).
+const LANDING: [(&str, &str); 2] = [
+    ("both/sluice.toml", ".config/sluice.toml"),
+    ("both/flume.toml", ".config/flume.toml"),
+];
+
+/// The scratch host's `PATH` with the set's `tools` first, then the
+/// tests' own.
+fn set_path(tools: &[&str]) -> String {
+    let mut folders: Vec<String> = tools
+        .iter()
+        .map(|tool| {
+            set_program(tool)
+                .parent()
+                .expect("the program's folder")
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect();
+    folders.push(own_path());
+    folders.join(":")
+}
+
+/// `your-github-name/your-repository` on the scratch forge, its `main` as
+/// the landing step leaves it: the step's files written in a clone of it
+/// where the reader writes them, and its `land.sh` run there through `sh`.
+fn landed(scratch: &Scratch) -> common::Origin<'_> {
     let origin = scratch.origin("your-github-name/your-repository");
     let first = scratch.root.join("clones/first");
     std::fs::create_dir_all(first.parent().expect("the clones' folder")).expect("the folder");
@@ -319,17 +339,37 @@ fn sluices_file_lands_on_main() {
         &scratch.root,
         &["clone", "--quiet", &origin.url(), &first.to_string_lossy()],
     );
-    write_step("both/sluice.toml", &first.join(".config/sluice.toml"));
-    let output = on_scratch(&scratch, "sh", &own_path())
+    for (path, writes) in LANDING {
+        write_step(path, &first.join(writes));
+    }
+    let output = on_scratch(scratch, "sh", &own_path())
         .arg(step_file("both/land.sh"))
         .current_dir(&first)
         .output()
         .expect("sh runs");
     assert_eq!(output.status.code(), Some(0), "{}", said(&output));
-    assert_eq!(
-        scratch.git(&origin.bare, &["show", "main:.config/sluice.toml"]) + "\n",
-        step("both/sluice.toml")
-    );
+    origin
+}
+
+/// The quick-start spec's "The policy on main": the landing step's
+/// policy and Flume's binding written as `.config/sluice.toml` and
+/// `.config/flume.toml` in a scratch clone of a bare origin, its
+/// `land.sh` run there through `sh`, and origin's `main` holds both. In a
+/// second clone the set's sluice reads `main`'s policy, as `sluice equip
+/// main` reads it at the branch's revision, and refuses nothing; and the
+/// set's Flume reads the binding, which it reads at the default branch
+/// alone: a fix launched there, its stage held so no agent starts, is not
+/// refused, lands, and takes its base from the merge queue.
+#[test]
+fn sluices_file_lands_on_main() {
+    let scratch = Scratch::new();
+    let origin = landed(&scratch);
+    for (path, writes) in LANDING {
+        assert_eq!(
+            scratch.git(&origin.bare, &["show", &format!("main:{writes}")]) + "\n",
+            step(path)
+        );
+    }
 
     let second = scratch.root.join("clones/second");
     scratch.git(
@@ -346,6 +386,30 @@ fn sluices_file_lands_on_main() {
     assert_eq!(answer["branch"], "main", "{answer}");
     assert_eq!(answer["revision"], origin.tip("main"), "{answer}");
     assert!(answer.get("refused").is_none(), "{answer}");
+
+    let output = on_scratch(&scratch, set_program("flume"), &set_path(&["sluice"]))
+        .args([
+            "--json",
+            "launch",
+            "--kind",
+            "fix",
+            "--name",
+            "binding",
+            "--brief",
+            "Read the binding.",
+            "--recipient",
+            "reader",
+            "--hold",
+            "code=the test reads the binding",
+        ])
+        .current_dir(&second)
+        .output()
+        .expect("the set's Flume runs");
+    assert_eq!(output.status.code(), Some(0), "{}", said(&output));
+    let answer: Value = serde_json::from_slice(&output.stdout).expect("Flume's answer is JSON");
+    let place = &answer["launched"]["place"];
+    assert_eq!(place["lands"], true, "{answer}");
+    assert_eq!(place["base_from"], "merge-queue", "{answer}");
 }
 
 /// The quick-start spec's "Started as setup says": setup, with `--json`

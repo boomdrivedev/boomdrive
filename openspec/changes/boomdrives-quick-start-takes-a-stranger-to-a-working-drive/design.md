@@ -96,7 +96,7 @@ The words tell the reader to put their own. Each is of the form setup and the mo
 | NixOS 2 | `nixos-drive` | `nixos/boomdrive.nix`, writes `/etc/nixos/boomdrive.nix` | the drive in the runner's, crew's and Flume's files | `nix`: `quick start: NixOS's drive` |
 | NixOS 3 | `nixos-switch` | `nixos/switch.sh` | the system switched | `nix`: `quick start: NixOS's switch` |
 | NixOS 5 | `nixos-state` | `nixos/state.sh` | the state repository | `boomdrive`: `the_state_repository_is_made_as_setup_makes_it` |
-| Mac 5, NixOS 6 | `landing` | `both/sluice.toml`, writes `.config/sluice.toml`; `both/land.sh` | `main` landing through sluice | `boomdrive`: `sluices_file_lands_on_main` |
+| Mac 5, NixOS 6 | `landing` | `both/sluice.toml`, writes `.config/sluice.toml`; `both/flume.toml`, writes `.config/flume.toml`; `both/land.sh` | `main` landing through sluice | `boomdrive`: `sluices_file_lands_on_main` |
 | Mac 6, NixOS 7 | `start` | `both/start.sh` | the drive's agents running | `boomdrive`: `the_drives_agents_start_as_setup_says` |
 | Mac 7, NixOS 8 | `ask` | `both/watch.sh` | a change built and landed | `boomdrive`: `a_change_the_drive_is_given_lands` |
 
@@ -117,7 +117,8 @@ What each file holds:
 - **`nixos/switch.sh`**: `sudo nixos-rebuild switch --flake /etc/nixos#your-host`.
 - **`nixos/state.sh`**: `gh repo create your-github-name/drive-state --private`, the call setup's crew implementation makes on a Mac.
 - **`both/sluice.toml`**: the smallest policy the set's sluice takes that lands `main` on `origin` after one command: a command runner whose command runs in any repository, and `[branches.main]` naming `origin`. Its comment and the step's words tell the reader to put their own tests' command.
-- **`both/land.sh`**: run in a clone of the reader's repository holding the file: `git add .config/sluice.toml`, a Conventional Commit of it, and `git push origin HEAD:main`.
+- **`both/flume.toml`**: `[profiles]` with `merge_queue = "sluice"`, the repository's binding of its merge queue. Flume reads it from `.config/flume.toml` at the repository's default branch alone, and guesses none from another tool's files (Flume's 105 and its Part C), so without it Flume refuses every launch of a kind that lands. Its comment and the `landing` step's words say that a drive taking crew's changes binds `change = "openspec"` too, in a repository that holds OpenSpec: crew's units launch Flume's change kinds, which Flume refuses unless the change tool is bound. The quick start's own test lands a fix (Decision 6).
+- **`both/land.sh`**: run in a clone of the reader's repository holding both files: `git add .config/sluice.toml .config/flume.toml`, a Conventional Commit of them, and `git push origin HEAD:main`.
 - **`both/start.sh`**: `crew main up home`.
 - **`both/watch.sh`**: `flume open`. The words of `ask` say to tell the drive's agents the change wanted, approve its plan on the reader's rail, and watch it build and land in the window `flume open` shows. On NixOS the Boomdrive launcher opens the same.
 
@@ -138,14 +139,14 @@ The stand-ins are those `tests/setup.rs` writes: `gh`, `crew`, `herdr`, `launchc
 - **Run as written.**
   - `setup_sets_up_the_drive_as_written` runs `mac/setup.sh` and reads the runner's file and crew's table it left.
   - `flumes_file_opens_agents_in_herdr` writes `mac/flume.toml` as the scratch home's Flume file and reads the set's Flume's `--json status`.
-  - `sluices_file_lands_on_main` writes `both/sluice.toml` into a scratch clone of a bare origin and runs `both/land.sh` there. In a second clone, it asks the set's sluice to read `main`'s policy by the command sluice's reference at the set's tag gives for it.
+  - `sluices_file_lands_on_main` writes `both/sluice.toml` and `both/flume.toml` into a scratch clone of a bare origin, where the reader writes them, and runs `both/land.sh` there. In a second clone, it asks the set's sluice to read `main`'s policy by the command sluice's reference at the set's tag gives for it. There the set's Flume launches a fix with its stage held, so no agent starts: Flume reads the binding at the default branch alone, and the launch lands and takes its base from the merge queue, where without the binding Flume refuses it.
 
 ### 6. The last step's test runs a change from crew's records to main
 
 `a_change_the_drive_is_given_lands` is the drive at work.
 
 - **Its harness.** It is `tests/control.rs`'s: a scratch forge, crew's records written by the `records` module of `boomdrive-crew`'s tests, and the runner run as a program. It differs in two things: the set's Flume and sluice by their paths, never stubs, and a stand-in agent.
-- **The repository.** The bare origin of `your-github-name/your-repository`, reached as the scratch forge's, holds `main` as `landing` leaves it: `both/sluice.toml` committed by `both/land.sh`.
+- **The repository.** The bare origin of `your-github-name/your-repository`, reached as the scratch forge's, holds `main` as `landing` leaves it: `both/sluice.toml` and `both/flume.toml` committed by `both/land.sh`.
 - **The state repository.** It holds, on `home/main`, one launch request of kind `fix` for that repository, naming this host, as crew writes it once a plan is approved.
 - **The runner's file.** It holds the keys setup writes for the quick start's answers, its crew table naming the scratch state repository and the test's host.
 - **Flume's file.** It is the scratch host's: a pool whose account's program is a stand-in `claude`, and no multiplexer's server, which the gate cannot run, so Flume prints the agent's command. The test does what that agent would do and commits one change on the place's branch.
