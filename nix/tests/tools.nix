@@ -383,7 +383,8 @@ let
   # value and for a definition of an option a submodule does not declare,
   # and tryEval catches both, so success alone is read (design Decision 6).
   loads =
-    evaluated: (builtins.tryEval (builtins.deepSeq evaluated.config.services.crew.settings true)).success;
+    evaluated:
+    (builtins.tryEval (builtins.deepSeq evaluated.config.services.crew.settings true)).success;
 
   # A host on the set's crew loads crew's teams file at version 6, written
   # here as 6 and not read from crew, so a crew release that moves it fails
@@ -399,9 +400,9 @@ let
       t.failures evaluated == [ ]
     ) "a ${platform} system on the set's crew fails: ${toString (t.failures evaluated)}"
     ++ t.expect (loads evaluated) "crew's teams file of a ${platform} system on the set's crew does not evaluate"
-    ++ t.expect (
-      version == 6
-    ) "crew's teams file of a ${platform} system on the set's crew is version ${toString version}, not 6";
+    ++
+      t.expect (version == 6)
+        "crew's teams file of a ${platform} system on the set's crew is version ${toString version}, not 6";
 
   # crew's `hosts`, and the drive `home`'s `runs` and `review`, are what
   # the host wrote: the module adds and changes none of them (design
@@ -413,15 +414,14 @@ let
       given = settings.crewModule;
       written = (system crewOn).config.services.crew.settings;
     in
-    t.expect (
-      written.hosts == given.hosts
-    ) "crew's hosts on ${platform} are ${builtins.toJSON written.hosts}, not ${builtins.toJSON given.hosts}"
-    ++ t.expect (
-      written.drives.home.runs == given.drives.home.runs
-    ) "the drive home's runs on ${platform} are ${builtins.toJSON written.drives.home.runs}, not ${builtins.toJSON given.drives.home.runs}"
-    ++ t.expect (
-      written.drives.home.review == given.drives.home.review
-    ) "the drive home's review on ${platform} is ${builtins.toJSON written.drives.home.review}, not ${builtins.toJSON given.drives.home.review}";
+    t.expect (written.hosts == given.hosts)
+      "crew's hosts on ${platform} are ${builtins.toJSON written.hosts}, not ${builtins.toJSON given.hosts}"
+    ++
+      t.expect (written.drives.home.runs == given.drives.home.runs)
+        "the drive home's runs on ${platform} are ${builtins.toJSON written.drives.home.runs}, not ${builtins.toJSON given.drives.home.runs}"
+    ++
+      t.expect (written.drives.home.review == given.drives.home.review)
+        "the drive home's review on ${platform} is ${builtins.toJSON written.drives.home.review}, not ${builtins.toJSON given.drives.home.review}";
 
   # crew's old names, its teams file's version 5's, fail evaluation (design
   # Decision 6).
@@ -475,6 +475,48 @@ onEach "Each tool's options are its own flake's" ownOptions
         [
           "services.crew.host"
           "written out wins"
+        ];
+
+  # The README's install with nix writes crew's settings by crew's names,
+  # its teams file's version 6's, and none of version 5's. The leading
+  # space of ` flume = {` tells a drive's key from `services.flume = {`,
+  # and of ` every =` and ` hours =` review's old keys from
+  # `after_hours =` (design Decisions 6 and 8).
+  "The README's crew settings" =
+    let
+      crewBlock = lib.findFirst (lib.hasInfix "services.crew") null t.nixBlocks;
+    in
+    t.expect (crewBlock != null) "no nix block of the README's Installing with nix names services.crew"
+    ++
+      lib.concatMap
+        (
+          word:
+          t.expect (
+            crewBlock != null && lib.hasInfix word crewBlock
+          ) "the README's nix block of services.crew names no ${word}"
+        )
+        [
+          "drives"
+          "runs"
+          "after_changes"
+          "after_hours"
+          "hosts"
+          "ssh ="
+          "kind ="
+        ]
+    ++
+      lib.concatMap
+        (
+          word:
+          t.expect (
+            !lib.any (lib.hasInfix word) t.nixBlocks
+          ) "a nix block of the README's Installing with nix names ${word}"
+        )
+        [
+          "partitions"
+          " flume = {"
+          " every ="
+          " hours ="
         ];
 
   "The tools' user on NixOS" =

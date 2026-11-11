@@ -248,9 +248,7 @@ in
     ++ t.expect (runs noneBesideCrew (builtins.readFile ./files/empty.toml)) "the unit's --config beside crew is not the file of nix/tests/files/empty.toml";
 
   "crew's drives on this host on NixOS" =
-    t.expect (
-      t.failures fleet == [ ]
-    ) "crew's drives on this host fail: ${toString (t.failures fleet)}"
+    t.expect (t.failures fleet == [ ]) "crew's drives on this host fail: ${toString (t.failures fleet)}"
     ++ t.expect (runs fleet (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
 
   "The user activation on NixOS" =

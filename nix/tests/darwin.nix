@@ -284,9 +284,7 @@ in
     ++ t.expect (writes noneBesideCrew (builtins.readFile ./files/empty.toml)) "the agent's --config beside crew is not the file of nix/tests/files/empty.toml";
 
   "crew's drives on this host on nix-darwin" =
-    t.expect (
-      t.failures fleet == [ ]
-    ) "crew's drives on this host fail: ${toString (t.failures fleet)}"
+    t.expect (t.failures fleet == [ ]) "crew's drives on this host fail: ${toString (t.failures fleet)}"
     ++ t.expect (writes fleet (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
 
   "The activation links the file on nix-darwin" =
