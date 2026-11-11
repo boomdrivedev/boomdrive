@@ -2,7 +2,8 @@
 # The releases spec (record 0024, core.48), proven in scratch repositories
 # made in a temporary directory: release.sh's next tag and its notes under
 # the tree's cliff.toml, release-preview beside them, check-commits.sh
-# under the tree's .versionrc, and the workflow release read line by line.
+# under the tree's .versionrc, set-version.sh on scratch copies of the
+# tree's manifests, and the workflow release read line by line.
 # The scratch repositories' git reads no configuration of the host's, and
 # their names are neutral (core.41).
 set -eu
@@ -256,6 +257,105 @@ if said=$(cd "$dir" && sh check-commits.sh 2>&1); then
   pass "check-commits.sh passes 'Add a feature' before v0.1.0"
 else
   fail "check-commits.sh fails 'Add a feature' before v0.1.0: $said"
+fi
+
+# A scratch copy `$1` of the tree's Cargo.toml, Cargo.lock and each
+# crate's Cargo.toml, laid out as the tree lays them. It is `$copy`.
+manifests() {
+  copy="$scratch/$1"
+  mkdir -p "$copy"
+  cp "$tree/Cargo.toml" "$tree/Cargo.lock" "$copy/"
+  for manifest in "$tree"/crates/*/Cargo.toml; do
+    crate=${manifest%/Cargo.toml}
+    crate=${crate##*/}
+    mkdir -p "$copy/crates/$crate"
+    cp "$manifest" "$copy/crates/$crate/"
+  done
+}
+# The version Cargo.toml at `$1` gives under [workspace.package].
+workspace_version() {
+  awk '
+    /^\[/ { section = $0 }
+    section == "[workspace.package]" && /^version = "/ {
+      gsub(/^version = "|"$/, "")
+      print
+      exit
+    }
+  ' "$1/Cargo.toml"
+}
+# Each entry with no source in Cargo.lock at `$1`, a line of its name and
+# its version.
+lock_crates() {
+  awk '
+    function flush() {
+      if (package && !sourced) print name " " version
+      sourced = 0
+      name = ""
+      version = ""
+    }
+    /^\[\[package\]\]$/ { flush(); package = 1; next }
+    /^name = "/ { name = $0; gsub(/^name = "|"$/, "", name) }
+    /^version = "/ { version = $0; gsub(/^version = "|"$/, "", version) }
+    /^source = / { sourced = 1 }
+    END { flush() }
+  ' "$1/Cargo.lock"
+}
+
+# Scenario: A release's version and nothing else.
+manifests written
+if sh "$tree/set-version.sh" 98.76.54 "$copy" 2>>"$copy.log"; then
+  others=$(lock_crates "$copy" | awk '$2 != "98.76.54"')
+  if [ "$(workspace_version "$copy")" = 98.76.54 ] && [ -n "$(lock_crates "$copy")" ] &&
+    [ -z "$others" ]; then
+    pass "set-version.sh 98.76.54 writes Cargo.toml's version and each crate's in Cargo.lock"
+  else
+    fail "set-version.sh 98.76.54 leaves Cargo.toml giving $(workspace_version "$copy"), or a crate in Cargo.lock another: $others"
+  fi
+  for file in Cargo.toml Cargo.lock; do
+    changes=$(diff "$tree/$file" "$copy/$file" || true)
+    removed=$(printf '%s\n' "$changes" | grep -c '^<' || true)
+    added=$(printf '%s\n' "$changes" | grep -c '^>' || true)
+    stray=$(printf '%s\n' "$changes" | grep '^>' | grep -vF '"98.76.54"' || true)
+    if [ "$removed" -gt 0 ] && [ "$removed" = "$added" ] && [ -z "$stray" ]; then
+      pass "set-version.sh 98.76.54 changes no line of $file but its versions"
+    else
+      fail "set-version.sh 98.76.54 changes $file beyond its versions:
+$changes"
+    fi
+  done
+else
+  fail "set-version.sh 98.76.54 fails on a copy of the tree's manifests: $(cat "$copy.log")"
+fi
+
+# Scenario: What is not a version.
+manifests unversioned
+code=0
+sh "$tree/set-version.sh" 1.2 "$copy" 2>>"$copy.log" || code=$?
+if [ "$code" -eq 2 ] && cmp -s "$tree/Cargo.toml" "$copy/Cargo.toml" &&
+  cmp -s "$tree/Cargo.lock" "$copy/Cargo.lock"; then
+  pass "set-version.sh 1.2 exits 2 and leaves both files as they were"
+else
+  fail "set-version.sh 1.2 exits $code, or changes Cargo.toml or Cargo.lock"
+fi
+
+# Scenario: Nowhere to write it.
+manifests nowhere
+awk '
+  /^\[/ { section = $0 }
+  section == "[workspace.package]" && /^version = "/ { next }
+  { print }
+' "$tree/Cargo.toml" >"$copy/Cargo.toml"
+cp "$copy/Cargo.toml" "$scratch/nowhere.Cargo.toml"
+code=0
+said=$(sh "$tree/set-version.sh" 98.76.54 "$copy" 2>&1) || code=$?
+if [ "$code" -eq 1 ] && cmp -s "$scratch/nowhere.Cargo.toml" "$copy/Cargo.toml" &&
+  [ ! -e "$copy/Cargo.toml.set-version" ]; then
+  case $said in
+  *Cargo.toml*) pass "set-version.sh exits 1 on a Cargo.toml with no version, naming it and leaving it as it was" ;;
+  *) fail "set-version.sh exits 1 on a Cargo.toml with no version without naming it: $said" ;;
+  esac
+else
+  fail "set-version.sh exits $code on a Cargo.toml with no version, or changes it: $said"
 fi
 
 # Scenarios: The workflow's trigger, A release. The workflow as yamlfmt

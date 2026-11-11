@@ -52,11 +52,12 @@ tasks:
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true, cache: false}
   # The releases spec: release.sh and check-commits.sh in scratch
-  # repositories, release-preview beside release.sh, and the workflow
-  # release read (check-releases.sh).
+  # repositories, release-preview beside release.sh, set-version.sh on
+  # scratch copies of the tree's manifests, and the workflow release read
+  # (check-releases.sh).
   releases:
     command: 'sh check-releases.sh'
-    inputs: ['/cliff.toml', '/.versionrc', '/release.sh', '/check-commits.sh', '/check-releases.sh', '/.github/workflows/release.yml', '/devenv.nix', '/devenv.lock', '/flake.lock']
+    inputs: ['/cliff.toml', '/.versionrc', '/release.sh', '/check-commits.sh', '/set-version.sh', '/check-releases.sh', '/Cargo.toml', '/Cargo.lock', '/crates/*/Cargo.toml', '/.github/workflows/release.yml', '/devenv.nix', '/devenv.lock', '/flake.lock']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # actionlint over the workflow release, which the root owns; the nix
