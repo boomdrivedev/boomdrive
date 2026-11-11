@@ -1,12 +1,15 @@
 # boomdrive's crates: boomdrive, its library and binary;
 # boomdrive-control, the interface the runner reaches its control plane
 # through; boomdrive-crew, crew's implementation of it (design Decision 1);
-# and boomdrive-hosted, the hosted control plane's, which holds the runner's
-# protocol (core.42). Each is a moon project of its own (core.7).
+# boomdrive-hosted, the hosted control plane's, which holds the runner's
+# protocol (core.42); and boomdrive-bounded, which runs a git call to a
+# remote to its limit (record 0042; core.58). Each is a moon project of its
+# own (core.7).
 [workspace]
 resolver = "2"
 members = [
   "crates/boomdrive",
+  "crates/boomdrive-bounded",
   "crates/boomdrive-control",
   "crates/boomdrive-crew",
   "crates/boomdrive-hosted",
@@ -45,7 +48,8 @@ sha2 = "0.10"
 # (design 10).
 signal-hook = "0.3"
 # The tests: a scratch host in a temporary directory, and a signal sent to
-# the runner (design 11, 10).
+# the runner (design 11, 10); and the group of a git call to a remote,
+# asked to end and then killed at its limit (record 0042).
 tempfile = "3"
 libc = "0.2"
 # Each message checked against its version's JSON Schema, by the hosted
