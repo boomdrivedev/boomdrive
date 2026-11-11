@@ -661,6 +661,69 @@ fn a_stores_listing_tries_for_thirty_seconds() {
     assert_eq!(store.try_for, Duration::from_secs(30));
 }
 
+/// The longest a try of weir-branch's may take: weir-bounded's limit and
+/// grace, and a margin for the machine (weir record 0008).
+const WEIRS_TRY: Duration = Duration::from_secs(30 + 2 + 8);
+
+/// The words of weir-branch's fetch of `url`, stopped at weir-bounded's
+/// limit, thirty seconds, which no caller of weir-branch shortens.
+fn fetch_stopped(url: &str) -> String {
+    format!(
+        "git fetch with {url} was still going after 30s, the most a try may take, and was stopped"
+    )
+}
+
+/// A store of a state repository that takes every connection and never
+/// answers, through a cache weir-branch makes, and its URL.
+fn silent_store(state: &State) -> (Store, String) {
+    let url = format!("{}/state.git", silent());
+    let cache = state.root.join("cache.git");
+    (Store::new(cache, url.clone()), url)
+}
+
+/// The crew-control-plane spec's "A state repository that never answers
+/// the read": weir-branch's fetch of `<label>/main` is stopped at
+/// weir-bounded's limit, and the read fails naming `git fetch`, the state
+/// repository's URL and the limit (weir record 0008; record 0042 as
+/// amended on 2026-11-11). It runs the whole thirty seconds, beside the
+/// write's test.
+#[test]
+fn a_state_repository_that_never_answers_the_read() {
+    let state = State::new();
+    let (store, url) = silent_store(&state);
+
+    let started = Instant::now();
+    let Err(failed) = store.main("home") else {
+        panic!("home/main read from a state repository that never answers");
+    };
+    let took = started.elapsed();
+
+    assert!(took < WEIRS_TRY, "the read took {took:?}");
+    assert!(failed.ends_with(&fetch_stopped(&url)), "{failed}");
+}
+
+/// The crew-control-plane spec's "A state repository that never answers
+/// a write": the write's read of the runner's branch, weir-branch's fetch,
+/// is stopped at weir-bounded's limit, and the write fails naming
+/// `git fetch`, the state repository's URL and the limit, having formed
+/// nothing (weir record 0008; record 0042 as amended on 2026-11-11). Its
+/// push runs to the same limit, which weir-branch's own tests prove.
+#[test]
+fn a_state_repository_that_never_answers_a_write() {
+    let state = State::new();
+    let (store, url) = silent_store(&state);
+
+    let started = Instant::now();
+    let failed = boomdrive_crew::write::write(&store, "home", "host-a", None, |_| {
+        Err("formed from a tip a silent state repository gave".to_string())
+    })
+    .expect_err("a write to a state repository that never answers");
+    let took = started.elapsed();
+
+    assert!(took < WEIRS_TRY, "the write took {took:?}");
+    assert!(failed.ends_with(&fetch_stopped(&url)), "{failed}");
+}
+
 #[test]
 fn a_partition_read_again_once_it_can_be() {
     let state = State::new();
