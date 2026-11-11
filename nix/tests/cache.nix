@@ -30,10 +30,22 @@ let
     "flume"
     "ghostty"
     "herdr"
+    "pendingyou"
+    "plannotator"
+    "plannotator-tui"
     "portless"
     "sluice"
   ];
-  overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
+  # The herdr plugins the modules link, Flume's, sluice's and, with crew
+  # on, crew's companions' (design Decision 6 of the change
+  # crews-companions-come-with-the-flake).
+  plugins = [
+    "flume-herdr-plugin"
+    "sluice-herdr-plugin"
+    "pendingyou-herdr-plugin"
+    "plannotator-herdr-plugin"
+  ];
+  overlay = final: _: lib.genAttrs (names ++ plugins) (name: final.writeShellScriptBin name "");
   # The host's overlay, and crew turned on with its host and partitions.
   host = {
     nixpkgs.overlays = [ overlay ];
@@ -61,6 +73,8 @@ let
     { evaluated, set }:
     let
       profile = profileOf evaluated;
+      linked = map (p: p.outPath) evaluated.config.services.boomdrive.herdr.plugins;
+      own = map (name: set.${name}.outPath) plugins;
     in
     t.expect (
       evaluated.pkgs ? boomdrive
@@ -73,7 +87,10 @@ let
       ++ t.expect (
         !builtins.elem evaluated.pkgs.${name}.outPath profile
       ) "the system profile holds the host's pkgs' ${name}"
-    ) names;
+    ) names
+    ++
+      t.expect (linked == own)
+        "the ${platform} system links the plugins ${toString linked}, not the flake's own ${toString plugins}";
 
   # Each of the host's nix settings that names a substituter or a key.
   trusted = [

@@ -87,6 +87,27 @@ let
     aarch64-darwin = "macos-15";
   };
   given = builtins.attrNames t.outputs.packages;
+
+  # What the binary-cache spec names each system's job building and
+  # pushing.
+  pushed = [
+    "boomdrive"
+    "boomdrive-launcher"
+    "boomdrive-claude-plugins"
+    "flume"
+    "sluice"
+    "crew"
+    "herdr"
+    "ghostty"
+    "portless"
+    "pendingyou"
+    "plannotator"
+    "plannotator-tui"
+    "flume-herdr-plugin"
+    "sluice-herdr-plugin"
+    "pendingyou-herdr-plugin"
+    "plannotator-herdr-plugin"
+  ];
   systemLine = " *- system: ([^ ]+)";
   matrix = builtins.listToAttrs (
     concatMap (
@@ -151,8 +172,21 @@ in
       t.expect (itemsOf "    " "tags" on == [ "v*" ])
         "the push's tags are ${toString (itemsOf "    " "tags" on)}, not v* alone";
 
+  # Each system's job builds every package the flake gives for it, the
+  # runner's and its tools' among them, crew's companions with the rest
+  # (design Decisions 1 and 6 of the change
+  # crews-companions-come-with-the-flake).
   "The runner is pushed with its tools" =
-    t.expect (has " *names=\\$\\(nix eval --json \"\\.#packages\\.\\$SYSTEM\" --apply builtins\\.attrNames .*" (stepOf build)) "the build names no package of nix eval's packages.$SYSTEM"
+    lib.concatMap (
+      system:
+      lib.concatMap (
+        name:
+        t.expect (
+          t.outputs.packages.${system} ? ${name}
+        ) "packages.${system} gives no ${name} for its job to build"
+      ) pushed
+    ) t.systems
+    ++ t.expect (has " *names=\\$\\(nix eval --json \"\\.#packages\\.\\$SYSTEM\" --apply builtins\\.attrNames .*" (stepOf build)) "the build names no package of nix eval's packages.$SYSTEM"
     ++ t.expect (has " *nix build --no-link --print-out-paths .*>\"\\$RUNNER_TEMP/paths\"" (stepOf build)) "the build writes no store paths to $RUNNER_TEMP/paths"
     ++ t.expect (push == length steps - 1) "the push is not the job's last step"
     ++ t.expect (has " *run: cachix push ${cache} <\"\\$RUNNER_TEMP/paths\"" (stepOf push)) "the push is not of the built paths to ${cache}"
