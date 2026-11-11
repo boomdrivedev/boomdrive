@@ -2,8 +2,9 @@
 # the runner (apps.nix; design Decisions 5 to 7 of the change
 # herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents):
 # herdr and the plugins the activation links, Ghostty and the launcher,
-# and Flume's terminal and window. Each case runs on nix-darwin and on
-# NixOS, unless it names a platform.
+# and Flume's terminal and window; and worktrunk (design Decision 3 of the
+# change worktrunk-comes-with-the-flake). Each case runs on nix-darwin and
+# on NixOS, unless it names a platform.
 t:
 let
   inherit (t) lib outputs;
@@ -204,6 +205,57 @@ let
       multiplexer = null;
     };
 
+  # worktrunk, installed with the runner (design Decision 3 of the change
+  # worktrunk-comes-with-the-flake).
+  worktrunkWithRunner =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (builtins.elem set.worktrunk.outPath (profileOf evaluated)) "the ${platform} system profile holds no set's worktrunk";
+
+  # A worktrunk of the host's own, laid out as a package with a bin.
+  ownWorktrunk =
+    { pkgs, ... }:
+    {
+      services.boomdrive.worktrunk.package = pkgs.runCommand "own-worktrunk" { } "mkdir -p $out/bin";
+    };
+  hostsWorktrunk =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownWorktrunk;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.worktrunk.package.outPath profile) "the ${platform} system profile holds no host's own worktrunk"
+    ++ t.expect (
+      !builtins.elem set.worktrunk.outPath profile
+    ) "the ${platform} system profile holds the set's worktrunk beside the host's own";
+
+  noWorktrunk =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.worktrunk.package = null; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no worktrunk fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.worktrunk.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no worktrunk holds the set's worktrunk";
+
+  worktrunkWithoutRunner =
+    platform:
+    { without, set, ... }:
+    t.expect (
+      !builtins.elem set.worktrunk.outPath (profileOf without)
+    ) "the ${platform} system profile without the runner holds the set's worktrunk";
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -225,6 +277,10 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own window" hostsWindow
 // onEach "The word of before" wordOfBefore
 // onEach "No herdr of the set's" noSetsHerdr
+// onEach "worktrunk with the runner" worktrunkWithRunner
+// onEach "A host's own worktrunk" hostsWorktrunk
+// onEach "No worktrunk of the set's" noWorktrunk
+// onEach "No worktrunk without the runner" worktrunkWithoutRunner
 // {
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
