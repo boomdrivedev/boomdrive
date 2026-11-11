@@ -16,5 +16,5 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 2. The words
 
 - [x] 2.1 The README's **Installing with nix** says that, with crew's module on, the module declares crew's source to Flume, `services.flume.sources.crew`, naming `~/.local/state/crew/flume/roles.toml` and `~/.local/share/flume/kinds/crew`, that Flume's module writes it and a host writes no file for it, and that a key the host sets there wins. No nix block of it sets `services.flume.sources` (Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving "The README's words on crew's source", with "The README's words" and "The README's lines" still holding.
-- [ ] 2.2 CLAUDE.md's paragraph on the flake says the module gives Flume's module crew's source of kinds where crew is on (Task notes 2.2). True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.2 CLAUDE.md's paragraph on the flake says the module gives Flume's module crew's source of kinds where crew is on (Task notes 2.2). True when `sluice exec main -- moon run root:format` passes.
 - [ ] 2.3 The change's delta archives into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-set-declares-crews-source-to-flume --yes`, `sluice exec main -- moon run root:specs` passes.
