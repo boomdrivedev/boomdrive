@@ -2,7 +2,7 @@
 
 ### Requirement: The modules install herdr, Ghostty and the launcher, each replaceable or dropped
 
-With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.herdr.package`, `services.boomdrive.ghostty.package` and `services.boomdrive.launcher.package` in the system profile. herdr and Ghostty SHALL each be the set's for the host's system by default. The launcher SHALL be the set's for the host's system made for each drive of this host by default, which is the set's own `boomdrive-launcher` where this host has no drive. A host's own package SHALL replace each, installed as given, and `null` SHALL install none. With the runner not enabled, the modules SHALL install none of them.
+With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.herdr.package`, `services.boomdrive.ghostty.package` and `services.boomdrive.launcher.package` in the system profile. Each SHALL be the set's for the host's system by default, the launcher made for each drive of this host; a host's own package SHALL replace each, installed as given, and `null` SHALL install none. With the runner not enabled, the modules SHALL install none of them.
 
 #### Scenario: The way in with the runner
 
@@ -33,7 +33,7 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.herd
 
 ### Requirement: The launcher has an entry for each drive of this host
 
-With `services.boomdrive.enable`, the launcher the modules make SHALL be the set's `boomdrive-launcher` made, by its override, for one entry for each drive of this host, in the order of the drives' names, each entry's `drive` the drive's name. A drive of this host is one whose `machine` is unset or is `services.crew.host`. A drive of another machine SHALL have no entry.
+With `services.boomdrive.enable`, the launcher the modules make SHALL be the set's `boomdrive-launcher` made, by its override, for one entry for each drive of this host, in the order of the drives' names, each entry's `drive` the drive's name, and the set's own `boomdrive-launcher` where this host has no drive. A drive of this host is one whose `machine` is unset or is `services.crew.host`. A drive of another machine SHALL have no entry.
 
 #### Scenario: Each drive of this host in the launcher
 

@@ -2,7 +2,7 @@
 
 ### Requirement: The launcher opens the host's agents at a person's asking
 
-The `boomdrive-launcher` package's script SHALL, each time it is run, run Flume once: `flume open -- <session>` where it is given one argument, the session, and `flume open` where it is given none, so Flume shows that session, or the default stream's own, in its configured view (Flume's statement 186). Given more than one argument, it SHALL run nothing, say `boomdrive-launcher: one session at most` on its standard error and exit 2. It SHALL put the running user's profiles and the system's before the `PATH` it is given, so it runs the host's one Flume. It SHALL start, keep and name no multiplexer itself (core.13, core.29).
+The `boomdrive-launcher` package's script SHALL, each time it is run, run Flume once: `flume open -- <session>` where it is given one argument, the session, and `flume open` where it is given none, so Flume shows that session, or the default stream's own, in its configured view (Flume's statement 186). It SHALL put the running user's profiles and the system's before the `PATH` it is given, so it runs the host's one Flume. It SHALL start, keep and name no multiplexer itself (core.13, core.29).
 
 #### Scenario: Opened
 
@@ -14,11 +14,6 @@ The `boomdrive-launcher` package's script SHALL, each time it is run, run Flume 
 - **WHEN** the launcher runs with the argument `home` and Flume opens a window, exiting 0
 - **THEN** Flume is run once, as `flume open -- home`, and nothing is shown
 
-#### Scenario: More than one session
-
-- **WHEN** the launcher runs with the arguments `home` and `garden`
-- **THEN** it exits 2, its standard error holds `one session at most`, and Flume is not run
-
 #### Scenario: The profiles first
 
 - **WHEN** the launcher runs as `alice`, whose home is `/home/alice`, with the `PATH` `/usr/bin:/bin`
@@ -26,7 +21,7 @@ The `boomdrive-launcher` package's script SHALL, each time it is run, run Flume 
 
 ### Requirement: The launcher is an app on macOS and a desktop entry on Linux
 
-On `aarch64-darwin`, the `boomdrive-launcher` package SHALL hold `Applications/Boomdrive.app`, a menu-bar app, which nix-darwin places in `/Applications/Nix Apps`: its executable `Contents/MacOS/boomdrive-menu`, compiled from `nix/packages/launcher.m`, and its script `Contents/MacOS/boomdrive-launcher`. Its `Info.plist` SHALL name the bundle `Boomdrive`, its executable `boomdrive-menu`, and `LSUIElement` true. On `aarch64-linux` and `x86_64-linux`, it SHALL hold `share/applications/boomdrive.desktop`, named `Boomdrive`, which runs the script with no argument, in no terminal.
+On `aarch64-darwin`, the `boomdrive-launcher` package SHALL hold `Applications/Boomdrive.app`, a menu-bar app nix-darwin places in `/Applications/Nix Apps`, holding the script `Contents/MacOS/boomdrive-launcher` and an `Info.plist` naming the bundle `Boomdrive`, its executable `boomdrive-menu`, and `LSUIElement` true. On `aarch64-linux` and `x86_64-linux`, it SHALL hold `share/applications/boomdrive.desktop`, named `Boomdrive`, which runs the script with no argument, in no terminal.
 
 #### Scenario: The app on macOS
 
@@ -40,9 +35,18 @@ On `aarch64-darwin`, the `boomdrive-launcher` package SHALL hold `Applications/B
 
 ## ADDED Requirements
 
+### Requirement: The launcher opens one session at most
+
+Given more than one argument, the `boomdrive-launcher` package's script SHALL run nothing, say `boomdrive-launcher: one session at most` on its standard error and exit 2.
+
+#### Scenario: More than one session
+
+- **WHEN** the launcher runs with the arguments `home` and `garden`
+- **THEN** it exits 2, its standard error holds `one session at most`, and Flume is not run
+
 ### Requirement: The menu runs the script for the entry a person picks
 
-The menu's status item SHALL be titled `Boomdrive`, and its menu SHALL hold an entry for each drive of its `Info.plist`'s `BoomdriveDrives`, titled the drive's name, then `Default stream`, then `Quit Boomdrive`. Picking a drive's entry SHALL run the bundle's script with the drive's session, and `Default stream` SHALL run it with none, each without waiting on it. No module or service SHALL start the app.
+The menu, the app's executable `Contents/MacOS/boomdrive-menu`, compiled from `nix/packages/launcher.m`, SHALL title its status item `Boomdrive` and hold an entry for each drive of its `Info.plist`'s `BoomdriveDrives`, titled the drive's name, then `Default stream`, then `Quit Boomdrive`. Picking a drive's entry SHALL run the bundle's script with the drive's session, and `Default stream` SHALL run it with none, each without waiting on it. No module or service SHALL start the app.
 
 #### Scenario: The menu's source
 
