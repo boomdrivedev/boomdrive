@@ -14,6 +14,7 @@ let
   tags = import ./tags.nix { inherit lib; };
   runnerCrates = import ../packages/git-crates.nix;
   runnerLock = builtins.fromTOML (builtins.readFile ../../Cargo.lock);
+  runnerManifest = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
 
   # A check's failures over each system's packages of a set of outputs.
   eachOf = given: check: lib.concatMap (system: check system given.packages.${system}) systems;
@@ -74,6 +75,19 @@ in
     ++ lib.concatMap (
       file: t.expect (src.filter file "regular") "${name}'s source leaves out ${file}"
     ) crateFiles
+  );
+
+  # The runner's version is its tree's, Cargo.toml's under
+  # [workspace.package]: 0.0.0 at a commit of main, and the release's at
+  # its tag, whose release commit writes it (record 0024, core.48).
+  "The runner at its tree's version" = each (
+    system: packages:
+    let
+      inherit (runnerManifest.workspace.package) version;
+    in
+    t.expect (
+      packages.boomdrive.version == version
+    ) "packages.${system}.boomdrive says ${packages.boomdrive.version}, not Cargo.toml's ${version}"
   );
 
   "The runner's git crates" = gitCrates "nix/packages/git-crates.nix" runnerLock runnerCrates;

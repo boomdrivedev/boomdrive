@@ -30,7 +30,7 @@ Each tool of the set but the runner SHALL be named in `flake.nix` by a release t
 
 ### Requirement: Each package is made from its release tag's source
 
-Each package SHALL be a derivation of the source the lock names by its hash: the runner's of this tree's crates, `Cargo.toml` and `Cargo.lock`, and Flume's and sluice's of the tool's release tag, sluice's through sluice's own flake. Each package's version SHALL be its tag's without the `v`, read from its tagged tree where the tree carries it, and from the flake's tag where it does not.
+Each package SHALL be a derivation of the source the lock names by its hash: the runner's of this tree's crates, `Cargo.toml` and `Cargo.lock`, and Flume's and sluice's of the tool's release tag, sluice's through sluice's own flake. Each tool's version SHALL be its tag's without the `v`, read from its tagged tree where the tree carries it, and from the flake's tag where it does not. The runner's SHALL be its tree's, `Cargo.toml`'s workspace version.
 
 #### Scenario: Flume at its tag
 
@@ -46,6 +46,11 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 
 - **WHEN** the flake is evaluated
 - **THEN** the `boomdrive` package's source holds this tree's `Cargo.toml`, `Cargo.lock` and `crates`, and no other path of the tree
+
+#### Scenario: The runner at its tree's version
+
+- **WHEN** the flake is evaluated for each system it gives
+- **THEN** the `boomdrive` package's version is the one `Cargo.toml` gives under `[workspace.package]`: `0.0.0` at a commit of `main`, and the release's at a release tag
 
 #### Scenario: An overridden input
 
