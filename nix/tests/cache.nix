@@ -3,7 +3,9 @@
 # nix gives a host the same two lines, and each module, in a system whose
 # `pkgs` carries an overlay of the host's own and with crew on, installs
 # the flake's own packages and adds nothing of the cache's to the host's
-# nix settings.
+# nix settings. Given a drive, the launcher it installs is the flake's own
+# by its override, its compiled menu the flake's own (design Decision 5 of
+# the change each-drive-opens-from-the-launcher).
 t:
 let
   inherit (t) lib;
@@ -44,10 +46,12 @@ let
   };
   hosts = {
     "nix-darwin" = {
+      system = t.darwinSystem;
       evaluated = t.darwinSystem host;
       set = t.outputs.packages.aarch64-darwin;
     };
     NixOS = {
+      system = t.nixosSystem;
       evaluated = t.nixosSystem host;
       set = t.outputs.packages.x86_64-linux;
     };
@@ -57,7 +61,7 @@ let
 
   ownNixpkgs =
     platform:
-    { evaluated, set }:
+    { evaluated, set, ... }:
     let
       profile = profileOf evaluated;
     in
@@ -73,6 +77,39 @@ let
         !builtins.elem evaluated.pkgs.${name}.outPath profile
       ) "the system profile holds the host's pkgs' ${name}"
     ) names;
+
+  # The same system with the drive `home`: its launcher is the flake's own
+  # made for `home`, and on nix-darwin its menu is the flake's own.
+  drivesInLauncher =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system {
+        imports = [
+          host
+          { services.boomdrive.accounts.own.drives.home.repositories.agentplot = [ "flume" ]; }
+        ];
+      };
+      installed = evaluated.config.services.boomdrive.launcher.package;
+      made = set.boomdrive-launcher.override {
+        drives = [
+          {
+            drive = "home";
+            session = "home";
+          }
+        ];
+      };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      installed.drvPath == made.drvPath
+    ) "the ${platform} system's launcher is not the flake's own made for home"
+    ++ t.expect (
+      platform != "nix-darwin"
+      || installed.parts.menu.outPath == set.boomdrive-launcher.parts.menu.outPath
+    ) "the ${platform} system's launcher compiles a menu that is not the flake's own";
 
   # Each of the host's nix settings that names a substituter or a key.
   trusted = [
@@ -162,4 +199,5 @@ in
         "no nix block of the README's Installing with nix names ${lib.concatStringsSep " and " named}, as nixConfig does";
 }
 // onEach "A host's own nixpkgs" ownNixpkgs
+// onEach "A host's drives in the launcher" drivesInLauncher
 // onEach "The host's trust" trust
