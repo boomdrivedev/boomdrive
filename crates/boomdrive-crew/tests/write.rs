@@ -253,6 +253,96 @@ fn a_drives_repositories_and_their_folders() {
     assert_eq!(recfix(&repositories), None, "{repositories}");
 }
 
+/// The subject of the branch's tip.
+fn subject(state: &State) -> String {
+    common::git(&state.bare(), &["log", "-1", "--format=%s", BRANCH], None)
+        .trim_end()
+        .to_string()
+}
+
+/// The crew-control-plane spec's "A repository the drive comes to keep":
+/// once the drive `home` keeps `KIT` beside `CREW`, the next report's
+/// commit names `repositories example/kit`, and the file holds both
+/// (design Decision 3).
+#[test]
+fn a_repository_the_drive_comes_to_keep() {
+    let (state, mut crew) = unpulled();
+    let report = report_launched("{}");
+    pull(&mut crew, &hello(&[CREW], "4"));
+    crew.report(&report).expect("a report");
+    let before = state.file(BRANCH, "repositories.rec").unwrap();
+    assert!(!before.contains(KIT), "{before}");
+    pull(&mut crew, &hello(&[CREW, KIT], "4"));
+    crew.report(&report).expect("a report");
+    assert_eq!(subject(&state), "repositories example/kit");
+    let after = state.file(BRANCH, "repositories.rec").unwrap();
+    assert_eq!(
+        after,
+        format!(
+            "{REPOSITORIES}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n\n\
+             Repository: example/kit\nFolder: /data/repositories/example/kit\n"
+        )
+    );
+}
+
+/// The crew-control-plane spec's "A repository the drive no longer
+/// names": once the drive `home` keeps `CREW` alone and `KIT` drains, the
+/// next report's commit names `repositories example/kit`, and the file
+/// holds `CREW` alone (design Decisions 2 and 3).
+#[test]
+fn a_repository_the_drive_no_longer_names() {
+    let (state, mut crew) = unpulled();
+    let report = report_launched("{}");
+    pull(&mut crew, &hello(&[CREW, KIT], "4"));
+    crew.report(&report).expect("a report");
+    let before = state.file(BRANCH, "repositories.rec").unwrap();
+    assert!(before.contains(KIT), "{before}");
+    let mut draining = hello(&[CREW], "4");
+    draining.draining = vec![KIT.to_string()];
+    pull(&mut crew, &draining);
+    crew.report(&report).expect("a report");
+    assert_eq!(subject(&state), "repositories example/kit");
+    assert_eq!(
+        state.file(BRANCH, "repositories.rec").unwrap(),
+        format!(
+            "{REPOSITORIES}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n"
+        )
+    );
+}
+
+/// The crew-control-plane spec's "A label no drive has": the hello names
+/// the drives `family` and `work` alone, so `home`'s `repositories.rec`
+/// is crew's descriptor alone, and one line names `home` and the drives
+/// there are (design Decision 4).
+#[test]
+fn a_label_no_drive_has() {
+    let (state, _) = unpulled();
+    let (mut crew, said) = state.crew("host-a");
+    pull(
+        &mut crew,
+        &hello_of(&[("family", &[CREW]), ("work", &[APP])], "4"),
+    );
+    crew.report(&report_launched("{}")).expect("a report");
+    assert_eq!(
+        state.file(BRANCH, "repositories.rec").unwrap(),
+        REPOSITORIES
+    );
+    let named: Vec<String> = said
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("names no drive"))
+        .collect();
+    assert_eq!(
+        named,
+        [
+            "crew: home: this host's configuration names no drive home, so home/runner/host-a \
+             names no repository it keeps; its drives are family, work"
+        ],
+        "{:?}",
+        said.lines()
+    );
+}
+
 #[test]
 fn since_is_the_first_writes_time_kept_after() {
     let (state, mut crew) = pulled();
