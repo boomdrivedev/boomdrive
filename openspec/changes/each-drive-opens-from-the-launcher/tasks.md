@@ -27,7 +27,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The words
 
-- [ ] 4.1 The README's **Installing with nix** says the set's launcher is a menu-bar app on macOS and a desktop entry on Linux. It says the modules install it made for each drive of the host, with `Default stream`, that a drive of another machine has no entry, that the menu is quit and opened again after a switch that changes the drives, and that a host's own package gets no entries. `nix/tests/cache.nix` gains "The README's launcher" (Task notes 4.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's launcher".
+- [x] 4.1 The README's **Installing with nix** says the set's launcher is a menu-bar app on macOS and a desktop entry on Linux. It says the modules install it made for each drive of the host, with `Default stream`, that a drive of another machine has no entry, that the menu is quit and opened again after a switch that changes the drives, and that a host's own package gets no entries. `nix/tests/cache.nix` gains "The README's launcher" (Task notes 4.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's launcher".
 - [ ] 4.2 CLAUDE.md's paragraph on the flake and `openspec/config.yaml`'s stack line name the launcher a menu-bar app on macOS and a desktop entry on Linux, with an entry for each drive (Task notes 4.2). True when `for f in CLAUDE.md openspec/config.yaml; do tr -s ' \n' '  ' < "$f" | grep -q 'with an entry for each drive' || echo "$f"; done` prints nothing.
 
 ## 5. The specs

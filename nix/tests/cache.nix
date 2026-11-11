@@ -192,6 +192,21 @@ in
       !lib.hasInfix "settings.accounts" (toString installing)
     ) "the README's Installing with nix names settings.accounts";
 
+  # The README says the launcher is a menu-bar app with an entry for each
+  # drive and the default stream (the change
+  # each-drive-opens-from-the-launcher).
+  "The README's launcher" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
+      )
+      [
+        "menu bar"
+        "each drive"
+        "Default stream"
+      ];
+
   "The README's lines" =
     t.expect (installing != null) "the README has no section ## Installing with nix"
     ++
