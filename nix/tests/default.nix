@@ -28,5 +28,6 @@ in
     // import ./workflow.nix t
     // import ./apps.nix t
     // import ./way-in.nix t
+    // import ./quick-start.nix t
   );
 }

@@ -15,7 +15,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 2. The Mac's steps
 
-- [ ] 2.1 `site/src/start/mac/install.sh` is one `nix profile add` of these, in this order:
+- [x] 2.1 `site/src/start/mac/install.sh` is one `nix profile add` of these, in this order:
   - `github:agentplot/boomdrive`;
   - its `#flume`, `#sluice`, `#herdr`, `#herdr-plugins` and `#crew`;
   - `nixpkgs#git`, `nixpkgs#gh` and `nixpkgs#nodejs`.
