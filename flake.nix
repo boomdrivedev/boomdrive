@@ -177,6 +177,16 @@
           boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
           flume-herdr-plugin = pluginOf tools.flume;
           sluice-herdr-plugin = pluginOf tools.sluice;
+          # The companions' herdr plugins, each at the commit the lock names
+          # (record 0044, point 6): Annotate's bin holds its runtime and the
+          # set's plannotator-tui, so herdr's link fetches nothing.
+          pendingyou-herdr-plugin = pkgs.callPackage ./nix/packages/pendingyou-herdr-plugin.nix {
+            src = inputs.herdr-pendingyou;
+          };
+          plannotator-herdr-plugin = pkgs.callPackage ./nix/packages/plannotator-herdr-plugin.nix {
+            src = inputs.herdr-annotate;
+            inherit (tools) plannotator-tui;
+          };
         };
       packages = lib.genAttrs systems packagesOf;
 
