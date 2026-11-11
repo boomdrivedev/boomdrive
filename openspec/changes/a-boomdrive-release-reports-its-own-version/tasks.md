@@ -27,7 +27,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. What the tree says of it
 
-- [ ] 5.1 `README.md`'s "Installing with nix", `CLAUDE.md`'s paragraph on versions and `cliff.toml`'s header say a release's tag names its release commit, cut from the commit of `main` that was pushed, which writes the version into the tree, and that `main` names `0.0.0` (Task notes 5.1). True when `sluice exec main -- moon run root:format` passes.
+- [x] 5.1 `README.md`'s "Installing with nix", `CLAUDE.md`'s paragraph on versions and `cliff.toml`'s header say a release's tag names its release commit, cut from the commit of `main` that was pushed, which writes the version into the tree, and that `main` names `0.0.0` (Task notes 5.1). True when `sluice exec main -- moon run root:format` passes.
 
 ## 6. The specs
 
