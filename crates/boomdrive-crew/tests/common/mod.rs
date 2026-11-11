@@ -7,7 +7,9 @@
 
 #![allow(dead_code)]
 
-use boomdrive_control::{Capacity, Hello, HostPart, Part, Pulled, Report, Want, INTERFACE_VERSION};
+use boomdrive_control::{
+    Capacity, Hello, HostPart, KeptRepository, Part, Pulled, Report, Want, INTERFACE_VERSION,
+};
 use boomdrive_crew::config::{Config, Partition, StateRepository};
 use boomdrive_crew::Crew;
 use std::collections::BTreeMap;
@@ -587,14 +589,39 @@ impl Saids {
     }
 }
 
-/// A hello keeping `repositories`, the host's room as Flume printed it.
+/// A hello keeping `repositories`, each in the drive `home`, the host's
+/// room as Flume printed it.
 pub fn hello(repositories: &[&str], room: &str) -> Hello {
+    hello_of(&[("home", repositories)], room)
+}
+
+/// A hello keeping each drive of `drives`, by its name with its
+/// addresses, each clone at `/data/repositories/<address>`, the host's
+/// room as Flume printed it. Its `repositories` are every drive's
+/// addresses, in order.
+pub fn hello_of(drives: &[(&str, &[&str])], room: &str) -> Hello {
     Hello {
         interface_version: INTERFACE_VERSION,
         runner_version: "boomdrive 0.0.0".to_string(),
         tool_versions: BTreeMap::new(),
-        repositories: repositories.iter().map(|r| r.to_string()).collect(),
+        repositories: drives
+            .iter()
+            .flat_map(|(_, repositories)| repositories.iter().map(|r| r.to_string()))
+            .collect(),
         draining: vec![],
+        drives: drives
+            .iter()
+            .map(|(name, repositories)| {
+                let kept = repositories
+                    .iter()
+                    .map(|address| KeptRepository {
+                        address: address.to_string(),
+                        container_dir: format!("/data/repositories/{address}"),
+                    })
+                    .collect();
+                (name.to_string(), kept)
+            })
+            .collect(),
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "null".to_string(),
