@@ -29,7 +29,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.78.1";
+      url = "github:agentplot/sluice/v0.86.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
