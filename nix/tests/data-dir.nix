@@ -39,6 +39,14 @@ let
   darwinAgentOf = evaluated: evaluated.config.launchd.user.agents.boomdrive.serviceConfig;
   darwinHomeData = "/Users/alice/.local/share/boomdrive";
   darwinOwn = darwinGiven "/srv/data";
+
+  # NixOS: alice, at /home/alice by NixOS's default for a normal user.
+  nixosGiven =
+    dataHome:
+    t.nixosSystem {
+      systemd.user.services.boomdrive.environment.XDG_DATA_HOME = dataHome;
+    };
+  nixosHomeData = "/home/alice/.local/share/boomdrive";
 in
 {
   "The runner's own rule" = lib.concatMap (
@@ -76,4 +84,31 @@ in
   "A host that sets the data folder on nix-darwin" = refuses (t.darwinSystem {
     services.boomdrive.dataDir = "/srv/boomdrive";
   }) "nix-darwin";
+
+  "The data folder on NixOS" = gives (t.nixosSystem { }) nixosHomeData "NixOS";
+
+  "The data folder of another user on NixOS" =
+    gives
+      (t.nixosOf [
+        t.outputs.nixosModules.default
+        {
+          services.boomdrive = {
+            enable = true;
+            user = "bob";
+          };
+        }
+      ])
+      "/home/bob/.local/share/boomdrive"
+      "NixOS, the user bob";
+
+  "A job given its own XDG_DATA_HOME on NixOS" =
+    gives (nixosGiven "/srv/data") "/srv/data/boomdrive" "NixOS, XDG_DATA_HOME /srv/data";
+
+  "An XDG_DATA_HOME the runner takes as unset on NixOS" =
+    gives (nixosGiven "data") nixosHomeData "NixOS, XDG_DATA_HOME data"
+    ++ gives (nixosGiven "") nixosHomeData "NixOS, XDG_DATA_HOME empty";
+
+  "A host that sets the data folder on NixOS" = refuses (t.nixosSystem {
+    services.boomdrive.dataDir = "/srv/boomdrive";
+  }) "NixOS";
 }

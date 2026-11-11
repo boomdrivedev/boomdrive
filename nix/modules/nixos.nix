@@ -12,7 +12,11 @@
 # the file at the runner's own path, links the herdr plugins apps.nix
 # lists with herdr's own command (record 0023), then starts the unit where
 # it is not running and restarts it where the running runner's command
-# line is not the unit's; any other user's activation does nothing.
+# line is not the unit's; any other user's activation does nothing. Beside
+# `user`, the module declares `dataDir`, the runner's data folder by the
+# runner's own rule (data-dir.nix) from that user's home and the unit's
+# own `XDG_DATA_HOME`: read-only, read wherever a host names the folder or
+# a clone in it, and set by none (record 0036 as amended on 2026-11-11).
 { packages }:
 {
   config,
@@ -25,6 +29,7 @@ let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  dataDirOf = import ./data-dir.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -84,6 +89,37 @@ in
     type = lib.types.str;
     example = "alice";
     description = "The user whose systemd user manager runs the runner, and who lingers.";
+  };
+
+  # The unit's own XDG_DATA_HOME, or null where the unit has none or the
+  # runner is not enabled; the user's manager gives the unit HOME, the
+  # user's home (the change the-set-names-the-runners-data-folder, design
+  # Decisions 1 and 3).
+  options.services.boomdrive.dataDir = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = dataDirOf {
+      inherit home;
+      dataHome = config.systemd.user.services.boomdrive.environment.XDG_DATA_HOME or null;
+    };
+    defaultText = lib.literalMD ''
+      `$XDG_DATA_HOME/boomdrive` where the runner's unit is given an absolute
+      `XDG_DATA_HOME` in `systemd.user.services.boomdrive.environment`, else
+      `.local/share/boomdrive` under the home of `services.boomdrive.user`,
+      `users.users.''${config.services.boomdrive.user}.home`
+    '';
+    description = ''
+      The runner's data folder, where it keeps its clones, its lock and its
+      report, by the runner's own rule: `$XDG_DATA_HOME/boomdrive` where the
+      unit's own environment gives an absolute `XDG_DATA_HOME`, else
+      `~/.local/share/boomdrive` under the home of `services.boomdrive.user`.
+      It is read-only: a host reads it wherever it names the folder or a
+      clone in it, and sets it nowhere. An `XDG_DATA_HOME` the unit takes
+      from outside its declaration, such as the user manager's
+      `environment.d`, is not seen: a host that moves the runner's data
+      gives the unit its own `XDG_DATA_HOME` in
+      `systemd.user.services.boomdrive.environment`.
+    '';
   };
 
   config = lib.mkIf cfg.enable {
