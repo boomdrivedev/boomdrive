@@ -42,7 +42,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 3. boomdrive forge-token
 
-- [ ] 3.1 A new module, `src/forge_token.rs`, declared in `lib.rs`, holds design Decision 4's command. `answer(config, operation, input, output, forge) -> Result<(), Refused>` takes design Decision 4's steps 2 to 6 in order:
+- [x] 3.1 A new module, `src/forge_token.rs`, declared in `lib.rs`, holds design Decision 4's command. `answer(config, operation, input, output, forge) -> Result<(), Refused>` takes design Decision 4's steps 2 to 6 in order:
   - a configuration whose control plane's entry holds the App refuses every operation with that entry's words;
   - no `[forge]` is a host to fix;
   - git's request is read from `input` to a blank line or its end, `protocol`, `host` and `path` taken and every other key passed over;
