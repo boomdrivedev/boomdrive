@@ -29,7 +29,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The modules
 
-- [ ] 3.1 `nix/modules/companions.nix`, imported by `darwin.nix` and `nixos.nix`, declares `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package` and `services.boomdrive.plannotator-tui.package`. With the runner and crew on, it installs each that is not `null`, and `pendingyou-signin` where Pending You's is not. `apps.nix`'s `herdr.plugins` default gains the two companions' plugins where crew is on (design Decisions 6 and 9). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's:
+- [x] 3.1 `nix/modules/companions.nix`, imported by `darwin.nix` and `nixos.nix`, declares `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package` and `services.boomdrive.plannotator-tui.package`. With the runner and crew on, it installs each that is not `null`, and `pendingyou-signin` where Pending You's is not. `apps.nix`'s `herdr.plugins` default gains the two companions' plugins where crew is on (design Decisions 6 and 9). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's:
   - "The companions with the runner and crew", "A host's own Plannotator", "No companions without crew" and "No companions without the runner";
   - "The companions' plugins with crew";
   - "The sign-in's two commands";

@@ -18,7 +18,10 @@
 # gives no nix-darwin or NixOS module; the modules start no proxy of it and
 # trust no certificate authority of it, which are the person's (record
 # 0023 as amended on 2026-11-11; design Decisions 5 and 6 of the change
-# portless-comes-with-the-flake).
+# portless-comes-with-the-flake). Where crew's module is on, the plugins'
+# default gains crew's companions' herdr plugins, Pending You for Herdr and
+# Annotate, which companions.nix installs the tools of (record 0044, point
+# 8).
 { packages }:
 {
   config,
@@ -56,14 +59,22 @@ in
         default = [
           set.flume-herdr-plugin
           set.sluice-herdr-plugin
+        ]
+        ++ lib.optionals config.services.crew.enable [
+          set.pendingyou-herdr-plugin
+          set.plannotator-herdr-plugin
         ];
         defaultText = lib.literalExpression ''
           [
             boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.flume-herdr-plugin
             boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.sluice-herdr-plugin
           ]
+          ++ lib.optionals config.services.crew.enable [
+            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.pendingyou-herdr-plugin
+            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.plannotator-herdr-plugin
+          ]
         '';
-        description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the runner's user. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
+        description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the runner's user: Flume's and sluice's, then, where crew's module is on, crew's companions', Pending You for Herdr and Annotate. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
       };
     };
     ghostty.package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed with the runner; a host's own replaces it, and `null` installs none.";

@@ -4,7 +4,9 @@
 # herdr and the plugins the activation links, Ghostty and the launcher,
 # and Flume's terminal and window. Each case runs on nix-darwin and on
 # NixOS, unless it names a platform. portless's cases are design Decisions
-# 5 and 6 of the change portless-comes-with-the-flake.
+# 5 and 6 of the change portless-comes-with-the-flake, and crew's
+# companions' design Decisions 6 and 9 of the change
+# crews-companions-come-with-the-flake.
 t:
 let
   inherit (t) lib outputs;
@@ -14,11 +16,20 @@ let
     "nix-darwin" = {
       system = t.darwinSystem;
       without = t.darwinOf [ outputs.darwinModules.default ];
+      withCrew = t.darwinOf [
+        outputs.darwinModules.default
+        crewOn
+      ];
       set = outputs.packages.aarch64-darwin;
     };
     NixOS = {
       system = t.nixosSystem;
       without = t.nixosOf [ outputs.nixosModules.default ];
+      withCrew = t.nixosOf [
+        outputs.nixosModules.default
+        crewOn
+        { services.crew.user = "alice"; }
+      ];
       set = outputs.packages.x86_64-linux;
     };
   };
@@ -319,6 +330,168 @@ let
       ) (stepsOf platform (system { }))
     );
 
+  # crew's companions, installed with the runner where crew's module is on
+  # (design Decisions 6 and 9 of the change
+  # crews-companions-come-with-the-flake).
+  crewOn = {
+    services.crew = {
+      enable = true;
+      host = "host-a";
+      settings = (import ./settings.nix).crewModule;
+    };
+  };
+  companions = [
+    "pendingyou"
+    "plannotator"
+    "plannotator-tui"
+  ];
+  signinsOf =
+    evaluated:
+    lib.filter (p: (p.name or "") == "pendingyou-signin") evaluated.config.environment.systemPackages;
+  # The activation's lines that write Pending You's folder.
+  folderSteps =
+    platform: evaluated:
+    lib.filter (lib.hasInfix "-activate.sh pendingyou ") (
+      lib.splitString "\n" (activationOf platform evaluated)
+    );
+
+  companionsWithCrew =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system crewOn;
+      profile = profileOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner and crew fails: ${toString (t.failures evaluated)}"
+    ++ lib.concatMap (
+      name:
+      t.expect (builtins.elem set.${name}.outPath
+        profile
+      ) "the ${platform} system profile with the runner and crew holds no set's ${name}"
+    ) companions
+    ++ t.expect (
+      builtins.length (signinsOf evaluated) == 1
+    ) "the ${platform} system profile with the runner and crew holds no pendingyou-signin";
+
+  # A Plannotator of the host's own, laid out as a package with a bin.
+  ownPlannotator =
+    { pkgs, ... }:
+    {
+      imports = [ crewOn ];
+      services.boomdrive.plannotator.package = pkgs.runCommand "own-plannotator" { } "mkdir -p $out/bin";
+    };
+  hostsPlannotator =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownPlannotator;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.plannotator.package.outPath profile) "the ${platform} system profile holds no host's own Plannotator"
+    ++ t.expect (
+      !builtins.elem set.plannotator.outPath profile
+    ) "the ${platform} system profile holds the set's Plannotator beside the host's own";
+
+  # The set's companions and plugins, none in `evaluated`.
+  noneOf =
+    platform: what: set: evaluated:
+    let
+      profile = profileOf evaluated;
+    in
+    lib.concatMap (
+      name:
+      t.expect (
+        !builtins.elem set.${name}.outPath profile
+      ) "the ${platform} system profile ${what} holds the set's ${name}"
+    ) companions
+    ++ t.expect (
+      signinsOf evaluated == [ ]
+    ) "the ${platform} system profile ${what} holds pendingyou-signin";
+
+  noCompanionsWithoutCrew =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+      plugins = map (p: p.outPath) evaluated.config.services.boomdrive.herdr.plugins;
+      expected = map (name: set.${name}.outPath) [
+        "flume-herdr-plugin"
+        "sluice-herdr-plugin"
+      ];
+      steps = folderSteps platform evaluated;
+    in
+    noneOf platform "without crew" set evaluated
+    ++ t.expect (
+      steps == [ ]
+    ) "the ${platform} activation without crew writes Pending You's folder: ${builtins.toJSON steps}"
+    ++ t.expect (
+      plugins == expected
+    ) "the ${platform} plugins without crew are ${toString plugins}, not Flume's and sluice's alone";
+
+  noCompanionsWithoutRunner =
+    platform:
+    { withCrew, set, ... }:
+    noneOf platform "with crew and without the runner" set withCrew;
+
+  companionsPlugins =
+    let
+      linked =
+        platform:
+        { system, set, ... }:
+        let
+          evaluated = system crewOn;
+          steps = map lib.trim (pluginSteps platform evaluated);
+          plugins = map (name: set.${name}) [
+            "flume-herdr-plugin"
+            "sluice-herdr-plugin"
+            "pendingyou-herdr-plugin"
+            "plannotator-herdr-plugin"
+          ];
+          step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${toString plugins} || true";
+          expected =
+            if platform == "nix-darwin" then
+              "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}"
+            else
+              "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+        in
+        t.expect (
+          steps == [ expected ]
+        ) "the ${platform} activation with crew links ${builtins.toJSON steps}, not ${expected}";
+    in
+    lib.concatLists (lib.mapAttrsToList linked platforms);
+
+  # The sign-in's script, read (design Decision 9): given `--force`, it
+  # runs Pending You's `login --app claude-code` with it and Claude Code's
+  # folder the folder's `signin`, then `app login herdr` without it.
+  signinRead =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system crewOn;
+      signins = signinsOf evaluated;
+      pendingyou = lib.getExe' evaluated.config.services.boomdrive.pendingyou.package "pendingyou";
+      text = builtins.unsafeDiscardStringContext (builtins.head signins).text;
+      login = builtins.unsafeDiscardStringContext ''
+        CLAUDE_CONFIG_DIR="$PENDINGYOU_CONFIG_DIR/signin" \
+          ${pendingyou} login --app claude-code "$@"
+      '';
+      herdr = builtins.unsafeDiscardStringContext ''${pendingyou} app login herdr "''${herdr[@]}"'';
+      parts = lib.splitString login text;
+    in
+    if signins == [ ] then
+      [ "the ${platform} system profile with the runner and crew holds no pendingyou-signin" ]
+    else
+      t.expect (lib.hasInfix "PENDINGYOU_CONFIG_DIR=\"$HOME/.config/pendingyou\"\nexport PENDINGYOU_CONFIG_DIR\n" text) "the ${platform} pendingyou-signin exports no PENDINGYOU_CONFIG_DIR of $HOME/.config/pendingyou: ${text}"
+      ++ t.expect (
+        builtins.length parts == 2
+      ) "the ${platform} pendingyou-signin runs no ${login}: ${text}"
+      ++ t.expect (
+        builtins.length parts == 2 && lib.hasInfix herdr (builtins.elemAt parts 1)
+      ) "the ${platform} pendingyou-signin runs no ${herdr} after its login: ${text}"
+      ++ t.expect (lib.hasInfix "  if [ \"$argument\" != --force ]; then\n    herdr+=(\"$argument\")\n" text) "the ${platform} pendingyou-signin gives herdr's login --force: ${text}";
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -345,7 +518,13 @@ onEach "The way in with the runner" withRunner
 // onEach "No portless of the set's" noPortless
 // onEach "No portless without the runner" portlessWithoutRunner
 // onEach "No proxy of the modules'" noProxy
+// onEach "The companions with the runner and crew" companionsWithCrew
+// onEach "A host's own Plannotator" hostsPlannotator
+// onEach "No companions without crew" noCompanionsWithoutCrew
+// onEach "No companions without the runner" noCompanionsWithoutRunner
+// onEach "The sign-in's two commands" signinRead
 // {
+  "The companions' plugins with crew" = companionsPlugins;
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
 }

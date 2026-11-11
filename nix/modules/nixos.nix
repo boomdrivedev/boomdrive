@@ -77,6 +77,7 @@ in
     (import ./options.nix { inherit packages; })
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
+    (import ./companions.nix { inherit packages; })
     ./drives.nix
   ];
 
