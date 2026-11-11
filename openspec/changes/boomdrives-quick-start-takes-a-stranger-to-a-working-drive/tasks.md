@@ -78,7 +78,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - Claude Code.
 
   The words also name the placeholders of design Decision 3. One record per step of design Decision 4 is under `site/src/content/start/`. Each holds `title`, `at`, `files` with `path` and, where the reader writes one, `writes`, and `test` with `project` and `name`, as the design's table gives them. Its body is the step's words: what it does, what it leaves, and for `mac-install`, `mac-setup`, `mac-flume`, `landing` and `ask` what the design's Decision 4 says of each. Each term Vale asks for is added to `site/src/content/terms/terms.yaml` (site.4). No word names a drive or a machine of ours (site.7). Done when `sluice exec main -- moon run site:prose` passes with no error and no warning on these files.
-- [ ] 5.2 `site/src/content.config.ts` gains the collection `start`: a glob over `src/content/start/*.md`. Its schema:
+- [x] 5.2 `site/src/content.config.ts` gains the collection `start`: a glob over `src/content/start/*.md`. Its schema:
   - `title`;
   - `at`, with optional whole numbers from 1 for `mac` and `nixos`, refusing a record with neither;
   - `files`, one at least, each a `path` and an optional `writes`;
