@@ -8,6 +8,37 @@ let
   inherit (t) lib;
   dataDirOf = import ../modules/data-dir.nix { inherit (t) lib; };
   rows = builtins.fromJSON (builtins.readFile ./data-dirs.json);
+
+  # The option's value in `evaluated`, or null where reading it fails.
+  dataDirOf' =
+    evaluated:
+    let
+      read = builtins.tryEval (builtins.seq evaluated.config.services.boomdrive.dataDir true);
+    in
+    if read.success then evaluated.config.services.boomdrive.dataDir else null;
+  gives =
+    evaluated: folder: where:
+    let
+      gave = dataDirOf' evaluated;
+    in
+    t.expect (
+      gave == folder
+    ) "${where}: services.boomdrive.dataDir is ${builtins.toJSON gave}, not ${folder}";
+  refuses =
+    evaluated: where:
+    t.expect (
+      !(builtins.tryEval (builtins.seq evaluated.config.services.boomdrive.dataDir true)).success
+    ) "${where}: services.boomdrive.dataDir set by the host evaluates";
+
+  # nix-darwin: alice, at /Users/alice, the primary user.
+  darwinGiven =
+    dataHome:
+    t.darwinSystem {
+      launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables.XDG_DATA_HOME = dataHome;
+    };
+  darwinAgentOf = evaluated: evaluated.config.launchd.user.agents.boomdrive.serviceConfig;
+  darwinHomeData = "/Users/alice/.local/share/boomdrive";
+  darwinOwn = darwinGiven "/srv/data";
 in
 {
   "The runner's own rule" = lib.concatMap (
@@ -21,4 +52,28 @@ in
     t.expect (gave == row.folder)
       "HOME ${builtins.toJSON row.HOME} and XDG_DATA_HOME ${builtins.toJSON row.XDG_DATA_HOME} give ${builtins.toJSON gave}, not ${builtins.toJSON row.folder}"
   ) rows;
+
+  "The data folder on nix-darwin" = gives (t.darwinSystem { }) darwinHomeData "nix-darwin";
+
+  "The data folder with the runner not enabled" = gives (t.darwinOf [
+    t.outputs.darwinModules.default
+  ]) darwinHomeData "nix-darwin, the runner not enabled";
+
+  "A job given its own XDG_DATA_HOME on nix-darwin" =
+    gives darwinOwn "/srv/data/boomdrive" "nix-darwin, XDG_DATA_HOME /srv/data"
+    ++
+      t.expect ((darwinAgentOf darwinOwn).EnvironmentVariables.HOME == "/Users/alice")
+        "nix-darwin, XDG_DATA_HOME /srv/data: the agent's HOME is ${builtins.toJSON (darwinAgentOf darwinOwn).EnvironmentVariables.HOME}"
+    ++ t.expect (
+      (darwinAgentOf darwinOwn).EnvironmentVariables.PATH == (darwinAgentOf (t.darwinSystem { }))
+      .EnvironmentVariables.PATH
+    ) "nix-darwin, XDG_DATA_HOME /srv/data: the agent's PATH is not the module's";
+
+  "An XDG_DATA_HOME the runner takes as unset on nix-darwin" =
+    gives (darwinGiven "data") darwinHomeData "nix-darwin, XDG_DATA_HOME data"
+    ++ gives (darwinGiven "") darwinHomeData "nix-darwin, XDG_DATA_HOME empty";
+
+  "A host that sets the data folder on nix-darwin" = refuses (t.darwinSystem {
+    services.boomdrive.dataDir = "/srv/boomdrive";
+  }) "nix-darwin";
 }

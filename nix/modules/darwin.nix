@@ -11,7 +11,12 @@
 # or the file changes, and leaves it running when neither does. The
 # activation links the file at the runner's own path, as the primary user,
 # for the commands a person runs by hand, and links the herdr plugins
-# apps.nix lists with herdr's own command (record 0023).
+# apps.nix lists with herdr's own command (record 0023). Beside `logFile`,
+# the agent's log, the module declares `dataDir`, the runner's data folder
+# by the runner's own rule (data-dir.nix) from the primary user's home and
+# the agent's own `XDG_DATA_HOME`: read-only, read wherever a host names
+# the folder or a clone in it, and set by none (record 0036 as amended on
+# 2026-11-11).
 { packages }:
 {
   config,
@@ -23,6 +28,7 @@ let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  dataDirOf = import ./data-dir.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -68,6 +74,36 @@ in
     default = "${home}/Library/Logs/boomdrive.log";
     defaultText = lib.literalExpression ''"''${config.users.users.''${config.system.primaryUser}.home}/Library/Logs/boomdrive.log"'';
     description = "The file the agent's standard output and standard error go to.";
+  };
+
+  # The agent's own XDG_DATA_HOME, or null where the agent has none or
+  # the runner is not enabled (the change
+  # the-set-names-the-runners-data-folder, design Decisions 1 and 3).
+  options.services.boomdrive.dataDir = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = dataDirOf {
+      inherit home;
+      dataHome =
+        config.launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables.XDG_DATA_HOME or null;
+    };
+    defaultText = lib.literalMD ''
+      `$XDG_DATA_HOME/boomdrive` where the runner's agent is given an absolute
+      `XDG_DATA_HOME` in `launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables`,
+      else `.local/share/boomdrive` under the primary user's home,
+      `users.users.''${config.system.primaryUser}.home`
+    '';
+    description = ''
+      The runner's data folder, where it keeps its clones, its lock and its
+      report, by the runner's own rule: `$XDG_DATA_HOME/boomdrive` where the
+      agent's own environment gives an absolute `XDG_DATA_HOME`, else
+      `~/.local/share/boomdrive` under the primary user's home. It is
+      read-only: a host reads it wherever it names the folder or a clone in
+      it, and sets it nowhere. An `XDG_DATA_HOME` the agent takes from
+      outside its declaration, such as launchd's user domain, is not seen:
+      a host that moves the runner's data gives the agent its own
+      `XDG_DATA_HOME` in `launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables`.
+    '';
   };
 
   config = lib.mkIf cfg.enable {
