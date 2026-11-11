@@ -9,10 +9,12 @@
 # stream (record 0028). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
-# the file at the runner's own path, links the herdr plugins apps.nix
-# lists with herdr's own command (record 0023), then starts the unit where
-# it is not running and restarts it where the running runner's command
-# line is not the unit's; any other user's activation does nothing.
+# the file at the runner's own path, writes Pending You's folder where
+# crew's companions are installed (record 0044, point 7), links the herdr
+# plugins apps.nix lists with herdr's own command (record 0023), then
+# starts the unit where it is not running and restarts it where the
+# running runner's command line is not the unit's; any other user's
+# activation does nothing.
 { packages }:
 {
   config,
@@ -37,11 +39,28 @@ let
     ]
     ++ map toString cfg.herdr.plugins
   );
-  pluginsStep = lib.optionalString linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
 
   inherit (cfg) user;
   account = config.users.users.${user};
   inherit (account) home;
+
+  # Pending You's folder, where crew's companions are installed and
+  # Pending You's package is given (companions.nix; record 0044, point 7),
+  # written before the plugins are linked.
+  folder = pkgs.callPackage ./pendingyou-folder.nix {
+    inherit home;
+    inherit (cfg.pendingyou) package;
+  };
+
+  # The runner's user's steps before `keep`, in order: the link, Pending
+  # You's folder, then herdr's links of the plugins.
+  steps = [
+    "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
+  ]
+  ++
+    lib.optional (config.services.crew.enable && cfg.pendingyou.package != null)
+      "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
+  ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
 
   # The unit's command line, which the activation compares the running
   # runner's with.
@@ -142,9 +161,7 @@ in
     # reads its own --config either way.
     system.userActivationScripts.boomdrive.text = ''
       if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
-        ${pkgs.runtimeShell} ${./activate.sh} link ${file} || true
-        ${pluginsStep}
-        PATH=${keepPath}:$PATH \
+      ${lib.concatMapStrings (step: "  ${step}\n") steps}  PATH=${keepPath}:$PATH \
           ${pkgs.runtimeShell} ${./activate.sh} keep ${lib.escapeShellArgs ([ user ] ++ command)}
       fi
     '';

@@ -301,7 +301,8 @@ let
   '';
   darwinText = darwinActivation darwinRunner;
   pluginsLink = line: lib.hasInfix "-activate.sh plugins " line;
-  darwinRest = lib.filter (line: !pluginsLink line) (
+  folderWrite = line: lib.hasInfix "-activate.sh pendingyou " line;
+  darwinRest = lib.filter (line: !pluginsLink line && !folderWrite line) (
     linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText)
   );
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);

@@ -10,8 +10,9 @@
 # `settings` (design Decision 9), so nix-darwin reloads it when the package
 # or the file changes, and leaves it running when neither does. The
 # activation links the file at the runner's own path, as the primary user,
-# for the commands a person runs by hand, and links the herdr plugins
-# apps.nix lists with herdr's own command (record 0023).
+# for the commands a person runs by hand, writes Pending You's folder where
+# crew's companions are installed (record 0044, point 7), and links the
+# herdr plugins apps.nix lists with herdr's own command (record 0023).
 { packages }:
 {
   config,
@@ -38,6 +39,14 @@ let
 
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
+
+  # Pending You's folder, where crew's companions are installed and
+  # Pending You's package is given (companions.nix; record 0044, point 7).
+  writingFolder = config.services.crew.enable && cfg.pendingyou.package != null;
+  folder = pkgs.callPackage ./pendingyou-folder.nix {
+    inherit home;
+    inherit (cfg.pendingyou) package;
+  };
 
   # The profiles, then the operating system's folders: never a package's
   # own folder, so the runner, what Flume launches and a person's shell run
@@ -114,11 +123,16 @@ in
 
     # Activation runs as root, with root's HOME, so the link is made as the
     # primary user under their own home. A link that fails says why and
-    # stops nothing else: the agent reads its own --config either way. The
+    # stops nothing else: the agent reads its own --config either way.
+    # Pending You's folder is written the same way, before the plugins, so
+    # Pending You for Herdr finds its launcher at its first link; the
     # plugins are linked the same way, each refusal said and stopping none.
     system.activationScripts.postActivation.text = ''
       sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
         /bin/sh ${./activate.sh} link ${file} || true
+    ''
+    + lib.optionalString writingFolder ''
+      sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
     ''
     + lib.optionalString linking ''
       sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true

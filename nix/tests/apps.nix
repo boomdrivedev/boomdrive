@@ -492,6 +492,163 @@ let
       ) "the ${platform} pendingyou-signin runs no ${herdr} after its login: ${text}"
       ++ t.expect (lib.hasInfix "  if [ \"$argument\" != --force ]; then\n    herdr+=(\"$argument\")\n" text) "the ${platform} pendingyou-signin gives herdr's login --force: ${text}";
 
+  # Pending You's folder (design Decisions 7 and 8 of the change
+  # crews-companions-come-with-the-flake): the store folder the modules
+  # give for a home and a package, and the step that writes it.
+  folderOf =
+    evaluated: home: package:
+    evaluated.pkgs.callPackage ../modules/pendingyou-folder.nix { inherit home package; };
+  homeOf = platform: if platform == "nix-darwin" then "/Users/alice" else "/home/alice";
+  folderStepOf =
+    platform: evaluated: folder:
+    let
+      step = builtins.unsafeDiscardStringContext "${activate} pendingyou ${folder} ${homeOf platform}/.config/pendingyou || true";
+    in
+    if platform == "nix-darwin" then
+      "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}"
+    else
+      "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+  # The index of the first of `lines` that `holds`, or null.
+  indexOf =
+    holds: lines:
+    let
+      found = lib.lists.findFirstIndex holds null lines;
+    in
+    found;
+  fourFiles = [
+    "bin/pendingyou-hook"
+    "bin/pendingyou-mcp-headers"
+    "claude-code.json"
+    "signin/.claude.json"
+  ];
+
+  folderWritten =
+    platform:
+    let
+      inherit (platforms.${platform}) system;
+      evaluated = system crewOn;
+      folder =
+        folderOf evaluated (homeOf platform)
+          evaluated.config.services.boomdrive.pendingyou.package;
+      expected = folderStepOf platform evaluated folder;
+      text = activationOf platform evaluated;
+      lines = map lib.trim (lib.splitString "\n" text);
+      steps = map lib.trim (folderSteps platform evaluated);
+      folderAt = indexOf (line: line == expected) lines;
+      pluginsAt = indexOf (lib.hasInfix "-activate.sh plugins ") lines;
+    in
+    t.expect (
+      steps == [ expected ]
+    ) "the ${platform} activation's folder steps are ${builtins.toJSON steps}, not ${expected}"
+    ++ t.expect (
+      folderAt != null && pluginsAt != null && folderAt < pluginsAt
+    ) "the ${platform} activation writes Pending You's folder after it links the plugins: ${text}"
+    ++ t.expect (
+      folder.folder == "${homeOf platform}/.config/pendingyou"
+    ) "the ${platform} folder is ${folder.folder}, not ${homeOf platform}/.config/pendingyou"
+    ++
+      t.expect (lib.sort lib.lessThan (builtins.attrNames folder.texts) == fourFiles)
+        "the ${platform} folder holds ${toString (builtins.attrNames folder.texts)}, not ${toString fourFiles}";
+
+  folderOnNixOS =
+    let
+      evaluated = t.nixosSystem crewOn;
+      text = activationOf "NixOS" evaluated;
+      guarded = lib.splitString "if [ \"$(id -un)\" = alice ]; then" text;
+      scripts = userScripts evaluated;
+      others = lib.filter (name: name != "boomdrive") (builtins.attrNames scripts);
+    in
+    folderWritten "NixOS"
+    ++ t.expect (
+      builtins.length guarded == 2 && lib.hasInfix "-activate.sh pendingyou " (builtins.elemAt guarded 1)
+    ) "the NixOS user activation writes Pending You's folder outside its test of alice: ${text}"
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !lib.hasInfix "-activate.sh pendingyou " (
+          builtins.unsafeDiscardStringContext (scripts.${name}.text or "")
+        )
+      ) "the NixOS user activation's ${name} writes Pending You's folder"
+    ) others;
+
+  # A Pending You of the host's own, laid out as a package with a bin.
+  ownPendingyou =
+    { pkgs, ... }:
+    {
+      imports = [ crewOn ];
+      services.boomdrive.pendingyou.package = pkgs.runCommand "own-pendingyou" { } "mkdir -p $out/bin";
+    };
+  launchersRunGiven =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system ownPendingyou;
+      own = evaluated.config.services.boomdrive.pendingyou.package;
+      folder = folderOf evaluated (homeOf platform) own;
+      exe = builtins.unsafeDiscardStringContext "${own}/bin/pendingyou";
+      exported = "PENDINGYOU_CONFIG_DIR=${homeOf platform}/.config/pendingyou\nexport PENDINGYOU_CONFIG_DIR\n";
+      textOf = path: builtins.unsafeDiscardStringContext folder.texts.${path};
+    in
+    t.expect
+      (
+        folderSteps platform evaluated != [ ]
+        && lib.trim (lib.head (folderSteps platform evaluated)) == folderStepOf platform evaluated folder
+      )
+      "the ${platform} activation with the host's own Pending You writes no folder of it: ${builtins.toJSON (folderSteps platform evaluated)}"
+    ++
+      lib.concatMap
+        (
+          path:
+          t.expect (lib.hasInfix exported (textOf path)) "the ${platform} folder's ${path} exports no PENDINGYOU_CONFIG_DIR of the folder: ${textOf path}"
+        )
+        [
+          "bin/pendingyou-hook"
+          "bin/pendingyou-mcp-headers"
+        ]
+    ++ t.expect (lib.hasInfix "\nexec ${exe} \"$@\"\n" (textOf "bin/pendingyou-hook")) "the ${platform} folder's bin/pendingyou-hook runs no ${exe}: ${textOf "bin/pendingyou-hook"}"
+    ++ t.expect (lib.hasInfix "\nexec ${exe} mcp-headers \"$@\"\n" (textOf "bin/pendingyou-mcp-headers")) "the ${platform} folder's bin/pendingyou-mcp-headers runs no ${exe} mcp-headers: ${textOf "bin/pendingyou-mcp-headers"}";
+
+  stopCheck =
+    let
+      evaluated = t.darwinSystem crewOn;
+      package = evaluated.config.services.boomdrive.pendingyou.package;
+      folder = folderOf evaluated "/Users/alice" package;
+      text = builtins.unsafeDiscardStringContext folder.texts."bin/pendingyou-hook";
+      exe = builtins.unsafeDiscardStringContext (lib.getExe' package "pendingyou");
+      expected = lib.concatStringsSep "\n" [
+        "if [ \"$1\" = stopcheck ] && [ -n \"\${CREW_AGENT:-}\" ]; then"
+        "  ${exe} \"$@\" >/dev/null"
+        "  exit 0"
+        "fi"
+        "exec ${exe} \"$@\""
+        ""
+      ];
+    in
+    t.expect (lib.hasSuffix expected text) "the folder's bin/pendingyou-hook does not end in ${expected}: ${text}";
+
+  noSetsPendingyou =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system {
+        imports = [ crewOn ];
+        services.boomdrive.pendingyou.package = null;
+      };
+      steps = folderSteps platform evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no Pending You fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.pendingyou.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no Pending You holds the set's Pending You"
+    ++ t.expect (
+      signinsOf evaluated == [ ]
+    ) "the ${platform} system profile with no Pending You holds pendingyou-signin"
+    ++ t.expect (
+      steps == [ ]
+    ) "the ${platform} activation with no Pending You writes its folder: ${builtins.toJSON steps}";
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -523,7 +680,12 @@ onEach "The way in with the runner" withRunner
 // onEach "No companions without crew" noCompanionsWithoutCrew
 // onEach "No companions without the runner" noCompanionsWithoutRunner
 // onEach "The sign-in's two commands" signinRead
+// onEach "The launchers run the given Pending You" launchersRunGiven
+// onEach "No Pending You of the set's" noSetsPendingyou
 // {
+  "The folder written on nix-darwin" = folderWritten "nix-darwin";
+  "The folder written on NixOS" = folderOnNixOS;
+  "A crew session's stop check" = stopCheck;
   "The companions' plugins with crew" = companionsPlugins;
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
