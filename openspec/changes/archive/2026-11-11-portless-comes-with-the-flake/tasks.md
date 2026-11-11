@@ -26,4 +26,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The specs
 
-- [ ] 4.1 The spec deltas, each holding the base's words where `worktrunk-comes-with-the-flake` landed first (design Sequencing; Task notes 4.1), archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive portless-comes-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.1 The spec deltas, each holding the base's words where `worktrunk-comes-with-the-flake` landed first (design Sequencing; Task notes 4.1), archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive portless-comes-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.
