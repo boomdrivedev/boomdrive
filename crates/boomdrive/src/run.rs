@@ -26,6 +26,7 @@ use crate::report::{self, ReportFile};
 use crate::settle::{self, Settles};
 use crate::terminal::{self, Relays};
 use crate::{clone, flume, hello, sluice};
+use boomdrive_bounded::Halt;
 use boomdrive_control::{Part, Wake};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
@@ -182,21 +183,28 @@ impl Bells {
     }
 }
 
-/// Stops the runner: it finishes the git call in hand, keeps no further
-/// repository, begins no part's pass, lets each part end the pass in
-/// hand, and says it stopped.
+/// Stops the runner: it ends each try of its git call to a remote in
+/// flight as the try's limit would, asked to end and killed two seconds
+/// later, and begins none, keeps no further repository, begins no part's
+/// pass, lets each part end the pass in hand, and says it stopped (record
+/// 0042 as amended on 2026-11-11; core.58).
 #[derive(Clone)]
 pub struct Stopper {
     events: Sender<Event>,
     stop: Arc<AtomicBool>,
+    /// The runner's halt, which every try it runs reads.
+    halt: Halt,
     bells: Bells,
 }
 
 impl Stopper {
-    /// Stops the runner, its keeping pass read between repositories, its
-    /// wait woken, and every part's wait woken.
+    /// Stops the runner: its stop set first, so a keeping pass whose
+    /// fetch the halt ends reads it before the next repository, then its
+    /// halt, which ends each try in flight, then its wait woken and every
+    /// part's wait woken.
     pub fn stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
+        self.halt.halt();
         let _ = self.events.send(Event::Stop);
         self.bells.stop();
     }
@@ -297,6 +305,9 @@ pub struct Runner {
     notices: Notices,
     waiting: Receiver<Event>,
     stop: Arc<AtomicBool>,
+    /// The runner's halt, which its stop sets and every try of its git
+    /// call to a remote reads (record 0042 as amended on 2026-11-11).
+    halt: Halt,
     /// Each part's bell, by its label.
     bells: Bells,
     /// Each clone's lock, which the keeper takes alone and a launch into
@@ -385,7 +396,9 @@ impl Runner {
     /// made, and no other runner holds it. Then the control plane the
     /// configuration names is opened as its parts; one that cannot be is
     /// named by [`Runner::unopened`], and the runner keeps its
-    /// repositories all the same.
+    /// repositories all the same. The runner's halt is made here and
+    /// given to `git`, so its stop ends each try of a call to a remote
+    /// in flight (record 0042 as amended on 2026-11-11).
     pub fn start(
         file: Option<&Path>,
         var: impl Fn(&str) -> Option<OsString>,
@@ -396,6 +409,8 @@ impl Runner {
         let local = config::local_path(&env);
         let config = config::read_layers(&file, &local, &env.home)?;
         git.check_version()?;
+        let halt = Halt::default();
+        let git = git.halted_by(halt.clone());
         let data = config::data_dir(&env);
         fs::create_dir_all(&data).map_err(|error| {
             format!(
@@ -427,6 +442,7 @@ impl Runner {
             notices,
             waiting,
             stop: Arc::new(AtomicBool::new(false)),
+            halt,
             bells,
             locks: Locks::new(),
             report,
@@ -482,6 +498,7 @@ impl Runner {
         Stopper {
             events: self.events.clone(),
             stop: Arc::clone(&self.stop),
+            halt: self.halt.clone(),
             bells: self.bells.clone(),
         }
     }
@@ -649,9 +666,11 @@ impl Runner {
     /// reported, before a lease of the part's not yet lapsed lapses, and
     /// at once when its implementation wakes it. Each pass, keeping or
     /// control, ends with one settle of every place, before its thread
-    /// waits (record 0029). Stopped, it keeps no further repository,
-    /// begins no part's pass and no settle, waits for each part to end the
-    /// pass in hand, and says so.
+    /// waits (record 0029). Stopped, it ends each try of a call to a
+    /// remote in flight as the try's limit would and begins none, keeps no
+    /// further repository, begins no part's pass and no settle, waits for
+    /// each part to end the pass in hand, and says so (record 0042 as
+    /// amended on 2026-11-11).
     pub fn keep(&mut self, say: Say<'_>) {
         let polls = self.polls();
         let mut parts = self.take_parts();

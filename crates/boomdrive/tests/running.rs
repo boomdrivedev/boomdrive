@@ -210,6 +210,97 @@ fn stopped_while_waiting() {
     assert_eq!(rest, "boomdrive: stopped\n");
 }
 
+/// The words of a fetch ended by the runner's stop (record 0042 as
+/// amended on 2026-11-11).
+const HALTED: &str = "git fetch with origin was stopped as the runner stopped";
+
+/// What a runner stopped with a fetch in flight did: its exit, the lines
+/// it said after its start line, and how long after its signal it exited.
+struct Stopped {
+    status: std::process::ExitStatus,
+    lines: Vec<String>,
+    took: Duration,
+}
+
+/// `boomdrive` run with `args`, keeping `agentplot/flume` with no clone
+/// of it, whose origin takes the connection and never answers, sent
+/// `signal` once the origin has taken the connection: it exits within five
+/// seconds of the signal, well before the fetch's limit of thirty, and
+/// the origin's connection is closed within a second of its exit, so
+/// nothing its fetch started outlives it (record 0042 as amended on
+/// 2026-11-11, its design Decision 9).
+fn stopped_in_flight(scratch: &Scratch, args: &[&str], signal: libc::c_int) -> Stopped {
+    let origin = scratch.silent("agentplot/flume");
+    let file = scratch.configure(&keeping(&["agentplot/flume"]));
+    let mut running = Running(
+        scratch
+            .boomdrive()
+            .args(args)
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("boomdrive runs"),
+    );
+    let mut said = running.0.stderr.take().expect("its standard error");
+    assert!(
+        origin.taken(Duration::from_secs(10)),
+        "the origin took no connection"
+    );
+
+    let pid = libc::pid_t::try_from(running.0.id()).expect("a process id");
+    // SAFETY: kill(2) takes plain integers and touches no memory of ours.
+    assert_eq!(unsafe { libc::kill(pid, signal) }, 0);
+    let signalled = Instant::now();
+    let deadline = signalled + Duration::from_secs(5);
+    let status = loop {
+        if let Some(status) = running.0.try_wait().expect("its status") {
+            break status;
+        }
+        assert!(Instant::now() < deadline, "not stopped within five seconds");
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    let took = signalled.elapsed();
+    assert!(
+        origin.closed(Duration::from_secs(1)),
+        "the fetch's connection outlived the runner"
+    );
+
+    let mut text = String::new();
+    said.read_to_string(&mut text).expect("its standard error");
+    let mut lines = text.lines().map(str::to_string);
+    assert_eq!(
+        lines.next(),
+        Some(started(scratch, "1 repository", &file)),
+        "{text}"
+    );
+    assert!(
+        !scratch.container("agentplot/flume").exists(),
+        "a folder of agentplot/flume's is left"
+    );
+    Stopped {
+        status,
+        lines: lines.collect(),
+        took,
+    }
+}
+
+/// The running spec's "Stopped with a fetch in flight", for `boomdrive
+/// run`: its fetch is ended at its stop, named, and nothing of the clone
+/// is left (record 0042 as amended on 2026-11-11).
+#[test]
+fn stopped_with_a_fetch_in_flight() {
+    let scratch = Scratch::new();
+    let stopped = stopped_in_flight(&scratch, &["run"], libc::SIGTERM);
+    assert_eq!(stopped.status.code(), Some(0), "{:?}", stopped.lines);
+    assert!(stopped.took < Duration::from_secs(5), "{:?}", stopped.took);
+    assert_eq!(
+        stopped.lines,
+        [
+            format!("agentplot/flume: not cloned: {HALTED}"),
+            "boomdrive: stopped".to_string(),
+        ]
+    );
+}
+
 #[test]
 fn a_quiet_pass() {
     let scratch = Scratch::new();
