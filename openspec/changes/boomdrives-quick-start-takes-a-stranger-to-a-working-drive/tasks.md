@@ -11,7 +11,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 ## 1. Shared ground
 
 - [x] 1.1 Setup's stand-ins move from `crates/boomdrive/tests/setup.rs` into a module of `crates/boomdrive/tests/common`, so the quick start's tests write the same `gh`, `crew`, `herdr`, `launchctl`, `hostname`, `claude` and `pendingyou`. Each notes its call and answers what the test put beside it, as each does now. `tests/setup.rs` uses the module, and none of its tests changes what it holds (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test setup` passes.
-- [ ] 1.2 `site/src/start/.shellcheckrc` holds `shell=sh`, with a comment saying a step's file holds no shebang since the reader pastes its lines. `treefmt.nix` excludes it by name, with that reason. `settings.formatter.taplo.includes` gains `site/src/start/**/*.toml` beside `.prototools`, with a comment citing site.8 (design Decision 9; core.7). Done when `sluice exec main -- moon run root:format` passes.
+- [x] 1.2 `site/src/start/.shellcheckrc` holds `shell=sh`, with a comment saying a step's file holds no shebang since the reader pastes its lines. `treefmt.nix` excludes it by name, with that reason. `settings.formatter.taplo.includes` gains `site/src/start/**/*.toml` beside `.prototools`, with a comment citing site.8 (design Decision 9; core.7). Done when `sluice exec main -- moon run root:format` passes.
 
 ## 2. The Mac's steps
 
