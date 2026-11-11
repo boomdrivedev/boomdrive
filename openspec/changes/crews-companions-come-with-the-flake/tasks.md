@@ -42,7 +42,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The shell and the words
 
-- [ ] 4.1 The flake's shell holds the set's `pendingyou`, `plannotator` and `plannotator-tui` after portless (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the nine tools.
+- [x] 4.1 The flake's shell holds the set's `pendingyou`, `plannotator` and `plannotator-tui` after portless (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the nine tools.
 - [ ] 4.2 The README's **Installing with nix** names (design Decision 11):
   - the companions and their herdr plugins;
   - `#pendingyou`, `#plannotator` and `#plannotator-tui` on the profile's line;

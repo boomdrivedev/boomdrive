@@ -46,8 +46,9 @@ let
       textOf parts.script == launcherText
     ) "the x86_64-linux launcher's script is not launcher.sh";
 
-  # Each system's shell: a derivation of the set's five tools and the
-  # hook (design Decision 4).
+  # Each system's shell: a derivation of the set's nine tools and the
+  # hook (design Decision 4; design Decision 10 of the change
+  # crews-companions-come-with-the-flake).
   hookText = builtins.readFile ../shell-hook.sh;
   shellOf =
     system:
@@ -79,6 +80,9 @@ let
     "crew"
     "herdr"
     "portless"
+    "pendingyou"
+    "plannotator"
+    "plannotator-tui"
   ];
 in
 {
