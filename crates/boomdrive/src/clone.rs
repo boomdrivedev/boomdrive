@@ -7,7 +7,7 @@
 //! keeps is sluice's copy (core.14; sluice's 124).
 
 use crate::config::Address;
-use crate::git::{self, At, Git, Words};
+use crate::git::{self, At, Credential, Git, Words};
 use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
@@ -270,6 +270,7 @@ pub fn fetch(git: &Git, bare: &Path) -> Result<(), Failure> {
         At::GitDir(bare),
         "origin",
         ["fetch", "--prune", "--quiet", "origin"],
+        &Credential::Host,
     )?;
     Ok(())
 }

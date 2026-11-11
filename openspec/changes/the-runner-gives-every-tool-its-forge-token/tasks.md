@@ -73,7 +73,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 4. The runner's own fetch
 
-- [ ] 4.1 `git.rs` gains `Credential`, design Decision 5's `Host`, `Token(String)` and `Nothing`, whose `Debug` never shows a token. It gains `TOKEN_HELPER`, Decision 5's helper. `Git::call_remote(at, remote, args, &Credential)` gives:
+- [x] 4.1 `git.rs` gains `Credential`, design Decision 5's `Host`, `Token(String)` and `Nothing`, whose `Debug` never shows a token. It gains `TOKEN_HELPER`, Decision 5's helper. `Git::call_remote(at, remote, args, &Credential)` gives:
   - for `Host`, no argument naming a credential;
   - for `Token`, `-c credential.helper=`, then `-c credential.helper=<TOKEN_HELPER>`, and the token in the call's environment as `BOOMDRIVE_FORGE_TOKEN`;
   - for `Nothing`, `-c credential.helper=` alone.
