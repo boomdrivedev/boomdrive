@@ -1603,3 +1603,62 @@ mod check_host {
         assert_eq!(home.check("macos", &[]), Ok(()));
     }
 }
+
+/// The setup spec's "The agent": nix-darwin's agent's keys under setup's
+/// label, for the home `/h`, and the runner's file quoted for the shell
+/// where it holds what the shell reads (task 6.3).
+#[cfg(test)]
+#[test]
+fn the_agent_is_nix_darwins_under_setups_label() {
+    let plist = agent(
+        Path::new("/h"),
+        Path::new("/h/.config/boomdrive/config.toml"),
+    );
+    assert_eq!(
+        plist,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AbandonProcessGroup</key>
+	<true/>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/h</string>
+		<key>PATH</key>
+		<string>/h/.nix-profile/bin:/h/.local/state/nix/profile/bin:/nix/var/nix/profiles/default/bin:/h/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>io.github.agentplot.boomdrive</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>-c</string>
+		<string>/bin/wait4path /nix/store &amp;&amp; exec boomdrive run --config /h/.config/boomdrive/config.toml</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/h/Library/Logs/boomdrive.log</string>
+	<key>StandardOutPath</key>
+	<string>/h/Library/Logs/boomdrive.log</string>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+</dict>
+</plist>
+"#
+    );
+    let spaced = agent(
+        Path::new("/Users/A Person"),
+        Path::new("/Users/A Person/.config/boomdrive/config.toml"),
+    );
+    assert!(spaced.contains(
+        "exec boomdrive run --config '/Users/A Person/.config/boomdrive/config.toml'</string>"
+    ));
+    assert_eq!(shell_quoted("it's"), r#"'it'\''s'"#);
+}
