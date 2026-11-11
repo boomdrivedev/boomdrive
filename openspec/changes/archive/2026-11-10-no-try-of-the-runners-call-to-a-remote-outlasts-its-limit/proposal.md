@@ -4,7 +4,7 @@
 
 The brief: "No try of the runner's git call to a remote, a clone's fetch or a remote's ls-remote, runs past thirty seconds: it ends with everything it started and fails naming the remote and the limit, so one silent remote can't stall the runner's pass over every other repository."
 
-On deneb on 2026-11-10, sluice's reads of one repository hung for 10 to 17 minutes, again and again (signal `2026-11-10-agentplot-ops-e19d134d/01`). The cause was a git call to a remote with no limit. Its helper, `git-remote-http`, waited in `select` on a socket the remote had taken and never answered. sluice's record 0109 fixed sluice's calls. It notes that the Boomdrive runner runs its own fetch with no limit. It names `crates/boomdrive/src/clone.rs`.
+On a host on 2026-11-10, sluice's reads of one repository hung for 10 to 17 minutes, again and again (signal `2026-11-10-agentplot-ops-e19d134d/01`). The cause was a git call to a remote with no limit. Its helper, `git-remote-http`, waited in `select` on a socket the remote had taken and never answered. sluice's record 0109 fixed sluice's calls. It notes that the Boomdrive runner runs its own fetch with no limit. It names `crates/boomdrive/src/clone.rs`.
 
 The runner has two git calls that reach a remote, and both wait with no limit:
 
