@@ -4,13 +4,18 @@
 //! modules render of the spec's settings, is read by the runner's own
 //! reader against a scratch home, refusing no key, with the accounts,
 //! drives, repositories and control plane its settings named; each
-//! control plane's table is one its implementation reads.
+//! control plane's table is one its implementation reads. It also holds
+//! the data folder the modules name, `services.boomdrive.dataDir`, to the
+//! runner's own rule, `config::data_dir`, by `nix/tests/data-dirs.json`,
+//! the table `nix:test` holds the modules' rule to (the service-modules
+//! spec's "The runner's own rule").
 
 mod common;
 
 use boomdrive::config::{self, Config};
 use boomdrive::planes;
 use common::Scratch;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -156,4 +161,30 @@ fn the_hosted_file_names_its_partitions() {
         refusal.words,
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
     );
+}
+
+/// "The runner's own rule": for each row of `nix/tests/data-dirs.json`,
+/// the runner's data folder of the row's `HOME`, and of its
+/// `XDG_DATA_HOME` where the row's is not `null`, is the row's `folder`,
+/// which the modules' `dataDir` gives of the same row.
+#[test]
+fn the_modules_data_folder_is_the_runners() {
+    let table = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../nix/tests/data-dirs.json");
+    let text = std::fs::read_to_string(&table).expect("nix/tests/data-dirs.json");
+    let rows: Vec<serde_json::Value> = serde_json::from_str(&text).expect("a list of rows");
+    assert!(!rows.is_empty(), "nix/tests/data-dirs.json holds no row");
+    for row in &rows {
+        let given = |name: &str| row[name].as_str().map(OsString::from);
+        let env = config::Env::read(|name| match name {
+            "HOME" | "XDG_DATA_HOME" => given(name),
+            _ => None,
+        })
+        .unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+        let folder = row["folder"].as_str().expect("the row's folder");
+        assert_eq!(
+            config::data_dir(&env),
+            Path::new(folder),
+            "the runner's data folder of {row}"
+        );
+    }
 }
