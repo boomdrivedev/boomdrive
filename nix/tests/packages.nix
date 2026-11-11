@@ -86,6 +86,45 @@ let
     in
     if builtins.length found == 1 then builtins.head found else null;
 
+  # The set's worktrunk against the worktrunk sluice's tree pins (design
+  # Decision 1): `pinned` and `worktrunk` are versions.
+  worktrunkHeld =
+    { pinned, worktrunk }:
+    t.expect (worktrunk == pinned)
+      "the set's worktrunk is ${worktrunk}, and sluice's tree pins ${pinned}, the worktrunk its worktree driver was checked against";
+
+  # The worktrunk sluice's devenv.nix pins at the tag the lock names for
+  # sluice: the `version` of the one block naming worktrunk's repository,
+  # read up to the block's first closing line, or null where there is not
+  # exactly one such block naming exactly one version.
+  sluicesDevenv = "${inputs.sluice.outPath}/devenv.nix";
+  sluicesWorktrunk =
+    let
+      lines = lib.splitString "\n" (builtins.readFile sluicesDevenv);
+      matching = pattern: line: builtins.match pattern line != null;
+      repos = lib.concatLists (
+        lib.imap0 (
+          i: line: lib.optional (matching ''[[:space:]]*repo = "max-sixty/worktrunk";[[:space:]]*'' line) i
+        ) lines
+      );
+      rest = lib.drop (builtins.head repos + 1) lines;
+      block = lib.take (lib.lists.findFirstIndex (matching "[[:space:]]*};[[:space:]]*")
+        (builtins.length rest)
+        rest
+      ) rest;
+      versions = lib.concatMap (
+        line:
+        let
+          matched = builtins.match ''[[:space:]]*version = "([^"]+)";[[:space:]]*'' line;
+        in
+        lib.optional (matched != null) (builtins.head matched)
+      ) block;
+    in
+    if builtins.length repos == 1 && builtins.length versions == 1 then
+      builtins.head versions
+    else
+      null;
+
   # A system's Ghostty against the release Flume's ghostty window profile
   # was checked against (Flume's statement, C.8; design Decision 2). Flume's
   # tree pins no Ghostty to read, so the constant moves only with a check
@@ -254,6 +293,34 @@ in
     ) "packages.${system}.herdr says ${herdr.version}, not its tag's ${version}"
   );
 
+  # worktrunk's flake gives its build its commit's short revision as its
+  # git describe, and the set gives it its tag, as worktrunk's release
+  # build gets it (design Decision 2).
+  "worktrunk through its own flake" = each (
+    system: packages:
+    let
+      inherit (packages) worktrunk;
+      own = inputs.worktrunk.packages.${system}.worktrunk;
+      version = t.lockedVersion "worktrunk";
+      name = "packages.${system}.worktrunk";
+      program = worktrunk.meta.mainProgram or "none";
+      given = worktrunk.drvAttrs.VERGEN_GIT_DESCRIBE or "nothing";
+    in
+    t.expect (
+      toString worktrunk.src == toString own.src
+    ) "${name}'s source is ${toString worktrunk.src}, not worktrunk's flake's ${toString own.src}"
+    ++
+      t.expect (worktrunk.cargoArtifacts.drvPath == own.cargoArtifacts.drvPath)
+        "${name}'s dependencies are ${worktrunk.cargoArtifacts.drvPath}, not worktrunk's flake's ${own.cargoArtifacts.drvPath}"
+    ++ t.expect (program == "wt") "${name}'s program is ${program}, not wt"
+    ++ t.expect (
+      worktrunk.version == version
+    ) "${name} says ${worktrunk.version}, not its tag's ${version}"
+    ++ t.expect (
+      given == "v${version}"
+    ) "${name}'s build is given VERGEN_GIT_DESCRIBE ${given}, not its tag v${version}"
+  );
+
   "Ghostty on each system" = each (
     system: packages:
     let
@@ -310,6 +377,35 @@ in
         "0.9.5"
       ]
     ) "a herdr 0.9.5 beside Flume's pin of 0.9.6 gives ${builtins.toJSON found}";
+
+  "worktrunk is sluice's" =
+    if sluicesWorktrunk == null then
+      [
+        "sluice's pin of worktrunk could not be read: ${sluicesDevenv} holds no one worktrunk block naming its version"
+      ]
+    else
+      each (
+        _: packages:
+        worktrunkHeld {
+          pinned = sluicesWorktrunk;
+          worktrunk = packages.worktrunk.version;
+        }
+      );
+
+  "worktrunk other than sluice's" =
+    let
+      found = worktrunkHeld {
+        pinned = "0.81.0";
+        worktrunk = "0.80.0";
+      };
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "0.81.0"
+        "0.80.0"
+      ]
+    ) "a worktrunk 0.80.0 beside sluice's pin of 0.81.0 gives ${builtins.toJSON found}";
 
   "A plugin newer than herdr" =
     let
@@ -414,4 +510,32 @@ in
         "main"
       ]
     ) "flake.nix and the lock naming herdr by main give ${builtins.toJSON found}";
+
+  "worktrunk named by no release tag" =
+    let
+      inherit (t) lock;
+      node = lock.nodes.${lock.root}.inputs.worktrunk;
+      named = flake.inputs // {
+        worktrunk = flake.inputs.worktrunk // {
+          url = "github:max-sixty/worktrunk/main";
+        };
+      };
+      locked = lock // {
+        nodes = lock.nodes // {
+          ${node} = lock.nodes.${node} // {
+            original = lock.nodes.${node}.original // {
+              ref = "main";
+            };
+          };
+        };
+      };
+      found = tags named locked;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "worktrunk"
+        "main"
+      ]
+    ) "flake.nix and the lock naming worktrunk by main give ${builtins.toJSON found}";
 }
