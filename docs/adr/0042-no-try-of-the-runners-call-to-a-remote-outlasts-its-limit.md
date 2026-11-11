@@ -17,7 +17,7 @@ Sources: agentplot/sluice record 0109, on sluice's main at `e6809f9` and release
 
 ## Context and problem statement
 
-On deneb on 2026-11-10, sluice's reads of one repository each hung for 10 to 17 minutes. The cause was a git call to a remote with no limit, whose helper waited on a socket the remote had taken and never answered. sluice's record 0109 bounds every try of sluice's calls to a remote at thirty seconds. Its last consequence names the runner's fetch as one with no limit.
+On a host on 2026-11-10, sluice's reads of one repository each hung for 10 to 17 minutes. The cause was a git call to a remote with no limit, whose helper waited on a socket the remote had taken and never answered. sluice's record 0109 bounds every try of sluice's calls to a remote at thirty seconds. Its last consequence names the runner's fetch as one with no limit.
 
 The runner has two git calls that reach a remote. Both wait by `Command::output`, with no limit:
 
