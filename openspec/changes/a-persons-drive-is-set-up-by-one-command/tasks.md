@@ -21,7 +21,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - nothing else set.
 
   Its comment says it is the file setup writes for one account's drive (design Decision 6). `nix/tests/file.nix` holds its rendering to `nix/tests/files/setup.toml`, written as the module renders it. Done when `sluice exec main -- moon run nix:test` passes.
-- [ ] 2.2 `tests/module_files.rs`'s `each_rendered_file_is_one_read_here` lists `setup.toml`. A new test, `the_setup_file_keeps_one_drive_under_crew`, reads the file as the runner reads it and holds it to:
+- [x] 2.2 `tests/module_files.rs`'s `each_rendered_file_is_one_read_here` lists `setup.toml`. A new test, `the_setup_file_keeps_one_drive_under_crew`, reads the file as the runner reads it and holds it to:
   - the account `own`'s drive `home` with `agentplot/flume` and `agentplot/sluice`;
   - `type` `crew`, with no other key of the runner's set;
   - a table crew's implementation reads: `host` `host-a` and the partition `home` with `example/state`.
