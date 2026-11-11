@@ -22,7 +22,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 3. The words
 
 - [x] 3.1 The README's **Installing with nix** names portless in the set, `#portless` on the profile line, `services.boomdrive.portless.package` and its `null`, the proxy as portless's own, started by its first `portless run` at a terminal or by `portless service install` and started once on a host, `portless trust` as the person's, and portless in the shell (design Decision 6; Task notes 3.1). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's words" and "The README's proxy".
-- [ ] 3.2 CLAUDE.md and `openspec/config.yaml` name portless in the flake's set and among what the modules install with the runner (Task notes 3.2). True when `sluice exec main -- moon run root:format` passes.
+- [x] 3.2 CLAUDE.md and `openspec/config.yaml` name portless in the flake's set and among what the modules install with the runner (Task notes 3.2). True when `sluice exec main -- moon run root:format` passes.
 
 ## 4. The specs
 
