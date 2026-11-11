@@ -15,7 +15,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 2. The file setup's file is held to
 
-- [ ] 2.1 `nix/tests/settings.nix` gains `setup`:
+- [x] 2.1 `nix/tests/settings.nix` gains `setup`:
   - `accounts.own.drives.home.repositories.agentplot = [ "flume" "sluice" ]`;
   - `settings.control_plane`, with `type = "crew"` and `crew` holding `host = "host-a"` and the one partition `home` with `state_repository = "example/state"`;
   - nothing else set.

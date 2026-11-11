@@ -179,6 +179,8 @@ in
 
   "A host under crew" = rendersAs "crew";
 
+  "One drive under crew, as setup writes it" = rendersAs "setup";
+
   "A host under a hosted control plane" = rendersAs "hosted";
 
   "A token in the hosted table" =
