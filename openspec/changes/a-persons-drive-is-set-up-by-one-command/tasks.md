@@ -75,13 +75,13 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - a file at the managed path whose first line is not setup's, beside a `config.toml.before-setup`, naming both, as the host's to fix.
 
   `host` gives the system, the home, the managed path and a finder, so its unit tests run on any system. They are `on_linux_setup_is_refused`, which proves the setup spec's "On Linux", `a_linked_runner_file_is_nixs`, `a_program_missing_is_named` and `both_files_there_are_named` (design Decision 7). Done when `devenv shell -- cargo test -p boomdrive --lib -- setup::check_host` passes.
-- [ ] 5.2 `crates/boomdrive/tests/setup.rs` gains its stand-ins: a `Stand` over `Scratch` that writes each program, reads its calls back and sets the binary's `PATH` to the stand-ins' folder, `/usr/bin` and `/bin`. Under `--json`, setup runs, each refusal ending it:
+- [x] 5.2 `crates/boomdrive/tests/setup.rs` gains its stand-ins: a `Stand` over `Scratch` that writes each program, reads its calls back and sets the binary's `PATH` to the stand-ins' folder, `/usr/bin` and `/bin`. Under `--json`, setup runs, each refusal ending it:
   1. task 5.1's checks;
   2. the implementation's `settle` and `prepare` (tasks 3.1 and 3.3);
   3. `gh auth status --hostname github.com`, whose exit other than 0 refuses as the host's to fix, naming `gh auth login`.
 
   Its tests prove the setup spec's "The runner's file is Nix's", "crew missing", "GitHub not signed in" and "Both files there". They are `the_runners_file_is_nixs`, `crew_missing`, `github_not_signed_in` and `both_files_there`. Each asserts its exit and words, that no file setup writes is there, and that no `gh repo` or `crew` call was made (design Decisions 7 and 10). Done when `devenv shell -- cargo test -p boomdrive --test setup -- the_runners_file_is_nixs crew_missing github_not_signed_in both_files_there` passes.
-- [ ] 5.3 `setup::sign_ins(find)` reads two sign-ins, after GitHub's:
+- [x] 5.3 `setup::sign_ins(find)` reads two sign-ins, after GitHub's:
   - Claude Code's from `claude auth status --json`, signed in where `loggedIn` is true;
   - Pending You's from `pendingyou status`, signed in where the line holding `Sign-in:` begins `ok` once trimmed.
 

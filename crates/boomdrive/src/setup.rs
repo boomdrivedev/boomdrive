@@ -208,8 +208,10 @@ fn set_up(flags: &Flags, say: &mut dyn FnMut(&str)) -> Result<Value, Refusal> {
     }
     let mut missing = sign_ins(find);
 
-    // The drive set up by its implementation.
-    let root = config::parse("", &managed, &home)
+    // The drive set up by its implementation, its views under the
+    // runner's own repository root, which setup writes no key of (design
+    // Risk 7).
+    let root = config::parse("accounts = {}\n", &managed, &home)
         .map_err(host)?
         .repository_root;
     let kept: Vec<Kept> = answers
@@ -1524,7 +1526,7 @@ mod check_host {
         /// `check_host` on `system`, finding every program but `lacking`.
         fn check(&self, system: &str, lacking: &[&str]) -> Result<(), Refusal> {
             let find = |name: &str| {
-                Some(PathBuf::from("/stand-in").join(name)).filter(|_| !lacking.contains(&name))
+                (!lacking.contains(&name)).then(|| PathBuf::from("/stand-in").join(name))
             };
             check_host(&Host {
                 system,
