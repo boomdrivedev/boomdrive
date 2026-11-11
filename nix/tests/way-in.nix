@@ -138,6 +138,53 @@ let
       textOf parts.script == launcherText
     ) "the x86_64-linux launcher's script is not launcher.sh";
 
+  # The x86_64-linux launcher made for `drives`: its desktop entry's
+  # lines, the lines of each action's section, and the script it runs
+  # (design Decision 4).
+  linuxMadeFor =
+    drives:
+    let
+      inherit ((launcherOf "x86_64-linux").override { inherit drives; }) parts;
+      entry = textOf parts.desktop;
+    in
+    {
+      inherit entry;
+      lines = lib.splitString "\n" entry;
+      actionOf =
+        drive:
+        let
+          section = lib.findFirst (lib.hasPrefix "Desktop Action ${drive}]\n") null (
+            lib.splitString "\n[" entry
+          );
+        in
+        if section == null then [ ] else lib.drop 1 (lib.splitString "\n" section);
+      exec = builtins.unsafeDiscardStringContext "${parts.script}${parts.script.destination}";
+    };
+
+  actionsOnLinux =
+    let
+      made = linuxMadeFor twoDrives;
+      action =
+        drive: session:
+        t.expect (builtins.elem "Name=${drive}" (made.actionOf drive)) "the x86_64-linux desktop entry made for two drives has no action ${drive} named ${drive}: ${made.entry}"
+        ++ t.expect (builtins.elem "Exec=${made.exec} \"${session}\"" (made.actionOf drive)) "the x86_64-linux desktop entry's action ${drive} runs no ${made.exec} \"${session}\": ${made.entry}";
+    in
+    t.expect (builtins.elem "Actions=garden;home" made.lines) "the x86_64-linux desktop entry made for two drives gives no Actions=garden;home: ${made.entry}"
+    ++ action "garden" "garden"
+    ++ action "home" "house";
+
+  quotedOnLinux =
+    let
+      made = linuxMadeFor [
+        {
+          drive = "home";
+          session = "my $work";
+        }
+      ];
+      line = "Exec=${made.exec} \"my \\\\$work\"";
+    in
+    t.expect (builtins.elem line (made.actionOf "home")) "the x86_64-linux desktop entry's action home has no ${line}: ${made.entry}";
+
   # Each system's shell: a derivation of the set's five tools and the
   # hook (design Decision 4).
   hookText = builtins.readFile ../shell-hook.sh;
@@ -178,6 +225,8 @@ in
   "No drive" = noDrive;
   "The menu's source" = menuSource;
   "The desktop entry on Linux" = desktopOnLinux;
+  "Each drive an action on Linux" = actionsOnLinux;
+  "A session quoted in its action" = quotedOnLinux;
   "Every system's shell" =
     t.expect (builtins.attrNames (outputs.devShells or { }) == lib.sort lib.lessThan t.systems)
       "devShells gives ${
