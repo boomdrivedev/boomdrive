@@ -34,4 +34,4 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 4. The specs
 
-- [ ] 4.1 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive worktrunk-comes-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.1 The spec deltas archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive worktrunk-comes-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.
