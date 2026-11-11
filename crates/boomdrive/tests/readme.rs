@@ -263,3 +263,31 @@ fn the_readme_names_version_2_of_the_protocol() {
         "README's hosted section names boomdrive.v1"
     );
 }
+
+/// The setup spec, and design Risks 2 and 4 of the change
+/// a-persons-drive-is-set-up-by-one-command: README says how a person's
+/// drive is set up on a Mac Nix does not manage, naming `boomdrive setup`,
+/// each of its flags, `crew main up` and the set's plugins in one package.
+#[test]
+fn the_readme_names_how_a_persons_drive_is_set_up() {
+    let (text, _) = readme();
+    for words in [
+        "boomdrive setup",
+        "--account",
+        "--drive",
+        "--state-repository",
+        "--repository",
+        "--add-repository",
+        "--remove-repository",
+        "--blueprints",
+        "--runs",
+        "--review",
+        "--json",
+        "crew main up",
+        "github:agentplot/boomdrive#herdr-plugins",
+        "launchctl kickstart -k gui/$(id -u)/io.github.agentplot.boomdrive",
+        "`services.boomdrive.accounts`",
+    ] {
+        assert!(text.contains(words), "README names no {words}");
+    }
+}

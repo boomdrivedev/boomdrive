@@ -61,7 +61,10 @@ fn each_rendered_file_is_one_read_here() {
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     names.sort();
-    assert_eq!(names, ["crew.toml", "empty.toml", "hosted.toml"]);
+    assert_eq!(
+        names,
+        ["crew.toml", "empty.toml", "hosted.toml", "setup.toml"]
+    );
 }
 
 /// "Only accounts": the runner's own defaults hold for every key the
@@ -116,6 +119,55 @@ fn the_crew_file_opens_crews_implementation() {
         &|_| Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
+}
+
+/// The file `boomdrive setup` writes for one account's drive (design
+/// Decision 6 of the change a-persons-drive-is-set-up-by-one-command): the
+/// account `own`'s drive `home`, crew named as the control plane with no
+/// other key of the runner's set, so the runner's own defaults hold, and a
+/// table crew's implementation reads, naming the host and the drive's one
+/// partition with its state repository.
+#[test]
+fn the_setup_file_keeps_one_drive_under_crew() {
+    let scratch = Scratch::new();
+    let file = files().join("setup.toml");
+    let config = read(&scratch, "setup.toml");
+    assert_eq!(
+        accounts(&config),
+        [(
+            "own",
+            vec![(
+                "home",
+                vec![
+                    "agentplot/flume".to_string(),
+                    "agentplot/sluice".to_string()
+                ]
+            )]
+        )]
+    );
+    assert_eq!(config.repository_root, scratch.home.join("Code"));
+    assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
+    assert!(!config.code_workspaces);
+    let table = config.control_plane.expect("a control plane named");
+    assert_eq!(table.implementation, "crew");
+    assert_eq!(table.poll_interval, Duration::from_secs(60));
+    let crew = planes::carried("crew").expect("crew's implementation");
+    let read = (crew.read)(&table.implementation_table, &file);
+    assert!(read.is_ok(), "{:?}", read.err());
+    let held = &table.implementation_table;
+    let mut keys: Vec<&String> = held.keys().collect();
+    keys.sort();
+    assert_eq!(keys, ["host", "partitions"]);
+    assert_eq!(held["host"].as_str(), Some("host-a"));
+    let partitions = held["partitions"].as_array().expect("partitions");
+    assert_eq!(partitions.len(), 1);
+    let partition = partitions[0].as_table().expect("a partition");
+    assert_eq!(partition.len(), 2);
+    assert_eq!(partition["label"].as_str(), Some("home"));
+    assert_eq!(
+        partition["state_repository"].as_str(),
+        Some("example/state")
+    );
 }
 
 /// "A host under a hosted control plane": a table the hosted
