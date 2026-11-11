@@ -97,4 +97,4 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 6. README
 
-- [ ] 6.1 README's "Installing with nix" opens with a line naming the quick start, `https://agentplot.github.io/boomdrive/start/`, as a stranger's way from nothing to a working drive. `crates/boomdrive/tests/readme.rs` gains `the_readme_names_the_quick_start`, which finds that address in README (design Decision 10). Done when `devenv shell -- cargo test -p boomdrive --test readme the_readme_names_the_quick_start` passes.
+- [x] 6.1 README's "Installing with nix" opens with a line naming the quick start, `https://agentplot.github.io/boomdrive/start/`, as a stranger's way from nothing to a working drive. `crates/boomdrive/tests/readme.rs` gains `the_readme_names_the_quick_start`, which finds that address in README (design Decision 10). Done when `devenv shell -- cargo test -p boomdrive --test readme the_readme_names_the_quick_start` passes.

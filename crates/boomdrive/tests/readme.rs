@@ -291,3 +291,23 @@ fn the_readme_names_how_a_persons_drive_is_set_up() {
         assert!(text.contains(words), "README names no {words}");
     }
 }
+
+/// boomdrives-quick-start-takes-a-stranger-to-a-working-drive (design
+/// Decision 10): README's "Installing with nix" opens with the quick
+/// start's address, a stranger's way from nothing to a working drive.
+#[test]
+fn the_readme_names_the_quick_start() {
+    let (text, _) = readme();
+    let (_, section) = text
+        .split_once("\n## Installing with nix\n")
+        .expect("README has its section Installing with nix");
+    let opening = section
+        .trim_start()
+        .split("\n\n")
+        .next()
+        .unwrap_or_default();
+    assert!(
+        opening.contains("https://agentplot.github.io/boomdrive/start/"),
+        "README's Installing with nix opens with no quick start: {opening}"
+    );
+}

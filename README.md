@@ -243,6 +243,11 @@ throttle keeps it from spinning.
 
 ## Installing with nix
 
+A stranger's way from nothing of the family installed to a working
+drive, on an Apple silicon Mac or a NixOS machine, is the quick start,
+<https://agentplot.github.io/boomdrive/start/>, whose every step a test
+of the gate runs as it stands.
+
 The flake at this repository's root, `github:agentplot/boomdrive`,
 gives the family's host tools pinned together, for `aarch64-darwin`,
 `aarch64-linux` and `x86_64-linux`:
