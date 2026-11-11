@@ -7,6 +7,7 @@
 
 #![allow(dead_code)]
 
+use boomdrive_bounded::Halt;
 use boomdrive_control::{Capacity, Hello, HostPart, Part, Pulled, Report, Want, INTERFACE_VERSION};
 use boomdrive_crew::config::{Config, Partition, StateRepository};
 use boomdrive_crew::Crew;
@@ -392,8 +393,21 @@ impl State {
 
     /// crew's implementation on `host` as parts, one for each of
     /// `partitions` (label and state repository), its data under the
-    /// scratch directory, and the lines each part says, by its label.
+    /// scratch directory, and the lines each part says, by its label; the
+    /// test's halt never set.
     pub fn parts(&self, host: &str, partitions: &[(&str, &str)]) -> (Vec<Part>, Saids) {
+        self.parts_halted_by(host, partitions, &Halt::default())
+    }
+
+    /// crew's implementation on `host` as parts, as [`State::parts`] makes
+    /// them, each listing ended at the test's `halt`, standing in for the
+    /// runner's stop (record 0042 as amended on 2026-11-11).
+    pub fn parts_halted_by(
+        &self,
+        host: &str,
+        partitions: &[(&str, &str)],
+        halt: &Halt,
+    ) -> (Vec<Part>, Saids) {
         let saids = Saids::default();
         let config = Config {
             host: host.to_string(),
@@ -413,6 +427,7 @@ impl State {
                 let lines = saids.of(label).0;
                 Box::new(move |line| lines.lock().unwrap().push(line))
             },
+            halt,
         );
         (parts, saids)
     }

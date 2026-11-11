@@ -5,6 +5,7 @@
 //! runner runs (core.52).
 
 use boomdrive::{config, planes};
+use boomdrive_bounded::Halt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -130,6 +131,7 @@ fn the_readme_control_plane_opens_crews_implementation() {
         table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
+        &Halt::default(),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }

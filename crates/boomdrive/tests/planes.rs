@@ -11,6 +11,7 @@
 
 use boomdrive::config;
 use boomdrive::planes::{self, PLANES};
+use boomdrive_bounded::Halt;
 use boomdrive_control::Part;
 use std::path::Path;
 
@@ -44,6 +45,7 @@ fn open(text: &str) -> Result<Vec<Part>, String> {
         table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
+        &Halt::default(),
     )
 }
 
@@ -80,6 +82,7 @@ fn each_part_is_handed_its_own_say() {
             Box::new(|line| panic!("said {line:?} at its opening"))
         },
         &|_| Box::new(|| panic!("woken at its opening")),
+        &Halt::default(),
     )
     .expect("opened");
     let labels: Vec<&str> = parts.iter().map(|part| part.label.as_str()).collect();

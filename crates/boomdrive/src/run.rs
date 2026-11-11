@@ -263,9 +263,16 @@ struct Control {
 impl Control {
     /// The control plane `table` names, of the configuration file `file`,
     /// keeping what it keeps under `data`, each part woken through its
-    /// bell among `bells`. An implementation says its lines on standard
-    /// error.
-    fn open(table: &ControlPlaneTable, file: &Path, data: &Path, bells: &Bells) -> Control {
+    /// bell among `bells`, and each try of a git call to a remote it makes
+    /// ended at `halt`, the runner's (record 0042 as amended on
+    /// 2026-11-11). An implementation says its lines on standard error.
+    fn open(
+        table: &ControlPlaneTable,
+        file: &Path,
+        data: &Path,
+        bells: &Bells,
+        halt: &Halt,
+    ) -> Control {
         Control {
             poll_interval: table.poll_interval,
             parts: planes::open(
@@ -276,6 +283,7 @@ impl Control {
                 table.poll_interval,
                 &|_| Box::new(|line| eprintln!("{line}")),
                 &|label| bells.waker(label),
+                halt,
             ),
         }
     }
@@ -397,8 +405,9 @@ impl Runner {
     /// configuration names is opened as its parts; one that cannot be is
     /// named by [`Runner::unopened`], and the runner keeps its
     /// repositories all the same. The runner's halt is made here and
-    /// given to `git`, so its stop ends each try of a call to a remote
-    /// in flight (record 0042 as amended on 2026-11-11).
+    /// given to `git` and to the control plane's implementation, so its
+    /// stop ends each try of a call to a remote in flight (record 0042 as
+    /// amended on 2026-11-11).
     pub fn start(
         file: Option<&Path>,
         var: impl Fn(&str) -> Option<OsString>,
@@ -425,7 +434,7 @@ impl Runner {
         let control = config
             .control_plane
             .as_ref()
-            .map(|table| Control::open(table, &file, &data, &bells));
+            .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
         let watch = Watch::new(config.fetch_interval);
         Ok(Runner {

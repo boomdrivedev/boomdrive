@@ -10,6 +10,7 @@ mod common;
 
 use boomdrive::config::{self, Config};
 use boomdrive::planes;
+use boomdrive_bounded::Halt;
 use common::Scratch;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -114,6 +115,7 @@ fn the_crew_file_opens_crews_implementation() {
         table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
+        &Halt::default(),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }
