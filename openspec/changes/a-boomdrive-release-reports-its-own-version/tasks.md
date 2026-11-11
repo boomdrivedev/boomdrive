@@ -19,7 +19,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The workflow
 
-- [ ] 3.1 `.github/workflows/release.yml` takes the tag from `release.sh next`, as now. Where there is one, it writes `release.sh notes`'s notes and runs `release.sh commit "$TAG"` with the bot's identity in the step's environment. It pushes `refs/tags/$TAG` alone through gh's credential helper given to that one push, publishes it with `gh release create "$TAG" --verify-tag --title "$TAG" --notes-file …` and no file, and runs `cache` at the tag, as design Decision 4 gives each line. The checkout keeps `persist-credentials: false`. Its header comment says the release commit. `check-releases.sh` reads the new lines and proves "The workflow's trigger", "A release" and "Nothing built, committed or pushed but the tag" (Task notes 3.1). True when `sluice exec main -- moon run root:workflow root:releases` passes.
+- [x] 3.1 `.github/workflows/release.yml` takes the tag from `release.sh next`, as now. Where there is one, it writes `release.sh notes`'s notes and runs `release.sh commit "$TAG"` with the bot's identity in the step's environment. It pushes `refs/tags/$TAG` alone through gh's credential helper given to that one push, publishes it with `gh release create "$TAG" --verify-tag --title "$TAG" --notes-file …` and no file, and runs `cache` at the tag, as design Decision 4 gives each line. The checkout keeps `persist-credentials: false`. Its header comment says the release commit. `check-releases.sh` reads the new lines and proves "The workflow's trigger", "A release" and "Nothing built, committed or pushed but the tag" (Task notes 3.1). True when `sluice exec main -- moon run root:workflow root:releases` passes.
 
 ## 4. The flake
 

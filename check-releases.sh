@@ -584,21 +584,53 @@ fi
 once() {
   [ "$(grep -c -e "$1" "$workflow")" -eq 1 ]
 }
+# The line `$1` matches, as a basic regular expression, at.
+line_of() {
+  grep -n -e "$1" "$workflow" | head -n 1 | cut -d : -f 1
+}
 # The workflow's own lines, whose $ the shell of its step expands.
 # shellcheck disable=SC2016
+notes_line='^          nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh notes "\$TAG" >"\$RUNNER_TEMP/notes\.md"$'
+# shellcheck disable=SC2016
+commit_line='^          sh release\.sh commit "\$TAG"$'
+# shellcheck disable=SC2016
+push_line='^          git -c credential\.helper= -c '"'"'credential\.helper=!gh auth git-credential'"'"' push origin "refs/tags/\$TAG"$'
+# shellcheck disable=SC2016
+create_line='^          gh release create "\$TAG" --verify-tag --title "\$TAG" --notes-file "\$RUNNER_TEMP/notes\.md"$'
+# shellcheck disable=SC2016
+cache_line='^          gh workflow run cache\.yml --ref "\$TAG"$'
+# shellcheck disable=SC2016
 if once '^          tag=$(nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh next)$' &&
-  once '^          nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh notes "\$TAG" >"\$RUNNER_TEMP/notes\.md"$' &&
-  once '^          gh release create "\$TAG" --target "\$GITHUB_SHA" --title "\$TAG" --notes-file "\$RUNNER_TEMP/notes\.md"$' &&
-  once '^          gh workflow run cache\.yml --ref "\$TAG"$' &&
-  once "^        if: steps\.next\.outputs\.tag != ''$"; then
-  pass "the workflow release publishes release.sh's tag with its notes and no file, then runs cache at it"
+  once "^        if: steps\.next\.outputs\.tag != ''$" &&
+  once "$notes_line" && once "$commit_line" && once "$push_line" &&
+  once "$create_line" && once "$cache_line" &&
+  [ "$(line_of "$notes_line")" -lt "$(line_of "$commit_line")" ] &&
+  [ "$(line_of "$commit_line")" -lt "$(line_of "$push_line")" ] &&
+  [ "$(line_of "$push_line")" -lt "$(line_of "$create_line")" ] &&
+  [ "$(line_of "$create_line")" -lt "$(line_of "$cache_line")" ]; then
+  pass "the workflow release writes release.sh's notes, makes the release commit of its tag, pushes the tag, publishes it with its notes and no file, then runs cache at it"
 else
-  fail "the workflow release does not publish release.sh's tag with its notes and no file, then run cache at it"
+  fail "the workflow release does not write release.sh's notes, make the release commit of its tag, push the tag, publish it with its notes and no file, then run cache at it, in that order"
 fi
-if grep -n -E 'nix build|cargo|upload-artifact|git (push|commit|tag)' "$workflow"; then
+if once '^          persist-credentials: false$' &&
+  once '^          GIT_AUTHOR_NAME: github-actions\[bot\]$' &&
+  once '^          GIT_AUTHOR_EMAIL: 41898282+github-actions\[bot\]@users\.noreply\.github\.com$' &&
+  once '^          GIT_COMMITTER_NAME: github-actions\[bot\]$' &&
+  once '^          GIT_COMMITTER_EMAIL: 41898282+github-actions\[bot\]@users\.noreply\.github\.com$'; then
+  pass "the workflow release's checkout keeps no credentials, and its release commit is the bot's"
+else
+  fail "the workflow release's checkout keeps credentials, or its release commit is not the bot's"
+fi
+if grep -n -E 'nix build|cargo|upload-artifact|gh release upload|git (commit|tag)' "$workflow"; then
   fail "the workflow release builds, attaches or commits something"
 else
   pass "the workflow release builds, attaches and commits nothing"
+fi
+pushes=$(grep -c -E 'git([[:space:]].*)?[[:space:]]push([[:space:]]|$)' "$workflow" || true)
+if [ "$pushes" -eq 1 ] && once "$push_line"; then
+  pass "the workflow release's one push pushes refs/tags/\$TAG alone, with no force"
+else
+  fail "the workflow release pushes more than refs/tags/\$TAG, or with force"
 fi
 
 exit "$status"
