@@ -112,7 +112,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 7. The answer
 
-- [ ] 7.1 Setup answers as the setup spec's "Setup answers in one object", "Setup's exit says how it ended" and "Run again, setup changes nothing" say:
+- [x] 7.1 Setup answers as the setup spec's "Setup answers in one object", "Setup's exit says how it ended" and "Run again, setup changes nothing" say:
   - with `--json`, one `{"set_up": …}` object, or `{"refused":{"refusal":{"reason":…}}}`;
   - without it, one line for each step, ending with the implementation's `start`;
   - exit 0 answered, 1 refused by a tool or on a host Nix manages, 2 for a usage error or a host to fix.
