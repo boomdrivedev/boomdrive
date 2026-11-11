@@ -31,6 +31,7 @@ let
     "ghostty"
     "herdr"
     "sluice"
+    "worktrunk"
   ];
   overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
   # The host's overlay, and crew turned on with its host and partitions.
