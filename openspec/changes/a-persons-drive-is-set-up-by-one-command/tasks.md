@@ -44,7 +44,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - `no_flume_is_ever_passed`, which proves "No --flume for any role" over every role run either way.
 
   Done when `devenv shell -- cargo test -p boomdrive-crew --lib setup::drive_set` passes.
-- [ ] 3.3 `prepare(find)` takes a finder of programs on the `PATH`. It finds `hostname`, `gh` and `crew`, refusing each it cannot find as the host's to fix, naming it and, for `crew`, `github:agentplot/boomdrive#crew`. It then runs `hostname -s`, refusing as the host's to fix a name crew does not take, naming it and `sudo scutil --set HostName`. `set_up(prepared, …)` runs, in order:
+- [x] 3.3 `prepare(find)` takes a finder of programs on the `PATH`. It finds `hostname`, `gh` and `crew`, refusing each it cannot find as the host's to fix, naming it and, for `crew`, `github:agentplot/boomdrive#crew`. It then runs `hostname -s`, refusing as the host's to fix a name crew does not take, naming it and `sudo scutil --set HostName`. `set_up(prepared, …)` runs, in order:
   1. `gh repo view <state> --json name`, then `gh repo create <state> --private` where gh says `Could not resolve to a Repository`;
   2. `crew drive set` with task 3.2's arguments.
 
