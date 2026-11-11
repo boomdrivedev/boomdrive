@@ -122,7 +122,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
   - that the file still holds no credential, only where the key is.
 
   README's pass says a fetch goes through the App's token alone where `[forge]` is named, with no credential where the App is not installed or no token could be minted, and through the host's own helper where `[forge]` is not named. README gains the section `## Giving every tool its forge token` after "Running on a host", as design Decision 8 has it. `tests/readme.rs` asserts that README's configuration reads the App it shows. True when `devenv shell -- cargo test -p boomdrive --test readme` passes.
-- [ ] 6.2 CLAUDE.md's first paragraph gains one sentence: where the configuration's `[forge]` names the Boomdrive App's key, `boomdrive forge-token` gives each tool a short-lived token for a served repository in git's credential-helper protocol, and the runner's own fetches take one the same way (record 0007 as amended; core.33). True when `sluice exec main -- moon run root:format` passes.
+- [x] 6.2 CLAUDE.md's first paragraph gains one sentence: where the configuration's `[forge]` names the Boomdrive App's key, `boomdrive forge-token` gives each tool a short-lived token for a served repository in git's credential-helper protocol, and the runner's own fetches take one the same way (record 0007 as amended; core.33). True when `sluice exec main -- moon run root:format` passes.
 
 ## 7. The specs
 
