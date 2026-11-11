@@ -1,0 +1,69 @@
+---
+import { getCollection, getEntry, render } from "astro:content";
+import Base from "../layouts/Base.astro";
+
+// The quick start (record 0043; site.8; design Decision 2 of the change
+// boomdrives-quick-start-takes-a-stranger-to-a-working-drive): the words of
+// src/content/pages/start.md, then the steps on a Mac and on NixOS, each in
+// the order of its place there, numbered. A step is its title, its words and
+// each file it shows, read from src/start/ at build and set in a block as it
+// stands, with the path the reader writes it to above it. A step both ways
+// share is one record, shown in both. The page has no script.
+
+const page = await getEntry("pages", "start");
+if (!page) throw new Error("the quick start reads src/content/pages/start.md, which is missing");
+const { Content: Lede } = await render(page);
+
+// Every file under src/start/, as its text, by its path there.
+const texts = import.meta.glob<string>("../start/**/*", { query: "?raw", import: "default", eager: true });
+const text = (step: string, path: string) => {
+  const found = texts[`../start/${path}`];
+  if (found === undefined) throw new Error(`the step ${step} shows ${path}, which src/start/ does not hold`);
+  return found;
+};
+
+const steps = await Promise.all(
+  (await getCollection("start")).map(async (step) => ({
+    id: step.id,
+    data: step.data,
+    files: step.data.files.map((file) => ({ ...file, text: text(step.id, file.path) })),
+    Content: (await render(step)).Content,
+  })),
+);
+const ways = [
+  { id: "mac", title: "On a Mac" },
+  { id: "nixos", title: "On NixOS" },
+] as const;
+const on = (way: "mac" | "nixos") =>
+  steps.filter((step) => step.data.at[way] !== undefined).sort((a, b) => a.data.at[way]! - b.data.at[way]!);
+---
+
+<Base title={page.data.title} description={page.data.description}>
+  <h1>{page.data.title}</h1>
+  <div class="start-lede"><Lede /></div>
+  {
+    ways.map((way) => (
+      <section class="start-way" aria-labelledby={`start-${way.id}`}>
+        <h2 id={`start-${way.id}`}>{way.title}</h2>
+        <ol class="start-steps">
+          {on(way.id).map((step) => (
+            <li class="start-step" id={`${way.id}-${step.id}`}>
+              <h3>{step.data.title}</h3>
+              <step.Content />
+              {step.files.map((file) => (
+                <figure class="start-file">
+                  {file.writes && (
+                    <figcaption>
+                      Write it to <code>{file.writes}</code>
+                    </figcaption>
+                  )}
+                  <pre set:text={file.text} />
+                </figure>
+              ))}
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))
+  }
+</Base>
