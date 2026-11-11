@@ -66,7 +66,47 @@ let
       installable:
       t.expect (isPackage installable) "mac/install.sh's ${installable} is no package of aarch64-darwin"
     ) installables;
+  # NixOS's flake, its outputs called with a nixpkgs whose nixosSystem
+  # gives back its arguments and a set whose module is a marker (design
+  # Decision 8).
+  nixosFlake =
+    let
+      flake = import (start + "/nixos/flake.nix");
+      marker = {
+        quickStart = "the set's nixosModules.default";
+      };
+      called = flake.outputs {
+        nixpkgs.lib.nixosSystem = arguments: arguments;
+        boomdrive.nixosModules.default = marker;
+      };
+      modules = called.nixosConfigurations.your-host.modules or null;
+      want = [
+        (start + "/nixos/configuration.nix")
+        marker
+        (start + "/nixos/boomdrive.nix")
+      ];
+      describe =
+        module:
+        if builtins.isPath module then
+          toString module
+        else if module == marker then
+          marker.quickStart
+        else
+          "a module";
+    in
+    t.expect ((flake.inputs.boomdrive.url or null) == address)
+      "nixos/flake.nix's boomdrive is ${flake.inputs.boomdrive.url or "none"}, not ${toString address}"
+    ++ t.expect (
+      !(flake.inputs.boomdrive ? inputs)
+    ) "nixos/flake.nix makes boomdrive's inputs follow its own"
+    ++ t.expect (flake.inputs ? nixpkgs) "nixos/flake.nix has no input nixpkgs"
+    ++
+      t.expect (modules == want)
+        "nixos/flake.nix's your-host is of ${
+          if builtins.isList modules then lib.concatMapStringsSep ", " describe modules else "no modules"
+        }, not ${lib.concatMapStringsSep ", " describe want}";
 in
 {
   "quick start: the Mac's install" = macInstall;
+  "quick start: NixOS's flake" = nixosFlake;
 }

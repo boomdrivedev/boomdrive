@@ -31,7 +31,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 3. NixOS's steps
 
-- [ ] 3.1 `site/src/start/nixos/flake.nix` is the host's flake of design Decision 4:
+- [x] 3.1 `site/src/start/nixos/flake.nix` is the host's flake of design Decision 4:
   - its inputs are `nixpkgs` and `boomdrive`, the address README's install names, its `nixpkgs` its own;
   - its outputs, of `{ nixpkgs, boomdrive, ... }`, give `nixosConfigurations.your-host` from `./configuration.nix`, `boomdrive.nixosModules.default` and `./boomdrive.nix`.
 
