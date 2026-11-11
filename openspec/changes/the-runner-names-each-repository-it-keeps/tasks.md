@@ -30,7 +30,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. The runner's branch on a host
 
-- [ ] 5.1 `boomdrive run --once`, under crew's implementation over the scratch state repository, writes `home/runner/host-a`'s `repositories.rec`. It names the drive `home`'s repository, at its container in the runner's data directory, and nothing of the drive `work`'s. `crates/boomdrive/tests/control.rs`'s `the_runners_branch_names_each_repository_of_its_drive` proves it, and `one_control_pass` still passes (design Decisions 1 to 3; Task notes 5.1). True when `devenv shell -- cargo test -p boomdrive --test control -- the_runners_branch_names_each_repository_of_its_drive one_control_pass` passes.
+- [x] 5.1 `boomdrive run --once`, under crew's implementation over the scratch state repository, writes `home/runner/host-a`'s `repositories.rec`. It names the drive `home`'s repository, at its container in the runner's data directory, and nothing of the drive `work`'s. `crates/boomdrive/tests/control.rs`'s `the_runners_branch_names_each_repository_of_its_drive` proves it, and `one_control_pass` still passes (design Decisions 1 to 3; Task notes 5.1). True when `devenv shell -- cargo test -p boomdrive --test control -- the_runners_branch_names_each_repository_of_its_drive one_control_pass` passes.
 
 ## 6. What the runner says of it
 
