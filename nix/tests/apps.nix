@@ -256,6 +256,69 @@ let
       !builtins.elem set.portless.outPath (profileOf without)
     ) "the ${platform} system profile without the runner holds the set's portless";
 
+  # No launchd job, systemd unit or activation step of the modules' runs
+  # portless (design Decision 6 of the change
+  # portless-comes-with-the-flake): each one's text, as text, holds no
+  # path of the set's portless, and a failure names the one that does.
+  textOf =
+    value:
+    builtins.unsafeDiscardStringContext (
+      if builtins.isString value then value else toString (value.text or "")
+    );
+  launchdOf =
+    kind: jobs:
+    lib.mapAttrs' (name: job: {
+      name = "launchd ${kind} ${name}";
+      value = builtins.unsafeDiscardStringContext (
+        toString (job.serviceConfig.Program or "")
+        + " "
+        + toString (job.serviceConfig.ProgramArguments or [ ])
+      );
+    }) jobs;
+  systemdOf =
+    kind: units:
+    lib.mapAttrs' (name: unit: {
+      name = "systemd ${kind} ${name}";
+      value = builtins.unsafeDiscardStringContext (
+        toString (unit.script or "") + " " + toString (unit.serviceConfig.ExecStart or "")
+      );
+    }) units;
+  stepsOf =
+    platform: evaluated:
+    let
+      inherit (evaluated) config;
+    in
+    if platform == "nix-darwin" then
+      {
+        "activation script" = textOf config.system.activationScripts.script;
+      }
+      // launchdOf "daemon" config.launchd.daemons
+      // launchdOf "agent" config.launchd.agents
+      // launchdOf "user agent" config.launchd.user.agents
+    else
+      lib.mapAttrs' (name: step: {
+        name = "activation step ${name}";
+        value = textOf step;
+      }) config.system.activationScripts
+      // lib.mapAttrs' (name: step: {
+        name = "user activation step ${name}";
+        value = textOf step;
+      }) (userScripts evaluated)
+      // systemdOf "service" config.systemd.services
+      // systemdOf "user service" config.systemd.user.services;
+  noProxy =
+    platform:
+    { system, set, ... }:
+    let
+      portless = builtins.unsafeDiscardStringContext set.portless.outPath;
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: text:
+        t.expect (!lib.hasInfix portless text) "the ${platform} system's ${name} runs the set's portless"
+      ) (stepsOf platform (system { }))
+    );
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -281,6 +344,7 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own portless" hostsPortless
 // onEach "No portless of the set's" noPortless
 // onEach "No portless without the runner" portlessWithoutRunner
+// onEach "No proxy of the modules'" noProxy
 // {
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
