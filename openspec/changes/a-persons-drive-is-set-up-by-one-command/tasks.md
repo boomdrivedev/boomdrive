@@ -121,7 +121,7 @@ Work through the tasks in order. A task is done once the check it names passes, 
 
 ## 8. README
 
-- [ ] 8.1 README's "Installing with nix" install line adds `github:agentplot/boomdrive#herdr` and `github:agentplot/boomdrive#herdr-plugins`, and says why the plugins come as one package. A new section after it, "Setting up a drive on a Mac Nix does not manage", says:
+- [x] 8.1 README's "Installing with nix" install line adds `github:agentplot/boomdrive#herdr` and `github:agentplot/boomdrive#herdr-plugins`, and says why the plugins come as one package. A new section after it, "Setting up a drive on a Mac Nix does not manage", says:
   - setup's one command, with an example of every answer as a flag;
   - what it asks on a terminal;
   - what it makes and writes, and the order;
