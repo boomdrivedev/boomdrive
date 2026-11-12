@@ -53,6 +53,12 @@ const KEPT: &str = "agentplot/flume";
 /// crew's work for the host `host-a` in the partition `home`, each
 /// `poll_interval`.
 fn carrying(fetch_interval: &str, poll_interval: &str) -> String {
+    carrying_drives(fetch_interval, poll_interval, &keeping(&[KEPT]))
+}
+
+/// A configuration as [`carrying`] writes it, but keeping the drives
+/// `drives` writes, as `common::drives` writes them.
+fn carrying_drives(fetch_interval: &str, poll_interval: &str, drives: &str) -> String {
     format!(
         "fetch_interval = {fetch_interval:?}\n{}\n\
          [control_plane]\n\
@@ -63,7 +69,7 @@ fn carrying(fetch_interval: &str, poll_interval: &str) -> String {
          [[control_plane.crew.partitions]]\n\
          label = \"home\"\n\
          state_repository = \"example/home-state\"\n",
-        keeping(&[KEPT])
+        drives
     )
 }
 
@@ -217,6 +223,41 @@ fn one_control_pass() {
     assert!(answers.contains("Outcome: launched"), "{answers}");
     let runner = scratch.git(&state.bare, &["show", "home/runner/host-a:runner.rec"]);
     assert!(runner.contains("Host: host-a"), "{runner}");
+}
+
+/// With crew's implementation, `boomdrive run --once` writes
+/// `home/runner/host-a`'s `repositories.rec`, naming the drive `home`'s
+/// repository at its container in the runner's data directory, and
+/// nothing of the drive `work`'s (the crew-control-plane spec's "A drive's
+/// repositories and their folders"; design Decisions 1 to 3 of
+/// the-runner-names-each-repository-it-keeps).
+#[test]
+fn the_runners_branch_names_each_repository_of_its_drive() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.origin("example/app");
+    let state = state_repository(&scratch);
+    scratch.configure(&carrying_drives(
+        "2m",
+        "1m",
+        &common::drives(&[("home", &[KEPT]), ("work", &["example/app"])]),
+    ));
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+
+    let output = once(&scratch, &tools);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let repositories = scratch.git(
+        &state.bare,
+        &["show", "home/runner/host-a:repositories.rec"],
+    );
+    let kept = format!(
+        "\nRepository: {KEPT}\nFolder: {}",
+        scratch.container(KEPT).display()
+    );
+    assert!(repositories.contains(&kept), "{repositories}");
+    assert!(!repositories.contains("example/app"), "{repositories}");
 }
 
 /// The running spec's "Flume's status refused": the control pass pulled

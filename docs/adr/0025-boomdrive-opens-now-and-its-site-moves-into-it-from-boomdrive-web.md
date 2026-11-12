@@ -10,7 +10,7 @@ decision-makers:
 
 # Boomdrive opens now, and its site moves into it from boomdrive-web
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below, twice: the site moves in before the opening; and Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below, twice: the site moves in before the opening; and Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move. Amended on 2026-11-12, below: a repository moves to boomdrivedev once its work is finished and once the family's App reaches it.
 
 Deciders: the user, 2026-11-07, in the design agent's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The order, the names and how the site's rules come over are the design agent's, each cheap to change before the move.
 
@@ -73,3 +73,16 @@ Consequences:
 - Bad: each site's old address under `agentplot.github.io` stops serving once its repository moves.
 - Bad: until each host's data is moved by hand, its clones and records name the old addresses, which GitHub's redirect still serves for git.
 
+## Amendment, 2026-11-12: a repository moves once its work is finished, and once the family's App reaches it
+
+Status: accepted on 2026-11-12 by agentplot-design. It is the design agent's own choice, under the 2026-11-09 amendment's word that how the move is carried out is the design agent's, and cheap to change. It answers agentplot-planner's question that day and rests on agentplot-ops' reading of deneb.
+
+Sources: agentplot-ops' reading of deneb, 2026-11-12. Deneb's sluice mints its tokens from App 5324750, installed on agentplot alone (installation 171576254), so it can't fetch, push or land in a repository once that repository leaves agentplot. boomdrivedev holds only the Boomdrive App, 5719968 (installation 181060998), and no host's sluice holds its key. Each repository's main and `bolt/*` are kept by repository rulesets, which move with it, and their one bypass actor is App 5324750. GitHub's page on transferring a repository says git clone, fetch and push follow the old address and says nothing of an App's installation. Records 0007 (as amended on 2026-11-09) and 0021; crew records 0060 and its decision 3; Flume's statement, C.4 (a repository named by its clone's git directory).
+
+- **The family's App reaches every repository first.** No repository moves until each host that lands work through sluice takes its tokens from the runner, which holds the Boomdrive App's key (0007 as amended; the bolt `the-runner-gives-every-tool-its-forge-token`). The App is installed on agentplot as well as on boomdrivedev, for the repositories that stay and for each one until it moves. Giving the runner the key and installing the App are the user's steps.
+- **A repository moves once its work is finished.** On a host, a move is a removal and an addition (0021, crew 0060). The new address is a new clone in a new folder, which Flume reads as a new repository and sluice as a new queue. So a repository moves only once crew 0060's decision 3 finds its work finished: no live place, no bolt or fix unlanded, no open card naming it, no unanswered batch carrying its work and no open proposal naming it. New starts in it are held while it drains.
+- **The transfer and each host's move are one step.** Once the repository is drained, it is transferred and its rulesets name the Boomdrive App as their bypass in place of 5324750. It is then removed from each host's runner, Flume and sluice and added back at its `boomdrivedev/` address, and its own change rewrites its addresses. No host works a moved repository through GitHub's redirect.
+- **The kit keeps its name.** crew names a kit by the last part of its address. A move changes the address the drive names and no record of crew's, and `crew kit rename` is for a change of name alone (crew 0060).
+- **One at a time.** Repositories move one after another, each once drained, so no other repository's work is held.
+
+The 2026-11-09 amendment's order, the transfers waiting on nothing, no longer holds, and nor does its last *Bad* consequence: no host's data names an old address while the repository is worked.

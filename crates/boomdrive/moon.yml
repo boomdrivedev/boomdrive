@@ -1,25 +1,25 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # The binary, boomdrive. Each check is one task, in the fast layer
-# (core.7). Each builds boomdrive-control, boomdrive-crew,
-# boomdrive-hosted and boomdrive-bounded too, so takes their sources.
+# (core.7). Each builds boomdrive-control, boomdrive-crew and
+# boomdrive-hosted too, so takes their sources.
 language: 'rust'
 layer: 'application'
 
 tasks:
   format:
     command: 'cargo fmt --check -p boomdrive'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/crates/boomdrive-bounded/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   lint:
     command: 'cargo clippy -p boomdrive --all-targets --all-features -- -D warnings'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/crates/boomdrive-bounded/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   typecheck:
     command: 'cargo check -p boomdrive --all-targets --all-features'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/crates/boomdrive-bounded/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # The set's tests (tests/family.rs) run the programs the devenv shell
@@ -34,6 +34,6 @@ tasks:
   # which the runner's own `config::view_path` is held to.
   test:
     command: 'cargo test -p boomdrive'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/crates/boomdrive-bounded/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '/nix/tests/data-dirs.json', '/nix/tests/clone-dirs.json', '/nix/tests/view-dirs.json', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '/nix/tests/data-dirs.json', '/nix/tests/clone-dirs.json', '/nix/tests/view-dirs.json', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
