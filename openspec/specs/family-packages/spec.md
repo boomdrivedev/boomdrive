@@ -106,8 +106,8 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 
 #### Scenario: crew through its own flake
 
-- **WHEN** the lock names a tag of crew's, whose tree carries no version
-- **THEN** the `crew` package is crew's flake's, its source, name and home page crew's own, and its version is the tag's without the `v`
+- **WHEN** the lock names a tag of crew's whose tree carries its version
+- **THEN** the `crew` package is crew's flake's own `crew` for that system, unchanged, and its version is the tag's without the `v`
 
 #### Scenario: herdr through its own flake
 

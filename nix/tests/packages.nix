@@ -215,8 +215,9 @@ in
     ) "packages.${system}.sluice's build is given SLUICE_VERSION ${given}, not its tag's ${version}"
   );
 
-  # crew keeps its version in no file, so the set gives crew's flake's
-  # package its tag's (design Decision 3).
+  # crew's tree carries its version, plugin/release.json, so the set's
+  # crew is crew's flake's own package, unchanged, as Flume's is (the
+  # change the-sets-crew-pin-takes-its-new-names, design Decision 2).
   "crew through its own flake" = each (
     system: packages:
     let
@@ -225,10 +226,8 @@ in
       version = t.lockedVersion "crew";
     in
     t.expect (
-      toString crew.src == toString own.src
-      && crew.pname == own.pname
-      && crew.meta.homepage == own.meta.homepage
-    ) "packages.${system}.crew is not crew's flake's package"
+      crew.drvPath == own.drvPath
+    ) "packages.${system}.crew is not crew's flake's packages.${system}.crew"
     ++ t.expect (
       crew.version == version
     ) "packages.${system}.crew says ${crew.version}, not its tag's ${version}"
