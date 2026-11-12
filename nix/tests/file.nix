@@ -7,7 +7,9 @@
 # `repositories` of before, the accounts in `settings`, a key in a drive
 # the module does not declare, an owner and a name that make no address, a
 # drive's name under two accounts, or an address kept twice, fails it too
-# (record 0028).
+# (record 0028). The App is named by `settings.forge`, its key file never
+# in the store and never a Nix path value (record 0007 as amended on
+# 2026-11-11).
 t:
 let
   inherit (t) lib;
@@ -107,6 +109,17 @@ let
     ];
     agentplot = [ "flume" ];
   };
+  # The crew value's App with its key file in the store, and given as a
+  # Nix path value, which the store would copy it into, and in the store
+  # of the nix evaluating it, which the checks' is.
+  storeKey = lib.recursiveUpdate settings.crew {
+    settings.forge.key_file = "/nix/store/abc-app.pem";
+  };
+  ownStoreKey = lib.recursiveUpdate settings.crew {
+    settings.forge.key_file = "${builtins.storeDir}/abc-app.pem";
+  };
+  pathKey = lib.recursiveUpdate settings.crew { settings.forge.key_file = ./app.pem; };
+
   ownersLines = lib.splitString "\n" (rendered owners);
   ownersAt = lib.lists.findFirstIndex (line: line == "[accounts.own.drives.home]") null ownersLines;
   ownersDrive = if ownersAt == null then [ ] else lib.drop (ownersAt + 1) ownersLines;
@@ -178,6 +191,28 @@ in
     ]) "no failure names agentplot/flume kept twice by the drive home: ${toString (failures inOne)}";
 
   "A host under crew" = rendersAs "crew";
+
+  "The App named" =
+    t.expect (lib.hasSuffix "\n[forge]\napp_id = 1\nkey_file = \"~/.config/boomdrive/app.pem\"\n" (text "crew")) "the crew value renders no [forge] with app_id = 1 and its key_file: ${builtins.toJSON (text "crew")}"
+    ++ t.expect (
+      failures settings.crew == [ ]
+    ) "the crew value's App fails: ${toString (failures settings.crew)}";
+
+  "A key file in the store" =
+    t.expect
+      (namesAll storeKey [
+        "services.boomdrive.settings.forge.key_file"
+        "Nix store"
+      ])
+      "no failure names services.boomdrive.settings.forge.key_file and the Nix store: ${toString (failures storeKey)}"
+    ++ t.expect (namesAll ownStoreKey [
+      "services.boomdrive.settings.forge.key_file"
+      "Nix store"
+    ]) "no failure names a key file in ${builtins.storeDir}: ${toString (failures ownStoreKey)}";
+
+  "A key given as a Nix path" = t.expect (
+    !(builtins.tryEval (evaluated pathKey).services.boomdrive.settings.forge.key_file).success
+  ) "a key_file given as a Nix path value evaluates";
 
   "A host under a hosted control plane" = rendersAs "hosted";
 

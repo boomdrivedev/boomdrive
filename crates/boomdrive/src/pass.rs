@@ -15,13 +15,20 @@
 //! takes shared, and after each the pass runs the loop's hook, which keeps
 //! the landings told since, so a landing waits for no more than the
 //! repository in hand (record 0026; design Decisions 3 and 4). A pass
-//! stopped keeps no further repository and no workspace. The pass says
+//! stopped keeps no further repository and no workspace. Each fetch, a new
+//! clone's first among them, is given what the forge gives for its
+//! repository: the App's token alone where the configuration names
+//! `[forge]`, no credential where the App is not installed there or no
+//! token could be minted, and the host's own helpers where it names no
+//! `[forge]`; a fetch that fails drops the repository's kept token (record
+//! 0007 as amended on 2026-11-11; design Decision 5). The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
 //! <words>`, and a pass with nothing to say writes nothing.
 
 use crate::clone::{self, Found};
 use crate::code_workspace::{self, Act, Wanted};
 use crate::config::{self, Address, Config, LocalLayer};
+use crate::forge::{Asked, Forge};
 use crate::git::Git;
 use crate::lacks;
 use crate::locks::Locks;
@@ -64,13 +71,16 @@ impl Outcome {
 pub type Between<'a> = &'a mut dyn FnMut() -> bool;
 
 /// One pass over `config`, the runner's clones kept in `data`, each
-/// repository under its lock among `locks`, `between` run after each,
-/// each line said to `say` as it is said. Where `config`'s local layer
-/// was not taken, its managed layer's repositories are kept and none is
-/// let go. Once `stop` is set, no further repository is kept or let go,
-/// no workspace is kept, and the pass ends.
+/// fetch given what `forge` gives for its repository, each repository
+/// under its lock among `locks`, `between` run after each, each line said
+/// to `say` as it is said. Where `config`'s local layer was not taken, its
+/// managed layer's repositories are kept and none is let go. Once `stop`
+/// is set, no further repository is kept or let go, no workspace is kept,
+/// and the pass ends.
+#[allow(clippy::too_many_arguments)]
 pub fn pass(
     git: &Git,
+    forge: &Forge,
     data: &Path,
     config: &Config,
     locks: &Locks,
@@ -90,7 +100,16 @@ pub fn pass(
             return outcome;
         }
         let held = locks.keep(address);
-        let kept = keep_configured(git, data, config, &clones, address, &mut standing, say);
+        let kept = keep_configured(
+            git,
+            forge,
+            data,
+            config,
+            &clones,
+            address,
+            &mut standing,
+            say,
+        );
         drop(held);
         outcome = outcome.and(kept);
         if between() {
@@ -155,12 +174,13 @@ fn holds_back(config: &Config) -> bool {
     matches!(config.local, LocalLayer::NotTaken { .. })
 }
 
-/// Keeps `address` alone, just as a pass keeps it, against `config`,
-/// under its lock among `locks` (design 9): what a landing told of it
-/// runs. An address `config` does not name is named, and nothing is
-/// cloned or fetched for it (core.5).
+/// Keeps `address` alone, just as a pass keeps it, against `config`, its
+/// fetch given what `forge` gives, under its lock among `locks` (design
+/// 9): what a landing told of it runs. An address `config` does not name
+/// is named, and nothing is cloned or fetched for it (core.5).
 pub fn keep_one(
     git: &Git,
+    forge: &Forge,
     data: &Path,
     config: &Config,
     locks: &Locks,
@@ -177,6 +197,7 @@ pub fn keep_one(
     match find(git, data, say) {
         Some(clones) => keep_configured(
             git,
+            forge,
             data,
             config,
             &clones,
@@ -204,11 +225,14 @@ fn find(git: &Git, data: &Path, say: &mut dyn FnMut(String)) -> Option<Vec<Found
 }
 
 /// Keeps `address`, which `config` names, its clone among `clones` where
-/// it has one, each line said with its address. The clone records the
+/// it has one, its fetch given what `forge` gives for it under `config`'s
+/// `[forge]`, each line said with its address. The clone records the
 /// drive `config` names it under (design Decision 7), and the drive it
 /// records once kept joins `standing`.
+#[allow(clippy::too_many_arguments)]
 fn keep_configured(
     git: &Git,
+    forge: &Forge,
     data: &Path,
     config: &Config,
     clones: &[Found],
@@ -221,7 +245,10 @@ fn keep_configured(
         .drive_of(address)
         .map_or("", |drive| drive.name.as_str());
     let view = config::view_path(config, address);
-    keep(git, data, address, found, drive, &view, standing, say)
+    let asked = forge.credential(config.forge.as_ref(), address);
+    keep(
+        git, forge, &asked, data, address, found, drive, &view, standing, say,
+    )
 }
 
 /// Keeps each drive's VS Code workspace the configuration wants, the
@@ -454,10 +481,15 @@ fn take_workspace(file: &Path, drive: &str, say: &mut dyn FnMut(String)) -> Outc
 /// branch (design 6), then keeps its view at `view` (design 7). A view
 /// the runner put where the repository root no longer gives is let go of
 /// first. The drive the clone records once kept joins `standing`. Each
-/// line of the repository's says its address.
+/// line of the repository's says its address. The fetch is given what
+/// `forge` gave, `asked`; one that fails drops the repository's kept
+/// token, and its line gives git's words, then the mint's where a mint was
+/// refused.
 #[allow(clippy::too_many_arguments)]
 fn keep(
     git: &Git,
+    forge: &Forge,
+    asked: &Asked,
     data: &Path,
     address: &Address,
     found: Option<&Found>,
@@ -478,8 +510,12 @@ fn keep(
                 Outcome::Failed => found.drive.clone(),
             };
             standing.extend(records);
-            if let Err(failure) = clone::fetch(git, &bare) {
-                say(format!("{address}: not fetched: {failure}"));
+            if let Err(failure) = clone::fetch(git, &bare, &asked.credential) {
+                forge.drop(address);
+                say(format!(
+                    "{address}: not fetched: {failure}{}",
+                    no_token(asked)
+                ));
                 return Outcome::Failed;
             }
             found.container.clone()
@@ -493,7 +529,7 @@ fn keep(
                 ));
                 return Outcome::Kept;
             }
-            match clone::make(git, data, address) {
+            match clone::make(git, data, address, &asked.credential) {
                 Ok(container) => {
                     say(format!("{address}: cloned from {}", clone::url(address)));
                     recorded = record_drive(git, address, &clone::bare(&container), drive, say);
@@ -503,7 +539,11 @@ fn keep(
                     container
                 }
                 Err(failure) => {
-                    say(format!("{address}: not cloned: {failure}"));
+                    forge.drop(address);
+                    say(format!(
+                        "{address}: not cloned: {failure}{}",
+                        no_token(asked)
+                    ));
                     return Outcome::Failed;
                 }
             }
@@ -535,6 +575,15 @@ fn keep(
                     say(format!("{address}: {words}"))
                 }))
         }
+    }
+}
+
+/// What a failed fetch's line adds after git's words: the mint's, where a
+/// mint was refused, and nothing otherwise.
+fn no_token(asked: &Asked) -> String {
+    match &asked.refused {
+        Some(words) => format!("; no forge token: {words}"),
+        None => String::new(),
     }
 }
 

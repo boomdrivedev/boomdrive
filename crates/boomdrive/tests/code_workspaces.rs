@@ -517,6 +517,7 @@ fn a_stopped_pass_writes_no_workspace() {
 
     boomdrive::pass::pass(
         &scratch.runner_git(),
+        &boomdrive::forge::Forge::new(),
         &scratch.data(),
         &config,
         &boomdrive::locks::Locks::new(),

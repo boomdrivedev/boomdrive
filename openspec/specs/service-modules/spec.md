@@ -535,6 +535,25 @@ The README's install with nix SHALL say that the launcher the modules install is
 - **WHEN** the README's install with nix is read
 - **THEN** it names `menu bar`, `each drive` and `Default stream`
 
+### Requirement: The App's key is named by a path outside the store
+
+`services.boomdrive.settings.forge` SHALL be declared, unset by default: its `app_id` a positive integer and its `key_file` a string, so a Nix path value fails the option's type and a key is never copied into the store. Evaluation SHALL fail, naming `services.boomdrive.settings.forge.key_file` and the Nix store, where `key_file` begins with the store directory. Set, it SHALL be rendered as the file's `[forge]`, which the runner reads (record 0007 as amended on 2026-11-11; core.46).
+
+#### Scenario: The App named
+
+- **WHEN** `settings.forge` is `{ app_id = 1; key_file = "~/.config/boomdrive/app.pem"; }`
+- **THEN** the file holds `[forge]` with `app_id = 1` and that `key_file`, and the runner reads the App `1` from it
+
+#### Scenario: A key file in the store
+
+- **WHEN** `settings.forge.key_file` is `"/nix/store/abc-app.pem"`
+- **THEN** evaluation fails, naming `services.boomdrive.settings.forge.key_file` and the Nix store
+
+#### Scenario: A key given as a Nix path
+
+- **WHEN** `settings.forge.key_file` is a Nix path value
+- **THEN** evaluation fails on the option's type
+
 ### Requirement: Under crew, the runner's crew table is written from crew's drives on this host
 
 Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it: `host` as `services.crew.host`, and one entry of `partitions` for each of crew's drives whose `machine` is that host, in the order of their labels, each its `label` and its `state` as `state_repository` alone. `settings.control_plane.crew` SHALL read that table (record 0023; record 0032; core.18).
