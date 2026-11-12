@@ -6,8 +6,6 @@
 #   boomdrive-crew     crew's implementation of the interface
 #   boomdrive-hosted   the hosted control plane's implementation, which
 #                     holds the runner's protocol
-#   boomdrive-bounded  a git call to a remote run to its limit, in a
-#                     process group of its own (record 0042)
 #   nix                the flake: the family's packages, the service's
 #                     modules and the cache's workflow (record 0020)
 #   site               the site: the Method, its field notes and the
@@ -29,7 +27,6 @@ projects:
   boomdrive-control: 'crates/boomdrive-control'
   boomdrive-crew: 'crates/boomdrive-crew'
   boomdrive-hosted: 'crates/boomdrive-hosted'
-  boomdrive-bounded: 'crates/boomdrive-bounded'
   nix: 'nix'
   site: 'site'
   root: '.'

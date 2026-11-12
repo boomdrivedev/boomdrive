@@ -1,8 +1,11 @@
 #!/bin/sh
 # The releases spec (record 0024, core.48), proven in scratch repositories
 # made in a temporary directory: release.sh's next tag and its notes under
-# the tree's cliff.toml, release-preview beside them, check-commits.sh
-# under the tree's .versionrc, and the workflow release read line by line.
+# the tree's cliff.toml, after a tag on main and after one on a release
+# commit off it, release-preview beside them, check-commits.sh under the
+# tree's .versionrc, set-version.sh and check-versions.sh on scratch
+# copies of the tree's manifests, release.sh's release commit of a main
+# that commits them, and the workflow release read line by line.
 # The scratch repositories' git reads no configuration of the host's, and
 # their names are neutral (core.41).
 set -eu
@@ -35,7 +38,7 @@ repo() {
   dir="$scratch/$1"
   git init -q -b main "$dir"
   cp "$tree/cliff.toml" "$tree/.versionrc" "$tree/release.sh" \
-    "$tree/check-commits.sh" "$dir/"
+    "$tree/set-version.sh" "$tree/check-commits.sh" "$dir/"
   files=0
 }
 
@@ -215,6 +218,60 @@ else
 $site_notes"
 fi
 
+# A release commit tagged `$1`, cut from main's tip in `$dir` as the
+# workflow cuts one: main's tree with a file of its own giving the
+# version, main's tip its one parent, and main left where it was, so the
+# tag is off main's history.
+cut_release() {
+  blob=$(printf '%s\n' "${1#v}" | git -C "$dir" hash-object -w --stdin)
+  GIT_INDEX_FILE="$dir.index" git -C "$dir" read-tree HEAD
+  GIT_INDEX_FILE="$dir.index" git -C "$dir" update-index --add --cacheinfo "100644,$blob,version"
+  cut_tree=$(GIT_INDEX_FILE="$dir.index" git -C "$dir" write-tree)
+  rm -f "$dir.index"
+  cut_commit=$(git -C "$dir" commit-tree "$cut_tree" -p HEAD -m "chore(release): $1")
+  git -C "$dir" tag "$1" "$cut_commit"
+}
+
+# Scenario: A fix after a release commit.
+repo cutfix
+commit "feat: a start"
+cut_release v0.1.0
+commit "fix: a fix"
+got=$(next)
+if [ "$got" = v0.1.1 ]; then
+  pass "'fix: a fix' after v0.1.0's release commit releases v0.1.1"
+else
+  fail "'fix: a fix' after v0.1.0's release commit releases ${got:-nothing}, not v0.1.1"
+fi
+
+# Scenario: Nothing to release after a release commit.
+repo cutnothing
+commit "feat: a start"
+cut_release v0.1.0
+commit "chore: a chore"
+got=$(next)
+if [ -z "$got" ] && grep -q 'v0.1.0 is released already' "$scratch/cutnothing.log"; then
+  pass "a chore after v0.1.0's release commit releases nothing"
+else
+  fail "a chore after v0.1.0's release commit releases ${got:-nothing}, or says nothing of v0.1.0"
+fi
+
+# Scenario: The notes after a release commit.
+repo cutnotes
+commit "feat: a start"
+cut_release v0.1.0
+commit "fix(nix): a fix"
+cut_notes=$(cd "$dir" && sh release.sh notes v0.1.1 2>>"$dir.log")
+fixes=$(printf '%s\n' "$cut_notes" | grep -n -F -x -e "### Fixes" | head -n 1 | cut -d : -f 1)
+fix=$(printf '%s\n' "$cut_notes" | grep -n '^- \*\*nix\*\*: A fix (\[' | head -n 1 | cut -d : -f 1)
+if [ -n "$fixes" ] && [ -n "$fix" ] && [ "$fixes" -lt "$fix" ] &&
+  ! printf '%s\n' "$cut_notes" | grep -q -i 'a start'; then
+  pass "the notes after v0.1.0's release commit hold the fix under Fixes and nothing of the start"
+else
+  fail "the notes after v0.1.0's release commit do not hold the fix under Fixes, or hold the start:
+$cut_notes"
+fi
+
 # Scenario: A commit that is not conventional.
 repo unconventional
 commit "feat: a start"
@@ -258,6 +315,241 @@ else
   fail "check-commits.sh fails 'Add a feature' before v0.1.0: $said"
 fi
 
+# Scenario: Before a release commit.
+repo cutbefore
+commit "Add a feature"
+commit "feat: a start"
+cut_release v0.1.0
+commit "fix: a fix"
+if said=$(cd "$dir" && sh check-commits.sh 2>&1); then
+  pass "check-commits.sh passes 'Add a feature' before v0.1.0's release commit"
+else
+  fail "check-commits.sh fails 'Add a feature' before v0.1.0's release commit: $said"
+fi
+
+# Scenario: After a release commit.
+repo cutafter
+commit "feat: a start"
+cut_release v0.1.0
+commit "Add a feature"
+if said=$(cd "$dir" && sh check-commits.sh 2>&1); then
+  fail "check-commits.sh passes 'Add a feature' after v0.1.0's release commit"
+else
+  case $said in
+  *"Add a feature"*) pass "check-commits.sh fails 'Add a feature' after v0.1.0's release commit, naming it" ;;
+  *) fail "check-commits.sh fails 'Add a feature' after v0.1.0's release commit without naming it: $said" ;;
+  esac
+fi
+
+# A scratch copy `$1` of the tree's Cargo.toml, Cargo.lock and each
+# crate's Cargo.toml, laid out as the tree lays them. It is `$copy`.
+manifests() {
+  copy="$scratch/$1"
+  mkdir -p "$copy"
+  cp "$tree/Cargo.toml" "$tree/Cargo.lock" "$copy/"
+  for manifest in "$tree"/crates/*/Cargo.toml; do
+    crate=${manifest%/Cargo.toml}
+    crate=${crate##*/}
+    mkdir -p "$copy/crates/$crate"
+    cp "$manifest" "$copy/crates/$crate/"
+  done
+}
+# The version Cargo.toml at `$1` gives under [workspace.package].
+workspace_version() {
+  awk '
+    /^\[/ { section = $0 }
+    section == "[workspace.package]" && /^version = "/ {
+      gsub(/^version = "|"$/, "")
+      print
+      exit
+    }
+  ' "$1/Cargo.toml"
+}
+# Each entry with no source in Cargo.lock at `$1`, a line of its name and
+# its version.
+lock_crates() {
+  awk '
+    function flush() {
+      if (package && !sourced) print name " " version
+      sourced = 0
+      name = ""
+      version = ""
+    }
+    /^\[\[package\]\]$/ { flush(); package = 1; next }
+    /^name = "/ { name = $0; gsub(/^name = "|"$/, "", name) }
+    /^version = "/ { version = $0; gsub(/^version = "|"$/, "", version) }
+    /^source = / { sourced = 1 }
+    END { flush() }
+  ' "$1/Cargo.lock"
+}
+
+# Scenario: A release's version and nothing else.
+manifests written
+if sh "$tree/set-version.sh" 98.76.54 "$copy" 2>>"$copy.log"; then
+  others=$(lock_crates "$copy" | awk '$2 != "98.76.54"')
+  if [ "$(workspace_version "$copy")" = 98.76.54 ] && [ -n "$(lock_crates "$copy")" ] &&
+    [ -z "$others" ]; then
+    pass "set-version.sh 98.76.54 writes Cargo.toml's version and each crate's in Cargo.lock"
+  else
+    fail "set-version.sh 98.76.54 leaves Cargo.toml giving $(workspace_version "$copy"), or a crate in Cargo.lock another: $others"
+  fi
+  for file in Cargo.toml Cargo.lock; do
+    changes=$(diff "$tree/$file" "$copy/$file" || true)
+    removed=$(printf '%s\n' "$changes" | grep -c '^<' || true)
+    added=$(printf '%s\n' "$changes" | grep -c '^>' || true)
+    stray=$(printf '%s\n' "$changes" | grep '^>' | grep -vF '"98.76.54"' || true)
+    if [ "$removed" -gt 0 ] && [ "$removed" = "$added" ] && [ -z "$stray" ]; then
+      pass "set-version.sh 98.76.54 changes no line of $file but its versions"
+    else
+      fail "set-version.sh 98.76.54 changes $file beyond its versions:
+$changes"
+    fi
+  done
+else
+  fail "set-version.sh 98.76.54 fails on a copy of the tree's manifests: $(cat "$copy.log")"
+fi
+
+# Scenario: What is not a version.
+manifests unversioned
+code=0
+sh "$tree/set-version.sh" 1.2 "$copy" 2>>"$copy.log" || code=$?
+if [ "$code" -eq 2 ] && cmp -s "$tree/Cargo.toml" "$copy/Cargo.toml" &&
+  cmp -s "$tree/Cargo.lock" "$copy/Cargo.lock"; then
+  pass "set-version.sh 1.2 exits 2 and leaves both files as they were"
+else
+  fail "set-version.sh 1.2 exits $code, or changes Cargo.toml or Cargo.lock"
+fi
+
+# Scenario: Nowhere to write it.
+manifests nowhere
+awk '
+  /^\[/ { section = $0 }
+  section == "[workspace.package]" && /^version = "/ { next }
+  { print }
+' "$tree/Cargo.toml" >"$copy/Cargo.toml"
+cp "$copy/Cargo.toml" "$scratch/nowhere.Cargo.toml"
+code=0
+said=$(sh "$tree/set-version.sh" 98.76.54 "$copy" 2>&1) || code=$?
+if [ "$code" -eq 1 ] && cmp -s "$scratch/nowhere.Cargo.toml" "$copy/Cargo.toml" &&
+  [ ! -e "$copy/Cargo.toml.set-version" ]; then
+  case $said in
+  *Cargo.toml*) pass "set-version.sh exits 1 on a Cargo.toml with no version, naming it and leaving it as it was" ;;
+  *) fail "set-version.sh exits 1 on a Cargo.toml with no version without naming it: $said" ;;
+  esac
+else
+  fail "set-version.sh exits $code on a Cargo.toml with no version, or changes it: $said"
+fi
+
+# check-versions.sh passes on a copy of the tree's manifests, which
+# root:versions holds to main's.
+manifests main
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  pass "check-versions.sh passes a copy of the tree's manifests"
+else
+  fail "check-versions.sh fails a copy of the tree's manifests: $said"
+fi
+
+# Scenario: A version where main's should be.
+manifests released
+sh "$tree/set-version.sh" 0.8.0 "$copy" 2>>"$copy.log"
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  fail "check-versions.sh passes a copy that set-version.sh 0.8.0 wrote"
+else
+  case $said in
+  *Cargo.toml*0.8.0*) pass "check-versions.sh fails a copy that set-version.sh 0.8.0 wrote, naming Cargo.toml and 0.8.0" ;;
+  *) fail "check-versions.sh fails a copy that set-version.sh 0.8.0 wrote without naming Cargo.toml and 0.8.0: $said" ;;
+  esac
+fi
+
+# Scenario: A crate's entry that differs.
+manifests differs
+awk '
+  /^name = "/ { entry = $0 }
+  entry == "name = \"boomdrive-control\"" && /^version = "/ { $0 = "version = \"0.8.0\""; entry = "" }
+  { print }
+' "$tree/Cargo.lock" >"$copy/Cargo.lock"
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  fail "check-versions.sh passes a Cargo.lock that gives boomdrive-control 0.8.0"
+else
+  case $said in
+  *0.8.0*boomdrive-control* | *boomdrive-control*0.8.0*) pass "check-versions.sh fails a Cargo.lock that gives boomdrive-control 0.8.0, naming the crate and 0.8.0" ;;
+  *) fail "check-versions.sh fails a Cargo.lock that gives boomdrive-control 0.8.0 without naming the crate and 0.8.0: $said" ;;
+  esac
+fi
+
+# Scenarios: The release commit, main is left as it was, A tag that
+# exists, What is not a tag. A repository whose main commits the tree's
+# manifests beside a file, and a change to that file left uncommitted.
+repo releasecommit
+manifests releasecommit
+git -C "$dir" add Cargo.toml Cargo.lock crates
+commit "feat: a start"
+echo "an edit left uncommitted" >>"$dir/file-1"
+# What a release commit leaves as it was: main's tip, the branch checked
+# out, every branch, the index, the working tree and git status.
+state() {
+  git -C "$dir" rev-parse main
+  git -C "$dir" symbolic-ref HEAD
+  git -C "$dir" for-each-ref --format='%(refname) %(objectname)' refs/heads
+  git -C "$dir" ls-files -s
+  git -C "$dir" diff
+  git -C "$dir" status --porcelain --untracked-files=all
+}
+# The objects git holds loose, which a commit made adds to.
+objects() {
+  git -C "$dir" count-objects | cut -d ' ' -f 1
+}
+main_tip=$(git -C "$dir" rev-parse main)
+before=$(state)
+if (cd "$dir" && sh release.sh commit v0.2.0 2>"$dir.log"); then
+  released=$(git -C "$dir" rev-parse -q --verify "refs/tags/v0.2.0^{commit}" || true)
+  mkdir -p "$scratch/released"
+  if [ -n "$released" ]; then
+    git -C "$dir" cat-file blob "$released:Cargo.toml" >"$scratch/released/Cargo.toml"
+    git -C "$dir" cat-file blob "$released:Cargo.lock" >"$scratch/released/Cargo.lock"
+  fi
+  others=$(lock_crates "$scratch/released" | awk '$2 != "0.2.0"')
+  if [ -n "$released" ] &&
+    [ "$(git -C "$dir" rev-list --parents -n 1 "$released")" = "$released $main_tip" ] &&
+    [ "$(git -C "$dir" log -1 --format=%s "$released")" = "chore(release): v0.2.0" ] &&
+    [ "$(git -C "$dir" diff --name-only main "$released" | tr '\n' ' ')" = "Cargo.lock Cargo.toml " ] &&
+    [ "$(workspace_version "$scratch/released")" = 0.2.0 ] &&
+    [ -n "$(lock_crates "$scratch/released")" ] && [ -z "$others" ] &&
+    grep -q "release: v0.2.0 names $released, cut from $main_tip" "$dir.log"; then
+    pass "release.sh commit v0.2.0 tags a commit cut from main, chore(release): v0.2.0, changing Cargo.toml and Cargo.lock alone to give 0.2.0, and says so"
+  else
+    fail "release.sh commit v0.2.0 does not tag a commit cut from main, chore(release): v0.2.0, changing Cargo.toml and Cargo.lock alone to give 0.2.0, or does not say so: $(cat "$dir.log")"
+  fi
+  if [ "$(state)" = "$before" ]; then
+    pass "release.sh commit v0.2.0 leaves main, the branch checked out, the index, the working tree and git status as they were"
+  else
+    fail "release.sh commit v0.2.0 changes main, the branch checked out, the index, the working tree or git status:
+$(state)"
+  fi
+else
+  fail "release.sh commit v0.2.0 fails on main: $(cat "$dir.log")"
+fi
+held=$(objects)
+code=0
+said=$(cd "$dir" && sh release.sh commit v0.2.0 2>&1) || code=$?
+if [ "$code" -eq 1 ] && [ "$(objects)" = "$held" ] &&
+  [ "$(git -C "$dir" rev-parse -q --verify "refs/tags/v0.2.0^{commit}")" = "$released" ]; then
+  case $said in
+  *v0.2.0*) pass "release.sh commit v0.2.0 exits 1 where v0.2.0 is a tag, naming it, and makes no commit" ;;
+  *) fail "release.sh commit v0.2.0 exits 1 where v0.2.0 is a tag without naming it: $said" ;;
+  esac
+else
+  fail "release.sh commit v0.2.0 exits $code where v0.2.0 is a tag, or makes a commit: $said"
+fi
+tags=$(git -C "$dir" tag --list)
+code=0
+said=$(cd "$dir" && sh release.sh commit 0.2.0 2>&1) || code=$?
+if [ "$code" -eq 2 ] && [ "$(objects)" = "$held" ] && [ "$(git -C "$dir" tag --list)" = "$tags" ]; then
+  pass "release.sh commit 0.2.0 exits 2 and makes no commit and no tag"
+else
+  fail "release.sh commit 0.2.0 exits $code, or makes a commit or a tag: $said"
+fi
+
 # Scenarios: The workflow's trigger, A release. The workflow as yamlfmt
 # lays it out.
 workflow="$tree/.github/workflows/release.yml"
@@ -292,21 +584,53 @@ fi
 once() {
   [ "$(grep -c -e "$1" "$workflow")" -eq 1 ]
 }
+# The line `$1` matches, as a basic regular expression, at.
+line_of() {
+  grep -n -e "$1" "$workflow" | head -n 1 | cut -d : -f 1
+}
 # The workflow's own lines, whose $ the shell of its step expands.
 # shellcheck disable=SC2016
+notes_line='^          nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh notes "\$TAG" >"\$RUNNER_TEMP/notes\.md"$'
+# shellcheck disable=SC2016
+commit_line='^          sh release\.sh commit "\$TAG"$'
+# shellcheck disable=SC2016
+push_line='^          git -c credential\.helper= -c '"'"'credential\.helper=!gh auth git-credential'"'"' push origin "refs/tags/\$TAG"$'
+# shellcheck disable=SC2016
+create_line='^          gh release create "\$TAG" --verify-tag --title "\$TAG" --notes-file "\$RUNNER_TEMP/notes\.md"$'
+# shellcheck disable=SC2016
+cache_line='^          gh workflow run cache\.yml --ref "\$TAG"$'
+# shellcheck disable=SC2016
 if once '^          tag=$(nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh next)$' &&
-  once '^          nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh notes "\$TAG" >"\$RUNNER_TEMP/notes\.md"$' &&
-  once '^          gh release create "\$TAG" --target "\$GITHUB_SHA" --title "\$TAG" --notes-file "\$RUNNER_TEMP/notes\.md"$' &&
-  once '^          gh workflow run cache\.yml --ref "\$TAG"$' &&
-  once "^        if: steps\.next\.outputs\.tag != ''$"; then
-  pass "the workflow release publishes release.sh's tag with its notes and no file, then runs cache at it"
+  once "^        if: steps\.next\.outputs\.tag != ''$" &&
+  once "$notes_line" && once "$commit_line" && once "$push_line" &&
+  once "$create_line" && once "$cache_line" &&
+  [ "$(line_of "$notes_line")" -lt "$(line_of "$commit_line")" ] &&
+  [ "$(line_of "$commit_line")" -lt "$(line_of "$push_line")" ] &&
+  [ "$(line_of "$push_line")" -lt "$(line_of "$create_line")" ] &&
+  [ "$(line_of "$create_line")" -lt "$(line_of "$cache_line")" ]; then
+  pass "the workflow release writes release.sh's notes, makes the release commit of its tag, pushes the tag, publishes it with its notes and no file, then runs cache at it"
 else
-  fail "the workflow release does not publish release.sh's tag with its notes and no file, then run cache at it"
+  fail "the workflow release does not write release.sh's notes, make the release commit of its tag, push the tag, publish it with its notes and no file, then run cache at it, in that order"
 fi
-if grep -n -E 'nix build|cargo|upload-artifact|git (push|commit|tag)' "$workflow"; then
+if once '^          persist-credentials: false$' &&
+  once '^          GIT_AUTHOR_NAME: github-actions\[bot\]$' &&
+  once '^          GIT_AUTHOR_EMAIL: 41898282+github-actions\[bot\]@users\.noreply\.github\.com$' &&
+  once '^          GIT_COMMITTER_NAME: github-actions\[bot\]$' &&
+  once '^          GIT_COMMITTER_EMAIL: 41898282+github-actions\[bot\]@users\.noreply\.github\.com$'; then
+  pass "the workflow release's checkout keeps no credentials, and its release commit is the bot's"
+else
+  fail "the workflow release's checkout keeps credentials, or its release commit is not the bot's"
+fi
+if grep -n -E 'nix build|cargo|upload-artifact|gh release upload|git (commit|tag)' "$workflow"; then
   fail "the workflow release builds, attaches or commits something"
 else
   pass "the workflow release builds, attaches and commits nothing"
+fi
+pushes=$(grep -c -E 'git([[:space:]].*)?[[:space:]]push([[:space:]]|$)' "$workflow" || true)
+if [ "$pushes" -eq 1 ] && once "$push_line"; then
+  pass "the workflow release's one push pushes the release's tag alone, with no force"
+else
+  fail "the workflow release pushes more than the release's tag, or with force"
 fi
 
 exit "$status"

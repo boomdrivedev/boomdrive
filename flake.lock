@@ -10,16 +10,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794191286,
-        "narHash": "sha256-mrUXq4IRqupGcs/K+XqtL6UmKgjm3OxTtELXcYtgvUs=",
+        "lastModified": 1794337313,
+        "narHash": "sha256-9mLvHrFTa5d9xx4v5VuaasRe5I6rcowrlTeMYeGyU6M=",
         "owner": "agentplot",
         "repo": "crew",
-        "rev": "0563aa90dcd1bc4b781211f4e4db6173f41d46a5",
+        "rev": "6698fdaef7c6eb2b1ec34808f1d7a9c016d85622",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.50.2",
+        "ref": "v0.59.0",
         "repo": "crew",
         "type": "github"
       }
@@ -155,16 +155,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794187086,
-        "narHash": "sha256-pwIqQ2IX6I+7rs5EXukDLd1KltQkSRBggHcimLndHrc=",
+        "lastModified": 1794341395,
+        "narHash": "sha256-3PhqmCW8w1DC5OTNJEtpK9IJkgIdvYJlIU0wd9U7gLs=",
         "owner": "agentplot",
         "repo": "sluice",
-        "rev": "ec862b8bc9076831e1b281c64aec50c7fd243175",
+        "rev": "b839783d0f14974b157cb38fcc7aa0591136b8f9",
         "type": "github"
       },
       "original": {
         "owner": "agentplot",
-        "ref": "v0.78.1",
+        "ref": "v0.86.0",
         "repo": "sluice",
         "type": "github"
       }

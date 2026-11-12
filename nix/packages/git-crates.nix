@@ -6,16 +6,20 @@
 # taken by building `fetchgit { url; rev; sha256 = lib.fakeHash; }` and
 # reading the hash nix got.
 {
+  "weir-bounded-0.0.0" = {
+    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
+    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
+  };
   "weir-branch-0.0.0" = {
-    rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219";
-    hash = "sha256-1PWzNpKz0dUIDpscpC84/kGMkLAmFwhhZTwve4mkVps=";
+    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
+    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
   };
   "weir-capture-0.0.0" = {
-    rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219";
-    hash = "sha256-1PWzNpKz0dUIDpscpC84/kGMkLAmFwhhZTwve4mkVps=";
+    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
+    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
   };
   "weir-signals-0.0.0" = {
-    rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219";
-    hash = "sha256-1PWzNpKz0dUIDpscpC84/kGMkLAmFwhhZTwve4mkVps=";
+    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
+    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
   };
 }
