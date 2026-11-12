@@ -2,7 +2,7 @@
 
 ### Requirement: The flake gives the family's host tools as packages
 
-The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice`, `sluice-herdr-plugin` and `worktrunk`, with `default` the runner's. It SHALL give no package of git, which is the host's own, and none of a tool a repository pins.
+The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice`, `sluice-herdr-plugin` and `worktrunk`, with `default` the runner's. It SHALL give no git, the host's own, and no tool a repository pins.
 
 #### Scenario: Every system's packages
 
@@ -25,17 +25,7 @@ Flume's and sluice's herdr plugin packages SHALL each be its tool's `plugins/her
 
 ### Requirement: Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs
 
-Each package SHALL be a derivation of the source the lock names by its hash:
-
-- the runner's, the launcher's and the marketplace's, of this tree;
-- Flume's, sluice's, crew's, herdr's and worktrunk's, of their release tags, each through its own flake;
-- portless's, of its release tag, by this flake's recipe, as it publishes no flake;
-- Pending You's, of the package Pending You publishes on npm, as its source tags no release;
-- Plannotator's and plannotator-tui's, through numtide/llm-agents.nix's flake, which builds each from its source at its release tag;
-- Pending You for Herdr's and Annotate's, of the commit the lock names;
-- Ghostty's, of the flake's nixpkgs.
-
-Each tool's version but Ghostty's SHALL be its release's: its tag's without the `v`, read from its tagged tree where it holds one, else from the flake's tag; Pending You's from its package's `package.json`.
+Each package but those of crew's companions SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's and worktrunk's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree where it holds one, else from the flake's tag.
 
 #### Scenario: Flume through its own flake
 
@@ -77,6 +67,12 @@ Each tool's version but Ghostty's SHALL be its release's: its tag's without the 
 - **WHEN** the flake is evaluated
 - **THEN** the `boomdrive` package's source holds this tree's `Cargo.toml`, `Cargo.lock` and `crates`, and no other path of the tree
 
+## ADDED Requirements
+
+### Requirement: The packages of crew's companions are made from what each publishes
+
+The packages of crew's companions SHALL each be a derivation of the source the lock names by its hash: Pending You's of its npm package, as its source tags no release, its version its `package.json`'s; Plannotator's and plannotator-tui's numtide/llm-agents.nix's, built from each one's source at its release tag, its version the tag's without the `v`; Pending You for Herdr's and Annotate's of the commit the lock names; and the set's marketplace of this tree, made of those packages.
+
 #### Scenario: Pending You from its npm package
 
 - **WHEN** the lock names Pending You's npm package `pendingyou-0.41.0.tgz`
@@ -96,8 +92,6 @@ Each tool's version but Ghostty's SHALL be its release's: its tag's without the 
 
 - **WHEN** llm-agents.nix's `plannotator` is version `0.28.62` and its source's tag `v0.28.62`
 - **THEN** the flake's test fails, naming `plannotator`, `0.28.62` and `0.28.61`
-
-## ADDED Requirements
 
 ### Requirement: Pending You runs on the flake's Node.js
 

@@ -26,7 +26,7 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 
 ### Requirement: A host substitutes the set, or builds the same paths
 
-The modules' default packages SHALL be the flake's own, made with its locked nixpkgs whatever the host's `pkgs`, so they are the store paths the cache holds: the runner's, each tool's module's, and herdr's, Ghostty's, portless's, worktrunk's, the launcher's, Pending You's, Plannotator's, plannotator-tui's and the herdr plugins'. A host whose nix trusts the cache SHALL substitute them, and one that does not SHALL build the same paths from the source the lock names. The modules SHALL add no substituter or key to a host's nix settings.
+The modules' default packages SHALL be the flake's own, made with its locked nixpkgs whatever the host's `pkgs`, so they are the store paths the cache holds: the runner's, each tool's module's, and those of the modules' own options, the herdr plugins among them. A host whose nix trusts the cache SHALL substitute them, and one that does not SHALL build the same paths from the source the lock names. The modules SHALL add no substituter or key to a host's nix settings.
 
 #### Scenario: A host's own nixpkgs
 

@@ -25,7 +25,7 @@ The modules SHALL hold no option of their own that installs a tool whose own mod
 
 ### Requirement: The modules link the set's herdr plugins with herdr's own command
 
-With `services.boomdrive.enable`, each activation SHALL run, as the runner's user, the installed herdr's own `herdr plugin link <plugin>` for each package of `services.boomdrive.herdr.plugins`, in order, with no `HERDR_*` variable of the caller's. The list's default SHALL be the set's `flume-herdr-plugin` and `sluice-herdr-plugin`, followed, where `services.crew.enable` is true, by `pendingyou-herdr-plugin` and `plannotator-herdr-plugin`. The modules SHALL write no file of herdr's. With no herdr package, or no plugin, none SHALL be linked.
+With `services.boomdrive.enable`, each activation SHALL run, as the runner's user, the installed herdr's own `herdr plugin link <plugin>` for each package of `services.boomdrive.herdr.plugins`, in order, with no `HERDR_*` variable of the caller's. The list's default SHALL be the set's `flume-herdr-plugin` and `sluice-herdr-plugin`, then, with crew on, its companions' plugins. The modules SHALL write no file of herdr's. With no herdr package or no plugin, none SHALL be linked.
 
 #### Scenario: The plugins linked on nix-darwin
 
