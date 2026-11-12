@@ -10,6 +10,8 @@ pub mod config;
 pub mod enroll;
 pub mod facts;
 pub mod flume;
+pub mod forge;
+pub mod forge_token;
 pub mod git;
 pub mod hello;
 pub mod inbox;
