@@ -39,7 +39,7 @@ code_workspaces = true
 
 # The account `own`'s drive `home`: each repository it keeps, by its GitHub address.
 [accounts.own.drives.home]
-repositories = ["agentplot/flume"]
+repositories = ["boomdrivedev/flume"]
 
 # The account `own`'s drive `work`.
 [accounts.own.drives.work]
@@ -122,11 +122,11 @@ layer's. A local layer a control plane might write:
 ```toml
 # Added to the managed layer's drive `home`.
 [accounts.own.drives.home]
-repositories = ["agentplot/sluice"]
+repositories = ["boomdrivedev/sluice"]
 
 # A drive the managed layer does not name, declared here.
 [accounts.own.drives.garden]
-repositories = ["agentplot/timber"]
+repositories = ["boomdrivedev/timber"]
 ```
 
 The managed layer may pin a key the local layer could set: `pin`, at its
@@ -171,7 +171,7 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   through the host's own credential helper where it names no `[forge]`.
   A fetch that fails drops the repository's kept token. A fetch, a new
   clone's among them, still going at thirty seconds is stopped with
-  everything it started, as agentplot/sluice record 0109 bounds every
+  everything it started, as boomdrivedev/sluice record 0109 bounds every
   try of a call to a remote. The repository is then named not fetched,
   or not cloned with nothing left, and is fetched again at the next
   pass, while the pass keeps every other repository;
@@ -313,7 +313,7 @@ the hosted control plane mints this host's forge tokens, and version 2
 of its protocol carries none yet.
 
 The set's sluice takes no token from it yet: it reads a credential
-command from v0.84.0 (agentplot/sluice record 0108), and the set holds
+command from v0.84.0 (boomdrivedev/sluice record 0108), and the set holds
 v0.78.1. Once the set holds a sluice that reads one, the Boomdrive
 module gives sluice `boomdrive forge-token` and the App's id itself, so
 a host writes no credential command of its own (core.57). Until then a
@@ -476,7 +476,7 @@ how each drive's roles run and batch, are the host's own, written in
             # The rest of the host's configuration, system.primaryUser among it.
             services.boomdrive = {
               enable = true;
-              accounts.own.drives.home.repositories.agentplot = [ "flume" "sluice" ];
+              accounts.own.drives.home.repositories.boomdrivedev = [ "flume" "sluice" ];
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
@@ -492,8 +492,8 @@ how each drive's roles run and batch, are the host's own, written in
                   state = "example/state";
                   machine = "host-a";
                   session = "home";
-                  folder = "/Users/alice/Code/agentplot";
-                  repos = [ "agentplot/flume" "agentplot/sluice" ];
+                  folder = "/Users/alice/Code/boomdrivedev";
+                  repos = [ "boomdrivedev/flume" "boomdrivedev/sluice" ];
                   accounts = { design = "home"; planner = "home"; reviewer = "home"; ops = "home"; operator = "home"; };
                   # Each main-level role "standing", its agent kept running in its pane,
                   # or "on-demand", run by Flume in the drive's stream while work waits for it.
@@ -530,7 +530,7 @@ services.boomdrive.accounts.own.drives.home = {
     priority = 11;                  # Flume's own where unset
     labels.review.reserve = 1;      # beside operation 1 and planning 2
   };
-  repositories.agentplot = [ "flume" "sluice" ];
+  repositories.boomdrivedev = [ "flume" "sluice" ];
 };
 ```
 
@@ -604,7 +604,7 @@ sets it or an entry of it. git run in the folder finds the bare
 repository by the folder's own `.git` file:
 
 ```nix
-config.services.boomdrive.cloneDirs."agentplot/flume"  # ~/.local/share/boomdrive/repositories/agentplot/flume
+config.services.boomdrive.cloneDirs."boomdrivedev/flume"  # ~/.local/share/boomdrive/repositories/boomdrivedev/flume
 ```
 
 With `services.boomdrive.enable` and crew's module on, each module
@@ -799,7 +799,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.22.0
+    nix profile add github:agentplot/boomdrive#flume --override-input flume github:boomdrivedev/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version and its git crates' hashes are Flume's own flake's, and crew's
@@ -810,7 +810,7 @@ beside it, in its `package`:
 
 ```nix
 # In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.77.0";
+boomdrive.inputs.sluice.url = "github:boomdrivedev/sluice/v0.77.0";
 ```
 
 ```nix
@@ -829,8 +829,8 @@ up a drive of an account under crew, and an agent can run it for you.
 Each answer is a flag:
 
     boomdrive setup --account own --drive home --state-repository example/state \
-      --repository agentplot/flume --repository agentplot/sluice \
-      --blueprints agentplot/flume --runs ops standing --review 5 4 --json
+      --repository boomdrivedev/flume --repository boomdrivedev/sluice \
+      --blueprints boomdrivedev/flume --runs ops standing --review 5 4 --json
 
 `--account` and `--drive` name the account and its drive, `--repository`
 each repository the drive keeps, and `--state-repository` the account's
@@ -887,8 +887,8 @@ Run again with the same answers, setup changes nothing. A later change
 to the drive's repositories is setup's too, every other answer taken
 from what the host holds:
 
-    boomdrive setup --add-repository agentplot/crew
-    boomdrive setup --remove-repository agentplot/sluice
+    boomdrive setup --add-repository boomdrivedev/crew
+    boomdrive setup --remove-repository boomdrivedev/sluice
 
 A repository removed is let go by the runner by its own rules. A second
 drive is set up by a run naming it, and the runner's file keeps both.
@@ -1092,11 +1092,11 @@ url = "https://control.example"
 
 [[control_plane.hosted.partitions]]
 label = "home"
-repositories = ["agentplot/flume"]
+repositories = ["boomdrivedev/flume"]
 
 [[control_plane.hosted.partitions]]
 label = "work"
-repositories = ["example/crew", "agentplot/flume"]
+repositories = ["example/crew", "boomdrivedev/flume"]
 ```
 
 `url` is the control plane's address: `https://`, or `http://` to a

@@ -77,7 +77,7 @@ no version (core.48).
 **The family.** This tool works with the others of the Boomdrive family:
 sluice (the merge queue), Flume (places and their agents), crew (teams),
 Boomdrive (the runner), Boomdrive Cloud (the control plane), timber,
-weir and boom. Each tool's statement is in agentplot/blueprints,
+weir and boom. Each tool's statement is in boomdrivedev/blueprints,
 `design/<tool>/requirements.md`. Before designing or fixing a behavior
 here, look at how the related tools do the same thing, in their code and
 their statements: readiness, configuration, credentials, retries, what a

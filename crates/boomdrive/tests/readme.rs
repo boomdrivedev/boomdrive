@@ -104,7 +104,7 @@ fn the_readme_configuration_reads() {
     assert_eq!(
         drives,
         [
-            ("own", "home", vec!["agentplot/flume".to_string()]),
+            ("own", "home", vec!["boomdrivedev/flume".to_string()]),
             ("own", "work", vec!["example/crew".to_string()]),
         ]
     );
