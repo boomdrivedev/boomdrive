@@ -13,6 +13,7 @@ mod fakes;
 
 use boomdrive::clone;
 use boomdrive::config::Address;
+use boomdrive::git::Credential;
 use boomdrive::report;
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{At, Command, CommandSort, Commanded, Id, Lease, Outcome, Report, Want};
@@ -56,8 +57,13 @@ fn bolt_in(repository: &str) -> Want {
 fn keeping_crew(scratch: &Scratch) -> Bench {
     scratch.origin(CREW);
     let git = scratch.runner_git();
-    let container =
-        clone::make(&git, &scratch.data(), &Address::parse(CREW).unwrap()).expect("the clone made");
+    let container = clone::make(
+        &git,
+        &scratch.data(),
+        &Address::parse(CREW).unwrap(),
+        &Credential::Host,
+    )
+    .expect("the clone made");
     let mut bench = Bench::new();
     bench.git = git;
     bench.clones.ready(CREW, &container);
