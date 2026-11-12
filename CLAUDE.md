@@ -42,10 +42,13 @@ on Cachix, at each push to `main` and each tag `v*` (records 0020 and
 Boomdrive's versions are git-cliff's, from its Conventional Commits
 (`cliff.toml`; record 0024, core.48). At each push to `main`, the
 workflow `.github/workflows/release.yml` asks `release.sh` for the next
-version since the newest tag `v*`, and where it is new publishes a
-GitHub release of its tag on the commit pushed, with git-cliff's notes,
-building nothing, then runs `cache` at the tag. The version lives only
-in the tag. `devenv shell -- release-preview` shows what it would
+version since the newest tag `v*` by version, and where it is new tags
+its release commit, cut from the commit of `main` that was pushed,
+which writes the version into the tree (`set-version.sh`), so a build
+from the tag reports it. It pushes that tag alone and publishes its
+GitHub release with git-cliff's notes, building nothing, then runs
+`cache` at the tag. `main`'s tree names `0.0.0`, which `root:versions`
+holds it to. `devenv shell -- release-preview` shows what it would
 release.
 
 Boomdrive's site is `site/`: the Method, its field notes and the

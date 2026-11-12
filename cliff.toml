@@ -1,9 +1,12 @@
 # git-cliff: the next version and its notes, from the Conventional
-# Commits since the newest v* tag in the history (record 0024, core.48).
-# The workflow release asks it through release.sh at each push to main and
-# tags the commit pushed; `devenv shell -- release-preview` shows what it
-# would release. The version lives only in the tag. sluice's, with
-# boomdrive's links.
+# Commits since the newest v* tag (record 0024, core.48). The workflow
+# release asks it through release.sh at each push to main, and tags a
+# release commit, cut from the commit of main that was pushed, which
+# writes the version into the tree; main names 0.0.0. The newest tag
+# names a release commit off main's history, which git-cliff's walk of
+# the history never reaches, so only --unreleased starts the range at it,
+# as release.sh and release-preview ask. `devenv shell -- release-preview`
+# shows what it would release. sluice's, with boomdrive's links.
 
 [changelog]
 header = ""

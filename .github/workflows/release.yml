@@ -1,12 +1,17 @@
 # The workflow `release` (record 0024, core.48): at each push to main, the
 # next version git-cliff finds in the commits since the newest v* tag
-# (cliff.toml), asked through release.sh. Where it is not tagged yet, a
-# GitHub release of its tag, made on the commit pushed, with git-cliff's
-# notes. main holds only what the gate passed, so it tests nothing; it
-# builds and attaches nothing, the binaries being the workflow cache's
-# (record 0020) and the attested release's of record 0012. GitHub runs no
-# workflow on a tag this workflow's token made, so it runs cache at the
-# tag itself. root:releases holds this file to the releases spec.
+# (cliff.toml), asked through release.sh. Where it is not tagged yet, its
+# notes, then its release commit, cut from the commit pushed by
+# `release.sh commit`, which writes the version into the tree with
+# set-version.sh, so a build from the tag reports it, and tags it; main
+# keeps 0.0.0. It pushes that tag alone, with no branch and no force,
+# through gh's credential helper given to that one push, and publishes the
+# tag's GitHub release with git-cliff's notes. main holds only what the
+# gate passed, so it tests nothing; it builds and attaches nothing, the
+# binaries being the workflow cache's (record 0020) and the attested
+# release's of record 0012. GitHub runs no workflow on a tag this
+# workflow's token pushed, so it runs cache at the tag itself.
+# root:releases holds this file to the releases spec.
 name: release
 
 on:
@@ -59,7 +64,16 @@ jobs:
           TAG: ${{ steps.next.outputs.tag }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          # The release commit's author and committer.
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        # The notes first, since once the release commit is tagged
+        # git-cliff's range starts at it.
         run: |
           nix shell --inputs-from . nixpkgs#git-cliff -c sh release.sh notes "$TAG" >"$RUNNER_TEMP/notes.md"
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          sh release.sh commit "$TAG"
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "refs/tags/$TAG"
+          gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
           gh workflow run cache.yml --ref "$TAG"

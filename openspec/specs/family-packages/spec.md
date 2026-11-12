@@ -119,6 +119,15 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 - **WHEN** the flake is evaluated
 - **THEN** the `boomdrive` package's source holds this tree's `Cargo.toml`, `Cargo.lock` and `crates`, and no other path of the tree
 
+### Requirement: The runner's version is its tree's
+
+The `boomdrive` package's version SHALL be its tree's, `Cargo.toml`'s workspace version, which a release commit alone writes (core.48).
+
+#### Scenario: The runner at its tree's version
+
+- **WHEN** the flake is evaluated for each system it gives
+- **THEN** the `boomdrive` package's version is the one `Cargo.toml` gives under `[workspace.package]`: `0.0.0` at a commit of `main`, and the release's at a release tag
+
 ### Requirement: herdr is the release Flume's terminal profile was checked against
 
 The `herdr` package's version SHALL be the herdr that Flume's tree pins at the tag the lock names for Flume: the release Flume's terminal profile was checked against, `herdrVersion` in Flume's `devenv.nix`. No herdr plugin of the set SHALL ask, by its manifest's `min_herdr_version`, for a herdr newer than the set's. The flake's test SHALL fail where either does not hold, naming both versions.
