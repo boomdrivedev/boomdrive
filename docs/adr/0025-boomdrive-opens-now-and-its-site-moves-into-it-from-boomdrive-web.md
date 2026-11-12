@@ -86,3 +86,24 @@ Sources: agentplot-ops' reading of deneb, 2026-11-12. Deneb's sluice mints its t
 - **One at a time.** Repositories move one after another, each once drained, so no other repository's work is held.
 
 The 2026-11-09 amendment's order, the transfers waiting on nothing, no longer holds, and nor does its last *Bad* consequence: no host's data names an old address while the repository is worked.
+
+## Amendment, 2026-11-12: every repository moves before deneb's switch, through madswan-agentplot, its folders moving with it
+
+Status: proposed to the user on 2026-11-12, as `briefs.15` has it; accepted only on their yes. Its order, its folders and its bridge are the user's words below; how each move is carried out is the design agent's.
+
+Sources: the user's words that day, relayed by agentplot-operator, on moving the repositories (signal `2026-11-12-agentplot-planner-c292bbdc/01`) and on their folders; afterthought-design's reading that no Boomdrive release carries the runner's forge token (#165), and that sluice finds an App's installation repository by repository (sluice `profiles/github/app.rs:483`); agentplot-ops' readings of deneb, 2026-11-12. The user installed madswan-agentplot (App 5324750) on boomdrivedev, every repository, and said "app is ready", which ops verified. On deneb every path names the owner: the runner's clone is `~/.local/share/boomdrive/repositories/agentplot/<repo>/<repo>.git`, with sluice's records inside it at `<repo>.git/sluice`. Each session folder, `~/Code/boomdrive/agentplot/<repo>`, is a worktree of that bare repository. Flume's places, crew's kits, herdr's sessions and Claude Code's project folders are keyed by those paths. afterthought's Nix writes the runner's list of repositories as `owner/repo`.
+
+- **Every repository moves before deneb's switch.** In the user's words: "We also need to move all of the repos before the switch because I want to make sure that when we switch we're pointing to a solid foundation." The repositories are the ten this drive keeps: agentplot, blueprints, boomdrive, boomdrive-cloud, boomdrive-web, crew, flume, sluice, timber and weir.
+- **madswan-agentplot lands them until the switch.** It is installed on boomdrivedev beside the Boomdrive App, so deneb's sluice lands each moved repository as it does today, and each repository's rulesets keep their one bypass, 5324750. This is a stopgap. Deneb taking the Boomdrive App from its runner at the switch retires it, and madswan-agentplot leaves boomdrivedev once no host's sluice lands there with it. It replaces this record's earlier amendment of 2026-11-12, under which no repository moved until each host's runner held the Boomdrive App's key.
+- **A repository's folders move with it.** In the user's words: "This also changes the folder storage locally so we need to be moving local folders to keep the folder structure correct." Once a repository has moved, every path on a host that names its owner names `boomdrivedev`. Nothing reads an old path, and no code maps an old path to a new one (principle 12). The folders are moved, not cloned afresh, so sluice's records travel inside the bare repository and main's numbers carry on.
+- **A move is a window on the host.** A repository is ready once it is drained: no live place, nothing queued or under test in sluice, and no bolt or fix unlanded. The window opens with the drive's main level, its runner and sluice stopped, so no host works a moved repository through GitHub's redirect. Each repository is then transferred on GitHub, and:
+  - both folders move to `boomdrivedev/<repo>`, and git's worktree links are repaired;
+  - origin names the new address;
+  - afterthought's list names the new address, deployed to deneb, since a list deployed before the folders move clones an empty repository, and a folder moved first is cloned again at the old path;
+  - each agent's Claude Code project folder keyed by an old path is renamed to its new path;
+  - crew's kit paths and Flume's repository paths name the new folders.
+
+  Then the runner starts, `sluice forge check` passes in each repository, and the main level comes back up in the new folders. Every repository that is ready moves in the same window, under one deploy. The first window holds one repository alone, as a test of the steps, and the rest move together in a second window once its forge check passes.
+- **The kit keeps its name.** crew names a kit by the last part of its address, so no record of crew's changes (crew 0060).
+
+This amendment's bridge replaces the earlier one's precondition. That amendment's other points stand where this one doesn't restate them: a repository moves once drained, and the kit keeps its name.
