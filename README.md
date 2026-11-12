@@ -25,8 +25,9 @@ The local layer is `config.local.toml` in that same directory,
 over the managed one. A host with no local file reads the managed layer
 alone. The managed layer names the accounts the host serves, each
 account's drives and each drive's repositories by their GitHub address,
-the root their views are kept under, how often they are fetched and
-whether each drive has a VS Code workspace:
+the root their views are kept under, how often they are fetched,
+whether each drive has a VS Code workspace and the Boomdrive App whose
+key the runner holds:
 
 ```toml
 # The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
@@ -43,6 +44,13 @@ repositories = ["agentplot/flume"]
 # The account `own`'s drive `work`.
 [accounts.own.drives.work]
 repositories = ["example/crew"]
+
+# The Boomdrive App whose key the runner holds, and mints every tool's forge token from; none where the table is absent.
+[forge]
+# The App's id, which each token's JWT names.
+app_id = 123456
+# The path of the App's private key, outside the Nix store and readable by its owner alone.
+key_file = "~/.config/boomdrive/app.pem"
 ```
 
 An account is what the runner enrolls with a control plane. A drive is
@@ -61,13 +69,26 @@ and two that differ only in case, in one drive or in two, are refused
 as one repository named twice. `repository_root` is an absolute path or
 begins with `~/`. `fetch_interval` is `<n>s`, `<n>m` or `<n>h`. A key the
 runner does not read is refused, so the file has no place for a
-credential: the host's own git credential helper answers every fetch. A
-file written for an earlier runner is refused with what to write
-instead: `views` is `repository_root` now, `fetch_every` is
+credential. A file written for an earlier runner is refused with what
+to write instead: `views` is `repository_root` now, `fetch_every` is
 `fetch_interval`, and a flat `repositories` is `accounts`, each
 repository named under its drive. Nor does the file name a stream or a
 kind, at its top, in an account or in a drive: those are each host's
 Flume configuration, and a key naming one is refused, saying so.
+
+`[forge]` names the Boomdrive App, the family's one GitHub App, whose
+key the runner holds on a host whose control plane does not hold it
+(record 0007 as amended on 2026-11-09 and 2026-11-11). It holds the
+App's `app_id`, a positive integer, and its `key_file`, the path of the
+App's private key, both required and nothing else. The file holds where
+the key is kept, never the key, so it still holds no credential.
+`key_file` is absolute or begins with `~/`, and lies outside the Nix
+store, which every user reads. The key is read at each mint, never with
+the configuration, and a key file that anyone but its owner may read
+refuses the mint: give it mode 0600. Beside a hosted control plane,
+which holds the App and mints the host's tokens itself, `[forge]` is
+refused. Where the file names no `[forge]`, the host's own git
+credential helper answers every fetch.
 
 `code_workspaces = true` asks for one VS Code workspace for each drive,
 at the repository root under the drive's name,
@@ -86,7 +107,7 @@ comments in it say, is left as it is and named at every pass.
 The local layer sets each drive's `repositories`,
 `accounts.<account>.drives.<drive>.repositories`, and in a control
 plane's table, `[control_plane.<type>]`, its `partitions`, and nothing
-else; each is read whole, as the managed layer's is. Its repositories
+else, `[forge]` among what it may not set; each is read whole, as the managed layer's is. Its repositories
 add to the managed layer's: a drive both layers name keeps the managed
 layer's repositories, in their order, then each of the local layer's
 the managed layer does not name, and a drive or an account only the
@@ -140,8 +161,15 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 - clones each repository the configuration names into the runner's data
   directory, `$XDG_DATA_HOME/boomdrive`, else `~/.local/share/boomdrive`,
   at `repositories/<owner>/<name>/<name>.git`, in the bare-container
-  layout flume reads; or fetches the clone it has, over https through
-  the host's own credential helper, never prompting. A fetch, a new
+  layout flume reads; or fetches the clone it has, over https, never
+  prompting. Where the configuration names `[forge]`, a fetch goes
+  through the App's token alone, minted for its repository and kept in
+  the runner's memory until five minutes before its end, the host's own
+  credential helpers emptied for that call; with no credential where
+  the App is not installed on the repository or no token could be
+  minted, the mint's words named after git's where the fetch fails; and
+  through the host's own credential helper where it names no `[forge]`.
+  A fetch that fails drops the repository's kept token. A fetch, a new
   clone's among them, still going at thirty seconds is stopped with
   everything it started, as agentplot/sluice record 0109 bounds every
   try of a call to a remote. The repository is then named not fetched,
@@ -240,6 +268,56 @@ The host's service manager keeps `boomdrive run` alive: launchd's
 `KeepAlive` on a Mac, `Restart=always` in a systemd user unit on a box.
 An exit 2 means the host needs fixing, and the service manager's
 throttle keeps it from spinning.
+
+## Giving every tool its forge token
+
+Every tool on a Boomdrive host takes its forge token from the runner
+(record 0007 as amended on 2026-11-09 and 2026-11-11; core.33).
+`boomdrive forge-token [--config <file>] <get|erase>` speaks git's
+credential-helper protocol, reading the configuration as `run` does, its
+local layer over its managed one:
+
+- `get` reads git's `protocol`, `host` and `path` from standard input,
+  passing over every other key. For `https`, `github.com` and a
+  repository of a drive the host serves, it mints a token from the App's
+  key `[forge]` names, for that repository alone, by two calls to
+  GitHub's API, each stopped at ten seconds. It answers on standard
+  output alone:
+
+      username=x-access-token
+      password=<token>
+      password_expiry_utc=<its end, in seconds since the epoch>
+
+  Each `get` mints in its own process and keeps the token no longer: its
+  asker keeps what it was given. git sends the path only where
+  `credential.useHttpPath` is set.
+- `erase` reads what it is sent and answers nothing. Since no process
+  keeps a token it gave, it drops nothing and revokes nothing at GitHub,
+  and the next `get` mints afresh, never giving the erased token.
+- Any other operation, `store` among them, is a usage error.
+
+A refusal is one line on standard error, `boomdrive forge-token:
+<words>`, and nothing on standard output, which git reads as the
+protocol, so the command takes no `--json`. It exits 1 for a request it
+will not answer: another protocol or host, no path, a repository of no
+drive the host serves, or one the App is not installed on, saying to
+install the App there; or GitHub's refusal or silence, naming the call.
+It exits 2 for a host to fix: a configuration it cannot read, no
+`[forge]`, or a key file that cannot be read, that others may read, or
+that holds no RSA private key in PEM. No token reaches a file, the data
+directory, a log or standard error.
+
+On a host whose control plane is hosted, the control plane holds the
+App and mints the host's tokens, and every operation is refused, exit 1:
+the hosted control plane mints this host's forge tokens, and version 2
+of its protocol carries none yet.
+
+The set's sluice takes no token from it yet: it reads a credential
+command from v0.84.0 (agentplot/sluice record 0108), and the set holds
+v0.78.1. Once the set holds a sluice that reads one, the Boomdrive
+module gives sluice `boomdrive forge-token` and the App's id itself, so
+a host writes no credential command of its own (core.57). Until then a
+host keeps sluice's own `[forge] key`.
 
 ## Installing with nix
 

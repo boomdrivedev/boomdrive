@@ -4,9 +4,12 @@
 //! design 3 to 6; core.14).
 
 mod common;
+mod github;
 
+use boomdrive::forge::Forge;
 use boomdrive::pass::Outcome;
 use common::{keeping, Scratch};
+use github::{GitHub, Key};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -658,4 +661,136 @@ fn a_head_that_cannot_be_settled() {
             .count(),
         1
     );
+}
+
+/// `config` naming the App `1`, its key at `key_file`, written as the
+/// configuration names it.
+fn with_the_app(config: &str, key_file: &str) -> String {
+    format!("{config}\n[forge]\napp_id = 1\nkey_file = {key_file:?}\n")
+}
+
+/// The clones spec's "A repository the App is not installed on": it is
+/// fetched with no credential, and no token is bought.
+#[test]
+fn a_repository_the_app_is_not_installed_on_is_fetched() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    let commit = origin.tip("main");
+    Key::App.write(&scratch.home, 0o600);
+    let github = GitHub::start();
+    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let config = with_the_app(
+        &keeping(&["agentplot/flume"]),
+        "~/.config/boomdrive/app.pem",
+    );
+
+    let (outcome, lines) = scratch.pass_with_forge(&config, &forge);
+    let landed = origin.commit("main", "README", "two\n");
+    let (again, moved) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!((outcome, again), (Outcome::Kept, Outcome::Kept));
+    assert_eq!(
+        lines,
+        [
+            "agentplot/flume: cloned from https://github.com/agentplot/flume.git".to_string(),
+            view_made(&scratch, "agentplot/flume", &commit)
+        ]
+    );
+    assert_eq!(moved, [view_moved("agentplot/flume", "main", &landed)]);
+    assert!(github.tokens().is_empty());
+    assert_eq!(github.calls(), ["GET /repos/agentplot/flume/installation"]);
+}
+
+/// The clones spec's "A mint refused is named after git's words".
+#[test]
+fn a_mint_refused_is_named_after_gits_words() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    let github = GitHub::start();
+    github.install("agentplot/flume", 7);
+    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let key_file = scratch.home.join(".config/boomdrive/app.pem");
+    let config = with_the_app(&keeping(&["agentplot/flume"]), &key_file.to_string_lossy());
+    let (outcome, _) = scratch.pass_with_forge(&config, &forge);
+    assert_eq!(outcome, Outcome::Kept);
+    std::fs::rename(&flume.bare, flume.bare.with_extension("gone")).expect("origin taken away");
+
+    let (outcome, lines) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!(outcome, Outcome::Failed);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let refused = format!(
+        "; no forge token: [forge] key_file {} cannot be read: ",
+        key_file.display()
+    );
+    let (gits, mints) = lines[0].split_once(&refused).expect("the mint's words");
+    assert!(
+        gits.starts_with("agentplot/flume: not fetched: ") && gits.len() > 30,
+        "{lines:?}"
+    );
+    assert!(!mints.is_empty(), "{lines:?}");
+    assert!(github.requests().is_empty());
+}
+
+/// The forge-tokens spec's "A token kept across passes".
+#[test]
+fn two_passes_buy_one_token() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    Key::App.write(&scratch.home, 0o600);
+    let github = GitHub::start();
+    github.install("agentplot/flume", 7);
+    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let config = with_the_app(
+        &keeping(&["agentplot/flume"]),
+        "~/.config/boomdrive/app.pem",
+    );
+
+    let (outcome, _) = scratch.pass_with_forge(&config, &forge);
+    let landed = origin.commit("main", "README", "two\n");
+    let (again, lines) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!((outcome, again), (Outcome::Kept, Outcome::Kept));
+    assert_eq!(lines, [view_moved("agentplot/flume", "main", &landed)]);
+    assert_eq!(github.tokens().len(), 1);
+    assert_eq!(
+        github.calls(),
+        [
+            "GET /repos/agentplot/flume/installation",
+            "POST /app/installations/7/access_tokens"
+        ]
+    );
+}
+
+/// The forge-tokens spec's "A failed fetch drops its token": the pass
+/// after a failed fetch buys a token again.
+#[test]
+fn a_failed_fetch_drops_its_token() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    Key::App.write(&scratch.home, 0o600);
+    let github = GitHub::start();
+    github.install("agentplot/flume", 7);
+    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let config = with_the_app(
+        &keeping(&["agentplot/flume"]),
+        "~/.config/boomdrive/app.pem",
+    );
+    let (outcome, _) = scratch.pass_with_forge(&config, &forge);
+    assert_eq!(outcome, Outcome::Kept);
+    std::fs::rename(&flume.bare, flume.bare.with_extension("gone")).expect("origin taken away");
+
+    let (failed, lines) = scratch.pass_with_forge(&config, &forge);
+    let bought = github.tokens().len();
+    std::fs::rename(flume.bare.with_extension("gone"), &flume.bare).expect("origin back");
+    let (kept, _) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!((failed, kept), (Outcome::Failed, Outcome::Kept));
+    assert!(
+        lines[0].starts_with("agentplot/flume: not fetched: "),
+        "{lines:?}"
+    );
+    assert!(!lines[0].contains("no forge token"), "{lines:?}");
+    assert_eq!(bought, 1);
+    assert_eq!(github.tokens().len(), 2);
 }
