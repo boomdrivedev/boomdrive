@@ -290,7 +290,7 @@ in
   # into the store: Claude Code watches a project's settings by their real
   # path, so a link had every session watching all of /nix/store and
   # reading it again at every change to the store, which on 2026-11-11 held
-  # deneb's store behind its sessions and hung every program from it
+  # a host's store behind its sessions and hung every program from it
   # (record 0022 as amended that day). The servers are hosted, need no
   # sign-in and start no process on the host: devenv's, which searches
   # packages and devenv's options, named here because a list of the
