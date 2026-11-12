@@ -1,51 +1,40 @@
 # Verify: boomdrives-quick-start-takes-a-stranger-to-a-working-drive
 
-The work on `change/boomdrives-quick-start-takes-a-stranger-to-a-working-drive` was read at 32a8ed6. The gate fails: `boomdrive:test`'s `a_change_the_drive_is_given_lands` fails, which is the test of the scenario "From crew's launch to main". So the change is not archived and goes back to its code stage.
+The work on `change/boomdrives-quick-start-takes-a-stranger-to-a-working-drive` was read at a11db4e. The gate passes, and the work holds:
 
-The rest of the work matches the change:
-
-- All 23 tasks are ticked.
+- All 24 tasks are ticked.
 - The change passes `openspec validate --strict`.
-- Each of its 17 requirements and 22 scenarios has a test or a check that asserts it.
+- Each of its 17 requirements and 22 scenarios has a test or a check that asserts it, and each passed in the gate.
+
+So the change is archived with this report.
 
 ## Checks
 
-- **The gate.** `sluice exec main` at 32a8ed6 ran the `check-fast` tasks that 32a8ed6 affects against `main` at 62835d2, with a clean worktree. It exited 1. moon finished 36 tasks: 35 passed and `boomdrive:test` failed. The tests that ran reported 921 passed and 1 failed.
-- **The tasks that passed.**
+- **The gate.** `sluice exec main` at a11db4e ran the `check-fast` tasks that a11db4e affects against `main` at 8da7b7f, with a clean worktree. It exited 0. moon completed 36 tasks, and sluice recorded 34 passes under their keys for a11db4e. No task failed. The cargo tests that ran reported 1060 passed and 0 failed.
+- **The tasks that ran.**
   - `nix:format`, `lint`, `typecheck` and `test`. `nix:test` reported "every case holds", including the five `quick start:` cases.
-  - `site:install`, `workflow`, `vocab`, `build`, `check` (0 errors, 0 warnings) and `prose` (0 errors, 0 warnings and 0 suggestions in 24 files).
+  - `site:install`, `workflow`, `vocab`, `build`, `check` (32 files, 0 errors, 0 warnings) and `prose` (0 errors, 0 warnings and 0 suggestions in 24 files). `site:build` built `/start/index.html`.
   - `site:test`, every quick-start line of which held:
-    - each way's places run 1 to 7 on a Mac and 1 to 8 on NixOS;
+    - the 7 steps On a Mac run 1 to 7, and the 8 On NixOS run 1 to 8;
     - each of the 11 steps names a test its project holds;
     - all 14 files of `src/start/` but `.shellcheckrc` belong to a step;
-    - the page is its lede, then On a Mac and On NixOS, with each file shown as it stands and no script;
+    - the page is its lede, then On a Mac and On NixOS, each step numbered in order, each file shown as it stands, and no script;
     - each block takes the page's tokens and scrolls within itself;
-    - all 12 pages link Start;
+    - all 12 pages' mastheads link `/boomdrive/start/` as Start;
     - none of our 3 drives and machines is named.
   - `boomdrive-control`, `boomdrive-crew` and `boomdrive-hosted`: format, lint, typecheck and test, each.
-  - `root:format` (376 files, none changed), `changes`, `commits`, `releases`, `specs` (25 of 25), `adrs` (43 records), `toolchain`, `versions` and `workflow`.
-  - `boomdrive:format`, `lint` and `typecheck`. lint and typecheck cover the stand-in under `--all-features`.
-- **The failure.** `quick_start.rs`'s first six tests passed: `the_sign_ins_are_the_ones_setup_names`, `flumes_file_opens_agents_in_herdr`, `setup_sets_up_the_drive_as_written`, `the_state_repository_is_made_as_setup_makes_it`, `sluices_file_lands_on_main` and `the_drives_agents_start_as_setup_says`. `a_change_the_drive_is_given_lands` panicked at `crates/boomdrive/tests/quick_start.rs:733`, after 19 s of the test's 120 s bound. The sequence was:
-  1. The runner launched the fix. The test ran Flume's first printed command, and the stand-in committed `change.txt`. The crew send was appended and the submission went to sluice.
-  2. The scratch repository's sluice failed it: `[sluice] #1 failed on main: [tests]. sluice wait 1 shows why.`
-  3. Flume sent the code stage back with those words and printed a second command for the stage (`…:code:2.env`).
-  4. The test ran that second command. The stand-in wrote `change.txt` again, which was already committed. Its `git commit` found "nothing to commit, working tree clean", and it panicked at `crates/boomdrive/tests/stand-in/claude.rs:152`, exiting 101. The test's assertion that each printed command exits 0 then failed.
-- **What the failure shows.** There are two faults:
-  - Under the gate, the scratch policy's sluice failed its own `[tests]` run of `site/src/start/both/sluice.toml`, whose command is `true`.
-  - Neither the test nor the stand-in handles a stage that Flume sends back. The stand-in makes the same change again and fails, so the test reports the stand-in's panic rather than sluice's refusal.
-
-  The scratch home was removed with the test, so `sluice wait 1`'s reason could not be read.
-- **Not shown, and likely.** No task ran this test under the gate's sandbox executor. Task 4.5's done-check is `devenv shell -- cargo test -p boomdrive --features stand-in --test quick_start a_change_the_drive_is_given_lands`, run outside sluice. `.config/sluice.toml` runs the gate with `[executor] kind = "sandbox"` and `network = "localhost"`. The scratch policy names no executor, so the inner sluice runs its `[tests]` under its own default executor, inside the gate's sandbox. The code stage should establish why the inner run fails there before changing anything. Rule site.8 and design Decision 6 hold the test to the set's own sluice, with no stub.
-- **What the gate did not reach.** cargo stops at the first failing test binary, so `boomdrive:test` never ran these test files: `readme.rs` (`the_readme_names_the_quick_start`, task 6.1), `room.rs`, `rules.rs`, `running.rs`, `scratch.rs`, `setup.rs` (task 1.1's move of the stand-ins), `sluice.rs`, `statuses.rs`, `terminals.rs` and `views.rs`. The 921 tests above do not include them.
-- **Warnings.** moon warned that it could not package task outputs into its archives under `.moon/cache/outputs`. That did not change any task's result.
+  - `root:adrs`, `changes`, `commits`, `format`, `releases`, `specs` (25 of 25), `toolchain`, `versions` and `workflow`.
+  - `boomdrive:format`, `lint`, `typecheck` and `test`. lint and typecheck cover the stand-in under `--all-features`, and `test` runs `cargo test -p boomdrive --features stand-in` whole.
+- **The quick start's tests.** `quick_start.rs` ran its 7 tests under the gate's sandbox, and all passed in 11.38 s: `the_sign_ins_are_the_ones_setup_names`, `flumes_file_opens_agents_in_herdr`, `setup_sets_up_the_drive_as_written`, `the_state_repository_is_made_as_setup_makes_it`, `sluices_file_lands_on_main`, `the_drives_agents_start_as_setup_says` and `a_change_the_drive_is_given_lands`. `readme.rs` passed with `the_readme_names_the_quick_start`. `setup.rs` passed its 25 tests over the stand-ins that task 1.1 moved into `tests/common`.
+- **Warnings.** moon warned 33 times that it could not package task outputs into its archives under `.moon/cache/outputs`, and once that it had no internet connection, so it skipped the rust toolchain's dependency install. Neither changed any task's result.
 - The gate was run once, as this stage's brief says, and nothing was fixed here.
 
 ## Tasks
 
-All 23 tasks of `tasks.md`, groups 1 to 6, are ticked `[x]`, and none is open. What they name is in the tree:
+All 24 tasks of `tasks.md`, groups 1 to 6, are ticked `[x]`, and none is open. What they name is in the tree:
 
 - **Shared ground** (1.1, 1.2):
-  - `tests/common/stand.rs` holds setup's stand-ins. `tests/setup.rs` uses them, its 25 tests unchanged in number, and none of its assertions moved but those of the helpers.
+  - `tests/common/stand.rs` holds setup's stand-ins, and `tests/setup.rs` uses them, its 25 tests unchanged in number.
   - `site/src/start/.shellcheckrc` holds `shell=sh`. `treefmt.nix` excludes it with its reason, and taplo claims `site/src/start/**/*.toml`.
 - **The Mac's steps** (2.1 to 2.5):
   - `mac/install.sh` is one `nix profile add` of the nine installables, in order.
@@ -56,17 +45,17 @@ All 23 tasks of `tasks.md`, groups 1 to 6, are ticked `[x]`, and none is open. W
 - **NixOS's steps** (3.1 to 3.6):
   - `nixos/flake.nix`, `nixos/boomdrive.nix`, `nixos/switch.sh` and `nixos/state.sh` are as the design gives them.
   - `boomdrive.nix` sets crew's host and drive by the keys of crew's module at the pin `main` brings, and nothing of Flume's.
-  - `main` at 62835d2 is merged in (28ce00e9).
-- **The steps both ways share** (4.1 to 4.5):
+  - `main` at 62835d2 is merged in (28ce00e9). `main` has since gained only 8da7b7f, a record's amendment in `docs/adr/`, which the gate ran against.
+- **The steps both ways share** (4.1 to 4.6):
   - `both/sluice.toml`, `both/flume.toml`, `both/land.sh`, `both/start.sh` and `both/watch.sh` are as the tasks give them.
   - The stand-in is the `[[bin]]` `boomdrive-stand-in`, built under the feature `stand-in` alone, and `boomdrive:test` runs `cargo test -p boomdrive --features stand-in`.
-  - Task 4.5's test is the one that fails in the gate.
+  - Task 4.6: `quick_start.rs`'s `on_scratch` gives every program on the scratch host `SLUICE_USER_SCRATCH`, the scratch host's `sluice` folder. `both/sluice.toml` is unchanged. Its `sent_back` checks each place before any printed command runs. Where Flume's status gives a send-back, the test fails with the merge queue's verdict and the set's sluice's `wait` of the submission, run in the runner's clone. Design Decision 6 gains "sluice's scratch" and "A stage sent back" to match. The task's test passes in the gate.
 - **The page** (5.1 to 5.4):
   - `pages/start.md` and the eleven step records exist. The collection `start` has its schema.
   - `pages/start.astro` builds `/start/` with no script, and the masthead lists Start after Tools.
   - `site.css` gives the step blocks the page's tokens and `overflow-x: auto`.
   - `check-site.sh` holds the quick start's checks, and `site/moon.yml`'s `test` inputs name every file the task names.
-- **README** (6.1): "Installing with nix" opens with the quick start's address, and `readme.rs` holds `the_readme_names_the_quick_start`. The gate did not reach that test, as said above.
+- **README** (6.1): "Installing with nix" opens with the quick start's address, and `readme.rs`'s `the_readme_names_the_quick_start` passes.
 
 Record 0043, site.8, `site/CLAUDE.md`'s line and "The quick start" of `site/docs/site-design.md` are in the tree.
 
@@ -101,10 +90,4 @@ Apart from `bolt/one-command-sets-up-a-persons-drive` at b839cea and `main` at 6
 | The state repository is made as setup makes it | Made as setup makes it | `quick_start.rs` `the_state_repository_is_made_as_setup_makes_it` | passed |
 | The landing step's files are the ones sluice and Flume land main by | The policy on main | `quick_start.rs` `sluices_file_lands_on_main` | passed |
 | The drive's agents start as setup says | Started as setup says | `quick_start.rs` `the_drives_agents_start_as_setup_says` | passed |
-| A change the drive is given lands | From crew's launch to main | `quick_start.rs` `a_change_the_drive_is_given_lands` | **failed** |
-
-## What goes back to the code stage
-
-- `a_change_the_drive_is_given_lands` has to pass in the gate, `sluice exec main`, under its sandbox executor, and not only in a plain `devenv shell`. First, find out why the scratch policy's sluice fails its `[tests]` there, which `sluice wait 1` names inside the test's scratch home. Then fix that, keeping the set's own sluice and Flume (site.8; core.45; design Decision 6).
-- A stage that sluice refuses should come back as that refusal. At present the stand-in panics on a second run, and the test reports that panic instead of what sluice said.
-- After that, the gate has to run `boomdrive:test` whole, so that `readme.rs` and `setup.rs`, which this gate never reached, pass too.
+| A change the drive is given lands | From crew's launch to main | `quick_start.rs` `a_change_the_drive_is_given_lands`, under the gate's sandbox | passed |
