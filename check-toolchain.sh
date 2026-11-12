@@ -3,11 +3,13 @@
 # (rule core.8): rustc, cargo, clippy and rustfmt the build .prototools
 # pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec,
 # the nix project's nix, nixfmt, statix, deadnix and actionlint, the
-# release's git-cliff and convco, and the site's bun, Node.js, Vale and
-# Biome the releases devenv.nix pins (record 0038), and
-# OpenSpec's Claude Code skills its OpenSpec's (record 0022). A tool
-# found outside its pin, a runner's rustup default say, fails here rather
-# than holding the tree to another version's rules.
+# release's git-cliff and convco, the site's bun, Node.js, Vale and
+# Biome (record 0038), and the launcher's clang-format (design Decision 6
+# of the change each-drive-opens-from-the-launcher) the releases
+# devenv.nix pins, and OpenSpec's Claude Code skills its OpenSpec's
+# (record 0022). A tool found outside its pin, a runner's rustup default
+# say, fails here rather than holding the tree to another version's
+# rules.
 set -eu
 
 fail() {
@@ -81,6 +83,7 @@ release bun "$(pinned bunVersion)" bun --version
 release node "$(pinned nodeVersion)" node --version
 release vale "$(pinned valeVersion)" vale --version
 release biome "$(pinned biomeVersion)" biome --version
+release clang-format "$(pinned clangFormatVersion)" clang-format --version
 
 # statix answers no --version: its version is the name of the store path
 # its program is in.

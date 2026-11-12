@@ -119,6 +119,13 @@ in
     lineWidth = 100;
   };
 
+  # clang-format lays out the launcher's menu, the tree's one Objective-C
+  # file, in its default style (design Decision 6 of the change
+  # each-drive-opens-from-the-launcher). Its package is clang-tools, which
+  # devenv.nix pins.
+  programs.clang-format.enable = true;
+  programs.clang-format.includes = [ "nix/packages/*.m" ];
+
   # .versionrc, convco's, is YAML under a name with no extension.
   programs.yamlfmt.enable = true;
   settings.formatter.yamlfmt.includes = [ ".versionrc" ];

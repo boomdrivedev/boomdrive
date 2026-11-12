@@ -1,9 +1,12 @@
 //! README's examples are what the runner reads (task 1.2, Task notes
-//! 9.4, task 6.4): its configuration, the local layer over it, and with
-//! it its `[control_plane]` table, which opens crew's implementation, and its hosted table, which
-//! the hosted implementation reads. It names no branch command the
+//! 9.4, task 6.4): its configuration, the App it names, the local layer
+//! over it, and with it its `[control_plane]` table, which opens crew's
+//! implementation, and its hosted table, which the hosted implementation
+//! reads, the App left out, since the hosted control plane holds it
+//! (record 0007 as amended on 2026-11-11). It names no branch command the
 //! runner runs (core.52).
 
+use boomdrive::config::ForgeApp;
 use boomdrive::{config, planes};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -107,6 +110,21 @@ fn the_readme_configuration_reads() {
     );
     assert!(config.code_workspaces);
     assert_eq!(config.control_plane, None);
+    assert_eq!(
+        config.forge,
+        Some(ForgeApp {
+            app_id: 123456,
+            key_file: PathBuf::from("/h/.config/boomdrive/app.pem"),
+        })
+    );
+}
+
+/// README's configuration with its `[forge]` left out, as a host under
+/// the hosted control plane writes it.
+fn without_the_app(block: &str) -> String {
+    let mut table: toml::Table = block.parse().expect("README's configuration is TOML");
+    assert!(table.remove("forge").is_some(), "README names no [forge]");
+    toml::to_string(&table).expect("the configuration written again")
 }
 
 /// The block under "Carrying the control plane's work", written after the
@@ -145,7 +163,14 @@ fn the_readme_hosted_table_reads() {
     let (_, dialing) = text
         .split_once("\n## Dialing the hosted control plane\n")
         .expect("README says how the runner dials the hosted control plane");
-    let file = format!("{}\n{}", toml_block(&text), toml_block(dialing));
+    let beside = format!("{}\n{}", toml_block(&text), toml_block(dialing));
+    let refused = config::parse(&beside, &readme, Path::new("/h")).unwrap_err();
+    assert!(refused.contains("holds the App"), "{refused}");
+    let file = format!(
+        "{}\n{}",
+        without_the_app(toml_block(&text)),
+        toml_block(dialing)
+    );
     let config = config::parse(&file, &readme, Path::new("/h")).unwrap();
     let table = config.control_plane.clone().expect("a control plane named");
     assert_eq!(table.implementation, "hosted");
@@ -224,6 +249,21 @@ fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
         flat.contains("leaves the runner's branch once its done is answered"),
         "README says not when a preview leaves the runner's branch"
     );
+}
+
+/// Design Decision 3 of the-runner-names-each-repository-it-keeps:
+/// README's crew section names `repositories.rec` among the files of the
+/// runner's branch, naming each repository of the partition's drive.
+#[test]
+fn the_readme_names_the_repositories_each_drive_keeps() {
+    let (text, _) = readme();
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    for named in [
+        "repositories.rec",
+        "each repository of the partition's drive",
+    ] {
+        assert!(flat.contains(named), "README names no {named:?}");
+    }
 }
 
 /// Design Decisions 2, 4 and 8 of

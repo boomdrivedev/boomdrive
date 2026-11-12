@@ -24,10 +24,14 @@ in
     // import ./nixos.nix t
     // import ./tools.nix t
     // import ./drives.nix t
+    // import ./sources.nix t
     // import ./cache.nix t
     // import ./workflow.nix t
     // import ./apps.nix t
     // import ./way-in.nix t
     // import ./quick-start.nix t
+    // import ./data-dir.nix t
+    // import ./clone-dirs.nix t
+    // import ./kept.nix t
   );
 }

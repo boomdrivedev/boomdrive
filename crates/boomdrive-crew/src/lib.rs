@@ -4,7 +4,12 @@
 //! of each partition's drive branch, `<label>/main`, and every runner's
 //! branch beside it, and gives this host's requests and role runs as
 //! wants under the lease number 1. It writes the runner's own branch,
-//! `<label>/runner/<host>`, in crew's formats, and pushes no other.
+//! `<label>/runner/<host>`, in crew's formats, and pushes no other: at
+//! every write, `repositories.rec` among its files names each repository
+//! of the drive named by the partition's label that the hello names kept,
+//! with its clone's folder, and none of another drive's
+//! (the-runner-names-each-repository-it-keeps, design Decisions 3 and 4;
+//! records 0028 and 0032).
 
 pub mod config;
 pub mod ids;
@@ -18,8 +23,8 @@ pub mod setup;
 pub mod write;
 
 use boomdrive_control::{
-    Acted, Capacity, ControlPlane, Hello, Id, Launched, Outcome, Part, Pulled, Report, Reported,
-    Unread, Unsent, Want,
+    Acted, Capacity, ControlPlane, Hello, Id, KeptRepository, Launched, Outcome, Part, Pulled,
+    Report, Reported, Unread, Unsent, Want,
 };
 use config::{Config, Partition, StateRepository};
 use read::{runner_branch, Kept, Main, Request, Runner, Store};
@@ -50,6 +55,10 @@ pub struct Crew {
     say: Say,
     /// The runner's version, as the last hello gave it.
     version: Option<String>,
+    /// Each drive the last hello named, with the repositories it keeps:
+    /// a report writes each partition's `repositories.rec` from the drive
+    /// named by its label (design Decision 3).
+    drives: BTreeMap<String, Vec<KeptRepository>>,
     /// Each partition's `<label>/main` as the last pull that could read
     /// it read it, by label.
     mains: BTreeMap<String, Main>,
@@ -121,6 +130,7 @@ impl Crew {
             data_dir: data_dir.to_path_buf(),
             say,
             version: None,
+            drives: BTreeMap::new(),
             mains: BTreeMap::new(),
             pulls: 0,
             again: BTreeMap::new(),
@@ -149,8 +159,9 @@ impl Crew {
     /// outside `repositories/` so the keeper never takes it for a clone.
     /// Two partitions of one state repository share no git directory and
     /// so no weir lock, and one's fetch or push holds no other's pull or
-    /// report (record 0026; design Decision 7). Its listing is stopped at
-    /// thirty seconds (record 0042).
+    /// report (record 0026; design Decision 7). Its listing, and each try
+    /// of weir-branch's fetch, listing and push, is stopped at thirty
+    /// seconds (record 0042 as amended on 2026-11-11).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
         Store::new(
@@ -391,6 +402,18 @@ impl Crew {
     ) -> Result<(Vec<Want>, Option<Report>), String> {
         let label = partition.label.clone();
         let host = self.config.host.clone();
+        if !hello.drives.contains_key(&label) {
+            let drives: Vec<&str> = hello.drives.keys().map(String::as_str).collect();
+            lines.say(format!(
+                "{label}: this host's configuration names no drive {label}, so {} names no \
+                 repository it keeps; its drives are {}",
+                runner_branch(&label, &host),
+                match drives.is_empty() {
+                    true => "none".to_string(),
+                    false => drives.join(", "),
+                }
+            ));
+        }
         let store = self.store(partition);
         let main = store.main(&label)?;
         if main.unnumbered > 0 {
@@ -605,6 +628,7 @@ impl Crew {
                     &version,
                     &at,
                     old,
+                    kept_of(hello, &label),
                     &claims,
                     &withdraws.keys().copied().collect::<Vec<_>>(),
                 ))
@@ -662,7 +686,15 @@ impl Crew {
                 let version = hello.runner_version.clone();
                 let at = boomdrive_control::At::now().to_string();
                 match write::write(&store, &label, &host, Some(&what), |old| {
-                    Ok(claim_texts(&host, &version, &at, old, &[], &withdrawn))
+                    Ok(claim_texts(
+                        &host,
+                        &version,
+                        &at,
+                        old,
+                        kept_of(hello, &label),
+                        &[],
+                        &withdrawn,
+                    ))
                 }) {
                     Ok(_) => {
                         lines.say(format!("{}: {what}", runner_branch(&label, &host)));
@@ -811,15 +843,24 @@ fn placed(places: &BTreeMap<u64, Record>) -> impl Iterator<Item = roles::Placed<
     })
 }
 
+/// The repositories of the drive named by `label` that `hello` names
+/// kept, none where it names no such drive (design Decisions 3 and 4).
+fn kept_of<'a>(hello: &'a Hello, label: &str) -> &'a [KeptRepository] {
+    hello.drives.get(label).map_or(&[], Vec::as_slice)
+}
+
 /// The files of a write that claims `claims` and withdraws `withdraws`,
 /// formed from the tip's `old`: its answers with each claim added and
-/// each withdrawn claim removed, and its other files as they stand, or
-/// made where the branch has none.
+/// each withdrawn claim removed, `repositories.rec` of `kept`, the
+/// repositories of the partition's drive the hello names, and its other
+/// files as they stand, or made where the branch has none (design
+/// Decision 3).
 fn claim_texts(
     host: &str,
     version: &str,
     at: &str,
     old: &read::RunnerFiles,
+    kept: &[KeptRepository],
     claims: &[u64],
     withdraws: &[u64],
 ) -> write::Texts {
@@ -850,6 +891,7 @@ fn claim_texts(
             .cloned()
             .flatten()
             .unwrap_or_else(|| write::places_text(&BTreeMap::new(), &BTreeMap::new())),
+        repositories: write::repositories_text(kept),
         previews: old.get("previews.rec").cloned().flatten(),
     }
 }
@@ -912,6 +954,7 @@ impl ControlPlane for Crew {
     fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread> {
         self.pulls += 1;
         self.version = Some(hello.runner_version.clone());
+        self.drives = hello.drives.clone();
         let mut lines = Lines::default();
         let mut wants = Vec::new();
         let mut back: Option<Report> = None;
@@ -984,6 +1027,10 @@ impl ControlPlane for Crew {
             let at = boomdrive_control::At::now().to_string();
             let store = self.store(partition);
             let main = main.clone();
+            // The drive named by the label, as its latest pull's hello
+            // gave it: a pass always pulls before it reports (design
+            // Decision 3).
+            let repositories = self.drives.get(label).cloned().unwrap_or_default();
             let written = write::write(&store, label, &host, None, |old| {
                 let claims: Vec<Record> = write::answers_at(old)
                     .into_iter()
@@ -1007,6 +1054,7 @@ impl ControlPlane for Crew {
                     &kept,
                     &claims,
                     &addresses,
+                    &repositories,
                     previews_held,
                 ))
             });
