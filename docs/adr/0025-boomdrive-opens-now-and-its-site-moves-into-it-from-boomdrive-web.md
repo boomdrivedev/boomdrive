@@ -103,7 +103,7 @@ Sources: the user's words that day, relayed by agentplot-operator, on moving the
   - each agent's Claude Code project folder keyed by an old path is renamed to its new path;
   - crew's kit paths and Flume's repository paths name the new folders.
 
-  Then the runner starts, `sluice forge check` passes in each repository, and the main level comes back up in the new folders. Every repository that is ready moves in the same window, under one deploy. The first window holds weir alone, as a test of the steps. The rest move together once its forge check passes, each in the first window it is ready for.
+  Then the runner starts, `sluice forge check` passes in each repository, and the main level comes back up in the new folders. Every repository that is ready moves in the same window, under one deploy. The first window holds timber alone, as a test of the steps, in the user's words: "we should pick one easy-to-move repo that is low risk. … If no bolts are running on Timber, I say we move Timber or something like that first." The rest move together once its forge check passes, each in the first window it is ready for.
 - **The kit keeps its name.** crew names a kit by the last part of its address, so no record of crew's changes (crew 0060).
 
 This amendment's bridge replaces the earlier one's precondition. That amendment's other points stand where this one doesn't restate them: a repository moves once drained, and the kit keeps its name.
