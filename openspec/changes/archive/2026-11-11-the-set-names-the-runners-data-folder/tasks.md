@@ -1,0 +1,27 @@
+# Tasks
+
+Work through the tasks in order. A task is true once the check it names passes, run as it names it. The groups are headings for reading.
+
+- Every nix case evaluates against no store, as `nix/check.sh` does, with core.41's neutral names and paths. No task builds a package, writes to the store or reaches the network.
+- No task changes the runner's code, its file's keys, the job's environment, a flake input or a tag, or adds a tool or a tracked file type (core.7, core.8). The table, `nix/tests/data-dirs.json`, is JSON, which jsonfmt already owns. Nothing outside the paths proposal.md's Touches lists is changed.
+- Record 0036's amendment of 2026-11-11 and core.57 are written in the commit that writes this change. No task changes them. A task that relies on a choice the design names cites its Decision.
+
+## 1. The rule
+
+- [x] 1.1 `nix/modules/data-dir.nix` is `{ lib }: { home, dataHome }:`, giving the runner's data folder as design Decision 2 has it. `dataHome` is taken where it is not `null` and its string starts with `/`, else `home` joined with `.local/share`, and that joined with `boomdrive`. Each join adds a `/` only where the base does not end in one. Its header comment names `crates/boomdrive/src/config.rs`'s `data_dir` and `xdg` as the rule it follows, and `nix/tests/data-dirs.json` as the table that holds them together. `nix/tests/data-dirs.json` lists the five cases of design Decision 4, each `{"HOME": …, "XDG_DATA_HOME": …, "folder": …}`. `nix/tests/data-dir.nix` is `t: { … }`, and `nix/tests/default.nix`'s `test` takes it. Its case "The runner's own rule" holds `data-dir.nix` to every row of the table, naming a failing row by its `HOME`, its `XDG_DATA_HOME` and what the rule gave (Task notes 1.1). True when `sluice exec main -- moon run nix:test` passes, proving the nix half of the service-modules spec's "The runner's own rule".
+- [x] 1.2 `crates/boomdrive/tests/module_files.rs` gains `the_modules_data_folder_is_the_runners`. It reads `../../nix/tests/data-dirs.json` from `CARGO_MANIFEST_DIR` with `serde_json`. For each row it builds an `Env` by `config::Env::read` from a lookup giving `HOME`, and `XDG_DATA_HOME` where the row's is not `null`. It asserts `config::data_dir` is the row's `folder`, its message naming the row. The file's module documentation adds that it holds the data folder the modules name to the runner's own rule. `crates/boomdrive/moon.yml`'s `test` task takes `/nix/tests/data-dirs.json` as an input, and its comment on the paths names it (design Decision 4). True when `devenv shell -- cargo test -p boomdrive --test module_files -- the_modules_data_folder_is_the_runners` passes, proving the runner's half of "The runner's own rule".
+
+## 2. The option
+
+- [x] 2.1 `nix/modules/darwin.nix` imports `./data-dir.nix` as `dataDirOf`. Beside `logFile` it declares `options.services.boomdrive.dataDir`: `lib.types.path`, `readOnly = true`, and its default `dataDirOf { inherit home; dataHome = config.launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables.XDG_DATA_HOME or null; }`. Its `defaultText` and `description` are as design Decision 1 has them. The header comment names the option beside `logFile`. `nix/tests/data-dir.nix` gains the nix-darwin cases of Task notes 2.1 (design Decisions 1 and 3). True when `sluice exec main -- moon run nix:test` passes, proving "The data folder on nix-darwin", "The data folder with the runner not enabled", and "A job given its own XDG_DATA_HOME", "An XDG_DATA_HOME the runner takes as unset" and "A host that sets the data folder" on nix-darwin. "The agent" must still hold.
+- [x] 2.2 `nix/modules/nixos.nix` imports `./data-dir.nix` as `dataDirOf`. Beside `user` it declares `options.services.boomdrive.dataDir` as 2.1 does, its default `dataDirOf { inherit home; dataHome = config.systemd.user.services.boomdrive.environment.XDG_DATA_HOME or null; }`, with `home` the module's own, `services.boomdrive.user`'s. Its `defaultText` names that user's home. The header comment names the option. `nix/tests/data-dir.nix` gains the NixOS cases of Task notes 2.2 (design Decisions 1 and 3). True when `sluice exec main -- moon run nix:test` passes, proving "The data folder on NixOS", "The data folder of another user on NixOS", and "A job given its own XDG_DATA_HOME", "An XDG_DATA_HOME the runner takes as unset" and "A host that sets the data folder" on NixOS. "The unit" must still hold.
+- [x] 2.3 The nix files this change adds or changes keep to the nix project's format and lint. True when `sluice exec main -- moon run nix:format nix:lint` passes.
+
+## 3. The words
+
+- [x] 3.1 The README's **Installing with nix**, after the paragraph on the agent and the unit, names `services.boomdrive.dataDir` as design Decision 5 has it. `nix/tests/data-dir.nix` gains the case "The README's data folder", which holds `t.installing` to naming `services.boomdrive.dataDir` and saying `read-only` (design Decision 5). True when `sluice exec main -- moon run nix:test` passes, proving "The README's data folder". "The README's words" and "The README's accounts" must still hold.
+- [x] 3.2 The table keeps to the tree's formatters. True when `devenv shell -- treefmt --ci nix/tests/data-dirs.json` passes.
+
+## 4. The specs
+
+- [x] 4.1 The change's delta archives into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive the-set-names-the-runners-data-folder --yes`, `sluice exec main -- moon run root:specs` passes.

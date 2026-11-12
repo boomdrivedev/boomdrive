@@ -16,7 +16,7 @@ Evaluation SHALL fail, naming the key's path, where a key of `settings` at any d
 
 ### Requirement: On nix-darwin the runner is a launchd agent of the primary user's login
 
-With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `<package>/bin/boomdrive run --config <the file>`, start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, have only `HOME` and `PATH` in its environment, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
+With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `<package>/bin/boomdrive run --config <the file>`, start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, be given `HOME` and `PATH` alone by the module, beside any variable the host gives the job, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
 
 #### Scenario: The agent
 
@@ -248,11 +248,11 @@ The modules SHALL set `services.flume.package`, `services.sluice.package` and `s
 
 ### Requirement: The Boomdrive module writes no file of the other tools'
 
-The modules' own activation SHALL link the runner's file, run herdr's own `plugin link` for the plugins `services.boomdrive.herdr.plugins` lists, and do nothing else of a tool's. Flume's, sluice's and crew's files SHALL each be written and linked by that tool's own module, from its own `settings`, as it writes them when imported without Boomdrive's.
+The modules' own activation SHALL link the runner's file, run herdr's own `plugin link` for the plugins `services.boomdrive.herdr.plugins` lists, and do nothing else of a tool's. Flume's, sluice's and crew's files, crew's source in Flume's folder among them, SHALL each be written and linked by that tool's own module, from its own `settings`, and for Flume its `sources`, as it writes them when imported without Boomdrive's.
 
 #### Scenario: The tools' activation is their own
 
-- **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's and crew's own modules alone, each turned on with the same settings, packages and user
+- **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's and crew's own modules alone, each turned on with the same settings, packages and user, and Flume's with crew's source declared as the modules declare it
 - **THEN** on nix-darwin their activations are the same but for the runner's own link and herdr's plugins' links, and on NixOS their user activations are the same but for the runner's own
 
 ### Requirement: The modules hold no option that installs a tool its own module installs
@@ -534,6 +534,254 @@ The README's install with nix SHALL say that the launcher the modules install is
 
 - **WHEN** the README's install with nix is read
 - **THEN** it names `menu bar`, `each drive` and `Default stream`
+
+### Requirement: The modules name the runner's data folder by the runner's own rule
+
+Each module SHALL declare `services.boomdrive.dataDir`, whether or not the runner is enabled, as the runner's data folder by the runner's own rule. That is `$XDG_DATA_HOME/boomdrive` where the runner's job gives an absolute `XDG_DATA_HOME`, else `~/.local/share/boomdrive` under the runner's user's home: the primary user's on nix-darwin, `services.boomdrive.user`'s on NixOS. It SHALL never name the folder of before the rename (record 0035).
+
+#### Scenario: The data folder on nix-darwin
+
+- **WHEN** the module is enabled for the primary user `alice`, whose home is `/Users/alice`, and the job is given no `XDG_DATA_HOME`
+- **THEN** `services.boomdrive.dataDir` is `/Users/alice/.local/share/boomdrive`
+
+#### Scenario: The data folder on NixOS
+
+- **WHEN** the module is enabled for the user `alice`, whose home is `/home/alice`, and the job is given no `XDG_DATA_HOME`
+- **THEN** `services.boomdrive.dataDir` is `/home/alice/.local/share/boomdrive`
+
+#### Scenario: The data folder of another user on NixOS
+
+- **WHEN** the module is enabled for the user `bob`, whose home is `/home/bob`
+- **THEN** `services.boomdrive.dataDir` is `/home/bob/.local/share/boomdrive`
+
+#### Scenario: The data folder with the runner not enabled
+
+- **WHEN** the nix-darwin module is imported for the primary user `alice` and `services.boomdrive.enable` is not set
+- **THEN** `services.boomdrive.dataDir` is `/Users/alice/.local/share/boomdrive`
+
+#### Scenario: The runner's own rule
+
+- **WHEN** the module's rule and the runner's `data_dir` are given one `HOME` and one `XDG_DATA_HOME`, the latter unset, absolute, absolute ending in `/`, empty or relative
+- **THEN** each gives the same folder
+
+### Requirement: The data folder follows the job's own XDG_DATA_HOME
+
+The `XDG_DATA_HOME` the data folder follows SHALL be the one the job's declaration gives: the agent's `EnvironmentVariables` on nix-darwin and the unit's `environment` on NixOS. An empty or relative one SHALL be taken as unset, as the runner takes it.
+
+#### Scenario: A job given its own XDG_DATA_HOME
+
+- **WHEN** the host gives the runner's job `XDG_DATA_HOME` `/srv/data`, on nix-darwin in `launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables` and on NixOS in `systemd.user.services.boomdrive.environment`
+- **THEN** `services.boomdrive.dataDir` is `/srv/data/boomdrive` on either platform, and the nix-darwin agent's `HOME` and `PATH` are the module's
+
+#### Scenario: An XDG_DATA_HOME the runner takes as unset
+
+- **WHEN** the host gives the runner's job `XDG_DATA_HOME` `data`, or an empty one
+- **THEN** `services.boomdrive.dataDir` is `~/.local/share/boomdrive` under the user's home, on either platform
+
+### Requirement: No host sets the runner's data folder
+
+`services.boomdrive.dataDir` SHALL be read-only, so evaluation of it fails where a host sets it, at any priority.
+
+#### Scenario: A host that sets the data folder
+
+- **WHEN** a host sets `services.boomdrive.dataDir = "/srv/boomdrive"`
+- **THEN** evaluation of the option fails, on either platform, as nixpkgs fails a read-only option set beside its value
+
+### Requirement: The README names the runner's data folder
+
+The README's **Installing with nix** SHALL name `services.boomdrive.dataDir` and what it holds. It SHALL say the option is read-only and is read wherever a host names the folder, a clone's folder in it being read from `services.boomdrive.cloneDirs`. It SHALL say a host gives the job its own `XDG_DATA_HOME`, since one the job takes from elsewhere is not seen.
+
+#### Scenario: The README's data folder
+
+- **WHEN** the README's **Installing with nix** is read
+- **THEN** it names `services.boomdrive.dataDir` and says it is read-only
+
+### Requirement: The modules state each kept repository's clone folder by the runner's own rule
+
+Each module SHALL declare `services.boomdrive.cloneDirs`, whether or not the runner is enabled. It SHALL hold one entry for each address of every drive of every account in `services.boomdrive.accounts`, a drive of another machine's among them, and no other. Each entry SHALL be keyed by its address as written, `<owner>/<name>`, and its value SHALL be the runner's clone folder of it by the runner's own rule, `<services.boomdrive.dataDir>/repositories/<owner>/<name>`.
+
+#### Scenario: Each kept repository's clone folder on nix-darwin
+
+- **WHEN** the module is enabled for the primary user `alice`, whose home is `/Users/alice`, and the account `own`'s drive `home` keeps the owner `agentplot`'s `flume` and `sluice`
+- **THEN** `services.boomdrive.cloneDirs` is `agentplot/flume` at `/Users/alice/.local/share/boomdrive/repositories/agentplot/flume` and `agentplot/sluice` at `/Users/alice/.local/share/boomdrive/repositories/agentplot/sluice`, and nothing else
+
+#### Scenario: Each kept repository's clone folder on NixOS
+
+- **WHEN** the module is enabled for the user `alice`, whose home is `/home/alice`, and the account `own`'s drive `home` keeps the owner `agentplot`'s `flume` and `sluice`
+- **THEN** `services.boomdrive.cloneDirs` is `agentplot/flume` at `/home/alice/.local/share/boomdrive/repositories/agentplot/flume` and `agentplot/sluice` at `/home/alice/.local/share/boomdrive/repositories/agentplot/sluice`, and nothing else
+
+#### Scenario: The clone folder of another machine's drive
+
+- **WHEN** crew's host is `host-a`, and the account `work`'s drive `garden`, on the machine `host-b`, keeps the owner `example`'s `alpha`
+- **THEN** `services.boomdrive.cloneDirs` gives `example/alpha` its folder under `services.boomdrive.dataDir`, on either platform
+
+#### Scenario: The clone folders follow the data folder
+
+- **WHEN** the host gives the runner's job `XDG_DATA_HOME` `/srv/data`, and the drive `home` keeps `agentplot/flume`
+- **THEN** `services.boomdrive.cloneDirs` gives `agentplot/flume` at `/srv/data/boomdrive/repositories/agentplot/flume`, on either platform
+
+#### Scenario: No repository kept
+
+- **WHEN** `services.boomdrive.accounts` names no repository
+- **THEN** `services.boomdrive.cloneDirs` is empty, on either platform
+
+#### Scenario: The clone folders with the runner not enabled
+
+- **WHEN** the nix-darwin module is imported for the primary user `alice`, the drive `home` keeps `agentplot/flume`, and `services.boomdrive.enable` is not set
+- **THEN** `services.boomdrive.cloneDirs` gives `agentplot/flume` at `/Users/alice/.local/share/boomdrive/repositories/agentplot/flume`
+
+#### Scenario: The runner's own clone rule
+
+- **WHEN** the module's rule and the runner's `clone::container` are given one data folder and one address, its owner and name each as written
+- **THEN** each gives the same folder
+
+### Requirement: No host sets a clone's folder
+
+`services.boomdrive.cloneDirs` SHALL be read-only, so evaluation of it fails where a host sets it, or an entry of it, at any priority.
+
+#### Scenario: A host that sets a clone's folder
+
+- **WHEN** a host sets `services.boomdrive.cloneDirs."agentplot/flume" = "/srv/flume"`
+- **THEN** evaluation of the option fails, on either platform, as nixpkgs fails a read-only option set beside its value
+
+### Requirement: The README names each kept repository's clone folder
+
+The README's **Installing with nix** SHALL name `services.boomdrive.cloneDirs`, what it holds and how each entry is keyed. It SHALL say the option is read-only and is read wherever a host names a clone's folder, and that it holds only the repositories `services.boomdrive.accounts` names.
+
+#### Scenario: The README's clone folders
+
+- **WHEN** the README's **Installing with nix** is read
+- **THEN** it names `services.boomdrive.cloneDirs`
+
+### Requirement: With the runner and crew's module on, the modules give crew each kept repository's folders
+
+With `services.boomdrive.enable` and `services.crew.enable`, each module SHALL give `services.crew.settings.repositories` one entry for each address of `services.boomdrive.cloneDirs`, and no other. Each entry's `dir` SHALL be that address's folder in `services.boomdrive.cloneDirs`, and its `checkout` SHALL be the runner's view of the address.
+
+#### Scenario: crew's kept repositories on nix-darwin
+
+- **WHEN** the module is enabled for the primary user `alice`, whose home is `/Users/alice`, crew's module is on with its host and partitions, and the account `own`'s drive `home` keeps the owner `agentplot`'s `flume` and `sluice`
+- **THEN** `services.crew.settings.repositories` gives `agentplot/flume` the `dir` `/Users/alice/.local/share/boomdrive/repositories/agentplot/flume` and the `checkout` `/Users/alice/Code/agentplot/flume`, gives `agentplot/sluice` the same under its own name, and gives nothing else
+
+#### Scenario: crew's kept repositories on NixOS
+
+- **WHEN** the module is enabled for the user `alice`, whose home is `/home/alice`, crew's module is on with its host and partitions, and the account `own`'s drive `home` keeps the owner `agentplot`'s `flume` and `sluice`
+- **THEN** `services.crew.settings.repositories` gives `agentplot/flume` the `dir` `/home/alice/.local/share/boomdrive/repositories/agentplot/flume` and the `checkout` `/home/alice/Code/agentplot/flume`, gives `agentplot/sluice` the same under its own name, and gives nothing else
+
+#### Scenario: crew's kept repository of another machine's drive
+
+- **WHEN** crew's module is on with the host `host-a`, and the account `work`'s drive `garden`, on the machine `host-b`, keeps the owner `example`'s `alpha`
+- **THEN** `services.crew.settings.repositories` gives `example/alpha` the `dir` `services.boomdrive.cloneDirs` gives it and the `checkout` `Code/example/alpha` under the user's home, on either platform
+
+#### Scenario: crew's checkouts under the host's repository root
+
+- **WHEN** crew's module is on, the drive `home` keeps `agentplot/flume`, and `services.boomdrive.settings.repository_root` is `~/src`, and again `/srv/code`
+- **THEN** `services.crew.settings.repositories` gives `agentplot/flume` the `checkout` `src/agentplot/flume` under the user's home in the first, and `/srv/code/agentplot/flume` in the second, on either platform
+
+### Requirement: crew's checkout is the runner's view by the runner's own rule
+
+The view the modules give crew SHALL be the runner's by the runner's own rule, `<repository_root>/<owner>/<name>`. Its root SHALL be `services.boomdrive.settings.repository_root`, or `~/Code` where that is unset, and `~/` SHALL be the home of the runner's user.
+
+#### Scenario: The runner's own view rule
+
+- **WHEN** the module's view rule and the runner's `config::view_path` are given one home, one address and one `repository_root`, the root unset, beginning with `~/`, `~/` alone, absolute, or absolute ending in `/`
+- **THEN** each gives the same folder, as text
+
+#### Scenario: A repository root the runner refuses
+
+- **WHEN** the module's view rule and the runner's reading of its file are given a `repository_root` that is neither absolute nor begins with `~/`, such as `src` or `$HOME/Code`
+- **THEN** the rule's evaluation fails and the runner refuses the file
+
+### Requirement: Without the runner, crew's module or a kept repository, the modules give crew's kept repositories nothing
+
+The modules SHALL give `services.crew.settings.repositories` nothing where `services.boomdrive.enable` or `services.crew.enable` is not set, or where `services.boomdrive.cloneDirs` names no address, so the host's own value stands, and crew's file names none where the host names none.
+
+#### Scenario: crew's module off
+
+- **WHEN** the module is enabled, the drive `home` keeps `agentplot/flume` and `agentplot/sluice`, and crew's module is not turned on
+- **THEN** `services.crew.settings.repositories` is `null`, on either platform
+
+#### Scenario: The runner not enabled
+
+- **WHEN** the platform's module is imported with crew's module on and the drive `home`, and `services.boomdrive.enable` is not set
+- **THEN** `services.crew.settings.repositories` is `null`, on either platform
+
+#### Scenario: No repository kept beside crew
+
+- **WHEN** the module is enabled, crew's module is on, and `services.boomdrive.accounts` names no repository
+- **THEN** `services.crew.settings.repositories` is `null`, on either platform
+
+### Requirement: No host writes a kept repository's folders
+
+The modules SHALL give each entry of crew's kept repositories at their own priority, so evaluation of `services.crew.settings.repositories` fails where a host gives an address of `services.boomdrive.cloneDirs` another `dir` or another `checkout`. A host's own entry for an address `services.boomdrive.cloneDirs` does not name SHALL stand beside the modules' entries.
+
+#### Scenario: A host that gives a kept repository another folder
+
+- **WHEN** crew's module is on, the drive `home` keeps `agentplot/flume`, and a host gives `services.crew.settings.repositories."agentplot/flume".dir = "/srv/flume"`, and again `.checkout = "/srv/flume"`
+- **THEN** evaluation of `services.crew.settings.repositories` fails in each, on either platform
+
+#### Scenario: A host's own kept repository
+
+- **WHEN** crew's module is on, the drive `home` keeps `agentplot/flume` and `agentplot/sluice`, and a host gives `services.crew.settings.repositories."example/own"` the `dir` `/srv/own` and the `checkout` `/srv/own/main`
+- **THEN** `services.crew.settings.repositories` gives `example/own` as the host gave it, beside `agentplot/flume` and `agentplot/sluice` as the module gives them, on either platform
+
+### Requirement: The README names crew's kept repositories
+
+The README's **Installing with nix** SHALL say that, with the runner and crew's module on, the module gives `services.crew.settings.repositories` each address of `services.boomdrive.cloneDirs`, its `dir` the clone's folder and its `checkout` the runner's view. It SHALL say a host writes none, an entry it gives another folder failing evaluation, and that a repository of the host's own that the runner does not keep stays the host's to name.
+
+#### Scenario: The README's kept repositories
+
+- **WHEN** the README's **Installing with nix** is read
+- **THEN** it names `services.crew.settings.repositories`
+
+### Requirement: With crew on, the modules declare crew's source to Flume
+
+Where `services.crew.enable` is true, whether or not `services.boomdrive.enable` is, the modules SHALL give Flume's module the source `crew`, `services.flume.sources.crew`, with `kinds_dir` set to `~/.local/share/flume/kinds/crew` and `roles` set to `~/.local/state/crew/flume/roles.toml`, and no other key (record 0034, point 2; crew record 0057, point 1).
+
+#### Scenario: crew's source with crew on
+
+- **WHEN** a system turns on `services.boomdrive` and crew, with its host and drives, and sets no option of `services.flume.sources`
+- **THEN** `services.flume.sources.crew` is exactly `kinds_dir = "~/.local/share/flume/kinds/crew"` and `roles = "~/.local/state/crew/flume/roles.toml"`, Flume's activation links a source rendered as `flume-source-crew.toml`, and the system fails no assertion, on nix-darwin and on NixOS
+
+#### Scenario: crew's source without the runner
+
+- **WHEN** a system imports the platform's `default` module, leaves `services.boomdrive.enable` unset, and turns on crew with its host and drives
+- **THEN** `services.flume.sources.crew` names the same `kinds_dir` and `roles`, on nix-darwin and on NixOS
+
+### Requirement: With crew off, no source of crew's
+
+Where `services.crew.enable` is false, the modules SHALL give Flume's module no source of crew's.
+
+#### Scenario: No source of crew's with crew off
+
+- **WHEN** a system turns on `services.boomdrive` and leaves crew off
+- **THEN** `services.flume.sources` holds no `crew`, and Flume's activation links no `flume-source-crew.toml`, on nix-darwin and on NixOS
+
+### Requirement: crew's source names what the set's crew writes
+
+The `roles` and `kinds_dir` the modules give crew's source SHALL be the roles file and the kinds folder the set's crew writes, each under the home of the user it runs as, written under `~`.
+
+#### Scenario: The paths the set's crew writes
+
+- **WHEN** crew's `plugin/lib/source.py`, at the crew the lock names, is read for its `ROLES_FILE` and `KINDS_DIR`, each `Path.home() / "<path>"`
+- **THEN** the source's `roles` is `~/` followed by `ROLES_FILE`'s path, and its `kinds_dir` is `~/` followed by `KINDS_DIR`'s
+
+### Requirement: A host's own value in crew's source wins
+
+The modules SHALL give each key of crew's source at the options' default priority, so a value a host sets in `services.flume.sources.crew` wins over the module's, and the key it does not set keeps the module's.
+
+#### Scenario: A host's own kinds folder for crew
+
+- **WHEN** a system turns on `services.boomdrive` and crew, with its host and drives, and sets `services.flume.sources.crew.kinds_dir = "/srv/kinds/crew"`
+- **THEN** the source's `kinds_dir` is `/srv/kinds/crew`, its `roles` is `~/.local/state/crew/flume/roles.toml`, and the system fails no assertion, on nix-darwin and on NixOS
+
+### Requirement: The README names crew's source
+
+The README's **Installing with nix** SHALL say that, with crew's module on, the module declares crew's source to Flume, `services.flume.sources.crew`, naming the roles file crew writes and its kinds folder, and that a host writes no file for it. No nix block in it SHALL set `services.flume.sources`.
+
+#### Scenario: The README's words on crew's source
+
+- **WHEN** the README's **Installing with nix** is read
+- **THEN** it says `services.flume.sources.crew`, `~/.local/state/crew/flume/roles.toml` and `~/.local/share/flume/kinds/crew`, and no nix block in it sets `services.flume.sources`
 
 ### Requirement: The App's key is named by a path outside the store
 

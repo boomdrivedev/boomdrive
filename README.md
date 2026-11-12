@@ -407,14 +407,20 @@ move its values into the tool's `settings` in the switch that takes this
 flake. `services.boomdrive.enable` turns on Flume's and sluice's
 modules; a host that runs crew turns on crew's, with its `host`, its
 drives and the hosts crew reaches, each written by crew's own names.
-Where `control_plane.type` is `crew` and no `control_plane.crew` is
-written, the module writes the runner's `[control_plane.crew]` from
-crew's drives: its `host` is `services.crew.host`, and it holds each
-drive whose `machine` is that host, in the order of their labels, by its
-`label`, with its `state` as `state_repository`. A table
-written out wins, whole. The module writes none of crew's `hosts`,
-`runs` or `review`: each host crew reaches, and how each drive's roles
-run and batch, are the host's own, written in `services.crew.settings`:
+With crew's module on, the module declares crew's source of kinds to
+Flume, `services.flume.sources.crew`, naming the roles file crew writes,
+`~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
+`~/.local/share/flume/kinds/crew`. Flume's module writes the source at
+`~/.config/flume/sources/crew.toml`, so a host writes no file for it,
+and a key the host sets there wins. Where `control_plane.type` is `crew`
+and no `control_plane.crew` is written, the module writes the runner's
+`[control_plane.crew]` from crew's drives: its `host` is
+`services.crew.host`, and it holds each drive whose `machine` is that
+host, in the order of their labels, by its `label`, with its `state` as
+`state_repository`. A table written out wins, whole. The module writes
+none of crew's `hosts`, `runs` or `review`: each host crew reaches, and
+how each drive's roles run and batch, are the host's own, written in
+`services.crew.settings`:
 
 ```nix
 {
@@ -533,6 +539,51 @@ of before does. A key of `settings` named
 for a credential, `token`, `key`, `secret` or `password`, or one ending
 in `_token`, `_key`, `_secret` or `_password`, fails evaluation, since
 every user reads the store.
+
+The runner keeps its clones, its lock and its report in its data
+folder, which each module names as `services.boomdrive.dataDir`:
+`~/.local/share/boomdrive` under the home of the runner's user, or
+`$XDG_DATA_HOME/boomdrive` where the runner's job is given an absolute
+`XDG_DATA_HOME`, in the agent's `EnvironmentVariables` on nix-darwin
+and in the unit's `environment` on NixOS. The option is read-only: read
+it wherever the host names the folder, a clone's folder in it being
+`services.boomdrive.cloneDirs`'s, and set it nowhere, since evaluation
+fails where a host sets it. An `XDG_DATA_HOME` the job takes from
+elsewhere, launchd's user domain or the user manager's own environment,
+is not seen, so a host that moves the runner's data gives the job its
+own:
+
+```nix
+launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables.XDG_DATA_HOME = "/srv/data";  # nix-darwin
+systemd.user.services.boomdrive.environment.XDG_DATA_HOME = "/srv/data";                       # NixOS
+```
+
+Each module states each kept repository's clone folder as
+`services.boomdrive.cloneDirs`: one entry for each address of
+`services.boomdrive.accounts`, every drive's of every account, another
+machine's drives among them, keyed by the address, `<owner>/<name>`,
+its folder `<dataDir>/repositories/<owner>/<name>`, the folder
+`flume launch --repository` names. It holds only the repositories
+`services.boomdrive.accounts` names, and none the runner's local layer
+alone adds. The option is read-only: read it wherever the host names a
+clone's folder, and set it nowhere, since evaluation fails where a host
+sets it or an entry of it. git run in the folder finds the bare
+repository by the folder's own `.git` file:
+
+```nix
+config.services.boomdrive.cloneDirs."agentplot/flume"  # ~/.local/share/boomdrive/repositories/agentplot/flume
+```
+
+With `services.boomdrive.enable` and crew's module on, each module
+gives crew's kept repositories, `services.crew.settings.repositories`,
+one entry for each address of `services.boomdrive.cloneDirs`: its `dir`
+the clone's folder, `cloneDirs`'s, and its `checkout` the runner's view,
+`<repository_root>/<owner>/<name>`, its root `~/Code` where
+`settings.repository_root` is unset and `~` the home of the runner's
+user. A host writes none of them: an entry the host gives a kept
+repository with another `dir` or `checkout` fails evaluation. A
+repository of the host's own that the runner does not keep stays the
+host's to name in crew's `repositories`, beside the module's entries.
 
 The runner's module puts the runner in the system profile, and each
 tool's module puts its tool there, the set's unless the host gives its
