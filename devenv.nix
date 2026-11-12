@@ -285,13 +285,18 @@ in
   cachix.pull = [ "boomdrive" ];
 
   # Claude Code's project files (record 0022): .mcp.json from the servers
-  # below and .claude/settings.json, each a link devenv makes into the
-  # store and git ignores. The servers are hosted, need no sign-in and
-  # start no process on the host: devenv's, which searches packages and
-  # devenv's options, named here because a list of the repository's own
-  # replaces devenv's default; and Astro's documentation, astro-docs, for
-  # the Astro release site/package.json pins (records 0022, 0025 and
-  # 0041; design Decision 14). Every server named is
+  # below and .claude/settings.json, each a regular file devenv copies out
+  # of the store at every entry to the shell and git ignores. Never a link
+  # into the store: Claude Code watches a project's settings by their real
+  # path, so a link had every session watching all of /nix/store and
+  # reading it again at every change to the store, which on 2026-11-11 held
+  # a host's store behind its sessions and hung every program from it
+  # (record 0022 as amended that day). The servers are hosted, need no
+  # sign-in and start no process on the host: devenv's, which searches
+  # packages and devenv's options, named here because a list of the
+  # repository's own replaces devenv's default; and Astro's documentation,
+  # astro-docs, for the Astro release site/package.json pins (records
+  # 0022, 0025 and 0041; design Decision 14). Every server named is
   # approved by name in the settings, so a session in a trusted folder, a
   # place among them, starts them and asks nothing. OpenSpec's skills and
   # commands under .claude/ are tracked, as the openspec pinned above
@@ -310,8 +315,11 @@ in
       url = "https://mcp.docs.astro.build/mcp";
     };
   };
-  files.${config.claude.code.settingsPath}.json.enabledMcpjsonServers =
-    lib.attrNames config.claude.code.mcpServers;
+  files.${config.claude.code.settingsPath} = {
+    json.enabledMcpjsonServers = lib.attrNames config.claude.code.mcpServers;
+    copyMode = "copy";
+  };
+  files.".mcp.json".copyMode = "copy";
 
   # moon's task archives (.moon/cache/outputs) are a link into the git common
   # dir, so every worktree shares them. The rest of .moon/cache records the
