@@ -146,6 +146,7 @@ pub fn hello(report: &Report) -> Hello {
         )]),
         repositories: vec![REPOSITORY.to_string()],
         draining: vec![],
+        drives: BTreeMap::new(),
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),

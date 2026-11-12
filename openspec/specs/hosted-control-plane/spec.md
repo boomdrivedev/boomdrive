@@ -338,3 +338,12 @@ A report the control plane hands back in a `pulled` SHALL give the runner each p
 
 - **WHEN** `home`'s control plane holds a report whose preview was brought up, and hands it back in its `pulled`
 - **THEN** the part's pull gives a report holding that preview under `home/`, with its lease, repository, revision, done, outcome, words and time as held, its text a JSON object whose `name` is its copy's, and no status
+
+### Requirement: No hello names a drive or a clone's folder
+
+A partition's hello SHALL name no drive and no clone's folder, since version 2 carries neither and a path goes up only where the protocol's copy names it (core.27, core.28, core.42).
+
+#### Scenario: No drive or folder goes up
+
+- **WHEN** the runner's hello names the drive `family` with `example/app` at `/data/repositories/example/app`, and `home` names `example/app`
+- **THEN** `home`'s hello names `example/app`, and neither `family` nor `/data/repositories/example/app` appears in it

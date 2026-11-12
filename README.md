@@ -303,7 +303,9 @@ Distrust costs only the time to build.
 The flake at `main` moves with each change that lands, and its cache
 run pushes that commit's binaries. Each landing that git-cliff finds a
 new version in, from its Conventional Commits, is released as a tag
-`v<version>` on that commit of `main`, with its notes, and the cache
+`v<version>` on a release commit, cut from that commit of `main`, which
+writes the version into the tree, so the runner at the tag says it;
+`main`'s runner says `0.0.0`. The release has its notes, and the cache
 runs again at the tag. To stay on one set, pin a tag,
 `github:agentplot/boomdrive/<tag>`, or a commit of `main` whose `cache`
 run passed:
@@ -325,18 +327,22 @@ and `~/.config/crew/teams.json`. A file of your own there is moved once
 to `config.toml.before-nix`, and crew's to `teams.json.before-nix`, so
 move its values into the tool's `settings` in the switch that takes this
 flake. `services.boomdrive.enable` turns on Flume's and sluice's
-modules; a host that runs crew turns on crew's, with its `host` and its
-partitions. With crew's module on, the module declares crew's source of
-kinds to Flume, `services.flume.sources.crew`, naming the roles file
-crew writes, `~/.local/state/crew/flume/roles.toml`, and crew's kinds
-folder, `~/.local/share/flume/kinds/crew`. Flume's module writes the
-source at `~/.config/flume/sources/crew.toml`, so a host writes no file
-for it, and a key the host sets there wins. Where `control_plane.type`
-is `crew` and no `control_plane.crew` is written, the module writes the
-runner's `[control_plane.crew]` from crew's partitions: its `host` is
-`services.crew.host`, and it holds each partition whose `machine` is
-that host, by its `label`, with its `state` as `state_repository`. A
-table written out wins, whole:
+modules; a host that runs crew turns on crew's, with its `host`, its
+drives and the hosts crew reaches, each written by crew's own names.
+With crew's module on, the module declares crew's source of kinds to
+Flume, `services.flume.sources.crew`, naming the roles file crew writes,
+`~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
+`~/.local/share/flume/kinds/crew`. Flume's module writes the source at
+`~/.config/flume/sources/crew.toml`, so a host writes no file for it,
+and a key the host sets there wins. Where `control_plane.type` is `crew`
+and no `control_plane.crew` is written, the module writes the runner's
+`[control_plane.crew]` from crew's drives: its `host` is
+`services.crew.host`, and it holds each drive whose `machine` is that
+host, in the order of their labels, by its `label`, with its `state` as
+`state_repository`. A table written out wins, whole. The module writes
+none of crew's `hosts`, `runs` or `review`: each host crew reaches, and
+how each drive's roles run and batch, are the host's own, written in
+`services.crew.settings`:
 
 ```nix
 {
@@ -369,18 +375,23 @@ table written out wins, whole:
             services.crew = {
               enable = true;
               host = "host-a";
-              settings.partitions = [
-                {
-                  label = "home";
-                  partition = "home";
+              settings = {
+                drives.home = {
                   blueprints = [ "example/blueprints" ];
                   state = "example/state";
                   machine = "host-a";
                   session = "home";
-                  review = { every = 5; hours = 4; };
-                  flume = { design = false; planner = false; reviewer = false; ops = false; operator = false; };
-                }
-              ];
+                  folder = "/Users/alice/Code/agentplot";
+                  repos = [ "agentplot/flume" "agentplot/sluice" ];
+                  accounts = { design = "home"; planner = "home"; reviewer = "home"; ops = "home"; operator = "home"; };
+                  # Each main-level role "standing", its agent kept running in its pane,
+                  # or "on-demand", run by Flume in the drive's stream while work waits for it.
+                  runs = { design = "standing"; planner = "standing"; reviewer = "on-demand"; ops = "on-demand"; operator = "standing"; };
+                  # A batch of changes is due for your read once 5 wait, or 4 hours after the last.
+                  review = { after_changes = 5; after_hours = 4; };
+                };
+                hosts.host-a = { ssh = "host-a"; kind = "darwin"; };
+              };
             };
           }
         ];
@@ -422,7 +433,7 @@ and a value the host sets there, or in a repository's
 `services.flume.settings.repos."<owner>/<name>"`, wins over the
 drive's. Two drives of this host that give one stream fail evaluation. A
 drive whose work runs on another computer names it, `machine = "host-b"`,
-as crew's partitions name a host, and the module compares it with
+as crew's drives name a host, and the module compares it with
 `services.crew.host`, which the host sets whether or not crew runs
 there: a drive of another machine gives Flume nothing, and the runner
 still keeps its repositories, to read. A drive that names a `machine`
@@ -543,11 +554,11 @@ line:
     nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
-version and its git crates' hashes are Flume's own flake's, at the tag
-it names. sluice's tagged tree says `0.0.0`, and crew's carries no
-version, so the set gives each the version of the tag `flake.nix`
-names, and an overridden sluice or crew is given its own version beside
-it, in that tool's `package`:
+version and its git crates' hashes are Flume's own flake's, and crew's
+version crew's own flake's, each at the tag it names. sluice's tagged
+tree says `0.0.0`, so the set gives it the version of the tag
+`flake.nix` names, and an overridden sluice is given its own version
+beside it, in its `package`:
 
 ```nix
 # In the host's flake's inputs:
@@ -695,11 +706,20 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `<data>/control/crew/`, and lists the runner branches,
 `<label>/runner/*`, by `git ls-remote`. A listing still going at thirty
 seconds is stopped with everything it started, as a fetch is, and the
-partition is named unread and pulled again at the next pull. It answers
+partition is named unread and pulled again at the next pull. weir-branch,
+which reads each branch and writes the runner's, stops each try of its
+fetch, listing and push at the same limit: a stopped read leaves the
+partition unread, and a stopped write its report unsent, as any read or
+write that fails. It answers
 on the runner's branch, `<label>/runner/<host>`, in crew's formats:
-`runner.rec`, `answers.rec` and `places.rec`, and, once a preview is
-answered there, `previews.rec`,
-under the descriptor this repository proposes for crew to hold. A
+`runner.rec`, `answers.rec`, `places.rec` and `repositories.rec`, and,
+once a preview is answered there, `previews.rec`,
+under the descriptor this repository proposes for crew to hold. At
+every write of the branch, `repositories.rec` names each repository of
+the partition's drive the runner keeps, the drive named by the
+partition's label, by its address with its clone's folder, where Flume
+cuts its places, and none of another drive's; where no drive of the
+configuration has the label, it names none, and one line says so. A
 preview leaves the runner's branch once its done is answered, with what
 the done put away; or once its work has left crew's plan and it is no
 longer up, a bolt's work leaving with its `Bolt` record. A preview
@@ -823,7 +843,7 @@ The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
-`boomdrive-crew`, `boomdrive-hosted` and `boomdrive-bounded`, beside
+`boomdrive-crew` and `boomdrive-hosted`, beside
 `nix`, which holds the flake, its modules and the cache's workflow,
 `site`, which holds the site, `site/`, and the workflow that publishes
 it, and `root`, which holds what spans the tree. The site's own rules are

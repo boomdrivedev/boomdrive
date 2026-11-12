@@ -50,7 +50,7 @@ let
       value = check platform host;
     }) platforms;
 
-  # crew turned on, with its host and one partition, as tools.nix's crewOn.
+  # crew turned on, with its host and one drive, as tools.nix's crewOn.
   crewOn = {
     services.crew = {
       enable = true;

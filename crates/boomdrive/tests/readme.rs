@@ -226,6 +226,21 @@ fn the_readme_names_how_a_preview_is_brought_up_and_put_away() {
     );
 }
 
+/// Design Decision 3 of the-runner-names-each-repository-it-keeps:
+/// README's crew section names `repositories.rec` among the files of the
+/// runner's branch, naming each repository of the partition's drive.
+#[test]
+fn the_readme_names_the_repositories_each_drive_keeps() {
+    let (text, _) = readme();
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    for named in [
+        "repositories.rec",
+        "each repository of the partition's drive",
+    ] {
+        assert!(flat.contains(named), "README names no {named:?}");
+    }
+}
+
 /// Design Decisions 2, 4 and 8 of
 /// the-hosted-protocol-carries-every-end-of-a-place, and Decision 9 of
 /// the-hosted-protocol-carries-land-and-preview: README's hosted section

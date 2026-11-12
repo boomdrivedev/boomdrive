@@ -9,7 +9,7 @@ decision-makers:
 
 # No try of the runner's call to a remote outlasts its limit
 
-Status: accepted. The direction is the change's brief, which takes agentplot/sluice record 0109 as the family's one design for a git call's limit. Its form here is the construct stage's own choice, cheap to change.
+Status: accepted, with its amendment of 2026-11-11. The direction is the change's brief, which takes agentplot/sluice record 0109 as the family's one design for a git call's limit. Its form here is the construct stage's own choice, cheap to change.
 
 Deciders: the construct stage of `change/no-try-of-the-runners-call-to-a-remote-outlasts-its-limit`, from its brief: "No try of the runner's git call to a remote, a clone's fetch or a remote's ls-remote, runs past thirty seconds: it ends with everything it started and fails naming the remote and the limit, so one silent remote can't stall the runner's pass over every other repository."
 
@@ -17,7 +17,7 @@ Sources: agentplot/sluice record 0109, on sluice's main at `e6809f9` and release
 
 ## Context and problem statement
 
-On deneb on 2026-11-10, sluice's reads of one repository each hung for 10 to 17 minutes. The cause was a git call to a remote with no limit, whose helper waited on a socket the remote had taken and never answered. sluice's record 0109 bounds every try of sluice's calls to a remote at thirty seconds. Its last consequence names the runner's fetch as one with no limit.
+On a host on 2026-11-10, sluice's reads of one repository each hung for 10 to 17 minutes. The cause was a git call to a remote with no limit, whose helper waited on a socket the remote had taken and never answered. sluice's record 0109 bounds every try of sluice's calls to a remote at thirty seconds. Its last consequence names the runner's fetch as one with no limit.
 
 The runner has two git calls that reach a remote. Both wait by `Command::output`, with no limit:
 
@@ -49,3 +49,28 @@ Option 1.
 - A fetch that needs longer than thirty seconds, a first clone of a large repository on a slow link, is stopped at every pass until `TRY_FOR` is raised.
 - weir-branch's own `git fetch` and `git push` of crew's state repository, which crew's implementation runs by `read` and `write`, still have no limit. A silent state repository still holds its partition's part at the read of `<label>/main`, before the listing, on that part's thread alone (core.49). Flume's `fetch_branch` has none either, as record 0109 says. Each is its own tool's to bound. The family has no shared owner of a git call's limit, so this is told to the orchestrator.
 - This record adds core.58. The change `no-try-of-the-runners-call-to-a-remote-outlasts-its-limit` builds it.
+
+## Amendment, 2026-11-11: weir-bounded holds the limit
+
+Status: accepted. Made on 2026-11-11 by the code stage of the chore `boomdrive-takes-weir-bounded`, from its brief: "Boomdrive pins weir at 9cba691 or later and its runner runs its calls to a remote through weir-bounded in place of its own boomdrive-bounded crate, so its fetches and pushes of a state repository through weir-branch end at the limit too." The owner is agentplot-design's ruling of 2026-11-10, that weir owns the code of a call's limit, which weir record 0008 records. The swap is the one this record's decision foresaw, and cheap to change, so it is not asked.
+
+Sources: weir record 0008, on weir's main at `9cba691`, with its crate `weir-bounded` and weir-branch's `Git::reach` there; the statement in agentplot/blueprints, `design/weir/requirements.md`, 69, C.3 and section 9 as amended at blueprints `ad3a1ae`; this record's "One owner" and its fourth consequence.
+
+### Context
+
+This record put the limit in a crate of the runner's own, `boomdrive-bounded`, a copy of sluice's `bounded.rs`, because the family had no shared owner. It left weir-branch's fetch and push of crew's state repository with no limit, each weir's to bound. weir record 0008 since made `crates/weir-bounded` that owner: `TRY_FOR`, `GRACE`, a command run to its limit in a process group of its own, the group's ending and a stopped call's words. At `9cba691` weir-branch runs its fetch, its listing and its push of a branch each as one try to that limit. Its public surface holds `boomdrive-bounded`'s: `output`, `Ended`, `stopped` and `TRY_FOR`.
+
+### Decision outcome
+
+- **weir's crate holds the limit.** The runner's fetch and crew's listing run through `weir-bounded`, taken at weir's revision with the other weir crates. `crates/boomdrive-bounded` goes, with its moon project. Not taken: keeping the copy beside weir's, which leaves one behaviour with two owners that drift apart, record 0109's reason for one owner.
+- **weir at `9cba691` or later.** weir-branch, weir-capture and weir-signals move with weir-bounded to one revision, so crew's implementation reads `<label>/main` and each runner's branch, and writes its own, through a weir-branch whose fetch, listing and push each end at the same limit. A stopped read leaves its partition unread, and a stopped write its report unsent, each with weir-branch's words, as any read or write that fails. weir-branch never replays a stopped push (weir record 0008).
+- **What a try prints is read from files.** `weir-bounded` writes a call's output to unnamed temporary files, read once the call has ended, and starts no thread, where `boomdrive-bounded` read each pipe on a thread of its own. The call's exit, its words and its limit are as before. A process of the call's group that outlives git is ended with it at the limit.
+- **The words are unchanged.** `stopped(call, remote, limit)` gives the same words, so the clones and crew-control-plane specs' words stand.
+- **No caller shortens weir-branch's limit.** A test of crew's implementation against a state repository that never answers waits the whole thirty seconds, its read's and its write's tests side by side in one binary. Not taken: a limit set on a branch by its caller, which weir record 0008 rules out.
+
+### Consequences
+
+- This record's fourth consequence is closed for weir-branch: a silent state repository holds its partition's part, or its report, no longer than one try's limit and grace. Flume's `fetch_branch` is still Flume's to bound.
+- A host's runner and its weir-branch end a try at one limit, from one crate. Raising `TRY_FOR` is a change to weir.
+- crew's implementation's tests run about thirty seconds longer.
+- core.58 is amended with this amendment. The change `boomdrive-takes-weir-bounded` builds it, and the crew-control-plane spec says it.
