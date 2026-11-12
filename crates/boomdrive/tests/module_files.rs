@@ -3,12 +3,12 @@
 //! `nix/tests/files`, which `nix:test` holds byte for byte to what the
 //! modules render of the spec's settings, is read by the runner's own
 //! reader against a scratch home, refusing no key, with the accounts,
-//! drives, repositories and control plane its settings named; each
+//! drives, repositories, control plane and App its settings named; each
 //! control plane's table is one its implementation reads.
 
 mod common;
 
-use boomdrive::config::{self, Config};
+use boomdrive::config::{self, Config, ForgeApp};
 use boomdrive::planes;
 use common::Scratch;
 use std::path::{Path, PathBuf};
@@ -76,6 +76,7 @@ fn the_empty_file_keeps_nothing_with_the_runners_defaults() {
     assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
     assert!(!config.code_workspaces);
     assert_eq!(config.control_plane, None);
+    assert_eq!(config.forge, None);
 }
 
 /// "A host under crew": its keys as its settings named them, and a table
@@ -116,6 +117,23 @@ fn the_crew_file_opens_crews_implementation() {
         &|_| Box::new(|| panic!("woken at its opening")),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
+}
+
+/// The service-modules spec's "The App named": the App `1`, its key at
+/// `.config/boomdrive/app.pem` under the home, whether or not a file
+/// stands there (record 0007 as amended on 2026-11-11).
+#[test]
+fn the_crew_file_names_the_app() {
+    let scratch = Scratch::new();
+    let config = read(&scratch, "crew.toml");
+    assert_eq!(
+        config.forge,
+        Some(ForgeApp {
+            app_id: 1,
+            key_file: scratch.home.join(".config/boomdrive/app.pem"),
+        })
+    );
+    assert_eq!(read(&scratch, "hosted.toml").forge, None);
 }
 
 /// "A host under a hosted control plane": a table the hosted

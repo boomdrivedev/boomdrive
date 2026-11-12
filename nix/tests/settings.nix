@@ -60,6 +60,10 @@ let
       repository_root = "~/Code";
       fetch_interval = "2m";
       code_workspaces = true;
+      forge = {
+        app_id = 1;
+        key_file = "~/.config/boomdrive/app.pem";
+      };
       control_plane = {
         type = "crew";
         crew = {

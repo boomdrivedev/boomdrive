@@ -22,7 +22,11 @@ each under the repository root. Where the configuration names a control
 plane, it makes control passes on a timer of their own: it takes each
 launch offered under a lease while its Flume stream has room, carries
 out each act and command once, and carries Flume's, sluice's and the
-inbox's records back as the tools gave them.
+inbox's records back as the tools gave them. Where the configuration's
+`[forge]` names the Boomdrive App's key, `boomdrive forge-token` gives
+each tool a short-lived token for a served repository in git's
+credential-helper protocol, and the runner's own fetches take one the
+same way (record 0007 as amended; core.33).
 
 The flake at the root, `flake.nix` and `flake.lock`, with everything
 else of it under `nix/`, gives the runner, Flume, sluice and crew

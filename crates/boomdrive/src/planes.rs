@@ -70,6 +70,13 @@ pub struct Entry {
     /// Its own reading of its table, which a local layer's table must
     /// pass to be taken.
     pub read: Reader,
+    /// Where its control plane holds the Boomdrive App and mints the
+    /// host's forge tokens, the words `boomdrive forge-token` refuses with
+    /// until its protocol carries a token, and the reason the
+    /// configuration's `[forge]` is refused beside it; none where the
+    /// runner holds the App's key (record 0007 as amended on 2026-11-09;
+    /// core.2, core.33; design Decision 6).
+    pub holds_the_app: Option<&'static str>,
 }
 
 /// Each implementation this binary carries, by its word.
@@ -80,6 +87,7 @@ pub const PLANES: [Entry; 2] = [
         enroll: None,
         local_keys: &boomdrive_crew::config::LOCAL_KEYS,
         read: crew_read,
+        holds_the_app: None,
     },
     Entry {
         word: "hosted",
@@ -87,6 +95,7 @@ pub const PLANES: [Entry; 2] = [
         enroll: Some(hosted_enroll),
         local_keys: &boomdrive_hosted::table::LOCAL_KEYS,
         read: hosted_read,
+        holds_the_app: Some(boomdrive_hosted::NO_FORGE_TOKEN),
     },
 ];
 
@@ -231,4 +240,18 @@ pub fn enroll(
         )));
     };
     enroller(table, file, label, Box::new(token))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::carried;
+
+    #[test]
+    fn only_the_hosted_control_plane_holds_the_app() {
+        assert_eq!(carried("crew").map(|entry| entry.holds_the_app), Some(None));
+        assert_eq!(
+            carried("hosted").map(|entry| entry.holds_the_app),
+            Some(Some(boomdrive_hosted::NO_FORGE_TOKEN))
+        );
+    }
 }

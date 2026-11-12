@@ -18,6 +18,7 @@
 
 use crate::carry::{Carrier, Configured, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
+use crate::forge::Forge;
 use crate::git::Git;
 use crate::locks::Locks;
 use crate::pass::{self, Outcome};
@@ -302,6 +303,11 @@ pub struct Runner {
     /// Each clone's lock, which the keeper takes alone and a launch into
     /// the clone shared (design Decision 4).
     locks: Locks,
+    /// What gives each fetch its credential, keeping the App's token for
+    /// each repository across passes, shared by the loop and the keeping
+    /// of a landing (record 0007 as amended on 2026-11-11; design Decisions
+    /// 3 and 5).
+    forge: Forge,
     /// The one report file, each part keeping its share of it (design
     /// Decision 5).
     report: ReportFile,
@@ -429,6 +435,7 @@ impl Runner {
             stop: Arc::new(AtomicBool::new(false)),
             bells,
             locks: Locks::new(),
+            forge: Forge::new(),
             report,
             _lock: lock,
         })
@@ -584,6 +591,7 @@ impl Runner {
         self.say_local(&mut LocalLayer::NoFile, &self.config.local, say);
         let kept = pass::pass(
             &self.git,
+            &self.forge,
             &self.data,
             &self.config,
             &self.locks,
@@ -683,6 +691,7 @@ impl Runner {
                             this.watch.read(fetch_interval);
                             pass::pass(
                                 &this.git,
+                                &this.forge,
                                 &this.data,
                                 &config,
                                 &this.locks,
@@ -780,6 +789,7 @@ impl Runner {
             Ok(config) => {
                 pass::keep_one(
                     &self.git,
+                    &self.forge,
                     &self.data,
                     &config,
                     &self.locks,
