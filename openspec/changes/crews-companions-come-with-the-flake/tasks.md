@@ -24,7 +24,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - the plugin `pendingyou`: Pending You's hooks, naming the launcher by `$HOME`, and the skill. No wake mod and no MCP server.
   - the plugin `plannotator`: the `apps/hook` of the set's Plannotator's `src`.
 
-  Each file is copied with links followed, the build fails on any link, and `passthru.plugins` and `passthru.hooks` are given. The type check's set holds it (design Decision 5; Task notes 2.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving the family-packages delta's "Every system's packages" with the sixteen.
+  Each file is copied with links followed, the build fails on any link, and `passthru.plugins` and `passthru.hooks` are given. The type check's set holds it (design Decision 5; Task notes 2.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving the family-packages delta's "Every system's packages" with the seventeen.
 - [x] 2.2 `nix/tests/companions.nix` holds the marketplace to its plugins, its hooks to the set's Pending You's `dist/claude.js`, and its build to no link (design Decision 5; Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages delta's "The marketplace's two plugins", "Pending You's hooks", "Pending You's hooks against its own", "No wake mod in the plugin", "No MCP server in the plugin", "Plannotator's plugin from its command's source" and "No link into the store".
 
 ## 3. The modules
@@ -42,7 +42,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The shell and the words
 
-- [x] 4.1 The flake's shell holds the set's `pendingyou`, `plannotator` and `plannotator-tui` after portless (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the nine tools.
+- [x] 4.1 The flake's shell holds the set's `pendingyou`, `plannotator` and `plannotator-tui` after portless (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the ten tools.
 - [x] 4.2 The README's **Installing with nix** names (design Decision 11):
   - the companions and their herdr plugins;
   - `#pendingyou`, `#plannotator` and `#plannotator-tui` on the profile's line;
@@ -56,4 +56,5 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. The install that waits, and the specs
 
-- [ ] 5.1 The spec deltas, each holding the base's words where `worktrunk-comes-with-the-flake` landed first (design Sequencing; Task notes 4.1), archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive crews-companions-come-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 5.1 The branch holds `worktrunk-comes-with-the-flake` as it landed on the bolt, at `8e602af`, and main at `62835d2`, each taken in by a merge and nothing rebased. Their words stand beside the companions' in the set, the lock, the shell, the modules, the README, CLAUDE.md, `openspec/config.yaml`, record 0023, core.13, core.44 and core.46, and the tests. True when `sluice exec main -- moon run nix:format nix:typecheck nix:test root:format` passes.
+- [ ] 5.2 The spec deltas, each holding the base's words where `worktrunk-comes-with-the-flake` landed first (design Sequencing; Task notes 4.1), archive into specs that pass openspec's strict check. True when, after `devenv shell -- openspec archive crews-companions-come-with-the-flake --yes`, `sluice exec main -- moon run root:specs` passes.

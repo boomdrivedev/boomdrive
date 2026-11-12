@@ -2,12 +2,12 @@
 
 ### Requirement: The flake gives the family's host tools as packages
 
-The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice` and `sluice-herdr-plugin`, with `default` the runner's. It SHALL give no package of git, which is the host's own, and none of a tool a repository pins.
+The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice`, `sluice-herdr-plugin` and `worktrunk`, with `default` the runner's. It SHALL give no package of git, which is the host's own, and none of a tool a repository pins.
 
 #### Scenario: Every system's packages
 
 - **WHEN** the flake's outputs are evaluated for each of the three systems
-- **THEN** each gives the sixteen packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
+- **THEN** each gives the seventeen packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
 
 #### Scenario: No tool of the host's own
 
@@ -28,7 +28,7 @@ Flume's and sluice's herdr plugin packages SHALL each be its tool's `plugins/her
 Each package SHALL be a derivation of the source the lock names by its hash:
 
 - the runner's, the launcher's and the marketplace's, of this tree;
-- Flume's, sluice's, crew's and herdr's, of their release tags, each through its own flake;
+- Flume's, sluice's, crew's, herdr's and worktrunk's, of their release tags, each through its own flake;
 - portless's, of its release tag, by this flake's recipe, as it publishes no flake;
 - Pending You's, of the package Pending You publishes on npm, as its source tags no release;
 - Plannotator's and plannotator-tui's, through numtide/llm-agents.nix's flake, which builds each from its source at its release tag;
@@ -49,13 +49,18 @@ Each tool's version but Ghostty's SHALL be its release's: its tag's without the 
 
 #### Scenario: crew through its own flake
 
-- **WHEN** the lock names a tag of crew's, whose tree carries no version
-- **THEN** the `crew` package is crew's flake's, its source, name and home page crew's own, and its version is the tag's without the `v`
+- **WHEN** the lock names a tag of crew's whose tree carries its version
+- **THEN** the `crew` package is crew's flake's own `crew` for that system, unchanged, and its version is the tag's without the `v`
 
 #### Scenario: herdr through its own flake
 
 - **WHEN** the lock names herdr's tag `v0.9.5`
 - **THEN** the `herdr` package is herdr's flake's own `herdr` for that system, unchanged, and its version is `0.9.5`
+
+#### Scenario: worktrunk through its own flake
+
+- **WHEN** the lock names worktrunk's tag `v0.80.0`
+- **THEN** the `worktrunk` package is worktrunk's flake's own `worktrunk` for that system, its source and dependencies unchanged, its program `wt` and its version `0.80.0`, and its build is given `v0.80.0` as its `git describe`, as worktrunk's release build gets it
 
 #### Scenario: portless from its source
 
