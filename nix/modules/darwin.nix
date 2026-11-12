@@ -5,7 +5,8 @@
 # Decision 11). Each tool of the set is installed by its own module, which
 # flake.nix imports beside this one, and tools.nix sets their options
 # (record 0023); drives.nix gives Flume's module each drive's stream (record
-# 0028). Once the Nix store is mounted, the agent runs
+# 0028), and sources.nix declares crew's source to Flume's module (record
+# 0034). Once the Nix store is mounted, the agent runs
 # `boomdrive run --config` with the file rendered from `accounts` and
 # `settings` (design Decision 9), so nix-darwin reloads it when the package
 # or the file changes, and leaves it running when neither does. The
@@ -61,6 +62,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     ./drives.nix
+    ./sources.nix
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
