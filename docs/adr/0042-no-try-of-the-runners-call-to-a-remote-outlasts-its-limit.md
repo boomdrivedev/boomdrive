@@ -74,3 +74,32 @@ This record put the limit in a crate of the runner's own, `boomdrive-bounded`, a
 - A host's runner and its weir-branch end a try at one limit, from one crate. Raising `TRY_FOR` is a change to weir.
 - crew's implementation's tests run about thirty seconds longer.
 - core.58 is amended with this amendment. The change `boomdrive-takes-weir-bounded` builds it, and the crew-control-plane spec says it.
+
+## Amendment, 2026-11-12: the runner's stop ends its tries in flight, through weir-bounded's halt
+
+Status: accepted. The direction is agentplot-design's ruling of 2026-11-10 and the brief of the change `the-runners-stop-ends-its-try-in-flight`, both quoted below. That change's construct chose the form, cheap to change, and wrote it as an amendment on `bolt/the-runners-stop-ends-its-try-in-flight` at `069dc45c`. On 2026-11-12 agentplot-design moved that form onto `weir-bounded`, since this record's amendment of 2026-11-11 and core.58 leave no crate of the runner's own to hold it. That is the design agent's own choice, decided by those rules and weir record 0008 as amended 2026-11-12.
+
+Deciders: agentplot-design, ruling on 2026-11-10 ("a read stopped is harmless, so the stop ends it; no service manager's stop timeout is raised for it") and on 2026-11-12. The construct stage of `change/the-runners-stop-ends-its-try-in-flight`, from its brief: "A stop of the runner ends a call to a remote it has in flight as that call's limit would, asked to end and killed two seconds later, so the runner stops within a few seconds under any service manager and leaves no git running after it."
+
+Sources: the brief; weir record 0008 as amended 2026-11-12, its halt; the question of Flume's fix place `fix--the-runners-stop-ends-its-try-in-flight--take-main-f20992b`, which found the bolt's form could not take main; `crates/boomdrive/src/run.rs` `Stopper` and `Runner::once`; `nix/modules/darwin.nix`'s `AbandonProcessGroup` and `nix/modules/nixos.nix`'s `KillMode`; core.39 and core.58.
+
+### Context
+
+This record's point "Ctrl-C and a stop" read the runner's stop between repositories. So a try in flight ran to its end or its limit, up to thirty seconds and two of grace. launchd kills a job twenty seconds after it asks the job to stop. The darwin module keeps that default, and, like the NixOS module, ends the runner alone. A runner killed with a try in flight leaves that try's git running in its own group, and nothing then ends it. `boomdrive run --once` took no signal of its own, so a Ctrl-C ended it at once and left its try's git running the same way.
+
+### Decision outcome
+
+This amendment replaces the point "Ctrl-C and a stop" and the consequence that a SIGTERM stops the runner within one try's limit and grace.
+
+- **A halt ends a try as its limit does.** The runner makes one halt, `weir-bounded`'s, and its stop sets it after the runner's stop flag. The runner's git takes it, and so does crew's implementation, through `planes.rs`'s opener, for each part's store and its reads and writes through weir-branch. Every try of a call to a remote ends at whichever comes first of its limit and the halt, by `weir-bounded`'s one ending. A try begun once the halt is set runs no process. Not taken: a halt in the runner's own crates, which core.58 rules out; the halt in `boomdrive-control`'s interface, which assumes no git and whose hosted implementation makes no git call; `SIGKILL` at once, which can leave git's lock files in the clone.
+- **The words are `weir-bounded`'s for a halted call.** A halted try's repository is named not fetched, or not cloned with nothing left, or its partition unread, or its report unsent, as for any failed try. Not taken: the limit's words, which would say a try was still going after thirty seconds when it was not.
+- **`boomdrive run --once` stops on SIGTERM and SIGINT as `boomdrive run` does.** Its try in flight is halted. It begins no part's pass and no settle once stopped, says `boomdrive: stopped` and exits 1 (core.39). Not taken: the signals' default, which leaves its try's git running.
+- **No service manager's stop timeout changes,** as the ruling has it. `AbandonProcessGroup` and `KillMode=process` stay, so a `flume launch` in flight still runs to its end. Not taken: `ExitTimeOut` raised past a try's limit and grace.
+
+### Consequences
+
+- A runner sent SIGTERM or SIGINT with only tries in hand stops within a try's grace and a margin, well inside launchd's twenty seconds, and nothing its tries started outlives it.
+- A stop still lets a tool's command in hand end: a `flume launch`, or sluice's preview ask within its patience.
+- A runner killed outright still leaves its try running. macOS has no call that ends a child with its parent.
+- It is built once `weir-bounded` has its halt, with weir pinned at that revision. The form on `bolt/the-runners-stop-ends-its-try-in-flight` at `069dc45c`, a halt in `boomdrive-bounded`, does not land: main no longer has that crate.
+- core.58 is amended in the same commit.

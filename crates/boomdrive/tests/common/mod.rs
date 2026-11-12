@@ -9,6 +9,7 @@
 
 #![allow(dead_code)]
 
+use boomdrive::forge::Forge;
 use boomdrive::git::Git;
 use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
@@ -316,13 +317,29 @@ impl Scratch {
         self.pass_with(&self.runner_git().trying_for(limit), text)
     }
 
-    /// One pass in-process by `git` over the configuration `text`.
+    /// One pass as [`Scratch::pass`] makes it, each fetch given what
+    /// `forge` gives under the configuration's `[forge]` (design Decision
+    /// 9).
+    pub fn pass_with_forge(&self, text: &str, forge: &Forge) -> (Outcome, Vec<String>) {
+        self.pass_by(&self.runner_git(), forge, text)
+    }
+
+    /// One pass in-process by `git` over the configuration `text`, with a
+    /// forge that calls GitHub's API, which a configuration naming no
+    /// `[forge]` never asks.
     fn pass_with(&self, git: &Git, text: &str) -> (Outcome, Vec<String>) {
+        self.pass_by(git, &Forge::new(), text)
+    }
+
+    /// One pass in-process by `git` over the configuration `text`, each
+    /// fetch given what `forge` gives.
+    fn pass_by(&self, git: &Git, forge: &Forge, text: &str) -> (Outcome, Vec<String>) {
         let config = boomdrive::config::parse(text, &self.config_file(), &self.home)
             .expect("a configuration");
         let mut lines = Vec::new();
         let outcome = boomdrive::pass::pass(
             git,
+            forge,
             &self.data(),
             &config,
             &Locks::new(),
