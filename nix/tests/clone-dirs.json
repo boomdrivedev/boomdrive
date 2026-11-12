@@ -1,0 +1,17 @@
+[
+  {
+    "dataDir": "/d/boomdrive",
+    "address": "agentplot/flume",
+    "folder": "/d/boomdrive/repositories/agentplot/flume"
+  },
+  {
+    "dataDir": "/x/data/boomdrive",
+    "address": "example/alpha",
+    "folder": "/x/data/boomdrive/repositories/example/alpha"
+  },
+  {
+    "dataDir": "/d/boomdrive",
+    "address": "Example-1/a.b_c",
+    "folder": "/d/boomdrive/repositories/Example-1/a.b_c"
+  }
+]
