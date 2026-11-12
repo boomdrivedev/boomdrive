@@ -4,7 +4,11 @@
 # herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents):
 # herdr and the plugins its activation links, Ghostty and the Boomdrive
 # launcher, since neither herdr nor Ghostty gives a nix-darwin or NixOS
-# module, and the launcher is this flake's. Each package is the set's for the
+# module, and the launcher is this flake's. worktrunk's `wt`, which crew
+# and sluice's worktree driver call, is installed the same way, since
+# worktrunk gives no nix-darwin or NixOS module either (record 0023 as
+# amended on 2026-11-08; design Decision 3 of the change
+# worktrunk-comes-with-the-flake). Each package is the set's for the
 # host's system by default, so it is the path the family's cache holds
 # whatever nixpkgs the host runs (core.47); a host's own replaces it, and
 # `null` installs none. With the runner enabled they go in the system
@@ -78,6 +82,7 @@ in
       };
     };
     ghostty.package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed with the runner; a host's own replaces it, and `null` installs none.";
+    worktrunk.package = installed "worktrunk" "worktrunk's `wt`, which crew and sluice's worktree driver call, installed with the runner; a host's own replaces it, and `null` installs none.";
     launcher.package = installed "boomdrive-launcher" "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS and the desktop's applications on Linux, installed with the runner; a host's own replaces it, and `null` installs none.";
     portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed with the runner; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
   };
@@ -86,6 +91,7 @@ in
     environment.systemPackages = lib.filter (package: package != null) [
       cfg.herdr.package
       cfg.ghostty.package
+      cfg.worktrunk.package
       cfg.launcher.package
       cfg.portless.package
     ];

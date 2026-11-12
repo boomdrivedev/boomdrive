@@ -26,6 +26,7 @@ let
     "portless"
     "sluice"
     "sluice-herdr-plugin"
+    "worktrunk"
   ];
 
   # A package's failures: none where it is a derivation whose path

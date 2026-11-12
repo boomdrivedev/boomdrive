@@ -26,19 +26,20 @@ inbox's records back as the tools gave them.
 
 The flake at the root, `flake.nix` and `flake.lock`, with everything
 else of it under `nix/`, gives the runner, Flume, sluice and crew
-pinned together, with herdr, its plugins, Ghostty and portless, and
-crew's companions, Pending You, Plannotator and plannotator-tui, with
-their herdr plugins and the set's marketplace of their Claude Code
-plugins (record 0044), each tool's own module re-exported beside the
-runner's service, `services.boomdrive`, as nix-darwin and NixOS
-modules, whose `accounts` and `settings` are the runner's file, each
-drive's stream given to Flume's module. With the runner, the modules
-install herdr, Ghostty, portless and the Boomdrive launcher, an app on
-macOS and a desktop entry on Linux that runs `flume open`, and link the
-set's herdr plugins with herdr's own command. With the runner and crew,
-they install the companions and `pendingyou-signin`, link the
-companions' herdr plugins, and write Pending You's folder; none runs
-`claude` or writes into a Claude Code home. The flake gives a shell,
+pinned together, with herdr, its plugins, Ghostty, portless and
+worktrunk, and crew's companions, Pending You, Plannotator and
+plannotator-tui, with their herdr plugins and the set's marketplace of
+their Claude Code plugins (record 0044), each tool's own module
+re-exported beside the runner's service, `services.boomdrive`, as
+nix-darwin and NixOS modules, whose `accounts` and `settings` are the
+runner's file, each drive's stream given to Flume's module. With the
+runner, the modules install herdr, Ghostty, portless, worktrunk and the
+Boomdrive launcher, an app on macOS and a desktop entry on Linux that
+runs `flume open`, and link the set's herdr plugins with herdr's own
+command. With the runner and crew, they install the companions and
+`pendingyou-signin`, link the companions' herdr plugins, and write
+Pending You's folder; none runs `claude` or writes into a Claude Code
+home. The flake gives a shell,
 `devShells.<system>.default`, that starts herdr (record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every
 system the flake gives and pushes it to the family's cache, `boomdrive`

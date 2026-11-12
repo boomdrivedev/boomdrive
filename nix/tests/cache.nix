@@ -35,6 +35,7 @@ let
     "plannotator-tui"
     "portless"
     "sluice"
+    "worktrunk"
   ];
   # The herdr plugins the modules link, Flume's, sluice's and, with crew
   # on, crew's companions' (design Decision 6 of the change
@@ -151,6 +152,7 @@ in
         "services.boomdrive.herdr.plugins"
         "services.boomdrive.ghostty.package"
         "services.boomdrive.portless.package"
+        "services.boomdrive.worktrunk.package"
         "services.boomdrive.launcher.package"
         "services.boomdrive.pendingyou.package"
         "services.boomdrive.plannotator.package"
