@@ -2204,6 +2204,7 @@ mod tests {
                 }],
             }],
             control_plane: None,
+            forge: None,
             local: crate::config::LocalLayer::NoFile,
         }
     }

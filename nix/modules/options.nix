@@ -21,7 +21,9 @@
 # and the flat `repositories` of before each fail evaluation, naming
 # services.boomdrive.accounts. A key named for a credential fails
 # evaluation, since the file is in the store, which every user reads
-# (design Decision 12, core.4). Each tool of the set is installed by its
+# (design Decision 12, core.4). `settings.forge` names the Boomdrive App by
+# its id and the path of its key, never the key, and a key file in the
+# store fails evaluation (record 0007 as amended on 2026-11-11). Each tool of the set is installed by its
 # own module, its package the set's unless the host gives its own
 # (tools.nix; record 0023), so `tools` is gone, and setting it fails
 # evaluation, naming what replaces it.
@@ -174,6 +176,36 @@ let
     }
   );
 
+  # `[forge]`, the Boomdrive App whose key the runner holds (record 0007 as
+  # amended on 2026-11-11): its id, and the path of its key, a string, so a
+  # Nix path value fails the type and a key is never copied into the store.
+  # It holds nothing else.
+  forgeApp = types.submodule {
+    options = {
+      app_id = mkOption {
+        type = types.ints.positive;
+        description = "The Boomdrive App's id, which each JWT the runner mints a token with names.";
+      };
+      key_file = mkOption {
+        type = types.str;
+        description = "The path of the Boomdrive App's private key on the host, absolute or beginning with `~/`, outside the Nix store and readable by its owner alone (mode 0600); the runner reads it at each mint, and the file holds where the key is, never the key (record 0007 as amended on 2026-11-11).";
+      };
+    };
+  };
+
+  # The App's key file where `settings.forge` names one, and whether it
+  # lies in the store, which every user reads (core.4): the store of the
+  # nix evaluating it, `builtins.storeDir`, or `/nix/store`, which the
+  # runner refuses too.
+  keyFile = if cfg.settings.forge == null then null else cfg.settings.forge.key_file;
+  inStore =
+    file:
+    file != null
+    && lib.any (store: file == store || lib.hasPrefix "${store}/" file) [
+      builtins.storeDir
+      "/nix/store"
+    ];
+
   # Each key of `value`, at any depth, named for a credential, by its path.
   words = [
     "token"
@@ -279,6 +311,7 @@ in
           fetch_interval = unset interval "How often every repository is fetched; the runner's `2m` where unset.";
           code_workspaces = unset types.bool "Whether each drive has a VS Code workspace at the repository root; the runner's `false` where unset.";
           control_plane = unset controlPlane "`[control_plane]`, the control plane whose work the runner carries; none where unset.";
+          forge = unset forgeApp "`[forge]`, the Boomdrive App whose key the runner holds, and mints every tool's forge token from, on a host whose control plane does not hold the App: its `app_id` and its `key_file`, the path of its key outside the Nix store; none where unset, and every fetch goes through the host's own credential helper (record 0007 as amended on 2026-11-11).";
         };
       };
       default = { };
@@ -291,6 +324,10 @@ in
       {
         assertion = found == [ ];
         message = "services.boomdrive.settings names a credential at ${lib.concatStringsSep ", " found}: the runner's file is in the store, which every user reads, so it holds no token or key. A partition's key is made on the host by `boomdrive enroll <label>`, its token on standard input.";
+      }
+      {
+        assertion = !(inStore keyFile);
+        message = "services.boomdrive.settings.forge.key_file lies in the Nix store, which every user reads: name the App's key by a path outside it, absolute or under ~/ (record 0007 as amended on 2026-11-11).";
       }
       {
         assertion = !(cfg.settings ? repositories);
