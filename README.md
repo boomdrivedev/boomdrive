@@ -407,14 +407,20 @@ move its values into the tool's `settings` in the switch that takes this
 flake. `services.boomdrive.enable` turns on Flume's and sluice's
 modules; a host that runs crew turns on crew's, with its `host`, its
 drives and the hosts crew reaches, each written by crew's own names.
-Where `control_plane.type` is `crew` and no `control_plane.crew` is
-written, the module writes the runner's `[control_plane.crew]` from
-crew's drives: its `host` is `services.crew.host`, and it holds each
-drive whose `machine` is that host, in the order of their labels, by its
-`label`, with its `state` as `state_repository`. A table
-written out wins, whole. The module writes none of crew's `hosts`,
-`runs` or `review`: each host crew reaches, and how each drive's roles
-run and batch, are the host's own, written in `services.crew.settings`:
+With crew's module on, the module declares crew's source of kinds to
+Flume, `services.flume.sources.crew`, naming the roles file crew writes,
+`~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
+`~/.local/share/flume/kinds/crew`. Flume's module writes the source at
+`~/.config/flume/sources/crew.toml`, so a host writes no file for it,
+and a key the host sets there wins. Where `control_plane.type` is `crew`
+and no `control_plane.crew` is written, the module writes the runner's
+`[control_plane.crew]` from crew's drives: its `host` is
+`services.crew.host`, and it holds each drive whose `machine` is that
+host, in the order of their labels, by its `label`, with its `state` as
+`state_repository`. A table written out wins, whole. The module writes
+none of crew's `hosts`, `runs` or `review`: each host crew reaches, and
+how each drive's roles run and batch, are the host's own, written in
+`services.crew.settings`:
 
 ```nix
 {

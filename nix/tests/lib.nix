@@ -64,7 +64,9 @@ let
   # Flume's, sluice's and crew's own modules alone, each from its own
   # flake, turned on with the set's packages, crew's settings for host-a,
   # Flume's terminal and window as the Boomdrive module gives them
-  # (apps.nix), and on NixOS the user alice (design Decision 8).
+  # (apps.nix), crew's source declared to Flume as sources.nix declares it
+  # (the change the-set-declares-crews-source-to-flume, design Decision 6),
+  # and on NixOS the user alice (design Decision 8).
   settings = import ./settings.nix;
   toolsOf =
     platform: set: extra:
@@ -82,6 +84,10 @@ let
             settings.host = {
               multiplexer = "herdr";
               terminal_app = "ghostty";
+            };
+            sources.crew = {
+              kinds_dir = "~/.local/share/flume/kinds/crew";
+              roles = "~/.local/state/crew/flume/roles.toml";
             };
           };
           sluice = {
