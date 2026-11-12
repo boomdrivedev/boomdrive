@@ -85,6 +85,13 @@ let
   nodeVersion = "24.20.0";
   biomeVersion = "2.5.13";
 
+  # clang-format, which treefmt.nix runs over the launcher's menu,
+  # nix/packages/launcher.m, the tree's one Objective-C file (design
+  # Decision 6 of the change each-drive-opens-from-the-launcher):
+  # nixpkgs' clang-tools, pinned by devenv.lock and asserted to be this
+  # version as git is. treefmt.nix's clang-format is the same package.
+  clangFormatVersion = "21.1.8";
+
   # Vale, which site:prose runs over the site's words (site.4), from its
   # own release, as boomdrive-web's shell took it: nixpkgs trails it
   # (3.17.1 against 3.24.0). Bump the version and the four hashes from the
@@ -207,8 +214,8 @@ in
   # release's flake.lock's; moon and Rust are .prototools', installed by
   # the boomdrive:proto:install task on entering the shell and activated by
   # enterShell. git, recutils, OpenSpec, the nix project's tools, the
-  # release's and the site's are the releases pinned above, never the
-  # host's (core.8).
+  # release's, the site's and clang-format are the releases pinned above,
+  # never the host's (core.8).
   packages = [
     (
       assert pkgs.git.version == gitVersion;
@@ -249,6 +256,11 @@ in
     (
       assert pkgs.biome.version == biomeVersion;
       pkgs.biome
+    )
+    # treefmt's clang-format, which lays out nix/packages/launcher.m.
+    (
+      assert pkgs.clang-tools.version == clangFormatVersion;
+      pkgs.clang-tools
     )
     vale
     (

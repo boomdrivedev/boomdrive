@@ -334,9 +334,9 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   profile was checked against: built from source on Linux, and on
   macOS, where nothing builds its app from source, Ghostty's own
   release as nixpkgs' `ghostty-bin` gives it;
-- the Boomdrive launcher, `boomdrive-launcher`, of this tree: an app,
-  `Boomdrive`, on macOS and a desktop entry on Linux, which runs `flume
-  open` to show the host's agents.
+- the Boomdrive launcher, `boomdrive-launcher`, of this tree: a
+  menu-bar app, `Boomdrive`, on macOS and a desktop entry on Linux,
+  which runs `flume open` to show the host's agents.
 
 Each tool reports its tag's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
@@ -605,10 +605,19 @@ the runner. A host that keeps a tool's file its own sets that tool's
 With `services.boomdrive.enable`, the runner's module also gives the
 host a way to see its agents:
 
-- It installs herdr, Ghostty and the Boomdrive launcher, `Boomdrive`
-  in `/Applications/Nix Apps` on macOS or in the desktop's applications
-  on Linux. A click on it runs `flume open`, which shows the default
-  stream's own session, and shows Flume's words where Flume refuses.
+- It installs herdr, Ghostty and the Boomdrive launcher, made for
+  each drive of the host, `Boomdrive` in `/Applications/Nix Apps` on
+  macOS or in the desktop's applications on Linux. On macOS a click
+  puts `Boomdrive` in the menu bar, and its menu holds an entry for
+  each drive, then `Default stream` and `Quit Boomdrive`. On Linux the
+  desktop entry has an action for each drive, and a click on the entry
+  itself is `Default stream`. A drive's entry runs `flume open` with
+  its stream's own session, the stream's `session` in Flume's settings
+  or else its name, and `Default stream` runs it with none, which shows
+  the default stream's own session. Each shows Flume's words where
+  Flume refuses. A drive of another machine has no entry. The menu
+  stays in the menu bar until you quit it: after a switch that changes
+  the drives, quit it and open it again.
 - At each switch it links each plugin of
   `services.boomdrive.herdr.plugins`, by default the set's Flume and
   sluice plugins, into the runner's user's herdr with herdr's own
@@ -629,6 +638,8 @@ services.boomdrive.herdr.package = null;
 services.boomdrive.ghostty.package = null;
 services.boomdrive.launcher.package = null;
 ```
+
+A host's own launcher is installed as given, and gets no entries.
 
 With no herdr package, or no plugin, nothing is linked. A host with a
 herdr of its own may give it as `services.boomdrive.herdr.package`, and

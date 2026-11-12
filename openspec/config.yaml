@@ -22,8 +22,9 @@ context: |
   sluice and crew pinned together, with herdr, its plugins and Ghostty,
   each tool's own module re-exported beside the runner's service,
   services.boomdrive, as nix-darwin and NixOS modules, which with the
-  runner install herdr, Ghostty and the Boomdrive launcher, an app that
-  runs flume open, and link the set's herdr plugins; and a shell,
+  runner install herdr, Ghostty and the Boomdrive launcher, a menu-bar
+  app on macOS and a desktop entry on Linux, with an entry for each
+  drive, that runs flume open, and link the set's herdr plugins; and a shell,
   devShells.<system>.default, that starts herdr (record 0023);
   .github/workflows/cache.yml builds every package of
   every system and pushes it to the family's cache, boomdrive on Cachix,
