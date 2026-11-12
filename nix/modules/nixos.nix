@@ -6,7 +6,8 @@
 # own module, which flake.nix imports beside this one; tools.nix sets
 # their options, and each tool's user is the runner's unless the host
 # names its own (record 0023); drives.nix gives Flume's module each drive's
-# stream (record 0028). The unit runs `boomdrive run --config`
+# stream (record 0028), and sources.nix declares crew's source to Flume's
+# module (record 0034). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
 # the file at the runner's own path, writes Pending You's folder where
@@ -14,7 +15,18 @@
 # plugins apps.nix lists with herdr's own command (record 0023), then
 # starts the unit where it is not running and restarts it where the
 # running runner's command line is not the unit's; any other user's
-# activation does nothing.
+# activation does nothing. Beside `user`, the module declares `dataDir`,
+# the runner's data folder by the runner's own rule (data-dir.nix) from
+# that user's home and the unit's own `XDG_DATA_HOME`, and clones.nix
+# declares `cloneDirs`, each kept repository's clone folder in it: each
+# read-only, read wherever a host names the folder or a clone's, and set
+# by none (record 0036 as amended on 2026-11-11). With crew's module on,
+# the module gives crew's kept repositories,
+# `services.crew.settings.repositories`, one entry for each address of
+# `cloneDirs`, its `dir` the clone's folder and its `checkout` the
+# runner's view under that user's home (kept.nix), at the module's own
+# priority, so a host writes none (record 0036 as amended a third time on
+# 2026-11-11).
 { packages }:
 {
   config,
@@ -27,6 +39,8 @@ let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  dataDirOf = import ./data-dir.nix { inherit lib; };
+  keptOf = import ./kept.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -98,12 +112,46 @@ in
     (import ./apps.nix { inherit packages; })
     (import ./companions.nix { inherit packages; })
     ./drives.nix
+    ./clones.nix
+    ./sources.nix
   ];
 
   options.services.boomdrive.user = lib.mkOption {
     type = lib.types.str;
     example = "alice";
     description = "The user whose systemd user manager runs the runner, and who lingers.";
+  };
+
+  # The unit's own XDG_DATA_HOME, or null where the unit has none or the
+  # runner is not enabled; the user's manager gives the unit HOME, the
+  # user's home (the change the-set-names-the-runners-data-folder, design
+  # Decisions 1 and 3).
+  options.services.boomdrive.dataDir = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = dataDirOf {
+      inherit home;
+      dataHome = config.systemd.user.services.boomdrive.environment.XDG_DATA_HOME or null;
+    };
+    defaultText = lib.literalMD ''
+      `$XDG_DATA_HOME/boomdrive` where the runner's unit is given an absolute
+      `XDG_DATA_HOME` in `systemd.user.services.boomdrive.environment`, else
+      `.local/share/boomdrive` under the home of `services.boomdrive.user`,
+      `users.users.''${config.services.boomdrive.user}.home`
+    '';
+    description = ''
+      The runner's data folder, where it keeps its clones, its lock and its
+      report, by the runner's own rule: `$XDG_DATA_HOME/boomdrive` where the
+      unit's own environment gives an absolute `XDG_DATA_HOME`, else
+      `~/.local/share/boomdrive` under the home of `services.boomdrive.user`.
+      It is read-only: a host reads it wherever it names the folder, a
+      clone's folder in it being `services.boomdrive.cloneDirs`'s, and sets
+      it nowhere. An `XDG_DATA_HOME` the unit takes
+      from outside its declaration, such as the user manager's
+      `environment.d`, is not seen: a host that moves the runner's data
+      gives the unit its own `XDG_DATA_HOME` in
+      `systemd.user.services.boomdrive.environment`.
+    '';
   };
 
   config = lib.mkIf cfg.enable {
@@ -123,11 +171,20 @@ in
     environment.systemPackages = [ cfg.package ];
 
     # Each tool's module links its file for the runner's user, unless the
-    # host names another.
+    # host names another; and crew's kept repositories, where crew's
+    # module is on and the runner keeps a repository (design Decisions 1,
+    # 4 and 6).
     services = {
       flume.user = lib.mkDefault user;
       sluice.user = lib.mkDefault user;
-      crew.user = lib.mkDefault user;
+      crew = {
+        user = lib.mkDefault user;
+        settings.repositories = lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { }) (keptOf {
+          inherit (cfg) cloneDirs;
+          inherit home;
+          root = cfg.settings.repository_root;
+        });
+      };
     };
 
     users.users.${user}.linger = true;

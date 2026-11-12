@@ -26,16 +26,48 @@
 # default gains crew's companions' herdr plugins, Pending You for Herdr and
 # Annotate, which companions.nix installs the tools of (record 0044, point
 # 8).
+# The launcher is the set's made, by its override, for each drive of this
+# host, in the order of the drives' names: each entry is the drive's name
+# and its stream's own session, the `session` Flume's settings name for the
+# stream, else the stream's name, so the override is made with the set's
+# own nixpkgs and its compiled menu is the set's (design Decisions 1 and 5
+# of the change each-drive-opens-from-the-launcher; core.47).
 { packages }:
 {
   config,
   lib,
+  options,
   pkgs,
   ...
 }:
 let
   inherit (lib) mkOption types;
   cfg = config.services.boomdrive;
+  inherit (import ./accounts.nix { inherit lib; }) drivesOf hereOf;
+
+  # This host, as crew names it, whether or not crew is on; null where it
+  # is not set, as drives.nix reads it.
+  host = if options.services.crew.host.isDefined then config.services.crew.host else null;
+
+  # A drive's stream's own session, as Flume names it (Flume's 107 and
+  # 186): its `session` in Flume's settings where that is set, else the
+  # stream's name.
+  streams = config.services.flume.settings.streams or null;
+  sessionOf =
+    drive:
+    let
+      named = if streams == null then null else streams.${drive.stream.name}.session or null;
+    in
+    if named == null then drive.stream.name else named;
+
+  # The launcher's entries: each drive of this host, in the order of the
+  # drives' names, which are given once on the host (design Decision 1).
+  entries = lib.sort (a: b: a.drive < b.drive) (
+    map (drive: {
+      drive = drive.name;
+      session = sessionOf drive;
+    }) (hereOf host (drivesOf cfg.accounts))
+  );
 
   set = import ./set.nix {
     inherit lib packages;
@@ -83,7 +115,12 @@ in
     };
     ghostty.package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed with the runner; a host's own replaces it, and `null` installs none.";
     worktrunk.package = installed "worktrunk" "worktrunk's `wt`, which crew and sluice's worktree driver call, installed with the runner; a host's own replaces it, and `null` installs none.";
-    launcher.package = installed "boomdrive-launcher" "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS and the desktop's applications on Linux, installed with the runner; a host's own replaces it, and `null` installs none.";
+    launcher.package = mkOption {
+      type = types.nullOr types.package;
+      default = set.boomdrive-launcher.override { drives = entries; };
+      defaultText = lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.boomdrive-launcher.override { drives = <each drive of this host>; }";
+      description = "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS, a menu-bar app, and the desktop's applications on Linux, installed with the runner. By default it is the set's made for this host's drives: each drive of this host, in the order of the drives' names, is an entry opening its stream's own session, the stream's `session` in Flume's settings, else the stream's name, beside `Default stream`; a drive of another machine has none. A host's own replaces it, installed as given, and `null` installs none.";
+    };
     portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed with the runner; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
   };
 

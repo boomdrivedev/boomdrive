@@ -18,6 +18,15 @@
 //! any other key, is not TOML, or holds a value the runner's reading or
 //! the implementation's refuses, is not taken at all, and the managed
 //! layer is read alone.
+//!
+//! `[forge]` names the Boomdrive App whose key the runner holds, on a
+//! host whose control plane does not hold it (record 0007 as amended on
+//! 2026-11-09 and 2026-11-11; core.33): `app_id`, the App's id, and
+//! `key_file`, the path of its private key, absolute or beneath `~/` and
+//! outside the Nix store, which every user reads. The file holds where
+//! the key is kept and never the key, which is read at each mint and not
+//! with the configuration. Beside a control plane that holds the App,
+//! `[forge]` is refused, and the local layer may not set it.
 
 use crate::planes;
 use serde::de::IgnoredAny;
@@ -49,6 +58,10 @@ pub struct Config {
     /// `[control_plane]`, where the file holds it. Read at every pass, it
     /// is taken when the runner starts (design Decision 4).
     pub control_plane: Option<ControlPlaneTable>,
+    /// `[forge]`, the Boomdrive App whose key the runner holds, where the
+    /// file names it: none where it does not, and every fetch goes
+    /// through the host's own credential helper.
+    pub forge: Option<ForgeApp>,
     /// How the local layer was read: none where there is no local file.
     pub local: LocalLayer,
 }
@@ -136,6 +149,26 @@ pub struct ControlPlaneTable {
     /// the file holds none.
     pub implementation_table: Table,
 }
+
+/// `[forge]`: the Boomdrive App the runner holds the key of, and mints
+/// every tool's forge token from, on a host whose control plane does not
+/// hold the App (record 0007 as amended on 2026-11-09 and 2026-11-11;
+/// core.33).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ForgeApp {
+    /// `app_id`: the App's id, which a mint's JWT names.
+    pub app_id: u64,
+    /// `key_file`: where the App's private key is kept on the host,
+    /// outside the Nix store, `~/` expanded against the home. It is read
+    /// at each mint, never with the configuration.
+    pub key_file: PathBuf,
+}
+
+/// The keys `[forge]` holds, each required.
+const FORGE_KEYS: [&str; 2] = ["app_id", "key_file"];
+
+/// The Nix store, which every user of the host reads.
+const NIX_STORE: &str = "/nix/store";
 
 /// The keys of `HELD_ELSEWHERE` that name what is each host's Flume
 /// configuration, refused with its words in an account or a drive too
@@ -269,6 +302,8 @@ struct File {
     /// Read from the document's own tree, which keeps where each key of
     /// it stands (`accounts`).
     accounts: Option<IgnoredAny>,
+    /// Read from the document's own tree, as `accounts` is (`forge`).
+    forge: Option<IgnoredAny>,
     #[serde(default, deserialize_with = "table")]
     control_plane: Option<Keys>,
     #[serde(default, deserialize_with = "pin_list")]
@@ -793,6 +828,11 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
         }
     };
 
+    let forge = match raw.forge {
+        None => None,
+        Some(_) => forge(document.get_ref(), control_plane.as_ref(), home, &refuse)?,
+    };
+
     let pins = match &raw.pin {
         None => Vec::new(),
         Some(entries) => pins(entries.get_ref(), &source)?,
@@ -805,6 +845,7 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
             code_workspaces,
             accounts,
             control_plane,
+            forge,
             local: LocalLayer::NoFile,
         },
         pins,
@@ -1205,6 +1246,102 @@ fn addresses<'t, 'i>(
         addresses.push((address, entry));
     }
     Ok(addresses)
+}
+
+/// `[forge]` as the document holds it, `document` (design Decision 1): the
+/// Boomdrive App, by its `app_id`, a positive integer, and its `key_file`,
+/// absolute or beneath `~/` as `home`, and outside the Nix store, both
+/// required and nothing else; none where the file names no `[forge]`.
+/// Beside a control plane that holds the App, `control_plane`, it is
+/// refused, as the implementation's entry says (core.2, core.33). Each
+/// refusal is made by `refuse`, naming its key by its path and never its
+/// value (core.4), and the key file is not read.
+fn forge(
+    document: &Tree<'_>,
+    control_plane: Option<&ControlPlaneTable>,
+    home: &Path,
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<Option<ForgeApp>, String> {
+    let Some((key, value)) = entry(document, "forge") else {
+        return Ok(None);
+    };
+    let at = key.span().start;
+    if let Some(plane) = control_plane {
+        let holds = planes::carried(&plane.implementation).and_then(|entry| entry.holds_the_app);
+        if holds.is_some() {
+            return Err(refuse(
+                at,
+                format!(
+                    "`forge` names the Boomdrive App's key, but the control plane `{}` holds \
+                     the App and mints this host's forge tokens: no App's key or id is on its \
+                     host",
+                    plane.implementation
+                ),
+            ));
+        }
+    }
+    let table = table_at(value, "forge", at, refuse)?;
+    if let Some((key, _)) = in_order(table)
+        .into_iter()
+        .find(|(key, _)| !FORGE_KEYS.contains(&key.get_ref().as_ref()))
+    {
+        return Err(refuse(
+            key.span().start,
+            format!(
+                "unknown field `forge.{}`: `[forge]` holds only `app_id` and `key_file`, \
+                 where the App's key is kept and never the key",
+                key.get_ref()
+            ),
+        ));
+    }
+    let Some((_, app_id)) = entry(table, "app_id") else {
+        return Err(refuse(
+            at,
+            "`forge.app_id` is required: the Boomdrive App's id".to_string(),
+        ));
+    };
+    let Some((_, key_file)) = entry(table, "key_file") else {
+        return Err(refuse(
+            at,
+            "`forge.key_file` is required: the path of the Boomdrive App's private key".to_string(),
+        ));
+    };
+    let app_id = app_id
+        .get_ref()
+        .as_integer()
+        .and_then(|id| u64::from_str_radix(id.as_str(), id.radix()).ok())
+        .filter(|id| *id > 0)
+        .ok_or_else(|| {
+            refuse(
+                app_id.span().start,
+                "`forge.app_id` is not a positive integer: it is the Boomdrive App's id"
+                    .to_string(),
+            )
+        })?;
+    let at = key_file.span().start;
+    let Some(written) = key_file.get_ref().as_str() else {
+        return Err(refuse(
+            at,
+            "`forge.key_file` is not a string: it is the path of the App's private key".to_string(),
+        ));
+    };
+    let Some(key_file) = root_path(written, home) else {
+        return Err(refuse(
+            at,
+            "`forge.key_file` is not a path the runner reads: the App's key file is an \
+             absolute path or begins with `~/`"
+                .to_string(),
+        ));
+    };
+    if key_file.starts_with(NIX_STORE) {
+        return Err(refuse(
+            at,
+            "`forge.key_file` lies in the Nix store, which every user reads: name a path \
+             outside it"
+                .to_string(),
+        ));
+    }
+    Ok(Some(ForgeApp { app_id, key_file }))
 }
 
 /// `[control_plane]` as written in `table`, whose key stands at `at`,
@@ -1967,9 +2104,196 @@ mod tests {
                     }],
                 }],
                 control_plane: None,
+                forge: None,
                 local: LocalLayer::NoFile,
             })
         );
+    }
+
+    /// The configuration spec's "The App named": `~/` expanded against
+    /// the home, and the key file not read.
+    #[test]
+    fn the_app_named() {
+        let config = read(
+            "accounts = {}\n\n[forge]\napp_id = 1\nkey_file = \"~/.config/boomdrive/app.pem\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            config.forge,
+            Some(ForgeApp {
+                app_id: 1,
+                key_file: PathBuf::from("/h/.config/boomdrive/app.pem"),
+            })
+        );
+        let config =
+            read("accounts = {}\n\n[forge]\napp_id = 0x10\nkey_file = \"/etc/app.pem\"\n").unwrap();
+        assert_eq!(
+            config.forge,
+            Some(ForgeApp {
+                app_id: 16,
+                key_file: PathBuf::from("/etc/app.pem"),
+            })
+        );
+    }
+
+    /// The configuration spec's "No App named".
+    #[test]
+    fn no_app_named() {
+        assert_eq!(read("accounts = {}\n").unwrap().forge, None);
+        assert_eq!(read(CONTROL_PLANE).unwrap().forge, None);
+    }
+
+    /// The configuration spec's "A key file missing from the table", and
+    /// the App's id missing.
+    #[test]
+    fn a_key_file_missing_from_the_forge_table() {
+        let refusal = read("accounts = {}\n\n[forge]\napp_id = 1\n").unwrap_err();
+        assert_eq!(
+            refusal,
+            format!(
+                "{FILE}:3: `forge.key_file` is required: the path of the Boomdrive App's \
+                 private key"
+            )
+        );
+        let refusal = read("accounts = {}\n\n[forge]\nkey_file = \"/etc/app.pem\"\n").unwrap_err();
+        assert_eq!(
+            refusal,
+            format!("{FILE}:3: `forge.app_id` is required: the Boomdrive App's id")
+        );
+    }
+
+    #[test]
+    fn an_app_id_that_is_no_positive_integer() {
+        for app_id in ["0", "-3", "\"12\"", "1.5", "true"] {
+            assert_eq!(
+                read(&format!(
+                    "accounts = {{}}\n\n[forge]\napp_id = {app_id}\nkey_file = \"/etc/app.pem\"\n"
+                )),
+                Err(format!(
+                    "{FILE}:4: `forge.app_id` is not a positive integer: it is the Boomdrive \
+                     App's id"
+                )),
+                "{app_id}"
+            );
+        }
+    }
+
+    /// The configuration spec's "A key's text in the forge table": named
+    /// by its path, its value in no output.
+    #[test]
+    fn a_keys_text_in_the_forge_table() {
+        let refusal = read(
+            "accounts = {}\n\n[forge]\napp_id = 1\nkey_file = \"/etc/app.pem\"\n\
+             key = \"-----BEGIN RSA PRIVATE KEY-----\"\n",
+        )
+        .unwrap_err();
+        assert_eq!(
+            refusal,
+            format!(
+                "{FILE}:6: unknown field `forge.key`: `[forge]` holds only `app_id` and \
+                 `key_file`, where the App's key is kept and never the key"
+            )
+        );
+        assert!(!refusal.contains("BEGIN"), "{refusal}");
+    }
+
+    /// The configuration spec's "A key file in the store".
+    #[test]
+    fn a_key_file_in_the_store() {
+        for key_file in ["/nix/store/abc-app.pem", "/nix//store/abc-app.pem"] {
+            assert_eq!(
+                read(&format!(
+                    "accounts = {{}}\n\n[forge]\napp_id = 1\nkey_file = {key_file:?}\n"
+                )),
+                Err(format!(
+                    "{FILE}:5: `forge.key_file` lies in the Nix store, which every user \
+                     reads: name a path outside it"
+                )),
+                "{key_file}"
+            );
+        }
+        assert!(
+            read("accounts = {}\n\n[forge]\napp_id = 1\nkey_file = \"/nix/stores/app.pem\"\n")
+                .is_ok()
+        );
+    }
+
+    /// The configuration spec's "A relative key file", and a key file of
+    /// another kind, never quoted.
+    #[test]
+    fn a_relative_key_file() {
+        for key_file in [
+            "\"keys/app.pem\"",
+            "\"$HOME/app.pem\"",
+            "\"-----BEGIN RSA\"",
+        ] {
+            let refusal = read(&format!(
+                "accounts = {{}}\n\n[forge]\napp_id = 1\nkey_file = {key_file}\n"
+            ))
+            .unwrap_err();
+            assert_eq!(
+                refusal,
+                format!(
+                    "{FILE}:5: `forge.key_file` is not a path the runner reads: the App's key \
+                     file is an absolute path or begins with `~/`"
+                ),
+                "{key_file}"
+            );
+        }
+        assert_eq!(
+            read("accounts = {}\n\n[forge]\napp_id = 1\nkey_file = 3\n"),
+            Err(format!(
+                "{FILE}:5: `forge.key_file` is not a string: it is the path of the App's \
+                 private key"
+            ))
+        );
+    }
+
+    #[test]
+    fn forge_that_is_not_a_table() {
+        assert_eq!(
+            read("accounts = {}\nforge = \"/etc/app.pem\"\n"),
+            Err(format!("{FILE}:2: `forge` is not a table"))
+        );
+    }
+
+    /// The configuration spec's "The App beside a hosted control plane":
+    /// the refusal is the implementation's entry's, which holds the App.
+    #[test]
+    fn the_app_beside_a_hosted_control_plane() {
+        let text = format!(
+            "{}\n[forge]\napp_id = 1\nkey_file = \"/etc/app.pem\"\n",
+            hosted("", &["home"])
+        );
+        assert_eq!(
+            read(&text),
+            Err(format!(
+                "{FILE}:13: `forge` names the Boomdrive App's key, but the control plane \
+                 `hosted` holds the App and mints this host's forge tokens: no App's key or \
+                 id is on its host"
+            ))
+        );
+        let crew = format!("{CONTROL_PLANE}\n[forge]\napp_id = 1\nkey_file = \"/etc/app.pem\"\n");
+        assert!(read(&crew).unwrap().forge.is_some());
+    }
+
+    /// The configuration spec's "The App in the local layer": the local
+    /// layer is not taken, naming `forge`.
+    #[test]
+    fn the_app_in_the_local_layer() {
+        let managed = in_drive("home", &["agentplot/flume"]);
+        let config = layers(&managed, Some("[forge]\napp_id = 1\n")).unwrap();
+        assert_eq!(config.local, for_keys(&["forge"]));
+        assert_eq!(config.forge, None);
+
+        let managed = format!("{managed}\n[forge]\napp_id = 1\nkey_file = \"/etc/app.pem\"\n");
+        let config = layers(
+            &managed,
+            Some("[forge]\napp_id = 2\nkey_file = \"/etc/other.pem\"\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["forge"]));
+        assert_eq!(config.forge.map(|app| app.app_id), Some(1));
     }
 
     /// Design Decision 4's example of `[control_plane]`.

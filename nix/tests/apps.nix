@@ -2,12 +2,14 @@
 # the runner (apps.nix; design Decisions 5 to 7 of the change
 # herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents):
 # herdr and the plugins the activation links, Ghostty and the launcher,
-# and Flume's terminal and window. Each case runs on nix-darwin and on
-# NixOS, unless it names a platform. portless's cases are design Decisions
-# 5 and 6 of the change portless-comes-with-the-flake, worktrunk's design
-# Decision 3 of the change worktrunk-comes-with-the-flake, and crew's
-# companions' design Decisions 6 and 9 of the change
-# crews-companions-come-with-the-flake.
+# and Flume's terminal and window; and the launcher made for each drive of
+# this host (design Decisions 1 and 5 of the change
+# each-drive-opens-from-the-launcher), whose accounts are those of
+# drives.nix's cases. Each case runs on nix-darwin and on NixOS, unless it
+# names a platform. portless's cases are design Decisions 5 and 6 of the
+# change portless-comes-with-the-flake, worktrunk's design Decision 3 of
+# the change worktrunk-comes-with-the-flake, and crew's companions' design
+# Decisions 6 and 9 of the change crews-companions-come-with-the-flake.
 t:
 let
   inherit (t) lib outputs;
@@ -770,6 +772,118 @@ let
     )
     ++ t.expect (steps != { }) "the ${platform} system has no step, job or unit to read";
 
+  # The launcher's cases (design Decisions 1 and 5). The account `own`
+  # with the drive `home`, keeping agentplot's flume, and `work` with the
+  # drive `garden`, keeping example's alpha, `garden` on `machine`.
+  twoDrives = machine: {
+    services.boomdrive.accounts = {
+      own.drives.home.repositories.agentplot = [ "flume" ];
+      work.drives.garden = {
+        inherit machine;
+        repositories.example = [ "alpha" ];
+      };
+    };
+  };
+  launcherOf = evaluated: evaluated.config.services.boomdrive.launcher.package;
+  # A system of the modules `given`, whose launcher is made for `expected`.
+  madeFor =
+    platform: given: expected:
+    let
+      evaluated = platforms.${platform}.system { imports = given; };
+      installed = launcherOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (installed.drives or null == expected)
+        "the ${platform} system's launcher is made for ${
+          builtins.toJSON (installed.drives or null)
+        }, not ${builtins.toJSON expected}"
+    ++ t.expect (builtins.elem installed.outPath (profileOf evaluated)) "the ${platform} system profile holds no launcher it made";
+
+  eachDrive =
+    platform: _:
+    madeFor platform
+      [ (twoDrives null) ]
+      [
+        {
+          drive = "garden";
+          session = "garden";
+        }
+        {
+          drive = "home";
+          session = "home";
+        }
+      ];
+
+  anotherMachine =
+    platform: _:
+    madeFor platform
+      [
+        (twoDrives "host-b")
+        { services.crew.host = "host-a"; }
+      ]
+      [
+        {
+          drive = "home";
+          session = "home";
+        }
+      ];
+
+  sessionNamed =
+    platform: _:
+    madeFor platform
+      [
+        { services.boomdrive.accounts.own.drives.home.repositories.agentplot = [ "flume" ]; }
+        { services.flume.settings.streams.home.session = "house"; }
+      ]
+      [
+        {
+          drive = "home";
+          session = "house";
+        }
+      ];
+
+  noDrive =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+    in
+    t.expect (
+      (launcherOf evaluated).outPath == set.boomdrive-launcher.outPath
+    ) "the ${platform} system with no drive installs a launcher that is not the set's";
+
+  hostsLauncher =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system {
+        imports = [
+          (twoDrives null)
+          (
+            { pkgs, ... }:
+            {
+              services.boomdrive.launcher.package = pkgs.runCommand "own-launcher" { } "mkdir $out";
+            }
+          )
+        ];
+      };
+      installed = launcherOf evaluated;
+      profile = profileOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      installed.name == "own-launcher" && !(installed ? drives)
+    ) "the ${platform} system's launcher is ${installed.name}, not the host's own as given"
+    ++ t.expect (builtins.elem installed.outPath profile) "the ${platform} system profile holds no host's own launcher"
+    ++ t.expect (
+      !builtins.elem set.boomdrive-launcher.outPath profile
+    ) "the ${platform} system profile holds the set's launcher beside the host's own";
+
   withoutRunner =
     platform:
     { without, set, ... }:
@@ -809,6 +923,11 @@ onEach "The way in with the runner" withRunner
 // onEach "No Pending You of the set's" noSetsPendingyou
 // onEach "The wake mod in the folder" wakeModIn
 // onEach "No Claude Code of the modules'" noClaudeCode
+// onEach "Each drive of this host in the launcher" eachDrive
+// onEach "A drive of another machine has no entry" anotherMachine
+// onEach "A stream's own session named" sessionNamed
+// onEach "No drive, the set's launcher" noDrive
+// onEach "A host's own launcher" hostsLauncher
 // {
   "The folder written on nix-darwin" = folderWritten "nix-darwin";
   "The folder written on NixOS" = folderOnNixOS;

@@ -1,7 +1,8 @@
 #!/bin/sh
 # The way in's cases (design Decision 8 of the change
-# herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents),
-# which nix/check.sh test runs beside the evaluated ones: each runs
+# herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents, and
+# Decision 7 of the change each-drive-opens-from-the-launcher), which
+# nix/check.sh test runs beside the evaluated ones: each runs
 # nix/packages/launcher.sh by sh in a scratch folder of its own, with a
 # scratch HOME and stubs of flume, osascript, uname and id that record
 # their calls. The launcher puts the host's profiles ahead of its PATH,
@@ -62,12 +63,14 @@ id() { "$dir/bin/id" "\$@"; }
 STUBS
 }
 
-# The launcher in the case's folder, with the PATH `$1`: its status,
-# output and error.
+# The launcher in the case's folder, with the PATH `$1` and the arguments
+# after it: its status, output and error.
 launch() {
   status=0
-  HOME=$home PATH=$1 stubs=$dir/stubs launcher=$launcher \
-    sh -c '. "$stubs"; . "$launcher"' >"$dir/out" 2>"$dir/err" || status=$?
+  paths=$1
+  shift
+  HOME=$home PATH=$paths stubs=$dir/stubs launcher=$launcher \
+    sh -c '. "$stubs"; . "$launcher"' boomdrive-launcher "$@" >"$dir/out" 2>"$dir/err" || status=$?
   out=$(cat "$dir/out")
   err=$(cat "$dir/err")
 }
@@ -112,6 +115,22 @@ launch /usr/bin:/bin
 expect "$named" "the launcher exits $status: $err" [ "$status" -eq 0 ]
 expect "$named" "the launcher called $(called), not flume open once" holds "$calls" "flume open"
 expect "$named" "the launcher showed \"$out$err\"" [ -z "$out$err" ]
+
+named="A drive's session opened"
+fresh
+echo 'flume: opened the session' >"$dir/words"
+launch /usr/bin:/bin home
+expect "$named" "the launcher exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "the launcher called $(called), not flume open -- home once" holds "$calls" "flume open -- home"
+expect "$named" "the launcher showed \"$out$err\"" [ -z "$out$err" ]
+expect "$named" "the launcher asked for an alert" missing "$dir/osascript-args"
+
+named="More than one session"
+fresh
+launch /usr/bin:/bin home garden
+expect "$named" "the launcher exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "the launcher's standard error is \"$err\", not one session at most" has "$err" "one session at most"
+expect "$named" "the launcher called $(called)" missing "$calls"
 
 named="Flume refuses on macOS"
 fresh

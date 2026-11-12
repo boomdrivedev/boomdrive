@@ -1,14 +1,24 @@
 //! Every git call the runner makes (design 5, 10), by git's command line
 //! and never through a library (record 0001). Each runs at a bare
-//! repository or a folder, never asks anyone, and is given no credential:
-//! the host's own credential helper answers, or the call fails (core.4). A
-//! failure is named by the last line git wrote on standard error.
+//! repository or a folder, never asks anyone, and holds no credential of
+//! its own on its command line (core.4). A failure is named by the last
+//! line git wrote on standard error.
+//!
+//! A call to a remote is given a [`Credential`] (record 0007 as amended on
+//! 2026-11-11; core.34): the host's own credential helpers, as the host's
+//! git configuration names them; or, where the configuration names the
+//! Boomdrive App, the App's token alone, every helper of the host's emptied
+//! for that call and its one helper, [`TOKEN_HELPER`], reading the token
+//! from that call's environment, so no process listing shows it; or no
+//! credential, every helper of the host's emptied.
 //!
 //! A call that reaches a remote, a clone's fetch, is bounded: it runs in a
 //! process group of its own and is stopped at the git's limit, thirty
 //! seconds, with everything it started, failing with words that name its
-//! command, its remote and the limit (record 0042; core.58). Every other
-//! call reaches no remote and runs to its end.
+//! command, its remote and the limit. weir's crate `weir-bounded` holds the
+//! limit, the run and the words (weir record 0008; record 0042 as amended
+//! on 2026-11-11; core.58). Every other call reaches no remote and runs to
+//! its end.
 
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -16,7 +26,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-use boomdrive_bounded::TRY_FOR;
+use weir_bounded::TRY_FOR;
 
 /// The least git the runner runs with: 2.48, the first whose fetch keeps
 /// origin's HEAD current (`remote.origin.followRemoteHEAD`, design 6).
@@ -33,6 +43,44 @@ const ELSEWHERE: [&str; 6] = [
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
 ];
 
+/// The variable the call's own helper reads the App's token from, set in
+/// that call's environment alone.
+const TOKEN_VAR: &str = "BOOMDRIVE_FORGE_TOKEN";
+
+/// The call's own credential helper, in git's shell form: it reads what git
+/// sends to its end, answers a `get` with the App's token from the call's
+/// environment, and answers nothing else, `store` and `erase` among them
+/// (design Decision 5).
+pub const TOKEN_HELPER: &str = "!f() { cat >/dev/null; test \"$1\" != get || printf \
+     'username=x-access-token\\npassword=%s\\n' \"$BOOMDRIVE_FORGE_TOKEN\"; }; f";
+
+/// What a call to a remote is given to answer git's ask for a credential
+/// (design Decision 5). Its `Debug` never shows a token (core.4).
+#[derive(Clone, PartialEq, Eq)]
+pub enum Credential {
+    /// The host's own helpers, as the host's git configuration names
+    /// them: no argument names a credential.
+    Host,
+    /// The Boomdrive App's token alone: `-c credential.helper=` empties
+    /// every helper the host's configuration names, its URL-scoped ones
+    /// among them, then `-c credential.helper=<TOKEN_HELPER>` reads the
+    /// token from the call's environment.
+    Token(String),
+    /// No credential: `-c credential.helper=` alone, so git asks no helper
+    /// and, never prompting, goes without one.
+    Nothing,
+}
+
+impl fmt::Debug for Credential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Credential::Host => "Host",
+            Credential::Token(_) => "Token(..)",
+            Credential::Nothing => "Nothing",
+        })
+    }
+}
+
 /// Where a call runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum At<'a> {
@@ -40,6 +88,16 @@ pub enum At<'a> {
     GitDir(&'a Path),
     /// A folder, by `-C`: a worktree, or where a repository is made.
     Dir(&'a Path),
+}
+
+impl At<'_> {
+    /// Names where `command` runs.
+    fn set(self, command: &mut Command) {
+        match self {
+            At::GitDir(dir) => command.arg("--git-dir").arg(dir),
+            At::Dir(dir) => command.arg("-C").arg(dir),
+        };
+    }
 }
 
 /// Why a call failed: git's last line on standard error, or why git did
@@ -91,12 +149,19 @@ impl Git {
     }
 
     /// git's standard output from `args` at `at`, a call that reaches
-    /// `remote`, or its words where it failed. It runs in a process group
-    /// of its own and is stopped at this git's limit with everything it
-    /// started; a call stopped so fails naming its command, `remote` and
-    /// the limit, after git's last line on standard error where git wrote
-    /// one, and its standard output is not read (record 0042; core.58).
-    pub fn call_remote<I, S>(&self, at: At, remote: &str, args: I) -> Result<String, Words>
+    /// `remote` given `credential`, or its words where it failed. It runs
+    /// in a process group of its own and is stopped at this git's limit
+    /// with everything it started; a call stopped so fails naming its
+    /// command, `remote` and the limit, after git's last line on standard
+    /// error where git wrote one, and its standard output is not read
+    /// (record 0042; core.58).
+    pub fn call_remote<I, S>(
+        &self,
+        at: At,
+        remote: &str,
+        args: I,
+        credential: &Credential,
+    ) -> Result<String, Words>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -109,7 +174,36 @@ impl Git {
             Some(verb) => format!("git {}", verb.to_string_lossy()),
             None => "git".to_string(),
         };
-        bounded(self.command(at, &args), &call, remote, self.try_for)
+        let command = self.remote_command(at, &args, credential);
+        bounded(command, &call, remote, self.try_for)
+    }
+
+    /// The call to a remote `args` at `at`, given `credential`, would
+    /// make: its helpers set before the call names where it runs, and the
+    /// App's token in its environment alone.
+    fn remote_command<I, S>(&self, at: At, args: I, credential: &Credential) -> Command
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let mut command = self.bare_command();
+        command.env_remove(TOKEN_VAR);
+        match credential {
+            Credential::Host => {}
+            Credential::Token(token) => {
+                command
+                    .args(["-c", "credential.helper="])
+                    .arg("-c")
+                    .arg(format!("credential.helper={TOKEN_HELPER}"))
+                    .env(TOKEN_VAR, token);
+            }
+            Credential::Nothing => {
+                command.args(["-c", "credential.helper="]);
+            }
+        }
+        at.set(&mut command);
+        command.args(args);
+        command
     }
 
     /// git's standard output from `args` at `at`, or its words where it
@@ -164,10 +258,7 @@ impl Git {
         S: AsRef<OsStr>,
     {
         let mut command = self.bare_command();
-        match at {
-            At::GitDir(dir) => command.arg("--git-dir").arg(dir),
-            At::Dir(dir) => command.arg("-C").arg(dir),
-        };
+        at.set(&mut command);
         command.args(args);
         command
     }
@@ -211,17 +302,18 @@ fn answer(command: Command) -> Result<Option<String>, Words> {
 
 /// `command`, the call `call` to `remote`, run to `limit`: its standard
 /// output where it ended by itself and succeeded, its words otherwise, a
-/// stopped call's naming `call`, `remote` and `limit` (record 0042).
+/// stopped call's naming `call`, `remote` and `limit`, run by
+/// `weir-bounded` (record 0042 as amended on 2026-11-11).
 fn bounded(
     mut command: Command,
     call: &str,
     remote: &str,
     limit: Duration,
 ) -> Result<String, Words> {
-    let ended = boomdrive_bounded::output(&mut command, limit)
+    let ended = weir_bounded::output(&mut command, limit)
         .map_err(|error| Words(format!("git could not run: {error}")))?;
     if ended.stopped {
-        let stopped = boomdrive_bounded::stopped(call, remote, limit);
+        let stopped = weir_bounded::stopped(call, remote, limit);
         let stderr = String::from_utf8_lossy(&ended.stderr);
         return Err(Words(match last_line(&stderr) {
             Some(line) => format!("{line}; {stopped}"),
@@ -356,12 +448,112 @@ mod tests {
             set(&command, "GIT_CONFIG_GLOBAL"),
             Some(Some("/s/gitconfig".into()))
         );
-        for arg in command.get_args() {
+        let remote = git.remote_command(
+            At::GitDir(Path::new("/d/r.git")),
+            ["fetch", "--prune"],
+            &Credential::Host,
+        );
+        assert_eq!(
+            remote.get_args().collect::<Vec<_>>(),
+            ["--git-dir", "/d/r.git", "fetch", "--prune"]
+        );
+        assert_eq!(set(&remote, "GIT_TERMINAL_PROMPT"), Some(Some("0".into())));
+        assert_eq!(set(&remote, TOKEN_VAR), Some(None));
+        for arg in command.get_args().chain(remote.get_args()) {
             assert!(
                 !arg.to_string_lossy().contains("credential"),
                 "an argument names a credential: {arg:?}"
             );
         }
+    }
+
+    /// A scratch folder and a global git configuration whose helpers, one
+    /// for every URL and one for GitHub's, answer with the password
+    /// `host`, and git under it, reading no system configuration.
+    fn with_a_host_helper() -> (tempfile::TempDir, Git) {
+        let dir = tempfile::tempdir().expect("a scratch folder");
+        let gitconfig = dir.path().join("gitconfig");
+        std::fs::write(
+            &gitconfig,
+            "[credential]\n\
+             \thelper = \"!f() { cat >/dev/null; echo username=host; echo password=host; }; f\"\n\
+             [credential \"https://github.com\"]\n\
+             \thelper = \"!f() { cat >/dev/null; echo username=host; echo password=host; }; f\"\n",
+        )
+        .expect("the scratch git configuration");
+        let git = Git::new(vec![
+            ("GIT_CONFIG_GLOBAL".into(), gitconfig.into()),
+            ("GIT_CONFIG_NOSYSTEM".into(), "1".into()),
+            ("HOME".into(), dir.path().into()),
+        ]);
+        (dir, git)
+    }
+
+    /// `git credential fill` for `https://github.com/agentplot/flume.git`,
+    /// run through the call's own command given `credential`: its exit,
+    /// its standard output and the command's arguments.
+    fn fill(git: &Git, dir: &Path, credential: &Credential) -> (bool, String, Vec<String>) {
+        let mut command = git.remote_command(At::Dir(dir), ["credential", "fill"], credential);
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        let mut child = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("git run");
+        std::io::Write::write_all(
+            child.stdin.as_mut().expect("its standard input"),
+            b"protocol=https\nhost=github.com\npath=agentplot/flume.git\n\n",
+        )
+        .expect("the request written");
+        let output = child.wait_with_output().expect("git's answer");
+        (
+            output.status.success(),
+            String::from_utf8_lossy(&output.stdout).into_owned(),
+            args,
+        )
+    }
+
+    /// The clones spec's "Git is given the App's token alone".
+    #[test]
+    fn a_call_given_a_token_gives_git_that_token_alone() {
+        let (dir, git) = with_a_host_helper();
+        let (_, by_host, _) = fill(&git, dir.path(), &Credential::Host);
+        assert!(by_host.contains("password=host\n"), "{by_host}");
+
+        let token = "ghs_n0t4r34lt0k3n";
+        let (filled, given, args) = fill(&git, dir.path(), &Credential::Token(token.into()));
+        assert!(filled, "{given}");
+        assert!(given.contains("username=x-access-token\n"), "{given}");
+        assert!(given.contains(&format!("password={token}\n")), "{given}");
+        assert!(!given.contains("host\n"), "{given}");
+        for arg in &args {
+            assert!(!arg.contains(token), "an argument holds the token: {arg}");
+        }
+    }
+
+    /// The clones spec's "Git is given no credential".
+    #[test]
+    fn a_call_given_nothing_gives_git_no_credential() {
+        let (dir, git) = with_a_host_helper();
+        let (filled, given, args) = fill(&git, dir.path(), &Credential::Nothing);
+        assert!(!filled, "{given}");
+        assert!(!given.contains("password="), "{given}");
+        assert_eq!(&args[..2], ["-c", "credential.helper="]);
+    }
+
+    #[test]
+    fn a_credentials_debug_holds_no_token() {
+        let shown = format!(
+            "{:?} {:?} {:?}",
+            Credential::Token("ghs_n0t4r34lt0k3n".into()),
+            Credential::Host,
+            Credential::Nothing
+        );
+        assert_eq!(shown, "Token(..) Host Nothing");
     }
 
     #[test]

@@ -34,7 +34,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.78.1";
+      url = "github:agentplot/sluice/v0.86.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -50,7 +50,7 @@
       };
     };
     crew = {
-      url = "github:agentplot/crew/v0.50.2";
+      url = "github:agentplot/crew/v0.59.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
@@ -147,17 +147,15 @@
           pkgs = pkgsOf system;
           tools = {
             boomdrive = pkgs.callPackage ./nix/packages/boomdrive.nix { platforms = systems; };
+            # Flume's and crew's own flakes' packages, unchanged: each tagged
+            # tree carries its version (core.44).
             flume = inputs.flume.packages.${system}.flume;
+            crew = inputs.crew.packages.${system}.crew;
             sluice = import ./nix/packages/sluice.nix {
               inherit lib;
               package = inputs.sluice.packages.${system}.default;
               src = inputs.sluice;
               tag = tagOf (import ./flake.nix).inputs.sluice.url;
-            };
-            crew = import ./nix/packages/crew.nix {
-              inherit lib;
-              package = inputs.crew.packages.${system}.crew;
-              tag = tagOf (import ./flake.nix).inputs.crew.url;
             };
             inherit (inputs.herdr.packages.${system}) herdr;
             worktrunk = import ./nix/packages/worktrunk.nix {

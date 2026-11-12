@@ -22,8 +22,8 @@ use boomdrive::sluice;
 use boomdrive::terminal::{self, Relays};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    ActSort, AgentSetting, ControlPlane, Hold, Id, Launch, Lease, Offer, Preview, Report,
-    ToolVersion, Want,
+    ActSort, AgentSetting, ControlPlane, Hold, Id, KeptRepository, Launch, Lease, Offer, Preview,
+    Report, ToolVersion, Want,
 };
 use serde_json::{json, Value};
 use std::cell::{Cell, RefCell};
@@ -607,23 +607,31 @@ impl Flume for FakeFlume {
     }
 }
 
-/// The runner's clones, as a test sets them.
+/// The runner's clones, as a test sets them: each address with how it is
+/// kept and the drive that names it, `home` but where a test names
+/// another.
 #[derive(Default)]
 pub struct FakeClones {
-    kept: RefCell<Vec<(String, Keeping)>>,
+    kept: RefCell<Vec<(String, Keeping, String)>>,
 }
 
 impl FakeClones {
     /// `address` named, its clone made in `container`, which is made
     /// where it is not there, so a launch finds the clone again.
     pub fn ready(&self, address: &str, container: &Path) {
+        self.ready_in(address, container, "home");
+    }
+
+    /// `address` named by the drive `drive`, its clone made in
+    /// `container`, as [`FakeClones::ready`] makes one.
+    pub fn ready_in(&self, address: &str, container: &Path, drive: &str) {
         fs::create_dir_all(container).expect("the clone's container");
-        self.keep(address, Keeping::Ready(container.to_path_buf()));
+        self.keep(address, Keeping::Ready(container.to_path_buf()), drive);
     }
 
     /// `address` named, its clone not yet made.
     pub fn not_yet(&self, address: &str) {
-        self.keep(address, Keeping::NotYet);
+        self.keep(address, Keeping::NotYet, "home");
     }
 
     /// `address` named no more, as a configuration that drops it: a clone
@@ -631,7 +639,7 @@ impl FakeClones {
     pub fn drop_named(&self, address: &str) {
         match self.keeping(address) {
             Keeping::Ready(container) | Keeping::Dropped(container) => {
-                self.keep(address, Keeping::Dropped(container))
+                self.keep(address, Keeping::Dropped(container), "home")
             }
             Keeping::NotYet | Keeping::NotNamed => self.gone(address),
         }
@@ -641,13 +649,13 @@ impl FakeClones {
     /// removed.
     pub fn gone(&self, address: &str) {
         let mut kept = self.kept.borrow_mut();
-        kept.retain(|(named, _)| !named.eq_ignore_ascii_case(address));
+        kept.retain(|(named, _, _)| !named.eq_ignore_ascii_case(address));
     }
 
-    fn keep(&self, address: &str, keeping: Keeping) {
+    fn keep(&self, address: &str, keeping: Keeping, drive: &str) {
         let mut kept = self.kept.borrow_mut();
-        kept.retain(|(named, _)| !named.eq_ignore_ascii_case(address));
-        kept.push((address.to_string(), keeping));
+        kept.retain(|(named, _, _)| !named.eq_ignore_ascii_case(address));
+        kept.push((address.to_string(), keeping, drive.to_string()));
     }
 }
 
@@ -655,24 +663,44 @@ impl Clones for FakeClones {
     fn keeping(&self, address: &str) -> Keeping {
         let kept = self.kept.borrow();
         kept.iter()
-            .find(|(named, _)| named.eq_ignore_ascii_case(address))
-            .map_or(Keeping::NotNamed, |(_, keeping)| keeping.clone())
+            .find(|(named, _, _)| named.eq_ignore_ascii_case(address))
+            .map_or(Keeping::NotNamed, |(_, keeping, _)| keeping.clone())
     }
 
     fn made(&self) -> Vec<String> {
         let kept = self.kept.borrow();
         kept.iter()
-            .filter(|(_, keeping)| matches!(keeping, Keeping::Ready(_)))
-            .map(|(address, _)| address.clone())
+            .filter(|(_, keeping, _)| matches!(keeping, Keeping::Ready(_)))
+            .map(|(address, _, _)| address.clone())
             .collect()
     }
 
     fn dropped(&self) -> Vec<String> {
         let kept = self.kept.borrow();
         kept.iter()
-            .filter(|(_, keeping)| matches!(keeping, Keeping::Dropped(_)))
-            .map(|(address, _)| address.clone())
+            .filter(|(_, keeping, _)| matches!(keeping, Keeping::Dropped(_)))
+            .map(|(address, _, _)| address.clone())
             .collect()
+    }
+
+    /// Each drive with its addresses made, in the order set: an address
+    /// not yet made or dropped is in none, and no drive is given with
+    /// none.
+    fn drives(&self) -> BTreeMap<String, Vec<KeptRepository>> {
+        let kept = self.kept.borrow();
+        let mut drives: BTreeMap<String, Vec<KeptRepository>> = BTreeMap::new();
+        for (address, keeping, drive) in kept.iter() {
+            if let Keeping::Ready(container) = keeping {
+                drives
+                    .entry(drive.clone())
+                    .or_default()
+                    .push(KeptRepository {
+                        address: address.clone(),
+                        container_dir: container.to_string_lossy().into_owned(),
+                    });
+            }
+        }
+        drives
     }
 }
 

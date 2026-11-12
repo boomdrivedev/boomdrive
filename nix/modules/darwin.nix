@@ -5,7 +5,8 @@
 # Decision 11). Each tool of the set is installed by its own module, which
 # flake.nix imports beside this one, and tools.nix sets their options
 # (record 0023); drives.nix gives Flume's module each drive's stream (record
-# 0028). Once the Nix store is mounted, the agent runs
+# 0028), and sources.nix declares crew's source to Flume's module (record
+# 0034). Once the Nix store is mounted, the agent runs
 # `boomdrive run --config` with the file rendered from `accounts` and
 # `settings` (design Decision 9), so nix-darwin reloads it when the package
 # or the file changes, and leaves it running when neither does. The
@@ -13,6 +14,18 @@
 # for the commands a person runs by hand, writes Pending You's folder where
 # crew's companions are installed (record 0044, point 7), and links the
 # herdr plugins apps.nix lists with herdr's own command (record 0023).
+# Beside `logFile`, the agent's log, the module declares `dataDir`, the
+# runner's data folder by the runner's own rule (data-dir.nix) from the
+# primary user's home and the agent's own `XDG_DATA_HOME`, and clones.nix
+# declares `cloneDirs`, each kept repository's clone folder in it: each
+# read-only, read wherever a host names the folder or a clone's, and set
+# by none (record 0036 as amended on 2026-11-11). With crew's module on,
+# the module gives crew's kept repositories,
+# `services.crew.settings.repositories`, one entry for each address of
+# `cloneDirs`, its `dir` the clone's folder and its `checkout` the
+# runner's view under the primary user's home (kept.nix), at the module's
+# own priority, so a host writes none (record 0036 as amended a third
+# time on 2026-11-11).
 { packages }:
 {
   config,
@@ -24,6 +37,8 @@ let
   cfg = config.services.boomdrive;
   render = import ./toml.nix { inherit lib; };
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
+  dataDirOf = import ./data-dir.nix { inherit lib; };
+  keptOf = import ./kept.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -71,6 +86,8 @@ in
     (import ./apps.nix { inherit packages; })
     (import ./companions.nix { inherit packages; })
     ./drives.nix
+    ./clones.nix
+    ./sources.nix
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
@@ -78,6 +95,37 @@ in
     default = "${home}/Library/Logs/boomdrive.log";
     defaultText = lib.literalExpression ''"''${config.users.users.''${config.system.primaryUser}.home}/Library/Logs/boomdrive.log"'';
     description = "The file the agent's standard output and standard error go to.";
+  };
+
+  # The agent's own XDG_DATA_HOME, or null where the agent has none or
+  # the runner is not enabled (the change
+  # the-set-names-the-runners-data-folder, design Decisions 1 and 3).
+  options.services.boomdrive.dataDir = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = dataDirOf {
+      inherit home;
+      dataHome =
+        config.launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables.XDG_DATA_HOME or null;
+    };
+    defaultText = lib.literalMD ''
+      `$XDG_DATA_HOME/boomdrive` where the runner's agent is given an absolute
+      `XDG_DATA_HOME` in `launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables`,
+      else `.local/share/boomdrive` under the primary user's home,
+      `users.users.''${config.system.primaryUser}.home`
+    '';
+    description = ''
+      The runner's data folder, where it keeps its clones, its lock and its
+      report, by the runner's own rule: `$XDG_DATA_HOME/boomdrive` where the
+      agent's own environment gives an absolute `XDG_DATA_HOME`, else
+      `~/.local/share/boomdrive` under the primary user's home. It is
+      read-only: a host reads it wherever it names the folder, a clone's
+      folder in it being `services.boomdrive.cloneDirs`'s, and sets it
+      nowhere. An `XDG_DATA_HOME` the agent takes from
+      outside its declaration, such as launchd's user domain, is not seen:
+      a host that moves the runner's data gives the agent its own
+      `XDG_DATA_HOME` in `launchd.user.agents.boomdrive.serviceConfig.EnvironmentVariables`.
+    '';
   };
 
   config = lib.mkIf cfg.enable {
@@ -91,6 +139,16 @@ in
     ];
 
     environment.systemPackages = [ cfg.package ];
+
+    # crew's kept repositories, where crew's module is on and the runner
+    # keeps a repository (design Decisions 1, 4 and 6).
+    services.crew.settings.repositories =
+      lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { })
+        (keptOf {
+          inherit (cfg) cloneDirs;
+          inherit home;
+          root = cfg.settings.repository_root;
+        });
 
     launchd.user.agents.boomdrive = {
       # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store

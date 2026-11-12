@@ -116,8 +116,8 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 
 #### Scenario: crew through its own flake
 
-- **WHEN** the lock names a tag of crew's, whose tree carries no version
-- **THEN** the `crew` package is crew's flake's, its source, name and home page crew's own, and its version is the tag's without the `v`
+- **WHEN** the lock names a tag of crew's whose tree carries its version
+- **THEN** the `crew` package is crew's flake's own `crew` for that system, unchanged, and its version is the tag's without the `v`
 
 #### Scenario: herdr through its own flake
 
@@ -143,6 +143,15 @@ Each package SHALL be a derivation of the source the lock names by its hash: the
 
 - **WHEN** the flake is evaluated
 - **THEN** the `boomdrive` package's source holds this tree's `Cargo.toml`, `Cargo.lock` and `crates`, and no other path of the tree
+
+### Requirement: The runner's version is its tree's
+
+The `boomdrive` package's version SHALL be its tree's, `Cargo.toml`'s workspace version, which a release commit alone writes (core.48).
+
+#### Scenario: The runner at its tree's version
+
+- **WHEN** the flake is evaluated for each system it gives
+- **THEN** the `boomdrive` package's version is the one `Cargo.toml` gives under `[workspace.package]`: `0.0.0` at a commit of `main`, and the release's at a release tag
 
 ### Requirement: herdr is the release Flume's terminal profile was checked against
 

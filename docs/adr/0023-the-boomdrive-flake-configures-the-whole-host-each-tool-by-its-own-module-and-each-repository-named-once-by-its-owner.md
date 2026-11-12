@@ -62,6 +62,22 @@ Status: decided on 2026-11-08 by the construct stage of the change `crews-partit
 - **Two failures at evaluation.** With the runner enabled, evaluation fails in two cases. The first is under crew with no table written and crew's module off. The second is where the module would write the table and no partition names this host. Each failure names the options to set. Not taken: the runner's refusal at start, which it repeats under the service manager while the switch that wrote the file succeeds.
 - **Where it lives.** The table is the default of `settings.control_plane.crew`, so `services.boomdrive.settings` reads what the file holds. Not taken: a fill at render time, which `settings` would not show.
 
+## Amendment, 2026-11-11: each drive opens from the launcher
+
+Status: decided on 2026-11-11 by the construct stage of the change `each-drive-opens-from-the-launcher`. Its brief asks: "A person opens any drive's agents from the Boomdrive launcher, one entry per drive of the host, each showing that drive's stream with flume open: a menu-bar menu on macOS and one action per drive in the desktop entry on Linux." The brief's ask is carried as given. The rest are the writing agent's choices, made within this record, record 0028 and Flume's statement 186, each cheap to change. The change's design gives the path not taken for each, in its Decisions 1 to 6.
+
+Amends "One way in" above, where the launcher runs `flume open` with no session.
+
+- **An entry for each drive of this host.** Each drive whose `machine` is unset or is this host is one entry, titled its name, in the order of the drives' names. It opens its stream's own session, as Flume names it: the stream's `session` in Flume's settings, else the stream's name (Flume's 107 and 186). A drive of another machine has no entry, since it has no stream here (record 0028). Not taken: the stream's name passed to `flume open`, which Flume refuses where the stream names a session.
+- **And Flume's default.** One more entry, `Default stream`, runs `flume open` with no name, as the launcher did before. On Linux it is the desktop entry's own click. Not taken: the drives alone, which leave the desktop entry's click, and a host with no drive here, nothing to open.
+- **One script runs Flume.** The launcher's script runs `flume open -- <session>` given a session, and `flume open` given none. It keeps the user's profiles on `PATH` and shows Flume's refusal, and the menu and the desktop entry run it and nothing else.
+- **On macOS, a menu-bar app.** `Boomdrive.app` becomes a menu-bar app, compiled from one Objective-C file of this tree by the flake's own nixpkgs. Its status item `Boomdrive` holds each drive, `Default stream` and `Quit Boomdrive`, and its drives are in its `Info.plist`. It runs from the person's opening it until they quit it. No module or service starts it, at login or otherwise. Not taken: Swift, JavaScript for Automation run by `osascript`, a Rust crate, and a third-party menu-bar app.
+- **On Linux, the desktop entry's actions.** `boomdrive.desktop` gains one action for each drive, which runs the script with the drive's session.
+- **The drives are given to the launcher's package.** The module installs the set's launcher made for this host's drives by its override, with the flake's own nixpkgs. Its compiled menu is the set's path the cache holds, and what is the host's is text and copies. A host's own launcher is installed as given. Not taken: a file of drives that the launcher reads at its start, which a desktop entry's actions cannot read.
+- **clang-format formats the menu's source**, pinned by `devenv.nix` and checked by `check-toolchain.sh` (core.7, core.8). Not taken: the file excluded from formatting by name.
+
+core.13's, core.44's, core.46's and core.47's details are amended in this amendment's commit with what they allow.
+
 ## Amendment, 2026-11-11: how portless comes with the flake
 
 Status: decided on 2026-11-11 by the construct stage of the change `portless-comes-with-the-flake`. These are the writing agent's choices, made within this record's amendment of 2026-11-08, which puts portless in the set, and rules core.13, core.44 and core.46. Each is cheap to change. The change's design gives the path not taken for each, in its Decisions 1 to 7.

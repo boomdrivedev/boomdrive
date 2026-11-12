@@ -22,7 +22,11 @@ each under the repository root. Where the configuration names a control
 plane, it makes control passes on a timer of their own: it takes each
 launch offered under a lease while its Flume stream has room, carries
 out each act and command once, and carries Flume's, sluice's and the
-inbox's records back as the tools gave them.
+inbox's records back as the tools gave them. Where the configuration's
+`[forge]` names the Boomdrive App's key, `boomdrive forge-token` gives
+each tool a short-lived token for a served repository in git's
+credential-helper protocol, and the runner's own fetches take one the
+same way (record 0007 as amended; core.33).
 
 The flake at the root, `flake.nix` and `flake.lock`, with everything
 else of it under `nix/`, gives the runner, Flume, sluice and crew
@@ -32,14 +36,15 @@ plannotator-tui, with their herdr plugins and the set's marketplace of
 their Claude Code plugins (record 0044), each tool's own module
 re-exported beside the runner's service, `services.boomdrive`, as
 nix-darwin and NixOS modules, whose `accounts` and `settings` are the
-runner's file, each drive's stream given to Flume's module. With the
-runner, the modules install herdr, Ghostty, portless, worktrunk and the
-Boomdrive launcher, an app on macOS and a desktop entry on Linux that
-runs `flume open`, and link the set's herdr plugins with herdr's own
-command. With the runner and crew, they install the companions and
-`pendingyou-signin`, link the companions' herdr plugins, and write
-Pending You's folder; none runs `claude` or writes into a Claude Code
-home. The flake gives a shell,
+runner's file, each drive's stream given to Flume's module, and, with
+crew on, crew's source of kinds (record 0034). With the runner, the
+modules install herdr, Ghostty, portless, worktrunk and the Boomdrive
+launcher, a menu-bar app on macOS and a desktop entry on Linux, with an
+entry for each drive, that runs `flume open`, and link the set's herdr
+plugins with herdr's own command. With the runner and crew, they
+install the companions and `pendingyou-signin`, link the companions'
+herdr plugins, and write Pending You's folder; none runs `claude` or
+writes into a Claude Code home. The flake gives a shell,
 `devShells.<system>.default`, that starts herdr (record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every
 system the flake gives and pushes it to the family's cache, `boomdrive`
@@ -49,10 +54,13 @@ on Cachix, at each push to `main` and each tag `v*` (records 0020 and
 Boomdrive's versions are git-cliff's, from its Conventional Commits
 (`cliff.toml`; record 0024, core.48). At each push to `main`, the
 workflow `.github/workflows/release.yml` asks `release.sh` for the next
-version since the newest tag `v*`, and where it is new publishes a
-GitHub release of its tag on the commit pushed, with git-cliff's notes,
-building nothing, then runs `cache` at the tag. The version lives only
-in the tag. `devenv shell -- release-preview` shows what it would
+version since the newest tag `v*` by version, and where it is new tags
+its release commit, cut from the commit of `main` that was pushed,
+which writes the version into the tree (`set-version.sh`), so a build
+from the tag reports it. It pushes that tag alone and publishes its
+GitHub release with git-cliff's notes, building nothing, then runs
+`cache` at the tag. `main`'s tree names `0.0.0`, which `root:versions`
+holds it to. `devenv shell -- release-preview` shows what it would
 release.
 
 Boomdrive's site is `site/`: the Method, its field notes and the
@@ -111,10 +119,9 @@ gate's checks, and while iterating `sluice exec main -- moon run
 <project>:<task>`. The projects are those `.moon/workspace.yml` lists:
 `boomdrive` (`crates/boomdrive`), `boomdrive-control`
 (`crates/boomdrive-control`), `boomdrive-crew` (`crates/boomdrive-crew`),
-`boomdrive-hosted` (`crates/boomdrive-hosted`), `boomdrive-bounded`
-(`crates/boomdrive-bounded`), `nix` (`nix/`, which owns the flake and
-`.github/workflows/cache.yml`), `site` (`site/`, which owns
-`.github/workflows/pages.yml`) and `root`. A quick, narrow call,
+`boomdrive-hosted` (`crates/boomdrive-hosted`), `nix` (`nix/`, which
+owns the flake and `.github/workflows/cache.yml`), `site` (`site/`,
+which owns `.github/workflows/pages.yml`) and `root`. A quick, narrow call,
 `cargo check` or one unit test, is fine to run directly.
 `devenv shell -- moon run :#check-fast` runs the fast layer.
 
