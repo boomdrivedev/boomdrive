@@ -25,7 +25,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - the plugin `plannotator`: the `apps/hook` of the set's Plannotator's `src`.
 
   Each file is copied with links followed, the build fails on any link, and `passthru.plugins` and `passthru.hooks` are given. The type check's set holds it (design Decision 5; Task notes 2.1). True when `sluice exec main -- moon run nix:typecheck` passes, proving the family-packages delta's "Every system's packages" with the sixteen.
-- [ ] 2.2 `nix/tests/companions.nix` holds the marketplace to its plugins, its hooks to the set's Pending You's `dist/claude.js`, and its build to no link (design Decision 5; Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages delta's "The marketplace's two plugins", "Pending You's hooks", "Pending You's hooks against its own", "No wake mod in the plugin", "No MCP server in the plugin", "Plannotator's plugin from its command's source" and "No link into the store".
+- [x] 2.2 `nix/tests/companions.nix` holds the marketplace to its plugins, its hooks to the set's Pending You's `dist/claude.js`, and its build to no link (design Decision 5; Task notes 2.1). True when `sluice exec main -- moon run nix:test` passes, proving the family-packages delta's "The marketplace's two plugins", "Pending You's hooks", "Pending You's hooks against its own", "No wake mod in the plugin", "No MCP server in the plugin", "Plannotator's plugin from its command's source" and "No link into the store".
 
 ## 3. The modules
 

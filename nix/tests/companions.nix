@@ -378,21 +378,7 @@ in
     ++ t.expect (
       market.pendingyou.hooksFile.hooks == market.hooks
     ) "packages.${system}.boomdrive-claude-plugins' hooks.json holds other hooks than it gives"
-    ++
-      t.expect (market.pendingyou.hooksFile.modules == [ "./register.js" ])
-        "packages.${system}.boomdrive-claude-plugins' hooks.json names ${builtins.toJSON market.pendingyou.hooksFile.modules}, not ./register.js, as its module"
-    ++
-      lib.concatMap
-        (
-          file:
-          t.expect (builtins.elem file market.pendingyou.files) "packages.${system}.boomdrive-claude-plugins' pendingyou plugin holds no ${file}"
-        )
-        [
-          "hooks/register.js"
-          "hooks/wake.js"
-          "skills/pendingyou/SKILL.md"
-        ]
-    ++ t.expect (has "${packages.pendingyou.mod}/hooks/register.js" market.buildCommand) "packages.${system}.boomdrive-claude-plugins' wake mod is not the set's Pending You's"
+    ++ t.expect (builtins.elem "skills/pendingyou/SKILL.md" market.pendingyou.files) "packages.${system}.boomdrive-claude-plugins' pendingyou plugin holds no skills/pendingyou/SKILL.md"
     ++ t.expect (has "${../packages/pendingyou-skill.md}" market.buildCommand) "packages.${system}.boomdrive-claude-plugins' skill is not nix/packages/pendingyou-skill.md"
   );
 
@@ -420,6 +406,29 @@ in
           "PreCompact"
           "compact"
         ];
+
+  # The wake mod is Pending You's folder's (record 0044, point 5): the
+  # plugin holds none, and its hooks name no module.
+  "No wake mod in the plugin" = each (
+    system: packages:
+    let
+      market = packages.boomdrive-claude-plugins;
+      mods = lib.filter (
+        file: lib.hasSuffix "register.js" file || lib.hasSuffix "wake.js" file
+      ) market.pendingyou.files;
+    in
+    t.expect (
+      mods == [ ]
+    ) "packages.${system}.boomdrive-claude-plugins' pendingyou plugin holds ${toString mods}"
+    ++
+      t.expect (!(market.pendingyou.hooksFile ? modules))
+        "packages.${system}.boomdrive-claude-plugins' hooks.json names ${
+          builtins.toJSON (market.pendingyou.hooksFile.modules or [ ])
+        } as its modules"
+    ++ t.expect (
+      !has "${packages.pendingyou.mod}" market.buildCommand
+    ) "packages.${system}.boomdrive-claude-plugins copies the set's Pending You's wake mod"
+  );
 
   "No MCP server in the plugin" = each (
     system: packages:
