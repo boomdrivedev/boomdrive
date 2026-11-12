@@ -10,7 +10,7 @@ decision-makers:
 
 # Boomdrive opens now, and its site moves into it from boomdrive-web
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below, twice: the site moves in before the opening; and Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move. Amended on 2026-11-12, below: a repository moves to boomdrivedev once its work is finished and once the family's App reaches it.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below, twice: the site moves in before the opening; and Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move. Amended on 2026-11-12, below, twice: a repository moves to boomdrivedev once its work is finished; and every repository that moves does so before deneb's switch, through madswan-agentplot, its folders moving with it, timber first.
 
 Deciders: the user, 2026-11-07, in the design agent's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The order, the names and how the site's rules come over are the design agent's, each cheap to change before the move.
 
@@ -89,7 +89,7 @@ The 2026-11-09 amendment's order, the transfers waiting on nothing, no longer ho
 
 ## Amendment, 2026-11-12: every repository moves before deneb's switch, through madswan-agentplot, its folders moving with it
 
-Status: proposed to the user on 2026-11-12, as `briefs.15` has it; accepted only on their yes. Its order, its folders and its bridge are the user's words below; how each move is carried out is the design agent's.
+Status: accepted by the user on 2026-11-12, on their card ("Approved"). Its order, its folders, its bridge and its pilot are the user's words below; how each move is carried out is the design agent's.
 
 Sources: the user's words that day, relayed by agentplot-operator, on moving the repositories (signal `2026-11-12-agentplot-planner-c292bbdc/01`) and on their folders; afterthought-design's reading that no Boomdrive release carries the runner's forge token (#165), and that sluice finds an App's installation repository by repository (sluice `profiles/github/app.rs:483`); agentplot-ops' readings of deneb, 2026-11-12. The user installed madswan-agentplot (App 5324750) on boomdrivedev, every repository, and said "app is ready", which ops verified. On deneb every path names the owner: the runner's clone is `~/.local/share/boomdrive/repositories/agentplot/<repo>/<repo>.git`, with sluice's records inside it at `<repo>.git/sluice`. Each session folder, `~/Code/boomdrive/agentplot/<repo>`, is a worktree of that bare repository. Flume's places, crew's kits, herdr's sessions and Claude Code's project folders are keyed by those paths. afterthought's Nix writes the runner's list of repositories as `owner/repo`.
 
