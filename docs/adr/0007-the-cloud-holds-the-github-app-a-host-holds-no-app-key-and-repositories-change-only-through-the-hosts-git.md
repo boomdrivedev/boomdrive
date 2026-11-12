@@ -9,7 +9,7 @@ decision-makers:
 
 # The cloud holds the GitHub App, a host holds no App key, and a repository changes only through the host's git
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-09, below: one Boomdrive App for every host, its key held by the runner where no cloud holds it, and every tool's token from the runner.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-09, below: one Boomdrive App for every host, its key held by the runner where no cloud holds it, and every tool's token from the runner. Amended again on 2026-11-11, below, with what the build chose within that amendment.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topic on enrollment, identity and credentials; sluice record 0019; agentplot/boomdrive-cloud's rules core.3, core.4, core.47 and core.58, cited by id; agentplot/boomdrive-cloud `design/research/awesome-lists-disposition.md`, row F52, and gitoxide's `crate-status.md`; the clones and crew-control-plane specs; rule core.4.
@@ -69,3 +69,28 @@ Status: accepted by the user on 2026-11-09, on the design agent's card: "One Boo
 - Bad: an agent running as the host's user can run `boomdrive forge-token` as it can read sluice's key today. The ruleset keeps agents off guarded branches because their git never asks for the token, not because they cannot (sluice record 0019).
 - Bad: until the runner gives tokens, a host keeps the App's key where sluice reads it today.
 
+
+## Amendment, 2026-11-11: what the build chose within the decision
+
+Status: accepted as the construct stage's own choices within the amendment of 2026-11-09, whose build is the design agent's to choose and cheap to change. Made by the construct stage of `change/the-runner-gives-every-tool-its-forge-token`, from its brief: "get mints, or gives the one it keeps, a short-lived installation token for one repository of a drive the host serves, on standard output alone; erase drops that repository's token so the next get mints a fresh one and never the erased one, revoking nothing at GitHub; anything else is refused, and no token reaches a file, a log or its error output." The OpenSpec change `the-runner-gives-every-tool-its-forge-token` gives each point below in its design.
+
+- **A token is kept in the process that minted it, and nowhere else.** `boomdrive forge-token` runs as a process of its own for each operation git or sluice asks of it. No command connects to the running runner (core.20), no credential is kept in a file or the data directory (core.4, core.35), and a shared thing is decided in one process, never by separate processes coordinating through storage (blueprints `design/principles.md` 6). So a `get` mints a fresh token in its own process, gives it, and keeps it no longer. Its asker keeps it, as git's protocol has a caller or a storage helper keep a credential, and as sluice keeps a token in its own memory until five minutes before its end (sluice record 0108). The running runner keeps one token for each repository for its own git calls, until five minutes before its end. An `erase` therefore drops nothing kept: it reads what git or sluice sends, and answers nothing. The next `get` mints afresh, so it never gives the erased token. Nothing is revoked at GitHub.
+- **The runner's own git call is handed the token its process keeps.** A fetch of a served repository, a new clone's first among them, is given a credential helper for that one call. The call first empties the host's helpers. Its one helper reads the token from that call's environment alone, as sluice hands its own git calls their token (sluice record 0019). A fetch that fails drops the repository's kept token, and the next pass mints again.
+- **A repository the App is not installed on is fetched with no credential.** GitHub's answer that the App has no installation on a served repository is kept, as a token would be. That repository's fetch goes with the host's helpers emptied and no credential, so a public repository is fetched and a private one fails with git's words. Any other failure to mint leaves that fetch with no credential too, its words after git's where the fetch fails, and the next pass asks again.
+- **A mint is two calls to GitHub's API, each stopped at ten seconds.** A JWT signed with the App's key, as sluice's `app.rs` signs one, finds the App's installation on the repository and buys a token for that repository alone. Each call is stopped at ten seconds, so a `get` answers within the thirty seconds sluice gives a credential command (sluice record 0108). The API's address is a field of the minter for a test's fake, and no key, variable or flag sets it (core.17).
+- **`[forge]` is the managed layer's alone.** The runner's configuration names the App by `[forge]`, its `app_id` and its `key_file`, under no control plane or crew's. Under a hosted control plane, `[forge]` is refused, because the hosted control plane holds the App. A `key_file` in the Nix store is refused. A key file anyone but its owner may read refuses the mint, as sluice refuses one.
+- **`forge-token`'s answer is git's protocol.** It takes no `--json`, a departure from core.39 for this one command. git reads a helper's standard output as the protocol, so a refusal there would be read as a credential. A refusal is one line of words on standard error, never holding a token, the JWT or the key. It exits as core.39 has it: 0 answered, 1 refused, 2 for a usage error or a host to fix. An operation other than `get` and `erase`, `store` among them, is a usage error.
+
+Not taken:
+
+- **The host's credential store as the keeping across processes.** A keychain item made by one build of the runner asks the person before another build reads it, so a new release would block every `get` behind a dialog. The login keychain is locked to a process started over ssh. On Linux, `systemd-creds` keeps a credential as a file, and the kernel's keyring is shared only with processes that possess it, which a user's services and their shells may not.
+- **A socket to the running runner.** core.3 and core.20 rule it out.
+- **`boomdrive forge-token` as the runner's own helper.** Each fetch would then run a process of its own, which mints, so the runner would buy a token for each repository at every `fetch_interval`.
+- **`http.extraHeader` for the runner's own calls.** It is no credential helper (core.34), and a refused header would still go on to the host's helpers unless they were emptied too.
+
+### Consequences of the amendment
+
+- Good: no token is held outside a process's memory, and no process but the one that asked holds one.
+- Bad: every `get` costs two calls to GitHub's API. sluice asks once an hour for each repository and process, so the cost is small.
+- Rule core.28 lets the runner's calls to the forge's API leave the host. Rule core.33's details name the keeping and the runner's own helper. Rule core.39's details name `forge-token`'s form.
+- The set gives sluice no credential command yet. The sluice the flake holds, v0.78.1, reads none; sluice reads `[forge] credential` from v0.84.0. Moving sluice's tag, and having the Boomdrive module give sluice `boomdrive forge-token`, is a change of its own (core.45, core.57).

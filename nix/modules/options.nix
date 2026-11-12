@@ -11,16 +11,19 @@
 # are given to Flume's module (drives.nix), never to the runner's file
 # (core.5). `settings` holds the rest of the file, free-form TOML with the
 # README's keys declared for their types (RFC 42). Under crew, with crew's
-# module on, `control_plane.crew` is written from crew's partitions whose
-# `machine` is `services.crew.host`, a table written out winning whole
-# (record 0023; the change crews-partitions-give-the-runner-its-crew-table).
+# module on, `control_plane.crew` is written from crew's drives whose
+# `machine` is `services.crew.host`, in label order, a table written out
+# winning whole (record 0023; record 0032; the change
+# crews-partitions-give-the-runner-its-crew-table).
 # Any other key left unset is left out of the file, so the runner's own
 # default holds and the two never drift; a top-level key the module does
 # not declare passes to the file, and the runner judges it, but `accounts`
 # and the flat `repositories` of before each fail evaluation, naming
 # services.boomdrive.accounts. A key named for a credential fails
 # evaluation, since the file is in the store, which every user reads
-# (design Decision 12, core.4). Each tool of the set is installed by its
+# (design Decision 12, core.4). `settings.forge` names the Boomdrive App by
+# its id and the path of its key, never the key, and a key file in the
+# store fails evaluation (record 0007 as amended on 2026-11-11). Each tool of the set is installed by its
 # own module, its package the set's unless the host gives its own
 # (tools.nix; record 0023), so `tools` is gone, and setting it fails
 # evaluation, naming what replaces it.
@@ -103,7 +106,7 @@ let
     { name, ... }:
     {
       options = {
-        machine = unset (types.strMatching "[a-z0-9][a-z0-9-]*") "The host the drive's work runs on, as crew's partitions' `machine` names one; this host where unset. A drive of another host gives Flume nothing, and this host keeps its repositories to read.";
+        machine = unset (types.strMatching "[a-z0-9][a-z0-9-]*") "The host the drive's work runs on, as crew's drives' `machine` names one; this host where unset. A drive of another host gives Flume nothing, and this host keeps its repositories to read.";
         stream = mkOption {
           type = stream name;
           default = { };
@@ -131,18 +134,20 @@ let
   # crew's module as the host sets it, off where the system declares none,
   # as options.nix evaluated alone does.
   crew = config.services.crew or { enable = false; };
-  # The runner's crew table written from crew's partitions (record 0023):
-  # crew's host, and each partition whose `machine` is that host, in crew's
-  # order, by its label and its state alone, since crew's implementation
-  # refuses any other key. None where crew's module is off.
+  # The runner's crew table written from crew's drives (record 0023;
+  # record 0032): crew's host, and each drive whose `machine` is that host,
+  # in the order of their labels, as crew's file lists them, by its label
+  # and its state alone, since crew's implementation refuses any other key.
+  # The runner's own key stays `partitions`. None where crew's module is
+  # off.
   written =
     if crew.enable then
       {
         inherit (crew) host;
-        partitions = map (p: {
-          inherit (p) label;
-          state_repository = p.state;
-        }) (lib.filter (p: p.machine == crew.host) crew.settings.partitions);
+        partitions = map (drive: {
+          inherit (drive) label;
+          state_repository = drive.state;
+        }) (lib.filter (drive: drive.machine == crew.host) (lib.attrValues crew.settings.drives));
       }
     else
       null;
@@ -163,13 +168,43 @@ let
         crew = mkOption {
           type = types.nullOr (types.attrsOf toml);
           default = if config.type == "crew" then written else null;
-          defaultText = lib.literalMD "Under crew, with crew's module on, `host` from `services.crew.host` and each of `services.crew.settings.partitions` whose `machine` is that host, by its `label` and its `state` as `state_repository`; else `null`.";
-          description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Under crew, with crew's module on, the module writes it from crew's partitions on this host; a table written out wins, whole.";
+          defaultText = lib.literalMD "Under crew, with crew's module on, `host` from `services.crew.host` and each of `services.crew.settings.drives` whose `machine` is that host, in label order, by its `label` and its `state` as `state_repository`; else `null`.";
+          description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Under crew, with crew's module on, the module writes it from crew's drives on this host; a table written out wins, whole.";
         };
         hosted = unset (types.attrsOf toml) "`[control_plane.hosted]`, handed whole to the hosted implementation, whose keys are its own. It holds no token or key: a partition's key is made on the host by `boomdrive enroll`.";
       };
     }
   );
+
+  # `[forge]`, the Boomdrive App whose key the runner holds (record 0007 as
+  # amended on 2026-11-11): its id, and the path of its key, a string, so a
+  # Nix path value fails the type and a key is never copied into the store.
+  # It holds nothing else.
+  forgeApp = types.submodule {
+    options = {
+      app_id = mkOption {
+        type = types.ints.positive;
+        description = "The Boomdrive App's id, which each JWT the runner mints a token with names.";
+      };
+      key_file = mkOption {
+        type = types.str;
+        description = "The path of the Boomdrive App's private key on the host, absolute or beginning with `~/`, outside the Nix store and readable by its owner alone (mode 0600); the runner reads it at each mint, and the file holds where the key is, never the key (record 0007 as amended on 2026-11-11).";
+      };
+    };
+  };
+
+  # The App's key file where `settings.forge` names one, and whether it
+  # lies in the store, which every user reads (core.4): the store of the
+  # nix evaluating it, `builtins.storeDir`, or `/nix/store`, which the
+  # runner refuses too.
+  keyFile = if cfg.settings.forge == null then null else cfg.settings.forge.key_file;
+  inStore =
+    file:
+    file != null
+    && lib.any (store: file == store || lib.hasPrefix "${store}/" file) [
+      builtins.storeDir
+      "/nix/store"
+    ];
 
   # Each key of `value`, at any depth, named for a credential, by its path.
   words = [
@@ -233,9 +268,11 @@ let
 
   # Whether the runner's control plane is crew.
   crewPlane = (cfg.settings.control_plane.type or null) == "crew";
-  # The machines crew's partitions name, each once, read only where crew's
-  # module is on.
-  machines = lib.concatStringsSep ", " (lib.unique (map (p: p.machine) crew.settings.partitions));
+  # The machines crew's drives name, each once, in label order, read only
+  # where crew's module is on.
+  machines = lib.concatStringsSep ", " (
+    lib.unique (map (drive: drive.machine) (lib.attrValues crew.settings.drives))
+  );
 in
 {
   imports = [
@@ -274,6 +311,7 @@ in
           fetch_interval = unset interval "How often every repository is fetched; the runner's `2m` where unset.";
           code_workspaces = unset types.bool "Whether each drive has a VS Code workspace at the repository root; the runner's `false` where unset.";
           control_plane = unset controlPlane "`[control_plane]`, the control plane whose work the runner carries; none where unset.";
+          forge = unset forgeApp "`[forge]`, the Boomdrive App whose key the runner holds, and mints every tool's forge token from, on a host whose control plane does not hold the App: its `app_id` and its `key_file`, the path of its key outside the Nix store; none where unset, and every fetch goes through the host's own credential helper (record 0007 as amended on 2026-11-11).";
         };
       };
       default = { };
@@ -286,6 +324,10 @@ in
       {
         assertion = found == [ ];
         message = "services.boomdrive.settings names a credential at ${lib.concatStringsSep ", " found}: the runner's file is in the store, which every user reads, so it holds no token or key. A partition's key is made on the host by `boomdrive enroll <label>`, its token on standard input.";
+      }
+      {
+        assertion = !(inStore keyFile);
+        message = "services.boomdrive.settings.forge.key_file lies in the Nix store, which every user reads: name the App's key by a path outside it, absolute or under ~/ (record 0007 as amended on 2026-11-11).";
       }
       {
         assertion = !(cfg.settings ? repositories);
@@ -319,7 +361,7 @@ in
       }
       {
         assertion = !(crewPlane && cfg.settings.control_plane.crew == null);
-        message = "services.boomdrive.settings.control_plane.type is crew, and no services.boomdrive.settings.control_plane.crew is written: write that table, or turn on crew's module, services.crew, with its host and its partitions, and the module writes it from crew's partitions on this host (record 0023).";
+        message = "services.boomdrive.settings.control_plane.type is crew, and no services.boomdrive.settings.control_plane.crew is written: write that table, or turn on crew's module, services.crew, with its host, its drives and its hosts, and the module writes it from crew's drives on this host (record 0023).";
       }
       {
         assertion =
@@ -329,7 +371,7 @@ in
             && cfg.settings.control_plane.crew == written
             && written.partitions == [ ]
           );
-        message = lib.optionalString crew.enable "services.boomdrive.settings.control_plane.crew is written from crew's partitions whose machine is services.crew.host, ${crew.host}, and no partition's is: they name ${machines}. Set services.crew.host to this host's machine, or give one of services.crew.settings.partitions this host as its machine (record 0023).";
+        message = lib.optionalString crew.enable "services.boomdrive.settings.control_plane.crew is written from crew's drives whose machine is services.crew.host, ${crew.host}, and no drive's is: they name ${machines}. Set services.crew.host to this host's machine, or give one of services.crew.settings.drives this host as its machine (record 0023).";
       }
     ];
   };

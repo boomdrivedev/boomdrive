@@ -10,6 +10,7 @@ let
   # The family-packages spec's set, for each system.
   set = [
     "boomdrive"
+    "boomdrive-claude-plugins"
     "boomdrive-launcher"
     "crew"
     "default"
@@ -17,6 +18,11 @@ let
     "flume-herdr-plugin"
     "ghostty"
     "herdr"
+    "pendingyou"
+    "pendingyou-herdr-plugin"
+    "plannotator"
+    "plannotator-herdr-plugin"
+    "plannotator-tui"
     "portless"
     "sluice"
     "sluice-herdr-plugin"

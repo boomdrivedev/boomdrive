@@ -3,14 +3,29 @@
 //! `nix/tests/files`, which `nix:test` holds byte for byte to what the
 //! modules render of the spec's settings, is read by the runner's own
 //! reader against a scratch home, refusing no key, with the accounts,
-//! drives, repositories and control plane its settings named; each
-//! control plane's table is one its implementation reads.
+//! drives, repositories, control plane and App its settings named; each
+//! control plane's table is one its implementation reads. It also holds
+//! the data folder the modules name, `services.boomdrive.dataDir`, to the
+//! runner's own rule, `config::data_dir`, by `nix/tests/data-dirs.json`,
+//! the table `nix:test` holds the modules' rule to (the service-modules
+//! spec's "The runner's own rule"). And it holds the clone folders the
+//! modules name, `services.boomdrive.cloneDirs`, to the runner's own
+//! `clone::container`, by `nix/tests/clone-dirs.json`, the table
+//! `nix:test` holds the modules' clone rule to (the service-modules spec's
+//! "The runner's own clone rule"). And it holds the views the modules give
+//! crew, each kept repository's `checkout`, to the runner's own
+//! `config::view_path`, by `nix/tests/view-dirs.json`, the table
+//! `nix:test` holds the modules' view rule to (the service-modules spec's
+//! "The runner's own view rule" and "A repository root the runner
+//! refuses").
 
 mod common;
 
-use boomdrive::config::{self, Config};
+use boomdrive::clone;
+use boomdrive::config::{self, Config, ForgeApp};
 use boomdrive::planes;
 use common::Scratch;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -76,6 +91,7 @@ fn the_empty_file_keeps_nothing_with_the_runners_defaults() {
     assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
     assert!(!config.code_workspaces);
     assert_eq!(config.control_plane, None);
+    assert_eq!(config.forge, None);
 }
 
 /// "A host under crew": its keys as its settings named them, and a table
@@ -118,6 +134,23 @@ fn the_crew_file_opens_crews_implementation() {
     assert!(opened.is_ok(), "{:?}", opened.err());
 }
 
+/// The service-modules spec's "The App named": the App `1`, its key at
+/// `.config/boomdrive/app.pem` under the home, whether or not a file
+/// stands there (record 0007 as amended on 2026-11-11).
+#[test]
+fn the_crew_file_names_the_app() {
+    let scratch = Scratch::new();
+    let config = read(&scratch, "crew.toml");
+    assert_eq!(
+        config.forge,
+        Some(ForgeApp {
+            app_id: 1,
+            key_file: scratch.home.join(".config/boomdrive/app.pem"),
+        })
+    );
+    assert_eq!(read(&scratch, "hosted.toml").forge, None);
+}
+
 /// "A host under a hosted control plane": a table the hosted
 /// implementation reads, whose enrollment of a label it lacks is refused
 /// naming its partitions, before any credential store is looked for or
@@ -156,4 +189,99 @@ fn the_hosted_file_names_its_partitions() {
         refusal.words,
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
     );
+}
+
+/// "The runner's own rule": for each row of `nix/tests/data-dirs.json`,
+/// the runner's data folder of the row's `HOME`, and of its
+/// `XDG_DATA_HOME` where the row's is not `null`, is the row's `folder`,
+/// which the modules' `dataDir` gives of the same row.
+#[test]
+fn the_modules_data_folder_is_the_runners() {
+    let table = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../nix/tests/data-dirs.json");
+    let text = std::fs::read_to_string(&table).expect("nix/tests/data-dirs.json");
+    let rows: Vec<serde_json::Value> = serde_json::from_str(&text).expect("a list of rows");
+    assert!(!rows.is_empty(), "nix/tests/data-dirs.json holds no row");
+    for row in &rows {
+        let given = |name: &str| row[name].as_str().map(OsString::from);
+        let env = config::Env::read(|name| match name {
+            "HOME" | "XDG_DATA_HOME" => given(name),
+            _ => None,
+        })
+        .unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+        let folder = row["folder"].as_str().expect("the row's folder");
+        assert_eq!(
+            config::data_dir(&env),
+            Path::new(folder),
+            "the runner's data folder of {row}"
+        );
+    }
+}
+
+/// "The runner's own clone rule": for each row of
+/// `nix/tests/clone-dirs.json`, the runner's clone folder of the row's
+/// `address` under its `dataDir` is the row's `folder`, which the modules'
+/// `cloneDirs` gives of the same row.
+#[test]
+fn the_modules_clone_folders_are_the_runners() {
+    let table = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../nix/tests/clone-dirs.json");
+    let text = std::fs::read_to_string(&table).expect("nix/tests/clone-dirs.json");
+    let rows: Vec<serde_json::Value> = serde_json::from_str(&text).expect("a list of rows");
+    assert!(!rows.is_empty(), "nix/tests/clone-dirs.json holds no row");
+    for row in &rows {
+        let field = |name: &str| {
+            row[name]
+                .as_str()
+                .unwrap_or_else(|| panic!("{row}: no {name}"))
+        };
+        let address = config::Address::parse(field("address"))
+            .unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+        assert_eq!(
+            clone::container(Path::new(field("dataDir")), &address),
+            Path::new(field("folder")),
+            "the runner's clone folder of {row}"
+        );
+    }
+}
+
+/// "The runner's own view rule" and "A repository root the runner
+/// refuses": for each row of `nix/tests/view-dirs.json`, the runner's file
+/// with the row's `repository_root`, read with the row's `home`, is
+/// refused where the row's `folder` is `null`, and else its view of the
+/// row's `address` is the row's `folder` as text, which the modules give
+/// crew as the address's `checkout`.
+#[test]
+fn the_modules_views_are_the_runners() {
+    let table = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../nix/tests/view-dirs.json");
+    let text = std::fs::read_to_string(&table).expect("nix/tests/view-dirs.json");
+    let rows: Vec<serde_json::Value> = serde_json::from_str(&text).expect("a list of rows");
+    assert!(!rows.is_empty(), "nix/tests/view-dirs.json holds no row");
+    for row in &rows {
+        let field = |name: &str| {
+            row[name]
+                .as_str()
+                .unwrap_or_else(|| panic!("{row}: no {name}"))
+        };
+        let mut file = String::from("accounts = {}\n");
+        if let Some(root) = row["repository_root"].as_str() {
+            let root = toml::Value::String(root.to_owned());
+            file.push_str(&format!("repository_root = {root}\n"));
+        }
+        let parsed = config::parse(&file, Path::new("view-dirs.toml"), Path::new(field("home")));
+        match row["folder"].as_str() {
+            None => assert!(
+                parsed.is_err(),
+                "the runner takes the repository root of {row}"
+            ),
+            Some(folder) => {
+                let config = parsed.unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+                let address = config::Address::parse(field("address"))
+                    .unwrap_or_else(|refusal| panic!("{row}: {refusal}"));
+                assert_eq!(
+                    config::view_path(&config, &address).to_str(),
+                    Some(folder),
+                    "the runner's view of {row}"
+                );
+            }
+        }
+    }
 }

@@ -9,12 +9,14 @@ use boomdrive_control::{
     Reported,
 };
 use boomdrive_crew::read::{host_read, RunnerFiles};
-use common::{act, file, hello, launch, plan, pull, State, REQUESTS};
+use common::{act, file, hello, hello_of, launch, plan, pull, State, REQUESTS};
 use std::collections::BTreeSet;
 use std::io::Write as _;
 use std::process::{Command, Stdio};
 
 const CREW: &str = "example/crew";
+const KIT: &str = "example/kit";
+const APP: &str = "example/app";
 const BRANCH: &str = "home/runner/host-a";
 
 // crew's descriptors, copied from `plugin/lib/runner.py` at `9913f249`,
@@ -28,6 +30,15 @@ const PLACES: &str = "%rec: Place\n%key: Request\n%type: Request int\n%type: At 
                       %mandatory: Request Place At Status\n%allowed: Request Place At Status\n";
 const RUNS: &str = "%rec: Run\n%key: Address\n%type: At date\n%mandatory: Address At\n\
                     %allowed: Address Place At Status Words\n";
+// crew's descriptor of `repositories.rec`, copied from
+// `plugin/lib/runner.py` at `323c77fb`, whose `0c0acc15` added it
+// (the-runner-names-each-repository-it-keeps, design Decision 3).
+const REPOSITORIES: &str = "%rec: Repository\n\
+                            %doc: A repository the runner keeps on its host: its forge address \
+                            as its configuration names it, and the folder of its clone, where \
+                            Flume cuts its places.\n\
+                            %key: Repository\n%mandatory: Repository Folder\n\
+                            %allowed: Repository Folder\n";
 // The descriptor of `previews.rec` this repository proposes for crew to
 // hold (design Decision 10).
 const PREVIEWS: &str = "%rec: Preview\n%key: Request\n%type: Request int\n\
@@ -99,8 +110,20 @@ fn launched(answer: Answer, status: Option<(&str, &str)>) -> Launched {
 
 /// A state repository whose `home/main` holds launch 12 and its
 /// retry 13 for host-a, and the planner's role on host-a, and host-a's
-/// implementation, pulled once.
+/// implementation, pulled once with the drive `home` keeping `CREW` and
+/// `KIT`, and the drive `work` keeping `APP`.
 fn pulled() -> (State, boomdrive_crew::Crew) {
+    let (state, mut crew) = unpulled();
+    pull(
+        &mut crew,
+        &hello_of(&[("home", &[CREW, KIT]), ("work", &[APP])], "4"),
+    );
+    (state, crew)
+}
+
+/// The state repository of [`pulled`], and host-a's implementation, not
+/// yet pulled.
+fn unpulled() -> (State, boomdrive_crew::Crew) {
     let state = State::new();
     state.main(&[
         (
@@ -119,8 +142,7 @@ fn pulled() -> (State, boomdrive_crew::Crew) {
             &file(common::ROLES, &[common::role("planner", "host-a")]),
         ),
     ]);
-    let (mut crew, _) = state.crew("host-a");
-    pull(&mut crew, &hello(&[CREW], "4"));
+    let (crew, _) = state.crew("host-a");
     (state, crew)
 }
 
@@ -145,7 +167,13 @@ fn report_launched(status: &str) -> Report {
 
 fn files(state: &State) -> RunnerFiles {
     let mut files = RunnerFiles::new();
-    for path in ["runner.rec", "answers.rec", "places.rec", "previews.rec"] {
+    for path in [
+        "runner.rec",
+        "answers.rec",
+        "places.rec",
+        "repositories.rec",
+        "previews.rec",
+    ] {
         files.insert(path, state.file(BRANCH, path));
     }
     files
@@ -197,7 +225,121 @@ fn the_first_report() {
     let message = common::git(&state.bare(), &["log", "-1", "--format=%B", BRANCH], None);
     assert_eq!(
         message,
-        "runner, answers 12, places 12\n\nAsked-by: boomdrive@host-a\n\n"
+        "runner, answers 12, places 12, repositories example/crew example/kit\n\n\
+         Asked-by: boomdrive@host-a\n\n"
+    );
+}
+
+/// The crew-control-plane spec's "A drive's repositories and their
+/// folders": `repositories.rec` opens with crew's descriptor, holds the
+/// drive `home`'s repositories in the hello's order, each with its
+/// folder, names none of the drive `work`'s, and passes `recfix --check`
+/// (design Decision 3).
+#[test]
+fn a_drives_repositories_and_their_folders() {
+    let (state, mut crew) = pulled();
+    crew.report(&Report::default()).expect("a report");
+    let repositories = state
+        .file(BRANCH, "repositories.rec")
+        .expect("repositories.rec");
+    assert_eq!(
+        repositories,
+        format!(
+            "{REPOSITORIES}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n\n\
+             Repository: example/kit\nFolder: /data/repositories/example/kit\n"
+        )
+    );
+    assert!(!repositories.contains(APP), "{repositories}");
+    assert_eq!(recfix(&repositories), None, "{repositories}");
+}
+
+/// The subject of the branch's tip.
+fn subject(state: &State) -> String {
+    common::git(&state.bare(), &["log", "-1", "--format=%s", BRANCH], None)
+        .trim_end()
+        .to_string()
+}
+
+/// The crew-control-plane spec's "A repository the drive comes to keep":
+/// once the drive `home` keeps `KIT` beside `CREW`, the next report's
+/// commit names `repositories example/kit`, and the file holds both
+/// (design Decision 3).
+#[test]
+fn a_repository_the_drive_comes_to_keep() {
+    let (state, mut crew) = unpulled();
+    let report = report_launched("{}");
+    pull(&mut crew, &hello(&[CREW], "4"));
+    crew.report(&report).expect("a report");
+    let before = state.file(BRANCH, "repositories.rec").unwrap();
+    assert!(!before.contains(KIT), "{before}");
+    pull(&mut crew, &hello(&[CREW, KIT], "4"));
+    crew.report(&report).expect("a report");
+    assert_eq!(subject(&state), "repositories example/kit");
+    let after = state.file(BRANCH, "repositories.rec").unwrap();
+    assert_eq!(
+        after,
+        format!(
+            "{REPOSITORIES}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n\n\
+             Repository: example/kit\nFolder: /data/repositories/example/kit\n"
+        )
+    );
+}
+
+/// The crew-control-plane spec's "A repository the drive no longer
+/// names": once the drive `home` keeps `CREW` alone and `KIT` drains, the
+/// next report's commit names `repositories example/kit`, and the file
+/// holds `CREW` alone (design Decisions 2 and 3).
+#[test]
+fn a_repository_the_drive_no_longer_names() {
+    let (state, mut crew) = unpulled();
+    let report = report_launched("{}");
+    pull(&mut crew, &hello(&[CREW, KIT], "4"));
+    crew.report(&report).expect("a report");
+    let before = state.file(BRANCH, "repositories.rec").unwrap();
+    assert!(before.contains(KIT), "{before}");
+    let mut draining = hello(&[CREW], "4");
+    draining.draining = vec![KIT.to_string()];
+    pull(&mut crew, &draining);
+    crew.report(&report).expect("a report");
+    assert_eq!(subject(&state), "repositories example/kit");
+    assert_eq!(
+        state.file(BRANCH, "repositories.rec").unwrap(),
+        format!(
+            "{REPOSITORIES}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n"
+        )
+    );
+}
+
+/// The crew-control-plane spec's "A label no drive has": the hello names
+/// the drives `family` and `work` alone, so `home`'s `repositories.rec`
+/// is crew's descriptor alone, and one line names `home` and the drives
+/// there are (design Decision 4).
+#[test]
+fn a_label_no_drive_has() {
+    let (state, _) = unpulled();
+    let (mut crew, said) = state.crew("host-a");
+    pull(
+        &mut crew,
+        &hello_of(&[("family", &[CREW]), ("work", &[APP])], "4"),
+    );
+    crew.report(&report_launched("{}")).expect("a report");
+    assert_eq!(
+        state.file(BRANCH, "repositories.rec").unwrap(),
+        REPOSITORIES
+    );
+    let named: Vec<String> = said
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("names no drive"))
+        .collect();
+    assert_eq!(
+        named,
+        [
+            "crew: home: this host's configuration names no drive home, so home/runner/host-a \
+             names no repository it keeps; its drives are family, work"
+        ],
+        "{:?}",
+        said.lines()
     );
 }
 
@@ -362,7 +504,13 @@ fn only_the_runners_branch() {
     for line in before.lines() {
         assert!(after.lines().any(|now| now == line), "{line} moved");
     }
-    for path in ["runner.rec", "answers.rec", "places.rec", "previews.rec"] {
+    for path in [
+        "runner.rec",
+        "answers.rec",
+        "places.rec",
+        "repositories.rec",
+        "previews.rec",
+    ] {
         let text = state.file(BRANCH, path).unwrap();
         assert_eq!(recfix(&text), None, "{path}: {text}");
     }

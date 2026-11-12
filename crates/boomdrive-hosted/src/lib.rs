@@ -23,6 +23,15 @@ pub use plane::{open, Hosted};
 use std::path::Path;
 use table::Table;
 
+/// The words a cloud host's `boomdrive forge-token` refuses every
+/// operation with, until a version of the protocol carries a forge token:
+/// under the hosted control plane the Boomdrive App is the control plane's,
+/// which mints the host's tokens and sends them down the runner's own
+/// connection (record 0007 as amended on 2026-11-09; core.33). A version
+/// that carries tokens changes these words with it.
+pub const NO_FORGE_TOKEN: &str =
+    "the hosted control plane mints this host's forge tokens, and version 2 of its protocol carries none yet";
+
 /// Enrolls the partition `label` of the hosted table, `table`, of the
 /// configuration file `file`, with the one-time token `token` gives once
 /// the partition and the store are found, keeping its key in the host's

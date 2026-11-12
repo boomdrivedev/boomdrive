@@ -11,7 +11,7 @@ mod common;
 mod fakes;
 
 use boomdrive::config::Address;
-use boomdrive::git::{At, Git};
+use boomdrive::git::{At, Credential, Git};
 use boomdrive::{clone, report};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{Id, Inbox, InboxCarried, InboxFile, Want};
@@ -114,8 +114,13 @@ impl<'s> Host<'s> {
             origin.commit("inbox", path, text);
         }
         let git = scratch.runner_git();
-        let container = clone::make(&git, &scratch.data(), &Address::parse(CREW).unwrap())
-            .expect("the clone made");
+        let container = clone::make(
+            &git,
+            &scratch.data(),
+            &Address::parse(CREW).unwrap(),
+            &Credential::Host,
+        )
+        .expect("the clone made");
         let mut bench = Bench::new();
         bench.git = git;
         bench.clones.ready(CREW, &container);
@@ -131,7 +136,12 @@ impl<'s> Host<'s> {
     /// clone as the keeper does, and gives the new tip.
     fn commit(&self, file: &str, text: &str) -> String {
         let tip = self.origin.commit("inbox", file, text);
-        clone::fetch(&self.bench.git, &clone::bare(&self.container)).expect("the fetch");
+        clone::fetch(
+            &self.bench.git,
+            &clone::bare(&self.container),
+            &Credential::Host,
+        )
+        .expect("the fetch");
         tip
     }
 

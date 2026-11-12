@@ -19,14 +19,19 @@ in
   test = lines (
     import ./outputs.nix t
     // import ./packages.nix t
+    // import ./companions.nix t
     // import ./file.nix t
     // import ./darwin.nix t
     // import ./nixos.nix t
     // import ./tools.nix t
     // import ./drives.nix t
+    // import ./sources.nix t
     // import ./cache.nix t
     // import ./workflow.nix t
     // import ./apps.nix t
     // import ./way-in.nix t
+    // import ./data-dir.nix t
+    // import ./clone-dirs.nix t
+    // import ./kept.nix t
   );
 }

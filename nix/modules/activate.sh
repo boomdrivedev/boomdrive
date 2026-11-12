@@ -5,6 +5,7 @@
 #   activate.sh link <file>
 #   activate.sh keep <user> <program> <argument>...
 #   activate.sh plugins <herdr> <plugin>...
+#   activate.sh pendingyou <source> <folder>
 #
 # links ~/.config/boomdrive/config.toml to the module's file, so
 # `boomdrive enroll` and `boomdrive run --once` run by hand read what the
@@ -31,12 +32,31 @@
 # server's. herdr's answer is left unsaid where the link holds; a link herdr
 # refuses is said in one line naming the plugin and herdr's words, and
 # stops no other. It exits 0.
+#
+# pendingyou writes Pending You's folder, <folder>, from the store folder
+# <source> the module gives (record 0044, point 7; design Decision 8 of the
+# change crews-companions-come-with-the-flake): each file of <source>, by
+# its path under it, whole, as a regular file with the source's mode
+# writable by its owner, 0755 where the source runs and 0644 where it does
+# not, by a temporary file beside it renamed over its path, and only where
+# no regular file there has the same bytes and mode. A link standing there
+# is replaced. The wake mod's mod/hooks/wake.js, mod/hooks/register.js and
+# mod/hooks/hooks.json go first, in that order, as Pending You's `init`
+# writes them, so a session that reloads the mod finds the modules its
+# hooks name (record 0044, point 5); then the other files by their paths.
+# It makes <folder> with mode 0700 where it is missing, and
+# each folder under it with 0755. It reads, writes and removes nothing else
+# under <folder>: the sign-ins, the computer's key, the cards and the state
+# are the command line's. It says one line naming each file it wrote, and
+# nothing where none differed; a file it cannot write is said in one line
+# naming it and stops the files after it. It exits 0.
 set -eu
 
 usage() {
   echo "usage: activate.sh link <file>" >&2
   echo "       activate.sh keep <user> <program> <argument>..." >&2
   echo "       activate.sh plugins <herdr> <plugin>..." >&2
+  echo "       activate.sh pendingyou <source> <folder>" >&2
   exit 2
 }
 
@@ -102,6 +122,84 @@ plugins() {
   done
 }
 
+# One file of Pending You's folder: <from> written to <to> with <mode>,
+# its folders under <folder> made 0755 where they are missing.
+place() {
+  from=$1
+  to=$2
+  mode=$3
+  rest=${to#"$folder"/}
+  under=$folder
+  while case $rest in */*) true ;; *) false ;; esac do
+    under=$under/${rest%%/*}
+    rest=${rest#*/}
+    if [ ! -d "$under" ]; then
+      mkdir -m 0755 "$under" || return 1
+    fi
+  done
+  if [ -d "$to" ] && [ ! -L "$to" ]; then
+    echo "a folder is there"
+    return 1
+  fi
+  temporary=$(mktemp "$to.XXXXXX") || return 1
+  if ! cat "$from" >"$temporary" || ! chmod "$mode" "$temporary"; then
+    rm -f "$temporary"
+    return 1
+  fi
+  if [ -L "$to" ]; then
+    rm -f "$to" || {
+      rm -f "$temporary"
+      return 1
+    }
+  fi
+  mv -f "$temporary" "$to" || {
+    rm -f "$temporary"
+    return 1
+  }
+}
+
+pendingyou() {
+  source=$1
+  folder=$2
+  if [ ! -d "$folder" ]; then
+    if ! words=$(mkdir -p "$(dirname "$folder")" 2>&1 && mkdir -m 0700 "$folder" 2>&1); then
+      words=$(printf '%s\n' "$words" | tr '\n' ' ')
+      echo "boomdrive: did not write Pending You's folder $folder: ${words% }" >&2
+      return
+    fi
+  fi
+  all=$(cd "$source" && find . -type f | sed 's|^\./||' | sort)
+  paths=$(
+    for first in mod/hooks/wake.js mod/hooks/register.js mod/hooks/hooks.json; do
+      printf '%s\n' "$all" | grep -Fx -- "$first" || true
+    done
+    printf '%s\n' "$all" |
+      grep -Fxv -e mod/hooks/wake.js -e mod/hooks/register.js -e mod/hooks/hooks.json || true
+  )
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    from=$source/$path
+    to=$folder/$path
+    if [ -x "$from" ]; then
+      mode=0755
+    else
+      mode=0644
+    fi
+    if [ -f "$to" ] && [ ! -L "$to" ] && cmp -s "$from" "$to" &&
+      [ -n "$(find "$to" -prune -perm "$mode")" ]; then
+      continue
+    fi
+    if ! words=$(place "$from" "$to" "$mode" 2>&1); then
+      words=$(printf '%s\n' "$words" | tr '\n' ' ')
+      echo "boomdrive: did not write $to: ${words% }" >&2
+      return
+    fi
+    echo "boomdrive: wrote $to"
+  done <<PATHS
+$paths
+PATHS
+}
+
 case ${1:-} in
 link)
   [ $# -eq 2 ] || usage
@@ -116,6 +214,10 @@ plugins)
   [ $# -ge 3 ] || usage
   shift
   plugins "$@"
+  ;;
+pendingyou)
+  [ $# -eq 3 ] || usage
+  pendingyou "$2" "$3"
   ;;
 *) usage ;;
 esac

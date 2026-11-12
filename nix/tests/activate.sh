@@ -295,3 +295,154 @@ freshPlugins
 run plugins "$herdr"
 expect "$named" "plugins with no plugin exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "plugins with no plugin called $(called)" missing "$calls"
+
+# A case's Pending You folder's source, laid out as the module's store
+# folder is, its files read-only as the store keeps them, and the folder
+# the step writes in the case's home (design Decision 8 of the change
+# crews-companions-come-with-the-flake).
+freshFolder() {
+  fresh
+  source=$dir/store/pendingyou-folder
+  folder=$home/.config/pendingyou
+  mkdir -p "$source/bin" "$source/signin" "$source/mod/hooks" "$source/mod/.claude-plugin"
+  printf '#!/bin/sh\nexec pendingyou "$@"\n' >"$source/bin/pendingyou-hook"
+  printf '#!/bin/sh\nexec pendingyou mcp-headers "$@"\n' >"$source/bin/pendingyou-mcp-headers"
+  echo '{"version":1}' >"$source/claude-code.json"
+  echo '{"mcpServers":{}}' >"$source/signin/.claude.json"
+  chmod 0555 "$source/bin/pendingyou-hook" "$source/bin/pendingyou-mcp-headers"
+  echo '{"name":"pendingyou-wake"}' >"$source/mod/.claude-plugin/plugin.json"
+  echo 'The wake mod.' >"$source/mod/README.md"
+  echo '{"modules":["./register.js"]}' >"$source/mod/hooks/hooks.json"
+  echo 'import "./wake.js";' >"$source/mod/hooks/register.js"
+  echo 'export const wake = 1;' >"$source/mod/hooks/wake.js"
+  chmod 0444 "$source/claude-code.json" "$source/signin/.claude.json" \
+    "$source/mod/.claude-plugin/plugin.json" "$source/mod/README.md" \
+    "$source/mod/hooks/hooks.json" "$source/mod/hooks/register.js" "$source/mod/hooks/wake.js"
+}
+modFiles="mod/hooks/wake.js mod/hooks/register.js mod/hooks/hooks.json mod/.claude-plugin/plugin.json mod/README.md"
+# Every file of the source, in the order the step writes them: the wake
+# mod's modules, then its hooks, then the rest by their paths.
+allFiles="mod/hooks/wake.js mod/hooks/register.js mod/hooks/hooks.json bin/pendingyou-hook bin/pendingyou-mcp-headers claude-code.json mod/.claude-plugin/plugin.json mod/README.md signin/.claude.json"
+
+# `$1` has the mode `$2`, as find reads it.
+moded() {
+  [ -n "$(find "$1" -prune -perm "$2")" ]
+}
+# `$1` under the folder is a regular file holding its source's bytes.
+written() {
+  [ -f "$folder/$1" ] && [ ! -L "$folder/$1" ] && cmp -s "$source/$1" "$folder/$1"
+}
+# The line the step says for each file written, in order.
+wroteAll() {
+  for path in $allFiles; do
+    echo "boomdrive: wrote $folder/$path"
+  done
+}
+
+named="A fresh home"
+freshFolder
+run pendingyou "$source" "$folder"
+expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$folder is not made with mode 0700" moded "$folder" 0700
+for path in $allFiles; do
+  expect "$named" "$folder/$path is not a regular file holding its source" written "$path"
+done
+for path in $modFiles; do
+  expect "$named" "the wake mod's $path is not 0644" moded "$folder/$path" 0644
+done
+expect "$named" "the launchers are not 0755" moded "$folder/bin/pendingyou-hook" 0755
+expect "$named" "the helper is not 0755" moded "$folder/bin/pendingyou-mcp-headers" 0755
+expect "$named" "the manifest is not 0644" moded "$folder/claude-code.json" 0644
+expect "$named" "the sign-in's Claude folder is not 0644" moded "$folder/signin/.claude.json" 0644
+expect "$named" "$folder/bin is not 0755" moded "$folder/bin" 0755
+expect "$named" "pendingyou says \"$out\", not one line naming each file" [ "$out" = "$(wroteAll)" ]
+expect "$named" "pendingyou left a temporary file: $(find "$folder" -name '*.??????')" \
+  [ -z "$(find "$folder" -name '*.??????')" ]
+quiet "$named"
+
+named="The wake mod's order"
+freshFolder
+run pendingyou "$source" "$folder"
+first=$(printf '%s\n' "$out" | sed -n '1,3p')
+expect "$named" "pendingyou wrote \"$first\" first, not the wake mod's wake.js, register.js and hooks.json in that order" \
+  [ "$first" = "boomdrive: wrote $folder/mod/hooks/wake.js
+boomdrive: wrote $folder/mod/hooks/register.js
+boomdrive: wrote $folder/mod/hooks/hooks.json" ]
+
+named="Nothing differs"
+freshFolder
+run pendingyou "$source" "$folder"
+before=$(ls -li "$folder/bin" "$folder/signin" "$folder/mod/hooks" "$folder")
+run pendingyou "$source" "$folder"
+expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "pendingyou says \"$out$err\" again" [ -z "$out$err" ]
+expect "$named" "pendingyou wrote a file again" [ "$(ls -li "$folder/bin" "$folder/signin" "$folder/mod/hooks" "$folder")" = "$before" ]
+
+named="A file that differs"
+freshFolder
+run pendingyou "$source" "$folder"
+echo '{"version":0}' >"$folder/claude-code.json"
+chmod 0600 "$folder/bin/pendingyou-mcp-headers"
+run pendingyou "$source" "$folder"
+expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "the manifest is not written again" written claude-code.json
+expect "$named" "the helper's mode is not set again" moded "$folder/bin/pendingyou-mcp-headers" 0755
+expect "$named" "pendingyou says \"$out\", not the two files it wrote" \
+  [ "$out" = "boomdrive: wrote $folder/bin/pendingyou-mcp-headers
+boomdrive: wrote $folder/claude-code.json" ]
+
+named="The command line's own files"
+freshFolder
+mkdir -p "$folder/permission-cards" "$folder/bin"
+chmod 0700 "$folder"
+echo 'sign-in' >"$folder/credentials.json"
+echo 'key' >"$folder/machine-key"
+echo '{}' >"$folder/permission-cards/card.json"
+echo 'own' >"$folder/bin/own-tool"
+before=$(cd "$folder" && find . -type f -not -path ./bin/pendingyou-hook \
+  -not -path ./bin/pendingyou-mcp-headers -not -path ./claude-code.json \
+  -not -path ./signin/.claude.json -not -path './mod/*' | sort | xargs cat)
+run pendingyou "$source" "$folder"
+expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "pendingyou changed the command line's files" \
+  [ "$(cd "$folder" && find . -type f -not -path ./bin/pendingyou-hook \
+    -not -path ./bin/pendingyou-mcp-headers -not -path ./claude-code.json \
+    -not -path ./signin/.claude.json -not -path './mod/*' | sort | xargs cat)" = "$before" ]
+expect "$named" "pendingyou removed the permission card" holds "$folder/permission-cards/card.json" '{}'
+expect "$named" "pendingyou changed the folder's own mode" moded "$folder" 0700
+for path in $allFiles; do
+  expect "$named" "$folder/$path is not written beside the command line's" written "$path"
+done
+
+named="A link where a launcher goes"
+freshFolder
+mkdir -p "$folder/bin" "$dir/store/old/bin"
+echo 'old launcher' >"$dir/store/old/bin/pendingyou-hook"
+ln -s "$dir/store/old/bin/pendingyou-hook" "$folder/bin/pendingyou-hook"
+run pendingyou "$source" "$folder"
+expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$folder/bin/pendingyou-hook is still a link" [ ! -L "$folder/bin/pendingyou-hook" ]
+expect "$named" "$folder/bin/pendingyou-hook does not hold its source's bytes" written bin/pendingyou-hook
+expect "$named" "pendingyou wrote through the link" holds "$dir/store/old/bin/pendingyou-hook" 'old launcher'
+
+named="A file it cannot write"
+freshFolder
+mkdir -p "$folder/bin"
+chmod 0500 "$folder/bin"
+run pendingyou "$source" "$folder"
+chmod 0755 "$folder/bin"
+expect "$named" "pendingyou exits $status, not 0" [ "$status" -eq 0 ]
+expect "$named" "pendingyou said \"$err\", not one line naming $folder/bin/pendingyou-hook" \
+  [ "$(printf '%s\n' "$err" | wc -l | tr -d ' ')" = 1 ]
+expect "$named" "pendingyou said \"$err\", not one line naming $folder/bin/pendingyou-hook" \
+  names "$err" "did not write" "$folder/bin/pendingyou-hook"
+expect "$named" "pendingyou wrote \"$out\", not the wake mod's modules and hooks before the file it could not write and none after it" \
+  [ "$out" = "boomdrive: wrote $folder/mod/hooks/wake.js
+boomdrive: wrote $folder/mod/hooks/register.js
+boomdrive: wrote $folder/mod/hooks/hooks.json" ]
+
+named="pendingyou's usage"
+freshFolder
+run pendingyou "$source"
+expect "$named" "pendingyou with no folder exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "pendingyou with no folder made $folder" missing "$folder"

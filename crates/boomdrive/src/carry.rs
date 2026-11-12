@@ -40,8 +40,8 @@ use crate::terminal::Relays;
 use crate::{clone, facts, inbox};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
-    Inbox, InboxCarried, InboxFile, Launched, Lease, Offer, Outcome, Preview, Previewed, Report,
-    Reported, ToolVersion, Unread, Unsent, Want,
+    Inbox, InboxCarried, InboxFile, KeptRepository, Launched, Lease, Offer, Outcome, Preview,
+    Previewed, Report, Reported, ToolVersion, Unread, Unsent, Want,
 };
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -75,20 +75,37 @@ pub trait Clones {
     /// Each address whose clone stands while the configuration does not
     /// name it, as its clone is found.
     fn dropped(&self) -> Vec<String>;
+    /// Each drive of the configuration, by its name, with each address it
+    /// names whose clone is made, in the configuration's order and as it
+    /// writes each, at its clone's container. A drive none of whose
+    /// clones is made is given with none, and an address no drive names
+    /// is given in none (design Decision 2).
+    fn drives(&self) -> BTreeMap<String, Vec<KeptRepository>>;
 }
 
 /// The runner's clones against its configuration: `Clones` on a host.
 #[derive(Clone, Debug)]
 pub struct Configured {
     named: Vec<Address>,
+    /// Each drive of the configuration, by its name, with its addresses
+    /// in the file's order.
+    drives: Vec<(String, Vec<Address>)>,
     clones: Vec<(Address, PathBuf)>,
 }
 
 impl Configured {
     /// `clones`, as `clone::find` gives them, against `config`.
     pub fn new(config: &Config, clones: Vec<clone::Found>) -> Configured {
+        let drives: Vec<(String, Vec<Address>)> = config
+            .drives()
+            .map(|drive| (drive.name.clone(), drive.repositories.clone()))
+            .collect();
         Configured {
-            named: config.repositories().cloned().collect(),
+            named: drives
+                .iter()
+                .flat_map(|(_, repositories)| repositories.iter().cloned())
+                .collect(),
+            drives,
             clones: clones
                 .into_iter()
                 .map(|found| (found.address, found.container))
@@ -134,6 +151,24 @@ impl Clones for Configured {
             .iter()
             .filter(|(address, _)| !self.named.contains(address))
             .map(|(address, _)| address.to_string())
+            .collect()
+    }
+
+    fn drives(&self) -> BTreeMap<String, Vec<KeptRepository>> {
+        self.drives
+            .iter()
+            .map(|(name, repositories)| {
+                let kept = repositories
+                    .iter()
+                    .filter_map(|address| {
+                        self.container(address).map(|container| KeptRepository {
+                            address: address.to_string(),
+                            container_dir: container.to_string_lossy().into_owned(),
+                        })
+                    })
+                    .collect();
+                (name.clone(), kept)
+            })
             .collect()
     }
 }
@@ -299,6 +334,7 @@ impl Carrier<'_> {
             &saved,
         );
         hello.draining = hello::draining(self.clones.dropped(), &saved);
+        hello.drives = self.clones.drives();
         let pulled = match plane.pull(&hello, &saved) {
             Ok(pulled) => pulled,
             Err(Unread(words)) => {
@@ -2168,6 +2204,7 @@ mod tests {
                 }],
             }],
             control_plane: None,
+            forge: None,
             local: crate::config::LocalLayer::NoFile,
         }
     }
@@ -2197,6 +2234,65 @@ mod tests {
         assert_eq!(clones.keeping("agentplot/sluice"), Keeping::NotNamed);
         assert_eq!(clones.keeping("not an address"), Keeping::NotNamed);
         assert_eq!(clones.made(), ["agentplot/flume"]);
+    }
+
+    /// With task 2.2, the work-into-flume spec's "Each drive's
+    /// repositories with their folders": each drive is given with each
+    /// address it names whose clone is made, at its container, a drive
+    /// with none made is given with none, and a clone no drive names is
+    /// in none (design Decision 2).
+    #[test]
+    fn each_drive_names_its_repositories_whose_clones_are_made() {
+        let address = |text: &str| Address::parse(text).unwrap();
+        let drive = |name: &str, repositories: &[&str]| Drive {
+            name: name.to_string(),
+            repositories: repositories.iter().copied().map(address).collect(),
+        };
+        let config = Config {
+            accounts: vec![Account {
+                name: "own".to_string(),
+                drives: vec![
+                    drive("home", &["agentplot/flume", "example/crew"]),
+                    drive("work", &["example/app"]),
+                    drive("idle", &["example/later"]),
+                ],
+            }],
+            ..config(&[])
+        };
+        let clones = Configured::new(
+            &config,
+            vec![
+                found(
+                    address("agentplot/flume"),
+                    "/d/repositories/agentplot/flume",
+                ),
+                found(address("example/app"), "/d/repositories/example/app"),
+                found(address("example/kit"), "/d/repositories/example/kit"),
+            ],
+        );
+        let kept = |address: &str, container: &str| KeptRepository {
+            address: address.to_string(),
+            container_dir: container.to_string(),
+        };
+        let drives = clones.drives();
+        assert_eq!(
+            drives,
+            BTreeMap::from([
+                (
+                    "home".to_string(),
+                    vec![kept("agentplot/flume", "/d/repositories/agentplot/flume")],
+                ),
+                (
+                    "work".to_string(),
+                    vec![kept("example/app", "/d/repositories/example/app")],
+                ),
+                ("idle".to_string(), vec![]),
+            ])
+        );
+        assert!(drives
+            .values()
+            .flatten()
+            .all(|kept| kept.address != "example/kit"));
     }
 
     #[test]

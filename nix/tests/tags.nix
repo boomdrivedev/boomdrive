@@ -1,7 +1,8 @@
 # Each input's ref in flake.nix against the one flake.lock locks for it,
 # and each tool of the set named by a release tag, Flume, sluice, crew,
-# herdr and worktrunk (core.45; Task notes 2.5). Each failure names the
-# input and both refs.
+# herdr and worktrunk (core.45; Task notes 2.5). An input named by a
+# commit, as crew's companions' are (record 0044, point 6), is locked by
+# its `rev`. Each failure names the input and both refs.
 { lib }:
 inputs: lock:
 let
@@ -13,7 +14,8 @@ let
     name: input:
     let
       named = tagOf (input.url or "");
-      locked = lock.nodes.${roots.${name}}.original.ref or null;
+      original = lock.nodes.${roots.${name}}.original;
+      locked = original.ref or original.rev or null;
     in
     if !(roots ? ${name}) then
       [ "${name}: flake.nix names it, and flake.lock locks no such input" ]

@@ -78,10 +78,26 @@ pub struct Hello {
     /// Read as none where a hello lacks it.
     #[serde(default)]
     pub draining: Vec<String>,
+    /// Each drive of the configuration, by its name, with each repository
+    /// it names whose clone is made, in the configuration's order. A drive
+    /// none of whose clones is made is named with none. Read as none where
+    /// a hello lacks it.
+    #[serde(default)]
+    pub drives: BTreeMap<String, Vec<KeptRepository>>,
     pub capacity: Capacity,
     /// Each launch's, each command's and each preview's id with the lease
     /// number held.
     pub leases: BTreeMap<Id, u64>,
+}
+
+/// A repository a drive keeps, its clone made.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KeptRepository {
+    /// Its address, `owner/name`, as the configuration writes it.
+    pub address: String,
+    /// Its clone's container, the folder `flume launch --repository`
+    /// names.
+    pub container_dir: String,
 }
 
 /// A tool's version as the runner read it.

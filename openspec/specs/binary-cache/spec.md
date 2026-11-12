@@ -31,7 +31,7 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 #### Scenario: The runner is pushed with its tools
 
 - **WHEN** a commit lands on `main`
-- **THEN** each system's job builds `boomdrive`, `boomdrive-launcher`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk` and both herdr plugins of that commit, and pushes them to the cache
+- **THEN** each system's job builds `boomdrive`, `boomdrive-launcher`, `boomdrive-claude-plugins`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk`, `pendingyou`, `plannotator`, `plannotator-tui` and the four herdr plugins of that commit, and pushes them to the cache
 
 #### Scenario: A package that does not build
 
@@ -59,14 +59,23 @@ The workflow SHALL read the cache's auth token only from 1Password, through a se
 
 ### Requirement: A host substitutes the set, or builds the same paths
 
-The modules' default packages SHALL be the flake's own, made with its locked nixpkgs whatever the host's `pkgs`, so they are the store paths the cache holds: the runner's, each tool's module's, and herdr's, Ghostty's, portless's, worktrunk's and the launcher's. A host whose nix trusts the cache SHALL substitute them, and one that does not SHALL build the same paths from the source the lock names. The modules SHALL add no substituter or key to a host's nix settings.
+The modules' default packages SHALL be the flake's own, made with its locked nixpkgs whatever the host's `pkgs`, so they are the store paths the cache holds: the runner's, each tool's module's, and those of the modules' own options, the herdr plugins among them. A host whose nix trusts the cache SHALL substitute them, and one that does not SHALL build the same paths from the source the lock names. The modules SHALL add no substituter or key to a host's nix settings.
 
 #### Scenario: A host's own nixpkgs
 
 - **WHEN** a module is enabled, with crew turned on, in a system whose `pkgs` carries an overlay of the host's own
-- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk` and `boomdrive-launcher`, the store paths the flake gives
+- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk`, `boomdrive-launcher`, `pendingyou`, `plannotator` and `plannotator-tui`, the store paths the flake gives, and the plugins it links are the flake's own `pendingyou-herdr-plugin` and `plannotator-herdr-plugin` beside Flume's and sluice's
 
 #### Scenario: The host's trust
 
 - **WHEN** a module is enabled
 - **THEN** the system's nix substituters and trusted public keys name nothing of the cache's
+
+### Requirement: A host's launcher is the flake's own by its override
+
+The launcher the modules make for a host's drives SHALL be the flake's own `boomdrive-launcher` by its override, made with the flake's locked nixpkgs whatever the host's `pkgs`, so its compiled menu is the flake's own launcher's path, which the cache holds.
+
+#### Scenario: A host's drives in the launcher
+
+- **WHEN** a module is enabled, with crew turned on, in a system whose `pkgs` carries an overlay of the host's own, and the system has the drive `home`
+- **THEN** the installed launcher is the flake's own `boomdrive-launcher` made for `home` with the session `home`, and on nix-darwin its compiled menu is the flake's own launcher's

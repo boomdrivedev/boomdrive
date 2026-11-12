@@ -151,7 +151,7 @@ let
       settings = teams;
     };
   };
-  # crew turned on, with its host and one partition.
+  # crew turned on, with its host, one drive and its hosts.
   crewOn = crewOf settings.crewModule;
 
   profileOf = evaluated: map (p: p.outPath) evaluated.config.environment.systemPackages;
@@ -288,8 +288,10 @@ let
 
   # The runner's system with crew on beside one of the tools' own modules
   # alone (design Decision 5): the Boomdrive module adds the runner's own
-  # link, and on nix-darwin herdr's plugins' links, and nothing else to the
-  # tools' activations.
+  # link, and on nix-darwin Pending You's folder and herdr's plugins' links
+  # (design Decisions 7 and 8 of the change
+  # crews-companions-come-with-the-flake), and nothing else to the tools'
+  # activations.
   render = import ../modules/toml.nix { inherit lib; };
   inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
@@ -301,14 +303,15 @@ let
   '';
   darwinText = darwinActivation darwinRunner;
   pluginsLink = line: lib.hasInfix "-activate.sh plugins " line;
-  darwinRest = lib.filter (line: !pluginsLink line) (
+  folderWrite = line: lib.hasInfix "-activate.sh pendingyou " line;
+  darwinRest = lib.filter (line: !pluginsLink line && !folderWrite line) (
     linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText)
   );
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
   # The runner's crew table, under crew with no table written, for crew's
-  # partitions `garden` and `home` on host-a with `away` on host-b between
-  # them (design Decision 3).
+  # drives `garden` and `home` on host-a with `away` on host-b written
+  # between them: the table holds them in label order (design Decision 3).
   crewOrder =
     platform:
     { system, ... }:
@@ -334,7 +337,7 @@ let
     in
     t.expect (
       t.failures evaluated == [ ]
-    ) "a ${platform} system of crew's order fails: ${toString (t.failures evaluated)}"
+    ) "a ${platform} system of crew's drives in label order fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
@@ -362,12 +365,12 @@ let
         "services.crew"
       ];
 
-  # Under crew, with no crew table written and crew's one partition on
-  # host-b while crew's host is host-a (design Decision 6).
+  # Under crew, with no crew table written and crew's one drive on host-b
+  # while crew's host is host-a (design Decision 6).
   elsewhere =
     platform:
     { system, ... }:
-    failsNaming "a ${platform} system under crew with no partition on its host"
+    failsNaming "a ${platform} system under crew with no drive of crew's on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
         services.boomdrive = settings.crewUnwritten;
@@ -377,6 +380,66 @@ let
         "host-a"
         "host-b"
       ];
+
+  # Whether crew's teams file, as crew's module renders it in `evaluated`,
+  # evaluates whole: the module system throws for an option used with no
+  # value and for a definition of an option a submodule does not declare,
+  # and tryEval catches both, so success alone is read (design Decision 6).
+  loads =
+    evaluated:
+    (builtins.tryEval (builtins.deepSeq evaluated.config.services.crew.settings true)).success;
+
+  # A host on the set's crew loads crew's teams file at version 6, written
+  # here as 6 and not read from crew, so a crew release that moves it fails
+  # this case in the change that moves the pin (core.45; design Decision 6).
+  setsCrew =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system crewOn;
+      inherit (evaluated.config.services.crew.settings) version;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system on the set's crew fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (loads evaluated) "crew's teams file of a ${platform} system on the set's crew does not evaluate"
+    ++
+      t.expect (version == 6)
+        "crew's teams file of a ${platform} system on the set's crew is version ${toString version}, not 6";
+
+  # crew's `hosts`, and the drive `home`'s `runs` and `review`, are what
+  # the host wrote: the module adds and changes none of them (design
+  # Decision 4).
+  crewsKeys =
+    platform:
+    { system, ... }:
+    let
+      given = settings.crewModule;
+      written = (system crewOn).config.services.crew.settings;
+    in
+    t.expect (written.hosts == given.hosts)
+      "crew's hosts on ${platform} are ${builtins.toJSON written.hosts}, not ${builtins.toJSON given.hosts}"
+    ++
+      t.expect (written.drives.home.runs == given.drives.home.runs)
+        "the drive home's runs on ${platform} are ${builtins.toJSON written.drives.home.runs}, not ${builtins.toJSON given.drives.home.runs}"
+    ++
+      t.expect (written.drives.home.review == given.drives.home.review)
+        "the drive home's review on ${platform} is ${builtins.toJSON written.drives.home.review}, not ${builtins.toJSON given.drives.home.review}";
+
+  # crew's old names, its teams file's version 5's, fail evaluation (design
+  # Decision 6).
+  oldRuns =
+    platform:
+    { system, ... }:
+    t.expect (
+      !loads (system (crewOf settings.crewOldRuns))
+    ) "a ${platform} system whose crew drive names flume in place of runs evaluates";
+  oldReview =
+    platform:
+    { system, ... }:
+    t.expect (
+      !loads (system (crewOf settings.crewOldReview))
+    ) "a ${platform} system whose crew drive's review is every and hours evaluates";
 
   nixosRunner = userScripts (t.nixosSystem crewOn);
   nixosTools = userScripts t.toolsNixosSystem;
@@ -391,12 +454,16 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
-// onEach "crew's order" crewOrder
+// onEach "crew's drives in label order" crewOrder
 // onEach "Under crew with neither" neither
-// onEach "No partition on this host" elsewhere
+// onEach "No drive of crew's on this host" elsewhere
+// onEach "A host on the set's crew" setsCrew
+// onEach "crew's keys stay the host's" crewsKeys
+// onEach "crew's old way of running" oldRuns
+// onEach "crew's old batch names" oldReview
 // {
   # The README's install with nix writes no crew table beside crew's
-  # partitions, and says the module writes it (design Decision 8).
+  # drives, and says the module writes it (design Decision 8).
   "The README's crew table" =
     t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
     ++ t.expect (
@@ -411,6 +478,48 @@ onEach "Each tool's options are its own flake's" ownOptions
         [
           "services.crew.host"
           "written out wins"
+        ];
+
+  # The README's install with nix writes crew's settings by crew's names,
+  # its teams file's version 6's, and none of version 5's. The leading
+  # space of ` flume = {` tells a drive's key from `services.flume = {`,
+  # and of ` every =` and ` hours =` review's old keys from
+  # `after_hours =` (design Decisions 6 and 8).
+  "The README's crew settings" =
+    let
+      crewBlock = lib.findFirst (lib.hasInfix "services.crew") null t.nixBlocks;
+    in
+    t.expect (crewBlock != null) "no nix block of the README's Installing with nix names services.crew"
+    ++
+      lib.concatMap
+        (
+          word:
+          t.expect (
+            crewBlock != null && lib.hasInfix word crewBlock
+          ) "the README's nix block of services.crew names no ${word}"
+        )
+        [
+          "drives"
+          "runs"
+          "after_changes"
+          "after_hours"
+          "hosts"
+          "ssh ="
+          "kind ="
+        ]
+    ++
+      lib.concatMap
+        (
+          word:
+          t.expect (
+            !lib.any (lib.hasInfix word) t.nixBlocks
+          ) "a nix block of the README's Installing with nix names ${word}"
+        )
+        [
+          "partitions"
+          " flume = {"
+          " every ="
+          " hours ="
         ];
 
   "The tools' user on NixOS" =
@@ -430,9 +539,15 @@ onEach "Each tool's options are its own flake's" ownOptions
     t.expect (t.failures t.toolsDarwinSystem == [ ])
       "the nix-darwin system of the tools' own modules fails: ${toString (t.failures t.toolsDarwinSystem)}"
     ++ t.expect (lib.hasInfix runnerLink darwinText) "the nix-darwin activation runs no `${runnerLink}`: ${darwinText}"
+    ++ t.expect (
+      builtins.length (lib.filter folderWrite (linesOf darwinText)) == 1
+    ) "the nix-darwin activation with crew writes Pending You's folder other than once: ${darwinText}"
+    ++ t.expect (
+      builtins.length (lib.filter pluginsLink (linesOf darwinText)) == 1
+    ) "the nix-darwin activation with crew links herdr's plugins other than once: ${darwinText}"
     ++
       t.expect (darwinRest == darwinTools)
-        "the nix-darwin activation less the runner's link and the plugins' is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
+        "the nix-darwin activation less the runner's link, Pending You's folder and the plugins' is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
 
   "The tools' activation is their own on NixOS" =
     t.expect (
