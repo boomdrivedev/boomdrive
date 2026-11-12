@@ -22,9 +22,6 @@ boomdrive-control = { path = "../boomdrive-control" }
 # and 4; core.2).
 boomdrive-crew = { path = "../boomdrive-crew" }
 boomdrive-hosted = { path = "../boomdrive-hosted" }
-# A clone's fetch run to its limit, in a process group of its own (record
-# 0042; core.58).
-boomdrive-bounded = { path = "../boomdrive-bounded" }
 # `boomdrive enroll`'s token, read without echo where standard input is a
 # terminal (design Decision 4).
 rpassword.workspace = true
@@ -49,6 +46,10 @@ sha2.workspace = true
 signal-hook.workspace = true
 toml.workspace = true
 weir-signals.workspace = true
+# A clone's fetch run to the family's limit, in a process group of its own,
+# by weir's crate (weir record 0008; record 0042 as amended on 2026-11-11;
+# core.58).
+weir-bounded.workspace = true
 
 [dev-dependencies]
 # The tests' key for the App, made at run time, since no key is committed

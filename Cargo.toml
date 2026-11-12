@@ -1,15 +1,12 @@
 # boomdrive's crates: boomdrive, its library and binary;
 # boomdrive-control, the interface the runner reaches its control plane
 # through; boomdrive-crew, crew's implementation of it (design Decision 1);
-# boomdrive-hosted, the hosted control plane's, which holds the runner's
-# protocol (core.42); and boomdrive-bounded, which runs a git call to a
-# remote to its limit (record 0042; core.58). Each is a moon project of its
-# own (core.7).
+# and boomdrive-hosted, the hosted control plane's, which holds the
+# runner's protocol (core.42). Each is a moon project of its own (core.7).
 [workspace]
 resolver = "2"
 members = [
   "crates/boomdrive",
-  "crates/boomdrive-bounded",
   "crates/boomdrive-control",
   "crates/boomdrive-crew",
   "crates/boomdrive-hosted",
@@ -32,24 +29,29 @@ time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
 # read as JSON, the host part's fields sliced as Flume printed them
 # (design Decision 6).
 serde_json = { version = "1", features = ["raw_value"] }
-# The inbox's layout and records, read by weir's crate at the revision of
-# weir's main that flume pins, moved by a chore when weir changes (design
-# Decision 14). weir-capture's capture is what a test takes into an inbox
-# by weir's own write (Task notes 5.2), and crew's records are read and
-# written by its recutils reader and writer. weir-branch reads crew's state
-# repository at one tip and writes the runner's branch by weir's write
-# (design Decision 17).
-weir-signals = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
-weir-capture = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
-weir-branch = { git = "https://github.com/agentplot/weir", rev = "0b6eb5abb806a51fec128b01f97c4dcff6170219" }
+# The inbox's layout and records, read by weir's crate at one revision of
+# weir's main, the four moved together by a chore when weir changes
+# (design Decision 14). weir-capture's capture is what a test takes into an
+# inbox by weir's own write (Task notes 5.2), and crew's records are read
+# and written by its recutils reader and writer. weir-branch reads crew's
+# state repository at one tip and writes the runner's branch by weir's
+# write (design Decision 17), each try of its fetch, listing and push run
+# to weir-bounded's limit. weir-bounded runs each of the runner's own git
+# calls to a remote to the family's limit, in a process group of its own
+# (weir record 0008; record 0042 as amended on 2026-11-11; core.58). The
+# revision is 9cba691 or later, the first that holds weir-bounded.
+weir-signals = { git = "https://github.com/agentplot/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
+weir-capture = { git = "https://github.com/agentplot/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
+weir-branch = { git = "https://github.com/agentplot/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
+weir-bounded = { git = "https://github.com/agentplot/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
 # The digest an inbox item's brief is carried by (design Decision 14).
 sha2 = "0.10"
 # SIGTERM and SIGINT, which stop the runner between repositories
 # (design 10).
 signal-hook = "0.3"
 # The tests: a scratch host in a temporary directory, and a signal sent to
-# the runner (design 11, 10); and the group of a git call to a remote,
-# asked to end and then killed at its limit (record 0042).
+# the runner (design 11, 10); and SIGINT sent to sluice's ask of a
+# preview at the runner's patience (core.55).
 tempfile = "3"
 libc = "0.2"
 # Each message checked against its version's JSON Schema, by the hosted

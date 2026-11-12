@@ -15,8 +15,10 @@
 //! A call that reaches a remote, a clone's fetch, is bounded: it runs in a
 //! process group of its own and is stopped at the git's limit, thirty
 //! seconds, with everything it started, failing with words that name its
-//! command, its remote and the limit (record 0042; core.58). Every other
-//! call reaches no remote and runs to its end.
+//! command, its remote and the limit. weir's crate `weir-bounded` holds the
+//! limit, the run and the words (weir record 0008; record 0042 as amended
+//! on 2026-11-11; core.58). Every other call reaches no remote and runs to
+//! its end.
 
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -24,7 +26,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-use boomdrive_bounded::TRY_FOR;
+use weir_bounded::TRY_FOR;
 
 /// The least git the runner runs with: 2.48, the first whose fetch keeps
 /// origin's HEAD current (`remote.origin.followRemoteHEAD`, design 6).
@@ -300,17 +302,18 @@ fn answer(command: Command) -> Result<Option<String>, Words> {
 
 /// `command`, the call `call` to `remote`, run to `limit`: its standard
 /// output where it ended by itself and succeeded, its words otherwise, a
-/// stopped call's naming `call`, `remote` and `limit` (record 0042).
+/// stopped call's naming `call`, `remote` and `limit`, run by
+/// `weir-bounded` (record 0042 as amended on 2026-11-11).
 fn bounded(
     mut command: Command,
     call: &str,
     remote: &str,
     limit: Duration,
 ) -> Result<String, Words> {
-    let ended = boomdrive_bounded::output(&mut command, limit)
+    let ended = weir_bounded::output(&mut command, limit)
         .map_err(|error| Words(format!("git could not run: {error}")))?;
     if ended.stopped {
-        let stopped = boomdrive_bounded::stopped(call, remote, limit);
+        let stopped = weir_bounded::stopped(call, remote, limit);
         let stderr = String::from_utf8_lossy(&ended.stderr);
         return Err(Words(match last_line(&stderr) {
             Some(line) => format!("{line}; {stopped}"),
