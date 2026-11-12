@@ -19,6 +19,7 @@ in
   test = lines (
     import ./outputs.nix t
     // import ./packages.nix t
+    // import ./companions.nix t
     // import ./file.nix t
     // import ./darwin.nix t
     // import ./nixos.nix t

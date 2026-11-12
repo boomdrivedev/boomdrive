@@ -32,9 +32,23 @@ let
     "flume"
     "ghostty"
     "herdr"
+    "pendingyou"
+    "plannotator"
+    "plannotator-tui"
+    "portless"
     "sluice"
+    "worktrunk"
   ];
-  overlay = final: _: lib.genAttrs names (name: final.writeShellScriptBin name "");
+  # The herdr plugins the modules link, Flume's, sluice's and, with crew
+  # on, crew's companions' (design Decision 6 of the change
+  # crews-companions-come-with-the-flake).
+  plugins = [
+    "flume-herdr-plugin"
+    "sluice-herdr-plugin"
+    "pendingyou-herdr-plugin"
+    "plannotator-herdr-plugin"
+  ];
+  overlay = final: _: lib.genAttrs (names ++ plugins) (name: final.writeShellScriptBin name "");
   # The host's overlay, and crew turned on with its host, its drives and
   # its hosts.
   host = {
@@ -65,6 +79,8 @@ let
     { evaluated, set, ... }:
     let
       profile = profileOf evaluated;
+      linked = map (p: p.outPath) evaluated.config.services.boomdrive.herdr.plugins;
+      own = map (name: set.${name}.outPath) plugins;
     in
     t.expect (
       evaluated.pkgs ? boomdrive
@@ -77,7 +93,10 @@ let
       ++ t.expect (
         !builtins.elem evaluated.pkgs.${name}.outPath profile
       ) "the system profile holds the host's pkgs' ${name}"
-    ) names;
+    ) names
+    ++
+      t.expect (linked == own)
+        "the ${platform} system links the plugins ${toString linked}, not the flake's own ${toString plugins}";
 
   # The same system with the drive `home`: its launcher is the flake's own
   # made for `home`, and on nix-darwin its menu is the flake's own.
@@ -155,7 +174,8 @@ in
 
   # The README names each option that installs a tool of the set, which
   # replace services.boomdrive.tools, and the shell (design Decision 6;
-  # the change herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents).
+  # the change herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents),
+  # crew's companions' among them.
   "The README's words" =
     lib.concatMap
       (
@@ -169,7 +189,12 @@ in
         "services.boomdrive.herdr.package"
         "services.boomdrive.herdr.plugins"
         "services.boomdrive.ghostty.package"
+        "services.boomdrive.portless.package"
+        "services.boomdrive.worktrunk.package"
         "services.boomdrive.launcher.package"
+        "services.boomdrive.pendingyou.package"
+        "services.boomdrive.plannotator.package"
+        "services.boomdrive.plannotator-tui.package"
         "nix develop github:agentplot/boomdrive"
       ]
     ++ t.expect (
@@ -192,6 +217,47 @@ in
     ++ t.expect (
       !lib.hasInfix "settings.accounts" (toString installing)
     ) "the README's Installing with nix names settings.accounts";
+
+  # The README says portless's proxy is started by portless's own
+  # command, and its trust is the person's (design Decision 6 of the
+  # change portless-comes-with-the-flake).
+  "The README's proxy" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
+      )
+      [
+        "portless service install"
+        "portless trust"
+      ];
+
+  # The README names crew's companions, their sign-in, Pending You's
+  # folder and the set's marketplace, and says no Claude Code home is
+  # installed into yet (design Decision 11 of the change
+  # crews-companions-come-with-the-flake).
+  "The README's companions" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
+      )
+      [
+        "Pending You"
+        "Plannotator"
+        "plannotator-tui"
+        "pendingyou-herdr-plugin"
+        "plannotator-herdr-plugin"
+        "github:agentplot/boomdrive#pendingyou"
+        "github:agentplot/boomdrive#plannotator"
+        "github:agentplot/boomdrive#plannotator-tui"
+        "pendingyou-signin"
+        "boomdrive-claude-plugins"
+        "~/.config/pendingyou"
+        "crew's module is on"
+        "stay the command line's own"
+        "installed into no Claude Code home yet"
+      ];
 
   # The README says the launcher is a menu-bar app with an entry for each
   # drive and the default stream (the change

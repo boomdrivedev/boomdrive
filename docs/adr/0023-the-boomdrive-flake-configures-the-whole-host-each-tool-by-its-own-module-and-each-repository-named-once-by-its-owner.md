@@ -77,3 +77,30 @@ Amends "One way in" above, where the launcher runs `flume open` with no session.
 - **clang-format formats the menu's source**, pinned by `devenv.nix` and checked by `check-toolchain.sh` (core.7, core.8). Not taken: the file excluded from formatting by name.
 
 core.13's, core.44's, core.46's and core.47's details are amended in this amendment's commit with what they allow.
+
+## Amendment, 2026-11-11: how portless comes with the flake
+
+Status: decided on 2026-11-11 by the construct stage of the change `portless-comes-with-the-flake`. These are the writing agent's choices, made within this record's amendment of 2026-11-08, which puts portless in the set, and rules core.13, core.44 and core.46. Each is cheap to change. The change's design gives the path not taken for each, in its Decisions 1 to 7.
+
+- **From its source at its release tag.** portless publishes no flake, and nixpkgs carries none. So a recipe of this flake's builds its command line, the workspace's `packages/portless` alone, from vercel-labs/portless's source at its release tag, which the lock names by its hash. It builds with the flake's nixpkgs' pnpm 11, its dependencies one fetch the same on every system, and runs on that nixpkgs' Node.js 24. Not taken: the npm package's archive, whose `dist` is a build someone else made, which core.44 rules out where the flake can make the derivation.
+- **git stays the host's own.** The recipe gives portless openssl, ps, which and hostname after the host's `PATH`, and no git: portless runs the host's git.
+- **Installed with the runner, as herdr is.** `services.boomdrive.portless.package` is the set's by default. A host's own replaces it and `null` drops it, and without the runner nothing is installed.
+- **The proxy and its trust stay the person's.** The modules start no proxy of portless's and declare no service of it. They write none of its files and trust no certificate authority. portless starts its proxy at its first `portless run` at a terminal, or the person runs `portless service install` once. `portless trust` is theirs. Not taken: a launchd daemon and a systemd service of the module's running the set's proxy. That puts a root service on port 443 on every host that takes the flake, which is a host's own choice. An option a host turns on can add it later.
+- **In the shell.** The flake's shell's `PATH` gains portless, beside crew, which reads its routes.
+
+## Amendment, 2026-11-11: where the set's worktrunk comes from
+
+Status: decided on 2026-11-11 by the construct stage of the change `worktrunk-comes-with-the-flake`. These are the writing agent's choices, made within the amendment of 2026-11-08 above and rules core.18, core.44 and core.46, each cheap to change. The change's design gives the path not taken for each, in its Decisions 1 to 4.
+
+- **Through its own flake, at the release sluice checked.** worktrunk comes from its own flake at a release tag, following the flake's `nixpkgs` and `rust-overlay`. The tag is the worktrunk sluice's `devenv.nix` pins at the tag the lock names for sluice, the release its worktree driver's tests drive, and the flake's test holds it there. Not taken: nixpkgs' worktrunk, which moves with nixpkgs; the release archive sluice's shell fetches, a prebuilt binary (core.44).
+- **A host's tool, not a repository's pin.** crew and sluice's driver call the host's `wt`. sluice's pin is read to choose the release, as Flume's pin of herdr is, and makes worktrunk no tool a repository pins (record 0009 as amended on 2026-11-05).
+- **Its tag as its `git describe`.** worktrunk's flake gives its build the commit's short revision, so its `wt --version` names a commit. The set gives the build its tag, as worktrunk's release build gets it from git, so `wt --version` says the tag's version (core.44). Not taken: worktrunk's flake's package unchanged.
+- **The Boomdrive module's own option.** `services.boomdrive.worktrunk.package` installs it with the runner, the set's by default, a host's own replacing it and `null` dropping it, since worktrunk gives no nix-darwin or NixOS module. The modules write no file of worktrunk's, its shell integration among them. Not taken: worktrunk's home-manager module, which system modules cannot import.
+- **In the flake's shell.** The shell holds worktrunk beside crew and sluice, which call it. Not taken: leaving it out, as Ghostty is.
+
+## Amendment, 2026-11-11: how Pending You and Plannotator come with the flake
+
+Status: agentplot-design's rulings, the user's answer and the construct stage's choices of 2026-11-11, written as record 0044, each cheap to change.
+
+- **Record 0044 holds them.** The set brings Pending You, Plannotator, plannotator-tui and their herdr plugins, Pending You's own folder, one sign-in command and a marketplace of the set's own holding Pending You's and Plannotator's Claude Code plugins, with the runner where crew's module is on.
+- **Claude Code stays the person's own.** The flake still installs no Claude Code and writes none of its files. Claude Code loads the companions itself, once the set installs them into its homes with Claude Code's own commands. That step is the unit `the-companions-load-in-claude-codes-sessions`, for every session on the accounts, the user's own included, as the user answered (record 0044, point 3).

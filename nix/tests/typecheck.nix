@@ -10,6 +10,7 @@ let
   # The family-packages spec's set, for each system.
   set = [
     "boomdrive"
+    "boomdrive-claude-plugins"
     "boomdrive-launcher"
     "crew"
     "default"
@@ -18,8 +19,15 @@ let
     "ghostty"
     "herdr"
     "herdr-plugins"
+    "pendingyou"
+    "pendingyou-herdr-plugin"
+    "plannotator"
+    "plannotator-herdr-plugin"
+    "plannotator-tui"
+    "portless"
     "sluice"
     "sluice-herdr-plugin"
+    "worktrunk"
   ];
 
   # A package's failures: none where it is a derivation whose path

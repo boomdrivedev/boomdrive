@@ -288,8 +288,10 @@ let
 
   # The runner's system with crew on beside one of the tools' own modules
   # alone (design Decision 5): the Boomdrive module adds the runner's own
-  # link, and on nix-darwin herdr's plugins' links, and nothing else to the
-  # tools' activations.
+  # link, and on nix-darwin Pending You's folder and herdr's plugins' links
+  # (design Decisions 7 and 8 of the change
+  # crews-companions-come-with-the-flake), and nothing else to the tools'
+  # activations.
   render = import ../modules/toml.nix { inherit lib; };
   inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
@@ -301,7 +303,8 @@ let
   '';
   darwinText = darwinActivation darwinRunner;
   pluginsLink = line: lib.hasInfix "-activate.sh plugins " line;
-  darwinRest = lib.filter (line: !pluginsLink line) (
+  folderWrite = line: lib.hasInfix "-activate.sh pendingyou " line;
+  darwinRest = lib.filter (line: !pluginsLink line && !folderWrite line) (
     linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText)
   );
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
@@ -536,9 +539,15 @@ onEach "Each tool's options are its own flake's" ownOptions
     t.expect (t.failures t.toolsDarwinSystem == [ ])
       "the nix-darwin system of the tools' own modules fails: ${toString (t.failures t.toolsDarwinSystem)}"
     ++ t.expect (lib.hasInfix runnerLink darwinText) "the nix-darwin activation runs no `${runnerLink}`: ${darwinText}"
+    ++ t.expect (
+      builtins.length (lib.filter folderWrite (linesOf darwinText)) == 1
+    ) "the nix-darwin activation with crew writes Pending You's folder other than once: ${darwinText}"
+    ++ t.expect (
+      builtins.length (lib.filter pluginsLink (linesOf darwinText)) == 1
+    ) "the nix-darwin activation with crew links herdr's plugins other than once: ${darwinText}"
     ++
       t.expect (darwinRest == darwinTools)
-        "the nix-darwin activation less the runner's link and the plugins' is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
+        "the nix-darwin activation less the runner's link, Pending You's folder and the plugins' is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
 
   "The tools' activation is their own on NixOS" =
     t.expect (
