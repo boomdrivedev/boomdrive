@@ -24,6 +24,7 @@ in
     // import ./nixos.nix t
     // import ./tools.nix t
     // import ./drives.nix t
+    // import ./sources.nix t
     // import ./cache.nix t
     // import ./workflow.nix t
     // import ./apps.nix t
