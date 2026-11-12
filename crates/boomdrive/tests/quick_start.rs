@@ -75,7 +75,12 @@ fn set_program(tool: &str) -> PathBuf {
 
 /// `program` on the scratch host alone: none of the tests' own
 /// environment but the scratch one, its state, cache and `TMPDIR` the
-/// scratch host's, and `path` its `PATH`.
+/// scratch host's, and `path` its `PATH`. The set's sluice keeps its
+/// checkouts' scratch under the scratch host's `sluice` folder, by its
+/// own variable for a test, `SLUICE_USER_SCRATCH`, where a host's sluice
+/// keeps it under `/tmp/sluice-<uid>`: the gate's sandbox lets what a
+/// test starts write the test's own folders alone (sluice's 35 as
+/// amended, its rule core.30).
 fn on_scratch(scratch: &Scratch, program: impl AsRef<std::ffi::OsStr>, path: &str) -> Command {
     let tmp = scratch.root.join("tmp");
     std::fs::create_dir_all(&tmp).expect("the scratch TMPDIR");
@@ -86,6 +91,7 @@ fn on_scratch(scratch: &Scratch, program: impl AsRef<std::ffi::OsStr>, path: &st
         .env("XDG_STATE_HOME", scratch.home.join(".local/state"))
         .env("XDG_CACHE_HOME", scratch.home.join(".cache"))
         .env("TMPDIR", tmp)
+        .env("SLUICE_USER_SCRATCH", scratch.root.join("sluice"))
         .env("PATH", path)
         .current_dir(&scratch.home);
     command
@@ -636,6 +642,51 @@ fn landed_commit(status: &Value) -> Option<&Value> {
         .find(|commit| commit.is_string())
 }
 
+/// What the merge queue said of a place Flume sent back, where its status
+/// gives a send-back: Flume's words of the submission's verdict, and the
+/// set's sluice's own `wait` of the submission, run in the runner's clone
+/// of the drive's repository, which says why. The test fails with these,
+/// so a stage sluice refused comes back as that refusal, never as the
+/// stand-in's second run of a change already made.
+#[cfg(target_os = "macos")]
+fn sent_back(scratch: &Scratch, place: &Value, path: &str) -> Option<String> {
+    let submission = &place["submission"];
+    if submission["send_backs"].as_u64().unwrap_or(0) == 0 {
+        return None;
+    }
+    let clone = scratch
+        .home
+        .join(".local/share/boomdrive/repositories/your-github-name/your-repository")
+        .join("your-repository.git");
+    // The submission by sluice's id, as Flume read it, else as sluice's
+    // words name it, `#<id>`.
+    let words = submission["verdict"].to_string();
+    let id = submission["read"]["found"]["submission"]["id"]
+        .as_str()
+        .map(str::to_string)
+        .or_else(|| {
+            let after = words.split_once('#')?.1;
+            let id: String = after.chars().take_while(char::is_ascii_digit).collect();
+            (!id.is_empty()).then_some(id)
+        });
+    let waited = match id {
+        Some(id) => {
+            let output = on_scratch(scratch, set_program("sluice"), path)
+                .args(["wait", &id])
+                .current_dir(&clone)
+                .output()
+                .expect("the set's sluice runs");
+            said(&output)
+        }
+        None => "Flume's status names no submission to wait on".to_string(),
+    };
+    Some(format!(
+        "Flume sent the place back on the merge queue's verdict: {}\n\
+         sluice's wait of it: {waited}\nthe place: {place}",
+        submission["verdict"]
+    ))
+}
+
 /// The quick-start spec's "From crew's launch to main" (design Decision
 /// 6): setup writes the runner's file for the quick start's answers over
 /// the stand-ins; origin's `main` is as the landing step leaves it; crew's
@@ -720,6 +771,9 @@ fn a_change_the_drive_is_given_lands() {
             .expect("the set's Flume runs");
         let listed: Value = serde_json::from_slice(&listed.stdout).expect("Flume's status is JSON");
         for place in listed["status"]["places"].as_array().into_iter().flatten() {
+            if let Some(refusal) = sent_back(scratch, place, &path) {
+                panic!("{refusal}");
+            }
             let Some(printed) = place["agent"]["printed"].as_str() else {
                 continue;
             };
