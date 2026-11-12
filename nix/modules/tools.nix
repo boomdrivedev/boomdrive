@@ -7,10 +7,11 @@
 # host's own, or `null` where the tool's module takes one, wins. With the
 # runner enabled, Flume's and sluice's modules are turned on, since the
 # runner runs both, a host's `enable = false` winning; crew's is the
-# host's to turn on, with its `host` and partitions. nixos.nix gives each
-# tool the runner's user. Nothing else: no key of a tool's `settings`, and
-# no file, link or activation of theirs, which each tool's module writes
-# from its own `settings`.
+# host's to turn on, with its `host`, its drives and its hosts. nixos.nix
+# gives each tool the runner's user. Nothing else: no key of a tool's
+# `settings`, crew's `hosts`, `runs` and `review` among them, and no file,
+# link or activation of theirs, which each tool's module writes from its
+# own `settings`.
 { packages }:
 {
   config,

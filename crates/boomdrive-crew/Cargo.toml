@@ -12,14 +12,16 @@ doctest = false
 # The interface it implements, and the one crate that names crew (design
 # Decision 1; core.2).
 boomdrive-control = { path = "../boomdrive-control" }
-# A state repository's listing run to its limit, in a process group of its
-# own (record 0042; core.58).
-boomdrive-bounded = { path = "../boomdrive-bounded" }
 serde_json.workspace = true
 time.workspace = true
 toml.workspace = true
 weir-branch.workspace = true
 weir-capture.workspace = true
+# A state repository's listing run to the family's limit, in a process
+# group of its own, by weir's crate, which weir-branch's fetch and push
+# take too (weir record 0008; record 0042 as amended on 2026-11-11;
+# core.58).
+weir-bounded.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

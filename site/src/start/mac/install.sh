@@ -1,0 +1,1 @@
+nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#herdr github:agentplot/boomdrive#herdr-plugins github:agentplot/boomdrive#crew nixpkgs#git nixpkgs#gh nixpkgs#nodejs

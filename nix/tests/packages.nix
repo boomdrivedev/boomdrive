@@ -14,6 +14,7 @@ let
   tags = import ./tags.nix { inherit lib; };
   runnerCrates = import ../packages/git-crates.nix;
   runnerLock = builtins.fromTOML (builtins.readFile ../../Cargo.lock);
+  runnerManifest = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
 
   # A check's failures over each system's packages of a set of outputs.
   eachOf = given: check: lib.concatMap (system: check system given.packages.${system}) systems;
@@ -130,6 +131,19 @@ in
     ) crateFiles
   );
 
+  # The runner's version is its tree's, Cargo.toml's under
+  # [workspace.package]: 0.0.0 at a commit of main, and the release's at
+  # its tag, whose release commit writes it (record 0024, core.48).
+  "The runner at its tree's version" = each (
+    system: packages:
+    let
+      inherit (runnerManifest.workspace.package) version;
+    in
+    t.expect (
+      packages.boomdrive.version == version
+    ) "packages.${system}.boomdrive says ${packages.boomdrive.version}, not Cargo.toml's ${version}"
+  );
+
   "The runner's git crates" = gitCrates "nix/packages/git-crates.nix" runnerLock runnerCrates;
 
   "weir moved without its hash" =
@@ -201,8 +215,9 @@ in
     ) "packages.${system}.sluice's build is given SLUICE_VERSION ${given}, not its tag's ${version}"
   );
 
-  # crew keeps its version in no file, so the set gives crew's flake's
-  # package its tag's (design Decision 3).
+  # crew's tree carries its version, plugin/release.json, so the set's
+  # crew is crew's flake's own package, unchanged, as Flume's is (the
+  # change the-sets-crew-pin-takes-its-new-names, design Decision 2).
   "crew through its own flake" = each (
     system: packages:
     let
@@ -211,10 +226,8 @@ in
       version = t.lockedVersion "crew";
     in
     t.expect (
-      toString crew.src == toString own.src
-      && crew.pname == own.pname
-      && crew.meta.homepage == own.meta.homepage
-    ) "packages.${system}.crew is not crew's flake's package"
+      crew.drvPath == own.drvPath
+    ) "packages.${system}.crew is not crew's flake's packages.${system}.crew"
     ++ t.expect (
       crew.version == version
     ) "packages.${system}.crew says ${crew.version}, not its tag's ${version}"

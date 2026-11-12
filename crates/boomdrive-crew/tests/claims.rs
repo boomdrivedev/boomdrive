@@ -8,7 +8,7 @@ mod common;
 use boomdrive_control::{Act, ActSort, Hello, Id, Want};
 use boomdrive_crew::read::{host_read, RunnerFiles};
 use boomdrive_crew::write;
-use common::{act, file, hello, ids, launch, plan, pull, want, State, REQUESTS};
+use common::{act, file, hello, hello_of, ids, launch, plan, pull, want, State, REQUESTS};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Barrier};
 use weir_capture::rec::Record;
@@ -100,6 +100,58 @@ fn claimed_alone() {
         said.holds(&["home/runner/host-a: claims 20"]),
         "{:?}",
         said.lines()
+    );
+}
+
+/// The crew-control-plane spec's "A claim names the drive's
+/// repositories": the claim's write makes `home/runner/host-a`, holding
+/// request 20's claim and a `repositories.rec` naming the drive `home`'s
+/// `example/crew` with its folder (design Decision 3).
+#[test]
+fn a_claim_names_the_drives_repositories() {
+    let state = State::new();
+    main_holding(&state, &[kit(CREW)]);
+    answering(&state, "host-b", &[]);
+    assert_eq!(state.tip("home/runner/host-a"), None);
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = pull(&mut host_a, &hello(&[CREW], "4"));
+    assert_eq!(ids(&pulled), ["home/20"]);
+    let claimed = &answers(&state, "host-a")[&20];
+    assert!(write::is_claim(claimed, "host-a"), "{claimed:?}");
+    assert_eq!(
+        state.file("home/runner/host-a", "repositories.rec"),
+        Some(format!(
+            "{}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n",
+            write::REPOSITORIES
+        ))
+    );
+}
+
+/// The crew-control-plane spec's "A launch in a repository another drive
+/// keeps": a launch of `home` naming no host whose `Repo` the drive
+/// `work` keeps is still claimed and given where the hello's
+/// repositories, every drive's, name it, and `home`'s `repositories.rec`
+/// names `home`'s `example/crew` alone (design Decisions 4 and 5).
+#[test]
+fn a_launch_in_a_repository_another_drive_keeps() {
+    let state = State::new();
+    main_holding(&state, &[kit("example/app")]);
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = pull(
+        &mut host_a,
+        &hello_of(&[("home", &[CREW]), ("work", &["example/app"])], "4"),
+    );
+    assert_eq!(ids(&pulled), ["home/20"]);
+    let Want::Offer(offer) = want(&pulled, "home/20") else {
+        panic!("an offer");
+    };
+    assert_eq!(offer.launch.repository, "example/app");
+    assert_eq!(
+        state.file("home/runner/host-a", "repositories.rec"),
+        Some(format!(
+            "{}\nRepository: example/crew\nFolder: /data/repositories/example/crew\n",
+            write::REPOSITORIES
+        ))
     );
 }
 

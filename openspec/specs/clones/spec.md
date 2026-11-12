@@ -49,11 +49,11 @@ The runner SHALL know a clone as its own by the address it recorded in the clone
 
 ### Requirement: A clone is fetched over https and never asks
 
-Every fetch SHALL reach origin over https, through the host's git credential helper, with no credential of the runner's own and with git never prompting. A fetch whose URL the host's git configuration rewrites to ssh SHALL not be run: the repository SHALL be named with the URL it would have used, so a fetch never waits on an ssh agent or on someone at the keyboard.
+Every fetch SHALL reach origin over https, with git never prompting. Where the configuration names no `[forge]`, a fetch SHALL go through the host's git credential helper, with no credential of the runner's own. A fetch whose URL the host's git configuration rewrites to ssh SHALL not be run: the repository SHALL be named with the URL it would have used, so a fetch never waits on an ssh agent or on someone at the keyboard (core.34).
 
 #### Scenario: Git asks no one
 
-- **WHEN** the runner fetches a clone
+- **WHEN** the runner fetches a clone, its configuration naming no `[forge]`
 - **THEN** git runs with `GIT_TERMINAL_PROMPT=0` and is given no credential, so the host's credential helper answers or the fetch fails without asking
 
 #### Scenario: The host rewrites https to ssh
@@ -314,3 +314,31 @@ A fetch stopped at its limit SHALL fail with the words `git fetch with origin wa
 
 - **WHEN** a pass keeps `agentplot/flume`, with no clone of it, and `agentplot/sluice`, and `agentplot/flume`'s origin takes the connection and never answers
 - **THEN** the pass ends within its limit and grace and a margin; a line reads `agentplot/flume: not cloned: git fetch with origin was still going after <limit>, the most a try may take, and was stopped`; no folder of `agentplot/flume`'s is left in the data directory; and `agentplot/sluice` is kept in the same pass
+
+### Requirement: A fetch goes through the App's token where the configuration names the App
+
+Where the configuration names `[forge]`, a fetch of a served repository, a new clone's first among them, SHALL go through the App's token alone. The call SHALL empty the host's helpers, and its one helper SHALL read the token the runner keeps for the repository from that call's environment, so the token is on no command line (record 0007 as amended on 2026-11-11; core.33, core.34).
+
+#### Scenario: Git is given the App's token alone
+
+- **WHEN** a call to a remote is given the App's token `t`, and the host's git configuration names a helper of its own that answers with another password
+- **THEN** git is given `x-access-token` and `t` by the call's own helper, the host's helper is not asked, and no argument of the call holds `t`
+
+### Requirement: A fetch with no token goes with no credential
+
+Where the App is not installed on the repository, or no token could be minted, the fetch SHALL go with the host's helpers emptied and no credential. Where such a fetch fails after a refused mint, the line SHALL give git's words, then `; no forge token: ` and the mint's words (record 0007 as amended on 2026-11-11; core.33).
+
+#### Scenario: Git is given no credential
+
+- **WHEN** a call to a remote is given no credential, and the host's git configuration names a helper of its own
+- **THEN** git is given no credential, and the host's helper is not asked
+
+#### Scenario: A repository the App is not installed on
+
+- **WHEN** a pass keeps `agentplot/flume`, its configuration naming `[forge]`, GitHub has no installation of the App on it, and its origin needs no credential
+- **THEN** it is fetched and its view moved, and no token is bought
+
+#### Scenario: A mint refused is named after git's words
+
+- **WHEN** a pass keeps `agentplot/flume`, its configuration naming `[forge]` whose `key_file` does not exist, and the fetch of `agentplot/flume` fails
+- **THEN** a line reads `agentplot/flume: not fetched: <git's words>; no forge token: [forge] key_file <path> cannot be read: <why>`

@@ -1,0 +1,8 @@
+# sluice lands main on origin once this command passes. Put your own
+# tests' command in place of `true`.
+[tests]
+runner = "command"
+command = "true"
+
+[branches.main]
+remote = "origin"

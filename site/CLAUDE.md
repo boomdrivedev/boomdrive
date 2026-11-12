@@ -29,6 +29,10 @@ repository's root, beside `core.md`, which binds wherever a change is made
   reference, glossary, quick start, the site's design and its archived changes
   name none of ours, and no page presents a name of ours as the reader's own
   (site.7).
+- Each step of the quick start, `/start/`, shows its text as files under
+  `src/start/`, each on the page as it stands, and names the one test of the
+  gate that runs them: a reworded file runs as reworded at the gate, and a
+  step with no test fails `site:test` (site.8; record 0043).
 
 Working here:
 

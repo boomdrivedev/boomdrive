@@ -1,0 +1,27 @@
+[
+  {
+    "HOME": "/h",
+    "XDG_DATA_HOME": null,
+    "folder": "/h/.local/share/boomdrive"
+  },
+  {
+    "HOME": "/h",
+    "XDG_DATA_HOME": "/x/data",
+    "folder": "/x/data/boomdrive"
+  },
+  {
+    "HOME": "/h",
+    "XDG_DATA_HOME": "/x/data/",
+    "folder": "/x/data/boomdrive"
+  },
+  {
+    "HOME": "/h",
+    "XDG_DATA_HOME": "",
+    "folder": "/h/.local/share/boomdrive"
+  },
+  {
+    "HOME": "/h",
+    "XDG_DATA_HOME": "data",
+    "folder": "/h/.local/share/boomdrive"
+  }
+]
