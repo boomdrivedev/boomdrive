@@ -321,6 +321,11 @@ host keeps sluice's own `[forge] key`.
 
 ## Installing with nix
 
+A stranger's way from nothing of the family installed to a working
+drive, on an Apple silicon Mac or a NixOS machine, is the quick start,
+<https://agentplot.github.io/boomdrive/start/>, whose every step a test
+of the gate runs as it stands.
+
 The flake at this repository's root, `github:agentplot/boomdrive`,
 gives the family's host tools pinned together, for `aarch64-darwin`,
 `aarch64-linux` and `x86_64-linux`:
@@ -362,13 +367,16 @@ Each tool reports its release's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
 the flake gives it nothing. git alone is the host's own.
 
-To put the runner, Flume and sluice in your profile, and crew where the
-host runs crew:
+To put the runner, Flume, sluice, herdr and the set's herdr plugins in
+your profile, and crew where the host runs crew:
 
-    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#crew
+    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#herdr github:agentplot/boomdrive#herdr-plugins github:agentplot/boomdrive#crew
 
-The same line may add `github:agentplot/boomdrive#herdr`,
-`github:agentplot/boomdrive#ghostty`,
+`herdr-plugins` holds Flume's and sluice's herdr plugins in one package,
+at `share/herdr/plugins/flume` and `share/herdr/plugins/sluice`. Each
+plugin's own package has `bin/open.sh` at its top, so one profile cannot
+hold the two side by side; `boomdrive setup` links each from the
+profile. The same line may add `github:agentplot/boomdrive#ghostty`,
 `github:agentplot/boomdrive#portless`,
 `github:agentplot/boomdrive#worktrunk`, and crew's companions,
 `github:agentplot/boomdrive#pendingyou`,
@@ -813,6 +821,96 @@ services.sluice.package = boomdrive.packages.aarch64-darwin.sluice.overrideAttrs
   env = old.env // { SLUICE_VERSION = "0.77.0"; };
 });
 ```
+
+## Setting up a drive on a Mac Nix does not manage
+
+On a Mac whose programs come from `nix profile add`, one command sets
+up a drive of an account under crew, and an agent can run it for you.
+Each answer is a flag:
+
+    boomdrive setup --account own --drive home --state-repository example/state \
+      --repository agentplot/flume --repository agentplot/sluice \
+      --blueprints agentplot/flume --runs ops standing --review 5 4 --json
+
+`--account` and `--drive` name the account and its drive, `--repository`
+each repository the drive keeps, and `--state-repository` the account's
+crew state repository. `--blueprints` names the drive's blueprints
+repository, its first repository where none is given. `--runs <role>
+<how>` runs one of crew's roles `standing` or `on-demand`, each role
+`standing` where none is given, and `--review <after_changes>
+<after_hours>` sets when a review's batch is due, `5 4` where none is
+given. `--json` answers in one object, `{"set_up": …}`, or
+`{"refused":{"refusal":{"reason":…}}}`. Setup exits 0 when the drive is
+set up, 1 when a tool refused or the host is Nix's, and 2 for a usage
+error or a host to fix.
+
+Where standard input is a terminal, setup asks on standard error for the
+account, the drive, the state repository and the repositories, in that
+order, the repositories one a line until an empty one, each only where
+no flag gives it and setup's own file on the host does not. With no
+terminal, a missing answer is a usage error naming each missing flag,
+so an agent learns every flag it must give from one run.
+
+Setup checks before it makes or writes anything: that the host is macOS;
+that `gh`, `herdr`, `launchctl`, `hostname` and `crew` are on its `PATH`;
+that `hostname -s` gives a name crew takes; each answer's form; and
+GitHub's sign-in, `gh auth status`, which the state repository needs. It
+names Claude Code's sign-in, `claude auth login`, and Pending You's,
+`npx -y pendingyou@latest init`, where either is missing, and goes on,
+since only crew's agents need them. Then, in order, it:
+
+1. makes the state repository private with `gh repo create`, where `gh
+   repo view` finds none;
+2. names the drive in crew's file, `~/.config/crew/teams.json`, by `crew
+   drive set <drive>`, with each role's `--runs` and the drive's
+   `--review`, never `--flume`, and the Mac's own values: this host, a
+   session named for the drive, the repository root as its folder, the
+   account for each role, and the runner's clone and view of each
+   repository;
+3. writes the runner's file, `~/.config/boomdrive/config.toml`, by the
+   keys Nix's module writes for the same account, its first line saying
+   setup wrote it, only where it changed. A file of your own there is
+   moved once to `config.toml.before-setup`, and named; `config.local.toml`
+   is left as it is;
+4. links the set's herdr plugins from `share/herdr/plugins` of
+   `~/.nix-profile`, else `~/.local/state/nix/profile`, by `herdr plugin
+   link`, each one herdr already lists left as it is. Where the profile
+   holds none, it names `github:agentplot/boomdrive#herdr-plugins`;
+5. writes `~/Library/LaunchAgents/io.github.agentplot.boomdrive.plist`,
+   nix-darwin's agent under setup's own label, which runs `boomdrive run`
+   from your profile once the Nix store is mounted and logs to
+   `~/Library/Logs/boomdrive.log`, and loads it into your login with
+   `launchctl bootstrap`, booting it out first only where the plist
+   changed.
+
+Run again with the same answers, setup changes nothing. A later change
+to the drive's repositories is setup's too, every other answer taken
+from what the host holds:
+
+    boomdrive setup --add-repository agentplot/crew
+    boomdrive setup --remove-repository agentplot/sluice
+
+A repository removed is let go by the runner by its own rules. A second
+drive is set up by a run naming it, and the runner's file keeps both.
+
+Setup starts no agent of crew's. Once it is done, `crew main up <drive>`
+starts the drive's main level, whose standing agents you talk to.
+
+On a host Nix manages, where `~/.config/boomdrive/config.toml` is a link
+the modules made, setup refuses, writes nothing and runs nothing: a drive
+of that host is set in `services.boomdrive.accounts`.
+
+After `nix profile upgrade`, the agent keeps running the runner it
+started with until it restarts. Restart it with:
+
+    launchctl kickstart -k gui/$(id -u)/io.github.agentplot.boomdrive
+
+Setup writes none of Flume's files, and Flume has no command that writes
+them yet. Flume with no file of its own runs no multiplexer, so the
+runner's launches into Flume print their commands rather than open an
+agent, and a role run `on-demand` has no stream to run in. Until Flume
+has that command, a drive set up here has crew's standing agents to talk
+to, which is why every role runs `standing` unless you say otherwise.
 
 ## Carrying the control plane's work
 

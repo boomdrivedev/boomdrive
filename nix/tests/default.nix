@@ -30,6 +30,7 @@ in
     // import ./workflow.nix t
     // import ./apps.nix t
     // import ./way-in.nix t
+    // import ./quick-start.nix t
     // import ./data-dir.nix t
     // import ./clone-dirs.nix t
     // import ./kept.nix t

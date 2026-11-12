@@ -18,6 +18,7 @@ let
     "flume-herdr-plugin"
     "ghostty"
     "herdr"
+    "herdr-plugins"
     "pendingyou"
     "pendingyou-herdr-plugin"
     "plannotator"

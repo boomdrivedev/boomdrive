@@ -48,6 +48,10 @@ in
     # The site's content, written by hand: yamlfmt would unwrap its folded
     # prose onto one line and respace its flow mappings.
     "site/src/content/**/*.yaml"
+    # shellcheck's settings for the quick start's shell files, which hold
+    # no shebang since the reader pastes their lines: shellcheck reads it
+    # from a file's folder upward, and no formatter has its form (site.8).
+    "site/src/start/.shellcheckrc"
     # Build outputs and caches.
     "target/**"
     ".devenv/**"
@@ -77,9 +81,14 @@ in
   settings.formatter.shfmt.pipeline = "shell";
   settings.formatter.shfmt.priority = 2;
 
-  # .prototools is TOML under a name with no extension.
+  # .prototools is TOML under a name with no extension, and the quick
+  # start's TOML files are the steps' text, which the page shows as they
+  # stand (site.8).
   programs.taplo.enable = true;
-  settings.formatter.taplo.includes = [ ".prototools" ];
+  settings.formatter.taplo.includes = [
+    ".prototools"
+    "site/src/start/**/*.toml"
+  ];
 
   # The tree's own JSON, the protocol's schema and its examples among it,
   # written by hand and read by the public. The tests compare JSON as

@@ -9,6 +9,8 @@
 
 #![allow(dead_code)]
 
+pub mod stand;
+
 use boomdrive::forge::Forge;
 use boomdrive::git::Git;
 use boomdrive::locks::Locks;

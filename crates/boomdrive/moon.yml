@@ -27,13 +27,16 @@ tasks:
   # the paths are inputs too; nix/tests/files holds the files the flake's
   # modules render, which the runner's tests read,
   # nix/tests/data-dirs.json the table of the data folders the modules
-  # name, which the runner's own rule is held to, and
+  # name, which the runner's own rule is held to,
   # nix/tests/clone-dirs.json the table of the clone folders the modules
-  # name, which the runner's own `clone::container` is held to, and
+  # name, which the runner's own `clone::container` is held to,
   # nix/tests/view-dirs.json the table of the views the modules give crew,
-  # which the runner's own `config::view_path` is held to.
+  # which the runner's own `config::view_path` is held to, and
+  # site/src/start the quick start's steps, which tests/quick_start.rs runs
+  # as they stand, with the stand-in for Claude Code its feature stand-in
+  # builds.
   test:
-    command: 'cargo test -p boomdrive'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '/nix/tests/data-dirs.json', '/nix/tests/clone-dirs.json', '/nix/tests/view-dirs.json', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
+    command: 'cargo test -p boomdrive --features stand-in'
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/README.md', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '/nix/tests/data-dirs.json', '/nix/tests/clone-dirs.json', '/nix/tests/view-dirs.json', '/site/src/start/**/*', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}

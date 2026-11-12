@@ -227,6 +227,12 @@ fn only_crews_crate_names_crew() {
         planes.contains("boomdrive_crew::open"),
         "planes.rs opens crew"
     );
+    // The setup spec's "Only crew's crate names crew": a drive's setup
+    // under crew is crew's implementation's, reached through planes.rs.
+    assert!(
+        planes.contains("boomdrive_crew::setup"),
+        "planes.rs sets up crew's drive"
+    );
 }
 
 /// core.2 and design Decision 1: `boomdrive-control` depends on no

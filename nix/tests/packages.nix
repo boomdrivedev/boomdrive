@@ -541,6 +541,35 @@ in
   "Flume's plugin moves with Flume" = each (pluginOf "flume");
   "sluice's plugin moves with sluice" = each (pluginOf "sluice");
 
+  # The family-packages spec's "The plugins in one package": linkFarm's
+  # entries, each its path under the package and what it links, are the
+  # two plugins and nothing else, so no bin is there to clash in a profile.
+  "The set's herdr plugins in one package" = each (
+    system: packages:
+    let
+      name = "packages.${system}.herdr-plugins";
+      entries = packages.herdr-plugins.entries or { };
+      held = {
+        "share/herdr/plugins/flume" = packages.flume-herdr-plugin;
+        "share/herdr/plugins/sluice" = packages.sluice-herdr-plugin;
+      };
+    in
+    t.expect (builtins.attrNames entries == builtins.attrNames held)
+      "${name} holds ${toString (builtins.attrNames entries)}, not ${toString (builtins.attrNames held)}"
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        path: plugin:
+        t.expect (
+          entries ? ${path} && entries.${path}.drvPath == plugin.drvPath
+        ) "${name}'s ${path} is not packages.${system}.${plugin.pname}"
+      ) held
+    )
+    ++ lib.concatMap (
+      path:
+      t.expect (path != "bin" && !lib.hasPrefix "bin/" path) "${name} holds ${path}, a bin of its own"
+    ) (builtins.attrNames entries)
+  );
+
   "A tag moved without the lock" =
     let
       inherit (t) lock;
