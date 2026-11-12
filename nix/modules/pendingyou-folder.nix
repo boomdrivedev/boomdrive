@@ -3,9 +3,9 @@
 # Pending You gives none (record 0044, point 7; design Decision 7 of the
 # change crews-companions-come-with-the-flake): a function, not a module,
 # of the runner's user's `home` and the Pending You `package` the modules
-# install, giving one store folder of the four files Pending You's `init`
-# writes there, which activate.sh's `pendingyou` copies into the folder,
-# each whole and only where it differs:
+# install, giving one store folder of what Pending You's `init` writes
+# there, which activate.sh's `pendingyou` copies into the folder, each
+# file whole and only where it differs:
 #
 # - bin/pendingyou-hook, the launcher Pending You's hooks run, as its
 #   `init`'s (dist/shim.js), with what a crew session needs: a Stop check
@@ -18,12 +18,17 @@
 #   on, no MCP server added, no skill and no copy of the command line;
 # - signin/.claude.json, the Claude folder `pendingyou-signin` signs
 #   Claude Code's connection in with, naming Pending You's server with the
-#   folder's helper.
+#   folder's helper;
+# - mod, the package's wake mod, copied whole, each file 0644, as `init`
+#   copies it there: named `pendingyou-wake`, with its root at
+#   `<folder>/mod`, a session that loads it from there finds the folder,
+#   says presence, writes its loaded note and marks herdr's pane (record
+#   0044, point 5). The package's `mod` where it gives one, else its
+#   lib/node_modules/pendingyou/mod, where npm installs it.
 #
-# It holds no copy of the wake mod, which rides in the set's marketplace
-# (record 0044, point 5). The sign-ins, the computer's key, the cards and
-# the state are the command line's own, and never here. `folder` and
-# `texts` are given to the evaluated cases.
+# The sign-ins, the computer's key, the cards and the state are the
+# command line's own, and never here. `folder`, `texts` and `mod` are
+# given to the evaluated cases.
 {
   lib,
   runCommand,
@@ -34,6 +39,7 @@
 let
   folder = "${home}/.config/pendingyou";
   pendingyou = lib.getExe' package "pendingyou";
+  mod = package.mod or "${package}/lib/node_modules/pendingyou/mod";
   origin = "https://www.pendingyou.com";
 
   # A shell word as Pending You writes one: bare where it is safe, else
@@ -127,7 +133,14 @@ let
 in
 runCommand "pendingyou-folder"
   {
-    passthru = { inherit folder texts modes; };
+    passthru = {
+      inherit
+        folder
+        texts
+        modes
+        mod
+        ;
+    };
   }
   (
     lib.concatStrings (
@@ -135,4 +148,9 @@ runCommand "pendingyou-folder"
         install -D -m ${modes.${path}} ${writeText "pendingyou-${lib.removePrefix "." (baseNameOf path)}" text} "$out/${path}"
       '') texts
     )
+    + ''
+      cp -RL ${mod} "$out/mod"
+      chmod -R u+w "$out/mod"
+      find "$out/mod" -type f -exec chmod 0644 {} +
+    ''
   )

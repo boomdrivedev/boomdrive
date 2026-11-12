@@ -626,6 +626,35 @@ let
     in
     t.expect (lib.hasSuffix expected text) "the folder's bin/pendingyou-hook does not end in ${expected}: ${text}";
 
+  # The wake mod in the folder (record 0044, point 5): the given Pending
+  # You's `mod`, copied whole, the set's by its `mod` and a host's own by
+  # where npm installs it.
+  wakeModIn =
+    platform:
+    { system, ... }:
+    lib.concatMap
+      (
+        given:
+        let
+          evaluated = system given;
+          package = evaluated.config.services.boomdrive.pendingyou.package;
+          folder = folderOf evaluated (homeOf platform) package;
+          mod = builtins.unsafeDiscardStringContext (
+            package.mod or "${package}/lib/node_modules/pendingyou/mod"
+          );
+          copies = builtins.unsafeDiscardStringContext "cp -RL ${mod} \"$out/mod\"";
+          command = builtins.unsafeDiscardStringContext folder.buildCommand;
+        in
+        t.expect (builtins.unsafeDiscardStringContext folder.mod == mod)
+          "the ${platform} folder's wake mod is ${builtins.unsafeDiscardStringContext folder.mod}, not ${mod}"
+        ++ t.expect (lib.hasInfix copies command) "the ${platform} folder does not copy ${mod} whole: ${command}"
+        ++ t.expect (lib.hasInfix "find \"$out/mod\" -type f -exec chmod 0644 {} +" command) "the ${platform} folder's wake mod is not 0644: ${command}"
+      )
+      [
+        crewOn
+        ownPendingyou
+      ];
+
   noSetsPendingyou =
     platform:
     { system, set, ... }:
@@ -722,6 +751,7 @@ onEach "The way in with the runner" withRunner
 // onEach "The sign-in's two commands" signinRead
 // onEach "The launchers run the given Pending You" launchersRunGiven
 // onEach "No Pending You of the set's" noSetsPendingyou
+// onEach "The wake mod in the folder" wakeModIn
 // onEach "No Claude Code of the modules'" noClaudeCode
 // {
   "The folder written on nix-darwin" = folderWritten "nix-darwin";
