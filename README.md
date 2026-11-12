@@ -276,7 +276,7 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   and the set's plannotator-tui, so herdr's link fetches nothing;
 - the set's marketplace of the companions' Claude Code plugins,
   `boomdrive-claude-plugins`: a marketplace named `boomdrive` holding
-  Pending You's hooks, wake mod and skill, and Plannotator's own plugin.
+  Pending You's hooks and skill, and Plannotator's own plugin.
 
 Each tool reports its release's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
@@ -544,8 +544,10 @@ module also installs crew's companions:
   `~/.config/pendingyou`, before it links the plugins: the launcher
   Pending You's hooks run, `bin/pendingyou-hook`, and its MCP server's
   headers helper, `bin/pendingyou-mcp-headers`, each running the
-  Pending You it installs; the manifest, `claude-code.json`; and the
-  sign-in's Claude folder, `signin/.claude.json`. Each is a regular file,
+  Pending You it installs; the manifest, `claude-code.json`; the
+  sign-in's Claude folder, `signin/.claude.json`; and Pending You's wake
+  mod, `mod`, as Pending You's own `init` copies it there, which wakes a
+  session when you answer one of its cards. Each is a regular file,
   written whole and only where it differs, and a missing folder is made
   for you alone. Pending You's sign-ins, the computer's key, its cards
   and its state stay the command line's own, and the switch touches none
@@ -572,9 +574,11 @@ services.boomdrive.plannotator-tui.package = null;
 The companions' Claude Code plugins, the set's marketplace
 `boomdrive-claude-plugins`, are installed into no Claude Code home yet:
 no switch runs `claude` or writes into a Claude Code home, and Claude
-Code stays yours. Which sessions get the plugins, and Pending You's MCP
-server with them, waits on a decision, point 3 of record 0044, and until
-it is made the set installs them into no home.
+Code stays yours. Installing them into every Claude Code home of the
+accounts, with Pending You's MCP server, and loading the folder's wake
+mod in each session, is a later unit's (record 0044, point 3); until it
+lands, the set installs them into no home and no session loads the wake
+mod from the set.
 
 With no herdr package, or no plugin, nothing is linked. A host with a
 herdr of its own may give it as `services.boomdrive.herdr.package`, and

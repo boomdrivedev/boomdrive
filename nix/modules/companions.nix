@@ -10,8 +10,8 @@
 # either, none does. apps.nix links their herdr plugins, and darwin.nix
 # and nixos.nix write Pending You's folder (record 0044, point 7). No
 # module runs `claude` or writes into a Claude Code home: installing the
-# set's marketplace there waits on the user's answer (record 0044, point
-# 3).
+# set's marketplace there is the unit
+# `the-companions-load-in-claude-codes-sessions` (record 0044, point 3).
 { packages }:
 {
   config,
