@@ -106,6 +106,16 @@ fn a_hello() {
         ]),
         repositories: vec!["example/crew".to_string()],
         draining: vec!["example/kit".to_string()],
+        drives: BTreeMap::from([
+            (
+                "home".to_string(),
+                vec![KeptRepository {
+                    address: "example/crew".to_string(),
+                    container_dir: "/data/repositories/example/crew".to_string(),
+                }],
+            ),
+            ("work".to_string(), vec![]),
+        ]),
         capacity: Capacity::Printed(HostPart {
             running: "2".to_string(),
             bound: "4".to_string(),
@@ -371,6 +381,7 @@ fn a_report_from_before_reads() {
     let hello = r#"{"interface_version":1,"runner_version":"boomdrive 0.0.0","tool_versions":{},"repositories":["example/app"],"capacity":{"missing":"flume is not on PATH"},"leases":{}}"#;
     let read: Hello = serde_json::from_str(hello).expect("a hello of before reads");
     assert!(read.draining.is_empty());
+    assert!(read.drives.is_empty());
     round_trip(&read);
 }
 

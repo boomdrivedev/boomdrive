@@ -15,8 +15,8 @@ use boomdrive::config::Address;
 use boomdrive::flume::{Cli, Reply};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
-    AgentSetting, Answer, At, Capacity, Command, CommandSort, Id, Inbox, Launched, Lease, Offer,
-    Outcome, Report, ToolVersion, Want,
+    AgentSetting, Answer, At, Capacity, Command, CommandSort, Id, Inbox, KeptRepository, Launched,
+    Lease, Offer, Outcome, Report, ToolVersion, Want,
 };
 use fakes::{fixture, offer, place_of, Bench, Call, Stub, KEPT};
 use serde_json::json;
@@ -51,6 +51,45 @@ fn repositories_kept() {
     let mut plane = Fake::new();
     bench.pass(&mut plane);
     assert_eq!(plane.hellos()[0].repositories, [KEPT]);
+}
+
+/// With carry.rs's `each_drive_names_its_repositories_whose_clones_are_made`,
+/// the work-into-flume spec's "Each drive's repositories with their
+/// folders": the hello names each drive with each repository whose clone
+/// is made, at its container, and no drive names a repository not yet
+/// made or dropped (design Decision 2).
+#[test]
+fn each_drives_repositories_with_their_folders() {
+    let bench = Bench::new();
+    bench.clones.not_yet("example/crew");
+    bench
+        .clones
+        .ready_in("example/app", &bench.container("example/app"), "work");
+    bench
+        .clones
+        .ready("example/kit", &bench.container("example/kit"));
+    bench.clones.drop_named("example/kit");
+    let mut plane = Fake::new();
+    bench.pass(&mut plane);
+    let drives = &plane.hellos()[0].drives;
+    let kept = |address: &str| KeptRepository {
+        address: address.to_string(),
+        container_dir: bench.container(address).to_string_lossy().into_owned(),
+    };
+    assert_eq!(
+        drives,
+        &BTreeMap::from([
+            ("home".to_string(), vec![kept(KEPT)]),
+            ("work".to_string(), vec![kept("example/app")]),
+        ])
+    );
+    assert!(
+        drives
+            .values()
+            .flatten()
+            .all(|kept| kept.address != "example/kit" && kept.address != "example/crew"),
+        "{drives:?}"
+    );
 }
 
 /// The work-into-flume spec's "A tool missing".

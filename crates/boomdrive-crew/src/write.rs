@@ -1,19 +1,23 @@
 //! The runner's branch, `<label>/runner/<host>`, written in crew's formats
 //! by weir-branch's write (design Decision 17): `runner.rec`,
 //! `answers.rec` and `places.rec`, each opening with crew's own
-//! descriptor as `runner.py` holds it at `9913f249`, byte for byte, and,
-//! where a preview is or was answered, `previews.rec`, under the
+//! descriptor as `runner.py` holds it at `9913f249`, byte for byte;
+//! `repositories.rec`, under crew's descriptor as `runner.py` holds it at
+//! `323c77fb`, byte for byte, naming each repository the partition's
+//! drive keeps with its clone's folder, at every write of the branch
+//! (the-runner-names-each-repository-it-keeps, design Decisions 3 and 4);
+//! and, where a preview is or was answered, `previews.rec`, under the
 //! descriptor this repository proposes for crew to hold (design Decision
-//! 10; core.55); each formed from the runner's report and the claims
-//! standing alone. Nothing is written when the files' text equals the
-//! tip's, and no ref but the runner's branch is ever pushed, never with
-//! force.
+//! 10; core.55); each formed from the runner's report, the claims
+//! standing and the drives of the latest hello alone. Nothing is written
+//! when the files' text equals the tip's, and no ref but the runner's
+//! branch is ever pushed, never with force.
 
 use crate::ids::{self, Named};
 use crate::read::{self, runner_branch, Main, Store};
 use crate::records::{self, under, whole};
 use crate::roles;
-use boomdrive_control::{Answer, Id, Outcome, Previewed, Report};
+use boomdrive_control::{Answer, Id, KeptRepository, Outcome, Previewed, Report};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 use time::OffsetDateTime;
@@ -59,6 +63,18 @@ pub const RUNS: &str = "\
 %allowed: Address Place At Status Words
 ";
 
+/// crew's descriptor of `repositories.rec`, as crew's `plugin/lib/runner.py`
+/// holds it at crew's `323c77fb`, byte for byte: crew's own, which this
+/// repository copies and changes nothing of
+/// (the-runner-names-each-repository-it-keeps, design Decision 3).
+pub const REPOSITORIES: &str = "\
+%rec: Repository
+%doc: A repository the runner keeps on its host: its forge address as its configuration names it, and the folder of its clone, where Flume cuts its places.
+%key: Repository
+%mandatory: Repository Folder
+%allowed: Repository Folder
+";
+
 /// crew's descriptor of `previews.rec`, as this repository proposes it
 /// for crew's unit that moves its previews onto the runner to hold in
 /// `runner.py` byte for byte (design Decision 10).
@@ -76,13 +92,14 @@ pub const PREVIEWS: &str = "\
 /// The age past which another writer's lock on the cache is stale.
 const STALE_AFTER: Duration = Duration::from_secs(5 * 60);
 
-/// The runner's files' text: its three, and `previews.rec` where the
-/// branch is to hold one.
+/// The runner's files' text: its four, every write holding
+/// `repositories.rec`, and `previews.rec` where the branch is to hold one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Texts {
     pub runner: String,
     pub answers: String,
     pub places: String,
+    pub repositories: String,
     pub previews: Option<String>,
 }
 
@@ -92,6 +109,7 @@ impl Texts {
             ("runner.rec", &self.runner),
             ("answers.rec", &self.answers),
             ("places.rec", &self.places),
+            ("repositories.rec", &self.repositories),
         ];
         if let Some(previews) = &self.previews {
             paths.push(("previews.rec", previews));
@@ -161,6 +179,23 @@ pub fn places_text(places: &BTreeMap<u64, Record>, runs: &BTreeMap<String, Recor
     format!("{places}\n{runs}")
 }
 
+/// `repositories.rec` of `kept`, the repositories of the partition's
+/// drive the runner keeps: one `Repository` each, in the order given, its
+/// address as `Repository` and its clone's container as `Folder`; the
+/// descriptor alone where it keeps none (design Decisions 3 and 4).
+pub fn repositories_text(kept: &[KeptRepository]) -> String {
+    let records: Vec<Record> = kept
+        .iter()
+        .map(|kept| {
+            let mut record = Record::new();
+            record.push("Repository", kept.address.as_str());
+            record.push("Folder", kept.container_dir.as_str());
+            record
+        })
+        .collect();
+    under(REPOSITORIES, &records)
+}
+
 /// `previews.rec` of `previews`, by request.
 pub fn previews_text(previews: &BTreeMap<u64, Record>) -> String {
     under(PREVIEWS, &previews.values().cloned().collect::<Vec<_>>())
@@ -216,10 +251,11 @@ pub fn statuses_held(label: &str, report: &Report) -> BTreeSet<Id> {
 /// `report` and the claims standing: one `Answer` per request the report
 /// answers and per claim whose launch it does not, one `Place` per
 /// request launched with a status, and one `Run` per role for its latest
-/// run, by its address in `addresses`; and `previews.rec`, one `Preview`
-/// per preview request the report answers, where the report holds one,
-/// or the descriptor alone where it holds none and the tip, as
-/// `previews_held` says, holds the file.
+/// run, by its address in `addresses`; `repositories.rec` of `kept`, the
+/// repositories of the partition's drive the runner keeps; and
+/// `previews.rec`, one `Preview` per preview request the report answers,
+/// where the report holds one, or the descriptor alone where it holds none
+/// and the tip, as `previews_held` says, holds the file.
 #[allow(clippy::too_many_arguments)]
 pub fn texts(
     label: &str,
@@ -229,6 +265,7 @@ pub fn texts(
     report: &Report,
     claims: &[Record],
     addresses: &BTreeMap<String, String>,
+    kept: &[KeptRepository],
     previews_held: bool,
 ) -> Texts {
     let mut answers: BTreeMap<u64, Record> = claims
@@ -302,6 +339,7 @@ pub fn texts(
         runner: runner_text(host, version, since),
         answers: answers_text(&answers),
         places: places_text(&places, &runs),
+        repositories: repositories_text(kept),
         previews: (!previews.is_empty() || previews_held).then(|| previews_text(&previews)),
     }
 }
@@ -320,8 +358,9 @@ pub fn files_at(tip: Option<&Tip>) -> Result<read::RunnerFiles, String> {
 }
 
 /// What a write changes, as its commit names it: `runner`, then
-/// `answers <n>…`, `places <n>…`, `runs <address>…` and `previews <n>…`;
-/// none where every file's text is the tip's.
+/// `answers <n>…`, `places <n>…`, `runs <address>…`, `repositories
+/// <address>…` and `previews <n>…`, each naming the records added, changed
+/// or removed; none where every file's text is the tip's.
 pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
     let changed = new
         .by_path()
@@ -346,6 +385,12 @@ pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
         ("answers.rec", "Answer", "Request", "answers"),
         ("places.rec", "Place", "Request", "places"),
         ("places.rec", "Run", "Address", "runs"),
+        (
+            "repositories.rec",
+            "Repository",
+            "Repository",
+            "repositories",
+        ),
         ("previews.rec", "Preview", "Request", "previews"),
     ] {
         let before = keyed(set, key, old.get(path).and_then(Option::as_ref));
@@ -354,6 +399,7 @@ pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
             key,
             match path {
                 "answers.rec" => Some(&new.answers),
+                "repositories.rec" => Some(&new.repositories),
                 "previews.rec" => new.previews.as_ref(),
                 _ => Some(&new.places),
             },
