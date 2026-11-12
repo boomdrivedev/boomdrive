@@ -57,10 +57,11 @@ tasks:
     tags: [check-fast]
     options: {mutex: 'astro'}
   # The site's tests (check-site.sh): the built pages' links, the workflow
-  # pages, the content kind's prompts and the release command.
+  # pages, the content kind's prompts, the release command, and the quick
+  # start's page, steps, files and tests (site.8).
   test:
     command: 'sh check-site.sh'
-    inputs: ['dist/**/*', 'check-site.sh', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
+    inputs: ['dist/**/*', 'check-site.sh', 'src/content/start/**/*', 'src/content/pages/start.md', 'src/start/**/*', 'src/content/contexts/contexts.yaml', '/crates/boomdrive/tests/quick_start.rs', '/nix/tests/quick-start.nix', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
     deps: ['~:build']
     tags: [check-fast]
   # actionlint over the workflow pages, which publishes the site.

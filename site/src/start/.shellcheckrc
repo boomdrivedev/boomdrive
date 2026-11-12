@@ -1,0 +1,3 @@
+# A step's shell file holds no shebang, since the reader pastes its
+# lines into their own shell; shellcheck reads each as sh (site.8).
+shell=sh

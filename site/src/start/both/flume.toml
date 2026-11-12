@@ -1,0 +1,6 @@
+# Flume lands this repository's work through sluice, by the policy in
+# .config/sluice.toml beside this file. A drive that takes crew's changes
+# binds `change = "openspec"` here too, in a repository that holds
+# OpenSpec's `openspec/` folder.
+[profiles]
+merge_queue = "sluice"

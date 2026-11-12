@@ -233,6 +233,34 @@ const pages = defineCollection({
   }),
 });
 
+// The quick start's steps (site.8; design Decision 1 of the change
+// boomdrives-quick-start-takes-a-stranger-to-a-working-drive): a record for
+// each, its words the body, its place on each platform it is on, the files
+// under src/start/ it shows, with the path the reader writes each to where
+// they write one, and the one test of the gate that runs them. The page
+// reads each file at build and fails where one is missing; site:test holds
+// each test to its project's tree, which the build does not read.
+const start = defineCollection({
+  loader: glob({ pattern: "*.md", base: "./src/content/start" }),
+  schema: z.object({
+    title: z.string().min(1),
+    at: z
+      .object({
+        mac: z.number().int().min(1).optional(),
+        nixos: z.number().int().min(1).optional(),
+      })
+      .strict()
+      .refine(
+        (at) => at.mac !== undefined || at.nixos !== undefined,
+        "a step is on a Mac, on NixOS or both",
+      ),
+    files: z
+      .array(z.object({ path: z.string().min(1), writes: z.string().min(1).optional() }).strict())
+      .min(1),
+    test: z.object({ project: z.enum(["boomdrive", "nix"]), name: z.string().min(1) }).strict(),
+  }),
+});
+
 export const collections = {
   principles,
   notes,
@@ -242,4 +270,5 @@ export const collections = {
   rates,
   contexts,
   pages,
+  start,
 };

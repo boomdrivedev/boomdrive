@@ -179,8 +179,13 @@
             inherit (inputs.llm-agents.packages.${system}) plannotator plannotator-tui;
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
+          plugins = {
+            flume-herdr-plugin = pluginOf tools.flume;
+            sluice-herdr-plugin = pluginOf tools.sluice;
+          };
         in
         tools
+        // plugins
         // {
           default = tools.boomdrive;
           # The way in: an app on macOS and a desktop entry on Linux that
@@ -192,8 +197,6 @@
             inherit (tools) pendingyou plannotator;
             skill = ./nix/packages/pendingyou-skill.md;
           };
-          flume-herdr-plugin = pluginOf tools.flume;
-          sluice-herdr-plugin = pluginOf tools.sluice;
           # The companions' herdr plugins, each at the commit the lock names
           # (record 0044, point 6): Annotate's bin holds its runtime and the
           # set's plannotator-tui, so herdr's link fetches nothing.
@@ -204,6 +207,12 @@
             src = inputs.herdr-annotate;
             inherit (tools) plannotator-tui;
           };
+          # The two plugins in one package a profile holds, which
+          # `boomdrive setup` links from it (record 0009 as amended
+          # 2026-11-11).
+          herdr-plugins = pkgs.callPackage ./nix/packages/herdr-plugins.nix (
+            plugins // { inherit (tools) boomdrive; }
+          );
         };
       packages = lib.genAttrs systems packagesOf;
 
