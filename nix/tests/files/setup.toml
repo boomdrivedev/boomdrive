@@ -1,0 +1,14 @@
+# Written by the boomdrive flake's module from services.boomdrive.accounts and services.boomdrive.settings; a change goes there.
+
+[accounts.own.drives.home]
+repositories = ["agentplot/flume", "agentplot/sluice"]
+
+[control_plane]
+type = "crew"
+
+[control_plane.crew]
+host = "host-a"
+
+[[control_plane.crew.partitions]]
+label = "home"
+state_repository = "example/state"

@@ -82,6 +82,30 @@ in
 {
   inherit crew;
 
+  # The file `boomdrive setup` writes for one account's drive under crew
+  # (design Decision 6 of the change a-persons-drive-is-set-up-by-one-command):
+  # the account `own`'s drive `home`, crew's `host` and the drive's one
+  # partition, and nothing else set, which setup's own test holds setup's
+  # file to past its first line.
+  setup = {
+    accounts.own.drives.home.repositories.agentplot = [
+      "flume"
+      "sluice"
+    ];
+    settings.control_plane = {
+      type = "crew";
+      crew = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+    };
+  };
+
   # "Only accounts": nothing set.
   empty = { };
 

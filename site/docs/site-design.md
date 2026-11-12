@@ -44,8 +44,9 @@ reaches, and never promises a number.
 
 ## Site map
 
-Eight sections; version 1 launches with Home, the Method, Notes, Tools and
-About, and the first page of the Fleet.
+Nine sections; version 1 launches with Home, the Method, Notes, Tools and
+About, and the first page of the Fleet. The quick start comes with the site's
+first publish from Boomdrive's own repository.
 
 | Section | What it holds | How it ages | In version 1 |
 |---|---|---|---|
@@ -56,6 +57,7 @@ About, and the first page of the Fleet.
 | Uses | The stack we run, by category: harnesses, multiplexer and plugins, worktrees, secrets, toolchain, our own tools | Current; each context records past stacks | Month 2 |
 | Roadmap | Everything we know is coming, by status from idea to released | Current | Month 2 |
 | Tools | The hub of the Boomdrive family, at `/tools/`: the family's loop drawn, a card per member, and how each tool stands alone and the Method joins them (see "The Tools hub" below). Each tool's own documentation is on its own site; the shell, moon and hook configurations we publish join the hub as each is released | Changes when a member joins the family or its status changes | Yes |
+| Start | The quick start, at `/start/`: from nothing to a drive whose agents build and land a change, on a Mac or on NixOS, every step's text a file the page shows as it stands and a test of the gate runs (see "The quick start" below) | Changes with the tools; a step changes only with its test passing | At the first publish from Boomdrive's repository |
 | About | Who we are, learning in public, how we treat client work | Rarely | Yes |
 
 ## How Home and the Method read
@@ -212,6 +214,41 @@ holds the hub every family site's footer links to,
   drawn as a ring and says so in words, on the card, in the bar and in the
   footer, and its site and design book may come before the tool does.
 
+## The quick start
+
+One page, `/start/`, takes a stranger from nothing of the family installed
+to a drive whose agents build and land a change, on an Apple silicon Mac or
+on a NixOS machine (record 0043; site.8).
+
+- **What the reader brings comes first, and is no step.** Nix with its
+  flakes on, on a Mac, or a NixOS configuration that is a flake; a GitHub
+  account; Claude Code. Each is named with its own installer's link. The
+  steps start where those end. The lede and this list are
+  `src/content/pages/start.md`, so Vale reads them.
+- **Two ways, one page.** "On a Mac" and "On NixOS", each its steps in
+  order, numbered. A step both ways share, the sign-ins, the landing's
+  policy, starting the drive's agents and the first change, is one record
+  shown in both. Everything is on the page at once: no tab, no script, no
+  motion.
+- **A step is words and files.** Its words say what it does and what it
+  leaves. Its text is files under `src/start/`, a shell line, a TOML file or
+  a Nix file, each shown in a block as it stands, with the path it is
+  written to where the reader writes it. The step names the one test of the
+  gate that runs those files as they stand, in the runner's crate or the
+  flake's checks, and `site:test` fails a step whose test its project does
+  not hold, or a file no step shows.
+- **The reader's own names are placeholders.** `your-github-name`,
+  `your-repository`, `your-host` and the drive `home` read as the reader's
+  to replace; no drive or machine of ours appears (site.7).
+- **It reads like the rest of the site.** Its blocks take the page's own
+  tokens, so they follow light and dark, and scroll within themselves at
+  phone width. The masthead names it "Start", after Tools.
+- **It ends where the drive works.** The last steps start the drive's
+  agents, ask them for a change, approve its plan on the reader's rail and
+  watch it land. The last step's test runs a change from the drive's
+  control plane through the runner, Flume and sluice to the repository's
+  main.
+
 ## Content model
 
 Principles are the living truth, notes are dated evidence, and measurements
@@ -236,7 +273,7 @@ they were written against.
 
 ## The types
 
-Fifteen types; the first five are needed for version 1.
+Sixteen types; the first five are needed for version 1.
 
 | Type | Key fields | Why it exists |
 |---|---|---|
@@ -255,6 +292,7 @@ Fifteen types; the first five are needed for version 1.
 | Series | title, summary, items (ordered notes and videos) | An arc a reader can follow |
 | Release | component, version, date, launchNote, highlights | Every release is a launch |
 | Product | name, problem, status (idea, waitlist, beta, available), builtOn, principles | The paid side, shown only as a waitlist until it ships |
+| Step | title, at (its place on a Mac, on NixOS, or both), files (path, writes), test (project, name) | The quick start's steps, each a file the page shows as it stands and a test of the gate runs (site.8) |
 
 A component, for example:
 

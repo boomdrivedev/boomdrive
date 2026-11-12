@@ -192,6 +192,8 @@ in
 
   "A host under crew" = rendersAs "crew";
 
+  "One drive under crew, as setup writes it" = rendersAs "setup";
+
   "The App named" =
     t.expect (lib.hasSuffix "\n[forge]\napp_id = 1\nkey_file = \"~/.config/boomdrive/app.pem\"\n" (text "crew")) "the crew value renders no [forge] with app_id = 1 and its key_file: ${builtins.toJSON (text "crew")}"
     ++ t.expect (

@@ -12,6 +12,21 @@ path = "src/main.rs"
 [lib]
 path = "src/lib.rs"
 
+[features]
+# The stand-in for Claude Code that the quick start's last step's test
+# runs, built only for the runner's tests (design Decision 6 of the change
+# boomdrives-quick-start-takes-a-stranger-to-a-working-drive).
+stand-in = []
+
+# The stand-in for Claude Code, run as `claude` by Flume's printed command
+# in tests/quick_start.rs, as Flume's flume-stand-in is run; no release
+# builds it, since the flake's package names no feature.
+[[bin]]
+name = "boomdrive-stand-in"
+path = "tests/stand-in/claude.rs"
+test = false
+required-features = ["stand-in"]
+
 [dependencies]
 clap.workspace = true
 # The one interface the runner reaches its control plane through (design

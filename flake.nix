@@ -119,15 +119,24 @@
             ghostty = if pkgs.stdenv.hostPlatform.isDarwin then pkgs.ghostty-bin else pkgs.ghostty;
           };
           pluginOf = tool: pkgs.callPackage ./nix/packages/herdr-plugin.nix { inherit tool; };
+          plugins = {
+            flume-herdr-plugin = pluginOf tools.flume;
+            sluice-herdr-plugin = pluginOf tools.sluice;
+          };
         in
         tools
+        // plugins
         // {
           default = tools.boomdrive;
           # The way in: an app on macOS and a desktop entry on Linux that
           # runs `flume open` (design Decision 3).
           boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
-          flume-herdr-plugin = pluginOf tools.flume;
-          sluice-herdr-plugin = pluginOf tools.sluice;
+          # The two plugins in one package a profile holds, which
+          # `boomdrive setup` links from it (record 0009 as amended
+          # 2026-11-11).
+          herdr-plugins = pkgs.callPackage ./nix/packages/herdr-plugins.nix (
+            plugins // { inherit (tools) boomdrive; }
+          );
         };
       packages = lib.genAttrs systems packagesOf;
 

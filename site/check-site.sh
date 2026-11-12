@@ -119,6 +119,165 @@ for prompt in $prompts; do
   fi
 done
 
+# The quick start (the quick-start spec; site.8; design Decision 7 of the
+# change boomdrives-quick-start-takes-a-stranger-to-a-working-drive): the
+# built page /start/ and every page's masthead, the step records of
+# src/content/start, read with the site's yaml package through bun, the
+# files under src/start/, and the two test files the steps name, which the
+# site's build does not read.
+quick_start=$(
+  cat <<'CHECK'
+import { parse } from "yaml";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+let failed = false;
+const fail = (words: string) => {
+  console.error(`check-site: ${words}`);
+  failed = true;
+};
+const said = (words: string) => console.log(`check-site: ${words}`);
+// As Astro escapes a text it sets.
+const escape = (text: string) =>
+  text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+const files = (dir: string, under = ""): string[] =>
+  readdirSync(join(dir, under), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? files(dir, join(under, entry.name)) : [join(under, entry.name)],
+  );
+
+type Step = {
+  id: string;
+  text: string;
+  data: {
+    title: string;
+    at: { mac?: number; nixos?: number };
+    files: { path: string; writes?: string }[];
+    test: { project: "boomdrive" | "nix"; name: string };
+  };
+};
+const steps: Step[] = readdirSync("src/content/start")
+  .filter((name) => name.endsWith(".md"))
+  .sort()
+  .map((name) => {
+    const text = readFileSync(join("src/content/start", name), "utf8");
+    const front = text.match(/^---\n([\s\S]*?)\n---\n/);
+    if (!front) throw new Error(`src/content/start/${name} has no frontmatter`);
+    return { id: name.slice(0, -3), text, data: parse(front[1]) };
+  });
+const ways = [
+  { id: "mac", title: "On a Mac" },
+  { id: "nixos", title: "On NixOS" },
+] as const;
+const on = (way: "mac" | "nixos") =>
+  steps.filter((step) => step.data.at[way] !== undefined).sort((a, b) => a.data.at[way]! - b.data.at[way]!);
+
+// A platform's places are its order.
+for (const way of ways) {
+  const places = on(way.id).map((step) => step.data.at[way.id]);
+  if (places.every((place, i) => place === i + 1)) said(`the quick start's ${places.length} steps ${way.title} run 1 to ${places.length}`);
+  else fail(`the quick start's places ${way.title} are ${places.join(", ")}, not 1 to ${places.length} each once`);
+}
+
+// Each step's test is there.
+const tests = {
+  boomdrive: { file: "../crates/boomdrive/tests/quick_start.rs", holds: (name: string) => `fn ${name}(` },
+  nix: { file: "../nix/tests/quick-start.nix", holds: (name: string) => `"${name}" =` },
+};
+const untested = steps.filter((step) => {
+  const test = tests[step.data.test.project];
+  return !readFileSync(test.file, "utf8").includes(test.holds(step.data.test.name));
+});
+if (untested.length === 0) said(`each of the quick start's ${steps.length} steps names a test its project holds`);
+for (const step of untested) fail(`the step ${step.id} names the test ${step.data.test.name}, which its project does not hold`);
+
+// No file is left unshown.
+const shown = new Set(steps.flatMap((step) => step.data.files.map((file) => file.path)));
+const held = files("src/start").filter((path) => path !== ".shellcheckrc");
+const unshown = held.filter((path) => !shown.has(path));
+if (unshown.length === 0) said(`every file of src/start/ but .shellcheckrc is a step's, ${held.length} of them`);
+else fail(`src/start/ holds ${unshown.join(", ")}, which no step shows`);
+
+// The page and its two ways, and each file as it stands.
+const page = readFileSync("dist/start/index.html", "utf8");
+const before = failed;
+failed = false;
+if (/<script[\s>]/.test(page)) fail("the quick start holds a script element");
+const lede = page.indexOf('<div class="start-lede">');
+const heads = ways.map((way) => page.indexOf(`<h2 id="start-${way.id}">${way.title}</h2>`));
+if (lede < 0 || heads.some((at) => at < 0) || !(lede < heads[0] && heads[0] < heads[1])) {
+  fail("the quick start is not its lede, then On a Mac, then On NixOS");
+}
+for (const [w, way] of ways.entries()) {
+  const section = page.slice(heads[w], w + 1 < ways.length ? heads[w + 1] : undefined);
+  const titles = [...section.matchAll(/<h3>(.*?)<\/h3>/g)].map((m) => m[1]);
+  const want = on(way.id).map((step) => escape(step.data.title));
+  if (JSON.stringify(titles) !== JSON.stringify(want)) {
+    fail(`the quick start's steps ${way.title} are ${titles.join(" | ")}, not ${want.join(" | ")}`);
+  }
+  if (!/^<h2[^>]*>[^<]*<\/h2><ol class="start-steps">/.test(section)) fail(`the steps ${way.title} are not one numbered list`);
+  for (const step of on(way.id)) {
+    const start = section.indexOf(`<li class="start-step" id="${way.id}-${step.id}">`);
+    const item = start < 0 ? "" : section.slice(start, section.indexOf("</li>", start));
+    for (const file of step.data.files) {
+      const block = `<pre>${escape(readFileSync(join("src/start", file.path), "utf8"))}</pre>`;
+      const at = item.indexOf(block);
+      if (at < 0 || item.indexOf(block, at + 1) >= 0) {
+        fail(`the step ${step.id} ${way.title} does not show ${file.path} as it stands, in one block`);
+      } else if (file.writes && !item.slice(0, at).endsWith(`<figcaption>Write it to <code>${escape(file.writes)}</code></figcaption>`)) {
+        fail(`the step ${step.id} ${way.title} does not name ${file.writes} above ${file.path}`);
+      }
+    }
+  }
+}
+if (!failed) said("the quick start is its lede, then On a Mac and On NixOS, each step numbered in order with each file as it stands, and no script");
+failed ||= before;
+
+// No colour of its own, and a long line at phone width.
+const blocks = [...page.matchAll(/<(figure class="start-file"|pre)([^>]*)>/g)];
+if (blocks.some((m) => /\sstyle=/.test(m[2]))) fail("a step's block on the quick start carries a style of its own");
+const css = files("dist/_astro")
+  .filter((path) => path.endsWith(".css"))
+  .map((path) => readFileSync(join("dist/_astro", path), "utf8"))
+  .join("\n");
+const rule = css.match(/\.start-file pre\{([^}]*)\}/)?.[1] ?? "";
+const colours = [...rule.matchAll(/(?:^|;)(?:color|background|border)(?:-[a-z]+)?:([^;]*)/g)];
+if (!rule) fail("the built stylesheet gives a step's block no rule");
+else if (!/(?:^|;)overflow-x:auto(?:;|$)/.test(rule) || /white-space:pre-(?:wrap|line)/.test(rule)) {
+  fail(`a step's block does not scroll along its own lines: ${rule}`);
+} else if (colours.some((m) => /#|rgb|hsl|oklab|oklch/.test(m[1].replace(/var\([^)]*\)/g, "")))) {
+  fail(`a step's block carries a colour of its own: ${rule}`);
+} else said("a step's block takes the page's tokens and scrolls within itself");
+
+// Reached from the masthead.
+const pages = files("dist").filter((path) => path.endsWith(".html"));
+const unlinked = pages.filter(
+  (path) => !/<a href="\/boomdrive\/start\/"[^>]*>\s*Start\s*<\/a>/.test(readFileSync(join("dist", path), "utf8")),
+);
+if (unlinked.length === 0) said(`every page's masthead links /boomdrive/start/ as Start, ${pages.length} pages`);
+else fail(`${unlinked.join(", ")} link no Start at /boomdrive/start/`);
+
+// None of our drives or machines.
+const contexts = parse(readFileSync("src/content/contexts/contexts.yaml", "utf8")) as {
+  drives?: { name: string; machine: string }[];
+}[];
+const ours = [...new Set(contexts.flatMap((c) => (c.drives ?? []).flatMap((d) => [d.name, d.machine])))];
+const read = [
+  { where: "the built quick start", text: page },
+  ...steps.map((step) => ({ where: `src/content/start/${step.id}.md`, text: step.text })),
+  { where: "src/content/pages/start.md", text: readFileSync("src/content/pages/start.md", "utf8") },
+  ...held.map((path) => ({ where: `src/start/${path}`, text: readFileSync(join("src/start", path), "utf8") })),
+];
+const named = read.flatMap(({ where, text }) =>
+  ours.filter((name) => new RegExp(`\\b${name}\\b`).test(text)).map((name) => `${where} names ${name}`),
+);
+if (named.length === 0) said(`the quick start names none of our ${ours.length} drives and machines`);
+for (const one of named) fail(one);
+
+process.exit(failed ? 1 : 0);
+CHECK
+)
+bun -e "$quick_start" || status=1
+
 # A release where nothing was served: site-stop, which sluice runs after
 # every candidate's checks, with a state folder that holds no port, exits
 # zero.

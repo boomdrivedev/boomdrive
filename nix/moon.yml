@@ -30,9 +30,10 @@ tasks:
     inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
-  # The evaluated tests of the change's specs, under nix/tests.
+  # The evaluated tests of the change's specs, under nix/tests. The quick
+  # start's steps, site/src/start, are read by their paths.
   test:
     command: 'sh nix/check.sh test'
-    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/README.md']
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/README.md', '/site/src/start/**/*']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
