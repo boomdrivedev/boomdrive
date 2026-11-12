@@ -120,9 +120,21 @@ let
       inherit (drive) config;
       file = builtins.fromTOML (render (fileOf config.services.boomdrive));
       crewTable = file.control_plane.crew or null;
-      partitions = map (partition: {
-        inherit (partition) label state machine;
-      }) config.services.crew.settings.partitions;
+      crewDrive = lib.mapAttrs (_: drive: {
+        inherit (drive) state machine blueprints;
+      }) config.services.crew.settings.drives;
+      flume = config.services.flume.settings;
+      repository = "your-github-name/your-repository";
+      # The drive's step as its file stands, called with no packages: what
+      # it sets itself, which gives Flume nothing (record 0034, point 2;
+      # record 0028).
+      written = import (start + "/nixos/boomdrive.nix") {
+        pkgs = {
+          git = null;
+          gh = null;
+          nodejs = null;
+        };
+      };
       holdsEach =
         setting: wanted:
         t.expect (lib.all (value: builtins.elem value (config.nix.settings.${setting} or [ ])) wanted)
@@ -154,14 +166,30 @@ let
       }
     ) "the runner's file's crew table is ${builtins.toJSON crewTable}"
     ++ t.expect (
-      partitions == [
-        {
-          label = "home";
+      crewDrive == {
+        home = {
           state = "your-github-name/drive-state";
           machine = "your-host";
-        }
-      ]
-    ) "crew's partitions are ${builtins.toJSON partitions}"
+          blueprints = [ repository ];
+        };
+      }
+    ) "crew's drives are ${builtins.toJSON crewDrive}"
+    ++
+      t.expect (!(written.services ? flume))
+        "nixos/boomdrive.nix writes Flume's settings itself: ${builtins.toJSON (builtins.attrNames written.services.flume)}"
+    ++
+      t.expect ((flume.streams or null) != null && flume.streams ? home)
+        "the set gives Flume no stream home: ${
+          builtins.toJSON (lib.attrNames (if flume.streams == null then { } else flume.streams))
+        }"
+    ++
+      t.expect ((flume.repos.${repository}.stream or null) == "home")
+        "the set gives Flume ${repository}'s stream as ${
+          toString (flume.repos.${repository}.stream or "none")
+        }, not home"
+    ++ t.expect (
+      (config.services.flume.sources.crew or null) != null
+    ) "the set gives Flume no source crew"
     ++
       t.expect ((config.services.flume.settings.host.multiplexer or null) == "herdr")
         "Flume's host multiplexer is ${
@@ -169,6 +197,17 @@ let
         }, not herdr"
     ++ holdsEach "extra-substituters" t.flake.nixConfig.extra-substituters
     ++ holdsEach "extra-trusted-public-keys" t.flake.nixConfig.extra-trusted-public-keys;
+  # The Mac's source of crew's: its keys, read as TOML, are those the set's
+  # module gives Flume as the source `crew` on the NixOS drive's system,
+  # so the Mac's file and the module never drift (design Decision 8;
+  # record 0034, point 2).
+  macCrewSource =
+    let
+      file = builtins.fromTOML (builtins.readFile (start + "/mac/crew-source.toml"));
+      module = drive.config.services.flume.sources.crew or null;
+    in
+    t.expect (file == module)
+      "mac/crew-source.toml is ${builtins.toJSON file}, not the set's source crew ${builtins.toJSON module}";
   # NixOS's switch: the folder the flake step writes to and the
   # configuration it gives, and the drive's system's derivation, which
   # evaluates and is never built (design Decision 8; Risk 6). nixosOf's
@@ -193,4 +232,5 @@ in
   "quick start: NixOS's flake" = nixosFlake;
   "quick start: NixOS's drive" = nixosDrive;
   "quick start: NixOS's switch" = nixosSwitch;
+  "quick start: the Mac's crew source" = macCrewSource;
 }

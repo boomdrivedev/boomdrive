@@ -130,12 +130,12 @@ The NixOS flake step SHALL give `/etc/nixos/flake.nix`, whose `boomdrive` input 
 
 ### Requirement: NixOS's drive file gives the drive to the runner, crew and Flume
 
-The NixOS drive step SHALL give `/etc/nixos/boomdrive.nix`, a module that trusts the family's cache as the flake's `nixConfig` names it, installs `git`, `gh` and `nodejs`, and sets the account `me`'s drive `home` keeping `your-github-name/your-repository` under crew, with crew's host and the drive's partition naming `your-host` and `your-github-name/drive-state`.
+The NixOS drive step SHALL give `/etc/nixos/boomdrive.nix`, a module that trusts the family's cache as the flake's `nixConfig` names it, installs `git`, `gh` and `nodejs`, and sets the account `me`'s drive `home` keeping `your-github-name/your-repository` under crew, with crew's host and crew's drive `home` naming `your-host` and `your-github-name/drive-state`.
 
 #### Scenario: The drive on NixOS
 
 - **WHEN** `nix:test` evaluates a system of `x86_64-linux` with the user `you`, the set's NixOS module and `site/src/start/nixos/boomdrive.nix`
-- **THEN** the runner's file names the account `me`'s drive `home` keeping `your-github-name/your-repository` under crew with host `your-host`, crew's partition `home` names `your-github-name/drive-state`, Flume's host multiplexer is `herdr`, Flume is given the stream `home` with the repository's work in it and crew's source, and the cache and its key are the flake's `nixConfig`'s
+- **THEN** the runner's file names the account `me`'s drive `home` keeping `your-github-name/your-repository` under crew with host `your-host`, crew's drive `home` names `your-github-name/drive-state`, Flume's host multiplexer is `herdr`, Flume is given the stream `home` with the repository's work in it and crew's source, and the cache and its key are the flake's `nixConfig`'s
 
 ### Requirement: NixOS's switch builds the configuration the flake gives
 
