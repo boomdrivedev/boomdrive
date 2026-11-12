@@ -34,7 +34,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:agentplot/sluice/v0.86.0";
+      url = "github:boomdrivedev/sluice/v0.86.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -42,7 +42,7 @@
       };
     };
     flume = {
-      url = "github:agentplot/flume/v0.21.2";
+      url = "github:boomdrivedev/flume/v0.21.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -50,7 +50,7 @@
       };
     };
     crew = {
-      url = "github:agentplot/crew/v0.59.0";
+      url = "github:boomdrivedev/crew/v0.59.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
