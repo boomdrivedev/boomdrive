@@ -5,19 +5,24 @@
 # scratch HOME, the module's file in a store of its own, and stubs of
 # systemctl and ps first on PATH that record their calls, and of id. The
 # stubs answer from the case's folder: id the user running it, alice
-# unless `user` says another; systemctl's show the unit's MainPID, 0
-# unless `MainPID` says another; and ps the command line in `args`. The
-# plugins' cases add a stub of herdr, run by its path as the modules run
-# it, that records its arguments and the HERDR_* variables it sees, and
-# refuses the plugin `refuse` names, saying `manifest not found`. It
-# prints each failure as one line, nix: <case>: <what>, and nothing where
-# every case holds.
+# unless `user` says another, and its uid, the system's own unless `uid`
+# says another; systemctl's show the unit's MainPID, 0 unless `MainPID`
+# says another; and ps the command line in `args`. The plugins' cases add
+# a stub of herdr, run by its path as the modules run it, that records its
+# arguments and the HERDR_* variables it sees, and refuses the plugin
+# `refuse` names, saying `manifest not found`. The signing's cases add
+# stubs of security, codesign and openssl (design Decision 7 of the change
+# a-new-build-keeps-the-runners-macos-access), described at freshSign, and
+# a keychain that is a word they take, never a keychain. It prints each
+# failure as one line, nix: <case>: <what>, and nothing where every case
+# holds.
 set -eu
 
 activate=$(cd "$(dirname "$0")/../modules" && pwd)/activate.sh
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 cases=0
+uid=$(id -u)
 
 # A case's folder: its home, the module's file, the stubs and their calls.
 fresh() {
@@ -32,6 +37,7 @@ fresh() {
   mkdir -p "$home" "$dir/store" "$dir/bin"
   echo 'repositories = []' >"$file"
   echo alice >"$dir/user"
+  echo "$uid" >"$dir/uid"
   echo 0 >"$dir/MainPID"
   : >"$dir/args"
   cat >"$dir/bin/systemctl" <<STUB
@@ -46,7 +52,10 @@ cat "$dir/args"
 STUB
   cat >"$dir/bin/id" <<STUB
 #!/bin/sh
-cat "$dir/user"
+case \${1:-} in
+-u) cat "$dir/uid" ;;
+*) cat "$dir/user" ;;
+esac
 STUB
   chmod +x "$dir/bin/systemctl" "$dir/bin/ps" "$dir/bin/id"
 }
@@ -55,7 +64,8 @@ STUB
 # error.
 run() {
   status=0
-  HOME=$home PATH=$dir/bin:$PATH sh "$activate" "$@" >"$dir/out" 2>"$dir/err" || status=$?
+  mkdir -p "$dir/tmp"
+  HOME=$home TMPDIR=$dir/tmp PATH=$dir/bin:$PATH sh "$activate" "$@" >"$dir/out" 2>"$dir/err" || status=$?
   out=$(cat "$dir/out")
   err=$(cat "$dir/err")
 }
@@ -295,3 +305,137 @@ freshPlugins
 run plugins "$herdr"
 expect "$named" "plugins with no plugin exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "plugins with no plugin called $(called)" missing "$calls"
+
+# The identities the signing's cases name: the one security's import makes,
+# one the keychain holds already, and another.
+made=5E4D3C2B1A0F9E8D7C6B5A4F3E2D1C0B9A8F7E6D
+held=0F1E2D3C4B5A69788796A5B4C3D2E1F00F1E2D3C
+other=9A8B7C6D5E4F30211203F4E5D6C7B8A99A8B7C6D
+
+# A case of the signing: the keychain, a word the stubs take; the folder,
+# with a space in its path as on macOS, and not made yet; the program, a
+# build of the runner in the case's store; and stubs of security, codesign
+# and openssl, which record their calls. security's find-identity lists the
+# lines of `identities` in its own form. Its import refuses with the words
+# of `refuse-import` where that is there, and adds the identity $made to
+# `identities` once it has imported both the key and the certificate
+# openssl wrote. codesign's --verify passes where the file holds `signed
+# <SHA-1>` of its requirement's leaf, and its --force --sign appends
+# `signed <SHA-1>` to the file, or refuses with the words of `refuse-sign`
+# where that is there. openssl writes `key` to its -keyout file and `cert`
+# to its -out file, and records their folder in `openssl-folder` and its
+# configuration in `openssl.cnf`.
+freshSign() {
+  fresh
+  keychain=$dir/keychain
+  folder="$dir/Application Support/Boomdrive"
+  copy=$folder/boomdrive
+  source=$folder/boomdrive.source
+  mkdir -p "$(dirname "$folder")" "$(dirname "$program")"
+  echo "the runner" >"$program"
+  : >"$dir/identities"
+  echo "$made" >"$dir/made"
+  cat >"$dir/bin/security" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "security $*" >>"$here/calls"
+case $1 in
+find-identity)
+  echo 'Policy: Code Signing'
+  echo '  Matching identities'
+  cat "$here/identities"
+  echo "     $(wc -l <"$here/identities" | tr -d ' ') identities found"
+  echo
+  echo '  Valid identities only'
+  echo '     0 valid identities found'
+  ;;
+import)
+  if [ -e "$here/refuse-import" ]; then
+    cat "$here/refuse-import" >&2
+    exit 1
+  fi
+  case $2 in
+  */key.pem) [ "$(cat "$2")" != key ] || : >"$here/imported-key" ;;
+  */cert.pem) [ "$(cat "$2")" != cert ] || : >"$here/imported-cert" ;;
+  esac
+  if [ -e "$here/imported-key" ] && [ -e "$here/imported-cert" ]; then
+    echo "  1) $(cat "$here/made") \"Boomdrive runner\" (CSSMERR_TP_NOT_TRUSTED)" >>"$here/identities"
+  fi
+  ;;
+*) exit 64 ;;
+esac
+STUB
+  cat >"$dir/bin/codesign" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "codesign $*" >>"$here/calls"
+for file; do :; done
+case $1 in
+--verify)
+  sha=${3#*H\"}
+  sha=${sha%\"*}
+  grep -qx "signed $sha" "$file" 2>/dev/null
+  ;;
+--force)
+  if [ -e "$here/refuse-sign" ]; then
+    cat "$here/refuse-sign" >&2
+    exit 1
+  fi
+  echo "signed $3" >>"$file"
+  ;;
+*) exit 64 ;;
+esac
+STUB
+  cat >"$dir/bin/openssl" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "openssl $*" >>"$here/calls"
+while [ $# -gt 0 ]; do
+  case $1 in
+  -config) config=$2 ;;
+  -keyout) key=$2 ;;
+  -out) cert=$2 ;;
+  esac
+  shift
+done
+echo key >"$key"
+echo cert >"$cert"
+dirname "$key" >"$here/openssl-folder"
+cp "$config" "$here/openssl.cnf"
+STUB
+  chmod +x "$dir/bin/security" "$dir/bin/codesign" "$dir/bin/openssl"
+}
+
+# security's line of the identity `$2` named `$3`, numbered `$1`.
+identity() {
+  echo "  $1) $2 \"$3\" (CSSMERR_TP_NOT_TRUSTED)" >>"$dir/identities"
+}
+
+# The folder `$1` holds nothing.
+empty() {
+  [ -z "$(ls -A "$1")" ]
+}
+
+named="A folder another user can write"
+for write in g+w o+w; do
+  freshSign
+  mkdir -m 0755 "$folder"
+  chmod "$write" "$folder"
+  run sign "$keychain" "$folder" "$program"
+  expect "$named" "sign into a folder $write exits $status, not 1" [ "$status" -eq 1 ]
+  expect "$named" "sign into a folder $write says \"$err\", not one line naming $folder" \
+    [ "$err" = "boomdrive: $folder is writable by a user other than alice: signed nothing" ]
+  expect "$named" "sign into a folder $write says \"$out\"" [ -z "$out" ]
+  expect "$named" "sign into a folder $write called $(called)" missing "$calls"
+  expect "$named" "sign into a folder $write wrote $(ls -A "$folder")" empty "$folder"
+done
+
+freshSign
+mkdir -m 0755 "$folder"
+echo $((uid + 1)) >"$dir/uid"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign into another user's folder exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign into another user's folder says \"$err\", not one line naming $folder" \
+  [ "$err" = "boomdrive: $folder is writable by a user other than alice: signed nothing" ]
+expect "$named" "sign into another user's folder called $(called)" missing "$calls"
+expect "$named" "sign into another user's folder wrote $(ls -A "$folder")" empty "$folder"
