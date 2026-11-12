@@ -439,3 +439,71 @@ expect "$named" "sign into another user's folder says \"$err\", not one line nam
   [ "$err" = "boomdrive: $folder is writable by a user other than alice: signed nothing" ]
 expect "$named" "sign into another user's folder called $(called)" missing "$calls"
 expect "$named" "sign into another user's folder wrote $(ls -A "$folder")" empty "$folder"
+
+# The stubs' calls of `$1`, on one line each.
+calledOf() {
+  grep "^$1 " "$calls" 2>/dev/null || true
+}
+# The first line of `$1`.
+first() {
+  printf '%s\n' "$1" | sed -n 1p
+}
+# No file under the case's folder reads the key or the certificate openssl
+# wrote.
+keyless() {
+  [ -z "$(find "$dir" -type f -exec grep -lx -e key -e cert {} +)" ]
+}
+
+named="No identity yet"
+freshSign
+identity 1 "$other" "Another signer"
+run sign "$keychain" "$folder" "$program"
+madeIn=$(cat "$dir/openssl-folder" 2>/dev/null || true)
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign read the identities by $(calledOf security), not find-identity -p codesigning $keychain" \
+  grep -qxF "security find-identity -p codesigning $keychain" "$calls"
+expect "$named" "sign ran $(calledOf openssl), not openssl req for a self-signed key and certificate in a folder of its own" \
+  [ "$(calledOf openssl)" = "openssl req -x509 -newkey rsa:2048 -nodes -days 7300 -config $madeIn/openssl.cnf -keyout $madeIn/key.pem -out $madeIn/cert.pem" ]
+expect "$named" "sign imported by $(calledOf 'security import'), not the key with -x -T /usr/bin/codesign, then the certificate" \
+  [ "$(calledOf 'security import')" = "security import $madeIn/key.pem -k $keychain -x -T /usr/bin/codesign
+security import $madeIn/cert.pem -k $keychain" ]
+for line in 'prompt = no' 'CN = Boomdrive runner' 'basicConstraints = critical,CA:false' \
+  'keyUsage = critical,digitalSignature' 'extendedKeyUsage = critical,codeSigning'; do
+  expect "$named" "openssl's configuration holds no line $line" grep -qxF "$line" "$dir/openssl.cnf"
+done
+expect "$named" "sign left the folder openssl wrote in, $madeIn" missing "$madeIn"
+expect "$named" "sign says \"$out\", not first that it made the identity $made" \
+  [ "$(first "$out")" = "boomdrive: made the code-signing identity Boomdrive runner, $made, in $keychain" ]
+
+named="No key in a file"
+expect "$named" "the step's folder for openssl was $madeIn, not one in the case's TMPDIR" \
+  names "$madeIn" "$dir/tmp/" ""
+expect "$named" "a file holds the key or the certificate: $(find "$dir" -type f -exec grep -lx -e key -e cert {} +)" keyless
+
+named="An identity that cannot be made"
+freshSign
+printf 'SecKeychainItemImport: Write permissions error.\nsecurity: import failed\n' >"$dir/refuse-import"
+run sign "$keychain" "$folder" "$program"
+madeIn=$(cat "$dir/openssl-folder" 2>/dev/null || true)
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line with the keychain's words" \
+  [ "$err" = "boomdrive: could not make the code-signing identity in $keychain: SecKeychainItemImport: Write permissions error. security: import failed" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "sign left the folder openssl wrote in, $madeIn" missing "$madeIn"
+expect "$named" "sign signed by $(calledOf codesign)" [ -z "$(calledOf codesign)" ]
+expect "$named" "sign wrote $(ls -A "$folder")" empty "$folder"
+expect "$named" "a file holds the key or the certificate: $(find "$dir" -type f -exec grep -lx -e key -e cert {} +)" keyless
+
+named="Two identities of the name"
+freshSign
+identity 1 "$held" "Boomdrive runner"
+identity 2 "$other" "Boomdrive runner"
+identity 3 "$held" "Boomdrive runner"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line naming each identity's SHA-1" \
+  [ "$err" = "boomdrive: $keychain holds 2 identities named Boomdrive runner, $held, $other: signed nothing; remove all but one" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "sign ran $(calledOf openssl)$(calledOf 'security import')$(calledOf codesign)" \
+  [ -z "$(calledOf openssl)$(calledOf 'security import')$(calledOf codesign)" ]
+expect "$named" "sign wrote $(ls -A "$folder")" empty "$folder"

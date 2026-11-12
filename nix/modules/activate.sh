@@ -38,8 +38,14 @@
 # a-new-build-keeps-the-runners-macos-access). It makes <folder> with mode
 # 0755 where it is not there, and goes on only where <folder> is owned by
 # the user it runs as and no other user can write it: otherwise it makes
-# no identity, signs nothing, writes nothing there and fails. Each line of
-# what it made goes to standard output, and a refusal to standard error.
+# no identity, signs nothing, writes nothing there and fails. It finds the
+# host's code-signing identity, Boomdrive runner, in <keychain>. Where the
+# keychain holds none, it makes one: a key and a self-signed certificate
+# for code signing, written in a folder only it reads, which goes whatever
+# happens, and imported, the key non-extractable and usable by
+# /usr/bin/codesign alone. Where the keychain holds two or more, it signs
+# nothing and fails, naming each. Each line of what it made goes to
+# standard output, and a refusal to standard error.
 set -eu
 
 usage() {
@@ -118,6 +124,52 @@ plugins() {
   done
 }
 
+# The distinct SHA-1s of the identities for code signing named Boomdrive
+# runner in the keychain `$1`, in `shas`, and how many there are, in
+# `count` (design Decision 2).
+lookup() {
+  if ! listed=$(security find-identity -p codesigning "$1" 2>&1); then
+    echo "boomdrive: could not read the identities in $1: $(oneline "$listed")" >&2
+    exit 1
+  fi
+  shas=$(printf '%s\n' "$listed" | awk -v name='"Boomdrive runner"' 'index($0, name) { print $2 }' | sort -u)
+  count=$(printf '%s\n' "$shas" | awk 'NF { n++ } END { print n + 0 }')
+}
+
+# A key and a self-signed certificate for code signing named Boomdrive
+# runner, made in a folder of its own that only this user reads and that
+# goes whatever happens, then imported into the keychain `$1`, the key
+# non-extractable and usable by codesign alone (design Decision 2).
+identity() (
+  keychain=$1
+  umask 077
+  # Named under TMPDIR, which macOS's mktemp -d alone does not read.
+  made=$(mktemp -d "${TMPDIR:-/tmp}/boomdrive.XXXXXXXX")
+  trap 'rm -rf "$made"' EXIT
+  trap 'exit 1' HUP INT TERM
+  cat >"$made/openssl.cnf" <<'CONFIG'
+[req]
+prompt = no
+distinguished_name = name
+x509_extensions = extensions
+
+[name]
+CN = Boomdrive runner
+
+[extensions]
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature
+extendedKeyUsage = critical,codeSigning
+CONFIG
+  if ! words=$(openssl req -x509 -newkey rsa:2048 -nodes -days 7300 \
+    -config "$made/openssl.cnf" -keyout "$made/key.pem" -out "$made/cert.pem" 2>&1) ||
+    ! words=$(security import "$made/key.pem" -k "$keychain" -x -T /usr/bin/codesign 2>&1) ||
+    ! words=$(security import "$made/cert.pem" -k "$keychain" 2>&1); then
+    echo "boomdrive: could not make the code-signing identity in $keychain: $(oneline "$words")" >&2
+    exit 1
+  fi
+)
+
 sign() {
   keychain=$1
   folder=$2
@@ -141,6 +193,27 @@ sign() {
   esac
   if [ "$shut" = no ] || [ "$owner" != "$(id -u)" ]; then
     echo "boomdrive: $folder is writable by a user other than $(id -un): signed nothing" >&2
+    exit 1
+  fi
+
+  # The identity: the one the keychain holds, or one made where it holds
+  # none. A listing it cannot read makes none, so a second is never made
+  # beside one it could not see.
+  lookup "$keychain"
+  if [ "$count" -eq 0 ]; then
+    identity "$keychain"
+    lookup "$keychain"
+    if [ "$count" -eq 0 ]; then
+      echo "boomdrive: could not make the code-signing identity in $keychain: it lists none named Boomdrive runner after the import" >&2
+      exit 1
+    fi
+    if [ "$count" -eq 1 ]; then
+      echo "boomdrive: made the code-signing identity Boomdrive runner, $shas, in $keychain"
+    fi
+  fi
+  if [ "$count" -gt 1 ]; then
+    each=$(printf '%s\n' "$shas" | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
+    echo "boomdrive: $keychain holds $count identities named Boomdrive runner, $each: signed nothing; remove all but one" >&2
     exit 1
   fi
 }
