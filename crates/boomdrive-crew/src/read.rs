@@ -183,12 +183,14 @@ pub const FILES: [&str; 5] = [
 
 impl Store {
     /// The state repository at `url` through the bare cache `cache`, its
-    /// listing stopped at [`boomdrive_bounded::TRY_FOR`] (record 0042).
+    /// listing stopped at [`weir_bounded::TRY_FOR`], the limit weir-branch
+    /// stops each try of its fetch and push at too (record 0042 as amended
+    /// on 2026-11-11).
     pub fn new(cache: PathBuf, url: String) -> Store {
         Store {
             cache,
             url,
-            try_for: boomdrive_bounded::TRY_FOR,
+            try_for: weir_bounded::TRY_FOR,
         }
     }
 
@@ -271,12 +273,12 @@ impl Store {
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
             .stdin(Stdio::null());
-        let output = boomdrive_bounded::output(&mut command, self.try_for)
+        let output = weir_bounded::output(&mut command, self.try_for)
             .map_err(|error| format!("git could not be run: {error}"))?;
         let said = String::from_utf8_lossy(&output.stderr);
         let last = said.lines().rfind(|line| !line.trim().is_empty());
         if output.stopped {
-            let stopped = boomdrive_bounded::stopped("git ls-remote", &self.url, self.try_for);
+            let stopped = weir_bounded::stopped("git ls-remote", &self.url, self.try_for);
             return Err(match last {
                 Some(line) => format!("{}; {stopped}", line.trim()),
                 None => stopped,

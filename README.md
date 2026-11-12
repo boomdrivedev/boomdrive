@@ -700,7 +700,11 @@ helper. crew's implementation reads `requests.rec`, `roles.rec`,
 `<data>/control/crew/`, and lists the runner branches,
 `<label>/runner/*`, by `git ls-remote`. A listing still going at thirty
 seconds is stopped with everything it started, as a fetch is, and the
-partition is named unread and pulled again at the next pull. It answers
+partition is named unread and pulled again at the next pull. weir-branch,
+which reads each branch and writes the runner's, stops each try of its
+fetch, listing and push at the same limit: a stopped read leaves the
+partition unread, and a stopped write its report unsent, as any read or
+write that fails. It answers
 on the runner's branch, `<label>/runner/<host>`, in crew's formats:
 `runner.rec`, `answers.rec`, `places.rec` and `repositories.rec`, and,
 once a preview is answered there, `previews.rec`,
@@ -833,7 +837,7 @@ The rules every change keeps are `docs/architecture/core.md`; the
 decisions behind them are `docs/adr/`. The checks are moon tasks, run
 in the devenv shell: `devenv shell -- moon run :#check-fast`. Each crate
 is a moon project of its own, `boomdrive`, `boomdrive-control`,
-`boomdrive-crew`, `boomdrive-hosted` and `boomdrive-bounded`, beside
+`boomdrive-crew` and `boomdrive-hosted`, beside
 `nix`, which holds the flake, its modules and the cache's workflow,
 `site`, which holds the site, `site/`, and the workflow that publishes
 it, and `root`, which holds what spans the tree. The site's own rules are

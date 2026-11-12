@@ -107,10 +107,9 @@ gate's checks, and while iterating `sluice exec main -- moon run
 <project>:<task>`. The projects are those `.moon/workspace.yml` lists:
 `boomdrive` (`crates/boomdrive`), `boomdrive-control`
 (`crates/boomdrive-control`), `boomdrive-crew` (`crates/boomdrive-crew`),
-`boomdrive-hosted` (`crates/boomdrive-hosted`), `boomdrive-bounded`
-(`crates/boomdrive-bounded`), `nix` (`nix/`, which owns the flake and
-`.github/workflows/cache.yml`), `site` (`site/`, which owns
-`.github/workflows/pages.yml`) and `root`. A quick, narrow call,
+`boomdrive-hosted` (`crates/boomdrive-hosted`), `nix` (`nix/`, which
+owns the flake and `.github/workflows/cache.yml`), `site` (`site/`,
+which owns `.github/workflows/pages.yml`) and `root`. A quick, narrow call,
 `cargo check` or one unit test, is fine to run directly.
 `devenv shell -- moon run :#check-fast` runs the fast layer.
 
