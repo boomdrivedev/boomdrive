@@ -40,7 +40,11 @@
 # writable by its owner, 0755 where the source runs and 0644 where it does
 # not, by a temporary file beside it renamed over its path, and only where
 # no regular file there has the same bytes and mode. A link standing there
-# is replaced. It makes <folder> with mode 0700 where it is missing, and
+# is replaced. The wake mod's mod/hooks/wake.js, mod/hooks/register.js and
+# mod/hooks/hooks.json go first, in that order, as Pending You's `init`
+# writes them, so a session that reloads the mod finds the modules its
+# hooks name (record 0044, point 5); then the other files by their paths.
+# It makes <folder> with mode 0700 where it is missing, and
 # each folder under it with 0755. It reads, writes and removes nothing else
 # under <folder>: the sign-ins, the computer's key, the cards and the state
 # are the command line's. It says one line naming each file it wrote, and
@@ -164,7 +168,14 @@ pendingyou() {
       return
     fi
   fi
-  paths=$(cd "$source" && find . -type f | sed 's|^\./||' | sort)
+  all=$(cd "$source" && find . -type f | sed 's|^\./||' | sort)
+  paths=$(
+    for first in mod/hooks/wake.js mod/hooks/register.js mod/hooks/hooks.json; do
+      printf '%s\n' "$all" | grep -Fx -- "$first" || true
+    done
+    printf '%s\n' "$all" |
+      grep -Fxv -e mod/hooks/wake.js -e mod/hooks/register.js -e mod/hooks/hooks.json || true
+  )
   while IFS= read -r path; do
     [ -n "$path" ] || continue
     from=$source/$path

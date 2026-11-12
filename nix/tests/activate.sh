@@ -304,15 +304,25 @@ freshFolder() {
   fresh
   source=$dir/store/pendingyou-folder
   folder=$home/.config/pendingyou
-  mkdir -p "$source/bin" "$source/signin"
+  mkdir -p "$source/bin" "$source/signin" "$source/mod/hooks" "$source/mod/.claude-plugin"
   printf '#!/bin/sh\nexec pendingyou "$@"\n' >"$source/bin/pendingyou-hook"
   printf '#!/bin/sh\nexec pendingyou mcp-headers "$@"\n' >"$source/bin/pendingyou-mcp-headers"
   echo '{"version":1}' >"$source/claude-code.json"
   echo '{"mcpServers":{}}' >"$source/signin/.claude.json"
   chmod 0555 "$source/bin/pendingyou-hook" "$source/bin/pendingyou-mcp-headers"
-  chmod 0444 "$source/claude-code.json" "$source/signin/.claude.json"
+  echo '{"name":"pendingyou-wake"}' >"$source/mod/.claude-plugin/plugin.json"
+  echo 'The wake mod.' >"$source/mod/README.md"
+  echo '{"modules":["./register.js"]}' >"$source/mod/hooks/hooks.json"
+  echo 'import "./wake.js";' >"$source/mod/hooks/register.js"
+  echo 'export const wake = 1;' >"$source/mod/hooks/wake.js"
+  chmod 0444 "$source/claude-code.json" "$source/signin/.claude.json" \
+    "$source/mod/.claude-plugin/plugin.json" "$source/mod/README.md" \
+    "$source/mod/hooks/hooks.json" "$source/mod/hooks/register.js" "$source/mod/hooks/wake.js"
 }
-fourFiles="bin/pendingyou-hook bin/pendingyou-mcp-headers claude-code.json signin/.claude.json"
+modFiles="mod/hooks/wake.js mod/hooks/register.js mod/hooks/hooks.json mod/.claude-plugin/plugin.json mod/README.md"
+# Every file of the source, in the order the step writes them: the wake
+# mod's modules, then its hooks, then the rest by their paths.
+allFiles="mod/hooks/wake.js mod/hooks/register.js mod/hooks/hooks.json bin/pendingyou-hook bin/pendingyou-mcp-headers claude-code.json mod/.claude-plugin/plugin.json mod/README.md signin/.claude.json"
 
 # `$1` has the mode `$2`, as find reads it.
 moded() {
@@ -322,9 +332,9 @@ moded() {
 written() {
   [ -f "$folder/$1" ] && [ ! -L "$folder/$1" ] && cmp -s "$source/$1" "$folder/$1"
 }
-# The line the step says for each of the four files written.
+# The line the step says for each file written, in order.
 wroteAll() {
-  for path in $fourFiles; do
+  for path in $allFiles; do
     echo "boomdrive: wrote $folder/$path"
   done
 }
@@ -334,8 +344,11 @@ freshFolder
 run pendingyou "$source" "$folder"
 expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
 expect "$named" "$folder is not made with mode 0700" moded "$folder" 0700
-for path in $fourFiles; do
+for path in $allFiles; do
   expect "$named" "$folder/$path is not a regular file holding its source" written "$path"
+done
+for path in $modFiles; do
+  expect "$named" "the wake mod's $path is not 0644" moded "$folder/$path" 0644
 done
 expect "$named" "the launchers are not 0755" moded "$folder/bin/pendingyou-hook" 0755
 expect "$named" "the helper is not 0755" moded "$folder/bin/pendingyou-mcp-headers" 0755
@@ -347,14 +360,23 @@ expect "$named" "pendingyou left a temporary file: $(find "$folder" -name '*.???
   [ -z "$(find "$folder" -name '*.??????')" ]
 quiet "$named"
 
+named="The wake mod's order"
+freshFolder
+run pendingyou "$source" "$folder"
+first=$(printf '%s\n' "$out" | sed -n '1,3p')
+expect "$named" "pendingyou wrote \"$first\" first, not the wake mod's wake.js, register.js and hooks.json in that order" \
+  [ "$first" = "boomdrive: wrote $folder/mod/hooks/wake.js
+boomdrive: wrote $folder/mod/hooks/register.js
+boomdrive: wrote $folder/mod/hooks/hooks.json" ]
+
 named="Nothing differs"
 freshFolder
 run pendingyou "$source" "$folder"
-before=$(ls -li "$folder/bin" "$folder/signin" "$folder")
+before=$(ls -li "$folder/bin" "$folder/signin" "$folder/mod/hooks" "$folder")
 run pendingyou "$source" "$folder"
 expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
 expect "$named" "pendingyou says \"$out$err\" again" [ -z "$out$err" ]
-expect "$named" "pendingyou wrote a file again" [ "$(ls -li "$folder/bin" "$folder/signin" "$folder")" = "$before" ]
+expect "$named" "pendingyou wrote a file again" [ "$(ls -li "$folder/bin" "$folder/signin" "$folder/mod/hooks" "$folder")" = "$before" ]
 
 named="A file that differs"
 freshFolder
@@ -379,16 +401,16 @@ echo '{}' >"$folder/permission-cards/card.json"
 echo 'own' >"$folder/bin/own-tool"
 before=$(cd "$folder" && find . -type f -not -path ./bin/pendingyou-hook \
   -not -path ./bin/pendingyou-mcp-headers -not -path ./claude-code.json \
-  -not -path ./signin/.claude.json | sort | xargs cat)
+  -not -path ./signin/.claude.json -not -path './mod/*' | sort | xargs cat)
 run pendingyou "$source" "$folder"
 expect "$named" "pendingyou exits $status: $err" [ "$status" -eq 0 ]
 expect "$named" "pendingyou changed the command line's files" \
   [ "$(cd "$folder" && find . -type f -not -path ./bin/pendingyou-hook \
     -not -path ./bin/pendingyou-mcp-headers -not -path ./claude-code.json \
-    -not -path ./signin/.claude.json | sort | xargs cat)" = "$before" ]
+    -not -path ./signin/.claude.json -not -path './mod/*' | sort | xargs cat)" = "$before" ]
 expect "$named" "pendingyou removed the permission card" holds "$folder/permission-cards/card.json" '{}'
 expect "$named" "pendingyou changed the folder's own mode" moded "$folder" 0700
-for path in $fourFiles; do
+for path in $allFiles; do
   expect "$named" "$folder/$path is not written beside the command line's" written "$path"
 done
 
@@ -414,7 +436,10 @@ expect "$named" "pendingyou said \"$err\", not one line naming $folder/bin/pendi
   [ "$(printf '%s\n' "$err" | wc -l | tr -d ' ')" = 1 ]
 expect "$named" "pendingyou said \"$err\", not one line naming $folder/bin/pendingyou-hook" \
   names "$err" "did not write" "$folder/bin/pendingyou-hook"
-expect "$named" "pendingyou wrote the files after the one it could not: $out" [ -z "$out" ]
+expect "$named" "pendingyou wrote \"$out\", not the wake mod's modules and hooks before the file it could not write and none after it" \
+  [ "$out" = "boomdrive: wrote $folder/mod/hooks/wake.js
+boomdrive: wrote $folder/mod/hooks/register.js
+boomdrive: wrote $folder/mod/hooks/hooks.json" ]
 
 named="pendingyou's usage"
 freshFolder
