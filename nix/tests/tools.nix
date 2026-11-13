@@ -290,8 +290,10 @@ let
   # alone (design Decision 5): the Boomdrive module adds the runner's own
   # link, and on nix-darwin Pending You's folder and herdr's plugins' links
   # (design Decisions 7 and 8 of the change
-  # crews-companions-come-with-the-flake), and nothing else to the tools'
-  # activations.
+  # crews-companions-come-with-the-flake) and the managed telemetry
+  # document's step (design Decision 10 of the change
+  # every-claude-code-session-exports-to-the-hosts-collector), and nothing
+  # else to the tools' activations.
   render = import ../modules/toml.nix { inherit lib; };
   inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
@@ -304,7 +306,8 @@ let
   darwinText = darwinActivation darwinRunner;
   pluginsLink = line: lib.hasInfix "-activate.sh plugins " line;
   folderWrite = line: lib.hasInfix "-activate.sh pendingyou " line;
-  darwinRest = lib.filter (line: !pluginsLink line && !folderWrite line) (
+  managedStep = line: lib.hasInfix "-activate.sh managed " line;
+  darwinRest = lib.filter (line: !pluginsLink line && !folderWrite line && !managedStep line) (
     linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText)
   );
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
@@ -546,8 +549,11 @@ onEach "Each tool's options are its own flake's" ownOptions
       builtins.length (lib.filter pluginsLink (linesOf darwinText)) == 1
     ) "the nix-darwin activation with crew links herdr's plugins other than once: ${darwinText}"
     ++
+      t.expect (builtins.length (lib.filter managedStep (linesOf darwinText)) == 1)
+        "the nix-darwin activation with crew runs the managed telemetry document's step other than once: ${darwinText}"
+    ++
       t.expect (darwinRest == darwinTools)
-        "the nix-darwin activation less the runner's link, Pending You's folder and the plugins' is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
+        "the nix-darwin activation less the runner's link, Pending You's folder, the plugins' and the managed telemetry document's step is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
 
   "The tools' activation is their own on NixOS" =
     t.expect (

@@ -43,9 +43,14 @@ launcher, a menu-bar app on macOS and a desktop entry on Linux, with an
 entry for each drive, that runs `flume open`, and link the set's herdr
 plugins with herdr's own command. With the runner and crew, they
 install the companions and `pendingyou-signin`, link the companions'
-herdr plugins, and write Pending You's folder; none runs `claude` or
-writes into a Claude Code home. The flake gives a shell,
-`devShells.<system>.default`, that starts herdr (record 0023). The
+herdr plugins, and write Pending You's folder. With the runner and a
+collector the host names in `services.boomdrive.claude-code.telemetry`,
+they write Claude Code's managed telemetry document,
+`10-boomdrive-telemetry.json` in Claude Code's `managed-settings.d`,
+which every session on the host reads (record 0013 as amended on
+2026-11-12). None runs `claude` or writes into a Claude Code home. The
+flake gives a shell, `devShells.<system>.default`, that starts herdr
+(record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every
 system the flake gives and pushes it to the family's cache, `boomdrive`
 on Cachix, at each push to `main` and each tag `v*` (records 0020 and

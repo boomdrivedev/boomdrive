@@ -758,6 +758,50 @@ and the set's goes unused. worktrunk's shell integration, which lets
 worktrunk's own `wt config shell install`: neither the modules nor the
 shell install it.
 
+Every Claude Code session on the host exports Claude Code's own
+telemetry to the collector the host names, and nowhere else, whatever
+its account and its configuration home:
+
+```nix
+services.boomdrive.claude-code.telemetry.collector = "http://localhost:4318";
+```
+
+`services.boomdrive.claude-code.telemetry.collector` is an `http://`
+address on the host's own loopback, `localhost`, `127.0.0.1` or
+`[::1]`, with a port and at most a path, as sluice's `[telemetry]` names
+its own, and any other address fails evaluation. Beside it, `metrics`
+and `logs` are on by default, and `traces`, Claude Code's beta, is off
+unless named, `traces = true`. A collector with every signal off fails
+evaluation. The collector holds each backend's key and chooses where
+each signal goes: the set names no backend.
+
+With the runner on and a collector named, each switch writes
+`10-boomdrive-telemetry.json` into Claude Code's managed settings,
+`/Library/Application Support/ClaudeCode/managed-settings.d` on
+nix-darwin, as root, and `/etc/claude-code/managed-settings.d` on
+NixOS. Claude Code reads that folder in every session on the host, and
+no setting of a person's or a project's overrides a key it sets. The
+document holds telemetry keys alone. Each signal on goes to the
+collector's `/v1/<signal>`, OTLP over HTTP, protobuf, by its own
+endpoint, and each signal off is pinned `none`. It names no general
+endpoint, header or resource attribute. It pins off every setting that
+adds a session's words, its prompts, responses, tool details, tool
+content and API bodies, so a session exports none of its words. It pins
+on Claude Code's own session, account and repository attributes, so
+each session carries its account and the repository its `origin` names.
+
+Without a collector, or without the runner, nothing is written: NixOS
+drops the file it wrote, and each nix-darwin switch removes the set's
+own document and nothing else in the folder. The host's own
+`managed-settings.json` stays its own, and a document of the host's own
+named after the set's in Claude Code's order, such as
+`20-telemetry.json`, sets a key over the set's. Two things are beyond
+the document: a Claude Desktop session's launch environment, which wins
+for the variables it sets, and `workspace.host_paths`, which Claude Code
+adds only where that launch environment names the Desktop app's
+workspaces. A Claude Code that reads no `managed-settings.d` reads no
+document, and its sessions export nothing.
+
 The flake also gives a shell, its `PATH` the set's runner, Flume,
 sluice, crew, herdr, portless, worktrunk, Pending You, Plannotator and
 plannotator-tui, that starts herdr on entering and leaves you in the
