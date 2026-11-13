@@ -114,5 +114,64 @@ let
         "logs"
         "traces"
       ];
+
+  # The document's module function, which the modules read (Task notes
+  # 1.1).
+  claudeCode = import ../modules/claude-code.nix { inherit lib; };
+  collector = "http://localhost:4318";
+
+  # NixOS's entries of `/etc` under claude-code, by name.
+  etcName = "claude-code/managed-settings.d/10-boomdrive-telemetry.json";
+  claudeEtcOf =
+    evaluated:
+    lib.filterAttrs (
+      name: entry: lib.hasPrefix "claude-code" name || lib.hasPrefix "claude-code" entry.target
+    ) evaluated.config.environment.etc;
+  noEtc =
+    what: evaluated:
+    let
+      entries = builtins.attrNames (claudeEtcOf evaluated);
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (entries == [ ]) "${what} holds ${toString entries} under claude-code in /etc";
+
+  documentOnNixos =
+    let
+      evaluated = named t.nixosSystem collector { };
+      entries = claudeEtcOf evaluated;
+      entry = entries.${etcName} or null;
+      expected = builtins.toJSON (
+        claudeCode.documentOf evaluated.config.services.boomdrive.claude-code.telemetry
+      );
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a NixOS system naming a collector fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (builtins.attrNames entries == [ etcName ])
+        "the NixOS system's /etc holds ${toString (builtins.attrNames entries)} under claude-code, not ${etcName} alone"
+    ++ t.expect (entry != null && entry.enable) "the NixOS system's /etc does not write ${etcName}"
+    ++ t.expect (
+      entry != null && entry.target == etcName
+    ) "the NixOS system's /etc writes ${etcName} at ${toString (entry.target or null)}"
+    ++ t.expect (
+      entry != null && entry.mode == "0644"
+    ) "the NixOS system's ${etcName} has the mode ${toString (entry.mode or null)}, not 0644"
+    ++ t.expect (
+      entry != null && entry.text == expected
+    ) "the NixOS system's ${etcName} holds ${toString (entry.text or null)}, not ${expected}";
 in
-onEach "A collector off the host" offHost // onEach "A collector with no signal" noSignal
+onEach "A collector off the host" offHost
+// onEach "A collector with no signal" noSignal
+// {
+  "The document on NixOS" = documentOnNixos;
+  "No collector on NixOS" = noEtc "a NixOS system with the runner and no collector" (
+    t.nixosSystem { }
+  );
+  "Not without the runner on NixOS" = noEtc "a NixOS system naming a collector without the runner" (
+    t.nixosOf [
+      t.outputs.nixosModules.default
+      { services.boomdrive.claude-code.telemetry.collector = collector; }
+    ]
+  );
+}

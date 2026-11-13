@@ -26,7 +26,10 @@
 # `cloneDirs`, its `dir` the clone's folder and its `checkout` the
 # runner's view under that user's home (kept.nix), at the module's own
 # priority, so a host writes none (record 0036 as amended a third time on
-# 2026-11-11).
+# 2026-11-11). Where `services.boomdrive.claude-code.telemetry` names a
+# collector, `/etc` holds Claude Code's managed telemetry document,
+# claude-code.nix's, which every Claude Code session on the host reads
+# (record 0013 as amended on 2026-11-12).
 { packages }:
 {
   config,
@@ -42,6 +45,7 @@ let
   dataDirOf = import ./data-dir.nix { inherit lib; };
   keptOf = import ./kept.nix { inherit lib; };
   claudeCode = import ./claude-code.nix { inherit lib; };
+  telemetry = cfg.claude-code.telemetry;
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -170,7 +174,21 @@ in
       }
     ];
 
-    environment.systemPackages = [ cfg.package ];
+    environment = {
+      systemPackages = [ cfg.package ];
+
+      # Claude Code's managed telemetry document, where a collector is
+      # named: copied, not linked into the store, as Claude Code's files
+      # are (the change every-claude-code-session-exports-to-the-hosts-collector,
+      # design Decisions 6 and 7). With none, no entry is declared, and
+      # NixOS removes the file it wrote.
+      etc = lib.mkIf (telemetry.collector != null) {
+        "${claudeCode.nixosFolder}/${claudeCode.name}" = {
+          text = builtins.toJSON (claudeCode.documentOf telemetry);
+          mode = "0644";
+        };
+      };
+    };
 
     # Each tool's module links its file for the runner's user, unless the
     # host names another; and crew's kept repositories, where crew's
