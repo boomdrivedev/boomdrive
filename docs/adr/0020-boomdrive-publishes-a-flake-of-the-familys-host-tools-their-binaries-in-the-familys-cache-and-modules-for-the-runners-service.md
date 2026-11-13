@@ -89,3 +89,23 @@ The module set the agent's `ProgramArguments` to the runner's store path, with `
 - **The NixOS unit is unchanged.** NixOS mounts the store in its first stage, before systemd, which runs from the store, starts.
 
 Nothing else of the decision above changes. core.46 is amended in this amendment's commit: the modules start the runner only once the host's Nix store is mounted.
+
+## Amendment, 2026-11-13: the x86_64-linux job frees its runner's disk before Nix is installed
+
+Status: accepted on 2026-11-13. The fix `main--cache-x86-build-has-room` asks, in its brief, that the `x86_64-linux` build have room, "free the hosted runner's disk before Nix builds (remove the preinstalled toolchains it doesn't use, by a pinned maintained action or a step of its own) or build it on a larger runner"; its code stage chose the form, on the written rules.
+
+Deciders: the fix's brief, for the room; the fix's code stage, for its form.
+Sources: the fix's brief, 2026-11-13; the workflow `cache`'s runs 43344112746, 43345882875, 43358584313, 43360246846 and 43361015862; wimpysworld/nothing-but-nix's README and `action.yml` at v12, `b2574ec`, and its test run 43234874879 on `ubuntu-24.04`; jlumbroso/free-disk-space's `action.yml`; the change `cache-x86-build-has-room`; rule core.47.
+
+### Context and problem statement
+
+From v0.8.4 to v0.9.2, every run of `cache` failed on `build (x86_64-linux)` alone, five to eight minutes into the build, with Nix's note that the failure may have been caused by lack of free disk space: the store's and the builds' file system, `/`, had no bytes left. The `aarch64-linux` and `aarch64-darwin` jobs built and pushed the same set each time, so a `x86_64-linux` host got nothing from the cache. An x64 `ubuntu-24.04` runner leaves about 88GiB of its `/` free, and the arm64 runner, whose image holds fewer toolchains, about 106GiB.
+
+### Decision outcome
+
+- **The `x86_64-linux` job's first step frees its disk.** Before Nix is installed, it removes the image's trees that no package's build uses and dpkg does not own: Rust's own, GHC, the tool cache, the Android SDK, .NET and Swift, the trees nothing-but-nix's Carve removes, about 27GiB, and the Azure modules, Miniconda, Gradle, Kotlin, sbt, Heroku and pipx. It says the free space of `/` before and after, so a run's log shows the room its build had. It is the job's one step with a condition, and the other systems' jobs remove nothing.
+- **The store and the builds stay on `/`.** Nix is installed and configured as before, and the x64 job gets more of `/` than the arm64 job builds the set in.
+- **Not taken: nothing-but-nix.** It pools the runner's free space into a compressed Btrfs `/nix` of up to about 129GiB on x64, the most room of any form. It needs Nix's `build-dir` moved onto that volume; its newest release, v12, was a week old and mends v11's breaking of `cachix/install-nix-action`; and it runs a purge as root in the background of the job that holds the cache's push token. Should a run's log show the step's room is not enough, it is the next form.
+- **Not taken: a larger runner.** The binary-cache spec names `ubuntu-24.04` for `x86_64-linux`, and a larger runner is a paid runner the organisation configures.
+
+Nothing else of the decision above changes. core.47's details name the step as not ruled out, in this amendment's commit.
