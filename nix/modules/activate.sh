@@ -6,6 +6,7 @@
 #   activate.sh keep <user> <program> <argument>...
 #   activate.sh plugins <herdr> <plugin>...
 #   activate.sh pendingyou <source> <folder>
+#   activate.sh managed <path> [<source>]
 #
 # links ~/.config/boomdrive/config.toml to the module's file, so
 # `boomdrive enroll` and `boomdrive run --once` run by hand read what the
@@ -50,6 +51,21 @@
 # are the command line's. It says one line naming each file it wrote, and
 # nothing where none differed; a file it cannot write is said in one line
 # naming it and stops the files after it. It exits 0.
+#
+# managed is nix-darwin's root step for Claude Code's managed telemetry
+# document (design Decisions 6, 8 and 9 of the change
+# every-claude-code-session-exports-to-the-hosts-collector), run as root,
+# whose <path> is 10-boomdrive-telemetry.json in Claude Code's
+# managed-settings.d. Given <source>, it writes <source> to <path> whole,
+# as a regular file of mode 0644, by a temporary file beside it renamed
+# over the path, and only where no regular file there has the same bytes
+# and mode. A link standing there is replaced. It makes the path's folder,
+# and any folder above it, with mode 0755 where it is missing. Given none,
+# it removes the file or link at <path> where one stands. It reads, writes
+# and removes nothing else in the folder. It says one line naming the path
+# where it wrote or removed it, and nothing where nothing differed or
+# nothing stood; a write or a removal that fails is said in one line naming
+# the path and why. It exits 0.
 set -eu
 
 usage() {
@@ -57,6 +73,7 @@ usage() {
   echo "       activate.sh keep <user> <program> <argument>..." >&2
   echo "       activate.sh plugins <herdr> <plugin>..." >&2
   echo "       activate.sh pendingyou <source> <folder>" >&2
+  echo "       activate.sh managed <path> [<source>]" >&2
   exit 2
 }
 
@@ -200,6 +217,67 @@ $paths
 PATHS
 }
 
+# <source> written to <path>, 0644, its folders made 0755 where they are
+# missing.
+document() {
+  source=$1
+  path=$2
+  under=$(dirname "$path")
+  if [ ! -d "$under" ]; then
+    (umask 022 && mkdir -p "$under") || return 1
+  fi
+  if [ -d "$path" ] && [ ! -L "$path" ]; then
+    echo "a folder is there"
+    return 1
+  fi
+  temporary=$(mktemp "$path.XXXXXX") || return 1
+  if ! cat "$source" >"$temporary" || ! chmod 0644 "$temporary"; then
+    rm -f "$temporary"
+    return 1
+  fi
+  if [ -L "$path" ]; then
+    rm -f "$path" || {
+      rm -f "$temporary"
+      return 1
+    }
+  fi
+  mv -f "$temporary" "$path" || {
+    rm -f "$temporary"
+    return 1
+  }
+}
+
+managed() {
+  path=$1
+  if [ $# -eq 1 ]; then
+    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+      return
+    fi
+    if [ -d "$path" ] && [ ! -L "$path" ]; then
+      echo "boomdrive: did not remove $path: a folder is there" >&2
+      return
+    fi
+    if ! words=$(rm -f "$path" 2>&1); then
+      words=$(printf '%s\n' "$words" | tr '\n' ' ')
+      echo "boomdrive: did not remove $path: ${words% }" >&2
+      return
+    fi
+    echo "boomdrive: removed $path"
+    return
+  fi
+  source=$2
+  if [ -f "$path" ] && [ ! -L "$path" ] && cmp -s "$source" "$path" &&
+    [ -n "$(find "$path" -prune -perm 0644)" ]; then
+    return
+  fi
+  if ! words=$(document "$source" "$path" 2>&1); then
+    words=$(printf '%s\n' "$words" | tr '\n' ' ')
+    echo "boomdrive: did not write $path: ${words% }" >&2
+    return
+  fi
+  echo "boomdrive: wrote $path"
+}
+
 case ${1:-} in
 link)
   [ $# -eq 2 ] || usage
@@ -218,6 +296,11 @@ plugins)
 pendingyou)
   [ $# -eq 3 ] || usage
   pendingyou "$2" "$3"
+  ;;
+managed)
+  [ $# -eq 2 ] || [ $# -eq 3 ] || usage
+  shift
+  managed "$@"
   ;;
 *) usage ;;
 esac
