@@ -6,7 +6,7 @@ line: "Count what lands, what it cost and what came back."
 tools:
   - name: Crew
   - name: sounding
-    href: https://agentplot.github.io/sounding/
+    href: https://boomdrivedev.github.io/sounding/
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-06

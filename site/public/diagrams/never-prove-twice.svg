@@ -138,6 +138,6 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <g class="cap cap3"><circle class="badge" cx="457.08" cy="404" r="11"/><text class="badget" x="457.08" y="408" text-anchor="middle">3</text><text class="t sm" x="475.08" y="400">One input changes, and only</text><text class="t sm" x="475.08" y="417">its check runs again.</text></g>
 <g class="cap cap4"><circle class="badge" cx="686.62" cy="404" r="11"/><text class="badget" x="686.62" y="408" text-anchor="middle">4</text><text class="t sm" x="704.62" y="400">sluice’s record keeps the fail</text><text class="t sm" x="704.62" y="417">the cache never remembers.</text></g>
 <text class="xs" x="20" y="452"><tspan class="t">moon</tspan><tspan class="m"> declares what each check reads; </tspan><tspan class="t">timber</tspan><tspan class="m"> keeps the cache; </tspan><tspan class="t">sluice</tspan><tspan class="m"> tests, lands and records.</tspan></text>
-<a href="https://agentplot.github.io/timber/"><rect class="hit" x="683.67" y="438" width="94.73" height="20"/><text class="lnk xs" x="774.4" y="452" text-anchor="end">timber’s page ↗</text></a>
-<a href="https://agentplot.github.io/sluice/"><rect class="hit" x="792.4" y="438" width="91.6" height="20"/><text class="lnk xs" x="880" y="452" text-anchor="end">sluice’s page ↗</text></a>
+<a href="https://boomdrivedev.github.io/timber/"><rect class="hit" x="683.67" y="438" width="94.73" height="20"/><text class="lnk xs" x="774.4" y="452" text-anchor="end">timber’s page ↗</text></a>
+<a href="https://boomdrivedev.github.io/sluice/"><rect class="hit" x="792.4" y="438" width="91.6" height="20"/><text class="lnk xs" x="880" y="452" text-anchor="end">sluice’s page ↗</text></a>
 </svg>

@@ -5,9 +5,9 @@ summary: "Each agent works in its own worktree with its own ports, emulator and 
 line: "Each agent works alone in its own worktree, and submits rather than merges."
 tools:
   - name: sluice
-    href: https://agentplot.github.io/sluice/decisions/0016/
+    href: https://boomdrivedev.github.io/sluice/decisions/0016/
   - name: flume
-    href: https://agentplot.github.io/flume/
+    href: https://boomdrivedev.github.io/flume/
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

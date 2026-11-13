@@ -255,19 +255,19 @@ and addresses, with the clauses behind each, which the site does not show. A
 link lands on the section of the tool's product page that does it, or of its
 design book where the page has none. Crew and Boomdrive have neither in
 public, so they are named without a link. Each address was checked live on
-2026-10-25, and timber's again on 2026-11-04.
+2026-11-12.
 
 | Principle | Tools | Link | What it lands on | Clauses behind it |
 |---|---|---|---|---|
-| One shell | sluice | <https://agentplot.github.io/sluice/reference/commands/#sluice-exec> | `sluice exec`: a check runs in the place's own shell, the one the repository declares | — |
-| One agent, one worktree | sluice<br>flume | <https://agentplot.github.io/sluice/decisions/0016/><br><https://agentplot.github.io/flume/> | sluice gives a place its ports on the host and releases what its checks hand off<br>one agent launched in one worktree | sluice 1, 2, 30, 31, I5; record 0016<br>— |
-| Capture at the source | millpond<br>headwater<br>eddy | <https://agentplot.github.io/millpond/><br><https://agentplot.github.io/headwater/><br><https://agentplot.github.io/eddy/> | the inbox records each event once<br>an adapter that writes captures once<br>an adapter that writes captures once | flywheel-next 111, 112, 115, 116, 118, 215, 217g |
+| One shell | sluice | <https://boomdrivedev.github.io/sluice/reference/commands/#sluice-exec> | `sluice exec`: a check runs in the place's own shell, the one the repository declares | — |
+| One agent, one worktree | sluice<br>flume | <https://boomdrivedev.github.io/sluice/decisions/0016/><br><https://boomdrivedev.github.io/flume/> | sluice gives a place its ports on the host and releases what its checks hand off<br>one agent launched in one worktree | sluice 1, 2, 30, 31, I5; record 0016<br>— |
+| Capture at the source | millpond<br>headwater<br>eddy | <https://boomdrivedev.github.io/millpond/><br><https://boomdrivedev.github.io/headwater/><br><https://boomdrivedev.github.io/eddy/> | the inbox records each event once<br>an adapter that writes captures once<br>an adapter that writes captures once | flywheel-next 111, 112, 115, 116, 118, 215, 217g |
 | Intents and bolts | Crew<br>Boomdrive | no link<br>no link | bolts and units<br>a bolt lands on the shared line as one | — |
-| Two loops, one gate | timber<br>sluice | <https://agentplot.github.io/timber/how-it-works/#channels-moved-only-by-proof><br><https://agentplot.github.io/sluice/#why> | the word is a promotion<br>landing is automatic on green | timber 97, C.16<br>sluice 4 |
-| Order at landing, never at start | sluice | <https://agentplot.github.io/sluice/#why> | submit, combine, blame one, land | sluice 3, 6, 7, 8, 10 to 12, 17, 18, 20 |
-| Never prove twice | timber<br>sluice | <https://agentplot.github.io/timber/#one-store-three-jobs><br><https://agentplot.github.io/sluice/reference/state/#the-log> | the build cache in the one store<br>every run logged, a failure exactly like a pass | timber 52 to 55, 100, C.11<br>sluice 15, 16, 19, 104, 108; core.7 |
-| Secrets by declaration | sluice | <https://agentplot.github.io/sluice/reference/configuration/#executor-what-the-tests-may-touch> | a run gets the host's shared caches and nothing else outside its place | sluice 35 |
-| Measure the fleet | Crew<br>sounding | no link<br><https://agentplot.github.io/sounding/> | the records the collectors read<br>the records the collectors read | — |
+| Two loops, one gate | timber<br>sluice | <https://boomdrivedev.github.io/timber/how-it-works/#channels-moved-only-by-proof><br><https://boomdrivedev.github.io/sluice/#why> | the word is a promotion<br>landing is automatic on green | timber 97, C.16<br>sluice 4 |
+| Order at landing, never at start | sluice | <https://boomdrivedev.github.io/sluice/#why> | submit, combine, blame one, land | sluice 3, 6, 7, 8, 10 to 12, 17, 18, 20 |
+| Never prove twice | timber<br>sluice | <https://boomdrivedev.github.io/timber/#one-store-three-jobs><br><https://boomdrivedev.github.io/sluice/reference/state/#the-log> | the build cache in the one store<br>every run logged, a failure exactly like a pass | timber 52 to 55, 100, C.11<br>sluice 15, 16, 19, 104, 108; core.7 |
+| Secrets by declaration | sluice | <https://boomdrivedev.github.io/sluice/reference/configuration/#executor-what-the-tests-may-touch> | a run gets the host's shared caches and nothing else outside its place | sluice 35 |
+| Measure the fleet | Crew<br>sounding | no link<br><https://boomdrivedev.github.io/sounding/> | the records the collectors read<br>the records the collectors read | — |
 
 ## Changelog
 

@@ -5,11 +5,11 @@ summary: "Work begins as captures taken where things happen, a meeting, a chat, 
 line: "Work begins as captures, taken unattended where things happen."
 tools:
   - name: millpond
-    href: https://agentplot.github.io/millpond/
+    href: https://boomdrivedev.github.io/millpond/
   - name: headwater
-    href: https://agentplot.github.io/headwater/
+    href: https://boomdrivedev.github.io/headwater/
   - name: eddy
-    href: https://agentplot.github.io/eddy/
+    href: https://boomdrivedev.github.io/eddy/
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-12
