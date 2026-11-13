@@ -195,7 +195,7 @@ in
         "services.boomdrive.pendingyou.package"
         "services.boomdrive.plannotator.package"
         "services.boomdrive.plannotator-tui.package"
-        "nix develop github:agentplot/boomdrive"
+        "nix develop github:boomdrivedev/boomdrive"
       ]
     ++ t.expect (
       !lib.hasInfix "services.boomdrive.tools" (toString installing)
@@ -248,9 +248,9 @@ in
         "plannotator-tui"
         "pendingyou-herdr-plugin"
         "plannotator-herdr-plugin"
-        "github:agentplot/boomdrive#pendingyou"
-        "github:agentplot/boomdrive#plannotator"
-        "github:agentplot/boomdrive#plannotator-tui"
+        "github:boomdrivedev/boomdrive#pendingyou"
+        "github:boomdrivedev/boomdrive#plannotator"
+        "github:boomdrivedev/boomdrive#plannotator-tui"
         "pendingyou-signin"
         "boomdrive-claude-plugins"
         "~/.config/pendingyou"

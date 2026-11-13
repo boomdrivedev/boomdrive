@@ -4,7 +4,7 @@ import { defineConfig } from "astro/config";
 // /boomdrive/, until a domain is chosen; every internal link goes through
 // src/lib/url.ts.
 export default defineConfig({
-  site: "https://agentplot.github.io",
+  site: "https://boomdrivedev.github.io",
   base: "/boomdrive",
   // devenv's state links into /nix/store; a watcher that follows it stats the
   // whole store.

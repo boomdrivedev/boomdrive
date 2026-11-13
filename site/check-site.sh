@@ -29,8 +29,8 @@ for page in $pages; do
     /*) fail "$page links $link, outside /boomdrive/" ;;
     esac
     case $link in
-    https://github.com/agentplot/boomdrive | https://github.com/agentplot/boomdrive/*) ;;
-    https://github.com/*/*) fail "$page links the repository $link, not https://github.com/agentplot/boomdrive" ;;
+    https://github.com/boomdrivedev/boomdrive | https://github.com/boomdrivedev/boomdrive/*) ;;
+    https://github.com/*/*) fail "$page links the repository $link, not https://github.com/boomdrivedev/boomdrive" ;;
     esac
   done
   named=$(grep -oE "[^\"' <>()]*boomdrive-web[^\"' <>()]*" "$page" | sort -u || true)

@@ -37,7 +37,7 @@ const STANDING: &str = "standing";
 const REVIEW: (&str, &str) = ("5", "4");
 
 /// Where the set gives crew, named where it is not found.
-const CREW_FROM: &str = "github:agentplot/boomdrive#crew";
+const CREW_FROM: &str = "github:boomdrivedev/boomdrive#crew";
 
 /// The words gh says of a repository that is not there.
 const NOT_THERE: &str = "Could not resolve to a Repository";

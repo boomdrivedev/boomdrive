@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # Its nixpkgs stays its own, so its packages are the cache's.
-    boomdrive.url = "github:agentplot/boomdrive";
+    boomdrive.url = "github:boomdrivedev/boomdrive";
   };
 
   outputs =

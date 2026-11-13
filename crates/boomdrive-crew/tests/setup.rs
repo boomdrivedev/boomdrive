@@ -328,7 +328,7 @@ fn a_host_name_crew_refuses() {
     stand.remove("crew");
     let refusal = setup::prepare(&stand.find()).unwrap_err();
     assert!(refusal.host_to_fix);
-    for words in ["`crew`", "github:agentplot/boomdrive#crew"] {
+    for words in ["`crew`", "github:boomdrivedev/boomdrive#crew"] {
         assert!(refusal.words.contains(words), "{}", refusal.words);
     }
     assert!(stand.calls("hostname").is_empty());

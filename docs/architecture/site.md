@@ -9,7 +9,7 @@ paths:
 The rules that bind Boomdrive's site, `site/`, and the workflow that
 publishes it, beside `core.md`, which binds wherever a change is made.
 The site is the Method, its field notes and the fleet's measurements,
-an Astro site served at `https://agentplot.github.io/boomdrive/`. Its
+an Astro site served at `https://boomdrivedev.github.io/boomdrive/`. Its
 rules came with it from boomdrive-web (records 0025 and 0038).
 
 ## Rules

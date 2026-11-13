@@ -172,7 +172,7 @@ launches an item's work in a worktree, sounding, which works a question
 to a conclusion, and sluice, which lands. Each tool has its own site at `boomdrivedev.github.io/<repo>/`
 and its design book at `boomdrivedev.github.io/blueprints/<book>/`; this site
 holds the hub every family site's footer links to,
-`agentplot.github.io/boomdrive/tools/`.
+`boomdrivedev.github.io/boomdrive/tools/`.
 
 - **The family is one list, and it is not ours.** Every member, its line,
   its place in the loop, its status, its site, its design book and its

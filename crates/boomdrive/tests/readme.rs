@@ -324,7 +324,7 @@ fn the_readme_names_how_a_persons_drive_is_set_up() {
         "--review",
         "--json",
         "crew main up",
-        "github:agentplot/boomdrive#herdr-plugins",
+        "github:boomdrivedev/boomdrive#herdr-plugins",
         "launchctl kickstart -k gui/$(id -u)/io.github.agentplot.boomdrive",
         "`services.boomdrive.accounts`",
     ] {
@@ -347,7 +347,7 @@ fn the_readme_names_the_quick_start() {
         .next()
         .unwrap_or_default();
     assert!(
-        opening.contains("https://agentplot.github.io/boomdrive/start/"),
+        opening.contains("https://boomdrivedev.github.io/boomdrive/start/"),
         "README's Installing with nix opens with no quick start: {opening}"
     );
 }

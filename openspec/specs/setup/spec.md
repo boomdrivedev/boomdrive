@@ -135,7 +135,7 @@ Before it writes anything or asks anything of a forge, setup SHALL refuse as a h
 #### Scenario: crew missing
 
 - **WHEN** setup runs with every answer, and no `crew` is on its `PATH`
-- **THEN** it exits 2, naming `crew` and `github:agentplot/boomdrive#crew`, and runs no `gh`, writes no file and loads no agent
+- **THEN** it exits 2, naming `crew` and `github:boomdrivedev/boomdrive#crew`, and runs no `gh`, writes no file and loads no agent
 
 #### Scenario: A host name crew refuses
 
@@ -266,12 +266,12 @@ Setup SHALL link, by `herdr plugin link <folder>`, each folder under `share/herd
 
 ### Requirement: A plugin missing or refused is named, and setup goes on
 
-herdr's refusal of a link SHALL be named with herdr's words. Where no profile holds `share/herdr/plugins`, setup SHALL name the plugins as missing, with `github:agentplot/boomdrive#herdr-plugins`. In either case setup SHALL go on.
+herdr's refusal of a link SHALL be named with herdr's words. Where no profile holds `share/herdr/plugins`, setup SHALL name the plugins as missing, with `github:boomdrivedev/boomdrive#herdr-plugins`. In either case setup SHALL go on.
 
 #### Scenario: No plugin in the profile
 
 - **WHEN** setup runs with every answer, and no profile holds `share/herdr/plugins`
-- **THEN** no `herdr plugin link` is run, it exits 0, and its answer names the plugins as missing with `github:agentplot/boomdrive#herdr-plugins`
+- **THEN** no `herdr plugin link` is run, it exits 0, and its answer names the plugins as missing with `github:boomdrivedev/boomdrive#herdr-plugins`
 
 ### Requirement: The runner runs as a launchd agent of the login
 
