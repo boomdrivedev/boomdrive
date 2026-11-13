@@ -43,7 +43,7 @@ The orchestrator's brief, 2026-11-05: "Find why the runner stopped following tha
 Option 5, the user's.
 
 - **A rename is a removal and an addition.** Neither the runner nor crew's implementation matches a repository's old name to its new one. A launch is given, taken and followed only for a repository the runner keeps.
-- **A repository is drained before it goes.** Where the configuration drops a repository while a place the runner launched in it is live, the runner launches nothing more there, keeps its clone and view, and carries each such place's status to its end as before. Once none is live, it removes them as it removes any dropped repository's. A rename is then done in four steps: drain the work, remove the repository, rename it on the forge, and add it back.
+- **A repository is drained before it goes.** Where the configuration drops a repository while a place the runner launched in it is live, the runner launches nothing more there, keeps its clone and view, and carries each such place's status to its end as before. Once none is live, it removes them as it removes any dropped repository's.
 - **No keeper is told of a landing in a repository the runner does not keep.** The keeper keeps only what the configuration names (core.5).
 
 Option 1 follows a place by its location after its repository is gone, and has crew's implementation give a launch whatever the hello names. That is a rename handled in flight, which the user ruled out. Option 2 would have the runner read work its control plane no longer gives, and which work is the host's is the control plane's (core.1). Option 3 would have the runner guess a forge's rename. Option 4 changes the call for every place the runner keeps, for a case that no longer arises.
@@ -51,5 +51,4 @@ Option 1 follows a place by its location after its repository is gone, and has c
 ### Consequences
 
 - core.5's "Not ruled out" names a dropped repository's clone and view kept, with nothing launched in it, while a place the runner launched there is live, in place of a place followed by its location alone.
-- The fix `the-runner-follows-each-place-it-launched-to-its-end`, built on option 1, is taken back by a later change once this record is accepted: the runner asks Flume of a place only through a kept clone, crew's implementation gives a launch only where the runner keeps its repository, draining ones among them, and the work-into-flume and crew-control-plane specs say so.
 - A request that names a repository by an old name is given to no runner. Its work is launched again under the repository's name once the repository is added back.
