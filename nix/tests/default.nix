@@ -34,5 +34,6 @@ in
     // import ./data-dir.nix t
     // import ./clone-dirs.nix t
     // import ./kept.nix t
+    // import ./claude-code.nix t
   );
 }

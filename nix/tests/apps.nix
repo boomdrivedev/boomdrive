@@ -736,7 +736,9 @@ let
   # `claude` or names a Claude Code home or the set's marketplace (record
   # 0044, point 3; design Decision 12 of the change
   # crews-companions-come-with-the-flake): each one's text, as text, with
-  # the runner and crew on.
+  # the runner and crew on, with a collector of Claude Code's telemetry
+  # named and with none (design Decision 10 of the change
+  # every-claude-code-session-exports-to-the-hosts-collector).
   claudeWords = [
     {
       what = "runs claude";
@@ -756,21 +758,38 @@ let
     { system, set, ... }:
     let
       marketplace = builtins.unsafeDiscardStringContext set.boomdrive-claude-plugins.outPath;
-      steps = stepsOf platform (system crewOn);
       oneLine = text: lib.replaceStrings [ "\n" ] [ " " ] text;
+      systems = {
+        "with no collector" = system crewOn;
+        "with a collector" = system {
+          imports = [ crewOn ];
+          services.boomdrive.claude-code.telemetry.collector = "http://localhost:4318";
+        };
+      };
     in
     lib.concatLists (
       lib.mapAttrsToList (
-        name: text:
-        lib.concatMap (
-          word: t.expect (!word.holds (oneLine text)) "the ${platform} system's ${name} ${word.what}"
-        ) claudeWords
+        named: evaluated:
+        let
+          steps = stepsOf platform evaluated;
+        in
+        lib.concatLists (
+          lib.mapAttrsToList (
+            name: text:
+            lib.concatMap (
+              word: t.expect (!word.holds (oneLine text)) "the ${platform} system ${named}'s ${name} ${word.what}"
+            ) claudeWords
+            ++ t.expect (
+              !lib.hasInfix marketplace text && !lib.hasInfix "boomdrive-claude-plugins" text
+            ) "the ${platform} system ${named}'s ${name} names the set's marketplace"
+          ) steps
+        )
         ++ t.expect (
-          !lib.hasInfix marketplace text && !lib.hasInfix "boomdrive-claude-plugins" text
-        ) "the ${platform} system's ${name} names the set's marketplace"
-      ) steps
-    )
-    ++ t.expect (steps != { }) "the ${platform} system has no step, job or unit to read";
+          t.failures evaluated == [ ]
+        ) "the ${platform} system ${named} fails: ${toString (t.failures evaluated)}"
+        ++ t.expect (steps != { }) "the ${platform} system ${named} has no step, job or unit to read"
+      ) systems
+    );
 
   # The launcher's cases (design Decisions 1 and 5). The account `own`
   # with the drive `home`, keeping agentplot's flume, and `work` with the

@@ -9,9 +9,11 @@
 # unless `MainPID` says another; and ps the command line in `args`. The
 # plugins' cases add a stub of herdr, run by its path as the modules run
 # it, that records its arguments and the HERDR_* variables it sees, and
-# refuses the plugin `refuse` names, saying `manifest not found`. It
-# prints each failure as one line, nix: <case>: <what>, and nothing where
-# every case holds.
+# refuses the plugin `refuse` names, saying `manifest not found`. The
+# managed document's cases write in a scratch folder standing for Claude
+# Code's managed-settings.d, as the case's own user. It prints each
+# failure as one line, nix: <case>: <what>, and nothing where every case
+# holds.
 set -eu
 
 activate=$(cd "$(dirname "$0")/../modules" && pwd)/activate.sh
@@ -446,3 +448,140 @@ freshFolder
 run pendingyou "$source"
 expect "$named" "pendingyou with no folder exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "pendingyou with no folder made $folder" missing "$folder"
+
+# A case's managed telemetry document: its source in the case's store,
+# read-only as the store keeps it, and its path in a scratch folder that
+# stands for Claude Code's managed-settings.d, missing until a case makes
+# it (design Decision 9 and Task notes 1.3 of the change
+# every-claude-code-session-exports-to-the-hosts-collector).
+freshManaged() {
+  fresh
+  document=$dir/store/10-boomdrive-telemetry.json
+  settings=$dir/ClaudeCode/managed-settings.d
+  managed=$settings/10-boomdrive-telemetry.json
+  echo '{"env":{"CLAUDE_CODE_ENABLE_TELEMETRY":"1"}}' >"$document"
+  chmod 0444 "$document"
+}
+# The path is a regular file holding the source's bytes, mode 0644.
+documented() {
+  [ -f "$managed" ] && [ ! -L "$managed" ] && cmp -s "$document" "$managed" && moded "$managed" 0644
+}
+# What the folder holds, by name, inode and mode.
+listing() {
+  ls -lai "$settings"
+}
+
+named="A fresh host"
+freshManaged
+run managed "$managed" "$document"
+expect "$named" "managed exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$settings is not made with mode 0755" moded "$settings" 0755
+expect "$named" "$managed is not a regular file of mode 0644 holding the document" documented
+expect "$named" "managed says \"$out\", not one line naming $managed" \
+  [ "$out" = "boomdrive: wrote $managed" ]
+expect "$named" "managed says \"$err\" on standard error" [ -z "$err" ]
+expect "$named" "managed left a temporary file: $(find "$settings" -name '*.??????')" \
+  [ -z "$(find "$settings" -name '*.??????')" ]
+quiet "$named"
+
+named="Nothing differs"
+freshManaged
+run managed "$managed" "$document"
+before=$(listing)
+run managed "$managed" "$document"
+expect "$named" "managed exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "managed says \"$out$err\" again" [ -z "$out$err" ]
+expect "$named" "managed wrote the document again" [ "$(listing)" = "$before" ]
+
+named="A document that differs"
+freshManaged
+mkdir -p "$settings"
+echo '{"env":{}}' >"$managed"
+chmod 0644 "$managed"
+run managed "$managed" "$document"
+expect "$named" "managed exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$managed is not written again where its bytes differ" documented
+expect "$named" "managed says \"$out\", not one line naming $managed" \
+  [ "$out" = "boomdrive: wrote $managed" ]
+run managed "$managed" "$document"
+chmod 0600 "$managed"
+run managed "$managed" "$document"
+expect "$named" "$managed is not written again where its mode differs" documented
+expect "$named" "managed says \"$out\", not one line naming $managed, where its mode differs" \
+  [ "$out" = "boomdrive: wrote $managed" ]
+
+named="A link where the document goes"
+freshManaged
+mkdir -p "$settings" "$dir/store/old"
+echo '{"env":{"OTEL_LOG_USER_PROMPTS":"1"}}' >"$dir/store/old/10-boomdrive-telemetry.json"
+ln -s "$dir/store/old/10-boomdrive-telemetry.json" "$managed"
+run managed "$managed" "$document"
+expect "$named" "managed exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "$managed is still a link" [ ! -L "$managed" ]
+expect "$named" "$managed is not a regular file of mode 0644 holding the document" documented
+expect "$named" "managed wrote through the link" \
+  holds "$dir/store/old/10-boomdrive-telemetry.json" '{"env":{"OTEL_LOG_USER_PROMPTS":"1"}}'
+
+named="A folder it cannot write"
+freshManaged
+mkdir -p "$settings"
+chmod 0500 "$settings"
+run managed "$managed" "$document"
+chmod 0755 "$settings"
+expect "$named" "managed exits $status, not 0" [ "$status" -eq 0 ]
+expect "$named" "managed said \"$err\", not one line naming $managed" \
+  [ "$(printf '%s\n' "$err" | wc -l | tr -d ' ')" = 1 ]
+expect "$named" "managed said \"$err\", not one line naming $managed" \
+  names "$err" "did not write" "$managed"
+expect "$named" "managed says \"$out\"" [ -z "$out" ]
+expect "$named" "managed wrote $managed" missing "$managed"
+
+named="The document removed"
+freshManaged
+mkdir -p "$settings"
+cp "$document" "$managed"
+echo '{"env":{"OTEL_RESOURCE_ATTRIBUTES":"host=own"}}' >"$settings/20-own.json"
+echo '{"permissions":{}}' >"$dir/ClaudeCode/managed-settings.json"
+run managed "$managed"
+expect "$named" "managed exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "managed left $managed" missing "$managed"
+expect "$named" "managed changed the host's own document" \
+  holds "$settings/20-own.json" '{"env":{"OTEL_RESOURCE_ATTRIBUTES":"host=own"}}'
+expect "$named" "managed changed the host's own managed-settings.json" \
+  holds "$dir/ClaudeCode/managed-settings.json" '{"permissions":{}}'
+expect "$named" "managed says \"$out\", not one line naming $managed" \
+  [ "$out" = "boomdrive: removed $managed" ]
+expect "$named" "managed says \"$err\" on standard error" [ -z "$err" ]
+quiet "$named"
+
+freshManaged
+mkdir -p "$settings"
+ln -s "$document" "$managed"
+run managed "$managed"
+expect "$named" "managed of a link exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "managed left the link $managed" missing "$managed"
+expect "$named" "managed removed the link's target" [ -f "$document" ]
+
+named="Nothing to remove"
+freshManaged
+mkdir -p "$settings"
+echo '{"env":{}}' >"$settings/20-own.json"
+before=$(listing)
+run managed "$managed"
+expect "$named" "managed exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "managed says \"$out$err\"" [ -z "$out$err" ]
+expect "$named" "managed changed the folder" [ "$(listing)" = "$before" ]
+
+freshManaged
+run managed "$managed"
+expect "$named" "managed with no folder exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "managed with no folder says \"$out$err\"" [ -z "$out$err" ]
+expect "$named" "managed with no folder made $settings" missing "$settings"
+
+named="managed's usage"
+freshManaged
+run managed
+expect "$named" "managed with no path exits $status, not 2" [ "$status" -eq 2 ]
+run managed "$managed" "$document" more
+expect "$named" "managed with a word after the source exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "managed's usage made $settings" missing "$settings"
