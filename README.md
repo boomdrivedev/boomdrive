@@ -1041,9 +1041,9 @@ settles for both, so no launch waits behind a settle. A control pass:
   repository's clone, as `flume --json status --repository <container>
   <place>`, to its end, over or tidied, the clone of a repository the
   configuration dropped among them while the runner drains it; where no
-  clone stands, Flume is asked nothing of it. No rename is followed: to
-  rename a repository, drain its work, drop it, rename it on the forge,
-  and add it back under its new name. Where the pass ran a launch or an
+  clone stands, Flume is asked nothing of it. No rename is followed: a
+  repository is renamed by removing it and adding it back under its new
+  name once it is drained. Where the pass ran a launch or an
   act, Flume's status is read again before the places' are carried, so
   a place tidied meanwhile is carried from Flume's record of it,
   `<location>@<at>`.
