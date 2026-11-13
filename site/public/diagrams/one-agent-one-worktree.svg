@@ -125,5 +125,5 @@ a:focus{outline:none} a:focus-visible{outline:2px solid var(--accent);outline-of
 <g class="cap cap4"><circle class="badge" cx="686" cy="374" r="11"/><text class="badget" x="686" y="378" text-anchor="middle">4</text><text class="t sm" x="704" y="370">Each submits its head; sluice</text><text class="t sm" x="704" y="387">merges and lands it.</text></g>
 <line class="div" x1="20" y1="416" x2="880" y2="416"/>
 <text class="m sm" x="20" y="442">Worktrunk makes each worktree; sluice gives it its ports and lands its head.</text>
-<a href="https://agentplot.github.io/sluice/"><rect class="hit" x="780" y="424" width="104" height="26"/><text class="lnk sm" x="880" y="442" text-anchor="end">sluice’s page ↗</text></a>
+<a href="https://boomdrivedev.github.io/sluice/"><rect class="hit" x="780" y="424" width="104" height="26"/><text class="lnk sm" x="880" y="442" text-anchor="end">sluice’s page ↗</text></a>
 </svg>

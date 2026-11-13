@@ -5,9 +5,9 @@ summary: "Design and construction are separate loops, coupled where a human deci
 line: "Design and construction are separate loops, and a person decides where they meet."
 tools:
   - name: timber
-    href: https://agentplot.github.io/timber/how-it-works/#channels-moved-only-by-proof
+    href: https://boomdrivedev.github.io/timber/how-it-works/#channels-moved-only-by-proof
   - name: sluice
-    href: https://agentplot.github.io/sluice/#why
+    href: https://boomdrivedev.github.io/sluice/#why
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

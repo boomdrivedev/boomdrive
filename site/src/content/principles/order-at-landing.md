@@ -5,7 +5,7 @@ summary: "Dependencies are constraints the merge queue honours when work lands, 
 line: "Work starts at once; the merge queue orders it as it lands."
 tools:
   - name: sluice
-    href: https://agentplot.github.io/sluice/#why
+    href: https://boomdrivedev.github.io/sluice/#why
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

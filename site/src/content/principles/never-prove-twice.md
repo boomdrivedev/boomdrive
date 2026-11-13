@@ -5,9 +5,9 @@ summary: "The task runner's cache, keyed by what each task reads and shared acro
 line: "A check that passed on these inputs is not run again."
 tools:
   - name: timber
-    href: https://agentplot.github.io/timber/#one-store-three-jobs
+    href: https://boomdrivedev.github.io/timber/#one-store-three-jobs
   - name: sluice
-    href: https://agentplot.github.io/sluice/reference/state/#the-log
+    href: https://boomdrivedev.github.io/sluice/reference/state/#the-log
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-08

@@ -5,7 +5,7 @@ summary: "A repository declares the secrets it needs, and an agent gets them onl
 line: "An agent gets a secret only through the shell, for the task at hand."
 tools:
   - name: sluice
-    href: https://agentplot.github.io/sluice/reference/configuration/#executor-what-the-tests-may-touch
+    href: https://boomdrivedev.github.io/sluice/reference/configuration/#executor-what-the-tests-may-touch
 status: draft
 introducedIn: "0.1"
 lastReviewed: 2026-10-06
