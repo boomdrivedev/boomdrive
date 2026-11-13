@@ -58,3 +58,25 @@ A Claude Code session can export its metrics, its events as logs, and its traces
 - Good: a person turns on their coding sessions' telemetry by naming a collector, as for the runner, and chooses each signal's backend in one place, the collector.
 - Bad: Claude Code's traces are a beta, so a release can change their shape, and Dash0's Insights may read less from them than from its own plugin. Whether Insights fills from Claude Code's own traces is read on one host before the setting reaches every host.
 - Neutral: Dash0 counts a session toward a pull request by its branch. A Flume place works on its own branch and lands through its bolt's, so Dash0's pull-request views count few sessions as assisted. That is Dash0's reading, and this amendment doesn't change it.
+
+## Amendment, 2026-11-12: the set holds the sessions' telemetry in Claude Code's managed settings
+
+Status: the construct stage's own choices for the change `every-claude-code-session-exports-to-the-hosts-collector`, each cheap to change. The change's brief names the way: Claude Code's host-wide managed settings, holding the telemetry keys alone, each session carrying its account and repository. The change's design gives each point.
+
+Deciders: the construct stage of `change/every-claude-code-session-exports-to-the-hosts-collector`, 2026-11-12, from the amendment above, core.28 and the change's brief.
+
+Sources: Claude Code's documentation, `code.claude.com/docs/en/managed-settings`, `settings`, `env-vars` and `monitoring-usage`, read on 2026-11-12. Claude Code 2.1.322, whose binary reads `managed-settings.d`. sluice's module's `[telemetry]`. afterthought/swancloud record 0061 as amended on 2026-11-09 and 2026-11-12.
+
+- **One document of Claude Code's managed settings.** The set writes `10-boomdrive-telemetry.json` into Claude Code's managed-settings folder: `/Library/Application Support/ClaudeCode/managed-settings.d` on macOS and `/etc/claude-code/managed-settings.d` on Linux.
+  - **Who reads it.** Every session on the host reads it, whatever its account and configuration home. Claude Code merges it key by key after `managed-settings.json`, and lets no user or project setting override a key it sets.
+  - **What it holds.** The telemetry keys alone, so the host's own `managed-settings.json` stays the host's.
+  - **Who writes it.** Claude Code gives no module, and no command of its own writes its managed settings. So the Boomdrive module writes the document, as root, until Claude Code gives a module (core.18, core.46).
+
+  Not taken: the whole `managed-settings.json`, where a host's own policy is held. Each home's `settings.json`, which a new home misses and which is a Claude Code home's. The variables in Flume's accounts or the launcher, which crew's standing roles and the person's own terminal miss.
+- **The collector on the host, over HTTP.** The host names the collector in `services.boomdrive.claude-code.telemetry.collector`: an `http://` address on the host's own loopback, as sluice's `[telemetry]` names its own. Each signal goes to `<collector>/v1/<signal>` as OTLP over HTTP, protobuf, by its own endpoint. No general endpoint is set, so no tool a session runs inherits one (swancloud record 0061 as amended on 2026-11-09). Not taken: any address, which lets a backend's address and key into a session. gRPC, which sluice does not speak.
+- **Each signal as the host names it.** Metrics and logs are on and traces off unless the host turns them on, since Claude Code's traces are a beta. A signal off is pinned `none`, so a person's own settings send it nowhere. Not taken: every signal on by default, which turns beta traces on everywhere before one seat is read (swancloud record 0061 as amended on 2026-11-12).
+- **No words, pinned.** Claude Code's content settings are each pinned off: prompts, responses, tool details, tool content and raw API bodies. So is detailed beta tracing, which sends logs and traces to an endpoint of its own. Not taken: leaving them unset, which a person's own settings could turn on.
+- **Account and repository by Claude Code's own attributes.** The document turns on Claude Code's session, account and repository attributes: `session.id`, `user.account_uuid` and `vcs.*`, the last read from the session's repository's `origin`. Claude Code adds `organization.id` and `user.email` wherever a session is signed in. No setting the set can write names a session's drive, so a backend reads the drive from the repository by the host's accounts (record 0028). Not taken: `OTEL_RESOURCE_ATTRIBUTES`, one value for every session on the host. A wrapper for each launcher, which the person's own terminal misses.
+- **Nothing without a collector.** With no collector named, or the runner off, the set writes no document, and removes its own where it stands.
+
+Consequences: core.18's, core.28's and core.46's details name what this amendment allows, in the commit that writes it. A Claude Code that reads no `managed-settings.d` reads no document and exports nothing. The Claude Desktop app's launch environment wins over the document for the variables it sets, and the README says so.
