@@ -36,7 +36,7 @@ Each tool on a strip that has a public product page SHALL link to the page, and 
 #### Scenario: A product page section
 
 - **WHEN** a reader follows sluice on "One shell"
-- **THEN** it opens sluice's commands reference at `sluice exec`, `https://agentplot.github.io/sluice/reference/commands/#sluice-exec`
+- **THEN** it opens sluice's commands reference at `sluice exec`, `https://boomdrivedev.github.io/sluice/reference/commands/#sluice-exec`
 
 #### Scenario: A tool with no public page
 
