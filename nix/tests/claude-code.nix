@@ -500,6 +500,42 @@ let
     ++ t.expect (
       homely == [ ]
     ) "the ${platform} document's path names a home: ${builtins.toJSON homely}";
+
+  # The README's install with nix on the sessions' telemetry (design
+  # Decision 11).
+  readmeTelemetry =
+    let
+      block = lib.findFirst (lib.hasInfix "services.boomdrive.claude-code.telemetry") null t.nixBlocks;
+      words = toString t.installing;
+    in
+    t.expect (
+      block != null
+    ) "no nix block of the README's Installing with nix names services.boomdrive.claude-code.telemetry"
+    ++
+      t.expect
+        (
+          block != null
+          && lib.hasInfix ''services.boomdrive.claude-code.telemetry.collector = "http://localhost:4318";'' block
+        )
+        "the README's nix block of services.boomdrive.claude-code.telemetry names no collector http://localhost:4318"
+    ++
+      lib.concatMap
+        (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
+        [
+          "`metrics`"
+          "`logs`"
+          "`traces`, Claude Code's beta, is off\nunless named"
+          "10-boomdrive-telemetry.json"
+          "`/Library/Application Support/ClaudeCode/managed-settings.d`"
+          "`/etc/claude-code/managed-settings.d`"
+          "Every Claude Code session on the host"
+          "whatever\nits account and its configuration home"
+          "a session exports none of its words"
+          "Without a collector, or without the runner, nothing is written"
+          "named after the set's in Claude Code's order"
+          "launch environment"
+          "`workspace.host_paths`"
+        ];
 in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
@@ -514,6 +550,7 @@ onEach "A collector off the host" offHost
   ofDocument givesDefault { } byDefault attributesOn
 )
 // {
+  "The README's telemetry" = readmeTelemetry;
   "The document on NixOS" = documentOnNixos;
   "The document on nix-darwin" = documentOnDarwin;
   "No collector on nix-darwin" =

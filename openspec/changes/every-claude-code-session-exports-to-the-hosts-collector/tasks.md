@@ -44,7 +44,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The words and the specs
 
-- [ ] 3.1 The README's **Installing with nix** gains a part on the sessions' telemetry (design Decision 11). Its nix block sets `services.boomdrive.claude-code.telemetry.collector = "http://localhost:4318";`, and its words name:
+- [x] 3.1 The README's **Installing with nix** gains a part on the sessions' telemetry (design Decision 11). Its nix block sets `services.boomdrive.claude-code.telemetry.collector = "http://localhost:4318";`, and its words name:
   - `metrics`, `logs` and `traces`, and that traces are Claude Code's beta, off unless named;
   - `10-boomdrive-telemetry.json` in `/Library/Application Support/ClaudeCode/managed-settings.d` and `/etc/claude-code/managed-settings.d`;
   - that every Claude Code session on the host exports to that collector alone, whatever its home, and with none of its words;
