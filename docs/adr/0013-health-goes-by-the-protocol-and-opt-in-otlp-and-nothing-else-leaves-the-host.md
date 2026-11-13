@@ -38,7 +38,7 @@ Option 2. The user chose health to the control plane, and left the OTLP export t
 
 ## Amendment, 2026-11-12: a drive's Claude Code sessions export their own telemetry the same way
 
-Status: proposed to the user on 2026-11-12, as `briefs.15` has it; accepted only on their yes. Every Claude Code session on a drive's accounts exports Claude Code's own telemetry to the collector its host names and nowhere else, with no session's words in it, and the user's hosts send its traces to Dash0 alone.
+Status: accepted by the user on 2026-11-12, on their card. Every Claude Code session on a drive's accounts exports Claude Code's own telemetry to the collector its host names and nowhere else, with no session's words in it, and the user's hosts send its traces to Dash0 alone.
 
 Deciders: the user, 2026-11-12, in agentplot-design's pane, on Dash0's AI SDLC Insights: "I think I would want traces only for dash0 not for DataDog. We would want to wire up this Claude Code integration as part of the nix setup for Claude or as part of the Boom Drive configuration. Either way it might be nice to externalize it to Boom Drive. I can't tell". That traces reach Dash0 alone is the user's. That Boomdrive's set carries the wiring, which export it turns on and what the export holds are agentplot-design's, from this record and core.28, each with the path not taken.
 
