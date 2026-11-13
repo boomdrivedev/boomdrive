@@ -124,6 +124,28 @@ let
   );
   systemsNamed = captures systemLine jobs;
 
+  # The x64 image's trees that no package's build uses (record 0020 as
+  # amended on 2026-11-13), each a line of the step's `rm -rf`.
+  freed = [
+    "/usr/local/lib/android"
+    "/usr/share/dotnet"
+    "/opt/ghc"
+    "/usr/local/.ghcup"
+    "/usr/share/swift"
+    "\"$HOME/.cargo\""
+    "\"$HOME/.rustup\""
+    "/opt/hostedtoolcache"
+  ];
+  free = stepAt " *sudo rm -rf .*";
+  # The step's script, its lines after `run: |`.
+  freeScript =
+    let
+      lines' = stepOf free;
+      at = findFirstIndex (l: builtins.match " *run: \\|" l != null) null lines';
+    in
+    if at == null then [ ] else lib.drop (at + 1) lines';
+  nixInstall = stepAt " *(- )?uses: cachix/install-nix-action@.*";
+
   build = stepAt " *nix build .*";
   push = stepAt " *run: cachix push .*";
   serviceAccountCheck = stepAt ".*::error::OP_SERVICE_ACCOUNT_TOKEN .*";
@@ -151,6 +173,25 @@ in
       t.expect ((matrix.${system} or null) == runners.${system})
         "${system} runs on ${toString (matrix.${system} or "no runner")}, not ${runners.${system}}"
     ) (builtins.filter (s: runners ? ${s}) given);
+
+  # The x86_64-linux job's first step frees its runner's disk before Nix
+  # is installed; no other system's job runs it.
+  "The x86_64-linux job has room" =
+    t.expect (free == 0) "the job's first step removes nothing"
+    ++ before free nixInstall "the runner's disk is not freed before Nix is installed"
+    ++ t.expect (has " *if: matrix\\.system == 'x86_64-linux'" (stepOf free)) "the step that frees the disk runs on a system other than x86_64-linux alone"
+    ++ t.expect (
+      stepsAt " *if: .*" == [ free ]
+    ) "steps ${toString (stepsAt " *if: .*")} have a condition, not the step that frees the disk alone"
+    ++ concatMap (
+      tree:
+      t.expect (has " *${lib.escapeRegex tree}( \\\\)?" (stepOf free)) "the step does not remove ${tree}"
+    ) freed
+    ++ t.expect (
+      freeScript != [ ]
+      && head freeScript == "          df -h /"
+      && lib.last freeScript == "          df -h /"
+    ) "the step does not say the free space of / before and after";
 
   "A branch's push" =
     t.expect (

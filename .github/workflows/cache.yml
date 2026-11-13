@@ -46,6 +46,33 @@ jobs:
             runner: macos-15
     runs-on: ${{ matrix.runner }}
     steps:
+      # The x64 image's toolchains leave the store and the builds too
+      # little of / for the set (record 0020 as amended on 2026-11-13):
+      # before Nix is installed, its trees that no package's build uses
+      # and dpkg does not own are removed. The arm64 and macOS images
+      # leave room, so their jobs remove nothing.
+      - name: Free the runner's disk for the store
+        if: matrix.system == 'x86_64-linux'
+        run: |
+          df -h /
+          sudo rm -rf \
+            "$HOME/.cargo" \
+            "$HOME/.rustup" \
+            /opt/ghc \
+            /opt/hostedtoolcache \
+            /opt/pipx* \
+            /usr/lib/heroku \
+            /usr/local/.ghcup \
+            /usr/local/lib/android \
+            /usr/share/az_* \
+            /usr/share/dotnet \
+            /usr/share/gradle-* \
+            /usr/share/kotlinc \
+            /usr/share/miniconda \
+            /usr/share/sbt \
+            /usr/share/swift
+          df -h /
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
