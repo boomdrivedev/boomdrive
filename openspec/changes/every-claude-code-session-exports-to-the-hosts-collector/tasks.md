@@ -40,7 +40,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 2. What the modules hold to
 
 - [x] 2.1 `nix/tests/apps.nix`'s `noClaudeCode` reads a system with `services.boomdrive` and `services.crew` on and a collector named, beside the one with none (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "No Claude Code of the modules'" on nix-darwin and on NixOS.
-- [ ] 2.2 `nix/tests/tools.nix`'s nix-darwin case drops the managed document's line, beside the runner's link, Pending You's folder and the plugins' links, and holds that line to one (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The tools' activation is their own".
+- [x] 2.2 `nix/tests/tools.nix`'s nix-darwin case drops the managed document's line, beside the runner's link, Pending You's folder and the plugins' links, and holds that line to one (design Decision 10). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The tools' activation is their own".
 
 ## 3. The words and the specs
 
