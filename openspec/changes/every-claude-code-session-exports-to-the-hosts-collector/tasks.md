@@ -30,7 +30,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - otherwise, `activate.sh managed` removes that path.
 
   True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The document on nix-darwin", "No collector on nix-darwin" and "Not without the runner" on nix-darwin.
-- [ ] 1.5 `nix/tests/claude-code.nix` holds the document each system writes to its keys and values (design Decisions 3 to 5). It reads the NixOS document from `/etc`'s `text`, and holds the nix-darwin step's store path to `pkgs.writeText` of the expected document (design Decision 12). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's:
+- [x] 1.5 `nix/tests/claude-code.nix` holds the document each system writes to its keys and values (design Decisions 3 to 5). It reads the NixOS document from `/etc`'s `text`, and holds the nix-darwin step's store path to `pkgs.writeText` of the expected document (design Decision 12). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's:
   - "In no home" and "The telemetry keys alone";
   - "Metrics and logs by default", "Traces named", "Each signal's endpoint" and "No general endpoint";
   - "The content settings off" and "The account and repository attributes on";
