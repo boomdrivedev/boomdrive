@@ -58,7 +58,6 @@ Collecting once the control plane has taken the report would hold a record acros
 
 - Good: no tidy loses the end of a place launched under this record that names a recipient, whatever tidied it. The runner's report holds it until the runner, its report saved, collects it.
 - Good: the runner's After, the keeper's landing and the drain read a landing from the record Flume holds, as they read a tidied record now.
-- Good: crew names a role on every launch, so crew's stopgap of record 0062 can go once this runs on every host crew serves. That is crew's unit `crew-reads-each-pieces-end-from-the-runners-report`.
 - Bad: a pass that carries a held record runs one more Flume command for it.
 - Bad: the runner's name is owed every end of its places, each stage's and stall's too, and collects them all at once by `flume inbox <place>` once the place is tidied (Flume record 0060).
 - Bad: a session named `boomdrive` in the terminal would be sent the notices of every place the runner launches.

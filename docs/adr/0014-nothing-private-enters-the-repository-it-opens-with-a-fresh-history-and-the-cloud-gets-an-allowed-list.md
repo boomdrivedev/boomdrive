@@ -1,13 +1,13 @@
 ---
 number: 14
-title: Nothing private enters the repository, it opens with a fresh history, and the cloud gets an allowed list of Flume's status
+title: Nothing private enters the repository, and the cloud gets an allowed list of Flume's status
 status: accepted
 date: 2026-11-01
 decision-makers:
 - Chuck Swanberg
 ---
 
-# Nothing private enters the repository, it opens with a fresh history, and the cloud gets an allowed list of Flume's status
+# Nothing private enters the repository, and the cloud gets an allowed list of Flume's status
 
 Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
 
@@ -31,7 +31,6 @@ For what goes up: an allowed list, the fields the cloud's copy of a place names;
 Option 1 each time, the user's choice. For what goes up, the user pointed to the board spike's session for what the cloud would show.
 
 - **No private text or names.** No text of a private repository is copied into this one, which cites a private repository by its name and an id at most. No host, partition, state repository, person's path or account appears in its code, tests, fixtures or docs. Tests use neutral names, and a tool's answer kept as a fixture is captured on a scratch host with its paths made neutral (core.41).
-- **A fresh history.** A change scrubs the tree to that rule. The public repository starts from a fresh history, and this one is kept private as its archive.
 - **An allowed list for the cloud.** To a hosted control plane, the runner carries of Flume's status of a place only the fields the cloud's copy of a place names, each as Flume printed it, and leaves out the rest. The list is that copy's schema, in the runner protocol (core.27). The spike's drawings read these fields: `place`, `branch`, `base`, `stream`, `priority`, the agent's account, `stages[]` with their ends, `ends[]` with their deliveries and who they are pending for, `waiting_on`, the submission's counts, the pane's address for the terminal, and each stream's running and bound. That is the list's first draft. An agent's question to a person, its waiting and end words, is among what is kept. crew's state repository, the operator's own, takes the status whole as now.
 
 core.6 stands, and its details are amended in this record's commit to name the repository as public. core.11's details are amended to name the allowed list as what goes to a hosted control plane.

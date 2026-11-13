@@ -33,9 +33,4 @@ Option 1.
 - **crew is given them.** Where crew's module is on, Boomdrive's module gives crew each drive of every account, this host's and others', with its machine and its account's state repository, through crew's module options (core.46; crew `flake.2`). crew's own keys for a drive, its session, roles, blueprints and review, stay in crew's settings, named by the drive. A host that also writes a drive's machine or state in crew's settings fails its switch, naming `services.boomdrive.accounts`.
 - **The runner's crew table** is built from the same accounts: crew's host and each drive of this host under an account served by crew, with its account's state repository. A table the host writes out still wins whole (record 0023).
 - **crew's names stay crew's.** Boomdrive's module sets crew's options as crew's file names them, so crew's rename of "partition" to "drive" (crew record 0054) moves in the change that moves crew's version.
-- **What builds it.** A crew change lets another module give each drive its machine and its state repository. Then a Boomdrive change gives them from the accounts and adds `state` to an account. No code carries a host between the flake bolt's shape and this one: whoever writes a host's configuration moves its data by hand. The user, 2026-11-08, in the design agent's pane: "I want the system to be built the way it should be and then have agents fucking fix the data transition as necessary".
-
-## Consequences
-
-- One crew unit, then one Boomdrive unit, which build it.
-- afterthought/swancloud writes its hosts' machines in both places, the same, until both changes land, then once.
+- **No code for the transition.** No code carries a host between the flake bolt's shape and this one. The user, 2026-11-08, in the design agent's pane: "I want the system to be built the way it should be and then have agents fucking fix the data transition as necessary".
