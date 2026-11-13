@@ -134,7 +134,7 @@ first publish from Boomdrive's own repository.
   the Method moves through the principles in order, each taking the screen
   in turn: the write-up (the claim, what it rules out, today, where it is
   going, what measures it) beside an animated diagram of the idea, in the
-  manner of sluice's merge-queue diagram (`agentplot/sluice
+  manner of sluice's merge-queue diagram (`boomdrivedev/sluice
   docs/diagrams/sluice.svg`), which, as the site's own copy in Boomdrive's
   brass, is the diagram for "Order at landing, never at start". A
   principle is a place on the Method page, `/method/#<id>`, and every link
@@ -169,10 +169,10 @@ first publish from Boomdrive's own repository.
 Boomdrive is the umbrella of a family of tools: the Method and its engine,
 then headwater and eddy, which notice, millpond, the inbox, flume, which
 launches an item's work in a worktree, sounding, which works a question
-to a conclusion, and sluice, which lands. Each tool has its own site at `agentplot.github.io/<repo>/`
-and its design book at `agentplot.github.io/blueprints/<book>/`; this site
+to a conclusion, and sluice, which lands. Each tool has its own site at `boomdrivedev.github.io/<repo>/`
+and its design book at `boomdrivedev.github.io/blueprints/<book>/`; this site
 holds the hub every family site's footer links to,
-`agentplot.github.io/boomdrive/tools/`.
+`boomdrivedev.github.io/boomdrive/tools/`.
 
 - **The family is one list, and it is not ours.** Every member, its line,
   its place in the loop, its status, its site, its design book and its
@@ -191,7 +191,7 @@ holds the hub every family site's footer links to,
   each tool stands alone and how the Method joins them.
 - **Its words are content.** The lede and the two columns live in
   `src/content/pages/tools.md`, so Vale reads them as it reads every page.
-  They are grounded in the capture design (`agentplot/blueprints
+  They are grounded in the capture design (`boomdrivedev/blueprints
   design/capture/design.md`): each tool stands alone with its own plugins,
   the tools meet only at contracts, and moving from one setup to the next
   changes the host and the curator while the adapters and the inbox stay

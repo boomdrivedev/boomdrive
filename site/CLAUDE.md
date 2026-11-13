@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Boomdrive's site, `site/` of agentplot/boomdrive: the Method's principles,
+Boomdrive's site, `site/` of boomdrivedev/boomdrive: the Method's principles,
 field notes, the fleet's measurements and the tools, an Astro site on bun
-served at `https://agentplot.github.io/boomdrive/`. `docs/` holds its design
+served at `https://boomdrivedev.github.io/boomdrive/`. `docs/` holds its design
 and plans; read `docs/site-design.md` first. The paths here are read from
 `site/`.
 

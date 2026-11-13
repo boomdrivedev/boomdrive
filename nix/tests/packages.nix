@@ -213,8 +213,8 @@ in
       lock = runnerLock // {
         package = map (
           package:
-          if lib.hasPrefix "git+https://github.com/agentplot/weir" (package.source or "") then
-            package // { source = "git+https://github.com/agentplot/weir?rev=${moved}#${moved}"; }
+          if lib.hasPrefix "git+https://github.com/boomdrivedev/weir" (package.source or "") then
+            package // { source = "git+https://github.com/boomdrivedev/weir?rev=${moved}#${moved}"; }
           else
             package
         ) runnerLock.package;
@@ -575,7 +575,7 @@ in
       inherit (t) lock;
       named = flake.inputs // {
         sluice = flake.inputs.sluice // {
-          url = "github:agentplot/sluice/v0.68.0";
+          url = "github:boomdrivedev/sluice/v0.68.0";
         };
       };
       locked = lock // {
@@ -604,7 +604,7 @@ in
       node = lock.nodes.${lock.root}.inputs.crew;
       named = flake.inputs // {
         crew = flake.inputs.crew // {
-          url = "github:agentplot/crew/main";
+          url = "github:boomdrivedev/crew/main";
         };
       };
       locked = lock // {

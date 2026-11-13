@@ -39,7 +39,7 @@ code_workspaces = true
 
 # The account `own`'s drive `home`: each repository it keeps, by its GitHub address.
 [accounts.own.drives.home]
-repositories = ["agentplot/flume"]
+repositories = ["boomdrivedev/flume"]
 
 # The account `own`'s drive `work`.
 [accounts.own.drives.work]
@@ -122,11 +122,11 @@ layer's. A local layer a control plane might write:
 ```toml
 # Added to the managed layer's drive `home`.
 [accounts.own.drives.home]
-repositories = ["agentplot/sluice"]
+repositories = ["boomdrivedev/sluice"]
 
 # A drive the managed layer does not name, declared here.
 [accounts.own.drives.garden]
-repositories = ["agentplot/timber"]
+repositories = ["boomdrivedev/timber"]
 ```
 
 The managed layer may pin a key the local layer could set: `pin`, at its
@@ -171,7 +171,7 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   through the host's own credential helper where it names no `[forge]`.
   A fetch that fails drops the repository's kept token. A fetch, a new
   clone's among them, still going at thirty seconds is stopped with
-  everything it started, as agentplot/sluice record 0109 bounds every
+  everything it started, as boomdrivedev/sluice record 0109 bounds every
   try of a call to a remote. The repository is then named not fetched,
   or not cloned with nothing left, and is fetched again at the next
   pass, while the pass keeps every other repository;
@@ -313,7 +313,7 @@ the hosted control plane mints this host's forge tokens, and version 2
 of its protocol carries none yet.
 
 The set's sluice takes no token from it yet: it reads a credential
-command from v0.84.0 (agentplot/sluice record 0108), and the set holds
+command from v0.84.0 (boomdrivedev/sluice record 0108), and the set holds
 v0.78.1. Once the set holds a sluice that reads one, the Boomdrive
 module gives sluice `boomdrive forge-token` and the App's id itself, so
 a host writes no credential command of its own (core.57). Until then a
@@ -323,10 +323,10 @@ host keeps sluice's own `[forge] key`.
 
 A stranger's way from nothing of the family installed to a working
 drive, on an Apple silicon Mac or a NixOS machine, is the quick start,
-<https://agentplot.github.io/boomdrive/start/>, whose every step a test
+<https://boomdrivedev.github.io/boomdrive/start/>, whose every step a test
 of the gate runs as it stands.
 
-The flake at this repository's root, `github:agentplot/boomdrive`,
+The flake at this repository's root, `github:boomdrivedev/boomdrive`,
 gives the family's host tools pinned together, for `aarch64-darwin`,
 `aarch64-linux` and `x86_64-linux`:
 
@@ -370,18 +370,18 @@ the flake gives it nothing. git alone is the host's own.
 To put the runner, Flume, sluice, herdr and the set's herdr plugins in
 your profile, and crew where the host runs crew:
 
-    nix profile add github:agentplot/boomdrive github:agentplot/boomdrive#flume github:agentplot/boomdrive#sluice github:agentplot/boomdrive#herdr github:agentplot/boomdrive#herdr-plugins github:agentplot/boomdrive#crew
+    nix profile add github:boomdrivedev/boomdrive github:boomdrivedev/boomdrive#flume github:boomdrivedev/boomdrive#sluice github:boomdrivedev/boomdrive#herdr github:boomdrivedev/boomdrive#herdr-plugins github:boomdrivedev/boomdrive#crew
 
 `herdr-plugins` holds Flume's and sluice's herdr plugins in one package,
 at `share/herdr/plugins/flume` and `share/herdr/plugins/sluice`. Each
 plugin's own package has `bin/open.sh` at its top, so one profile cannot
 hold the two side by side; `boomdrive setup` links each from the
-profile. The same line may add `github:agentplot/boomdrive#ghostty`,
-`github:agentplot/boomdrive#portless`,
-`github:agentplot/boomdrive#worktrunk`, and crew's companions,
-`github:agentplot/boomdrive#pendingyou`,
-`github:agentplot/boomdrive#plannotator` and
-`github:agentplot/boomdrive#plannotator-tui`.
+profile. The same line may add `github:boomdrivedev/boomdrive#ghostty`,
+`github:boomdrivedev/boomdrive#portless`,
+`github:boomdrivedev/boomdrive#worktrunk`, and crew's companions,
+`github:boomdrivedev/boomdrive#pendingyou`,
+`github:boomdrivedev/boomdrive#plannotator` and
+`github:boomdrivedev/boomdrive#plannotator-tui`.
 
 An older nix spells it `nix profile install`. nix asks whether to
 accept the flake's `nixConfig`, which names the family's cache,
@@ -418,10 +418,10 @@ new version in, from its Conventional Commits, is released as a tag
 writes the version into the tree, so the runner at the tag says it;
 `main`'s runner says `0.0.0`. The release has its notes, and the cache
 runs again at the tag. To stay on one set, pin a tag,
-`github:agentplot/boomdrive/<tag>`, or a commit of `main` whose `cache`
+`github:boomdrivedev/boomdrive/<tag>`, or a commit of `main` whose `cache`
 run passed:
 
-    gh run list --repo agentplot/boomdrive --workflow cache.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha'
+    gh run list --repo boomdrivedev/boomdrive --workflow cache.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha'
 
 A host's configuration imports its platform's module,
 `darwinModules.default` for nix-darwin or `nixosModules.default` for
@@ -463,7 +463,7 @@ how each drive's roles run and batch, are the host's own, written in
       url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    boomdrive.url = "github:agentplot/boomdrive";
+    boomdrive.url = "github:boomdrivedev/boomdrive";
   };
 
   outputs =
@@ -476,7 +476,7 @@ how each drive's roles run and batch, are the host's own, written in
             # The rest of the host's configuration, system.primaryUser among it.
             services.boomdrive = {
               enable = true;
-              accounts.own.drives.home.repositories.agentplot = [ "flume" "sluice" ];
+              accounts.own.drives.home.repositories.boomdrivedev = [ "flume" "sluice" ];
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
@@ -492,8 +492,8 @@ how each drive's roles run and batch, are the host's own, written in
                   state = "example/state";
                   machine = "host-a";
                   session = "home";
-                  folder = "/Users/alice/Code/agentplot";
-                  repos = [ "agentplot/flume" "agentplot/sluice" ];
+                  folder = "/Users/alice/Code/boomdrivedev";
+                  repos = [ "boomdrivedev/flume" "boomdrivedev/sluice" ];
                   accounts = { design = "home"; planner = "home"; reviewer = "home"; ops = "home"; operator = "home"; };
                   # Each main-level role "standing", its agent kept running in its pane,
                   # or "on-demand", run by Flume in the drive's stream while work waits for it.
@@ -530,7 +530,7 @@ services.boomdrive.accounts.own.drives.home = {
     priority = 11;                  # Flume's own where unset
     labels.review.reserve = 1;      # beside operation 1 and planning 2
   };
-  repositories.agentplot = [ "flume" "sluice" ];
+  repositories.boomdrivedev = [ "flume" "sluice" ];
 };
 ```
 
@@ -604,7 +604,7 @@ sets it or an entry of it. git run in the folder finds the bare
 repository by the folder's own `.git` file:
 
 ```nix
-config.services.boomdrive.cloneDirs."agentplot/flume"  # ~/.local/share/boomdrive/repositories/agentplot/flume
+config.services.boomdrive.cloneDirs."boomdrivedev/flume"  # ~/.local/share/boomdrive/repositories/boomdrivedev/flume
 ```
 
 With `services.boomdrive.enable` and crew's module on, each module
@@ -763,9 +763,9 @@ sluice, crew, herdr, portless, worktrunk, Pending You, Plannotator and
 plannotator-tui, that starts herdr on entering and leaves you in the
 shell when herdr ends:
 
-    nix develop github:agentplot/boomdrive
+    nix develop github:boomdrivedev/boomdrive
 
-A command run through it, `nix develop github:agentplot/boomdrive
+A command run through it, `nix develop github:boomdrivedev/boomdrive
 --command <command>`, starts no herdr, and neither does a shell entered
 from inside herdr. The shell links no plugin and writes no folder of
 Pending You's: the modules do. It starts no proxy of portless's. This repository's own development shell is
@@ -791,7 +791,7 @@ commits the lock names, which the modules link. A host
 without them links one with herdr's own command. Build it to a link of
 your own, which keeps nix's garbage collector from it, and link that:
 
-    nix build github:agentplot/boomdrive#flume-herdr-plugin --out-link ~/.local/state/herdr-plugins/flume
+    nix build github:boomdrivedev/boomdrive#flume-herdr-plugin --out-link ~/.local/state/herdr-plugins/flume
     herdr plugin link ~/.local/state/herdr-plugins/flume
 
 A tool's version moves by its input, and an override is the host's
@@ -799,7 +799,7 @@ own: its paths are not the cache's, so the host builds them, and the
 runner's floors judge it, not this repository's tests. On the command
 line:
 
-    nix profile add github:agentplot/boomdrive#flume --override-input flume github:agentplot/flume/v0.22.0
+    nix profile add github:boomdrivedev/boomdrive#flume --override-input flume github:boomdrivedev/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
 version and its git crates' hashes are Flume's own flake's, and crew's
@@ -810,7 +810,7 @@ beside it, in its `package`:
 
 ```nix
 # In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:agentplot/sluice/v0.77.0";
+boomdrive.inputs.sluice.url = "github:boomdrivedev/sluice/v0.77.0";
 ```
 
 ```nix
@@ -829,8 +829,8 @@ up a drive of an account under crew, and an agent can run it for you.
 Each answer is a flag:
 
     boomdrive setup --account own --drive home --state-repository example/state \
-      --repository agentplot/flume --repository agentplot/sluice \
-      --blueprints agentplot/flume --runs ops standing --review 5 4 --json
+      --repository boomdrivedev/flume --repository boomdrivedev/sluice \
+      --blueprints boomdrivedev/flume --runs ops standing --review 5 4 --json
 
 `--account` and `--drive` name the account and its drive, `--repository`
 each repository the drive keeps, and `--state-repository` the account's
@@ -875,7 +875,7 @@ since only crew's agents need them. Then, in order, it:
 4. links the set's herdr plugins from `share/herdr/plugins` of
    `~/.nix-profile`, else `~/.local/state/nix/profile`, by `herdr plugin
    link`, each one herdr already lists left as it is. Where the profile
-   holds none, it names `github:agentplot/boomdrive#herdr-plugins`;
+   holds none, it names `github:boomdrivedev/boomdrive#herdr-plugins`;
 5. writes `~/Library/LaunchAgents/io.github.agentplot.boomdrive.plist`,
    nix-darwin's agent under setup's own label, which runs `boomdrive run`
    from your profile once the Nix store is mounted and logs to
@@ -887,8 +887,8 @@ Run again with the same answers, setup changes nothing. A later change
 to the drive's repositories is setup's too, every other answer taken
 from what the host holds:
 
-    boomdrive setup --add-repository agentplot/crew
-    boomdrive setup --remove-repository agentplot/sluice
+    boomdrive setup --add-repository boomdrivedev/crew
+    boomdrive setup --remove-repository boomdrivedev/sluice
 
 A repository removed is let go by the runner by its own rules. A second
 drive is set up by a run naming it, and the runner's file keeps both.
@@ -1092,11 +1092,11 @@ url = "https://control.example"
 
 [[control_plane.hosted.partitions]]
 label = "home"
-repositories = ["agentplot/flume"]
+repositories = ["boomdrivedev/flume"]
 
 [[control_plane.hosted.partitions]]
 label = "work"
-repositories = ["example/crew", "agentplot/flume"]
+repositories = ["example/crew", "boomdrivedev/flume"]
 ```
 
 `url` is the control plane's address: `https://`, or `http://` to a

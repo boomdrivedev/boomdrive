@@ -86,7 +86,7 @@ fn crew_missing() {
     let stand = Stand::new();
     stand.remove("crew");
     let reason = refused(&stand.setup(&EVERY), 2);
-    for words in ["`crew`", "github:agentplot/boomdrive#crew"] {
+    for words in ["`crew`", "github:boomdrivedev/boomdrive#crew"] {
         assert!(reason.contains(words), "{reason}");
     }
     assert!(stand.calls("gh").is_empty(), "{:?}", stand.calls("gh"));
@@ -402,7 +402,7 @@ fn no_plugin_in_the_profile() {
         answer["missing"],
         json!([{
             "what": "the set's herdr plugins",
-            "fix": "nix profile add github:agentplot/boomdrive#herdr-plugins"
+            "fix": "nix profile add github:boomdrivedev/boomdrive#herdr-plugins"
         }])
     );
 }

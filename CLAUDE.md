@@ -65,7 +65,7 @@ release.
 
 Boomdrive's site is `site/`: the Method, its field notes and the
 fleet's measurements, an Astro site on bun, the moon project `site`,
-served at `https://agentplot.github.io/boomdrive/` and published from
+served at `https://boomdrivedev.github.io/boomdrive/` and published from
 `main` by the workflow `.github/workflows/pages.yml` at each push that
 changes it. Its rules are the area page `docs/architecture/site.md`,
 site.1 to site.7, and its working rules `site/CLAUDE.md` (record 0038).
@@ -77,7 +77,7 @@ no version (core.48).
 **The family.** This tool works with the others of the Boomdrive family:
 sluice (the merge queue), Flume (places and their agents), crew (teams),
 Boomdrive (the runner), Boomdrive Cloud (the control plane), timber,
-weir and boom. Each tool's statement is in agentplot/blueprints,
+weir and boom. Each tool's statement is in boomdrivedev/blueprints,
 `design/<tool>/requirements.md`. Before designing or fixing a behavior
 here, look at how the related tools do the same thing, in their code and
 their statements: readiness, configuration, credentials, retries, what a

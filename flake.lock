@@ -61,13 +61,13 @@
       "locked": {
         "lastModified": 1794337313,
         "narHash": "sha256-9mLvHrFTa5d9xx4v5VuaasRe5I6rcowrlTeMYeGyU6M=",
-        "owner": "agentplot",
+        "owner": "boomdrivedev",
         "repo": "crew",
         "rev": "6698fdaef7c6eb2b1ec34808f1d7a9c016d85622",
         "type": "github"
       },
       "original": {
-        "owner": "agentplot",
+        "owner": "boomdrivedev",
         "ref": "v0.59.0",
         "repo": "crew",
         "type": "github"
@@ -127,13 +127,13 @@
       "locked": {
         "lastModified": 1794275970,
         "narHash": "sha256-Z5xc84YtN1Uzpyq8Mf1WkuNF0FVLVCFwkSpo0SDr1bk=",
-        "owner": "agentplot",
+        "owner": "boomdrivedev",
         "repo": "flume",
         "rev": "65911c262b27556ce4a6dccb2bae943e8c314417",
         "type": "github"
       },
       "original": {
-        "owner": "agentplot",
+        "owner": "boomdrivedev",
         "ref": "v0.21.2",
         "repo": "flume",
         "type": "github"
@@ -340,13 +340,13 @@
       "locked": {
         "lastModified": 1794341395,
         "narHash": "sha256-3PhqmCW8w1DC5OTNJEtpK9IJkgIdvYJlIU0wd9U7gLs=",
-        "owner": "agentplot",
+        "owner": "boomdrivedev",
         "repo": "sluice",
         "rev": "b839783d0f14974b157cb38fcc7aa0591136b8f9",
         "type": "github"
       },
       "original": {
-        "owner": "agentplot",
+        "owner": "boomdrivedev",
         "ref": "v0.86.0",
         "repo": "sluice",
         "type": "github"

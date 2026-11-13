@@ -120,7 +120,7 @@ runCommand "boomdrive-launcher-${version}"
     // lib.optionalAttrs isDarwin { inherit info; };
     meta = {
       description = "The Boomdrive launcher, which opens the host's agents with flume open";
-      homepage = "https://github.com/agentplot/boomdrive";
+      homepage = "https://github.com/boomdrivedev/boomdrive";
       platforms = lib.platforms.darwin ++ lib.platforms.linux;
     };
   }

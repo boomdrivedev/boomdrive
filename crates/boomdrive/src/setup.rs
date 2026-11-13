@@ -37,7 +37,7 @@ pub const LABEL: &str = "io.github.agentplot.boomdrive";
 pub const ASIDE: &str = "config.toml.before-setup";
 
 /// Where the set gives its herdr plugins in one package.
-const PLUGINS_FROM: &str = "github:agentplot/boomdrive#herdr-plugins";
+const PLUGINS_FROM: &str = "github:boomdrivedev/boomdrive#herdr-plugins";
 
 /// What setup's flags gave, each as text: none or empty where a flag was
 /// not given.
@@ -610,7 +610,7 @@ pub fn check_host(host_of: &Host<'_>) -> Result<(), Refusal> {
         ("gh", "GitHub's command line, `nix profile add nixpkgs#gh`"),
         (
             "herdr",
-            "`nix profile add github:agentplot/boomdrive#herdr`",
+            "`nix profile add github:boomdrivedev/boomdrive#herdr`",
         ),
         ("launchctl", "macOS's own, `/bin/launchctl`"),
     ];
@@ -1572,7 +1572,7 @@ mod check_host {
         let home = Home::new();
         let refusal = home.check("macos", &["herdr"]).unwrap_err();
         assert!(refusal.host_to_fix);
-        for words in ["`herdr`", "github:agentplot/boomdrive#herdr"] {
+        for words in ["`herdr`", "github:boomdrivedev/boomdrive#herdr"] {
             assert!(refusal.words.contains(words), "{}", refusal.words);
         }
         let refusal = home.check("macos", &["gh", "launchctl"]).unwrap_err();

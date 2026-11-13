@@ -5,7 +5,7 @@ form Home and the statement list it by), the claim, what it rules out, how we
 do it today, where it is going, what measures it, and the idea of its
 diagram, agreed with the operator before it is drawn (`site-design.md`,
 Every principle gets a diagram). The
-merge queue clauses cited are the [sluice statement](https://github.com/agentplot/blueprints/blob/main/design/sluice/requirements.md); the site shows no clause number, and this outline keeps them. Version 0.1
+merge queue clauses cited are the [sluice statement](https://github.com/boomdrivedev/blueprints/blob/main/design/sluice/requirements.md); the site shows no clause number, and this outline keeps them. Version 0.1
 has ten principles, read on one page.
 
 ## 0. The statement

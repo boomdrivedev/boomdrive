@@ -39,7 +39,7 @@ rustPlatform.buildRustPackage {
   doCheck = false;
   meta = {
     description = "The runner on each host of the Boomdrive family";
-    homepage = "https://github.com/agentplot/boomdrive";
+    homepage = "https://github.com/boomdrivedev/boomdrive";
     mainProgram = "boomdrive";
     inherit platforms;
   };

@@ -115,7 +115,7 @@ let
         repositories = mkOption {
           type = types.attrsOf (types.listOf (types.strMatching "[A-Za-z0-9._-]+"));
           default = { };
-          example = lib.literalExpression ''{ agentplot = [ "flume" "sluice" ]; }'';
+          example = lib.literalExpression ''{ boomdrivedev = [ "flume" "sluice" ]; }'';
           description = "Each repository the drive keeps, by its owner, the names of the owner's repositories in the order kept; a repository belongs to one drive. Written as their addresses, `<owner>/<name>`, owner by owner in the order of the owners' names.";
         };
       };
@@ -299,7 +299,7 @@ in
     accounts = mkOption {
       type = types.attrsOf account;
       default = { };
-      example = lib.literalExpression ''{ own.drives.home.repositories.agentplot = [ "flume" "sluice" ]; }'';
+      example = lib.literalExpression ''{ own.drives.home.repositories.boomdrivedev = [ "flume" "sluice" ]; }'';
       description = "Each account the host serves by its name, what a runner enrolls with a control plane, each naming its drives and each drive its repositories by owner: the runner's `accounts`, always written.";
     };
 
