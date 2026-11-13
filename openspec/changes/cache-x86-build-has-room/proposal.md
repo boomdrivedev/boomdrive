@@ -9,7 +9,7 @@ The runs fail in the build, five to eight minutes in, each with Nix's note that 
 ## What Changes
 
 - The `x86_64-linux` job's first step removes, before Nix is installed, the hosted runner's preinstalled trees that no package's build uses and dpkg does not own: `~/.cargo`, `~/.rustup`, `/opt/ghc`, `/opt/hostedtoolcache`, `/usr/local/.ghcup`, `/usr/local/lib/android`, `/usr/share/dotnet` and `/usr/share/swift`, which nothing-but-nix's Carve measures at about 27GiB on x64, and `/usr/share/az_*`, `/usr/share/miniconda`, `/usr/share/gradle-*`, `/usr/share/kotlinc`, `/usr/share/sbt`, `/usr/lib/heroku` and `/opt/pipx*`. It says the free space of `/` before and after, so the run's log shows the room the build had. It is the job's only step with a condition, and no other system's job runs it.
-- The requirement "The workflow builds and pushes every package of every system" says so, with a scenario, "The x86_64-linux job has room", which the nix project's test holds the workflow's text to.
+- A requirement of its own, "The x86_64-linux job has room for the set", says so, with a scenario, "The x86_64-linux job has room", which the nix project's test holds the workflow's text to.
 - Record 0020 is amended, and core.47's details name the step as not ruled out.
 
 ### What stays

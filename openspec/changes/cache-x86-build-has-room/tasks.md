@@ -13,4 +13,4 @@ A task is true once the check it names passes, run as it names it.
 ## 3. The spec
 
 - [ ] 3.1 The change's delta passes openspec's strict check. True when `sluice exec main -- moon run root:changes` passes.
-- [ ] 3.2 The change's delta archives into specs that pass openspec's strict check, the requirement "The workflow builds and pushes every package of every system" holding the scenario "The x86_64-linux job has room". True when, after `devenv shell -- openspec archive cache-x86-build-has-room --yes`, `sluice exec main -- moon run root:specs` passes.
+- [ ] 3.2 The change's delta archives into specs that pass openspec's strict check, the requirement "The x86_64-linux job has room for the set" holding the scenario "The x86_64-linux job has room". True when, after `devenv shell -- openspec archive cache-x86-build-has-room --yes`, `sluice exec main -- moon run root:specs` passes.
