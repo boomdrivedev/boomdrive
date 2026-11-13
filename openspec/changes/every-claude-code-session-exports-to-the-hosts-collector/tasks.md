@@ -16,7 +16,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The option and the document
 
-- [ ] 1.1 `nix/modules/claude-code.nix` is added, and `darwin.nix` and `nixos.nix` import it. It declares `services.boomdrive.claude-code.telemetry` (design Decision 2; Task notes 1.1):
+- [x] 1.1 `nix/modules/claude-code.nix` is added, and `darwin.nix` and `nixos.nix` import it. It declares `services.boomdrive.claude-code.telemetry` (design Decision 2; Task notes 1.1):
   - `collector`, `null` by default, an `http://` address on the host's loopback;
   - `metrics`, `logs` and `traces`, `true`, `true` and `false` by default.
 

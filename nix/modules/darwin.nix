@@ -39,6 +39,7 @@ let
   inherit (import ./accounts.nix { inherit lib; }) fileOf;
   dataDirOf = import ./data-dir.nix { inherit lib; };
   keptOf = import ./kept.nix { inherit lib; };
+  claudeCode = import ./claude-code.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
@@ -88,6 +89,7 @@ in
     ./drives.nix
     ./clones.nix
     ./sources.nix
+    claudeCode.module
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
