@@ -25,7 +25,14 @@
 # `cloneDirs`, its `dir` the clone's folder and its `checkout` the
 # runner's view under the primary user's home (kept.nix), at the module's
 # own priority, so a host writes none (record 0036 as amended a third
-# time on 2026-11-11).
+# time on 2026-11-11). Each activation of a system that imports the
+# module runs, as root and before the user's steps, activate.sh's
+# `managed` on Claude Code's managed telemetry document, claude-code.nix's:
+# where the runner is on and `services.boomdrive.claude-code.telemetry`
+# names a collector, it writes the document every Claude Code session on
+# the host reads, and otherwise it removes the set's own document, since
+# nix-darwin removes no file it wrote outside `/etc` (record 0013 as
+# amended on 2026-11-12).
 { packages }:
 {
   config,
@@ -41,6 +48,19 @@ let
   keptOf = import ./kept.nix { inherit lib; };
   claudeCode = import ./claude-code.nix { inherit lib; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
+
+  # Claude Code's managed telemetry document, written where the runner is
+  # on and a collector is named, and removed otherwise (the change
+  # every-claude-code-session-exports-to-the-hosts-collector, design
+  # Decisions 6 and 8).
+  telemetry = cfg.claude-code.telemetry;
+  managed = lib.escapeShellArg "${claudeCode.darwinFolder}/${claudeCode.name}";
+  document = pkgs.writeText claudeCode.name (builtins.toJSON (claudeCode.documentOf telemetry));
+  managing =
+    if cfg.enable && telemetry.collector != null then
+      "/bin/sh ${./activate.sh} managed ${managed} ${document} || true\n"
+    else
+      "/bin/sh ${./activate.sh} managed ${managed} || true\n";
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
   # (apps.nix).
@@ -130,72 +150,78 @@ in
     '';
   };
 
-  config = lib.mkIf cfg.enable {
-    system.requiresPrimaryUser = [ "services.boomdrive.enable" ];
+  config = lib.mkMerge [
+    # Run as root, before the user's steps, whether or not the runner is
+    # on: a failure says why and stops nothing else.
+    { system.activationScripts.postActivation.text = lib.mkBefore managing; }
 
-    assertions = [
-      {
-        assertion = user == null || home != null;
-        message = "services.boomdrive runs in the login of nix-darwin's primary user ${toString user}, whose home users.users.${toString user}.home is not set: set it, as the agent's HOME and its log's folder.";
-      }
-    ];
+    (lib.mkIf cfg.enable {
+      system.requiresPrimaryUser = [ "services.boomdrive.enable" ];
 
-    environment.systemPackages = [ cfg.package ];
-
-    # crew's kept repositories, where crew's module is on and the runner
-    # keeps a repository (design Decisions 1, 4 and 6).
-    services.crew.settings.repositories =
-      lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { })
-        (keptOf {
-          inherit (cfg) cloneDirs;
-          inherit home;
-          root = cfg.settings.repository_root;
-        });
-
-    launchd.user.agents.boomdrive = {
-      # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store
-      # && exec <command>'`, so an agent loaded at boot before the store's
-      # volume is mounted waits for it, and the runner then holds the job's
-      # own process, which a stop's signal reaches.
-      command = lib.escapeShellArgs [
-        "${cfg.package}/bin/boomdrive"
-        "run"
-        "--config"
-        "${file}"
+      assertions = [
+        {
+          assertion = user == null || home != null;
+          message = "services.boomdrive runs in the login of nix-darwin's primary user ${toString user}, whose home users.users.${toString user}.home is not set: set it, as the agent's HOME and its log's folder.";
+        }
       ];
-      serviceConfig = {
-        RunAtLoad = true;
-        KeepAlive = true;
-        # An exit 2 is tried again no more than twice a minute.
-        ThrottleInterval = 30;
-        ProcessType = "Interactive";
-        # A stop ends the runner alone: a `flume launch` in flight runs to
-        # its end.
-        AbandonProcessGroup = true;
-        EnvironmentVariables = {
-          HOME = home;
-          PATH = lib.concatStringsSep ":" path;
-        };
-        StandardOutPath = cfg.logFile;
-        StandardErrorPath = cfg.logFile;
-      };
-    };
 
-    # Activation runs as root, with root's HOME, so the link is made as the
-    # primary user under their own home. A link that fails says why and
-    # stops nothing else: the agent reads its own --config either way.
-    # Pending You's folder is written the same way, before the plugins, so
-    # Pending You for Herdr finds its launcher at its first link; the
-    # plugins are linked the same way, each refusal said and stopping none.
-    system.activationScripts.postActivation.text = ''
-      sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
-        /bin/sh ${./activate.sh} link ${file} || true
-    ''
-    + lib.optionalString writingFolder ''
-      sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
-    ''
-    + lib.optionalString linking ''
-      sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
-    '';
-  };
+      environment.systemPackages = [ cfg.package ];
+
+      # crew's kept repositories, where crew's module is on and the runner
+      # keeps a repository (design Decisions 1, 4 and 6).
+      services.crew.settings.repositories =
+        lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { })
+          (keptOf {
+            inherit (cfg) cloneDirs;
+            inherit home;
+            root = cfg.settings.repository_root;
+          });
+
+      launchd.user.agents.boomdrive = {
+        # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store
+        # && exec <command>'`, so an agent loaded at boot before the store's
+        # volume is mounted waits for it, and the runner then holds the job's
+        # own process, which a stop's signal reaches.
+        command = lib.escapeShellArgs [
+          "${cfg.package}/bin/boomdrive"
+          "run"
+          "--config"
+          "${file}"
+        ];
+        serviceConfig = {
+          RunAtLoad = true;
+          KeepAlive = true;
+          # An exit 2 is tried again no more than twice a minute.
+          ThrottleInterval = 30;
+          ProcessType = "Interactive";
+          # A stop ends the runner alone: a `flume launch` in flight runs to
+          # its end.
+          AbandonProcessGroup = true;
+          EnvironmentVariables = {
+            HOME = home;
+            PATH = lib.concatStringsSep ":" path;
+          };
+          StandardOutPath = cfg.logFile;
+          StandardErrorPath = cfg.logFile;
+        };
+      };
+
+      # Activation runs as root, with root's HOME, so the link is made as the
+      # primary user under their own home. A link that fails says why and
+      # stops nothing else: the agent reads its own --config either way.
+      # Pending You's folder is written the same way, before the plugins, so
+      # Pending You for Herdr finds its launcher at its first link; the
+      # plugins are linked the same way, each refusal said and stopping none.
+      system.activationScripts.postActivation.text = ''
+        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+          /bin/sh ${./activate.sh} link ${file} || true
+      ''
+      + lib.optionalString writingFolder ''
+        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
+      ''
+      + lib.optionalString linking ''
+        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
+      '';
+    })
+  ];
 }

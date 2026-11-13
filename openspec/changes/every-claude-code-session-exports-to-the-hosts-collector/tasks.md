@@ -25,7 +25,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 - [x] 1.3 `activate.sh managed <path> [<source>]` writes the source to the path, whole, mode 0644, only where it differs, replacing a link and making a missing folder 0755. Given no source, it removes the file or link at the path and nothing else. It says a line for each write, removal or failure, and exits 0. Its header names the step, and its cases are in `nix/tests/activate.sh` (design Decision 9; Task notes 1.3). True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's:
   - "A fresh host", "Nothing differs", "A link where the document goes" and "A folder it cannot write";
   - "The document removed" and "Nothing to remove".
-- [ ] 1.4 `darwin.nix` adds one root line to `system.activationScripts.postActivation.text`, before the user's steps, for any system that imports the module (design Decisions 6 and 8):
+- [x] 1.4 `darwin.nix` adds one root line to `system.activationScripts.postActivation.text`, before the user's steps, for any system that imports the module (design Decisions 6 and 8):
   - with the runner on and a collector named, `activate.sh managed` writes the document, the document being `pkgs.writeText "10-boomdrive-telemetry.json"`, to `/Library/Application Support/ClaudeCode/managed-settings.d/10-boomdrive-telemetry.json`;
   - otherwise, `activate.sh managed` removes that path.
 

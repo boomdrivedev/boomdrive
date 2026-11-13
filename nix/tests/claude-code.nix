@@ -160,11 +160,79 @@ let
     ++ t.expect (
       entry != null && entry.text == expected
     ) "the NixOS system's ${etcName} holds ${toString (entry.text or null)}, not ${expected}";
+
+  # nix-darwin's activation, as text, and its lines.
+  darwinLines =
+    evaluated:
+    lib.filter (line: line != "") (
+      lib.splitString "\n" (
+        builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.postActivation.text
+      )
+    );
+  darwinPath = "/Library/Application Support/ClaudeCode/managed-settings.d/10-boomdrive-telemetry.json";
+  # The root step's line, writing `document` where it is given and
+  # removing the document where it is null.
+  managedLine =
+    document:
+    builtins.unsafeDiscardStringContext (
+      "/bin/sh ${../modules/activate.sh} managed ${lib.escapeShellArg darwinPath}"
+      + lib.optionalString (document != null) " ${document}"
+      + " || true"
+    );
+  managedLines = evaluated: lib.filter (lib.hasInfix "-activate.sh managed ") (darwinLines evaluated);
+  # The line `evaluated`'s activation runs for the document, which runs
+  # once, as root, before every step of the runner's user.
+  runsOnce =
+    what: evaluated: line:
+    let
+      lines = darwinLines evaluated;
+      steps = managedLines evaluated;
+      at = lib.lists.findFirstIndex (l: l == line) null lines;
+      users = lib.lists.findFirstIndex (lib.hasPrefix "sudo --user=") null lines;
+    in
+    t.expect (steps == [ line ]) "${what} runs ${builtins.toJSON steps}, not ${line} once"
+    ++ t.expect (
+      at != null && (users == null || at < users)
+    ) "${what} runs ${line} after a step of the runner's user"
+    ++ t.expect (
+      !lib.any (lib.hasInfix "managed-settings.json") lines
+    ) "${what} names managed-settings.json";
+
+  documentOnDarwin =
+    let
+      evaluated = named t.darwinSystem collector { };
+      document = evaluated.pkgs.writeText "10-boomdrive-telemetry.json" (
+        builtins.toJSON (claudeCode.documentOf evaluated.config.services.boomdrive.claude-code.telemetry)
+      );
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a nix-darwin system naming a collector fails: ${toString (t.failures evaluated)}"
+    ++ runsOnce "the activation of a nix-darwin system naming a collector" evaluated (
+      managedLine document
+    );
+
+  removesOnDarwin =
+    what: evaluated:
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ runsOnce "the activation of ${what}" evaluated (managedLine null);
 in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
 // {
   "The document on NixOS" = documentOnNixos;
+  "The document on nix-darwin" = documentOnDarwin;
+  "No collector on nix-darwin" =
+    removesOnDarwin "a nix-darwin system with the runner and no collector"
+      (t.darwinSystem { });
+  "Not without the runner on nix-darwin" =
+    removesOnDarwin "a nix-darwin system naming a collector without the runner"
+      (
+        t.darwinOf [
+          t.outputs.darwinModules.default
+          { services.boomdrive.claude-code.telemetry.collector = collector; }
+        ]
+      );
   "No collector on NixOS" = noEtc "a NixOS system with the runner and no collector" (
     t.nixosSystem { }
   );
