@@ -5,7 +5,7 @@ A task is true once the check it names passes, run as it names it.
 ## 1. The kind and the brief
 
 - [x] 1.1 `.config/flume.toml`'s preview stage gives its one agent no settings, `agents = [{}]`, and the kind's comment says the preview opens where the place's stream puts it, and beside a pane only where its launch names one, `--agent preview.beside=<pane>` (design Decision 1). True when `sluice exec main -- moon run root:format` passes, taplo reading the file.
-- [ ] 1.2 `site/docs/content-brief.md`'s section "A task" says the preview opens in the session the place's stream gives it, which `flume open <session>` shows, and that a launch made from a pane puts the preview beside that pane by naming it, `--agent preview.beside=<pane>`, a herdr pane by its id or its label, naming no host of ours (design Decision 2; site.7). True when `sluice exec main -- moon run root:format` passes.
+- [x] 1.2 `site/docs/content-brief.md`'s section "A task" says the preview opens in the session the place's stream gives it, which `flume open <session>` shows, and that a launch made from a pane puts the preview beside that pane by naming it, `--agent preview.beside=<pane>`, a herdr pane by its id or its label, naming no host of ours (design Decision 2; site.7). True when `sluice exec main -- moon run root:format` passes.
 
 ## 2. The site's tests
 
