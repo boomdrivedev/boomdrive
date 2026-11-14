@@ -103,4 +103,23 @@ in
   "The NixOS module" =
     t.expect (builtins.tryEval (t.nixosSystem { }).config.system.build.toplevel.drvPath).success
       "a NixOS system with services.boomdrive enabled does not evaluate";
+
+  # The booted-system spec's "The boot's check": the boot on aarch64-linux
+  # alone, whose derivation evaluates, and no check of another system
+  # (design Decision 2 of the change a-booted-nixos-system-proves-the-set).
+  "The boot" =
+    let
+      checks = outputs.checks or { };
+      given = builtins.attrNames checks;
+      boot = checks.aarch64-linux.boot or null;
+    in
+    t.expect (given == [ "aarch64-linux" ]) "checks gives ${toString given}, not aarch64-linux alone"
+    ++
+      t.expect (builtins.attrNames (checks.aarch64-linux or { }) == [ "boot" ])
+        "checks.aarch64-linux gives ${
+          toString (builtins.attrNames (checks.aarch64-linux or { }))
+        }, not boot alone"
+    ++ t.expect (
+      boot != null && (builtins.tryEval (builtins.seq boot.drvPath true)).success
+    ) "checks.aarch64-linux.boot does not evaluate to a derivation";
 }

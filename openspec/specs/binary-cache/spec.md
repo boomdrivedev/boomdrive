@@ -21,12 +21,12 @@ The family's binary cache, `boomdrive` on Cachix, through which the set reaches 
 
 ### Requirement: The workflow builds and pushes every package of every system
 
-The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and by hand, and on no other push. For each system the flake gives, a job on GitHub's hosted runner of that system SHALL build every package the flake gives for it, the runner's among them, and push their store paths and runtime closures to the cache. A job whose build fails SHALL push nothing.
+The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and by hand, and on no other push. For each system the flake gives, a job on GitHub's hosted runner of that system SHALL build every package the flake gives for it, the runner's among them, and push their store paths and runtime closures to the cache. A job whose build fails SHALL push nothing. Its one other job SHALL be the boot, `boot (aarch64-linux)`, which pushes nothing (booted-system).
 
 #### Scenario: Each system has its job
 
 - **WHEN** the workflow is read beside the flake's packages
-- **THEN** it has one job for each system the flake gives, `x86_64-linux` on `ubuntu-24.04`, `aarch64-linux` on `ubuntu-24.04-arm`, and `aarch64-darwin` on `macos-15`, and none for another
+- **THEN** its jobs are `build` and `boot` alone, and `build` has one job for each system the flake gives, `x86_64-linux` on `ubuntu-24.04`, `aarch64-linux` on `ubuntu-24.04-arm`, and `aarch64-darwin` on `macos-15`, and none for another
 
 #### Scenario: The runner is pushed with its tools
 
@@ -45,17 +45,17 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 
 ### Requirement: The push's token is the workflow's alone
 
-The workflow SHALL read the cache's auth token only from 1Password, through a service account whose token is the secret `OP_SERVICE_ACCOUNT_TOKEN` of the repository's environment `cachix`, which admits `main` and tags `v*` alone. A job SHALL fail before it builds, naming what is missing, where either token is empty. No file of the tree, option, store path or log SHALL hold either token.
+The workflow SHALL read the cache's auth token only from 1Password, through a service account whose token is the secret `OP_SERVICE_ACCOUNT_TOKEN` of the repository's environment `cachix`, which admits `main` and tags `v*` alone. Each system's build job SHALL fail before it builds, naming what is missing, where either token is empty. No other job SHALL read either token. No file of the tree, option, store path or log SHALL hold either token.
 
 #### Scenario: No service account token
 
 - **WHEN** the workflow runs and the environment gives no `OP_SERVICE_ACCOUNT_TOKEN`
-- **THEN** each job fails before it builds, naming `OP_SERVICE_ACCOUNT_TOKEN`
+- **THEN** each system's build job fails before it builds, naming `OP_SERVICE_ACCOUNT_TOKEN`, and the boot, which reads no token, runs as it would
 
 #### Scenario: No token
 
 - **WHEN** the workflow runs and the `CACHIX_AUTH_TOKEN` it loads from 1Password is empty
-- **THEN** each job fails before it builds, naming `CACHIX_AUTH_TOKEN`
+- **THEN** each system's build job fails before it builds, naming `CACHIX_AUTH_TOKEN`, and the boot, which reads no token, runs as it would
 
 ### Requirement: A host substitutes the set, or builds the same paths
 
