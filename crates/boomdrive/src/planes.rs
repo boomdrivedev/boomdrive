@@ -422,6 +422,7 @@ fn listed<'a>(entries: impl Iterator<Item = &'a Entry>) -> String {
 /// make for its label, and given `halt`, the runner's (record 0042 as
 /// amended on 2026-11-12); or why it could not be opened. A word this
 /// binary does not carry is refused, naming those it does.
+#[allow(clippy::too_many_arguments)]
 pub fn open(
     word: &str,
     table: &toml::Table,
