@@ -12,8 +12,17 @@
 # header or resource attribute, every content setting pinned off, and
 # Claude Code's own session, account and repository attributes pinned on.
 # darwin.nix writes it by a root step of the activation and nixos.nix by
-# `/etc`, each only with the runner on and a collector named; this file
-# writes nothing.
+# `/etc`, each only with the runner on and a collector named.
+#
+# Claude Code's transcripts (record 0046; design Decisions 1 to 4 of the
+# change the-set-keeps-claude-codes-transcripts-a-year):
+# `services.boomdrive.claude-code.cleanupPeriodDays`, named as Claude
+# Code names its key, is how many days every session on the host keeps
+# its transcript, 365 by default. `transcriptsOf` makes, from it, the
+# second document, `10-boomdrive-transcripts.json` beside the telemetry
+# document, holding `cleanupPeriodDays` alone, a JSON number. darwin.nix
+# and nixos.nix write it, the same ways, wherever Flume is on, with the
+# runner or without and whatever the collector. This file writes nothing.
 { lib }:
 let
   inherit (lib) mkOption types;
@@ -71,6 +80,9 @@ let
       // lib.optionalAttrs telemetry.traces { CLAUDE_CODE_ENHANCED_TELEMETRY_BETA = "1"; };
     };
 
+  # The transcripts document of `days`, the option's value.
+  transcriptsOf = days: { cleanupPeriodDays = days; };
+
   signal =
     default: description:
     mkOption {
@@ -79,10 +91,11 @@ let
     };
 in
 {
-  inherit documentOf;
+  inherit documentOf transcriptsOf;
 
-  # The document's name, and the platforms' managed-settings folders.
+  # Each document's name, and the platforms' managed-settings folders.
   name = "10-boomdrive-telemetry.json";
+  transcriptsName = "10-boomdrive-transcripts.json";
   darwinFolder = "/Library/Application Support/ClaudeCode/managed-settings.d";
   nixosFolder = "claude-code/managed-settings.d";
 
@@ -93,6 +106,27 @@ in
     in
     {
       _file = ./claude-code.nix;
+
+      options.services.boomdrive.claude-code.cleanupPeriodDays = mkOption {
+        type = types.ints.positive;
+        default = 365;
+        example = 90;
+        description = ''
+          How many days every Claude Code session on the host keeps its
+          transcript, as Claude Code's own `cleanupPeriodDays` names it: a
+          whole number of one or more, a year by default, so a stage Flume
+          hibernates can be resumed. Wherever Flume is on, with the runner
+          or without, the modules write it into Claude Code's managed
+          settings, `10-boomdrive-transcripts.json` in
+          `/Library/Application Support/ClaudeCode/managed-settings.d` on
+          nix-darwin and `/etc/claude-code/managed-settings.d` on NixOS,
+          which every session reads whatever its account and home, holding
+          this key alone. At each session's start, Claude Code deletes every
+          transcript older than the span, so a shorter span deletes the
+          older ones at the next start. A host's own document named after
+          the set's in Claude Code's order sets the key over it.
+        '';
+      };
 
       options.services.boomdrive.claude-code.telemetry = {
         collector = mkOption {

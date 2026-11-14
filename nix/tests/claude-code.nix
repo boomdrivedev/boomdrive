@@ -100,6 +100,36 @@ let
       word: t.expect (lib.hasInfix word failures) "the failure of ${what} names no ${word}: ${failures}"
     ) words;
 
+  # The span's option is declared, a span below one day fails evaluation,
+  # and its type refuses the span: the module system's failure of a
+  # definition names the option it defines (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decision 3).
+  belowOneDay =
+    platform:
+    { system, ... }:
+    lib.concatMap
+      (
+        days:
+        let
+          evaluated = system { services.boomdrive.claude-code.cleanupPeriodDays = days; };
+          option = evaluated.options.services.boomdrive.claude-code.cleanupPeriodDays or null;
+          read = builtins.tryEval (
+            builtins.deepSeq evaluated.config.services.boomdrive.claude-code.cleanupPeriodDays true
+          );
+        in
+        t.expect (!read.success) "a ${platform} system naming the span ${toString days} evaluates"
+        ++ t.expect (
+          option != null && lib.showOption option.loc == "services.boomdrive.claude-code.cleanupPeriodDays"
+        ) "the ${platform} system declares no services.boomdrive.claude-code.cleanupPeriodDays"
+        ++ t.expect (
+          option != null && !option.type.check days
+        ) "the type of services.boomdrive.claude-code.cleanupPeriodDays takes ${toString days}"
+      )
+      [
+        0
+        (-1)
+      ];
+
   noSignal =
     platform:
     { system, ... }:
@@ -123,12 +153,20 @@ let
   claudeCode = import ../modules/claude-code.nix { inherit lib; };
   collector = "http://localhost:4318";
 
-  # NixOS's entries of `/etc` under claude-code, by name.
+  # NixOS's entries of `/etc` under claude-code, by name, and the
+  # telemetry document's alone, which the telemetry cases read (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, Task notes 1.1).
   etcName = "claude-code/managed-settings.d/10-boomdrive-telemetry.json";
-  claudeEtcOf =
+  transcriptsEtcName = "claude-code/managed-settings.d/10-boomdrive-transcripts.json";
+  claudeEntriesOf =
     evaluated:
     lib.filterAttrs (
       name: entry: lib.hasPrefix "claude-code" name || lib.hasPrefix "claude-code" entry.target
+    ) evaluated.config.environment.etc;
+  claudeEtcOf =
+    evaluated:
+    lib.filterAttrs (
+      name: entry: name == etcName || entry.target == etcName
     ) evaluated.config.environment.etc;
   noEtc =
     what: evaluated:
@@ -141,8 +179,12 @@ let
   documentOnNixos =
     let
       evaluated = named t.nixosSystem collector { };
-      entries = claudeEtcOf evaluated;
-      entry = entries.${etcName} or null;
+      entry = (claudeEtcOf evaluated).${etcName} or null;
+      # Under claude-code, the telemetry and the transcripts documents
+      # alone.
+      others = lib.filter (name: name != etcName && name != transcriptsEtcName) (
+        builtins.attrNames (claudeEntriesOf evaluated)
+      );
       expected = builtins.toJSON (
         claudeCode.documentOf evaluated.config.services.boomdrive.claude-code.telemetry
       );
@@ -151,8 +193,8 @@ let
       t.failures evaluated == [ ]
     ) "a NixOS system naming a collector fails: ${toString (t.failures evaluated)}"
     ++
-      t.expect (builtins.attrNames entries == [ etcName ])
-        "the NixOS system's /etc holds ${toString (builtins.attrNames entries)} under claude-code, not ${etcName} alone"
+      t.expect (others == [ ])
+        "the NixOS system's /etc holds ${toString others} under claude-code, beside ${etcName} and ${transcriptsEtcName}"
     ++ t.expect (entry != null && entry.enable) "the NixOS system's /etc does not write ${etcName}"
     ++ t.expect (
       entry != null && entry.target == etcName
@@ -163,6 +205,41 @@ let
     ++ t.expect (
       entry != null && entry.text == expected
     ) "the NixOS system's ${etcName} holds ${toString (entry.text or null)}, not ${expected}";
+
+  # The transcripts document on NixOS (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 2 and
+  # 5): `/etc`'s entry, mode 0644, its text the document of the span,
+  # wherever Flume is on, and none where Flume is off.
+  transcriptsOnNixos =
+    what: evaluated:
+    let
+      entry = evaluated.config.environment.etc.${transcriptsEtcName} or null;
+      expected = builtins.toJSON (
+        claudeCode.transcriptsOf evaluated.config.services.boomdrive.claude-code.cleanupPeriodDays
+      );
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (entry != null && entry.enable) "${what}'s /etc does not write ${transcriptsEtcName}"
+    ++ t.expect (
+      entry != null && entry.target == transcriptsEtcName
+    ) "${what}'s /etc writes ${transcriptsEtcName} at ${toString (entry.target or null)}"
+    ++ t.expect (
+      entry != null && entry.mode == "0644"
+    ) "${what}'s ${transcriptsEtcName} has the mode ${toString (entry.mode or null)}, not 0644"
+    ++ t.expect (
+      entry != null && entry.text == expected
+    ) "${what}'s ${transcriptsEtcName} holds ${toString (entry.text or null)}, not ${expected}";
+  noTranscriptsOnNixos =
+    what: evaluated:
+    let
+      entries = builtins.attrNames (
+        lib.filterAttrs (
+          name: entry: name == transcriptsEtcName || entry.target == transcriptsEtcName
+        ) evaluated.config.environment.etc
+      );
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (entries == [ ]) "${what}'s /etc holds ${toString entries}";
 
   # nix-darwin's activation, as text, and its lines.
   darwinLines =
@@ -182,14 +259,19 @@ let
       + lib.optionalString (document != null) " ${document}"
       + " || true"
     );
-  managedLines = evaluated: lib.filter (lib.hasInfix "-activate.sh managed ") (darwinLines evaluated);
-  # The line `evaluated`'s activation runs for the document, which runs
-  # once, as root, before every step of the runner's user.
-  runsOnce =
-    what: evaluated: line:
+  # The root steps, each document's, and the telemetry document's alone,
+  # by its path (Task notes 1.1).
+  allManagedLines =
+    evaluated: lib.filter (lib.hasInfix "-activate.sh managed ") (darwinLines evaluated);
+  managedLines = evaluated: lib.filter (lib.hasInfix darwinPath) (allManagedLines evaluated);
+  # The line `evaluated`'s activation runs for a document, among its
+  # lines `stepsOf` gives, which runs once, as root, before every step of
+  # the runner's user.
+  runsOnceAmong =
+    stepsOf: what: evaluated: line:
     let
       lines = darwinLines evaluated;
-      steps = managedLines evaluated;
+      steps = stepsOf evaluated;
       at = lib.lists.findFirstIndex (l: l == line) null lines;
       users = lib.lists.findFirstIndex (lib.hasPrefix "sudo --user=") null lines;
     in
@@ -200,6 +282,37 @@ let
     ++ t.expect (
       !lib.any (lib.hasInfix "managed-settings.json") lines
     ) "${what} names managed-settings.json";
+  runsOnce = runsOnceAmong managedLines;
+
+  # The transcripts document's root step on nix-darwin, writing `document`
+  # where it is given and removing the document where it is null, and the
+  # lines naming its path (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 2 and
+  # 6).
+  transcriptsPath = "/Library/Application Support/ClaudeCode/managed-settings.d/10-boomdrive-transcripts.json";
+  transcriptsLine =
+    document:
+    builtins.unsafeDiscardStringContext (
+      "/bin/sh ${../modules/activate.sh} managed ${lib.escapeShellArg transcriptsPath}"
+      + lib.optionalString (document != null) " ${document}"
+      + " || true"
+    );
+  transcriptsLines = evaluated: lib.filter (lib.hasInfix transcriptsPath) (allManagedLines evaluated);
+  transcriptsOnDarwin =
+    what: evaluated:
+    let
+      document = evaluated.pkgs.writeText "10-boomdrive-transcripts.json" (
+        builtins.toJSON (
+          claudeCode.transcriptsOf evaluated.config.services.boomdrive.claude-code.cleanupPeriodDays
+        )
+      );
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ runsOnceAmong transcriptsLines "the activation of ${what}" evaluated (transcriptsLine document);
+  noTranscriptsOnDarwin =
+    what: evaluated:
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ runsOnceAmong transcriptsLines "the activation of ${what}" evaluated (transcriptsLine null);
 
   documentOnDarwin =
     let
@@ -467,8 +580,10 @@ let
   contentOff = document: map (key: envIs document key "0") contentKeys;
   attributesOn = document: map (key: envIs document key "1") attributeKeys;
 
-  # The document's path, on each platform, with crew on (design Decision
-  # 1): the platform's managed-settings folder, in no home.
+  # Each document's path, on each platform, with crew on (design Decision
+  # 1): the platform's managed-settings folder, in no home, the telemetry
+  # document's among them (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, Task notes 1.1).
   inNoHome =
     platform: _:
     let
@@ -477,12 +592,18 @@ let
           let
             evaluated = named t.nixosSystem collector crewOn;
           in
-          map (entry: "/etc/${entry.target}") (builtins.attrValues (claudeEtcOf evaluated))
+          map (entry: "/etc/${entry.target}") (builtins.attrValues (claudeEntriesOf evaluated))
         else
           map (line: builtins.head (builtins.match ".*-activate.sh managed '([^']*)'.*" line ++ [ line ])) (
-            managedLines (named t.darwinSystem collector crewOn)
+            allManagedLines (named t.darwinSystem collector crewOn)
           );
       expected = if platform == "NixOS" then "/etc/${etcName}" else darwinPath;
+      folder =
+        if platform == "NixOS" then
+          "/etc/claude-code/managed-settings.d"
+        else
+          "/Library/Application Support/ClaudeCode/managed-settings.d";
+      outside = lib.filter (p: dirOf p != folder) path;
       homely = lib.filter (
         p:
         lib.any (word: lib.hasInfix word p) [
@@ -494,12 +615,89 @@ let
         ]
       ) path;
     in
-    t.expect (
-      path == [ expected ]
-    ) "the ${platform} document's path is ${builtins.toJSON path}, not ${expected}"
+    t.expect (builtins.elem expected path) "the ${platform} documents' paths are ${builtins.toJSON path}, none of them ${expected}"
+    ++ t.expect (
+      outside == [ ]
+    ) "the ${platform} documents' paths ${builtins.toJSON outside} are not in ${folder}"
     ++ t.expect (
       homely == [ ]
-    ) "the ${platform} document's path names a home: ${builtins.toJSON homely}";
+    ) "the ${platform} documents' paths name a home: ${builtins.toJSON homely}";
+
+  # The transcripts document a platform's system of the runner and `given`
+  # writes, held byte for byte to `expected`, its text, or null with what
+  # fails: on NixOS `/etc`'s text, read; on nix-darwin the store path its
+  # root step names, which holds `expected` only where it is
+  # `pkgs.writeText` of it (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 4 and
+  # 8).
+  transcriptsWrittenOf =
+    platform: given: expected:
+    let
+      of = "the ${platform} system of ${builtins.toJSON given}";
+    in
+    if platform == "NixOS" then
+      let
+        evaluated = t.nixosSystem given;
+        text = evaluated.config.environment.etc.${transcriptsEtcName}.text or null;
+      in
+      {
+        document = if text == null then null else builtins.fromJSON text;
+        failing =
+          t.expect (t.failures evaluated == [ ]) "${of} fails: ${toString (t.failures evaluated)}"
+          ++ t.expect (text != null) "${of} writes no ${transcriptsEtcName}"
+          ++ t.expect (text == expected) "${of} writes ${builtins.toJSON text}, not ${expected}";
+      }
+    else
+      let
+        evaluated = t.darwinSystem given;
+        line = transcriptsLine (evaluated.pkgs.writeText "10-boomdrive-transcripts.json" expected);
+        holds = transcriptsLines evaluated == [ line ];
+      in
+      {
+        document = if holds then builtins.fromJSON expected else null;
+        failing =
+          t.expect (t.failures evaluated == [ ]) "${of} fails: ${toString (t.failures evaluated)}"
+          ++ t.expect holds "${of} runs ${builtins.toJSON (transcriptsLines evaluated)}, not the step that writes ${expected}";
+      };
+
+  # A case on each platform: the transcripts document written, then each
+  # of `check`'s items, `{ holds; what; }`, of it.
+  ofTranscripts =
+    given: expected: check: platform: _:
+    let
+      written = transcriptsWrittenOf platform given expected;
+    in
+    written.failing
+    ++ lib.optionals (written.document != null) (
+      lib.concatMap (item: t.expect item.holds "the ${platform} transcripts document ${item.what}") (
+        check written.document
+      )
+    );
+  spanAlone = document: [
+    {
+      holds = builtins.attrNames document == [ "cleanupPeriodDays" ];
+      what = "holds ${toString (builtins.attrNames document)}, not cleanupPeriodDays alone";
+    }
+    {
+      holds = builtins.isInt (document.cleanupPeriodDays or null);
+      what = "holds cleanupPeriodDays ${builtins.toJSON (document.cleanupPeriodDays or null)}, no number";
+    }
+  ];
+  # The span alone, and the telemetry document of every signal beside it
+  # holding no cleanupPeriodDays.
+  spanAloneOn =
+    platform: host:
+    let
+      telemetry = writtenOf platform givesEvery { } everySignal;
+      document = telemetry.document or { };
+    in
+    ofTranscripts {
+      services.boomdrive.claude-code.telemetry = givesEvery;
+    } ''{"cleanupPeriodDays":365}'' spanAlone platform host
+    ++ telemetry.failing
+    ++ t.expect (
+      !(document ? cleanupPeriodDays) && !((document.env or { }) ? cleanupPeriodDays)
+    ) "the ${platform} telemetry document holds cleanupPeriodDays";
 
   # The README's install with nix on the sessions' telemetry (design
   # Decision 11).
@@ -536,9 +734,48 @@ let
           "launch environment"
           "`workspace.host_paths`"
         ];
+
+  # The README's install with nix on the transcripts' span (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decision 9), its
+  # words read with each line's end a space.
+  readmeTranscripts =
+    let
+      block =
+        lib.findFirst (lib.hasInfix "services.boomdrive.claude-code.cleanupPeriodDays") null
+          t.nixBlocks;
+      words = lib.replaceStrings [ "\n" ] [ " " ] (toString t.installing);
+    in
+    t.expect (block != null)
+      "no nix block of the README's Installing with nix names services.boomdrive.claude-code.cleanupPeriodDays"
+    ++ t.expect (
+      block != null && lib.hasInfix "services.boomdrive.claude-code.cleanupPeriodDays = 365;" block
+    ) "the README's nix block of services.boomdrive.claude-code.cleanupPeriodDays names no 365"
+    ++
+      lib.concatMap
+        (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
+        [
+          "`services.boomdrive.claude-code.cleanupPeriodDays`"
+          "365 by default"
+          "`10-boomdrive-transcripts.json`"
+          "into `/Library/Application Support/ClaudeCode/managed-settings.d` on nix-darwin"
+          "and `/etc/claude-code/managed-settings.d` on NixOS, whether or not a collector is named"
+          "Wherever Flume is on, with the runner or without"
+          "every Claude Code session on the host keeps its transcript a year, whatever its account and its configuration home"
+          "a stage Flume hibernated can be resumed"
+          "named after the set's in Claude Code's order, such as `20-transcripts.json`, sets the key over it"
+          "a shorter span, or turning Flume off, deletes every older transcript at the next session's start"
+        ];
 in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
+// onEach "A span below one day" belowOneDay
+// onEach "A year by default" (ofTranscripts { } ''{"cleanupPeriodDays":365}'' (_: [ ]))
+// onEach "A span named" (
+  ofTranscripts {
+    services.boomdrive.claude-code.cleanupPeriodDays = 90;
+  } ''{"cleanupPeriodDays":90}'' (_: [ ])
+)
+// onEach "The span alone" spanAloneOn
 // onEach "In no home" inNoHome
 // onEach "The telemetry keys alone" (ofDocument givesEvery { } everySignal keysAlone)
 // onEach "Metrics and logs by default" (ofDocument givesDefault { } byDefault metricsAndLogs)
@@ -551,8 +788,23 @@ onEach "A collector off the host" offHost
 )
 // {
   "The README's telemetry" = readmeTelemetry;
+  "The README's transcripts" = readmeTranscripts;
   "The document on NixOS" = documentOnNixos;
   "The document on nix-darwin" = documentOnDarwin;
+  "The transcripts document on nix-darwin" =
+    transcriptsOnDarwin "a nix-darwin system with the runner, Flume on by default and no collector"
+      (t.darwinSystem { });
+  "No Flume on nix-darwin" =
+    noTranscriptsOnDarwin "a nix-darwin system with the runner and Flume off"
+      (t.darwinSystem { services.flume.enable = false; });
+  "Flume without the runner on nix-darwin" =
+    transcriptsOnDarwin "a nix-darwin system with Flume on and the runner off"
+      (
+        t.darwinOf [
+          t.outputs.darwinModules.default
+          { services.flume.enable = true; }
+        ]
+      );
   "No collector on nix-darwin" =
     removesOnDarwin "a nix-darwin system with the runner and no collector"
       (t.darwinSystem { });
@@ -562,6 +814,25 @@ onEach "A collector off the host" offHost
         t.darwinOf [
           t.outputs.darwinModules.default
           { services.boomdrive.claude-code.telemetry.collector = collector; }
+        ]
+      );
+  "The transcripts document on NixOS" =
+    transcriptsOnNixos "a NixOS system with the runner, Flume on by default and no collector"
+      (t.nixosSystem { });
+  "No Flume on NixOS" = noTranscriptsOnNixos "a NixOS system with the runner and Flume off" (
+    t.nixosSystem { services.flume.enable = false; }
+  );
+  "Flume without the runner on NixOS" =
+    transcriptsOnNixos "a NixOS system with Flume on and the runner off"
+      (
+        t.nixosOf [
+          t.outputs.nixosModules.default
+          {
+            services.flume = {
+              enable = true;
+              user = "alice";
+            };
+          }
         ]
       );
   "No collector on NixOS" = noEtc "a NixOS system with the runner and no collector" (

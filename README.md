@@ -827,6 +827,36 @@ adds only where that launch environment names the Desktop app's
 workspaces. A Claude Code that reads no `managed-settings.d` reads no
 document, and its sessions export nothing.
 
+Wherever Flume is on, with the runner or without, every Claude Code
+session on the host keeps its transcript a year, whatever its account
+and its configuration home, so a stage Flume hibernated can be resumed
+from its own conversation:
+
+```nix
+services.boomdrive.claude-code.cleanupPeriodDays = 365;
+```
+
+`services.boomdrive.claude-code.cleanupPeriodDays`, named as Claude
+Code names its key, is a whole number of days, 365 by default, and a
+span below one day fails evaluation. Each switch writes
+`10-boomdrive-transcripts.json` beside the telemetry document, into
+`/Library/Application Support/ClaudeCode/managed-settings.d` on
+nix-darwin, as root, and `/etc/claude-code/managed-settings.d` on
+NixOS, whether or not a collector is named. The document holds
+`cleanupPeriodDays` alone. Its key wins over every home's settings and
+the host's own `managed-settings.json`, and a document of the host's
+own named after the set's in Claude Code's order, such as
+`20-transcripts.json`, sets the key over it. Where Flume is off,
+nothing is written: NixOS drops the file it wrote, and each nix-darwin
+switch removes the set's own document and nothing else in the folder.
+
+At each session's start, Claude Code deletes every transcript older
+than the span then in force, thirty days where nothing sets one. So a
+shorter span, or turning Flume off, deletes every older transcript at
+the next session's start, and a stage hibernated that long starts
+afresh. A year of transcripts takes about twelve times the room thirty
+days do.
+
 The flake also gives a shell, its `PATH` the set's runner, Flume,
 sluice, crew, timber, herdr, portless, worktrunk, Pending You,
 Plannotator and plannotator-tui, that starts herdr on entering and leaves you in the

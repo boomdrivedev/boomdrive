@@ -33,7 +33,10 @@ context: |
   their herdr plugins and write Pending You's folder, and with the runner
   and a collector the host names write Claude Code's managed telemetry
   document, which every session on the host reads (record 0013 as
-  amended on 2026-11-12), touching no Claude Code home; and a shell,
+  amended on 2026-11-12), and wherever they install Flume, with the
+  runner or without, write Claude Code's managed transcripts document
+  beside it, holding cleanupPeriodDays alone, a year by default (record
+  0046), touching no Claude Code home; and a shell,
   devShells.<system>.default, that starts herdr (record 0023);
   .github/workflows/cache.yml builds every package of
   every system and pushes it to the family's cache, boomdrive on Cachix,
