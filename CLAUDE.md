@@ -48,7 +48,12 @@ collector the host names in `services.boomdrive.claude-code.telemetry`,
 they write Claude Code's managed telemetry document,
 `10-boomdrive-telemetry.json` in Claude Code's `managed-settings.d`,
 which every session on the host reads (record 0013 as amended on
-2026-11-12). None runs `claude` or writes into a Claude Code home. The
+2026-11-12). None runs `claude` or writes into a Claude Code home. On
+macOS the module runs the runner from a copy at
+`/Library/Application Support/Boomdrive/boomdrive` that each activation
+signs, before the agents load, with the host's own code-signing
+identity, `Boomdrive runner` in its System keychain, so a grant of
+macOS privacy access holds for every later build (record 0045). The
 flake gives a shell, `devShells.<system>.default`, that starts herdr
 (record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every
