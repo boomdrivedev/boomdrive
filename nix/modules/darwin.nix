@@ -187,8 +187,6 @@ in
     { system.activationScripts.postActivation.text = lib.mkBefore managing; }
 
     (lib.mkIf cfg.enable {
-      system.requiresPrimaryUser = [ "services.boomdrive.enable" ];
-
       assertions = [
         {
           assertion = user == null || home != null;
@@ -239,30 +237,34 @@ in
         };
       };
 
-      # Run as root before nix-darwin loads its agents, so a new build's
-      # agent starts from its signed copy, with the operating system's own
-      # security, codesign and openssl; a copy that cannot be signed says
-      # why and stops nothing, the agent running the package's own runner.
-      system.activationScripts.extraActivation.text = ''
-        /usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh ${./activate.sh} ${signing} || true
-      '';
+      system = {
+        requiresPrimaryUser = [ "services.boomdrive.enable" ];
 
-      # Activation runs as root, with root's HOME, so the link is made as the
-      # primary user under their own home. A link that fails says why and
-      # stops nothing else: the agent reads its own --config either way.
-      # Pending You's folder is written the same way, before the plugins, so
-      # Pending You for Herdr finds its launcher at its first link; the
-      # plugins are linked the same way, each refusal said and stopping none.
-      system.activationScripts.postActivation.text = ''
-        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
-          /bin/sh ${./activate.sh} link ${file} || true
-      ''
-      + lib.optionalString writingFolder ''
-        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
-      ''
-      + lib.optionalString linking ''
-        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
-      '';
+        # Run as root before nix-darwin loads its agents, so a new build's
+        # agent starts from its signed copy, with the operating system's own
+        # security, codesign and openssl; a copy that cannot be signed says
+        # why and stops nothing, the agent running the package's own runner.
+        activationScripts.extraActivation.text = ''
+          /usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh ${./activate.sh} ${signing} || true
+        '';
+
+        # Activation runs as root, with root's HOME, so the link is made as the
+        # primary user under their own home. A link that fails says why and
+        # stops nothing else: the agent reads its own --config either way.
+        # Pending You's folder is written the same way, before the plugins, so
+        # Pending You for Herdr finds its launcher at its first link; the
+        # plugins are linked the same way, each refusal said and stopping none.
+        activationScripts.postActivation.text = ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+            /bin/sh ${./activate.sh} link ${file} || true
+        ''
+        + lib.optionalString writingFolder ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
+        ''
+        + lib.optionalString linking ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
+        '';
+      };
     })
   ];
 }
