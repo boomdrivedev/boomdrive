@@ -40,6 +40,7 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant};
+use weir_bounded::Halt;
 
 /// Where the runner says its lines, from the loop and every part's
 /// thread, each line whole.
@@ -183,21 +184,29 @@ impl Bells {
     }
 }
 
-/// Stops the runner: it finishes the git call in hand, keeps no further
-/// repository, begins no part's pass, lets each part end the pass in
-/// hand, and says it stopped.
+/// Stops the runner: it ends each try of a call to a remote in flight, its
+/// own git's or crew's implementation's, as the try's limit would, through
+/// the runner's halt, begins no such try, keeps no further repository,
+/// begins no part's pass, lets each part end the pass in hand, and says it
+/// stopped (record 0042 as amended on 2026-11-12; core.58).
 #[derive(Clone)]
 pub struct Stopper {
     events: Sender<Event>,
     stop: Arc<AtomicBool>,
     bells: Bells,
+    /// The runner's halt, `weir-bounded`'s, which every try made for the
+    /// runner reads.
+    halt: Halt,
 }
 
 impl Stopper {
-    /// Stops the runner, its keeping pass read between repositories, its
-    /// wait woken, and every part's wait woken.
+    /// Stops the runner: its stop flag set first, so a keeping pass whose
+    /// fetch the halt ends reads the stop before it begins the next
+    /// repository; then its halt, ending every try in flight and any begun
+    /// after; then its wait woken, and every part's wait woken.
     pub fn stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
+        self.halt.halt();
         let _ = self.events.send(Event::Stop);
         self.bells.stop();
     }
@@ -298,6 +307,10 @@ pub struct Runner {
     notices: Notices,
     waiting: Receiver<Event>,
     stop: Arc<AtomicBool>,
+    /// The runner's halt, `weir-bounded`'s, given to its git and set by its
+    /// stop, so every try of a call to a remote made for the runner ends
+    /// at it (record 0042 as amended on 2026-11-12; core.58).
+    halt: Halt,
     /// Each part's bell, by its label.
     bells: Bells,
     /// Each clone's lock, which the keeper takes alone and a launch into
@@ -391,7 +404,10 @@ impl Runner {
     /// made, and no other runner holds it. Then the control plane the
     /// configuration names is opened as its parts; one that cannot be is
     /// named by [`Runner::unopened`], and the runner keeps its
-    /// repositories all the same.
+    /// repositories all the same. The runner makes its halt, gives it to
+    /// `git`, and keeps it for its stop, which sets it: a try of a call to
+    /// a remote in flight at the stop is ended there, and none begins
+    /// after it (record 0042 as amended on 2026-11-12; core.58).
     pub fn start(
         file: Option<&Path>,
         var: impl Fn(&str) -> Option<OsString>,
@@ -410,6 +426,8 @@ impl Runner {
             )
         })?;
         let lock = lock(&data)?;
+        let halt = Halt::default();
+        let git = git.halted_by(halt.clone());
         let (events, waiting) = mpsc::channel();
         let notices = Notices::new(events.clone());
         let bells = Bells::default();
@@ -433,6 +451,7 @@ impl Runner {
             notices,
             waiting,
             stop: Arc::new(AtomicBool::new(false)),
+            halt,
             bells,
             locks: Locks::new(),
             forge: Forge::new(),
@@ -490,6 +509,7 @@ impl Runner {
             events: self.events.clone(),
             stop: Arc::clone(&self.stop),
             bells: self.bells.clone(),
+            halt: self.halt.clone(),
         }
     }
 
@@ -657,9 +677,11 @@ impl Runner {
     /// reported, before a lease of the part's not yet lapsed lapses, and
     /// at once when its implementation wakes it. Each pass, keeping or
     /// control, ends with one settle of every place, before its thread
-    /// waits (record 0029). Stopped, it keeps no further repository,
-    /// begins no part's pass and no settle, waits for each part to end the
-    /// pass in hand, and says so.
+    /// waits (record 0029). Stopped, it ends the try of a call to a remote
+    /// in flight, its own fetch's or a part's, and begins none, through
+    /// its halt (record 0042 as amended on 2026-11-12; core.58), keeps no
+    /// further repository, begins no part's pass and no settle, waits for
+    /// each part to end the pass in hand, and says so.
     pub fn keep(&mut self, say: Say<'_>) {
         let polls = self.polls();
         let mut parts = self.take_parts();
@@ -985,7 +1007,7 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_pass, Bell, Bells, Rang, Watch};
+    use super::{next_pass, Bell, Bells, Event, Rang, Stopper, Watch};
     use crate::carry::next_due;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
@@ -1063,6 +1085,30 @@ mod tests {
         stopped.stop();
         stopped.wake();
         assert_eq!(stopped.wait(Instant::now()), Rang::Stopped);
+    }
+
+    /// The running spec's "Stopped with a fetch in flight" and "Stopped
+    /// with a part's read in flight", at the stopper: a stop sets the stop
+    /// flag and the runner's halt, tells the loop and stops every part
+    /// (record 0042 as amended on 2026-11-12; core.58).
+    #[test]
+    fn a_stop_halts_every_try() {
+        let (events, waiting) = std::sync::mpsc::channel();
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let bells = Bells::default();
+        let bell = bells.of("home");
+        let halt = weir_bounded::Halt::default();
+        let stopper = Stopper {
+            events,
+            stop: std::sync::Arc::clone(&stop),
+            bells,
+            halt: halt.clone(),
+        };
+        stopper.stop();
+        assert!(stop.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(halt.halted());
+        assert!(matches!(waiting.try_recv(), Ok(Event::Stop)));
+        assert!(bell.stopped());
     }
 
     /// The running spec's "Passes on the timer": with `fetch_interval`
