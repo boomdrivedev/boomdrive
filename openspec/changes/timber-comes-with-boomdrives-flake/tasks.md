@@ -34,7 +34,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 - [x] 3.2 `services.boomdrive.herdr.plugins`' default is Flume's, sluice's and timber's plugins, then crew's companions' where crew is on (design Decision 7; Task notes 3.2). True when `sluice exec main -- moon run nix:test` passes, proving:
   - the service-modules delta's "The plugins linked on nix-darwin", "The plugins linked on NixOS", "The companions' plugins with crew" and "No companions without crew";
   - the binary-cache delta's "A host's own nixpkgs", with `timber-herdr-plugin`.
-- [ ] 3.3 `devShells.<system>.default` holds the set's timber beside the runner, Flume, sluice and crew (design Decision 8; Task notes 3.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the eleven tools.
+- [x] 3.3 `devShells.<system>.default` holds the set's timber beside the runner, Flume, sluice and crew (design Decision 8; Task notes 3.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the eleven tools.
 
 ## 4. The words
 
