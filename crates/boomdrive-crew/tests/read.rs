@@ -840,6 +840,40 @@ fn a_write_halted_in_flight() {
     );
 }
 
+/// The crew-control-plane spec's "A pull after the runner's stop" and "A
+/// pull's words after the runner's stop": a part given the runner's halt
+/// already set, over a state repository whose `home/main` holds a launch
+/// for this host, is unread with the halted words, and writes no branch
+/// of the runner's (record 0042 as amended on 2026-11-12; core.58).
+#[test]
+fn a_pull_after_the_runners_stop_is_unread() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[launch(1, Some("host-a"), "unit/a", CREW, "a", &[])],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let halt = Halt::default();
+    halt.halt();
+    let (mut parts, _) = state.parts_halted_by("host-a", &[("home", "example/home-state")], &halt);
+
+    let unread = parts[0]
+        .plane
+        .pull(&kept(), &Report::default())
+        .expect_err("a pull after the runner's stop");
+
+    assert!(
+        unread.0.contains("was stopped as its caller asked"),
+        "{unread}"
+    );
+    assert_eq!(state.tip("home/runner/host-a"), None);
+}
+
 #[test]
 fn a_partition_read_again_once_it_can_be() {
     let state = State::new();

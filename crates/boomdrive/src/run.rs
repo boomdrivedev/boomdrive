@@ -265,9 +265,17 @@ struct Control {
 impl Control {
     /// The control plane `table` names, of the configuration file `file`,
     /// keeping what it keeps under `data`, each part woken through its
-    /// bell among `bells`. An implementation says its lines on standard
-    /// error.
-    fn open(table: &ControlPlaneTable, file: &Path, data: &Path, bells: &Bells) -> Control {
+    /// bell among `bells`, and given `halt`, the runner's, at which every
+    /// call to a remote it makes for the runner ends (record 0042 as
+    /// amended on 2026-11-12; core.58). An implementation says its lines on
+    /// standard error.
+    fn open(
+        table: &ControlPlaneTable,
+        file: &Path,
+        data: &Path,
+        bells: &Bells,
+        halt: &Halt,
+    ) -> Control {
         Control {
             poll_interval: table.poll_interval,
             parts: planes::open(
@@ -278,6 +286,7 @@ impl Control {
                 table.poll_interval,
                 &|_| Box::new(|line| eprintln!("{line}")),
                 &|label| bells.waker(label),
+                halt,
             ),
         }
     }
@@ -434,7 +443,7 @@ impl Runner {
         let control = config
             .control_plane
             .as_ref()
-            .map(|table| Control::open(table, &file, &data, &bells));
+            .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
         let watch = Watch::new(config.fetch_interval);
         Ok(Runner {
