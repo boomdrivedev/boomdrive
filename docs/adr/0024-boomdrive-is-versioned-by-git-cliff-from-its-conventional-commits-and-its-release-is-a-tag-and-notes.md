@@ -59,7 +59,7 @@ For the tag's binaries in the family's cache:
 - Rule core.48 holds this record.
 - The first push to `main` after this lands releases `v0.1.0`, with notes of every commit before it that the notes keep.
 - The runner's build is given no version: the flake's runner at a tag reports Cargo.toml's `0.0.0`, as it does at any commit, and so does the `runner_version` its hello sends. Giving the build its tag's version, with the cache's paths still those of a commit the gate passed (core.47), is a change of its own.
-- While the repository is private, its tags and releases are too. Record 0014 opens it with a fresh history; its tags then name commits the new history lacks, and are made again on it.
+- The repository is public with its whole history (record 0014 as amended on 2026-11-13), so its tags and releases are public and each stands on the commit it names.
 
 ## Amendment, 2026-11-11: a release's tag names a release commit that writes its version into the tree
 
