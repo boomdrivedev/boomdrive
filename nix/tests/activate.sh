@@ -614,7 +614,10 @@ other=9A8B7C6D5E4F30211203F4E5D6C7B8A99A8B7C6D
 # `signed <SHA-1>` to the file, or refuses with the words of `refuse-sign`
 # where that is there. openssl writes `key` to its -keyout file and `cert`
 # to its -out file, and records their folder in `openssl-folder` and its
-# configuration in `openssl.cnf`.
+# configuration in `openssl.cnf`. mv refuses where its last argument is the
+# path on the first line of `refuse-move`, saying the lines after it, and
+# otherwise runs the system's own mv, found before the stubs are first on
+# PATH.
 freshSign() {
   fresh
   keychain=$dir/keychain
@@ -625,6 +628,7 @@ freshSign() {
   echo "the runner" >"$program"
   : >"$dir/identities"
   echo "$made" >"$dir/made"
+  command -v mv >"$dir/system-mv"
   cat >"$dir/bin/security" <<'STUB'
 #!/bin/sh
 here=${0%/bin/*}
@@ -693,7 +697,18 @@ echo cert >"$cert"
 dirname "$key" >"$here/openssl-folder"
 cp "$config" "$here/openssl.cnf"
 STUB
-  chmod +x "$dir/bin/security" "$dir/bin/codesign" "$dir/bin/openssl"
+  cat >"$dir/bin/mv" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "mv $*" >>"$here/calls"
+for last; do :; done
+if [ -e "$here/refuse-move" ] && [ "$last" = "$(sed -n 1p "$here/refuse-move")" ]; then
+  sed 1d "$here/refuse-move" >&2
+  exit 1
+fi
+exec "$(cat "$here/system-mv")" "$@"
+STUB
+  chmod +x "$dir/bin/security" "$dir/bin/codesign" "$dir/bin/openssl" "$dir/bin/mv"
 }
 
 # security's line of the identity `$2` named `$3`, numbered `$1`.
@@ -747,6 +762,12 @@ calledOf() {
 first() {
   printf '%s\n' "$1" | sed -n 1p
 }
+# The copy holds the program's bytes, then a signature of the identity
+# `$1`, and runs.
+signedBy() {
+  holds "$copy" "the runner
+signed $1" && moded "$copy" 0755
+}
 # No file under the case's folder reads the key or the certificate openssl
 # wrote.
 keyless() {
@@ -773,6 +794,9 @@ done
 expect "$named" "sign left the folder openssl wrote in, $madeIn" missing "$madeIn"
 expect "$named" "sign says \"$out\", not first that it made the identity $made" \
   [ "$(first "$out")" = "boomdrive: made the code-signing identity Boomdrive runner, $made, in $keychain" ]
+expect "$named" "the copy is not signed with the identity made, $made" signedBy "$made"
+expect "$named" "sign says \"$out\", not then that it signed the copy with $made" \
+  [ "$(printf '%s\n' "$out" | sed -n 2p)" = "boomdrive: signed $copy, made from $program, with Boomdrive runner, $made" ]
 
 named="No key in a file"
 expect "$named" "the step's folder for openssl was $madeIn, not one in the case's TMPDIR" \
@@ -806,3 +830,110 @@ expect "$named" "sign says \"$out\"" [ -z "$out" ]
 expect "$named" "sign ran $(calledOf openssl)$(calledOf 'security import')$(calledOf codesign)" \
   [ -z "$(calledOf openssl)$(calledOf 'security import')$(calledOf codesign)" ]
 expect "$named" "sign wrote $(ls -A "$folder")" empty "$folder"
+
+# A copy and its source the step made before, from an older build, signed
+# with the identity `$1`, and the keychain holding $held.
+older=
+signedBefore() {
+  older=$dir/store/older/bin/boomdrive
+  identity 1 "$held" "Boomdrive runner"
+  mkdir -m 0755 "$folder"
+  printf 'the older runner\nsigned %s\n' "$1" >"$copy"
+  chmod 0755 "$copy"
+  echo "$older" >"$source"
+}
+# The folder holds only the copy and its source, or only the names `$@`.
+only() {
+  [ "$(inFolder)" = "$*" ]
+}
+# The folder's names, on one line.
+inFolder() {
+  ls -A "$folder" | paste -s -d ' ' -
+}
+
+named="A new build"
+freshSign
+signedBefore "$held"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign signed by $(calledOf 'codesign --force'), not the identity's SHA-1 with the identifier boomdrive, no timestamp and the keychain, on boomdrive.new" \
+  [ "$(calledOf 'codesign --force')" = "codesign --force --sign $held --keychain $keychain --identifier boomdrive --timestamp=none $copy.new" ]
+expect "$named" "sign moved by $(calledOf mv), not the copy onto boomdrive, then its source onto boomdrive.source, each by mv -f" \
+  [ "$(calledOf mv)" = "mv -f $copy.new $copy
+mv -f $source.new $source" ]
+expect "$named" "the copy is not the program signed with $held" signedBy "$held"
+expect "$named" "boomdrive.source holds $(cat "$source"), not $program" holds "$source" "$program"
+expect "$named" "the folder holds $(inFolder), not boomdrive and boomdrive.source alone" \
+  only boomdrive boomdrive.source
+expect "$named" "sign says \"$out\", not one line naming the program" \
+  [ "$out" = "boomdrive: signed $copy, made from $program, with Boomdrive runner, $held" ]
+expect "$named" "sign says \"$err\" on standard error" [ -z "$err" ]
+expect "$named" "sign ran $(calledOf openssl)$(calledOf 'security import')" \
+  [ -z "$(calledOf openssl)$(calledOf 'security import')" ]
+
+named="The same build"
+freshSign
+identity 1 "$held" "Boomdrive runner"
+run sign "$keychain" "$folder" "$program"
+before=$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)
+rm -f "$calls"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign signed again by $(calledOf 'codesign --force')" [ -z "$(calledOf 'codesign --force')" ]
+expect "$named" "sign did not verify the copy's signature: $(called)" \
+  [ "$(calledOf 'codesign --verify')" = "codesign --verify -R =certificate leaf = H\"$held\" $copy" ]
+expect "$named" "sign changed a file of the folder" [ "$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)" = "$before" ]
+expect "$named" "sign says \"$out$err\" again" [ -z "$out$err" ]
+
+named="A copy signed with another identity"
+freshSign
+signedBefore "$other"
+echo "$program" >"$source"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign signed by $(calledOf 'codesign --force'), not the identity $held" \
+  [ "$(calledOf 'codesign --force')" = "codesign --force --sign $held --keychain $keychain --identifier boomdrive --timestamp=none $copy.new" ]
+expect "$named" "the copy is not the program signed with $held" signedBy "$held"
+expect "$named" "boomdrive.source holds $(cat "$source"), not $program" holds "$source" "$program"
+expect "$named" "sign says \"$out\", not one line naming the program" \
+  [ "$out" = "boomdrive: signed $copy, made from $program, with Boomdrive runner, $held" ]
+
+named="A signing refused"
+freshSign
+signedBefore "$held"
+before=$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)
+printf '%s: errSecInternalComponent\n' "$copy.new" >"$dir/refuse-sign"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line with codesign's words" \
+  [ "$err" = "boomdrive: could not sign $program into $folder: $copy.new: errSecInternalComponent" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "the folder holds $(inFolder), not boomdrive and boomdrive.source alone" \
+  only boomdrive boomdrive.source
+expect "$named" "sign changed boomdrive or boomdrive.source" [ "$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)" = "$before" ]
+
+named="A copy not put in place"
+freshSign
+signedBefore "$held"
+printf '%s\n%s\n' "$copy" "mv: rename $copy.new to $copy: Operation not permitted" >"$dir/refuse-move"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line with the rename's words" \
+  [ "$err" = "boomdrive: could not sign $program into $folder: mv: rename $copy.new to $copy: Operation not permitted" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "sign changed boomdrive" holds "$copy" "the older runner
+signed $held"
+expect "$named" "sign left boomdrive.source, holding $(cat "$source" 2>/dev/null)" missing "$source"
+expect "$named" "the folder holds $(inFolder), not boomdrive alone" only boomdrive

@@ -79,7 +79,16 @@
 # for code signing, written in a folder only it reads, which goes whatever
 # happens, and imported, the key non-extractable and usable by
 # /usr/bin/codesign alone. Where the keychain holds two or more, it signs
-# nothing and fails, naming each. Each line of what it made goes to
+# nothing and fails, naming each. It keeps <folder>/boomdrive a copy of
+# <program> signed with the identity under the identifier boomdrive, and
+# <folder>/boomdrive.source naming <program>. Where the copy is not there,
+# the source names another program, or the copy is not signed with the
+# identity, it copies <program> to boomdrive.new, signs that with no
+# timestamp, removes boomdrive.source, renames the copy over boomdrive,
+# then writes the source by a rename, so the source never names a program
+# the copy was not made from; otherwise it changes nothing and says
+# nothing. A copy it cannot make, sign or put in place leaves boomdrive as
+# it was and no other file, and fails. Each line of what it made goes to
 # standard output, and a refusal to standard error.
 set -eu
 
@@ -392,6 +401,38 @@ sign() {
     echo "boomdrive: $keychain holds $count identities named Boomdrive runner, $each: signed nothing; remove all but one" >&2
     exit 1
   fi
+  sha=$shas
+
+  # The copy: made only where none is there, it was made from another
+  # program, or it is not signed with the identity (design Decision 4).
+  copy=$folder/boomdrive
+  source=$folder/boomdrive.source
+  if [ -e "$copy" ] && [ "$(cat "$source" 2>/dev/null)" = "$program" ] &&
+    codesign --verify -R "=certificate leaf = H\"$sha\"" "$copy" >/dev/null 2>&1; then
+    return
+  fi
+  # Made and signed beside the copy, which stays as it was where either
+  # fails.
+  if ! words=$({ cp "$program" "$copy.new" && chmod 0755 "$copy.new"; } 2>&1) ||
+    ! words=$(codesign --force --sign "$sha" --keychain "$keychain" \
+      --identifier boomdrive --timestamp=none "$copy.new" 2>&1); then
+    rm -f "$copy.new"
+    echo "boomdrive: could not sign $program into $folder: $(oneline "$words")" >&2
+    exit 1
+  fi
+  # Put in place with its source removed first and written last, so the
+  # source never names a program the copy was not made from.
+  if ! words=$({
+    rm -f "$source" &&
+      mv -f "$copy.new" "$copy" &&
+      printf '%s\n' "$program" >"$source.new" &&
+      mv -f "$source.new" "$source"
+  } 2>&1); then
+    rm -f "$copy.new" "$source.new"
+    echo "boomdrive: could not sign $program into $folder: $(oneline "$words")" >&2
+    exit 1
+  fi
+  echo "boomdrive: signed $copy, made from $program, with Boomdrive runner, $sha"
 }
 
 case ${1:-} in
