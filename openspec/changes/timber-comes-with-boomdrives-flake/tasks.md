@@ -48,7 +48,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - timber in the shell.
 
   `nix/tests/cache.nix` reads the option and timber's words. True when `sluice exec main -- moon run nix:test` passes, proving the service-modules delta's "The README's words" and "The README's timber".
-- [ ] 4.2 CLAUDE.md and `openspec/config.yaml` name timber among the tools the flake pins together, its plugin in the set's marketplace, and timber among what the modules install with the runner (design Decision 10; Task notes 4.2). True when `sluice exec main -- moon run root:format` passes.
+- [x] 4.2 CLAUDE.md and `openspec/config.yaml` name timber among the tools the flake pins together, its plugin in the set's marketplace, and timber among what the modules install with the runner (design Decision 10; Task notes 4.2). True when `sluice exec main -- moon run root:format` passes.
 
 ## 5. The specs
 
