@@ -336,3 +336,23 @@ Option 1. Once the next control pass is due, the pass sends its report after eac
 - Each send under crew's control plane is a commit to the runner's branch of the drive's state repository, so a long pass past due writes one commit for each act it carries out after the due time.
 - `core.50` is amended with it.
 
+## Amendment, 2026-11-14: once a pass is due, its launches and its acts take turns
+
+Status: boomdrive-design's, on main-level ops' question of 2026-11-14 on request 267, a land that waited behind a pass's launches. Cheap to change.
+
+### Context
+
+`flume launch` answers once its place is made and readied and its first stage started (Flume's 6 and 11), and readying is sluice's equipping of the place, which takes from seconds to several minutes. So on 2026-11-14 a pass's launches ran from 15:39Z to 16:04Z, and the next from 16:10Z, while the user's land of `a-deploy-card-of-any-size-is-raised`, asked at 15:41Z, waited behind them as an act on a place. The amendment of 2026-11-07 put launches first because acts were the slow wants then. Today launches are, and the same order holds the acts.
+
+### Considered options
+
+1. **Once the next pass is due, launches and acts take turns (chosen).** Neither waits behind more than one of the other, whichever is slow that day.
+2. **Acts first.** It brings back 2026-11-07's case, a backlog of slow acts holding every launch.
+3. **Keep launches first.** A land, an answer or a hold waits behind every launch the pull offered.
+
+### Decision outcome
+
+Option 1. Before the next pass is due, a pass takes its launches first, as the amendment of 2026-11-07 says. Once it is due, no act waits behind more than one launch, and no launch behind more than one act. The pass leaves to the next pass what it would have run after its first launch and its first act past due, so the next pull is never held behind more than one of each. Each kind keeps the control plane's order among its own, and no launch the pass took is left unanswered. Its report goes up after each, as the amendment of 2026-11-14 above says. How the runner holds a launch the pass took and left is the construct's to design, within `core.10` and `core.50`.
+
+`core.50` is amended with it.
+
