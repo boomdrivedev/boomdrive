@@ -206,9 +206,10 @@
           # runs `flume open` (design Decision 3).
           boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
           # The set's marketplace of crew's companions' Claude Code plugins
-          # (record 0044, point 2), which no module installs yet.
+          # and timber's (record 0044, point 2, and its amendment of
+          # 2026-11-13), which no module installs yet.
           boomdrive-claude-plugins = pkgs.callPackage ./nix/packages/claude-plugins.nix {
-            inherit (tools) pendingyou plannotator;
+            inherit (tools) pendingyou plannotator timber;
             skill = ./nix/packages/pendingyou-skill.md;
           };
           # The companions' herdr plugins, each at the commit the lock names
