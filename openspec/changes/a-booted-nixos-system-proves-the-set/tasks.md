@@ -38,7 +38,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The workflow
 
-- [ ] 2.1 `.github/workflows/cache.yml` gains the job `boot`, as design Decision 7 gives it, and `nix/tests/workflow.nix` reads each job's own lines and steps (design Decision 10; Task notes 2.1):
+- [x] 2.1 `.github/workflows/cache.yml` gains the job `boot`, as design Decision 7 gives it, and `nix/tests/workflow.nix` reads each job's own lines and steps (design Decision 10; Task notes 2.1):
   - the build's cases read `build`'s, and hold what they held;
   - "Each system has its job" holds the jobs `build` and `boot`;
   - the cases "The boot's job", "No token for the boot" and "The boot never on x86_64-linux" are added.
