@@ -1074,6 +1074,14 @@ settles for both, so no launch waits behind a settle. A control pass:
   a place tidied meanwhile is carried from Flume's record of it,
   `<location>@<at>`.
 
+A control pass sends its report to its control plane at its end. Once
+the next pass is due, it also sends it after each answer it makes, so no
+answer waits on the rest of the pass, however many launches follow it;
+under crew each send is a commit to the runner's branch. What the
+control plane lets go or refuses at such a send leaves the report, and
+the pass takes it no more. A send that fails before the pass's end is
+said once, and the pass's answers wait for the send at its end.
+
 No pane holds the name `boomdrive`, so Flume sends it no notice and
 wakes nothing for it, and owes it each end of the place, a live place's
 and a tidied one's alike, each owed until the runner confirms it. Once
