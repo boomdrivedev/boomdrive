@@ -13,7 +13,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. The boot
 
-- [ ] 1.1 `nix/boot.nix` is added: a function of `{ pkgs, module, set }` giving `pkgs.testers.runNixOSTest` of one machine, `box`, named `boomdrive-boot` (design Decision 2; Task notes 1.1). `flake.nix` binds `nixosModules` in its `let`, and gives `checks.aarch64-linux.boot` from `pkgsOf "aarch64-linux"`, its `nixosModules.default` and `packages.aarch64-linux`, and no check for another system. `nix/tests/typecheck.nix` gains the case "The boot": `checks` gives `aarch64-linux` alone, holding `boot` alone, whose `drvPath` evaluates. True when `sluice exec main -- moon run nix:typecheck` passes, proving the booted-system delta's "The boot's check".
+- [x] 1.1 `nix/boot.nix` is added: a function of `{ pkgs, module, set }` giving `pkgs.testers.runNixOSTest` of one machine, `box`, named `boomdrive-boot` (design Decision 2; Task notes 1.1). `flake.nix` binds `nixosModules` in its `let`, and gives `checks.aarch64-linux.boot` from `pkgsOf "aarch64-linux"`, its `nixosModules.default` and `packages.aarch64-linux`, and no check for another system. `nix/tests/typecheck.nix` gains the case "The boot": `checks` gives `aarch64-linux` alone, holding `boot` alone, whose `drvPath` evaluates. True when `sluice exec main -- moon run nix:typecheck` passes, proving the booted-system delta's "The boot's check".
 - [ ] 1.2 The machine `box` has (design Decision 3; Task notes 1.2):
   - the flake's NixOS module, with `services.boomdrive.enable` and `user = "alice"`, and `alice` a normal user;
   - crew's module on, with the host `host-a` and `nix/tests/settings.nix`'s `crewModule`;
