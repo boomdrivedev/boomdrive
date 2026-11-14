@@ -32,7 +32,12 @@
 # names a collector, it writes the document every Claude Code session on
 # the host reads, and otherwise it removes the set's own document, since
 # nix-darwin removes no file it wrote outside `/etc` (record 0013 as
-# amended on 2026-11-12).
+# amended on 2026-11-12). Where the runner is on, each activation runs, as
+# root and before nix-darwin loads its agents, activate.sh's `sign`, which
+# keeps a copy of the package's runner at
+# `/Library/Application Support/Boomdrive/boomdrive` signed with the host's
+# own code-signing identity, so a person's grant of macOS privacy access
+# holds for every later build, and the agent runs that copy (record 0045).
 { packages }:
 {
   config,
@@ -72,6 +77,18 @@ let
     ]
     ++ map toString cfg.herdr.plugins
   );
+
+  # The runner's copy signed with the host's own identity, in a folder only
+  # root writes, made before the agents load (record 0045; the change
+  # the-runners-macos-grant-outlasts-a-new-build, design Decisions 3 and 6).
+  runner = "${cfg.package}/bin/boomdrive";
+  signedFolder = "/Library/Application Support/Boomdrive";
+  signing = lib.escapeShellArgs [
+    "sign"
+    "/Library/Keychains/System.keychain"
+    signedFolder
+    runner
+  ];
 
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
@@ -205,6 +222,14 @@ in
           StandardErrorPath = cfg.logFile;
         };
       };
+
+      # Run as root before nix-darwin loads its agents, so a new build's
+      # agent starts from its signed copy, with the operating system's own
+      # security, codesign and openssl; a copy that cannot be signed says
+      # why and stops nothing, the agent running the package's own runner.
+      system.activationScripts.extraActivation.text = ''
+        /usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh ${./activate.sh} ${signing} || true
+      '';
 
       # Activation runs as root, with root's HOME, so the link is made as the
       # primary user under their own home. A link that fails says why and

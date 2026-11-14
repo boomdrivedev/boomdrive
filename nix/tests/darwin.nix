@@ -145,6 +145,20 @@ let
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
+  extraActivationOf =
+    evaluated:
+    builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.extraActivation.text;
+  postActivationOf =
+    evaluated:
+    builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.postActivation.text;
+  # As root, with the operating system's folders alone on PATH, the System
+  # keychain, the signed copy's folder and the package's runner (the change
+  # the-runners-macos-grant-outlasts-a-new-build, design Decision 6).
+  signing = builtins.unsafeDiscardStringContext "/usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh ${../modules/activate.sh} sign /Library/Keychains/System.keychain '/Library/Application Support/Boomdrive' ${set.boomdrive}/bin/boomdrive || true";
+  signs = text: lib.hasInfix "activate.sh sign" text;
+  # A system that imports the module with the runner off.
+  runnerOff = t.darwinOf [ t.outputs.darwinModules.default ];
+
   # As the primary user, under their home, with the module's file.
   link = builtins.unsafeDiscardStringContext ''
     sudo --user=alice -- /usr/bin/env HOME=/Users/alice \
@@ -289,4 +303,21 @@ in
 
   "The activation links the file on nix-darwin" =
     t.expect (lib.hasInfix link activation) "the activation runs no `${link}`: ${activation}";
+
+  "The step runs before the agents load" =
+    t.expect (lib.hasInfix signing (extraActivationOf base)) "extraActivation runs no `${signing}`: ${extraActivationOf base}"
+    ++ t.expect (
+      !signs (postActivationOf base)
+    ) "postActivation runs activate.sh sign: ${postActivationOf base}";
+
+  "No signing without the runner" =
+    t.expect (
+      t.failures runnerOff == [ ]
+    ) "a system with the runner off fails: ${toString (t.failures runnerOff)}"
+    ++ t.expect (
+      !signs (extraActivationOf runnerOff)
+    ) "extraActivation runs activate.sh sign with the runner off: ${extraActivationOf runnerOff}"
+    ++ t.expect (
+      !signs (postActivationOf runnerOff)
+    ) "postActivation runs activate.sh sign with the runner off: ${postActivationOf runnerOff}";
 }
