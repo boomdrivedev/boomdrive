@@ -23,7 +23,7 @@ All nine tasks are ticked, 1.1 to 3.3, and none is open.
 - 3.2 relies on `root:format`, which also holds `activate.sh` and its tests to shellcheck and shfmt and the `.nix` files to nixfmt.
 - 3.3 relies on `root:specs`.
 
-Each of those checks passed in the run above. The diff since the planning commit's parent stays inside proposal.md's Touches. It adds no crate, gate tool, tracked file type, option, configuration key, field of `report.json` or protocol message, and the runner's code is unchanged. Record 0046, core.60 and core.46's amended details were written in the planning commit, `d7867ab5`, as the tasks say. The step keeps the `oneline` helper from `e3d8962e`, which design Decision 8 leaves to the build stage.
+Each of those checks passed in the run above. The diff since the planning commit's parent stays inside proposal.md's Touches. It adds no crate, gate tool, tracked file type, option, configuration key, field of `report.json` or protocol message, and the runner's code is unchanged. Record 0047, core.60 and core.46's amended details were written in the planning commit, `d7867ab5`, as the tasks say. The step keeps the `oneline` helper from `e3d8962e`, which design Decision 8 leaves to the build stage.
 
 ## The delta, scenario by scenario
 

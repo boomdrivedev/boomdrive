@@ -13,7 +13,7 @@ See proposal.md for why. There is no area page for `nix/`, so `docs/architecture
 - core.46: the modules hold no credential in an option, a file or the store, and the agent waits for `/nix/store`, then `exec`s the runner. The agent's new line keeps both (Decision 5);
 - core.7 and core.8: every file is owned by a formatter the gate runs, and every tool a task runs is pinned. The change adds no file type and no tool to the gate: its tests stub `security`, `codesign`, `openssl` and `mv` (Decision 7).
 
-It departs from no rule. It adds core.60 and record 0046, and amends core.46's details (Decision 9).
+It departs from no rule. It adds core.60 and record 0047, and amends core.46's details (Decision 9).
 
 **What macOS asks, and why again.** macOS remembers a person's answer about a guarded folder or volume for one program. It knows a program without a bundle by its path and its designated requirement. On deneb on 2026-11-14, the module's agent `org.nixos.boomdrive` ran `/bin/sh -c '/bin/wait4path /nix/store && exec /nix/store/dxykdj2d…-boomdrive-0.9.0/bin/boomdrive run --config …'`. `codesign -dv` of that runner gave `flags=0x20002(adhoc,linker-signed)` and `TeamIdentifier=not set`, and `codesign -d -r-` gave `designated => cdhash H"04f2efaf…"`. The requirement is the hash of one build, at one store path. A new build changes both, so macOS asks again.
 
@@ -43,7 +43,7 @@ The runner is a launchd agent, its own responsible process. Flume's settle, slui
 
 **Non-Goals:**
 
-- A Developer ID of Apple's Developer Program, which costs money and publishes a name. That is the person's to decide (record 0046, option 3).
+- A Developer ID of Apple's Developer Program, which costs money and publishes a name. That is the person's to decide (record 0047, option 3).
 - The agent `boomdrive setup` writes on a host Nix does not manage. setup runs as the person, with no root to keep a folder only root writes, and nothing runs at `nix profile upgrade` to sign a new build. It stays as it is, asked at each upgrade (Risk 3).
 - The keychain's own ask before the runner reads a partition's key (core.32), which only a host enrolled with a hosted control plane meets (Risk 4).
 - Signing herdr, Flume or sluice (Risk 5).
@@ -56,7 +56,7 @@ The runner is a launchd agent, its own responsible process. Flume's settle, slui
 
 The nix-darwin module keeps a copy of `<package>/bin/boomdrive` at a fixed path, signed with a code-signing identity the host makes once. The copy's designated requirement is then `identifier boomdrive and certificate leaf = H"<identity>"`, the same for every build. The path is the same too, so macOS finds the person's answer for each later build. The set's package is untouched, and the cache's paths and those a host builds from source stay the same (core.44, core.47).
 
-Not taken, as record 0046 has it:
+Not taken, as record 0047 has it:
 
 - **An ad hoc signature with a requirement that names only the identifier.** Any program signed ad hoc as `boomdrive` would meet it.
 - **A Developer ID, in the cache's workflow.** It costs money, publishes a name and needs secrets, and a signed build would differ from a host's own build.
@@ -156,11 +156,11 @@ The keychain is a word the stubs take, never a real keychain, so no case touches
 
 ### 8. The step's first two parts are carried from `e3d8962e`
 
-The step's folder check, from `db31f8b5`, and its identity, from `e3d8962e`, are taken into `nix/modules/activate.sh` and `nix/tests/activate.sh` as written there, by `git show e3d8962e:<path>` read beside the file as `main` now holds it. They are merged with what `main` gained since: the `pendingyou` and `managed` steps, their usage lines, header paragraphs and cases. The header and the tests name record 0046 and this change, `the-runners-macos-grant-outlasts-a-new-build`. A one-line helper the earlier code adds, `oneline`, may stand beside the inline joins the newer steps use, or the step may join its words inline as they do; the build stage picks one and says which. The two commits are not cherry-picked: their own tasks file is the earlier change's, which this change does not carry.
+The step's folder check, from `db31f8b5`, and its identity, from `e3d8962e`, are taken into `nix/modules/activate.sh` and `nix/tests/activate.sh` as written there, by `git show e3d8962e:<path>` read beside the file as `main` now holds it. They are merged with what `main` gained since: the `pendingyou` and `managed` steps, their usage lines, header paragraphs and cases. The header and the tests name record 0047 and this change, `the-runners-macos-grant-outlasts-a-new-build`. A one-line helper the earlier code adds, `oneline`, may stand beside the inline joins the newer steps use, or the step may join its words inline as they do; the build stage picks one and says which. The two commits are not cherry-picked: their own tasks file is the earlier change's, which this change does not carry.
 
-### 9. Record 0046, core.60, and core.46's details
+### 9. Record 0047, core.60, and core.46's details
 
-Record 0046 holds the decision and its options. core.60 is the rule: the copy, its folder, the identity and its keychain, the source named last, and the package's own binary where no copy of it is signed. core.46's details gain, among what they do not rule out, the agent's line running that copy or the package's own binary behind the same wait, and the root step in `extraActivation`. All three are written with this change, in its construct stage's commit.
+Record 0047 holds the decision and its options. core.60 is the rule: the copy, its folder, the identity and its keychain, the source named last, and the package's own binary where no copy of it is signed. core.46's details gain, among what they do not rule out, the agent's line running that copy or the package's own binary behind the same wait, and the root step in `extraActivation`. All three are written with this change, in its construct stage's commit.
 
 ## Risks / Trade-offs
 

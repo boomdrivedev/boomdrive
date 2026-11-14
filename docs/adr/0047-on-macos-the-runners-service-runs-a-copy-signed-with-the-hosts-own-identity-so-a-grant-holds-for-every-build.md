@@ -1,5 +1,5 @@
 ---
-number: 46
+number: 47
 title: On macOS the runner's service runs a copy signed with the host's own identity, so a grant holds for every build
 status: accepted
 date: 2026-11-14
