@@ -1,9 +1,11 @@
-# The set's marketplace of crew's companions' Claude Code plugins, named
-# `boomdrive` (record 0044, points 1, 2, 4 and 5; design Decision 5 of the
-# change crews-companions-come-with-the-flake): one folder of regular
-# files, never a link into the store (record 0022 as amended on
-# 2026-11-11), from which Claude Code's own commands install each plugin.
-# Nothing is compiled. It holds two plugins:
+# The set's marketplace of Claude Code plugins, crew's companions' and
+# timber's, named `boomdrive` (record 0044, points 1, 2, 4 and 5, and its
+# amendment of 2026-11-13; design Decision 5 of the change
+# crews-companions-come-with-the-flake, and design Decision 4 of the
+# change timber-comes-with-boomdrives-flake): one folder of regular files,
+# never a link into the store (record 0022 as amended on 2026-11-11), from
+# which Claude Code's own commands install each plugin. Nothing is
+# compiled. It holds three plugins:
 #
 # - `pendingyou`: Pending You's hooks and its skill, and no wake mod, which
 #   is Pending You's folder's, loaded from there (record 0044, point 5),
@@ -14,6 +16,9 @@
 # - `plannotator`: the `apps/hook` of the source the given Plannotator is
 #   built from, whole, as Plannotator's own marketplace names it. Its
 #   build fails where that folder's plugin.json says another version.
+# - `timber`: the `plugins/claude-code` of the source the given timber is
+#   built from, whole, its guard's mode kept. Its build fails where that
+#   folder's plugin.json says another version than the given timber's.
 #
 # Pending You's skill, `skill`, is nix/packages/pendingyou-skill.md: the
 # text https://www.pendingyou.com/skill-stub.md served on 2026-11-11,
@@ -30,6 +35,7 @@
   jq,
   pendingyou,
   plannotator,
+  timber,
   skill,
 }:
 let
@@ -113,12 +119,18 @@ let
       inherit (plannotator) version;
       description = "Plannotator: review a plan in the browser, and annotate a document";
     }
+    {
+      name = "timber";
+      source = "./plugins/timber";
+      inherit (timber) version;
+      description = "timber: an ecosystem's own publish command refused in a timber repository, naming timber publish";
+    }
   ];
 
   json = name: value: writeText name (builtins.toJSON value);
   marketplace = {
     name = "boomdrive";
-    description = "The Boomdrive set's Claude Code plugins of crew's companions, Pending You and Plannotator";
+    description = "The Boomdrive set's Claude Code plugins: crew's companions', Pending You and Plannotator, and timber's";
     owner.name = "agentplot";
     inherit plugins;
   };
@@ -142,6 +154,7 @@ let
     "skills/pendingyou/SKILL.md" = skill;
   };
   plannotatorHook = "${plannotator.src}/apps/hook";
+  timberPlugin = "${timber.src}/plugins/claude-code";
 in
 runCommand "boomdrive-claude-plugins"
   {
@@ -152,10 +165,13 @@ runCommand "boomdrive-claude-plugins"
         inherit manifest hooksFile;
         files = builtins.attrNames pendingyouFiles;
       };
-      sources.plannotator = plannotatorHook;
+      sources = {
+        plannotator = plannotatorHook;
+        timber = timberPlugin;
+      };
     };
     meta = {
-      description = "The Boomdrive set's Claude Code marketplace of crew's companions";
+      description = "The Boomdrive set's Claude Code marketplace";
       license = with lib.licenses; [
         asl20
         mit
@@ -171,11 +187,17 @@ runCommand "boomdrive-claude-plugins"
       '') pendingyouFiles
     )}
     cp -RL ${plannotatorHook} "$out/plugins/plannotator"
+    cp -RL ${timberPlugin} "$out/plugins/timber"
     chmod -R u+w "$out"
 
     said=$(jq -r .version "$out/plugins/plannotator/.claude-plugin/plugin.json")
     if [ "$said" != ${lib.escapeShellArg plannotator.version} ]; then
       echo "plannotator's plugin says $said, not the set's plannotator ${plannotator.version}" >&2
+      exit 1
+    fi
+    said=$(jq -r .version "$out/plugins/timber/.claude-plugin/plugin.json")
+    if [ "$said" != ${lib.escapeShellArg timber.version} ]; then
+      echo "timber's plugin says $said, not the set's timber ${timber.version}" >&2
       exit 1
     fi
     links=$(find "$out" -type l)

@@ -57,3 +57,11 @@ Not taken: a loader that hands the mod a Claude Code API whose `plugin.root` is 
 
 - core.18's, core.44's, core.45's and core.46's details name what this record allows, in the commit that writes the change.
 - Pending You's skill is kept in this tree as Pending You serves it, since the address its `init` fetches it from is not versioned.
+
+## Amendment, 2026-11-13: the set's marketplace lists timber's plugin
+
+Status: decided on 2026-11-13 by the construct stage of the change `timber-comes-with-boomdrives-flake`, within record 0023's amendment of that day, which brings timber with its herdr and Claude Code plugins into the set. A writing agent's choice, cheap to change; the change's design gives it as its Decision 4.
+
+- **A third plugin.** `boomdrive-claude-plugins` lists `timber`: timber's own `plugins/claude-code` at the tag the lock names, copied whole, at the set's timber's version. Point 2's marketplace is otherwise as it stands, one store folder of regular files.
+- **Its install waits with the companions'.** No Claude Code home gets it until point 3's unit, `the-companions-load-in-claude-codes-sessions`, installs the set's marketplace. That unit finds `timber` among the marketplace's plugins; what it installs of them, and for which sessions, is its own design.
+- **Not taken:** timber's own marketplace, `timber`, carried as a second package, which each home would add beside the set's.

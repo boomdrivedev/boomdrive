@@ -27,6 +27,8 @@ let
     "portless"
     "sluice"
     "sluice-herdr-plugin"
+    "timber"
+    "timber-herdr-plugin"
     "worktrunk"
   ];
 

@@ -127,8 +127,10 @@ let
     "pendingyou"
     "plannotator"
     "plannotator-tui"
+    "timber"
     "flume-herdr-plugin"
     "sluice-herdr-plugin"
+    "timber-herdr-plugin"
     "pendingyou-herdr-plugin"
     "plannotator-herdr-plugin"
   ];

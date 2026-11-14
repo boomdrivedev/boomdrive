@@ -257,7 +257,7 @@ The modules' own activation SHALL link the runner's file, write Pending You's fo
 
 ### Requirement: The modules hold no option that installs a tool its own module installs
 
-The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
+The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, timber, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
 
 #### Scenario: The tools option is gone
 
@@ -267,7 +267,7 @@ The modules SHALL hold no option of their own that installs a tool whose own mod
 #### Scenario: The README's words
 
 - **WHEN** the README's install with nix is read
-- **THEN** it names `services.flume.package`, `services.sluice.package`, `services.crew.package`, `services.boomdrive.herdr.package`, `services.boomdrive.herdr.plugins`, `services.boomdrive.ghostty.package`, `services.boomdrive.portless.package`, `services.boomdrive.worktrunk.package`, `services.boomdrive.launcher.package`, `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package`, `services.boomdrive.plannotator-tui.package` and `nix develop github:boomdrivedev/boomdrive`, and no `services.boomdrive.tools`
+- **THEN** it names `services.flume.package`, `services.sluice.package`, `services.crew.package`, `services.boomdrive.herdr.package`, `services.boomdrive.herdr.plugins`, `services.boomdrive.ghostty.package`, `services.boomdrive.portless.package`, `services.boomdrive.worktrunk.package`, `services.boomdrive.timber.package`, `services.boomdrive.launcher.package`, `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package`, `services.boomdrive.plannotator-tui.package` and `nix develop github:boomdrivedev/boomdrive`, and no `services.boomdrive.tools`
 
 ### Requirement: A crew table written out wins whole
 
@@ -448,22 +448,22 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.herd
 
 ### Requirement: The modules link the set's herdr plugins with herdr's own command
 
-With `services.boomdrive.enable`, each activation SHALL run, as the runner's user, the installed herdr's own `herdr plugin link <plugin>` for each package of `services.boomdrive.herdr.plugins`, in order, with no `HERDR_*` variable of the caller's. The list's default SHALL be the set's `flume-herdr-plugin` and `sluice-herdr-plugin`, then, with crew on, its companions' plugins. The modules SHALL write no file of herdr's. With no herdr package or no plugin, none SHALL be linked.
+With `services.boomdrive.enable`, each activation SHALL run, as the runner's user, the installed herdr's own `herdr plugin link <plugin>` for each package of `services.boomdrive.herdr.plugins`, in order, with no `HERDR_*` variable of the caller's. The list's default SHALL be the set's Flume, sluice and timber plugins, then, with crew on, its companions'. The modules SHALL write no file of herdr's. With no herdr package or no plugin, none SHALL be linked.
 
 #### Scenario: The plugins linked on nix-darwin
 
 - **WHEN** a nix-darwin system whose primary user is `alice` turns on `services.boomdrive`
-- **THEN** its activation runs, as `alice`, the step that links the set's `flume-herdr-plugin` and `sluice-herdr-plugin` with the set's herdr
+- **THEN** its activation runs, as `alice`, the step that links the set's `flume-herdr-plugin`, `sluice-herdr-plugin` and `timber-herdr-plugin` with the set's herdr
 
 #### Scenario: The plugins linked on NixOS
 
 - **WHEN** a NixOS system turns on `services.boomdrive` for `alice`
-- **THEN** `alice`'s user activation runs the step that links the set's `flume-herdr-plugin` and `sluice-herdr-plugin` with the set's herdr, and another user's runs none
+- **THEN** `alice`'s user activation runs the step that links the set's `flume-herdr-plugin`, `sluice-herdr-plugin` and `timber-herdr-plugin` with the set's herdr, and another user's runs none
 
 #### Scenario: The companions' plugins with crew
 
 - **WHEN** a system turns on `services.boomdrive` and `services.crew` and names no plugin
-- **THEN** its activation links the set's `flume-herdr-plugin`, `sluice-herdr-plugin`, `pendingyou-herdr-plugin` and `plannotator-herdr-plugin`, in that order, on nix-darwin and on NixOS
+- **THEN** its activation links the set's `flume-herdr-plugin`, `sluice-herdr-plugin`, `timber-herdr-plugin`, `pendingyou-herdr-plugin` and `plannotator-herdr-plugin`, in that order, on nix-darwin and on NixOS
 
 #### Scenario: Each plugin linked
 
@@ -956,7 +956,7 @@ With `services.boomdrive.enable` and `services.crew.enable`, the modules SHALL p
 #### Scenario: No companions without crew
 
 - **WHEN** a system turns on `services.boomdrive` and leaves `services.crew` off
-- **THEN** its profile holds none of the set's `pendingyou`, `plannotator` and `plannotator-tui`, its activation writes no folder of Pending You's, and its plugins' default is Flume's and sluice's alone, on nix-darwin and on NixOS
+- **THEN** its profile holds none of the set's `pendingyou`, `plannotator` and `plannotator-tui`, its activation writes no folder of Pending You's, and its plugins' default is Flume's, sluice's and timber's alone, on nix-darwin and on NixOS
 
 #### Scenario: No companions without the runner
 
@@ -1222,3 +1222,41 @@ The README's install with nix SHALL name `services.boomdrive.claude-code.telemet
 
 - **WHEN** the README's install with nix is read
 - **THEN** a nix block names `services.boomdrive.claude-code.telemetry` with a `collector`, and its words name `metrics`, `logs`, `traces`, `10-boomdrive-telemetry.json`, `/Library/Application Support/ClaudeCode/managed-settings.d` and `/etc/claude-code/managed-settings.d`, and say that traces are off unless named
+
+### Requirement: The modules install timber, replaceable or dropped
+
+With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.timber.package` in the system profile, whether or not crew is on. It SHALL be the set's `timber` for the host's system by default, a host's own package SHALL replace it, and `null` SHALL install none. With the runner not enabled, the modules SHALL install no timber. The modules SHALL write no file of timber's.
+
+#### Scenario: timber with the runner
+
+- **WHEN** a system turns on `services.boomdrive` and names no timber
+- **THEN** the system profile holds the set's `timber`, on nix-darwin and on NixOS
+
+#### Scenario: A host's own timber
+
+- **WHEN** `services.boomdrive.timber.package` is a package of the host's own
+- **THEN** the system profile holds it and not the set's timber, on nix-darwin and on NixOS
+
+#### Scenario: No timber of the set's
+
+- **WHEN** `services.boomdrive.timber.package` is `null`
+- **THEN** the system evaluates and its profile holds no timber of the set's, on nix-darwin and on NixOS
+
+#### Scenario: No timber without the runner
+
+- **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
+- **THEN** its system profile holds no timber of the set's, on nix-darwin and on NixOS
+
+### Requirement: timber's serving process is timber's own
+
+The modules SHALL start no `timber serve`. No launchd daemon or agent, systemd unit or activation step of theirs SHALL run the set's timber. The README's install with nix SHALL name the set's timber, its herdr plugin and `timber serve`, and say that timber's pane or command starts it where none answers, or a host runs it as a service of its own.
+
+#### Scenario: No serving process of the modules'
+
+- **WHEN** a system turns on `services.boomdrive` and names no timber
+- **THEN** no launchd daemon or agent, no systemd unit and no activation step of the system names the set's timber, on nix-darwin and on NixOS
+
+#### Scenario: The README's timber
+
+- **WHEN** the README's install with nix is read
+- **THEN** it names `github:boomdrivedev/boomdrive#timber`, `timber-herdr-plugin` and `timber serve`

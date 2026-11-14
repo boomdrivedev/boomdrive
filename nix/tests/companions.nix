@@ -337,7 +337,7 @@ in
         packages.plannotator-tui.version
   );
 
-  "The marketplace's two plugins" = each (
+  "The marketplace's three plugins" = each (
     system: packages:
     let
       market = packages.boomdrive-claude-plugins;
@@ -354,6 +354,11 @@ in
           name = "plannotator";
           inherit (packages.plannotator) version;
           source = "./plugins/plannotator";
+        }
+        {
+          name = "timber";
+          inherit (packages.timber) version;
+          source = "./plugins/timber";
         }
       ];
     in

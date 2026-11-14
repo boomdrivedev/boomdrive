@@ -31,7 +31,7 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 #### Scenario: The runner is pushed with its tools
 
 - **WHEN** a commit lands on `main`
-- **THEN** each system's job builds `boomdrive`, `boomdrive-launcher`, `boomdrive-claude-plugins`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk`, `pendingyou`, `plannotator`, `plannotator-tui` and the four herdr plugins of that commit, and pushes them to the cache
+- **THEN** each system's job builds `boomdrive`, `boomdrive-launcher`, `boomdrive-claude-plugins`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk`, `timber`, `pendingyou`, `plannotator`, `plannotator-tui` and the five herdr plugins of that commit, and pushes them to the cache
 
 #### Scenario: A package that does not build
 
@@ -64,7 +64,7 @@ The modules' default packages SHALL be the flake's own, made with its locked nix
 #### Scenario: A host's own nixpkgs
 
 - **WHEN** a module is enabled, with crew turned on, in a system whose `pkgs` carries an overlay of the host's own
-- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk`, `boomdrive-launcher`, `pendingyou`, `plannotator` and `plannotator-tui`, the store paths the flake gives, and the plugins it links are the flake's own `pendingyou-herdr-plugin` and `plannotator-herdr-plugin` beside Flume's and sluice's
+- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `ghostty`, `portless`, `worktrunk`, `timber`, `boomdrive-launcher`, `pendingyou`, `plannotator` and `plannotator-tui`, the store paths the flake gives, and the plugins it links are the flake's own `timber-herdr-plugin`, `pendingyou-herdr-plugin` and `plannotator-herdr-plugin` beside Flume's and sluice's
 
 #### Scenario: The host's trust
 

@@ -1,7 +1,8 @@
 # The family's host tools, pinned together and built from source: the
-# runner at this tree, Flume, sluice, crew, herdr and worktrunk each at a
-# release tag through its own flake, and portless at its release tag
-# through this flake's recipe (records 0020 and 0023, core.44). crew's
+# runner at this tree, Flume, sluice, crew, timber, herdr and worktrunk
+# each at a release tag through its own flake, timber's herdr and Claude
+# Code plugins from its same tag, and portless at its release tag through
+# this flake's recipe (records 0020 and 0023, core.44). crew's
 # companions come with them (record 0044): Pending You as it publishes it
 # on npm, Plannotator and plannotator-tui through numtide/llm-agents.nix's
 # flake at their release tags, their herdr plugins at the commits the lock
@@ -13,7 +14,7 @@
 # devenv's (devenv.nix). Everything else of the flake's is under nix/, the
 # moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume, sluice and crew, pinned together, with herdr, Ghostty, portless and worktrunk";
+  description = "Boomdrive: the runner, Flume, sluice, crew and timber, pinned together, with herdr, Ghostty, portless and worktrunk";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -76,6 +77,16 @@
     # driver was checked against (record 0023; design Decision 1).
     worktrunk = {
       url = "github:max-sixty/worktrunk/v0.80.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+      };
+    };
+    # timber through its own flake at its release tag, its CLI and both its
+    # plugins, herdr's and Claude Code's, from this one pin (record 0023 as
+    # amended on 2026-11-13; design Decision 1).
+    timber = {
+      url = "github:boomdrivedev/timber/v0.6.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -151,6 +162,9 @@
             # tree carries its version (core.44).
             flume = inputs.flume.packages.${system}.flume;
             crew = inputs.crew.packages.${system}.crew;
+            # timber's own flake's package, unchanged: its tagged tree
+            # carries its version (timber's record 0031; core.44).
+            timber = inputs.timber.packages.${system}.default;
             sluice = import ./nix/packages/sluice.nix {
               inherit lib;
               package = inputs.sluice.packages.${system}.default;
@@ -192,9 +206,10 @@
           # runs `flume open` (design Decision 3).
           boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
           # The set's marketplace of crew's companions' Claude Code plugins
-          # (record 0044, point 2), which no module installs yet.
+          # and timber's (record 0044, point 2, and its amendment of
+          # 2026-11-13), which no module installs yet.
           boomdrive-claude-plugins = pkgs.callPackage ./nix/packages/claude-plugins.nix {
-            inherit (tools) pendingyou plannotator;
+            inherit (tools) pendingyou plannotator timber;
             skill = ./nix/packages/pendingyou-skill.md;
           };
           # The companions' herdr plugins, each at the commit the lock names
@@ -207,6 +222,10 @@
             src = inputs.herdr-annotate;
             inherit (tools) plannotator-tui;
           };
+          # timber's plugins/herdr at its tag, as Flume's and sluice's are,
+          # outside `plugins`, so `herdr-plugins` stays theirs (design
+          # Decisions 3 and 9).
+          timber-herdr-plugin = pluginOf tools.timber;
           # The two plugins in one package a profile holds, which
           # `boomdrive setup` links from it (record 0009 as amended
           # 2026-11-11).
