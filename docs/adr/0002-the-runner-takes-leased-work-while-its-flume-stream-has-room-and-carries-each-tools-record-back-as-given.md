@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. And on 2026-11-14: a control plane's hold of a place's waiting move, boomdrive-design's direction with the choices of the stage that built it, none of it the user's alone. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud's records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022, its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39, and its `design/domain-model.html` with its ledger items 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -312,3 +312,55 @@ core.56 holds it. The control-plane-interface, crew-control-plane, runner-protoc
 - crew's implementation reads `Act: confirm`, with its `Of`, its one `Recipient` and each `Delivery`, as a confirm of that launch's ends. One naming no `Host` goes to the runner that holds its launch. crew's confirms written before a host runs the release that carries this are carried once it does.
 - A hosted control plane's readers confirm nothing through the runner until a later protocol version names a confirm and an end's delivery key. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
 - Flume's statement names, in its row of callers, a retry of a base place's submission as what the runner asks of Flume at its control plane's ask. A confirm its control plane asks, as the reader it names, joins it. That is the statement's owner's to amend, and is told to the orchestrator.
+
+## Amendment, 2026-11-14: a control plane's hold of a place's waiting move
+
+Status: accepted on 2026-11-14. The direction is boomdrive-design's, in crew's record 0067 as it amended it that day: crew posts `hold`, naming a proven bolt's launch and the words, and the runner carries it as Flume's hold of the base place's waiting move, with the words and bound given. The construct stage of the change `the-runner-carries-a-hold-of-a-places-waiting-move` chose four things, each cheap to change: a hold always names its bound, in whole seconds; a hold with no words is refused; crew's implementation reads the bound from a field `Bound`; and no version of the hosted protocol carries a hold. Nothing in it is the user's alone: Flume's clause 130 and its rule core.24 give a caller the hold, crew's record 0056 says how crew asks for it, and core.42 decides the protocol.
+
+The brief: "The runner takes hold from its control plane, naming a launch, words and a bound, and carries it as Flume's hold of that place's waiting move."
+
+Deciders: boomdrive-design, for the direction; the construct stage of the change `the-runner-carries-a-hold-of-a-places-waiting-move`, for the choices marked as its own.
+
+Sources: crew's record 0067 and its amendment of 2026-11-14; crew's record 0056; boomdrivedev/blueprints `design/flume/requirements.md`, clause 130; Flume's rule core.24, and `flume hold --waiting [--for <time>]` from Flume's `v0.17.0`; signal `2026-11-14-boomdrive-ops-f85c2fe2/01`; `crates/boomdrive-control/src/want.rs`, `crates/boomdrive/src/carry.rs` and `crates/boomdrive/src/flume.rs` at 6808fbf3; rules core.1, core.2, core.10, core.12, core.42, core.50, core.51 and core.53; the control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs.
+
+### Context
+
+Flume reads a place as stalled once its next move has been its caller's for five minutes under no hold's words, and delivers the stall once to each recipient of the place and to the answerer behind its stream. A caller may hold the move the place waits on it for, with words saying who makes it and how, and a bound after which the hold lapses. A later hold replaces it, and a retry naming the stage or the submission ends it as the move made. Flume watches no event for a hold and ends none itself.
+
+A proven bolt that waits on the user's send, a batch or a hold the user put on the drive or the kit, waits on its caller with no words, so its base place reads as stalled after five minutes. Its stall reaches ops, the operator and the user as though something had failed. crew talks only to the runner, by messages named for what they do (crew's record 0056, point 1), and the interface carries a retry, a land, a confirm, a drop, a priority and a done, and no hold.
+
+### Considered options
+
+1. A hold is an act of the interface's own, naming its launch, its words and its bound. The runner that holds the launch carries it out as Flume's hold of that place's waiting move.
+2. The bound is optional, as Flume's is, and a hold with none holds until the move is made.
+3. The bound is a time the hold lapses at, which the runner turns into a span.
+4. A longer stall bound given at a base place's launch.
+
+### Decision outcome
+
+Option 1.
+
+- **A hold is an act.** It names its launch, under that launch's lease, its words as the control plane gave them, and its bound in whole seconds. The interface writes it as `{"hold": {"words": …, "bound_interval": …}}`, the bound's key ending as core.12 has a duration's end.
+- **The runner carries it out as Flume's hold of the waiting move.** It runs `flume hold <place> --waiting --for=<n>s -- <words>` on the launch's place, as it carries out any act: once, in the pass's second round, after Flume's status of a place the listing does not hold, and never under a lapsed lease (core.10, core.24, core.50, core.51). The words follow `--`, so they are never read as a flag. Flume's answer is the hold's (core.1, core.11). Its line names it `hold for <n>s` and holds none of its words.
+- **The runner judges nothing of the wait.** Flume refuses a hold of a place that waits on no move of its caller's, and that refusal is the hold's answer. A later hold replaces the earlier in Flume, and a land ends it as the move made (core.53). The runner renews, ends and puts again no hold of its own accord.
+- **A hold always names its bound.** It is the stage's choice. A hold with none would hide the place's stall for good where the control plane never makes the move, and the amendment of crew's record 0067 keeps a stall saying something.
+- **A hold with no words is refused**, running nothing. It is the stage's choice. Flume takes the empty words, and the place would read neither stalled nor waiting on anyone.
+- **A hold of a launch held unlaunched is refused**, naming where the launch stands, as a retry, a land, a confirm or a done is.
+- **crew's implementation reads `Act: hold`** with its `Of`, its `Words` as a retry's are read, and its `Bound` in whole seconds. It is the stage's choice of the field `Bound`, clause 130's word, which crew's unit writes.
+- **No version of the hosted protocol carries a hold.** It is the stage's choice, within core.42. Version 1 was spoken by `v0.1.0` to `v0.7.3` and version 2 by `v0.9.0`, so neither changes. A later version, the runner's and the cloud's together, may name a hold.
+
+Not taken:
+
+- **Option 2.** A hold the control plane forgets would hide the place's stall for good.
+- **Option 3.** Flume takes a span. The runner would compute it from two hosts' clocks and judge a time already passed, and an act waits at most a pass or two before it runs.
+- **Option 4.** It hides a base place's real stalls before it is proven, and still stalls a bolt the user leaves overnight, as crew's record 0067's amendment found.
+- **One act holding a stage, the submission or the waiting move, naming which.** Nothing asks for a stage's or the submission's hold after the launch, and Flume bounds the waiting move's alone.
+- **Adding `hold` to version 2.** A release has spoken it, and core.42 rules out changing it.
+
+core.59 holds it. The control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs gain it through the change `the-runner-carries-a-hold-of-a-places-waiting-move`.
+
+### Consequences
+
+- crew's unit `a-bolt-waiting-on-the-user-waits-under-words` posts `Act: hold` with `Of`, `Words` and `Bound`, naming no `Host`, which goes to the runner that holds its launch. Its holds written before a host runs the release that carries this are carried once it does.
+- A hosted control plane's work stalls as it does today until a later protocol version names a hold. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
+- Flume's statement names, in its row of callers, what the runner asks of Flume at its control plane's ask: a retry of a base place's submission as a land, and a confirm of ends. A hold of a place's waiting move, with its words and bound, joins them. That is the statement's owner's to amend, and is told to the orchestrator.

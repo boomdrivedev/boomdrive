@@ -122,8 +122,9 @@ socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
 Version 2 has no message for a forge token, for health, for the
-runner's own commands, or for a terminal's certificate. The changes that
-build them add them, in a version of their own.
+runner's own commands, for a terminal's certificate, or for a hold of a
+place's waiting move. The changes that build them add them, in a version
+of their own.
 
 **A land** is an act on a launch's place, the word `"land"`: the
 landing of that launch's work. It holds nothing but its act's launch and

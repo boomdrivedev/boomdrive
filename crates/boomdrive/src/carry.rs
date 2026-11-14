@@ -762,7 +762,8 @@ impl Work<'_> {
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
     /// core.24). A confirm as the runner, or of no key, is refused at once,
-    /// running nothing (core.56). One on its launch's place is carried out
+    /// running nothing (core.56), as is a hold with no words (core.59).
+    /// One on its launch's place is carried out
     /// in the pass's second round alone, after every launch the pull offers
     /// (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
@@ -781,7 +782,7 @@ impl Work<'_> {
         if lapsed(launched.lease, self.now) {
             return;
         }
-        if let Some(words) = refused_confirm(&act.what) {
+        if let Some(words) = refused_confirm(&act.what).or_else(|| refused_hold(&act.what)) {
             self.acted(act, Outcome::Refused, Some(words), None, say);
             return;
         }
@@ -884,9 +885,9 @@ impl Work<'_> {
     /// Answers `act` on a launch the runner holds not yet launched, from
     /// the report, running no command. A priority is done, and the launch
     /// carries it when made; a drop is done, and the launch is never made;
-    /// a retry, a land, a confirm or a done is refused, naming where the
-    /// launch stands, and a land so refused changes nothing of the launch
-    /// when it is made (core.53, core.56).
+    /// a retry, a land, a confirm, a hold or a done is refused, naming
+    /// where the launch stands, and a land or a hold so refused changes
+    /// nothing of the launch when it is made (core.53, core.56, core.59).
     fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
@@ -906,7 +907,11 @@ impl Work<'_> {
                     self.report.answer(&act.launch, lease, dropped);
                 }
             }
-            ActSort::Retry { .. } | ActSort::Land | ActSort::Confirm { .. } | ActSort::Done => {
+            ActSort::Retry { .. }
+            | ActSort::Land
+            | ActSort::Confirm { .. }
+            | ActSort::Hold { .. }
+            | ActSort::Done => {
                 let outcome = match answer.outcome {
                     Outcome::Held => "held",
                     Outcome::Done => "done",
@@ -1886,6 +1891,15 @@ fn flume_act(what: &ActSort) -> flume::Act {
             recipient: recipient.clone(),
             keys: deliveries.clone(),
         },
+        // A hold is Flume's hold of the move the place waits on its caller
+        // for, with exactly the words and the bound it names (core.59).
+        ActSort::Hold {
+            words,
+            bound_interval,
+        } => flume::Act::Hold {
+            words: words.clone(),
+            bound_interval: *bound_interval,
+        },
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
@@ -1916,12 +1930,28 @@ fn refused_confirm(what: &ActSort) -> Option<String> {
     }
 }
 
+/// The runner's words refusing `what`, where it is a hold with no words,
+/// which would take the place out of stalling with nothing said of who
+/// makes the move (core.59; Flume's 130). The runner judges no words but
+/// their absence.
+fn refused_hold(what: &ActSort) -> Option<String> {
+    match what {
+        ActSort::Hold { words, .. } if words.is_empty() => {
+            Some("a hold with no words says nothing of who makes the move".to_string())
+        }
+        _ => None,
+    }
+}
+
 /// An act's sort, as its lines name it.
 fn sort(what: &ActSort) -> String {
     match what {
         ActSort::Retry { .. } => "retry".to_string(),
         ActSort::Land => "land".to_string(),
         ActSort::Confirm { recipient, .. } => format!("confirm as {recipient}"),
+        // A hold's words stay out of its line, as a retry's do (core.11,
+        // core.59).
+        ActSort::Hold { bound_interval, .. } => format!("hold for {bound_interval}s"),
         ActSort::Drop => "drop".to_string(),
         ActSort::Priority(priority) => format!("priority {priority}"),
         ActSort::Done => "done".to_string(),
