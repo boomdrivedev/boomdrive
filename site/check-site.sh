@@ -119,6 +119,68 @@ for prompt in $prompts; do
   fi
 done
 
+# The kind's declaration (the content-kind spec; record 0045): the
+# declaration read as TOML with bun's own parser, so its inline tables
+# read as flume reads them, holds the kind to its stages, and its
+# preview's one agent names no pane or session of a host's terminal.
+kind=$(
+  cat <<'CHECK'
+import { readFileSync } from "node:fs";
+
+let failed = false;
+const fail = (words: string) => {
+  console.error(`check-site: ${words}`);
+  failed = true;
+};
+const said = (words: string) => console.log(`check-site: ${words}`);
+const shown = (value: unknown) => JSON.stringify(value) ?? "nothing";
+
+type Table = Record<string, unknown>;
+const declaration = Bun.TOML.parse(readFileSync("../.config/flume.toml", "utf8")) as Table;
+const profiles = (declaration.profiles ?? {}) as Table;
+const kind = (((declaration.kinds ?? {}) as Table).content ?? {}) as Table;
+const stages = (Array.isArray(kind.stages) ? kind.stages : []) as Table[];
+const stage = (name: string) => stages.find((one) => one.name === name) ?? {};
+const none = (value: unknown) => value === undefined || (Array.isArray(value) && value.length === 0);
+
+// The declaration reads as the kind, and asks for nothing flume refuses.
+if (profiles.merge_queue !== "sluice") fail(`the declaration's merge queue is ${shown(profiles.merge_queue)}, not "sluice"`);
+if (kind.lands !== true) fail(`the content kind's lands is ${shown(kind.lands)}, not true`);
+if (kind.branch !== "content") fail(`the content kind's branch is ${shown(kind.branch)}, not "content"`);
+const names = stages.map((one) => one.name);
+if (shown(names) !== shown(["change", "preview"])) fail(`the content kind's stages are ${shown(names)}, not ["change","preview"]`);
+for (const one of stages) {
+  const agents = one.agents;
+  if (!Array.isArray(agents) || agents.length !== 1) fail(`the content kind's stage ${shown(one.name)} gives the agents ${shown(agents)}, not one`);
+}
+const change = stage("change");
+if (shown(change.deliverables) !== shown(["commits"])) fail(`the content kind's change delivers ${shown(change.deliverables)}, not ["commits"]`);
+if (change.conversation !== undefined && change.conversation !== false) fail(`the content kind's change is a conversation, ${shown(change.conversation)}`);
+const preview = stage("preview");
+if (preview.conversation !== true) fail(`the content kind's preview gives conversation ${shown(preview.conversation)}, not true`);
+if (preview.wait !== true) fail(`the content kind's preview gives wait ${shown(preview.wait)}, not true`);
+if (preview.on_fail !== "change") fail(`the content kind's preview sends back to ${shown(preview.on_fail)}, not "change"`);
+if (!none(preview.deliverables)) fail(`the content kind's preview delivers ${shown(preview.deliverables)}, not nothing`);
+if (!failed) {
+  said("the content kind lands through sluice, change then preview, one agent to each stage, the preview a conversation that waits and sends back to change");
+}
+
+// The preview names no place in the terminal.
+const agent = Array.isArray(preview.agents) ? (preview.agents[0] as Table | undefined) : undefined;
+const places = ["beside", "session"].filter((key) => agent !== undefined && agent !== null && key in agent);
+if (agent === undefined || agent === null || typeof agent !== "object") {
+  fail(`the content kind's preview gives no agent to read, ${shown(preview.agents)}`);
+} else if (places.length > 0) {
+  fail(`the content kind's preview's agent names ${places.map((key) => `${key} = ${shown(agent[key])}`).join(" and ")}, a place a host's terminal may lack`);
+} else {
+  said("the content kind's preview names no pane or session, opening where its place's stream puts it");
+}
+
+process.exit(failed ? 1 : 0);
+CHECK
+)
+bun -e "$kind" || status=1
+
 # The quick start (the quick-start spec; site.8; design Decision 7 of the
 # change boomdrives-quick-start-takes-a-stranger-to-a-working-drive): the
 # built page /start/ and every page's masthead, the step records of
