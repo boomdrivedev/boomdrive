@@ -40,12 +40,14 @@ let
     "timber"
     "worktrunk"
   ];
-  # The herdr plugins the modules link, Flume's, sluice's and, with crew
-  # on, crew's companions' (design Decision 6 of the change
-  # crews-companions-come-with-the-flake).
+  # The herdr plugins the modules link, in the order linked, Flume's,
+  # sluice's, timber's and, with crew on, crew's companions' (design
+  # Decision 6 of the change crews-companions-come-with-the-flake; design
+  # Decision 7 of the change timber-comes-with-boomdrives-flake).
   plugins = [
     "flume-herdr-plugin"
     "sluice-herdr-plugin"
+    "timber-herdr-plugin"
     "pendingyou-herdr-plugin"
     "plannotator-herdr-plugin"
   ];

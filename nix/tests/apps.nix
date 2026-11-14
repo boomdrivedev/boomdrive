@@ -145,7 +145,7 @@ let
   activate = builtins.unsafeDiscardStringContext "${../modules/activate.sh}";
   stepOf =
     set:
-    builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} || true";
+    builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} ${set.timber-herdr-plugin} || true";
 
   linkedOnDarwin =
     let
@@ -544,6 +544,7 @@ let
       expected = map (name: set.${name}.outPath) [
         "flume-herdr-plugin"
         "sluice-herdr-plugin"
+        "timber-herdr-plugin"
       ];
       steps = folderSteps platform evaluated;
     in
@@ -551,9 +552,9 @@ let
     ++ t.expect (
       steps == [ ]
     ) "the ${platform} activation without crew writes Pending You's folder: ${builtins.toJSON steps}"
-    ++ t.expect (
-      plugins == expected
-    ) "the ${platform} plugins without crew are ${toString plugins}, not Flume's and sluice's alone";
+    ++
+      t.expect (plugins == expected)
+        "the ${platform} plugins without crew are ${toString plugins}, not Flume's, sluice's and timber's alone";
 
   noCompanionsWithoutRunner =
     platform:
@@ -571,6 +572,7 @@ let
           plugins = map (name: set.${name}) [
             "flume-herdr-plugin"
             "sluice-herdr-plugin"
+            "timber-herdr-plugin"
             "pendingyou-herdr-plugin"
             "plannotator-herdr-plugin"
           ];

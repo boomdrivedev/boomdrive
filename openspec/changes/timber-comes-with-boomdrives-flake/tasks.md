@@ -31,7 +31,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 - [x] 3.1 `nix/modules/apps.nix` declares `services.boomdrive.timber.package`, the set's `timber` by default. With the runner enabled it installs it where it is not `null`, whether or not crew is on. Without the runner it installs none, and no step, job or unit of the modules runs the set's timber (design Decision 6; Task notes 3.1). True when `sluice exec main -- moon run nix:test` passes, proving:
   - the service-modules delta's "timber with the runner", "A host's own timber", "No timber of the set's", "No timber without the runner" and "No serving process of the modules'", each on nix-darwin and on NixOS;
   - the binary-cache delta's "A host's own nixpkgs", with `timber`.
-- [ ] 3.2 `services.boomdrive.herdr.plugins`' default is Flume's, sluice's and timber's plugins, then crew's companions' where crew is on (design Decision 7; Task notes 3.2). True when `sluice exec main -- moon run nix:test` passes, proving:
+- [x] 3.2 `services.boomdrive.herdr.plugins`' default is Flume's, sluice's and timber's plugins, then crew's companions' where crew is on (design Decision 7; Task notes 3.2). True when `sluice exec main -- moon run nix:test` passes, proving:
   - the service-modules delta's "The plugins linked on nix-darwin", "The plugins linked on NixOS", "The companions' plugins with crew" and "No companions without crew";
   - the binary-cache delta's "A host's own nixpkgs", with `timber-herdr-plugin`.
 - [ ] 3.3 `devShells.<system>.default` holds the set's timber beside the runner, Flume, sluice and crew (design Decision 8; Task notes 3.3). True when `sluice exec main -- moon run nix:test` passes, proving the way-in delta's "Every system's shell" with the eleven tools.

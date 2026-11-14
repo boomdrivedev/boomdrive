@@ -135,7 +135,7 @@ let
   keeps = builtins.unsafeDiscardStringContext ''
     if [ "$(id -un)" = alice ]; then
       ${runtimeShell} ${activate} link ${fileOf base} || true
-      ${runtimeShell} ${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} || true
+      ${runtimeShell} ${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} ${set.timber-herdr-plugin} || true
       PATH=${keepPath}:$PATH \
         ${runtimeShell} ${activate} keep alice ${lib.escapeShellArgs (argumentsOf base)}
     fi
