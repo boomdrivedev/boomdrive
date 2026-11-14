@@ -82,8 +82,8 @@ impl Request {
         self.act() == Some("launch")
     }
 
-    /// The launch a retry, land, confirm, drop or priority names, where
-    /// `Of` is whole.
+    /// The launch a retry, land, confirm, hold, drop or priority names,
+    /// where `Of` is whole.
     pub fn of(&self) -> Option<u64> {
         self.get("Of").and_then(whole)
     }
@@ -466,7 +466,9 @@ pub type Unreadable = String;
 /// else its `Repo` as written. A `preview` is a preview of its `Branch` at
 /// its `Revision`, done where its `Done` says so (design Decision 10;
 /// core.55). A `confirm` confirms each `Delivery`, in the order written,
-/// as its one `Recipient` (core.56).
+/// as its one `Recipient` (core.56). A `hold` holds the move its launch's
+/// place waits on under its `Words` for its `Bound`, in whole seconds
+/// (core.59).
 pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<Want, Unreadable> {
     let id = ids::request(label, request.number);
     let of = || -> Result<Id, Unreadable> {
@@ -539,6 +541,19 @@ pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<
             act(ActSort::Confirm {
                 recipient,
                 deliveries,
+            })
+        }
+        // A hold reads its Of, its Words as a retry's are read, and its
+        // Bound in whole seconds, and no other field of it (core.59;
+        // crew's unit a-bolt-waiting-on-the-user-waits-under-words).
+        Some("hold") => {
+            let words = request.get("Words").ok_or("it names no Words")?;
+            let bound = request.get("Bound").ok_or("it names no Bound")?;
+            let bound_interval = whole(bound)
+                .ok_or_else(|| format!("its Bound {bound}, which is no whole number of seconds"))?;
+            act(ActSort::Hold {
+                words: words.to_string(),
+                bound_interval,
             })
         }
         Some("drop") => act(ActSort::Drop),

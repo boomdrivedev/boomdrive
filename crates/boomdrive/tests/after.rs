@@ -4,7 +4,8 @@
 //! waits for each launch it comes after", "A priority or a drop of a
 //! launch not yet launched is answered from its report" and "A retry, a
 //! land, a confirm or a done of a launch not launched, and an act on
-//! another's launch, are refused"; Task notes 4.3; core.53, core.56).
+//! another's launch, are refused"; Task notes 4.3; core.53, core.56,
+//! core.59).
 
 mod fakes;
 
@@ -318,6 +319,34 @@ fn a_confirm_of_a_held_launch() {
     );
     assert_eq!(retried, (Outcome::Refused, Some(words)));
     assert_eq!(acted(&bench, "b/confirm"), retried);
+    assert_eq!(bench.flume.acts(), []);
+}
+
+/// The work-into-flume spec's "A hold of a held launch": the hold is
+/// refused with the words a retry of it is given, and runs no `flume
+/// hold`, since a launch not launched has no place waiting on its caller
+/// (core.59).
+#[test]
+fn a_hold_of_a_held_launch() {
+    let bench = Bench::new();
+    let hold = ActSort::Hold {
+        words: "the user sends it on the landings card, row 3".to_string(),
+        bound_interval: 28800,
+    };
+    let mut plane = Fake::holding(vec![
+        Want::Offer(offer("a", "a")),
+        after("b", "b", &["a"]),
+        act("b/retry", "b", retry()),
+        act("b/hold", "b", hold),
+    ]);
+    bench.pass(&mut plane);
+    let retried = acted(&bench, "b/retry");
+    let words = format!(
+        "b is held, not launched: waits on a (launched at {}, not landed)",
+        place_of("a")
+    );
+    assert_eq!(retried, (Outcome::Refused, Some(words)));
+    assert_eq!(acted(&bench, "b/hold"), retried);
     assert_eq!(bench.flume.acts(), []);
 }
 

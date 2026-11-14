@@ -1016,8 +1016,8 @@ settles for both, so no launch waits behind a settle. A control pass:
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
   branch;
-- carries out each retry, land, confirm, drop, priority or done as
-  Flume's own command on the launch's place, once every launch the
+- carries out each retry, land, confirm, hold, drop, priority or done
+  as Flume's own command on the launch's place, once every launch the
   pull offers is taken, and, once the next pass is due, no further act
   after its first, so no launch waits behind an act. A place Flume's
   listing does not hold is first asked of
@@ -1028,7 +1028,12 @@ settles for both, so no launch waits behind a settle. A control pass:
   `flume confirm --recipient=<recipient> -- <key>…`, of exactly the
   keys its control plane names, each the delivery of an end of the
   launch's place, as the reader it names and never as `boomdrive`; the
-  runner confirms no end for another reader of its own accord;
+  runner confirms no end for another reader of its own accord. A hold is
+  `flume hold <place> --waiting --for=<n>s -- <words>`, holding the move
+  the place waits on its caller for, with exactly the words and the bound,
+  in whole seconds, its control plane names, and a hold with no words is
+  refused; the runner judges nothing of the wait, and renews and ends no
+  hold of its own accord;
 - refuses every command, naming its tool, `this binary does not carry
   <tool>'s commands`, a branch command's being sluice, and runs nothing
   for it;
@@ -1227,7 +1232,8 @@ runner under the partition's prefix and carried out as crew's is,
 by Flume's confirm of exactly its keys. A control plane's land and
 preview, with its done, are given to the runner as crew's are, and what
 the runner answered of each preview goes up with sluice's answer and
-listing as their copies.
+listing as their copies. No version yet carries a hold of a place's
+waiting move, so a hosted control plane holds nothing through the runner.
 
 ## Rules and checks
 

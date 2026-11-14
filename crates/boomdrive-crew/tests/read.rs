@@ -355,6 +355,88 @@ fn a_confirm_naming_no_recipient_two_or_no_delivery_is_refused() {
     }
 }
 
+/// Neutral words saying who makes a hold's move and how.
+const WORDS: &str = "the user sends it on the landings card, row 3";
+
+/// The crew-control-plane spec's "A hold".
+#[test]
+fn a_hold_is_an_act_on_the_launch_it_names() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(
+                        17,
+                        "hold",
+                        Some("host-a"),
+                        "unit/a",
+                        12,
+                        &[("Words", WORDS), ("Bound", "28800")],
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        *want(&pulled, "home/17"),
+        Want::Act(Act {
+            id: Id::new("home/17"),
+            launch: Id::new("home/12"),
+            lease: 1,
+            what: ActSort::Hold {
+                words: WORDS.to_string(),
+                bound_interval: 28800,
+            },
+        })
+    );
+}
+
+/// The crew-control-plane spec's "A hold naming no words, no bound, or a
+/// bound of no whole seconds".
+#[test]
+fn a_hold_naming_no_words_no_bound_or_a_bound_of_no_whole_seconds_is_refused() {
+    let state = State::new();
+    let hold = |n: u64, more: &[(&str, &str)]| act(n, "hold", Some("host-a"), "unit/a", 12, more);
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    hold(18, &[("Bound", "60")]),
+                    hold(19, &[("Words", WORDS)]),
+                    hold(20, &[("Words", WORDS), ("Bound", "8h")]),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    for (id, why) in [
+        ("home/18", "it names no Words"),
+        ("home/19", "it names no Bound"),
+        (
+            "home/20",
+            "its Bound 8h, which is no whole number of seconds",
+        ),
+    ] {
+        let Want::Act(refused) = want(&pulled, id) else {
+            panic!("{id} is not one the runner refuses")
+        };
+        let number = id.trim_start_matches("home/");
+        assert_eq!(refused.launch.as_str(), format!("request {number} ({why})"));
+    }
+}
+
 #[test]
 fn an_act_crew_does_not_write() {
     let state = State::new();
