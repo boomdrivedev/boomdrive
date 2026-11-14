@@ -264,13 +264,14 @@ let
   allManagedLines =
     evaluated: lib.filter (lib.hasInfix "-activate.sh managed ") (darwinLines evaluated);
   managedLines = evaluated: lib.filter (lib.hasInfix darwinPath) (allManagedLines evaluated);
-  # The line `evaluated`'s activation runs for the document, which runs
-  # once, as root, before every step of the runner's user.
-  runsOnce =
-    what: evaluated: line:
+  # The line `evaluated`'s activation runs for a document, among its
+  # lines `stepsOf` gives, which runs once, as root, before every step of
+  # the runner's user.
+  runsOnceAmong =
+    stepsOf: what: evaluated: line:
     let
       lines = darwinLines evaluated;
-      steps = managedLines evaluated;
+      steps = stepsOf evaluated;
       at = lib.lists.findFirstIndex (l: l == line) null lines;
       users = lib.lists.findFirstIndex (lib.hasPrefix "sudo --user=") null lines;
     in
@@ -281,6 +282,37 @@ let
     ++ t.expect (
       !lib.any (lib.hasInfix "managed-settings.json") lines
     ) "${what} names managed-settings.json";
+  runsOnce = runsOnceAmong managedLines;
+
+  # The transcripts document's root step on nix-darwin, writing `document`
+  # where it is given and removing the document where it is null, and the
+  # lines naming its path (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 2 and
+  # 6).
+  transcriptsPath = "/Library/Application Support/ClaudeCode/managed-settings.d/10-boomdrive-transcripts.json";
+  transcriptsLine =
+    document:
+    builtins.unsafeDiscardStringContext (
+      "/bin/sh ${../modules/activate.sh} managed ${lib.escapeShellArg transcriptsPath}"
+      + lib.optionalString (document != null) " ${document}"
+      + " || true"
+    );
+  transcriptsLines = evaluated: lib.filter (lib.hasInfix transcriptsPath) (allManagedLines evaluated);
+  transcriptsOnDarwin =
+    what: evaluated:
+    let
+      document = evaluated.pkgs.writeText "10-boomdrive-transcripts.json" (
+        builtins.toJSON (
+          claudeCode.transcriptsOf evaluated.config.services.boomdrive.claude-code.cleanupPeriodDays
+        )
+      );
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ runsOnceAmong transcriptsLines "the activation of ${what}" evaluated (transcriptsLine document);
+  noTranscriptsOnDarwin =
+    what: evaluated:
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ runsOnceAmong transcriptsLines "the activation of ${what}" evaluated (transcriptsLine null);
 
   documentOnDarwin =
     let
@@ -644,6 +676,20 @@ onEach "A collector off the host" offHost
   "The README's telemetry" = readmeTelemetry;
   "The document on NixOS" = documentOnNixos;
   "The document on nix-darwin" = documentOnDarwin;
+  "The transcripts document on nix-darwin" =
+    transcriptsOnDarwin "a nix-darwin system with the runner, Flume on by default and no collector"
+      (t.darwinSystem { });
+  "No Flume on nix-darwin" =
+    noTranscriptsOnDarwin "a nix-darwin system with the runner and Flume off"
+      (t.darwinSystem { services.flume.enable = false; });
+  "Flume without the runner on nix-darwin" =
+    transcriptsOnDarwin "a nix-darwin system with Flume on and the runner off"
+      (
+        t.darwinOf [
+          t.outputs.darwinModules.default
+          { services.flume.enable = true; }
+        ]
+      );
   "No collector on nix-darwin" =
     removesOnDarwin "a nix-darwin system with the runner and no collector"
       (t.darwinSystem { });
