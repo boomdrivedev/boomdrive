@@ -138,6 +138,7 @@ let
     "flume"
     "sluice"
     "crew"
+    "timber"
     "herdr"
     "worktrunk"
     "ghostty"
