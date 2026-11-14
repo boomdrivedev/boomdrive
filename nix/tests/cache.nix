@@ -194,6 +194,7 @@ in
         "services.boomdrive.ghostty.package"
         "services.boomdrive.portless.package"
         "services.boomdrive.worktrunk.package"
+        "services.boomdrive.timber.package"
         "services.boomdrive.launcher.package"
         "services.boomdrive.pendingyou.package"
         "services.boomdrive.plannotator.package"
@@ -233,6 +234,21 @@ in
       [
         "portless service install"
         "portless trust"
+      ];
+
+  # The README names timber in the set, its herdr plugin, and its serving
+  # process as timber's own (design Decision 10 of the change
+  # timber-comes-with-boomdrives-flake).
+  "The README's timber" =
+    lib.concatMap
+      (
+        words:
+        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
+      )
+      [
+        "github:boomdrivedev/boomdrive#timber"
+        "timber-herdr-plugin"
+        "timber serve"
       ];
 
   # The README names crew's companions, their sign-in, Pending You's

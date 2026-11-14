@@ -337,6 +337,9 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   Flume's terminal profile was checked against;
 - worktrunk, through its own flake at the release sluice's tag pins,
   which sluice's worktree driver was checked against;
+- timber, through its own flake at its release tag, which delivers what
+  the merge queue lands, with its herdr plugin, `timber-herdr-plugin`,
+  from the same tag;
 - Ghostty, from the flake's nixpkgs at the release Flume's window
   profile was checked against: built from source on Linux, and on
   macOS, where nothing builds its app from source, Ghostty's own
@@ -359,9 +362,12 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   and Annotate, `plannotator-herdr-plugin`, at the commits the lock
   names: Annotate's `bin` holds its runtime, built from its own source,
   and the set's plannotator-tui, so herdr's link fetches nothing;
-- the set's marketplace of the companions' Claude Code plugins,
+- the set's marketplace of Claude Code plugins,
   `boomdrive-claude-plugins`: a marketplace named `boomdrive` holding
-  Pending You's hooks and skill, and Plannotator's own plugin.
+  the companions' plugins, Pending You's hooks and skill and
+  Plannotator's own plugin, and timber's own plugin, from timber's tag,
+  which keeps a session in a timber repository publishing only through
+  `timber publish`.
 
 Each tool reports its release's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
@@ -378,7 +384,8 @@ plugin's own package has `bin/open.sh` at its top, so one profile cannot
 hold the two side by side; `boomdrive setup` links each from the
 profile. The same line may add `github:boomdrivedev/boomdrive#ghostty`,
 `github:boomdrivedev/boomdrive#portless`,
-`github:boomdrivedev/boomdrive#worktrunk`, and crew's companions,
+`github:boomdrivedev/boomdrive#worktrunk`,
+`github:boomdrivedev/boomdrive#timber`, and crew's companions,
 `github:boomdrivedev/boomdrive#pendingyou`,
 `github:boomdrivedev/boomdrive#plannotator` and
 `github:boomdrivedev/boomdrive#plannotator-tui`.
@@ -652,8 +659,8 @@ host a way to see its agents:
   stays in the menu bar until you quit it: after a switch that changes
   the drives, quit it and open it again.
 - At each switch it links each plugin of
-  `services.boomdrive.herdr.plugins`, by default the set's Flume and
-  sluice plugins, into the runner's user's herdr with herdr's own
+  `services.boomdrive.herdr.plugins`, by default the set's Flume,
+  sluice and timber plugins, into the runner's user's herdr with herdr's own
   `herdr plugin link`, which starts no server. A relink enables a plugin
   you disabled, so leave one you want off out of the list. A plugin
   left out stays linked until `herdr plugin unlink`. A herdr already
@@ -666,8 +673,10 @@ host a way to see its agents:
   dev server's `portless run` and crew's board find it.
 - It installs worktrunk's `wt`, `services.boomdrive.worktrunk.package`,
   which crew and sluice's worktree driver call.
+- It installs timber, `services.boomdrive.timber.package`, and its herdr
+  plugin is linked with Flume's and sluice's.
 
-Each of the five is the set's by default, and each may name the host's
+Each of the six is the set's by default, and each may name the host's
 own package instead, or `null` for none:
 
 ```nix
@@ -676,6 +685,7 @@ services.boomdrive.ghostty.package = null;
 services.boomdrive.launcher.package = null;
 services.boomdrive.portless.package = null;
 services.boomdrive.worktrunk.package = null;
+services.boomdrive.timber.package = null;
 ```
 
 A host's own launcher is installed as given, and gets no entries.
@@ -694,6 +704,15 @@ their names. `portless trust` trusts its certificate authority, and is
 yours to run. On NixOS, whose trust store the host's configuration
 writes, `portless trust` fails: add portless's certificate authority to
 `security.pki` yourself, or run portless with `--no-tls`.
+
+timber's serving process, `timber serve`, which serves the host's
+registries at one fixed address, is timber's own. timber's herdr pane,
+or a timber command, starts it where nothing answers at
+`127.0.0.1:7420`, and a host may run it as a service of its own. The
+modules start none. A host with a `timber` of its own, in a user's
+profile, sets `services.boomdrive.timber.package` to `null` or to its
+own, so one `timber` runs: a user's own comes ahead of the system
+profile's on `PATH`, and the set's goes unused.
 
 Where crew's module is on too, `services.crew.enable`, the runner's
 module also installs crew's companions:
@@ -735,7 +754,7 @@ services.boomdrive.plannotator.package = null;
 services.boomdrive.plannotator-tui.package = null;
 ```
 
-The companions' Claude Code plugins, the set's marketplace
+The companions' Claude Code plugins and timber's, the set's marketplace
 `boomdrive-claude-plugins`, are installed into no Claude Code home yet:
 no switch runs `claude` or writes into a Claude Code home, and Claude
 Code stays yours. Installing them into every Claude Code home of the
@@ -803,8 +822,8 @@ workspaces. A Claude Code that reads no `managed-settings.d` reads no
 document, and its sessions export nothing.
 
 The flake also gives a shell, its `PATH` the set's runner, Flume,
-sluice, crew, herdr, portless, worktrunk, Pending You, Plannotator and
-plannotator-tui, that starts herdr on entering and leaves you in the
+sluice, crew, timber, herdr, portless, worktrunk, Pending You,
+Plannotator and plannotator-tui, that starts herdr on entering and leaves you in the
 shell when herdr ends:
 
     nix develop github:boomdrivedev/boomdrive
@@ -828,8 +847,9 @@ The runner refuses to start below git 2.48, and says so in its log. A
 Mac whose only git is Apple's, where that is older, puts a newer one in
 a profile, as `environment.systemPackages = [ pkgs.git ];` does.
 
-The set gives each tool's herdr plugin, `flume-herdr-plugin` and
-`sluice-herdr-plugin`, at its tool's tag, and crew's companions',
+The set gives each tool's herdr plugin, `flume-herdr-plugin`,
+`sluice-herdr-plugin` and `timber-herdr-plugin`, at its tool's tag, and
+crew's companions',
 `pendingyou-herdr-plugin` and `plannotator-herdr-plugin`, at the
 commits the lock names, which the modules link. A host
 without them links one with herdr's own command. Build it to a link of

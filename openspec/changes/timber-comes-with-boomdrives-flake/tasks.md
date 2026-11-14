@@ -38,7 +38,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The words
 
-- [ ] 4.1 The README's **Installing with nix** names (design Decision 10; Task notes 4.1):
+- [x] 4.1 The README's **Installing with nix** names (design Decision 10; Task notes 4.1):
   - timber in the set and its two plugins;
   - `#timber` on the profile line's list;
   - `timber-herdr-plugin` among the plugins a host links by hand;
