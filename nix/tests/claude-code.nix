@@ -123,12 +123,20 @@ let
   claudeCode = import ../modules/claude-code.nix { inherit lib; };
   collector = "http://localhost:4318";
 
-  # NixOS's entries of `/etc` under claude-code, by name.
+  # NixOS's entries of `/etc` under claude-code, by name, and the
+  # telemetry document's alone, which the telemetry cases read (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, Task notes 1.1).
   etcName = "claude-code/managed-settings.d/10-boomdrive-telemetry.json";
-  claudeEtcOf =
+  transcriptsEtcName = "claude-code/managed-settings.d/10-boomdrive-transcripts.json";
+  claudeEntriesOf =
     evaluated:
     lib.filterAttrs (
       name: entry: lib.hasPrefix "claude-code" name || lib.hasPrefix "claude-code" entry.target
+    ) evaluated.config.environment.etc;
+  claudeEtcOf =
+    evaluated:
+    lib.filterAttrs (
+      name: entry: name == etcName || entry.target == etcName
     ) evaluated.config.environment.etc;
   noEtc =
     what: evaluated:
@@ -141,8 +149,12 @@ let
   documentOnNixos =
     let
       evaluated = named t.nixosSystem collector { };
-      entries = claudeEtcOf evaluated;
-      entry = entries.${etcName} or null;
+      entry = (claudeEtcOf evaluated).${etcName} or null;
+      # Under claude-code, the telemetry and the transcripts documents
+      # alone.
+      others = lib.filter (name: name != etcName && name != transcriptsEtcName) (
+        builtins.attrNames (claudeEntriesOf evaluated)
+      );
       expected = builtins.toJSON (
         claudeCode.documentOf evaluated.config.services.boomdrive.claude-code.telemetry
       );
@@ -151,8 +163,8 @@ let
       t.failures evaluated == [ ]
     ) "a NixOS system naming a collector fails: ${toString (t.failures evaluated)}"
     ++
-      t.expect (builtins.attrNames entries == [ etcName ])
-        "the NixOS system's /etc holds ${toString (builtins.attrNames entries)} under claude-code, not ${etcName} alone"
+      t.expect (others == [ ])
+        "the NixOS system's /etc holds ${toString others} under claude-code, beside ${etcName} and ${transcriptsEtcName}"
     ++ t.expect (entry != null && entry.enable) "the NixOS system's /etc does not write ${etcName}"
     ++ t.expect (
       entry != null && entry.target == etcName
@@ -182,7 +194,11 @@ let
       + lib.optionalString (document != null) " ${document}"
       + " || true"
     );
-  managedLines = evaluated: lib.filter (lib.hasInfix "-activate.sh managed ") (darwinLines evaluated);
+  # The root steps, each document's, and the telemetry document's alone,
+  # by its path (Task notes 1.1).
+  allManagedLines =
+    evaluated: lib.filter (lib.hasInfix "-activate.sh managed ") (darwinLines evaluated);
+  managedLines = evaluated: lib.filter (lib.hasInfix darwinPath) (allManagedLines evaluated);
   # The line `evaluated`'s activation runs for the document, which runs
   # once, as root, before every step of the runner's user.
   runsOnce =
@@ -467,8 +483,10 @@ let
   contentOff = document: map (key: envIs document key "0") contentKeys;
   attributesOn = document: map (key: envIs document key "1") attributeKeys;
 
-  # The document's path, on each platform, with crew on (design Decision
-  # 1): the platform's managed-settings folder, in no home.
+  # Each document's path, on each platform, with crew on (design Decision
+  # 1): the platform's managed-settings folder, in no home, the telemetry
+  # document's among them (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, Task notes 1.1).
   inNoHome =
     platform: _:
     let
@@ -477,12 +495,18 @@ let
           let
             evaluated = named t.nixosSystem collector crewOn;
           in
-          map (entry: "/etc/${entry.target}") (builtins.attrValues (claudeEtcOf evaluated))
+          map (entry: "/etc/${entry.target}") (builtins.attrValues (claudeEntriesOf evaluated))
         else
           map (line: builtins.head (builtins.match ".*-activate.sh managed '([^']*)'.*" line ++ [ line ])) (
-            managedLines (named t.darwinSystem collector crewOn)
+            allManagedLines (named t.darwinSystem collector crewOn)
           );
       expected = if platform == "NixOS" then "/etc/${etcName}" else darwinPath;
+      folder =
+        if platform == "NixOS" then
+          "/etc/claude-code/managed-settings.d"
+        else
+          "/Library/Application Support/ClaudeCode/managed-settings.d";
+      outside = lib.filter (p: dirOf p != folder) path;
       homely = lib.filter (
         p:
         lib.any (word: lib.hasInfix word p) [
@@ -494,12 +518,13 @@ let
         ]
       ) path;
     in
-    t.expect (
-      path == [ expected ]
-    ) "the ${platform} document's path is ${builtins.toJSON path}, not ${expected}"
+    t.expect (builtins.elem expected path) "the ${platform} documents' paths are ${builtins.toJSON path}, none of them ${expected}"
+    ++ t.expect (
+      outside == [ ]
+    ) "the ${platform} documents' paths ${builtins.toJSON outside} are not in ${folder}"
     ++ t.expect (
       homely == [ ]
-    ) "the ${platform} document's path names a home: ${builtins.toJSON homely}";
+    ) "the ${platform} documents' paths name a home: ${builtins.toJSON homely}";
 
   # The README's install with nix on the sessions' telemetry (design
   # Decision 11).
