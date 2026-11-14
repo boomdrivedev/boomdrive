@@ -4,15 +4,19 @@
 //! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
 //! full length, passes its definition, a value of every want, act and
-//! command sort the interface names among them, a preview, a land and a
-//! confirm with them (the runner-protocol spec's "Every sort the
-//! interface names", "Version 2 carries a control plane's confirm",
+//! command sort the interface names among them but a hold, a preview, a
+//! land and a confirm with them (the runner-protocol spec's "Every sort
+//! the interface names", "Version 2 carries a control plane's confirm",
 //! "Version 2 carries a land" and "Version 2 carries a preview and its
 //! done"; record 0037 as amended on 2026-11-09). Version 1 names no land,
 //! no confirm and no preview, and a release has spoken it, so a want
 //! whose act is a land or a confirm, or a preview, fails its check of
 //! version 1 (the runner-protocol spec's "Version 1 carries no land" and
 //! "Version 1 carries no confirm"; core.42, core.53, core.55, core.56).
+//! Neither version names a hold, the one sort version 2 does not carry,
+//! since `v0.9.0` spoke it before the interface named one, so a want whose
+//! act is a hold fails the check of each (the runner-protocol spec's "A
+//! hold is no act of version 1 or 2"; core.42, core.59).
 
 mod common;
 
@@ -98,6 +102,33 @@ fn a_land_is_no_act_of_version_1() {
         &V1.validator(&V1.definition("wants.schema.json", "want")),
         &json,
         "a land",
+    );
+}
+
+/// The runner-protocol spec's "A hold is no act of version 1 or 2": each
+/// was spoken by a release before the interface named a hold, and never
+/// changes (core.42, core.59).
+#[test]
+fn a_hold_is_no_act_of_version_1_or_2() {
+    let hold = Want::Act(Act {
+        id: Id::new("act-1"),
+        launch: Id::new("offer-1"),
+        lease: 3,
+        what: ActSort::Hold {
+            words: "the user sends it".to_string(),
+            bound_interval: 28800,
+        },
+    });
+    let json = serde_json::to_value(&hold).unwrap();
+    refused(
+        &V1.validator(&V1.definition("wants.schema.json", "want")),
+        &json,
+        "a hold, in version 1",
+    );
+    refused(
+        &validator(&definition("wants.schema.json", "want")),
+        &json,
+        "a hold, in version 2",
     );
 }
 
@@ -481,6 +512,7 @@ fn act_sort(what: &ActSort) -> &'static str {
         ActSort::Retry { .. } => "retry",
         ActSort::Land => "land",
         ActSort::Confirm { .. } => "confirm",
+        ActSort::Hold { .. } => "hold",
         ActSort::Drop => "drop",
         ActSort::Priority(_) => "priority",
         ActSort::Done => "done",
@@ -498,7 +530,9 @@ fn command_sort(what: &CommandSort) -> &'static str {
 /// Every sort of `Want`, `ActSort` and `CommandSort`, each named as the
 /// matches above name it.
 const WANT_SORTS: [&str; 5] = ["offer", "act", "command", "inbox", "preview"];
-const ACT_SORTS: [&str; 6] = ["retry", "land", "confirm", "drop", "priority", "done"];
+const ACT_SORTS: [&str; 7] = [
+    "retry", "land", "confirm", "hold", "drop", "priority", "done",
+];
 const COMMAND_SORTS: [&str; 2] = ["branch", "other"];
 
 /// A value of every sort the interface names: an offer, an act of each
@@ -513,6 +547,10 @@ fn every_sort() -> Vec<Want> {
         },
         ActSort::Land,
         confirm_of(&["change--a/0a1b2c3d/stage/code/1/delivered"]),
+        ActSort::Hold {
+            words: "the user sends it".to_string(),
+            bound_interval: 28800,
+        },
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
@@ -561,13 +599,15 @@ fn every_sort() -> Vec<Want> {
 }
 
 /// The runner-protocol spec's "Every sort the interface names" (design
-/// Decision 8 of the-hosted-protocol-carries-land-and-preview): a value
-/// of every sort of `Want`, `ActSort` and `CommandSort`, each named by a
-/// match with no `_` arm, passes version 2's `want`, and the sorts named
-/// are every sort the interface has. A sort the interface adds fails to
-/// build the match until it is named, and then fails this test until a
-/// value of it is given and passes, so version 2 carries everything
-/// crew's control plane can ask (core.42).
+/// Decision 8 of the-hosted-protocol-carries-land-and-preview, and design
+/// Decision 7 of the-runner-carries-a-hold-of-a-places-waiting-move): a
+/// value of every sort of `Want`, `ActSort` and `CommandSort`, each named
+/// by a match with no `_` arm, passes version 2's `want` but a hold, which
+/// version 2 refuses, and the sorts named are every sort the interface
+/// has. A sort the interface adds fails to build the match until it is
+/// named, and then fails this test until a value of it is given. A sort
+/// added after `v0.9.0` spoke version 2 is refused by it, as a hold is,
+/// until a later version names it (core.42, core.59).
 #[test]
 fn every_sort_the_interface_names() {
     let want = validator(&definition("wants.schema.json", "want"));
@@ -575,9 +615,11 @@ fn every_sort_the_interface_names() {
     let mut named = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
     for value in &wants {
         named.0.insert(want_sort(value));
+        let mut carried = true;
         match value {
             Want::Act(act) => {
                 named.1.insert(act_sort(&act.what));
+                carried = !matches!(act.what, ActSort::Hold { .. });
             }
             Want::Command(command) => {
                 named.2.insert(command_sort(&command.what));
@@ -585,7 +627,11 @@ fn every_sort_the_interface_names() {
             Want::Offer(_) | Want::Inbox(_) | Want::Preview(_) => {}
         }
         let json = serde_json::to_value(value).unwrap();
-        passes(&want, &json, &json.to_string());
+        if carried {
+            passes(&want, &json, &json.to_string());
+        } else {
+            refused(&want, &json, &json.to_string());
+        }
     }
     assert_eq!(named.0, BTreeSet::from(WANT_SORTS), "every want sort");
     assert_eq!(named.1, BTreeSet::from(ACT_SORTS), "every act sort");
