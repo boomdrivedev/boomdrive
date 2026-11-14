@@ -30,7 +30,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 ## 4. No version carries a hold
 
 - [x] 4.1 `every_sort_the_interface_names` names the hold among the act sorts, gives a value of it, and finds it refused by version 2's `want` while every other sort's value passes and the sorts named are still every sort the interface has. Its match with no `_` arm names the hold, so the hosted crate's `tests/interface.rs`, which 1.1 left unbuilt, builds again (design Decision 7; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface every_sort_the_interface_names` passes, proving the runner-protocol spec's "Every sort the interface names".
-- [ ] 4.2 A want whose act is a hold, as `boomdrive-control`'s types write it, fails version 1's `want` and version 2's, and no file of either version changes (design Decision 7; Task notes 4.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface a_hold_is_no_act_of_version_1_or_2` passes, proving the runner-protocol spec's "A hold is no act of version 1 or 2".
+- [x] 4.2 A want whose act is a hold, as `boomdrive-control`'s types write it, fails version 1's `want` and version 2's, and no file of either version changes (design Decision 7; Task notes 4.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface a_hold_is_no_act_of_version_1_or_2` passes, proving the runner-protocol spec's "A hold is no act of version 1 or 2".
 
 ## 5. The words
 
