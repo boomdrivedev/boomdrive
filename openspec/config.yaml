@@ -38,7 +38,10 @@ context: |
   .github/workflows/cache.yml builds every package of
   every system and pushes it to the family's cache, boomdrive on Cachix,
   from which a host that trusts it substitutes the set (records 0020
-  and 0023, core.44 to core.47). Every tool runs through the shell, one command
+  and 0023, core.44 to core.47), and also boots a NixOS system with the
+  module on aarch64-linux, its guest emulated on GitHub's arm runner,
+  the check a box's pin reads (record 0020 as amended on 2026-11-14).
+  Every tool runs through the shell, one command
   at a time: devenv shell -- <command>. Each check is a moon task tagged
   with its layer; every crate is a moon project of its own in
   .moon/workspace.yml (core.7), and every tool a task runs is the version

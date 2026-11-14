@@ -430,6 +430,12 @@ run passed:
 
     gh run list --repo boomdrivedev/boomdrive --workflow cache.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha'
 
+That run's job `boot (aarch64-linux)` boots a NixOS system with the
+module on `aarch64-linux`, its guest emulated on GitHub's arm runner:
+the service's user lingers, the runner's unit starts with no login, and
+each tool of the set answers its version. A NixOS host pins a commit
+whose boot passed.
+
 A host's configuration imports its platform's module,
 `darwinModules.default` for nix-darwin or `nixosModules.default` for
 NixOS, names its accounts in `services.boomdrive.accounts`, and writes

@@ -54,7 +54,10 @@ flake gives a shell, `devShells.<system>.default`, that starts herdr
 workflow `.github/workflows/cache.yml` builds every package of every
 system the flake gives and pushes it to the family's cache, `boomdrive`
 on Cachix, at each push to `main` and each tag `v*` (records 0020 and
-0023, core.44 to core.47).
+0023, core.44 to core.47). It also boots a NixOS system with the module
+on `aarch64-linux`, its guest emulated on GitHub's arm runner, the job
+`boot (aarch64-linux)`, whose check is the one a box's pin reads
+(record 0020 as amended on 2026-11-14).
 
 Boomdrive's versions are git-cliff's, from its Conventional Commits
 (`cliff.toml`; record 0024, core.48). At each push to `main`, the

@@ -4,8 +4,12 @@
 # boomdrive on Cachix, at each push to main, each tag v*, and by hand. main
 # holds only what the gate passed. The cache's token is read from 1Password
 # through a service account whose token is the one secret of the
-# environment cachix, which admits main and tags v* alone. The nix
-# project's test holds this file to the flake (nix/tests/workflow.nix).
+# environment cachix, which admits main and tags v* alone. Beside the
+# systems' builds, the job boot (aarch64-linux) boots a NixOS system with
+# the module on aarch64-linux, its guest emulated on GitHub's arm runner,
+# which gives no KVM (record 0020 as amended on 2026-11-14): its check on
+# a commit is what a box's pin reads. The nix project's test holds this
+# file to the flake (nix/tests/workflow.nix).
 name: cache
 
 on:
@@ -136,3 +140,30 @@ jobs:
         env:
           CACHIX_AUTH_TOKEN: ${{ steps.cachix-token.outputs.CACHIX_AUTH_TOKEN }}
         run: cachix push boomdrive <"$RUNNER_TEMP/paths"
+
+  # The boot, the flake's checks.aarch64-linux.boot (nix/boot.nix), at
+  # every run, on aarch64-linux alone, the system the boxes run, its guest
+  # emulated by QEMU (record 0020 as amended on 2026-11-14). A box takes
+  # only a commit whose boot passed. It waits on no other job, substitutes
+  # what the family's cache holds and builds the rest, reads no token of
+  # the cache's, under no environment, and pushes nothing. Its log holds
+  # the driver's, each wait's time and the whole script's among it.
+  boot:
+    name: boot (aarch64-linux)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: boomdrive
+          skipPush: true
+
+      - name: Boot NixOS with the module on aarch64-linux
+        run: nix build --no-link --print-build-logs .#checks.aarch64-linux.boot

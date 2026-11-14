@@ -261,9 +261,19 @@
           default = boomdrive;
         }
         // lib.genAttrs tools toolOf;
+      nixosModules = modulesOf "nixos" ./nix/modules/nixos.nix;
     in
     {
-      inherit packages;
+      inherit packages nixosModules;
+
+      # The boot: a NixOS system with the module, booted on aarch64-linux,
+      # the system the boxes run, and on no other system (record 0020 as
+      # amended on 2026-11-14; nix/boot.nix).
+      checks.aarch64-linux.boot = import ./nix/boot.nix {
+        pkgs = pkgsOf "aarch64-linux";
+        module = nixosModules.default;
+        set = packages.aarch64-linux;
+      };
 
       # A host's way in: the set on PATH, starting herdr on entering
       # (record 0023). The repository's own development shell is devenv's.
@@ -275,6 +285,5 @@
       });
 
       darwinModules = modulesOf "darwin" ./nix/modules/darwin.nix;
-      nixosModules = modulesOf "nixos" ./nix/modules/nixos.nix;
     };
 }
