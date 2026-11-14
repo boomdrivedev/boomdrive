@@ -25,7 +25,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The words and the specs
 
-- [ ] 2.1 The README's **Installing with nix** gains a part on the transcripts' span, after the telemetry part (design Decision 9). Its nix block sets `services.boomdrive.claude-code.cleanupPeriodDays = 365;`. Its words name:
+- [x] 2.1 The README's **Installing with nix** gains a part on the transcripts' span, after the telemetry part (design Decision 9). Its nix block sets `services.boomdrive.claude-code.cleanupPeriodDays = 365;`. Its words name:
   - `10-boomdrive-transcripts.json` in `/Library/Application Support/ClaudeCode/managed-settings.d` and `/etc/claude-code/managed-settings.d`;
   - that the document comes wherever Flume is on, with the runner or without;
   - that every Claude Code session on the host keeps its transcript that long, whatever its home, so a hibernated stage can be resumed;

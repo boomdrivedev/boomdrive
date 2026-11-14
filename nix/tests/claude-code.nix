@@ -734,6 +734,37 @@ let
           "launch environment"
           "`workspace.host_paths`"
         ];
+
+  # The README's install with nix on the transcripts' span (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decision 9), its
+  # words read with each line's end a space.
+  readmeTranscripts =
+    let
+      block =
+        lib.findFirst (lib.hasInfix "services.boomdrive.claude-code.cleanupPeriodDays") null
+          t.nixBlocks;
+      words = lib.replaceStrings [ "\n" ] [ " " ] (toString t.installing);
+    in
+    t.expect (block != null)
+      "no nix block of the README's Installing with nix names services.boomdrive.claude-code.cleanupPeriodDays"
+    ++ t.expect (
+      block != null && lib.hasInfix "services.boomdrive.claude-code.cleanupPeriodDays = 365;" block
+    ) "the README's nix block of services.boomdrive.claude-code.cleanupPeriodDays names no 365"
+    ++
+      lib.concatMap
+        (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
+        [
+          "`services.boomdrive.claude-code.cleanupPeriodDays`"
+          "365 by default"
+          "`10-boomdrive-transcripts.json`"
+          "into `/Library/Application Support/ClaudeCode/managed-settings.d` on nix-darwin"
+          "and `/etc/claude-code/managed-settings.d` on NixOS, whether or not a collector is named"
+          "Wherever Flume is on, with the runner or without"
+          "every Claude Code session on the host keeps its transcript a year, whatever its account and its configuration home"
+          "a stage Flume hibernated can be resumed"
+          "named after the set's in Claude Code's order, such as `20-transcripts.json`, sets the key over it"
+          "a shorter span, or turning Flume off, deletes every older transcript at the next session's start"
+        ];
 in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
@@ -757,6 +788,7 @@ onEach "A collector off the host" offHost
 )
 // {
   "The README's telemetry" = readmeTelemetry;
+  "The README's transcripts" = readmeTranscripts;
   "The document on NixOS" = documentOnNixos;
   "The document on nix-darwin" = documentOnDarwin;
   "The transcripts document on nix-darwin" =
