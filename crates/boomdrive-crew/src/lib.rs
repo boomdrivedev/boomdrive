@@ -534,8 +534,9 @@ impl Crew {
                         kits.push((request, address));
                     }
                     // An act naming no host is the runner's that holds its
-                    // launch, a confirm among them (core.56).
-                    (None, Some("retry" | "land" | "confirm" | "drop" | "priority")) => {
+                    // launch, a confirm and a hold among them (core.56,
+                    // core.59).
+                    (None, Some("retry" | "land" | "confirm" | "hold" | "drop" | "priority")) => {
                         acts.push(request)
                     }
                     // A preview is the ask of the one host its Host names:
