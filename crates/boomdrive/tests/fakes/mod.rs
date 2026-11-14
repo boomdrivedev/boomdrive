@@ -498,6 +498,9 @@ impl Flume for FakeFlume {
                     "confirmed": confirmed,
                 } }))));
             }
+            // A hold changes no place the fake keeps: Flume answers it as
+            // any act (Flume's 130).
+            Act::Hold { .. } => "hold",
             Act::Drop => "drop",
             Act::Priority(_) => "priority",
             Act::Done => "done",
@@ -518,7 +521,7 @@ impl Flume for FakeFlume {
             }
             Act::Drop | Act::Done => self.tidy(place),
             Act::Priority(priority) => self.set(place, "priority", json!(priority)),
-            Act::Retry { .. } | Act::Confirm { .. } => {}
+            Act::Retry { .. } | Act::Confirm { .. } | Act::Hold { .. } => {}
         }
         Ok(Reply::Given(printed(
             &json!({ "acted": { "act": word, "place": place } }),
