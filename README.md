@@ -872,25 +872,9 @@ line:
     nix profile add github:boomdrivedev/boomdrive#flume --override-input flume github:boomdrivedev/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
-version and its git crates' hashes are Flume's own flake's, and crew's
-version crew's own flake's, each at the tag it names. sluice's tagged
-tree says `0.0.0`, so the set gives it the version of the tag
-`flake.nix` names, and an overridden sluice is given its own version
-beside it, in its `package`:
-
-```nix
-# In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:boomdrivedev/sluice/v0.77.0";
-```
-
-```nix
-# In its configuration:
-services.sluice.package = boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
-  __intentionallyOverridingVersion = true;
-  version = "0.77.0";
-  env = old.env // { SLUICE_VERSION = "0.77.0"; };
-});
-```
+version and its git crates' hashes are Flume's own flake's, and
+sluice's and crew's versions their own flakes', each at the tag it
+names.
 
 ## Setting up a drive on a Mac Nix does not manage
 
