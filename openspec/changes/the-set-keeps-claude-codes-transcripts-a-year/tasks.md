@@ -33,5 +33,5 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - that a shorter span, or turning Flume off, deletes every older transcript at the next session's start.
 
   `nix/tests/claude-code.nix` holds the README's words. True when the case "The README's transcripts" holds, with `sluice exec main -- moon run nix:test` passing.
-- [ ] 2.2 CLAUDE.md and `openspec/config.yaml` say that the modules write Claude Code's managed transcripts document wherever they install Flume, and still touch no Claude Code home (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.2 CLAUDE.md and `openspec/config.yaml` say that the modules write Claude Code's managed transcripts document wherever they install Flume, and still touch no Claude Code home (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
 - [ ] 2.3 The spec delta archives into specs that pass openspec's strict check. That covers the requirement renamed *The modules write no file of Claude Code's but its managed telemetry and transcripts documents*. True when, after `devenv shell -- openspec archive the-set-keeps-claude-codes-transcripts-a-year --yes`, `sluice exec main -- moon run root:specs` passes.
