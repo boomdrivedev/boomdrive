@@ -605,7 +605,12 @@ impl Runner {
     /// control plane unopened among it. Each part's pass carries out every
     /// act, since no pass follows it (core.50). Then the settle that ends
     /// them (record 0029): a settle refused or unanswered is said, and no
-    /// failure.
+    /// failure. Stopped, as `boomdrive run` is, it ends the try of a call
+    /// to a remote in flight and begins none, through its halt, keeps no
+    /// further repository, begins no part's pass once its keeping pass has
+    /// ended and no settle, lets each part end the pass in hand, says it
+    /// stopped, and fails (record 0042 as amended on 2026-11-12; core.39,
+    /// core.58).
     pub fn once(&mut self, say: Say<'_>) -> Outcome {
         let polls = self.polls();
         self.say_local(&mut LocalLayer::NoFile, &self.config.local, say);
@@ -619,6 +624,9 @@ impl Runner {
             &mut || false,
             &mut |line| say(line),
         );
+        if self.stopped(say) {
+            return Outcome::Failed;
+        }
         let carried = match &self.control {
             None => Outcome::Kept,
             Some(Control { parts: Err(_), .. }) => Outcome::Failed,
@@ -658,8 +666,20 @@ impl Runner {
                 }
             }
         };
+        if self.stopped(say) {
+            return Outcome::Failed;
+        }
         self.watch.settle(&self.programs.flume, polls, say);
         kept.and(carried)
+    }
+
+    /// Whether the runner was stopped, saying so where it was.
+    fn stopped(&self, say: Say<'_>) -> bool {
+        let stopped = self.stop.load(Ordering::SeqCst);
+        if stopped {
+            say("boomdrive: stopped".to_string());
+        }
+        stopped
     }
 
     /// Passes until stopped (design 10 and Decision 2). A keeping pass is
@@ -973,14 +993,14 @@ fn lock(data: &Path) -> Result<File, String> {
 /// one: starts the runner and says so on standard error, with why its
 /// control plane could not be opened where it could not, then makes one
 /// keeping pass and one control pass of each part where `once`, else
-/// passes until SIGTERM or SIGINT stops it. Exits 2 where the runner does
-/// not start, 1 where `once`'s passes failed, and 0 otherwise.
+/// passes until SIGTERM or SIGINT stops it. Either way SIGTERM and SIGINT
+/// stop it, ending each try of a call to a remote in flight (record 0042
+/// as amended on 2026-11-12; core.58). Exits 2 where the runner does not
+/// start, 1 where `once`'s passes failed or were stopped, and 0 otherwise.
 pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
     let started =
         Runner::start(file, |name| std::env::var_os(name), Git::default()).and_then(|runner| {
-            if !once {
-                runner.stop_on_signals()?;
-            }
+            runner.stop_on_signals()?;
             Ok(runner)
         });
     let mut runner = match started {
