@@ -100,6 +100,36 @@ let
       word: t.expect (lib.hasInfix word failures) "the failure of ${what} names no ${word}: ${failures}"
     ) words;
 
+  # The span's option is declared, a span below one day fails evaluation,
+  # and its type refuses the span: the module system's failure of a
+  # definition names the option it defines (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decision 3).
+  belowOneDay =
+    platform:
+    { system, ... }:
+    lib.concatMap
+      (
+        days:
+        let
+          evaluated = system { services.boomdrive.claude-code.cleanupPeriodDays = days; };
+          option = evaluated.options.services.boomdrive.claude-code.cleanupPeriodDays or null;
+          read = builtins.tryEval (
+            builtins.deepSeq evaluated.config.services.boomdrive.claude-code.cleanupPeriodDays true
+          );
+        in
+        t.expect (!read.success) "a ${platform} system naming the span ${toString days} evaluates"
+        ++ t.expect (
+          option != null && lib.showOption option.loc == "services.boomdrive.claude-code.cleanupPeriodDays"
+        ) "the ${platform} system declares no services.boomdrive.claude-code.cleanupPeriodDays"
+        ++ t.expect (
+          option != null && !option.type.check days
+        ) "the type of services.boomdrive.claude-code.cleanupPeriodDays takes ${toString days}"
+      )
+      [
+        0
+        (-1)
+      ];
+
   noSignal =
     platform:
     { system, ... }:
@@ -564,6 +594,7 @@ let
 in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
+// onEach "A span below one day" belowOneDay
 // onEach "In no home" inNoHome
 // onEach "The telemetry keys alone" (ofDocument givesEvery { } everySignal keysAlone)
 // onEach "Metrics and logs by default" (ofDocument givesDefault { } byDefault metricsAndLogs)
