@@ -11,7 +11,7 @@ Build the tasks in order. A task is true once the check it names passes, run as 
 
 ## 2. The runner carries out a hold
 
-- [ ] 2.1 `crates/boomdrive/src/flume.rs`'s `Act` gains `Hold { words, bound_interval }`, whose arguments are `hold <place> --waiting --for=<n>s -- <words>`. In `crates/boomdrive/src/carry.rs`:
+- [x] 2.1 `crates/boomdrive/src/flume.rs`'s `Act` gains `Hold { words, bound_interval }`, whose arguments are `hold <place> --waiting --for=<n>s -- <words>`. In `crates/boomdrive/src/carry.rs`:
   - `flume_act` maps `ActSort::Hold` to it, with the act's words and bound as given;
   - `sort` names it `hold for <n>s`;
   - `act_unlaunched` refuses it, naming where the launch stands, as it refuses a retry, a land, a confirm or a done.

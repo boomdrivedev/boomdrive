@@ -884,9 +884,9 @@ impl Work<'_> {
     /// Answers `act` on a launch the runner holds not yet launched, from
     /// the report, running no command. A priority is done, and the launch
     /// carries it when made; a drop is done, and the launch is never made;
-    /// a retry, a land, a confirm or a done is refused, naming where the
-    /// launch stands, and a land so refused changes nothing of the launch
-    /// when it is made (core.53, core.56).
+    /// a retry, a land, a confirm, a hold or a done is refused, naming
+    /// where the launch stands, and a land or a hold so refused changes
+    /// nothing of the launch when it is made (core.53, core.56, core.59).
     fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
@@ -906,7 +906,11 @@ impl Work<'_> {
                     self.report.answer(&act.launch, lease, dropped);
                 }
             }
-            ActSort::Retry { .. } | ActSort::Land | ActSort::Confirm { .. } | ActSort::Done => {
+            ActSort::Retry { .. }
+            | ActSort::Land
+            | ActSort::Confirm { .. }
+            | ActSort::Hold { .. }
+            | ActSort::Done => {
                 let outcome = match answer.outcome {
                     Outcome::Held => "held",
                     Outcome::Done => "done",
@@ -1886,6 +1890,15 @@ fn flume_act(what: &ActSort) -> flume::Act {
             recipient: recipient.clone(),
             keys: deliveries.clone(),
         },
+        // A hold is Flume's hold of the move the place waits on its caller
+        // for, with exactly the words and the bound it names (core.59).
+        ActSort::Hold {
+            words,
+            bound_interval,
+        } => flume::Act::Hold {
+            words: words.clone(),
+            bound_interval: *bound_interval,
+        },
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
@@ -1922,6 +1935,9 @@ fn sort(what: &ActSort) -> String {
         ActSort::Retry { .. } => "retry".to_string(),
         ActSort::Land => "land".to_string(),
         ActSort::Confirm { recipient, .. } => format!("confirm as {recipient}"),
+        // A hold's words stay out of its line, as a retry's do (core.11,
+        // core.59).
+        ActSort::Hold { bound_interval, .. } => format!("hold for {bound_interval}s"),
         ActSort::Drop => "drop".to_string(),
         ActSort::Priority(priority) => format!("priority {priority}"),
         ActSort::Done => "done".to_string(),
