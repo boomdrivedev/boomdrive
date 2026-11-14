@@ -10,7 +10,7 @@ decision-makers:
 
 # Boomdrive opens, and its site moves into it from boomdrive-web
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below: Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move. Amended on 2026-11-12, below, twice: a repository moves to boomdrivedev once its work is finished; and every repository that moves does so through madswan-agentplot, its folders moving with it.
+Status: accepted by the user on 2026-11-07, on their card. Proposed the same day from their own words in the design agent's pane. Amended on 2026-11-09, below: Boomdrive opens in the GitHub org boomdrivedev, where the family's public tools move. Amended on 2026-11-12, below, twice: a repository moves to boomdrivedev once its work is finished; and every repository that moves does so through madswan-agentplot, its folders moving with it. Amended on 2026-11-13, below: Boomdrive is public at `boomdrivedev/boomdrive`, with its whole history.
 
 Deciders: the user, 2026-11-07, in the design agent's pane: "I was thinking it might make sense that BoomDrive Web just becomes the website under BoomDrive, and that they don't need to be two separate repos", and, told that the site can't publish from a private repository on GitHub's free plan: "We can make Boomdrive public and merge the website." The names and how the site's rules come over are the design agent's, each cheap to change before the move.
 
@@ -82,3 +82,19 @@ Sources: the user's words that day, relayed by agentplot-operator, on moving the
 - **The kit keeps its name.** crew names a kit by the last part of its address, so no record of crew's changes (crew 0060).
 
 The earlier amendment of 2026-11-12 stands where this one doesn't restate it: a repository moves once drained, and the kit keeps its name.
+
+## Amendment, 2026-11-13: Boomdrive is public at boomdrivedev/boomdrive, with its whole history
+
+Status: accepted by the user on 2026-11-13, on the design agent's card: they made the repository public themselves that day, and the private names its history carries don't trouble them.
+
+Sources: GitHub's reading of `boomdrivedev/boomdrive` on 2026-11-13: public and readable without signing in, turned public under the user's account at about 13:26 UTC (its public event, which GitHub's event ids place between that day's events of 03:21 and 14:31 UTC, and its `updated_at`); boomdrive-ops' reading that day that no shell or session on deneb made the change; records 0012 and 0014.
+
+- **The moved repository is the public one.** `boomdrivedev/boomdrive`, moved whole from `agentplot/boomdrive` with its history, branches and tags, is Boomdrive's public repository. No repository is made afresh from its tree and no new root is cut. This replaces the 2026-11-12 amendment's opening from a new root and the 2026-11-09 amendment's fresh history.
+- **Its address stays.** The public repository keeps `boomdrivedev/boomdrive`, and GitHub's redirect from `agentplot/boomdrive` goes on resolving every flake and pin that names the old address.
+- **Its history is published as it is.** Record 0014's choice for going public moves to its second option (record 0014 as amended on 2026-11-13). Rule core.41 holds for what is written into the repository.
+- **Its site can publish from it.** GitHub's free plan publishes Pages from a public repository, which the decision above waited on.
+
+Consequences:
+
+- Good: the opening waits on no scrub, no replay of open bolts and no new address.
+- Bad: what the history names of private repositories, hosts and paths is public, and stays readable in any copy made since.

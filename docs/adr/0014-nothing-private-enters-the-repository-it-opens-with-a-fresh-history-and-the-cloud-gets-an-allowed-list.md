@@ -9,7 +9,7 @@ decision-makers:
 
 # Nothing private enters the repository, and the cloud gets an allowed list of Flume's status
 
-Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview.
+Status: accepted by the user on 2026-11-07, on their card. Proposed on 2026-11-01, from the user's words in the constitution interview. Amended on 2026-11-13, below: the repository went public with its history as it is.
 
 Deciders: the user, 2026-11-01.
 Sources: the constitution interview of 2026-11-01 (agentplot/boomdrive's `design/research/the-constitution-interview.md`), its topic on what stays private; record 0012; agentplot/flywheel-next, the spike `research/board-shows-flume-sluice-and-timber` of 2026-11-01, the fields its drawings read; agentplot/boomdrive-cloud's rules core.4 and core.48, cited by id; rules core.6 and core.11.
@@ -39,3 +39,13 @@ core.6 stands, and its details are amended in this record's commit to name the r
 
 - Which of the spike's fields that carry a repository's or a terminal's text go up, field by field, is for the copy's schema to settle in the change that builds the hosted implementation. Among them are a group's title from `tasks.md`, an end's words, and the dialog behind `why: dialog`.
 - crew's public README and specs name this repository, its rule ids and the operator's hosts and partitions. That is crew's to scrub, with the same rule as the model.
+
+## Amendment, 2026-11-13: the repository went public with its history as it is
+
+Status: accepted by the user on 2026-11-13, on the design agent's card: they made `boomdrivedev/boomdrive` public themselves that day, history and all, and the private names it carries don't trouble them.
+
+Sources: record 0025 as amended on 2026-11-13, and the readings it cites.
+
+- **Going public takes the second option.** The rule stands and the history is published as it is: no fresh public history is cut and no history is rewritten. What the history already names of private repositories, hosts and paths stays in it.
+- **The rule holds for what is written.** No private text or names enter the repository from here on (core.41), whatever its history holds.
+- **Tags stand.** The history is kept, so each tag and release names the commit it was made on (record 0024).
