@@ -30,7 +30,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - waits until `systemctl --user --machine=alice@.host is-active boomdrive.service` succeeds.
 
   After the answers, it finds the unit active with `NRestarts=0`. `nix/tests/boot.nix` gains a case for each scenario it proves. True when `sluice exec main -- moon run nix:test` passes, proving the booted-system delta's "The runner's unit from boot" and "The runner stays up".
-- [ ] 1.5 The boot's `passthru.answers` are made from the set, one for each of `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `worktrunk`, `ghostty`, `portless`, `pendingyou`, `plannotator` and `plannotator-tui` (design Decision 6):
+- [x] 1.5 The boot's `passthru.answers` are made from the set, one for each of `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `worktrunk`, `ghostty`, `portless`, `pendingyou`, `plannotator` and `plannotator-tui` (design Decision 6):
   - its command is `<meta.mainProgram> --version`, or `crew _release` for crew;
   - its version is the package's `version`.
 

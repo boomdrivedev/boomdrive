@@ -130,6 +130,50 @@ let
   login = "su -l alice";
   lastLogin = lastAt login;
 
+  # Each tool's answer, as the booted-system spec names it: its program's
+  # `--version`, wt's for worktrunk, and crew's `_release`, each holding
+  # the set's version of that tool (design Decision 6).
+  tools = [
+    "boomdrive"
+    "flume"
+    "sluice"
+    "crew"
+    "herdr"
+    "worktrunk"
+    "ghostty"
+    "portless"
+    "pendingyou"
+    "plannotator"
+    "plannotator-tui"
+  ];
+  programOf = name: if name == "worktrunk" then "wt" else name;
+  expected = map (name: {
+    command = if name == "crew" then "crew _release" else "${programOf name} --version";
+    inherit (set.${name}) version;
+  }) tools;
+  answers = boot.answers or [ ];
+  answersLine = "answers = json.loads(${builtins.toJSON (builtins.toJSON answers)})";
+
+  # The set's packages the machine's system profile holds, but those that
+  # are no tool: `default`, the runner again, and the Boomdrive launcher,
+  # an entry that runs `flume open`, which the boot leaves to the gate's
+  # evaluated cases (design Non-Goals).
+  installed = builtins.filter (
+    name:
+    !lib.elem name [
+      "default"
+      "boomdrive-launcher"
+    ]
+    && builtins.elem set.${name}.outPath profile
+  ) (builtins.attrNames set);
+  # A package's answer: its own program's `--version`, or crew's
+  # `_release`, holding its version.
+  answerOf = name: {
+    command =
+      if name == "crew" then "crew _release" else "${set.${name}.meta.mainProgram or name} --version";
+    inherit (set.${name}) version;
+  };
+
   required = builtins.attrNames (lib.filterAttrs (_: on: on) boot.config.requiredFeatures);
 in
 {
@@ -221,4 +265,24 @@ in
       (lastAt "!= \"NRestarts=0\"")
       (lastAt "raise Exception(f\"boomdrive.service has {restarts}")
     ]) "the script does not fail where boomdrive.service has restarted after the last answer";
+
+  "Each tool's answer" =
+    t.expect (
+      answers == expected
+    ) "the boot's answers are ${builtins.toJSON answers}, not ${builtins.toJSON expected}"
+    ++ t.expect (lib.elem answersLine lines) "the script's answers are not the boot's: no line ${answersLine}"
+    ++ t.expect (inOrder [
+      (lastAt answersLine)
+      (firstAt "for answer in answers:")
+      (firstAt "box.succeed(\"su -l alice -c \" + shlex.quote(answer[\"command\"]))")
+      (firstAt "if answer[\"version\"] not in said:")
+      (firstAt "raise Exception(")
+    ]) "the script does not run each answer as alice, failing where it holds no version";
+
+  "Every tool installed answers" =
+    t.expect (installed != [ ]) "the boot's system profile holds none of the set's tools"
+    ++ lib.concatMap (
+      name:
+      t.expect (lib.elem (answerOf name) answers) "the set's ${name}, in the boot's system profile, has no answer"
+    ) installed;
 }
