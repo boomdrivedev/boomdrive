@@ -22,7 +22,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - 4 cores and 4096 MiB.
 
   `nix/tests/boot.nix` is added to `nix/tests/default.nix`'s `test`, reading the boot's `config` and `nodes.box` (design Decision 10; Task notes 1.3). True when `sluice exec main -- moon run nix:test` passes, proving the booted-system delta's "The boot's system" and "Never on x86_64-linux".
-- [ ] 1.3 The boot sets `requiredFeatures.kvm = false` and `globalTimeout = 90 * 60`. Its script defines `wait = datetime.timedelta(minutes=30)` and gives every `wait_for_unit` and `wait_until_succeeds` `timeout=wait` (design Decisions 1 and 4). `nix/tests/boot.nix` gains a case for each scenario it proves. True when `sluice exec main -- moon run nix:test` passes, proving the booted-system delta's "Emulated where there is no KVM" and "Its waits".
+- [x] 1.3 The boot sets `requiredFeatures.kvm = false` and `globalTimeout = 90 * 60`. Its script defines `wait = datetime.timedelta(minutes=30)` and gives every `wait_for_unit` and `wait_until_succeeds` `timeout=wait` (design Decisions 1 and 4). `nix/tests/boot.nix` gains a case for each scenario it proves. True when `sluice exec main -- moon run nix:test` passes, proving the booted-system delta's "Emulated where there is no KVM" and "Its waits".
 - [ ] 1.4 The script boots the machine, then, before any command as `alice` (design Decision 5):
   - waits for `multi-user.target`;
   - waits for `alice`'s `Linger=yes` from `loginctl`;
