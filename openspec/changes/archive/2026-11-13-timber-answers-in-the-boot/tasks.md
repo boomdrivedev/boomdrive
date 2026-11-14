@@ -9,4 +9,4 @@ A task is true once the check it names passes, run as it names it.
 ## 2. The spec
 
 - [x] 2.1 The change's delta passes openspec's strict check. True when `sluice exec main -- moon run root:changes` passes.
-- [ ] 2.2 The change's delta archives into specs that pass openspec's strict check, the requirement "Each tool of the set answers in the booted system" naming `timber` among its answers. True when, after `devenv shell -- openspec archive timber-answers-in-the-boot --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 2.2 The change's delta archives into specs that pass openspec's strict check, the requirement "Each tool of the set answers in the booted system" naming `timber` among its answers. True when, after `devenv shell -- openspec archive timber-answers-in-the-boot --yes`, `sluice exec main -- moon run root:specs` passes.
