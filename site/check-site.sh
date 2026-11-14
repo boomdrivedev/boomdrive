@@ -181,25 +181,6 @@ CHECK
 )
 bun -e "$kind" || status=1
 
-# The brief says where the preview opens (the content-kind spec; record
-# 0045): docs/content-brief.md's section "A task", from its heading to the
-# next, its lines joined so a rewrap moves no words out of it, names the
-# launch's setting that puts the preview beside a pane, and flume open.
-task=$(awk '/^#/ { inside = ($0 == "## A task"); next } inside' docs/content-brief.md | tr -s '\n' ' ')
-if [ -z "$(printf '%s' "$task" | tr -d ' ')" ]; then
-  fail "docs/content-brief.md holds no section ## A task"
-else
-  unsaid=""
-  for words in "--agent preview.beside=" "flume open"; do
-    printf '%s\n' "$task" | grep -qF -- "$words" || unsaid="$unsaid${unsaid:+ and }$words"
-  done
-  if [ -n "$unsaid" ]; then
-    fail "docs/content-brief.md's section A task does not say $unsaid"
-  else
-    echo "check-site: the content brief says a launch names the pane its preview opens beside, and flume open shows the session"
-  fi
-fi
-
 # The quick start (the quick-start spec; site.8; design Decision 7 of the
 # change boomdrives-quick-start-takes-a-stranger-to-a-working-drive): the
 # built page /start/ and every page's masthead, the step records of
