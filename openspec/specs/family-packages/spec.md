@@ -7,12 +7,12 @@ The flake's package set: the runner at this tree, and Flume, sluice and their he
 
 ### Requirement: The flake gives the family's host tools as packages
 
-The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-linux`, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `herdr-plugins`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice`, `sluice-herdr-plugin` and `worktrunk`, `default` the runner's. It SHALL give no git, the host's own, and no tool a repository pins.
+The flake SHALL give, for each of its three systems, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `herdr-plugins`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice`, `sluice-herdr-plugin`, `timber`, `timber-herdr-plugin` and `worktrunk`, `default` the runner's. It SHALL give no git, the host's own, and no tool a repository pins.
 
 #### Scenario: Every system's packages
 
 - **WHEN** the flake's outputs are evaluated for each of the three systems
-- **THEN** each gives the eighteen packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
+- **THEN** each gives the twenty packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
 
 #### Scenario: No tool of the host's own
 
@@ -21,7 +21,7 @@ The flake SHALL give, for each of `aarch64-darwin`, `aarch64-linux` and `x86_64-
 
 ### Requirement: The flake and its lock name one set
 
-Each tool of the set that comes through its own flake or its own source, Flume, sluice, crew, herdr, portless and worktrunk, SHALL be named in `flake.nix` by a release tag, and the lock SHALL lock that tag. A tag in `flake.nix` that the lock does not lock SHALL fail the flake's type check, naming the tool and both tags. A tool of the set named by anything but a release tag SHALL fail it, naming the tool and what names it.
+Each tool of the set that comes through its own flake or its own source, Flume, sluice, crew, herdr, portless, worktrunk and timber, SHALL be named in `flake.nix` by a release tag, and the lock SHALL lock that tag. A tag in `flake.nix` that the lock does not lock SHALL fail the flake's type check, naming the tool and both tags. A tool of the set named by anything but a release tag SHALL fail it, naming the tool and what names it.
 
 #### Scenario: A tag moved without the lock
 
@@ -48,6 +48,11 @@ Each tool of the set that comes through its own flake or its own source, Flume, 
 - **WHEN** `flake.nix` and the lock name worktrunk by `main`
 - **THEN** the flake's type check fails, naming worktrunk and `main`
 
+#### Scenario: timber named by no release tag
+
+- **WHEN** `flake.nix` and the lock name timber by `main`
+- **THEN** the flake's type check fails, naming timber and `main`
+
 ### Requirement: The runner's git crates are hashed at the revision the lock names
 
 Each git package of `Cargo.lock` SHALL have one entry among the runner's package's fixed hashes, holding the revision its hash was taken at. The flake's test SHALL fail where a git package has no entry, an entry names no git package, or an entry's revision is not the one `Cargo.lock` names.
@@ -59,12 +64,17 @@ Each git package of `Cargo.lock` SHALL have one entry among the runner's package
 
 ### Requirement: A tool's herdr plugin is the tool's, at the tool's tag
 
-Flume's and sluice's herdr plugin packages SHALL each be its tool's `plugins/herdr` folder, taken from the source of the tool's own package, as the tool ships it, with the tool's version.
+Flume's, sluice's and timber's herdr plugin packages SHALL each be its tool's `plugins/herdr` folder, taken from the source of the tool's own package, as the tool ships it, with the tool's version.
 
 #### Scenario: Flume's plugin moves with Flume
 
 - **WHEN** the lock names Flume's tag `v0.10.0`
 - **THEN** `flume-herdr-plugin` is that tag's `plugins/herdr`, its version `0.10.0`
+
+#### Scenario: timber's plugin moves with timber
+
+- **WHEN** the lock names timber's tag `v0.6.0`
+- **THEN** `timber-herdr-plugin` is that tag's `plugins/herdr`, taken from the source of the set's `timber`, its version `0.6.0`, and nothing in it rewritten
 
 ### Requirement: The set is the one the runner's tests pass with
 
@@ -102,7 +112,7 @@ The gate SHALL run the set's own Flume and sluice, the flake's packages of its l
 
 ### Requirement: Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs
 
-Each package but those of crew's companions SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's and worktrunk's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree where it holds one, else from the flake's tag.
+Each package but crew's companions' SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's, worktrunk's and timber's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree where it holds one, else from the flake's tag.
 
 #### Scenario: Flume through its own flake
 
@@ -128,6 +138,11 @@ Each package but those of crew's companions SHALL be a derivation of the source 
 
 - **WHEN** the lock names worktrunk's tag `v0.80.0`
 - **THEN** the `worktrunk` package is worktrunk's flake's own `worktrunk` for that system, its source and dependencies unchanged, its program `wt` and its version `0.80.0`, and its build is given `v0.80.0` as its `git describe`, as worktrunk's release build gets it
+
+#### Scenario: timber through its own flake
+
+- **WHEN** the lock names timber's tag `v0.6.0`, whose tree carries its version
+- **THEN** the `timber` package is timber's flake's own `default` for that system, unchanged, its program `timber` and its version `0.6.0`
 
 #### Scenario: portless from its source
 
@@ -160,7 +175,7 @@ The `herdr` package's version SHALL be the herdr that Flume's tree pins at the t
 #### Scenario: herdr is Flume's
 
 - **WHEN** the flake is evaluated
-- **THEN** the set's herdr is the version Flume's `devenv.nix` pins at the tag the lock names for Flume, and neither of the set's herdr plugins asks for a newer one
+- **THEN** the set's herdr is the version Flume's `devenv.nix` pins at the tag the lock names for Flume, and none of Flume's, sluice's and timber's herdr plugins asks for a newer one
 
 #### Scenario: herdr other than Flume's
 
@@ -280,20 +295,6 @@ The `pendingyou` package's program SHALL run its `dist/cli.js` on the flake's ni
 - **WHEN** Annotate's `plannotator-tui.version` says `0.9.8` and the set's plannotator-tui is `0.9.9`
 - **THEN** the flake's test fails, naming `0.9.8` and `0.9.9`
 
-### Requirement: The set's marketplace lists Pending You's and Plannotator's plugins
-
-`boomdrive-claude-plugins` SHALL be one folder, a Claude Code marketplace named `boomdrive` whose `.claude-plugin/marketplace.json` lists two plugins, `pendingyou` at the set's Pending You's version and `plannotator` at the set's Plannotator's, each at `./plugins/<name>`. No file of the folder SHALL be a link.
-
-#### Scenario: The marketplace's two plugins
-
-- **WHEN** the flake's packages are evaluated
-- **THEN** `boomdrive-claude-plugins` gives the marketplace `boomdrive` with `pendingyou` at `0.41.0` and `plannotator` at `0.28.61`
-
-#### Scenario: No link into the store
-
-- **WHEN** the marketplace's build is read
-- **THEN** it copies every file with links followed, and fails where any file of its output is a link
-
 ### Requirement: Pending You's plugin holds its hooks and its skill, and no wake mod and no MCP server
 
 The `pendingyou` plugin SHALL hold Pending You's hooks, each `"$HOME/.config/pendingyou/bin/pendingyou-hook" <sub> --app claude-code || true`, for the events and subcommands Pending You's `init` gives Claude Code, in its order, each with a 10-second timeout but SessionEnd's, which have none. It SHALL hold Pending You's skill. It SHALL hold no wake mod, which is Pending You's folder's, and no MCP server.
@@ -335,3 +336,40 @@ The `herdr-plugins` package SHALL hold each of the set's herdr plugins at `share
 
 - **WHEN** the flake's `herdr-plugins` is evaluated for each of the three systems
 - **THEN** it holds `share/herdr/plugins/flume`, the system's `flume-herdr-plugin`, and `share/herdr/plugins/sluice`, the system's `sluice-herdr-plugin`, and no `bin`
+
+### Requirement: The set's marketplace lists Pending You's, Plannotator's and timber's plugins
+
+`boomdrive-claude-plugins` SHALL be one folder, a Claude Code marketplace named `boomdrive` whose `.claude-plugin/marketplace.json` lists three plugins, `pendingyou` at the set's Pending You's version, `plannotator` at the set's Plannotator's and `timber` at the set's timber's, each at `./plugins/<name>`. No file of the folder SHALL be a link.
+
+#### Scenario: The marketplace's three plugins
+
+- **WHEN** the flake's packages are evaluated
+- **THEN** `boomdrive-claude-plugins` gives the marketplace `boomdrive` with `pendingyou` at `0.41.0`, `plannotator` at `0.28.61` and `timber` at `0.6.0`
+
+#### Scenario: No link into the store
+
+- **WHEN** the marketplace's build is read
+- **THEN** it copies every file with links followed, and fails where any file of its output is a link
+
+### Requirement: timber's plugins say the set's timber's version
+
+The version of `timber-herdr-plugin`'s `herdr-plugin.toml` and of the marketplace's `timber` plugin's `.claude-plugin/plugin.json` SHALL each be the set's `timber`'s. The flake's test SHALL fail where one is not, naming the plugin and both versions.
+
+#### Scenario: timber's plugins say the set's timber
+
+- **WHEN** the flake is evaluated
+- **THEN** each system's `timber-herdr-plugin` manifest and the marketplace's `timber` plugin manifest say the version of that system's `timber`
+
+#### Scenario: A timber plugin other than the set's timber
+
+- **WHEN** timber's herdr plugin says `0.5.3` and the set's timber is `0.6.0`
+- **THEN** the flake's test fails, naming the plugin, `0.5.3` and `0.6.0`
+
+### Requirement: timber's Claude Code plugin is its command's source's
+
+The marketplace's `timber` plugin SHALL be the `plugins/claude-code` folder of the source the set's `timber` is built from, copied whole.
+
+#### Scenario: timber's Claude Code plugin from its command's source
+
+- **WHEN** the flake's packages are evaluated
+- **THEN** the `timber` plugin is copied whole from the `plugins/claude-code` of the source the set's `timber` is built from
