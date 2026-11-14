@@ -185,10 +185,11 @@ let
     in
     t.expect (builtins.elem line (made.actionOf "home")) "the x86_64-linux desktop entry's action home has no ${line}: ${made.entry}";
 
-  # Each system's shell: a derivation of the set's ten tools and the
+  # Each system's shell: a derivation of the set's eleven tools and the
   # hook (design Decision 4; design Decision 4 of the change
   # worktrunk-comes-with-the-flake; design Decision 10 of the change
-  # crews-companions-come-with-the-flake).
+  # crews-companions-come-with-the-flake; design Decision 8 of the change
+  # timber-comes-with-boomdrives-flake).
   hookText = builtins.readFile ../shell-hook.sh;
   shellOf =
     system:
@@ -218,6 +219,7 @@ let
     "flume"
     "sluice"
     "crew"
+    "timber"
     "herdr"
     "portless"
     "worktrunk"

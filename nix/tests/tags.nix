@@ -1,8 +1,8 @@
 # Each input's ref in flake.nix against the one flake.lock locks for it,
 # and each tool of the set named by a release tag, Flume, sluice, crew,
-# herdr and worktrunk (core.45; Task notes 2.5). An input named by a
-# commit, as crew's companions' are (record 0044, point 6), is locked by
-# its `rev`. Each failure names the input and both refs.
+# herdr, portless, worktrunk and timber (core.45; Task notes 2.5). An
+# input named by a commit, as crew's companions' are (record 0044, point
+# 6), is locked by its `rev`. Each failure names the input and both refs.
 { lib }:
 inputs: lock:
 let
@@ -30,6 +30,7 @@ let
           "herdr"
           "portless"
           "sluice"
+          "timber"
           "worktrunk"
         ]
         && builtins.match "v[0-9]+\\.[0-9]+\\.[0-9]+" (show named) == null

@@ -161,7 +161,7 @@ let
   # Each of the set's herdr plugins' floors, from its manifest.
   floorsOf =
     packages:
-    lib.genAttrs [ "flume-herdr-plugin" "sluice-herdr-plugin" ] (
+    lib.genAttrs [ "flume-herdr-plugin" "sluice-herdr-plugin" "timber-herdr-plugin" ] (
       name:
       (builtins.fromTOML (builtins.readFile "${packages.${name}.src}/herdr-plugin.toml"))
       .min_herdr_version
@@ -356,6 +356,26 @@ in
     ) "${name}'s build is given VERGEN_GIT_DESCRIBE ${given}, not its tag v${version}"
   );
 
+  # timber's flake builds timber's tagged tree, which carries its version
+  # (timber's record 0031): the set's timber is its flake's `default`,
+  # unchanged (the change timber-comes-with-boomdrives-flake, design
+  # Decision 2).
+  "timber through its own flake" = each (
+    system: packages:
+    let
+      inherit (packages) timber;
+      own = inputs.timber.packages.${system}.default;
+      version = t.lockedVersion "timber";
+      name = "packages.${system}.timber";
+      program = timber.meta.mainProgram or "none";
+    in
+    t.expect (
+      timber.drvPath == own.drvPath
+    ) "${name} is not timber's flake's packages.${system}.default"
+    ++ t.expect (timber.version == version) "${name} says ${timber.version}, not its tag's ${version}"
+    ++ t.expect (program == "timber") "${name}'s program is ${program}, not timber"
+  );
+
   "Ghostty on each system" = each (
     system: packages:
     let
@@ -540,6 +560,7 @@ in
 
   "Flume's plugin moves with Flume" = each (pluginOf "flume");
   "sluice's plugin moves with sluice" = each (pluginOf "sluice");
+  "timber's plugin moves with timber" = each (pluginOf "timber");
 
   # The family-packages spec's "The plugins in one package": linkFarm's
   # entries, each its path under the package and what it links, are the
@@ -709,4 +730,32 @@ in
         "main"
       ]
     ) "flake.nix and the lock naming worktrunk by main give ${builtins.toJSON found}";
+
+  "timber named by no release tag" =
+    let
+      inherit (t) lock;
+      node = lock.nodes.${lock.root}.inputs.timber;
+      named = flake.inputs // {
+        timber = flake.inputs.timber // {
+          url = "github:boomdrivedev/timber/main";
+        };
+      };
+      locked = lock // {
+        nodes = lock.nodes // {
+          ${node} = lock.nodes.${node} // {
+            original = lock.nodes.${node}.original // {
+              ref = "main";
+            };
+          };
+        };
+      };
+      found = tags named locked;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "timber"
+        "main"
+      ]
+    ) "flake.nix and the lock naming timber by main give ${builtins.toJSON found}";
 }
