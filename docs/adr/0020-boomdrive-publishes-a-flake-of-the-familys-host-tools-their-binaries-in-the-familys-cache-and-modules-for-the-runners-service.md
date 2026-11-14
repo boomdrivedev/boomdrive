@@ -109,3 +109,24 @@ From v0.8.4 to v0.9.2, every run of `cache` failed on `build (x86_64-linux)` alo
 - **Not taken: a larger runner.** The binary-cache spec names `ubuntu-24.04` for `x86_64-linux`, and a larger runner is a paid runner the organisation configures.
 
 Nothing else of the decision above changes. core.47's details name the step as not ruled out, in this amendment's commit.
+
+## Amendment, 2026-11-14: the NixOS module is proven by booting aarch64-linux, emulated on GitHub's arm runner
+
+Status: decided on 2026-11-14 by boomdrive-design, on the construct stage's question of the change `a-booted-nixos-system-proves-the-set`. Nothing in it is the user's alone: it costs time and no money, principle 15 and the binary-cache spec decide it, and each choice is cheap to change.
+
+Deciders: boomdrive-design.
+Sources: the construct stage's reading of 2026-11-14 in its place's stop-short; actions/runner-images#14062, "Please support KVM on ARM runners", closed by GitHub on 2026-08-20, saying the ARM64 hosted fleet gives no nested KVM device; nixpkgs at this flake's lock (`1d060086`), `nixos/lib/testing/run.nix`, whose `requiredFeatures.kvm` "Can be disabled to allow emulated execution"; WarpBuild's documentation, whose ARM64 runners give no `/dev/kvm`; boomdrivedev/blueprints `design/principles.md` 15; afterthought/swancloud record 0059, decision 3, the pin a box takes.
+
+### Context and problem statement
+
+The NixOS module runs on Willdan's Graviton boxes, which are `aarch64-linux`. The check that proves it boots a NixOS system with the module, and a box's pin moves only to a commit whose boot is green. GitHub's `ubuntu-24.04-arm` runner gives no KVM, the boxes themselves are virtual machines with none, and a boot on `x86_64-linux` proves a system no box runs.
+
+### Decision outcome
+
+- **The boot runs on `ubuntu-24.04-arm`, its guest emulated.** The NixOS test sets `requiredFeatures.kvm` false, so its driver boots the `aarch64-linux` system under QEMU's own emulation on the `aarch64` host. The guest is the boxes' system, built as they build it.
+- **It is a job of this repository's workflow,** at each push to `main` and each tag `v*`, and its check on the commit is what a box's pin reads. Its waits allow for an emulated boot, which takes minutes where a KVM boot takes seconds.
+- **Never on `x86_64-linux`.** A boot of another system proves nothing a box runs.
+- **Not taken: a self-hosted runner on a bare-metal `aarch64-linux` machine with KVM,** such as an EC2 Graviton `.metal` or a dedicated Ampere server. It boots in seconds, but it bills by the hour, gives ops a machine to keep, and on a public repository must take only pushes to `main` and tags. Whether to pay for one is the user's, asked if the emulated boot proves too slow to keep.
+- **Not taken: a hosted runner service with `aarch64` KVM.** None was found.
+
+Nothing else of the decision above changes.

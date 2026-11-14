@@ -1,7 +1,9 @@
 # The binary-cache spec over the workflow's text (design Decision 5; Task
 # notes 7.2): .github/workflows/cache.yml read line by line, as yamlfmt
-# lays it out, beside the flake's packages and nixConfig. GitHub runs it;
-# the gate holds what it says.
+# lays it out, beside the flake's packages and nixConfig, each job by its
+# own lines and steps, and the booted-system spec's job, the boot (design
+# Decision 10 of the change a-booted-nixos-system-proves-the-set). GitHub
+# runs it; the gate holds what it says.
 t:
 let
   inherit (t) lib;
@@ -50,10 +52,24 @@ let
   on = blockOf "on";
   jobs = blockOf "jobs";
 
-  # The job's steps, each its lines, in order.
-  steps =
+  # The lines of the job `name`, after its own line, up to the next line
+  # of the jobs' indent, a job's or a comment's.
+  jobOf =
+    name:
     let
-      at = findFirstIndex (l: l == "    steps:") null jobs;
+      at = findFirstIndex (l: l == "  ${name}:") null jobs;
+      after = lib.drop (at + 1) jobs;
+      end = findFirstIndex (l: builtins.match "  [^ ].*" l != null) (length after) after;
+    in
+    if at == null then [ ] else lib.take end after;
+  buildJob = jobOf "build";
+  bootJob = jobOf "boot";
+
+  # The steps of the job whose lines are `job`, each its lines, in order.
+  stepsOf =
+    job:
+    let
+      at = findFirstIndex (l: l == "    steps:") null job;
       split =
         acc: l:
         if lib.hasPrefix "      - " l then
@@ -63,13 +79,21 @@ let
         else
           lib.init acc ++ [ (lib.last acc ++ [ l ]) ];
     in
-    if at == null then [ ] else builtins.foldl' split [ ] (lib.drop (at + 1) jobs);
-  # The index of the first step with a line matching `re`, or null.
-  stepAt = re: findFirstIndex (has re) null steps;
-  # The lines of the step at `i`, none where there is no such step.
-  stepOf = i: if i == null then [ ] else elemAt steps i;
-  # The indices of every step with a line matching `re`.
-  stepsAt = re: builtins.filter (i: has re (stepOf i)) (lib.range 0 (length steps - 1));
+    if at == null then [ ] else builtins.foldl' split [ ] (lib.drop (at + 1) job);
+  # The index of the first of `steps` with a line matching `re`, or null.
+  stepAtIn = steps: re: findFirstIndex (has re) null steps;
+  # The lines of the step of `steps` at `i`, none where there is no such
+  # step.
+  stepOfIn = steps: i: if i == null then [ ] else elemAt steps i;
+  # The indices of every one of `steps` with a line matching `re`.
+  stepsAtIn =
+    steps: re: builtins.filter (i: has re (stepOfIn steps i)) (lib.range 0 (length steps - 1));
+
+  # The build's steps, which its cases read.
+  steps = stepsOf buildJob;
+  stepAt = stepAtIn steps;
+  stepOf = stepOfIn steps;
+  stepsAt = stepsAtIn steps;
   before =
     a: b: what:
     t.expect (a != null && b != null && a < b) what;
@@ -115,16 +139,16 @@ let
     concatMap (
       i:
       let
-        system = builtins.match systemLine (elemAt jobs i);
-        runner = builtins.match " *runner: ([^ ]+)" (elemAt jobs (i + 1));
+        system = builtins.match systemLine (elemAt buildJob i);
+        runner = builtins.match " *runner: ([^ ]+)" (elemAt buildJob (i + 1));
       in
       lib.optional (system != null) {
         name = head system;
         value = if runner == null then null else head runner;
       }
-    ) (lib.range 0 (length jobs - 2))
+    ) (lib.range 0 (length buildJob - 2))
   );
-  systemsNamed = captures systemLine jobs;
+  systemsNamed = captures systemLine buildJob;
 
   # The x64 image's trees that no package's build uses (record 0020 as
   # amended on 2026-11-13), each a line of the step's `rm -rf`.
@@ -157,13 +181,31 @@ let
 
   serviceAccountToken = ".*\\$\\{\\{ secrets\\.OP_SERVICE_ACCOUNT_TOKEN }}.*";
   cacheToken = ".*\\$\\{\\{ steps\\.cachix-token\\.outputs\\.CACHIX_AUTH_TOKEN }}.*";
+
+  # The boot's steps (booted-system spec; design Decision 7 of the change
+  # a-booted-nixos-system-proves-the-set).
+  bootSteps = stepsOf bootJob;
+  bootStepAt = stepAtIn bootSteps;
+  bootStepOf = stepOfIn bootSteps;
+  bootInstall = bootStepAt " *(- )?uses: cachix/install-nix-action@.*";
+  bootCachix = bootStepAt " *(- )?uses: cachix/cachix-action@.*";
+  boots = bootStepAt " *run: nix build --no-link --print-build-logs \\.#checks\\.aarch64-linux\\.boot";
+  # Every secret the boot's lines name, and every system, each where it
+  # stands in its line.
+  bootSecrets = captures ".*\\$\\{\\{ secrets\\.([A-Za-z_]+) }}.*" bootJob;
+  bootSystems = concatMap (
+    l: map head (builtins.filter builtins.isList (builtins.split "([a-z0-9_]+-(linux|darwin))" l))
+  ) bootJob;
 in
 {
   "Each system has its job" =
     t.expect (
-      captures "  ([a-z_-]+):.*" jobs == [ "build" ]
-    ) "the workflow's jobs are ${toString (captures "  ([a-z_-]+):.*" jobs)}, not build alone"
-    ++ t.expect (has "    runs-on: \\$\\{\\{ matrix\\.runner }}" jobs) "the job runs on no matrix.runner"
+      captures "  ([a-z_-]+):.*" jobs == [
+        "build"
+        "boot"
+      ]
+    ) "the workflow's jobs are ${toString (captures "  ([a-z_-]+):.*" jobs)}, not build and boot"
+    ++ t.expect (has "    runs-on: \\$\\{\\{ matrix\\.runner }}" buildJob) "the job build runs on no matrix.runner"
     ++ t.expect (
       systemsNamed == lib.unique systemsNamed
     ) "the workflow names a system twice: ${toString systemsNamed}"
@@ -240,7 +282,7 @@ in
     ) "the workflow names a cache other than nixConfig's ${cache}";
 
   "A package that does not build" =
-    t.expect (has "      fail-fast: false" jobs) "the job's strategy names no fail-fast: false"
+    t.expect (has "      fail-fast: false" buildJob) "the job's strategy names no fail-fast: false"
     ++ before build push "the push is not after the build"
     ++ t.expect (has " *skipPush: true" (stepOf cachix)) "cachix-action names no skipPush: true"
     ++ t.expect (!has " *continue-on-error:.*" lines) "a step continues on error"
@@ -252,7 +294,7 @@ in
     ) "the run steps' shell is not bash, which fails a pipe";
 
   "No service account token" =
-    t.expect (has "    environment: cachix" jobs) "the job names no environment: cachix"
+    t.expect (has "    environment: cachix" buildJob) "the job names no environment: cachix"
     ++ before serviceAccountCheck load "the service account's token is not checked before it is used"
     ++ before serviceAccountCheck build "the service account's token is not checked before the build"
     ++
@@ -264,7 +306,8 @@ in
           ]
         )
         "OP_SERVICE_ACCOUNT_TOKEN is given to steps ${toString (stepsAt serviceAccountToken)}, not the check and the load alone"
-    ++ t.expect (has " *exit 1" (stepOf serviceAccountCheck)) "the service account's check does not exit 1";
+    ++ t.expect (has " *exit 1" (stepOf serviceAccountCheck)) "the service account's check does not exit 1"
+    ++ t.expect (!has serviceAccountToken bootJob) "the boot is given OP_SERVICE_ACCOUNT_TOKEN";
 
   "No token" =
     t.expect (has " *id: cachix-token" (stepOf load)) "the load is not the step cachix-token"
@@ -286,7 +329,52 @@ in
     ++ t.expect (has " *exit 1" (stepOf tokenCheck)) "the cache token's check does not exit 1"
     ++ t.expect (
       !has ".*echo.*\\$\\{?(OP_SERVICE_ACCOUNT_TOKEN|CACHIX_AUTH_TOKEN).*" lines
-    ) "a step echoes a token";
+    ) "a step echoes a token"
+    ++ t.expect (!has ".*CACHIX_AUTH_TOKEN.*" bootJob) "the boot is given CACHIX_AUTH_TOKEN";
+
+  # The booted-system spec's job (design Decision 7 of the change
+  # a-booted-nixos-system-proves-the-set): the boot at every run, on its
+  # own, setting up the family's cache to read alone, and building the
+  # flake's boot with its log.
+  "The boot's job" =
+    t.expect (bootJob != [ ]) "the workflow has no job boot"
+    ++ t.expect (has "    name: boot \\(aarch64-linux\\)" bootJob) "the job boot is not named boot (aarch64-linux)"
+    ++ t.expect (has "    runs-on: ubuntu-24.04-arm" bootJob) "the job boot does not run on ubuntu-24.04-arm"
+    ++ t.expect (!has " *needs:.*" bootJob) "the job boot waits on another job"
+    ++ t.expect (!has " *if:.*" bootJob) "the job boot, or a step of it, has a condition"
+    ++ t.expect (!has " *(strategy|matrix):.*" bootJob) "the job boot has a matrix"
+    ++
+      before bootInstall bootCachix
+        "the boot does not install Nix before it sets up the family's cache"
+    ++ t.expect (
+      captures " *name: ([a-z0-9-]+)" (bootStepOf bootCachix) == [ cache ]
+    ) "the boot's cachix-action does not name nixConfig's ${cache}"
+    ++ t.expect (has " *skipPush: true" (bootStepOf bootCachix)) "the boot's cachix-action names no skipPush: true"
+    ++
+      before bootCachix boots
+        "the boot does not build .#checks.aarch64-linux.boot after it sets up the family's cache"
+    ++ t.expect (
+      boots == length bootSteps - 1
+    ) "the boot's last step is not nix build --no-link --print-build-logs .#checks.aarch64-linux.boot";
+
+  "No token for the boot" =
+    t.expect (!has " *environment:.*" bootJob) "the job boot names an environment"
+    ++ t.expect (
+      bootSecrets == [ "GITHUB_TOKEN" ]
+      && stepsAtIn bootSteps ".*\\$\\{\\{ secrets\\..*" == [ bootInstall ]
+    ) "the job boot names secrets ${toString bootSecrets}, not install-nix-action's GITHUB_TOKEN alone"
+    ++ t.expect (!has ".*CACHIX_AUTH_TOKEN.*" bootJob) "the job boot names CACHIX_AUTH_TOKEN"
+    ++ t.expect (!has " *authToken:.*" bootJob) "the job boot gives cachix-action a token"
+    ++ t.expect (!has ".*op://.*" bootJob) "the job boot names op://"
+    ++ t.expect (!has ".*cachix push.*" bootJob) "the job boot pushes to the cache";
+
+  "The boot never on x86_64-linux" =
+    t.expect (
+      bootSystems != [ ] && lib.all (system: system == "aarch64-linux") bootSystems
+    ) "the job boot names the systems ${toString bootSystems}, not aarch64-linux alone"
+    ++
+      t.expect (captures " *runs-on: (.*)" bootJob == [ "ubuntu-24.04-arm" ])
+        "the job boot runs on ${toString (captures " *runs-on: (.*)" bootJob)}, not ubuntu-24.04-arm alone";
 
   "Each action pinned by its commit" =
     let
