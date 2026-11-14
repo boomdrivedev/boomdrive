@@ -312,3 +312,27 @@ core.56 holds it. The control-plane-interface, crew-control-plane, runner-protoc
 - crew's implementation reads `Act: confirm`, with its `Of`, its one `Recipient` and each `Delivery`, as a confirm of that launch's ends. One naming no `Host` goes to the runner that holds its launch. crew's confirms written before a host runs the release that carries this are carried once it does.
 - A hosted control plane's readers confirm nothing through the runner until a later protocol version names a confirm and an end's delivery key. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
 - Flume's statement names, in its row of callers, a retry of a base place's submission as what the runner asks of Flume at its control plane's ask. A confirm its control plane asks, as the reader it names, joins it. That is the statement's owner's to amend, and is told to the orchestrator.
+
+## Amendment, 2026-11-14: a pass past due sends its answers as it makes them
+
+Status: boomdrive-design's, on the stop-short of the fix `main--a-refused-request-leaves-the-runners-reports-going`, 2026-11-14. Cheap to change.
+
+### Context
+
+A control pass sends its report once, at its end. On deneb on 2026-11-14, the pull of 14:35:29Z claimed offers 70 to 147 and launched them one after another, each `flume launch` taking from seconds to 5.6 minutes. The pass was still launching when a restart at about 14:55Z ended it, and its answers were never sent. The pass after the restart launched the rest until 15:11:36Z and wrote its answers at 15:21:30Z. For 46 minutes crew read every launch as held by the runner, raised no landings card, and refused `crew answer`. Flume's refusals of priority requests for places that no longer stood were each answered once and passed over, so they held nothing.
+
+### Considered options
+
+1. **A pass past due sends its report after each launch or act it carries out (chosen).** No answer the pass has made waits on the rest of the pass, and a restart loses only the act in hand.
+2. **A pass runs no launch after its first once the next pass is due**, as `core.50` bounds acts on places. Every pass would send a report, but the offers it leaves stay claimed and unlaunched while the stream has room, and wait a pass for nothing. No answer comes sooner than under option 1.
+3. **Answer a refusal at once.** It changes no send time.
+
+### Decision outcome
+
+Option 1. Once the next control pass is due, the pass sends its report after each launch, act, command or preview it carries out, then goes on with the rest in the order `core.50` gives. A pass that ends before the next is due sends once, at its end, as before. A send that fails is retried by the next send, as a pass's send is. Nothing changes in what a pass takes or in what order.
+
+### Consequences
+
+- Each send under crew's control plane is a commit to the runner's branch of the drive's state repository, so a long pass past due writes one commit for each act it carries out after the due time.
+- `core.50` is amended with it.
+
