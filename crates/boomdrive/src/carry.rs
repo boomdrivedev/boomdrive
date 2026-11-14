@@ -762,7 +762,8 @@ impl Work<'_> {
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
     /// core.24). A confirm as the runner, or of no key, is refused at once,
-    /// running nothing (core.56). One on its launch's place is carried out
+    /// running nothing (core.56), as is a hold with no words (core.59).
+    /// One on its launch's place is carried out
     /// in the pass's second round alone, after every launch the pull offers
     /// (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
@@ -781,7 +782,7 @@ impl Work<'_> {
         if lapsed(launched.lease, self.now) {
             return;
         }
-        if let Some(words) = refused_confirm(&act.what) {
+        if let Some(words) = refused_confirm(&act.what).or_else(|| refused_hold(&act.what)) {
             self.acted(act, Outcome::Refused, Some(words), None, say);
             return;
         }
@@ -1926,6 +1927,19 @@ fn refused_confirm(what: &ActSort) -> Option<String> {
         Some("a confirm naming no delivery key confirms nothing".to_string())
     } else {
         None
+    }
+}
+
+/// The runner's words refusing `what`, where it is a hold with no words,
+/// which would take the place out of stalling with nothing said of who
+/// makes the move (core.59; Flume's 130). The runner judges no words but
+/// their absence.
+fn refused_hold(what: &ActSort) -> Option<String> {
+    match what {
+        ActSort::Hold { words, .. } if words.is_empty() => {
+            Some("a hold with no words says nothing of who makes the move".to_string())
+        }
+        _ => None,
     }
 }
 

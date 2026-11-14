@@ -1,8 +1,9 @@
 //! A control plane's hold of the move its launch's place waits on it for,
 //! carried out as Flume's hold of that waiting move with exactly the words
 //! and the bound it names, its answer Flume's (core.59; the work-into-flume
-//! spec's "A hold is Flume's hold of the move its launch's place waits on";
-//! design Decisions 2 and 3).
+//! spec's "A hold is Flume's hold of the move its launch's place waits on",
+//! "Flume's answer is the hold's" and "A hold with no words is refused";
+//! design Decisions 2 to 4).
 
 mod fakes;
 
@@ -93,4 +94,18 @@ fn flumes_refusal_is_the_holds_answer() {
     let acted = &bench.report().acts[&Id::new("a/hold")];
     assert_eq!(acted.outcome, Outcome::Refused);
     assert_eq!(acted.words, Some(words));
+}
+
+/// The work-into-flume spec's "A hold with no words".
+#[test]
+fn a_hold_with_no_words_is_refused() {
+    let (bench, mut plane) = launched();
+    pull(&bench, &mut plane, "a/hold", hold("", BOUND));
+    assert_eq!(bench.flume.acts(), []);
+    let acted = &bench.report().acts[&Id::new("a/hold")];
+    assert_eq!(acted.outcome, Outcome::Refused);
+    assert_eq!(
+        acted.words.as_deref(),
+        Some("a hold with no words says nothing of who makes the move")
+    );
 }
