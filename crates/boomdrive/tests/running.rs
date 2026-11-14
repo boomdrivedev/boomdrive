@@ -278,8 +278,8 @@ fn stopped_with_a_fetch_in_flight() {
     );
 }
 
-/// The running spec's "Stopped with a fetch in flight", for `boomdrive
-/// run --once`: SIGINT ends the first fetch in flight of a repository
+/// The running spec's "run --once stopped with a fetch in flight":
+/// SIGINT ends the first fetch in flight of a repository
 /// whose origin never answers, the repository named not cloned with the
 /// halted words, nothing of it left, no `flume` run, and nothing the fetch
 /// started outliving the runner, which exits 1 (record 0042 as amended on
