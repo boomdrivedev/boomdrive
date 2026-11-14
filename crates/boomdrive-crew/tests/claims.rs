@@ -590,6 +590,42 @@ fn a_confirm_naming_no_host_goes_to_the_runner_holding_its_launch() {
     );
 }
 
+/// The crew-control-plane spec's "A hold naming no host, of a launch this
+/// runner holds": host-b holds launch 20, so its hold 27 is host-b's;
+/// host-a claims 21 and takes its hold 26 (core.59).
+#[test]
+fn a_hold_naming_no_host_goes_to_the_runner_holding_its_launch() {
+    let state = State::new();
+    let launch_21 = launch(21, None, "unit/a", CREW, "b", &[]);
+    let hold = |n: u64, of: u64| {
+        act(
+            n,
+            "hold",
+            None,
+            "unit/a",
+            of,
+            &[("Words", "the user sends it"), ("Bound", "28800")],
+        )
+    };
+    main_holding(&state, &[kit(CREW), launch_21, hold(26, 21), hold(27, 20)]);
+    answering(&state, "host-b", &[launched(20)]);
+    let (mut host_a, _) = state.crew("host-a");
+    let pulled = pull(&mut host_a, &kept());
+    assert_eq!(ids(&pulled), ["home/21", "home/26"]);
+    assert_eq!(
+        pulled.wants[1],
+        Want::Act(Act {
+            id: Id::new("home/26"),
+            launch: Id::new("home/21"),
+            lease: 1,
+            what: ActSort::Hold {
+                words: "the user sends it".to_string(),
+                bound_interval: 28800,
+            },
+        })
+    );
+}
+
 #[test]
 fn another_runners_branch_that_cant_be_read_holds_back_a_claim() {
     let state = State::new();

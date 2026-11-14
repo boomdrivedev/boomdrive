@@ -169,6 +169,7 @@ fn an_act_of_each_sort() {
         },
         ActSort::Land,
         confirm(),
+        hold(),
         ActSort::Drop,
         ActSort::Priority(5),
         ActSort::Done,
@@ -197,7 +198,7 @@ fn an_act_of_each_sort() {
     // core.56).
     let confirm = Act {
         what: confirm(),
-        ..land
+        ..land.clone()
     };
     assert_eq!(
         serde_json::to_value(&confirm).unwrap(),
@@ -214,6 +215,32 @@ fn an_act_of_each_sort() {
             }},
         }),
     );
+    // A hold holds its words and its bound in whole seconds (the
+    // control-plane-interface spec's "A hold's form"; core.59).
+    let hold = Act {
+        what: hold(),
+        ..land
+    };
+    assert_eq!(
+        serde_json::to_value(&hold).unwrap(),
+        serde_json::json!({
+            "id": "home/2",
+            "launch": "home/1",
+            "lease": 3,
+            "what": {"hold": {
+                "words": "the user sends it on the landings card, row 3",
+                "bound_interval": 28800,
+            }},
+        }),
+    );
+}
+
+/// A hold of the waiting move under neutral words, for eight hours.
+fn hold() -> ActSort {
+    ActSort::Hold {
+        words: "the user sends it on the landings card, row 3".to_string(),
+        bound_interval: 28800,
+    }
 }
 
 /// A confirm of two ends of one place, as `scratch/planner`.

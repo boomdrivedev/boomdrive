@@ -4,8 +4,10 @@
 //! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), Flume
 //! 0.17.1's to the settle that keeps the host's watch (record 0029), and
 //! the runner named one more recipient, confirming a place's ends as
-//! that recipient (record 0030 as amended on 2026-11-09), and a control
-//! plane's confirm of a reader's ends as Flume's confirm (core.56).
+//! that recipient (record 0030 as amended on 2026-11-09), a control
+//! plane's confirm of a reader's ends as Flume's confirm (core.56), and a
+//! control plane's hold of a place's waiting move as Flume's hold of it
+//! (core.59).
 
 use boomdrive::flume::{Act, Cli, Flume, LaunchArgs, Reply};
 use std::fs;
@@ -457,6 +459,50 @@ fn a_confirms_argv() {
                 "--",
                 "--recipient=boomdrive",
                 "K1"
+            ]),
+        ]
+    );
+    assert_eq!(stub.read("recipient-1").as_deref(), Some("unset\n"));
+}
+
+#[test]
+fn a_holds_argv() {
+    let stub = Stub::new();
+    stub.answers(Some("retry.json"), None, 0);
+    let cli = stub.cli();
+    let hold = |words: &str, bound_interval: u64| Act::Hold {
+        words: words.into(),
+        bound_interval,
+    };
+    for act in [
+        hold("the user sends it", 28800),
+        // The words are never read as a flag, and a bound of 0 is passed
+        // as given (core.59).
+        hold("--stage code", 0),
+    ] {
+        let reply = cli.act("/places/P", &act).expect("flume answers");
+        assert!(matches!(reply, Reply::Given(_)), "{act:?}: {reply:?}");
+    }
+    assert_eq!(
+        stub.calls(),
+        [
+            argv(&[
+                "--json",
+                "hold",
+                "/places/P",
+                "--waiting",
+                "--for=28800s",
+                "--",
+                "the user sends it",
+            ]),
+            argv(&[
+                "--json",
+                "hold",
+                "/places/P",
+                "--waiting",
+                "--for=0s",
+                "--",
+                "--stage code",
             ]),
         ]
     );
