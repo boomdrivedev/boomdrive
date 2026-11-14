@@ -69,7 +69,7 @@
 # the path and why. It exits 0.
 #
 # sign is nix-darwin's step, run as root before nix-darwin loads its
-# agents (record 0045; design Decisions 1 to 4 of the change
+# agents (record 0046; design Decisions 1 to 4 of the change
 # the-runners-macos-grant-outlasts-a-new-build). It makes <folder> with
 # mode 0755 where it is not there, and goes on only where <folder> is owned
 # by the user it runs as and no other user can write it: otherwise it makes

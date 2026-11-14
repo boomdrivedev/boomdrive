@@ -37,7 +37,7 @@
 # keeps a copy of the package's runner at
 # `/Library/Application Support/Boomdrive/boomdrive` signed with the host's
 # own code-signing identity, so a person's grant of macOS privacy access
-# holds for every later build, and the agent runs that copy (record 0045).
+# holds for every later build, and the agent runs that copy (record 0046).
 { packages }:
 {
   config,
@@ -79,7 +79,7 @@ let
   );
 
   # The runner's copy signed with the host's own identity, in a folder only
-  # root writes, made before the agents load (record 0045; the change
+  # root writes, made before the agents load (record 0046; the change
   # the-runners-macos-grant-outlasts-a-new-build, design Decisions 3 and 6).
   runner = "${cfg.package}/bin/boomdrive";
   signedFolder = "/Library/Application Support/Boomdrive";

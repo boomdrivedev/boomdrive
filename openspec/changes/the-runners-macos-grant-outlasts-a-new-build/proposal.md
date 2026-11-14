@@ -16,7 +16,7 @@ The work is built from the plan of `change/a-new-build-keeps-the-runners-macos-a
 - **The runner's service runs a signed copy at one fixed path.** Before nix-darwin loads its agents, the activation copies the package's `bin/boomdrive` to `/Library/Application Support/Boomdrive/boomdrive`. It signs the copy with the host's identity under the identifier `boomdrive`, and names the program it was made from in `boomdrive.source` beside it. The copy's designated requirement is then `identifier boomdrive and certificate leaf = H"…"`, the same for every build, at the same path, so a grant given once holds for each later build. The folder is root's, and the activation signs nothing into a folder another user can write.
 - **The agent runs the copy of its own package.** The launchd agent's line runs the copy where `boomdrive.source` names the agent's package, and the package's own binary where it does not, by `exec` behind `/bin/wait4path /nix/store` either way. The line still names the package and the file, so a new build or a new file reloads the agent, and nothing else does. A copy that cannot be signed leaves the runner running, asked for as today.
 - **The README** says what a person sees: one grant, kept for every later build.
-- **Record 0045 and rule core.59** record the decision, and core.46's details allow the agent's new line. They are written with this change.
+- **Record 0046 and rule core.60** record the decision, and core.46's details allow the agent's new line. They are written with this change.
 
 ## Capabilities
 
@@ -36,7 +36,7 @@ None.
 - `nix/tests/darwin.nix`: the agent's new line, the step before the agents load, the README's words, and the existing cases read through the new line.
 - `README.md`: the nix-darwin paragraph says the agent runs the signed copy and the person grants access once.
 - `CLAUDE.md` and `openspec/config.yaml`: the modules' description names the signed copy.
-- `docs/adr/0045-…` and `docs/architecture/core.md`: record 0045, core.59 and core.46's details, written with this change.
+- `docs/adr/0046-…` and `docs/architecture/core.md`: record 0046, core.60 and core.46's details, written with this change.
 - Nothing else changes. No crate, tool, tracked file type, configuration key, option, field of `report.json` or protocol message changes. NixOS is untouched, since Linux has no such ask. The agent `boomdrive setup` writes on a host Nix does not manage is untouched (design Non-Goals).
 - On each Mac that runs the module's agent, the person grants the runner its access once more, to the signed copy. Grants given to store paths' runners do not carry over.
 
@@ -50,7 +50,7 @@ nix/tests/darwin.nix
 README.md
 CLAUDE.md
 openspec/config.yaml
-docs/adr/0045-on-macos-the-runners-service-runs-a-copy-signed-with-the-hosts-own-identity-so-a-grant-holds-for-every-build.md
+docs/adr/0046-on-macos-the-runners-service-runs-a-copy-signed-with-the-hosts-own-identity-so-a-grant-holds-for-every-build.md
 docs/architecture/core.md
 openspec/specs/service-modules/spec.md
 ```

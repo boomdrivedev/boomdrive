@@ -1,5 +1,5 @@
 ---
-number: 45
+number: 46
 title: On macOS the runner's service runs a copy signed with the host's own identity, so a grant holds for every build
 status: accepted
 date: 2026-11-14
@@ -57,4 +57,4 @@ Not taken:
 - A host Nix does not manage, whose agent `boomdrive setup` writes, runs the runner from the person's profile and is asked at each upgrade. setup runs as the person, with no root to keep a folder only root writes, and nothing runs at a profile's upgrade to sign a new build. This record leaves that host as it is; a record of its own may give setup's agent a signed copy.
 - The keychain's own ask before the runner reads a partition's key (core.32) is not covered here. Only a host that enrolls with a hosted control plane meets it.
 - A host that turns the module off keeps the folder, the copy and the identity until a person removes them. The identity kept means a host that turns the runner on again keeps its grant.
-- This record adds core.59, and amends core.46's details to allow the agent to run that copy. The change `the-runners-macos-grant-outlasts-a-new-build` builds it.
+- This record adds core.60, and amends core.46's details to allow the agent to run that copy. The change `the-runners-macos-grant-outlasts-a-new-build` builds it.

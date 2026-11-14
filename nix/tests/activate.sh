@@ -13,7 +13,7 @@
 # `refuse` names, saying `manifest not found`. The managed document's
 # cases write in a scratch folder standing for Claude Code's
 # managed-settings.d, as the case's own user. The signing's cases add
-# stubs of security, codesign and openssl (record 0045; design Decision 7
+# stubs of security, codesign and openssl (record 0046; design Decision 7
 # of the change the-runners-macos-grant-outlasts-a-new-build), described
 # at freshSign, and a keychain that is a word they take, never a keychain.
 # Each case runs with a TMPDIR of its own. It prints each failure as one
