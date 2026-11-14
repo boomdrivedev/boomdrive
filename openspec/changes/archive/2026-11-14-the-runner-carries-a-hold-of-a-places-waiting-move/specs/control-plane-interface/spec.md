@@ -12,14 +12,21 @@ An act SHALL ask one of these of its launch's place:
 - a priority, with its number;
 - a done.
 
-A land SHALL name no stage, no words and no other word of Flume's, and SHALL be written as the word `land` (core.53).
-
 #### Scenario: An act of each sort
 
 - **WHEN** an act of each sort, a land, a confirm and a hold among them, is written by `boomdrive-control`'s types and read back
 - **THEN** each reads back equal, and the land's `what` is written as `"land"`, holding nothing more
 
 ## ADDED Requirements
+
+### Requirement: A land is written as the word land
+
+A land SHALL name no stage, no words and no other word of Flume's, and SHALL be written as the word `land` (core.53).
+
+#### Scenario: A land's form
+
+- **WHEN** a land is written by `boomdrive-control`'s types and read back
+- **THEN** it reads back equal, and its `what` is written as `"land"`, holding nothing more
 
 ### Requirement: A hold holds its words and its bound
 

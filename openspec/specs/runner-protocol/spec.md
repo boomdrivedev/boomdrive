@@ -78,7 +78,7 @@ Every object a version names SHALL take only the fields it names, at every depth
 
 ### Requirement: The messages carry the interface's shapes
 
-Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names among them, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
+Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names but a hold, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
 
 #### Scenario: The interface's values pass
 
@@ -88,7 +88,7 @@ Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Ans
 #### Scenario: Every sort the interface names
 
 - **WHEN** a value of every sort of `Want`, `ActSort` and `CommandSort`, each named by a match with no wildcard, is written by `boomdrive-control`'s types and checked against version 2's `want`
-- **THEN** the sorts named are every sort the interface has, and each value passes
+- **THEN** the sorts named are every sort the interface has, a hold among them, and each value passes but the hold's, which is refused
 
 #### Scenario: An act's outcome
 
@@ -364,3 +364,12 @@ Version 2's `preview.schema.json` SHALL hold the copy of a preview, its `name`, 
 
 - **WHEN** a report whose preview's copy, or whose preview's status copy, holds `output`, `checkout`, `names`, `ports`, `exit` or `release_failed` is checked against version 2
 - **THEN** each is refused
+
+### Requirement: No version carries a hold
+
+Version 1 and version 2 name no hold, and a release has spoken each, so neither SHALL change to carry one. A want whose act is a hold SHALL fail each version's check, and a hold SHALL reach the runner from a hosted control plane only in a later version that names it (core.42, core.59).
+
+#### Scenario: A hold is no act of version 1 or 2
+
+- **WHEN** a want whose act is a hold, as `boomdrive-control`'s types write it, is checked against version 1's `want` and against version 2's
+- **THEN** each refuses it
