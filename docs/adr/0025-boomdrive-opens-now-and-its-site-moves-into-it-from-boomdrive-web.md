@@ -31,7 +31,7 @@ boomdrive-web is Boomdrive's site, the Method, its field notes and the fleet's m
 Option 1, the user's decision.
 
 - **The names.** The public repository takes `agentplot/boomdrive`, which every flake and install already names, and this one is renamed `agentplot/boomdrive-archive`. The other path, a new name for the public repository, would change every reference to keep a name for the archive.
-- **The site's home and address.** The site is the repository's `site/`, its own project of the task runner with its own checks, as in the family's other repositories. It is served under the repository's name, `/boomdrive/`, and boomdrive-web's address points readers there.
+- **The site's home and address.** The site is the repository's `site/`, its own project of the task runner with its own checks, as in the family's other repositories. It is served under the repository's name, `/boomdrive/`. boomdrive-web stays archived at its own address, serving its pages as they were, with no redirect (the user's choice of 2026-11-14).
 - **Its history.** The site's files come with boomdrive-web's history, which is already public, so a field note's date and its first words stay readable from the repository.
 - **Its rules.** boomdrive-web's working rules come with it, scoped to `site/`: nothing commercial and no client named, a field note never rewritten after it is published, the glossary as the one vocabulary, and the site's content work run as its `content` kind. Its records and specs come into this repository's.
 - **The releases.** The site's commits stay out of the runner's release notes and move no version (0024).
