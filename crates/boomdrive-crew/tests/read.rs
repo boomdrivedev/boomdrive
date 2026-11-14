@@ -15,6 +15,7 @@ use common::{
 use std::net::TcpListener;
 use std::path::Path;
 use std::time::{Duration, Instant};
+use weir_branch::{Branch, Halt};
 
 const CREW: &str = "example/crew";
 
@@ -722,6 +723,121 @@ fn a_state_repository_that_never_answers_a_write() {
 
     assert!(took < WEIRS_TRY, "the write took {took:?}");
     assert!(failed.ends_with(&fetch_stopped(&url)), "{failed}");
+}
+
+/// Runs `call`, setting `halt` from a thread of the test's `after` into
+/// it: what it gave, and how long it took.
+fn halted_after<T>(halt: &Halt, after: Duration, call: impl FnOnce() -> T) -> (T, Duration) {
+    let setter = halt.clone();
+    let setting = std::thread::spawn(move || {
+        std::thread::sleep(after);
+        setter.halt();
+    });
+    let started = Instant::now();
+    let given = call();
+    let took = started.elapsed();
+    setting.join().expect("the halt set");
+    (given, took)
+}
+
+/// How long a halted try may take: weir-bounded's grace, and a margin for
+/// the machine.
+const HALTED_WITHIN: Duration = Duration::from_secs(5);
+
+/// The crew-control-plane spec's "A store's branches carry its halt": a
+/// store's halt is never set when made, and every branch it gives carries
+/// it (record 0042 as amended on 2026-11-12).
+#[test]
+fn a_stores_branches_carry_its_halt() {
+    let store = Store::new("cache.git".into(), "https://example.invalid/s.git".into());
+    assert!(!store.halt.halted());
+    assert_eq!(
+        store.branch("home/main"),
+        Branch::remote("home/main", &store.cache, &store.url).with_halt(store.halt.clone())
+    );
+}
+
+/// The crew-control-plane spec's "A listing in flight when the runner
+/// stops" and "A listing's words at the runner's stop": a listing of a
+/// state repository that never answers, its store's halt set 300 ms in,
+/// fails well before its limit with the halted words, naming no limit
+/// (record 0042 as amended on 2026-11-12; core.58).
+#[test]
+fn a_listing_halted_in_flight() {
+    let state = State::new();
+    let cache = state.root.join("cache.git");
+    std::fs::create_dir_all(&cache).unwrap();
+    git(&cache, &["init", "--quiet", "--bare"], None);
+    let url = format!("{}/state.git", silent());
+    let mut store = Store::new(cache, url.clone());
+    store.try_for = Duration::from_secs(30);
+
+    let (listed, took) = halted_after(&store.halt, Duration::from_millis(300), || {
+        store.hosts("home")
+    });
+
+    let failed = listed.expect_err("a listing halted");
+    assert!(took < HALTED_WITHIN, "the listing took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git ls-remote with {url} was stopped as its caller asked"
+        )),
+        "{failed}"
+    );
+    assert!(!failed.contains("30s"), "{failed}");
+}
+
+/// The crew-control-plane spec's "A read in flight when the runner stops"
+/// and "A read's words at the runner's stop": weir-branch's fetch of
+/// `home/main`, its store's halt set 300 ms in, fails well before its
+/// limit with the halted words, naming no limit (weir record 0008 as
+/// amended 2026-11-12).
+#[test]
+fn a_read_halted_in_flight() {
+    let state = State::new();
+    let (store, url) = silent_store(&state);
+
+    let (read, took) = halted_after(&store.halt, Duration::from_millis(300), || {
+        store.main("home")
+    });
+
+    let Err(failed) = read else {
+        panic!("home/main read from a state repository that never answers");
+    };
+    assert!(took < HALTED_WITHIN, "the read took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git fetch with {url} was stopped as its caller asked"
+        )),
+        "{failed}"
+    );
+    assert!(!failed.contains("30s"), "{failed}");
+}
+
+/// The crew-control-plane spec's "A write in flight when the runner
+/// stops" and "A write's words at the runner's stop": a write whose read
+/// of the runner's branch is halted 300 ms in fails well before its limit
+/// with the halted words, having formed nothing (weir record 0008 as
+/// amended 2026-11-12).
+#[test]
+fn a_write_halted_in_flight() {
+    let state = State::new();
+    let (store, url) = silent_store(&state);
+
+    let (written, took) = halted_after(&store.halt, Duration::from_millis(300), || {
+        boomdrive_crew::write::write(&store, "home", "host-a", None, |_| {
+            panic!("formed from a tip a silent state repository gave")
+        })
+    });
+
+    let failed = written.expect_err("a write halted");
+    assert!(took < HALTED_WITHIN, "the write took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git fetch with {url} was stopped as its caller asked"
+        )),
+        "{failed}"
+    );
 }
 
 #[test]

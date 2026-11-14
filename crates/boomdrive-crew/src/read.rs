@@ -33,6 +33,10 @@ pub struct Store {
     /// How long one try of its listing may take: thirty seconds, or a
     /// test's (record 0042).
     pub try_for: Duration,
+    /// The halt its listing, and every read and write of a branch it
+    /// gives, also ends at: the runner's, which the runner's stop sets, or
+    /// one never set (record 0042 as amended on 2026-11-12; core.58).
+    pub halt: Halt,
 }
 
 /// A partition's drive branch at one tip.
@@ -186,18 +190,24 @@ impl Store {
     /// The state repository at `url` through the bare cache `cache`, its
     /// listing stopped at [`weir_bounded::TRY_FOR`], the limit weir-branch
     /// stops each try of its fetch and push at too (record 0042 as amended
-    /// on 2026-11-11).
+    /// on 2026-11-11), its halt never set: the runner's is given by the
+    /// part's crew (record 0042 as amended on 2026-11-12).
     pub fn new(cache: PathBuf, url: String) -> Store {
         Store {
             cache,
             url,
             try_for: weir_bounded::TRY_FOR,
+            halt: Halt::default(),
         }
     }
 
-    /// The branch `name` of the state repository.
+    /// The branch `name` of the state repository, carrying the store's
+    /// halt, so each try of weir-branch's fetch, listing and push of it,
+    /// for a read or a write, ends at the first of its limit and the halt,
+    /// and none begins once the halt is set (weir record 0008 as amended
+    /// 2026-11-12; record 0042 as amended on 2026-11-12; core.58).
     pub fn branch(&self, name: &str) -> Branch {
-        Branch::remote(name, &self.cache, &self.url)
+        Branch::remote(name, &self.cache, &self.url).with_halt(self.halt.clone())
     }
 
     /// `<label>/main` at its tip, or why it could not be read.
@@ -258,10 +268,13 @@ impl Store {
     /// The hosts whose runner's branch, `<label>/runner/<host>`, the state
     /// repository lists, in name order, by `git ls-remote` through the
     /// cache. The listing is a call to a remote: it runs in a process group
-    /// of its own and is stopped at `try_for` with everything it started,
-    /// failing then with words that name `git ls-remote`, the state
-    /// repository's URL and the limit, after git's last line where git
-    /// wrote one (record 0042; core.58).
+    /// of its own and is stopped at `try_for` or the store's halt,
+    /// whichever comes first, with everything it started, failing at its
+    /// limit with words that name `git ls-remote`, the state repository's
+    /// URL and the limit, and at the halt with words that name the two as
+    /// stopped as its caller asked, each after git's last line where git
+    /// wrote one; one begun with the halt set runs no git (record 0042 as
+    /// amended on 2026-11-12; core.58).
     pub fn hosts(&self, label: &str) -> Result<Vec<String>, String> {
         let prefix = format!("refs/heads/{label}/runner/");
         let mut command = Command::new("git");
@@ -274,7 +287,7 @@ impl Store {
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
             .stdin(Stdio::null());
-        let output = weir_bounded::output(&mut command, self.try_for, &Halt::default())
+        let output = weir_bounded::output(&mut command, self.try_for, &self.halt)
             .map_err(|error| format!("git could not be run: {error}"))?;
         let said = String::from_utf8_lossy(&output.stderr);
         let last = said.lines().rfind(|line| !line.trim().is_empty());
