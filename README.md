@@ -202,10 +202,18 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
 nothing. Told of a landing, it keeps that one repository at once,
-between passes or between two repositories of a pass. It stops on
-SIGTERM or SIGINT before the next repository it would keep, lets each
-part of its control plane end the pass it has in hand, and exits 0. It
-opens no listening socket: every connection it makes is outgoing.
+between passes or between two repositories of a pass. Sent SIGTERM or
+SIGINT, it ends each call to a remote it has in flight, a fetch, crew's
+listing, or weir-branch's read or write of a state repository, as the
+call's limit would, asking it to end and killing it two seconds later
+with everything it started, and begins none after. The repository is
+named not fetched, or not cloned with nothing left, or the partition
+unread or its report unsent, with the words `<call> with <remote> was
+stopped as its caller asked`, and the next start fetches or pulls it
+again. The runner then stops before the next repository it would keep,
+lets each part of its control plane end the pass it has in hand, and
+exits 0. It opens no listening socket: every connection it makes is
+outgoing.
 
 Where the configuration names a control plane, each part of it, a crew
 partition or a hosted partition, runs its control passes on its own,
@@ -257,7 +265,11 @@ when no part both pulled and reported. A part that could not be read
 while another reported, or a tool a pass could not run or read, is
 named, and is not a failure. `--once` settles every place once, after
 its passes, and a settle Flume refused or gave no answer to is named,
-and is not a failure either.
+and is not a failure either. `--once` stops on SIGTERM or SIGINT as
+`run` does, ending each call to a remote in flight and beginning none
+after; once stopped it keeps no further repository and begins no part's
+pass and no settle, lets each part end the pass in hand, says
+`boomdrive: stopped`, and exits 1.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
@@ -1118,7 +1130,10 @@ partition is named unread and pulled again at the next pull. weir-branch,
 which reads each branch and writes the runner's, stops each try of its
 fetch, listing and push at the same limit: a stopped read leaves the
 partition unread, and a stopped write its report unsent, as any read or
-write that fails. It answers
+write that fails. The listing, and each try of weir-branch's, also ends
+at the runner's stop as at its limit, and none begins after it: a
+listing or a read so ended leaves the partition unread, and a write its
+report unsent. It answers
 on the runner's branch, `<label>/runner/<host>`, in crew's formats:
 `runner.rec`, `answers.rec`, `places.rec` and `repositories.rec`, and,
 once a preview is answered there, `previews.rec`,
