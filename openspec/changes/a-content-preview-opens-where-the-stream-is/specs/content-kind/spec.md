@@ -6,10 +6,9 @@ The repository SHALL declare, in `.config/flume.toml` in the family's kind
 format, one kind named `content` whose places land through sluice, with two
 stages in order: `change`, whose deliverable is commits, then `preview`, a
 conversation that waits on the caller's word. The preview's one agent SHALL
-name no pane and no session of a host's terminal, so flume opens it where
-the place's stream puts it on every host, and beside a pane only where the
-launch names one (Flume's 107 and 199; record 0045). A failed submission
-SHALL send the place back to `change`.
+name no pane or session of a host's terminal, so flume opens it where the
+place's stream puts it (record 0045). A failed submission SHALL send the
+place back to `change`.
 
 #### Scenario: The declaration reads as the kind
 
