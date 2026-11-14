@@ -848,7 +848,7 @@ only() {
 }
 # The folder's names, on one line.
 inFolder() {
-  ls -A "$folder" | paste -s -d ' ' -
+  find "$folder" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | paste -s -d ' ' -
 }
 
 named="A new build"
