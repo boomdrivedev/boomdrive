@@ -623,6 +623,82 @@ let
       homely == [ ]
     ) "the ${platform} documents' paths name a home: ${builtins.toJSON homely}";
 
+  # The transcripts document a platform's system of the runner and `given`
+  # writes, held byte for byte to `expected`, its text, or null with what
+  # fails: on NixOS `/etc`'s text, read; on nix-darwin the store path its
+  # root step names, which holds `expected` only where it is
+  # `pkgs.writeText` of it (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 4 and
+  # 8).
+  transcriptsWrittenOf =
+    platform: given: expected:
+    let
+      of = "the ${platform} system of ${builtins.toJSON given}";
+    in
+    if platform == "NixOS" then
+      let
+        evaluated = t.nixosSystem given;
+        text = evaluated.config.environment.etc.${transcriptsEtcName}.text or null;
+      in
+      {
+        document = if text == null then null else builtins.fromJSON text;
+        failing =
+          t.expect (t.failures evaluated == [ ]) "${of} fails: ${toString (t.failures evaluated)}"
+          ++ t.expect (text != null) "${of} writes no ${transcriptsEtcName}"
+          ++ t.expect (text == expected) "${of} writes ${builtins.toJSON text}, not ${expected}";
+      }
+    else
+      let
+        evaluated = t.darwinSystem given;
+        line = transcriptsLine (evaluated.pkgs.writeText "10-boomdrive-transcripts.json" expected);
+        holds = transcriptsLines evaluated == [ line ];
+      in
+      {
+        document = if holds then builtins.fromJSON expected else null;
+        failing =
+          t.expect (t.failures evaluated == [ ]) "${of} fails: ${toString (t.failures evaluated)}"
+          ++ t.expect holds "${of} runs ${builtins.toJSON (transcriptsLines evaluated)}, not the step that writes ${expected}";
+      };
+
+  # A case on each platform: the transcripts document written, then each
+  # of `check`'s items, `{ holds; what; }`, of it.
+  ofTranscripts =
+    given: expected: check: platform: _:
+    let
+      written = transcriptsWrittenOf platform given expected;
+    in
+    written.failing
+    ++ lib.optionals (written.document != null) (
+      lib.concatMap (item: t.expect item.holds "the ${platform} transcripts document ${item.what}") (
+        check written.document
+      )
+    );
+  spanAlone = document: [
+    {
+      holds = builtins.attrNames document == [ "cleanupPeriodDays" ];
+      what = "holds ${toString (builtins.attrNames document)}, not cleanupPeriodDays alone";
+    }
+    {
+      holds = builtins.isInt (document.cleanupPeriodDays or null);
+      what = "holds cleanupPeriodDays ${builtins.toJSON (document.cleanupPeriodDays or null)}, no number";
+    }
+  ];
+  # The span alone, and the telemetry document of every signal beside it
+  # holding no cleanupPeriodDays.
+  spanAloneOn =
+    platform: host:
+    let
+      telemetry = writtenOf platform givesEvery { } everySignal;
+      document = telemetry.document or { };
+    in
+    ofTranscripts {
+      services.boomdrive.claude-code.telemetry = givesEvery;
+    } ''{"cleanupPeriodDays":365}'' spanAlone platform host
+    ++ telemetry.failing
+    ++ t.expect (
+      !(document ? cleanupPeriodDays) && !((document.env or { }) ? cleanupPeriodDays)
+    ) "the ${platform} telemetry document holds cleanupPeriodDays";
+
   # The README's install with nix on the sessions' telemetry (design
   # Decision 11).
   readmeTelemetry =
@@ -662,6 +738,13 @@ in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
 // onEach "A span below one day" belowOneDay
+// onEach "A year by default" (ofTranscripts { } ''{"cleanupPeriodDays":365}'' (_: [ ]))
+// onEach "A span named" (
+  ofTranscripts {
+    services.boomdrive.claude-code.cleanupPeriodDays = 90;
+  } ''{"cleanupPeriodDays":90}'' (_: [ ])
+)
+// onEach "The span alone" spanAloneOn
 // onEach "In no home" inNoHome
 // onEach "The telemetry keys alone" (ofDocument givesEvery { } everySignal keysAlone)
 // onEach "Metrics and logs by default" (ofDocument givesDefault { } byDefault metricsAndLogs)

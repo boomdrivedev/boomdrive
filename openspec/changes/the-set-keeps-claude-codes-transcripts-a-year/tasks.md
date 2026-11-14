@@ -21,7 +21,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - otherwise, `activate.sh managed` removes that path.
 
   `activate.sh`'s header names the managed step's two documents. `nix/tests/tools.nix`'s nix-darwin case drops each document's step by its path and holds each to one (design Decision 7). True when the cases "The transcripts document on nix-darwin", "No Flume on nix-darwin", "Flume without the runner on nix-darwin" and "The tools' activation is their own on nix-darwin" hold, with `sluice exec main -- moon run nix:test` passing.
-- [ ] 1.5 `nix/tests/claude-code.nix` holds the document each system writes to its key and value. It reads the NixOS document from `/etc`'s `text`, and holds the nix-darwin step's store path to `pkgs.writeText` of the expected document (design Decisions 4 and 8). True when the cases "A year by default", "A span named" and "The span alone", each on nix-darwin and on NixOS, hold, with `sluice exec main -- moon run nix:test` passing.
+- [x] 1.5 `nix/tests/claude-code.nix` holds the document each system writes to its key and value. It reads the NixOS document from `/etc`'s `text`, and holds the nix-darwin step's store path to `pkgs.writeText` of the expected document (design Decisions 4 and 8). True when the cases "A year by default", "A span named" and "The span alone", each on nix-darwin and on NixOS, hold, with `sluice exec main -- moon run nix:test` passing.
 
 ## 2. The words and the specs
 
