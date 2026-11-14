@@ -2,7 +2,7 @@
 
 ### Requirement: The workflow builds and pushes every package of every system
 
-The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and by hand, and on no other push. For each system the flake gives, a job on GitHub's hosted runner of that system SHALL build every package the flake gives for it, the runner's among them, and push their store paths and runtime closures to the cache. A job whose build fails SHALL push nothing. Beside the systems' build jobs, the workflow's one other job SHALL be the boot, `boot (aarch64-linux)`, which pushes nothing (booted-system).
+The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and by hand, and on no other push. For each system the flake gives, a job on GitHub's hosted runner of that system SHALL build every package the flake gives for it, the runner's among them, and push their store paths and runtime closures to the cache. A job whose build fails SHALL push nothing. Its one other job SHALL be the boot, `boot (aarch64-linux)`, which pushes nothing (booted-system).
 
 #### Scenario: Each system has its job
 
