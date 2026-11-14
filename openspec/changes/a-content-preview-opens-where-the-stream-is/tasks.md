@@ -10,7 +10,7 @@ A task is true once the check it names passes, run as it names it.
 ## 2. The site's tests
 
 - [x] 2.1 `site/check-site.sh` reads `../.config/flume.toml` with `Bun.TOML.parse` through `bun -e` and fails, naming what differs, unless the kind lands through sluice on the branch `content` with the stages `change` then `preview`, one agent to each, `change` delivering `["commits"]`, and `preview` a conversation with `wait = true`, `on_fail = "change"`, no deliverables and one agent giving neither `beside` nor `session`; each pass says its line as design Decision 3 gives it. True when `sluice exec main -- moon run site:test` passes, proving the content-kind delta's "The declaration reads as the kind", "The declaration asks for nothing flume refuses" and "The preview names no place in the terminal".
-- [ ] 2.2 `site/check-site.sh` reads `docs/content-brief.md`'s section from `## A task` to the next heading and fails unless it holds `--agent preview.beside=` and `flume open`, and `site/moon.yml`'s `test` task takes `docs/content-brief.md` among its inputs (design Decision 3). True when `sluice exec main -- moon run site:test` passes, proving the content-kind delta's "The brief says where the preview opens".
+- [x] 2.2 `site/check-site.sh` reads `docs/content-brief.md`'s section from `## A task` to the next heading and fails unless it holds `--agent preview.beside=` and `flume open`, and `site/moon.yml`'s `test` task takes `docs/content-brief.md` among its inputs (design Decision 3). True when `sluice exec main -- moon run site:test` passes, proving the content-kind delta's "The brief says where the preview opens".
 
 ## 3. The record and the rule
 
