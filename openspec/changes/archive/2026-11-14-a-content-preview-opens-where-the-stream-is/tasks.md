@@ -19,4 +19,4 @@ A task is true once the check it names passes, run as it names it.
 ## 4. The spec
 
 - [x] 4.1 The change's delta passes openspec's strict check. True when `sluice exec main -- moon run root:changes` passes.
-- [ ] 4.2 The change's delta archives into specs that pass openspec's strict check, the requirement "The repository declares one content kind" holding the scenario "The preview names no place in the terminal" and the requirement "A launch names the pane its preview opens beside" its scenario. True when, after `devenv shell -- openspec archive a-content-preview-opens-where-the-stream-is --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 4.2 The change's delta archives into specs that pass openspec's strict check, the requirement "The repository declares one content kind" holding the scenario "The preview names no place in the terminal" and the requirement "A launch names the pane its preview opens beside" its scenario. True when, after `devenv shell -- openspec archive a-content-preview-opens-where-the-stream-is --yes`, `sluice exec main -- moon run root:specs` passes.
