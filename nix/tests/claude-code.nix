@@ -206,6 +206,41 @@ let
       entry != null && entry.text == expected
     ) "the NixOS system's ${etcName} holds ${toString (entry.text or null)}, not ${expected}";
 
+  # The transcripts document on NixOS (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 2 and
+  # 5): `/etc`'s entry, mode 0644, its text the document of the span,
+  # wherever Flume is on, and none where Flume is off.
+  transcriptsOnNixos =
+    what: evaluated:
+    let
+      entry = evaluated.config.environment.etc.${transcriptsEtcName} or null;
+      expected = builtins.toJSON (
+        claudeCode.transcriptsOf evaluated.config.services.boomdrive.claude-code.cleanupPeriodDays
+      );
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (entry != null && entry.enable) "${what}'s /etc does not write ${transcriptsEtcName}"
+    ++ t.expect (
+      entry != null && entry.target == transcriptsEtcName
+    ) "${what}'s /etc writes ${transcriptsEtcName} at ${toString (entry.target or null)}"
+    ++ t.expect (
+      entry != null && entry.mode == "0644"
+    ) "${what}'s ${transcriptsEtcName} has the mode ${toString (entry.mode or null)}, not 0644"
+    ++ t.expect (
+      entry != null && entry.text == expected
+    ) "${what}'s ${transcriptsEtcName} holds ${toString (entry.text or null)}, not ${expected}";
+  noTranscriptsOnNixos =
+    what: evaluated:
+    let
+      entries = builtins.attrNames (
+        lib.filterAttrs (
+          name: entry: name == transcriptsEtcName || entry.target == transcriptsEtcName
+        ) evaluated.config.environment.etc
+      );
+    in
+    t.expect (t.failures evaluated == [ ]) "${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (entries == [ ]) "${what}'s /etc holds ${toString entries}";
+
   # nix-darwin's activation, as text, and its lines.
   darwinLines =
     evaluated:
@@ -618,6 +653,25 @@ onEach "A collector off the host" offHost
         t.darwinOf [
           t.outputs.darwinModules.default
           { services.boomdrive.claude-code.telemetry.collector = collector; }
+        ]
+      );
+  "The transcripts document on NixOS" =
+    transcriptsOnNixos "a NixOS system with the runner, Flume on by default and no collector"
+      (t.nixosSystem { });
+  "No Flume on NixOS" = noTranscriptsOnNixos "a NixOS system with the runner and Flume off" (
+    t.nixosSystem { services.flume.enable = false; }
+  );
+  "Flume without the runner on NixOS" =
+    transcriptsOnNixos "a NixOS system with Flume on and the runner off"
+      (
+        t.nixosOf [
+          t.outputs.nixosModules.default
+          {
+            services.flume = {
+              enable = true;
+              user = "alice";
+            };
+          }
         ]
       );
   "No collector on NixOS" = noEtc "a NixOS system with the runner and no collector" (
