@@ -68,6 +68,68 @@ let
   # The arguments of each call of `name` in the script.
   callsOf = name: map argumentsOf (lib.drop 1 (lib.splitString "${name}(" script));
   waits = callsOf "wait_for_unit" ++ callsOf "wait_until_succeeds";
+  # Where `needle` first and last begins in the script, or null where it
+  # is not there.
+  firstAt =
+    needle:
+    let
+      parts = lib.splitString needle script;
+    in
+    if lib.length parts < 2 then null else lib.stringLength (lib.head parts);
+  lastAt =
+    needle:
+    let
+      parts = lib.splitString needle script;
+    in
+    if lib.length parts < 2 then
+      null
+    else
+      lib.stringLength script - lib.stringLength (lib.last parts) - lib.stringLength needle;
+  # Each of `positions` is there, and each is before the next.
+  inOrder =
+    positions:
+    !lib.elem null positions
+    && lib.all (i: lib.elemAt positions i < lib.elemAt positions (i + 1)) (
+      lib.range 0 (lib.length positions - 2)
+    );
+  # Where the first call of `name` whose arguments hold every one of
+  # `held` begins, or null.
+  callAt =
+    name: held:
+    let
+      calls = lib.drop 1 (lib.splitString "${name}(" script);
+      i = lib.lists.findFirstIndex (text: lib.all (h: lib.hasInfix h (argumentsOf text)) held) null calls;
+    in
+    if i == null then
+      null
+    else
+      lib.stringLength (
+        lib.concatStringsSep "${name}(" (lib.take (i + 1) (lib.splitString "${name}(" script))
+      );
+
+  # The runner's unit in alice's manager, read as root (design Decision 5).
+  isActive = "systemctl --user --machine=alice@.host is-active boomdrive.service";
+  restarts = "systemctl --user --machine=alice@.host show boomdrive.service --property=NRestarts";
+  steps = {
+    "multi-user.target" = callAt "wait_for_unit" [ "\"multi-user.target\"" ];
+    "alice's Linger=yes" = callAt "wait_until_succeeds" [
+      "loginctl show-user alice --property=Linger"
+      "Linger=yes"
+    ];
+    "alice's uid" = firstAt "box.succeed(\"id -u alice\")";
+    "alice's user@<uid>.service" = callAt "wait_for_unit" [ "f\"user@{uid}.service\"" ];
+    "boomdrive.service in alice's manager" = callAt "wait_until_succeeds" [ isActive ];
+  };
+  order = [
+    "multi-user.target"
+    "alice's Linger=yes"
+    "alice's uid"
+    "alice's user@<uid>.service"
+    "boomdrive.service in alice's manager"
+  ];
+  login = "su -l alice";
+  lastLogin = lastAt login;
+
   required = builtins.attrNames (lib.filterAttrs (_: on: on) boot.config.requiredFeatures);
 in
 {
@@ -133,4 +195,30 @@ in
         != null
       ) "a wait of the script names no timeout=wait: (${call})"
     ) waits;
+
+  "The runner's unit from boot" =
+    lib.concatMap (step: t.expect (steps.${step} != null) "the script does not wait for ${step}") order
+    ++ t.expect (inOrder (
+      map (step: steps.${step}) order
+    )) "the script does not wait for ${lib.concatStringsSep ", then " order}"
+    ++ t.expect (firstAt login != null) "the script runs nothing as alice"
+    ++ t.expect (inOrder [
+      steps."boomdrive.service in alice's manager"
+      (firstAt login)
+    ]) "the script runs a command as alice before it has found boomdrive.service in alice's manager"
+    ++ t.expect (
+      firstAt "su " == firstAt login && firstAt "runuser" == null && firstAt "user=" == null
+    ) "the script logs alice in other than by its answers' su -l alice";
+
+  "The runner stays up" =
+    t.expect (inOrder [
+      lastLogin
+      (lastAt "box.succeed(\"${isActive}\")")
+    ]) "the script does not find boomdrive.service active after the last answer"
+    ++ t.expect (inOrder [
+      lastLogin
+      (lastAt restarts)
+      (lastAt "!= \"NRestarts=0\"")
+      (lastAt "raise Exception(f\"boomdrive.service has {restarts}")
+    ]) "the script does not fail where boomdrive.service has restarted after the last answer";
 }
