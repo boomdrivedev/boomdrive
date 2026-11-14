@@ -37,6 +37,7 @@ let
     "plannotator-tui"
     "portless"
     "sluice"
+    "timber"
     "worktrunk"
   ];
   # The herdr plugins the modules link, Flume's, sluice's and, with crew

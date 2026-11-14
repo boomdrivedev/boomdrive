@@ -8,8 +8,10 @@
 # drives.nix's cases. Each case runs on nix-darwin and on NixOS, unless it
 # names a platform. portless's cases are design Decisions 5 and 6 of the
 # change portless-comes-with-the-flake, worktrunk's design Decision 3 of
-# the change worktrunk-comes-with-the-flake, and crew's companions' design
-# Decisions 6 and 9 of the change crews-companions-come-with-the-flake.
+# the change worktrunk-comes-with-the-flake, crew's companions' design
+# Decisions 6 and 9 of the change crews-companions-come-with-the-flake, and
+# timber's design Decisions 6 and 7 of the change
+# timber-comes-with-boomdrives-flake.
 t:
 let
   inherit (t) lib outputs;
@@ -383,6 +385,75 @@ let
     t.expect (
       !builtins.elem set.worktrunk.outPath (profileOf without)
     ) "the ${platform} system profile without the runner holds the set's worktrunk";
+
+  # timber, installed with the runner whether or not crew is on (design
+  # Decision 6 of the change timber-comes-with-boomdrives-flake).
+  timberWithRunner =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (builtins.elem set.timber.outPath (profileOf evaluated)) "the ${platform} system profile holds no set's timber";
+
+  # A timber of the host's own, laid out as a package with a bin.
+  ownTimber =
+    { pkgs, ... }:
+    {
+      services.boomdrive.timber.package = pkgs.runCommand "own-timber" { } "mkdir -p $out/bin";
+    };
+  hostsTimber =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownTimber;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.timber.package.outPath profile) "the ${platform} system profile holds no host's own timber"
+    ++ t.expect (
+      !builtins.elem set.timber.outPath profile
+    ) "the ${platform} system profile holds the set's timber beside the host's own";
+
+  noTimber =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.timber.package = null; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no timber fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.timber.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no timber holds the set's timber";
+
+  timberWithoutRunner =
+    platform:
+    { without, set, ... }:
+    t.expect (
+      !builtins.elem set.timber.outPath (profileOf without)
+    ) "the ${platform} system profile without the runner holds the set's timber";
+
+  # No launchd job, systemd unit or activation step of the modules' runs
+  # the set's timber, `timber serve` among what it would run (design
+  # Decision 6 of the change timber-comes-with-boomdrives-flake): each
+  # one's text, as text, holds no path of the set's timber. The plugins'
+  # step names timber-herdr-plugin, another path.
+  noServe =
+    platform:
+    { system, set, ... }:
+    let
+      timber = builtins.unsafeDiscardStringContext set.timber.outPath;
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: text:
+        t.expect (!lib.hasInfix timber text) "the ${platform} system's ${name} runs the set's timber"
+      ) (stepsOf platform (system { }))
+    );
 
   # crew's companions, installed with the runner where crew's module is on
   # (design Decisions 6 and 9 of the change
@@ -933,6 +1004,11 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own worktrunk" hostsWorktrunk
 // onEach "No worktrunk of the set's" noWorktrunk
 // onEach "No worktrunk without the runner" worktrunkWithoutRunner
+// onEach "timber with the runner" timberWithRunner
+// onEach "A host's own timber" hostsTimber
+// onEach "No timber of the set's" noTimber
+// onEach "No timber without the runner" timberWithoutRunner
+// onEach "No serving process of the modules'" noServe
 // onEach "The companions with the runner and crew" companionsWithCrew
 // onEach "A host's own Plannotator" hostsPlannotator
 // onEach "No companions without crew" noCompanionsWithoutCrew

@@ -25,7 +25,12 @@
 # portless-comes-with-the-flake). Where crew's module is on, the plugins'
 # default gains crew's companions' herdr plugins, Pending You for Herdr and
 # Annotate, which companions.nix installs the tools of (record 0044, point
-# 8).
+# 8). timber, which delivers what the merge queue lands, is installed the
+# same way, whether or not crew is on, since timber gives no nix-darwin or
+# NixOS module; the modules write no file of timber's and start no
+# `timber serve`, which is timber's own (record 0023 as amended on
+# 2026-11-13; design Decision 6 of the change
+# timber-comes-with-boomdrives-flake).
 # The launcher is the set's made, by its override, for each drive of this
 # host, in the order of the drives' names: each entry is the drive's name
 # and its stream's own session, the `session` Flume's settings name for the
@@ -121,6 +126,7 @@ in
       defaultText = lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.boomdrive-launcher.override { drives = <each drive of this host>; }";
       description = "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS, a menu-bar app, and the desktop's applications on Linux, installed with the runner. By default it is the set's made for this host's drives: each drive of this host, in the order of the drives' names, is an entry opening its stream's own session, the stream's `session` in Flume's settings, else the stream's name, beside `Default stream`; a drive of another machine has none. A host's own replaces it, installed as given, and `null` installs none.";
     };
+    timber.package = installed "timber" "timber, which delivers what the merge queue lands, and whose herdr pane and Claude Code plugin call it, installed with the runner; a host's own replaces it, and `null` installs none. Its serving process, `timber serve`, is timber's own to start.";
     portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed with the runner; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
   };
 
@@ -129,6 +135,7 @@ in
       cfg.herdr.package
       cfg.ghostty.package
       cfg.worktrunk.package
+      cfg.timber.package
       cfg.launcher.package
       cfg.portless.package
     ];
