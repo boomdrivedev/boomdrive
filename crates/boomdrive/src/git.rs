@@ -26,7 +26,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-use weir_bounded::TRY_FOR;
+use weir_bounded::{Halt, Stopped, TRY_FOR};
 
 /// The least git the runner runs with: 2.48, the first whose fetch keeps
 /// origin's HEAD current (`remote.origin.followRemoteHEAD`, design 6).
@@ -310,18 +310,27 @@ fn bounded(
     remote: &str,
     limit: Duration,
 ) -> Result<String, Words> {
-    let ended = weir_bounded::output(&mut command, limit)
+    let ended = weir_bounded::output(&mut command, limit, &Halt::default())
         .map_err(|error| Words(format!("git could not run: {error}")))?;
-    if ended.stopped {
-        let stopped = weir_bounded::stopped(call, remote, limit);
+    let stopped = match ended.stopped {
+        Some(Stopped::AtLimit) => Some(weir_bounded::stopped(call, remote, limit)),
+        Some(Stopped::Halted) => Some(weir_bounded::halted(call, remote)),
+        None => None,
+    };
+    if let Some(stopped) = stopped {
         let stderr = String::from_utf8_lossy(&ended.stderr);
         return Err(Words(match last_line(&stderr) {
             Some(line) => format!("{line}; {stopped}"),
             None => stopped,
         }));
     }
+    let Some(status) = ended.status else {
+        return Err(Words(format!(
+            "git could not run: {call} with {remote} gave no exit"
+        )));
+    };
     let output = Output {
-        status: ended.status,
+        status,
         stdout: ended.stdout,
         stderr: ended.stderr,
     };

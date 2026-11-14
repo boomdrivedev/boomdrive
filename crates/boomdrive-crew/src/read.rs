@@ -15,6 +15,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::Duration;
+use weir_bounded::{Halt, Stopped};
 use weir_branch::{Branch, Tip};
 use weir_capture::rec::Record;
 
@@ -273,18 +274,26 @@ impl Store {
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
             .stdin(Stdio::null());
-        let output = weir_bounded::output(&mut command, self.try_for)
+        let output = weir_bounded::output(&mut command, self.try_for, &Halt::default())
             .map_err(|error| format!("git could not be run: {error}"))?;
         let said = String::from_utf8_lossy(&output.stderr);
         let last = said.lines().rfind(|line| !line.trim().is_empty());
-        if output.stopped {
-            let stopped = weir_bounded::stopped("git ls-remote", &self.url, self.try_for);
+        let stopped = match output.stopped {
+            Some(Stopped::AtLimit) => Some(weir_bounded::stopped(
+                "git ls-remote",
+                &self.url,
+                self.try_for,
+            )),
+            Some(Stopped::Halted) => Some(weir_bounded::halted("git ls-remote", &self.url)),
+            None => None,
+        };
+        if let Some(stopped) = stopped {
             return Err(match last {
                 Some(line) => format!("{}; {stopped}", line.trim()),
                 None => stopped,
             });
         }
-        if !output.status.success() {
+        if !output.status.is_some_and(|status| status.success()) {
             return Err(format!(
                 "git ls-remote failed: {}",
                 last.unwrap_or("it said nothing")
