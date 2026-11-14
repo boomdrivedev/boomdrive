@@ -14,13 +14,35 @@ let
 
   # The agent's program, which launchd runs as the job's process.
   programOf = evaluated: (agentOf evaluated).ProgramArguments;
-  # What the shell runs first: it waits for the store's volume, then hands
-  # the job's process to the command, so a stop's signal reaches it.
-  wait = "/bin/wait4path /nix/store && exec ";
+  lineOf = evaluated: lib.last (programOf evaluated);
+  # What the shell runs first: it waits for the store's volume, then
+  # chooses the signed copy or the package's own runner, each branch
+  # handing the job's process to the runner by exec, so a stop's signal
+  # reaches it (the change the-runners-macos-grant-outlasts-a-new-build,
+  # design Decision 5).
+  wait = "/bin/wait4path /nix/store && ";
+  # The words of the line's `then` and `else` branches, after their exec,
+  # or "" where the line has no such branch.
+  thenOf =
+    line:
+    let
+      parts = lib.splitString "; then exec " line;
+    in
+    if lib.length parts != 2 then "" else lib.head (lib.splitString "; else exec " (lib.last parts));
+  elseOf =
+    line:
+    let
+      parts = lib.splitString "; else exec " line;
+    in
+    if lib.length parts != 2 || !lib.hasSuffix "; fi" (lib.last parts) then
+      ""
+    else
+      lib.removeSuffix "; fi" (lib.last parts);
   waits =
     evaluated:
     let
       program = programOf evaluated;
+      line = lib.elemAt program 2;
     in
     lib.length program == 3
     &&
@@ -28,10 +50,12 @@ let
         "/bin/sh"
         "-c"
       ]
-    && lib.hasPrefix wait (lib.elemAt program 2);
-  # The command's words: store paths and plain words, which the shell
-  # reads unquoted.
-  commandOf = evaluated: lib.splitString " " (lib.removePrefix wait (lib.last (programOf evaluated)));
+    && lib.hasPrefix wait line
+    && thenOf line != ""
+    && elseOf line != "";
+  # The command's words, read through the package's own branch: store paths
+  # and plain words, which the shell reads unquoted.
+  commandOf = evaluated: lib.splitString " " (elseOf (lineOf evaluated));
   # The word after `--config`, or "" where there is none.
   fileOf =
     evaluated:
@@ -205,12 +229,30 @@ in
     lib.concatMap
       (
         evaluated:
-        t.expect (waits evaluated) "the agent's program does not wait for /nix/store, then exec its command: ${builtins.toJSON (programOf evaluated)}"
+        t.expect (waits evaluated) "the agent's program does not wait for /nix/store, then exec its command in each branch: ${builtins.toJSON (programOf evaluated)}"
       )
       [
         base
         crew
       ];
+
+  "The agent runs the copy of its own package" =
+    let
+      # Compared as text: a regular expression may not hold a store path.
+      line = builtins.unsafeDiscardStringContext (lineOf base);
+      compares = builtins.unsafeDiscardStringContext "if [ \"$(/bin/cat '/Library/Application Support/Boomdrive/boomdrive.source' 2>/dev/null)\" = ${set.boomdrive}/bin/boomdrive ]; ";
+    in
+    t.expect (lib.hasInfix compares line) "the agent's line does not compare boomdrive.source with the package's bin/boomdrive: ${line}"
+    ++
+      t.expect
+        (thenOf line == "'/Library/Application Support/Boomdrive/boomdrive' run --config ${fileOf base}")
+        "the agent's line runs ${thenOf line}, not the signed copy's run --config with the file, where boomdrive.source names its package"
+    ++
+      t.expect (elseOf line == "${set.boomdrive}/bin/boomdrive run --config ${fileOf base}")
+        "the agent's line runs ${elseOf line}, not the package's bin/boomdrive run --config with the file, where boomdrive.source does not name its package"
+    ++
+      t.expect (base.config.launchd.user.agents.boomdrive.command == "")
+        "the agent declares a command, ${base.config.launchd.user.agents.boomdrive.command}, beside its ProgramArguments";
 
   "No home for the primary user" =
     t.expect (t.failures noHome != [ ]) "the module evaluates for a primary user with no home"

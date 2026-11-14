@@ -89,6 +89,20 @@ let
     signedFolder
     runner
   ];
+  # The agent's line: once the store's volume is mounted, the signed copy
+  # where its source names this package's runner, and the package's own
+  # runner otherwise, each holding the job's process by exec (design
+  # Decision 5).
+  running = [
+    "run"
+    "--config"
+    "${file}"
+  ];
+  agentLine =
+    "/bin/wait4path /nix/store && "
+    + "if [ \"$(/bin/cat ${lib.escapeShellArg "${signedFolder}/boomdrive.source"} 2>/dev/null)\" = ${lib.escapeShellArg runner} ]; "
+    + "then exec ${lib.escapeShellArgs ([ "${signedFolder}/boomdrive" ] ++ running)}; "
+    + "else exec ${lib.escapeShellArgs ([ runner ] ++ running)}; fi";
 
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
@@ -195,17 +209,19 @@ in
           });
 
       launchd.user.agents.boomdrive = {
-        # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store
-        # && exec <command>'`, so an agent loaded at boot before the store's
-        # volume is mounted waits for it, and the runner then holds the job's
-        # own process, which a stop's signal reaches.
-        command = lib.escapeShellArgs [
-          "${cfg.package}/bin/boomdrive"
-          "run"
-          "--config"
-          "${file}"
-        ];
+        # The line waits for /nix/store, so an agent loaded at boot before
+        # the store's volume is mounted waits for it, and the runner then
+        # holds the job's own process by exec, which a stop's signal
+        # reaches. It names the package and the file, so nix-darwin reloads
+        # the agent for a new build or a new file and for nothing else. It
+        # is declared here with no `command`, whose line nix-darwin makes
+        # leaves no room for the choice of the signed copy.
         serviceConfig = {
+          ProgramArguments = [
+            "/bin/sh"
+            "-c"
+            agentLine
+          ];
           RunAtLoad = true;
           KeepAlive = true;
           # An exit 2 is tried again no more than twice a minute.
