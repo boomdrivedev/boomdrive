@@ -14,7 +14,7 @@ A task is true once the check it names passes, run as it names it.
 
 ## 3. The record and the rule
 
-- [ ] 3.1 Record 0045 and site.5's details, written with the proposal, rule out a pane or a session in the kind's declaration and leave a launch naming the pane, each citing the other (design Decision 4). True when `sluice exec main -- moon run root:adrs` passes.
+- [x] 3.1 Record 0045 and site.5's details, written with the proposal, rule out a pane or a session in the kind's declaration and leave a launch naming the pane, each citing the other (design Decision 4). True when `sluice exec main -- moon run root:adrs` passes.
 
 ## 4. The spec
 
