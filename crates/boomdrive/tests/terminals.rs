@@ -10,7 +10,7 @@
 mod fakes;
 
 use boomdrive_control::fake::{Fake, FarEnd, Sent};
-use boomdrive_control::{Id, Want};
+use boomdrive_control::{Id, Input, Want};
 use boomdrive_control::{Offer, Outcome};
 use fakes::{offer, place_of, Bench};
 use serde_json::json;
@@ -215,4 +215,27 @@ fn an_unread_read_and_an_untyped_input() {
         assert!(!line.contains("secret-key-name"), "{line:?}");
     }
     assert!(!bench.relays.relaying().is_empty(), "the relay goes on");
+}
+
+/// The terminal-relay spec's "Input passed in": the text `yes` and then
+/// the keys `ctrl+c` and `enter` are written to Flume's input, one line
+/// each, as the link gave them.
+#[test]
+fn input_passed_in() {
+    let bench = Bench::new();
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    let send = |input: Input| far.input.send(input).expect("the link takes input");
+    send(Input::Text("yes".to_string()));
+    send(Input::Keys(vec!["ctrl+c".to_string(), "enter".to_string()]));
+    wait_until("both inputs are written", || {
+        bench.flume_relay.inputs(1).len() == 2
+    });
+    assert_eq!(
+        bench.flume_relay.inputs(1),
+        [
+            json!({ "text": "yes" }),
+            json!({ "keys": ["ctrl+c", "enter"] })
+        ]
+    );
 }
