@@ -319,16 +319,22 @@ let
   ) (linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText));
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
-  # The runner's crew table, under crew with no table written, for crew's
-  # drives `garden` and `home` on host-a with `away` on host-b written
-  # between them: the table holds them in label order (design Decision 3).
-  crewOrder =
+  # The runner's crew table, under crew with no table written, for the
+  # accounts `own`, with the drives `garden` and `home` on host-a, and
+  # `work`, with `away` on host-b and `field` on host-a: the table holds
+  # this host's in the accounts' order, each account's drives in the order
+  # of their names (the change a-drives-machine-and-state-are-named-once,
+  # design Decision 5).
+  accountsOrder =
     platform:
     { system, ... }:
     let
       evaluated = system {
-        imports = [ (crewOf settings.crewOrder) ];
-        services.boomdrive.settings.control_plane.type = "crew";
+        imports = [ (crewOf settings.crewDrives) ];
+        services.boomdrive = {
+          accounts = settings.crewAccounts;
+          settings.control_plane.type = "crew";
+        };
       };
       table = evaluated.config.services.boomdrive.settings.control_plane.crew;
       ordered = {
@@ -336,18 +342,21 @@ let
         partitions = [
           {
             label = "garden";
-            state_repository = "example/garden";
+            state_repository = "example/state";
           }
           {
             label = "home";
             state_repository = "example/state";
           }
+          {
+            label = "field";
+            state_repository = "example/work";
+          }
         ];
       };
     in
-    t.expect (
-      t.failures evaluated == [ ]
-    ) "a ${platform} system of crew's drives in label order fails: ${toString (t.failures evaluated)}"
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system of the accounts' drives in their order fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
@@ -375,15 +384,15 @@ let
         "services.crew"
       ];
 
-  # Under crew, with no crew table written and crew's one drive on host-b
-  # while crew's host is host-a (design Decision 6).
+  # Under crew, with no crew table written and the accounts' one drive on
+  # host-b while crew's host is host-a (design Decision 6).
   elsewhere =
     platform:
     { system, ... }:
-    failsNaming "a ${platform} system under crew with no drive of crew's on its host"
+    failsNaming "a ${platform} system under crew with no drive of the accounts on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
-        services.boomdrive = settings.crewUnwritten;
+        services.boomdrive = settings.elsewhere;
       })
       [
         "services.crew.host"
@@ -464,9 +473,9 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
-// onEach "crew's drives in label order" crewOrder
+// onEach "The accounts' drives in their order" accountsOrder
 // onEach "Under crew with neither" neither
-// onEach "No drive of crew's on this host" elsewhere
+// onEach "No drive of the accounts on this host" elsewhere
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys
 // onEach "crew's old way of running" oldRuns

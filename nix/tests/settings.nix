@@ -57,12 +57,16 @@ let
     };
   };
 
-  # "A host under crew".
+  # "A host under crew": the account `own` names its crew state
+  # repository, which the runner's file does not hold.
   crew = {
-    accounts.own.drives.home.repositories.agentplot = [
-      "flume"
-      "sluice"
-    ];
+    accounts.own = {
+      state_repository = "example/state";
+      drives.home.repositories.agentplot = [
+        "flume"
+        "sluice"
+      ];
+    };
     settings = {
       repository_root = "~/Code";
       fetch_interval = "2m";
@@ -196,31 +200,20 @@ in
     };
   };
 
-  # crew's teams file for a fleet of two machines: `home` on `host-a`, and
-  # `away` on `host-b`.
-  crewFleet = {
-    inherit hosts;
-    drives = {
-      home = writtenDriveOf "home" "host-a" "example/state";
-      away = writtenDriveOf "away" "host-b" "example/away";
+  # Under crew with no crew table, the one account `work`, naming the
+  # state repository `example/away`, whose one drive `away` is on `host-b`.
+  elsewhere = {
+    accounts.work = {
+      state_repository = "example/away";
+      drives.away.machine = "host-b";
     };
+    settings.control_plane.type = "crew";
   };
 
-  # crew's teams file whose drives on `host-a`, `garden` and `home`, are
-  # written out of label order, with one of `host-b`'s between them.
-  crewOrder = {
-    inherit hosts;
-    drives = {
-      garden = writtenDriveOf "garden" "host-a" "example/garden";
-      away = writtenDriveOf "away" "host-b" "example/away";
-      home = writtenDriveOf "home" "host-a" "example/state";
-    };
-  };
-
-  # crew's teams file with no drive on `host-a`.
+  # crew's own keys for elsewhere's drive `away`.
   crewElsewhere = {
     inherit hosts;
-    drives.away = writtenDriveOf "away" "host-b" "example/away";
+    drives.away = driveOf "away";
   };
 
   # crewModule by crew's old way of running, version 5's: `home` names
