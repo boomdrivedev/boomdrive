@@ -478,6 +478,30 @@ let
       !builtins.elem set.timber.outPath (profileOf evaluated)
     ) "the ${platform} system profile of a host that keeps its own timber file holds the set's timber";
 
+  # The removed option fails evaluation, naming what replaces it (design
+  # Decision 6 of the change the-set-takes-timbers-own-module; Task notes
+  # 1.4).
+  timberGone =
+    platform:
+    { system, ... }:
+    let
+      gone = system { services.boomdrive.timber.package = null; };
+      failures = toString (t.failures gone);
+    in
+    t.expect (
+      t.failures gone != [ ]
+    ) "a ${platform} system that sets services.boomdrive.timber.package evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (lib.hasInfix words failures) "the failure of services.boomdrive.timber.package on ${platform} names no ${words}: ${failures}"
+        )
+        [
+          "services.timber.package"
+          "services.timber.enable"
+        ];
+
   timberWithoutRunner =
     platform:
     { without, set, ... }:
@@ -1062,6 +1086,7 @@ onEach "The way in with the runner" withRunner
 // onEach "No timber of the set's" noTimber
 // onEach "A host that keeps its own timber file" ownTimberFile
 // onEach "No timber without the runner" timberWithoutRunner
+// onEach "The timber option is gone" timberGone
 // onEach "No serving process of the modules'" noServe
 // onEach "The companions with the runner and crew" companionsWithCrew
 // onEach "A host's own Plannotator" hostsPlannotator
