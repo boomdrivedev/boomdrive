@@ -38,11 +38,16 @@ let
   # path: no user, query or fragment (Task notes 1.1).
   collector = types.strMatching "http://(localhost|127\\.0\\.0\\.1|\\[::1]):[0-9]{1,5}(/[A-Za-z0-9._~/-]*)?";
 
+  # The collector's base, its one trailing `/` dropped, which each signal's
+  # `/v1/<signal>` joins: the sessions', Flume's and sluice's alike (the
+  # change the-hosts-collector-reaches-sluice-and-flume, design Decision 4).
+  baseOf = lib.removeSuffix "/";
+
   # The document of `telemetry`, the option's value with a collector named.
   documentOf =
     telemetry:
     let
-      base = lib.removeSuffix "/" telemetry.collector;
+      base = baseOf telemetry.collector;
       upper = lib.toUpper;
       on = lib.filter (signal: telemetry.${signal}) signals;
     in
@@ -91,7 +96,7 @@ let
     };
 in
 {
-  inherit documentOf transcriptsOf;
+  inherit baseOf documentOf transcriptsOf;
 
   # Each document's name, and the platforms' managed-settings folders.
   name = "10-boomdrive-telemetry.json";
