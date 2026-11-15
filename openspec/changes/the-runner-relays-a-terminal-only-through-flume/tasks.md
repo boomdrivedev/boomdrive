@@ -34,7 +34,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 4. The hosted implementation says why it closes a terminal
 
-- [ ] 4.1 `crates/boomdrive-hosted/src/connection.rs`'s `NO_TERMINAL` is design Decision 8's words, and `tests/plane.rs`'s `a_terminal_opened` holds them to naming the end-to-end exchange and not Flume (design Decision 8; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane a_terminal_opened` passes, proving the hosted-control-plane spec's "A terminal opened".
+- [x] 4.1 `crates/boomdrive-hosted/src/connection.rs`'s `NO_TERMINAL` is design Decision 8's words, and `tests/plane.rs`'s `a_terminal_opened` holds them to naming the end-to-end exchange and not Flume (design Decision 8; Task notes 4.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane a_terminal_opened` passes, proving the hosted-control-plane spec's "A terminal opened".
 
 ## 5. The specs
 
