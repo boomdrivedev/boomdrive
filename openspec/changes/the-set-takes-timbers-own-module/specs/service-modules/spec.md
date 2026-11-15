@@ -1,3 +1,14 @@
+## ADDED Requirements
+
+### Requirement: The Boomdrive module's own timber option is gone
+
+The modules SHALL hold no `services.boomdrive.timber.package`, since timber's own module installs timber: setting it SHALL fail evaluation, naming `services.timber.package` and `services.timber.enable`.
+
+#### Scenario: The timber option is gone
+
+- **WHEN** a system turns on `services.boomdrive` and sets `services.boomdrive.timber.package`
+- **THEN** evaluation fails, naming `services.timber.package` and `services.timber.enable`, on nix-darwin and on NixOS
+
 ## MODIFIED Requirements
 
 ### Requirement: The modules bring each tool's own module
@@ -81,17 +92,12 @@ The modules' own activation SHALL link the runner's file, write Pending You's fo
 
 ### Requirement: The modules hold no option that installs a tool its own module installs
 
-The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`, and setting `services.boomdrive.timber.package` SHALL fail evaluation, naming `services.timber.package` and `services.timber.enable`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name Flume's, sluice's and crew's `package`, each option of the modules' own that installs a tool, and the shell, and no `services.boomdrive.tools`.
+The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
 
 #### Scenario: The tools option is gone
 
 - **WHEN** a system sets `services.boomdrive.tools = [ ]`
 - **THEN** evaluation fails, naming `services.flume.package` and `services.sluice.package`
-
-#### Scenario: The timber option is gone
-
-- **WHEN** a system turns on `services.boomdrive` and sets `services.boomdrive.timber.package`
-- **THEN** evaluation fails, naming `services.timber.package` and `services.timber.enable`, on nix-darwin and on NixOS
 
 #### Scenario: The README's words
 
@@ -100,7 +106,7 @@ The modules SHALL hold no option of their own that installs a tool whose own mod
 
 ### Requirement: The modules install timber, replaceable or dropped
 
-With `services.boomdrive.enable`, timber's own module, which the Boomdrive module turns on, SHALL put `services.timber.package` in the system profile, whether or not crew is on. It SHALL be the set's `timber` for the host's system by default, a host's own package SHALL replace it, and `null` SHALL install none. A host's `services.timber.enable = false` SHALL install no timber of the set's and link no file of timber's. With the runner not enabled, the modules SHALL turn on no module of timber's and install no timber. The Boomdrive module SHALL write no file of timber's.
+With `services.boomdrive.enable`, timber's own module, which the Boomdrive module turns on, SHALL put `services.timber.package` in the system profile, whether or not crew is on: the set's `timber` by default, a host's own where given, and none for `null`. A host's `services.timber.enable = false` SHALL install no timber of the set's and link no file of timber's. Without the runner, timber's module SHALL stay off. The Boomdrive module SHALL write no file of timber's.
 
 #### Scenario: timber with the runner
 
