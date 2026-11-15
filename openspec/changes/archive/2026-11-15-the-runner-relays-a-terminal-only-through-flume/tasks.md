@@ -38,4 +38,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. The specs
 
-- [ ] 5.1 The change's deltas archive into specs that pass openspec's strict check. After the archive, `openspec/specs/terminal-relay/spec.md`'s Purpose is the one design Decision 13 gives, naming `flume relay` and no multiplexer, its only change outside a delta (design Decision 13). True when, after `devenv shell -- openspec archive the-runner-relays-a-terminal-only-through-flume --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 5.1 The change's deltas archive into specs that pass openspec's strict check. After the archive, `openspec/specs/terminal-relay/spec.md`'s Purpose is the one design Decision 13 gives, naming `flume relay` and no multiplexer, its only change outside a delta (design Decision 13). True when, after `devenv shell -- openspec archive the-runner-relays-a-terminal-only-through-flume --yes`, `sluice exec main -- moon run root:specs` passes.
