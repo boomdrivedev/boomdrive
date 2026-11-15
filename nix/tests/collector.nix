@@ -251,6 +251,59 @@ let
           "services.boomdrive.claude-code.telemetry.collector"
         ]
     ) tools;
+
+  # The runner's system with crew and the collector, beside the tools' own
+  # modules alone given the same `telemetry` keys, as *The tools'
+  # activation is their own* sets them (design Decision 7). Each tool's
+  # activation links the file its module rendered from its settings, so
+  # equal lines show each tool's module wrote the same `[telemetry]`.
+  settings = import ./settings.nix;
+  render = import ../modules/toml.nix { inherit lib; };
+  inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
+  crewOn.services.crew = {
+    enable = true;
+    host = "host-a";
+    settings = settings.crewModule;
+  };
+  toolsTelemetry.services = lib.mapAttrs (_: telemetry: { settings = { inherit telemetry; }; }) (
+    sending collector
+  );
+  linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
+
+  # nix-darwin's activation, as text, less the runner's link, Pending You's
+  # folder, the plugins' links and the managed telemetry and transcripts
+  # documents' steps.
+  darwinActivation =
+    evaluated:
+    builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.postActivation.text;
+  darwinRunner = named t.darwinSystem collector crewOn;
+  darwinOwn = t.toolsDarwinOf toolsTelemetry;
+  runnerLink = builtins.unsafeDiscardStringContext ''
+    sudo --user=alice -- /usr/bin/env HOME=/Users/alice \
+      /bin/sh ${../modules/activate.sh} link ${darwinRunner.pkgs.writeText "boomdrive-config.toml" (render (fileOf darwinRunner.config.services.boomdrive))} || true
+  '';
+  managedStep =
+    name: line:
+    lib.hasInfix "-activate.sh managed " line
+    && lib.hasInfix "/Library/Application Support/ClaudeCode/managed-settings.d/${name}" line;
+  dropped =
+    line:
+    lib.hasInfix "-activate.sh plugins " line
+    || lib.hasInfix "-activate.sh pendingyou " line
+    || managedStep "10-boomdrive-telemetry.json" line
+    || managedStep "10-boomdrive-transcripts.json" line;
+  darwinRest = lib.filter (line: !dropped line) (
+    linesOf (lib.replaceStrings [ runnerLink ] [ "" ] (darwinActivation darwinRunner))
+  );
+  darwinTools = linesOf (darwinActivation darwinOwn);
+
+  # NixOS's user activation snippets, by name, as the modules define them.
+  userScripts =
+    evaluated: lib.foldl' (a: b: a // b) { } evaluated.options.system.userActivationScripts.definitions;
+  nixosRunner = named t.nixosSystem collector crewOn;
+  nixosOwn = t.toolsNixosOf toolsTelemetry;
+  textOf =
+    evaluated: tool: builtins.unsafeDiscardStringContext ((userScripts evaluated).${tool}.text or "");
 in
 onEach "The host's collector reaches Flume and sluice" reaches
 // onEach "A collector's trailing slash" trailingSlash
@@ -266,3 +319,21 @@ onEach "The host's collector reaches Flume and sluice" reaches
   ]
 )
 // onEach "A forced collector apart from the host's" (apart lib.mkForce [ "sluice" ])
+// {
+  "The tools' telemetry is their own on nix-darwin" =
+    failsNone "the nix-darwin system of the runner with crew and a collector" darwinRunner
+    ++ failsNone "the nix-darwin system of the tools' own modules with their telemetry" darwinOwn
+    ++ t.expect (lib.hasInfix runnerLink (darwinActivation darwinRunner)) "the nix-darwin activation runs no `${runnerLink}`"
+    ++
+      t.expect (darwinRest == darwinTools)
+        "the nix-darwin activation with a collector, less the runner's link, Pending You's folder, the plugins' and the managed telemetry and transcripts documents' steps, is ${builtins.toJSON darwinRest}, not the tools' own given the same telemetry ${builtins.toJSON darwinTools}";
+
+  "The tools' telemetry is their own on NixOS" =
+    failsNone "the NixOS system of the runner with crew and a collector" nixosRunner
+    ++ failsNone "the NixOS system of the tools' own modules with their telemetry" nixosOwn
+    ++ lib.concatMap (
+      tool:
+      t.expect (textOf nixosRunner tool != "" && textOf nixosRunner tool == textOf nixosOwn tool)
+        "the NixOS user activation's ${tool} with a collector is ${textOf nixosRunner tool}, not the tool's own given the same telemetry ${textOf nixosOwn tool}"
+    ) tools;
+}
