@@ -25,7 +25,7 @@ use crate::pass::{self, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
 use crate::settle::{self, Settles};
-use crate::terminal::{self, Relays};
+use crate::terminal::Relays;
 use crate::{clone, flume, hello, sluice};
 use boomdrive_control::{Part, Wake};
 use signal_hook::consts::{SIGINT, SIGTERM};
@@ -236,10 +236,10 @@ impl Programs {
             .with("herdr", &self.herdr)
     }
 
-    /// The terminals relayed through these programs' herdr, each of
+    /// The terminals relayed through these programs' Flume, each of
     /// their lines said on standard error.
     fn relays(&self) -> Relays {
-        Relays::new(terminal::Cli::new(&self.herdr), |line| eprintln!("{line}"))
+        Relays::new(flume::Cli::new(&self.flume), |line| eprintln!("{line}"))
     }
 }
 

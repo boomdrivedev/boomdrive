@@ -1,128 +1,37 @@
-//! The terminal relay (design Decision 16; ledger item N1.b): a terminal
-//! the control plane opens on a launch's agent, relayed between its link
-//! and the herdr pane Flume's status names, through herdr's command line,
-//! the one way the runner reaches herdr (record 0001). A terminal opens
-//! only on a launch the report holds under the terminal's lease number,
-//! and runs on a thread of its own, since it runs herdr and never git. It
-//! sends the pane's screen when it changes and passes in what the far end
-//! sends. Nothing of either is kept: the thread holds only the last
-//! screen sent, to compare against, and its lines name the terminal, its
-//! launch and the pane, never what passed (core.11; cloud core.18). It
-//! reaches its far end over no connection but the control plane's own
-//! (core.3).
+//! The terminal relay (record 0004 as amended on 2026-11-15; the
+//! terminal-relay spec): a terminal the control plane opens on a launch,
+//! relayed between its link and Flume's relay of the launch's place,
+//! `flume --json relay <place>`, the one way the runner reaches an
+//! agent's terminal (core.29; Flume's 221 and 222). A terminal opens only
+//! on a launch the report holds under the terminal's lease number, at a
+//! place Flume named; whether the place has a live agent, and whether its
+//! terminal offers a relay, are Flume's to answer (core.1). Each open
+//! terminal runs on a thread of its own, its one process Flume's relay,
+//! held while the terminal is open and ended by closing its input,
+//! Flume's caller's word to end, never by a signal (core.13). Each screen
+//! Flume gives goes on the link as Flume gave it, and each input from the
+//! link goes to Flume as one line. Nothing of either is kept: the thread
+//! holds no screen, and its lines name the terminal, its launch and its
+//! place, with Flume's words of an unread read and of a refusal, never
+//! what passed (core.11, core.35). It reaches its far end over no
+//! connection but the control plane's own (core.3).
 
-use crate::facts::{self, Pane};
+use crate::flume;
 use boomdrive_control::{Id, Input, Link, Report, Terminal};
+use serde::de::IgnoredAny;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::json;
 use std::cell::RefCell;
-use std::fmt;
-use std::path::PathBuf;
-use std::process::{Command, Output, Stdio};
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::process::{ChildStdin, ExitStatus};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-/// How often an open terminal reads its pane's screen.
-pub const READ_INTERVAL: Duration = Duration::from_millis(250);
-
-/// Why herdr did not do what it was asked: the `message` of herdr's
-/// `error` answer, as given, its standard error where it printed none, or
-/// the runner's words where herdr gave no answer.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Refused(pub String);
-
-impl fmt::Display for Refused {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-/// herdr as the runner reaches it: `Cli` on a host, a stub in a test.
-/// Each call names the pane and points herdr at the pane's session.
-pub trait Herdr: Send + Sync {
-    /// `herdr pane read <pane> --source visible --format ansi`: the pane's
-    /// visible screen, as herdr printed it.
-    fn read(&self, pane: &Pane) -> Result<String, Refused>;
-    /// `herdr pane send-text <pane> <text>`.
-    fn text(&self, pane: &Pane, text: &str) -> Result<(), Refused>;
-    /// `herdr pane send-keys <pane> <keys>…`.
-    fn keys(&self, pane: &Pane, keys: &[String]) -> Result<(), Refused>;
-}
-
-/// herdr's command line, by the program at `program`: `herdr` on the
-/// host's `PATH` in the binary, a stub in a test. Every call runs with
-/// `HERDR_SOCKET_PATH` set to the pane's session's socket, as Flume
-/// points herdr at it.
-#[derive(Clone, Debug)]
-pub struct Cli {
-    program: PathBuf,
-}
-
-impl Cli {
-    pub fn new(program: impl Into<PathBuf>) -> Cli {
-        Cli {
-            program: program.into(),
-        }
-    }
-
-    /// herdr's output from `pane <args>…` on `pane`, where it exited 0.
-    fn run(&self, pane: &Pane, args: &[&str]) -> Result<Output, Refused> {
-        let output = Command::new(&self.program)
-            .arg("pane")
-            .args(args)
-            .env("HERDR_SOCKET_PATH", &pane.socket_file)
-            .stdin(Stdio::null())
-            .output()
-            .map_err(|error| Refused(format!("herdr could not run: {error}")))?;
-        match output.status.code() {
-            Some(0) => Ok(output),
-            Some(_) => Err(Refused(refusal(&output))),
-            None => Err(Refused(format!("herdr was ended: {}", output.status))),
-        }
-    }
-}
-
-impl Herdr for Cli {
-    fn read(&self, pane: &Pane) -> Result<String, Refused> {
-        let args = ["read", &pane.id, "--source", "visible", "--format", "ansi"];
-        let output = self.run(pane, &args)?;
-        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
-    }
-
-    fn text(&self, pane: &Pane, text: &str) -> Result<(), Refused> {
-        self.run(pane, &["send-text", &pane.id, text]).map(drop)
-    }
-
-    fn keys(&self, pane: &Pane, keys: &[String]) -> Result<(), Refused> {
-        let mut args = vec!["send-keys", pane.id.as_str()];
-        args.extend(keys.iter().map(String::as_str));
-        self.run(pane, &args).map(drop)
-    }
-}
-
-/// herdr's `error` answer, as it prints one on standard error.
-#[derive(Deserialize)]
-struct Answered {
-    error: Error,
-}
-
-#[derive(Deserialize)]
-struct Error {
-    message: String,
-}
-
-/// The words of herdr's refusal: the `message` of the `error` answer it
-/// printed on standard error, as given, or, where it printed none, its
-/// standard error, with its one final newline left off.
-fn refusal(output: &Output) -> String {
-    let printed = String::from_utf8_lossy(&output.stderr);
-    match serde_json::from_str::<Answered>(&printed) {
-        Ok(answered) => answered.error.message,
-        Err(_) => printed.strip_suffix('\n').unwrap_or(&printed).to_string(),
-    }
-}
+/// How long an open terminal waits on its link's input before it looks
+/// again for Flume's lines and the runner's word to close.
+const WAIT: Duration = Duration::from_millis(20);
 
 /// Where a line of the relay's goes: standard error on a host.
 type Say = Arc<dyn Fn(String) + Send + Sync>;
@@ -132,7 +41,7 @@ type Say = Arc<dyn Fn(String) + Send + Sync>;
 /// launch it lets go. Dropped, it closes every terminal still open, and
 /// waits for each thread to end.
 pub struct Relays {
-    herdr: Arc<dyn Herdr>,
+    flume: flume::Cli,
     say: Say,
     open: RefCell<Vec<Relay>>,
 }
@@ -147,23 +56,20 @@ struct Relay {
 }
 
 impl Relays {
-    /// Terminals relayed through `herdr`, each of their lines said to
-    /// `say`.
-    pub fn new(
-        herdr: impl Herdr + 'static,
-        say: impl Fn(String) + Send + Sync + 'static,
-    ) -> Relays {
+    /// Terminals relayed through `flume`'s relay, each of their lines
+    /// said to `say`.
+    pub fn new(flume: flume::Cli, say: impl Fn(String) + Send + Sync + 'static) -> Relays {
         Relays {
-            herdr: Arc::new(herdr),
+            flume,
             say: Arc::new(say),
             open: RefCell::new(Vec::new()),
         }
     }
 
     /// Opens `terminal` where `report` holds its launch under its lease
-    /// number and the launch's carried status names its agent's pane, and
-    /// relays it on a thread of its own. Otherwise closes its link at
-    /// once, with words saying why, having run no herdr.
+    /// number at a place Flume named, and relays it through Flume's relay
+    /// of that place on a thread of its own. Otherwise closes its link at
+    /// once, with words saying why, having run nothing.
     pub fn open(&self, terminal: Terminal, report: &Report) {
         let Terminal {
             id,
@@ -171,8 +77,8 @@ impl Relays {
             lease,
             link,
         } = terminal;
-        let pane = match agent_pane(report, &launch, lease) {
-            Ok(pane) => pane,
+        let place = match held_place(report, &launch, lease) {
+            Ok(place) => place,
             Err(words) => {
                 (self.say)(format!(
                     "{id}: the terminal on {launch} is not opened: {words}"
@@ -182,15 +88,14 @@ impl Relays {
             }
         };
         (self.say)(format!(
-            "{id}: the terminal on {launch} relays pane {}",
-            pane.id
+            "{id}: the terminal on {launch} at {place} is opened"
         ));
         let (closing, told) = mpsc::channel();
         let relaying = Relaying {
             id: id.clone(),
             launch: launch.clone(),
-            pane,
-            herdr: Arc::clone(&self.herdr),
+            place,
+            flume: self.flume.clone(),
             say: Arc::clone(&self.say),
         };
         let thread = thread::spawn(move || relaying.run(link, &told));
@@ -226,6 +131,8 @@ impl Relays {
 }
 
 impl Drop for Relays {
+    /// Closes each open relay's input, and waits for its thread, which
+    /// awaits Flume's end.
     fn drop(&mut self) {
         for relay in std::mem::take(self.open.get_mut()) {
             let Relay {
@@ -237,90 +144,249 @@ impl Drop for Relays {
     }
 }
 
-/// The pane launch `launch`'s agent shows in, where `report` holds the
-/// launch under lease number `lease` and the status carried of its place
-/// names one, as `clues.shown_at.agent` gives it; otherwise the words
-/// saying why there is none.
-fn agent_pane(report: &Report, launch: &Id, lease: u64) -> Result<Pane, String> {
+/// The place launch `launch` stands at, as Flume named it at the launch,
+/// where `report` holds the launch under lease number `lease`; otherwise
+/// the words saying why there is none.
+fn held_place(report: &Report, launch: &Id, lease: u64) -> Result<String, String> {
     let held = report
         .launches
         .get(launch)
         .filter(|launched| launched.lease.number == lease)
         .ok_or_else(|| format!("this runner holds no launch {launch} under lease {lease}"))?;
-    let place = held.answer.place_dir.as_deref();
-    let status = held.status.as_ref();
-    let answer = status.and_then(|status| serde_json::from_str::<Value>(&status.text).ok());
-    answer
-        .as_ref()
-        .zip(place)
-        .and_then(|(answer, place)| facts::pane(facts::entry(answer, place)?))
-        .ok_or_else(|| "no agent is running in its place".to_string())
+    held.answer
+        .place_dir
+        .clone()
+        .ok_or_else(|| format!("{launch} has no place Flume named"))
+}
+
+/// One line Flume's relay writes on its standard output (Flume's 221).
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Out {
+    /// What the terminal shows, given each time it differs.
+    Screen(String),
+    /// Flume's words of a read the terminal did not answer.
+    Unread(String),
+    /// An input Flume did not type. Its words may name what the person
+    /// typed, so they are never read (core.11).
+    Untyped(IgnoredAny),
+    /// Flume's answer: the relay ended.
+    Relayed(Relayed),
+    /// Flume's answer: the relay refused.
+    Refused(Refused),
+}
+
+#[derive(Deserialize)]
+struct Relayed {
+    /// Who ended it, `caller` or `gone`, as Flume gave it.
+    ended: String,
+}
+
+#[derive(Deserialize)]
+struct Refused {
+    refusal: Reason,
+}
+
+#[derive(Deserialize)]
+struct Reason {
+    reason: String,
+}
+
+/// Flume's answer to the relay, as its last line gave it.
+enum Answer {
+    Relayed(String),
+    Refused(String),
 }
 
 /// One open terminal's relay, on its own thread.
 struct Relaying {
     id: Id,
     launch: Id,
-    pane: Pane,
-    herdr: Arc<dyn Herdr>,
+    place: String,
+    flume: flume::Cli,
     say: Say,
 }
 
+/// Flume's relay as one terminal runs it: its input, while open, and the
+/// runner's words of why it closed it, once it has.
+struct Running {
+    input: Option<ChildStdin>,
+    why: Option<String>,
+    answer: Option<Answer>,
+}
+
+impl Running {
+    /// The runner closes the relay, with `words` why: Flume's input is
+    /// closed, its caller's word to end, and no further screen is sent.
+    fn close(&mut self, words: impl Into<String>) {
+        self.input = None;
+        self.why.get_or_insert_with(|| words.into());
+    }
+}
+
 impl Relaying {
-    /// Relays between `link` and the pane until the link closes or stops
-    /// listening, herdr refuses a read, or `closing` says why, then closes
-    /// the link with the words why and says so.
+    /// Relays between `link` and Flume's relay of the place until either
+    /// ends, then closes the link with the words why, once Flume has
+    /// exited, and says so.
     fn run(self, mut link: Box<dyn Link>, closing: &Receiver<String>) {
         let why = self.relay(link.as_mut(), closing);
         link.close(&why);
         (self.say)(format!(
-            "{}: the terminal on {} at pane {} is closed: {why}",
-            self.id, self.launch, self.pane.id
+            "{}: the terminal on {} at {} is closed: {why}",
+            self.id, self.launch, self.place
         ));
     }
 
-    /// The pane's screen out every [`READ_INTERVAL`], sent only when it
-    /// differs from the last sent, and the far end's input in as it comes,
-    /// until the relay closes; the words why it closes.
+    /// Runs Flume's relay of the place: each of its lines read as it
+    /// comes, the far end's input written to it, until the runner closes
+    /// its input or Flume ends; then reads its output to its end and
+    /// awaits its exit, signalling nothing. The words why it closed.
     fn relay(&self, link: &mut dyn Link, closing: &Receiver<String>) -> String {
-        let mut last: Option<String> = None;
-        let mut due = Instant::now();
+        let mut child = match self.flume.relay(&self.place) {
+            Ok(child) => child,
+            Err(error) => return format!("flume could not run: {error}"),
+        };
+        let (Some(stdout), Some(mut stderr)) = (child.stdout.take(), child.stderr.take()) else {
+            unreachable!("flume::Cli::relay pipes Flume's output and error");
+        };
+        let (out, lines) = mpsc::channel();
+        let reader = thread::spawn(move || read_lines(stdout, &out));
+        // Flume's standard error is read whole, on a thread of its own, so
+        // a Flume that writes to it never waits on the runner.
+        let errors = thread::spawn(move || {
+            let mut printed = Vec::new();
+            let _ = stderr.read_to_end(&mut printed);
+            printed
+        });
+        let mut running = Running {
+            input: child.stdin.take(),
+            why: None,
+            answer: None,
+        };
         loop {
-            match closing.try_recv() {
-                Ok(why) => return why,
-                Err(TryRecvError::Disconnected) => return "the runner stopped".to_string(),
-                Err(TryRecvError::Empty) => {}
-            }
-            let began = Instant::now();
-            if began >= due {
-                due = began + READ_INTERVAL;
-                match self.herdr.read(&self.pane) {
-                    Ok(screen) if last.as_ref() == Some(&screen) => {}
-                    Ok(screen) => {
-                        if !link.screen(&screen) {
-                            return "its far end stopped listening".to_string();
-                        }
-                        last = Some(screen);
-                    }
-                    Err(Refused(words)) => {
-                        return format!("herdr refused a read of the pane: {words}");
-                    }
+            if running.why.is_none() {
+                match closing.try_recv() {
+                    Ok(words) => running.close(words),
+                    Err(TryRecvError::Disconnected) => running.close("the runner stopped"),
+                    Err(TryRecvError::Empty) => {}
                 }
             }
-            let passed = match link.input(due.saturating_duration_since(Instant::now())) {
-                None => Ok(()),
-                Some(Input::Text(text)) => self.herdr.text(&self.pane, &text),
-                Some(Input::Keys(keys)) => self.herdr.keys(&self.pane, &keys),
-                Some(Input::Close) => return "its link closed".to_string(),
+            let ended = loop {
+                match lines.try_recv() {
+                    Ok(line) => self.take(line, link, &mut running),
+                    Err(TryRecvError::Empty) => break false,
+                    Err(TryRecvError::Disconnected) => break true,
+                }
             };
-            // herdr's words of a refused input may repeat the input, so
-            // the line names only the pane.
-            if passed.is_err() {
-                (self.say)(format!(
-                    "{}: herdr refused input to pane {} of {}",
-                    self.id, self.pane.id, self.launch
-                ));
+            if ended {
+                break;
             }
+            if running.input.is_some() {
+                self.pass_in(link.input(WAIT), &mut running);
+            } else {
+                match lines.recv_timeout(WAIT) {
+                    Ok(line) => self.take(line, link, &mut running),
+                    Err(RecvTimeoutError::Timeout) => {}
+                    Err(RecvTimeoutError::Disconnected) => break,
+                }
+            }
+        }
+        running.input = None;
+        let _ = reader.join();
+        let printed = errors.join().unwrap_or_default();
+        let status = child.wait();
+        match running.why {
+            Some(why) => why,
+            None => ended(status, running.answer, &printed),
+        }
+    }
+
+    /// One line of Flume's: a screen sent on the link while the runner
+    /// has not closed the relay, an unread read or an untyped input said,
+    /// an answer kept.
+    fn take(&self, line: Out, link: &mut dyn Link, running: &mut Running) {
+        match line {
+            Out::Screen(screen) => {
+                if running.why.is_none() && !link.screen(&screen) {
+                    running.close("its far end stopped listening");
+                }
+            }
+            Out::Unread(words) => (self.say)(format!(
+                "{}: flume relay of {} for {} read nothing: {words}",
+                self.id, self.place, self.launch
+            )),
+            Out::Untyped(IgnoredAny) => (self.say)(format!(
+                "{}: flume relay of {} for {} left an input untyped",
+                self.id, self.place, self.launch
+            )),
+            Out::Relayed(relayed) => running.answer = Some(Answer::Relayed(relayed.ended)),
+            Out::Refused(refused) => {
+                running.answer = Some(Answer::Refused(refused.refusal.reason));
+            }
+        }
+    }
+
+    /// The far end's input, written to Flume's input as one line each, or
+    /// the relay closed where the link closed. A write that fails, Flume
+    /// having ended, ends the input, and Flume's answer closes the
+    /// terminal.
+    fn pass_in(&self, input: Option<Input>, running: &mut Running) {
+        let line = match input {
+            None => return,
+            Some(Input::Close) => return running.close("its link closed"),
+            Some(Input::Text(text)) => json!({ "text": text }),
+            Some(Input::Keys(keys)) => json!({ "keys": keys }),
+        };
+        let Some(stdin) = running.input.as_mut() else {
+            return;
+        };
+        if write_line(stdin, &line).is_err() {
+            running.input = None;
+        }
+    }
+}
+
+/// `line` written to Flume's input whole, as one line, and flushed.
+fn write_line(stdin: &mut ChildStdin, line: &serde_json::Value) -> io::Result<()> {
+    let mut bytes = serde_json::to_vec(line)?;
+    bytes.push(b'\n');
+    stdin.write_all(&bytes)?;
+    stdin.flush()
+}
+
+/// Each line Flume writes on `stdout` sent to `out` as it comes, until its
+/// output closes. A line that is none of the relay's forms is passed over,
+/// unsaid: Flume's lines only gain forms, and one the runner cannot read
+/// may hold the screen.
+fn read_lines(stdout: impl Read, out: &Sender<Out>) {
+    for line in BufReader::new(stdout).split(b'\n') {
+        let Ok(line) = line else {
+            return;
+        };
+        if let Ok(line) = serde_json::from_slice::<Out>(&line) {
+            if out.send(line).is_err() {
+                return;
+            }
+        }
+    }
+}
+
+/// The words of a relay Flume ended, the runner having closed nothing,
+/// read by its exit as every answer of Flume's is: its relay's end, its
+/// refusal's reason, or else its standard error, its one final newline
+/// left off.
+fn ended(status: io::Result<ExitStatus>, answer: Option<Answer>, printed: &[u8]) -> String {
+    let status = match status {
+        Ok(status) => status,
+        Err(error) => return format!("flume could not be awaited: {error}"),
+    };
+    match (status.code(), answer) {
+        (None, _) => format!("flume was ended: {status}"),
+        (Some(0), Some(Answer::Relayed(ended))) => format!("Flume's relay ended: {ended}"),
+        (Some(1), Some(Answer::Refused(reason))) => reason,
+        (Some(_), _) => {
+            let printed = String::from_utf8_lossy(printed);
+            printed.strip_suffix('\n').unwrap_or(&printed).to_string()
         }
     }
 }
