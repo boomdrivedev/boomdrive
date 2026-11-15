@@ -30,7 +30,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 3. No code of the runner's names a multiplexer
 
 - [x] 3.1 `crates/boomdrive/src/facts.rs` loses `Pane`, `pane` and their unit tests. `tests/facts.rs`'s `a_live_place_shows_its_agents_pane` becomes `a_live_place_is_live_and_unmarked`, without its assertion of a pane (design Decision 10; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive --test facts a_live_place_is_live_and_unmarked` passes.
-- [ ] 3.2 `tests/rules.rs` gains `no_crate_names_a_multiplexer` (design Decision 10; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive --test rules no_crate_names_a_multiplexer` passes, proving the terminal-relay spec's "The crates' sources read".
+- [x] 3.2 `tests/rules.rs` gains `no_crate_names_a_multiplexer` (design Decision 10; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive --test rules no_crate_names_a_multiplexer` passes, proving the terminal-relay spec's "The crates' sources read".
 
 ## 4. The hosted implementation says why it closes a terminal
 
