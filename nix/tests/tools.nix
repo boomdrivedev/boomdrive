@@ -400,6 +400,33 @@ let
         "host-b"
       ];
 
+  # Under crew, with no crew table written, an account with a drive and no
+  # state repository, beside crew's settings that write the drive's machine
+  # and state (the change a-drives-machine-and-state-are-named-once, design
+  # Decision 6).
+  stateless =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew whose account names no state repository" (system {
+      imports = [ (crewOf settings.crewModule) ];
+      services.boomdrive = settings.stateless;
+    }) [ "services.boomdrive.accounts.own.state_repository" ];
+
+  # Under crew, with no crew table written, a drive of crew's, `stray`,
+  # that no account names (design Decision 6).
+  stray =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with a drive of crew's no account names"
+      (system {
+        imports = [ (crewOf settings.crewStray) ];
+        services.boomdrive = settings.crewUnwritten;
+      })
+      [
+        "stray"
+        "services.boomdrive.accounts"
+      ];
+
   # Whether crew's teams file, as crew's module renders it in `evaluated`,
   # evaluates whole: the module system throws for an option used with no
   # value and for a definition of an option a submodule does not declare,
@@ -476,6 +503,8 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "The accounts' drives in their order" accountsOrder
 // onEach "Under crew with neither" neither
 // onEach "No drive of the accounts on this host" elsewhere
+// onEach "An account under crew with no state repository" stateless
+// onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys
 // onEach "crew's old way of running" oldRuns

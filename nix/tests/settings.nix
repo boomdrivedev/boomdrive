@@ -216,6 +216,27 @@ in
     drives.away = driveOf "away";
   };
 
+  # Under crew with no crew table, the account `own`, naming no state
+  # repository, whose drive `home` keeps agentplot's flume and sluice; it
+  # goes with crewModule, which writes home's machine and state.
+  stateless = {
+    accounts.own.drives.home.repositories.agentplot = [
+      "flume"
+      "sluice"
+    ];
+    settings.control_plane.type = "crew";
+  };
+
+  # crewKeys with a second drive, `stray`, whose machine and state crew's
+  # settings write, and which no account names.
+  crewStray = {
+    inherit hosts;
+    drives = {
+      home = driveOf "home";
+      stray = writtenDriveOf "stray" "host-a" "example/state";
+    };
+  };
+
   # crewModule by crew's old way of running, version 5's: `home` names
   # `flume`, each of its five roles false, in place of `runs`.
   crewOldRuns = {

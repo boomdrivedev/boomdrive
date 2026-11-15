@@ -292,6 +292,14 @@ let
       "the accounts name no drive under a state repository"
     else
       "they name ${lib.concatStringsSep ", " crewMachines}";
+
+  # Under crew, the accounts that name a drive and no state repository,
+  # and the drives of crew's that no account names, read only where crew's
+  # module is on (record 0032).
+  stateless = lib.attrNames (
+    lib.filterAttrs (_: account: account.drives != { } && account.state_repository == null) cfg.accounts
+  );
+  unnamed = lib.subtractLists (map (drive: drive.name) drives) (lib.attrNames crew.settings.drives);
 in
 {
   imports = [
@@ -391,6 +399,20 @@ in
             && written.partitions == [ ]
           );
         message = lib.optionalString crew.enable "services.boomdrive.settings.control_plane.crew is written from the drives of services.boomdrive.accounts whose machine is services.crew.host, ${crew.host}, or that name none, under an account that names its state_repository, and no drive is: ${machines}. Set services.crew.host to this host's machine, or give a drive of services.boomdrive.accounts this host as its machine (record 0032).";
+      }
+      {
+        assertion = !(crewPlane && crew.enable && stateless != [ ]);
+        message = "services.boomdrive.settings.control_plane.type is crew, and ${
+          lib.concatMapStringsSep ", " (
+            account: "services.boomdrive.accounts.${account}.state_repository"
+          ) stateless
+        } ${
+          if lib.length stateless == 1 then "is" else "are"
+        } not set: under crew, each account names its crew state repository, which the module gives crew's drives and the runner's crew table (records 0028 and 0032).";
+      }
+      {
+        assertion = !(crewPlane && crew.enable && unnamed != [ ]);
+        message = lib.optionalString crew.enable "services.crew.settings.drives names ${lib.concatStringsSep ", " unnamed}, which no account of services.boomdrive.accounts names: under crew, each drive is named once, under its account in services.boomdrive.accounts.<account>.drives.<drive>, with its machine where it runs on another host, and the module gives crew its machine and its account's state_repository (record 0032).";
       }
     ];
   };

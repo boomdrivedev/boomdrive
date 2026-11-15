@@ -34,7 +34,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - "The accounts' drives in their order";
   - "Under crew with neither" and "No drive of the accounts on this host";
   - "quick start: NixOS's drive".
-- [ ] 2.2 Under crew with the runner and crew's module on, `options.nix` fails an account that names a drive and no `state_repository`, naming its option. It fails a drive of `services.crew.settings.drives` that no account names, naming it and `services.boomdrive.accounts` (design Decision 6; Task notes 2.2). `settings.nix` gains `stateless` and `crewStray`, and `tools.nix` the two cases. True when `sluice exec main -- moon run nix:test` passes, proving "An account under crew with no state repository" and "A drive of crew's no account names", each on nix-darwin and on NixOS.
+- [x] 2.2 Under crew with the runner and crew's module on, `options.nix` fails an account that names a drive and no `state_repository`, naming its option. It fails a drive of `services.crew.settings.drives` that no account names, naming it and `services.boomdrive.accounts` (design Decision 6; Task notes 2.2). `settings.nix` gains `stateless` and `crewStray`, and `tools.nix` the two cases. True when `sluice exec main -- moon run nix:test` passes, proving "An account under crew with no state repository" and "A drive of crew's no account names", each on nix-darwin and on NixOS.
 
 ## 3. The words and the specs
 
