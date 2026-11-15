@@ -11,8 +11,12 @@
 # `send = false` there turns that tool's telemetry off. No other key is
 # given: which of its traces, metrics and logs each tool sends, and as
 # what, stays that tool's own setting, and Claude Code's switches reach
-# Claude Code's document alone. With the runner off or no collector named,
-# neither tool's `telemetry` is given. Nothing else: the module writes no
+# Claude Code's document alone. Where it gives the keys, evaluation fails
+# unless each tool's `collector`, its trailing `/` dropped, is the host's
+# base, whatever priority a host gives it, `lib.mkForce` and `null`
+# among them, so no tool of the set sends to another collector (design
+# Decision 6). With the runner off or no collector named, neither tool's
+# `telemetry` is given. Nothing else: the module writes no
 # file of Flume's or sluice's, whose own modules write their `[telemetry]`
 # from these keys (core.18, core.46).
 { config, lib, ... }:
@@ -25,10 +29,33 @@ let
     send = lib.mkDefault true;
     collector = lib.mkDefault (baseOf host);
   };
+
+  # Each tool's collector is the host's, its trailing `/` dropped on both
+  # sides (Task notes 1.4).
+  sameCollector =
+    tool:
+    let
+      option = lib.showOption [
+        "services"
+        tool
+        "settings"
+        "telemetry"
+        "collector"
+      ];
+      own = config.services.${tool}.settings.telemetry.collector;
+    in
+    {
+      assertion = own != null && baseOf own == baseOf host;
+      message = "${option} is ${builtins.toJSON own}, not the collector services.boomdrive.claude-code.telemetry.collector names, ${builtins.toJSON host}: with the runner on, the set sends ${tool}'s telemetry to the host's collector alone. Drop ${option}, or name that collector in services.boomdrive.claude-code.telemetry.collector.";
+    };
 in
 {
   config = lib.mkIf (config.services.boomdrive.enable && host != null) {
     services.flume.settings.telemetry = telemetry;
     services.sluice.settings.telemetry = telemetry;
+    assertions = map sameCollector [
+      "flume"
+      "sluice"
+    ];
   };
 }

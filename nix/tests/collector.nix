@@ -210,6 +210,47 @@ let
         send = false;
       };
     };
+
+  # Each of `words` in the failures of `evaluated`, which fails.
+  failsNaming =
+    what: evaluated: words:
+    let
+      failures = toString (failuresOf evaluated);
+    in
+    t.expect (failuresOf evaluated != [ ]) "${what} evaluates"
+    ++ lib.concatMap (
+      word: t.expect (lib.hasInfix word failures) "the failure of ${what} names no ${word}: ${failures}"
+    ) words;
+
+  # Flume's own collector, the host's with a trailing `/` (design Decision
+  # 6).
+  namedAgain =
+    platform:
+    { system, ... }:
+    failsNone
+      "a ${platform} system naming the collector ${collector} again in Flume's own settings, with a trailing slash"
+      (named system collector { services.flume.settings.telemetry.collector = "${collector}/"; });
+
+  # Each of `tools`' own collector apart from the host's, given as `give`
+  # does (design Decision 6).
+  apart =
+    give: tools: platform:
+    { system, ... }:
+    lib.concatMap (
+      tool:
+      let
+        option = "services.${tool}.settings.telemetry.collector";
+      in
+      failsNaming
+        "a ${platform} system naming the collector ${collector} and ${option} http://localhost:4317"
+        (named system collector {
+          services.${tool}.settings.telemetry.collector = give "http://localhost:4317";
+        })
+        [
+          option
+          "services.boomdrive.claude-code.telemetry.collector"
+        ]
+    ) tools;
 in
 onEach "The host's collector reaches Flume and sluice" reaches
 // onEach "A collector's trailing slash" trailingSlash
@@ -217,3 +258,11 @@ onEach "The host's collector reaches Flume and sluice" reaches
 // onEach "No tool's telemetry without the runner" noRunner
 // onEach "Each tool keeps its signals" keepsSignals
 // onEach "A host turns a tool's sending off" sendingOff
+// onEach "The same collector named again" namedAgain
+// onEach "A collector apart from the host's" (
+  apart (address: address) [
+    "flume"
+    "sluice"
+  ]
+)
+// onEach "A forced collector apart from the host's" (apart lib.mkForce [ "sluice" ])
