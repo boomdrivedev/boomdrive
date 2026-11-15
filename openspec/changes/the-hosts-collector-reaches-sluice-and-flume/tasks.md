@@ -1,0 +1,32 @@
+# Tasks
+
+Work through the tasks in order. A task is true once the check it names passes, run as it names it. The groups are headings for reading.
+
+- **The checks.** Every evaluated case runs against no store, as `nix/check.sh` does, with core.41's neutral names. No check builds a package or reaches the network. A case named in a task is a key of `nix/tests/collector.nix`, `nix/tests/claude-code.nix` or `nix/tests/tools.nix`, each on nix-darwin and on NixOS unless it names a platform or the README. `nix/tests/default.nix` merges the files' cases by name, so no case of `collector.nix` takes a name another file holds. The check `sluice exec main -- moon run nix:test` prints each failing case as `nix: <case>: <what>` where it fails.
+- **What no task adds or changes.**
+  - No task adds a crate, a tool of the gate or a tracked file type (core.7, core.8).
+  - The runner's code does not change.
+  - `tools.nix`, `sources.nix` and `activate.sh` do not change.
+  - Every `.nix` file written is formatted by nixfmt, as treefmt formats it.
+  - Nothing outside the paths `proposal.md`'s Touches lists is changed.
+- **What is already written.** This change's own commit holds record 0013's amendment of 2026-11-15 and core.57's details. No task changes them. A task that relies on a choice the design names cites its Decision.
+
+## 1. The tools' telemetry
+
+- [ ] 1.1 `nix/modules/claude-code.nix` gives `baseOf`, the collector with one trailing `/` dropped, beside `documentOf`, and `documentOf` takes it in place of its own `base` (design Decision 4; Task notes 1.1). True when the cases "Each signal's endpoint" and "Metrics and logs by default" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 1.2 A new module, `nix/modules/collector.nix`, gives, with `services.boomdrive.enable` on and `services.boomdrive.claude-code.telemetry.collector` set, `services.flume.settings.telemetry` and `services.sluice.settings.telemetry` each `send = true` and `collector = baseOf <collector>`, each key apart by `lib.mkDefault`, and nothing otherwise (design Decisions 1 to 4). `darwin.nix` and `nixos.nix` import it beside `./sources.nix`, and each header names it. A new file, `nix/tests/collector.nix`, holds the cases, and `nix/tests/default.nix` imports it after `./claude-code.nix` (design Decision 7; Task notes 1.2). True when the cases "The host's collector reaches Flume and sluice", "A collector's trailing slash", "No tool's telemetry without a collector" and "No tool's telemetry without the runner" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 1.3 `nix/tests/collector.nix` gains the cases where a host sets keys of a tool's own `telemetry` (design Decisions 3 and 5; Task notes 1.2 and 1.3). True when the cases "Each tool keeps its signals" and "A host turns a tool's sending off" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 1.4 `collector.nix` asserts, where it gives the keys, that each of Flume's and sluice's `settings.telemetry.collector` is not `null` and that its `baseOf` is the host collector's. Its message names the tool's option, its value, `services.boomdrive.claude-code.telemetry.collector` and the host's value (design Decision 6; Task notes 1.4). `nix/tests/collector.nix` gains the cases. True when the cases "The same collector named again", "A collector apart from the host's" and "A forced collector apart from the host's" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 1.5 `nix/tests/lib.nix` gives `toolsDarwinOf` and `toolsNixosOf`, each the tools' own system with one module of extra settings, and makes `toolsDarwinSystem` and `toolsNixosSystem` each of `{ }` (design Decision 7; Task notes 1.5). `nix/tests/collector.nix` gains the case comparing the runner's system, with crew and a collector, to the tools' own given the same `telemetry` keys. True when the cases "The tools' telemetry is their own", "The tools' activation is their own on nix-darwin" and "The tools' activation is their own on NixOS" hold, with `sluice exec main -- moon run nix:test` passing.
+
+## 2. The words and the specs
+
+- [ ] 2.1 The description of `services.boomdrive.claude-code.telemetry.collector` says that, with the runner on, the modules also turn Flume's and sluice's own telemetry on to it, each keeping its signals. The README's **Installing with nix** gains a paragraph after the telemetry document's part and before the part that begins "Without a collector, or without the runner" (design Decision 8). Its words name:
+  - that the same collector is Flume's and sluice's, each turned on to send to it through `services.flume.settings.telemetry` and `services.sluice.settings.telemetry`, which each tool's own module writes into its `[telemetry]`;
+  - that which of its traces, metrics and logs each tool sends, and as what, stays that tool's own setting, at its own defaults;
+  - that `send = false` there turns that tool's telemetry off;
+  - that a tool's collector other than the host's fails evaluation.
+
+  `nix/tests/collector.nix` holds the README's words. True when the cases "The README's collector" and "The README's telemetry" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 2.2 CLAUDE.md and `openspec/config.yaml` say that, with the runner and a collector the host names, the modules also turn Flume's and sluice's telemetry on to that collector, by `services.flume.settings.telemetry` and `services.sluice.settings.telemetry` (design Decision 8). True when `devenv shell -- treefmt --ci openspec/config.yaml` passes and `grep -c 'services.sluice.settings.telemetry' CLAUDE.md openspec/config.yaml` counts at least one line in each file.
+- [ ] 2.3 The spec delta archives into a spec that passes openspec's strict check, with the requirement *The Boomdrive module writes no file of the other tools'* carrying its second scenario. True when, after `devenv shell -- openspec archive the-hosts-collector-reaches-sluice-and-flume --yes`, `devenv shell -- openspec validate service-modules --type spec --strict --no-interactive` passes.
