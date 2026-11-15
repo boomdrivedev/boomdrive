@@ -22,7 +22,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - "A machine written twice" and "A state written twice".
 
   Every case of `nix/tests/tools.nix`, `kept.nix`, `sources.nix` and `boot.nix` still holds, "The tools' activation is their own" among them.
-- [ ] 1.3 `site/src/start/nixos/boomdrive.nix` names the account `me`'s `state_repository`, `your-github-name/drive-state`, and crew's drive `home` writes neither `machine` nor `state`. `nix/tests/quick-start.nix` holds the file to that as it stands (design Decision 8; Task notes 1.3). True when the case "quick start: NixOS's drive" holds, with `sluice exec main -- moon run nix:test` passing.
+- [x] 1.3 `site/src/start/nixos/boomdrive.nix` names the account `me`'s `state_repository`, `your-github-name/drive-state`, and crew's drive `home` writes neither `machine` nor `state`. `nix/tests/quick-start.nix` holds the file to that as it stands (design Decision 8; Task notes 1.3). True when the case "quick start: NixOS's drive" holds, with `sluice exec main -- moon run nix:test` passing.
 
 ## 2. The runner's crew table from the accounts
 

@@ -107,7 +107,10 @@ let
         }, not ${lib.concatMapStringsSep ", " describe want}";
   # NixOS's drive: a system of x86_64-linux whose normal user is you, of
   # the set's module and the drive step's file alone, as the host's flake
-  # gives them (design Decision 8).
+  # gives them (design Decision 8): the account me, with its state
+  # repository, whose drive home is kept under crew, crew's drive home
+  # given its machine and state by the set (the change
+  # a-drives-machine-and-state-are-named-once, design Decision 8).
   render = import ../modules/toml.nix { inherit lib; };
   inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   drive = t.nixosOf [
@@ -174,6 +177,26 @@ let
         };
       }
     ) "crew's drives are ${builtins.toJSON crewDrive}"
+    ++
+      t.expect
+        (
+          (written.services.boomdrive.accounts.me.state_repository or null) == "your-github-name/drive-state"
+        )
+        "nixos/boomdrive.nix's account me names the state repository ${
+          toString (written.services.boomdrive.accounts.me.state_repository or "none")
+        }, not your-github-name/drive-state"
+    ++
+      lib.concatMap
+        (
+          key:
+          t.expect (
+            !(written.services.crew.settings.drives.home ? ${key})
+          ) "nixos/boomdrive.nix writes crew's drive home's ${key}, which the set gives"
+        )
+        [
+          "machine"
+          "state"
+        ]
     ++
       t.expect (!(written.services ? flume))
         "nixos/boomdrive.nix writes Flume's settings itself: ${builtins.toJSON (builtins.attrNames written.services.flume)}"
