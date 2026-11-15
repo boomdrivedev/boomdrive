@@ -511,12 +511,22 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "crew's old batch names" oldReview
 // {
   # The README's install with nix writes no crew table beside crew's
-  # drives, and says the module writes it (design Decision 8).
+  # drives, and says the module writes it (design Decision 8; the change
+  # a-drives-machine-and-state-are-named-once, design Decision 9).
   "The README's crew table" =
     t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
-    ++ t.expect (
-      !lib.any (lib.hasInfix "state_repository") t.nixBlocks
-    ) "a nix block of the README's Installing with nix names state_repository"
+    ++
+      lib.concatMap
+        (
+          word:
+          t.expect (
+            !lib.any (lib.hasInfix word) t.nixBlocks
+          ) "a nix block of the README's Installing with nix names ${word}"
+        )
+        [
+          "control_plane.crew"
+          "partitions"
+        ]
     ++
       lib.concatMap
         (
@@ -527,6 +537,32 @@ onEach "Each tool's options are its own flake's" ownOptions
           "services.crew.host"
           "written out wins"
         ];
+
+  # The README's install with nix names the account's crew state
+  # repository in services.boomdrive.accounts, before services.crew, and
+  # neither a drive's state nor its machine in crew's settings, and its
+  # words name the account's option (the change
+  # a-drives-machine-and-state-are-named-once, design Decision 9).
+  "The README's machine and state" =
+    let
+      crewBlock = lib.findFirst (lib.hasInfix "services.crew") null t.nixBlocks;
+      parts = lib.splitString "services.crew = {" (toString crewBlock);
+      before = lib.head parts;
+      after = lib.concatStringsSep "services.crew = {" (lib.tail parts);
+    in
+    t.expect (crewBlock != null) "no nix block of the README's Installing with nix names services.crew"
+    ++ t.expect (
+      lib.length parts > 1
+    ) "the README's nix block of services.crew has no `services.crew = {`"
+    ++ t.expect (lib.hasInfix ''state_repository = "example/state"'' before) ''the README's nix block names no state_repository = "example/state" before services.crew''
+    ++
+      lib.concatMap
+        (word: t.expect (!lib.hasInfix word after) "the README's nix block names ${word} in services.crew")
+        [
+          "state ="
+          "machine ="
+        ]
+    ++ t.expect (lib.hasInfix "services.boomdrive.accounts.<account>.state_repository" (toString t.installing)) "the README's Installing with nix names no services.boomdrive.accounts.<account>.state_repository";
 
   # The README's install with nix writes crew's settings by crew's names,
   # its teams file's version 6's, and none of version 5's. The leading
