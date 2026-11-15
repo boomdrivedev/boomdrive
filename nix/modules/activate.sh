@@ -52,11 +52,14 @@
 # nothing where none differed; a file it cannot write is said in one line
 # naming it and stops the files after it. It exits 0.
 #
-# managed is nix-darwin's root step for Claude Code's managed telemetry
-# document (design Decisions 6, 8 and 9 of the change
-# every-claude-code-session-exports-to-the-hosts-collector), run as root,
-# whose <path> is 10-boomdrive-telemetry.json in Claude Code's
-# managed-settings.d. Given <source>, it writes <source> to <path> whole,
+# managed is nix-darwin's root step for each of Claude Code's two managed
+# documents, run as root once for each: the telemetry document (design
+# Decisions 6, 8 and 9 of the change
+# every-claude-code-session-exports-to-the-hosts-collector), whose <path>
+# is 10-boomdrive-telemetry.json in Claude Code's managed-settings.d, and
+# the transcripts document (design Decision 6 of the change
+# the-set-keeps-claude-codes-transcripts-a-year), whose <path> is
+# 10-boomdrive-transcripts.json there. Given <source>, it writes <source> to <path> whole,
 # as a regular file of mode 0644, by a temporary file beside it renamed
 # over the path, and only where no regular file there has the same bytes
 # and mode. A link standing there is replaced. It makes the path's folder,

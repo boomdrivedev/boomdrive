@@ -32,7 +32,11 @@
 # names a collector, it writes the document every Claude Code session on
 # the host reads, and otherwise it removes the set's own document, since
 # nix-darwin removes no file it wrote outside `/etc` (record 0013 as
-# amended on 2026-11-12).
+# amended on 2026-11-12). It runs the same step again on Claude Code's
+# managed transcripts document, claude-code.nix's: where Flume is on, with
+# the runner or without, it writes the document that keeps every
+# session's transcript `services.boomdrive.claude-code.cleanupPeriodDays`
+# days, and otherwise it removes the set's own (record 0046).
 { packages }:
 {
   config,
@@ -61,6 +65,20 @@ let
       "/bin/sh ${./activate.sh} managed ${managed} ${document} || true\n"
     else
       "/bin/sh ${./activate.sh} managed ${managed} || true\n";
+
+  # Claude Code's managed transcripts document, written where Flume is on,
+  # whether or not the runner is, and removed otherwise (the change
+  # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 2 and
+  # 6).
+  transcriptsPath = lib.escapeShellArg "${claudeCode.darwinFolder}/${claudeCode.transcriptsName}";
+  transcripts = pkgs.writeText claudeCode.transcriptsName (
+    builtins.toJSON (claudeCode.transcriptsOf cfg.claude-code.cleanupPeriodDays)
+  );
+  keeping =
+    if config.services.flume.enable then
+      "/bin/sh ${./activate.sh} managed ${transcriptsPath} ${transcripts} || true\n"
+    else
+      "/bin/sh ${./activate.sh} managed ${transcriptsPath} || true\n";
 
   # herdr's own link of each plugin, where a herdr and a plugin are given
   # (apps.nix).
@@ -152,8 +170,9 @@ in
 
   config = lib.mkMerge [
     # Run as root, before the user's steps, whether or not the runner is
-    # on: a failure says why and stops nothing else.
-    { system.activationScripts.postActivation.text = lib.mkBefore managing; }
+    # on, one step for each document: a failure says why and stops nothing
+    # else.
+    { system.activationScripts.postActivation.text = lib.mkBefore (managing + keeping); }
 
     (lib.mkIf cfg.enable {
       system.requiresPrimaryUser = [ "services.boomdrive.enable" ];
