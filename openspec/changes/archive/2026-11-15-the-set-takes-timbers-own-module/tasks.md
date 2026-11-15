@@ -31,4 +31,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 3. The specs
 
 - [x] 3.1 The change's delta passes openspec's strict check. True when `sluice exec main -- moon run root:changes` passes.
-- [ ] 3.2 The delta archives into specs that pass openspec's strict check. That covers the requirement renamed *The Boomdrive module turns on Flume's, sluice's and timber's modules and leaves crew's to the host*. True when, after `devenv shell -- openspec archive the-set-takes-timbers-own-module --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 3.2 The delta archives into specs that pass openspec's strict check. That covers the requirement renamed *The Boomdrive module turns on Flume's, sluice's and timber's modules and leaves crew's to the host*. True when, after `devenv shell -- openspec archive the-set-takes-timbers-own-module --yes`, `sluice exec main -- moon run root:specs` passes.
