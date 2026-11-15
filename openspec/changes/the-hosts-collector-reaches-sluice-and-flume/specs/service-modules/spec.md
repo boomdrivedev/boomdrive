@@ -74,14 +74,14 @@ The README's **Installing with nix** SHALL say that the collector the host names
 
 ### Requirement: The Boomdrive module writes no file of the other tools'
 
-The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, link `services.boomdrive.herdr.plugins` by herdr's own `plugin link`, write or remove Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's and crew's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL each be written by that tool's own module, as without Boomdrive's.
+The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, link `services.boomdrive.herdr.plugins` by herdr's own `plugin link`, write or remove Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's, crew's and timber's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL each be written by that tool's own module, as without Boomdrive's.
 
 #### Scenario: The tools' activation is their own
 
-- **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's and crew's own modules alone, each turned on with the same settings, packages and user, and Flume's with crew's source declared as the modules declare it
+- **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's, crew's and timber's own modules alone, each turned on with the same settings, packages and user, and Flume's with crew's source declared as the modules declare it
 - **THEN** on nix-darwin their activations are the same but for the runner's own link, Pending You's folder, herdr's plugins' links and the managed telemetry and transcripts documents' steps, each run once, and on NixOS their user activations are the same but for the runner's own
 
 #### Scenario: The tools' telemetry is their own
 
-- **WHEN** a system with `services.boomdrive` and crew turned on names the collector `http://localhost:4318`, and is set beside one that imports Flume's, sluice's and crew's own modules alone, as above, with Flume's and sluice's `settings.telemetry` each `{ send = true; collector = "http://localhost:4318"; }`
+- **WHEN** a system with `services.boomdrive` and crew turned on names the collector `http://localhost:4318`, and is set beside one that imports Flume's, sluice's, crew's and timber's own modules alone, as above, with Flume's and sluice's `settings.telemetry` each `{ send = true; collector = "http://localhost:4318"; }`
 - **THEN** on nix-darwin their activations are the same but for what the scenario above leaves aside, and on NixOS their user activations' Flume and sluice snippets are each the same

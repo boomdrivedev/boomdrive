@@ -14,7 +14,7 @@ The flake today:
 
 - **The collector.** `nix/modules/claude-code.nix` declares `services.boomdrive.claude-code.telemetry`: `collector`, `null` or an `http://` address of `localhost`, `127.0.0.1` or `[::1]` with a port and at most a path; and `metrics`, `logs` and `traces`, Claude Code's switches. Its `documentOf` drops one trailing `/` from the collector and joins `/v1/<signal>` for each signal on. `darwin.nix` and `nixos.nix` write the document only with the runner on and a collector named.
 - **The other tools' options.** `tools.nix` sets each tool's `package`, and with the runner turns Flume's and sluice's modules on, a host's `false` winning. Its header holds that it sets no key of a tool's `settings`. `drives.nix` gives Flume each drive's stream, and `sources.nix` gives Flume crew's source, each at the module's default priority, so a host's own value wins key by key.
-- **The spec.** The service-modules spec has each of Flume's, sluice's and crew's files written by that tool's own module. *The tools' activation is their own* compares a system of the runner's with one of the tools' own modules alone, given the same settings.
+- **The spec.** The service-modules spec has each of Flume's, sluice's, crew's and timber's files written by that tool's own module. *The tools' activation is their own* compares a system of the runner's with one of the tools' own modules alone, given the same settings.
 
 Every address the set's collector type takes is one Flume's type takes, and sluice takes any `http://` address.
 
