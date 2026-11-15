@@ -162,8 +162,58 @@ let
     gives "a ${platform} system naming the collector ${collector} without the runner" (without {
       services.boomdrive.claude-code.telemetry.collector = collector;
     }) none;
+
+  # Claude Code's traces on and its logs off, beside a key of each tool's
+  # own: each tool keeps its own, and is given Claude Code's switches none
+  # (design Decision 5).
+  keepsSignals =
+    platform:
+    { system, ... }:
+    let
+      what = "a ${platform} system naming a collector, with Flume's traces and sluice's logs its own";
+      evaluated = named system collector {
+        services = {
+          boomdrive.claude-code.telemetry = {
+            traces = true;
+            logs = false;
+          };
+          flume.settings.telemetry.traces = false;
+          sluice.settings.telemetry.logs = "tail";
+        };
+      };
+      sent = sending collector;
+    in
+    failsNone what evaluated
+    ++ gives what evaluated {
+      flume = sent.flume // {
+        traces = false;
+      };
+      sluice = sent.sluice // {
+        logs = "tail";
+      };
+    };
+
+  # A host's `send = false` in sluice's own settings wins, and leaves
+  # Flume's sending (design Decision 3).
+  sendingOff =
+    platform:
+    { system, ... }:
+    let
+      what = "a ${platform} system naming a collector, with sluice's send false";
+      evaluated = named system collector { services.sluice.settings.telemetry.send = false; };
+      sent = sending collector;
+    in
+    failsNone what evaluated
+    ++ gives what evaluated {
+      inherit (sent) flume;
+      sluice = sent.sluice // {
+        send = false;
+      };
+    };
 in
 onEach "The host's collector reaches Flume and sluice" reaches
 // onEach "A collector's trailing slash" trailingSlash
 // onEach "No tool's telemetry without a collector" noCollector
 // onEach "No tool's telemetry without the runner" noRunner
+// onEach "Each tool keeps its signals" keepsSignals
+// onEach "A host turns a tool's sending off" sendingOff
