@@ -9,11 +9,14 @@
 
 mod fakes;
 
+use boomdrive::flume;
+use boomdrive::terminal::Relays;
 use boomdrive_control::fake::{Fake, FarEnd, Sent};
-use boomdrive_control::{Id, Input, Want};
-use boomdrive_control::{Offer, Outcome};
+use boomdrive_control::shared;
+use boomdrive_control::{ControlPlane, Id, Input, Offer, Outcome, Want};
 use fakes::{offer, place_of, Bench};
 use serde_json::json;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -238,4 +241,139 @@ fn input_passed_in() {
             json!({ "keys": ["ctrl+c", "enter"] })
         ]
     );
+}
+
+/// The words the link was closed with, past every screen sent before.
+fn closed(far: &FarEnd) -> String {
+    loop {
+        match next(far) {
+            Sent::Screen(_) => continue,
+            Sent::Closed(words) => return words,
+        }
+    }
+}
+
+/// The terminal-relay spec's "The agent's terminal gone": Flume answers
+/// that its relay ended `gone`, the runner having closed nothing, so the
+/// link is closed in those words and the thread ends.
+#[test]
+fn the_agents_terminal_gone() {
+    let bench = Bench::new();
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    wait_until("flume relays", || !bench.flume_relay.calls().is_empty());
+    bench.flume_relay.gone();
+    assert_eq!(closed(&far), "Flume's relay ended: gone");
+    ended(&bench);
+    assert!(bench.relay_lines().contains(&format!(
+        "t1: the terminal on o1 at {} is closed: Flume's relay ended: gone",
+        place_of("a")
+    )));
+}
+
+/// The terminal-relay spec's "The link closed": the far end closes it, so
+/// Flume's input reaches its end, Flume answers that its caller ended it
+/// and exits, and the link is closed with `its link closed`.
+#[test]
+fn the_link_closed() {
+    let bench = Bench::new();
+    bench.flume_relay.out(&json!({ "screen": "screen" }));
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    assert_eq!(next(&far), Sent::Screen("screen".to_string()));
+    far.input
+        .send(Input::Close)
+        .expect("the link takes its close");
+    assert_eq!(closed(&far), "its link closed");
+    ended(&bench);
+    assert!(bench.flume_relay.closed(1), "flume's input reached its end");
+    assert!(bench.relay_lines().contains(&format!(
+        "t1: the terminal on o1 at {} is closed: its link closed",
+        place_of("a")
+    )));
+}
+
+/// The far end stops listening: the next screen Flume gives finds no one,
+/// so the runner closes Flume's input and the terminal.
+#[test]
+fn the_far_end_stops_listening() {
+    let bench = Bench::new();
+    bench.flume_relay.out(&json!({ "screen": "screen 1" }));
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    assert_eq!(next(&far), Sent::Screen("screen 1".to_string()));
+    let FarEnd { input, sent } = far;
+    drop(sent);
+    bench.flume_relay.out(&json!({ "screen": "screen 2" }));
+    ended(&bench);
+    drop(input);
+    assert!(bench.flume_relay.closed(1), "flume's input reached its end");
+    assert!(bench.relay_lines().contains(&format!(
+        "t1: the terminal on o1 at {} is closed: its far end stopped listening",
+        place_of("a")
+    )));
+}
+
+/// The terminal-relay spec's "The launch let go": a report refusing the
+/// terminal's launch as no longer this runner's closes Flume's input and
+/// the terminal.
+#[test]
+fn the_launch_let_go() {
+    let bench = Bench::new();
+    bench.flume_relay.out(&json!({ "screen": "screen" }));
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    assert_eq!(next(&far), Sent::Screen("screen".to_string()));
+    plane.refuse(Id::new("o1"), "its lease is another runner's");
+    plane.set_wants(Vec::new());
+    bench.pass(&mut plane);
+    assert_eq!(closed(&far), "its launch o1 is let go");
+    ended(&bench);
+    assert!(bench.flume_relay.closed(1), "flume's input reached its end");
+}
+
+/// A launch the control plane carries no more closes Flume's input and
+/// its terminal too.
+#[test]
+fn a_launch_the_control_plane_lets_go() {
+    let bench = Bench::new();
+    bench.flume_relay.out(&json!({ "screen": "screen" }));
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    assert_eq!(next(&far), Sent::Screen("screen".to_string()));
+    plane.let_go(Id::new("o1"));
+    bench.pass(&mut plane);
+    assert_eq!(closed(&far), "its launch o1 is let go");
+    ended(&bench);
+    assert!(bench.flume_relay.closed(1), "flume's input reached its end");
+}
+
+/// The terminal-relay spec's "The runner stopped": the runner's terminals
+/// dropped while one is open close Flume's input, and the drop returns
+/// once Flume has exited, the link closed with `the runner stopped`.
+#[test]
+fn the_runner_stopped() {
+    let bench = Bench::new();
+    let mut plane = held(&bench);
+    let report = bench.report();
+    let far = plane.open_terminal(Id::new("t1"), Id::new("o1"), 1);
+    let pulled = plane
+        .pull(&shared::hello(&report), &report)
+        .expect("a pull");
+    let said = Arc::new(Mutex::new(Vec::new()));
+    let lines = Arc::clone(&said);
+    let relays = Relays::new(flume::Cli::new(bench.flume_relay.program()), move |line| {
+        lines.lock().expect("the lines").push(line)
+    });
+    for terminal in pulled.terminals {
+        relays.open(terminal, &report);
+    }
+    wait_until("flume relays", || !bench.flume_relay.calls().is_empty());
+    drop(relays);
+    assert!(bench.flume_relay.closed(1), "flume's input reached its end");
+    assert_eq!(next(&far), Sent::Closed("the runner stopped".to_string()));
+    assert!(said.lock().expect("the lines").contains(&format!(
+        "t1: the terminal on o1 at {} is closed: the runner stopped",
+        place_of("a")
+    )));
 }
