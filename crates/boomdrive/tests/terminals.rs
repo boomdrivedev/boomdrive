@@ -16,6 +16,8 @@ use boomdrive_control::shared;
 use boomdrive_control::{ControlPlane, Id, Input, Offer, Outcome, Want};
 use fakes::{offer, place_of, Bench};
 use serde_json::json;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -376,4 +378,72 @@ fn the_runner_stopped() {
         "t1: the terminal on o1 at {} is closed: the runner stopped",
         place_of("a")
     )));
+}
+
+/// The terminal-relay spec's "Nothing written": a screen and an input
+/// relayed, then closed, leave nothing of either in the data directory, a
+/// line the runner said or a report, though Flume's input held the input;
+/// the lines name the terminal, its launch and its place alone.
+#[test]
+fn nothing_written() {
+    let screen = "secret-screen-text";
+    let typed = "secret-typed-text";
+    let bench = Bench::new();
+    bench
+        .flume_relay
+        .out(&json!({ "screen": format!("\u{1b}[32m{screen}\u{1b}[0m") }));
+    let mut plane = Fake::holding(vec![Want::Offer(offer("o1", "a"))]);
+    let (_, mut lines) = bench.pass(&mut plane);
+    let (far, opening) = opened(&bench, &mut plane, "o1", 1);
+    lines.extend(opening);
+    assert!(matches!(next(&far), Sent::Screen(text) if text.contains(screen)));
+    far.input
+        .send(Input::Text(typed.to_string()))
+        .expect("the link takes input");
+    wait_until("the text is written to flume", || {
+        !bench.flume_relay.inputs(1).is_empty()
+    });
+    assert_eq!(bench.flume_relay.inputs(1), [json!({ "text": typed })]);
+    drop(far);
+    ended(&bench);
+    lines.extend(bench.pass(&mut plane).1);
+    lines.extend(bench.relay_lines());
+    let files = files(&bench.data());
+    assert!(files.iter().any(|(path, _)| path.ends_with("report.json")));
+    for secret in [screen, typed] {
+        for (path, bytes) in &files {
+            let text = String::from_utf8_lossy(bytes);
+            assert!(!text.contains(secret), "{} holds {secret}", path.display());
+        }
+        for line in &lines {
+            assert!(!line.contains(secret), "{line:?} holds {secret}");
+        }
+        for report in plane.reports() {
+            let sent = serde_json::to_string(report).expect("the report as JSON");
+            assert!(!sent.contains(secret), "a report carries {secret}");
+        }
+    }
+    let place = place_of("a");
+    assert_eq!(
+        bench.relay_lines(),
+        [
+            format!("t1: the terminal on o1 at {place} is opened"),
+            format!("t1: the terminal on o1 at {place} is closed: its link closed"),
+        ]
+    );
+}
+
+/// Every file under `dir`, with its bytes.
+fn files(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut found = Vec::new();
+    for entry in fs::read_dir(dir).expect("the directory reads") {
+        let path = entry.expect("its entry").path();
+        if path.is_dir() {
+            found.extend(files(&path));
+        } else {
+            let bytes = fs::read(&path).expect("the file reads");
+            found.push((path, bytes));
+        }
+    }
+    found
 }
