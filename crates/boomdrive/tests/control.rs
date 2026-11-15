@@ -94,7 +94,6 @@ impl Tools {
         Programs {
             flume: self.flume.program(),
             sluice: self.sluice.program(),
-            herdr: self.flume.dir.path().join("absent/herdr"),
         }
     }
 
