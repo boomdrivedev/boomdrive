@@ -150,7 +150,13 @@ in
             `/Library/Application Support/ClaudeCode/managed-settings.d` on
             nix-darwin and `/etc/claude-code/managed-settings.d` on NixOS,
             which every session reads whatever its account and home, with
-            every content setting off. Where `null`, nothing is written.
+            every content setting off. With the runner on, it is Flume's
+            and sluice's collector too: the modules turn each on to send to
+            it through its own `services.flume.settings.telemetry` and
+            `services.sluice.settings.telemetry`, each keeping which of its
+            signals it sends as its own setting, and a tool's `collector`
+            other than this one fails evaluation. Where `null`, nothing is
+            written, and neither tool's telemetry is turned on.
           '';
         };
         metrics = signal true "Whether Claude Code's sessions export their metrics to `collector`.";

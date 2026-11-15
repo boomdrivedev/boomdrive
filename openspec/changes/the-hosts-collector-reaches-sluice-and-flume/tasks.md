@@ -21,7 +21,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The words and the specs
 
-- [ ] 2.1 The description of `services.boomdrive.claude-code.telemetry.collector` says that, with the runner on, the modules also turn Flume's and sluice's own telemetry on to it, each keeping its signals. The README's **Installing with nix** gains a paragraph after the telemetry document's part and before the part that begins "Without a collector, or without the runner" (design Decision 8). Its words name:
+- [x] 2.1 The description of `services.boomdrive.claude-code.telemetry.collector` says that, with the runner on, the modules also turn Flume's and sluice's own telemetry on to it, each keeping its signals. The README's **Installing with nix** gains a paragraph after the telemetry document's part and before the part that begins "Without a collector, or without the runner" (design Decision 8). Its words name:
   - that the same collector is Flume's and sluice's, each turned on to send to it through `services.flume.settings.telemetry` and `services.sluice.settings.telemetry`, which each tool's own module writes into its `[telemetry]`;
   - that which of its traces, metrics and logs each tool sends, and as what, stays that tool's own setting, at its own defaults;
   - that `send = false` there turns that tool's telemetry off;
