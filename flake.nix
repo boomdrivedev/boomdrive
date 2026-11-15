@@ -43,7 +43,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.21.2";
+      url = "github:boomdrivedev/flume/v0.24.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -86,10 +86,11 @@
     # plugins, herdr's and Claude Code's, from this one pin (record 0023 as
     # amended on 2026-11-13; design Decision 1).
     timber = {
-      url = "github:boomdrivedev/timber/v0.6.0";
+      url = "github:boomdrivedev/timber/v0.7.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
       };
     };
     # crew's companions (record 0044, point 6). Pending You's command line
