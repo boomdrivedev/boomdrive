@@ -13,6 +13,7 @@ use boomdrive_control::fake::{Fake, FarEnd, Sent};
 use boomdrive_control::{Id, Want};
 use boomdrive_control::{Offer, Outcome};
 use fakes::{offer, place_of, Bench};
+use serde_json::json;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -149,4 +150,69 @@ fn a_flume_with_no_relay() {
         Sent::Closed("error: unrecognized subcommand 'relay'".to_string())
     );
     ended(&bench);
+}
+
+/// The terminal-relay spec's "Screens as Flume gives them": the stub
+/// writes three screens, the second and third the same, and the link
+/// receives the three, in order, each as the stub wrote it; Flume ran
+/// with `FLUME_RECIPIENT` unset, though the runner's own environment
+/// names one.
+#[test]
+fn screens_as_flume_gives_them() {
+    std::env::set_var("FLUME_RECIPIENT", "someone/else");
+    let bench = Bench::new();
+    let one = "\u{1b}[1mone\u{1b}[0m\r\n$ ";
+    for screen in [one, "one", "one"] {
+        bench.flume_relay.out(&json!({ "screen": screen }));
+    }
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    assert_eq!(next(&far), Sent::Screen(one.to_string()));
+    assert_eq!(next(&far), Sent::Screen("one".to_string()));
+    assert_eq!(next(&far), Sent::Screen("one".to_string()));
+    assert_eq!(bench.flume_relay.recipient(1).as_deref(), Some("unset"));
+    assert_eq!(
+        bench.flume_relay.calls(),
+        [argv(&["--json", "relay", &place_of("a")])]
+    );
+}
+
+/// The terminal-relay spec's "An unread read and an untyped input": an
+/// unread read is said with Flume's words, an untyped input without
+/// them, each naming the terminal, its launch and its place, and the
+/// relay goes on to send the screen after them.
+#[test]
+fn an_unread_read_and_an_untyped_input() {
+    let bench = Bench::new();
+    let place = place_of("a");
+    bench
+        .flume_relay
+        .out(&json!({ "unread": "herdr did not answer within 1s" }));
+    bench
+        .flume_relay
+        .out(&json!({ "untyped": "secret-key-name is no key flume names" }));
+    bench.flume_relay.out(&json!({ "screen": "after" }));
+    let mut plane = held(&bench);
+    let (far, _) = opened(&bench, &mut plane, "o1", 1);
+    assert_eq!(next(&far), Sent::Screen("after".to_string()));
+    let lines = bench.relay_lines();
+    assert!(
+        lines.contains(&format!(
+            "t1: flume relay of {place} for o1 read nothing: herdr did not answer within 1s"
+        )),
+        "{lines:#?}"
+    );
+    let untyped: Vec<&String> = lines
+        .iter()
+        .filter(|line| line.contains("untyped"))
+        .collect();
+    assert_eq!(untyped.len(), 1, "{lines:#?}");
+    let line = untyped[0];
+    for named in ["t1", "o1", place.as_str()] {
+        assert!(line.contains(named), "{line:?} names no {named}");
+    }
+    for line in &lines {
+        assert!(!line.contains("secret-key-name"), "{line:?}");
+    }
+    assert!(!bench.relays.relaying().is_empty(), "the relay goes on");
 }
