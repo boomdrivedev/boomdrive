@@ -82,9 +82,10 @@
         rust-overlay.follows = "rust-overlay";
       };
     };
-    # timber through its own flake at its release tag, its CLI and both its
-    # plugins, herdr's and Claude Code's, from this one pin (record 0023 as
-    # amended on 2026-11-13; design Decision 1).
+    # timber through its own flake at its release tag, its CLI, its module
+    # and both its plugins, herdr's and Claude Code's, from this one pin
+    # (record 0023 as amended on 2026-11-13 and 2026-11-15; design
+    # Decision 1).
     timber = {
       url = "github:boomdrivedev/timber/v0.7.0";
       inputs = {
@@ -238,15 +239,18 @@
 
       # A platform's modules (design Decision 4): `boomdrive`, also
       # `default`, is the runner's service, its options the runner's file
-      # (record 0020, core.46), with Flume's, sluice's and crew's own
-      # modules, each as its tool's flake gives it at the tag the lock
-      # names, none carried here (record 0023, core.18); and each tool's
-      # module again, as its flake gives it. Keyed, as Flume's is, so a
-      # system that imports `default` and `boomdrive` takes it once.
+      # (record 0020, core.46), with Flume's, sluice's, crew's and timber's
+      # own modules, each as its tool's flake gives it at the tag the lock
+      # names, none carried here (record 0023 as amended on 2026-11-15,
+      # core.18); and each tool's module again, as its flake gives it.
+      # Keyed, as Flume's and timber's are, so a system that imports
+      # `default` and `boomdrive`, or `default` and timber's flake's own
+      # module, takes each once.
       tools = [
         "flume"
         "sluice"
         "crew"
+        "timber"
       ];
       modulesOf =
         platform: file:
