@@ -218,16 +218,22 @@ let
           "sluice"
         ];
 
-  # The three tools' users on NixOS, crew on, and again with sluice's own.
+  # The four tools' users on NixOS, crew on, and again with sluice's own.
   usersOf =
     given:
     let
-      inherit ((t.nixosSystem given).config.services) crew flume sluice;
+      inherit ((t.nixosSystem given).config.services)
+        crew
+        flume
+        sluice
+        timber
+        ;
     in
     {
       crew = crew.user;
       flume = flume.user;
       sluice = sluice.user;
+      timber = timber.user;
     };
   runnersUsers = usersOf crewOn;
   sluicesUser = usersOf {
@@ -562,12 +568,13 @@ onEach "Each tool's options are its own flake's" ownOptions
         crew = "alice";
         flume = "alice";
         sluice = "alice";
+        timber = "alice";
       }
     ) "the tools' users of alice's runner are ${builtins.toJSON runnersUsers}, not alice's"
     ++ t.expect (sluicesUser.sluice == "bob") "sluice's user, set to bob, is ${sluicesUser.sluice}"
     ++ t.expect (
-      sluicesUser.flume == "alice" && sluicesUser.crew == "alice"
-    ) "Flume's and crew's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
+      sluicesUser.flume == "alice" && sluicesUser.crew == "alice" && sluicesUser.timber == "alice"
+    ) "Flume's, crew's and timber's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
 
   "The tools' activation is their own on nix-darwin" =
     t.expect (t.failures t.toolsDarwinSystem == [ ])

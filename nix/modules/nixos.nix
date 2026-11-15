@@ -4,8 +4,9 @@
 # with the runner in the system profile and the service's PATH the
 # profiles' (design Decision 11). Each tool of the set is installed by its
 # own module, which flake.nix imports beside this one; tools.nix sets
-# their options, and each tool's user is the runner's unless the host
-# names its own (record 0023); drives.nix gives Flume's module each drive's
+# their options, and each tool's user, Flume's, sluice's, crew's and
+# timber's, is the runner's unless the host names its own (record 0023
+# and its amendment of 2026-11-15); drives.nix gives Flume's module each drive's
 # stream (record 0028), and sources.nix declares crew's source to Flume's
 # module (record 0034). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
@@ -217,6 +218,7 @@ in
       services = {
         flume.user = lib.mkDefault user;
         sluice.user = lib.mkDefault user;
+        timber.user = lib.mkDefault user;
         crew = {
           user = lib.mkDefault user;
           settings.repositories = lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { }) (keptOf {
