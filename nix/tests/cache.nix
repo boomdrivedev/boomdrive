@@ -194,7 +194,6 @@ in
         "services.boomdrive.ghostty.package"
         "services.boomdrive.portless.package"
         "services.boomdrive.worktrunk.package"
-        "services.boomdrive.timber.package"
         "services.boomdrive.launcher.package"
         "services.boomdrive.pendingyou.package"
         "services.boomdrive.plannotator.package"

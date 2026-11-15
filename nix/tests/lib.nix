@@ -61,12 +61,13 @@ let
     lib.drop 1 (lib.splitString "```nix\n" (toString installing))
   );
 
-  # Flume's, sluice's and crew's own modules alone, each from its own
-  # flake, turned on with the set's packages, crew's settings for host-a,
+  # Flume's, sluice's, crew's and timber's own modules alone, each from its
+  # own flake, turned on with the set's packages, crew's settings for host-a,
   # Flume's terminal and window as the Boomdrive module gives them
   # (apps.nix), crew's source declared to Flume as sources.nix declares it
   # (the change the-set-declares-crews-source-to-flume, design Decision 6),
-  # and on NixOS the user alice (design Decision 8).
+  # and on NixOS the user alice (design Decision 8; the change
+  # the-set-takes-timbers-own-module, design Decision 8).
   settings = import ./settings.nix;
   toolsOf =
     platform: set: extra:
@@ -74,6 +75,7 @@ let
       "flume"
       "sluice"
       "crew"
+      "timber"
     ]
     ++ [
       {
@@ -99,6 +101,10 @@ let
             package = set.crew;
             host = "host-a";
             settings = settings.crewModule;
+          };
+          timber = {
+            enable = true;
+            package = set.timber;
           };
         };
       }
@@ -172,6 +178,7 @@ in
         flume.user = "alice";
         sluice.user = "alice";
         crew.user = "alice";
+        timber.user = "alice";
       };
     }
   );
