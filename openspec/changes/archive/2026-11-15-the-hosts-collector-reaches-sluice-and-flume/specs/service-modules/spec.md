@@ -74,7 +74,7 @@ The README's **Installing with nix** SHALL say that the collector the host names
 
 ### Requirement: The Boomdrive module writes no file of the other tools'
 
-The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, run herdr's own `plugin link` for the plugins `services.boomdrive.herdr.plugins` lists, write or remove each of Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's and crew's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL each be written by that tool's own module, as it writes them without Boomdrive's.
+The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, link `services.boomdrive.herdr.plugins` by herdr's own `plugin link`, write or remove Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's and crew's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL each be written by that tool's own module, as without Boomdrive's.
 
 #### Scenario: The tools' activation is their own
 
