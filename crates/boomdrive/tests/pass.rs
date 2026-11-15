@@ -21,13 +21,13 @@ use boomdrive::carry::{Carrier, Configured, Least, Passed, Reach};
 use boomdrive::locks::Locks;
 use boomdrive::report::ReportFile;
 use boomdrive::run::Notices;
-use boomdrive::terminal::{self, Relays};
+use boomdrive::terminal::Relays;
 use boomdrive::{clone, config, facts, flume, report, sluice};
 use boomdrive_control::ToolVersion;
 use boomdrive_crew::config::{Config, Partition, StateRepository};
 use boomdrive_crew::Crew;
 use common::{keeping, Scratch};
-use fakes::{fixture, printed, FakeTools, HerdrStub, SluiceStub, Stub};
+use fakes::{fixture, printed, FakeTools, SluiceStub, Stub};
 use serde_json::{json, Value};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, Once};
@@ -53,7 +53,6 @@ struct Host {
     config: config::Config,
     flume: Stub,
     sluice: SluiceStub,
-    herdr: HerdrStub,
     tools: FakeTools,
 }
 
@@ -81,7 +80,6 @@ impl Host {
             config,
             flume,
             sluice: SluiceStub::new(),
-            herdr: HerdrStub::new(),
             tools: FakeTools::default(),
         };
         // The stub `flume` prints nothing for `--version`, which the hello
@@ -157,7 +155,7 @@ impl Host {
         let (events, _told) = mpsc::channel();
         let notices = Notices::new(events);
         let control_dir = report::control_dir(&data);
-        let relays = Relays::new(terminal::Cli::new(self.herdr.program()), |_| {});
+        let relays = Relays::new(flume::Cli::new(self.flume.program()), |_| {});
         let reach = Reach::default();
         let least = Least::default();
         let report = ReportFile::new(&control_dir);
