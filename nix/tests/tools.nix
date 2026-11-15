@@ -22,6 +22,7 @@ let
     crew = "crew-teams.json";
     flume = "flume-config.toml";
     sluice = "sluice-config.toml";
+    timber = "timber-config.toml";
   };
 
   # nix-darwin's activation, as text: a regular expression may not hold a
@@ -184,10 +185,16 @@ let
     { system, ... }:
     let
       evaluated = system { };
-      inherit (evaluated.config.services) crew flume sluice;
+      inherit (evaluated.config.services)
+        crew
+        flume
+        sluice
+        timber
+        ;
     in
     t.expect flume.enable "a ${platform} system of the runner alone leaves Flume's module off"
     ++ t.expect sluice.enable "a ${platform} system of the runner alone leaves sluice's module off"
+    ++ t.expect timber.enable "a ${platform} system of the runner alone leaves timber's module off"
     ++ t.expect (!crew.enable) "a ${platform} system of the runner alone turns crew's module on"
     ++ t.expect (
       t.failures evaluated == [ ]
@@ -216,6 +223,7 @@ let
           "crew"
           "flume"
           "sluice"
+          "timber"
         ];
 
   # The four tools' users on NixOS, crew on, and again with sluice's own.
@@ -615,5 +623,6 @@ onEach "Each tool's options are its own flake's" ownOptions
           "crew"
           "flume"
           "sluice"
+          "timber"
         ];
 }
