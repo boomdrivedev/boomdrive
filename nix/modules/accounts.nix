@@ -2,7 +2,9 @@
 # each-repository-is-named-once-by-its-owner, design Decision 1; record
 # 0028), the one place that reads it, so both platforms render one text.
 # `drivesOf` lists each drive, in the accounts' and then the drives' name
-# order, as `{ account, name, machine, stream, addresses }`, its addresses
+# order, as `{ account, name, machine, stream, state_repository, addresses }`,
+# each carrying its account's crew state repository, null where the
+# account names none (record 0032), its addresses
 # `<owner>/<name>`, owner by owner in the order of the owners' names, each
 # owner's names in the order given: nix keeps no order of an attribute
 # set's names, so the owners' names give it. `hereOf host` keeps the
@@ -25,9 +27,13 @@ in
     lib.concatLists (
       lib.mapAttrsToList (
         account:
-        { drives, ... }:
+        {
+          drives,
+          state_repository ? null,
+          ...
+        }:
         lib.mapAttrsToList (name: drive: {
-          inherit account name;
+          inherit account name state_repository;
           inherit (drive) machine stream;
           addresses = addressesOf drive;
         }) drives

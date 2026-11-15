@@ -122,12 +122,17 @@ let
     }
   );
 
-  # An account, `[accounts.<account>]`: its drives and nothing else.
+  # An account, `[accounts.<account>]`: its drives and nothing else, and
+  # beside them the account's crew state repository, which is no key of
+  # the runner's file (core.5; record 0028; record 0032).
   account = types.submodule {
-    options.drives = mkOption {
-      type = types.attrsOf drive;
-      default = { };
-      description = "Each of the account's drives by its name, which is given once on the host: one account's body of work. Always written.";
+    options = {
+      drives = mkOption {
+        type = types.attrsOf drive;
+        default = { };
+        description = "Each of the account's drives by its name, which is given once on the host: one account's body of work. Always written.";
+      };
+      state_repository = unset (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+") "The account's crew state repository, `<owner>/<name>`, whose branch `<drive>/main` holds each of its drives' plan and run record: under crew, named here once, and given to crew's drives and the runner's crew table; none where unset, and the account's drives give crew nothing.";
     };
   };
 
