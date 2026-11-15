@@ -2,7 +2,7 @@
 
 ### Requirement: NixOS's drive file gives the drive to the runner, crew and Flume
 
-The NixOS drive step SHALL give `/etc/nixos/boomdrive.nix`, a module that trusts the family's cache as the flake's `nixConfig` names it and installs `git`, `gh` and `nodejs`. It SHALL set the account `me`, naming the state repository `your-github-name/drive-state`, whose drive `home` keeps `your-github-name/your-repository` under crew, with crew's host `your-host`. It SHALL give crew's own keys for its drive `home`, writing neither the drive's machine nor its state, which the set gives from the account.
+The NixOS drive step SHALL give `/etc/nixos/boomdrive.nix`, a module that trusts the family's cache as the flake's `nixConfig` names it and installs `git`, `gh` and `nodejs`. It SHALL set the account `me`, naming the state repository `your-github-name/drive-state`, whose drive `home` keeps `your-github-name/your-repository` under crew, with crew's host `your-host`. It SHALL give crew's own keys for its drive `home`, and neither its machine nor its state, which the set gives from the account.
 
 #### Scenario: The drive on NixOS
 
