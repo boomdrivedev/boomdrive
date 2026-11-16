@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex, Once};
 use tempfile::TempDir;
+use weir_bounded::Halt;
 
 /// crew's header of `requests.rec`, as `runner.REQUESTS` holds it at
 /// `the-team-machinery-leaves` (`2b97ee57`), where a launch of a kit's
@@ -400,8 +401,21 @@ impl State {
 
     /// crew's implementation on `host` as parts, one for each of
     /// `partitions` (label and state repository), its data under the
-    /// scratch directory, and the lines each part says, by its label.
+    /// scratch directory, and the lines each part says, by its label. Its
+    /// halt is never set.
     pub fn parts(&self, host: &str, partitions: &[(&str, &str)]) -> (Vec<Part>, Saids) {
+        self.parts_halted_by(host, partitions, &Halt::default())
+    }
+
+    /// crew's implementation on `host` as parts, as [`State::parts`] makes
+    /// them, each given `halt`, as the runner gives its own (record 0042 as
+    /// amended on 2026-11-12).
+    pub fn parts_halted_by(
+        &self,
+        host: &str,
+        partitions: &[(&str, &str)],
+        halt: &Halt,
+    ) -> (Vec<Part>, Saids) {
         let saids = Saids::default();
         let config = Config {
             host: host.to_string(),
@@ -421,6 +435,7 @@ impl State {
                 let lines = saids.of(label).0;
                 Box::new(move |line| lines.lock().unwrap().push(line))
             },
+            halt,
         );
         (parts, saids)
     }
