@@ -1,7 +1,7 @@
 //! The quick start's steps (record 0043; site.8; design Decisions 5 and 6
 //! of the change boomdrives-quick-start-takes-a-stranger-to-a-working-drive):
 //! each step's file is read by its path under `site/src/start/`, beside
-//! the crate's manifest, as `readme.rs` reads README, and run as it stands
+//! the crate's manifest, as `examples.rs` reads its files, and run as it stands
 //! through `sh`, never a copy of its text. A step whose run would reach
 //! only a stand-in, a sign-in, the state repository or the start, is held
 //! to what setup names for it, setup run over `common::stand`'s stand-ins.
