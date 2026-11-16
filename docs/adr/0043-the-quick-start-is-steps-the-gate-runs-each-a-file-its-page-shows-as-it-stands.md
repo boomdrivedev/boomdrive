@@ -60,3 +60,9 @@ For where the reader starts:
 - Bad: a step that reaches GitHub, Claude Code or Nix's switch is proved only up to that edge.
 - Bad: a Mac's reader writes one file by hand that a module writes on a host Nix manages. Principle 11 retires it: the change that has setup run Flume's command removes that step, its file and its test.
 - The site gains site.8, and its design a section, "The quick start".
+
+## Amendment, 2026-11-15: site:test reads no step's record
+
+Status: accepted, by record 0049, under boomdrivedev/blueprints principle 16.
+
+`site:test` reads no Markdown file: neither a step's record under `site/src/content/start/` nor the page's words, `site/src/content/pages/start.md`. It reads the built page, the built stylesheet and the files under `site/src/start/`: each block of a step's on the page is a file there as it stands, and every file there is on the page. Each step still shows its text as files and names the one test that runs them (site.8), and the build still refuses a step with no place, no file or no test; whether the test it names is one its project holds, and whether a platform's places run in order, are its writers' to keep. The tests that run the files, `crates/boomdrive/tests/quick_start.rs` and `nix/tests/quick-start.nix`, read the files by their paths, as decided above.
