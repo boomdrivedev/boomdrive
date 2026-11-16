@@ -49,11 +49,20 @@ Once the next control pass is due, a control pass SHALL run its first launch, wh
 - **WHEN** the runner holds `x` and `y` at places Flume stands, a pull gives a priority of `x` and a priority of `y`, then offers `a`, `b`, `c` and `d`, and the next control pass falls due once two launches have been made
 - **THEN** `a` and `b` are launched, `c` and `d` are answered `held`, then `flume priority` is run on `x`'s place; `y`'s priority is left unanswered, and the pass says that 1 act on a place waits for the next
 
+### Requirement: A pass not yet due sends once, at its end
+
+A control pass that ends before the next is due SHALL send its report once, at its end, and every pass's end SHALL send as before, whether the pass fell due or not (core.50; record 0002, as amended on 2026-11-14).
+
+#### Scenario: A pass not yet due sends once
+
+- **WHEN** the next control pass does not fall due while a pass launches the offers `a`, `b` and `c` its pull gives
+- **THEN** the pass sends one report, at its end, holding all three launched
+
 ## MODIFIED Requirements
 
 ### Requirement: A pass past due sends each answer as it makes it
 
-Once the next control pass is due, by its timer or by the control plane's wake, a control pass SHALL send its report, wherever an answer changed it since its last send, before each tool's command it runs for a want, and once it has answered its last want. The commands SHALL be a `flume launch`, made in turn or once its clone's keep is done; Flume's status of a place for an act, and Flume's command on the place; and sluice's preview or release. So no answer SHALL wait on a command, and a launch's or an act's answer SHALL go up before the next command runs. A pass that ends before the next is due SHALL send once, at its end, and every pass's end SHALL send as before (core.50; record 0002, as amended on 2026-11-14).
+Once the next control pass is due, a control pass SHALL send its report, wherever an answer changed it since its last send, before each tool's command it runs for a want, and once it has answered its last want, so no answer waits on a command. The commands SHALL be a `flume launch`, made in turn or once its clone's keep is done; Flume's status of a place for an act, and Flume's command on the place; and sluice's preview or release (core.50; record 0002, as amended on 2026-11-14).
 
 #### Scenario: A pass past due sends a launch's answer before its act runs
 
@@ -64,11 +73,6 @@ Once the next control pass is due, by its timer or by the control plane's wake, 
 
 - **WHEN** the next control pass is due from each pass's start, and each pass's pull offers `a`, `b` and `c`
 - **THEN** the first pass launches `a`, the second `b` and the third `c`; each pass sends a report holding its launch once its last want is answered, before the next pass's launch is asked of Flume, and its end sends once more
-
-#### Scenario: A pass not yet due sends once
-
-- **WHEN** the next control pass does not fall due while a pass launches the offers `a`, `b` and `c` its pull gives
-- **THEN** the pass sends one report, at its end, holding all three launched
 
 #### Scenario: An act's answer goes up before the next act runs
 
