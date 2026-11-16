@@ -823,6 +823,22 @@ content and API bodies, so a session exports none of its words. It pins
 on Claude Code's own session, account and repository attributes, so
 each session carries its account and the repository its `origin` names.
 
+With the runner on and a collector named, the same collector is
+Flume's and sluice's: the modules turn each on to send to it through its
+own settings, `services.flume.settings.telemetry` and
+`services.sluice.settings.telemetry`, `send = true` and the collector
+with its trailing `/` dropped, which each tool's own module writes into
+its `[telemetry]`, Flume's into its managed file and sluice's into its
+own. Which of its traces, metrics and logs each tool sends, and as what,
+stays that tool's own setting, at its own defaults: Flume sends a
+place's trace, its records and its metrics, and sluice its traces, its
+metrics and, as logs, which task of a failed check failed and where its
+output is kept, never the output. Claude Code's `metrics`, `logs` and
+`traces` reach its sessions alone. `send = false` in a tool's own
+`telemetry` turns that tool's telemetry off. A tool's `collector` other
+than the host's fails evaluation, whatever priority it is given, so
+every tool of the set sends to the one collector the host names.
+
 Without a collector, or without the runner, nothing is written: NixOS
 drops the file it wrote, and each nix-darwin switch removes the set's
 own document and nothing else in the folder. The host's own

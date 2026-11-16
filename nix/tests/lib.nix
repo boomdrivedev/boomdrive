@@ -110,6 +110,24 @@ let
       }
       extra
     ];
+
+  # A system of darwinOf's and one of nixosOf's of the tools' own modules
+  # alone, each with the module `extra` of more settings beside them (the
+  # change the-hosts-collector-reaches-sluice-and-flume, Task notes 1.5).
+  toolsDarwinOf = extra: darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin extra);
+  toolsNixosOf =
+    extra:
+    nixosOf (
+      toolsOf "nixos" outputs.packages.x86_64-linux {
+        imports = [ extra ];
+        services = {
+          flume.user = "alice";
+          sluice.user = "alice";
+          crew.user = "alice";
+          timber.user = "alice";
+        };
+      }
+    );
 in
 {
   inherit
@@ -169,19 +187,11 @@ in
       given
     ];
 
-  # A system of darwinOf's and one of nixosOf's of the tools' own modules
-  # alone, beside the runner's systems above.
-  toolsDarwinSystem = darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin { });
-  toolsNixosSystem = nixosOf (
-    toolsOf "nixos" outputs.packages.x86_64-linux {
-      services = {
-        flume.user = "alice";
-        sluice.user = "alice";
-        crew.user = "alice";
-        timber.user = "alice";
-      };
-    }
-  );
+  # The tools' own systems, of more settings and of none, beside the
+  # runner's systems above.
+  inherit toolsDarwinOf toolsNixosOf;
+  toolsDarwinSystem = toolsDarwinOf { };
+  toolsNixosSystem = toolsNixosOf { };
 
   # The messages of the assertions a system fails.
   failures =
