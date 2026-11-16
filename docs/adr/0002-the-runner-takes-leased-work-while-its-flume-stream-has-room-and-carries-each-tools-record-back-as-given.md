@@ -364,3 +364,48 @@ core.59 holds it. The control-plane-interface, crew-control-plane, runner-protoc
 - crew's unit `a-bolt-waiting-on-the-user-waits-under-words` posts `Act: hold` with `Of`, `Words` and `Bound`, naming no `Host`, which goes to the runner that holds its launch. Its holds written before a host runs the release that carries this are carried once it does.
 - A hosted control plane's work stalls as it does today until a later protocol version names a hold. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
 - Flume's statement names, in its row of callers, what the runner asks of Flume at its control plane's ask: a retry of a base place's submission as a land, and a confirm of ends. A hold of a place's waiting move, with its words and bound, joins them. That is the statement's owner's to amend, and is told to the orchestrator.
+
+## Amendment, 2026-11-14: a pass past due sends its answers as it makes them
+
+Status: boomdrive-design's, on the stop-short of the fix `main--a-refused-request-leaves-the-runners-reports-going`, 2026-11-14. Cheap to change.
+
+### Context
+
+A control pass sends its report once, at its end. On deneb on 2026-11-14, the pull of 14:35:29Z claimed offers 70 to 147 and launched them one after another, each `flume launch` taking from seconds to 5.6 minutes. The pass was still launching when a restart at about 14:55Z ended it, and its answers were never sent. The pass after the restart launched the rest until 15:11:36Z and wrote its answers at 15:21:30Z. For 46 minutes crew read every launch as held by the runner, raised no landings card, and refused `crew answer`. Flume's refusals of priority requests for places that no longer stood were each answered once and passed over, so they held nothing.
+
+### Considered options
+
+1. **A pass past due sends its report after each launch or act it carries out (chosen).** No answer the pass has made waits on the rest of the pass, and a restart loses only the act in hand.
+2. **A pass runs no launch after its first once the next pass is due**, as `core.50` bounds acts on places. Every pass would send a report, but the offers it leaves stay claimed and unlaunched while the stream has room, and wait a pass for nothing. No answer comes sooner than under option 1.
+3. **Answer a refusal at once.** It changes no send time.
+
+### Decision outcome
+
+Option 1. Once the next control pass is due, the pass sends its report after each launch, act, command or preview it carries out, then goes on with the rest in the order `core.50` gives. A pass that ends before the next is due sends once, at its end, as before. A send that fails is retried by the next send, as a pass's send is. Nothing changes in what a pass takes or in what order.
+
+### Consequences
+
+- Each send under crew's control plane is a commit to the runner's branch of the drive's state repository, so a long pass past due writes one commit for each act it carries out after the due time.
+- `core.50` is amended with it.
+- As built by the fix `main--a-refused-request-leaves-the-runners-reports-going` (the change `a-pass-past-due-sends-its-answers-as-it-makes-them`), the code stage's own choices, cheap to change: a send follows each want whose answer changed the report, an inbox carried or an offer held among them; the answer to a send before the pass's end is taken as the end's is, and the pass takes no want more that it let go or refused, so an offer refused is not launched again from the pull in hand (`core.10`); and a send before the pass's end that fails leaves the pass's answers to the send at its end, so a control plane that cannot be reached is tried once more that pass and not after each answer (`core.22`). Not taken: trying again after each answer, which holds every launch behind an unreachable control plane, each try of crew's write taking up to thirty seconds (`core.58`).
+
+## Amendment, 2026-11-14: once a pass is due, its launches and its acts take turns
+
+Status: boomdrive-design's, on main-level ops' question of 2026-11-14 on request 267, a land that waited behind a pass's launches. Cheap to change.
+
+### Context
+
+`flume launch` answers once its place is made and readied and its first stage started (Flume's 6 and 11), and readying is sluice's equipping of the place, which takes from seconds to several minutes. So on 2026-11-14 a pass's launches ran from 15:39Z to 16:04Z, and the next from 16:10Z, while the user's land of `a-deploy-card-of-any-size-is-raised`, asked at 15:41Z, waited behind them as an act on a place. The amendment of 2026-11-07 put launches first because acts were the slow wants then. Today launches are, and the same order holds the acts.
+
+### Considered options
+
+1. **Once the next pass is due, launches and acts take turns (chosen).** Neither waits behind more than one of the other, whichever is slow that day.
+2. **Acts first.** It brings back 2026-11-07's case, a backlog of slow acts holding every launch.
+3. **Keep launches first.** A land, an answer or a hold waits behind every launch the pull offered.
+
+### Decision outcome
+
+Option 1. Before the next pass is due, a pass takes its launches first, as the amendment of 2026-11-07 says. Once it is due, no act waits behind more than one launch, and no launch behind more than one act. The pass leaves to the next pass what it would have run after its first launch and its first act past due, so the next pull is never held behind more than one of each. Each kind keeps the control plane's order among its own, and no launch the pass took is left unanswered. Its report goes up after each, as the amendment of 2026-11-14 above says. How the runner holds a launch the pass took and left is the construct's to design, within `core.10` and `core.50`.
+
+`core.50` is amended with it.
+

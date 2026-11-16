@@ -29,7 +29,11 @@
 # 2026-11-11). Where `services.boomdrive.claude-code.telemetry` names a
 # collector, `/etc` holds Claude Code's managed telemetry document,
 # claude-code.nix's, which every Claude Code session on the host reads
-# (record 0013 as amended on 2026-11-12).
+# (record 0013 as amended on 2026-11-12). Wherever Flume is on, with the
+# runner or without, `/etc` holds Claude Code's managed transcripts
+# document beside it, claude-code.nix's, which keeps every session's
+# transcript `services.boomdrive.claude-code.cleanupPeriodDays` days
+# (record 0046).
 { packages }:
 {
   config,
@@ -160,87 +164,104 @@ in
     '';
   };
 
-  config = lib.mkIf cfg.enable {
-    assertions = [
-      # users.users.<user> is there either way, since this module makes
-      # the user linger: a user only the module names is neither kind.
-      {
-        assertion = account.isNormalUser || account.isSystemUser;
-        message = "services.boomdrive.user is ${user}, whom users.users.${user} does not declare: declare the user whose manager runs the runner.";
-      }
-      {
-        assertion = !hosted || lib.versionAtLeast systemd "256";
-        message = "services.boomdrive.settings names a hosted control plane, whose partition's key systemd-creds of systemd 256 or later keeps for the user, and this system's systemd is ${systemd}.";
-      }
-    ];
-
-    environment = {
-      systemPackages = [ cfg.package ];
-
-      # Claude Code's managed telemetry document, where a collector is
-      # named: copied, not linked into the store, as Claude Code's files
-      # are (the change every-claude-code-session-exports-to-the-hosts-collector,
-      # design Decisions 6 and 7). With none, no entry is declared, and
-      # NixOS removes the file it wrote.
-      etc = lib.mkIf (telemetry.collector != null) {
-        "${claudeCode.nixosFolder}/${claudeCode.name}" = {
-          text = builtins.toJSON (claudeCode.documentOf telemetry);
+  config = lib.mkMerge [
+    # Claude Code's managed transcripts document, wherever Flume is on,
+    # whether or not the runner is: copied, not linked into the store, as
+    # the telemetry document is (the change
+    # the-set-keeps-claude-codes-transcripts-a-year, design Decisions 2
+    # and 5). Where Flume is off, no entry is declared, and NixOS removes
+    # the file it wrote.
+    {
+      environment.etc = lib.mkIf config.services.flume.enable {
+        "${claudeCode.nixosFolder}/${claudeCode.transcriptsName}" = {
+          text = builtins.toJSON (claudeCode.transcriptsOf cfg.claude-code.cleanupPeriodDays);
           mode = "0644";
         };
       };
-    };
+    }
 
-    # Each tool's module links its file for the runner's user, unless the
-    # host names another; and crew's kept repositories, where crew's
-    # module is on and the runner keeps a repository (design Decisions 1,
-    # 4 and 6).
-    services = {
-      flume.user = lib.mkDefault user;
-      sluice.user = lib.mkDefault user;
-      crew = {
-        user = lib.mkDefault user;
-        settings.repositories = lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { }) (keptOf {
-          inherit (cfg) cloneDirs;
-          inherit home;
-          root = cfg.settings.repository_root;
-        });
+    (lib.mkIf cfg.enable {
+      assertions = [
+        # users.users.<user> is there either way, since this module makes
+        # the user linger: a user only the module names is neither kind.
+        {
+          assertion = account.isNormalUser || account.isSystemUser;
+          message = "services.boomdrive.user is ${user}, whom users.users.${user} does not declare: declare the user whose manager runs the runner.";
+        }
+        {
+          assertion = !hosted || lib.versionAtLeast systemd "256";
+          message = "services.boomdrive.settings names a hosted control plane, whose partition's key systemd-creds of systemd 256 or later keeps for the user, and this system's systemd is ${systemd}.";
+        }
+      ];
+
+      environment = {
+        systemPackages = [ cfg.package ];
+
+        # Claude Code's managed telemetry document, where a collector is
+        # named: copied, not linked into the store, as Claude Code's files
+        # are (the change every-claude-code-session-exports-to-the-hosts-collector,
+        # design Decisions 6 and 7). With none, no entry is declared, and
+        # NixOS removes the file it wrote.
+        etc = lib.mkIf (telemetry.collector != null) {
+          "${claudeCode.nixosFolder}/${claudeCode.name}" = {
+            text = builtins.toJSON (claudeCode.documentOf telemetry);
+            mode = "0644";
+          };
+        };
       };
-    };
 
-    users.users.${user}.linger = true;
-
-    systemd.user.services.boomdrive = {
-      description = "Boomdrive, the runner";
-      wantedBy = [ "default.target" ];
-      unitConfig.ConditionUser = user;
-      # The profiles' PATH alone; the user's manager gives HOME and
-      # XDG_RUNTIME_DIR.
-      enableDefaultPath = false;
-      environment.PATH = lib.concatStringsSep ":" path;
-      # Restarted by the activation below, which compares command lines.
-      restartIfChanged = false;
-      serviceConfig = {
-        ExecStart = utils.escapeSystemdExecArgs command;
-        # An exit 2 is tried again no more than twice a minute, and never
-        # given up on.
-        Restart = "always";
-        RestartSec = "30s";
-        # A stop ends the runner alone: a `flume launch` in flight runs to
-        # its end.
-        KillMode = "process";
+      # Each tool's module links its file for the runner's user, unless the
+      # host names another; and crew's kept repositories, where crew's
+      # module is on and the runner keeps a repository (design Decisions 1,
+      # 4 and 6).
+      services = {
+        flume.user = lib.mkDefault user;
+        sluice.user = lib.mkDefault user;
+        crew = {
+          user = lib.mkDefault user;
+          settings.repositories = lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { }) (keptOf {
+            inherit (cfg) cloneDirs;
+            inherit home;
+            root = cfg.settings.repository_root;
+          });
+        };
       };
-      startLimitIntervalSec = 0;
-    };
 
-    # Run by every user's nixos-activation.service, inside which a job is
-    # never waited for, with coreutils on its PATH and neither systemctl
-    # nor ps. A link that fails says why and stops nothing else: the unit
-    # reads its own --config either way.
-    system.userActivationScripts.boomdrive.text = ''
-      if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
-      ${lib.concatMapStrings (step: "  ${step}\n") steps}  PATH=${keepPath}:$PATH \
-          ${pkgs.runtimeShell} ${./activate.sh} keep ${lib.escapeShellArgs ([ user ] ++ command)}
-      fi
-    '';
-  };
+      users.users.${user}.linger = true;
+
+      systemd.user.services.boomdrive = {
+        description = "Boomdrive, the runner";
+        wantedBy = [ "default.target" ];
+        unitConfig.ConditionUser = user;
+        # The profiles' PATH alone; the user's manager gives HOME and
+        # XDG_RUNTIME_DIR.
+        enableDefaultPath = false;
+        environment.PATH = lib.concatStringsSep ":" path;
+        # Restarted by the activation below, which compares command lines.
+        restartIfChanged = false;
+        serviceConfig = {
+          ExecStart = utils.escapeSystemdExecArgs command;
+          # An exit 2 is tried again no more than twice a minute, and never
+          # given up on.
+          Restart = "always";
+          RestartSec = "30s";
+          # A stop ends the runner alone: a `flume launch` in flight runs to
+          # its end.
+          KillMode = "process";
+        };
+        startLimitIntervalSec = 0;
+      };
+
+      # Run by every user's nixos-activation.service, inside which a job is
+      # never waited for, with coreutils on its PATH and neither systemctl
+      # nor ps. A link that fails says why and stops nothing else: the unit
+      # reads its own --config either way.
+      system.userActivationScripts.boomdrive.text = ''
+        if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
+        ${lib.concatMapStrings (step: "  ${step}\n") steps}  PATH=${keepPath}:$PATH \
+            ${pkgs.runtimeShell} ${./activate.sh} keep ${lib.escapeShellArgs ([ user ] ++ command)}
+        fi
+      '';
+    })
+  ];
 }

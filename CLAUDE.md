@@ -48,7 +48,12 @@ collector the host names in `services.boomdrive.claude-code.telemetry`,
 they write Claude Code's managed telemetry document,
 `10-boomdrive-telemetry.json` in Claude Code's `managed-settings.d`,
 which every session on the host reads (record 0013 as amended on
-2026-11-12). None runs `claude` or writes into a Claude Code home. On
+2026-11-12). Wherever they install Flume, with the runner or without,
+they write Claude Code's managed transcripts document,
+`10-boomdrive-transcripts.json` beside it, holding
+`services.boomdrive.claude-code.cleanupPeriodDays` alone, a year by
+default, so every session on the host keeps its transcript that long
+(record 0046). None runs `claude` or writes into a Claude Code home. On
 macOS the module runs the runner from a copy at
 `/Library/Application Support/Boomdrive/boomdrive` that each activation
 signs, before the agents load, with the host's own code-signing
