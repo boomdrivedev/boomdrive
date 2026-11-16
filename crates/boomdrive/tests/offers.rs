@@ -591,6 +591,54 @@ fn a_launch_waits_for_its_own_repositorys_fetch_alone() {
     assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
 }
 
+/// The work-into-flume spec's "A launch that waited on its clone's keep is
+/// held without waiting on it": the next control pass is due from the
+/// pass's start, the keeper holds `agentplot/flume`'s lock for its fetch,
+/// and the pull offers a launch into `agentplot/flume`, then one into
+/// `agentplot/sluice`. The launch into `agentplot/sluice` is made, and the
+/// one into `agentplot/flume` held for its turn, no `flume launch` run for
+/// it, the pass ending while the keeper still holds the lock (design
+/// Decision 2; core.50).
+#[test]
+fn a_launch_that_waited_on_its_clones_keep_is_held_without_waiting_on_it() {
+    let bench = Bench::new();
+    let container = bench.container("agentplot/sluice");
+    bench.clones.ready("agentplot/sluice", &container);
+    let mut sluice = offer("home/2", "b");
+    sluice.launch.repository = "agentplot/sluice".into();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a")), Want::Offer(sluice)]);
+    let keeper = keeping(&bench, KEPT, || {});
+
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &|| true);
+    let kept_still = !keeper.is_finished();
+    keeper.join().unwrap();
+
+    let launched: Vec<String> = bench
+        .flume
+        .launches()
+        .into_iter()
+        .map(|args| args.name)
+        .collect();
+    assert_eq!(launched, ["b"], "no flume launch for a");
+    assert!(kept_still, "the pass did not wait for the keep");
+    assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
+    let report = boomdrive::report::read(&bench.report_file())
+        .unwrap()
+        .unwrap();
+    let held = &report.launches[&id("home/1")].answer;
+    assert_eq!(
+        (held.outcome, held.words.as_deref()),
+        (Outcome::Held, Some(boomdrive::carry::TURN))
+    );
+    assert_eq!(
+        lines,
+        [
+            format!("home/2: launched at {}", place_of("b")),
+            format!("home/1: held: {}", boomdrive::carry::TURN),
+        ]
+    );
+}
+
 /// The clones spec's "Two parts launch into one clone at once": while
 /// `home`'s pass is launching into `agentplot/flume`, `work`'s pass offers
 /// a launch into it, which is made without waiting for `home`'s to end.
