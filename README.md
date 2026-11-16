@@ -567,7 +567,13 @@ On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
 `~/Library/Logs/boomdrive.log` where none is named. It waits for
 `/nix/store` before it starts the runner, so a runner loaded at boot
-before macOS mounts the store's volume still starts. On NixOS it is the
+before macOS mounts the store's volume still starts. Each switch signs a
+copy of the runner at `/Library/Application Support/Boomdrive/boomdrive`
+with a code-signing identity the host makes once, `Boomdrive runner`,
+kept in its System keychain, and the agent runs that copy. So macOS asks
+once for what the runner reads, and a later build asks nothing again.
+Where the copy could not be signed, the agent runs the package's own
+runner and the switch says why. On NixOS it is the
 systemd user unit `boomdrive.service` of `services.boomdrive.user`, who
 lingers, so it runs from boot. The file is written into the store, the
 service runs `boomdrive run --config <that file>`, and each switch

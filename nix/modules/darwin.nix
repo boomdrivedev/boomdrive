@@ -32,7 +32,12 @@
 # names a collector, it writes the document every Claude Code session on
 # the host reads, and otherwise it removes the set's own document, since
 # nix-darwin removes no file it wrote outside `/etc` (record 0013 as
-# amended on 2026-11-12).
+# amended on 2026-11-12). Where the runner is on, each activation runs, as
+# root and before nix-darwin loads its agents, activate.sh's `sign`, which
+# keeps a copy of the package's runner at
+# `/Library/Application Support/Boomdrive/boomdrive` signed with the host's
+# own code-signing identity, so a person's grant of macOS privacy access
+# holds for every later build, and the agent runs that copy (record 0047).
 { packages }:
 {
   config,
@@ -72,6 +77,32 @@ let
     ]
     ++ map toString cfg.herdr.plugins
   );
+
+  # The runner's copy signed with the host's own identity, in a folder only
+  # root writes, made before the agents load (record 0047; the change
+  # the-runners-macos-grant-outlasts-a-new-build, design Decisions 3 and 6).
+  runner = "${cfg.package}/bin/boomdrive";
+  signedFolder = "/Library/Application Support/Boomdrive";
+  signing = lib.escapeShellArgs [
+    "sign"
+    "/Library/Keychains/System.keychain"
+    signedFolder
+    runner
+  ];
+  # The agent's line: once the store's volume is mounted, the signed copy
+  # where its source names this package's runner, and the package's own
+  # runner otherwise, each holding the job's process by exec (design
+  # Decision 5).
+  running = [
+    "run"
+    "--config"
+    "${file}"
+  ];
+  agentLine =
+    "/bin/wait4path /nix/store && "
+    + "if [ \"$(/bin/cat ${lib.escapeShellArg "${signedFolder}/boomdrive.source"} 2>/dev/null)\" = ${lib.escapeShellArg runner} ]; "
+    + "then exec ${lib.escapeShellArgs ([ "${signedFolder}/boomdrive" ] ++ running)}; "
+    + "else exec ${lib.escapeShellArgs ([ runner ] ++ running)}; fi";
 
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
@@ -156,8 +187,6 @@ in
     { system.activationScripts.postActivation.text = lib.mkBefore managing; }
 
     (lib.mkIf cfg.enable {
-      system.requiresPrimaryUser = [ "services.boomdrive.enable" ];
-
       assertions = [
         {
           assertion = user == null || home != null;
@@ -178,17 +207,19 @@ in
           });
 
       launchd.user.agents.boomdrive = {
-        # nix-darwin runs a command as `/bin/sh -c '/bin/wait4path /nix/store
-        # && exec <command>'`, so an agent loaded at boot before the store's
-        # volume is mounted waits for it, and the runner then holds the job's
-        # own process, which a stop's signal reaches.
-        command = lib.escapeShellArgs [
-          "${cfg.package}/bin/boomdrive"
-          "run"
-          "--config"
-          "${file}"
-        ];
+        # The line waits for /nix/store, so an agent loaded at boot before
+        # the store's volume is mounted waits for it, and the runner then
+        # holds the job's own process by exec, which a stop's signal
+        # reaches. It names the package and the file, so nix-darwin reloads
+        # the agent for a new build or a new file and for nothing else. It
+        # is declared here with no `command`, whose line nix-darwin makes
+        # leaves no room for the choice of the signed copy.
         serviceConfig = {
+          ProgramArguments = [
+            "/bin/sh"
+            "-c"
+            agentLine
+          ];
           RunAtLoad = true;
           KeepAlive = true;
           # An exit 2 is tried again no more than twice a minute.
@@ -206,22 +237,34 @@ in
         };
       };
 
-      # Activation runs as root, with root's HOME, so the link is made as the
-      # primary user under their own home. A link that fails says why and
-      # stops nothing else: the agent reads its own --config either way.
-      # Pending You's folder is written the same way, before the plugins, so
-      # Pending You for Herdr finds its launcher at its first link; the
-      # plugins are linked the same way, each refusal said and stopping none.
-      system.activationScripts.postActivation.text = ''
-        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
-          /bin/sh ${./activate.sh} link ${file} || true
-      ''
-      + lib.optionalString writingFolder ''
-        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
-      ''
-      + lib.optionalString linking ''
-        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
-      '';
+      system = {
+        requiresPrimaryUser = [ "services.boomdrive.enable" ];
+
+        # Run as root before nix-darwin loads its agents, so a new build's
+        # agent starts from its signed copy, with the operating system's own
+        # security, codesign and openssl; a copy that cannot be signed says
+        # why and stops nothing, the agent running the package's own runner.
+        activationScripts.extraActivation.text = ''
+          /usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh ${./activate.sh} ${signing} || true
+        '';
+
+        # Activation runs as root, with root's HOME, so the link is made as the
+        # primary user under their own home. A link that fails says why and
+        # stops nothing else: the agent reads its own --config either way.
+        # Pending You's folder is written the same way, before the plugins, so
+        # Pending You for Herdr finds its launcher at its first link; the
+        # plugins are linked the same way, each refusal said and stopping none.
+        activationScripts.postActivation.text = ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+            /bin/sh ${./activate.sh} link ${file} || true
+        ''
+        + lib.optionalString writingFolder ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
+        ''
+        + lib.optionalString linking ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
+        '';
+      };
     })
   ];
 }

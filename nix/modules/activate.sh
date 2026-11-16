@@ -7,6 +7,7 @@
 #   activate.sh plugins <herdr> <plugin>...
 #   activate.sh pendingyou <source> <folder>
 #   activate.sh managed <path> [<source>]
+#   activate.sh sign <keychain> <folder> <program>
 #
 # links ~/.config/boomdrive/config.toml to the module's file, so
 # `boomdrive enroll` and `boomdrive run --once` run by hand read what the
@@ -66,6 +67,29 @@
 # where it wrote or removed it, and nothing where nothing differed or
 # nothing stood; a write or a removal that fails is said in one line naming
 # the path and why. It exits 0.
+#
+# sign is nix-darwin's step, run as root before nix-darwin loads its
+# agents (record 0047; design Decisions 1 to 4 of the change
+# the-runners-macos-grant-outlasts-a-new-build). It makes <folder> with
+# mode 0755 where it is not there, and goes on only where <folder> is owned
+# by the user it runs as and no other user can write it: otherwise it makes
+# no identity, signs nothing, writes nothing there and fails. It finds the
+# host's code-signing identity, Boomdrive runner, in <keychain>. Where the
+# keychain holds none, it makes one: a key and a self-signed certificate
+# for code signing, written in a folder only it reads, which goes whatever
+# happens, and imported, the key non-extractable and usable by
+# /usr/bin/codesign alone. Where the keychain holds two or more, it signs
+# nothing and fails, naming each. It keeps <folder>/boomdrive a copy of
+# <program> signed with the identity under the identifier boomdrive, and
+# <folder>/boomdrive.source naming <program>. Where the copy is not there,
+# the source names another program, or the copy is not signed with the
+# identity, it copies <program> to boomdrive.new, signs that with no
+# timestamp, removes boomdrive.source, renames the copy over boomdrive,
+# then writes the source by a rename, so the source never names a program
+# the copy was not made from; otherwise it changes nothing and says
+# nothing. A copy it cannot make, sign or put in place leaves boomdrive as
+# it was and no other file, and fails. Each line of what it made goes to
+# standard output, and a refusal to standard error.
 set -eu
 
 usage() {
@@ -74,7 +98,14 @@ usage() {
   echo "       activate.sh plugins <herdr> <plugin>..." >&2
   echo "       activate.sh pendingyou <source> <folder>" >&2
   echo "       activate.sh managed <path> [<source>]" >&2
+  echo "       activate.sh sign <keychain> <folder> <program>" >&2
   exit 2
+}
+
+# `$1`'s lines as one.
+oneline() {
+  words=$(printf '%s\n' "$1" | tr '\n' ' ')
+  printf '%s' "${words% }"
 }
 
 link() {
@@ -278,6 +309,132 @@ managed() {
   echo "boomdrive: wrote $path"
 }
 
+# The distinct SHA-1s of the identities for code signing named Boomdrive
+# runner in the keychain `$1`, in `shas`, and how many there are, in
+# `count` (design Decision 2).
+lookup() {
+  if ! listed=$(security find-identity -p codesigning "$1" 2>&1); then
+    echo "boomdrive: could not read the identities in $1: $(oneline "$listed")" >&2
+    exit 1
+  fi
+  shas=$(printf '%s\n' "$listed" | awk -v name='"Boomdrive runner"' 'index($0, name) { print $2 }' | sort -u)
+  count=$(printf '%s\n' "$shas" | awk 'NF { n++ } END { print n + 0 }')
+}
+
+# A key and a self-signed certificate for code signing named Boomdrive
+# runner, made in a folder of its own that only this user reads and that
+# goes whatever happens, then imported into the keychain `$1`, the key
+# non-extractable and usable by codesign alone (design Decision 2).
+identity() (
+  keychain=$1
+  umask 077
+  # Named under TMPDIR, which macOS's mktemp -d alone does not read.
+  made=$(mktemp -d "${TMPDIR:-/tmp}/boomdrive.XXXXXXXX")
+  trap 'rm -rf "$made"' EXIT
+  trap 'exit 1' HUP INT TERM
+  cat >"$made/openssl.cnf" <<'CONFIG'
+[req]
+prompt = no
+distinguished_name = name
+x509_extensions = extensions
+
+[name]
+CN = Boomdrive runner
+
+[extensions]
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature
+extendedKeyUsage = critical,codeSigning
+CONFIG
+  if ! words=$(openssl req -x509 -newkey rsa:2048 -nodes -days 7300 \
+    -config "$made/openssl.cnf" -keyout "$made/key.pem" -out "$made/cert.pem" 2>&1) ||
+    ! words=$(security import "$made/key.pem" -k "$keychain" -x -T /usr/bin/codesign 2>&1) ||
+    ! words=$(security import "$made/cert.pem" -k "$keychain" 2>&1); then
+    echo "boomdrive: could not make the code-signing identity in $keychain: $(oneline "$words")" >&2
+    exit 1
+  fi
+)
+
+sign() {
+  keychain=$1
+  folder=$2
+  program=$3
+
+  # The folder: made where it is not there, and trusted only where it is a
+  # folder the step's own user owns and no other user can write (design
+  # Decision 3). It changes no owner and no mode.
+  if [ ! -e "$folder" ] && [ ! -L "$folder" ]; then
+    if ! words=$(mkdir -m 0755 "$folder" 2>&1); then
+      echo "boomdrive: could not sign $program into $folder: $(oneline "$words")" >&2
+      exit 1
+    fi
+  fi
+  listing=$(ls -ldn "$folder")
+  mode=$(printf '%s\n' "$listing" | awk '{ print $1 }')
+  owner=$(printf '%s\n' "$listing" | awk '{ print $3 }')
+  case $mode in
+  d????-??-*) shut=yes ;;
+  *) shut=no ;;
+  esac
+  if [ "$shut" = no ] || [ "$owner" != "$(id -u)" ]; then
+    echo "boomdrive: $folder is writable by a user other than $(id -un): signed nothing" >&2
+    exit 1
+  fi
+
+  # The identity: the one the keychain holds, or one made where it holds
+  # none. A listing it cannot read makes none, so a second is never made
+  # beside one it could not see.
+  lookup "$keychain"
+  if [ "$count" -eq 0 ]; then
+    identity "$keychain"
+    lookup "$keychain"
+    if [ "$count" -eq 0 ]; then
+      echo "boomdrive: could not make the code-signing identity in $keychain: it lists none named Boomdrive runner after the import" >&2
+      exit 1
+    fi
+    if [ "$count" -eq 1 ]; then
+      echo "boomdrive: made the code-signing identity Boomdrive runner, $shas, in $keychain"
+    fi
+  fi
+  if [ "$count" -gt 1 ]; then
+    each=$(printf '%s\n' "$shas" | awk 'NR > 1 { printf ", " } { printf "%s", $0 }')
+    echo "boomdrive: $keychain holds $count identities named Boomdrive runner, $each: signed nothing; remove all but one" >&2
+    exit 1
+  fi
+  sha=$shas
+
+  # The copy: made only where none is there, it was made from another
+  # program, or it is not signed with the identity (design Decision 4).
+  copy=$folder/boomdrive
+  source=$folder/boomdrive.source
+  if [ -e "$copy" ] && [ "$(cat "$source" 2>/dev/null)" = "$program" ] &&
+    codesign --verify -R "=certificate leaf = H\"$sha\"" "$copy" >/dev/null 2>&1; then
+    return
+  fi
+  # Made and signed beside the copy, which stays as it was where either
+  # fails.
+  if ! words=$({ cp "$program" "$copy.new" && chmod 0755 "$copy.new"; } 2>&1) ||
+    ! words=$(codesign --force --sign "$sha" --keychain "$keychain" \
+      --identifier boomdrive --timestamp=none "$copy.new" 2>&1); then
+    rm -f "$copy.new"
+    echo "boomdrive: could not sign $program into $folder: $(oneline "$words")" >&2
+    exit 1
+  fi
+  # Put in place with its source removed first and written last, so the
+  # source never names a program the copy was not made from.
+  if ! words=$({
+    rm -f "$source" &&
+      mv -f "$copy.new" "$copy" &&
+      printf '%s\n' "$program" >"$source.new" &&
+      mv -f "$source.new" "$source"
+  } 2>&1); then
+    rm -f "$copy.new" "$source.new"
+    echo "boomdrive: could not sign $program into $folder: $(oneline "$words")" >&2
+    exit 1
+  fi
+  echo "boomdrive: signed $copy, made from $program, with Boomdrive runner, $sha"
+}
+
 case ${1:-} in
 link)
   [ $# -eq 2 ] || usage
@@ -301,6 +458,11 @@ managed)
   [ $# -eq 2 ] || [ $# -eq 3 ] || usage
   shift
   managed "$@"
+  ;;
+sign)
+  [ $# -eq 4 ] || usage
+  shift
+  sign "$@"
   ;;
 *) usage ;;
 esac
