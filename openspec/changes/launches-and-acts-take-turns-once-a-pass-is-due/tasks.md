@@ -21,7 +21,7 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 3. A preview waits on no launch held for its turn
 
-- [ ] 3.1 A preview's command runs in the second round once every offer is answered, a launch held for its turn among them (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test previews -- a_launch_ahead_of_a_preview a_preview_past_due_waits_on_no_launch_held_for_its_turn` passes, the second test new, proving the previews spec's "A launch ahead of a preview" and "A preview past due waits on no launch held for its turn".
+- [x] 3.1 A preview's command runs in the second round once every offer is answered, a launch held for its turn among them (design Decision 5). Done when `devenv shell -- cargo test -p boomdrive --test previews -- a_launch_ahead_of_a_preview a_preview_past_due_waits_on_no_launch_held_for_its_turn` passes, the second test new, proving the previews spec's "A launch ahead of a preview" and "A preview past due waits on no launch held for its turn".
 
 ## 4. The README
 

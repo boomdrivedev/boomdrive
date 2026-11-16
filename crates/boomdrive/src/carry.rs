@@ -27,8 +27,9 @@
 //! control plane only through `ControlPlane` (core.2), and acts on no
 //! place it did not launch. Work under a lease that has lapsed by the
 //! pass's clock waits for a live one (core.24). A preview its control plane asks for is brought up in a
-//! repository the runner keeps by sluice's own preview command, after
-//! every launch the pull offers, its ask awaited no longer than the
+//! repository the runner keeps by sluice's own preview command, once
+//! every offer the pull gives is answered, a launch held for its turn
+//! among them, its ask awaited no longer than the
 //! runner's patience; sluice's listing of it is carried until sluice lists
 //! it no more; and on its done, only what the runner asked sluice for is
 //! put away, by sluice's own release, with no output of a command carried
@@ -888,8 +889,8 @@ impl Work<'_> {
     /// lease in the report has lapsed is left untaken (design Decision 13;
     /// core.24). A confirm as the runner, or of no key, is refused at once,
     /// running nothing (core.56). One on its launch's place is carried out
-    /// in the pass's second round alone, after every launch the pull offers
-    /// (core.50).
+    /// in the pass's second round alone, once every offer the pull gives
+    /// is answered (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -1159,8 +1160,9 @@ impl Work<'_> {
     /// drains, or one it drains, is refused, since nothing new is made in
     /// one, and one whose clone is not yet made waits (core.5). A done
     /// whose repository has no clone is refused, since its checkout went
-    /// with the clone. Every other is left for the second round, after
-    /// every launch the pull offers (core.50).
+    /// with the clone. Every other is left for the second round, once
+    /// every offer the pull gives is answered, a launch held for its turn
+    /// among them (core.50).
     fn preview(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
         if let Some(previewed) = self.report.previews.get_mut(&preview.id) {
             previewed.lease = preview.lease;
@@ -1185,8 +1187,10 @@ impl Work<'_> {
         }
     }
 
-    /// Carries out `preview` in the pass's second round, after every launch
-    /// the pull offers, by sluice's own command (core.50, core.55). A
+    /// Carries out `preview` in the pass's second round, once every offer
+    /// the pull gives is answered, a launch held for its turn among them,
+    /// so it waits on no launch left for the next pass, by sluice's own
+    /// command (core.50, core.55; design Decision 5). A
     /// preview the report holds answered, or one whose lease has lapsed, is
     /// left as it stands.
     fn preview_command(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
