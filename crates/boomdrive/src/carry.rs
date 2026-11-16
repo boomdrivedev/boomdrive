@@ -5,7 +5,10 @@
 //! none but the first once the next pass is due (record 0002; core.50),
 //! carries each place's status against Flume's listing as it stands once
 //! those answers are made (record 0027), opens each terminal pulled, and
-//! sends the whole report. Once its control plane has taken a report
+//! sends the whole report. Once the next pass is due, it also sends the
+//! report after each answer it makes, so no answer waits on the rest of
+//! the pass (record 0002 as amended on 2026-11-14; core.50). Once its
+//! control plane has taken a report
 //! holding a place's status, it confirms to Flume, as the runner, each end
 //! that status gives owed to it, so no end leaves Flume before its control
 //! plane holds it (record 0030 as amended on 2026-11-09; core.54). An act
@@ -369,13 +372,19 @@ impl Carrier<'_> {
             waiting: Vec::new(),
             previews_run: 0,
             previews_left: BTreeSet::new(),
+            unsent: false,
+            sends_failed: false,
+            gone: BTreeSet::new(),
         };
         'carrying: for round in [Round::Wants, Round::OnPlaces] {
             work.round = round;
             if round == Round::OnPlaces {
                 for (offer, container, address) in std::mem::take(&mut work.waiting) {
+                    if work.gone.contains(&offer.id) {
+                        continue;
+                    }
                     work.launch_once_kept(&offer, &container, &address, say);
-                    if !work.save(&*plane, say) {
+                    if !work.answered(plane, say) {
                         say(self.line("nothing more is carried out this pass"));
                         break 'carrying;
                     }
@@ -383,7 +392,7 @@ impl Carrier<'_> {
             }
             for want in &pulled.wants {
                 work.want(want, say);
-                if !work.save(&*plane, say) {
+                if !work.answered(plane, say) {
                     say(self.line("nothing more is carried out this pass"));
                     break 'carrying;
                 }
@@ -474,6 +483,15 @@ struct Work<'p> {
     previews_run: usize,
     /// The previews left for the next pass, which is due.
     previews_left: BTreeSet<Id>,
+    /// Whether the share the file holds has an answer the control plane
+    /// has not been sent this pass.
+    unsent: bool,
+    /// Whether a send made before the pass's end failed, which leaves the
+    /// pass's answers to the send at its end.
+    sends_failed: bool,
+    /// What the control plane let go or refused at a send of this pass:
+    /// no want of it is taken more this pass (core.10).
+    gone: BTreeSet<Id>,
 }
 
 /// The pass's two rounds over the pull's wants, each in the control
@@ -503,6 +521,12 @@ enum Round {
 
 impl Work<'_> {
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
+        // The pull gave it before the control plane let it go or refused
+        // it at a send of this pass, so no launch, act or answer of it is
+        // made (core.10).
+        if self.gone.contains(want.id()) {
+            return;
+        }
         if self.round == Round::OnPlaces {
             match want {
                 Want::Act(act) => self.act(act, say),
@@ -1686,11 +1710,51 @@ impl Work<'_> {
         match report.save_share(label, &|id| plane.owns(id), &self.report) {
             Ok(()) => {
                 self.saved = self.report.clone();
+                self.unsent = true;
                 true
             }
             Err(why) => {
                 say(self.carrier.line(&why));
                 false
+            }
+        }
+    }
+
+    /// Saves the part's share once a want is answered, and, once the next
+    /// pass is due, sends it, so no answer the pass made waits on the rest
+    /// of the pass (record 0002 as amended on 2026-11-14; core.50). Says
+    /// whether the file holds the share: where it does not, the pass
+    /// carries out nothing more (core.25).
+    fn answered(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
+        self.save(&*plane, say) && self.send_due(plane, say)
+    }
+
+    /// Once the next control pass is due, sends the part's share where an
+    /// answer changed it since it was last sent, and takes the control
+    /// plane's answer as at the pass's end: what it let go or refused
+    /// leaves the report, and no want of it is taken more this pass
+    /// (core.10). A pass that ends before the next is due sends once, at
+    /// its end. A send that fails is said, and leaves the pass's answers to
+    /// the send at its end, so a control plane that cannot be reached is
+    /// tried once more that pass, not after each answer (core.22). Says
+    /// whether the file holds the share after the answer.
+    fn send_due(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
+        if !self.unsent || self.sends_failed || !(self.carrier.due)() {
+            return true;
+        }
+        match plane.report(&self.report) {
+            Ok(reported) => {
+                self.reported(&reported, say);
+                let saved = self.save(&*plane, say);
+                self.unsent = !saved;
+                saved
+            }
+            Err(Unsent(words)) => {
+                say(self.carrier.line(&format!(
+                    "the report could not be sent: {words}: it is sent at the pass's end"
+                )));
+                self.sends_failed = true;
+                true
             }
         }
     }
@@ -1727,6 +1791,8 @@ impl Work<'_> {
     /// host as Flume holds it, and named, and nothing of it is removed
     /// (core.10).
     fn reported(&mut self, reported: &Reported, say: &mut dyn FnMut(String)) {
+        self.gone.extend(reported.let_go.iter().cloned());
+        self.gone.extend(reported.refused.keys().cloned());
         for id in &reported.let_go {
             if self.forget(id) {
                 say(format!("{id}: let go by the control plane"));

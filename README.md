@@ -440,22 +440,27 @@ A host's configuration imports its platform's module,
 `darwinModules.default` for nix-darwin or `nixosModules.default` for
 NixOS, names its accounts in `services.boomdrive.accounts`, and writes
 the rest of the runner's file as `services.boomdrive.settings`, each key
-as the file names it. The module brings Flume's, sluice's and
-crew's own modules, `services.flume`, `services.sluice` and
-`services.crew`, each from its tool's flake at the tag this flake names,
-and the flake gives each again as `darwinModules.<tool>` and
-`nixosModules.<tool>`. Each writes its own tool's file from its
-`settings`, each key as that file names it, and links it at the tool's
-own path, `~/.config/flume/config.toml`, `~/.config/sluice/config.toml`
-and `~/.config/crew/teams.json`. A file of your own there is moved once
-to `config.toml.before-nix`, and crew's to `teams.json.before-nix`, so
-move its values into the tool's `settings` in the switch that takes this
-flake. `services.boomdrive.enable` turns on Flume's and sluice's
-modules; a host that runs crew turns on crew's, with its `host`, its
-drives' own keys and the hosts crew reaches, each written by crew's own
-names. With crew's module on, the module declares crew's source of kinds
-to Flume, `services.flume.sources.crew`, naming the roles file crew
-writes, `~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
+as the file names it. The module brings Flume's, sluice's, crew's and
+timber's own modules, `services.flume`, `services.sluice`,
+`services.crew` and `services.timber`, each from its tool's flake at the
+tag this flake names, and the flake gives each again as
+`darwinModules.<tool>` and `nixosModules.<tool>`. A host that also
+imports timber's module from timber's own flake takes it once. Each
+writes its own tool's file from its `settings`, each key as that file
+names it, and links it at the tool's own path,
+`~/.config/flume/config.toml`, `~/.config/sluice/config.toml`,
+`~/.config/crew/teams.json` and `~/.config/timber/config.toml`. timber's
+file is written from `services.timber.settings`, and holds its header
+alone where the host sets none, which binds as no file does. A file of
+your own there is moved once to `config.toml.before-nix`, and crew's to
+`teams.json.before-nix`, so move its values into the tool's `settings`
+in the switch that takes this flake. `services.boomdrive.enable` turns
+on Flume's, sluice's and timber's modules; a host that runs crew turns
+on crew's, with its `host`, its drives' own keys and the hosts crew
+reaches, each written by crew's own names.
+With crew's module on, the module declares crew's source of kinds to
+Flume, `services.flume.sources.crew`, naming the roles file crew writes,
+`~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
 `~/.local/share/flume/kinds/crew`. Flume's module writes the source at
 `~/.config/flume/sources/crew.toml`, so a host writes no file for it,
 and a key the host sets there wins.
@@ -653,18 +658,20 @@ The runner's module puts the runner in the system profile, and each
 tool's module puts its tool there, the set's unless the host gives its
 own. The runner's `PATH` is the user's profiles, then the system's, so
 the runner, the agents Flume launches and your shell run one copy of
-each tool. A host that installs its own Flume and sluice says so in
-each tool's `package`, `null` for none:
+each tool. A host that installs its own Flume, sluice and timber says so
+in each tool's `package`, `null` for none:
 
 ```nix
 services.flume.package = null;
 services.sluice.package = null;
+services.timber.package = null;
 ```
 
 Each tool's `package`, `services.crew.package` among them, may name the
 host's own package instead, and `services.boomdrive.package` replaces
 the runner. A host that keeps a tool's file its own sets that tool's
-`enable = false`, and installs the tool itself.
+`enable = false`, and installs the tool itself: a host that keeps its
+own `~/.config/timber/config.toml` sets `services.timber.enable = false`.
 
 With `services.boomdrive.enable`, the runner's module also gives the
 host a way to see its agents:
@@ -697,11 +704,13 @@ host a way to see its agents:
   dev server's `portless run` and crew's board find it.
 - It installs worktrunk's `wt`, `services.boomdrive.worktrunk.package`,
   which crew and sluice's worktree driver call.
-- It installs timber, `services.boomdrive.timber.package`, and its herdr
+- It turns on timber's module, which installs timber,
+  `services.timber.package`, and links timber's file, and timber's herdr
   plugin is linked with Flume's and sluice's.
 
-Each of the six is the set's by default, and each may name the host's
-own package instead, or `null` for none:
+Each of the five apps it installs by its own options, herdr, Ghostty,
+the launcher, portless and worktrunk, is the set's by default, and each
+may name the host's own package instead, or `null` for none:
 
 ```nix
 services.boomdrive.herdr.package = null;
@@ -709,7 +718,6 @@ services.boomdrive.ghostty.package = null;
 services.boomdrive.launcher.package = null;
 services.boomdrive.portless.package = null;
 services.boomdrive.worktrunk.package = null;
-services.boomdrive.timber.package = null;
 ```
 
 A host's own launcher is installed as given, and gets no entries.
@@ -734,8 +742,8 @@ registries at one fixed address, is timber's own. timber's herdr pane,
 or a timber command, starts it where nothing answers at
 `127.0.0.1:7420`, and a host may run it as a service of its own. The
 modules start none. A host with a `timber` of its own, in a user's
-profile, sets `services.boomdrive.timber.package` to `null` or to its
-own, so one `timber` runs: a user's own comes ahead of the system
+profile, sets `services.timber.package` to `null` or to its own, so one
+`timber` runs: a user's own comes ahead of the system
 profile's on `PATH`, and the set's goes unused.
 
 Where crew's module is on too, `services.crew.enable`, the runner's
@@ -832,6 +840,22 @@ adds a session's words, its prompts, responses, tool details, tool
 content and API bodies, so a session exports none of its words. It pins
 on Claude Code's own session, account and repository attributes, so
 each session carries its account and the repository its `origin` names.
+
+With the runner on and a collector named, the same collector is
+Flume's and sluice's: the modules turn each on to send to it through its
+own settings, `services.flume.settings.telemetry` and
+`services.sluice.settings.telemetry`, `send = true` and the collector
+with its trailing `/` dropped, which each tool's own module writes into
+its `[telemetry]`, Flume's into its managed file and sluice's into its
+own. Which of its traces, metrics and logs each tool sends, and as what,
+stays that tool's own setting, at its own defaults: Flume sends a
+place's trace, its records and its metrics, and sluice its traces, its
+metrics and, as logs, which task of a failed check failed and where its
+output is kept, never the output. Claude Code's `metrics`, `logs` and
+`traces` reach its sessions alone. `send = false` in a tool's own
+`telemetry` turns that tool's telemetry off. A tool's `collector` other
+than the host's fails evaluation, whatever priority it is given, so
+every tool of the set sends to the one collector the host names.
 
 Without a collector, or without the runner, nothing is written: NixOS
 drops the file it wrote, and each nix-darwin switch removes the set's
@@ -1121,6 +1145,14 @@ settles for both, so no launch waits behind a settle. A control pass:
   act, Flume's status is read again before the places' are carried, so
   a place tidied meanwhile is carried from Flume's record of it,
   `<location>@<at>`.
+
+A control pass sends its report to its control plane at its end. Once
+the next pass is due, it also sends it after each answer it makes, so no
+answer waits on the rest of the pass, however many launches follow it;
+under crew each send is a commit to the runner's branch. What the
+control plane lets go or refuses at such a send leaves the report, and
+the pass takes it no more. A send that fails before the pass's end is
+said once, and the pass's answers wait for the send at its end.
 
 No pane holds the name `boomdrive`, so Flume sends it no notice and
 wakes nothing for it, and owes it each end of the place, a live place's
