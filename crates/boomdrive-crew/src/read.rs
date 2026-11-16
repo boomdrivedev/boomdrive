@@ -111,6 +111,17 @@ impl Request {
         self.get("Branch")?;
         yes_or_no(self, "Done").ok()
     }
+
+    /// The launch a priority request sets the priority of, where it reads
+    /// as a priority by [`want`]'s rules: its `Of` and its `Priority` each
+    /// a whole number. None where it does not read.
+    pub fn priority_of(&self) -> Option<u64> {
+        if self.act() != Some("priority") {
+            return None;
+        }
+        number(self, "Priority").ok().flatten()?;
+        self.of()
+    }
 }
 
 impl Main {
@@ -139,6 +150,23 @@ impl Main {
                 && later.preview_key() == Some(key)
                 && later.preview_done().is_some()
         })
+    }
+
+    /// Whether `request`, a priority request that reads, is crew's newest
+    /// priority of its launch: no request of a higher number that reads as
+    /// a priority names the same `Of`. Each priority sets the launch's
+    /// priority whole, and crew appends one at every start or reorder that
+    /// changes it, so a later one makes each earlier one moot (record 0002
+    /// as amended on 2026-11-16). False where `request` does not read as a
+    /// priority.
+    pub fn newest_priority(&self, request: &Request) -> bool {
+        let Some(of) = request.priority_of() else {
+            return false;
+        };
+        !self
+            .requests
+            .iter()
+            .any(|later| later.number > request.number && later.priority_of() == Some(of))
     }
 
     /// Whether the work a request serves is still in crew's plan:
