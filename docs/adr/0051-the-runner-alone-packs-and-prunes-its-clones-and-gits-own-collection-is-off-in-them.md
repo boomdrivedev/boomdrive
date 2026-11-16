@@ -48,6 +48,7 @@ Option 1.
 
 - No fetch, commit or tool's call in a clone starts git's collection, and a clone's objects stay within git's own bounds as before, packed at the runner's pass.
 - A clone's refs, refs' logs and worktrees are no longer packed, expired or pruned by anything of git's own accord. sluice's protection keeps passing git's packing of refs where a person or another host's tool runs it.
-- An occasion costs what the clone's history holds. On a large clone it can delay the next repository's landing on the loop, and a SIGTERM during it, until it ends.
+- An occasion costs what the clone's history holds. On a large clone it can delay a landing told meanwhile, and a SIGTERM during it, until it ends. On the running runner's first keeping pass, whose end starts the control parts, it delays their first passes too. Clones were collected by git at the same bounds until now, so few are past them at any one pass.
+- Packing is the runner's upkeep of its own clone, which git's commands change (core.34), and no tool's housekeeping run of the runner's accord (core.13).
 - A host that registered a clone for `git maintenance` on its own scheduler, or a person who runs `git gc` in it, still collects it, and is no tool's of the family.
-- core.14 is amended with this record. The change `the-runner-keeps-its-clones-packed` builds it, and the clones spec says it.
+- core.14 is amended with this record, and core.13's details name packing as not ruled out. The change `the-runner-keeps-its-clones-packed` builds it, and the clones spec says it.
