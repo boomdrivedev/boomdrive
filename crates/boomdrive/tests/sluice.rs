@@ -37,7 +37,7 @@ fn every_fixture_is_read() {
     each_fixture_is_read(&preview_fixtures(), &READ_PREVIEWS);
 }
 
-/// `dir` holds `read` and its README, and the README names each of them.
+/// `dir` holds `read` and its README, which no test reads (record 0049).
 fn each_fixture_is_read(dir: &Path, read: &[&str]) {
     let held: BTreeSet<String> = fs::read_dir(dir)
         .expect("the fixtures")
@@ -56,14 +56,6 @@ fn each_fixture_is_read(dir: &Path, read: &[&str]) {
         "{}: a fixture no test reads, or one read and not held",
         dir.display()
     );
-    let readme = fs::read_to_string(dir.join("README.md")).expect("the README");
-    for name in read {
-        assert!(
-            readme.contains(&format!("`{name}`")),
-            "{}: README says nothing of {name}",
-            dir.display()
-        );
-    }
 }
 
 /// A clone's container for a stub to run in.

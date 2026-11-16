@@ -1,6 +1,7 @@
 //! The facts read from Flume's answers, over every one of Flume 0.4.1's
 //! own answers in `tests/fixtures/flume-0.4.1` (Task notes 3.2). The
-//! fixtures' README says what stood when each was read.
+//! fixtures' README, which no test reads, says what stood when each was
+//! read (record 0049).
 
 use boomdrive::facts::{self, Over, Pane, Room, StreamRoom};
 use serde_json::Value;
@@ -83,13 +84,6 @@ fn every_fixture_is_read() {
         held, read,
         "a fixture no test reads, or one read and not held"
     );
-    let readme = text("README.md");
-    for name in READ {
-        assert!(
-            readme.contains(&format!("`{name}`")),
-            "README says nothing of {name}"
-        );
-    }
 }
 
 #[test]

@@ -1,0 +1,11 @@
+# The local layer README says a control plane might write. README shows
+# its own copy, which its writers keep to this file (record 0049);
+# tests/examples.rs reads this one.
+
+# Added to the managed layer's drive `home`.
+[accounts.own.drives.home]
+repositories = ["boomdrivedev/sluice"]
+
+# A drive the managed layer does not name, declared here.
+[accounts.own.drives.garden]
+repositories = ["boomdrivedev/timber"]
