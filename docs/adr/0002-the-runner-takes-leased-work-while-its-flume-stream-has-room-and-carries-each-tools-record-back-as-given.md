@@ -357,3 +357,25 @@ Option 1. Before the next pass is due, a pass takes its launches first, as the a
 
 `core.50` is amended with it.
 
+## Amendment, 2026-11-16: crew's implementation gives a priority only while it is its launch's newest
+
+Status: boomdrive-design's ruling, given in the brief of the fix `main--the-pull-gives-only-a-launchs-newest-priority`, 2026-11-16. It changes what crew's implementation gives, read from crew's own records, and no rule of the runner's, so it is cheap to change.
+
+### Context
+
+crew's bolt-teams appends a priority request for a launch at every start or reorder that changes its priority ("A start or a reorder appends each priority it changed"). Each sets the launch's priority whole, so a later one makes each earlier one the runner has not answered moot. crew's implementation gave them all. On 2026-11-16 `boomdrive/72` alone had priorities 479, 506, 538 and on to 1102. A pass past due runs one act on a place (`core.50`), and deneb's runner said "the next control pass is due, so 354 acts on places wait for it". The lands asked at 23:54Z (632 and 633) and 1032 to 1035 waited over five hours behind moot priorities.
+
+### Considered options
+
+1. **The pull gives a priority only while it is its launch's newest, or while the runner holds it (chosen)**, as it gives a preview request only while it is crew's newest of its host, repository and revision, or while the runner holds it (record 0031 as amended on 2026-11-09).
+2. **The runner skips a priority a later one in its pull supersedes.** The runner would judge crew's requests (`core.1`), and every control plane's implementation would lean on it.
+3. **Acts other than priorities go ahead of priorities in a pass.** It changes `core.50`'s order, and the moot priorities would still each run a `flume` command.
+
+### Decision outcome
+
+Option 1. A priority request that reads, its `Of` and its `Priority` each a whole number, is given only while no request of a higher number that reads as a priority names the same `Of`, or while the runner's report or its branch answers it. A priority the runner holds is given as before, answered from the report, and let go as before. The backlog clears at the next pull. `core.50`, the runner's carrying, Flume and crew's numbering stay as they are.
+
+### Consequences
+
+- `core.1`'s details already allow it: an implementation gives what it reads from the control plane's own rule, in the control plane's own records. No rule changes. The crew-control-plane spec gains it through the change `the-pull-gives-only-a-launchs-newest-priority`.
+- As built by that change, the code stage's own choices, cheap to change: a priority is newest by the launch its `Of` names, whatever `Host` either request names, since a launch is one place on one host; and only a later request that reads as a priority counts, so one whose `Of` or `Priority` is no whole number makes no earlier one moot, as `newest_preview` counts only a later request that reads as a preview. Not taken: keying on `Host` and `Of`, which keeps a moot priority given wherever crew addressed two hosts; and counting any later `Act: priority`, which leaves a launch with no priority given while crew's newest cannot be read.
