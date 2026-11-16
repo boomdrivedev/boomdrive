@@ -66,9 +66,11 @@ const WORDS_LENGTH: usize = 300;
 /// to name one the control plane refuses.
 const KINDS_KEPT: usize = 32;
 
-/// The words every `terminal_open` is closed with (record 0004).
-pub const NO_TERMINAL: &str =
-    "this host's Flume relays no terminal, so the runner closes it at once";
+/// The words every `terminal_open` is closed with: a terminal leaves the
+/// host only encrypted end to end, and the runner's half of that exchange
+/// is not built, so it relays none in the clear (core.30; record 0004 as
+/// amended on 2026-11-15).
+pub const NO_TERMINAL: &str = "this runner has no end-to-end exchange for a terminal yet and relays none in the clear, so it closes it at once";
 
 /// Where a connection says its lines, one each, from its runtime's
 /// threads.

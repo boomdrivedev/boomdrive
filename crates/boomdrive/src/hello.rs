@@ -15,8 +15,10 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-/// The tools whose versions every hello names.
-pub const TOOLS: [&str; 4] = ["flume", "sluice", "herdr", "git"];
+/// The tools whose versions every hello names: the runner runs no
+/// multiplexer's `--version`, and names none (core.29; record 0004 as
+/// amended on 2026-11-15).
+pub const TOOLS: [&str; 3] = ["flume", "sluice", "git"];
 
 /// The tools' versions as the runner reads them: `Cli` on a host, a fake
 /// in a test of the pass.

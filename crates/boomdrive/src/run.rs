@@ -25,7 +25,7 @@ use crate::pass::{self, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
 use crate::settle::{self, Settles};
-use crate::terminal::{self, Relays};
+use crate::terminal::Relays;
 use crate::{clone, flume, hello, sluice};
 use boomdrive_control::{Part, Wake};
 use signal_hook::consts::{SIGINT, SIGTERM};
@@ -209,13 +209,12 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
     (last_start + interval).max(now)
 }
 
-/// The programs the runner runs for Flume, sluice and herdr: its settles
-/// and its parts' control passes'.
+/// The programs the runner runs for Flume and sluice: its settles, its
+/// parts' control passes' and its terminals' relays.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
     pub sluice: PathBuf,
-    pub herdr: PathBuf,
 }
 
 impl Programs {
@@ -224,7 +223,6 @@ impl Programs {
         Programs {
             flume: PathBuf::from("flume"),
             sluice: PathBuf::from("sluice"),
-            herdr: PathBuf::from("herdr"),
         }
     }
 
@@ -233,13 +231,12 @@ impl Programs {
         hello::Cli::on_path()
             .with("flume", &self.flume)
             .with("sluice", &self.sluice)
-            .with("herdr", &self.herdr)
     }
 
-    /// The terminals relayed through these programs' herdr, each of
+    /// The terminals relayed through these programs' Flume, each of
     /// their lines said on standard error.
     fn relays(&self) -> Relays {
-        Relays::new(terminal::Cli::new(&self.herdr), |line| eprintln!("{line}"))
+        Relays::new(flume::Cli::new(&self.flume), |line| eprintln!("{line}"))
     }
 }
 
@@ -285,8 +282,8 @@ pub struct Runner {
     local: PathBuf,
     data: PathBuf,
     config: Config,
-    /// The programs the runner runs for Flume, sluice and herdr, each on
-    /// the host's `PATH` unless a test puts its own in place.
+    /// The programs the runner runs for Flume and sluice, each on the
+    /// host's `PATH` unless a test puts its own in place.
     programs: Programs,
     /// The control plane the configuration names, none where it names
     /// none.

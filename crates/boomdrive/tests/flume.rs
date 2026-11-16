@@ -7,7 +7,8 @@
 //! that recipient (record 0030 as amended on 2026-11-09), and a control
 //! plane's confirm of a reader's ends as Flume's confirm (core.56).
 
-use boomdrive::flume::{Act, Cli, Flume, LaunchArgs, Reply};
+use boomdrive::flume::{self, Act, Cli, Flume, LaunchArgs, Reply};
+use std::ffi::OsString;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -461,6 +462,37 @@ fn a_confirms_argv() {
         ]
     );
     assert_eq!(stub.read("recipient-1").as_deref(), Some("unset\n"));
+}
+
+/// Flume's relay of a place names it by its location after `relay`, a
+/// place `--json` passed as one argument, run with `FLUME_RECIPIENT`
+/// unset (record 0004 as amended on 2026-11-15; Flume's 221).
+#[test]
+fn a_relays_argv() {
+    assert_eq!(
+        flume::relay_args("/places/P"),
+        [OsString::from("relay"), OsString::from("/places/P")]
+    );
+    let stub = Stub::new();
+    let cli = stub.cli();
+    for place in ["/places/P", "--json"] {
+        let relay = cli.relay(place).expect("flume runs");
+        let output = relay.wait_with_output().expect("flume ends");
+        assert!(output.status.success(), "{output:?}");
+    }
+    assert_eq!(
+        stub.calls(),
+        [
+            argv(&["--json", "relay", "/places/P"]),
+            argv(&["--json", "relay", "--json"]),
+        ]
+    );
+    for n in 1..=2 {
+        assert_eq!(
+            stub.read(&format!("recipient-{n}")).as_deref(),
+            Some("unset\n")
+        );
+    }
 }
 
 #[test]
