@@ -536,6 +536,40 @@ fn a_launch_ahead_of_a_preview() {
     );
 }
 
+/// The previews spec's "A preview past due waits on no launch held for its
+/// turn": the next pass is due from the pass's start, and its pull gives
+/// the preview `home/30`, then offers `a` and `b`. `a` is launched, `b` is
+/// held for its turn, and `home/30` is brought up in the same pass (design
+/// Decision 5; core.50, core.55).
+#[test]
+fn a_preview_past_due_waits_on_no_launch_held_for_its_turn() {
+    let bench = bench();
+    bench
+        .sluice
+        .answers_preview("preview", "preview-starting.json", 0);
+    let mut plane = Fake::holding(vec![
+        preview("home/30", "main", "R1", false),
+        Want::Offer(fakes::offer("a", "a")),
+        Want::Offer(fakes::offer("b", "b")),
+    ]);
+    bench.pass_due(&bench.flume, &mut plane, &|| true);
+    let launched: Vec<String> = bench
+        .flume
+        .launches()
+        .into_iter()
+        .map(|args| args.name)
+        .collect();
+    assert_eq!(launched, ["a"]);
+    let report = report(&bench);
+    let b = &report.launches[&id("b")].answer;
+    assert_eq!(
+        (b.outcome, b.words.as_deref()),
+        (Outcome::Held, Some(boomdrive::carry::TURN))
+    );
+    assert_eq!(calls_of(&bench, "preview").len(), 1);
+    assert_eq!(report.previews[&id("home/30")].outcome, Outcome::Done);
+}
+
 /// The previews spec's "Previews wait for the next pass once it is due":
 /// once the next pass is due, a pass runs no preview's command but its
 /// first, counted apart from the acts' (design Decision 7).
