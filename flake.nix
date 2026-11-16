@@ -43,7 +43,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.24.0";
+      url = "github:boomdrivedev/flume/v0.26.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -51,7 +51,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.59.0";
+      url = "github:boomdrivedev/crew/v0.64.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
