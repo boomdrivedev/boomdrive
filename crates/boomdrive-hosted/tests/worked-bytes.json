@@ -1,0 +1,25 @@
+{
+  "enrollment": {
+    "secret_key": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+    "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+    "token": "example-enrollment-token",
+    "url": "https://control.example/boomdrive",
+    "address": "https://control.example/boomdrive/runner/enroll",
+    "origin": "https://control.example",
+    "digest": "sha256:2ff0ff8cabe082ca9b667090071b2f438a8c1665b25f655d7b305293a75fef7f",
+    "context": "626f6f6d64726976652e763220656e726f6c6c0068747470733a2f2f636f6e74726f6c2e6578616d706c65007368613235363a3266663066663863616265303832636139623636373039303037316232663433386138633136363562323566363535643762333035323933613735666566376600d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+    "signature": "0e6bff11a9f56950bda1bcae4e545acc36673900ab5f7e023e37ad0c1254963a9fae82f31487839fb7fc955d6acca19266ec2a7ac3ced20ebb4577a1a6d34b09"
+  },
+  "connection": {
+    "secret_key": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+    "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+    "url": "https://control.example/boomdrive",
+    "address": "wss://control.example/boomdrive/runner/connect",
+    "origin": "https://control.example",
+    "time": 1793750400,
+    "nonce": "000102030405060708090a0b0c0d0e0f",
+    "context": "626f6f6d64726976652e763220636f6e6e6563740068747470733a2f2f636f6e74726f6c2e6578616d706c6500d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a003137393337353034303000000102030405060708090a0b0c0d0e0f",
+    "signature": "327a949d8406fb2d925ccb715732396bb6f8bb09fdc2385be9407dc4ca70e58fc00d9d2f6b5e067d7a51bd8e52293fdf8e37a8a150cf745702e4dc71e3bec609",
+    "header": "Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.MnqUnYQG-y2SXMtxVzI5a7b4uwn9wjhb6UB9xMpw5Y_ADZ0va14GfXpRvY5SKT_fjjeooVDPdFcC5Nxx477GCQ"
+  }
+}
