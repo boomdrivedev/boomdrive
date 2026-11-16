@@ -1,7 +1,9 @@
 # The service-modules spec's cases on the tools' own modules (design
-# Decisions 4 and 5): Flume's, sluice's and crew's modules, each as its
-# flake gives it, imported by the platform's Boomdrive module and given
-# again beside it, and what the Boomdrive module sets of their options.
+# Decisions 4 and 5): Flume's, sluice's, crew's and timber's modules, each
+# as its flake gives it, imported by the platform's Boomdrive module and
+# given again beside it, and what the Boomdrive module sets of their
+# options (the change the-set-takes-timbers-own-module, design Decisions 1
+# to 5).
 # Each case runs on nix-darwin and on NixOS, unless it names a platform.
 t:
 let
@@ -12,6 +14,7 @@ let
     "crew"
     "flume"
     "sluice"
+    "timber"
   ];
 
   # Each tool's file, by the name its module writes it under.
@@ -19,6 +22,7 @@ let
     crew = "crew-teams.json";
     flume = "flume-config.toml";
     sluice = "sluice-config.toml";
+    timber = "timber-config.toml";
   };
 
   # nix-darwin's activation, as text: a regular expression may not hold a
@@ -37,6 +41,8 @@ let
       set = outputs.packages.aarch64-darwin;
       system = t.darwinSystem;
       systemOf = t.darwinOf;
+      # timber's flake's own module for the platform.
+      timber = inputs.timber.darwinModules.timber;
       # A tool's activation: the lines of the system's that name its file.
       activationOf =
         evaluated: tool:
@@ -49,6 +55,7 @@ let
       set = outputs.packages.x86_64-linux;
       system = t.nixosSystem;
       systemOf = t.nixosOf;
+      timber = inputs.timber.nixosModules.timber;
       # A tool's activation: its user activation snippet's text.
       activationOf =
         evaluated: tool: builtins.unsafeDiscardStringContext ((userScripts evaluated).${tool}.text or "");
@@ -111,6 +118,7 @@ let
         "default"
         "flume"
         "sluice"
+        "timber"
       ];
       inherit (systemOf [ modules.sluice ]) options;
       outside = outsideOf "sluice" options.services.sluice;
@@ -143,6 +151,22 @@ let
       !failures.success || failures.value == [ ]
     ) "a ${platform} system that imports default and boomdrive fails: ${toString failures.value}";
 
+  # A system of the runner's, of the platform's `default` and timber's
+  # flake's own module both: timber's key takes it once (the change
+  # the-set-takes-timbers-own-module, design Decision 1; Task notes 1.1).
+  timberBeside =
+    platform:
+    { system, timber, ... }:
+    let
+      failures = builtins.tryEval (
+        builtins.deepSeq (t.failures (system timber)) (t.failures (system timber))
+      );
+    in
+    t.expect failures.success "a ${platform} system that imports default and timber's own module does not evaluate"
+    ++
+      t.expect (!failures.success || failures.value == [ ])
+        "a ${platform} system that imports default and timber's own module fails: ${toString failures.value}";
+
   # crew turned on, with its host `host-a` and crew's settings `teams`.
   crewOf = teams: {
     services.crew = {
@@ -161,10 +185,16 @@ let
     { system, ... }:
     let
       evaluated = system { };
-      inherit (evaluated.config.services) crew flume sluice;
+      inherit (evaluated.config.services)
+        crew
+        flume
+        sluice
+        timber
+        ;
     in
     t.expect flume.enable "a ${platform} system of the runner alone leaves Flume's module off"
     ++ t.expect sluice.enable "a ${platform} system of the runner alone leaves sluice's module off"
+    ++ t.expect timber.enable "a ${platform} system of the runner alone leaves timber's module off"
     ++ t.expect (!crew.enable) "a ${platform} system of the runner alone turns crew's module on"
     ++ t.expect (
       t.failures evaluated == [ ]
@@ -193,18 +223,25 @@ let
           "crew"
           "flume"
           "sluice"
+          "timber"
         ];
 
-  # The three tools' users on NixOS, crew on, and again with sluice's own.
+  # The four tools' users on NixOS, crew on, and again with sluice's own.
   usersOf =
     given:
     let
-      inherit ((t.nixosSystem given).config.services) crew flume sluice;
+      inherit ((t.nixosSystem given).config.services)
+        crew
+        flume
+        sluice
+        timber
+        ;
     in
     {
       crew = crew.user;
       flume = flume.user;
       sluice = sluice.user;
+      timber = timber.user;
     };
   runnersUsers = usersOf crewOn;
   sluicesUser = usersOf {
@@ -470,6 +507,7 @@ in
 onEach "Each tool's options are its own flake's" ownOptions
 // onEach "The tools' modules re-exported" reExported
 // onEach "Imported twice" twice
+// onEach "timber's own module beside the set's" timberBeside
 // onEach "A host with the runner alone" runnerAlone
 // onEach "The set's packages" setsPackages
 // onEach "A host that keeps its own Flume file" ownFlumeFile
@@ -535,12 +573,13 @@ onEach "Each tool's options are its own flake's" ownOptions
         crew = "alice";
         flume = "alice";
         sluice = "alice";
+        timber = "alice";
       }
     ) "the tools' users of alice's runner are ${builtins.toJSON runnersUsers}, not alice's"
     ++ t.expect (sluicesUser.sluice == "bob") "sluice's user, set to bob, is ${sluicesUser.sluice}"
     ++ t.expect (
-      sluicesUser.flume == "alice" && sluicesUser.crew == "alice"
-    ) "Flume's and crew's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
+      sluicesUser.flume == "alice" && sluicesUser.crew == "alice" && sluicesUser.timber == "alice"
+    ) "Flume's, crew's and timber's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
 
   "The tools' activation is their own on nix-darwin" =
     t.expect (t.failures t.toolsDarwinSystem == [ ])
@@ -581,5 +620,6 @@ onEach "Each tool's options are its own flake's" ownOptions
           "crew"
           "flume"
           "sluice"
+          "timber"
         ];
 }

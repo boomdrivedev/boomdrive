@@ -462,6 +462,40 @@ fn no_crate_asks_sluice_for_a_branch() {
     );
 }
 
+/// core.29: no `.rs` file under any crate's `src` but
+/// `crates/boomdrive/src/setup.rs`, whose link of the set's herdr plugins
+/// core.29 allows, holds `HERDR_` or a string literal that begins with a
+/// multiplexer's name, so no code of the runner's names a multiplexer or
+/// runs one's command line (the terminal-relay spec's "The crates'
+/// sources read"; record 0004 as amended on 2026-11-15).
+#[test]
+fn no_crate_names_a_multiplexer() {
+    let root = root();
+    let allowed = root.join("crates/boomdrive/src/setup.rs");
+    let read: Vec<PathBuf> = crates()
+        .iter()
+        .flat_map(|name| files(&root.join("crates").join(name).join("src")))
+        .filter(|file| file.extension().is_some_and(|extension| extension == "rs"))
+        .filter(|file| *file != allowed)
+        .collect();
+    assert!(read.len() > 20, "{read:?}");
+    let naming: Vec<String> = read
+        .iter()
+        .filter(|file| {
+            let text = std::fs::read_to_string(file).expect("a file");
+            text.contains("HERDR_")
+                || ["herdr", "tmux", "zellij", "rex"]
+                    .iter()
+                    .any(|multiplexer| text.contains(&format!("\"{multiplexer}")))
+        })
+        .map(|file| file.display().to_string())
+        .collect();
+    assert!(
+        naming.is_empty(),
+        "these name a multiplexer (core.29): {naming:?}"
+    );
+}
+
 /// The reader of moon's files reads this tree's own shapes.
 #[test]
 fn moons_files_are_read() {
