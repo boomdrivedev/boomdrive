@@ -3,11 +3,11 @@
 //! part, each answer scripted where a test says, and each call recorded.
 //! The runner's clones and its tools' versions are what a test sets. A
 //! stub `flume` program stands in where a test runs the pass over
-//! Flume's own command line, a stub `sluice` stands in for sluice's, a
-//! stub `herdr` for herdr's, and a stub `systemd-creds` for the host's
-//! credential store. Every file lies in the test's own temporary
-//! directory, and no test runs a real Flume, sluice, herdr or
-//! `systemd-creds`.
+//! Flume's own command line, a stub `flume` that relays where a terminal
+//! is relayed, a stub `sluice` stands in for sluice's, and a stub
+//! `systemd-creds` for the host's credential store. Every file lies in
+//! the test's own temporary directory, and no test runs a real Flume,
+//! sluice or `systemd-creds`.
 
 #![allow(dead_code)]
 
@@ -19,7 +19,7 @@ use boomdrive::locks::Locks;
 use boomdrive::report::{self, ReportFile};
 use boomdrive::run::{Event, Notices};
 use boomdrive::sluice;
-use boomdrive::terminal::{self, Relays};
+use boomdrive::terminal::Relays;
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
     ActSort, AgentSetting, ControlPlane, Hold, Id, KeptRepository, Launch, Lease, Offer, Preview,
@@ -744,7 +744,7 @@ impl Tools for FakeTools {
 pub const PART: &str = "home";
 
 /// A host for control passes: a fake Flume, a stub `sluice`, a stub
-/// `herdr` and the terminals relayed through it, clones and tools, each
+/// `flume` that relays and the terminals relayed through it, clones and tools, each
 /// clone's lock, the one report file, and a data directory of its own,
 /// which keeps [`KEPT`] with its clone's container made.
 pub struct Bench {
@@ -752,7 +752,8 @@ pub struct Bench {
     /// and the data directory go.
     pub relays: Relays,
     relay_lines: Arc<Mutex<Vec<String>>>,
-    pub herdr: HerdrStub,
+    /// The stub `flume` the terminals relay through.
+    pub flume_relay: RelayStub,
     pub dir: TempDir,
     pub flume: FakeFlume,
     pub sluice: SluiceStub,
@@ -783,17 +784,17 @@ impl Bench {
     pub fn new() -> Bench {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let (events, received) = mpsc::channel();
-        let herdr = HerdrStub::new();
+        let flume_relay = RelayStub::new();
         let relay_lines = Arc::new(Mutex::new(Vec::new()));
         let said = Arc::clone(&relay_lines);
-        let relays = Relays::new(terminal::Cli::new(herdr.program()), move |line| {
+        let relays = Relays::new(flume::Cli::new(flume_relay.program()), move |line| {
             said.lock().expect("the relay's lines").push(line);
         });
         let report_file = ReportFile::new(&report::control_dir(&dir.path().join("data")));
         let bench = Bench {
             relays,
             relay_lines,
-            herdr,
+            flume_relay,
             dir,
             flume: FakeFlume::new(),
             sluice: SluiceStub::new(),
@@ -1233,65 +1234,72 @@ impl SluiceStub {
     }
 }
 
-/// The stub `herdr`'s program. Each call writes its `HERDR_SOCKET_PATH`,
-/// or `unset`, to `socket-<n>`, then its arguments, NUL-terminated, to
-/// `call-<n>`, each whole once there. A `pane read` is counted as
-/// `read-<r>`. Where the test wrote `refuse`, it prints that on standard
-/// error and exits 1, as herdr refuses; otherwise it prints `screen-<s>`
-/// for the greatest `s` up to `r` the test wrote.
-const HERDR: &str = r#"#!/bin/sh
+/// The stub `flume` that relays (design Decision 11). Each run writes its
+/// arguments, NUL-terminated, to `call-<n>`, whole once there, and
+/// whether `FLUME_RECIPIENT` was set to `recipient-<n>`. Where the test
+/// wrote `refuse`, it prints Flume's refusal with that file's text, a
+/// JSON string, as its reason, and exits 1; where it wrote `usage`, it
+/// prints that file's text on standard error and exits 2. Otherwise it
+/// copies each line of its standard input to `input-<n>` as it comes, on
+/// a background reader that holds none of its output, and marks
+/// `closed-<n>` once its input has closed. It prints each file `out-<k>`
+/// the test writes, in order of `k`, once. Once `closed-<n>` is there it
+/// answers that its relay ended by its caller, and once the test writes
+/// `gone` that it ended gone, and exits 0. Its place is its last
+/// argument.
+const RELAY: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
 while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
-printf '%s' "${HERDR_SOCKET_PATH-unset}" > "$dir/socket-$n"
-for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/writing"
-mv "$dir/writing" "$dir/call-$n"
-[ "$2" = read ] || exit 0
-r=1
-while [ -e "$dir/read-$r" ]; do r=$((r + 1)); done
-: > "$dir/read-$r"
-if [ -e "$dir/refuse" ]; then cat "$dir/refuse" >&2; exit 1; fi
-s=$r
-while [ "$s" -gt 0 ] && [ ! -e "$dir/screen-$s" ]; do s=$((s - 1)); done
-if [ "$s" -gt 0 ]; then cat "$dir/screen-$s"; fi
+for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
+mv "$dir/call-$n.part" "$dir/call-$n"
+if [ "${FLUME_RECIPIENT+set}" = set ]; then echo set; else echo unset; fi > "$dir/recipient-$n"
+if [ -e "$dir/refuse" ]; then
+  printf '{"refused":{"refusal":{"reason":%s}}}\n' "$(cat "$dir/refuse")"
+  exit 1
+fi
+if [ -e "$dir/usage" ]; then cat "$dir/usage" >&2; exit 2; fi
+place=
+for arg in "$@"; do place=$arg; done
+exec 3<&0
+{
+  while IFS= read -r line; do printf '%s\n' "$line" >> "$dir/input-$n"; done
+  : > "$dir/closed-$n"
+} <&3 >/dev/null 2>&1 &
+exec 3<&-
+k=1
+while :; do
+  while [ -e "$dir/out-$k" ]; do cat "$dir/out-$k"; k=$((k + 1)); done
+  if [ -e "$dir/closed-$n" ]; then ended=caller; break; fi
+  if [ -e "$dir/gone" ]; then ended=gone; break; fi
+  sleep 0.02
+done
+printf '{"relayed":{"place":"%s","agent":"code-1","ended":"%s"}}\n' "$place" "$ended"
 exit 0
 "#;
 
-/// A stub `herdr` in a temporary directory of its own. Unscripted, it
-/// prints no screen.
-pub struct HerdrStub {
+/// A stub `flume` that relays, in a temporary directory of its own.
+/// Unscripted, it gives no screen, and ends at its input's close.
+pub struct RelayStub {
     pub dir: TempDir,
 }
 
-impl HerdrStub {
-    pub fn new() -> HerdrStub {
-        let stub = HerdrStub {
+impl RelayStub {
+    pub fn new() -> RelayStub {
+        let stub = RelayStub {
             dir: tempfile::tempdir().expect("a temporary directory"),
         };
         let program = stub.program();
-        fs::write(&program, HERDR).expect("the stub");
+        fs::write(&program, RELAY).expect("the stub");
         fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
         stub
     }
 
     pub fn program(&self) -> PathBuf {
-        self.dir.path().join("herdr")
+        self.dir.path().join("flume")
     }
 
-    /// The pane's screen from the `read`th read on, until a later one the
-    /// test wrote.
-    pub fn screen(&self, read: usize, text: &str) {
-        fs::write(self.dir.path().join(format!("screen-{read}")), text).expect("the screen");
-    }
-
-    /// Every read refused from now on, herdr's `error` answer giving
-    /// `message`.
-    pub fn refuse(&self, message: &str) {
-        let answer = json!({ "id": "cli:pane:read", "error": { "code": "pane_not_found", "message": message } });
-        fs::write(self.dir.path().join("refuse"), printed(&answer)).expect("the refusal");
-    }
-
-    /// The arguments of every call, in order.
+    /// The arguments of every run, in order.
     pub fn calls(&self) -> Vec<Vec<String>> {
         (1..)
             .map_while(|n| fs::read_to_string(self.dir.path().join(format!("call-{n}"))).ok())
@@ -1299,20 +1307,52 @@ impl HerdrStub {
             .collect()
     }
 
-    /// The `HERDR_SOCKET_PATH` of every call, in order.
-    pub fn sockets(&self) -> Vec<String> {
-        (1..=self.calls().len())
-            .map(|n| {
-                fs::read_to_string(self.dir.path().join(format!("socket-{n}"))).expect("its socket")
-            })
+    /// Whether the `n`th run, counting from 1, had `FLUME_RECIPIENT` set:
+    /// `set` or `unset`, or none where it never ran.
+    pub fn recipient(&self, n: usize) -> Option<String> {
+        let said = fs::read_to_string(self.dir.path().join(format!("recipient-{n}"))).ok()?;
+        Some(said.trim_end().to_string())
+    }
+
+    /// Each line the `n`th run read on its standard input, as JSON.
+    pub fn inputs(&self, n: usize) -> Vec<Value> {
+        let read =
+            fs::read_to_string(self.dir.path().join(format!("input-{n}"))).unwrap_or_default();
+        read.lines()
+            .map(|line| serde_json::from_str(line).expect("a line of JSON"))
             .collect()
     }
 
-    /// How many reads were made.
-    pub fn reads(&self) -> usize {
-        (1..)
-            .take_while(|r| self.dir.path().join(format!("read-{r}")).exists())
-            .count()
+    /// Whether the `n`th run's standard input has closed.
+    pub fn closed(&self, n: usize) -> bool {
+        self.dir.path().join(format!("closed-{n}")).exists()
+    }
+
+    /// `line` printed by the relay, after every line given before it.
+    pub fn out(&self, line: &Value) {
+        let k = (1..)
+            .find(|k| !self.dir.path().join(format!("out-{k}")).exists())
+            .expect("a free number");
+        let part = self.dir.path().join(format!("out-{k}.part"));
+        fs::write(&part, printed(line)).expect("the line");
+        fs::rename(&part, self.dir.path().join(format!("out-{k}"))).expect("the line given");
+    }
+
+    /// Every relay refused from now on, with `words` as Flume's reason.
+    pub fn refuse(&self, words: &str) {
+        let reason = serde_json::to_string(words).expect("JSON");
+        fs::write(self.dir.path().join("refuse"), reason).expect("the refusal");
+    }
+
+    /// Every relay answered with `words` on standard error and exit 2 from
+    /// now on, as a Flume with no `relay` answers its usage error.
+    pub fn usage(&self, words: &str) {
+        fs::write(self.dir.path().join("usage"), words).expect("the usage error");
+    }
+
+    /// The agent's terminal gone: each relay running ends, gone.
+    pub fn gone(&self) {
+        fs::write(self.dir.path().join("gone"), "").expect("gone");
     }
 }
 

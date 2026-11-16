@@ -5,10 +5,33 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 tasks:
   # Every formatter treefmt.nix configures, writing nothing it would change
   # and keeping no cache outside the tree. It reads every tracked file: one
-  # that no formatter claims and no exclude names fails it (core.7).
+  # that no formatter claims and no exclude names fails it (core.7). Its
+  # inputs are the tree's files that git does not ignore: each entry of
+  # .gitignore is negated here, and an entry added there is added here, so
+  # moon hashes about a thousand files and none of cargo's target/, the
+  # site's node_modules/, devenv's .devenv/ or moon's own cache. moon walks
+  # the file system for the root project's globs whatever
+  # hasher.walkStrategy says, so .gitignore alone leaves out nothing here.
   format:
     command: 'treefmt --ci'
-    inputs: ['/**/*', '/devenv.nix', '/devenv.lock']
+    inputs:
+      - '/**/*'
+      - '!/.devenv/**/*'
+      - '!/.devenv.flake.nix'
+      - '!/devenv.local.nix'
+      - '!/.pre-commit-config.yaml'
+      - '!/.moon/cache/**/*'
+      - '!/result'
+      - '!/result/**/*'
+      - '!/**/.DS_Store'
+      - '!/target/**/*'
+      - '!/.mcp.json'
+      - '!/.claude/settings.json'
+      - '!/site/node_modules/**/*'
+      - '!/site/dist/**/*'
+      - '!/site/.astro/**/*'
+      - '/devenv.nix'
+      - '/devenv.lock'
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # rustc, cargo, clippy and rustfmt are the build .prototools pins, and

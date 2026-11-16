@@ -96,19 +96,16 @@ fn each_drives_repositories_with_their_folders() {
 #[test]
 fn a_tool_missing() {
     let bench = Bench::new();
-    bench.tools.missing("herdr");
+    bench.tools.missing("sluice");
     let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a"))]);
     bench.pass(&mut plane);
     let tools = &plane.hellos()[0].tool_versions;
     assert!(
-        matches!(tools["herdr"], ToolVersion::Missing(_)),
+        matches!(tools["sluice"], ToolVersion::Missing(_)),
         "{tools:?}"
     );
     assert_eq!(tools["flume"], ToolVersion::Printed("flume 1.0.0".into()));
-    assert_eq!(
-        tools.keys().collect::<Vec<_>>(),
-        ["flume", "git", "herdr", "sluice"]
-    );
+    assert_eq!(tools.keys().collect::<Vec<_>>(), ["flume", "git", "sluice"]);
     assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
 }
 
