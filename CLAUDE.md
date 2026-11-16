@@ -124,7 +124,7 @@ branch requires:
 
 | layer | what | who requires it |
 |---|---|---|
-| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, records, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint); the site's type check (astro check), prose (Vale), build, tests and its workflow's lint (actionlint) | main |
+| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint); the site's type check (astro check), build, tests and its workflow's lint (actionlint) | main |
 
 Run suites through sluice, so the agents on this host take turns under
 its bound: once your work is committed, `sluice exec main` for the

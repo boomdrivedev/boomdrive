@@ -52,15 +52,6 @@ let
       ++ given;
     };
 
-  # The README's **Installing with nix**, up to the next section, or null
-  # where it has none, and each nix block in it.
-  installing = lib.findFirst (lib.hasPrefix "Installing with nix\n") null (
-    lib.splitString "\n## " (builtins.readFile ../../README.md)
-  );
-  nixBlocks = map (block: lib.head (lib.splitString "```" block)) (
-    lib.drop 1 (lib.splitString "```nix\n" (toString installing))
-  );
-
   # Flume's, sluice's and crew's own modules alone, each from its own
   # flake, turned on with the set's packages, crew's settings for host-a,
   # Flume's terminal and window as the Boomdrive module gives them
@@ -110,9 +101,7 @@ in
     darwinOf
     flake
     inputs
-    installing
     lib
-    nixBlocks
     nixosOf
     outputs
     self

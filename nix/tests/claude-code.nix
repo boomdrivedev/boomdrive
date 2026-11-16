@@ -698,73 +698,6 @@ let
     ++ t.expect (
       !(document ? cleanupPeriodDays) && !((document.env or { }) ? cleanupPeriodDays)
     ) "the ${platform} telemetry document holds cleanupPeriodDays";
-
-  # The README's install with nix on the sessions' telemetry (design
-  # Decision 11).
-  readmeTelemetry =
-    let
-      block = lib.findFirst (lib.hasInfix "services.boomdrive.claude-code.telemetry") null t.nixBlocks;
-      words = toString t.installing;
-    in
-    t.expect (
-      block != null
-    ) "no nix block of the README's Installing with nix names services.boomdrive.claude-code.telemetry"
-    ++
-      t.expect
-        (
-          block != null
-          && lib.hasInfix ''services.boomdrive.claude-code.telemetry.collector = "http://localhost:4318";'' block
-        )
-        "the README's nix block of services.boomdrive.claude-code.telemetry names no collector http://localhost:4318"
-    ++
-      lib.concatMap
-        (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
-        [
-          "`metrics`"
-          "`logs`"
-          "`traces`, Claude Code's beta, is off\nunless named"
-          "10-boomdrive-telemetry.json"
-          "`/Library/Application Support/ClaudeCode/managed-settings.d`"
-          "`/etc/claude-code/managed-settings.d`"
-          "Every Claude Code session on the host"
-          "whatever\nits account and its configuration home"
-          "a session exports none of its words"
-          "Without a collector, or without the runner, nothing is written"
-          "named after the set's in Claude Code's order"
-          "launch environment"
-          "`workspace.host_paths`"
-        ];
-
-  # The README's install with nix on the transcripts' span (the change
-  # the-set-keeps-claude-codes-transcripts-a-year, design Decision 9), its
-  # words read with each line's end a space.
-  readmeTranscripts =
-    let
-      block =
-        lib.findFirst (lib.hasInfix "services.boomdrive.claude-code.cleanupPeriodDays") null
-          t.nixBlocks;
-      words = lib.replaceStrings [ "\n" ] [ " " ] (toString t.installing);
-    in
-    t.expect (block != null)
-      "no nix block of the README's Installing with nix names services.boomdrive.claude-code.cleanupPeriodDays"
-    ++ t.expect (
-      block != null && lib.hasInfix "services.boomdrive.claude-code.cleanupPeriodDays = 365;" block
-    ) "the README's nix block of services.boomdrive.claude-code.cleanupPeriodDays names no 365"
-    ++
-      lib.concatMap
-        (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
-        [
-          "`services.boomdrive.claude-code.cleanupPeriodDays`"
-          "365 by default"
-          "`10-boomdrive-transcripts.json`"
-          "into `/Library/Application Support/ClaudeCode/managed-settings.d` on nix-darwin"
-          "and `/etc/claude-code/managed-settings.d` on NixOS, whether or not a collector is named"
-          "Wherever Flume is on, with the runner or without"
-          "every Claude Code session on the host keeps its transcript a year, whatever its account and its configuration home"
-          "a stage Flume hibernated can be resumed"
-          "named after the set's in Claude Code's order, such as `20-transcripts.json`, sets the key over it"
-          "a shorter span, or turning Flume off, deletes every older transcript at the next session's start"
-        ];
 in
 onEach "A collector off the host" offHost
 // onEach "A collector with no signal" noSignal
@@ -786,9 +719,15 @@ onEach "A collector off the host" offHost
 // onEach "The account and repository attributes on" (
   ofDocument givesDefault { } byDefault attributesOn
 )
+# The collector and the span README shows a host naming, each an example
+# of its own (record 0049), written as the set writes them.
+// onEach "The telemetry example" (
+  ofDocument { } (import ./examples/telemetry.nix) byDefault metricsAndLogs
+)
+// onEach "The transcripts example" (
+  ofTranscripts (import ./examples/transcripts.nix) ''{"cleanupPeriodDays":365}'' spanAlone
+)
 // {
-  "The README's telemetry" = readmeTelemetry;
-  "The README's transcripts" = readmeTranscripts;
   "The document on NixOS" = documentOnNixos;
   "The document on nix-darwin" = documentOnDarwin;
   "The transcripts document on nix-darwin" =

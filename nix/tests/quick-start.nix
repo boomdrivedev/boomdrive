@@ -8,11 +8,9 @@ let
   inherit (t) lib;
   start = ../../site/src/start;
 
-  # The address README's Installing with nix names, its first `github:`
-  # in backticks, read as cache.nix reads README.
-  address = lib.findFirst (lib.hasPrefix "github:") null (
-    lib.splitString "`" (toString t.installing)
-  );
+  # The flake's address, which README's Installing with nix names and the
+  # Mac's install adds (record 0049).
+  address = "github:boomdrivedev/boomdrive";
 
   # A shell file's words, split at every run of white space.
   wordsOf = text: lib.filter (word: word != "") (lib.flatten (builtins.split "[[:space:]]+" text));
@@ -51,8 +49,7 @@ let
           lib.hasPrefix "${address}" installable
           && t.outputs.packages.aarch64-darwin ? ${packageOf installable};
     in
-    t.expect (address != null) "README's Installing with nix names no `github:` address"
-    ++ t.expect (
+    t.expect (
       lib.take 3 words == [
         "nix"
         "profile"

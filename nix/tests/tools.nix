@@ -455,6 +455,17 @@ let
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
   textOf = scripts: tool: builtins.unsafeDiscardStringContext (scripts.${tool}.text or "");
+
+  # The configuration's own module of host-a in the Mac's flake README
+  # shows, examples/host-flake.nix (record 0049): its outputs called with a
+  # nix-darwin whose darwinSystem gives back its arguments and a set whose
+  # module is a marker.
+  hostModules =
+    ((import ./examples/host-flake.nix).outputs {
+      nix-darwin.lib.darwinSystem = arguments: arguments;
+      boomdrive.darwinModules.default = "the set's module";
+    }).darwinConfigurations.host-a.modules;
+  hostModule = lib.elemAt hostModules 1;
 in
 onEach "Each tool's options are its own flake's" ownOptions
 // onEach "The tools' modules re-exported" reExported
@@ -472,65 +483,51 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "crew's old way of running" oldRuns
 // onEach "crew's old batch names" oldReview
 // {
-  # The README's install with nix writes no crew table beside crew's
-  # drives, and says the module writes it (design Decision 8).
-  "The README's crew table" =
-    t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
-    ++ t.expect (
-      !lib.any (lib.hasInfix "state_repository") t.nixBlocks
-    ) "a nix block of the README's Installing with nix names state_repository"
-    ++
-      lib.concatMap
-        (
-          words:
-          t.expect (lib.hasInfix words (toString t.installing)) "the README's Installing with nix says no ${words}"
-        )
-        [
-          "services.crew.host"
-          "written out wins"
-        ];
-
-  # The README's install with nix writes crew's settings by crew's names,
-  # its teams file's version 6's, and none of version 5's. The leading
-  # space of ` flume = {` tells a drive's key from `services.flume = {`,
-  # and of ` every =` and ` hours =` review's old keys from
-  # `after_hours =` (design Decisions 6 and 8).
-  "The README's crew settings" =
+  # The Mac's flake README shows sets the runner's control plane to crew's
+  # and writes no crew table beside crew's drives, which the module writes
+  # (design Decision 8), and declares no source of crew's to Flume, which
+  # the module declares (Task notes 2.1 of the change
+  # the-set-declares-crews-source-to-flume).
+  "The host flake's crew table" =
     let
-      crewBlock = lib.findFirst (lib.hasInfix "services.crew") null t.nixBlocks;
+      controlPlane = hostModule.services.boomdrive.settings.control_plane;
     in
-    t.expect (crewBlock != null) "no nix block of the README's Installing with nix names services.crew"
+    t.expect (
+      lib.head hostModules == "the set's module"
+    ) "examples/host-flake.nix's host-a takes no darwinModules.default first"
     ++
-      lib.concatMap
+      t.expect
         (
-          word:
-          t.expect (
-            crewBlock != null && lib.hasInfix word crewBlock
-          ) "the README's nix block of services.crew names no ${word}"
+          controlPlane == {
+            type = "crew";
+          }
         )
-        [
-          "drives"
-          "runs"
-          "after_changes"
-          "after_hours"
-          "hosts"
-          "ssh ="
-          "kind ="
-        ]
+        "examples/host-flake.nix's control_plane is ${builtins.toJSON controlPlane}, not crew's type alone"
+    ++ t.expect (
+      !(hostModule.services.flume or { } ? sources)
+    ) "examples/host-flake.nix sets services.flume.sources";
+
+  # The Mac's flake README shows writes crew's settings by crew's names,
+  # its teams file's version 6's, and none of version 5's (design
+  # Decisions 6 and 8).
+  "The host flake's crew settings" =
+    let
+      crew = hostModule.services.crew.settings;
+      home = crew.drives.home;
+      host = crew.hosts.host-a;
+    in
+    t.expect (home ? runs) "examples/host-flake.nix's drive home has no runs"
     ++
-      lib.concatMap
-        (
-          word:
-          t.expect (
-            !lib.any (lib.hasInfix word) t.nixBlocks
-          ) "a nix block of the README's Installing with nix names ${word}"
-        )
-        [
-          "partitions"
-          " flume = {"
-          " every ="
-          " hours ="
-        ];
+      t.expect (home.review ? after_changes && home.review ? after_hours)
+        "examples/host-flake.nix's review is ${builtins.toJSON home.review}, not after_changes and after_hours"
+    ++ t.expect (
+      host ? ssh && host ? kind
+    ) "examples/host-flake.nix's host host-a is ${builtins.toJSON host}, not its ssh and kind"
+    ++ t.expect (!(crew ? partitions)) "examples/host-flake.nix's crew settings name partitions"
+    ++ t.expect (!(home ? flume)) "examples/host-flake.nix's drive home names flume"
+    ++ t.expect (
+      !(home.review ? every) && !(home.review ? hours)
+    ) "examples/host-flake.nix's review names every or hours";
 
   "The tools' user on NixOS" =
     t.expect (

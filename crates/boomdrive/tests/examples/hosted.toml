@@ -1,0 +1,19 @@
+# The control plane's table README gives for a hosted control plane,
+# after the configuration's. README shows its own copy, which its
+# writers keep to this file (record 0049); tests/examples.rs reads this
+# one.
+
+[control_plane]
+type = "hosted"
+poll_interval = "1m"
+
+[control_plane.hosted]
+url = "https://control.example"
+
+[[control_plane.hosted.partitions]]
+label = "home"
+repositories = ["boomdrivedev/flume"]
+
+[[control_plane.hosted.partitions]]
+label = "work"
+repositories = ["example/crew", "boomdrivedev/flume"]

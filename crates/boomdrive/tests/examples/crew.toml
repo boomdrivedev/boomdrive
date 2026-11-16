@@ -1,0 +1,14 @@
+# The control plane's table README gives for crew, after the
+# configuration's. README shows its own copy, which its writers keep to
+# this file (record 0049); tests/examples.rs reads this one.
+
+[control_plane]
+type = "crew"
+poll_interval = "1m"
+
+[control_plane.crew]
+host = "host-a"
+
+[[control_plane.crew.partitions]]
+label = "home"
+state_repository = "example/home-state"

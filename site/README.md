@@ -26,7 +26,7 @@ Every tool comes from the repository's devenv: `devenv shell`, or
 ```sh
 site-dev     # the site on localhost, drafts included
 prose        # the glossary into Vale's vocabulary, then Vale over src/content
-site-check   # the site's checks: astro check, prose, the build and its tests
+site-check   # the site's checks: astro check, the build and its tests, then prose
 ```
 
 | Path | What |
