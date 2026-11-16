@@ -1,9 +1,12 @@
 //! A pass past due sends its answers as it makes them (record 0002 as
-//! amended on 2026-11-14; core.50; the work-into-flume spec's "A pass past
-//! due sends each answer as it makes it"): once the next control pass is
-//! due, a pass sends its report after each launch, act, command or preview
-//! it carries out, so no answer waits on the rest of the pass; a pass that
-//! ends before the next is due sends once, at its end.
+//! amended on 2026-11-14, and on taking turns; core.50; the
+//! work-into-flume spec's "A pass past due sends each answer as it makes
+//! it"): once the next control pass is due, a pass sends its report,
+//! wherever an answer changed it since its last send, before each tool's
+//! command it runs for a want, and once it has answered its last want, so
+//! no answer waits on a command; a pass that ends before the next is due
+//! sends once, at its end. What a send lets go or refuses is taken no more
+//! that pass, nor an act on a launch it let go or refused (core.10).
 
 mod fakes;
 
@@ -16,11 +19,38 @@ use std::cell::Cell;
 
 /// A fake control plane that notes, at each report it is sent, how many
 /// launches Flume had been asked for by then, and which launches the
-/// report answers `launched`.
+/// report answers `launched`, and, beside it, how many acts Flume had been
+/// asked for by then, with the report itself.
 struct Watching<'f> {
     fake: Fake,
     flume: &'f FakeFlume,
     sent: Vec<(usize, Vec<String>)>,
+    seen: Vec<Seen>,
+}
+
+/// A report a [`Watching`] control plane took, with how many launches and
+/// acts Flume had been asked for when it was sent.
+struct Seen {
+    launches: usize,
+    acts: usize,
+    report: Report,
+}
+
+impl Seen {
+    /// The launches the report answers `outcome`, by id.
+    fn launches(&self, outcome: Outcome) -> Vec<&str> {
+        self.report
+            .launches
+            .iter()
+            .filter(|(_, launched)| launched.answer.outcome == outcome)
+            .map(|(id, _)| id.as_str())
+            .collect()
+    }
+
+    /// The acts the report answers, by id.
+    fn acts(&self) -> Vec<&str> {
+        self.report.acts.keys().map(Id::as_str).collect()
+    }
 }
 
 impl<'f> Watching<'f> {
@@ -29,6 +59,7 @@ impl<'f> Watching<'f> {
             fake,
             flume,
             sent: Vec::new(),
+            seen: Vec::new(),
         }
     }
 }
@@ -47,7 +78,13 @@ impl ControlPlane for Watching<'_> {
             .collect();
         let reported = self.fake.report(report);
         if reported.is_ok() {
-            self.sent.push((self.flume.launches().len(), launched));
+            let launches = self.flume.launches().len();
+            self.sent.push((launches, launched));
+            self.seen.push(Seen {
+                launches,
+                acts: self.flume.acts().len(),
+                report: report.clone(),
+            });
         }
         reported
     }
@@ -62,33 +99,87 @@ fn ids(ids: &[&str]) -> Vec<String> {
     ids.iter().map(|id| id.to_string()).collect()
 }
 
+/// The offers `names`, each `id` and `name` alike.
+fn offers(names: &[&str]) -> Vec<Want> {
+    names
+        .iter()
+        .map(|name| Want::Offer(offer(name, name)))
+        .collect()
+}
+
+/// The spec's "A pass past due sends a launch's answer before its act
+/// runs": the runner holds `x` at a place Flume stands, and the pass, due
+/// from its start, is given a priority of `x`, then offers `a`, `b` and
+/// `c`. One report, holding `a` launched and `b` and `c` held, goes up
+/// after `a`'s launch and before `x`'s priority is run; one holding the
+/// priority done once its answer is made; and the pass's end sends once
+/// more.
+#[test]
+fn a_pass_past_due_sends_a_launchs_answer_before_its_act_runs() {
+    let bench = Bench::new();
+    let mut plane = Watching::new(&bench.flume, Fake::holding(offers(&["x"])));
+    bench.pass_of(PART, &bench.flume, &mut plane, &|| false);
+    let before = plane.seen.len();
+    let mut wants = vec![act("x/priority", "x", ActSort::Priority(3))];
+    wants.extend(offers(&["a", "b", "c"]));
+    plane.fake.set_wants(wants);
+    let (passed, _) = bench.pass_of(PART, &bench.flume, &mut plane, &|| true);
+    assert!(passed.reported);
+    let seen = &plane.seen[before..];
+    assert_eq!(
+        seen.len(),
+        3,
+        "before the act, once it is answered, at the end"
+    );
+    assert_eq!(
+        (seen[0].launches, seen[0].acts),
+        (2, 0),
+        "after a, before x's priority"
+    );
+    assert_eq!(seen[0].launches(Outcome::Launched), ["a", "x"]);
+    assert_eq!(seen[0].launches(Outcome::Held), ["b", "c"]);
+    assert_eq!(seen[0].acts(), [] as [&str; 0]);
+    for later in &seen[1..] {
+        assert_eq!((later.launches, later.acts), (2, 1));
+        assert_eq!(later.acts(), ["x/priority"]);
+        assert_eq!(
+            later.report.acts[&Id::new("x/priority")].outcome,
+            Outcome::Done
+        );
+    }
+}
+
 /// The spec's "A pass past due sends each launch's answer before its next
-/// launch": the pass is due from its start, and the pull offers `a`, `b`
-/// and `c`. Each report goes up after a launch returns and before the next
-/// is asked of Flume, holding every launch made so far, and the pass's end
+/// launch": each pass is due from its start, and each pass's pull offers
+/// `a`, `b` and `c`. The first pass launches `a`, the second `b` and the
+/// third `c`; each sends a report holding its launch once its last want is
+/// answered, before the next pass's launch is asked of Flume, and its end
 /// sends once more.
 #[test]
 fn a_pass_past_due_sends_each_launchs_answer_before_its_next_launch() {
     let bench = Bench::new();
-    let wants = ["a", "b", "c"]
-        .map(|name| Want::Offer(offer(name, name)))
-        .to_vec();
-    let mut plane = Watching::new(&bench.flume, Fake::holding(wants));
-    let (passed, lines) = bench.pass_of(PART, &bench.flume, &mut plane, &|| true);
-    assert!(passed.reported);
+    let mut plane = Watching::new(&bench.flume, Fake::holding(offers(&["a", "b", "c"])));
+    let mut said = Vec::new();
+    for _ in 0..3 {
+        let (passed, lines) = bench.pass_of(PART, &bench.flume, &mut plane, &|| true);
+        assert!(passed.reported);
+        said.extend(lines.into_iter().filter(|line| line.contains("launched")));
+    }
     assert_eq!(
-        lines,
+        said,
         ["a", "b", "c"].map(|name| format!("{name}: launched at {}", place_of(name)))
     );
     assert_eq!(
         plane.sent,
         [
             (1, ids(&["a"])),
+            (1, ids(&["a"])),
+            (2, ids(&["a", "b"])),
             (2, ids(&["a", "b"])),
             (3, ids(&["a", "b", "c"])),
             (3, ids(&["a", "b", "c"])),
         ],
-        "a report after each launch, then the pass's own at its end"
+        "each pass's report once its last want is answered, then its end's"
     );
 }
 
