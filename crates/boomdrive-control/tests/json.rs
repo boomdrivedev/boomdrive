@@ -100,7 +100,7 @@ fn a_hello() {
                 ToolVersion::Printed("flume 0.4.1".to_string()),
             ),
             (
-                "herdr".to_string(),
+                "sluice".to_string(),
                 ToolVersion::Missing("not found".to_string()),
             ),
         ]),
