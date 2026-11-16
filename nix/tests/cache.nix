@@ -1,6 +1,7 @@
 # The binary-cache spec over the flake and the modules (design Decision 4):
-# `nixConfig` names the family's cache alone, the README's install with
-# nix gives a host the same two lines, and each module, in a system whose
+# `nixConfig` names the family's cache alone, the example a host copies to
+# trust it, examples/trust.nix, gives the same two lines (record 0049),
+# and each module, in a system whose
 # `pkgs` carries an overlay of the host's own and with crew on, installs
 # the flake's own packages and adds nothing of the cache's to the host's
 # nix settings. Given a drive, the launcher it installs is the flake's own
@@ -15,13 +16,9 @@ let
   substituter = "https://boomdrive.cachix.org";
   key = "boomdrive.cachix.org-1:vHLgmasPg2jKqkvPXWOOrYzspoGL2xxsW4fAuHBtiag=";
 
-  # The README's **Installing with nix** and each nix block in it, as
-  # lib.nix gives them. A host copies the block that trusts the cache, so
-  # one block holds each substituter and key nixConfig names, as nix
-  # strings.
-  inherit (t) installing nixBlocks;
-  named = t.flake.nixConfig.extra-substituters ++ t.flake.nixConfig.extra-trusted-public-keys;
-  trusts = block: lib.all (value: lib.hasInfix ''"${value}"'' block) named;
+  # The nix settings README shows a host to trust the cache with, whose
+  # example is its own file (record 0049).
+  trusting = (import ./examples/trust.nix).nix.settings;
 
   # The host's own packages under the set's names, so a module that took
   # its packages from the host's `pkgs` would install these.
@@ -175,129 +172,16 @@ in
     }
   ) "nixConfig is ${builtins.toJSON t.flake.nixConfig}, not ${substituter} and ${key} alone";
 
-  # The README names each option that installs a tool of the set, which
-  # replace services.boomdrive.tools, and the shell (design Decision 6;
-  # the change herdr-and-ghostty-come-with-the-flake-and-an-app-opens-the-agents),
-  # crew's companions' among them.
-  "The README's words" =
-    lib.concatMap
+  # The example a host copies to trust the cache names the substituter and
+  # key nixConfig names, and nothing else.
+  "The host's trust example" =
+    t.expect
       (
-        option:
-        t.expect (lib.hasInfix option (toString installing)) "the README's Installing with nix names no ${option}"
+        trusting == {
+          inherit (t.flake.nixConfig) extra-substituters extra-trusted-public-keys;
+        }
       )
-      [
-        "services.flume.package"
-        "services.sluice.package"
-        "services.crew.package"
-        "services.boomdrive.herdr.package"
-        "services.boomdrive.herdr.plugins"
-        "services.boomdrive.ghostty.package"
-        "services.boomdrive.portless.package"
-        "services.boomdrive.worktrunk.package"
-        "services.boomdrive.timber.package"
-        "services.boomdrive.launcher.package"
-        "services.boomdrive.pendingyou.package"
-        "services.boomdrive.plannotator.package"
-        "services.boomdrive.plannotator-tui.package"
-        "nix develop github:boomdrivedev/boomdrive"
-      ]
-    ++ t.expect (
-      !lib.hasInfix "services.boomdrive.tools" (toString installing)
-    ) "the README's Installing with nix names services.boomdrive.tools";
-
-  # The README names the accounts by owner in services.boomdrive.accounts,
-  # and Flume's own streams for the rest of a drive's stream (the change
-  # each-repository-is-named-once-by-its-owner).
-  "The README's accounts" =
-    lib.concatMap
-      (
-        option:
-        t.expect (lib.hasInfix option (toString installing)) "the README's Installing with nix names no ${option}"
-      )
-      [
-        "services.boomdrive.accounts"
-        "services.flume.settings.streams"
-      ]
-    ++ t.expect (
-      !lib.hasInfix "settings.accounts" (toString installing)
-    ) "the README's Installing with nix names settings.accounts";
-
-  # The README says portless's proxy is started by portless's own
-  # command, and its trust is the person's (design Decision 6 of the
-  # change portless-comes-with-the-flake).
-  "The README's proxy" =
-    lib.concatMap
-      (
-        words:
-        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
-      )
-      [
-        "portless service install"
-        "portless trust"
-      ];
-
-  # The README names timber in the set, its herdr plugin, and its serving
-  # process as timber's own (design Decision 10 of the change
-  # timber-comes-with-boomdrives-flake).
-  "The README's timber" =
-    lib.concatMap
-      (
-        words:
-        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
-      )
-      [
-        "github:boomdrivedev/boomdrive#timber"
-        "timber-herdr-plugin"
-        "timber serve"
-      ];
-
-  # The README names crew's companions, their sign-in, Pending You's
-  # folder and the set's marketplace, and says no Claude Code home is
-  # installed into yet (design Decision 11 of the change
-  # crews-companions-come-with-the-flake).
-  "The README's companions" =
-    lib.concatMap
-      (
-        words:
-        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
-      )
-      [
-        "Pending You"
-        "Plannotator"
-        "plannotator-tui"
-        "pendingyou-herdr-plugin"
-        "plannotator-herdr-plugin"
-        "github:boomdrivedev/boomdrive#pendingyou"
-        "github:boomdrivedev/boomdrive#plannotator"
-        "github:boomdrivedev/boomdrive#plannotator-tui"
-        "pendingyou-signin"
-        "boomdrive-claude-plugins"
-        "~/.config/pendingyou"
-        "crew's module is on"
-        "stay the command line's own"
-        "installed into no Claude Code home yet"
-      ];
-
-  # The README says the launcher is a menu-bar app with an entry for each
-  # drive and the default stream (the change
-  # each-drive-opens-from-the-launcher).
-  "The README's launcher" =
-    lib.concatMap
-      (
-        words:
-        t.expect (lib.hasInfix words (toString installing)) "the README's Installing with nix names no ${words}"
-      )
-      [
-        "menu bar"
-        "each drive"
-        "Default stream"
-      ];
-
-  "The README's lines" =
-    t.expect (installing != null) "the README has no section ## Installing with nix"
-    ++
-      t.expect (installing == null || lib.any trusts nixBlocks)
-        "no nix block of the README's Installing with nix names ${lib.concatStringsSep " and " named}, as nixConfig does";
+      "examples/trust.nix trusts ${builtins.toJSON trusting}, not nixConfig's ${builtins.toJSON t.flake.nixConfig}";
 }
 // onEach "A host's own nixpkgs" ownNixpkgs
 // onEach "A host's drives in the launcher" drivesInLauncher
