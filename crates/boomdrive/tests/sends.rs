@@ -373,23 +373,26 @@ fn an_act_whose_launch_is_let_go_at_the_send_before_it_runs_nothing() {
 }
 
 /// The spec's "A send that fails leaves the pass's answers to its end": the
-/// pass is due from its start, and the control plane cannot take a report
-/// until the pass's last launch is made. The send after the first launch
-/// fails and is said once; no send is tried after the second; the pass's
-/// end sends both.
+/// runner holds `x` at a place Flume stands, the pass is due from its
+/// start, its pull offers `a`, then gives a priority of `x`, and the
+/// control plane cannot take a report until `x`'s priority has run. The
+/// send before the priority is run fails and is said once; no send is
+/// tried once the last want is answered; and the pass's end sends a report
+/// holding `a` launched and the priority done.
 #[test]
 fn a_send_that_fails_leaves_the_passs_answers_to_its_end() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![
-        Want::Offer(offer("a", "a")),
-        Want::Offer(offer("b", "b")),
-    ]);
+    let mut plane = Fake::holding(offers(&["x"]));
+    bench.pass(&mut plane);
+    let mut wants = offers(&["a"]);
+    wants.push(act("x/priority", "x", ActSort::Priority(3)));
+    plane.set_wants(wants);
     plane.refuse_reports("the state repository cannot be reached");
     let tries = Cell::new(0);
     let mut refusing = RefusingUntil {
         fake: &mut plane,
         flume: &bench.flume,
-        launches: 2,
+        acts: 1,
         tries: &tries,
     };
     let (passed, lines) = bench.pass_of(PART, &bench.flume, &mut refusing, &|| true);
@@ -397,7 +400,7 @@ fn a_send_that_fails_leaves_the_passs_answers_to_its_end() {
     assert_eq!(
         tries.get(),
         2,
-        "one send after the first launch, one at the end"
+        "one send before x's priority, none once the last want is answered, one at the end"
     );
     assert_eq!(
         lines
@@ -409,17 +412,18 @@ fn a_send_that_fails_leaves_the_passs_answers_to_its_end() {
     );
     let held = plane.held().expect("the pass's end was taken");
     assert_eq!(
-        held.launches.keys().map(Id::as_str).collect::<Vec<_>>(),
-        ["a", "b"]
+        held.launches[&Id::new("a")].answer.outcome,
+        Outcome::Launched
     );
+    assert_eq!(held.acts[&Id::new("x/priority")].outcome, Outcome::Done);
 }
 
 /// A fake control plane refusing every report until Flume has been asked
-/// for `launches` launches, counting each send tried.
+/// for `acts` acts on places, counting each send tried.
 struct RefusingUntil<'p> {
     fake: &'p mut Fake,
     flume: &'p FakeFlume,
-    launches: usize,
+    acts: usize,
     tries: &'p Cell<usize>,
 }
 
@@ -430,7 +434,7 @@ impl ControlPlane for RefusingUntil<'_> {
 
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
         self.tries.set(self.tries.get() + 1);
-        if self.flume.launches().len() >= self.launches {
+        if self.flume.acts().len() >= self.acts {
             self.fake.take_reports();
         }
         self.fake.report(report)
