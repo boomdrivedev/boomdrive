@@ -353,10 +353,19 @@ impl Pulling<'_> {
     /// holds, while the runner answers the launch it names, since crew
     /// writes a drop as its work leaves the plan. A preview request that
     /// reads is current by its own rule, [`Pulling::preview_current`]
-    /// (record 0031 as amended on 2026-11-09).
+    /// (record 0031 as amended on 2026-11-09). A priority request that
+    /// reads and that the runner does not hold is current only while it is
+    /// its launch's newest, since a later one makes it moot (record 0002 as
+    /// amended on 2026-11-16).
     fn current(&self, request: &Request) -> bool {
         if let Some(done) = request.preview_done() {
             return self.preview_current(request, done);
+        }
+        if request.priority_of().is_some()
+            && !self.holds(request.number)
+            && !self.main.newest_priority(request)
+        {
+            return false;
         }
         self.main.plans(request.work())
             || self.holds(request.number)
@@ -482,7 +491,8 @@ impl Crew {
             // A request is given while its work is in the plan or the
             // runner holds it, a preview request while crew still asks for
             // it or the runner holds it (record 0031 as amended on
-            // 2026-11-09).
+            // 2026-11-09), and a priority while it is its launch's newest or
+            // the runner holds it (record 0002 as amended on 2026-11-16).
             for request in &main.requests {
                 if !pulling.current(request) {
                     continue;
