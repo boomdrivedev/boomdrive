@@ -1,8 +1,21 @@
 # Verify: launches-and-acts-take-turns-once-a-pass-is-due
 
-The work holds. The gate passes, all nine tasks are ticked, and a test proves each scenario of the two delta specs. `openspec validate launches-and-acts-take-turns-once-a-pass-is-due --strict` finds the change valid.
+The work falls short, and the change is not archived. The gate passes on `310f45a`, all nine tasks are ticked, and a test proves each scenario of the two delta specs. But the specs that archiving writes fail `root:specs`, so archiving would fail the gate. The section **Archiving fails the gate** below says what fails.
 
 This report is on `change/launches-and-acts-take-turns-once-a-pass-is-due` at `310f45a`, cut from `main` at `98d1909`.
+
+## Archiving fails the gate
+
+`root:specs` runs `openspec validate --specs --strict --no-interactive` (`moon.yml`), which fails a warning as an error. The gate on `310f45a` did not run it, because the change had not touched `openspec/specs/`.
+
+`openspec archive launches-and-acts-take-turns-once-a-pass-is-due --yes` applied the deltas: previews, 1 modified; work-into-flume, 3 added and 3 modified. Then `openspec validate --specs --strict` gave "25 passed, 2 failed (27 items)":
+
+- `spec/previews`, requirements[11], "A preview's command runs after every launch": "Requirement text is very long (>500 characters)". Its text is 538 characters.
+- `spec/work-into-flume`, requirements[46], "A pass past due sends each answer as it makes it": the same warning. Its text is 722 characters.
+
+Both are this change's MODIFIED requirements, and on `main` no requirement of either spec is over 500 characters. `openspec validate launches-and-acts-take-turns-once-a-pass-is-due --strict` does not flag them, so `root:changes` passes. The archive was undone and not committed.
+
+To fix it, cut each requirement's text in the delta specs below 500 characters. Move what it lists into its scenarios, or split it into requirements that each state one behaviour, as the warning says. For example, the commands that "A pass past due sends each answer as it makes it" lists could become a requirement of their own. Then archive again, and run `openspec validate --specs --strict` before committing.
 
 ## The whole checks
 
