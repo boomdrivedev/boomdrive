@@ -25,8 +25,10 @@
 # its id and the path of its key, never the key, and a key file in the
 # store fails evaluation (record 0007 as amended on 2026-11-11). Each tool of the set is installed by its
 # own module, its package the set's unless the host gives its own
-# (tools.nix; record 0023), so `tools` is gone, and setting it fails
-# evaluation, naming what replaces it.
+# (tools.nix; record 0023), timber's among them (record 0023 as amended on
+# 2026-11-15), so `tools` and `timber.package` are gone, and setting
+# either fails evaluation, naming what replaces it (the change
+# the-set-takes-timbers-own-module, design Decision 6).
 { packages }:
 {
   config,
@@ -283,6 +285,15 @@ in
         "tools"
       ]
       "Each tool's own module installs its package, the set's unless the host gives its own: set services.flume.package or services.sluice.package to the host's own package, or to null for none, or set services.flume.enable or services.sluice.enable to false to keep that tool's file the host's own."
+    )
+    (lib.mkRemovedOptionModule
+      [
+        "services"
+        "boomdrive"
+        "timber"
+        "package"
+      ]
+      "timber's own module installs timber, the set's unless the host gives its own: set services.timber.package to the host's own package, or to null for none, or set services.timber.enable to false to keep timber's file, ~/.config/timber/config.toml, the host's own."
     )
   ];
 

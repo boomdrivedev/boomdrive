@@ -48,7 +48,11 @@ collector the host names in `services.boomdrive.claude-code.telemetry`,
 they write Claude Code's managed telemetry document,
 `10-boomdrive-telemetry.json` in Claude Code's `managed-settings.d`,
 which every session on the host reads (record 0013 as amended on
-2026-11-12). Wherever they install Flume, with the runner or without,
+2026-11-12), and turn Flume's and sluice's own telemetry on to that
+collector, by `services.flume.settings.telemetry` and
+`services.sluice.settings.telemetry`, each tool keeping which of its
+signals it sends (record 0013 as amended on 2026-11-15; core.57).
+Wherever they install Flume, with the runner or without,
 they write Claude Code's managed transcripts document,
 `10-boomdrive-transcripts.json` beside it, holding
 `services.boomdrive.claude-code.cleanupPeriodDays` alone, a year by
