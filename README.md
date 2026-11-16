@@ -1061,11 +1061,16 @@ settles for both, so no launch waits behind a settle. A control pass:
   names any, marked `boomdrive:<id>`. A bolt is a launch
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
-  branch;
+  branch. Once the next pass is due, it makes no launch after the first
+  it ran, and holds each it would make after it for the next pass,
+  `held` with the words `waits for the next control pass, which is due`,
+  its room counted at its turn;
 - carries out each retry, land, confirm, drop, priority or done as
-  Flume's own command on the launch's place, once every launch the
-  pull offers is taken, and, once the next pass is due, no further act
-  after its first, so no launch waits behind an act. A place Flume's
+  Flume's own command on the launch's place, once every offer the pull
+  gives is answered, and, once the next pass is due, no further act
+  after the first it ran, so its launches and its acts take turns: no
+  act waits behind more than one launch, and no launch of the next pull
+  behind more than one act. A place Flume's
   listing does not hold is first asked of
   `flume --json status <place>`, which settles nothing, and Flume's
   refusal of it is the act's answer. A land is
@@ -1080,8 +1085,9 @@ settles for both, so no launch waits behind a settle. A control pass:
   for it;
 - brings up each preview the control plane asks for, of a branch at a
   revision, in a repository it keeps, as
-  `sluice preview <branch> <revision>`, once every launch the pull
-  offers is taken, and, once the next pass is due, no further preview
+  `sluice preview <branch> <revision>`, once every offer the pull
+  gives is answered, a launch held for its turn among them, and, once
+  the next pass is due, no further preview
   after its first. It waits at
   sluice's bound no longer than 20 seconds, then interrupts sluice,
   which ends its wait and nothing else, and asks again at the next
@@ -1105,12 +1111,17 @@ settles for both, so no launch waits behind a settle. A control pass:
   `<location>@<at>`.
 
 A control pass sends its report to its control plane at its end. Once
-the next pass is due, it also sends it after each answer it makes, so no
-answer waits on the rest of the pass, however many launches follow it;
-under crew each send is a commit to the runner's branch. What the
-control plane lets go or refuses at such a send leaves the report, and
-the pass takes it no more. A send that fails before the pass's end is
-said once, and the pass's answers wait for the send at its end.
+the next pass is due, it also sends it before each command it runs for
+a want, a `flume launch`, Flume's status of a place or its command on
+it, or sluice's preview or release, and once it has answered its last
+want, wherever an answer changed it since the last send, in place of
+after each answer. So no answer waits on a command, and the launches a
+pass holds for their turn go up together before its act runs; under
+crew each send is a commit to the runner's branch. What the control
+plane lets go or refuses at such a send leaves the report, and the pass
+takes it no more, nor an act on a launch it let go or refused. A send
+that fails before the pass's end is said once, and the pass's answers
+wait for the send at its end.
 
 No pane holds the name `boomdrive`, so Flume sends it no notice and
 wakes nothing for it, and owes it each end of the place, a live place's
