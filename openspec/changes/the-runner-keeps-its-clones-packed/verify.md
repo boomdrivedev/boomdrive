@@ -1,32 +1,32 @@
 # Verify: the-runner-keeps-its-clones-packed
 
-The work falls short, and the change is not archived. The gate passes on `b978066`, all eleven tasks are ticked, and the code does what the delta spec says. But the test of one scenario, "An agent's commit starts no collection", passes whether or not git's collection is off. It reads the clone right after the commit returns, and with git's collection on, the commit starts that collection in the background, detached. So nothing proves that scenario, and it goes back to the code stage.
+The work holds, and the change is archived. The gate passes on `8fa904a`. All eleven tasks are ticked, and every scenario of the delta spec is proven by a test that passed in the gate. The test of "An agent's commit starts no collection" now fails where git's collection is on: a probe that left both keys unset in a new clone made it fail.
 
-This report is on `change/the-runner-keeps-its-clones-packed` at `b978066`, cut from `bolt/the-runners-copies-stay-small-and-fast` at `3f7d69b`, which is `main`.
+This report is on `change/the-runner-keeps-its-clones-packed` at `8fa904a`, cut from `bolt/the-runners-copies-stay-small-and-fast` at `3f7d69b`, which is `main`. git is 2.54.0.
 
 ## The whole checks
 
-`sluice exec main` ran once on `b978066`. It ran the checks that commit affects against `main` (`3f7d69b`) and exited 0. All 9 passed, and sluice recorded their results under their keys for `b978066`:
+`devenv shell -- sluice exec main` ran once on `8fa904a`. It ran the checks that commit affects against `main` (`3f7d69b`) and exited 0. All 9 passed, and sluice recorded their results under their keys for `8fa904a`:
 
 - `boomdrive`: `format`, `lint`, `typecheck` and `test`;
-- `nix`: `typecheck` and `test` ("every case holds");
-- `root`: `format` ("411 files (0 changed)"), `adrs` ("48 records, each with a number of its own") and `changes` ("1 open, each valid under openspec validate --strict and archiving to specs that are" valid).
+- `nix`: `typecheck` and `test`, each saying "every case holds";
+- `root`: `format` ("formatted 411 files (0 changed)"), `adrs` ("48 records, each with a number of its own") and `changes` ("1 open, each valid under openspec validate --strict and archiving to specs that are").
 
-`boomdrive:test` gave 45 test results, each `ok` with no test failed. Among them are `clone::tests::an_occasion_comes_past_either_bound` and the 14 tests of `tests/packs.rs`, which are every test the tasks name.
+`boomdrive:test` ran 45 test binaries and 721 tests, each `ok`, none failed or ignored. Among them are `clone::tests::an_occasion_comes_past_either_bound` and the 14 tests of `tests/packs.rs`. Those are every test the tasks name.
 
-moon gave two kinds of warning, and no check failed because of either. It could not write its output archives under `.moon/cache/outputs`, nine times, and it skipped the Rust dependency install for want of a network. Both come from the sandbox.
+moon gave two kinds of warning, and no check failed because of either. It could not write its output archives under `.moon/cache/outputs`, nine times. It also skipped the Rust dependency install for want of a network. Both come from the sandbox.
 
-`root:changes` archived the open change into a scratch copy of the specs and held them to `openspec validate --strict` (core.61), which is task 6.1's check.
+`root:changes` archived the open change into a scratch copy of the specs and held them to `openspec validate --strict` (core.61). That is task 6.1's check.
 
 ## Tasks
 
-All eleven tasks are ticked, 1.1 to 6.1, and none is open:
+All eleven tasks are ticked, 1.1 to 7.1, and none is open:
 
-- Tasks 1.1 to 4.1 each name `cargo test` runs of tests that passed in `boomdrive:test` above.
+- Tasks 1.1 to 4.1 and 7.1 each name `cargo test` runs of tests that passed in `boomdrive:test` above.
 - Task 5.1 names two greps of `README.md`, and each prints a line.
 - Task 6.1's check is `root:changes`, above.
 
-The diff from `3f7d69b` stays inside the files that proposal.md's Impact lists and the change's own directory: `clone.rs`, `pass.rs`, the new `tests/packs.rs`, `README.md`, record 0051 and `core.md`. It adds no crate, tool, tracked file type or key of the configuration. Record 0051 and core.14 as amended, with core.13's details, are in the change's first commits, `7fa1bbd` and `343e739`. The code and tests cite them and change neither.
+The diff from `3f7d69b` stays inside the files proposal.md's Impact lists and the change's own directory: `clone.rs`, `pass.rs`, the new `tests/packs.rs`, `README.md`, record 0051 and `core.md`. It adds no crate, tool, tracked file type or key of the configuration. Record 0051 and core.14 as amended, with core.13's details, are in the change's first commits, `7fa1bbd` and `343e739`. The code and tests cite them and change neither.
 
 ## The delta, scenario by scenario
 
@@ -36,10 +36,12 @@ The diff from `3f7d69b` stays inside the files that proposal.md's Impact lists a
 |---|---|
 | A new clone's collection is off | `a_new_clones_collection_is_off`: the bare repository's own config gives `gc.auto` as `0` and `maintenance.auto` as `false`. `make_in` sets both with the clone's other keys, before its first fetch |
 | A clone made before is turned off at its next pass | `a_clone_made_before_is_turned_off_at_its_next_pass`: from `gc.auto` at `6700` and no `maintenance.auto`, the next pass leaves `0` and `false` and says no line |
-| An agent's commit starts no collection | **Not proven.** See **What falls short** |
+| An agent's commit starts no collection | `an_agents_commit_starts_no_collection`: in a clone holding 10,000 loose objects, a commit in a worktree runs any collection it starts in the foreground, by `git -c gc.autoDetach=false -c maintenance.autoDetach=false commit`. Afterwards every loose object is still loose, the commit's among them, and the packs are as before |
 | A clone whose config cannot be written | `a_clone_whose_config_cannot_be_written`: with a `config.lock` made, the pass fails, a line reads `agentplot/flume: git's own collection not turned off: <git's words>`, and `refs/remotes/origin/main` is origin's new commit |
 
-The requirement's "writing neither where the config already says so" has no scenario. The code holds it: `clone::turn_collection_off` reads each key by its type and skips the write where it reads the value that turns collection off.
+The test of the agent's commit was probed. `make_in` was made to set neither key, and the test was run alone with `devenv shell -- cargo test -p boomdrive --test packs -- an_agents_commit_starts_no_collection`. The commit then collected, and the test failed at `loose_after.is_superset(&loose_before)`. The probe was then undone, and the tree is as committed.
+
+The requirement's "writing neither where the config already says so" has no scenario. The code holds it: `clone::turn_collection_off` reads each key by its type and skips the write where the read gives the value that turns collection off.
 
 ### A keeping pass packs a clone once what arrived passes git's bound
 
@@ -50,7 +52,7 @@ The requirement's "writing neither where the config already says so" has no scen
 | Packs past the bound | `packs_past_the_bound`: with 51 packs, the one line names 51 packs, and after the pass no loose object and at most two packs remain |
 | A dropped repository is not packed | `a_dropped_repository_is_not_packed`: `wip` holds a commit origin lacks, so the clone is left, held. It is not said packed, and its loose objects and packs are as before |
 
-The bounds are proven at and past each one by the unit test `an_occasion_comes_past_either_bound`.
+The bounds are proven at and past each one by the unit test `an_occasion_comes_past_either_bound`. The packing round, `pack_kept`, runs after the repositories are kept and let go of, the workspaces kept and the partial clones cleared, as the requirement has it.
 
 ### A pack drops only what nothing of the clone reaches, past two weeks
 
@@ -72,24 +74,14 @@ The bounds are proven at and past each one by the unit test `an_occasion_comes_p
 | A landing told while the pass packs | `a_landing_told_while_the_pass_packs`: `agentplot/timber`'s line "view moved to origin/main at <landing>" comes after `agentplot/flume: packed` and before `agentplot/sluice: packed` |
 | A stop while the pass packs | `a_stop_while_the_pass_packs`: `agentplot/flume` is said packed and `agentplot/sluice` is not, and its loose objects and packs are as before |
 
+A pack in flight runs to its end. `clone::pack` runs its three commands by `Git::run`, which has no limit, as a git call that reaches no remote does (core.58).
+
 ### A pack that fails is named, and the pass goes on
 
 | Scenario | Proven by |
 |---|---|
 | One pack fails | `one_pack_fails`: with `agentplot/flume`'s `objects/pack` at mode 555, the pass fails, a line reads `agentplot/flume: not packed: <git's words>`, and `agentplot/sluice` is said packed. Once the mode is 755 again, the next pass packs `agentplot/flume` |
 
-## What falls short
+## Outcome
 
-`an_agents_commit_starts_no_collection` (`crates/boomdrive/tests/packs.rs`) writes 10,000 loose objects into a kept clone and commits in a worktree of it. It then reads the clone's loose objects and packs straight away. The scratch host's git configuration (`tests/common`) leaves `gc.autoDetach` and `maintenance.autoDetach` at git's default, `true`. A commit that starts git's collection therefore forks it into the background and returns before it has packed anything. So the test's reading is the same whether the clone's collection is off or on, and the test would pass with `gc.auto` and `maintenance.auto` never set.
-
-A probe on this host, git 2.54.0, shows this. It used a bare repository, a worktree and 10,000 loose objects, under a scratch global config like the tests':
-
-| Clone's collection | Commit | Right after the commit | 10 seconds later |
-|---|---|---|---|
-| on (keys unset) | `git commit` | `count: 10006`, `packs: 0` | `count: 0`, `packs: 2` |
-| on (keys unset) | `git -c gc.autoDetach=false -c maintenance.autoDetach=false commit` | `count: 0`, `packs: 2` | — |
-| off (`gc.auto=0`, `maintenance.auto=false`) | `git -c gc.autoDetach=false -c maintenance.autoDetach=false commit` | `count: 10006`, `packs: 0` | — |
-
-The code meets the scenario, since `make_in` sets both keys and `a_new_clones_collection_is_off` proves it. But task 1.1 names this test as the proof of "An agent's commit starts no collection", and the test cannot fail.
-
-The work to do: make the test's commit run any collection it starts in the foreground, for instance `git -c gc.autoDetach=false -c maintenance.autoDetach=false commit`. With that, a clone whose collection is on packs before the test reads it, and the test fails as it should. That change is the code stage's, to `crates/boomdrive/tests/packs.rs` alone. Then the gate runs again, and the change goes to a new verify.
+The checks pass and the work meets every requirement and scenario of the delta. The change is archived on `change/the-runner-keeps-its-clones-packed` with this report, by `openspec archive the-runner-keeps-its-clones-packed --yes`.
