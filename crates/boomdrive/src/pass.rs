@@ -177,8 +177,8 @@ pub fn pass(
 /// packed, as it is not fetched. No clone's lock is held, so no launch
 /// into a clone waits on its pack. `stop` is read before each clone, and
 /// none is packed once it is set; a pack in flight runs to its end. After
-/// each clone it packs, `between` keeps the landings told since, and the
-/// clones are found again where it changed one. A clone packed says
+/// each clone it packs, or whose pack fails, `between` keeps the landings
+/// told since, and the clones are found again where it changed one. A clone packed says
 /// `<address>: packed <n> loose objects and <m> packs`, its counts before
 /// the pack, and one below both bounds says nothing. A count or a pack
 /// that fails is named, `<address>: not packed: <git's words>`, and fails
