@@ -13,8 +13,8 @@ mod fakes;
 use boomdrive::carry::TURN;
 use boomdrive::flume::Act;
 use boomdrive_control::fake::Fake;
-use boomdrive_control::{Id, Offer, Outcome, Want};
-use fakes::{offer, place_of, Bench, Call};
+use boomdrive_control::{ActSort, Id, Offer, Outcome, Want};
+use fakes::{act, offer, place_of, Bench, Call};
 use serde_json::json;
 
 /// The offers `names`, each `id` and `name` alike, in [`fakes::KEPT`].
@@ -154,5 +154,141 @@ fn a_launch_held_for_its_turn_counts_against_its_streams_room() {
     assert_eq!(
         lines,
         [format!("a: launched at {}", place_of("a")), held_line("b")]
+    );
+}
+
+/// The work-into-flume spec's "A drop of a launch held for its turn": the
+/// pass is due from its start, and its pull offers `a` and `b`, then gives
+/// a drop of `b`. `a` is launched, the drop is done, and `b` is answered
+/// done with words naming the drop, no `flume launch` run for it.
+#[test]
+fn a_drop_of_a_launch_held_for_its_turn() {
+    let bench = Bench::new();
+    let mut wants = offers(&["a", "b"]);
+    wants.push(act("b/drop", "b", ActSort::Drop));
+    let mut plane = Fake::holding(wants);
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &|| true);
+    assert_eq!(made(&bench), ["launch a"]);
+    let report = bench.report();
+    assert_eq!(report.acts[&Id::new("b/drop")].outcome, Outcome::Done);
+    assert_eq!(
+        answer(&bench, "b"),
+        Some((
+            Outcome::Done,
+            Some("dropped by b/drop before it was launched".to_string())
+        ))
+    );
+    assert_eq!(
+        lines,
+        [
+            format!("a: launched at {}", place_of("a")),
+            held_line("b"),
+            "b/drop: drop of b: done".to_string(),
+            "b: done: dropped by b/drop before it was launched".to_string(),
+        ]
+    );
+}
+
+/// A bench whose runner holds a launch of each of `names` at a place Flume
+/// stands, made by a pass whose next was never due, with a control plane
+/// that offered them, and Flume's calls forgotten.
+fn holding(names: &[&str]) -> (Bench, Fake) {
+    let bench = Bench::new();
+    let mut plane = Fake::holding(offers(names));
+    bench.pass(&mut plane);
+    for name in names {
+        assert_eq!(
+            answer(&bench, name).map(|(outcome, _)| outcome),
+            Some(Outcome::Launched)
+        );
+    }
+    bench.flume.take_calls();
+    (bench, plane)
+}
+
+/// The work-into-flume spec's "An act waits behind one launch once the
+/// pass is due": the runner holds `x`, and the pass, due from its start,
+/// is given a land of `x`, then offers `a` and `b`. `a` is launched, then
+/// the land is carried out on `x`'s place, and `b` is held for its turn.
+/// At the next pass, due from its start, given a priority of `x`, then
+/// offers `a`, `b` and `c`, `b` is launched, then the priority is carried
+/// out, and `c` stays held.
+#[test]
+fn an_act_waits_behind_one_launch_once_the_pass_is_due() {
+    let (bench, mut plane) = holding(&["x"]);
+    let px = place_of("x");
+    let mut wants = vec![act("x/land", "x", ActSort::Land)];
+    wants.extend(offers(&["a", "b"]));
+    plane.set_wants(wants);
+    bench.pass_due(&bench.flume, &mut plane, &|| true);
+    assert_eq!(
+        made(&bench),
+        [
+            "launch a".to_string(),
+            format!("retry submission=true at {px}")
+        ]
+    );
+    assert_eq!(
+        bench.report().acts[&Id::new("x/land")].outcome,
+        Outcome::Done
+    );
+    assert_eq!(answer(&bench, "b"), held());
+
+    bench.flume.take_calls();
+    let mut wants = vec![act("x/priority", "x", ActSort::Priority(5))];
+    wants.extend(offers(&["a", "b", "c"]));
+    plane.set_wants(wants);
+    bench.pass_due(&bench.flume, &mut plane, &|| true);
+    assert_eq!(
+        made(&bench),
+        ["launch b".to_string(), format!("Priority(5) at {px}")]
+    );
+    assert_eq!(
+        answer(&bench, "b").map(|(outcome, _)| outcome),
+        Some(Outcome::Launched)
+    );
+    assert_eq!(answer(&bench, "c"), held());
+}
+
+/// The work-into-flume spec's "A pass that falls due among its launches
+/// runs its first act next": the runner holds `x` and `y`, the pull gives
+/// a priority of each, then offers `a`, `b`, `c` and `d`, and the next pass
+/// falls due once two launches are made. `a` and `b` are launched, `c` and
+/// `d` held, then `x`'s priority is carried out; `y`'s is left unanswered,
+/// and the pass says that 1 act on a place waits for the next.
+#[test]
+fn a_pass_that_falls_due_among_its_launches_runs_its_first_act_next() {
+    let (bench, mut plane) = holding(&["x", "y"]);
+    let px = place_of("x");
+    let mut wants = vec![
+        act("x/priority", "x", ActSort::Priority(3)),
+        act("y/priority", "y", ActSort::Priority(4)),
+    ];
+    wants.extend(offers(&["a", "b", "c", "d"]));
+    plane.set_wants(wants);
+    let due = || bench.flume.launches().len() >= 2;
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
+    assert_eq!(
+        made(&bench),
+        [
+            "launch a".to_string(),
+            "launch b".to_string(),
+            format!("Priority(3) at {px}"),
+        ]
+    );
+    assert_eq!(answer(&bench, "c"), held());
+    assert_eq!(answer(&bench, "d"), held());
+    assert!(!bench.report().acts.contains_key(&Id::new("y/priority")));
+    assert_eq!(
+        lines,
+        [
+            format!("a: launched at {}", place_of("a")),
+            format!("b: launched at {}", place_of("b")),
+            held_line("c"),
+            held_line("d"),
+            format!("x/priority: priority 3 of x at {px}: done"),
+            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
+                .to_string(),
+        ]
     );
 }
