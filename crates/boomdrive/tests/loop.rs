@@ -36,9 +36,8 @@ struct Running {
 
 impl Running {
     /// Starts the runner on the scratch host's default configuration
-    /// file, running a stub `flume`, and its loop. Its sluice and herdr
-    /// are stubs that are not there: a runner with no control plane runs
-    /// neither.
+    /// file, running a stub `flume`, and its loop. Its sluice is a stub
+    /// that is not there: a runner with no control plane runs none.
     fn start(scratch: &Scratch) -> Running {
         let overlay = scratch.overlay();
         let var = |name: &str| {
@@ -52,7 +51,6 @@ impl Running {
         runner.tools(Programs {
             flume: flume.program(),
             sluice: scratch.root.join("absent/sluice"),
-            herdr: scratch.root.join("absent/herdr"),
         });
         let notices = runner.notices();
         let stopper = runner.stopper();
