@@ -3,8 +3,9 @@
 //! fetched, and its module's `FILES` holding each file (the
 //! runner-protocol spec's "Each version of the protocol is JSON Schema in
 //! the hosted implementation's crate"; design Decisions 1 and 6 of
-//! the-hosted-protocol-carries-every-end-of-a-place), and version 1 held
-//! to the files release `v0.7.3` holds.
+//! the-hosted-protocol-carries-every-end-of-a-place), and each version a
+//! release has spoken held to the files that release holds: version 1 to
+//! `v0.7.3`'s and version 2 to `v0.9.0`'s (core.42).
 
 mod common;
 
@@ -286,6 +287,218 @@ const RELEASED_V1: &[(&str, &str)] = &[
     ),
 ];
 
+/// Each file under `protocol/v2/`, schemas and examples, with its SHA-256
+/// as release `v0.9.0` holds it, read by `git show v0.9.0:<path> |
+/// shasum -a 256`. Every release from `v0.8.0`, the first to speak
+/// version 2, holds the same bytes (the runner-protocol spec's "Version 2
+/// stays as a release spoke it"; core.42; record 0037).
+const RELEASED_V2: &[(&str, &str)] = &[
+    (
+        "enrollment.schema.json",
+        "362233c8ed7c06dc98d9a5c7f62cc1b80336908d67e0ad217a6d0b5460ef7d0c",
+    ),
+    (
+        "examples/from-runner/enroll.json",
+        "b6dbcbc9a1a3b998394256112bb593e559a5491ca9dd9105a74d06527c578b42",
+    ),
+    (
+        "examples/from-runner/hello-with-flume-unread.json",
+        "6280a5bbb0da3271fd11ae37eaddc5707e2f954d7acebc812014f024e65f7530",
+    ),
+    (
+        "examples/from-runner/hello.json",
+        "e83cb2927ac815d1ecdfbcd508dd0b4a1395b2b8ad2f7e763f6ed9504daeba1b",
+    ),
+    (
+        "examples/from-runner/message_refused.json",
+        "fbd9010be7bd3a25b189979b45e3e49d0153e4e189ef05eff70b1d6c9d2b79a9",
+    ),
+    (
+        "examples/from-runner/report-a-done-place-held-for-the-runner.json",
+        "22a0bcf32c16b03d4dc4cd6668805ba8ed862b058ed45db909472076b88d8335",
+    ),
+    (
+        "examples/from-runner/report-a-dropped-place-held-for-the-runner.json",
+        "8d551f6ab561b880c3534952d942e80b40e355c1e8b7ebdc7c21c9467c53d519",
+    ),
+    (
+        "examples/from-runner/report-a-landing-kept-by-a-failed-teardown.json",
+        "984a5e2de800557aa54fcc93f63c752a669cd7ef212cdcd99f456c44db3f2e07",
+    ),
+    (
+        "examples/from-runner/report-a-live-agent-with-its-pane.json",
+        "918e426863728bf8ad781d0033fe1a6cc1ab540445cf5b0683b19576db29196a",
+    ),
+    (
+        "examples/from-runner/report-a-place-on-hold.json",
+        "ad4efa1017c6f9c11bef1d88e0309ebfedf48339f6a61643a458fa402856b388",
+    ),
+    (
+        "examples/from-runner/report-a-place-waiting-on-an-answer.json",
+        "d236d628e87f9b7d33faafb2500dc6628e9eb8adb1470297feee4662c9071010",
+    ),
+    (
+        "examples/from-runner/report-a-preview-brought-up.json",
+        "a77f2f7dbd1c7edbf6e988db158ddfa6a06002d2edb961e67ceddf1d356cfb04",
+    ),
+    (
+        "examples/from-runner/report-a-preview-held.json",
+        "af1c0d79f6ee56f32181eb74731e7fd35443618e476dda7a93b287591f1b5faa",
+    ),
+    (
+        "examples/from-runner/report-a-preview-put-away.json",
+        "fadfcd6274c4314c6ad311fca5918bef9148560955f62ba7374581455802a8bb",
+    ),
+    (
+        "examples/from-runner/report-a-preview-sluice-refused.json",
+        "684dcee02d36478d3e58b39b83ed186201be4ff205a6ee8f68739ce2ef333355",
+    ),
+    (
+        "examples/from-runner/report-a-roles-run-delivered.json",
+        "a1678a03ff8707c7057cfc32b9aea643a1c52fc9d2eb1a0c45c7724c81675772",
+    ),
+    (
+        "examples/from-runner/report-a-submission-failed.json",
+        "847e103d170e463fd39be573bde1afab1282cf1eec114c4ac41a686d56874706",
+    ),
+    (
+        "examples/from-runner/report-a-submission-under-test.json",
+        "499c418ddecdf60b76a68bdf36347233551a17579bf1b2812fa887a46b4c79bd",
+    ),
+    (
+        "examples/from-runner/report-a-tidied-place.json",
+        "bd0aa28868650766e5372909a426f418e9bd16369b6a4e460751ede31aca026c",
+    ),
+    (
+        "examples/from-runner/report-an-end-by-its-delivery-alone.json",
+        "e0771355e71dbb8d9d6265a783a6d6142a9951a3af154917fffed7d32e38fe3c",
+    ),
+    (
+        "examples/from-runner/report-an-end-handed-over-at-a-sessions-start.json",
+        "8511608808cad446bb036768b5a4c6c3cbc3817d79c384493a226ef20210e312",
+    ),
+    (
+        "examples/from-runner/report-an-end-owed-expired-and-one-confirmed.json",
+        "f3c9683c1e02bacccf5687484ef1f197f95bab9ea93f0e74c8c72f7d35dd80e5",
+    ),
+    (
+        "examples/from-runner/report.json",
+        "3383568219b9c7727f9242b0e42166fafe8f42ae66688efecd99d6611a304ce9",
+    ),
+    (
+        "examples/from-runner/terminal_closed.json",
+        "de63df269a5ed837d01b8b144dd6b0ef7c7a56b385dfb7d084cf50390a89d41d",
+    ),
+    (
+        "examples/from-runner/terminal_opened.json",
+        "1e39ef3ce25147b8187c43251fde28eea9cf76bf87e055e7890a9b8e32ecb886",
+    ),
+    (
+        "examples/from-runner/terminal_output-a-redraw-after-a-resume.json",
+        "da5a885b2fb6cc0ac4263978a7cf0382d17fd341ee9a568c0bd8dca5cff5e3a3",
+    ),
+    (
+        "examples/from-runner/terminal_output-bytes-as-they-come.json",
+        "58b3a2c3ccefe205063293fb1576e11b74acb1c1528f1e428e17796990932320",
+    ),
+    (
+        "examples/from-runner/terminal_output.json",
+        "db868d698482fbcb1002e9708673164a5046cdc4d485cd15c705ba0c707a0b49",
+    ),
+    (
+        "examples/to-runner/enroll_refused-a-lapsed-token.json",
+        "8560fb8e56860ae57cc7b039ef855a727e1d71f9537c0e7c118f041f05e72c43",
+    ),
+    (
+        "examples/to-runner/enrolled.json",
+        "5c26b72f9b683c1031aef7694df34e571e0b776d7ecaed1dbdc15889309f1759",
+    ),
+    (
+        "examples/to-runner/message_refused.json",
+        "44ca0baddb83b8b3325f42ec16d29af2dd84bd7eea79df8c2025509aa0fcc91f",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-confirm.json",
+        "ef24929649effbac868707c9a98f906add0959bc9f00f4496f4d5f3f749c807c",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-land.json",
+        "1c636204950c04a4bc6e2048cb203bb374cefedc76470fb10c320688035b9846",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-preview-and-its-done.json",
+        "064fa055c49eeffd0c0092473e928d78f649302dcf40e32c5853f97c46f7a87b",
+    ),
+    (
+        "examples/to-runner/pulled-with-the-report-held.json",
+        "d9496301f0243f4d798256e7e590a9dfdce7013607aaa5b0ac48d54c9af0044d",
+    ),
+    (
+        "examples/to-runner/pulled.json",
+        "cd1a6612b116b0a16a0592f6fddd6dbd1239025b12ad139e44c68bc19290e3ba",
+    ),
+    (
+        "examples/to-runner/reported.json",
+        "28f129fe99cec9860301d224aa0726cdd2342d17df3fd1960f06823368fa4e5a",
+    ),
+    (
+        "examples/to-runner/terminal_close.json",
+        "3712fe25bc1080e79ef5e3c2aa4673a1a3f5df8e878ac1e5912f6d95c3ffe84a",
+    ),
+    (
+        "examples/to-runner/terminal_input.json",
+        "1b5104cfd52646260e7d6340908eaf683413d80367922ba351f21c4ab9101109",
+    ),
+    (
+        "examples/to-runner/terminal_open.json",
+        "4d9b5d8d5ce58e87026343dcb1545132cbd3549ce3e93b8a8d10f94e0b30337f",
+    ),
+    (
+        "examples/to-runner/terminal_resume.json",
+        "5b0e8b21cd3b4d693d8b98e17199459c6b51e4519e9f52ee74b82a1559bb8721",
+    ),
+    (
+        "from-runner.schema.json",
+        "29c511f05ed3ac1ba6aa96ff96565a3450a122603abce64fb81bd6af24edbf3b",
+    ),
+    (
+        "hello.schema.json",
+        "a44a7fe4a338c14ad131343dcc5f1ad79dd85d2cefb1eff5e4827464e7f70e1d",
+    ),
+    (
+        "place-status.schema.json",
+        "18a0186e3e15ef1d0b5f559cfc2c517cd3acd1efff0a9a077d68ba5a009a9b65",
+    ),
+    (
+        "preview.schema.json",
+        "11217ce5d0f3ee060578420b606f18c4a24166607f470be6c4c4a6d7b1871ef0",
+    ),
+    (
+        "report.schema.json",
+        "b8b39b3f5c0d6ee4b4a6843ba5d3dd3ac664f35253b77b1b45a7c3353beaafe8",
+    ),
+    (
+        "shared.schema.json",
+        "ca90b26bef37bdf1e341083da5b43b964b1e127e2a1ae25eef61874394b993fa",
+    ),
+    (
+        "submission-entry.schema.json",
+        "d55e15133d8008588b4b8aea0ec1c6dae332b40c4a9307ad4d00fdf56ee9f223",
+    ),
+    (
+        "terminal.schema.json",
+        "4d1f6be2ed9fd6578375f53ecc9538b9ef3c09ebddb25ab2913c01a46ea9eb2f",
+    ),
+    (
+        "to-runner.schema.json",
+        "c42a461337e95a9ab6e048b94fd763064f02f79d9a506ef28d478d855d37d476",
+    ),
+    (
+        "wants.schema.json",
+        "6a37ac187ae795163af44f36fbab1930b8cb911654d043a4a635d4851b241fa0",
+    ),
+];
+
 /// Every file under `dir`, at any depth, by its path relative to `root`.
 fn files_under(root: &Path, dir: &Path, found: &mut Vec<String>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
@@ -299,9 +512,11 @@ fn files_under(root: &Path, dir: &Path, found: &mut Vec<String>) {
     }
 }
 
-#[test]
-fn version_1_is_as_released() {
-    let root = common::V1.dir();
+/// Holds every file under `version`'s directory, schemas and examples,
+/// to its digest as release `tag` holds it, `released`: none missing,
+/// none differing and none added (core.42).
+fn held_as_released(version: common::Version, tag: &str, released: &[(&str, &str)]) {
+    let root = version.dir();
     let mut on_disk = Vec::new();
     files_under(&root, &root, &mut on_disk);
     let on_disk: BTreeMap<String, String> = on_disk
@@ -315,7 +530,7 @@ fn version_1_is_as_released() {
             (name, digest)
         })
         .collect();
-    let released: BTreeMap<String, String> = RELEASED_V1
+    let released: BTreeMap<String, String> = released
         .iter()
         .map(|(name, digest)| (name.to_string(), digest.to_string()))
         .collect();
@@ -323,7 +538,7 @@ fn version_1_is_as_released() {
     for (name, digest) in &released {
         match on_disk.get(name) {
             None => wrong.push(format!("{name} is missing")),
-            Some(found) if found != digest => wrong.push(format!("{name} differs from v0.7.3's")),
+            Some(found) if found != digest => wrong.push(format!("{name} differs from {tag}'s")),
             Some(_) => {}
         }
     }
@@ -332,6 +547,17 @@ fn version_1_is_as_released() {
     }
     assert!(
         wrong.is_empty(),
-        "version 1 is not as release v0.7.3 holds it: {wrong:#?}"
+        "version {} is not as release {tag} holds it: {wrong:#?}",
+        version.number
     );
+}
+
+#[test]
+fn version_1_is_as_released() {
+    held_as_released(common::V1, "v0.7.3", RELEASED_V1);
+}
+
+#[test]
+fn version_2_is_as_released() {
+    held_as_released(common::V2, "v0.9.0", RELEASED_V2);
 }
