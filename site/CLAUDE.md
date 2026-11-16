@@ -31,16 +31,18 @@ repository's root, beside `core.md`, which binds wherever a change is made
   (site.7).
 - Each step of the quick start, `/start/`, shows its text as files under
   `src/start/`, each on the page as it stands, and names the one test of the
-  gate that runs them: a reworded file runs as reworded at the gate, and a
-  step with no test fails `site:test` (site.8; record 0043).
+  gate that runs them: a reworded file runs as reworded at the gate, and the
+  test a step names is its writers' to keep, since no task reads a step's
+  record (site.8; records 0043 and 0049).
 
 Working here:
 
 - Every tool comes from the repository's `devenv.nix`; never a global install.
   Run `site-check` in the devenv shell before committing content: the type
-  check, Vale over the words, the build and the site's tests, each a task of
-  the moon project `site`. Vale's errors and a schema failure both fail it,
-  and a Vale warning is fixed, not ignored.
+  check, the build and the site's tests, each a task of the moon project
+  `site`, then `prose`, Vale over the words. Vale is the writers' own check
+  and no task of the gate's (site.4; record 0049): its errors and a schema
+  failure both fail `site-check`, and a Vale warning is fixed, not ignored.
 - After a change to `src/content.config.ts`, restart the dev server
   (`astro dev stop`, then `bun run dev`) rather than debug the page: Astro
   7.3.5's dev server stops finishing responses after one.

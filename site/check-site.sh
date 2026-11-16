@@ -121,10 +121,10 @@ done
 
 # The quick start (the quick-start spec; site.8; design Decision 7 of the
 # change boomdrives-quick-start-takes-a-stranger-to-a-working-drive): the
-# built page /start/ and every page's masthead, the step records of
-# src/content/start, read with the site's yaml package through bun, the
-# files under src/start/, and the two test files the steps name, which the
-# site's build does not read.
+# built page /start/ and every page's masthead, the built stylesheet and
+# the files under src/start/. It reads no step's record and no page's
+# Markdown: a step's place and test are its writers' to keep (record
+# 0049).
 quick_start=$(
   cat <<'CHECK'
 import { parse } from "yaml";
@@ -145,59 +145,12 @@ const files = (dir: string, under = ""): string[] =>
     entry.isDirectory() ? files(dir, join(under, entry.name)) : [join(under, entry.name)],
   );
 
-type Step = {
-  id: string;
-  text: string;
-  data: {
-    title: string;
-    at: { mac?: number; nixos?: number };
-    files: { path: string; writes?: string }[];
-    test: { project: "boomdrive" | "nix"; name: string };
-  };
-};
-const steps: Step[] = readdirSync("src/content/start")
-  .filter((name) => name.endsWith(".md"))
-  .sort()
-  .map((name) => {
-    const text = readFileSync(join("src/content/start", name), "utf8");
-    const front = text.match(/^---\n([\s\S]*?)\n---\n/);
-    if (!front) throw new Error(`src/content/start/${name} has no frontmatter`);
-    return { id: name.slice(0, -3), text, data: parse(front[1]) };
-  });
 const ways = [
   { id: "mac", title: "On a Mac" },
   { id: "nixos", title: "On NixOS" },
 ] as const;
-const on = (way: "mac" | "nixos") =>
-  steps.filter((step) => step.data.at[way] !== undefined).sort((a, b) => a.data.at[way]! - b.data.at[way]!);
 
-// A platform's places are its order.
-for (const way of ways) {
-  const places = on(way.id).map((step) => step.data.at[way.id]);
-  if (places.every((place, i) => place === i + 1)) said(`the quick start's ${places.length} steps ${way.title} run 1 to ${places.length}`);
-  else fail(`the quick start's places ${way.title} are ${places.join(", ")}, not 1 to ${places.length} each once`);
-}
-
-// Each step's test is there.
-const tests = {
-  boomdrive: { file: "../crates/boomdrive/tests/quick_start.rs", holds: (name: string) => `fn ${name}(` },
-  nix: { file: "../nix/tests/quick-start.nix", holds: (name: string) => `"${name}" =` },
-};
-const untested = steps.filter((step) => {
-  const test = tests[step.data.test.project];
-  return !readFileSync(test.file, "utf8").includes(test.holds(step.data.test.name));
-});
-if (untested.length === 0) said(`each of the quick start's ${steps.length} steps names a test its project holds`);
-for (const step of untested) fail(`the step ${step.id} names the test ${step.data.test.name}, which its project does not hold`);
-
-// No file is left unshown.
-const shown = new Set(steps.flatMap((step) => step.data.files.map((file) => file.path)));
-const held = files("src/start").filter((path) => path !== ".shellcheckrc");
-const unshown = held.filter((path) => !shown.has(path));
-if (unshown.length === 0) said(`every file of src/start/ but .shellcheckrc is a step's, ${held.length} of them`);
-else fail(`src/start/ holds ${unshown.join(", ")}, which no step shows`);
-
-// The page and its two ways, and each file as it stands.
+// The page and its two ways.
 const page = readFileSync("dist/start/index.html", "utf8");
 const before = failed;
 failed = false;
@@ -207,34 +160,35 @@ const heads = ways.map((way) => page.indexOf(`<h2 id="start-${way.id}">${way.tit
 if (lede < 0 || heads.some((at) => at < 0) || !(lede < heads[0] && heads[0] < heads[1])) {
   fail("the quick start is not its lede, then On a Mac, then On NixOS");
 }
+const sections = ways.map((way, w) => page.slice(heads[w], w + 1 < ways.length ? heads[w + 1] : undefined));
 for (const [w, way] of ways.entries()) {
-  const section = page.slice(heads[w], w + 1 < ways.length ? heads[w + 1] : undefined);
-  const titles = [...section.matchAll(/<h3>(.*?)<\/h3>/g)].map((m) => m[1]);
-  const want = on(way.id).map((step) => escape(step.data.title));
-  if (JSON.stringify(titles) !== JSON.stringify(want)) {
-    fail(`the quick start's steps ${way.title} are ${titles.join(" | ")}, not ${want.join(" | ")}`);
-  }
-  if (!/^<h2[^>]*>[^<]*<\/h2><ol class="start-steps">/.test(section)) fail(`the steps ${way.title} are not one numbered list`);
-  for (const step of on(way.id)) {
-    const start = section.indexOf(`<li class="start-step" id="${way.id}-${step.id}">`);
-    const item = start < 0 ? "" : section.slice(start, section.indexOf("</li>", start));
-    for (const file of step.data.files) {
-      const block = `<pre>${escape(readFileSync(join("src/start", file.path), "utf8"))}</pre>`;
-      const at = item.indexOf(block);
-      if (at < 0 || item.indexOf(block, at + 1) >= 0) {
-        fail(`the step ${step.id} ${way.title} does not show ${file.path} as it stands, in one block`);
-      } else if (file.writes && !item.slice(0, at).endsWith(`<figcaption>Write it to <code>${escape(file.writes)}</code></figcaption>`)) {
-        fail(`the step ${step.id} ${way.title} does not name ${file.writes} above ${file.path}`);
-      }
-    }
-  }
+  if (!/^<h2[^>]*>[^<]*<\/h2><ol class="start-steps">/.test(sections[w])) fail(`the steps ${way.title} are not one numbered list`);
+  else if (!sections[w].includes('<li class="start-step"')) fail(`the steps ${way.title} hold no step`);
 }
-if (!failed) said("the quick start is its lede, then On a Mac and On NixOS, each step numbered in order with each file as it stands, and no script");
+if (!failed) said("the quick start is its lede, then On a Mac and On NixOS, each its steps in one numbered list, and no script");
 failed ||= before;
 
+// Each file as it stands, and no file left unshown: every block of a
+// step's is the text of a file under src/start/, and every file there but
+// .shellcheckrc is the text of a block.
+const held = files("src/start").filter((path) => path !== ".shellcheckrc");
+const texts = new Map(held.map((path) => [escape(readFileSync(join("src/start", path), "utf8")), path]));
+const shown = new Set<string>();
+const blocks = sections.flatMap((section) => [...section.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/g)].map((m) => m[1]));
+const strays = blocks.filter((block) => !texts.has(block));
+for (const block of blocks) {
+  const path = texts.get(block);
+  if (path) shown.add(path);
+}
+if (strays.length === 0) said(`each of the quick start's ${blocks.length} blocks is a file of src/start/ as it stands`);
+else fail(`the quick start shows ${strays.length} blocks that are no file of src/start/ as it stands`);
+const unshown = held.filter((path) => !shown.has(path));
+if (unshown.length === 0) said(`every file of src/start/ but .shellcheckrc is on the quick start, ${held.length} of them`);
+else fail(`src/start/ holds ${unshown.join(", ")}, which the quick start does not show as it stands`);
+
 // No colour of its own, and a long line at phone width.
-const blocks = [...page.matchAll(/<(figure class="start-file"|pre)([^>]*)>/g)];
-if (blocks.some((m) => /\sstyle=/.test(m[2]))) fail("a step's block on the quick start carries a style of its own");
+const tags = [...page.matchAll(/<(figure class="start-file"|pre)([^>]*)>/g)];
+if (tags.some((m) => /\sstyle=/.test(m[2]))) fail("a step's block on the quick start carries a style of its own");
 const css = files("dist/_astro")
   .filter((path) => path.endsWith(".css"))
   .map((path) => readFileSync(join("dist/_astro", path), "utf8"))
@@ -263,8 +217,6 @@ const contexts = parse(readFileSync("src/content/contexts/contexts.yaml", "utf8"
 const ours = [...new Set(contexts.flatMap((c) => (c.drives ?? []).flatMap((d) => [d.name, d.machine])))];
 const read = [
   { where: "the built quick start", text: page },
-  ...steps.map((step) => ({ where: `src/content/start/${step.id}.md`, text: step.text })),
-  { where: "src/content/pages/start.md", text: readFileSync("src/content/pages/start.md", "utf8") },
   ...held.map((path) => ({ where: `src/start/${path}`, text: readFileSync(join("src/start", path), "utf8") })),
 ];
 const named = read.flatMap(({ where, text }) =>
