@@ -29,7 +29,7 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 5. The README
 
-- [ ] 5.1 README's list of what a keeping pass does gains a bullet: git's own collection is off in every clone, `gc.auto` at `0` and `maintenance.auto` at `false`, so no fetch or commit there starts one; and once every repository is kept, the pass packs each kept clone holding more than 6,700 loose objects or more than 50 packs, dropping only what nothing of the clone reaches past two weeks, touching no ref, log or worktree, and saying `<owner>/<name>: packed <n> loose objects and <m> packs`. No formatter owns Markdown (`treefmt.nix`), so done when `grep -F "git's own collection is off" README.md` and `grep -F 'more than 6,700 loose objects or more than 50 packs' README.md` each print a line.
+- [x] 5.1 README's list of what a keeping pass does gains a bullet: git's own collection is off in every clone, `gc.auto` at `0` and `maintenance.auto` at `false`, so no fetch or commit there starts one; and once every repository is kept, the pass packs each kept clone holding more than 6,700 loose objects or more than 50 packs, dropping only what nothing of the clone reaches past two weeks, touching no ref, log or worktree, and saying `<owner>/<name>: packed <n> loose objects and <m> packs`. No formatter owns Markdown (`treefmt.nix`), so done when `grep -F "git's own collection is off" README.md` and `grep -F 'more than 6,700 loose objects or more than 50 packs' README.md` each print a line.
 
 ## 6. The specs archive under openspec's strict check
 
