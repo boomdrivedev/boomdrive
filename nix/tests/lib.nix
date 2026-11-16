@@ -61,12 +61,13 @@ let
     lib.drop 1 (lib.splitString "```nix\n" (toString installing))
   );
 
-  # Flume's, sluice's and crew's own modules alone, each from its own
-  # flake, turned on with the set's packages, crew's settings for host-a,
+  # Flume's, sluice's, crew's and timber's own modules alone, each from its
+  # own flake, turned on with the set's packages, crew's settings for host-a,
   # Flume's terminal and window as the Boomdrive module gives them
   # (apps.nix), crew's source declared to Flume as sources.nix declares it
   # (the change the-set-declares-crews-source-to-flume, design Decision 6),
-  # and on NixOS the user alice (design Decision 8).
+  # and on NixOS the user alice (design Decision 8; the change
+  # the-set-takes-timbers-own-module, design Decision 8).
   settings = import ./settings.nix;
   toolsOf =
     platform: set: extra:
@@ -74,6 +75,7 @@ let
       "flume"
       "sluice"
       "crew"
+      "timber"
     ]
     ++ [
       {
@@ -100,10 +102,32 @@ let
             host = "host-a";
             settings = settings.crewModule;
           };
+          timber = {
+            enable = true;
+            package = set.timber;
+          };
         };
       }
       extra
     ];
+
+  # A system of darwinOf's and one of nixosOf's of the tools' own modules
+  # alone, each with the module `extra` of more settings beside them (the
+  # change the-hosts-collector-reaches-sluice-and-flume, Task notes 1.5).
+  toolsDarwinOf = extra: darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin extra);
+  toolsNixosOf =
+    extra:
+    nixosOf (
+      toolsOf "nixos" outputs.packages.x86_64-linux {
+        imports = [ extra ];
+        services = {
+          flume.user = "alice";
+          sluice.user = "alice";
+          crew.user = "alice";
+          timber.user = "alice";
+        };
+      }
+    );
 in
 {
   inherit
@@ -163,18 +187,11 @@ in
       given
     ];
 
-  # A system of darwinOf's and one of nixosOf's of the tools' own modules
-  # alone, beside the runner's systems above.
-  toolsDarwinSystem = darwinOf (toolsOf "darwin" outputs.packages.aarch64-darwin { });
-  toolsNixosSystem = nixosOf (
-    toolsOf "nixos" outputs.packages.x86_64-linux {
-      services = {
-        flume.user = "alice";
-        sluice.user = "alice";
-        crew.user = "alice";
-      };
-    }
-  );
+  # The tools' own systems, of more settings and of none, beside the
+  # runner's systems above.
+  inherit toolsDarwinOf toolsNixosOf;
+  toolsDarwinSystem = toolsDarwinOf { };
+  toolsNixosSystem = toolsNixosOf { };
 
   # The messages of the assertions a system fails.
   failures =

@@ -191,29 +191,6 @@ pub fn submission_id(entry: &Value) -> Option<&str> {
         .as_str()
 }
 
-/// A herdr pane, as Flume's clues address one.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Pane {
-    /// The pane's id in its session.
-    pub id: String,
-    /// The session's socket, `HERDR_SOCKET_PATH`.
-    pub socket_file: String,
-}
-
-/// The pane a place's agent shows in, from `clues.shown_at.agent`,
-/// `herdr:<pane>@<socket>` (flume's 18).
-pub fn pane(entry: &Value) -> Option<Pane> {
-    let shown = entry.pointer("/clues/shown_at/agent")?.as_str()?;
-    let (id, socket) = shown.strip_prefix("herdr:")?.split_once('@')?;
-    if id.is_empty() || socket.is_empty() {
-        return None;
-    }
-    Some(Pane {
-        id: id.to_string(),
-        socket_file: socket.to_string(),
-    })
-}
-
 /// Room, as Flume's host part gives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Room {
@@ -461,7 +438,6 @@ mod tests {
             "phase": { "over": { "over": { "landed": { "commit": 5 } } }, "making": {} },
             "waiting_on": { "why": 3 },
             "submission": { "read": { "found": { "submission": { "id": 3 } } } },
-            "clues": { "shown_at": { "agent": 1 } },
         });
         assert_eq!(location(&entry), None);
         assert_eq!(mark(&entry), None);
@@ -469,7 +445,6 @@ mod tests {
         assert!(!live_or_making(&entry));
         assert!(!waits_delivered(&entry));
         assert_eq!(submission_id(&entry), None);
-        assert_eq!(pane(&entry), None);
         let landed = json!({ "phase": { "over": { "over": { "landed": { "commit": 5 } } } } });
         assert_eq!(over(&landed), Some(Over::Landed(None)));
         assert_eq!(
@@ -491,7 +466,6 @@ mod tests {
         assert!(!live_or_making(&entry));
         assert!(!waits_delivered(&entry));
         assert_eq!(submission_id(&entry), None);
-        assert_eq!(pane(&entry), None);
         assert_eq!(
             places(&json!({ "status": { "places": {} } })),
             &[] as &[Value]
@@ -507,27 +481,6 @@ mod tests {
             None
         );
         assert_eq!(host_part("not json"), None);
-    }
-
-    #[test]
-    fn a_pane_address() {
-        let shown = |agent: Value| json!({ "clues": { "shown_at": { "agent": agent } } });
-        assert_eq!(
-            pane(&shown(json!("herdr:w1:p2@/s/herdr@1.sock"))),
-            Some(Pane {
-                id: "w1:p2".into(),
-                socket_file: "/s/herdr@1.sock".into()
-            })
-        );
-        for agent in [
-            json!(null),
-            json!("tmux:w1:p2@/s"),
-            json!("herdr:w1:p2"),
-            json!("herdr:@/s"),
-            json!("herdr:w1@"),
-        ] {
-            assert_eq!(pane(&shown(agent.clone())), None, "{agent} read as a pane");
-        }
     }
 
     #[test]
