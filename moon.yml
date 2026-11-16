@@ -5,10 +5,13 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 tasks:
   # Every formatter treefmt.nix configures, writing nothing it would change
   # and keeping no cache outside the tree. It reads every tracked file: one
-  # that no formatter claims and no exclude names fails it (core.7).
+  # that no formatter claims and no exclude names fails it (core.7). The
+  # trees .gitignore names, which treefmt never reads, are no inputs: moon
+  # opens every file it hashes, and the tens of thousands under cargo's
+  # target/ ran a gate's moon out of open files (sluice's #230).
   format:
     command: 'treefmt --ci'
-    inputs: ['/**/*', '/devenv.nix', '/devenv.lock']
+    inputs: ['/**/*', '!/target/**/*', '!/result/**/*', '!/.devenv/**/*', '!/.moon/cache/**/*', '!/site/node_modules/**/*', '!/site/dist/**/*', '!/site/.astro/**/*', '/devenv.nix', '/devenv.lock']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # rustc, cargo, clippy and rustfmt are the build .prototools pins, and

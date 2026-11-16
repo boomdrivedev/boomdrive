@@ -71,6 +71,7 @@ crates/boomdrive-crew/tests/common/mod.rs
 crates/boomdrive-crew/tests/read.rs
 README.md
 docs/architecture/core.md
+moon.yml
 openspec/specs/clones/spec.md
 openspec/specs/crew-control-plane/spec.md
 openspec/specs/running/spec.md
