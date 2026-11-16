@@ -1,37 +1,47 @@
 # Verify: launches-and-acts-take-turns-once-a-pass-is-due
 
-The work falls short, and the change is not archived. The gate passes on `310f45a`, all nine tasks are ticked, and a test proves each scenario of the two delta specs. But the specs that archiving writes fail `root:specs`, so archiving would fail the gate. The section **Archiving fails the gate** below says what fails.
+The work holds, and the change is archived. The gate passes on `83a9fca`, all ten tasks are ticked, a test proves each scenario of the two delta specs, and the specs that archiving writes pass `openspec validate --specs --strict`.
 
-This report is on `change/launches-and-acts-take-turns-once-a-pass-is-due` at `310f45a`, cut from `main` at `98d1909`.
-
-## Archiving fails the gate
-
-`root:specs` runs `openspec validate --specs --strict --no-interactive` (`moon.yml`), which fails a warning as an error. The gate on `310f45a` did not run it, because the change had not touched `openspec/specs/`.
-
-`openspec archive launches-and-acts-take-turns-once-a-pass-is-due --yes` applied the deltas: previews, 1 modified; work-into-flume, 3 added and 3 modified. Then `openspec validate --specs --strict` gave "25 passed, 2 failed (27 items)":
-
-- `spec/previews`, requirements[11], "A preview's command runs after every launch": "Requirement text is very long (>500 characters)". Its text is 538 characters.
-- `spec/work-into-flume`, requirements[46], "A pass past due sends each answer as it makes it": the same warning. Its text is 722 characters.
-
-Both are this change's MODIFIED requirements, and on `main` no requirement of either spec is over 500 characters. `openspec validate launches-and-acts-take-turns-once-a-pass-is-due --strict` does not flag them, so `root:changes` passes. The archive was undone and not committed.
-
-To fix it, cut each requirement's text in the delta specs below 500 characters. Move what it lists into its scenarios, or split it into requirements that each state one behaviour, as the warning says. For example, the commands that "A pass past due sends each answer as it makes it" lists could become a requirement of their own. Then archive again, and run `openspec validate --specs --strict` before committing.
+This report is on `change/launches-and-acts-take-turns-once-a-pass-is-due` at `83a9fca`, cut from `main` at `98d1909`.
 
 ## The whole checks
 
-`sluice exec main` ran once on `310f45a`. It ran the checks that commit affects against `main` (`98d1909`) and exited 0. All 9 passed, and sluice recorded their results under their keys for `310f45a`:
+`sluice exec main` ran once on `83a9fca`. It ran the checks that commit affects against `main` (`98d1909`) and exited 0. All 9 passed, and sluice recorded their results under their keys for `83a9fca`:
 
 - `boomdrive`: `format`, `lint`, `typecheck` and `test`;
 - `nix`: `typecheck` and `test` ("every case holds");
-- `root`: `format`, `adrs` and `changes`.
+- `root`: `format`, `adrs` and `changes` ("1 passed, 0 failed").
 
-`boomdrive:test` ran 41 test files and failed no test, among them every test the tasks name. moon also warned that it could not write its output archives under `.moon/cache/outputs`, and that it skipped the Rust dependency install for want of a network. Both warnings come from the sandbox, and no check failed because of them.
+`boomdrive:test` gave 44 test results, every one `ok` with no test failed, among them every test the tasks name.
+
+moon gave three kinds of warning, and no check failed because of any of them:
+
+- it could not write its output archives under `.moon/cache/outputs`;
+- it skipped the Rust dependency install for want of a network;
+- it could not hash the folders `.devenv/profile`, `.devenv/run`, `.devenv/bash-bash` and `.moon/cache/outputs`, since only files can be hashed.
+
+The first two come from the sandbox.
+
+`83a9fca` touches nothing under `openspec/specs/`, so the gate did not run `root:specs`. The section **Archiving** below runs that check's command on the archived specs.
 
 ## Tasks
 
-All nine tasks are ticked, 1.1 to 4.1, and none is open. Each names `cargo test` runs of tests that passed in `boomdrive:test` above. Task 4.1 names two greps of `README.md`, which print lines 1066 and 1114.
+All ten tasks are ticked, 1.1 to 5.1, and none is open:
+
+- Tasks 1.1 to 3.1 each name `cargo test` runs of tests that passed in `boomdrive:test` above.
+- Task 4.1 names two greps of `README.md`, which print lines 1066 and 1114.
+- Task 5.1 names `openspec validate --specs --strict --no-interactive` with the change archived, which the section **Archiving** below runs.
 
 The diff from `98d1909` stays inside proposal.md's Touches and the change's own directory: `carry.rs`, the four test files, `README.md`, record 0002 and `core.md`. It adds no crate, tool or tracked file type. Record 0002's amendment of 2026-11-14 on taking turns, and core.50's and core.55's details, are in the change's first commit, `e2b7a0b`, as the tasks say. The code and tests cite them and change neither.
+
+## The delta specs against main
+
+Each requirement of the delta specs is under openspec's limit of 500 characters, the longest previews' "A preview's command runs after every launch" at 483. Each MODIFIED requirement keeps every scenario main's spec gives it:
+
+- "A pass past due sends each answer as it makes it" keeps three: "A pass past due sends each launch's answer before its next launch", "A pass not yet due sends once" and "An act's answer goes up before the next act runs".
+- "What a send of the pass lets go is taken no more that pass" keeps "A want let go at a send of the pass is taken no more".
+- "A send that fails before a pass's end leaves its answers to the end" keeps "A send that fails leaves the pass's answers to its end".
+- previews' "A preview's command runs after every launch" keeps "A launch ahead of a preview".
 
 ## The delta, scenario by scenario
 
@@ -42,19 +52,19 @@ The diff from `98d1909` stays inside proposal.md's Touches and the change's own 
 | A pass due from its start makes one launch | `turns.rs` `a_pass_due_from_its_start_makes_one_launch`: Flume is asked to launch `a` alone. `b` and `c` are held with `TURN`, each said in one line. At the next pass `b` is launched and `c` stays held, said in no line |
 | A pass that falls due among its launches makes none more | `turns.rs` `a_pass_that_falls_due_among_its_launches_makes_none_more`: the pass falls due once two launches are made. `a` and `b` are launched, and `c` and `d` are held with no `flume launch` |
 | A launch held for its turn counts against its stream's room | `turns.rs` `a_launch_held_for_its_turn_counts_against_its_streams_room`: in stream `work`, with room 2, `a` is launched, `b` held, and `c` left unanswered |
-| A launch that waited on its clone's keep is held without waiting on it | `offers.rs` `a_launch_that_waited_on_its_clones_keep_is_held_without_waiting_on_it`: `b` into `agentplot/sluice` is launched, `a` is held with `TURN`, and the keeper is still running when the pass ends |
+| A launch that waited on its clone's keep is held without waiting on it | `offers.rs` `a_launch_that_waited_on_its_clones_keep_is_held_without_waiting_on_it`: the launch into `agentplot/sluice` is made, the one into `agentplot/flume` is held with `TURN`, and the keeper is still running when the pass ends |
 | A drop of a launch held for its turn | `turns.rs` `a_drop_of_a_launch_held_for_its_turn`: `a` is launched, the drop is done, and `b` is done "dropped by b/drop before it was launched", with no `flume launch` for `b` |
 | An act waits behind one launch once the pass is due | `turns.rs` `an_act_waits_behind_one_launch_once_the_pass_is_due`: Flume's calls are `launch a`, then `retry submission=true` at `x`'s place, with `b` held. At the next pass they are `launch b`, then `Priority(5)`, with `c` held |
 | A pass that falls due among its launches runs its first act next | `turns.rs` `a_pass_that_falls_due_among_its_launches_runs_its_first_act_next`: Flume is asked for `launch a`, `launch b` and `Priority(3)` at `x`'s place, with `c` and `d` held. `y`'s priority is unanswered, and a line says 1 act on a place waits |
+| A pass past due sends a launch's answer before its act runs | `sends.rs` `a_pass_past_due_sends_a_launchs_answer_before_its_act_runs`: three reports are sent. The first goes after `a`'s launch and before any act, with `a` launched and `b` and `c` held. The second and third, at the answer and at the end, each hold the priority done |
 
 ### work-into-flume, modified
 
 | Scenario | Proven by |
 |---|---|
-| A pass past due sends a launch's answer before its act runs | `sends.rs` `a_pass_past_due_sends_a_launchs_answer_before_its_act_runs`: three reports are sent. The first goes after `a`'s launch and before any act, with `a` launched and `b` and `c` held. The second and third, at the answer and at the end, each hold the priority done |
 | A pass past due sends each launch's answer before its next launch | `sends.rs` `a_pass_past_due_sends_each_launchs_answer_before_its_next_launch`: over three passes, `a`, `b` and `c` are launched one per pass. Each pass sends once after its last want and once at its end, before the next pass's launch |
-| A pass not yet due sends once | `sends.rs` `a_pass_not_yet_due_sends_once_at_its_end`, unchanged, passing |
-| An act's answer goes up before the next act runs | `sends.rs` `an_acts_answer_goes_up_before_the_next_act_runs`, unchanged, passing under the send before each command |
+| A pass not yet due sends once | `sends.rs` `a_pass_not_yet_due_sends_once_at_its_end`: one report, at the end, holding all three launched |
+| An act's answer goes up before the next act runs | `sends.rs` `an_acts_answer_goes_up_before_the_next_act_runs`: two reports, each holding `c`'s refusal with Flume's words and `a`'s priority, the first before the end; `b`'s priority is left |
 | A want let go at a send of the pass is taken no more | `sends.rs` `a_want_refused_at_a_send_of_the_pass_is_taken_no_more`: `c` is refused, and the first report goes before any launch, holding that refusal. `a` is let go, named on its line with its place left. Flume is asked to launch `b` alone, and `a` is not in the report |
 | An act whose launch is let go at the send before it runs nothing | `sends.rs` `an_act_whose_launch_is_let_go_at_the_send_before_it_runs_nothing`: `b` is launched, and the send before the priority comes after one launch and no act. No `Act` or `StatusOf` call names `x`'s place. Neither act is in the report or in the end's send |
 | A send that fails leaves the pass's answers to its end | `sends.rs` `a_send_that_fails_leaves_the_passs_answers_to_its_end`: two sends are tried, the one before the priority and the end's, and none once the last want is answered. The end's report holds `a` launched and the priority done |
@@ -79,3 +89,7 @@ The diff from `98d1909` stays inside proposal.md's Touches and the change's own 
 After the send it refuses the want where the want or its launch is in `gone`, and `want` skips an act whose launch is in `gone`. `answer_wants` sends once the last want is answered (Decisions 3 and 4). A save that fails, before a send or after its answer, sets `halted`, and the pass carries out nothing more (core.25). A failed send sets `sends_failed`, which leaves the pass's answers to the send at its end (core.22).
 
 One observation, which breaks no requirement: `offer` calls `may_run` before it learns whether the keeper holds the clone. So once due, an offer that then waits on its keep can send before any command runs. That is at most one send for each such offer, and only where an answer changed since the last send.
+
+## Archiving
+
+`openspec archive launches-and-acts-take-turns-once-a-pass-is-due --yes` applies the deltas to `openspec/specs/`, previews and work-into-flume. Then `openspec validate --specs --strict --no-interactive`, `root:specs`'s command, gives "27 passed, 0 failed (27 items)" on the archived specs. The archive is committed with this report.
