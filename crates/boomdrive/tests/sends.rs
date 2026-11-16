@@ -249,23 +249,29 @@ fn an_acts_answer_goes_up_before_the_next_act_runs() {
 /// The spec's "A want let go at a send of the pass is taken no more": the
 /// runner holds `a` at a place Flume has since tidied, and the control
 /// plane refuses `a`'s lease. The pass is due from its start, and its pull
-/// offers `b`, then `a`. The send after `b`'s launch has `a` refused, so
-/// `a` leaves the report, and its offer, later in the same pull, is not
-/// launched again.
+/// offers `c` in a repository the runner does not keep, then `b`, then
+/// `a`. `c` is refused; the report sent before `b`'s launch holds that
+/// refusal, and its answer has `a` refused, so `a` leaves the report, named
+/// on a line, and its offer, later in the same pull, is neither launched
+/// nor answered.
 #[test]
 fn a_want_refused_at_a_send_of_the_pass_is_taken_no_more() {
     let bench = Bench::new();
-    let mut plane = Fake::holding(vec![Want::Offer(offer("a", "a"))]);
-    bench.pass(&mut plane);
+    let mut plane = Watching::new(&bench.flume, Fake::holding(offers(&["a"])));
+    bench.pass_of(PART, &bench.flume, &mut plane, &|| false);
     let pa = place_of("a");
     bench.flume.tidy(&pa);
     bench.flume.take_calls();
-    plane.refuse(Id::new("a"), "its lease is another runner's");
-    plane.set_wants(vec![
-        Want::Offer(offer("b", "b")),
-        Want::Offer(offer("a", "a")),
-    ]);
-    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &|| true);
+    let before = plane.seen.len();
+    plane
+        .fake
+        .refuse(Id::new("a"), "its lease is another runner's");
+    let mut elsewhere = offer("c", "c");
+    elsewhere.launch.repository = "example/elsewhere".to_string();
+    let mut wants = vec![Want::Offer(elsewhere)];
+    wants.extend(offers(&["b", "a"]));
+    plane.fake.set_wants(wants);
+    let (_, lines) = bench.pass_of(PART, &bench.flume, &mut plane, &|| true);
     let launched: Vec<String> = bench
         .flume
         .calls()
@@ -276,11 +282,94 @@ fn a_want_refused_at_a_send_of_the_pass_is_taken_no_more() {
         })
         .collect();
     assert_eq!(launched, ["b"], "a, refused, is launched no more");
-    assert!(lines.contains(&format!(
+    let first = &plane.seen[before];
+    assert_eq!(first.launches, 0, "sent before b's launch");
+    assert_eq!(first.launches(Outcome::Refused), ["c"]);
+    assert_eq!(first.launches(Outcome::Launched), ["a"]);
+    let refused = format!(
         "a: let go, its lease no longer this runner's: its lease is another runner's: \
          its place {pa} is left on this host as Flume holds it"
-    )));
-    assert!(!bench.report().launches.contains_key(&Id::new("a")));
+    );
+    assert_eq!(
+        lines,
+        [
+            "c: refused: this host's configuration does not keep example/elsewhere".to_string(),
+            refused,
+            format!("b: launched at {}", place_of("b")),
+        ]
+    );
+    let report = bench.report();
+    assert!(!report.launches.contains_key(&Id::new("a")));
+    assert_eq!(
+        report.launches[&Id::new("b")].answer.outcome,
+        Outcome::Launched
+    );
+}
+
+/// The spec's "An act whose launch is let go at the send before it runs
+/// nothing": the runner holds `x` at a place Flume stands, and the control
+/// plane refuses `x`'s lease. The pass is due from its start, and its pull
+/// offers `b`, then gives a priority of `x`, then a drop of `x`. `b` is
+/// launched; the report sent before `x`'s priority would run has `x`
+/// refused, so `x` leaves the report; no `flume` command is run on `x`'s
+/// place, and neither act is answered that pass.
+#[test]
+fn an_act_whose_launch_is_let_go_at_the_send_before_it_runs_nothing() {
+    let bench = Bench::new();
+    let mut plane = Watching::new(&bench.flume, Fake::holding(offers(&["x"])));
+    bench.pass_of(PART, &bench.flume, &mut plane, &|| false);
+    let px = place_of("x");
+    bench.flume.take_calls();
+    let before = plane.seen.len();
+    plane
+        .fake
+        .refuse(Id::new("x"), "its lease is another runner's");
+    let mut wants = offers(&["b"]);
+    wants.push(act("x/priority", "x", ActSort::Priority(3)));
+    wants.push(act("x/drop", "x", ActSort::Drop));
+    plane.fake.set_wants(wants);
+    let (_, lines) = bench.pass_of(PART, &bench.flume, &mut plane, &|| true);
+    let launched: Vec<String> = bench
+        .flume
+        .launches()
+        .into_iter()
+        .map(|args| args.name)
+        .collect();
+    assert_eq!(launched, ["b"]);
+    let first = &plane.seen[before];
+    assert_eq!(
+        (first.launches, first.acts),
+        (1, 0),
+        "sent before x's priority"
+    );
+    assert_eq!(first.launches(Outcome::Launched), ["b", "x"]);
+    let on_x: Vec<Call> = bench
+        .flume
+        .commands()
+        .into_iter()
+        .filter(|call| match call {
+            Call::Act(place, _) => *place == px,
+            Call::StatusOf(_, place) => *place == px,
+            _ => false,
+        })
+        .collect();
+    assert_eq!(on_x, [], "no flume command on x's place");
+    assert_eq!(
+        lines,
+        [
+            format!("b: launched at {}", place_of("b")),
+            format!(
+                "x: let go, its lease no longer this runner's: its lease is another runner's: \
+                 its place {px} is left on this host as Flume holds it"
+            ),
+        ]
+    );
+    let report = bench.report();
+    assert!(!report.launches.contains_key(&Id::new("x")));
+    assert!(!report.acts.contains_key(&Id::new("x/priority")));
+    assert!(!report.acts.contains_key(&Id::new("x/drop")));
+    let last = plane.seen.last().expect("the pass's end was sent");
+    assert_eq!(last.acts(), [] as [&str; 0], "neither act answered");
 }
 
 /// The spec's "A send that fails leaves the pass's answers to its end": the
