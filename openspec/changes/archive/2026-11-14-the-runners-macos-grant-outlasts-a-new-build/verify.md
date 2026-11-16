@@ -1,29 +1,42 @@
 # Verify: the-runners-macos-grant-outlasts-a-new-build
 
-The work holds. The gate passes, every task is ticked, and each scenario of the service-modules delta has a case that proves it.
+The work holds. The whole gate passes, all ten tasks are ticked, and a case proves each scenario of the service-modules delta.
 
-The code stage archived the change under task 3.3, which needs the archive before `root:specs` can prove it. This report sits beside the archive, on `change/the-runners-macos-grant-outlasts-a-new-build` at `a3d3e5d`.
+The code stage archived the change under tasks 3.3 and 3.4. Both need the archive before `root:specs` and `root:adrs` can prove them. This report sits in the archive, on `change/the-runners-macos-grant-outlasts-a-new-build` at `8f49324`.
 
 ## The whole checks
 
-`sluice exec main` ran once on `a3d3e5d`. It ran the checks the commit affects against `main` (`021a3f5`) and exited 0. All 9 passed, and sluice recorded their results under their keys for `a3d3e5d`:
+`sluice exec main` ran once on `8f49324` against `main` (`26d9e49`). It exited 0: "passed: 34 tasks", and sluice recorded their results under their keys for `8f49324`. It ran every project the gate holds:
 
+- `boomdrive`, `boomdrive-control`, `boomdrive-crew` and `boomdrive-hosted`: `format`, `lint`, `typecheck` and `test`;
 - `nix`: `format`, `lint`, `typecheck` and `test`;
-- `root`: `format`, `adrs`, `changes` and `specs`;
-- `boomdrive`: `test`.
+- `root`: `adrs`, `changes`, `commits`, `format`, `releases`, `specs`, `toolchain`, `versions` and `workflow`;
+- `site`: `install`, `check`, `build`, `prose`, `vocab`, `test` and `workflow`.
 
-`nix:test` said "every case holds". `root:specs` passed 27 items, 0 failed, `spec/service-modules` among them. moon also warned that it could not write its output archives under `.moon/cache/outputs`. Those warnings come from the sandbox, and no check failed because of them.
+`nix:test` and `nix:typecheck` each said "every case holds". `root:specs` passed 27 items with 0 failed. moon warned at each task that it could not write its output archive under `.moon/cache/outputs`. The sandbox causes those warnings, and no check failed because of them.
 
 ## Tasks
 
-All nine tasks are ticked, 1.1 to 3.3, and none is open.
+All ten tasks, 1.1 to 3.4, are ticked, and none is open. Each depends on a check that passed in the run above:
 
-- 1.1 to 2.2 and 3.1 rely on `nix:test`.
-- 2.3 relies on `nix:lint`.
-- 3.2 relies on `root:format`, which also holds `activate.sh` and its tests to shellcheck and shfmt and the `.nix` files to nixfmt.
-- 3.3 relies on `root:specs`.
+| Tasks | Check |
+|---|---|
+| 1.1 to 2.2, and 3.1 | `nix:test` |
+| 2.3 | `nix:lint` |
+| 3.2 | `root:format`, which also holds `activate.sh` and its tests to shellcheck and shfmt, and the `.nix` files to nixfmt |
+| 3.3 | `root:specs` |
+| 3.4 | `root:adrs` |
 
-Each of those checks passed in the run above. The diff since the planning commit's parent stays inside proposal.md's Touches. It adds no crate, gate tool, tracked file type, option, configuration key, field of `report.json` or protocol message, and the runner's code is unchanged. Record 0047, core.60 and core.46's amended details were written in the planning commit, `d7867ab5`, as the tasks say. The step keeps the `oneline` helper from `e3d8962e`, which design Decision 8 leaves to the build stage.
+The change's diff from the bolt it merged, `afba153a`, stays inside proposal.md's Touches and the change's own folder. It adds no crate, gate tool, tracked file type, option, configuration key, field of `report.json` or protocol message, and the runner's code is unchanged.
+
+The record is `docs/adr/0047-…`, with frontmatter `number: 47`, and the rule is core.60. No other record or rule holds either number:
+
+- `main` holds records 0046 and 0048 and rules up to core.58;
+- the bolt holds record 0045 and rules up to core.59;
+- no branch at origin holds another 0047 or core.60;
+- no citation of the change names 0046.
+
+core.46's details allow the agent's new line and the root step, citing record 0047. The step keeps the `oneline` helper from `e3d8962e`, which design Decision 8 leaves to the build stage.
 
 ## The delta, scenario by scenario
 
@@ -66,11 +79,13 @@ Each of those checks passed in the run above. The diff since the planning commit
 - `nix/modules/darwin.nix` follows Decisions 5 and 6:
   - the agent declares `ProgramArguments` with the line and no `command`;
   - the step runs in `extraActivation` with the operating system's `PATH` alone and `|| true`;
-  - `postActivation` is unchanged but for moving into one `system` set with `requiresPrimaryUser`.
+  - `postActivation` is unchanged, but it now sits in one `system` set with `requiresPrimaryUser`.
 - The README's nix-darwin paragraph, CLAUDE.md and `openspec/config.yaml` say what tasks 3.1 and 3.2 ask.
 
-That a grant survives a new build is Apple's to show, on a host after landing (design Risk 1). The gate proves the step's calls and the agent's line.
+The gate proves the step's calls and the agent's line. Whether a grant survives a new build can only be seen on a host after landing (design Risk 1). The design's checks on deneb found that two builds signed with one identity share one designated requirement.
 
 ## Archive
 
 The change is at `openspec/changes/archive/2026-11-14-the-runners-macos-grant-outlasts-a-new-build`, and no change of that name is open. `openspec/specs/service-modules/spec.md` holds the delta, and `root:specs` passes it under the strict check.
+
+`bolt/the-runner-needs-no-hand-on-a-host` has moved on to `c4fc68d1` (#218, the site's test). The branch does not hold that commit yet, and the gate passed without it.
