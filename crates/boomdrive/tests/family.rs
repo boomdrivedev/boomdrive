@@ -13,9 +13,14 @@ use boomdrive::flume::{self, Flume};
 use boomdrive::hello::{self, Tools};
 use boomdrive::pass::Outcome;
 use boomdrive::sluice::{self, Sluice};
-use boomdrive_control::{Capacity, ToolVersion};
+use boomdrive::terminal::Relays;
+use boomdrive_control::fake::{Fake, Sent};
+use boomdrive_control::{
+    shared, Answer, At, Capacity, ControlPlane, Id, Launched, Lease, Report, ToolVersion,
+};
 use common::Scratch;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -423,5 +428,54 @@ fn not_the_hosts_tools() {
         matches!(status, Ok(flume::Reply::Given(_))),
         "the set's Flume answered: {status:?}"
     );
+    family.no_host_tool_ran();
+}
+
+/// The terminal-relay spec's "The set's Flume refuses a relay of no
+/// place" (design Decision 11; core.45): a terminal on a launch the
+/// report holds at a place that stands nowhere on the scratch host,
+/// relayed through the set's own Flume, is closed with the set's Flume's
+/// refusal.
+#[test]
+fn the_sets_flume_answers_a_relay() {
+    let family = Family::new();
+    let place = family.scratch.root.join("places/nowhere");
+    let launched = Launched {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: None,
+        answer: Answer {
+            outcome: boomdrive_control::Outcome::Launched,
+            place_dir: Some(place.to_string_lossy().into_owned()),
+            words: None,
+            at: At::now(),
+        },
+        status: None,
+        entry: None,
+    };
+    let report = Report {
+        launches: BTreeMap::from([(Id::new("l-1"), launched)]),
+        ..Report::default()
+    };
+    let mut plane = Fake::holding(Vec::new());
+    let far = plane.open_terminal(Id::new("t1"), Id::new("l-1"), 1);
+    let pulled = plane
+        .pull(&shared::hello(&report), &report)
+        .expect("a pull");
+    let relays = Relays::new(flume::Cli::new(family.set("flume")), |_| {});
+    for terminal in pulled.terminals {
+        relays.open(terminal, &report);
+    }
+    let sent = far
+        .sent
+        .recv_timeout(Duration::from_secs(30))
+        .expect("the runner closes the link");
+    assert_eq!(
+        sent,
+        Sent::Closed(format!("no place {} stands on this host", place.display()))
+    );
+    drop(relays);
     family.no_host_tool_ran();
 }

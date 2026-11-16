@@ -878,6 +878,14 @@ fn a_terminal_opened() {
     let closed = &home[1]["body"]["terminal_closed"];
     assert_eq!(closed["terminal"], json!("terminal-1"));
     assert_eq!(closed["words"], json!(NO_TERMINAL));
+    // The words say why: the runner's half of the terminal's end-to-end
+    // exchange is not built, and not that the host's Flume relays none
+    // (core.30; record 0004 as amended on 2026-11-15).
+    assert!(NO_TERMINAL.contains("end-to-end"), "{NO_TERMINAL}");
+    assert!(
+        !NO_TERMINAL.to_lowercase().contains("flume"),
+        "{NO_TERMINAL}"
+    );
     let pulled = plane.hosted.pull(&hello(&report), &report).expect("read");
     assert!(pulled.terminals.is_empty());
 }

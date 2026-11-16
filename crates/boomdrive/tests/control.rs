@@ -15,8 +15,8 @@
 //! that cannot be read is said once until it is read again"; the
 //! configuration spec's "The configuration may name the control plane"
 //! and "The control-plane table is read when the runner starts"). The
-//! binary runs under the scratch host with stub `flume`, `sluice`,
-//! `herdr` and `systemd-creds` first on its `PATH`, crew's implementation
+//! binary runs under the scratch host with stub `flume`, `sluice` and
+//! `systemd-creds` first on its `PATH`, crew's implementation
 //! reaches the scratch forge's state repository through the scratch git
 //! configuration, and the hosted implementation a loopback port with
 //! nothing on it. The runner runs in-process over the fake control plane
@@ -35,7 +35,7 @@ use boomdrive_control::{
     Unsent, Wake, Want,
 };
 use common::{keeping, Origin, Scratch};
-use fakes::{offer, CredsStub, HeldFetch, HerdrStub, SluiceStub, Stub};
+use fakes::{offer, CredsStub, HeldFetch, SluiceStub, Stub};
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
@@ -73,12 +73,11 @@ fn carrying_drives(fetch_interval: &str, poll_interval: &str, drives: &str) -> S
     )
 }
 
-/// Stub `flume`, `sluice`, `herdr` and `systemd-creds`, each in a
-/// directory of its own.
+/// Stub `flume`, `sluice` and `systemd-creds`, each in a directory of its
+/// own.
 struct Tools {
     flume: Stub,
     sluice: SluiceStub,
-    herdr: HerdrStub,
     creds: CredsStub,
 }
 
@@ -87,7 +86,6 @@ impl Tools {
         Tools {
             flume: Stub::new(),
             sluice: SluiceStub::new(),
-            herdr: HerdrStub::new(),
             creds: CredsStub::new(),
         }
     }
@@ -96,20 +94,14 @@ impl Tools {
         Programs {
             flume: self.flume.program(),
             sluice: self.sluice.program(),
-            herdr: self.herdr.program(),
         }
     }
 
-    /// The test's `PATH` with the stubs first, so no real Flume, sluice,
-    /// herdr or `systemd-creds` runs.
+    /// The test's `PATH` with the stubs first, so no real Flume, sluice
+    /// or `systemd-creds` runs.
     fn path(&self) -> OsString {
-        let stubs = [
-            &self.flume.dir,
-            &self.sluice.dir,
-            &self.herdr.dir,
-            &self.creds.dir,
-        ]
-        .map(|dir| dir.path().to_path_buf());
+        let stubs = [&self.flume.dir, &self.sluice.dir, &self.creds.dir]
+            .map(|dir| dir.path().to_path_buf());
         let rest = std::env::var_os("PATH").unwrap_or_default();
         std::env::join_paths(stubs.iter().cloned().chain(std::env::split_paths(&rest)))
             .expect("a PATH")
@@ -430,7 +422,6 @@ fn no_control_plane() {
         [words(&["--json", "settle", "--every", "120s"])]
     );
     assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
-    assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
 }
 
 /// The running spec's "A settle Flume refuses": with no control plane, a
@@ -535,7 +526,6 @@ fn a_word_not_carried() {
         [words(&["--json", "settle", "--every", "120s"])]
     );
     assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
-    assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
 }
 
 /// A loopback address with nothing listening on it.
