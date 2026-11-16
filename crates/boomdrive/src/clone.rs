@@ -4,7 +4,10 @@
 //! fetched over https and never by ssh, and its HEAD names origin's
 //! default branch. Every branch is read at origin's tracking ref: the
 //! runner moves no branch of the clone, whose own ref of a branch sluice
-//! keeps is sluice's copy (core.14; sluice's 124).
+//! keeps is sluice's copy (core.14; sluice's 124). git's own collection
+//! is off in it, `gc.auto` at `0` and `maintenance.auto` at `false` in its
+//! own config, so no fetch, commit or tool's call there starts one: the
+//! runner alone packs and prunes it (record 0051; core.14).
 
 use crate::config::Address;
 use crate::git::{self, At, Credential, Git, Words};
@@ -21,6 +24,16 @@ const ADDRESS: &str = "boomdrive.address";
 /// The key in a clone's own git config that records the drive the
 /// configuration last named its repository under (design Decision 7).
 const DRIVE: &str = "boomdrive.drive";
+
+/// The keys of a clone's own config that turn git's own collection off,
+/// each with the type git reads it by and the value that turns it off:
+/// `gc.auto` at `0` makes `git gc --auto` do nothing, and
+/// `maintenance.auto` at `false` makes the `git maintenance run --auto` a
+/// fetch or a commit runs after its work do nothing (record 0051; core.14).
+const COLLECTION_OFF: [(&str, &str, &str); 2] = [
+    ("gc.auto", "int", "0"),
+    ("maintenance.auto", "bool", "false"),
+];
 
 /// A clone of the runner's, as `find` finds it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -192,12 +205,35 @@ pub fn record_drive(git: &Git, bare: &Path, drive: &str) -> Result<(), Words> {
     Ok(())
 }
 
+/// Turns git's own collection off in `bare`, a clone the runner made
+/// before (record 0051; core.14): each key that turns it off is read from
+/// the clone's own config by its type, `--type=int` or `--type=bool`, and
+/// written by `git config --local` only where it is missing or reads
+/// otherwise, so `no` reads as `false` and a clone already off is not
+/// written, its `config.lock` not taken. A value git cannot read by its
+/// type reads otherwise. Gives git's words where a write fails.
+pub fn turn_collection_off(git: &Git, bare: &Path) -> Result<(), Words> {
+    let at = At::GitDir(bare);
+    for (key, kind, off) in COLLECTION_OFF {
+        let read = git.ask(
+            at,
+            ["config", "--local", &format!("--type={kind}"), "--get", key],
+        );
+        if matches!(read, Ok(Some(said)) if said.trim() == off) {
+            continue;
+        }
+        git.run(at, ["config", "--local", key, off])?;
+    }
+    Ok(())
+}
+
 /// Makes `address`'s clone in `data` and gives its container (design 4).
-/// It is made in `.<name>.partial` beside the container, any such folder
-/// left by an earlier run removed first, and renamed into place once its
-/// first fetch is in. A step that fails removes the partial folder, and
-/// the owner's folder where that leaves it empty, so a failed clone
-/// leaves nothing in the data directory. Its first fetch is given
+/// git's own collection is off in it from before its first fetch (record
+/// 0051). It is made in `.<name>.partial` beside the container, any such
+/// folder left by an earlier run removed first, and renamed into place
+/// once its first fetch is in. A step that fails removes the partial
+/// folder, and the owner's folder where that leaves it empty, so a failed
+/// clone leaves nothing in the data directory. Its first fetch is given
 /// `credential`.
 pub fn make(
     git: &Git,
@@ -226,7 +262,9 @@ pub fn make(
     made.map(|()| container)
 }
 
-/// Design 4's steps in `partial`, then the rename to `container`.
+/// Design 4's steps in `partial`, then the rename to `container`: the
+/// clone's own keys, git's own collection turned off among them (record
+/// 0051), are set before its first fetch.
 fn make_in(
     git: &Git,
     partial: &Path,
@@ -246,7 +284,13 @@ fn make_in(
         ),
         ("remote.origin.followRemoteHEAD", "always".to_string()),
         (ADDRESS, address.to_string()),
-    ] {
+    ]
+    .into_iter()
+    .chain(
+        COLLECTION_OFF
+            .into_iter()
+            .map(|(key, _, value)| (key, value.to_string())),
+    ) {
         git.run(At::GitDir(&bare), ["config", key, &value])?;
     }
     fetch(git, &bare, credential)?;

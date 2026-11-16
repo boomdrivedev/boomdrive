@@ -477,10 +477,11 @@ fn take_workspace(file: &Path, drive: &str, say: &mut dyn FnMut(String)) -> Outc
 /// Keeps `address`: makes its clone where it has none (design 4), else
 /// fetches the one `found` (design 5), the clone recording `drive`, the
 /// drive the configuration names it under, where it records another or
-/// none (design Decision 7); then settles its HEAD on origin's default
-/// branch (design 6), then keeps its view at `view` (design 7). A view
-/// the runner put where the repository root no longer gives is let go of
-/// first. The drive the clone records once kept joins `standing`. Each
+/// none (design Decision 7), and git's own collection turned off in it
+/// before its fetch where its config says otherwise (record 0051); then
+/// settles its HEAD on origin's default branch (design 6), then keeps its
+/// view at `view` (design 7). A view the runner put where the repository
+/// root no longer gives is let go of first. The drive the clone records once kept joins `standing`. Each
 /// line of the repository's says its address. The fetch is given what
 /// `forge` gave, `asked`; one that fails drops the repository's kept
 /// token, and its line gives git's words, then the mint's where a mint was
@@ -498,18 +499,19 @@ fn keep(
     standing: &mut BTreeSet<String>,
     say: &mut dyn FnMut(String),
 ) -> Outcome {
-    let mut recorded = Outcome::Kept;
+    let mut so_far = Outcome::Kept;
     let container = match found {
         Some(found) => {
             let bare = clone::bare(&found.container);
             if found.drive.as_deref() != Some(drive) {
-                recorded = record_drive(git, address, &bare, drive, say);
+                so_far = record_drive(git, address, &bare, drive, say);
             }
-            let records = match recorded {
+            let records = match so_far {
                 Outcome::Kept => Some(drive.to_string()),
                 Outcome::Failed => found.drive.clone(),
             };
             standing.extend(records);
+            so_far = so_far.and(turn_collection_off(git, address, &bare, say));
             if let Err(failure) = clone::fetch(git, &bare, &asked.credential) {
                 forge.drop(address);
                 say(format!(
@@ -532,8 +534,8 @@ fn keep(
             match clone::make(git, data, address, &asked.credential) {
                 Ok(container) => {
                     say(format!("{address}: cloned from {}", clone::url(address)));
-                    recorded = record_drive(git, address, &clone::bare(&container), drive, say);
-                    if recorded == Outcome::Kept {
+                    so_far = record_drive(git, address, &clone::bare(&container), drive, say);
+                    if so_far == Outcome::Kept {
                         standing.insert(drive.to_string());
                     }
                     container
@@ -556,14 +558,14 @@ fn keep(
             say(format!(
                 "{address}: origin names no default branch, so it has no view"
             ));
-            return recorded;
+            return so_far;
         }
         Err(words) => {
             say(format!("{address}: default branch not read: {words}"));
             return Outcome::Failed;
         }
     };
-    let settled = recorded.and(settle(git, &bare, &default, &mut |words| {
+    let settled = so_far.and(settle(git, &bare, &default, &mut |words| {
         say(format!("{address}: {words}"))
     }));
     match let_go_of_old_view(git, address, &bare, view, say) {
@@ -601,6 +603,28 @@ fn record_drive(
         Ok(()) => Outcome::Kept,
         Err(words) => {
             say(format!("{address}: drive {drive} not recorded: {words}"));
+            Outcome::Failed
+        }
+    }
+}
+
+/// Turns git's own collection off in the clone `bare` of `address`, before
+/// its fetch, the first command of the pass that would start a collection
+/// (record 0051; core.14). A key that cannot be written is named, and
+/// fails the pass, and the keep goes on to the fetch, the HEAD and the
+/// view, as every clone was kept before its collection was off.
+fn turn_collection_off(
+    git: &Git,
+    address: &Address,
+    bare: &Path,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    match clone::turn_collection_off(git, bare) {
+        Ok(()) => Outcome::Kept,
+        Err(words) => {
+            say(format!(
+                "{address}: git's own collection not turned off: {words}"
+            ));
             Outcome::Failed
         }
     }
