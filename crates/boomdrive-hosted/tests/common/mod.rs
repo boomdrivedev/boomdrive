@@ -33,7 +33,7 @@ pub const V1: Version = Version {
     files: v1::FILES,
 };
 
-/// Version 2 (record 0037).
+/// Version 2, as releases from `v0.8.0` speak it (record 0037).
 pub const V2: Version = Version {
     number: v2::VERSION,
     address: v2::ADDRESS,

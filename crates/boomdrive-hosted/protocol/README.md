@@ -26,6 +26,11 @@ a directory of its own beside it. A control plane accepts the current
 version and the one before. The runner speaks the current version
 alone.
 
+Every release of the runner from `v0.8.0` speaks version 2, so it never
+changes. The crate's test `files` holds each file of `v2/`, schemas and
+examples, to its digest as `v0.9.0` holds it, and each of `v1/` to
+`v0.7.3`'s, so the gate fails a file of either changed or added.
+
 A connection asks for the WebSocket subprotocol `boomdrive.v2` at
 its upgrade, so a control plane that does not accept the version refuses
 the connection before any message.
