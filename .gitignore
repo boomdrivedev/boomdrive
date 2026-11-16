@@ -1,3 +1,6 @@
+# Each entry is negated among root:format's inputs (moon.yml), so moon
+# hashes nothing git ignores: an entry added here is added there.
+
 .devenv/
 .devenv.flake.nix
 devenv.local.nix
