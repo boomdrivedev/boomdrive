@@ -2,11 +2,11 @@
 
 ### Requirement: The README names the two paths and the signatures' contexts
 
-The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, and the bytes each enrollment's and connection's signature covers, each context starting `boomdrive.v2`, with a worked example of each. It SHALL name what a `pulled` and a `report` hold, and how version 1 differs. The worked examples SHALL be a file of the hosted implementation's tests, `crates/boomdrive-hosted/tests/worked-bytes.json`, of which the README shows its own copy, kept to the file by its writers (record 0049). The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
+The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, what a `pulled` and a `report` hold, how version 1 differs, and the bytes each signature covers, each context starting `boomdrive.v2`, with a copy of the worked examples the hosted tests read (record 0049). The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
 
 #### Scenario: The README's worked contexts
 
-- **WHEN** the hosted implementation makes the enrollment's and the connection's contexts from the worked examples' fixed key, token, origin, time and nonce
+- **WHEN** the hosted implementation makes the enrollment's and the connection's contexts from the fixed key, token, origin, time and nonce of the worked examples, `crates/boomdrive-hosted/tests/worked-bytes.json`
 - **THEN** each equals the worked examples' bytes, and each starts with the bytes of `boomdrive.v2`
 
 #### Scenario: The README of version 2
