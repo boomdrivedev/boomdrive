@@ -197,15 +197,25 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   at `<repository_root>/<drive>.code-workspace`, writing it only when its
   `folders` are not the drive's kept repositories, whole and renamed
   over the old one, and removes the workspace of a drive that has gone
-  with its last clone.
+  with its last clone;
+- packs the clones itself: git's own collection is off in every clone,
+  `gc.auto` at `0` and `maintenance.auto` at `false`, so no fetch or
+  commit there starts one.
+  Once every repository is kept, the pass packs each kept clone holding
+  more than 6,700 loose objects or more than 50 packs, git's own bounds,
+  dropping only what nothing of the clone reaches past two weeks,
+  touching no ref, log or worktree, and saying `<owner>/<name>: packed
+  <n> loose objects and <m> packs`. It holds no lock while it packs, so
+  no launch waits on it, and a dropped repository's clone is not packed.
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
 nothing. Told of a landing, it keeps that one repository at once,
 between passes or between two repositories of a pass. It stops on
-SIGTERM or SIGINT before the next repository it would keep, lets each
-part of its control plane end the pass it has in hand, and exits 0. It
-opens no listening socket: every connection it makes is outgoing.
+SIGTERM or SIGINT before the next repository it would keep or pack,
+lets each part of its control plane end the pass it has in hand, and
+exits 0. It opens no listening socket: every connection it makes is
+outgoing.
 
 Where the configuration names a control plane, each part of it, a crew
 partition or a hosted partition, runs its control passes on its own,
