@@ -23,7 +23,12 @@
 //! `[forge]`; a fetch that fails drops the repository's kept token (record
 //! 0007 as amended on 2026-11-11; design Decision 5). The pass says
 //! each act and each thing it names as one line, `<owner>/<name>:
-//! <words>`, and a pass with nothing to say writes nothing.
+//! <words>`, and a pass with nothing to say writes nothing. git's own
+//! collection is off in every clone the pass keeps, and once it has kept
+//! and let go of every repository, kept the workspaces and cleared partial
+//! clones, the pass packs each kept clone past git's own bounds, holding
+//! no lock, reading its stop before each and running the loop's hook
+//! after each it packs (record 0051; core.14).
 
 use crate::clone::{self, Found};
 use crate::code_workspace::{self, Act, Wanted};
@@ -74,9 +79,12 @@ pub type Between<'a> = &'a mut dyn FnMut() -> bool;
 /// fetch given what `forge` gives for its repository, each repository
 /// under its lock among `locks`, `between` run after each, each line said
 /// to `say` as it is said. Where `config`'s local layer was not taken, its
-/// managed layer's repositories are kept and none is let go. Once `stop`
-/// is set, no further repository is kept or let go, no workspace is kept,
-/// and the pass ends.
+/// managed layer's repositories are kept and none is let go. Once every
+/// repository is kept and let go of, the workspaces kept and partial
+/// clones cleared, each kept clone past git's own bounds is packed, in the
+/// configuration's order, under no lock, `between` run after each it
+/// packs (record 0051). Once `stop` is set, no further repository is kept
+/// or let go, no workspace is kept, no clone is packed, and the pass ends.
 #[allow(clippy::too_many_arguments)]
 pub fn pass(
     git: &Git,
@@ -158,7 +166,80 @@ pub fn pass(
             outcome = outcome.and(take_departed(config, &clones, &standing, say));
         }
     }
-    outcome.and(clear_partials(data, &clones, say))
+    outcome = outcome.and(clear_partials(data, &clones, say));
+    outcome.and(pack_kept(git, data, config, clones, stop, between, say))
+}
+
+/// Packs each clone of a repository `config` keeps, in the
+/// configuration's order, that `clones`, the pass's clones, holds and
+/// whose occasion has come, more than git's own bound of loose objects or
+/// packs (record 0051; core.14). A dropped repository's clone is not
+/// packed, as it is not fetched. No clone's lock is held, so no launch
+/// into a clone waits on its pack. `stop` is read before each clone, and
+/// none is packed once it is set; a pack in flight runs to its end. After
+/// each clone it packs, `between` keeps the landings told since, and the
+/// clones are found again where it changed one. A clone packed says
+/// `<address>: packed <n> loose objects and <m> packs`, its counts before
+/// the pack, and one below both bounds says nothing. A count or a pack
+/// that fails is named, `<address>: not packed: <git's words>`, and fails
+/// the pass, and every other clone is still packed.
+fn pack_kept(
+    git: &Git,
+    data: &Path,
+    config: &Config,
+    mut clones: Vec<Found>,
+    stop: &AtomicBool,
+    between: Between<'_>,
+    say: &mut dyn FnMut(String),
+) -> Outcome {
+    let mut outcome = Outcome::Kept;
+    for address in config.repositories() {
+        if stop.load(Ordering::SeqCst) {
+            return outcome;
+        }
+        let Some(found) = clones.iter().find(|found| found.address == *address) else {
+            continue;
+        };
+        let bare = clone::bare(&found.container);
+        let counts = match clone::counts(git, &bare) {
+            Ok(counts) => counts,
+            Err(words) => {
+                say(format!("{address}: not packed: {words}"));
+                outcome = Outcome::Failed;
+                continue;
+            }
+        };
+        if !clone::is_occasion(counts) {
+            continue;
+        }
+        match clone::pack(git, &bare) {
+            Ok(()) => say(format!(
+                "{address}: packed {} and {}",
+                counted(counts.loose, "loose object"),
+                counted(counts.packs, "pack")
+            )),
+            Err(words) => {
+                say(format!("{address}: not packed: {words}"));
+                outcome = Outcome::Failed;
+            }
+        }
+        if between() {
+            let Some(found) = find(git, data, say) else {
+                return Outcome::Failed;
+            };
+            clones = found;
+        }
+    }
+    outcome
+}
+
+/// `count` of `thing`, `1 <thing>` for one and `<count> <thing>s` for any
+/// other.
+fn counted(count: u64, thing: &str) -> String {
+    match count {
+        1 => format!("1 {thing}"),
+        count => format!("{count} {thing}s"),
+    }
 }
 
 /// The workspaces `config` wants, none where it does not ask for them

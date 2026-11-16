@@ -146,10 +146,36 @@ fn holds_object(scratch: &Scratch, bare: &Path, id: &str) -> bool {
     scratch.holds(bare, &["cat-file", "-e", id])
 }
 
+/// Every object `bare` holds, loose or packed, by id.
+fn all_objects(scratch: &Scratch, bare: &Path) -> BTreeSet<String> {
+    scratch
+        .git(
+            bare,
+            &[
+                "cat-file",
+                "--batch-all-objects",
+                "--batch-check=%(objectname)",
+            ],
+        )
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+/// Whether a line of `lines` says `address` was packed.
+fn says_packed(lines: &[String], address: &str) -> bool {
+    let packed = format!("{address}: packed ");
+    lines.iter().any(|line| line.starts_with(&packed))
+}
+
 /// The value of `key` in `bare`'s own config.
 fn own_config(scratch: &Scratch, bare: &Path, key: &str) -> String {
     scratch.git(bare, &["config", "--local", key])
 }
+
+/// More loose objects than git's bound, as a scratch clone held when a
+/// commit in a worktree of it packed them all (record 0051).
+const PAST: usize = 7_003;
 
 /// More loose objects than git's bound, `gc.auto`'s 6,700: enough that,
 /// with git's collection on, a commit's `git gc --auto` finds the bound
@@ -254,4 +280,124 @@ fn a_clone_whose_config_cannot_be_written() {
         scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main"]),
         next
     );
+}
+
+/// A clone at the pack bound, 50 packs, is not packed.
+#[test]
+fn nothing_is_packed_at_the_bound() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let config = keeping(&["agentplot/flume"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    write_packs(&scratch, &bare, "pack", 50);
+    let (loose_count, pack_count) = counts(&scratch, &bare);
+    assert_eq!(pack_count, 50);
+    assert!(loose_count < 6_700);
+    let loose_before = loose(&bare);
+    let packs_before = packs(&bare);
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(loose(&bare), loose_before);
+    assert_eq!(packs(&bare), packs_before);
+}
+
+/// A clone past the bound of loose objects is packed whole, and keeps
+/// every object it held.
+#[test]
+fn loose_objects_past_the_bound() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let config = keeping(&["agentplot/flume"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    write_packs(&scratch, &bare, "pack", 2);
+    write_loose(&scratch, &bare, "arrived", PAST);
+    let (loose_count, pack_count) = counts(&scratch, &bare);
+    assert!(loose_count > 6_700);
+    let held = all_objects(&scratch, &bare);
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [format!(
+            "agentplot/flume: packed {loose_count} loose objects and {pack_count} packs"
+        )]
+    );
+    let (loose_after, packs_after) = counts(&scratch, &bare);
+    assert_eq!(loose_after, 0);
+    assert!(packs_after <= 2, "{packs_after} packs");
+    assert!(bare.join("objects/info/commit-graph").is_file());
+    assert!(all_objects(&scratch, &bare).is_superset(&held));
+}
+
+/// A clone past the bound of packs is packed whole.
+#[test]
+fn packs_past_the_bound() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let config = keeping(&["agentplot/flume"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    write_packs(&scratch, &bare, "pack", 51);
+    let (loose_count, pack_count) = counts(&scratch, &bare);
+    assert_eq!(pack_count, 51);
+    assert!(loose_count < 6_700);
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [format!(
+            "agentplot/flume: packed {loose_count} loose objects and 51 packs"
+        )]
+    );
+    let (loose_after, packs_after) = counts(&scratch, &bare);
+    assert_eq!(loose_after, 0);
+    assert!(packs_after <= 2, "{packs_after} packs");
+}
+
+/// A dropped repository's clone, held by a branch origin lacks, is not
+/// packed.
+#[test]
+fn a_dropped_repository_is_not_packed() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
+    scratch.pass(&keeping(&["agentplot/flume", "agentplot/sluice"]));
+    let bare = scratch.clone_of("agentplot/flume");
+    let tree = scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main^{tree}"]);
+    let wip = scratch.git(
+        &bare,
+        &[
+            "commit-tree",
+            &tree,
+            "-p",
+            "refs/remotes/origin/main",
+            "-m",
+            "work in progress",
+        ],
+    );
+    scratch.git(&bare, &["update-ref", "refs/heads/wip", &wip]);
+    write_loose(&scratch, &bare, "arrived", PAST);
+    let loose_before = loose(&bare);
+    let packs_before = packs(&bare);
+
+    let (_, lines) = scratch.pass(&keeping(&["agentplot/sluice"]));
+
+    assert!(!says_packed(&lines, "agentplot/flume"), "{lines:?}");
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.starts_with("agentplot/flume: left: held by")),
+        "{lines:?}"
+    );
+    assert_eq!(loose(&bare), loose_before);
+    assert_eq!(packs(&bare), packs_before);
 }

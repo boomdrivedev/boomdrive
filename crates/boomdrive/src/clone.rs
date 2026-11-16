@@ -446,6 +446,32 @@ pub fn is_occasion(counts: Counts) -> bool {
     counts.loose > LOOSE_BOUND || counts.packs > PACK_BOUND
 }
 
+/// How long an object nothing of a clone reaches is kept after it was
+/// written: git's own `gc.pruneExpire`, two weeks (record 0051).
+const CUTOFF: &str = "2.weeks.ago";
+
+/// Packs the clone `bare` whole, at its occasion (record 0051; core.14),
+/// by three of git's commands, each run to its end (core.58):
+/// `git repack -q -d -l --cruft --cruft-expiration=2.weeks.ago`, which
+/// puts what the clone reaches, by every ref, ref's log, and worktree's
+/// HEAD and index, into one pack, and what it does not reach but was
+/// written within two weeks into a cruft pack; `git prune
+/// --expire=2.weeks.ago`, which drops the loose objects nothing reaches
+/// that were written before; and `git commit-graph write --reachable`.
+/// None packs a ref, expires a ref's log or prunes a worktree. The first
+/// that fails ends the pack with git's words, and no later one runs.
+pub fn pack(git: &Git, bare: &Path) -> Result<(), Words> {
+    let at = At::GitDir(bare);
+    let cruft_expiration = format!("--cruft-expiration={CUTOFF}");
+    git.run(
+        at,
+        ["repack", "-q", "-d", "-l", "--cruft", &cruft_expiration],
+    )?;
+    git.run(at, ["prune", &format!("--expire={CUTOFF}")])?;
+    git.run(at, ["commit-graph", "write", "--reachable"])?;
+    Ok(())
+}
+
 /// A worktree of a clone, as `worktree list --porcelain` names it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Worktree {
