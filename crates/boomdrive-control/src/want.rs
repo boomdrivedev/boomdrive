@@ -264,8 +264,8 @@ pub trait Link: Send {
     /// The far end's next input, waiting up to `wait`, or none where
     /// nothing came.
     fn input(&mut self, wait: Duration) -> Option<Input>;
-    /// Sends the pane's screen, and says whether the far end still
-    /// listens.
+    /// Sends what Flume's relay shows of the agent, and says whether the
+    /// far end still listens.
     fn screen(&mut self, text: &str) -> bool;
     /// Closes the link, with words saying why.
     fn close(self: Box<Self>, words: &str);
@@ -274,7 +274,10 @@ pub trait Link: Send {
 /// What the far end of a terminal sends.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
+    /// Text, typed as it is.
     Text(String),
+    /// Keys by Flume's key names, as the far end gave them.
     Keys(Vec<String>),
+    /// The far end closed the terminal.
     Close,
 }

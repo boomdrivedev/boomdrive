@@ -33,7 +33,11 @@ context: |
   their herdr plugins and write Pending You's folder, and with the runner
   and a collector the host names write Claude Code's managed telemetry
   document, which every session on the host reads (record 0013 as
-  amended on 2026-11-12), and wherever they install Flume, with the
+  amended on 2026-11-12), and turn Flume's and sluice's own telemetry on
+  to that collector, by services.flume.settings.telemetry and
+  services.sluice.settings.telemetry, each tool keeping which of its
+  signals it sends (record 0013 as amended on 2026-11-15; core.57), and
+  wherever they install Flume, with the
   runner or without, write Claude Code's managed transcripts document
   beside it, holding cleanupPeriodDays alone, a year by default (record
   0046), touching no Claude Code home, and on macOS run the runner from a

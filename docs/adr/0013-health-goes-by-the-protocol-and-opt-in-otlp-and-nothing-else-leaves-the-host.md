@@ -80,3 +80,26 @@ Sources: Claude Code's documentation, `code.claude.com/docs/en/managed-settings`
 - **Nothing without a collector.** With no collector named, or the runner off, the set writes no document, and removes its own where it stands.
 
 Consequences: core.18's, core.28's and core.46's details name what this amendment allows, in the commit that writes it. A Claude Code that reads no `managed-settings.d` reads no document and exports nothing. The Claude Desktop app's launch environment wins over the document for the variables it sets, and the README says so.
+
+## Amendment, 2026-11-15: the host's collector reaches sluice and Flume
+
+Status: the decision is boomdrive-design's, written as core.57's amendment and landed on 2026-11-14 (#210). The way the set carries it is the construct stage's own choices for the change `the-hosts-collector-reaches-sluice-and-flume`, each cheap to change. The change's design gives each point.
+
+Deciders: boomdrive-design, in its talk with the user of 2026-11-13 on telemetry for Flume and sluice (flume record 0067, its Deciders); the construct stage of `change/the-hosts-collector-reaches-sluice-and-flume`, 2026-11-15, for the way.
+
+Sources: rule core.57 as amended on 2026-11-14; flume record 0067 and `boomdrivedev/blueprints:design/flume/requirements.md` 216 to 220 and C.7; sluice's clause 151; Flume's module at v0.24.0 and sluice's at v0.86.0, their `settings.telemetry`, read on 2026-11-15.
+
+Flume and sluice each send their own telemetry, OTLP over HTTP, protobuf, to a collector on the host, once their own `[telemetry]` turns it on. Until now the set gave neither one, so a host wanting a place's trace, sluice's runs and its sessions in one backend named its collector three times.
+
+- **One collector (boomdrive-design's).** The collector the host names for its Claude Code sessions, `services.boomdrive.claude-code.telemetry.collector`, is Flume's and sluice's too. The set turns each tool's telemetry on to it through that tool's own module's settings. Which of its signals each tool sends stays that tool's setting. No tool of the set sends to another collector (core.57). Not taken: an option of the runner's module for each tool's collector, a second place to name it; each tool's telemetry left to the host's own settings, written again for each tool.
+- **With the runner on and a collector named,** the condition the sessions' document is written under. Otherwise the set gives neither tool any key of its `telemetry`. Not taken: whenever a collector is named, which would send Flume's and sluice's telemetry where the host's sessions send none.
+- **`send` and `collector`, and no other key.** The set gives each tool `send = true` and the collector, each key apart at the modules' default priority, so a key a host sets in a tool's own `telemetry` merges beside them, and a host's `send = false` there turns that tool off. Not taken: the whole table at the default priority, which any key of the host's would drop whole; `send` pinned true, which would hold a tool on that a host wants silent.
+- **One base.** The collector the tools are given has one trailing `/` dropped, the base the sessions' document joins `/v1/<signal>` to, so all three send to the same endpoints. Not taken: the address as written, which would send a tool's signals to `//v1/<signal>`.
+- **Each tool's signals are its own.** The set gives no tool its signals, service or attributes. Claude Code's `metrics`, `logs` and `traces` switches reach Claude Code's document alone. Not taken: Claude Code's switches given to the tools, which would turn Flume's traces off wherever Claude Code's beta traces are off.
+- **One collector, by an assertion.** Where the set gives the keys, evaluation fails unless each tool's collector, its trailing `/` dropped, is the host's, whatever priority the host gives it. The failure names both options. Not taken: the collector at the modules' own priority, whose conflict tells a host to use `lib.mkForce`, which would then send the tool elsewhere.
+
+### Consequences of the amendment
+
+- Good: a host names one collector, and its sessions, Flume and sluice all reach it. sluice's spans of a check run nest under the Flume stage that ran it, where traces go (flume record 0067).
+- Bad: a host that named a collector for its sessions alone now gets every signal Flume and sluice send by their defaults, at its next switch. It sets a tool's own signals, or its `send = false`, for less.
+- Neutral: what each tool sends is that tool's rules' (flume 216 to 220; sluice 151). The set turns neither tool's content further on.

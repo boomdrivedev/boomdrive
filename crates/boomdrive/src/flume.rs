@@ -19,7 +19,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Child, Command, Output, Stdio};
 use std::time::Duration;
 
 /// The least Flume the runner launches and confirms with: 0.21.0, the
@@ -225,6 +225,24 @@ impl Cli {
             settle::every(bound).into(),
         ])
     }
+
+    /// Flume's relay of the place at `place`, `flume --json relay
+    /// <place>`, spawned and given back running, its standard input,
+    /// output and error piped to the runner. It is held while its terminal
+    /// is open, ended by closing its input, Flume's caller's word to end,
+    /// and awaited once (core.13, core.29; Flume's 221 and 222; record 0004
+    /// as amended on 2026-11-15). It is `Cli`'s own and on no trait: only
+    /// the terminals run it.
+    pub fn relay(&self, place: &str) -> std::io::Result<Child> {
+        Command::new(&self.program)
+            .arg("--json")
+            .args(relay_args(place))
+            .env_remove("FLUME_RECIPIENT")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+    }
 }
 
 impl Flume for Cli {
@@ -319,6 +337,13 @@ fn launch_args(args: &LaunchArgs, brief_file: Option<&Path>) -> Vec<OsString> {
     words.push("--mark".into());
     words.push(args.mark.clone().into());
     words
+}
+
+/// The arguments of Flume's relay of the place at `place`, `relay
+/// <place>`, the place named by its location as every act names it
+/// (core.51).
+pub fn relay_args(place: &str) -> Vec<OsString> {
+    vec!["relay".into(), place.into()]
 }
 
 /// The arguments of `act` on the place at `place`. A confirm is not
