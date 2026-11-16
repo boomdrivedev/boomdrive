@@ -6,12 +6,17 @@
 
 mod common;
 
+use boomdrive::config::{Address, Config};
+use boomdrive::forge::Forge;
+use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
 use common::{keeping, Scratch};
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime};
 
 /// git's output from `args` in the bare repository `bare`, `input` on its
@@ -166,6 +171,19 @@ fn all_objects(scratch: &Scratch, bare: &Path) -> BTreeSet<String> {
 fn says_packed(lines: &[String], address: &str) -> bool {
     let packed = format!("{address}: packed ");
     lines.iter().any(|line| line.starts_with(&packed))
+}
+
+/// The index of the first line of `lines` that starts with `start`.
+fn first(lines: &[String], start: &str) -> usize {
+    lines
+        .iter()
+        .position(|line| line.starts_with(start))
+        .unwrap_or_else(|| panic!("no line starts with {start:?}: {lines:?}"))
+}
+
+/// The configuration `text`, read as the default file.
+fn config_of(scratch: &Scratch, text: &str) -> Config {
+    boomdrive::config::parse(text, &scratch.config_file(), &scratch.home).expect("a configuration")
 }
 
 /// The value of `key` in `bare`'s own config.
@@ -400,4 +418,106 @@ fn a_dropped_repository_is_not_packed() {
     );
     assert_eq!(loose(&bare), loose_before);
     assert_eq!(packs(&bare), packs_before);
+}
+
+/// A landing told while the pass packs is kept between two packs.
+#[test]
+fn a_landing_told_while_the_pass_packs() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
+    let timber = scratch.origin("agentplot/timber");
+    let text = keeping(&["agentplot/flume", "agentplot/sluice", "agentplot/timber"]);
+    scratch.pass(&text);
+    for address in ["agentplot/flume", "agentplot/sluice"] {
+        write_packs(&scratch, &scratch.clone_of(address), "pack", 51);
+    }
+    let config = config_of(&scratch, &text);
+    let git = scratch.runner_git();
+    let forge = Forge::new();
+    let locks = Locks::new();
+    let timber_address = Address::parse("agentplot/timber").expect("an address");
+    let lines = RefCell::new(Vec::new());
+    let mut landed = None;
+
+    let outcome = boomdrive::pass::pass(
+        &git,
+        &forge,
+        &scratch.data(),
+        &config,
+        &locks,
+        &AtomicBool::new(false),
+        &mut || {
+            if landed.is_some() || !says_packed(&lines.borrow(), "agentplot/flume") {
+                return false;
+            }
+            landed = Some(timber.commit("main", "landed", "a landing\n"));
+            boomdrive::pass::keep_one(
+                &git,
+                &forge,
+                &scratch.data(),
+                &config,
+                &locks,
+                &timber_address,
+                &mut |line| lines.borrow_mut().push(line),
+            );
+            true
+        },
+        &mut |line| lines.borrow_mut().push(line),
+    );
+
+    assert_eq!(outcome, Outcome::Kept);
+    let lines = lines.into_inner();
+    let landed = landed.expect("the landing told");
+    let flume = first(&lines, "agentplot/flume: packed ");
+    let moved = first(
+        &lines,
+        &format!(
+            "agentplot/timber: view moved to origin/main at {}",
+            &landed[..7]
+        ),
+    );
+    let sluice = first(&lines, "agentplot/sluice: packed ");
+    assert!(flume < moved && moved < sluice, "{lines:?}");
+}
+
+/// A stop told while the pass packs one clone packs no other.
+#[test]
+fn a_stop_while_the_pass_packs() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
+    let text = keeping(&["agentplot/flume", "agentplot/sluice"]);
+    scratch.pass(&text);
+    for address in ["agentplot/flume", "agentplot/sluice"] {
+        write_packs(&scratch, &scratch.clone_of(address), "pack", 51);
+    }
+    let sluice = scratch.clone_of("agentplot/sluice");
+    let loose_before = loose(&sluice);
+    let packs_before = packs(&sluice);
+    let config = config_of(&scratch, &text);
+    let stop = AtomicBool::new(false);
+    let lines = RefCell::new(Vec::new());
+
+    boomdrive::pass::pass(
+        &scratch.runner_git(),
+        &Forge::new(),
+        &scratch.data(),
+        &config,
+        &Locks::new(),
+        &stop,
+        &mut || {
+            if says_packed(&lines.borrow(), "agentplot/flume") {
+                stop.store(true, Ordering::SeqCst);
+            }
+            false
+        },
+        &mut |line| lines.borrow_mut().push(line),
+    );
+
+    let lines = lines.into_inner();
+    assert!(says_packed(&lines, "agentplot/flume"), "{lines:?}");
+    assert!(!says_packed(&lines, "agentplot/sluice"), "{lines:?}");
+    assert_eq!(loose(&sluice), loose_before);
+    assert_eq!(packs(&sluice), packs_before);
 }
