@@ -670,3 +670,55 @@ fn refs_logs_and_worktrees_are_left_as_they_were() {
         .git(&bare, &["worktree", "list", "--porcelain"])
         .contains(&listed));
 }
+
+/// Sets the mode of `dir` to `mode`.
+fn set_mode(dir: &Path, mode: u32) {
+    let mut permissions = std::fs::metadata(dir)
+        .expect("the folder's metadata")
+        .permissions();
+    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, mode);
+    std::fs::set_permissions(dir, permissions).expect("the folder's mode set");
+}
+
+/// A clone that cannot be packed is named and fails the pass, every other
+/// clone is still packed, and the next pass packs it once it can.
+#[test]
+fn one_pack_fails() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    scratch.origin("agentplot/sluice");
+    let config = keeping(&["agentplot/flume", "agentplot/sluice"]);
+    scratch.pass(&config);
+    for address in ["agentplot/flume", "agentplot/sluice"] {
+        write_packs(&scratch, &scratch.clone_of(address), "pack", 51);
+    }
+    let flume = scratch.clone_of("agentplot/flume");
+    let pack_dir = flume.join("objects/pack");
+    set_mode(&pack_dir, 0o555);
+
+    let (outcome, lines) = scratch.pass(&config);
+    set_mode(&pack_dir, 0o755);
+
+    assert_eq!(outcome, Outcome::Failed);
+    let prefix = "agentplot/flume: not packed: ";
+    assert!(
+        lines.iter().any(|line| line
+            .strip_prefix(prefix)
+            .is_some_and(|words| !words.is_empty())),
+        "{lines:?}"
+    );
+    assert!(!says_packed(&lines, "agentplot/flume"), "{lines:?}");
+    assert!(says_packed(&lines, "agentplot/sluice"), "{lines:?}");
+    let (loose_count, pack_count) = counts(&scratch, &flume);
+    assert_eq!(pack_count, 51);
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert_eq!(
+        lines,
+        [format!(
+            "agentplot/flume: packed {loose_count} loose objects and 51 packs"
+        )]
+    );
+}

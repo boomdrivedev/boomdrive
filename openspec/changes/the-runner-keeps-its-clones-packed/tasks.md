@@ -25,7 +25,7 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 4. A pack that fails is named
 
-- [ ] 4.1 Where counting a clone's objects or a step of its pack fails, the pass says `<address>: not packed: <git's words>`, runs no later step, fails, and still packs every other clone (design Decision 6). Done when `devenv shell -- cargo test -p boomdrive --test packs -- one_pack_fails` passes, proving the spec's "One pack fails", the clone's `objects/pack` made unwritable and then writable again by the test.
+- [x] 4.1 Where counting a clone's objects or a step of its pack fails, the pass says `<address>: not packed: <git's words>`, runs no later step, fails, and still packs every other clone (design Decision 6). Done when `devenv shell -- cargo test -p boomdrive --test packs -- one_pack_fails` passes, proving the spec's "One pack fails", the clone's `objects/pack` made unwritable and then writable again by the test.
 
 ## 5. The README
 
