@@ -242,7 +242,21 @@ fn an_agents_commit_starts_no_collection() {
 
     std::fs::write(place.join("work"), "an agent's work\n").expect("the place's file");
     scratch.git(&place, &["add", "work"]);
-    scratch.git(&place, &["commit", "--quiet", "-m", "an agent's commit"]);
+    // Any collection the commit starts runs before it returns, so the
+    // reading below would show it where the clone's collection were on.
+    scratch.git(
+        &place,
+        &[
+            "-c",
+            "gc.autoDetach=false",
+            "-c",
+            "maintenance.autoDetach=false",
+            "commit",
+            "--quiet",
+            "-m",
+            "an agent's commit",
+        ],
+    );
     let commit = scratch.git(&place, &["rev-parse", "HEAD"]);
 
     let loose_after = loose(&bare);

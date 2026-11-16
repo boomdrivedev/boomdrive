@@ -34,3 +34,7 @@ A task is done once the check it names passes, run as it names it. The task grou
 ## 6. The specs archive under openspec's strict check
 
 - [x] 6.1 Each requirement the change's delta spec adds states its behaviour in under openspec's 500 characters, so archiving it passes `root:specs`. Done when, with the change archived by `devenv shell -- openspec archive the-runner-keeps-its-clones-packed --yes`, `devenv shell -- openspec validate --specs --strict --no-interactive` passes; the archive is then undone, uncommitted, for the verify stage to make.
+
+## 7. The agent's commit runs its collection in the foreground
+
+- [x] 7.1 In `crates/boomdrive/tests/packs.rs`, `an_agents_commit_starts_no_collection` commits by `git -c gc.autoDetach=false -c maintenance.autoDetach=false commit`, so any collection the commit starts runs before it returns and the test's reading shows it, failing where the clone's `gc.auto` and `maintenance.auto` are unset (verify.md, What falls short). Done when `devenv shell -- cargo test -p boomdrive --test packs -- an_agents_commit_starts_no_collection` passes.
