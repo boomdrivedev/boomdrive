@@ -46,7 +46,6 @@ impl Running {
         runner.tools(Programs {
             flume: flume.program(),
             sluice: scratch.root.join("absent/sluice"),
-            herdr: scratch.root.join("absent/herdr"),
         });
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();

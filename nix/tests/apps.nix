@@ -11,7 +11,8 @@
 # the change worktrunk-comes-with-the-flake, crew's companions' design
 # Decisions 6 and 9 of the change crews-companions-come-with-the-flake, and
 # timber's design Decisions 6 and 7 of the change
-# timber-comes-with-boomdrives-flake.
+# timber-comes-with-boomdrives-flake and design Decisions 2 to 8 of the
+# change the-set-takes-timbers-own-module.
 t:
 let
   inherit (t) lib outputs;
@@ -386,8 +387,9 @@ let
       !builtins.elem set.worktrunk.outPath (profileOf without)
     ) "the ${platform} system profile without the runner holds the set's worktrunk";
 
-  # timber, installed with the runner whether or not crew is on (design
-  # Decision 6 of the change timber-comes-with-boomdrives-flake).
+  # timber, installed with the runner whether or not crew is on, by its
+  # own module, which the Boomdrive module turns on (design Decisions 2, 3
+  # and 5 of the change the-set-takes-timbers-own-module).
   timberWithRunner =
     platform:
     { system, set, ... }:
@@ -397,13 +399,39 @@ let
     t.expect (
       t.failures evaluated == [ ]
     ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect evaluated.config.services.timber.enable "a ${platform} system with the runner leaves timber's module off"
     ++ t.expect (builtins.elem set.timber.outPath (profileOf evaluated)) "the ${platform} system profile holds no set's timber";
+
+  # timber's link, as text: on nix-darwin the activation's lines naming
+  # timber's file, on NixOS the user activation's `timber` snippet (Task
+  # notes 1.3).
+  timberLinkOf =
+    platform: evaluated:
+    if platform == "nix-darwin" then
+      lib.concatStringsSep "\n" (
+        lib.filter (lib.hasInfix "timber-config.toml") (
+          lib.splitString "\n" (activationOf platform evaluated)
+        )
+      )
+    else
+      builtins.unsafeDiscardStringContext ((userScripts evaluated).timber.text or "");
+  setsTimberLink = platform: timberLinkOf platform (platforms.${platform}.system { });
+  # timber's file linked in `evaluated` as the set's timber links it.
+  linksAsTheSets =
+    platform: what: evaluated:
+    let
+      link = timberLinkOf platform evaluated;
+    in
+    t.expect (link != "") "the ${platform} activation ${what} links no timber's file"
+    ++ t.expect (
+      link == setsTimberLink platform
+    ) "the ${platform} activation of timber's file ${what} is ${link}, not ${setsTimberLink platform}";
 
   # A timber of the host's own, laid out as a package with a bin.
   ownTimber =
     { pkgs, ... }:
     {
-      services.boomdrive.timber.package = pkgs.runCommand "own-timber" { } "mkdir -p $out/bin";
+      services.timber.package = pkgs.runCommand "own-timber" { } "mkdir -p $out/bin";
     };
   hostsTimber =
     platform:
@@ -412,28 +440,75 @@ let
       evaluated = system ownTimber;
       profile = profileOf evaluated;
     in
-    t.expect (builtins.elem evaluated.config.services.boomdrive.timber.package.outPath profile) "the ${platform} system profile holds no host's own timber"
+    t.expect (builtins.elem evaluated.config.services.timber.package.outPath profile) "the ${platform} system profile holds no host's own timber"
     ++ t.expect (
       !builtins.elem set.timber.outPath profile
-    ) "the ${platform} system profile holds the set's timber beside the host's own";
+    ) "the ${platform} system profile holds the set's timber beside the host's own"
+    ++ linksAsTheSets platform "with the host's own timber" evaluated;
 
   noTimber =
     platform:
     { system, set, ... }:
     let
-      evaluated = system { services.boomdrive.timber.package = null; };
+      evaluated = system { services.timber.package = null; };
     in
     t.expect (
       t.failures evaluated == [ ]
     ) "a ${platform} system with no timber fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       !builtins.elem set.timber.outPath (profileOf evaluated)
-    ) "the ${platform} system profile with no timber holds the set's timber";
+    ) "the ${platform} system profile with no timber holds the set's timber"
+    ++ linksAsTheSets platform "with no timber" evaluated;
+
+  # A host that keeps its own timber file turns timber's module off (design
+  # Decision 5 of the change the-set-takes-timbers-own-module).
+  ownTimberFile =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.timber.enable = false; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system that keeps its own timber file fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (timberLinkOf platform evaluated == "")
+        "the ${platform} activation of a host that keeps its own timber file links timber's: ${timberLinkOf platform evaluated}"
+    ++ t.expect (
+      !builtins.elem set.timber.outPath (profileOf evaluated)
+    ) "the ${platform} system profile of a host that keeps its own timber file holds the set's timber";
+
+  # The removed option fails evaluation, naming what replaces it (design
+  # Decision 6 of the change the-set-takes-timbers-own-module; Task notes
+  # 1.4).
+  timberGone =
+    platform:
+    { system, ... }:
+    let
+      gone = system { services.boomdrive.timber.package = null; };
+      failures = toString (t.failures gone);
+    in
+    t.expect (
+      t.failures gone != [ ]
+    ) "a ${platform} system that sets services.boomdrive.timber.package evaluates"
+    ++
+      lib.concatMap
+        (
+          words:
+          t.expect (lib.hasInfix words failures) "the failure of services.boomdrive.timber.package on ${platform} names no ${words}: ${failures}"
+        )
+        [
+          "services.timber.package"
+          "services.timber.enable"
+        ];
 
   timberWithoutRunner =
     platform:
     { without, set, ... }:
     t.expect (
+      !without.config.services.timber.enable
+    ) "a ${platform} system without the runner turns timber's module on"
+    ++ t.expect (
       !builtins.elem set.timber.outPath (profileOf without)
     ) "the ${platform} system profile without the runner holds the set's timber";
 
@@ -1009,7 +1084,9 @@ onEach "The way in with the runner" withRunner
 // onEach "timber with the runner" timberWithRunner
 // onEach "A host's own timber" hostsTimber
 // onEach "No timber of the set's" noTimber
+// onEach "A host that keeps its own timber file" ownTimberFile
 // onEach "No timber without the runner" timberWithoutRunner
+// onEach "The timber option is gone" timberGone
 // onEach "No serving process of the modules'" noServe
 // onEach "The companions with the runner and crew" companionsWithCrew
 // onEach "A host's own Plannotator" hostsPlannotator

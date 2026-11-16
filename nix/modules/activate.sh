@@ -123,14 +123,23 @@ keep() {
   fi
 }
 
+# The names of the environment's HERDR_* variables, one a line. A function
+# of its own, called inside `$( )`, since no `case` may stand inside one:
+# macOS's /bin/sh, bash 3.2.57, reads a pattern's bare `)` there as the
+# substitution's end and so cannot read the file, and shfmt drops the
+# POSIX leading `(` that would spare it.
+herdrs() {
+  env | while IFS= read -r line; do
+    case $line in HERDR_*=*) echo "${line%%=*}" ;; esac
+  done
+}
+
 plugins() {
   herdr=$1
   shift
   for plugin in "$@"; do
     if ! words=$(
-      names=$(env | while IFS= read -r line; do
-        case $line in HERDR_*=*) echo "${line%%=*}" ;; esac
-      done)
+      names=$(herdrs)
       for name in $names; do
         unset "$name"
       done
