@@ -394,6 +394,58 @@ pub fn settle_head(git: &Git, bare: &Path, default: &str) -> Result<bool, Words>
     Ok(lacked || pointed)
 }
 
+/// The most loose objects a clone holds before a keeping pass packs it:
+/// git's own default for `gc.auto`, the bound at which git's collection
+/// would have started (record 0051).
+pub const LOOSE_BOUND: u64 = 6_700;
+
+/// The most packs a clone holds before a keeping pass packs it: git's own
+/// default for `gc.autoPackLimit`, the bound at which git's collection
+/// would have started (record 0051).
+pub const PACK_BOUND: u64 = 50;
+
+/// What a clone holds, as `git count-objects -v` counts it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Counts {
+    /// Its loose objects, `count`.
+    pub loose: u64,
+    /// Its packs, `packs`.
+    pub packs: u64,
+}
+
+/// What the clone `bare` holds, read from `git count-objects -v`'s `count`
+/// and `packs`.
+pub fn counts(git: &Git, bare: &Path) -> Result<Counts, Words> {
+    let said = git.run(At::GitDir(bare), ["count-objects", "-v"])?;
+    read_counts(&said).ok_or_else(|| {
+        Words(format!(
+            "git count-objects -v gave no count or packs: {said}"
+        ))
+    })
+}
+
+/// The counts `count-objects -v` gives in `said`, one `<key>: <value>` a
+/// line, where it gives both.
+fn read_counts(said: &str) -> Option<Counts> {
+    let value = |key: &str| {
+        said.lines()
+            .filter_map(|line| line.split_once(':'))
+            .find(|(named, _)| named.trim() == key)
+            .and_then(|(_, value)| value.trim().parse().ok())
+    };
+    Some(Counts {
+        loose: value("count")?,
+        packs: value("packs")?,
+    })
+}
+
+/// Whether a clone holding `counts` has come to its occasion, and a
+/// keeping pass packs it: more than [`LOOSE_BOUND`] loose objects or more
+/// than [`PACK_BOUND`] packs (record 0051).
+pub fn is_occasion(counts: Counts) -> bool {
+    counts.loose > LOOSE_BOUND || counts.packs > PACK_BOUND
+}
+
 /// A worktree of a clone, as `worktree list --porcelain` names it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Worktree {
@@ -476,6 +528,25 @@ mod tests {
         for name in ["flume", ".partial", "..partial", ".github", "flume.partial"] {
             assert!(!is_partial(OsStr::new(name)), "{name}");
         }
+    }
+
+    #[test]
+    fn an_occasion_comes_past_either_bound() {
+        let held = |loose, packs| Counts { loose, packs };
+        assert!(!is_occasion(held(0, 0)));
+        assert!(!is_occasion(held(6_700, 50)));
+        assert!(is_occasion(held(6_701, 0)));
+        assert!(is_occasion(held(6_701, 50)));
+        assert!(is_occasion(held(0, 51)));
+        assert!(is_occasion(held(6_700, 51)));
+        assert_eq!(
+            read_counts(
+                "count: 7003\nsize: 28012\nin-pack: 3\npacks: 1\nsize-pack: 1\n\
+                 prune-packable: 0\ngarbage: 0\nsize-garbage: 0\n"
+            ),
+            Some(held(7_003, 1))
+        );
+        assert_eq!(read_counts("count: 1\n"), None);
     }
 
     #[test]
