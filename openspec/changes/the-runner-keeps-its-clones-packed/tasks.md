@@ -20,8 +20,8 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 3. What a pack drops and leaves
 
-- [ ] 3.1 A pack drops only the objects nothing of the clone reaches that were written more than two weeks before (design Decision 3). Done when `devenv shell -- cargo test -p boomdrive --test packs -- an_old_object_nothing_reaches_is_dropped what_a_place_and_sluice_hold_is_kept` passes, proving the spec's "An old object nothing reaches is dropped" and "What a place and sluice hold is kept", each clone brought past the bound by 51 packs.
-- [ ] 3.2 A pack packs no ref, expires no ref's log and prunes no worktree (design Decision 4). Done when `devenv shell -- cargo test -p boomdrive --test packs -- refs_logs_and_worktrees_are_left_as_they_were` passes, proving the spec's "Refs, logs and worktrees are left as they were", its ref's log entry written a year before by `git update-ref --create-reflog` under `GIT_COMMITTER_DATE`.
+- [x] 3.1 A pack drops only the objects nothing of the clone reaches that were written more than two weeks before (design Decision 3). Done when `devenv shell -- cargo test -p boomdrive --test packs -- an_old_object_nothing_reaches_is_dropped what_a_place_and_sluice_hold_is_kept` passes, proving the spec's "An old object nothing reaches is dropped" and "What a place and sluice hold is kept", each clone brought past the bound by 51 packs.
+- [x] 3.2 A pack packs no ref, expires no ref's log and prunes no worktree (design Decision 4). Done when `devenv shell -- cargo test -p boomdrive --test packs -- refs_logs_and_worktrees_are_left_as_they_were` passes, proving the spec's "Refs, logs and worktrees are left as they were", its ref's log entry written a year before by `git update-ref --create-reflog` under `GIT_COMMITTER_DATE`.
 
 ## 4. A pack that fails is named
 

@@ -521,3 +521,152 @@ fn a_stop_while_the_pass_packs() {
     assert_eq!(loose(&sluice), loose_before);
     assert_eq!(packs(&sluice), packs_before);
 }
+
+/// A pack drops a blob nothing reaches written three weeks before, and
+/// keeps one written that day.
+#[test]
+fn an_old_object_nothing_reaches_is_dropped() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let config = keeping(&["agentplot/flume"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    let old = write_loose(&scratch, &bare, "old", 1).remove(0);
+    age(&bare, &old, 21);
+    let new = write_loose(&scratch, &bare, "new", 1).remove(0);
+    write_packs(&scratch, &bare, "pack", 51);
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert!(says_packed(&lines, "agentplot/flume"), "{lines:?}");
+    assert!(!holds_object(&scratch, &bare, &old));
+    assert!(holds_object(&scratch, &bare, &new));
+}
+
+/// A pack keeps what a place's index and branch and sluice's ref reach,
+/// however old.
+#[test]
+fn what_a_place_and_sluice_hold_is_kept() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let config = keeping(&["agentplot/flume"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    let place = scratch.root.join("place");
+    scratch.git(
+        &bare,
+        &[
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "place",
+            &place.to_string_lossy(),
+            "refs/remotes/origin/main",
+        ],
+    );
+    std::fs::write(place.join("committed"), "a place's commit\n").expect("a place's file");
+    scratch.git(&place, &["add", "committed"]);
+    scratch.git(&place, &["commit", "--quiet", "-m", "a place's commit"]);
+    std::fs::write(place.join("staged"), "a place's index alone\n").expect("a place's file");
+    scratch.git(&place, &["add", "staged"]);
+    let tree = scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main^{tree}"]);
+    let sluices = scratch.git(
+        &bare,
+        &[
+            "commit-tree",
+            &tree,
+            "-p",
+            "refs/remotes/origin/main",
+            "-m",
+            "sluice's copy",
+        ],
+    );
+    scratch.git(&bare, &["update-ref", "refs/sluice/heads/x", &sluices]);
+    let held = [
+        scratch.git(&place, &["rev-parse", "HEAD"]),
+        scratch.git(&place, &["rev-parse", "HEAD^{tree}"]),
+        scratch.git(&place, &["rev-parse", "HEAD:committed"]),
+        scratch.git(&place, &["rev-parse", ":staged"]),
+        sluices,
+    ];
+    for id in &held {
+        age(&bare, id, 21);
+    }
+    write_packs(&scratch, &bare, "pack", 51);
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert!(says_packed(&lines, "agentplot/flume"), "{lines:?}");
+    for id in &held {
+        assert!(holds_object(&scratch, &bare, id), "{id} dropped");
+    }
+}
+
+/// A pack packs no ref, expires no ref's log and prunes no worktree.
+#[test]
+fn refs_logs_and_worktrees_are_left_as_they_were() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let config = keeping(&["agentplot/flume"]);
+    scratch.pass(&config);
+    let bare = scratch.clone_of("agentplot/flume");
+    let tip = scratch.git(&bare, &["rev-parse", "refs/remotes/origin/main"]);
+    let a_year_ago = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("the time")
+        .as_secs()
+        - 365 * 24 * 60 * 60;
+    let output = scratch
+        .command("git")
+        .arg("--git-dir")
+        .arg(&bare)
+        .args(["update-ref", "--create-reflog", "refs/sluice/heads/x", &tip])
+        .env("GIT_COMMITTER_DATE", format!("{a_year_ago} +0000"))
+        .output()
+        .expect("git runs");
+    assert!(output.status.success(), "{output:?}");
+    let gone = scratch.root.join("gone");
+    scratch.git(
+        &bare,
+        &[
+            "worktree",
+            "add",
+            "--quiet",
+            "--detach",
+            &gone.to_string_lossy(),
+            "refs/remotes/origin/main",
+        ],
+    );
+    std::fs::remove_dir_all(&gone).expect("the worktree's folder removed");
+    write_packs(&scratch, &bare, "pack", 51);
+    let reference = bare.join("refs/sluice/heads/x");
+    let log = bare.join("logs/refs/sluice/heads/x");
+    let log_before = std::fs::read_to_string(&log).expect("the ref's log");
+    assert!(
+        log_before.contains(&format!(" {a_year_ago} +0000")),
+        "{log_before}"
+    );
+    assert!(reference.is_file());
+    assert!(!bare.join("packed-refs").exists());
+    let listed = format!("worktree {}", gone.display());
+    assert!(scratch
+        .git(&bare, &["worktree", "list", "--porcelain"])
+        .contains(&listed));
+
+    let (outcome, lines) = scratch.pass(&config);
+
+    assert_eq!(outcome, Outcome::Kept);
+    assert!(says_packed(&lines, "agentplot/flume"), "{lines:?}");
+    assert!(reference.is_file());
+    assert_eq!(
+        std::fs::read_to_string(&log).expect("the ref's log"),
+        log_before
+    );
+    assert!(!bare.join("packed-refs").exists());
+    assert!(scratch
+        .git(&bare, &["worktree", "list", "--porcelain"])
+        .contains(&listed));
+}
