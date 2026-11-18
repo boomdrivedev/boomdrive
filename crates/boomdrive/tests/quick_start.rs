@@ -796,7 +796,7 @@ fn a_change_the_drive_is_given_lands() {
     };
     assert!(sent, "the fix landed with no send: {landed}");
     assert_eq!(ran.len(), 1, "{ran:?}");
-    assert_eq!(landed["identity"], "flume/fix@1", "{landed}");
+    assert_eq!(landed["identity"], "flume/fix@2", "{landed}");
     assert_eq!(landed["mark"], "boomdrive:home/1", "{landed}");
     assert_eq!(
         landed_commit(&landed),

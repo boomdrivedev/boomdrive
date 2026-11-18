@@ -125,16 +125,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794860694,
-        "narHash": "sha256-1DsDltjjaa1l1j40fTPxB14WAkhicd5y+Lib6AMLV3U=",
+        "lastModified": 1795015923,
+        "narHash": "sha256-UXG7NxQBiZPci1oqCwP6tlXJLlf1S4VNUydcHayn1Ys=",
         "owner": "boomdrivedev",
         "repo": "flume",
-        "rev": "b52cb688f2014593cc8fc80321421af579247b61",
+        "rev": "7e9be28c0a049198244c39ff2e2a952cb7f6e219",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.26.0",
+        "ref": "v0.29.0",
         "repo": "flume",
         "type": "github"
       }
