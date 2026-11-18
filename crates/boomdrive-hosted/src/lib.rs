@@ -6,13 +6,16 @@
 //! partition's enrollment, each partition's connection, the cut of each
 //! tool's answer to its copy, the checks of version 3's messages, and
 //! `Hosted`, the `ControlPlane` over a partition's connection, which
-//! [`open`] opens as a part for each partition.
+//! [`open`] opens as a part for each partition; and the observers of
+//! `[observer]`, which [`observer::open`] opens, one for each partition
+//! (record 0048).
 
 pub mod check;
 pub mod connection;
 pub mod copy;
 pub mod enrollment;
 pub mod key;
+pub mod observer;
 pub mod plane;
 pub mod protocol;
 pub mod table;

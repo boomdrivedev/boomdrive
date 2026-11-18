@@ -11,18 +11,25 @@
 
 mod common;
 
+use boomdrive_control::{
+    Acted, Answer, At, Capacity, Carried, Hello, HostPart, Id, Launched, Lease, Observed, Outcome,
+    Report, ToolVersion, INTERFACE_VERSION,
+};
 use boomdrive_hosted::connection::{Connection, Dial, Wake, OBSERVES};
 use boomdrive_hosted::key::{Memory, Store};
+use boomdrive_hosted::observer;
 use boomdrive_hosted::table::Table;
+use boomdrive_hosted::Hosted;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
 use common::waits::{advance_until, Hold, Lines};
 use ed25519_dalek::SigningKey;
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
 
 /// The poll interval of these tests, where the backoff's cap stops.
@@ -400,4 +407,365 @@ async fn an_observers_outage() {
         0,
         "an observer woke the runner"
     );
+}
+
+/// The runner's hello: a host keeping `example/app` and `example/service`,
+/// with room, holding the lease of `home/1`.
+fn runner_hello() -> Hello {
+    Hello {
+        interface_version: INTERFACE_VERSION,
+        runner_version: "boomdrive 0.0.0".to_string(),
+        tool_versions: BTreeMap::from([(
+            "flume".to_string(),
+            ToolVersion::Printed("flume 0.4.1".to_string()),
+        )]),
+        repositories: vec!["example/app".to_string(), "example/service".to_string()],
+        draining: vec![],
+        drives: BTreeMap::new(),
+        capacity: Capacity::Printed(HostPart {
+            running: "0".to_string(),
+            bound: "4".to_string(),
+            room: "4".to_string(),
+            streams:
+                r#"[{"name":"default","priority":0,"running":0,"bound":4,"room":4,"queue":[]}]"#
+                    .to_string(),
+        }),
+        leases: BTreeMap::from([(Id::new("home/1"), 1)]),
+    }
+}
+
+/// The copy of a place's status version 3's example of a live agent
+/// carries.
+fn status_copy() -> Value {
+    example("from-runner", "report-a-live-agent-with-its-pane.json")["body"]["report"]["launches"]
+        ["offer-7"]["status"]["copy"]
+        .clone()
+}
+
+/// `home`'s share of the runner's report: the launch `home/1` launched,
+/// carrying Flume's status of its place, and each of `more` launched with
+/// none; and the act `home/2` done.
+fn share(more: &[&str]) -> Report {
+    let answer = Answer {
+        outcome: Outcome::Launched,
+        place_dir: Some("/places/change--parse-words".to_string()),
+        words: None,
+        at: At::parse("2026-11-01T10:00:00Z").expect("a time"),
+    };
+    let launched = |status: Option<Carried>| Launched {
+        lease: Lease {
+            number: 1,
+            expires: None,
+        },
+        repository: Some("example/app".to_string()),
+        answer: answer.clone(),
+        status,
+        entry: None,
+    };
+    let mut report = Report::default();
+    report.launches.insert(
+        Id::new("home/1"),
+        launched(Some(Carried {
+            text: json!({ "status": { "places": [status_copy()] } }).to_string(),
+            at: At::parse("2026-11-01T10:01:00Z").expect("a time"),
+            listed: true,
+        })),
+    );
+    for id in more {
+        report.launches.insert(Id::new(*id), launched(None));
+    }
+    report.acts.insert(
+        Id::new("home/2"),
+        Acted {
+            launch: Id::new("home/1"),
+            lease: 1,
+            outcome: Outcome::Done,
+            words: None,
+            at: At::parse("2026-11-01T10:02:00Z").expect("a time"),
+        },
+    );
+    report
+}
+
+/// The observers of the observer table naming `fake`, `home`'s key kept,
+/// each saying its lines to `lines`.
+fn observers(fake: &Fake, lines: &Lines) -> Vec<Observed> {
+    let say = lines.say();
+    observer::observers(
+        &table(fake),
+        store(fake, &home_key()),
+        POLL_INTERVAL,
+        &|_| {
+            let say = say.clone();
+            Box::new(move |line| say(line))
+        },
+    )
+    .expect("opened")
+}
+
+/// `home`'s one observer over `fake`.
+fn home(fake: &Fake, lines: &Lines) -> Observed {
+    let mut observed = observers(fake, lines);
+    assert_eq!(observed.len(), 1);
+    observed.remove(0)
+}
+
+/// Each report `home`'s observer sent, its body.
+fn reports(taken: &[Taken]) -> Vec<Value> {
+    messages(taken)
+        .into_iter()
+        .filter(|message| kind(message).as_deref() == Some("report"))
+        .map(|message| message["body"]["report"].clone())
+        .collect()
+}
+
+/// The hosted-control-plane spec's "The places observed": the observed
+/// report holds `home/1` by its id as the runner holds it, with its answer
+/// and its status's copy, and no lease, and no act (design Decision 2).
+#[test]
+fn the_places_observed() {
+    let fake = observer();
+    let lines = Lines::new();
+    let mut home = home(&fake, &lines);
+
+    home.observer.observe(&runner_hello(), &share(&[]));
+
+    let taken = fake.wait_until("an observed report", |t| sent(t, "report") == 1);
+    let report = &reports(&taken)[0];
+    assert_eq!(
+        *report,
+        json!({
+            "observing": true,
+            "launches": {
+                "home/1": {
+                    "answer": {
+                        "outcome": "launched",
+                        "place_dir": "/places/change--parse-words",
+                        "words": null,
+                        "at": "2026-11-01T10:00:00Z"
+                    },
+                    "status": {
+                        "copy": status_copy(),
+                        "at": "2026-11-01T10:01:00Z",
+                        "listed": true
+                    },
+                    "entry": null
+                }
+            }
+        })
+    );
+    for taken in &taken {
+        if let Taken::Message { refused, .. } = taken {
+            assert_eq!(refused, &None, "each message passes version 3");
+        }
+    }
+}
+
+/// The hosted-control-plane spec's "The observing hello": handed a hello
+/// keeping `example/app` and `example/service`, with a capacity and a
+/// lease, `home`'s observer first sends a `hello` with `observing` true,
+/// naming `example/app` alone, and no capacity and no lease (core.26).
+#[test]
+fn the_observing_hello_names_the_partitions_repositories() {
+    let fake = observer();
+    let lines = Lines::new();
+    let mut home = home(&fake, &lines);
+
+    home.observer.observe(&runner_hello(), &share(&[]));
+
+    let taken = fake.wait_until("the observing hello", |t| sent(t, "hello") == 1);
+    let first = messages(&taken)[0];
+    assert_eq!(kind(first).as_deref(), Some("hello"), "the hello is first");
+    assert_eq!(
+        first["body"]["hello"],
+        json!({
+            "observing": true,
+            "interface_version": INTERFACE_VERSION,
+            "runner_version": "boomdrive 0.0.0",
+            "tool_versions": { "flume": { "printed": "flume 0.4.1" } },
+            "repositories": ["example/app"]
+        })
+    );
+}
+
+/// The hosted-control-plane spec's "A report's answer that lets go": the
+/// observer answers the report letting go `home/1`, so it is not sent
+/// again at the next connection, and the next observed report still holds
+/// `home/1` (core.10).
+#[test]
+fn a_report_answered_and_let_go() {
+    let fake = observer();
+    fake.answer_reports("home", &["home/1"], &[]);
+    let lines = Lines::new();
+    let mut home = home(&fake, &lines);
+
+    home.observer.observe(&runner_hello(), &share(&[]));
+    fake.wait_until("the reported sent", |t| sent(t, "report") == 1);
+    // The `reported` crosses the loopback after the report is taken.
+    std::thread::sleep(Duration::from_millis(200));
+    fake.drop_connection("home");
+    fake.wait_until("a second connection's hello", |t| sent(t, "hello") == 2);
+    std::thread::sleep(Duration::from_millis(200));
+    assert_eq!(sent(&fake.taken(), "report"), 1, "the report sent again");
+
+    home.observer.observe(&runner_hello(), &share(&[]));
+    let taken = fake.wait_until("the next report", |t| sent(t, "report") == 2);
+    assert!(
+        reports(&taken)[1]["launches"].get("home/1").is_some(),
+        "the next report still holds home/1"
+    );
+}
+
+/// The hosted-control-plane spec's "A pulled wakes nothing": the observer
+/// of `home` sent three `pulled`, each holding no want, the wake of the
+/// part `home` it was opened beside is never called.
+#[test]
+fn a_pulled_wakes_nothing() {
+    let (plane, fake) = (Fake::start(), observer());
+    let plane_key = SigningKey::from_bytes(&[5u8; 32]);
+    plane.enrolled("home", &plane_key.verifying_key());
+    let hosted_table = Table::read(
+        &toml::from_str(&format!(
+            "url = {:?}\n[[partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n",
+            plane.url()
+        ))
+        .expect("a TOML table"),
+        Path::new("/h/.config/boomdrive/config.toml"),
+    )
+    .expect("the table read");
+    let memory = Memory::default();
+    memory
+        .write(&hosted_table.key_name("home"), &plane_key)
+        .expect("kept");
+    let wakes = Arc::new(AtomicUsize::new(0));
+    let woken = wakes.clone();
+    let mut parts = Hosted::parts(
+        &hosted_table,
+        Arc::new(memory),
+        POLL_INTERVAL,
+        &|_| Box::new(|_| {}),
+        &|_| {
+            let woken = woken.clone();
+            Box::new(move || {
+                woken.fetch_add(1, Ordering::SeqCst);
+            })
+        },
+    )
+    .expect("opened");
+    let lines = Lines::new();
+    let mut home = home(&fake, &lines);
+    let report = share(&[]);
+    parts[0]
+        .plane
+        .pull(&runner_hello(), &report)
+        .expect("home read");
+    home.observer.observe(&runner_hello(), &report);
+    lines.wait_until("the observer reached", |lines| {
+        lines.contains(&"home: the observer is reached".to_string())
+    });
+    let before = wakes.load(Ordering::SeqCst);
+
+    for _ in 0..3 {
+        fake.send_body("home", "pulled", json!({ "wants": [], "report": null }))
+            .expect("sent");
+    }
+    // A message of work after them, refused once the three are read.
+    fake.send_body(
+        "home",
+        "terminal_close",
+        json!({ "terminal": "terminal-1" }),
+    )
+    .expect("sent");
+    fake.wait_until("the refusal after them", |t| {
+        sent(t, "message_refused") == 1
+    });
+
+    assert_eq!(
+        wakes.load(Ordering::SeqCst),
+        before,
+        "a pulled woke the runner"
+    );
+    assert_eq!(
+        lines
+            .all()
+            .iter()
+            .filter(|line| line.contains("is reached"))
+            .count(),
+        1,
+        "{:#?}",
+        lines.all()
+    );
+}
+
+/// The hosted-control-plane spec's "An observer down": the observer down,
+/// each of three handings of a hello and a report returns within 100
+/// milliseconds (design Decision 8; core.49).
+#[test]
+fn an_observer_down_holds_up_nothing() {
+    let fake = observer();
+    fake.down(true);
+    let lines = Lines::new();
+    let mut home = home(&fake, &lines);
+
+    for n in 0..3 {
+        let began = Instant::now();
+        home.observer.observe(&runner_hello(), &share(&[]));
+        let took = began.elapsed();
+        assert!(
+            took < Duration::from_millis(100),
+            "handing {n} took {took:?}"
+        );
+        if n == 0 {
+            fake.wait_until("an attempt unanswered", |t| unanswered(t) >= 1);
+        }
+    }
+}
+
+/// The hosted-control-plane spec's "Back again": two reports handed while
+/// the observer is down, then back, the second alone is sent, after the
+/// observing hello (core.21).
+#[test]
+fn back_again_the_newest_alone() {
+    let fake = observer();
+    fake.down(true);
+    let lines = Lines::new();
+    let mut home = home(&fake, &lines);
+
+    home.observer.observe(&runner_hello(), &share(&[]));
+    fake.wait_until("an attempt unanswered", |t| unanswered(t) >= 1);
+    home.observer.observe(&runner_hello(), &share(&["home/3"]));
+    fake.down(false);
+
+    let taken = fake.wait_until("a report", |t| sent(t, "report") == 1);
+    std::thread::sleep(Duration::from_millis(200));
+    let taken_now = fake.taken();
+    let kinds: Vec<Option<String>> = messages(&taken_now).into_iter().map(kind).collect();
+    assert_eq!(
+        kinds,
+        [Some("hello".to_string()), Some("report".to_string())],
+        "{taken:#?}"
+    );
+    let launches = reports(&taken_now)[0]["launches"].clone();
+    let ids: Vec<&String> = launches.as_object().expect("launches").keys().collect();
+    assert_eq!(ids, ["home/1", "home/3"], "the second report alone is sent");
+}
+
+/// The control-plane-interface spec's "The hosted observers": `[observer]`
+/// naming `home` and `work` gives two observers, `home` then `work`.
+#[test]
+fn the_hosted_observers() {
+    let text = "url = \"http://localhost:8787\"\n\
+                [[partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n\
+                [[partitions]]\nlabel = \"work\"\nrepositories = [\"example/service\"]\n";
+    let table = Table::read_observer(
+        &toml::from_str(text).expect("a TOML table"),
+        Path::new("/h/.config/boomdrive/config.toml"),
+    )
+    .expect("the observer table read");
+    let observed = observer::observers(&table, Arc::new(Memory::default()), POLL_INTERVAL, &|_| {
+        Box::new(|_| {})
+    })
+    .expect("opened");
+    let labels: Vec<&str> = observed.iter().map(|o| o.label.as_str()).collect();
+    assert_eq!(labels, ["home", "work"]);
 }

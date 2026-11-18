@@ -102,6 +102,18 @@ pub fn observed_report() -> &'static Validator {
     VALIDATOR.get_or_init(|| validator("report.schema.json#/$defs/observed_report"))
 }
 
+/// Builds every validator an observer's handing reads, so that no handing
+/// builds one: a handing returns at once, waiting on nothing (design
+/// Decision 8 of a-runner-reports-to-an-observer-it-takes-no-work-from).
+pub fn prepare_observing() {
+    observing_hello();
+    observed_report();
+    from_runner();
+    place_status();
+    end_record();
+    submission_entry();
+}
+
 /// The validator of a place's status as its copy, `place-status.schema.json`'s
 /// `place_status`.
 pub fn place_status() -> &'static Validator {
