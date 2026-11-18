@@ -31,6 +31,7 @@ use read::{runner_branch, Kept, Main, Request, Runner, Store};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use weir_bounded::Halt;
 use weir_capture::rec::Record;
 
 /// Where every state repository is reached: GitHub, over https, through
@@ -71,18 +72,31 @@ pub struct Crew {
     said: BTreeSet<String>,
     before_claim: Option<Hook>,
     between_claim_and_check: Option<Hook>,
+    /// The halt each call to its state repositories also ends at: the
+    /// runner's, which the runner's stop sets, or one never set (record
+    /// 0042 as amended on 2026-11-12; core.58).
+    halt: Halt,
 }
 
 /// Opens crew's implementation from its table, `table`, of the
 /// configuration file `file`, keeping its caches under `data_dir`, as its
-/// [`parts`], each saying through the say `say_for` makes for its label.
+/// [`parts`], each saying through the say `say_for` makes for its label,
+/// and each given `halt`, the runner's, at which every call to a state
+/// repository ends (record 0042 as amended on 2026-11-12; core.58).
 pub fn open(
     table: &toml::Table,
     file: &Path,
     data_dir: &Path,
     say_for: &dyn Fn(&str) -> Say,
+    halt: &Halt,
 ) -> Result<Vec<Part>, String> {
-    Ok(parts(config::read(table, file)?, GITHUB, data_dir, say_for))
+    Ok(parts(
+        config::read(table, file)?,
+        GITHUB,
+        data_dir,
+        say_for,
+        halt,
+    ))
 }
 
 /// crew's implementation of `config` as parts, its state repositories
@@ -91,12 +105,16 @@ pub fn open(
 /// through the say `say_for` makes for that label. A partition is a
 /// drive, and each is pulled, answered and reported on its own, so one
 /// that cannot be read or written hides only its own work (record 0026;
-/// design Decision 7).
+/// design Decision 7). Each part's crew is given a clone of `halt`, the
+/// runner's, so its listing and every read and write of its state
+/// repository end at the runner's stop, and none begins after it (record
+/// 0042 as amended on 2026-11-12; core.58).
 pub fn parts(
     config: Config,
     forge: &str,
     data_dir: &Path,
     say_for: &dyn Fn(&str) -> Say,
+    halt: &Halt,
 ) -> Vec<Part> {
     config
         .partitions
@@ -109,7 +127,7 @@ pub fn parts(
             let say = say_for(&partition.label);
             Part {
                 label: partition.label.clone(),
-                plane: Box::new(Crew::new(one, forge, data_dir, say)),
+                plane: Box::new(Crew::new(one, forge, data_dir, say).halted_by(halt.clone())),
             }
         })
         .collect()
@@ -119,7 +137,8 @@ impl Crew {
     /// crew's implementation of `config`, its state repositories reached
     /// on `forge`, a base address ending in `/`. The cache a release
     /// before shared among every partition of a state repository is
-    /// removed where it is there, and said (design Decision 7).
+    /// removed where it is there, and said (design Decision 7). Its halt
+    /// is never set until [`Crew::halted_by`] gives it one.
     pub fn new(config: Config, forge: &str, data_dir: &Path, mut say: Say) -> Crew {
         for partition in &config.partitions {
             remove_shared_cache(data_dir, &partition.state_repository, &mut say);
@@ -137,7 +156,15 @@ impl Crew {
             said: BTreeSet::new(),
             before_claim: None,
             between_claim_and_check: None,
+            halt: Halt::default(),
         }
+    }
+
+    /// This crew, every call to its state repositories also ended at
+    /// `halt`: the runner's, which the runner's stop sets (record 0042 as
+    /// amended on 2026-11-12; core.58).
+    pub fn halted_by(self, halt: Halt) -> Crew {
+        Crew { halt, ..self }
     }
 
     /// Runs `hook` at every pull that claims, between the claim's write
@@ -161,16 +188,20 @@ impl Crew {
     /// so no weir lock, and one's fetch or push holds no other's pull or
     /// report (record 0026; design Decision 7). Its listing, and each try
     /// of weir-branch's fetch, listing and push, is stopped at thirty
-    /// seconds (record 0042 as amended on 2026-11-11).
+    /// seconds (record 0042 as amended on 2026-11-11), or at the crew's
+    /// halt, which the store is given, whichever comes first (record 0042
+    /// as amended on 2026-11-12).
     fn store(&self, partition: &Partition) -> Store {
         let repository = &partition.state_repository;
-        Store::new(
+        let mut store = Store::new(
             caches(&self.data_dir)
                 .join(&repository.owner)
                 .join(&repository.name)
                 .join(format!("{}.git", partition.label)),
             repository.url(&self.forge),
-        )
+        );
+        store.halt = self.halt.clone();
+        store
     }
 }
 
@@ -544,8 +575,9 @@ impl Crew {
                         kits.push((request, address));
                     }
                     // An act naming no host is the runner's that holds its
-                    // launch, a confirm among them (core.56).
-                    (None, Some("retry" | "land" | "confirm" | "drop" | "priority")) => {
+                    // launch, a confirm and a hold among them (core.56,
+                    // core.59).
+                    (None, Some("retry" | "land" | "confirm" | "hold" | "drop" | "priority")) => {
                         acts.push(request)
                     }
                     // A preview is the ask of the one host its Host names:

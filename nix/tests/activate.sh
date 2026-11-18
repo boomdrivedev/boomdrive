@@ -5,21 +5,26 @@
 # scratch HOME, the module's file in a store of its own, and stubs of
 # systemctl and ps first on PATH that record their calls, and of id. The
 # stubs answer from the case's folder: id the user running it, alice
-# unless `user` says another; systemctl's show the unit's MainPID, 0
-# unless `MainPID` says another; and ps the command line in `args`. The
-# plugins' cases add a stub of herdr, run by its path as the modules run
-# it, that records its arguments and the HERDR_* variables it sees, and
-# refuses the plugin `refuse` names, saying `manifest not found`. The
-# managed document's cases write in a scratch folder standing for Claude
-# Code's managed-settings.d, as the case's own user. It prints each
-# failure as one line, nix: <case>: <what>, and nothing where every case
-# holds.
+# unless `user` says another, and its uid, the system's own unless `uid`
+# says another; systemctl's show the unit's MainPID, 0 unless `MainPID`
+# says another; and ps the command line in `args`. The plugins' cases add
+# a stub of herdr, run by its path as the modules run it, that records its
+# arguments and the HERDR_* variables it sees, and refuses the plugin
+# `refuse` names, saying `manifest not found`. The managed document's
+# cases write in a scratch folder standing for Claude Code's
+# managed-settings.d, as the case's own user. The signing's cases add
+# stubs of security, codesign and openssl (record 0047; design Decision 7
+# of the change the-runners-macos-grant-outlasts-a-new-build), described
+# at freshSign, and a keychain that is a word they take, never a keychain.
+# Each case runs with a TMPDIR of its own. It prints each failure as one
+# line, nix: <case>: <what>, and nothing where every case holds.
 set -eu
 
 activate=$(cd "$(dirname "$0")/../modules" && pwd)/activate.sh
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 cases=0
+uid=$(id -u)
 
 # A case's folder: its home, the module's file, the stubs and their calls.
 fresh() {
@@ -34,6 +39,7 @@ fresh() {
   mkdir -p "$home" "$dir/store" "$dir/bin"
   echo 'repositories = []' >"$file"
   echo alice >"$dir/user"
+  echo "$uid" >"$dir/uid"
   echo 0 >"$dir/MainPID"
   : >"$dir/args"
   cat >"$dir/bin/systemctl" <<STUB
@@ -48,7 +54,10 @@ cat "$dir/args"
 STUB
   cat >"$dir/bin/id" <<STUB
 #!/bin/sh
-cat "$dir/user"
+case \${1:-} in
+-u) cat "$dir/uid" ;;
+*) cat "$dir/user" ;;
+esac
 STUB
   chmod +x "$dir/bin/systemctl" "$dir/bin/ps" "$dir/bin/id"
 }
@@ -57,7 +66,8 @@ STUB
 # error.
 run() {
   status=0
-  HOME=$home PATH=$dir/bin:$PATH sh "$activate" "$@" >"$dir/out" 2>"$dir/err" || status=$?
+  mkdir -p "$dir/tmp"
+  HOME=$home TMPDIR=$dir/tmp PATH=$dir/bin:$PATH sh "$activate" "$@" >"$dir/out" 2>"$dir/err" || status=$?
   out=$(cat "$dir/out")
   err=$(cat "$dir/err")
 }
@@ -585,3 +595,345 @@ expect "$named" "managed with no path exits $status, not 2" [ "$status" -eq 2 ]
 run managed "$managed" "$document" more
 expect "$named" "managed with a word after the source exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "managed's usage made $settings" missing "$settings"
+
+# The identities the signing's cases name: the one security's import makes,
+# one the keychain holds already, and another.
+made=5E4D3C2B1A0F9E8D7C6B5A4F3E2D1C0B9A8F7E6D
+held=0F1E2D3C4B5A69788796A5B4C3D2E1F00F1E2D3C
+other=9A8B7C6D5E4F30211203F4E5D6C7B8A99A8B7C6D
+
+# A case of the signing: the keychain, a word the stubs take; the folder,
+# with a space in its path as on macOS, and not made yet; the program, a
+# build of the runner in the case's store; and stubs of security, codesign
+# and openssl, which record their calls. security's find-identity lists the
+# lines of `identities` in its own form. Its import refuses with the words
+# of `refuse-import` where that is there, and adds the identity $made to
+# `identities` once it has imported both the key and the certificate
+# openssl wrote. codesign's --verify passes where the file holds `signed
+# <SHA-1>` of its requirement's leaf, and its --force --sign appends
+# `signed <SHA-1>` to the file, or refuses with the words of `refuse-sign`
+# where that is there. openssl writes `key` to its -keyout file and `cert`
+# to its -out file, and records their folder in `openssl-folder` and its
+# configuration in `openssl.cnf`. mv refuses where its last argument is the
+# path on the first line of `refuse-move`, saying the lines after it, and
+# otherwise runs the system's own mv, found before the stubs are first on
+# PATH.
+freshSign() {
+  fresh
+  keychain=$dir/keychain
+  folder="$dir/Application Support/Boomdrive"
+  copy=$folder/boomdrive
+  source=$folder/boomdrive.source
+  mkdir -p "$(dirname "$folder")" "$(dirname "$program")"
+  echo "the runner" >"$program"
+  : >"$dir/identities"
+  echo "$made" >"$dir/made"
+  command -v mv >"$dir/system-mv"
+  cat >"$dir/bin/security" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "security $*" >>"$here/calls"
+case $1 in
+find-identity)
+  echo 'Policy: Code Signing'
+  echo '  Matching identities'
+  cat "$here/identities"
+  echo "     $(wc -l <"$here/identities" | tr -d ' ') identities found"
+  echo
+  echo '  Valid identities only'
+  echo '     0 valid identities found'
+  ;;
+import)
+  if [ -e "$here/refuse-import" ]; then
+    cat "$here/refuse-import" >&2
+    exit 1
+  fi
+  case $2 in
+  */key.pem) [ "$(cat "$2")" != key ] || : >"$here/imported-key" ;;
+  */cert.pem) [ "$(cat "$2")" != cert ] || : >"$here/imported-cert" ;;
+  esac
+  if [ -e "$here/imported-key" ] && [ -e "$here/imported-cert" ]; then
+    echo "  1) $(cat "$here/made") \"Boomdrive runner\" (CSSMERR_TP_NOT_TRUSTED)" >>"$here/identities"
+  fi
+  ;;
+*) exit 64 ;;
+esac
+STUB
+  cat >"$dir/bin/codesign" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "codesign $*" >>"$here/calls"
+for file; do :; done
+case $1 in
+--verify)
+  sha=${3#*H\"}
+  sha=${sha%\"*}
+  grep -qx "signed $sha" "$file" 2>/dev/null
+  ;;
+--force)
+  if [ -e "$here/refuse-sign" ]; then
+    cat "$here/refuse-sign" >&2
+    exit 1
+  fi
+  echo "signed $3" >>"$file"
+  ;;
+*) exit 64 ;;
+esac
+STUB
+  cat >"$dir/bin/openssl" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "openssl $*" >>"$here/calls"
+while [ $# -gt 0 ]; do
+  case $1 in
+  -config) config=$2 ;;
+  -keyout) key=$2 ;;
+  -out) cert=$2 ;;
+  esac
+  shift
+done
+echo key >"$key"
+echo cert >"$cert"
+dirname "$key" >"$here/openssl-folder"
+cp "$config" "$here/openssl.cnf"
+STUB
+  cat >"$dir/bin/mv" <<'STUB'
+#!/bin/sh
+here=${0%/bin/*}
+echo "mv $*" >>"$here/calls"
+for last; do :; done
+if [ -e "$here/refuse-move" ] && [ "$last" = "$(sed -n 1p "$here/refuse-move")" ]; then
+  sed 1d "$here/refuse-move" >&2
+  exit 1
+fi
+exec "$(cat "$here/system-mv")" "$@"
+STUB
+  chmod +x "$dir/bin/security" "$dir/bin/codesign" "$dir/bin/openssl" "$dir/bin/mv"
+}
+
+# security's line of the identity `$2` named `$3`, numbered `$1`.
+identity() {
+  echo "  $1) $2 \"$3\" (CSSMERR_TP_NOT_TRUSTED)" >>"$dir/identities"
+}
+
+# The folder `$1` holds nothing.
+empty() {
+  [ -z "$(ls -A "$1")" ]
+}
+
+named="A folder another user can write"
+for write in g+w o+w; do
+  freshSign
+  mkdir -m 0755 "$folder"
+  chmod "$write" "$folder"
+  run sign "$keychain" "$folder" "$program"
+  expect "$named" "sign into a folder $write exits $status, not 1" [ "$status" -eq 1 ]
+  expect "$named" "sign into a folder $write says \"$err\", not one line naming $folder" \
+    [ "$err" = "boomdrive: $folder is writable by a user other than alice: signed nothing" ]
+  expect "$named" "sign into a folder $write says \"$out\"" [ -z "$out" ]
+  expect "$named" "sign into a folder $write called $(called)" missing "$calls"
+  expect "$named" "sign into a folder $write wrote $(ls -A "$folder")" empty "$folder"
+done
+
+freshSign
+mkdir -m 0755 "$folder"
+echo $((uid + 1)) >"$dir/uid"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign into another user's folder exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign into another user's folder says \"$err\", not one line naming $folder" \
+  [ "$err" = "boomdrive: $folder is writable by a user other than alice: signed nothing" ]
+expect "$named" "sign into another user's folder called $(called)" missing "$calls"
+expect "$named" "sign into another user's folder wrote $(ls -A "$folder")" empty "$folder"
+
+named="sign's usage"
+freshSign
+run sign "$keychain" "$folder"
+expect "$named" "sign with two words exits $status, not 2" [ "$status" -eq 2 ]
+run sign "$keychain" "$folder" "$program" more
+expect "$named" "sign with four words exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "sign's usage called $(called)" missing "$calls"
+expect "$named" "sign's usage made $folder" missing "$folder"
+
+# The stubs' calls of `$1`, on one line each.
+calledOf() {
+  grep "^$1 " "$calls" 2>/dev/null || true
+}
+# The first line of `$1`.
+first() {
+  printf '%s\n' "$1" | sed -n 1p
+}
+# The copy holds the program's bytes, then a signature of the identity
+# `$1`, and runs.
+signedBy() {
+  holds "$copy" "the runner
+signed $1" && moded "$copy" 0755
+}
+# No file under the case's folder reads the key or the certificate openssl
+# wrote.
+keyless() {
+  [ -z "$(find "$dir" -type f -exec grep -lx -e key -e cert {} +)" ]
+}
+
+named="No identity yet"
+freshSign
+identity 1 "$other" "Another signer"
+run sign "$keychain" "$folder" "$program"
+madeIn=$(cat "$dir/openssl-folder" 2>/dev/null || true)
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign read the identities by $(calledOf security), not find-identity -p codesigning $keychain" \
+  grep -qxF "security find-identity -p codesigning $keychain" "$calls"
+expect "$named" "sign ran $(calledOf openssl), not openssl req for a self-signed key and certificate in a folder of its own" \
+  [ "$(calledOf openssl)" = "openssl req -x509 -newkey rsa:2048 -nodes -days 7300 -config $madeIn/openssl.cnf -keyout $madeIn/key.pem -out $madeIn/cert.pem" ]
+expect "$named" "sign imported by $(calledOf 'security import'), not the key with -x -T /usr/bin/codesign, then the certificate" \
+  [ "$(calledOf 'security import')" = "security import $madeIn/key.pem -k $keychain -x -T /usr/bin/codesign
+security import $madeIn/cert.pem -k $keychain" ]
+for line in 'prompt = no' 'CN = Boomdrive runner' 'basicConstraints = critical,CA:false' \
+  'keyUsage = critical,digitalSignature' 'extendedKeyUsage = critical,codeSigning'; do
+  expect "$named" "openssl's configuration holds no line $line" grep -qxF "$line" "$dir/openssl.cnf"
+done
+expect "$named" "sign left the folder openssl wrote in, $madeIn" missing "$madeIn"
+expect "$named" "sign says \"$out\", not first that it made the identity $made" \
+  [ "$(first "$out")" = "boomdrive: made the code-signing identity Boomdrive runner, $made, in $keychain" ]
+expect "$named" "the copy is not signed with the identity made, $made" signedBy "$made"
+expect "$named" "sign says \"$out\", not then that it signed the copy with $made" \
+  [ "$(printf '%s\n' "$out" | sed -n 2p)" = "boomdrive: signed $copy, made from $program, with Boomdrive runner, $made" ]
+
+named="No key in a file"
+expect "$named" "the step's folder for openssl was $madeIn, not one in the case's TMPDIR" \
+  names "$madeIn" "$dir/tmp/" ""
+expect "$named" "a file holds the key or the certificate: $(find "$dir" -type f -exec grep -lx -e key -e cert {} +)" keyless
+
+named="An identity that cannot be made"
+freshSign
+printf 'SecKeychainItemImport: Write permissions error.\nsecurity: import failed\n' >"$dir/refuse-import"
+run sign "$keychain" "$folder" "$program"
+madeIn=$(cat "$dir/openssl-folder" 2>/dev/null || true)
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line with the keychain's words" \
+  [ "$err" = "boomdrive: could not make the code-signing identity in $keychain: SecKeychainItemImport: Write permissions error. security: import failed" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "sign left the folder openssl wrote in, $madeIn" missing "$madeIn"
+expect "$named" "sign signed by $(calledOf codesign)" [ -z "$(calledOf codesign)" ]
+expect "$named" "sign wrote $(ls -A "$folder")" empty "$folder"
+expect "$named" "a file holds the key or the certificate: $(find "$dir" -type f -exec grep -lx -e key -e cert {} +)" keyless
+
+named="Two identities of the name"
+freshSign
+identity 1 "$held" "Boomdrive runner"
+identity 2 "$other" "Boomdrive runner"
+identity 3 "$held" "Boomdrive runner"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line naming each identity's SHA-1" \
+  [ "$err" = "boomdrive: $keychain holds 2 identities named Boomdrive runner, $held, $other: signed nothing; remove all but one" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "sign ran $(calledOf openssl)$(calledOf 'security import')$(calledOf codesign)" \
+  [ -z "$(calledOf openssl)$(calledOf 'security import')$(calledOf codesign)" ]
+expect "$named" "sign wrote $(ls -A "$folder")" empty "$folder"
+
+# A copy and its source the step made before, from an older build, signed
+# with the identity `$1`, and the keychain holding $held.
+older=
+signedBefore() {
+  older=$dir/store/older/bin/boomdrive
+  identity 1 "$held" "Boomdrive runner"
+  mkdir -m 0755 "$folder"
+  printf 'the older runner\nsigned %s\n' "$1" >"$copy"
+  chmod 0755 "$copy"
+  echo "$older" >"$source"
+}
+# The folder holds only the copy and its source, or only the names `$@`.
+only() {
+  [ "$(inFolder)" = "$*" ]
+}
+# The folder's names, on one line.
+inFolder() {
+  find "$folder" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | paste -s -d ' ' -
+}
+
+named="A new build"
+freshSign
+signedBefore "$held"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign signed by $(calledOf 'codesign --force'), not the identity's SHA-1 with the identifier boomdrive, no timestamp and the keychain, on boomdrive.new" \
+  [ "$(calledOf 'codesign --force')" = "codesign --force --sign $held --keychain $keychain --identifier boomdrive --timestamp=none $copy.new" ]
+expect "$named" "sign moved by $(calledOf mv), not the copy onto boomdrive, then its source onto boomdrive.source, each by mv -f" \
+  [ "$(calledOf mv)" = "mv -f $copy.new $copy
+mv -f $source.new $source" ]
+expect "$named" "the copy is not the program signed with $held" signedBy "$held"
+expect "$named" "boomdrive.source holds $(cat "$source"), not $program" holds "$source" "$program"
+expect "$named" "the folder holds $(inFolder), not boomdrive and boomdrive.source alone" \
+  only boomdrive boomdrive.source
+expect "$named" "sign says \"$out\", not one line naming the program" \
+  [ "$out" = "boomdrive: signed $copy, made from $program, with Boomdrive runner, $held" ]
+expect "$named" "sign says \"$err\" on standard error" [ -z "$err" ]
+expect "$named" "sign ran $(calledOf openssl)$(calledOf 'security import')" \
+  [ -z "$(calledOf openssl)$(calledOf 'security import')" ]
+
+named="The same build"
+freshSign
+identity 1 "$held" "Boomdrive runner"
+run sign "$keychain" "$folder" "$program"
+before=$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)
+rm -f "$calls"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign signed again by $(calledOf 'codesign --force')" [ -z "$(calledOf 'codesign --force')" ]
+expect "$named" "sign did not verify the copy's signature: $(called)" \
+  [ "$(calledOf 'codesign --verify')" = "codesign --verify -R =certificate leaf = H\"$held\" $copy" ]
+expect "$named" "sign changed a file of the folder" [ "$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)" = "$before" ]
+expect "$named" "sign says \"$out$err\" again" [ -z "$out$err" ]
+
+named="A copy signed with another identity"
+freshSign
+signedBefore "$other"
+echo "$program" >"$source"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "sign signed by $(calledOf 'codesign --force'), not the identity $held" \
+  [ "$(calledOf 'codesign --force')" = "codesign --force --sign $held --keychain $keychain --identifier boomdrive --timestamp=none $copy.new" ]
+expect "$named" "the copy is not the program signed with $held" signedBy "$held"
+expect "$named" "boomdrive.source holds $(cat "$source"), not $program" holds "$source" "$program"
+expect "$named" "sign says \"$out\", not one line naming the program" \
+  [ "$out" = "boomdrive: signed $copy, made from $program, with Boomdrive runner, $held" ]
+
+named="A signing refused"
+freshSign
+signedBefore "$held"
+before=$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)
+printf '%s: errSecInternalComponent\n' "$copy.new" >"$dir/refuse-sign"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line with codesign's words" \
+  [ "$err" = "boomdrive: could not sign $program into $folder: $copy.new: errSecInternalComponent" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "the folder holds $(inFolder), not boomdrive and boomdrive.source alone" \
+  only boomdrive boomdrive.source
+expect "$named" "sign changed boomdrive or boomdrive.source" [ "$(
+  ls -lai "$folder"
+  cat "$copy" "$source"
+)" = "$before" ]
+
+named="A copy not put in place"
+freshSign
+signedBefore "$held"
+printf '%s\n%s\n' "$copy" "mv: rename $copy.new to $copy: Operation not permitted" >"$dir/refuse-move"
+run sign "$keychain" "$folder" "$program"
+expect "$named" "sign exits $status, not 1" [ "$status" -eq 1 ]
+expect "$named" "sign says \"$err\", not one line with the rename's words" \
+  [ "$err" = "boomdrive: could not sign $program into $folder: mv: rename $copy.new to $copy: Operation not permitted" ]
+expect "$named" "sign says \"$out\"" [ -z "$out" ]
+expect "$named" "sign changed boomdrive" holds "$copy" "the older runner
+signed $held"
+expect "$named" "sign left boomdrive.source, holding $(cat "$source" 2>/dev/null)" missing "$source"
+expect "$named" "the folder holds $(inFolder), not boomdrive alone" only boomdrive

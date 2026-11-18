@@ -197,15 +197,32 @@ does nothing else, so a file mid-edit never drops a repository. A pass:
   at `<repository_root>/<drive>.code-workspace`, writing it only when its
   `folders` are not the drive's kept repositories, whole and renamed
   over the old one, and removes the workspace of a drive that has gone
-  with its last clone.
+  with its last clone;
+- packs the clones itself: git's own collection is off in every clone,
+  `gc.auto` at `0` and `maintenance.auto` at `false`, so no fetch or
+  commit there starts one.
+  Once every repository is kept, the pass packs each kept clone holding
+  more than 6,700 loose objects or more than 50 packs, git's own bounds,
+  dropping only what nothing of the clone reaches past two weeks,
+  touching no ref, log or worktree, and saying `<owner>/<name>: packed
+  <n> loose objects and <m> packs`. It holds no lock while it packs, so
+  no launch waits on it, and a dropped repository's clone is not packed.
 
 The runner says each thing it does or names as one line on standard
 error, `<owner>/<name>: <words>`. A pass in which nothing changed says
 nothing. Told of a landing, it keeps that one repository at once,
-between passes or between two repositories of a pass. It stops on
-SIGTERM or SIGINT before the next repository it would keep, lets each
-part of its control plane end the pass it has in hand, and exits 0. It
-opens no listening socket: every connection it makes is outgoing.
+between passes or between two repositories of a pass. Sent SIGTERM or
+SIGINT, it ends each call to a remote it has in flight, a fetch, crew's
+listing, or weir-branch's read or write of a state repository, as the
+call's limit would, asking it to end and killing it two seconds later
+with everything it started, and begins none after. The repository is
+named not fetched, or not cloned with nothing left, or the partition
+unread or its report unsent, with the words `<call> with <remote> was
+stopped as its caller asked`, and the next start fetches or pulls it
+again. The runner then stops before the next repository it would keep
+or pack, lets each part of its control plane end the pass it has in
+hand, and exits 0. It opens no listening socket: every connection it
+makes is outgoing.
 
 Where the configuration names a control plane, each part of it, a crew
 partition or a hosted partition, runs its control passes on its own,
@@ -257,7 +274,11 @@ when no part both pulled and reported. A part that could not be read
 while another reported, or a tool a pass could not run or read, is
 named, and is not a failure. `--once` settles every place once, after
 its passes, and a settle Flume refused or gave no answer to is named,
-and is not a failure either.
+and is not a failure either. `--once` stops on SIGTERM or SIGINT as
+`run` does, ending each call to a remote in flight and beginning none
+after; once stopped it keeps no further repository and begins no part's
+pass and no settle, lets each part end the pass in hand, says
+`boomdrive: stopped`, and exits 1.
 
 Either form refuses to start, exiting 2 and touching nothing, when
 `HOME` is unset, the configuration cannot be read, git is missing or
@@ -572,7 +593,13 @@ On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
 `~/Library/Logs/boomdrive.log` where none is named. It waits for
 `/nix/store` before it starts the runner, so a runner loaded at boot
-before macOS mounts the store's volume still starts. On NixOS it is the
+before macOS mounts the store's volume still starts. Each switch signs a
+copy of the runner at `/Library/Application Support/Boomdrive/boomdrive`
+with a code-signing identity the host makes once, `Boomdrive runner`,
+kept in its System keychain, and the agent runs that copy. So macOS asks
+once for what the runner reads, and a later build asks nothing again.
+Where the copy could not be signed, the agent runs the package's own
+runner and the switch says why. On NixOS it is the
 systemd user unit `boomdrive.service` of `services.boomdrive.user`, who
 lingers, so it runs from boot. The file is written into the store, the
 service runs `boomdrive run --config <that file>`, and each switch
@@ -926,25 +953,9 @@ line:
     nix profile add github:boomdrivedev/boomdrive#flume --override-input flume github:boomdrivedev/flume/v0.22.0
 
 In a host's flake it is `inputs.boomdrive.inputs.flume.url`. Flume's
-version and its git crates' hashes are Flume's own flake's, and crew's
-version crew's own flake's, each at the tag it names. sluice's tagged
-tree says `0.0.0`, so the set gives it the version of the tag
-`flake.nix` names, and an overridden sluice is given its own version
-beside it, in its `package`:
-
-```nix
-# In the host's flake's inputs:
-boomdrive.inputs.sluice.url = "github:boomdrivedev/sluice/v0.77.0";
-```
-
-```nix
-# In its configuration:
-services.sluice.package = boomdrive.packages.aarch64-darwin.sluice.overrideAttrs (old: {
-  __intentionallyOverridingVersion = true;
-  version = "0.77.0";
-  env = old.env // { SLUICE_VERSION = "0.77.0"; };
-});
-```
+version and its git crates' hashes are Flume's own flake's, and
+sluice's and crew's versions their own flakes', each at the tag it
+names.
 
 ## Setting up a drive on a Mac Nix does not manage
 
@@ -1085,11 +1096,16 @@ settles for both, so no launch waits behind a settle. A control pass:
   names any, marked `boomdrive:<id>`. A bolt is a launch
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
-  branch;
-- carries out each retry, land, confirm, drop, priority or done as
-  Flume's own command on the launch's place, once every launch the
-  pull offers is taken, and, once the next pass is due, no further act
-  after its first, so no launch waits behind an act. A place Flume's
+  branch. Once the next pass is due, it makes no launch after the first
+  it ran, and holds each it would make after it for the next pass,
+  `held` with the words `waits for the next control pass, which is due`,
+  its room counted at its turn;
+- carries out each retry, land, confirm, hold, drop, priority or done
+  as Flume's own command on the launch's place, once every offer the
+  pull gives is answered, and, once the next pass is due, no further act
+  after the first it ran, so its launches and its acts take turns: no
+  act waits behind more than one launch, and no launch of the next pull
+  behind more than one act. A place Flume's
   listing does not hold is first asked of
   `flume --json status <place>`, which settles nothing, and Flume's
   refusal of it is the act's answer. A land is
@@ -1098,14 +1114,20 @@ settles for both, so no launch waits behind a settle. A control pass:
   `flume confirm --recipient=<recipient> -- <key>…`, of exactly the
   keys its control plane names, each the delivery of an end of the
   launch's place, as the reader it names and never as `boomdrive`; the
-  runner confirms no end for another reader of its own accord;
+  runner confirms no end for another reader of its own accord. A hold is
+  `flume hold <place> --waiting --for=<n>s -- <words>`, holding the move
+  the place waits on its caller for, with exactly the words and the bound,
+  in whole seconds, its control plane names, and a hold with no words is
+  refused; the runner judges nothing of the wait, and renews and ends no
+  hold of its own accord;
 - refuses every command, naming its tool, `this binary does not carry
   <tool>'s commands`, a branch command's being sluice, and runs nothing
   for it;
 - brings up each preview the control plane asks for, of a branch at a
   revision, in a repository it keeps, as
-  `sluice preview <branch> <revision>`, once every launch the pull
-  offers is taken, and, once the next pass is due, no further preview
+  `sluice preview <branch> <revision>`, once every offer the pull
+  gives is answered, a launch held for its turn among them, and, once
+  the next pass is due, no further preview
   after its first. It waits at
   sluice's bound no longer than 20 seconds, then interrupts sluice,
   which ends its wait and nothing else, and asks again at the next
@@ -1129,12 +1151,17 @@ settles for both, so no launch waits behind a settle. A control pass:
   `<location>@<at>`.
 
 A control pass sends its report to its control plane at its end. Once
-the next pass is due, it also sends it after each answer it makes, so no
-answer waits on the rest of the pass, however many launches follow it;
-under crew each send is a commit to the runner's branch. What the
-control plane lets go or refuses at such a send leaves the report, and
-the pass takes it no more. A send that fails before the pass's end is
-said once, and the pass's answers wait for the send at its end.
+the next pass is due, it also sends it before each command it runs for
+a want, a `flume launch`, Flume's status of a place or its command on
+it, or sluice's preview or release, and once it has answered its last
+want, wherever an answer changed it since the last send, in place of
+after each answer. So no answer waits on a command, and the launches a
+pass holds for their turn go up together before its act runs; under
+crew each send is a commit to the runner's branch. What the control
+plane lets go or refuses at such a send leaves the report, and the pass
+takes it no more, nor an act on a launch it let go or refused. A send
+that fails before the pass's end is said once, and the pass's answers
+wait for the send at its end.
 
 No pane holds the name `boomdrive`, so Flume sends it no notice and
 wakes nothing for it, and owes it each end of the place, a live place's
@@ -1180,7 +1207,10 @@ partition is named unread and pulled again at the next pull. weir-branch,
 which reads each branch and writes the runner's, stops each try of its
 fetch, listing and push at the same limit: a stopped read leaves the
 partition unread, and a stopped write its report unsent, as any read or
-write that fails. It answers
+write that fails. The listing, and each try of weir-branch's, also ends
+at the runner's stop as at its limit, and none begins after it: a
+listing or a read so ended leaves the partition unread, and a write its
+report unsent. It answers
 on the runner's branch, `<label>/runner/<host>`, in crew's formats:
 `runner.rec`, `answers.rec`, `places.rec` and `repositories.rec`, and,
 once a preview is answered there, `previews.rec`,
@@ -1305,7 +1335,8 @@ runner under the partition's prefix and carried out as crew's is,
 by Flume's confirm of exactly its keys. A control plane's land and
 preview, with its done, are given to the runner as crew's are, and what
 the runner answered of each preview goes up with sluice's answer and
-listing as their copies.
+listing as their copies. No version yet carries a hold of a place's
+waiting move, so a hosted control plane holds nothing through the runner.
 
 ## Rules and checks
 
