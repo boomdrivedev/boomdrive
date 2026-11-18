@@ -41,7 +41,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 7. What the runner says of it
 
 - [x] 7.1 `crates/boomdrive/tests/examples/observer.toml` is README's example of `[observer]`, and `tests/examples.rs`'s `the_observer_table_reads` reads it (design Decision 10; Task notes 7.1). True when `devenv shell -- cargo test -p boomdrive --test examples the_observer_table_reads` passes.
-- [ ] 7.2 README's hosted section describes an observer as design Decision 10 says: its table and its example's copy, its enrollment, what it is sent, that it is given and waits on nothing, and its lines (design Decision 10). True when `sluice exec main -- moon run root:format` passes.
+- [x] 7.2 README's hosted section describes an observer as design Decision 10 says: its table and its example's copy, its enrollment, what it is sent, that it is given and waits on nothing, and its lines (design Decision 10). True when `sluice exec main -- moon run root:format` passes.
 - [ ] 7.3 `crates/boomdrive-hosted/protocol/README.md` describes the observing hello and the observed report. Its messages table and a paragraph name them, and its list of what version 3 has no message for drops an observing connection. *Version 2* names the observing connection among how version 3 differs (design Decision 10). True when `sluice exec main -- moon run root:format` passes.
 
 ## 8. The specs

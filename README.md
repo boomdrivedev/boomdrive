@@ -1358,6 +1358,70 @@ place waits on it for is an act, given to the runner under the
 partition's prefix with its words and bound as given, and carried out as
 crew's is, by Flume's hold of that waiting move.
 
+### Reporting to an observer
+
+Beside its control plane, crew's or a hosted one, a runner may report
+each part's work to an observer on its own host, such as a control
+plane's local stage, which it takes nothing from. The managed layer
+names it in `[observer]`, here beside crew's control plane:
+
+```toml
+# An observer on this host, which the runner reports each observed part's work to and takes nothing from.
+[observer]
+# Where it is reached, `http://` or `https://` to a loopback address alone.
+url = "http://localhost:8787"
+
+# The part of the control plane it observes, by its label, and the repositories its observing hello names.
+[[observer.partitions]]
+label = "home"
+repositories = ["boomdrivedev/flume"]
+```
+
+Its keys are the hosted table's, read by the hosted implementation,
+but that `url` is at a loopback address alone: `localhost`,
+`127.0.0.0/8` or `::1`. Each partition's `label` names the part of the
+control plane whose work it observes, under crew a drive's partition,
+and its `repositories` are those its hello names, of those the host
+keeps. `[observer]` is refused where the file names no
+`[control_plane]`, and a local layer that sets it is not taken. It is
+taken when the runner starts, as `[control_plane]` is, and the table
+holds no token and no key. Each partition is enrolled once, as a hosted
+partition is, at the observer's `runner/enroll`, whatever
+`[control_plane]`'s `type`:
+
+    boomdrive enroll --observer [--config <file>] [--json] <label>
+
+Its key is kept in the host's credential store under
+`observer.<label>`, apart from any hosted partition's of that label. It
+answers `observer <label>: enrolled as host <host>`, or with `--json`
+`{"enrolled":{"partition":"<label>","host":"<host>"}}`, and is refused,
+exiting 2, where the file names no `[observer]` or no partition
+`<label>` in it.
+
+Each partition keeps one outgoing WebSocket on `boomdrive.v3`, proved,
+kept and tried again as a hosted partition's is. Its first message is an
+observing hello, `observing` true with the runner's versions, its tools'
+versions and the partition's repositories, and no capacity and no lease,
+since the observer is offered no room and gives none. Once each control
+pass of the part it observes has sent its report, the observer is
+handed an observed report: each launch of the part, by its id as the
+runner holds it, with its answer and its status and entry as version
+3's copies, and no lease, act, command, inbox or preview. Handing it
+returns at once: the newest report goes on a live connection, or after
+the hello of the next one, and no pass waits on the observer, reached
+or not. `run --once` hands it nothing. The runner takes no work from
+it: a `pulled` holding a want or a report, and every message of a
+terminal, is answered with `message_refused`, its words `this connection
+observes, and the runner takes no work from it`, and said in one line,
+`<label>: the observer sent <kind> <id>, which an observer gives none
+of, so it is refused`. Its answers wake nothing and change nothing, so
+no end is confirmed on them. It says one line when it becomes
+unreachable, `<label>: the observer is unreachable: <why>`, and one
+when it is reached again, `<label>: the observer is reached`. An
+observer whose label no part has is said once at start, `boomdrive:
+observer <label>: no part of the control plane is labelled <label>, so
+it observes nothing`.
+
 ## Rules and checks
 
 The rules every change keeps are `docs/architecture/core.md`; the
