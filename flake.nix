@@ -51,7 +51,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.64.2";
+      url = "github:boomdrivedev/crew/v0.68.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
