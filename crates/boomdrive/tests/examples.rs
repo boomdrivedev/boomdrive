@@ -5,7 +5,9 @@
 //! and with it its `[control_plane]` table, which opens crew's
 //! implementation, and its hosted table, which the hosted implementation
 //! reads, the App left out, since the hosted control plane holds it
-//! (record 0007 as amended on 2026-11-11).
+//! (record 0007 as amended on 2026-11-11); and the observer table beside
+//! crew's, which the hosted implementation reads (design Decision 10 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
 
 use boomdrive::config::ForgeApp;
 use boomdrive::{config, planes};
@@ -177,4 +179,46 @@ fn the_hosted_table_reads() {
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
     );
     assert!(refusal.host_to_fix);
+}
+
+/// The observer table, written after the configuration's and crew's
+/// tables, reads as the configuration: `Config::observer` is the table as
+/// written, which the hosted implementation's reading takes, and each of
+/// its partitions is a part of crew's and names repositories the host
+/// keeps.
+#[test]
+fn the_observer_table_reads() {
+    let (text, file) = example("configuration");
+    let (crew, _) = example("crew");
+    let (observer, _) = example("observer");
+    let config = config::parse(
+        &format!("{text}\n{crew}\n{observer}"),
+        &file,
+        Path::new("/h"),
+    )
+    .unwrap();
+    let written: toml::Table = observer.parse().expect("the observer table is TOML");
+    let table = config.observer.clone().expect("an observer named");
+    assert_eq!(Some(&table), written["observer"].as_table());
+    assert_eq!(planes::read_observer(&table, &file), Ok(()));
+    let crews = config.control_plane.clone().expect("a control plane named");
+    let kept: Vec<String> = config.repositories().map(ToString::to_string).collect();
+    for partition in table["partitions"].as_array().expect("partitions") {
+        let label = &partition["label"];
+        assert!(
+            crews.implementation_table["partitions"]
+                .as_array()
+                .expect("crew's partitions")
+                .iter()
+                .any(|part| &part["label"] == label),
+            "{label}"
+        );
+        for repository in partition["repositories"].as_array().expect("repositories") {
+            let repository = repository.as_str().expect("an address");
+            assert!(
+                kept.iter().any(|address| address == repository),
+                "{repository}"
+            );
+        }
+    }
 }
