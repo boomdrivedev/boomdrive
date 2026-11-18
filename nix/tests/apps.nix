@@ -22,6 +22,14 @@ let
     "nix-darwin" = {
       system = t.darwinSystem;
       without = t.darwinOf [ outputs.darwinModules.default ];
+      # A system of the module `given` without the runner (design Decision 9
+      # of the change boomdrives-tools-install-on-a-machine-without-the-runner).
+      withoutOf =
+        given:
+        t.darwinOf [
+          outputs.darwinModules.default
+          given
+        ];
       withCrew = t.darwinOf [
         outputs.darwinModules.default
         crewOn
@@ -31,6 +39,12 @@ let
     NixOS = {
       system = t.nixosSystem;
       without = t.nixosOf [ outputs.nixosModules.default ];
+      withoutOf =
+        given:
+        t.nixosOf [
+          outputs.nixosModules.default
+          given
+        ];
       withCrew = t.nixosOf [
         outputs.nixosModules.default
         crewOn
@@ -1063,11 +1077,91 @@ let
         !builtins.elem set.${name}.outPath profile
       ) "the ${platform} system profile without the runner holds the set's ${name}"
     ) apps;
+
+  # Each tool turned on by its own switch, with the runner or without
+  # (design Decisions 1 and 2 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  # `evaluated` holds the set's `held` and none of its `left`, failing no
+  # assertion.
+  profileHolds =
+    platform: what: set: evaluated: held: left:
+    let
+      profile = profileOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system ${what} fails: ${toString (t.failures evaluated)}"
+    ++ lib.concatMap (
+      name:
+      t.expect (builtins.elem set.${name}.outPath
+        profile
+      ) "the ${platform} system profile ${what} holds no set's ${name}"
+    ) held
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !builtins.elem set.${name}.outPath profile
+      ) "the ${platform} system profile ${what} holds the set's ${name}"
+    ) left;
+
+  wayInWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with herdr, Ghostty and the launcher turned on without the runner" set (
+      withoutOf
+        {
+          services.boomdrive = {
+            herdr.enable = true;
+            ghostty.enable = true;
+            launcher.enable = true;
+          };
+        }
+    ) apps [ ];
+
+  ghosttyOff =
+    platform:
+    { system, set, ... }:
+    profileHolds platform "with Ghostty turned off" set
+      (system { services.boomdrive.ghostty.enable = false; })
+      [
+        "herdr"
+        "boomdrive-launcher"
+      ]
+      [ "ghostty" ];
+
+  herdrOff =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.herdr.enable = false; };
+      steps = pluginSteps platform evaluated;
+    in
+    profileHolds platform "with herdr turned off" set evaluated [ ] [ "herdr" ]
+    ++ t.expect (
+      steps == [ ]
+    ) "the ${platform} activation with herdr turned off links plugins: ${builtins.toJSON steps}";
+
+  portlessWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with portless turned on without the runner" set (withoutOf {
+      services.boomdrive.portless.enable = true;
+    }) [ "portless" ] [ ];
+
+  worktrunkWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with worktrunk turned on without the runner" set (withoutOf {
+      services.boomdrive.worktrunk.enable = true;
+    }) [ "worktrunk" ] [ ];
 in
 onEach "The way in with the runner" withRunner
 // onEach "A host's own herdr" hostsHerdr
 // onEach "No Ghostty of the set's" noGhostty
 // onEach "Not without the runner" withoutRunner
+// onEach "The way in without the runner" wayInWithout
+// onEach "Ghostty turned off with the runner" ghosttyOff
+// onEach "herdr turned off" herdrOff
 // onEach "Flume's terminal and window" flumesTerminal
 // onEach "A host's own window" hostsWindow
 // onEach "The word of before" wordOfBefore
@@ -1076,11 +1170,13 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own portless" hostsPortless
 // onEach "No portless of the set's" noPortless
 // onEach "No portless without the runner" portlessWithoutRunner
+// onEach "portless without the runner" portlessWithout
 // onEach "No proxy of the modules'" noProxy
 // onEach "worktrunk with the runner" worktrunkWithRunner
 // onEach "A host's own worktrunk" hostsWorktrunk
 // onEach "No worktrunk of the set's" noWorktrunk
 // onEach "No worktrunk without the runner" worktrunkWithoutRunner
+// onEach "worktrunk without the runner" worktrunkWithout
 // onEach "timber with the runner" timberWithRunner
 // onEach "A host's own timber" hostsTimber
 // onEach "No timber of the set's" noTimber

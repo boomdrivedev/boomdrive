@@ -11,8 +11,14 @@
 # worktrunk-comes-with-the-flake). Each package is the set's for the
 # host's system by default, so it is the path the family's cache holds
 # whatever nixpkgs the host runs (core.47); a host's own replaces it, and
-# `null` installs none. With the runner enabled they go in the system
-# profile; without it, none does. The plugins are linked by the platform's
+# `null` installs none. Each is turned on by a switch of its own,
+# `services.boomdrive.<tool>.enable`, which the runner's turns on by
+# default, and goes in the system profile wherever its switch is on, with
+# the runner or without, so a host without the runner takes the ones it
+# turns on and nothing else (record 0023 as amended on 2026-11-18; design
+# Decisions 1 and 2 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner; core.62).
+# The plugins are linked by the platform's
 # activation, darwin.nix's and nixos.nix's, with herdr's own command. With
 # the runner enabled, Flume's module is told herdr and Ghostty, its
 # `host.multiplexer` and `host.terminal_app`, each by default, so a host's
@@ -82,7 +88,8 @@ let
   setText =
     name: lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.${name}";
 
-  # A package the runner's host installs: the set's `name` by default.
+  # A package the host installs where its switch is on: the set's `name`
+  # by default.
   installed =
     name: description:
     mkOption {
@@ -91,11 +98,33 @@ let
       defaultText = setText name;
       inherit description;
     };
+
+  # A tool's switch, on by default with the runner, a host's own value
+  # winning, with the runner or without (record 0023 as amended on
+  # 2026-11-18; design Decisions 1 and 2 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  switch =
+    what:
+    mkOption {
+      type = types.bool;
+      default = cfg.enable;
+      defaultText = lib.literalExpression "config.services.boomdrive.enable";
+      description = "Whether to install ${what}, its `package`, with the runner or without: on by default where `services.boomdrive.enable` is, so a host without the runner turns it on here, and off installs none of it.";
+    };
+
+  # A tool's package in the system profile where its switch is on and the
+  # package is not `null`.
+  installing =
+    tool:
+    lib.mkIf cfg.${tool}.enable {
+      environment.systemPackages = lib.optional (cfg.${tool}.package != null) cfg.${tool}.package;
+    };
 in
 {
   options.services.boomdrive = {
     herdr = {
-      package = installed "herdr" "herdr, the multiplexer Flume's terminal profile runs, installed with the runner and running each plugin's link; a host's own replaces it, and `null` installs none and links no plugin.";
+      enable = switch "herdr and link its plugins";
+      package = installed "herdr" "herdr, the multiplexer Flume's terminal profile runs, installed where `services.boomdrive.herdr.enable` is on and running each plugin's link; a host's own replaces it, and `null` installs none and links no plugin.";
       plugins = mkOption {
         type = types.listOf types.package;
         default = [
@@ -121,34 +150,44 @@ in
         description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the runner's user: Flume's, sluice's and timber's, then, where crew's module is on, crew's companions', Pending You for Herdr and Annotate. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
       };
     };
-    ghostty.package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed with the runner; a host's own replaces it, and `null` installs none.";
-    worktrunk.package = installed "worktrunk" "worktrunk's `wt`, which crew and sluice's worktree driver call, installed with the runner; a host's own replaces it, and `null` installs none.";
+    ghostty = {
+      enable = switch "Ghostty";
+      package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed where `services.boomdrive.ghostty.enable` is on; a host's own replaces it, and `null` installs none.";
+    };
+    worktrunk = {
+      enable = switch "worktrunk";
+      package = installed "worktrunk" "worktrunk's `wt`, which crew and sluice's worktree driver call, installed where `services.boomdrive.worktrunk.enable` is on; a host's own replaces it, and `null` installs none.";
+    };
+    launcher.enable = switch "the Boomdrive launcher";
     launcher.package = mkOption {
       type = types.nullOr types.package;
       default = set.boomdrive-launcher.override { drives = entries; };
       defaultText = lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.boomdrive-launcher.override { drives = <each drive of this host>; }";
-      description = "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS, a menu-bar app, and the desktop's applications on Linux, installed with the runner. By default it is the set's made for this host's drives: each drive of this host, in the order of the drives' names, is an entry opening its stream's own session, the stream's `session` in Flume's settings, else the stream's name, beside `Default stream`; a drive of another machine has none. A host's own replaces it, installed as given, and `null` installs none.";
+      description = "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS, a menu-bar app, and the desktop's applications on Linux, installed where `services.boomdrive.launcher.enable` is on. By default it is the set's made for this host's drives: each drive of this host, in the order of the drives' names, is an entry opening its stream's own session, the stream's `session` in Flume's settings, else the stream's name, beside `Default stream`; a drive of another machine has none. A host's own replaces it, installed as given, and `null` installs none.";
     };
-    portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed with the runner; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
+    portless.enable = switch "portless";
+    portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed where `services.boomdrive.portless.enable` is on; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
   };
 
-  config = lib.mkIf cfg.enable {
-    environment.systemPackages = lib.filter (package: package != null) [
-      cfg.herdr.package
-      cfg.ghostty.package
-      cfg.worktrunk.package
-      cfg.launcher.package
-      cfg.portless.package
-    ];
+  # Each tool's install reads its own switch (design Decision 1 of the
+  # change boomdrives-tools-install-on-a-machine-without-the-runner).
+  config = lib.mkMerge [
+    (installing "herdr")
+    (installing "ghostty")
+    (installing "worktrunk")
+    (installing "launcher")
+    (installing "portless")
 
     # Flume's terminal and window (design Decision 7). `terminal` is the word
     # a host wrote before for `multiplexer`, which Flume reads as it and
     # refuses beside it (Flume's C.7), so where the host gives it no
     # `multiplexer` is set. Flume's module declares no `terminal`, so the
     # condition reads no definition it guards.
-    services.flume.settings.host = {
-      multiplexer = lib.mkIf (!(config.services.flume.settings.host ? terminal)) (lib.mkDefault "herdr");
-      terminal_app = lib.mkDefault "ghostty";
-    };
-  };
+    (lib.mkIf cfg.enable {
+      services.flume.settings.host = {
+        multiplexer = lib.mkIf (!(config.services.flume.settings.host ? terminal)) (lib.mkDefault "herdr");
+        terminal_app = lib.mkDefault "ghostty";
+      };
+    })
+  ];
 }

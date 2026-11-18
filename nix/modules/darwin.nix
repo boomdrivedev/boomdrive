@@ -90,9 +90,10 @@ let
     else
       "/bin/sh ${./activate.sh} managed ${transcriptsPath} || true\n";
 
-  # herdr's own link of each plugin, where a herdr and a plugin are given
-  # (apps.nix).
-  linking = cfg.herdr.package != null && cfg.herdr.plugins != [ ];
+  # herdr's own link of each plugin, where herdr is turned on and a herdr
+  # and a plugin are given (apps.nix; record 0023 as amended on
+  # 2026-11-18).
+  linking = cfg.herdr.enable && cfg.herdr.package != null && cfg.herdr.plugins != [ ];
   plugins = lib.escapeShellArgs (
     [
       "plugins"
