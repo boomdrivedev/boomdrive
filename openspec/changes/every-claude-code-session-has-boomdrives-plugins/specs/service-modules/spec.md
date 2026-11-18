@@ -187,7 +187,7 @@ Where the modules write Pending You's folder, `environment.extraInit` SHALL hold
 
 ### Requirement: The modules write no file of Claude Code's but its managed telemetry and transcripts documents
 
-No activation step, launchd job or systemd unit of the modules SHALL write a file of Claude Code's, whatever the host turns on, but the managed telemetry document in Claude Code's managed-settings folder where the host names a collector, and the managed transcripts document there wherever Flume is on. No step, job or unit SHALL run `claude` but `activate.sh claude`, which runs only `claude plugin marketplace add`, `claude plugin list`, `claude plugin install`, `claude plugin update`, `claude plugin uninstall` and `claude mcp add-json`, each as its requirements say, so Claude Code writes what they write.
+No activation step, launchd job or systemd unit of the modules SHALL write a file of Claude Code's, whatever the host turns on, but the managed telemetry document in Claude Code's managed-settings folder where the host names a collector, and the managed transcripts document there wherever Flume is on. None SHALL run `claude` but `activate.sh claude`, which runs only the `claude plugin` and `claude mcp add-json` commands its requirements name.
 
 #### Scenario: No Claude Code of the modules'
 
@@ -201,7 +201,7 @@ No activation step, launchd job or systemd unit of the modules SHALL write a fil
 
 ### Requirement: The Boomdrive module writes no file of the other tools'
 
-The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, link `services.boomdrive.herdr.plugins` by herdr's own `plugin link`, run `activate.sh claude` where the runner and Flume are on, write or remove Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's, crew's and timber's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL each be written by that tool's own module, as without Boomdrive's.
+The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, link `services.boomdrive.herdr.plugins` by herdr's own `plugin link`, run `activate.sh claude` where the runner and Flume are on, write or remove Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Each other tool's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL be written by its own module.
 
 #### Scenario: The tools' activation is their own
 
@@ -215,9 +215,14 @@ The modules' own activation SHALL link the runner's file, write Pending You's fo
 
 ### Requirement: The README names the companions and the Claude Code homes their plugins are installed into
 
-The README's install with nix SHALL name Pending You, Plannotator and plannotator-tui in the set, and their herdr plugins. It SHALL say that they come with the runner where crew's module is on, and that the modules write Pending You's folder and leave its sign-ins, key and state the command line's. It SHALL name `pendingyou-signin` as the person's one sign-in. It SHALL say that each switch installs `boomdrive-claude-plugins` and the plugins of the tools it installs into every Claude Code home Flume's accounts use and the default home, by Claude Code's own commands, with Pending You's server where a home names none, and changes nothing else there. It SHALL say that the login environment puts the wake mod on `CLAUDE_CODE_PLUGIN_DIRS`. It SHALL say that a home's own install of one of these plugins from another marketplace stays until the person removes it.
+The README's install with nix SHALL name Pending You, Plannotator, plannotator-tui and their herdr plugins, which come with the runner where crew's module is on, and `pendingyou-signin`, the person's one sign-in. It SHALL say that each switch installs the set's marketplace's plugins, with Pending You's server, into every Claude Code home of Flume's accounts and the default home by Claude Code's own commands, and that the login environment loads the wake mod.
 
 #### Scenario: The README's companions
 
 - **WHEN** the README's install with nix is read
 - **THEN** it names `pendingyou-signin`, `boomdrive-claude-plugins`, `~/.config/pendingyou`, `CLAUDE_CODE_PLUGIN_DIRS` and the Claude Code commands each switch runs in each home
+
+#### Scenario: What the README says stays
+
+- **WHEN** the README's install with nix is read
+- **THEN** it says the modules write `~/.config/pendingyou` and leave its sign-ins, key and state the command line's, that each switch changes nothing else in a Claude Code home, and that a home's own install of one of these plugins from another marketplace stays until the person removes it
