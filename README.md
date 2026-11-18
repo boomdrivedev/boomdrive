@@ -333,11 +333,11 @@ App and mints the host's tokens, and every operation is refused, exit 1:
 the hosted control plane mints this host's forge tokens, and version 3
 of its protocol carries none yet.
 
-The set's sluice takes no token from it yet: it reads a credential
-command from v0.84.0 (boomdrivedev/sluice record 0108), and the set holds
-v0.78.1. Once the set holds a sluice that reads one, the Boomdrive
-module gives sluice `boomdrive forge-token` and the App's id itself, so
-a host writes no credential command of its own (core.57). Until then a
+The set's sluice takes no token from it yet. It reads a credential
+command, `[forge] credential`, as every sluice from v0.84.0 does
+(boomdrivedev/sluice record 0108), but the Boomdrive module does not
+yet give it `boomdrive forge-token` and the App's id. Once it does, a
+host writes no credential command of its own (core.57). Until then a
 host keeps sluice's own `[forge] key`.
 
 ## Installing with nix
