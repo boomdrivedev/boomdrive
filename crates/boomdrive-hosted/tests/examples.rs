@@ -8,7 +8,7 @@
 mod common;
 
 use boomdrive_hosted::protocol::v2::{FromRunner, Message, MessageId, ToRunner};
-use common::{example, examples, from_runner, passes, to_runner, version_dir, V1};
+use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -218,6 +218,33 @@ fn version_1s_examples_still_pass() {
                 &validator,
                 &value,
                 &format!("version 1's {direction}/{name}"),
+            );
+        }
+    }
+}
+
+/// The runner-protocol spec's "Version 2's examples still pass": each
+/// example of version 2 passes its direction's envelope of version 2,
+/// which the runner no longer speaks and a control plane may still take
+/// (core.42; record 0052).
+#[test]
+fn version_2s_examples_still_pass() {
+    let directions = [
+        ("from-runner", V2.messages_from_runner()),
+        ("to-runner", V2.messages_to_runner()),
+    ];
+    for (direction, validator) in directions {
+        let examples = V2.examples(direction);
+        assert!(!examples.is_empty(), "no example of version 2 {direction}");
+        for (name, value) in examples {
+            assert_eq!(
+                value["protocol_version"], 2,
+                "version 2's {direction}/{name}"
+            );
+            passes(
+                &validator,
+                &value,
+                &format!("version 2's {direction}/{name}"),
             );
         }
     }
