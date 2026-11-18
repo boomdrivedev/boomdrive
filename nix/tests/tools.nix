@@ -356,16 +356,22 @@ let
   ) (linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText));
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
-  # The runner's crew table, under crew with no table written, for crew's
-  # drives `garden` and `home` on host-a with `away` on host-b written
-  # between them: the table holds them in label order (design Decision 3).
-  crewOrder =
+  # The runner's crew table, under crew with no table written, for the
+  # accounts `own`, with the drives `garden` and `home` on host-a, and
+  # `work`, with `away` on host-b and `field` on host-a: the table holds
+  # this host's in the accounts' order, each account's drives in the order
+  # of their names (the change a-drives-machine-and-state-are-named-once,
+  # design Decision 5).
+  accountsOrder =
     platform:
     { system, ... }:
     let
       evaluated = system {
-        imports = [ (crewOf settings.crewOrder) ];
-        services.boomdrive.settings.control_plane.type = "crew";
+        imports = [ (crewOf settings.crewDrives) ];
+        services.boomdrive = {
+          accounts = settings.crewAccounts;
+          settings.control_plane.type = "crew";
+        };
       };
       table = evaluated.config.services.boomdrive.settings.control_plane.crew;
       ordered = {
@@ -373,18 +379,21 @@ let
         partitions = [
           {
             label = "garden";
-            state_repository = "example/garden";
+            state_repository = "example/state";
           }
           {
             label = "home";
             state_repository = "example/state";
           }
+          {
+            label = "field";
+            state_repository = "example/work";
+          }
         ];
       };
     in
-    t.expect (
-      t.failures evaluated == [ ]
-    ) "a ${platform} system of crew's drives in label order fails: ${toString (t.failures evaluated)}"
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system of the accounts' drives in their order fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
@@ -412,20 +421,47 @@ let
         "services.crew"
       ];
 
-  # Under crew, with no crew table written and crew's one drive on host-b
-  # while crew's host is host-a (design Decision 6).
+  # Under crew, with no crew table written and the accounts' one drive on
+  # host-b while crew's host is host-a (design Decision 6).
   elsewhere =
     platform:
     { system, ... }:
-    failsNaming "a ${platform} system under crew with no drive of crew's on its host"
+    failsNaming "a ${platform} system under crew with no drive of the accounts on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
-        services.boomdrive = settings.crewUnwritten;
+        services.boomdrive = settings.elsewhere;
       })
       [
         "services.crew.host"
         "host-a"
         "host-b"
+      ];
+
+  # Under crew, with no crew table written, an account with a drive and no
+  # state repository, beside crew's settings that write the drive's machine
+  # and state (the change a-drives-machine-and-state-are-named-once, design
+  # Decision 6).
+  stateless =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew whose account names no state repository" (system {
+      imports = [ (crewOf settings.crewModule) ];
+      services.boomdrive = settings.stateless;
+    }) [ "services.boomdrive.accounts.own.state_repository" ];
+
+  # Under crew, with no crew table written, a drive of crew's, `stray`,
+  # that no account names (design Decision 6).
+  stray =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with a drive of crew's no account names"
+      (system {
+        imports = [ (crewOf settings.crewStray) ];
+        services.boomdrive = settings.crewUnwritten;
+      })
+      [
+        "stray"
+        "services.boomdrive.accounts"
       ];
 
   # Whether crew's teams file, as crew's module renders it in `evaluated`,
@@ -513,9 +549,11 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
-// onEach "crew's drives in label order" crewOrder
+// onEach "The accounts' drives in their order" accountsOrder
 // onEach "Under crew with neither" neither
-// onEach "No drive of crew's on this host" elsewhere
+// onEach "No drive of the accounts on this host" elsewhere
+// onEach "An account under crew with no state repository" stateless
+// onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys
 // onEach "crew's old way of running" oldRuns
@@ -523,7 +561,8 @@ onEach "Each tool's options are its own flake's" ownOptions
 // {
   # The Mac's flake README shows sets the runner's control plane to crew's
   # and writes no crew table beside crew's drives, which the module writes
-  # (design Decision 8), and declares no source of crew's to Flume, which
+  # (design Decision 8; the change a-drives-machine-and-state-are-named-once,
+  # design Decision 9), and declares no source of crew's to Flume, which
   # the module declares (Task notes 2.1 of the change
   # the-set-declares-crews-source-to-flume).
   "The host flake's crew table" =
@@ -566,6 +605,21 @@ onEach "Each tool's options are its own flake's" ownOptions
     ++ t.expect (
       !(home.review ? every) && !(home.review ? hours)
     ) "examples/host-flake.nix's review names every or hours";
+
+  # The Mac's flake README shows names the account's crew state repository
+  # in services.boomdrive.accounts, and neither a drive's state nor its
+  # machine in crew's settings (the change
+  # a-drives-machine-and-state-are-named-once, design Decision 9).
+  "The host flake's machine and state" =
+    let
+      account = hostModule.services.boomdrive.accounts.own;
+      home = hostModule.services.crew.settings.drives.home;
+    in
+    t.expect (
+      account.state_repository or null == "example/state"
+    ) ''examples/host-flake.nix's account own names no state_repository = "example/state"''
+    ++ t.expect (!(home ? state)) "examples/host-flake.nix's crew drive home names its state"
+    ++ t.expect (!(home ? machine)) "examples/host-flake.nix's crew drive home names its machine";
 
   "The tools' user on NixOS" =
     t.expect (

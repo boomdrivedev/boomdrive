@@ -8,10 +8,11 @@
 # timber's, is the runner's unless the host names its own (record 0023
 # and its amendment of 2026-11-15); drives.nix gives Flume's module each drive's
 # stream (record 0028), sources.nix declares crew's source to Flume's
-# module (record 0034), and collector.nix turns Flume's and sluice's
-# telemetry on to the collector the host names for its Claude Code
-# sessions, with the runner on (record 0013 as amended on 2026-11-15).
-# The unit runs `boomdrive run --config`
+# module (record 0034), crew-drives.nix gives crew's module each drive's
+# machine and its account's state repository (record 0032), and
+# collector.nix turns Flume's and sluice's telemetry on to the collector
+# the host names for its Claude Code sessions, with the runner on (record
+# 0013 as amended on 2026-11-15). The unit runs `boomdrive run --config`
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
 # the file at the runner's own path, writes Pending You's folder where
@@ -127,6 +128,7 @@ in
     ./drives.nix
     ./clones.nix
     ./sources.nix
+    ./crew-drives.nix
     ./collector.nix
     claudeCode.module
   ];

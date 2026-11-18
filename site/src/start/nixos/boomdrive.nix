@@ -1,8 +1,9 @@
 # The drive on NixOS: the family's cache trusted, the programs the later
-# steps run, and the account me's drive home kept under crew, crew's
-# drive home as setup gives it on a Mac. The set's module gives Flume the
-# drive's stream and crew's source. Put your own names for you,
-# your-host, your-github-name and your-repository.
+# steps run, and the account me, with its state repository, whose drive
+# home is kept under crew, crew's drive home given its machine and state
+# by the set, and the rest as setup gives it on a Mac. The set's module
+# gives Flume the drive's stream and crew's source. Put your own names
+# for you, your-host, your-github-name and your-repository.
 { pkgs, ... }:
 {
   nix.settings = {
@@ -21,7 +22,10 @@
   services.boomdrive = {
     enable = true;
     user = "you";
-    accounts.me.drives.home.repositories.your-github-name = [ "your-repository" ];
+    accounts.me = {
+      state_repository = "your-github-name/drive-state";
+      drives.home.repositories.your-github-name = [ "your-repository" ];
+    };
     settings.control_plane.type = "crew";
   };
 
@@ -35,8 +39,6 @@
       };
       drives.home = {
         blueprints = [ "your-github-name/your-repository" ];
-        state = "your-github-name/drive-state";
-        machine = "your-host";
         session = "home";
         folder = "/home/you/Code";
         repos = [ ];

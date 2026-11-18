@@ -477,22 +477,37 @@ your own there is moved once to `config.toml.before-nix`, and crew's to
 `teams.json.before-nix`, so move its values into the tool's `settings`
 in the switch that takes this flake. `services.boomdrive.enable` turns
 on Flume's, sluice's and timber's modules; a host that runs crew turns
-on crew's, with its `host`, its drives and the hosts crew reaches, each
-written by crew's own names.
+on crew's, with its `host`, its drives' own keys and the hosts crew
+reaches, each written by crew's own names.
 With crew's module on, the module declares crew's source of kinds to
 Flume, `services.flume.sources.crew`, naming the roles file crew writes,
 `~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
 `~/.local/share/flume/kinds/crew`. Flume's module writes the source at
 `~/.config/flume/sources/crew.toml`, so a host writes no file for it,
-and a key the host sets there wins. Where `control_plane.type` is `crew`
-and no `control_plane.crew` is written, the module writes the runner's
-`[control_plane.crew]` from crew's drives: its `host` is
-`services.crew.host`, and it holds each drive whose `machine` is that
-host, in the order of their labels, by its `label`, with its `state` as
-`state_repository`. A table written out wins, whole. The module writes
-none of crew's `hosts`, `runs` or `review`: each host crew reaches, and
-how each drive's roles run and batch, are the host's own, written in
-`services.crew.settings`:
+and a key the host sets there wins.
+
+Each account under crew names its crew state repository once,
+`services.boomdrive.accounts.<account>.state_repository`, an address
+`<owner>/<name>`, which the runner's file does not hold. With crew's
+module on, whether or not the runner is, each drive of an account that
+names its `state_repository` gives crew's drive of the same name its
+`machine`, `services.crew.host` where the drive names none, and its
+account's `state_repository` as its `state`, every drive of the account
+whichever machine it runs on. A host writes neither in
+`services.crew.settings`: one that does fails evaluation, crew's failure
+naming `services.boomdrive.accounts` among the places that write it.
+Where `control_plane.type` is `crew` and no `control_plane.crew` is
+written, the module writes the runner's `[control_plane.crew]` from the
+accounts: its `host` is `services.crew.host`, and it holds each drive of
+this host, naming no `machine` or that host, under an account that names
+its `state_repository`, in the accounts' order and each account's drives
+in the order of their names, by its name as `label`, with its account's
+`state_repository`. A table written out wins, whole. Under crew, an
+account with a drive and no `state_repository`, or a drive of crew's
+that no account names, fails evaluation. The module writes none of
+crew's `hosts`, `runs`, `review` or other keys of a drive: each host crew
+reaches, and each drive's own keys, how its roles run and batch among
+them, are the host's own, written in `services.crew.settings`:
 
 ```nix
 {
@@ -515,7 +530,10 @@ how each drive's roles run and batch, are the host's own, written in
             # The rest of the host's configuration, system.primaryUser among it.
             services.boomdrive = {
               enable = true;
-              accounts.own.drives.home.repositories.boomdrivedev = [ "flume" "sluice" ];
+              accounts.own = {
+                state_repository = "example/state";
+                drives.home.repositories.boomdrivedev = [ "flume" "sluice" ];
+              };
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
@@ -528,8 +546,6 @@ how each drive's roles run and batch, are the host's own, written in
               settings = {
                 drives.home = {
                   blueprints = [ "example/blueprints" ];
-                  state = "example/state";
-                  machine = "host-a";
                   session = "home";
                   folder = "/Users/alice/Code/boomdrivedev";
                   repos = [ "boomdrivedev/flume" "boomdrivedev/sluice" ];
@@ -583,11 +599,13 @@ and a value the host sets there, or in a repository's
 `services.flume.settings.repos."<owner>/<name>"`, wins over the
 drive's. Two drives of this host that give one stream fail evaluation. A
 drive whose work runs on another computer names it, `machine = "host-b"`,
-as crew's drives name a host, and the module compares it with
+as `hostname -s` names it, and the module compares it with
 `services.crew.host`, which the host sets whether or not crew runs
 there: a drive of another machine gives Flume nothing, and the runner
 still keeps its repositories, to read. A drive that names a `machine`
-where `services.crew.host` is not set fails evaluation.
+where `services.crew.host` is not set fails evaluation. With crew's
+module on, the module gives the drive's `machine` to crew's drive of
+that name too, under an account that names its `state_repository`.
 
 On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
