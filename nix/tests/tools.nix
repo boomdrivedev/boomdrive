@@ -356,16 +356,22 @@ let
   ) (linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText));
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
-  # The runner's crew table, under crew with no table written, for crew's
-  # drives `garden` and `home` on host-a with `away` on host-b written
-  # between them: the table holds them in label order (design Decision 3).
-  crewOrder =
+  # The runner's crew table, under crew with no table written, for the
+  # accounts `own`, with the drives `garden` and `home` on host-a, and
+  # `work`, with `away` on host-b and `field` on host-a: the table holds
+  # this host's in the accounts' order, each account's drives in the order
+  # of their names (the change a-drives-machine-and-state-are-named-once,
+  # design Decision 5).
+  accountsOrder =
     platform:
     { system, ... }:
     let
       evaluated = system {
-        imports = [ (crewOf settings.crewOrder) ];
-        services.boomdrive.settings.control_plane.type = "crew";
+        imports = [ (crewOf settings.crewDrives) ];
+        services.boomdrive = {
+          accounts = settings.crewAccounts;
+          settings.control_plane.type = "crew";
+        };
       };
       table = evaluated.config.services.boomdrive.settings.control_plane.crew;
       ordered = {
@@ -373,18 +379,21 @@ let
         partitions = [
           {
             label = "garden";
-            state_repository = "example/garden";
+            state_repository = "example/state";
           }
           {
             label = "home";
             state_repository = "example/state";
           }
+          {
+            label = "field";
+            state_repository = "example/work";
+          }
         ];
       };
     in
-    t.expect (
-      t.failures evaluated == [ ]
-    ) "a ${platform} system of crew's drives in label order fails: ${toString (t.failures evaluated)}"
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system of the accounts' drives in their order fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
@@ -412,20 +421,47 @@ let
         "services.crew"
       ];
 
-  # Under crew, with no crew table written and crew's one drive on host-b
-  # while crew's host is host-a (design Decision 6).
+  # Under crew, with no crew table written and the accounts' one drive on
+  # host-b while crew's host is host-a (design Decision 6).
   elsewhere =
     platform:
     { system, ... }:
-    failsNaming "a ${platform} system under crew with no drive of crew's on its host"
+    failsNaming "a ${platform} system under crew with no drive of the accounts on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
-        services.boomdrive = settings.crewUnwritten;
+        services.boomdrive = settings.elsewhere;
       })
       [
         "services.crew.host"
         "host-a"
         "host-b"
+      ];
+
+  # Under crew, with no crew table written, an account with a drive and no
+  # state repository, beside crew's settings that write the drive's machine
+  # and state (the change a-drives-machine-and-state-are-named-once, design
+  # Decision 6).
+  stateless =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew whose account names no state repository" (system {
+      imports = [ (crewOf settings.crewModule) ];
+      services.boomdrive = settings.stateless;
+    }) [ "services.boomdrive.accounts.own.state_repository" ];
+
+  # Under crew, with no crew table written, a drive of crew's, `stray`,
+  # that no account names (design Decision 6).
+  stray =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with a drive of crew's no account names"
+      (system {
+        imports = [ (crewOf settings.crewStray) ];
+        services.boomdrive = settings.crewUnwritten;
+      })
+      [
+        "stray"
+        "services.boomdrive.accounts"
       ];
 
   # Whether crew's teams file, as crew's module renders it in `evaluated`,
@@ -502,21 +538,33 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
-// onEach "crew's drives in label order" crewOrder
+// onEach "The accounts' drives in their order" accountsOrder
 // onEach "Under crew with neither" neither
-// onEach "No drive of crew's on this host" elsewhere
+// onEach "No drive of the accounts on this host" elsewhere
+// onEach "An account under crew with no state repository" stateless
+// onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys
 // onEach "crew's old way of running" oldRuns
 // onEach "crew's old batch names" oldReview
 // {
   # The README's install with nix writes no crew table beside crew's
-  # drives, and says the module writes it (design Decision 8).
+  # drives, and says the module writes it (design Decision 8; the change
+  # a-drives-machine-and-state-are-named-once, design Decision 9).
   "The README's crew table" =
     t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
-    ++ t.expect (
-      !lib.any (lib.hasInfix "state_repository") t.nixBlocks
-    ) "a nix block of the README's Installing with nix names state_repository"
+    ++
+      lib.concatMap
+        (
+          word:
+          t.expect (
+            !lib.any (lib.hasInfix word) t.nixBlocks
+          ) "a nix block of the README's Installing with nix names ${word}"
+        )
+        [
+          "control_plane.crew"
+          "partitions"
+        ]
     ++
       lib.concatMap
         (
@@ -527,6 +575,32 @@ onEach "Each tool's options are its own flake's" ownOptions
           "services.crew.host"
           "written out wins"
         ];
+
+  # The README's install with nix names the account's crew state
+  # repository in services.boomdrive.accounts, before services.crew, and
+  # neither a drive's state nor its machine in crew's settings, and its
+  # words name the account's option (the change
+  # a-drives-machine-and-state-are-named-once, design Decision 9).
+  "The README's machine and state" =
+    let
+      crewBlock = lib.findFirst (lib.hasInfix "services.crew") null t.nixBlocks;
+      parts = lib.splitString "services.crew = {" (toString crewBlock);
+      before = lib.head parts;
+      after = lib.concatStringsSep "services.crew = {" (lib.tail parts);
+    in
+    t.expect (crewBlock != null) "no nix block of the README's Installing with nix names services.crew"
+    ++ t.expect (
+      lib.length parts > 1
+    ) "the README's nix block of services.crew has no `services.crew = {`"
+    ++ t.expect (lib.hasInfix ''state_repository = "example/state"'' before) ''the README's nix block names no state_repository = "example/state" before services.crew''
+    ++
+      lib.concatMap
+        (word: t.expect (!lib.hasInfix word after) "the README's nix block names ${word} in services.crew")
+        [
+          "state ="
+          "machine ="
+        ]
+    ++ t.expect (lib.hasInfix "services.boomdrive.accounts.<account>.state_repository" (toString t.installing)) "the README's Installing with nix names no services.boomdrive.accounts.<account>.state_repository";
 
   # The README's install with nix writes crew's settings by crew's names,
   # its teams file's version 6's, and none of version 5's. The leading
