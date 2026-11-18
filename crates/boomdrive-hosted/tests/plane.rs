@@ -424,6 +424,64 @@ fn a_land_carried() {
     assert_eq!(act.what, ActSort::Land);
 }
 
+/// A hold the partition's control plane asks of `l-1`, under the id `id`,
+/// with `words` and `bound_interval`, as version 3 writes it.
+fn hold(id: &str, words: &str, bound_interval: u64) -> Value {
+    json!({ "act": {
+        "id": id, "launch": "l-1", "lease": 1,
+        "what": { "hold": { "words": words, "bound_interval": bound_interval } }
+    } })
+}
+
+/// `home`'s part's pull of an offer of `l-1` and the hold `asked`, which
+/// gives the hold as an act under the partition's prefix, its launch under
+/// it too, as `what`, and no `message_refused` is sent.
+fn a_hold_given(asked: Value, id: &str, what: ActSort) {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(&fake, json!([offer("l-1", "example/app", &[]), asked]));
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", id]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(act.lease, 1);
+    assert_eq!(act.what, what);
+}
+
+/// The hosted-control-plane spec's "A hold carried" (design Decision 6): a
+/// hold the control plane asks is given to the runner as an act under the
+/// partition's prefix, its launch under it too, its words and bound as
+/// given, and the hosted implementation reads nothing else of it (core.59;
+/// record 0052).
+#[test]
+fn a_hold_carried() {
+    let words = "the user sends it on the landings card, row 3";
+    a_hold_given(
+        hold("hold-1", words, 28800),
+        "home/hold-1",
+        ActSort::Hold {
+            words: words.to_string(),
+            bound_interval: 28800,
+        },
+    );
+}
+
+/// The hosted-control-plane spec's "A hold the runner refuses": a hold of
+/// no words and bound 0 is given to the runner as given, and no
+/// `message_refused` is sent, since refusing it is the runner's (core.59).
+#[test]
+fn a_hold_the_runner_refuses() {
+    a_hold_given(
+        hold("hold-2", "", 0),
+        "home/hold-2",
+        ActSort::Hold {
+            words: String::new(),
+            bound_interval: 0,
+        },
+    );
+}
+
 /// The hosted-control-plane spec's "One partition unreachable": `home`'s
 /// part gives its offer without waiting on `work`'s connection, and
 /// `work`'s part is unread, its words not repeating its label.
