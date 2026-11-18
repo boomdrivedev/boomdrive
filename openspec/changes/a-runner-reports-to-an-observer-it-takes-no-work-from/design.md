@@ -137,7 +137,7 @@ The observed report holds each launch of the part's share, by its id as the runn
 
 Each status and entry is cut as `Partition::upward` cuts it: `null` where its copy fails, and an end of a form version 3 does not name by its delivery alone. Each is said once while it lasts (core.11, core.27). The cut of one launch moves out of `Partition::upward` into a function both use, so the two never differ.
 
-Alternative:
+Alternatives:
 
 - **The whole share, acts, commands, inboxes and previews, each with its lease left out.** Record 0048, point 3, says "its reports are the reports that partition's control plane gets". The brief narrows it to "its reports of the places it follows", and the cloud's local stage shows "that host and its places" (its record 0069). Not taken: each of the four would need a lease-less copy of its definition, and each holds answers to wants the observer never gave. This is cheap to change until a release speaks version 3, and a later version may add them.
 
@@ -205,7 +205,7 @@ Nothing returns from an observer, and it is handed no wake. So nothing it is sen
 
 `planes.rs` gains `observers(table, file, poll_interval, say_for)`, which opens the hosted implementation's observers. It also gains `read_observer` and `enroll_observer`, beside the hosted entry, the one list that names an implementation (core.2).
 
-Alternative:
+Alternatives:
 
 - **An observer as a `ControlPlane` whose wants the runner drops.** Not taken. It would give wants to the runner's code and rely on the runner dropping each. `Observer` gives none.
 
@@ -240,16 +240,18 @@ Alternatives:
 
 - **`Runner::start`** opens the observers beside the parts, through `planes::observers`, where `[observer]` is named and the control plane opened. Under `run --once` none is handed a hello. A `Connection` is first attempted once a hello is handed it, so no connection is made and no key read.
 - **`keep`** gives each part the observer whose label is the part's, and says once, at its start, each observer whose label no part has: `boomdrive: observer <label>: no part of the control plane is labelled <label>, so it observes nothing`.
-- **`Carrier::pass`** takes the part's observer, where it has one. Once the pass has sent its report and confirmed what it confirms, it hands the observer its hello and the part's share as it stands, whatever its control plane answered. A pass whose pull could not be read hands nothing, since it carried nothing. A pass that could not save its share (core.25) hands the share as it stands.
+- **`Carrier::observed_pass`** takes the part's observer, where it has one, and `Carrier::pass` is it with none, so the tests that build a `Carrier` outside this change's paths keep their form. Once the pass has sent its report and confirmed what it confirms, it hands the observer its hello and the part's share as it stands, whatever its control plane answered. A pass whose pull could not be read hands nothing, since it carried nothing. A pass that could not save its share (core.25) hands the share as it stands.
 - **`Runner::observe_with`**, beside `carry_for`, puts a test's observers in place of those `[observer]` opens.
+- **Observers that could not be opened**, their runtime not made, are said once at `keep`'s start, `boomdrive: observer: <why>: nothing is observed`, and the parts are carried as before.
 
-Alternative:
+Alternatives:
 
 - **The observer handed the report before its control plane's send.** Not taken. The observer would show answers its control plane may refuse, and the send would follow the observer's handing.
+- **`Carrier::pass` itself taking the observer.** Not taken. `tests/fakes/mod.rs` and `tests/pass.rs` call it and build a `Carrier`, and neither is among this change's paths.
 
 ### 8. Nothing waits on an observer
 
-`observe` returns at once. The connection's runtime sends what it is handed, and no call of the observer's waits on a socket or an answer. So an observer unreachable, slow or deaf holds up no pass, launch or report (record 0048, point 5; core.49). Its connection is tried again on the partition's backoff, its cap stopping at `[control_plane]`'s `poll_interval` (core.22). Dropping the observers at the runner's stop closes each socket, waiting at most a second, as the hosted parts' drop does.
+`observe` returns at once. The connection's runtime sends what it is handed, and no call of the observer's waits on a socket or an answer. Version 3's validators an observer's handing reads are built when the observers open (`check::prepare_observing`), so no handing builds one. So an observer unreachable, slow or deaf holds up no pass, launch or report (record 0048, point 5; core.49). Its connection is tried again on the partition's backoff, its cap stopping at `[control_plane]`'s `poll_interval` (core.22). Dropping the observers at the runner's stop closes each socket, waiting at most a second, as the hosted parts' drop does.
 
 ### 9. A test holds version 3 to version 2 but for the hold and the observing connection
 
@@ -346,7 +348,7 @@ None.
   - Its unit test `an_observer_holds_what_it_is_handed` hands it two passes and reads them back in order.
 - **4.1**
   - `Dial` gains the role, `Dial::observing` making one for an observer with a wake that does nothing.
-  - `Connection::hand` takes the hello as JSON, checked against the role's form. `Connection::report` checks against the role's form.
+  - `Connection::hand` takes any hello that serializes, written as JSON and checked against the role's form, so a partition's `v3::Hello` and an observer's `v3::ObservingHello` are each handed as they are. `Connection::report` checks against the role's form.
   - The run loop's `ToRunner` match takes Decision 6's refusals in the observing role. `reached` and `unreached` take their words from the role.
   - `tests/observer.rs`, new, holds the connection's tests, each over `common::fake`, the fake answering an observing hello with `pulled` from its `set_wants` and `set_report`:
     - `the_observing_hello_first`;
@@ -378,7 +380,7 @@ None.
   - `planes.rs` gains `observers`, `read_observer` and `enroll_observer`.
   - `run.rs`'s `Control` holds the observers. `Runner::observe_with` puts a test's in place.
   - `keep` pairs each part with its observer by label, and says each unpaired one once at its start.
-  - `Host::carry_on` and `carry` take the part's observer. `Carrier::pass` hands it the pass, as Decision 7 says.
+  - `Host::carry_on` and `carry` take the part's observer. `Carrier::observed_pass` hands it the pass, as Decision 7 says.
   - `tests/control.rs` gains these tests, beside its tests of parts, using its `Running` helper and `boomdrive_control::fake::Observing`:
     - `a_part_observed` (`home` and `work`, an observer of `home` alone);
     - `an_observer_of_no_part` (the line, and `home` carried);
