@@ -48,3 +48,13 @@ Gives this record's outcome its forms.
 - **Under crew, in the accounts or nowhere.** With the runner, a crew control plane and crew's module on, an account that names a drive and no `state_repository` fails evaluation, naming its option. A drive of crew's settings that no account names fails too, naming it and `services.boomdrive.accounts`. Not taken: either left to stand, which serves a drive with no stream or no partition, the mismatch this record ends; either failure under another control plane, whose accounts are not crew's (core.19).
 
 core.57, and core.18's and core.46's details, are amended in this amendment's commit.
+
+## Amendment, 2026-11-18: a drive kept only to read
+
+Status: decided on 2026-11-18 by the design agent, on the planner's urgent question from afterthought-design, its own choice, cheap to change. The user's own ruling stands under it: Lime Energy's repositories are kept on deneb as the drive `wes`, with no main level and no agents (afterthought/swancloud record 0059 as amended 2026-11-13: "let's call it wes not lime").
+
+Under crew, every account that names a drive must name a `state_repository`, and crew is given every drive of such an account. A drive with no work, kept so its repositories can be read, then needs a state repository and a blueprints repository and becomes a crew drive, which the user ruled out for `wes`.
+
+- **A drive may be kept only to read.** A drive naming `read_only = true` is kept to read on every host: the runner keeps its repositories, fetches them and moves their view, as it does for a drive of another machine (`machine`), and nothing works in them. Flume is given no stream for it, crew is given no drive for it, and the runner's crew table holds none. A drive naming both `read_only` and a `machine` fails evaluation, naming both, since a drive kept to read runs on no machine.
+- **An account needs a state repository only for a drive that works.** Under crew, an account that names a drive not kept to read, and no `state_repository`, still fails evaluation, naming its option. An account whose every drive is kept to read needs none, and gives crew nothing.
+- **Not taken:** *an account that names no state repository is no account of crew's.* That drops the check that catches a forgotten state repository, and one account may hold a drive that works and one kept to read. *A host kept to read.* deneb keeps `wes` beside drives that work.
