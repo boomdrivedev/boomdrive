@@ -11,7 +11,7 @@
 //! `[control_plane]`'s `type`, read, enrolled and opened through this
 //! list's functions alone (record 0048).
 
-use boomdrive_control::{Part, Wake};
+use boomdrive_control::{Observed, Part, Wake};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use weir_bounded::Halt;
@@ -385,6 +385,22 @@ fn hosted_enroll(
             words: refused.words,
             host_to_fix: refused.host_to_fix,
         })
+}
+
+/// Opens the observers of the observer table, `[observer]`, `table`, of
+/// the configuration file `file`, by the hosted implementation, whatever
+/// `[control_plane]`'s `type`: one for each partition, in its order, its
+/// connection tried again on a backoff whose cap stops at `poll_interval`
+/// and saying its lines to the say `say_for` makes for its label, and none
+/// attempted before it is handed a pass (design Decisions 6 and 7 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+pub fn observers(
+    table: &toml::Table,
+    file: &Path,
+    poll_interval: Duration,
+    say_for: SayFor<'_>,
+) -> Result<Vec<Observed>, String> {
+    boomdrive_hosted::observer::open(table, file, poll_interval, say_for)
 }
 
 /// Reads the observer table, `[observer]`, `table`, of the configuration

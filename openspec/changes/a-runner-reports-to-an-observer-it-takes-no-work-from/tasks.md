@@ -36,7 +36,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 6. The runner hands each pass to its observer
 
-- [ ] 6.1 `planes.rs` gains `observers`. `run.rs` opens the observers at start beside the parts, gives each part the observer of its label in `keep`, and says once each observer of no part. `carry.rs`'s `Carrier::pass` hands the part's observer its hello and share once its report is sent. `Runner::observe_with` puts a test's observers in place. This proves the running spec's "A part observed", "An observer unreachable", "An observer of no part" and "One pass" (design Decisions 7 and 8; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive --test control --test once -- a_part_observed an_observer_of_no_part an_observer_unreachable one_pass_observes_nothing` passes.
+- [x] 6.1 `planes.rs` gains `observers`. `run.rs` opens the observers at start beside the parts, gives each part the observer of its label in `keep`, and says once each observer of no part. `carry.rs`'s `Carrier::pass` hands the part's observer its hello and share once its report is sent. `Runner::observe_with` puts a test's observers in place. This proves the running spec's "A part observed", "An observer unreachable", "An observer of no part" and "One pass" (design Decisions 7 and 8; Task notes 6.1). True when `devenv shell -- cargo test -p boomdrive --test control --test once -- a_part_observed an_observer_of_no_part an_observer_unreachable one_pass_observes_nothing` passes.
 
 ## 7. What the runner says of it
 

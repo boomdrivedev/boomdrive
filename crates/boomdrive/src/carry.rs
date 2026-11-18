@@ -51,8 +51,8 @@ use crate::terminal::Relays;
 use crate::{clone, facts, inbox};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
-    Inbox, InboxCarried, InboxFile, KeptRepository, Launched, Lease, Offer, Outcome, Preview,
-    Previewed, Report, Reported, ToolVersion, Unread, Unsent, Want,
+    Inbox, InboxCarried, InboxFile, KeptRepository, Launched, Lease, Observer, Offer, Outcome,
+    Preview, Previewed, Report, Reported, ToolVersion, Unread, Unsent, Want,
 };
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -329,8 +329,26 @@ impl Carrier<'_> {
     /// One control pass of the part whose control plane is `plane`, each
     /// line said to `say` as it is said. Its report is the part's share of
     /// the report file, where the file holds it, else what the pull gives
-    /// back (design Decision 5).
+    /// back (design Decision 5). The part has no observer.
     pub fn pass(&self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> Passed {
+        self.observed_pass(plane, None, say)
+    }
+
+    /// One control pass, as [`Carrier::pass`] makes it, of a part whose
+    /// observer, where it has one, is `observer`: once the pass has sent
+    /// its report and confirmed what it confirms, whatever its control
+    /// plane answered, the observer is handed the pass's hello and the
+    /// part's share as it stands, and the pass waits on nothing of it. A
+    /// pass whose share or pull could not be read carried nothing, and
+    /// hands it nothing (design Decision 7 of
+    /// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048;
+    /// core.19, core.49).
+    pub fn observed_pass(
+        &self,
+        plane: &mut dyn ControlPlane,
+        observer: Option<&mut dyn Observer>,
+        say: &mut dyn FnMut(String),
+    ) -> Passed {
         // The pass's clock, read once, by which the work under each lease
         // is judged (core.24).
         let now = At::now();
@@ -443,6 +461,9 @@ impl Carrier<'_> {
             if work.below_least.is_none() {
                 work.confirm(answer, say);
             }
+        }
+        if let Some(observer) = observer {
+            observer.observe(&hello, &work.report);
         }
         Passed {
             expires: expires(&work.report, At::now()),
