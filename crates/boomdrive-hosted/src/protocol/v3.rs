@@ -1,8 +1,10 @@
 //! Version 3 of the runner's protocol (record 0052): its JSON Schema
 //! files, draft 2020-12, under `protocol/v3/`, and the runner's types for
 //! its messages. Version 3 is version 2 whole but for a control plane's
-//! hold among the acts, each file's `$id` under the repository's own
-//! address, and every message naming `protocol_version` 3; version 2 is
+//! hold among the acts, an observing hello and an observed report beside
+//! the hello and the report (record 0048; record 0052 as amended on
+//! 2026-11-18), each file's `$id` under the repository's own address, and
+//! every message naming `protocol_version` 3; version 2 is
 //! version 1 but for a place's ends, each with its delivery, a control
 //! plane's confirm and land among the acts, a preview among the wants,
 //! and a report's previews, what the runner answered of each (record 0037
@@ -22,7 +24,8 @@
 use boomdrive_control::{
     Acted, Answer, At, Commanded, Id, InboxCarried, Lease, Outcome, ToolVersion, Want,
 };
-use serde::{Deserialize, Serialize};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::value::RawValue;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -140,8 +143,8 @@ impl fmt::Display for MessageId {
 #[serde(rename_all = "snake_case")]
 pub enum FromRunner {
     Enroll(Enroll),
-    Hello(Hello),
-    Report(Report),
+    Hello(HelloForm),
+    Report(ReportForm),
     TerminalOpened(TerminalOpened),
     TerminalOutput(TerminalOutput),
     TerminalClosed(TerminalClosed),
@@ -218,6 +221,71 @@ pub struct Hello {
     pub leases: BTreeMap<Id, u64>,
 }
 
+/// A `hello`'s body: the hello a control plane is sent, or the observing
+/// hello an observer is (design Decision 1 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from). Each form is
+/// closed and only the observing one names `observing`, so no body reads
+/// as both; the observing form is read first.
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum HelloForm {
+    Observing(ObservingHello),
+    Working(Hello),
+}
+
+impl<'de> Deserialize<'de> for HelloForm {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<HelloForm, D::Error> {
+        // Read whole first, since a form holding a tool's copy cannot be
+        // read from serde's buffer, as an untagged enum would read it.
+        let raw = Box::<RawValue>::deserialize(deserializer)?;
+        match serde_json::from_str(raw.get()) {
+            Ok(observing) => Ok(HelloForm::Observing(observing)),
+            Err(_) => serde_json::from_str(raw.get())
+                .map(HelloForm::Working)
+                .map_err(D::Error::custom),
+        }
+    }
+}
+
+/// `observing`, which an observing form names as `true` alone: the
+/// connection observes, and the runner takes no work from its other end
+/// (record 0048).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Observing;
+
+impl Serialize for Observing {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(true)
+    }
+}
+
+impl<'de> Deserialize<'de> for Observing {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Observing, D::Error> {
+        match bool::deserialize(deserializer)? {
+            true => Ok(Observing),
+            false => Err(D::Error::custom("an observing form names `observing` true")),
+        }
+    }
+}
+
+/// The hello an observer is sent: the hello's versions, tool versions
+/// and repositories, with no capacity, since it is offered no room, and
+/// no lease, since it gives none (record 0048, points 1 and 4).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObservingHello {
+    pub observing: Observing,
+    /// The interface's version, apart from the protocol's.
+    pub interface_version: u32,
+    /// `boomdrive --version`'s text.
+    pub runner_version: String,
+    /// Each tool's version, by the tool's name.
+    pub tool_versions: BTreeMap<String, ToolVersion>,
+    /// The addresses, `owner/name`, the runner keeps that the observed
+    /// partition names, with their clones made (core.26).
+    pub repositories: Vec<String>,
+}
+
 /// The host's capacity, as Flume's status gives it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -260,6 +328,53 @@ pub struct Launched {
     /// The copy of Flume's status of its place (design Decision 7).
     pub status: Option<Carried>,
     /// The copy of sluice's entry of its submission (design Decision 9).
+    pub entry: Option<Carried>,
+}
+
+/// A `report`'s body: the report a control plane is sent, or the
+/// observed report an observer is (design Decision 1 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from), the observed
+/// form read first.
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum ReportForm {
+    Observed(ObservedReport),
+    Working(Report),
+}
+
+impl<'de> Deserialize<'de> for ReportForm {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ReportForm, D::Error> {
+        // Read whole first, as a hello's form is.
+        let raw = Box::<RawValue>::deserialize(deserializer)?;
+        match serde_json::from_str(raw.get()) {
+            Ok(observed) => Ok(ReportForm::Observed(observed)),
+            Err(_) => serde_json::from_str(raw.get())
+                .map(ReportForm::Working)
+                .map_err(D::Error::custom),
+        }
+    }
+}
+
+/// The report an observer of a part is sent: each launch of the part's
+/// share, by its id as the runner holds it, and nothing else (design
+/// Decision 2 of a-runner-reports-to-an-observer-it-takes-no-work-from;
+/// record 0048).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObservedReport {
+    pub observing: Observing,
+    pub launches: BTreeMap<Id, ObservedLaunch>,
+}
+
+/// A launch of the part's as an observer is sent it: [`Launched`] without
+/// its lease, since an observer gives none (core.10).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObservedLaunch {
+    pub answer: Answer,
+    /// The copy of Flume's status of its place.
+    pub status: Option<Carried>,
+    /// The copy of sluice's entry of its submission.
     pub entry: Option<Carried>,
 }
 

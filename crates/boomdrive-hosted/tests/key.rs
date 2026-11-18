@@ -8,6 +8,7 @@
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use boomdrive_hosted::key::{self, KeyName, Keychain, Memory, Store, SystemdCreds};
+use boomdrive_hosted::table::Table;
 use ed25519_dalek::SigningKey;
 use keyring_core::api::CredentialStoreApi;
 use keyring_core::{mock, CredentialStore};
@@ -115,6 +116,54 @@ fn kept_by_systemd_creds() {
             "decrypt --user --name=boomdrive.home.control.example {} -",
             file.display()
         )
+    );
+}
+
+/// The hosted-control-plane spec's "Kept apart from a partition of the
+/// same label": an observer's partition `home` is kept by `systemd-creds`
+/// as `boomdrive.observer.home.<host>`, which no hosted partition's label
+/// can name (design Decision 4 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from).
+#[test]
+fn an_observers_key_kept_by_systemd_creds() {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let program = stub(scratch.path(), 256);
+    let credstore_dir = scratch.path().join("config/credstore.encrypted");
+    let store = SystemdCreds::open(program, credstore_dir.clone()).expect("systemd 256 is taken");
+    let table = Table::read_observer(
+        &toml::from_str(
+            "url = \"http://localhost:8787\"\n[[partitions]]\nlabel = \"home\"\nrepositories = []\n",
+        )
+        .expect("a TOML table"),
+        Path::new("/h/.config/boomdrive/config.toml"),
+    )
+    .expect("the observer table read");
+    let name = table.key_name("home");
+    let key = test_key();
+
+    store.write(&name, &key).expect("the key kept");
+
+    let calls = std::fs::read_to_string(scratch.path().join("calls")).expect("the stub's calls");
+    let encrypt = calls
+        .lines()
+        .find(|line| line.starts_with("encrypt"))
+        .expect("an encrypt");
+    let file = credstore_dir.join("boomdrive.observer.home.localhost");
+    assert_eq!(
+        encrypt,
+        format!(
+            "encrypt --user --name=boomdrive.observer.home.localhost - {}",
+            file.display()
+        )
+    );
+    let read = store
+        .read(&name)
+        .expect("the key read")
+        .expect("a key kept");
+    assert_eq!(read.to_bytes(), key.to_bytes());
+    assert!(
+        matches!(store.read(&KeyName::new("home", "localhost")), Ok(None)),
+        "no hosted partition `home`'s key is kept"
     );
 }
 

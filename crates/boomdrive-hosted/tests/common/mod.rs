@@ -8,6 +8,7 @@
 #![allow(dead_code)]
 
 pub mod fake;
+pub mod waits;
 
 use boomdrive_hosted::protocol::{v1, v2, v3};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};

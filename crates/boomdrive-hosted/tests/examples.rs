@@ -8,7 +8,9 @@
 
 mod common;
 
-use boomdrive_hosted::protocol::v3::{FromRunner, Message, MessageId, ToRunner};
+use boomdrive_hosted::protocol::v3::{
+    FromRunner, HelloForm, Message, MessageId, ReportForm, ToRunner,
+};
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
@@ -83,11 +85,35 @@ fn every_example_passes_its_directions_schema() {
     }
 }
 
-/// The runner-protocol spec's "Every example read and written back".
+/// The runner-protocol spec's "Every example read and written back":
+/// the observing connection's among them, its hello and its report each
+/// read as its observing form, and the working ones as theirs (design
+/// Decision 1 of a-runner-reports-to-an-observer-it-takes-no-work-from).
 #[test]
 fn every_example_read_and_written_back() {
     read_and_written_back::<FromRunner>("from-runner", &from_runner());
     read_and_written_back::<ToRunner>("to-runner", &to_runner());
+    let read = |name: &str| -> FromRunner {
+        let message: Message<FromRunner> =
+            serde_json::from_value(example("from-runner", name)).unwrap();
+        message.body
+    };
+    assert!(matches!(
+        read("hello-observing.json"),
+        FromRunner::Hello(HelloForm::Observing(_))
+    ));
+    assert!(matches!(
+        read("hello.json"),
+        FromRunner::Hello(HelloForm::Working(_))
+    ));
+    assert!(matches!(
+        read("report-observed.json"),
+        FromRunner::Report(ReportForm::Observed(_))
+    ));
+    assert!(matches!(
+        read("report.json"),
+        FromRunner::Report(ReportForm::Working(_))
+    ));
 }
 
 /// The runner-protocol spec's "Every kind has an example": each kind of a

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v3/hello.schema.json",
-  "description": "The hello, the interface's Hello field for field, but that its capacity's printed part is the copy of Flume's host part.",
+  "description": "The hello, the interface's Hello field for field, but that its capacity's printed part is the copy of Flume's host part, and the observing hello, the hello with no capacity or lease, of a connection that observes.",
   "$defs": {
     "hello": {
       "description": "What the runner tells the control plane of its host: first at every connection, whole, and again when it changes.",
@@ -54,6 +54,51 @@
           },
           "additionalProperties": {
             "$ref": "shared.schema.json#/$defs/lease_number"
+          }
+        }
+      }
+    },
+    "observing_hello": {
+      "description": "The hello of a connection that observes: what the runner tells an observer on its own host of the part it observes, first at every connection, whole, and again when it changes. It offers no room and holds no lease, since the runner takes no work from an observer (record 0048).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observing",
+        "interface_version",
+        "runner_version",
+        "tool_versions",
+        "repositories"
+      ],
+      "properties": {
+        "observing": {
+          "description": "That this connection observes: the control plane at its other end is an observer, which offers nothing on it and is given nothing it asks.",
+          "const": true
+        },
+        "interface_version": {
+          "description": "The interface's version, apart from the protocol's, as the hello names it.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "runner_version": {
+          "description": "boomdrive --version's text, as the hello names it.",
+          "type": "string"
+        },
+        "tool_versions": {
+          "description": "Each tool's version, by the tool's name, as the hello names it.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/tool_name"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/tool_version"
+          }
+        },
+        "repositories": {
+          "description": "The addresses of the repositories the runner keeps that the observed partition names, with their clones made.",
+          "type": "array",
+          "items": {
+            "$ref": "shared.schema.json#/$defs/repository"
           }
         }
       }

@@ -1,0 +1,29 @@
+{
+  "protocol_version": 3,
+  "id": "runner:1",
+  "body": {
+    "hello": {
+      "observing": true,
+      "interface_version": 1,
+      "runner_version": "boomdrive 0.1.0",
+      "tool_versions": {
+        "flume": {
+          "printed": "flume 0.4.1"
+        },
+        "git": {
+          "printed": "git version 2.48.1"
+        },
+        "herdr": {
+          "missing": "herdr is not on PATH"
+        },
+        "sluice": {
+          "printed": "sluice 0.61.1"
+        }
+      },
+      "repositories": [
+        "example/app",
+        "example/tools"
+      ]
+    }
+  }
+}

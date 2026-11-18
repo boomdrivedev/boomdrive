@@ -65,7 +65,7 @@ pub fn open(
 
 /// A host with no credential store: every key is unread, with the words
 /// saying what the host lacks (core.32).
-struct Lacking(String);
+pub(crate) struct Lacking(pub(crate) String);
 
 impl Store for Lacking {
     fn read(&self, _: &KeyName) -> Result<Option<SigningKey>, String> {
@@ -91,11 +91,13 @@ pub struct Hosted {
 }
 
 /// The runtime every part opened together shares, stopped once the last
-/// part holding it is dropped.
-struct Shared(Option<Runtime>);
+/// part holding it is dropped; an observer's are opened on one of their
+/// own (design Decision 6 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from).
+pub(crate) struct Shared(pub(crate) Option<Runtime>);
 
 impl Shared {
-    fn handle(&self) -> &tokio::runtime::Handle {
+    pub(crate) fn handle(&self) -> &tokio::runtime::Handle {
         self.0
             .as_ref()
             .expect("the runtime is held until it is dropped")
@@ -130,17 +132,95 @@ struct Partition {
     /// Each want withheld at the last pull for naming a repository the
     /// partition is not served, said once while it is offered.
     withheld: BTreeSet<Id>,
-    /// Each launch's or preview's carried answer whose copy failed at the
-    /// last report, said once while it fails, keyed by its kind, `launch`
-    /// or `preview`, its id and the answer: a launch's `status` or
-    /// `entry`, a preview's `answer` or `status`. A launch and a preview
-    /// whose ids are equal never share a key, so each is said.
-    failing: BTreeSet<(&'static str, Id, &'static str)>,
-    /// Each launch whose status went up at the last report with an end
-    /// carried by its delivery alone or left out, said once while it does
-    /// (design Decisions 2 and 3 of
+    /// What of the last report's copies failed, or went up with an end
+    /// not whole, each said once while it lasts.
+    failing: Failing,
+}
+
+/// What a report's cut found failing, so each is said once while it
+/// lasts.
+#[derive(Default)]
+pub(crate) struct Failing {
+    /// Each launch's or preview's carried answer whose copy failed, keyed
+    /// by its kind, `launch` or `preview`, its id and the answer: a
+    /// launch's `status` or `entry`, a preview's `answer` or `status`. A
+    /// launch and a preview whose ids are equal never share a key, so each
+    /// is said.
+    copies: BTreeSet<(&'static str, Id, &'static str)>,
+    /// Each launch whose status went up with an end carried by its
+    /// delivery alone or left out (design Decisions 2 and 3 of
     /// the-hosted-protocol-carries-every-end-of-a-place).
     partial: BTreeSet<Id>,
+}
+
+impl Failing {
+    /// The copy `key` names fails for `words`: said where `was`, the last
+    /// cut's, did not hold it, never naming a value (core.11).
+    fn fails(
+        &mut self,
+        was: &Failing,
+        key: (&'static str, Id, &'static str),
+        words: &str,
+        say: &connection::Say,
+    ) {
+        let (kind, id, what) = &key;
+        if !was.copies.contains(&key) {
+            say(format!(
+                "{id}: the {kind}'s {what}'s copy fails version {VERSION}'s check, so it goes up \
+                 null: {words}"
+            ));
+        }
+        self.copies.insert(key);
+    }
+}
+
+/// The launch `id`'s status and entry, `launched`'s, cut to version 3's
+/// copies, each `{copy, at, listed}`, or none where it is none or its copy
+/// fails, which `now` holds and is said where `was` did not hold it. A
+/// status goes up with each end of the place copied on its own, and one
+/// with an end carried by its delivery alone or left out is said once
+/// while it does, naming each end's path and never a value (design
+/// Decision 9; design Decision 2 of
+/// the-hosted-protocol-carries-every-end-of-a-place). A partition's report
+/// and an observer's are cut by it alike (design Decision 2 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; core.11,
+/// core.27).
+pub(crate) fn cut_launch(
+    id: &Id,
+    launched: &Launched,
+    was: &Failing,
+    now: &mut Failing,
+    say: &connection::Say,
+) -> (Option<Value>, Option<Value>) {
+    let mut carried = |what: &'static str, carried: &Option<Carried>| {
+        let carried = carried.as_ref()?;
+        let copied = match what {
+            "status" => copy::place_status(&carried.text).map(|placed| {
+                if !placed.whole() {
+                    if !was.partial.contains(id) {
+                        say(partial_words(id, &placed));
+                    }
+                    now.partial.insert(id.clone());
+                }
+                placed.copy
+            }),
+            _ => copy::submission_entry(&carried.text),
+        };
+        match copied {
+            Ok(copy) => Some(json!({
+                "copy": copy,
+                "at": carried.at,
+                "listed": carried.listed,
+            })),
+            Err(words) => {
+                now.fails(was, ("launch", id.clone(), what), &words, say);
+                None
+            }
+        }
+    };
+    let status = carried("status", &launched.status);
+    let entry = carried("entry", &launched.entry);
+    (status, entry)
 }
 
 impl Hosted {
@@ -420,7 +500,7 @@ impl Drop for Hosted {
 }
 
 /// The runtime the connections run on.
-fn runtime() -> Result<Runtime, String> {
+pub(crate) fn runtime() -> Result<Runtime, String> {
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .thread_name("boomdrive-hosted")
@@ -430,7 +510,7 @@ fn runtime() -> Result<Runtime, String> {
 }
 
 /// `say` as the connections say their lines, from the runtime's threads.
-fn shared_say(say: Say) -> connection::Say {
+pub(crate) fn shared_say(say: Say) -> connection::Say {
     let say = Mutex::new(say);
     Arc::new(move |line| {
         let mut say = say.lock().unwrap_or_else(|e| e.into_inner());
@@ -450,8 +530,7 @@ impl Partition {
             held: None,
             sent: None,
             withheld: BTreeSet::new(),
-            failing: BTreeSet::new(),
-            partial: BTreeSet::new(),
+            failing: Failing::default(),
         }
     }
 
@@ -675,50 +754,11 @@ impl Partition {
     /// and never a value (design Decision 5 of
     /// the-hosted-protocol-carries-land-and-preview; core.27, core.55).
     fn upward(&mut self, part: &Report, say: &connection::Say) -> Value {
-        let mut failing = BTreeSet::new();
-        let was_failing = std::mem::take(&mut self.failing);
-        let fails =
-            |failing: &mut BTreeSet<_>, key: (&'static str, Id, &'static str), words: &str| {
-                let (kind, id, what) = &key;
-                if !was_failing.contains(&key) {
-                    say(format!(
-                        "{id}: the {kind}'s {what}'s copy fails version {VERSION}'s check, so it \
-                         goes up null: {words}"
-                    ));
-                }
-                failing.insert(key);
-            };
-        let mut partial = BTreeSet::new();
+        let was = std::mem::take(&mut self.failing);
+        let mut now = Failing::default();
         let mut launches = serde_json::Map::new();
         for (id, launched) in &part.launches {
-            let mut carried = |what: &'static str, carried: &Option<Carried>| {
-                let carried = carried.as_ref()?;
-                let copied = match what {
-                    "status" => copy::place_status(&carried.text).map(|placed| {
-                        if !placed.whole() {
-                            if !self.partial.contains(id) {
-                                say(partial_words(id, &placed));
-                            }
-                            partial.insert(id.clone());
-                        }
-                        placed.copy
-                    }),
-                    _ => copy::submission_entry(&carried.text),
-                };
-                match copied {
-                    Ok(copy) => Some(json!({
-                        "copy": copy,
-                        "at": carried.at,
-                        "listed": carried.listed,
-                    })),
-                    Err(words) => {
-                        fails(&mut failing, ("launch", id.clone(), what), &words);
-                        None
-                    }
-                }
-            };
-            let status = carried("status", &launched.status);
-            let entry = carried("entry", &launched.entry);
+            let (status, entry) = cut_launch(id, launched, &was, &mut now, say);
             launches.insert(
                 self.bare(id),
                 json!({
@@ -739,7 +779,7 @@ impl Partition {
                 match copied {
                     Ok(copy) => Some(copy),
                     Err(words) => {
-                        fails(&mut failing, ("preview", id.clone(), what), &words);
+                        now.fails(&was, ("preview", id.clone(), what), &words, say);
                         None
                     }
                 }
@@ -771,8 +811,7 @@ impl Partition {
                 }),
             );
         }
-        self.failing = failing;
-        self.partial = partial;
+        self.failing = now;
         let acts: serde_json::Map<String, Value> = part
             .acts
             .iter()
@@ -813,8 +852,11 @@ impl Partition {
             .iter()
             .filter(|(id, launched)| {
                 launched.status.is_some()
-                    && !self.failing.contains(&("launch", (*id).clone(), "status"))
-                    && !self.partial.contains(*id)
+                    && !self
+                        .failing
+                        .copies
+                        .contains(&("launch", (*id).clone(), "status"))
+                    && !self.failing.partial.contains(*id)
             })
             .map(|(id, _)| id.clone())
             .collect()

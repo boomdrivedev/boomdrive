@@ -83,7 +83,7 @@
       "pattern": "^([A-Za-z0-9_-]{4})*([A-Za-z0-9_-]{2,3})?$"
     },
     "message_refused": {
-      "description": "Either end's answer to a message that failed its check: the message, by its id, with words. Nothing else is done with it.",
+      "description": "Either end's answer to a message that failed its check, and the runner's to a message an observing connection carries of work, which the runner takes none of: the message, by its id, with words. Nothing else is done with it.",
       "type": "object",
       "additionalProperties": false,
       "required": [

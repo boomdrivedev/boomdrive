@@ -6,8 +6,10 @@
 //! the-hosted-protocol-carries-every-end-of-a-place), and each version a
 //! release has spoken held to the files that release holds: version 1 to
 //! `v0.7.3`'s and version 2 to `v0.9.0`'s (core.42); and version 3 held
-//! to version 2 but for its hold (design Decision 8 of
-//! the-hosted-protocol-carries-a-hold; record 0052).
+//! to version 2 but for its hold and its observing connection (design
+//! Decision 8 of the-hosted-protocol-carries-a-hold; design Decision 9 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0052 as
+//! amended on 2026-11-18).
 
 mod common;
 
@@ -645,19 +647,120 @@ fn hold_branch() -> Value {
     })
 }
 
+/// `definition` taken out of `read`'s `$defs`, where `name` holds it.
+fn take_definition(read: &mut Value, name: &str, definition: &str) -> Value {
+    read.pointer_mut("/$defs")
+        .and_then(Value::as_object_mut)
+        .and_then(|defs| defs.remove(definition))
+        .unwrap_or_else(|| panic!("{name} holds no {definition}"))
+}
+
+/// `value`, an object, with `members` taken out of its `required` and its
+/// `properties`.
+fn without_members(value: &Value, members: &[&str]) -> Value {
+    let mut read = value.clone();
+    read["required"]
+        .as_array_mut()
+        .expect("a required list")
+        .retain(|member| !members.iter().any(|m| member == m));
+    let properties = read["properties"].as_object_mut().expect("properties");
+    for member in members {
+        properties.remove(*member);
+    }
+    read
+}
+
+/// `value`, an object, with `observing`, `{"const": true}`, put first in
+/// its `required` and its `properties` (design Decision 1).
+fn observing_first(value: &Value) -> Value {
+    let mut read = value.clone();
+    read["required"]
+        .as_array_mut()
+        .expect("a required list")
+        .insert(0, Value::from("observing"));
+    let mut properties = serde_json::Map::new();
+    properties.insert(
+        "observing".to_string(),
+        serde_json::json!({ "const": true }),
+    );
+    for (key, member) in read["properties"].as_object().expect("properties") {
+        properties.insert(key.clone(), member.clone());
+    }
+    read["properties"] = Value::Object(properties);
+    read
+}
+
+/// The observed report, its descriptions set aside, as design Decision 1
+/// gives it.
+fn observed_report() -> Value {
+    serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["observing", "launches"],
+        "properties": {
+            "observing": { "const": true },
+            "launches": {
+                "type": "object",
+                "propertyNames": { "$ref": "shared.schema.json#/$defs/id" },
+                "additionalProperties": { "$ref": "#/$defs/observed_launch" }
+            }
+        }
+    })
+}
+
+/// The kind `kind`'s branch of `read`'s envelope, its two forms checked,
+/// the working form at `working` and the observing one at `observing`,
+/// read as the reference to its working form alone (design Decision 9).
+fn read_as_its_working_form(
+    read: &mut Value,
+    name: &str,
+    kind: &str,
+    working: &str,
+    observing: &str,
+) {
+    let branches = read
+        .pointer_mut("/$defs/body/oneOf")
+        .and_then(Value::as_array_mut)
+        .unwrap_or_else(|| panic!("{name} holds no body's branches"));
+    let at: Vec<usize> = branches
+        .iter()
+        .enumerate()
+        .filter(|(_, branch)| branch["required"] == serde_json::json!([kind]))
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(at.len(), 1, "{name} holds one {kind}'s branch");
+    let forms = branches[at[0]]["properties"][kind].clone();
+    let expected = serde_json::json!({
+        "oneOf": [{ "$ref": working }, { "$ref": observing }]
+    });
+    if let Some(path) = first_difference(&forms, &expected, "") {
+        panic!("{name}'s {kind} kind differs from design Decision 1's at {path}");
+    }
+    branches[at[0]]["properties"][kind] = forms["oneOf"][0].clone();
+}
+
 /// The runner-protocol spec's "Version 3 is version 2 but for its hold"
-/// and "Version 3's examples are version 2's" (design Decision 8; record
-/// 0052): each schema file of version 3, its descriptions set aside, its
-/// `$id` read as version 2's, its envelope's `protocol_version` read as 2
-/// and the hold's branch taken out of `act_sort`, equals version 2's file
-/// with its descriptions set aside, and the hold's branch is the
-/// interface's `ActSort::Hold`; version 3's examples are version 2's and
-/// `to-runner/pulled-with-a-hold.json`, and each of version 2's, read with
-/// `protocol_version` 2 and `enroll.json`'s signature set aside, equals
-/// version 2's. A failure names the file and the pointer of the first
-/// difference, and no value (core.11).
+/// and "Version 3's examples are version 2's" (design Decisions 8 of
+/// the-hosted-protocol-carries-a-hold and 9 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0052 as
+/// amended on 2026-11-18): each schema file of version 3, its descriptions
+/// set aside, its `$id` read as version 2's, its envelope's
+/// `protocol_version` read as 2, the hold's branch taken out of
+/// `act_sort`, `observing_hello`, `observed_report` and `observed_launch`
+/// taken out of its `$defs`, and the `hello` and `report` kinds each read
+/// as the reference to its working form, equals version 2's file with its
+/// descriptions set aside; the hold's branch is the interface's
+/// `ActSort::Hold`; `observing_hello` is version 3's `hello` with
+/// `observing` in place of `capacity` and `leases`; `observed_launch` is
+/// `launched` without `lease`; `observed_report` is design Decision 1's;
+/// and each kind's second form is the reference to its observing form.
+/// Version 3's examples are version 2's, `to-runner/pulled-with-a-hold.json`
+/// and the observing connection's three, and each of version 2's, read
+/// with `protocol_version` 2 and `enroll.json`'s signature set aside,
+/// equals version 2's. A failure names the file and the pointer of the
+/// first difference, and no value (core.11).
 #[test]
-fn version_3_is_version_2_but_for_its_hold() {
+fn version_3_is_version_2_but_for_its_hold_and_observing() {
     let (v2, v3) = (common::V2, common::V3);
     let names = |version: common::Version| -> BTreeSet<&'static str> {
         version.files.iter().map(|(name, _)| *name).collect()
@@ -665,6 +768,7 @@ fn version_3_is_version_2_but_for_its_hold() {
     assert_eq!(names(v3), names(v2), "version 3's files are version 2's");
     let old: BTreeMap<&str, Value> = v2.files().into_iter().collect();
     let mut holds = 0;
+    let mut observing = BTreeSet::new();
     for (name, value) in v3.files() {
         let mut read = without_descriptions(&value);
         read["$id"] = Value::from(v2.address(name));
@@ -688,11 +792,65 @@ fn version_3_is_version_2_but_for_its_hold() {
             }
             holds += 1;
         }
+        match name {
+            "hello.schema.json" => {
+                let form = take_definition(&mut read, name, "observing_hello");
+                let expected = observing_first(&without_members(
+                    &read["$defs"]["hello"],
+                    &["capacity", "leases"],
+                ));
+                if let Some(path) = first_difference(&form, &expected, "") {
+                    panic!("{name}'s observing_hello differs from its hello's at {path}");
+                }
+                observing.insert("observing_hello");
+            }
+            "report.schema.json" => {
+                let launch = take_definition(&mut read, name, "observed_launch");
+                let expected = without_members(&read["$defs"]["launched"], &["lease"]);
+                if let Some(path) = first_difference(&launch, &expected, "") {
+                    panic!("{name}'s observed_launch differs from its launched at {path}");
+                }
+                let report = take_definition(&mut read, name, "observed_report");
+                if let Some(path) = first_difference(&report, &observed_report(), "") {
+                    panic!("{name}'s observed_report differs from design Decision 1's at {path}");
+                }
+                observing.insert("observed_launch");
+                observing.insert("observed_report");
+            }
+            "from-runner.schema.json" => {
+                read_as_its_working_form(
+                    &mut read,
+                    name,
+                    "hello",
+                    "hello.schema.json#/$defs/hello",
+                    "hello.schema.json#/$defs/observing_hello",
+                );
+                read_as_its_working_form(
+                    &mut read,
+                    name,
+                    "report",
+                    "report.schema.json#/$defs/report",
+                    "report.schema.json#/$defs/observed_report",
+                );
+                observing.insert("the kinds' forms");
+            }
+            _ => {}
+        }
         if let Some(path) = first_difference(&read, &without_descriptions(&old[name]), "") {
             panic!("version 3's {name} differs from version 2's at {path}");
         }
     }
     assert_eq!(holds, 1, "one act_sort of version 3 holds a hold");
+    assert_eq!(
+        observing,
+        BTreeSet::from([
+            "observing_hello",
+            "observed_launch",
+            "observed_report",
+            "the kinds' forms"
+        ]),
+        "version 3 holds the observing connection's forms"
+    );
     let hold = serde_json::to_value(boomdrive_control::ActSort::Hold {
         words: "the user sends it".to_string(),
         bound_interval: 28800,
@@ -718,11 +876,18 @@ fn version_3_is_version_2_but_for_its_hold() {
         found.into_iter().collect()
     };
     let mut expected = examples(v2);
-    expected.insert("to-runner/pulled-with-a-hold.json".to_string());
+    for added in [
+        "to-runner/pulled-with-a-hold.json",
+        "from-runner/hello-observing.json",
+        "from-runner/report-observed.json",
+        "to-runner/pulled-answering-an-observing-hello.json",
+    ] {
+        expected.insert(added.to_string());
+    }
     assert_eq!(
         examples(v3),
         expected,
-        "version 3's examples are version 2's and pulled-with-a-hold.json"
+        "version 3's examples are version 2's, pulled-with-a-hold.json and the observing connection's three"
     );
     for name in examples(v2) {
         let (direction, file) = name.split_once('/').unwrap();
