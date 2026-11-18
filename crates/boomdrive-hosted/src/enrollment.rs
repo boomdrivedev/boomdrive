@@ -4,7 +4,10 @@
 //! host's credential store only once `enrolled` answers. The answer is
 //! checked against version 3 before it is read (design Decision 10). The
 //! enrollment writes no configuration and nothing in the data directory
-//! (core.35), and no output of it holds the token (core.4).
+//! (core.35), and no output of it holds the token (core.4). An observer's
+//! partition is enrolled the same way, at the observer's `runner/enroll`,
+//! its key kept under `observer.<label>` (design Decision 4 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
 
 use crate::check;
 use crate::key::{self, Store};
@@ -78,7 +81,8 @@ pub fn enroll(
             .map(|partition| format!("`{}`", partition.label))
             .collect();
         return Err(Refusal::host(format!(
-            "[control_plane.hosted] names no partition `{label}`: it names {}",
+            "{} names no partition `{label}`: it names {}",
+            table.role.table(),
             labels.join(", ")
         )));
     }

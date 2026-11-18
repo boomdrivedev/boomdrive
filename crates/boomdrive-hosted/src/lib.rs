@@ -48,6 +48,22 @@ pub fn enroll(
     enrollment::enroll(&table, label, token, key::store_for_host, &machine())
 }
 
+/// Enrolls the partition `label` of the observer table, `[observer]`,
+/// `table`, of the configuration file `file`, as [`enroll`] enrolls a
+/// hosted partition, at the observer's `runner/enroll`, its key kept in
+/// the host's own credential store under `observer.<label>` (design
+/// Decision 4 of a-runner-reports-to-an-observer-it-takes-no-work-from;
+/// record 0048; core.31, core.32).
+pub fn enroll_observer(
+    table: &toml::Table,
+    file: &Path,
+    label: &str,
+    token: impl FnOnce() -> Result<String, String>,
+) -> Result<Enrolled, Refusal> {
+    let table = Table::read_observer(table, file).map_err(Refusal::host)?;
+    enrollment::enroll(&table, label, token, key::store_for_host, &machine())
+}
+
 /// The host's name, as its operating system gives it, which an
 /// enrollment carries (the cloud's first run, FR3).
 fn machine() -> String {
