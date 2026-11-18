@@ -35,7 +35,7 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 5. A host without the runner takes only what it turns on
 
-- [ ] 5.1 `nix/tests/apps.nix` gains the cases *Nothing turned on*, *Only the tools turned on*, *Every tool turned on without the runner* and *timber turned on without the runner*, on each platform: *Nothing turned on* on nix-darwin with `system.primaryUser` forced to `null`, and on NixOS with no `services.boomdrive.user`. A case that fails is fixed in the module it names, within design Decisions 1 to 7. Done when those cases, each on nix-darwin and on NixOS, and *No timber without the runner*, on each, hold, with `sluice exec main -- moon run nix:test` passing.
+- [x] 5.1 `nix/tests/apps.nix` gains the cases *Nothing turned on*, *Only the tools turned on*, *Every tool turned on without the runner* and *timber turned on without the runner*, on each platform: *Nothing turned on* on nix-darwin with `system.primaryUser` forced to `null`, and on NixOS with no `services.boomdrive.user`. A case that fails is fixed in the module it names, within design Decisions 1 to 7. Done when those cases, each on nix-darwin and on NixOS, and *No timber without the runner*, on each, hold, with `sluice exec main -- moon run nix:test` passing.
 
 ## 6. The words
 

@@ -439,6 +439,136 @@ let
       ) "the NixOS user activation's ${name} without the runner writes Pending You's folder"
     ) others;
 
+  # A host without the runner takes only what it turns on (design
+  # Decisions 1 to 7 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  tools = [
+    "flume"
+    "sluice"
+    "crew"
+    "timber"
+  ];
+  everyTool =
+    tools
+    ++ [
+      "herdr"
+      "ghostty"
+      "boomdrive-launcher"
+      "portless"
+      "worktrunk"
+    ]
+    ++ companions;
+  # The set's packages of `everyTool` and the runner's.
+  setsPackages = everyTool ++ [ "boomdrive" ];
+
+  nothingOn =
+    platform:
+    { withoutOf, set, ... }:
+    let
+      evaluated = withoutOf (
+        if platform == "nix-darwin" then { system.primaryUser = lib.mkForce null; } else { }
+      );
+      text = activationOf platform evaluated;
+      scripts = builtins.attrNames (userScripts evaluated);
+      ours = lib.filter (name: builtins.elem name ([ "boomdrive" ] ++ tools)) scripts;
+    in
+    profileHolds platform "with nothing turned on" set evaluated [ ] setsPackages
+    ++ t.expect (
+      signinsOf evaluated == [ ]
+    ) "the ${platform} system profile with nothing turned on holds pendingyou-signin"
+    ++ (
+      if platform == "nix-darwin" then
+        t.expect (
+          !lib.hasInfix "sudo --user" text
+        ) "the nix-darwin activation with nothing turned on runs a step as a user: ${text}"
+      else
+        t.expect (ours == [ ]) "the NixOS user activation with nothing turned on runs ${toString ours}"
+    );
+
+  onlyThose =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    let
+      evaluated = withoutOf {
+        imports = [
+          flumeAndHerdr
+          (users [ "flume" ])
+        ];
+      };
+      steps = map lib.trim (pluginSteps platform evaluated);
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} || true";
+      expected =
+        if platform == "nix-darwin" then
+          "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}"
+        else
+          "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+    in
+    profileHolds platform "with Flume and herdr turned on without the runner" set evaluated [
+      "flume"
+      "herdr"
+    ] (lib.subtractLists [ "flume" "herdr" ] setsPackages)
+    ++
+      t.expect (steps == [ expected ])
+        "the ${platform} activation with Flume and herdr turned on without the runner links ${builtins.toJSON steps}, not ${expected}";
+
+  everyToolOn =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    let
+      evaluated = withoutOf {
+        imports = [
+          crewOn
+          (users tools)
+        ];
+        services = {
+          flume.enable = true;
+          sluice.enable = true;
+          timber.enable = true;
+          boomdrive =
+            lib.genAttrs
+              [
+                "herdr"
+                "ghostty"
+                "launcher"
+                "portless"
+                "worktrunk"
+                "pendingyou"
+                "plannotator"
+                "plannotator-tui"
+              ]
+              (_: {
+                enable = true;
+              });
+        };
+      };
+    in
+    profileHolds platform "with every tool turned on without the runner" set evaluated everyTool [
+      "boomdrive"
+    ];
+
+  timberWithout =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    profileHolds platform "with timber turned on without the runner" set (withoutOf {
+      imports = [ (users [ "timber" ]) ];
+      services.timber.enable = true;
+    }) [ "timber" ] [ ];
+
   noSetsHerdr =
     platform:
     { system, ... }:
@@ -1511,6 +1641,10 @@ onEach "The way in with the runner" withRunner
 // onEach "No timber of the set's" noTimber
 // onEach "A host that keeps its own timber file" ownTimberFile
 // onEach "No timber without the runner" timberWithoutRunner
+// onEach "timber turned on without the runner" timberWithout
+// onEach "Nothing turned on" nothingOn
+// onEach "Only the tools turned on" onlyThose
+// onEach "Every tool turned on without the runner" everyToolOn
 // onEach "The timber option is gone" timberGone
 // onEach "No serving process of the modules'" noServe
 // onEach "The companions with the runner and crew" companionsWithCrew
