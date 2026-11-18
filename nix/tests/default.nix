@@ -21,6 +21,7 @@ in
     // import ./packages.nix t
     // import ./companions.nix t
     // import ./timber.nix t
+    // import ./plugins.nix t
     // import ./file.nix t
     // import ./darwin.nix t
     // import ./nixos.nix t

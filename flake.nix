@@ -1,12 +1,13 @@
 # The family's host tools, pinned together and built from source: the
 # runner at this tree, Flume, sluice, crew, timber, herdr and worktrunk
-# each at a release tag through its own flake, timber's herdr and Claude
-# Code plugins from its same tag, and portless at its release tag through
-# this flake's recipe (records 0020 and 0023, core.44). crew's
-# companions come with them (record 0044): Pending You as it publishes it
-# on npm, Plannotator and plannotator-tui through numtide/llm-agents.nix's
-# flake at their release tags, their herdr plugins at the commits the lock
-# names, and the set's marketplace of their Claude Code plugins. git is
+# each at a release tag through its own flake, timber's herdr plugin from
+# its same tag, and portless at its release tag through this flake's
+# recipe (records 0020 and 0023, core.44). crew's companions come with
+# them (record 0044): Pending You as it publishes it on npm, Plannotator
+# and plannotator-tui through numtide/llm-agents.nix's flake at their
+# release tags, and their herdr plugins at the commits the lock names.
+# The set's marketplace holds every Claude Code plugin its tools ship,
+# each from its tool's pin (record 0044 as amended on 2026-11-18). git is
 # the host's own. A host's nix substitutes their binaries from the
 # family's cache where it trusts it, and builds the same paths where it
 # does not (core.47). Its shell, devShells.<system>.default, puts the set on PATH and
@@ -204,11 +205,23 @@
           # The way in: an app on macOS and a desktop entry on Linux that
           # runs `flume open` (design Decision 3).
           boomdrive-launcher = pkgs.callPackage ./nix/packages/launcher.nix { };
-          # The set's marketplace of crew's companions' Claude Code plugins
-          # and timber's (record 0044, point 2, and its amendment of
-          # 2026-11-13), which no module installs yet.
+          # The set's marketplace of every Claude Code plugin its tools
+          # ship, crew's companions', timber's, Flume's, sluice's, crew's
+          # and worktrunk's (record 0044, point 2, and its amendments of
+          # 2026-11-13 and 2026-11-18), which no module installs yet.
+          # worktrunk's plugin is of its tree at its tag, as its package's
+          # source holds only what its build compiles.
           boomdrive-claude-plugins = pkgs.callPackage ./nix/packages/claude-plugins.nix {
-            inherit (tools) pendingyou plannotator timber;
+            inherit (tools)
+              pendingyou
+              plannotator
+              timber
+              flume
+              sluice
+              crew
+              worktrunk
+              ;
+            worktrunkSource = inputs.worktrunk;
             skill = ./nix/packages/pendingyou-skill.md;
           };
           # The companions' herdr plugins, each at the commit the lock names

@@ -385,10 +385,12 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   and the set's plannotator-tui, so herdr's link fetches nothing;
 - the set's marketplace of Claude Code plugins,
   `boomdrive-claude-plugins`: a marketplace named `boomdrive` holding
-  the companions' plugins, Pending You's hooks and skill and
-  Plannotator's own plugin, and timber's own plugin, from timber's tag,
-  which keeps a session in a timber repository publishing only through
-  `timber publish`.
+  every Claude Code plugin the set's tools ship, each from its tool's
+  tag and at its version: Flume's `flume`, sluice's `sluice` and
+  `sluice-board`, crew's `crew`, worktrunk's `worktrunk`, timber's
+  `timber`, which keeps a session in a timber repository publishing only
+  through `timber publish`, and the companions', Pending You's hooks and
+  skill and Plannotator's own plugin.
 
 Each tool reports its release's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
@@ -815,8 +817,9 @@ services.boomdrive.plannotator.package = null;
 services.boomdrive.plannotator-tui.package = null;
 ```
 
-The companions' Claude Code plugins and timber's, the set's marketplace
-`boomdrive-claude-plugins`, are installed into no Claude Code home yet:
+The Claude Code plugins of the set's tools and companions, the set's
+marketplace `boomdrive-claude-plugins`, are installed into no Claude Code
+home yet:
 no switch runs `claude` or writes into a Claude Code home, and Claude
 Code stays yours. Installing them into every Claude Code home of the
 accounts, with Pending You's MCP server, and loading the folder's wake
