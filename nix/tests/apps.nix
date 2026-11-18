@@ -302,6 +302,69 @@ let
       steps == [ expected ]
     ) "the ${platform} activation with its own list links ${builtins.toJSON steps}, not ${expected}";
 
+  # The set's user's steps without the runner on nix-darwin (design
+  # Decision 4 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  flumeAndHerdr = {
+    services = {
+      flume.enable = true;
+      boomdrive.herdr.enable = true;
+    };
+  };
+  linkedWithoutOnDarwin =
+    let
+      inherit (platforms."nix-darwin") set withoutOf;
+      evaluated = withoutOf flumeAndHerdr;
+      steps = pluginSteps "nix-darwin" evaluated;
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} || true";
+      expected = "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}";
+      text = activationOf "nix-darwin" evaluated;
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a nix-darwin system with Flume and herdr turned on without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (steps == [ expected ])
+        "the nix-darwin activation without the runner's plugin steps are ${builtins.toJSON steps}, not ${expected}"
+    ++ t.expect (
+      !lib.hasInfix "boomdrive-config.toml" text
+    ) "the nix-darwin activation without the runner links the runner's file: ${text}"
+    ++ t.expect (
+      !evaluated.config.launchd.user.agents ? boomdrive
+    ) "the nix-darwin system without the runner declares the agent boomdrive";
+
+  noPrimaryUser =
+    let
+      evaluated = platforms."nix-darwin".withoutOf {
+        imports = [ flumeAndHerdr ];
+        system.primaryUser = lib.mkForce null;
+      };
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (lib.hasInfix "services.boomdrive.herdr.enable" failures) "a nix-darwin system with no primary user that links the plugins fails naming no services.boomdrive.herdr.enable: ${failures}";
+
+  folderWithout =
+    platform: given:
+    let
+      inherit (platforms.${platform}) withoutOf;
+      evaluated = withoutOf {
+        imports = [ given ];
+        services.boomdrive.pendingyou.enable = true;
+      };
+      folder =
+        folderOf evaluated (homeOf platform)
+          evaluated.config.services.boomdrive.pendingyou.package;
+      expected = folderStepOf platform evaluated folder;
+      steps = map lib.trim (folderSteps platform evaluated);
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system with Pending You turned on without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (steps == [ expected ])
+        "the ${platform} activation without the runner's folder steps are ${builtins.toJSON steps}, not ${expected}"
+    ++
+      t.expect (folder.folder == "${homeOf platform}/.config/pendingyou")
+        "the ${platform} folder without the runner is ${folder.folder}, not ${homeOf platform}/.config/pendingyou";
+
   noSetsHerdr =
     platform:
     { system, ... }:
@@ -1399,4 +1462,7 @@ onEach "The way in with the runner" withRunner
   "The companions' plugins with crew" = companionsPlugins;
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
+  "The plugins linked without the runner on nix-darwin" = linkedWithoutOnDarwin;
+  "No primary user on nix-darwin" = noPrimaryUser;
+  "The folder written without the runner on nix-darwin" = folderWithout "nix-darwin" { };
 }
