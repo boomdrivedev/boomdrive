@@ -7,7 +7,7 @@ The runner's protocol with a hosted control plane, as JSON Schema of draft 2020-
 
 ### Requirement: Each version of the protocol is JSON Schema in the hosted implementation's crate
 
-The runner's protocol with a hosted control plane SHALL be JSON Schema of draft 2020-12, one directory per version under `crates/boomdrive-hosted/protocol/`: `v1/` and `v2/`. Each schema file SHALL name its own address as its `$id`. Every `$ref` SHALL resolve among its version's files, and no check SHALL fetch one. Each version's module SHALL hold in `FILES` every schema file of its version, and nothing else (core.42; record 0037; boomdrive-cloud record 0056).
+The runner's protocol with a hosted control plane SHALL be JSON Schema of draft 2020-12, one directory per version under `crates/boomdrive-hosted/protocol/`: `v1/`, `v2/` and `v3/`. Each schema file SHALL name its own address as its `$id`. Every `$ref` SHALL resolve among its version's files, and no check SHALL fetch one. Each version's module SHALL hold in `FILES` every schema file of its version, and nothing else (core.42; records 0037 and 0052; boomdrive-cloud record 0056).
 
 #### Scenario: Each file is a schema of its draft
 
@@ -30,17 +30,17 @@ Every message SHALL be an object of `protocol_version`, its version's number, `i
 
 #### Scenario: A message with no id
 
-- **WHEN** a `hello` with no `id`, one with an empty `id`, and one whose `id` holds a space are checked against version 2
+- **WHEN** a `hello` with no `id`, one with an empty `id`, and one whose `id` holds a space are checked against version 3
 - **THEN** each is refused
 
 #### Scenario: A message of another version
 
-- **WHEN** a `hello` naming `protocol_version` 1 is checked against version 2, and one naming `protocol_version` 2 against version 1
+- **WHEN** a `hello` naming `protocol_version` 2 is checked against version 3, one naming `protocol_version` 3 against version 2, and one naming `protocol_version` 1 against version 3
 - **THEN** each is refused
 
 #### Scenario: A body of two kinds, or of none
 
-- **WHEN** a message whose body holds both `hello` and `report`, one whose body is empty, and one whose body names a kind version 2 does not have are checked against version 2
+- **WHEN** a message whose body holds both `hello` and `report`, one whose body is empty, and one whose body names a kind version 3 does not have are checked against version 3
 - **THEN** each is refused
 
 ### Requirement: Each direction sends only its own kinds
@@ -63,36 +63,36 @@ Every object a version names SHALL take only the fields it names, at every depth
 
 #### Scenario: A field the version does not name
 
-- **WHEN** examples of version 2 with a field added at the envelope, in a launch, in a lease, in a place's status copy, in an end's delivery, in a confirm, in a preview, in what the runner answered of a preview, in a preview's copy, in a release's copy and in a key share are checked
+- **WHEN** examples of version 3 with a field added at the envelope, in a launch, in a lease, in a place's status copy, in an end's delivery, in a confirm, in a hold, in a preview, in what the runner answered of a preview, in a preview's copy, in a release's copy and in a key share are checked
 - **THEN** each is refused
 
 #### Scenario: A time not in UTC to the second
 
-- **WHEN** a lease expiring at `2026-11-01T12:00:00+02:00`, and one at `2026-11-01T10:00:00.5Z`, are checked against version 2
+- **WHEN** a lease expiring at `2026-11-01T12:00:00+02:00`, and one at `2026-11-01T10:00:00.5Z`, are checked against version 3
 - **THEN** each is refused
 
 #### Scenario: An integer past what JavaScript reads exactly
 
-- **WHEN** a lease numbered 2^53, and one numbered 0, are checked against version 2
+- **WHEN** a lease numbered 2^53, and one numbered 0, are checked against version 3
 - **THEN** each is refused
 
 ### Requirement: The messages carry the interface's shapes
 
-Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names but a hold, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
+Version 3 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort among them, and its `Hello` and `Report` but for their copies. Version 2 SHALL carry the same but a hold; version 1, but a preview, a land, a confirm, a hold and `previews`. An outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0052).
 
 #### Scenario: The interface's values pass
 
-- **WHEN** one value of each want, act and command sort version 2 names, a preview not done and one done, a land and a confirm among them, a lease with an expiry and one without, a launch with every field and one with none, each tool version, an acted, a commanded and an inbox carried are written by `boomdrive-control`'s types and checked against their definitions in version 2
+- **WHEN** one value of each want, act and command sort version 3 names, a preview not done and one done, a land, a confirm and a hold among them, a lease with an expiry and one without, a launch with every field and one with none, each tool version, an acted, a commanded and an inbox carried are written by `boomdrive-control`'s types and checked against their definitions in version 3
 - **THEN** each passes
 
 #### Scenario: Every sort the interface names
 
-- **WHEN** a value of every sort of `Want`, `ActSort` and `CommandSort`, each named by a match with no wildcard, is written by `boomdrive-control`'s types and checked against version 2's `want`
-- **THEN** the sorts named are every sort the interface has, a hold among them, and each value passes but the hold's, which is refused
+- **WHEN** a value of every sort of `Want`, `ActSort` and `CommandSort`, each named by a match with no wildcard, is written by `boomdrive-control`'s types and checked against version 3's `want` and against version 2's
+- **THEN** the sorts named are every sort the interface has, a hold among them; each value passes version 3's; and each but the hold's passes version 2's, which refuses the hold
 
 #### Scenario: An act's outcome
 
-- **WHEN** an acted, and a commanded, whose outcome is `launched` are checked against version 2
+- **WHEN** an acted, and a commanded, whose outcome is `launched` are checked against version 3
 - **THEN** each is refused
 
 ### Requirement: A place's status is carried as its copy
@@ -101,17 +101,17 @@ A place's status SHALL be carried as the copy of `flume status --json`'s place, 
 
 #### Scenario: The copy's fields are the list
 
-- **WHEN** the field paths of version 2's `place-status.schema.json` are read
+- **WHEN** the field paths of version 3's `place-status.schema.json` are read
 - **THEN** they equal the list design Decision 7 gives with the paths record 0037 adds, which the test holds
 
 #### Scenario: Text the cloud does not keep
 
-- **WHEN** a status copy holding an agent's `last_words`, `screen` or `printed`, a task's `text`, `readiness`, a group's `title`, a teardown's `words`, an end's `report`, or a stall's `waiting` or `stop_short` is checked against version 2
+- **WHEN** a status copy holding an agent's `last_words`, `screen` or `printed`, a task's `text`, `readiness`, a group's `title`, a teardown's `words`, an end's `report`, or a stall's `waiting` or `stop_short` is checked against version 3
 - **THEN** each is refused
 
 #### Scenario: Flume's answers as copies
 
-- **WHEN** the `report` examples of version 2 are checked: one waiting on an answer, one on hold, a role's run delivered, a submission under test, a landing kept by a failed teardown, a tidied place, a live agent with its pane's address, a dropped place held for the runner, a done place held for the runner, an end handed over at a session's start, an end owed, expired and one confirmed, and an end by its delivery alone
+- **WHEN** the `report` examples of version 3 are checked: one waiting on an answer, one on hold, a role's run delivered, a submission under test, a landing kept by a failed teardown, a tidied place, a live agent with its pane's address, a dropped place held for the runner, a done place held for the runner, an end handed over at a session's start, an end owed, expired and one confirmed, and an end by its delivery alone
 - **THEN** each passes
 
 ### Requirement: The host's capacity is Flume's host part as values, its streams without their queues
@@ -191,16 +191,16 @@ No field of any version SHALL be named `grant`, `role`, `permission`, `token`, `
 
 ### Requirement: The runner's types write and read only what the schema takes
 
-`boomdrive_hosted::protocol::v2` SHALL hold a type for every message of version 2, using the interface's own types wherever version 2 carries a shape as the interface writes it, and the runner SHALL speak no other version. Every example of version 2 SHALL read into its direction's type and write back to an equal value that passes the schema, and every kind SHALL have an example (research row F50; record 0037).
+`boomdrive_hosted::protocol::v3` SHALL hold a type for every message of version 3, using the interface's own types wherever version 3 carries a shape as the interface writes it, and the runner SHALL speak no other version. Every example of version 3 SHALL read into its direction's type and write back to an equal value that passes the schema, and every kind SHALL have an example (research row F50; records 0037 and 0052).
 
 #### Scenario: Every example read and written back
 
-- **WHEN** each example under version 2's `examples/from-runner/` and `examples/to-runner/` is read into its direction's `Message`, written back, and the written value checked
+- **WHEN** each example under version 3's `examples/from-runner/` and `examples/to-runner/` is read into its direction's `Message`, written back, and the written value checked
 - **THEN** the written value equals the example's as JSON and passes its direction's schema
 
 #### Scenario: Every kind has an example
 
-- **WHEN** the kinds of version 2's examples are read
+- **WHEN** the kinds of version 3's examples are read
 - **THEN** every kind of each direction is among them
 
 ### Requirement: An enrollment is one enroll, answered by enrolled or enroll_refused
@@ -219,17 +219,22 @@ An `enroll` SHALL hold `key`, 32 bytes, `signature`, 64 bytes, each in base64url
 
 ### Requirement: The README names the two paths and the signatures' contexts
 
-The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, what a `pulled` and a `report` hold, how version 1 differs, and the bytes each signature covers, each context starting `boomdrive.v2`, with a copy of the worked examples the hosted tests read (record 0049). The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
+The protocol's README SHALL describe version 3: `runner/enroll` and `runner/connect`, the kinds each takes, the subprotocol `boomdrive.v3`, the `BoomdriveHost` header, what a `pulled` and a `report` hold, how versions 2 and 1 differ, and the bytes each signature covers, each context starting `boomdrive.v3`, with a copy of the worked examples the tests read (record 0049). The hosted implementation SHALL sign exactly those bytes (records 0018 and 0052).
 
 #### Scenario: The README's worked contexts
 
 - **WHEN** the hosted implementation makes the enrollment's and the connection's contexts from the fixed key, token, origin, time and nonce of the worked examples, `crates/boomdrive-hosted/tests/worked-bytes.json`
-- **THEN** each equals the worked examples' bytes, and each starts with the bytes of `boomdrive.v2`
+- **THEN** each equals the worked examples' bytes, and each starts with the bytes of `boomdrive.v3`
 
 #### Scenario: The README of version 2
 
 - **WHEN** the protocol's README is read
-- **THEN** its envelope names `protocol_version` 2; its paths name the subprotocol `boomdrive.v2`; its files name `preview.schema.json`; its copies name an end's `delivery`, an end's delivery alone and a preview's copy; its messages name a confirm and a land among a `pulled`'s acts, a preview among its wants, and `previews` in a `report`; and a section `Version 1` names `boomdrive.v1` and says it has no land and no preview
+- **THEN** a section `Version 2` names `boomdrive.v2` and the releases that spoke it, and says it is version 3 but for its subprotocol, its contexts, its files' `$id`s and the hold, which it does not have
+
+#### Scenario: The README of version 3
+
+- **WHEN** the protocol's README is read
+- **THEN** its envelope names `protocol_version` 3; its paths name the subprotocol `boomdrive.v3`; its files name `preview.schema.json`; its copies name an end's `delivery`, an end's delivery alone and a preview's copy; its messages name a confirm, a land and a hold among a `pulled`'s acts, a preview among its wants, and `previews` in a `report`; and a section `Version 1` names `boomdrive.v1` and says it has no land and no preview
 
 ### Requirement: Version 1 carries no land
 
@@ -258,46 +263,51 @@ Version 1 names no confirm, and its copy of a place's status names no end's deli
 - **WHEN** a want whose act is a confirm, as `boomdrive-control`'s types write it, is checked against version 1's `want`
 - **THEN** it is refused
 
-### Requirement: Version 2 names every end Flume 0.21.0 gives a place
+### Requirement: Version 3 names every end Flume 0.21.0 gives a place
 
-Version 2's copy of a place's status SHALL name four forms of an end: a stage's, a submission's, a stall's, and a drop's or a done's, `{"of":"over",…}`. Each SHALL require `key`, `read_at`, `deliveries`, `pending_for`, `owed`, each reader with whether it expired and is known, and `confirmed`, each reader with when, and take `delivery` and `expires_at`. A hand-over SHALL be `by` `notice`, `wait`, `inbox` or `session_start` (core.27, core.42; record 0037; weir record 0006).
+Version 3's copy of a place's status SHALL name four forms of an end: a stage's, a submission's, a stall's, and a drop's or a done's, `{"of":"over",…}`. Each SHALL require `key`, `read_at`, `deliveries`, `pending_for`, `owed`, each reader with whether it expired and is known, and `confirmed`, each reader with when, and take `delivery` and `expires_at`. A hand-over SHALL be `by` `notice`, `wait`, `inbox` or `session_start` (core.27, core.42; records 0037 and 0052; weir record 0006).
 
 #### Scenario: A drop's and a done's end
 
-- **WHEN** a place's status copy holding an end `{"of":"over","over":"dropped",…}` with its key, delivery and readers, and one holding `"over":"done"`, are checked against version 2
+- **WHEN** a place's status copy holding an end `{"of":"over","over":"dropped",…}` with its key, delivery and readers, and one holding `"over":"done"`, are checked against version 3
 - **THEN** each passes
 
 #### Scenario: A hand-over at a session's start
 
-- **WHEN** a status copy whose end was handed over `by` `session_start` is checked against version 2
+- **WHEN** a status copy whose end was handed over `by` `session_start` is checked against version 3
 - **THEN** it passes
 
 #### Scenario: An end with no key
 
-- **WHEN** a status copy whose stage's end has no `key`, and one whose end has no `owed`, are checked against version 2
+- **WHEN** a status copy whose stage's end has no `key`, and one whose end has no `owed`, are checked against version 3
 - **THEN** each is refused
 
-### Requirement: An end of a form version 2 does not name goes up as its delivery alone
+### Requirement: An end of a form version 3 does not name goes up as its delivery alone
 
-Version 2 SHALL name an end's delivery alone, `end_delivery`, as a form of an end: its `of`, any string as Flume printed it, `key`, `read_at`, `owed`, `confirmed` and `pending_for`, each required, and `delivery` and `expires_at`, and nothing else. No end SHALL pass both `end_delivery` and a named form (core.27, core.42; record 0037).
+Version 3 SHALL name an end's delivery alone, `end_delivery`, as a form of an end: its `of`, any string as Flume printed it, `key`, `read_at`, `owed`, `confirmed` and `pending_for`, each required, and `delivery` and `expires_at`, and nothing else. No end SHALL pass both `end_delivery` and a named form (core.27, core.42; records 0037 and 0052).
 
 #### Scenario: An end of a form unnamed
 
-- **WHEN** a status copy whose end is `{"of":"moved"}` with its key, delivery and readers alone is checked against version 2
+- **WHEN** a status copy whose end is `{"of":"moved"}` with its key, delivery and readers alone is checked against version 3
 - **THEN** it passes
 
 #### Scenario: Content beside a delivery alone
 
-- **WHEN** a status copy whose end is `{"of":"moved"}` with its key, delivery and readers, and its `deliveries`, or a `stage`, or `words`, is checked against version 2
+- **WHEN** a status copy whose end is `{"of":"moved"}` with its key, delivery and readers, and its `deliveries`, or a `stage`, or `words`, is checked against version 3
 - **THEN** it is refused
 
-### Requirement: Version 2 carries a control plane's confirm
+### Requirement: Version 3 carries a control plane's confirm
 
-Version 2 SHALL name a confirm among the acts a `pulled` holds, `{"confirm":{"recipient":…,"deliveries":[…]}}`, as `boomdrive-control`'s `ActSort::Confirm` writes it, a string recipient and an array of string keys, bounding neither, so that a confirm the runner refuses reaches the runner as an act (core.42, core.56; record 0037).
+Version 3 SHALL name a confirm among the acts a `pulled` holds, as version 2 does: `{"confirm":{"recipient":…,"deliveries":[…]}}`, as `boomdrive-control`'s `ActSort::Confirm` writes it, a string recipient and an array of string keys, bounding neither, so that a confirm the runner refuses reaches the runner as an act (core.42, core.56; records 0037 and 0052).
 
 #### Scenario: A confirm is an act of version 2
 
 - **WHEN** a want whose act is a confirm of two keys, and one of no key, as `boomdrive-control`'s types write them, are checked against version 2's `want`, and a `pulled` holding the first against version 2's `to-runner.schema.json`
+- **THEN** each passes
+
+#### Scenario: A confirm is an act of version 3
+
+- **WHEN** a want whose act is a confirm of two keys, and one of no key, as `boomdrive-control`'s types write them, are checked against version 3's `want`, and a `pulled` holding the first against version 3's `to-runner.schema.json`
 - **THEN** each passes
 
 ### Requirement: Version 1 stays as a release spoke it
@@ -314,46 +324,56 @@ Every file under `protocol/v1/`, its schemas and its examples, SHALL stay as rel
 - **WHEN** each example under version 1's `examples/` is checked against its direction's envelope of version 1
 - **THEN** each passes
 
-### Requirement: Version 2 carries a land
+### Requirement: Version 3 carries a land
 
-Version 2 SHALL name a land among the acts a `pulled` holds, written as the word `land`, as `boomdrive-control`'s `ActSort::Land` writes it, holding nothing but its act's launch and lease. The retry naming the submission SHALL stay among version 2's acts (core.42, core.53; record 0037 as amended on 2026-11-09).
+Version 3 SHALL name a land among the acts a `pulled` holds, as version 2 does, written as the word `land`, as `boomdrive-control`'s `ActSort::Land` writes it, holding nothing but its act's launch and lease. The retry naming the submission SHALL stay among version 3's acts (core.42, core.53; record 0037 as amended on 2026-11-09; record 0052).
 
 #### Scenario: A land is an act of version 2
 
 - **WHEN** a want whose act is a land, as `boomdrive-control`'s types write it, is checked against version 2's `want`, and a `pulled` holding it against version 2's `to-runner.schema.json`
 - **THEN** each passes, the act's `what` being `"land"`
 
-### Requirement: Version 2 carries a preview and its done
+#### Scenario: A land is an act of version 3
 
-Version 2 SHALL name a preview among the wants a `pulled` holds, `{"preview":{"id","lease","repository","branch","revision","done"}}`, as `boomdrive-control`'s `Want::Preview` writes it, each field required. Its branch and its revision SHALL be any string, so that a preview sluice refuses reaches the runner as a preview, and not the whole `pulled` as a message (core.42, core.55; record 0037 as amended on 2026-11-09).
+- **WHEN** a want whose act is a land, as `boomdrive-control`'s types write it, is checked against version 3's `want`, and a `pulled` holding it against version 3's `to-runner.schema.json`
+- **THEN** each passes, the act's `what` being `"land"`
+
+### Requirement: Version 3 carries a preview and its done
+
+Version 3 SHALL name a preview among the wants a `pulled` holds, as version 2 does: `{"preview":{"id","lease","repository","branch","revision","done"}}`, as `boomdrive-control`'s `Want::Preview` writes it, each field required. Its branch and its revision SHALL be any string, so that a preview sluice refuses reaches the runner as a preview, and not the whole `pulled` as a message (core.42, core.55; record 0037 as amended on 2026-11-09; record 0052).
 
 #### Scenario: A preview is a want of version 2
 
 - **WHEN** a preview not done, one done, and one whose revision is `R1`, as `boomdrive-control`'s types write them, are checked against version 2's `want`, and a `pulled` holding a preview and its done against version 2's `to-runner.schema.json`
 - **THEN** each passes
 
-### Requirement: Version 2's report holds what the runner answered of each preview
+#### Scenario: A preview is a want of version 3
 
-Every report of version 2 SHALL hold `previews`, by id, each preview the runner answered with its `lease`, `repository`, `revision`, `done`, `outcome` (`held`, `done` or `refused`), `copy`, `words`, `status` and `at`, each required: `copy` the copy of sluice's answer, a preview's or a release's, or `null`; `status` the copy of sluice's listing with its time and whether it was listed, or `null` (core.27, core.42, core.55; record 0037 as amended on 2026-11-09).
+- **WHEN** a preview not done, one done, and one whose revision is `R1`, as `boomdrive-control`'s types write them, are checked against version 3's `want`, and a `pulled` holding a preview and its done against version 3's `to-runner.schema.json`
+- **THEN** each passes
+
+### Requirement: Version 3's report holds what the runner answered of each preview
+
+Every report of version 3 SHALL hold `previews`, by id, each preview the runner answered with its `lease`, `repository`, `revision`, `done`, `outcome` (`held`, `done` or `refused`), `copy`, `words`, `status` and `at`, each required: `copy` the copy of sluice's answer, a preview's or a release's, or `null`; `status` the copy of sluice's listing with its time and whether it was listed, or `null` (core.27, core.42, core.55; records 0037 and 0052).
 
 #### Scenario: sluice's answers of a preview as copies
 
-- **WHEN** the `report` examples of version 2 are checked: a preview brought up, a preview held, a preview put away, and a preview sluice refused
+- **WHEN** the `report` examples of version 3 are checked: a preview brought up, a preview held, a preview put away, and a preview sluice refused
 - **THEN** each passes
 
 #### Scenario: A report with no previews
 
-- **WHEN** a `report` of version 2 with no `previews` is checked
+- **WHEN** a `report` of version 3 with no `previews` is checked
 - **THEN** it is refused
 
 #### Scenario: A preview's outcome
 
-- **WHEN** what the runner answered of a preview, its outcome `launched`, is checked against version 2
+- **WHEN** what the runner answered of a preview, its outcome `launched`, is checked against version 3
 - **THEN** it is refused
 
 ### Requirement: A preview's copy holds no output of its command
 
-Version 2's `preview.schema.json` SHALL hold the copy of a preview, its `name`, required, `branch`, `revision`, `state`, `made` and `addresses`, a map of strings, and the copy of a release, its `preview`, required, and `released`, each as sluice printed it. Neither SHALL hold a preview's `checkout`, `names`, `ports`, `exit`, `output` or `release_failed` (core.11, core.27, core.55; record 0037 as amended on 2026-11-09).
+Version 3's `preview.schema.json` SHALL hold the copy of a preview, its `name`, required, `branch`, `revision`, `state`, `made` and `addresses`, a map of strings, and the copy of a release, its `preview`, required, and `released`, each as sluice printed it. Neither SHALL hold a preview's `checkout`, `names`, `ports`, `exit`, `output` or `release_failed` (core.11, core.27, core.55; record 0037 as amended on 2026-11-09).
 
 #### Scenario: The copies' fields are the lists
 
@@ -362,12 +382,12 @@ Version 2's `preview.schema.json` SHALL hold the copy of a preview, its `name`, 
 
 #### Scenario: A preview's output
 
-- **WHEN** a report whose preview's copy, or whose preview's status copy, holds `output`, `checkout`, `names`, `ports`, `exit` or `release_failed` is checked against version 2
+- **WHEN** a report whose preview's copy, or whose preview's status copy, holds `output`, `checkout`, `names`, `ports`, `exit` or `release_failed` is checked against version 3
 - **THEN** each is refused
 
 ### Requirement: Version 2 stays as a release spoke it
 
-Every file under `protocol/v2/`, its schemas and its examples, SHALL stay as release `v0.9.0` holds it, and no file SHALL be added there. Every release from `v0.8.0`, the first to speak version 2, holds the same files. A change to version 2 SHALL be a new version beside it (core.42; record 0037).
+Every file under `protocol/v2/`, its schemas and its examples, SHALL stay as release `v0.9.0` holds it, and no file SHALL be added there. Every release from `v0.8.0`, the first to speak version 2, to the last before version 3 holds the same files. Every example of version 2 SHALL still pass its direction's envelope of version 2. `boomdrive_hosted::protocol::v2` SHALL hold version 2's files and no type (core.42; records 0037 and 0052).
 
 #### Scenario: Version 2 as released
 
@@ -379,11 +399,44 @@ Every file under `protocol/v2/`, its schemas and its examples, SHALL stay as rel
 - **WHEN** a file under `protocol/v2/` differs from `v0.9.0`'s, or a file is added there
 - **THEN** `boomdrive-hosted`'s test `version_2_is_as_released` fails, naming the file
 
-### Requirement: No version carries a hold
+#### Scenario: Version 2's examples still pass
 
-Version 1 and version 2 name no hold, and a release has spoken each, so neither SHALL change to carry one. A want whose act is a hold SHALL fail each version's check, and a hold SHALL reach the runner from a hosted control plane only in a later version that names it (core.42, core.59).
+- **WHEN** each example under version 2's `examples/` is checked against its direction's envelope of version 2
+- **THEN** each passes
+
+### Requirement: Version 1 and version 2 carry no hold
+
+Version 1 and version 2 name no hold, and a release has spoken each, so neither SHALL change to carry one. A want whose act is a hold SHALL fail each one's check, and a hold SHALL reach the runner from a hosted control plane only in version 3 or a later version (core.42, core.59; record 0052).
 
 #### Scenario: A hold is no act of version 1 or 2
 
 - **WHEN** a want whose act is a hold, as `boomdrive-control`'s types write it, is checked against version 1's `want` and against version 2's
 - **THEN** each refuses it
+
+### Requirement: Version 3 is version 2 whole, but for a hold
+
+Version 3's files SHALL be version 2's but for these alone: each `$id` under `boomdrivedev/boomdrive`'s `…/protocol/v3/`, `protocol_version` 3, a hold among `act_sort`'s branches, and their descriptions. Its examples SHALL be version 2's, each naming `protocol_version` 3 and `enroll.json` signed over version 3's context, and one `pulled` holding a hold (core.42; record 0052).
+
+#### Scenario: Version 3 is version 2 but for its hold
+
+- **WHEN** each schema file of version 3 is read with every `description` set aside, its `$id` read under version 2's address, its `protocol_version` read as 2, and the hold's branch taken out of `act_sort`
+- **THEN** it equals version 2's file of the same name with every `description` set aside, and the hold's branch is `ActSort::Hold` as the interface writes it
+
+#### Scenario: Version 3's examples are version 2's
+
+- **WHEN** version 3's examples are read
+- **THEN** their names are version 2's and `to-runner/pulled-with-a-hold.json`, and each of version 2's names, read with `protocol_version` as 2 and `enroll.json`'s signature set aside, equals version 2's
+
+### Requirement: Version 3 carries a control plane's hold
+
+Version 3 SHALL name a hold among the acts a `pulled` holds, `{"hold":{"words":…,"bound_interval":…}}`, as `boomdrive-control`'s `ActSort::Hold` writes it: its words any string, and its bound an integer from 0 that JavaScript reads exactly, bounded no further, so that a hold the runner refuses reaches the runner as an act (core.42, core.59; record 0052).
+
+#### Scenario: A hold is an act of version 3
+
+- **WHEN** a want whose act is a hold of words and a bound of 28800, one whose words are empty, and one whose bound is 0, as `boomdrive-control`'s types write them, are checked against version 3's `want`, and version 3's `pulled-with-a-hold.json` against its `to-runner.schema.json`
+- **THEN** each passes
+
+#### Scenario: A hold's bound past what JavaScript reads exactly
+
+- **WHEN** a want whose act is a hold of bound 2^53 is checked against version 3's `want`
+- **THEN** it is refused
