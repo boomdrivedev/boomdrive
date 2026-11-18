@@ -1,27 +1,27 @@
-//! Version 2 carries the interface's shapes as `boomdrive-control`'s serde
-//! types write them (the runner-protocol spec's "The messages carry the
-//! interface's shapes"; design Decision 6 of
+//! The protocol carries the interface's shapes as `boomdrive-control`'s
+//! serde types write them (the runner-protocol spec's "The messages carry
+//! the interface's shapes"; design Decision 6 of
 //! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
-//! full length, passes its definition, a value of every want, act and
-//! command sort the interface names among them but a hold, a preview, a
-//! land and a confirm with them (the runner-protocol spec's "Every sort
-//! the interface names", "Version 2 carries a control plane's confirm",
-//! "Version 2 carries a land" and "Version 2 carries a preview and its
-//! done"; record 0037 as amended on 2026-11-09). Version 1 names no land,
-//! no confirm and no preview, and a release has spoken it, so a want
-//! whose act is a land or a confirm, or a preview, fails its check of
-//! version 1 (the runner-protocol spec's "Version 1 carries no land" and
-//! "Version 1 carries no confirm"; core.42, core.53, core.55, core.56).
-//! Neither version names a hold, the one sort version 2 does not carry,
-//! since `v0.9.0` spoke it before the interface named one, so a want whose
-//! act is a hold fails the check of each (the runner-protocol spec's "A
-//! hold is no act of version 1 or 2"; core.42, core.59).
+//! full length, passes its definition. Version 3 carries every sort the
+//! interface names, a hold, a preview, a land and a confirm among them
+//! (the runner-protocol spec's "Every sort the interface names", "Version
+//! 3 carries a control plane's hold", "Version 3 carries a control
+//! plane's confirm", "Version 3 carries a land" and "Version 3 carries a
+//! preview and its done"; record 0052). Version 2 carries every sort but
+//! the hold, since `v0.9.0` spoke it before the interface named one, and
+//! version 1 names no land, no confirm and no preview; a release has
+//! spoken each, so a want whose act is a land or a confirm, or a preview,
+//! fails its check of version 1 (the runner-protocol spec's "Version 1
+//! carries no land" and "Version 1 carries no confirm"; core.42, core.53,
+//! core.55, core.56), and a want whose act is a hold fails the check of
+//! each (the runner-protocol spec's "A hold is no act of version 1 or 2";
+//! core.42, core.59).
 
 mod common;
 
 use boomdrive_control::*;
-use common::{address, definition, example, passes, refused, to_runner, validator, V1};
+use common::{definition, passes, refused, validator, Version, V1, V2, V3};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -126,9 +126,58 @@ fn a_hold_is_no_act_of_version_1_or_2() {
         "a hold, in version 1",
     );
     refused(
-        &validator(&definition("wants.schema.json", "want")),
+        &V2.validator(&V2.definition("wants.schema.json", "want")),
         &json,
         "a hold, in version 2",
+    );
+}
+
+/// A want whose act on `offer-1` is a hold under `words` for
+/// `bound_interval` seconds, as the interface writes it.
+fn hold_of(words: &str, bound_interval: u64) -> Value {
+    act_of(ActSort::Hold {
+        words: words.to_string(),
+        bound_interval,
+    })
+}
+
+/// The runner-protocol spec's "A hold is an act of version 3" and "A
+/// hold's bound past what JavaScript reads exactly": a hold of words and
+/// a bound, one of no words and one of bound 0 pass version 3's `want`,
+/// which bounds neither further, so a hold the runner refuses reaches it
+/// as an act (core.59); a hold of bound 2^53 fails it, as every integer of
+/// the protocol past what JavaScript reads exactly does; and
+/// `pulled-with-a-hold.json` passes version 3's `to-runner.schema.json`
+/// (design Decisions 1 and 2; record 0052).
+#[test]
+fn a_hold_is_an_act_of_version_3() {
+    let want = V3.validator(&V3.definition("wants.schema.json", "want"));
+    passes(
+        &want,
+        &hold_of("the user sends it on the landings card, row 3", 28800),
+        "a hold",
+    );
+    passes(&want, &hold_of("", 28800), "a hold of no words");
+    passes(
+        &want,
+        &hold_of("the user sends it on the landings card, row 3", 0),
+        "a hold of bound 0",
+    );
+    refused(
+        &want,
+        &hold_of("the user sends it", 1 << 53),
+        "a hold of bound 2^53",
+    );
+    let example = V3.example("to-runner", "pulled-with-a-hold.json");
+    passes(
+        &V3.messages_to_runner(),
+        &example,
+        "pulled-with-a-hold.json",
+    );
+    assert_eq!(
+        example["body"]["pulled"]["wants"][1]["act"]["what"],
+        hold_of("the user sends it on the landings card, row 3", 28800)["act"]["what"],
+        "pulled-with-a-hold.json holds a hold"
     );
 }
 
@@ -153,10 +202,10 @@ fn a_confirm_is_no_act_of_version_1() {
 }
 
 /// One value of each want sort, a preview not done and one done among
-/// them, and of each act sort, a land and a confirm among them, and each
-/// command sort, and each other value of the interface, passes its
-/// definition in version 2 (the runner-protocol spec's "The interface's
-/// values pass").
+/// them, and of each act sort, a land, a confirm and a hold among them,
+/// and each command sort, and each other value of the interface, passes
+/// its definition in version 3 (the runner-protocol spec's "The
+/// interface's values pass").
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
@@ -208,6 +257,10 @@ fn the_interfaces_values_pass() {
         ActSort::Priority(5),
         ActSort::Done,
         confirm_of(&["change--a/0a1b2c3d/stage/code/1/delivered"]),
+        ActSort::Hold {
+            words: "the user sends it".to_string(),
+            bound_interval: 28800,
+        },
     ];
     wants.extend(acts.into_iter().map(|what| {
         Want::Act(Act {
@@ -333,7 +386,7 @@ fn the_interfaces_values_pass() {
         )]),
         ..Report::default()
     };
-    // Version 2 writes every part of a report, its `previews` among them,
+    // Version 3 writes every part of a report, its `previews` among them,
     // which the interface's file leaves out where it holds none (design
     // Decision 3 of the-hosted-protocol-carries-land-and-preview).
     let report_definition = validator(&definition("report.schema.json", "report"));
@@ -388,26 +441,27 @@ fn act_of(what: ActSort) -> Value {
     .unwrap()
 }
 
-/// The runner-protocol spec's "A confirm is an act of version 2": a
-/// confirm of two keys, and one of no key, pass version 2's `want`, which
-/// bounds neither, so a confirm the runner refuses reaches it as an act
-/// (core.56); and a `pulled` holding the first passes version 2's
-/// `to-runner.schema.json`.
-#[test]
-fn a_confirm_is_an_act_of_version_2() {
-    let want = validator(&definition("wants.schema.json", "want"));
+/// A confirm of two keys, and one of no key, pass `version`'s `want`,
+/// which bounds neither, so a confirm the runner refuses reaches it as an
+/// act (core.56); a `pulled` holding the first, and
+/// `pulled-with-a-confirm.json`, pass its `to-runner.schema.json`; and a
+/// confirm holding a field the version does not name fails its `want`.
+fn a_confirm_is_an_act_of(version: Version) {
+    let n = version.number;
+    let want = version.validator(&version.definition("wants.schema.json", "want"));
+    let to_runner = version.messages_to_runner();
     let two = act_of(confirm_of(&[
         "change--a/0a1b2c3d/stage/code/1/delivered",
         "change--a/0a1b2c3d/submission/1/landed",
     ]));
     passes(&want, &two, "a confirm of two keys");
     passes(&want, &act_of(confirm_of(&[])), "a confirm of no key");
-    let mut pulled = example("to-runner", "pulled.json");
+    let mut pulled = version.example("to-runner", "pulled.json");
     pulled["body"]["pulled"]["wants"] = json!([two]);
-    passes(&to_runner(), &pulled, "a pulled holding a confirm");
+    passes(&to_runner, &pulled, "a pulled holding a confirm");
     passes(
-        &to_runner(),
-        &example("to-runner", "pulled-with-a-confirm.json"),
+        &to_runner,
+        &version.example("to-runner", "pulled-with-a-confirm.json"),
         "pulled-with-a-confirm.json",
     );
     let mut unnamed = act_of(confirm_of(&["k"]));
@@ -415,35 +469,61 @@ fn a_confirm_is_an_act_of_version_2() {
     refused(
         &want,
         &unnamed,
-        "a confirm holding a field version 2 does not name",
+        &format!("a confirm holding a field version {n} does not name"),
     );
-    assert!(address("wants.schema.json").contains("/v2/"));
+    assert!(version
+        .address("wants.schema.json")
+        .contains(&format!("/v{n}/")));
 }
 
-/// The runner-protocol spec's "A land is an act of version 2": a land, as
-/// the interface writes it, passes version 2's `want`, its `what` the word
-/// `"land"`, holding nothing but its act's launch and lease (core.53); and
-/// a `pulled` holding it, and `pulled-with-a-land.json`, pass version 2's
-/// `to-runner.schema.json` (design Decision 1).
+/// The runner-protocol spec's "A confirm is an act of version 2".
 #[test]
-fn a_land_is_an_act_of_version_2() {
+fn a_confirm_is_an_act_of_version_2() {
+    a_confirm_is_an_act_of(V2);
+}
+
+/// The runner-protocol spec's "A confirm is an act of version 3".
+#[test]
+fn a_confirm_is_an_act_of_version_3() {
+    a_confirm_is_an_act_of(V3);
+}
+
+/// A land, as the interface writes it, passes `version`'s `want`, its
+/// `what` the word `"land"`, holding nothing but its act's launch and
+/// lease (core.53); and a `pulled` holding it, and
+/// `pulled-with-a-land.json`, pass its `to-runner.schema.json` (design
+/// Decision 1 of the-hosted-protocol-carries-land-and-preview).
+fn a_land_is_an_act_of(version: Version) {
+    let to_runner = version.messages_to_runner();
     let land = act_of(ActSort::Land);
     assert_eq!(land["act"]["what"], json!("land"));
     passes(
-        &validator(&definition("wants.schema.json", "want")),
+        &version.validator(&version.definition("wants.schema.json", "want")),
         &land,
         "a land",
     );
-    let mut pulled = example("to-runner", "pulled.json");
+    let mut pulled = version.example("to-runner", "pulled.json");
     pulled["body"]["pulled"]["wants"] = json!([land]);
-    passes(&to_runner(), &pulled, "a pulled holding a land");
-    let example = example("to-runner", "pulled-with-a-land.json");
-    passes(&to_runner(), &example, "pulled-with-a-land.json");
+    passes(&to_runner, &pulled, "a pulled holding a land");
+    let example = version.example("to-runner", "pulled-with-a-land.json");
+    passes(&to_runner, &example, "pulled-with-a-land.json");
     assert_eq!(
         example["body"]["pulled"]["wants"][1]["act"]["what"],
         json!("land"),
         "pulled-with-a-land.json holds a land"
     );
+}
+
+/// The runner-protocol spec's "A land is an act of version 2".
+#[test]
+fn a_land_is_an_act_of_version_2() {
+    a_land_is_an_act_of(V2);
+}
+
+/// The runner-protocol spec's "A land is an act of version 3".
+#[test]
+fn a_land_is_an_act_of_version_3() {
+    a_land_is_an_act_of(V3);
 }
 
 /// A preview of `main` in `example/app` at `revision`, done or not, as the
@@ -459,14 +539,14 @@ fn preview_of(revision: &str, done: bool) -> Want {
     })
 }
 
-/// The runner-protocol spec's "A preview is a want of version 2": a
-/// preview not done, one done, and one whose revision is `R1`, which
-/// version 2 does not bound, so sluice answers it, as the interface writes
-/// them, pass version 2's `want`; and `pulled-with-a-preview-and-its-done.json`
-/// passes version 2's `to-runner.schema.json` (design Decision 2; core.55).
-#[test]
-fn a_preview_is_a_want_of_version_2() {
-    let want = validator(&definition("wants.schema.json", "want"));
+/// A preview not done, one done, and one whose revision is `R1`, which
+/// the version does not bound, so sluice answers it, as the interface
+/// writes them, pass `version`'s `want`; and
+/// `pulled-with-a-preview-and-its-done.json` passes its
+/// `to-runner.schema.json` (design Decision 2 of
+/// the-hosted-protocol-carries-land-and-preview; core.55).
+fn a_preview_is_a_want_of(version: Version) {
+    let want = version.validator(&version.definition("wants.schema.json", "want"));
     let commit = "0123456789abcdef0123456789abcdef01234567";
     for (preview, what) in [
         (preview_of(commit, false), "a preview"),
@@ -475,9 +555,9 @@ fn a_preview_is_a_want_of_version_2() {
     ] {
         passes(&want, &serde_json::to_value(&preview).unwrap(), what);
     }
-    let example = example("to-runner", "pulled-with-a-preview-and-its-done.json");
+    let example = version.example("to-runner", "pulled-with-a-preview-and-its-done.json");
     passes(
-        &to_runner(),
+        &version.messages_to_runner(),
         &example,
         "pulled-with-a-preview-and-its-done.json",
     );
@@ -492,6 +572,18 @@ fn a_preview_is_a_want_of_version_2() {
         [&json!(false), &json!(true)],
         "a preview and its done"
     );
+}
+
+/// The runner-protocol spec's "A preview is a want of version 2".
+#[test]
+fn a_preview_is_a_want_of_version_2() {
+    a_preview_is_a_want_of(V2);
+}
+
+/// The runner-protocol spec's "A preview is a want of version 3".
+#[test]
+fn a_preview_is_a_want_of_version_3() {
+    a_preview_is_a_want_of(V3);
 }
 
 /// The name of `want`'s sort, by a match with no `_` arm, so a sort the
@@ -600,26 +692,28 @@ fn every_sort() -> Vec<Want> {
 
 /// The runner-protocol spec's "Every sort the interface names" (design
 /// Decision 8 of the-hosted-protocol-carries-land-and-preview, and design
-/// Decision 7 of the-runner-carries-a-hold-of-a-places-waiting-move): a
-/// value of every sort of `Want`, `ActSort` and `CommandSort`, each named
-/// by a match with no `_` arm, passes version 2's `want` but a hold, which
-/// version 2 refuses, and the sorts named are every sort the interface
-/// has. A sort the interface adds fails to build the match until it is
-/// named, and then fails this test until a value of it is given. A sort
-/// added after `v0.9.0` spoke version 2 is refused by it, as a hold is,
-/// until a later version names it (core.42, core.59).
+/// Decision 7 of the-hosted-protocol-carries-a-hold): a value of every
+/// sort of `Want`, `ActSort` and `CommandSort`, each named by a match with
+/// no `_` arm, passes version 3's `want`, a hold among them, and passes
+/// version 2's but the hold, which version 2 refuses, since `v0.9.0`
+/// spoke version 2 before the interface named one; and the sorts named are
+/// every sort the interface has. A sort the interface adds fails to build
+/// the match until it is named, then fails this test until a value of it
+/// is given, and fails version 3 until a version names it (core.42,
+/// core.59).
 #[test]
 fn every_sort_the_interface_names() {
-    let want = validator(&definition("wants.schema.json", "want"));
+    let v3 = V3.validator(&V3.definition("wants.schema.json", "want"));
+    let v2 = V2.validator(&V2.definition("wants.schema.json", "want"));
     let wants = every_sort();
     let mut named = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
     for value in &wants {
         named.0.insert(want_sort(value));
-        let mut carried = true;
+        let mut in_version_2 = true;
         match value {
             Want::Act(act) => {
                 named.1.insert(act_sort(&act.what));
-                carried = !matches!(act.what, ActSort::Hold { .. });
+                in_version_2 = !matches!(act.what, ActSort::Hold { .. });
             }
             Want::Command(command) => {
                 named.2.insert(command_sort(&command.what));
@@ -627,10 +721,11 @@ fn every_sort_the_interface_names() {
             Want::Offer(_) | Want::Inbox(_) | Want::Preview(_) => {}
         }
         let json = serde_json::to_value(value).unwrap();
-        if carried {
-            passes(&want, &json, &json.to_string());
+        passes(&v3, &json, &format!("in version 3, {json}"));
+        if in_version_2 {
+            passes(&v2, &json, &format!("in version 2, {json}"));
         } else {
-            refused(&want, &json, &json.to_string());
+            refused(&v2, &json, &format!("in version 2, {json}"));
         }
     }
     assert_eq!(named.0, BTreeSet::from(WANT_SORTS), "every want sort");

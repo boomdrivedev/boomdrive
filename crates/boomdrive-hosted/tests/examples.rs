@@ -1,14 +1,15 @@
-//! Version 2's examples, each a whole message under
+//! Version 3's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
 //! back as it was (design Decisions 2, 13 and 14 of
-//! the-runner-dials-the-hosted-control-plane). Version 1's examples
-//! still pass version 1's envelopes (record 0037).
+//! the-runner-dials-the-hosted-control-plane). Version 1's and version
+//! 2's examples still pass their own version's envelopes (records 0037
+//! and 0052).
 
 mod common;
 
-use boomdrive_hosted::protocol::v2::{FromRunner, Message, MessageId, ToRunner};
-use common::{example, examples, from_runner, passes, to_runner, version_dir, V1};
+use boomdrive_hosted::protocol::v3::{FromRunner, Message, MessageId, ToRunner};
+use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -218,6 +219,33 @@ fn version_1s_examples_still_pass() {
                 &validator,
                 &value,
                 &format!("version 1's {direction}/{name}"),
+            );
+        }
+    }
+}
+
+/// The runner-protocol spec's "Version 2's examples still pass": each
+/// example of version 2 passes its direction's envelope of version 2,
+/// which the runner no longer speaks and a control plane may still take
+/// (core.42; record 0052).
+#[test]
+fn version_2s_examples_still_pass() {
+    let directions = [
+        ("from-runner", V2.messages_from_runner()),
+        ("to-runner", V2.messages_to_runner()),
+    ];
+    for (direction, validator) in directions {
+        let examples = V2.examples(direction);
+        assert!(!examples.is_empty(), "no example of version 2 {direction}");
+        for (name, value) in examples {
+            assert_eq!(
+                value["protocol_version"], 2,
+                "version 2's {direction}/{name}"
+            );
+            passes(
+                &validator,
+                &value,
+                &format!("version 2's {direction}/{name}"),
             );
         }
     }

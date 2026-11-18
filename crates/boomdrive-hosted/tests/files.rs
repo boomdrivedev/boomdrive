@@ -5,7 +5,9 @@
 //! the hosted implementation's crate"; design Decisions 1 and 6 of
 //! the-hosted-protocol-carries-every-end-of-a-place), and each version a
 //! release has spoken held to the files that release holds: version 1 to
-//! `v0.7.3`'s and version 2 to `v0.9.0`'s (core.42).
+//! `v0.7.3`'s and version 2 to `v0.9.0`'s (core.42); and version 3 held
+//! to version 2 but for its hold (design Decision 8 of
+//! the-hosted-protocol-carries-a-hold; record 0052).
 
 mod common;
 
@@ -59,6 +61,7 @@ fn each_file_is_a_schema_of_its_draft() {
     }
     assert_eq!(common::V1.number, 1);
     assert_eq!(common::V2.number, 2);
+    assert_eq!(common::V3.number, 3);
 }
 
 #[test]
@@ -560,4 +563,182 @@ fn version_1_is_as_released() {
 #[test]
 fn version_2_is_as_released() {
     held_as_released(common::V2, "v0.9.0", RELEASED_V2);
+}
+
+/// `value` with every `description` set aside, at any depth.
+fn without_descriptions(value: &Value) -> Value {
+    match value {
+        Value::Object(members) => Value::Object(
+            members
+                .iter()
+                .filter(|(key, _)| key.as_str() != "description")
+                .map(|(key, member)| (key.clone(), without_descriptions(member)))
+                .collect(),
+        ),
+        Value::Array(elements) => Value::Array(elements.iter().map(without_descriptions).collect()),
+        other => other.clone(),
+    }
+}
+
+/// The JSON pointer of the first place `a` and `b` differ, or nothing
+/// where they are equal: the path alone, never a value (core.11).
+fn first_difference(a: &Value, b: &Value, at: &str) -> Option<String> {
+    match (a, b) {
+        (Value::Object(x), Value::Object(y)) => {
+            let keys: BTreeSet<&String> = x.keys().chain(y.keys()).collect();
+            keys.into_iter().find_map(|key| {
+                let here = format!("{at}/{}", key.replace('~', "~0").replace('/', "~1"));
+                match (x.get(key), y.get(key)) {
+                    (Some(p), Some(q)) => first_difference(p, q, &here),
+                    _ => Some(here),
+                }
+            })
+        }
+        (Value::Array(x), Value::Array(y)) => {
+            let found = x
+                .iter()
+                .zip(y)
+                .enumerate()
+                .find_map(|(i, (p, q))| first_difference(p, q, &format!("{at}/{i}")));
+            match found {
+                None if x.len() != y.len() => Some(format!("{at}/{}", x.len().min(y.len()))),
+                found => found,
+            }
+        }
+        _ if a == b => None,
+        _ => Some(if at.is_empty() {
+            "/".to_string()
+        } else {
+            at.to_string()
+        }),
+    }
+}
+
+/// `value`'s `protocol_version` member at `pointer`, which must be 3, read
+/// as 2.
+fn read_as_version_2(value: &mut Value, pointer: &str, what: &str) {
+    let member = value
+        .pointer_mut(pointer)
+        .unwrap_or_else(|| panic!("{what} has no {pointer}"));
+    assert_eq!(*member, 3, "{what}'s {pointer} is not 3");
+    *member = Value::from(2);
+}
+
+/// The hold's branch of version 3's `act_sort`, its descriptions set
+/// aside (design Decision 1): `ActSort::Hold` as the interface writes it.
+fn hold_branch() -> Value {
+    serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hold"],
+        "properties": {
+            "hold": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["words", "bound_interval"],
+                "properties": {
+                    "words": { "type": "string" },
+                    "bound_interval": { "$ref": "shared.schema.json#/$defs/unsigned_integer" }
+                }
+            }
+        }
+    })
+}
+
+/// The runner-protocol spec's "Version 3 is version 2 but for its hold"
+/// and "Version 3's examples are version 2's" (design Decision 8; record
+/// 0052): each schema file of version 3, its descriptions set aside, its
+/// `$id` read as version 2's, its envelope's `protocol_version` read as 2
+/// and the hold's branch taken out of `act_sort`, equals version 2's file
+/// with its descriptions set aside, and the hold's branch is the
+/// interface's `ActSort::Hold`; version 3's examples are version 2's and
+/// `to-runner/pulled-with-a-hold.json`, and each of version 2's, read with
+/// `protocol_version` 2 and `enroll.json`'s signature set aside, equals
+/// version 2's. A failure names the file and the pointer of the first
+/// difference, and no value (core.11).
+#[test]
+fn version_3_is_version_2_but_for_its_hold() {
+    let (v2, v3) = (common::V2, common::V3);
+    let names = |version: common::Version| -> BTreeSet<&'static str> {
+        version.files.iter().map(|(name, _)| *name).collect()
+    };
+    assert_eq!(names(v3), names(v2), "version 3's files are version 2's");
+    let old: BTreeMap<&str, Value> = v2.files().into_iter().collect();
+    let mut holds = 0;
+    for (name, value) in v3.files() {
+        let mut read = without_descriptions(&value);
+        read["$id"] = Value::from(v2.address(name));
+        if read.pointer("/properties/protocol_version").is_some() {
+            read_as_version_2(&mut read, "/properties/protocol_version/const", name);
+        }
+        if let Some(branches) = read
+            .pointer_mut("/$defs/act_sort/oneOf")
+            .and_then(Value::as_array_mut)
+        {
+            let at: Vec<usize> = branches
+                .iter()
+                .enumerate()
+                .filter(|(_, branch)| branch["required"] == serde_json::json!(["hold"]))
+                .map(|(i, _)| i)
+                .collect();
+            assert_eq!(at.len(), 1, "{name}'s act_sort holds one hold's branch");
+            let branch = branches.remove(at[0]);
+            if let Some(path) = first_difference(&branch, &hold_branch(), "") {
+                panic!("{name}'s hold's branch differs from design Decision 1's at {path}");
+            }
+            holds += 1;
+        }
+        if let Some(path) = first_difference(&read, &without_descriptions(&old[name]), "") {
+            panic!("version 3's {name} differs from version 2's at {path}");
+        }
+    }
+    assert_eq!(holds, 1, "one act_sort of version 3 holds a hold");
+    let hold = serde_json::to_value(boomdrive_control::ActSort::Hold {
+        words: "the user sends it".to_string(),
+        bound_interval: 28800,
+    })
+    .unwrap();
+    let written: BTreeSet<&String> = hold["hold"].as_object().unwrap().keys().collect();
+    let required: BTreeSet<String> = hold_branch()["properties"]["hold"]["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|key| key.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        written,
+        required.iter().collect(),
+        "the hold's branch names what the interface writes"
+    );
+
+    let examples = |version: common::Version| -> BTreeSet<String> {
+        let root = version.dir().join("examples");
+        let mut found = Vec::new();
+        files_under(&root, &root, &mut found);
+        found.into_iter().collect()
+    };
+    let mut expected = examples(v2);
+    expected.insert("to-runner/pulled-with-a-hold.json".to_string());
+    assert_eq!(
+        examples(v3),
+        expected,
+        "version 3's examples are version 2's and pulled-with-a-hold.json"
+    );
+    for name in examples(v2) {
+        let (direction, file) = name.split_once('/').unwrap();
+        let mut read = v3.example(direction, file);
+        read_as_version_2(&mut read, "/protocol_version", &name);
+        let mut old = v2.example(direction, file);
+        if name == "from-runner/enroll.json" {
+            for example in [&mut read, &mut old] {
+                example["body"]["enroll"]
+                    .as_object_mut()
+                    .and_then(|enroll| enroll.remove("signature"))
+                    .unwrap_or_else(|| panic!("{name} holds no signature"));
+            }
+        }
+        if let Some(path) = first_difference(&read, &old, "") {
+            panic!("version 3's example {name} differs from version 2's at {path}");
+        }
+    }
 }

@@ -1,12 +1,12 @@
-//! What version 2 refuses (design Decision 14 of
+//! What version 3 refuses (design Decision 14 of
 //! the-runner-dials-the-hosted-control-plane): each case a valid example
 //! altered, checked against its direction's envelope, refused, and named
 //! in its assertion.
 
 mod common;
 
-use boomdrive_hosted::protocol::v2::{FromRunner, Message, ToRunner};
-use common::{example, examples, from_runner, passes, refused, to_runner, V1};
+use boomdrive_hosted::protocol::v3::{FromRunner, Message, ToRunner};
+use common::{example, examples, from_runner, passes, refused, to_runner, V1, V2, V3};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -38,38 +38,43 @@ fn a_message_with_no_id() {
 }
 
 /// The runner-protocol spec's "A message of another version": every
-/// message of version 2 names it, and one naming 2 is no message of
-/// version 1.
+/// message of a version names it, so a hello naming 2 is no message of
+/// version 3, one naming 3 is none of version 2, and one naming 1 is none
+/// of version 3; and one naming any other number, or the version as
+/// text, is none of version 3 (core.42; record 0052).
 #[test]
 fn a_message_of_another_version() {
     let validator = from_runner();
-    for version in [json!(1), json!(3), json!(0), json!("2")] {
+    for version in [json!(1), json!(2), json!(4), json!(0), json!("3")] {
         let other = altered("from-runner", "hello.json", |hello| {
             hello["protocol_version"] = version.clone();
         });
         refused(
             &validator,
             &other,
-            &format!("a hello naming protocol_version {version}, against version 2"),
+            &format!("a hello naming protocol_version {version}, against version 3"),
         );
     }
-    let first = V1.messages_from_runner();
-    passes(
-        &first,
-        &V1.example("from-runner", "hello.json"),
-        "version 1's hello against version 1",
-    );
-    let mut second = V1.example("from-runner", "hello.json");
-    second["protocol_version"] = json!(2);
-    refused(
-        &first,
-        &second,
-        "a hello naming protocol_version 2, against version 1",
-    );
+    for (version, against) in [(V2, V3), (V3, V2), (V1, V3), (V2, V1)] {
+        let own = version.example("from-runner", "hello.json");
+        passes(
+            &version.messages_from_runner(),
+            &own,
+            &format!("version {}'s hello against its own", version.number),
+        );
+        refused(
+            &against.messages_from_runner(),
+            &own,
+            &format!(
+                "a hello naming protocol_version {}, against version {}",
+                version.number, against.number
+            ),
+        );
+    }
 }
 
 /// The runner-protocol spec's "A body of two kinds, or of none": a body
-/// holds exactly one kind version 2 has.
+/// holds exactly one kind version 3 has.
 #[test]
 fn a_body_of_two_kinds_or_of_none() {
     let validator = from_runner();
@@ -94,7 +99,7 @@ fn a_body_of_two_kinds_or_of_none() {
     refused(
         &validator,
         &unknown,
-        "a body of goodbye, a kind version 2 lacks",
+        "a body of goodbye, a kind version 3 lacks",
     );
 }
 
@@ -206,8 +211,8 @@ fn an_enroll_unsigned_or_holding_a_token() {
 }
 
 /// The runner-protocol spec's "A field the version does not name": every
-/// object version 2 names is closed, at every depth. The runner's types
-/// read no such field of version 2's own objects either.
+/// object version 3 names is closed, at every depth. The runner's types
+/// read no such field of version 3's own objects either.
 #[test]
 fn a_field_the_version_does_not_name() {
     let from = from_runner();
@@ -217,7 +222,7 @@ fn a_field_the_version_does_not_name() {
             passes(
                 validator,
                 &value,
-                &format!("version 2's {direction}/{name}"),
+                &format!("version 3's {direction}/{name}"),
             );
         }
     }
@@ -286,6 +291,13 @@ fn a_field_the_version_does_not_name() {
         pulled["body"]["pulled"]["wants"][1]["act"]["what"]["confirm"]["stage"] = json!("code");
     });
     refused(&to, &confirmed, "a field a confirm does not name");
+    let name = "pulled-with-a-hold.json";
+    passes(&to, &example("to-runner", name), name);
+    let held = altered("to-runner", name, |pulled| {
+        pulled["body"]["pulled"]["wants"][1]["act"]["what"]["hold"]["reason"] =
+            json!("the user is away");
+    });
+    refused(&to, &held, "a field a hold does not name");
     let previewed = altered(
         "to-runner",
         "pulled-with-a-preview-and-its-done.json",
@@ -369,7 +381,7 @@ fn a_previews_outcome() {
 }
 
 /// The runner-protocol spec's "A report with no previews": every report
-/// of version 2 holds its `previews`, empty where it answered none.
+/// of version 3 holds its `previews`, empty where it answered none.
 #[test]
 fn a_report_with_no_previews() {
     let validator = from_runner();
@@ -456,8 +468,8 @@ type Holding = (&'static str, &'static str, fn(&mut Value));
 /// answer once its stall's end is added, as [`stalled`] makes it.
 const STALLED: &str = "a stalled place";
 
-/// Version 2's example of a place waiting on an answer, its copy holding
-/// the stall's end Flume 0.21.0 records, cut to what version 2 names of
+/// Version 3's example of a place waiting on an answer, its copy holding
+/// the stall's end Flume 0.21.0 records, cut to what version 3 names of
 /// it: never its move, answerer, stop-short or hold (design Decision 1 of
 /// the-hosted-protocol-carries-every-end-of-a-place).
 fn stalled() -> Value {

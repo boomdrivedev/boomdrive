@@ -4,7 +4,7 @@
 //! under `protocol/`, and the runner's types for its messages (core.42).
 //! It holds the hosted table, the host's key and its stores, a
 //! partition's enrollment, each partition's connection, the cut of each
-//! tool's answer to its copy, the checks of version 2's messages, and
+//! tool's answer to its copy, the checks of version 3's messages, and
 //! `Hosted`, the `ControlPlane` over a partition's connection, which
 //! [`open`] opens as a part for each partition.
 
@@ -27,10 +27,12 @@ use table::Table;
 /// operation with, until a version of the protocol carries a forge token:
 /// under the hosted control plane the Boomdrive App is the control plane's,
 /// which mints the host's tokens and sends them down the runner's own
-/// connection (record 0007 as amended on 2026-11-09; core.33). A version
-/// that carries tokens changes these words with it.
+/// connection (record 0007 as amended on 2026-11-09; core.33). They name
+/// [`protocol::v3::VERSION`] as text, since a `const` is made of no
+/// `format!`: a later version changes the number here with its own, and a
+/// version that carries tokens changes these words with it.
 pub const NO_FORGE_TOKEN: &str =
-    "the hosted control plane mints this host's forge tokens, and version 2 of its protocol carries none yet";
+    "the hosted control plane mints this host's forge tokens, and version 3 of its protocol carries none yet";
 
 /// Enrolls the partition `label` of the hosted table, `table`, of the
 /// configuration file `file`, with the one-time token `token` gives once

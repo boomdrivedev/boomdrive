@@ -3,7 +3,7 @@
 //! spec's "A pull gives each partition's wants under its own ids", "A
 //! partition's connection carries only its own repositories and work", "A
 //! report goes to each partition, answered by its id", "What goes up is
-//! version 2's copy, checked before it goes" and "A terminal the control
+//! version 3's copy, checked before it goes" and "A terminal the control
 //! plane opens is closed at once"; the control-plane-interface spec's "An
 //! implementation serves its control plane as parts" and "A part says
 //! which ids are its own"; design Decisions 7, 8, 9 and 11, and Decision
@@ -188,7 +188,7 @@ fn hello(report: &Report) -> Hello {
     }
 }
 
-/// An offer of version 2 of the launch `id` of `repository`, after the
+/// An offer of version 3 of the launch `id` of `repository`, after the
 /// launches `after`.
 fn offer(id: &str, repository: &str, after: &[&str]) -> Value {
     json!({ "offer": {
@@ -318,7 +318,7 @@ fn ids_under_their_partition() {
 }
 
 /// An act `id` on the launch `launch`, under its lease, a confirm as
-/// `recipient` of `deliveries`, as a control plane of version 2 asks it.
+/// `recipient` of `deliveries`, as a control plane of version 3 asks it.
 fn confirm(id: &str, launch: &str, recipient: &str, deliveries: &[&str]) -> Value {
     json!({ "act": {
         "id": id, "launch": launch, "lease": 1,
@@ -422,6 +422,64 @@ fn a_land_carried() {
     assert_eq!(act.launch, Id::new("home/l-1"));
     assert_eq!(act.lease, 1);
     assert_eq!(act.what, ActSort::Land);
+}
+
+/// A hold the partition's control plane asks of `l-1`, under the id `id`,
+/// with `words` and `bound_interval`, as version 3 writes it.
+fn hold(id: &str, words: &str, bound_interval: u64) -> Value {
+    json!({ "act": {
+        "id": id, "launch": "l-1", "lease": 1,
+        "what": { "hold": { "words": words, "bound_interval": bound_interval } }
+    } })
+}
+
+/// `home`'s part's pull of an offer of `l-1` and the hold `asked`, which
+/// gives the hold as an act under the partition's prefix, its launch under
+/// it too, as `what`, and no `message_refused` is sent.
+fn a_hold_given(asked: Value, id: &str, what: ActSort) {
+    let fake = Fake::start();
+    let (wants, refused) = home_pulls(&fake, json!([offer("l-1", "example/app", &[]), asked]));
+    assert!(!refused, "no message_refused: {:#?}", fake.taken());
+    assert_eq!(ids(&wants), ["home/l-1", id]);
+    let Want::Act(act) = &wants[1] else {
+        panic!("an act: {:?}", wants[1]);
+    };
+    assert_eq!(act.launch, Id::new("home/l-1"));
+    assert_eq!(act.lease, 1);
+    assert_eq!(act.what, what);
+}
+
+/// The hosted-control-plane spec's "A hold carried" (design Decision 6): a
+/// hold the control plane asks is given to the runner as an act under the
+/// partition's prefix, its launch under it too, its words and bound as
+/// given, and the hosted implementation reads nothing else of it (core.59;
+/// record 0052).
+#[test]
+fn a_hold_carried() {
+    let words = "the user sends it on the landings card, row 3";
+    a_hold_given(
+        hold("hold-1", words, 28800),
+        "home/hold-1",
+        ActSort::Hold {
+            words: words.to_string(),
+            bound_interval: 28800,
+        },
+    );
+}
+
+/// The hosted-control-plane spec's "A hold the runner refuses": a hold of
+/// no words and bound 0 is given to the runner as given, and no
+/// `message_refused` is sent, since refusing it is the runner's (core.59).
+#[test]
+fn a_hold_the_runner_refuses() {
+    a_hold_given(
+        hold("hold-2", "", 0),
+        "home/hold-2",
+        ActSort::Hold {
+            words: String::new(),
+            bound_interval: 0,
+        },
+    );
 }
 
 /// The hosted-control-plane spec's "One partition unreachable": `home`'s
@@ -535,7 +593,7 @@ fn each_hello_its_own() {
 /// The hosted-control-plane spec's "No drive or folder goes up": the
 /// runner's hello names the drive `family` with `example/app` at its
 /// clone's folder, and `home`'s hello names `example/app` and neither the
-/// drive nor the folder, since version 2 carries neither (design Decision
+/// drive nor the folder, since version 3 carries neither (design Decision
 /// 6 of the-runner-names-each-repository-it-keeps; core.27, core.42).
 #[test]
 fn no_drive_or_folder_goes_up() {
@@ -567,7 +625,7 @@ fn no_drive_or_folder_goes_up() {
 }
 
 /// The hosted-control-plane spec's "A repository drained goes up in no
-/// hello": version 2 names no repository drained, nor the repository a
+/// hello": version 3 names no repository drained, nor the repository a
 /// launch was answered in (record 0021; core.42).
 #[test]
 fn a_repository_draining_goes_up_in_no_hello() {
@@ -629,7 +687,7 @@ fn each_report_its_own() {
 }
 
 /// A preview `id` of `main` in `repository` at `revision`, done or not,
-/// under a lease of its own, as a control plane of version 2 asks it.
+/// under a lease of its own, as a control plane of version 3 asks it.
 fn preview(id: &str, repository: &str, revision: &str, done: bool) -> Value {
     json!({ "preview": {
         "id": id,
@@ -973,7 +1031,7 @@ fn a_value_flume_adds() {
         else {
             unreachable!();
         };
-        assert_eq!(refused, &None, "the report passes version 2");
+        assert_eq!(refused, &None, "the report passes version 3");
         assert_eq!(
             message["body"]["report"]["launches"]["l-1"]["status"],
             Value::Null
@@ -1077,7 +1135,7 @@ fn an_end_flume_adds() {
         else {
             unreachable!();
         };
-        assert_eq!(refused, &None, "the report passes version 2");
+        assert_eq!(refused, &None, "the report passes version 3");
         let copy = &message["body"]["report"]["launches"]["l-1"]["status"]["copy"];
         assert_eq!(
             copy["stages"][1]["state"],
@@ -1103,7 +1161,7 @@ fn an_end_flume_adds() {
     assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
     assert_eq!(
         lines[0],
-        "home/l-1: its status goes up with ends version 2 does not name: /ends/0 by its \
+        "home/l-1: its status goes up with ends version 3 does not name: /ends/0 by its \
          delivery alone, /ends/1 by its delivery alone, /ends/2 left out"
     );
     for value in ["moved", "dreaming", "construct", "scratch/planner"] {
@@ -1216,7 +1274,7 @@ fn a_drop_held_for_the_runner() {
 }
 
 #[test]
-fn a_report_that_fails_version_2_is_not_sent() {
+fn a_report_that_fails_version_3_is_not_sent() {
     let fake = Fake::start();
     let mut plane = Plane::open(&fake);
     let mut report = launched(&["home/l-1", "work/l-2"]);
@@ -1389,7 +1447,7 @@ fn previews_go_up_as_their_copies() {
     let sent = reports_sent(&fake);
     assert_eq!(sent.len(), 1, "{:#?}", fake.taken());
     let (message, refused) = &sent[0];
-    assert_eq!(refused, &None, "the report passes version 2");
+    assert_eq!(refused, &None, "the report passes version 3");
     let previews = &message["body"]["report"]["previews"];
     assert_eq!(
         keys(previews),
@@ -1453,7 +1511,7 @@ fn a_previews_copy_that_fails() {
     let sent = reports_sent(&fake);
     assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
     for (message, refused) in &sent {
-        assert_eq!(refused, &None, "the report passes version 2");
+        assert_eq!(refused, &None, "the report passes version 3");
         let previewed = &message["body"]["report"]["previews"]["preview-1"];
         assert_eq!(previewed["status"], Value::Null);
         assert_eq!(previewed["copy"]["state"], "starting");
@@ -1496,7 +1554,7 @@ fn a_launch_and_a_preview_of_one_id_both_failing() {
     let sent = reports_sent(&fake);
     assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
     for (message, refused) in &sent {
-        assert_eq!(refused, &None, "the report passes version 2");
+        assert_eq!(refused, &None, "the report passes version 3");
         let report = &message["body"]["report"];
         assert_eq!(report["launches"]["l-1"]["status"], Value::Null);
         assert_eq!(report["previews"]["l-1"]["status"], Value::Null);
