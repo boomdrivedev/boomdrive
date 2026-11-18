@@ -365,6 +365,80 @@ let
       t.expect (folder.folder == "${homeOf platform}/.config/pendingyou")
         "the ${platform} folder without the runner is ${folder.folder}, not ${homeOf platform}/.config/pendingyou";
 
+  # The set's user's steps without the runner on NixOS (design Decision 4
+  # of the change boomdrives-tools-install-on-a-machine-without-the-runner).
+  linkedWithoutOnNixOS =
+    let
+      inherit (platforms.NixOS) set withoutOf users;
+      evaluated = withoutOf {
+        imports = [
+          flumeAndHerdr
+          (users [ "flume" ])
+        ];
+      };
+      text = activationOf "NixOS" evaluated;
+      guarded = lib.splitString "if [ \"$(id -un)\" = alice ]; then" text;
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} || true";
+      expected = "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+      steps = map lib.trim (pluginSteps "NixOS" evaluated);
+      scripts = userScripts evaluated;
+      others = lib.filter (name: name != "boomdrive") (builtins.attrNames scripts);
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a NixOS system with Flume and herdr turned on without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (steps == [ expected ])
+        "the NixOS user activation without the runner's plugin steps are ${builtins.toJSON steps}, not ${expected}"
+    ++
+      t.expect (builtins.length guarded == 2 && lib.hasInfix expected (builtins.elemAt guarded 1))
+        "the NixOS user activation without the runner links the plugins outside its test of alice: ${text}"
+    ++ t.expect (
+      !lib.hasInfix "-activate.sh keep " text && !lib.hasInfix "boomdrive-config.toml" text
+    ) "the NixOS user activation without the runner runs the runner's steps: ${text}"
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !lib.hasInfix "-activate.sh plugins " (
+          builtins.unsafeDiscardStringContext (scripts.${name}.text or "")
+        )
+      ) "the NixOS user activation's ${name} links the plugins"
+    ) others
+    ++ t.expect (
+      !evaluated.config.systemd.user.services ? boomdrive
+    ) "the NixOS system without the runner declares the user unit boomdrive"
+    ++ t.expect (
+      evaluated.config.users.users.alice.linger != true
+    ) "alice lingers on the NixOS system without the runner";
+
+  noUser =
+    let
+      evaluated = platforms.NixOS.withoutOf {
+        imports = [ flumeAndHerdr ];
+        services.flume.user = "alice";
+      };
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (lib.hasInfix "services.boomdrive.user" failures) "a NixOS system with no user that links the plugins fails naming no services.boomdrive.user: ${failures}";
+
+  folderWithoutOnNixOS =
+    let
+      evaluated = platforms.NixOS.withoutOf {
+        imports = [ (platforms.NixOS.users [ ]) ];
+        services.boomdrive.pendingyou.enable = true;
+      };
+      scripts = userScripts evaluated;
+      others = lib.filter (name: name != "boomdrive") (builtins.attrNames scripts);
+    in
+    folderWithout "NixOS" (platforms.NixOS.users [ ])
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !lib.hasInfix "-activate.sh pendingyou " (
+          builtins.unsafeDiscardStringContext (scripts.${name}.text or "")
+        )
+      ) "the NixOS user activation's ${name} without the runner writes Pending You's folder"
+    ) others;
+
   noSetsHerdr =
     platform:
     { system, ... }:
@@ -1465,4 +1539,7 @@ onEach "The way in with the runner" withRunner
   "The plugins linked without the runner on nix-darwin" = linkedWithoutOnDarwin;
   "No primary user on nix-darwin" = noPrimaryUser;
   "The folder written without the runner on nix-darwin" = folderWithout "nix-darwin" { };
+  "The plugins linked without the runner on NixOS" = linkedWithoutOnNixOS;
+  "No user on NixOS" = noUser;
+  "The folder written without the runner on NixOS" = folderWithoutOnNixOS;
 }

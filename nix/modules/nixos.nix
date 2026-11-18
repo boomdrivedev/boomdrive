@@ -17,10 +17,16 @@
 # 9). NixOS restarts no changed user unit, so the user's activation links
 # the file at the runner's own path, writes Pending You's folder where
 # Pending You is turned on (record 0044, point 7), links the herdr
-# plugins apps.nix lists with herdr's own command (record 0023), then
-# starts the unit where it is not running and restarts it where the
-# running runner's command line is not the unit's; any other user's
-# activation does nothing. Beside `user`, the module declares `dataDir`,
+# plugins apps.nix lists with herdr's own command where herdr is turned on
+# (record 0023), then starts the unit where it is not running and
+# restarts it where the running runner's command line is not the unit's;
+# any other user's activation does nothing. Without the runner, the same
+# user's activation writes the folder and links the plugins alone: the
+# user is the set's, `services.boomdrive.user`, who does not linger, and
+# no unit is declared; where such a step runs and no user is named,
+# evaluation fails, naming it (record 0023 as amended on 2026-11-18;
+# design Decision 4 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner). Beside `user`, the module declares `dataDir`,
 # the runner's data folder by the runner's own rule (data-dir.nix) from
 # that user's home and the unit's own `XDG_DATA_HOME`, and clones.nix
 # declares `cloneDirs`, each kept repository's clone folder in it: each
@@ -43,6 +49,7 @@
 {
   config,
   lib,
+  options,
   pkgs,
   utils,
   ...
@@ -70,6 +77,7 @@ let
   );
 
   inherit (cfg) user;
+  named = options.services.boomdrive.user.isDefined;
   account = config.users.users.${user};
   inherit (account) home;
 
@@ -82,13 +90,28 @@ let
     inherit (cfg.pendingyou) package;
   };
 
-  # The runner's user's steps before `keep`, in order: the link, Pending
-  # You's folder, then herdr's links of the plugins.
-  steps = [
-    "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
-  ]
-  ++ lib.optional writingFolder "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
-  ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
+  # The set's user's steps before `keep`, in order: the runner's link with
+  # the runner, Pending You's folder, then herdr's links of the plugins,
+  # each wherever its tool is on, with the runner or without (record 0023
+  # as amended on 2026-11-18; design Decision 4 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  steps =
+    lib.optional cfg.enable "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
+    ++ lib.optional writingFolder "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
+    ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
+
+  # The switches whose steps run as the set's user, which a failure names
+  # where no user is.
+  needing =
+    lib.optional cfg.enable "services.boomdrive.enable"
+    ++ lib.optional writingFolder "services.boomdrive.pendingyou.enable"
+    ++ lib.optional linking "services.boomdrive.herdr.enable";
+
+  # `keep`, after the steps, where the runner is on.
+  keeping = lib.optionalString cfg.enable (
+    "  PATH=${keepPath}:$PATH \\\n"
+    + "    ${pkgs.runtimeShell} ${./activate.sh} keep ${lib.escapeShellArgs ([ user ] ++ command)}\n"
+  );
 
   # The unit's command line, which the activation compares the running
   # runner's with.
@@ -136,7 +159,7 @@ in
   options.services.boomdrive.user = lib.mkOption {
     type = lib.types.str;
     example = "alice";
-    description = "The user whose systemd user manager runs the runner, and who lingers.";
+    description = "The user the set is set up for, with the runner or without: the one whose systemd user manager runs the runner, and who lingers, where `services.boomdrive.enable` is on, and as whom herdr's plugins are linked and Pending You's folder written wherever `services.boomdrive.herdr.enable` or `services.boomdrive.pendingyou.enable` is on. Without the runner, nothing else runs as that user.";
   };
 
   # The unit's own XDG_DATA_HOME, or null where the unit has none or the
@@ -187,14 +210,38 @@ in
       };
     }
 
+    # The set's user's steps, in one user activation script, wherever one of
+    # them runs, with the runner or without (design Decision 4 of the change
+    # boomdrives-tools-install-on-a-machine-without-the-runner): run by
+    # every user's nixos-activation.service, inside which a job is never
+    # waited for, with coreutils on its PATH and neither systemctl nor ps,
+    # and by that user's alone. A link that fails says why and stops
+    # nothing else: the unit reads its own --config either way.
+    (lib.mkIf (steps != [ ]) {
+      assertions = [
+        # Whether the user is named is read before users.users, so a host
+        # that names none is told which option to set. users.users.<user>
+        # is there either way where the runner is on, since this module
+        # makes the user linger: a user only the module names is neither
+        # kind.
+        {
+          assertion = named && (account.isNormalUser || account.isSystemUser);
+          message =
+            if named then
+              "services.boomdrive.user is ${user}, whom users.users.${user} does not declare: declare the user the set is set up for."
+            else
+              "services.boomdrive.user is not set, and ${lib.concatStringsSep " and " needing} run steps as the set's user: set services.boomdrive.user to the user the set is set up for.";
+        }
+      ];
+
+      system.userActivationScripts.boomdrive.text = ''
+        if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
+        ${lib.concatMapStrings (step: "  ${step}\n") steps}${keeping}fi
+      '';
+    })
+
     (lib.mkIf cfg.enable {
       assertions = [
-        # users.users.<user> is there either way, since this module makes
-        # the user linger: a user only the module names is neither kind.
-        {
-          assertion = account.isNormalUser || account.isSystemUser;
-          message = "services.boomdrive.user is ${user}, whom users.users.${user} does not declare: declare the user whose manager runs the runner.";
-        }
         {
           assertion = !hosted || lib.versionAtLeast systemd "256";
           message = "services.boomdrive.settings names a hosted control plane, whose partition's key systemd-creds of systemd 256 or later keeps for the user, and this system's systemd is ${systemd}.";
@@ -259,17 +306,6 @@ in
         };
         startLimitIntervalSec = 0;
       };
-
-      # Run by every user's nixos-activation.service, inside which a job is
-      # never waited for, with coreutils on its PATH and neither systemctl
-      # nor ps. A link that fails says why and stops nothing else: the unit
-      # reads its own --config either way.
-      system.userActivationScripts.boomdrive.text = ''
-        if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
-        ${lib.concatMapStrings (step: "  ${step}\n") steps}  PATH=${keepPath}:$PATH \
-            ${pkgs.runtimeShell} ${./activate.sh} keep ${lib.escapeShellArgs ([ user ] ++ command)}
-        fi
-      '';
     })
   ];
 }
