@@ -57,7 +57,12 @@ they write Claude Code's managed transcripts document,
 `10-boomdrive-transcripts.json` beside it, holding
 `services.boomdrive.claude-code.cleanupPeriodDays` alone, a year by
 default, so every session on the host keeps its transcript that long
-(record 0046). None runs `claude` or writes into a Claude Code home. The
+(record 0046). None runs `claude` or writes into a Claude Code home. On
+macOS the module runs the runner from a copy at
+`/Library/Application Support/Boomdrive/boomdrive` that each activation
+signs, before the agents load, with the host's own code-signing
+identity, `Boomdrive runner` in its System keychain, so a grant of
+macOS privacy access holds for every later build (record 0047). The
 flake gives a shell, `devShells.<system>.default`, that starts herdr
 (record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every
@@ -128,7 +133,7 @@ branch requires:
 
 | layer | what | who requires it |
 |---|---|---|
-| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built; the root's format (treefmt), toolchain, records, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint); the site's type check (astro check), prose (Vale), build, tests and its workflow's lint (actionlint) | main |
+| `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built, and its Mac scripts read by macOS's /bin/sh (bash 3.2.57); the root's format (treefmt), toolchain, records, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint); the site's type check (astro check), prose (Vale), build, tests and its workflow's lint (actionlint) | main |
 
 Run suites through sluice, so the agents on this host take turns under
 its bound: once your work is committed, `sluice exec main` for the

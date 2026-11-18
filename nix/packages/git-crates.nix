@@ -7,19 +7,19 @@
 # reading the hash nix got.
 {
   "weir-bounded-0.0.0" = {
-    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
-    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
+    rev = "5e3f1286d7572a4c70b5e61600f2d50609793820";
+    hash = "sha256-Z7d+Z1hCVx+imVDkdKMf7z3s8KA2yoYpHiAJjHKJ3jg=";
   };
   "weir-branch-0.0.0" = {
-    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
-    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
+    rev = "5e3f1286d7572a4c70b5e61600f2d50609793820";
+    hash = "sha256-Z7d+Z1hCVx+imVDkdKMf7z3s8KA2yoYpHiAJjHKJ3jg=";
   };
   "weir-capture-0.0.0" = {
-    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
-    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
+    rev = "5e3f1286d7572a4c70b5e61600f2d50609793820";
+    hash = "sha256-Z7d+Z1hCVx+imVDkdKMf7z3s8KA2yoYpHiAJjHKJ3jg=";
   };
   "weir-signals-0.0.0" = {
-    rev = "9cba69196e9269a36b02024861340355bdbe6d4b";
-    hash = "sha256-BS0qHjt+4qQMUnbOvUiQjgs33CdG91twIAOUAsUjQpc=";
+    rev = "5e3f1286d7572a4c70b5e61600f2d50609793820";
+    hash = "sha256-Z7d+Z1hCVx+imVDkdKMf7z3s8KA2yoYpHiAJjHKJ3jg=";
   };
 }

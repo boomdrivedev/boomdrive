@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex, Once};
 use tempfile::TempDir;
+use weir_bounded::Halt;
 
 /// crew's header of `requests.rec`, as `runner.REQUESTS` holds it at
 /// `the-team-machinery-leaves` (`2b97ee57`), where a launch of a kit's
@@ -26,7 +27,10 @@ use tempfile::TempDir;
 /// `Branch`, `Revision` and `Done` allowed (design Decision 10; Task notes
 /// 6.1), and with what crew's change `crews-role-runs-confirm-what-they-
 /// collect` adds, as crew's main at `fa8501c1` holds it: `confirm` among
-/// its `Act`s, and `Delivery` allowed after `Words`.
+/// its `Act`s, and `Delivery` allowed after `Words`; and with what crew's
+/// unit `a-bolt-waiting-on-the-user-waits-under-words` writes: `hold`
+/// among its `Act`s, `Bound` an int, and `Bound` allowed after `Delivery`
+/// (core.59).
 pub const REQUESTS: &str = "\
 # crew's requests of the runners: a launch of a Flume place for a started
 # bolt's work, a fix or a role's work that lands, or a retry, drop or priority
@@ -41,15 +45,16 @@ pub const REQUESTS: &str = "\
 %doc: A request for Work: a launch of a Flume place of Kind named Name, cut from Base of Repo, taken by a runner whose configuration names Repo, in the stream its host maps it to, or by Host's runner in Stream for a role's work; or a retry, drop or priority of the place the launch Of names launched, taken by the runner that took it.
 %key: Request
 %type: Request,Of,After,Priority int
-%type: Act enum launch retry land drop priority preview confirm
+%type: Act enum launch retry land drop priority preview confirm hold
 %type: Kind enum change chore fix
 %type: Hold enum submission
 %type: Submission bool
 %type: Done bool
+%type: Bound int
 %type: Host regexp /^[a-z0-9][a-z0-9-]*$/
 %type: Date date
 %mandatory: Request Act Work Date By
-%allowed: Request Act Host Work Repo Kind Name Base Branch Revision Done Stream Priority Intent Recipient Hold After Brief Of Stage Submission Words Delivery Date By
+%allowed: Request Act Host Work Repo Kind Name Base Branch Revision Done Stream Priority Intent Recipient Hold After Brief Of Stage Submission Words Delivery Bound Date By
 ";
 
 /// crew's header of `plan.rec`, as `plan.HEADER` holds it at `2b97ee57`.
@@ -236,8 +241,9 @@ pub fn preview(
 /// The fields of crew's `runner.FIELDS`, in its order, with the fields of
 /// a preview after `Base`, as crew's unit writes them (Task notes 6.1), and
 /// a confirm's `Delivery` after `Words`, as crew's main at `fa8501c1`
-/// writes it.
-const FIELDS: [&str; 25] = [
+/// writes it, and a hold's `Bound` after `Delivery`, as crew's unit
+/// `a-bolt-waiting-on-the-user-waits-under-words` writes it.
+const FIELDS: [&str; 26] = [
     "Request",
     "Act",
     "Host",
@@ -261,6 +267,7 @@ const FIELDS: [&str; 25] = [
     "Submission",
     "Words",
     "Delivery",
+    "Bound",
     "Date",
     "By",
 ];
@@ -394,8 +401,21 @@ impl State {
 
     /// crew's implementation on `host` as parts, one for each of
     /// `partitions` (label and state repository), its data under the
-    /// scratch directory, and the lines each part says, by its label.
+    /// scratch directory, and the lines each part says, by its label. Its
+    /// halt is never set.
     pub fn parts(&self, host: &str, partitions: &[(&str, &str)]) -> (Vec<Part>, Saids) {
+        self.parts_halted_by(host, partitions, &Halt::default())
+    }
+
+    /// crew's implementation on `host` as parts, as [`State::parts`] makes
+    /// them, each given `halt`, as the runner gives its own (record 0042 as
+    /// amended on 2026-11-12).
+    pub fn parts_halted_by(
+        &self,
+        host: &str,
+        partitions: &[(&str, &str)],
+        halt: &Halt,
+    ) -> (Vec<Part>, Saids) {
         let saids = Saids::default();
         let config = Config {
             host: host.to_string(),
@@ -415,6 +435,7 @@ impl State {
                 let lines = saids.of(label).0;
                 Box::new(move |line| lines.lock().unwrap().push(line))
             },
+            halt,
         );
         (parts, saids)
     }

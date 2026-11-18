@@ -112,7 +112,7 @@ The gate SHALL run the set's own Flume and sluice, the flake's packages of its l
 
 ### Requirement: Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs
 
-Each package but crew's companions' SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's, worktrunk's and timber's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree where it holds one, else from the flake's tag.
+Each package but crew's companions' SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's, worktrunk's and timber's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree.
 
 #### Scenario: Flume through its own flake
 
@@ -121,8 +121,8 @@ Each package but crew's companions' SHALL be a derivation of the source the lock
 
 #### Scenario: sluice through its own flake
 
-- **WHEN** the lock names sluice's tag `v0.68.0`, whose tree says `0.0.0`
-- **THEN** the `sluice` package is sluice's flake's, its version `0.68.0`, and its build is given `0.68.0` as sluice's release build is
+- **WHEN** the lock names a tag of sluice's whose tree carries its version
+- **THEN** the `sluice` package is sluice's flake's own `default` for that system, unchanged, and its version is the tag's without the `v`
 
 #### Scenario: crew through its own flake
 

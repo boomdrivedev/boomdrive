@@ -208,7 +208,7 @@ An act whose launch the runner holds unlaunched SHALL run no command. A priority
 
 ### Requirement: A retry, a land, a confirm or a done of a launch not launched, and an act on another's launch, are refused
 
-A retry, a land, a confirm or a done of a launch the runner holds unlaunched SHALL be answered `refused`, naming where the launch stands. An act whose launch is no launch of this runner's SHALL be answered `refused`, naming the launch. Neither SHALL run a command, and a land so refused SHALL change nothing of the launch when it is made (core.15, core.53, core.56).
+A retry, a land, a confirm, a hold or a done of a launch the runner holds unlaunched SHALL be answered `refused`, naming where the launch stands. An act whose launch is no launch of this runner's SHALL be answered `refused`, naming the launch. Neither SHALL run a command, and a land or a hold so refused SHALL change nothing of the launch when it is made (core.15, core.53, core.56, core.59).
 
 #### Scenario: A retry of a held launch
 
@@ -224,6 +224,11 @@ A retry, a land, a confirm or a done of a launch the runner holds unlaunched SHA
 
 - **WHEN** launch `b` is held on its After, and an act confirms an end of it as `scratch/planner`
 - **THEN** the confirm is answered `refused` with the words a retry of `b` is given, saying `b` is held and naming what it waits on, and no `flume confirm` is run
+
+#### Scenario: A hold of a held launch
+
+- **WHEN** launch `b` is held on its After, and an act holds the move its place waits on under words for 28800 seconds
+- **THEN** the hold is answered `refused` with the words a retry of `b` is given, saying `b` is held and naming what it waits on, and no `flume hold` is run
 
 #### Scenario: An act on another's launch
 
@@ -672,14 +677,46 @@ The hello SHALL name each drive of the configuration, by its name, with each rep
 - **WHEN** the configuration's drive `home` names `agentplot/flume` and `example/crew`, its drive `work` names `example/app`, and its drive `idle` names `example/later`; the clones of `agentplot/flume` and `example/app` are made, `example/crew`'s and `example/later`'s are not; and `example/kit`'s clone stands, which the configuration no longer names
 - **THEN** the hello names `home` with `agentplot/flume` at its container alone, `work` with `example/app` at its container, and `idle` with none, and no drive names `example/kit`
 
+### Requirement: A hold is Flume's hold of the move its launch's place waits on
+
+The runner SHALL carry out a hold as any act on its launch's place, by `flume --json hold <place> --waiting --for=<n>s -- <words>`, `<n>` being the act's bound in whole seconds and `<words>` exactly the act's words, after `--`, so that they are never read as a flag. Its line SHALL name it `hold for <n>s`, holding none of its words (core.11, core.59; Flume's 130).
+
+#### Scenario: A hold
+
+- **WHEN** the runner holds launch `a` at place `P`, and an act `a/hold` holds the move `P` waits on under the words `the user sends it on the landings card, row 3` for 28800 seconds
+- **THEN** Flume is run as `flume --json hold P --waiting --for=28800s -- "the user sends it on the landings card, row 3"` and as no other act, the act is answered `done`, the pass says `a/hold: hold for 28800s of a at P: done`, and no line holds the words
+
+#### Scenario: The words not read as a flag
+
+- **WHEN** a hold names the words `--stage code` and a bound of 0 seconds
+- **THEN** Flume is run as `flume --json hold P --waiting --for=0s -- "--stage code"`
+
+### Requirement: Flume's answer is the hold's
+
+The runner SHALL judge nothing of what a hold's place waits on, and SHALL renew and end no hold of its own accord. Flume's answer SHALL be the hold's (core.1, core.11, core.59; Flume's 130).
+
+#### Scenario: A hold Flume refuses
+
+- **WHEN** the runner holds launch `a` at place `P`, an act holds the move `P` waits on, and Flume refuses it with the words `the place P waits on no move of its caller's`
+- **THEN** the act is answered `refused` with Flume's words, as given
+
+### Requirement: A hold with no words is refused
+
+A hold whose words are empty SHALL be answered `refused`, its words saying it says nothing of who makes the move, and SHALL run no command for it (core.59; Flume's 130).
+
+#### Scenario: A hold with no words
+
+- **WHEN** an act holds the move launch `a`'s place waits on under empty words for 28800 seconds
+- **THEN** it is answered `refused`, its words saying it says nothing of who makes the move, and no `flume` command is run for it
+
 ### Requirement: A pass past due sends each answer as it makes it
 
-Once the next control pass is due, by its timer or by the control plane's wake, a control pass SHALL send its report after each want whose answer changed it, and after each launch that waited on its clone's keep, then go on in the order core.50 gives. A pass that ends before the next is due SHALL send once, at its end, and every pass's end SHALL send as before. What a pass takes, and in what order, SHALL NOT change (core.50; record 0002, as amended on 2026-11-14).
+Once the next control pass is due, by its timer or by the control plane's wake, a control pass SHALL send its report, wherever an answer changed it since its last send, before each tool's command it runs for a want, and once it has answered its last want, so no answer waits on a command. A pass that ends before the next is due SHALL send once, at its end, and every pass's end SHALL send as before (core.50; record 0002, as amended on 2026-11-14).
 
 #### Scenario: A pass past due sends each launch's answer before its next launch
 
-- **WHEN** the next control pass is due from a pass's start, and its pull offers `a`, `b` and `c`
-- **THEN** a report holding `a` launched is sent after `a`'s launch and before `b`'s is asked of Flume, one holding `a` and `b` before `c`'s, one holding all three after it, and the pass's end sends once more
+- **WHEN** the next control pass is due from each pass's start, and each pass's pull offers `a`, `b` and `c`
+- **THEN** the first pass launches `a`, the second `b` and the third `c`; each pass sends a report holding its launch once its last want is answered, before the next pass's launch is asked of Flume, and its end sends once more
 
 #### Scenario: A pass not yet due sends once
 
@@ -693,12 +730,17 @@ Once the next control pass is due, by its timer or by the control plane's wake, 
 
 ### Requirement: What a send of the pass lets go is taken no more that pass
 
-The control plane's answer to a send before a pass's end SHALL be taken as the answer at its end is: what it let go or refused SHALL leave the report, said in one line, and the pass SHALL take no want of it more, though its pull gives it (core.10).
+The control plane's answer to a send before a pass's end SHALL be taken as the answer at its end is: what it let go or refused SHALL leave the report, said in one line. Where it lets go or refuses the want about to run its command, or the launch that want acts on, no command SHALL be run for it. The pass SHALL take no want it let go or refused, and no act on a launch it let go or refused, more that pass, though its pull gives them (core.10).
 
 #### Scenario: A want let go at a send of the pass is taken no more
 
-- **WHEN** the runner holds `a` at a place Flume has since tidied, the control plane refuses `a`'s lease, the next control pass is due from a pass's start, and its pull offers `b`, then `a`
-- **THEN** `b` is launched, the report sent after it has `a` refused, a line names `a`'s place left on the host, `a` leaves the report, and no `flume launch` is run for `a`
+- **WHEN** the runner holds `a` at a place Flume has since tidied, the control plane refuses `a`'s lease, the next control pass is due from a pass's start, and its pull offers `c` in a repository the runner does not keep, then `b`, then `a`
+- **THEN** `c` is refused; the report sent before `b`'s launch holds that refusal and has `a` refused; a line names `a`'s place left on the host, and `a` leaves the report; `b` is launched; and `a` is neither launched nor answered that pass
+
+#### Scenario: An act whose launch is let go at the send before it runs nothing
+
+- **WHEN** the runner holds `x` at a place Flume stands, the control plane refuses `x`'s lease, the next control pass is due from a pass's start, and its pull offers `b`, then gives a priority of `x`, then a drop of `x`
+- **THEN** `b` is launched; the report sent before `x`'s priority would run has `x` refused, and `x` leaves the report; no `flume` command is run on `x`'s place; and neither act is answered that pass
 
 ### Requirement: A send that fails before a pass's end leaves its answers to the end
 
@@ -706,5 +748,61 @@ A send before a pass's end that fails SHALL be said in one line, and the pass SH
 
 #### Scenario: A send that fails leaves the pass's answers to its end
 
-- **WHEN** the next control pass is due from a pass's start, its pull offers `a` and `b`, and the control plane cannot take a report until both are launched
-- **THEN** the send after `a`'s launch fails and one line says it is sent at the pass's end, no send is tried after `b`'s, and the pass's end sends a report holding both
+- **WHEN** the runner holds `x` at a place Flume stands, the next control pass is due from a pass's start, its pull offers `a`, then gives a priority of `x`, and the control plane cannot take a report until `x`'s priority has run
+- **THEN** the send before `flume priority` is run on `x`'s place fails, and one line says the report is sent at the pass's end; no send is tried once the last want is answered; and the pass's end sends a report holding `a` launched and `x`'s priority done
+
+### Requirement: Once a pass is due, it makes no launch after its first
+
+Once the next control pass is due, by its timer or by the control plane's wake, a control pass SHALL run no `flume launch` after the first it ran, whether that first ran before the pass fell due or after. A launch SHALL count where its `flume launch` runs, whatever Flume answers. `boomdrive run --once`, after which no pass is due, SHALL make every launch it takes (core.50; record 0002, as amended on 2026-11-14 on taking turns).
+
+#### Scenario: A pass due from its start makes one launch
+
+- **WHEN** the next control pass is due from a pass's start, and its pull offers `a`, `b` and `c`
+- **THEN** `a` is launched; `b` and `c` are answered `held` with the words `waits for the next control pass, which is due`, each said in one line, and no `flume launch` is run for either; and at the next pass, due from its start, whose pull offers `a`, `b` and `c`, `b` is launched and `c` stays `held`, said in no line
+
+#### Scenario: A pass that falls due among its launches makes none more
+
+- **WHEN** a pull offers `a`, `b`, `c` and `d`, and the next control pass falls due once two launches have been made
+- **THEN** `a` and `b` are launched, and `c` and `d` are answered `held`, no `flume launch` being run for either
+
+### Requirement: A launch the pass took and left is held for its turn
+
+Each offer a pass past due would launch after its first, a launch that waited on its clone's keep among them, SHALL be answered `held`, with the words `waits for the next control pass, which is due`, and its room SHALL be counted at its turn, so each offer after it gets the answer the control plane's order gives. A later pass SHALL take it as any held offer, and its acts SHALL be answered as a held launch's are (core.10, core.50).
+
+#### Scenario: A launch held for its turn counts against its stream's room
+
+- **WHEN** the next control pass is due from a pass's start, and its pull offers `a`, `b` and `c`, each naming stream `work`, whose `room` is 2 and whose `queue` is empty
+- **THEN** `a` is launched, `b` is answered `held` for its turn, and `c`, for which no room is left, is left unanswered
+
+#### Scenario: A launch that waited on its clone's keep is held without waiting on it
+
+- **WHEN** the next control pass is due from a pass's start, the keeper holds `agentplot/flume`'s clone for its fetch, and the pull offers `a` into `agentplot/flume`, then `b` into `agentplot/sluice`
+- **THEN** `b` is launched, and `a` is answered `held` for its turn, no `flume launch` being run for it and the pass not waiting for the fetch
+
+#### Scenario: A drop of a launch held for its turn
+
+- **WHEN** the next control pass is due from a pass's start, and its pull offers `a` and `b`, then gives a drop of `b`
+- **THEN** `a` is launched, the drop is answered `done`, `b` is answered `done` with words naming the drop, and no `flume launch` is run for `b`
+
+### Requirement: Once a pass is due, its launches and its acts take turns
+
+Once the next control pass is due, a control pass SHALL run its first launch, where it has run none, then its first act's command on a place, where it has run none, and none of either after, leaving the rest to the next pass. So no act SHALL wait behind more than one launch, nor a launch of the next pull behind more than one act. Each kind SHALL keep the control plane's order among its own (core.50; record 0002, as amended on 2026-11-14 on taking turns).
+
+#### Scenario: An act waits behind one launch once the pass is due
+
+- **WHEN** the runner holds `x` at a place Flume stands, the next control pass is due from a pass's start, and its pull gives a land of `x`, then offers `a` and `b`
+- **THEN** `a` is launched, then `flume retry --submission` is run on `x`'s place, and `b` is answered `held`; and at the next pass, due from its start, whose pull gives a priority of `x`, then offers `a`, `b` and `c`, `b` is launched, then `flume priority` is run on `x`'s place, and `c` is answered `held`
+
+#### Scenario: A pass that falls due among its launches runs its first act next
+
+- **WHEN** the runner holds `x` and `y` at places Flume stands, a pull gives a priority of `x` and a priority of `y`, then offers `a`, `b`, `c` and `d`, and the next control pass falls due once two launches have been made
+- **THEN** `a` and `b` are launched, `c` and `d` are answered `held`, then `flume priority` is run on `x`'s place; `y`'s priority is left unanswered, and the pass says that 1 act on a place waits for the next
+
+### Requirement: The commands a pass past due sends before
+
+The commands a control pass past due SHALL send its report before SHALL be a `flume launch`, made in turn or once its clone's keep is done; Flume's status of a place for an act, and Flume's command on the place; and sluice's preview or release (core.50, core.55; record 0002, as amended on 2026-11-14).
+
+#### Scenario: A pass past due sends a launch's answer before its act runs
+
+- **WHEN** the runner holds `x` at a place Flume stands, the next control pass is due from a pass's start, and its pull gives a priority of `x`, then offers `a`, `b` and `c`
+- **THEN** one report, holding `a` launched and `b` and `c` held, is sent after `a`'s launch and before `flume priority` is run on `x`'s place; one holding `x`'s priority done is sent once its answer is made; and the pass's end sends once more
