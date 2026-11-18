@@ -14,7 +14,7 @@
 # tag (.config/sluice.toml):
 #   check-fast    each crate's and the flake's format, lint, type check
 #                 and tests; the flake's Mac scripts read by macOS's
-#                 /bin/sh; the root's format, toolchain, records, specs,
+#                 /bin/sh; the root's format, toolchain, specs,
 #                 changes, commits since the newest release, the
 #                 release's tests and its workflow's lint.
 #                 main requires it

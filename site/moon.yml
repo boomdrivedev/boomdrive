@@ -30,20 +30,14 @@ tasks:
     deps: ['~:install']
     tags: [check-fast]
     options: {mutex: 'astro'}
-  # The glossary, src/content/terms/terms.yaml, is the one source of the
-  # vocabulary and terms Vale holds the site's words to (site.4).
+  # No layer: it writes Vale's vocabulary and terms from the glossary,
+  # src/content/terms/terms.yaml, their one source, and the shell's prose
+  # runs it before Vale (site.4).
   vocab:
     command: 'bun run scripts/vocab.ts'
     inputs: ['src/content/terms/terms.yaml', 'scripts/vocab.ts', 'package.json', 'bun.lock', '/devenv.nix', '/devenv.lock', '/.prototools']
     outputs: ['styles/config/vocabularies/Boomdrive/accept.txt', 'styles/Boomdrive/Terms.yml']
     deps: ['~:install']
-  # Vale over the site's words, once vocab has written the vocabulary: an
-  # error fails it (site.4).
-  prose:
-    command: 'vale src/content'
-    inputs: ['src/content/**/*', '.vale.ini', 'styles/**/*', '/devenv.nix', '/devenv.lock', '/.prototools']
-    deps: ['~:vocab']
-    tags: [check-fast]
   # The site built into dist, under the base /boomdrive/ (site.6), its
   # content's schemas and references holding. It shares the mutex astro
   # with check, and runs with Astro's telemetry off, as check does.
@@ -58,11 +52,11 @@ tasks:
     options: {mutex: 'astro'}
   # The site's tests (check-site.sh): the built pages' links, the workflow
   # pages, the content kind's prompts and declaration (record 0045), the
-  # release command, and the quick start's page, steps, files and tests
-  # (site.8).
+  # release command, and the quick start's built page and its files
+  # (site.8). It reads no Markdown file (record 0049).
   test:
     command: 'sh check-site.sh'
-    inputs: ['dist/**/*', 'check-site.sh', 'src/content/start/**/*', 'src/content/pages/start.md', 'src/start/**/*', 'src/content/contexts/contexts.yaml', '/crates/boomdrive/tests/quick_start.rs', '/nix/tests/quick-start.nix', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
+    inputs: ['dist/**/*', 'check-site.sh', 'src/start/**/*', 'src/content/contexts/contexts.yaml', 'package.json', 'bun.lock', '/.config/flume.toml', '/.config/sluice.toml', '/.github/workflows/pages.yml', '/devenv.nix', '/devenv.lock', '/.prototools']
     deps: ['~:build']
     tags: [check-fast]
   # actionlint over the workflow pages, which publishes the site.

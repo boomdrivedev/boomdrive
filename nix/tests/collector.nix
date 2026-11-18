@@ -3,7 +3,7 @@
 # the-hosts-collector-reaches-sluice-and-flume): Flume's and sluice's
 # `settings.telemetry`, read from each platform's system with its `null`
 # keys dropped (Task notes 1.2 and 1.3). Each case runs on nix-darwin and
-# on NixOS, unless it names a platform or the README.
+# on NixOS, unless it names a platform.
 t:
 let
   inherit (t) lib;
@@ -304,24 +304,6 @@ let
   nixosOwn = t.toolsNixosOf toolsTelemetry;
   textOf =
     evaluated: tool: builtins.unsafeDiscardStringContext ((userScripts evaluated).${tool}.text or "");
-
-  # The README's install with nix on the tools' telemetry (design Decision
-  # 8), its words read with each line's end a space.
-  readmeCollector =
-    let
-      words = lib.replaceStrings [ "\n" ] [ " " ] (toString t.installing);
-    in
-    lib.concatMap
-      (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
-      [
-        "the same collector is Flume's and sluice's"
-        "`services.flume.settings.telemetry`"
-        "`services.sluice.settings.telemetry`"
-        "which each tool's own module writes into its `[telemetry]`"
-        "Which of its traces, metrics and logs each tool sends, and as what, stays that tool's own setting, at its own defaults"
-        "`send = false` in a tool's own `telemetry` turns that tool's telemetry off"
-        "A tool's `collector` other than the host's fails evaluation"
-      ];
 in
 onEach "The host's collector reaches Flume and sluice" reaches
 // onEach "A collector's trailing slash" trailingSlash
@@ -354,6 +336,4 @@ onEach "The host's collector reaches Flume and sluice" reaches
       t.expect (textOf nixosRunner tool != "" && textOf nixosRunner tool == textOf nixosOwn tool)
         "the NixOS user activation's ${tool} with a collector is ${textOf nixosRunner tool}, not the tool's own given the same telemetry ${textOf nixosOwn tool}"
     ) tools;
-
-  "The README's collector" = readmeCollector;
 }

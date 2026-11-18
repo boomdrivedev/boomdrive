@@ -506,7 +506,7 @@ fn moons_files_are_read() {
     );
     assert!(project.tasks["test"]
         .inputs
-        .contains(&"/README.md".to_string()));
+        .contains(&"/flake.lock".to_string()));
     assert_eq!(project.tasks["lint"].tags, ["check-fast"]);
     assert_eq!(
         workspace_projects().get("root").map(String::as_str),

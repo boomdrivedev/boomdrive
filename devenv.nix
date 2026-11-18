@@ -92,10 +92,10 @@ let
   # version as git is. treefmt.nix's clang-format is the same package.
   clangFormatVersion = "21.1.8";
 
-  # Vale, which site:prose runs over the site's words (site.4), from its
-  # own release, as boomdrive-web's shell took it: nixpkgs trails it
-  # (3.17.1 against 3.24.0). Bump the version and the four hashes from the
-  # release's checksums file.
+  # Vale, which the shell's prose runs over the site's words (site.4),
+  # from its own release, as boomdrive-web's shell took it: nixpkgs trails
+  # it (3.17.1 against 3.24.0). Bump the version and the four hashes from
+  # the release's checksums file.
   valeVersion = "3.24.0";
   valeAssets = {
     aarch64-darwin = {
@@ -450,7 +450,7 @@ in
   };
 
   # The site's scripts (design Decision 10), each run in site/, each check
-  # the gate's own task.
+  # the gate's own task but Vale, the writers' own.
   scripts.vocab = {
     description = "The glossary into Vale's vocabulary and terms: moon run site:vocab";
     exec = ''
@@ -458,18 +458,21 @@ in
       exec moon run site:vocab "$@"
     '';
   };
+  # Vale is the writers' check of their words and no task of the gate's
+  # (site.4; record 0049): prose writes the vocabulary, then runs Vale, and
+  # site-check runs it after the site's own tasks.
   scripts.prose = {
-    description = "Vale over the site's words, after vocab: moon run site:prose";
+    description = "Vale over the site's words, after vocab: the writers' own, no task of the gate's";
     exec = ''
       cd "$DEVENV_ROOT/site"
-      exec moon run site:prose "$@"
+      moon run site:vocab && exec vale src/content "$@"
     '';
   };
   scripts.site-check = {
-    description = "The site's checks: its type check, prose, build and tests";
+    description = "The site's checks: its type check, build and tests, then Vale over its words";
     exec = ''
       cd "$DEVENV_ROOT/site"
-      exec moon run site:check site:prose site:build site:test "$@"
+      moon run site:check site:build site:test "$@" && exec prose
     '';
   };
   scripts.site-dev = {

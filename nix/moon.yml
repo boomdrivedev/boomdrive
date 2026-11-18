@@ -40,9 +40,11 @@ tasks:
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # The evaluated tests of the change's specs, under nix/tests. The quick
-  # start's steps, site/src/start, are read by their paths.
+  # start's steps, site/src/start, are read by their paths, and README's
+  # examples are files of their own, nix/tests/examples: no case reads a
+  # Markdown file (record 0049).
   test:
     command: 'sh nix/check.sh test'
-    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/README.md', '/.gitignore', '/site/src/start/**/*']
+    inputs: ['/flake.nix', '/flake.lock', '/nix/**/*', '/devenv.nix', '/devenv.lock', '/Cargo.toml', '/Cargo.lock', '/.prototools', '/crates/**/*', '/.github/workflows/**/*', '/.gitignore', '/site/src/start/**/*']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
