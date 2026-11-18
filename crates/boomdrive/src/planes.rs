@@ -11,6 +11,7 @@
 use boomdrive_control::{Part, Wake};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use weir_bounded::Halt;
 
 /// Where an implementation says what it did and could not do, one line
 /// each.
@@ -29,7 +30,9 @@ pub type WakeFor<'a> = &'a dyn Fn(&str) -> Wake;
 /// runner's data directory, each part making a control pass each
 /// `poll_interval`, as its parts: at least one, each label once, in its
 /// table's order, each handed the say and the wake made for its label
-/// (record 0026; design Decision 1).
+/// (record 0026; design Decision 1), and given `halt`, the runner's, at
+/// which each call to a remote it makes for the runner ends, where it
+/// makes any (record 0042 as amended on 2026-11-12; core.58).
 pub type Opener = fn(
     table: &toml::Table,
     file: &Path,
@@ -37,6 +40,7 @@ pub type Opener = fn(
     poll_interval: Duration,
     say_for: SayFor<'_>,
     wake_for: WakeFor<'_>,
+    halt: &Halt,
 ) -> Result<Vec<Part>, String>;
 
 /// Enrolls the partition `label` of an implementation's own table, of the
@@ -246,7 +250,9 @@ pub struct Refusal {
 
 /// crew's implementation, a part for each partition, which never wakes
 /// the runner: crew's control plane pushes nothing, its records are read
-/// at each pull, and nothing of it waits on `poll_interval`.
+/// at each pull, and nothing of it waits on `poll_interval`. It is given
+/// the runner's halt, at which its listing and every read and write of a
+/// state repository end (record 0042 as amended on 2026-11-12; core.58).
 fn crew(
     table: &toml::Table,
     file: &Path,
@@ -254,8 +260,9 @@ fn crew(
     _poll_interval: Duration,
     say_for: SayFor<'_>,
     _wake_for: WakeFor<'_>,
+    halt: &Halt,
 ) -> Result<Vec<Part>, String> {
-    boomdrive_crew::open(table, file, data_dir, say_for)
+    boomdrive_crew::open(table, file, data_dir, say_for, halt)
 }
 
 /// crew's reading of its table.
@@ -344,7 +351,9 @@ fn hosted_read(table: &toml::Table, file: &Path) -> Result<(), String> {
 
 /// The hosted control plane's implementation, a part for each partition,
 /// whose connections' backoff stops at `poll_interval` (core.22), and
-/// which keeps nothing under the data directory (core.35).
+/// which keeps nothing under the data directory (core.35). It makes no git
+/// call, so the runner's halt is not given it (record 0042 as amended on
+/// 2026-11-12).
 fn hosted(
     table: &toml::Table,
     file: &Path,
@@ -352,6 +361,7 @@ fn hosted(
     poll_interval: Duration,
     say_for: SayFor<'_>,
     wake_for: WakeFor<'_>,
+    _halt: &Halt,
 ) -> Result<Vec<Part>, String> {
     boomdrive_hosted::open(table, file, poll_interval, say_for, wake_for)
 }
@@ -409,8 +419,10 @@ fn listed<'a>(entries: impl Iterator<Item = &'a Entry>) -> String {
 /// `table`, of the configuration file `file`, keeping what it keeps under
 /// `data_dir`, each part making a control pass each `poll_interval`, as
 /// its parts, each handed the say and the wake `say_for` and `wake_for`
-/// make for its label; or why it could not be opened. A word this binary
-/// does not carry is refused, naming those it does.
+/// make for its label, and given `halt`, the runner's (record 0042 as
+/// amended on 2026-11-12); or why it could not be opened. A word this
+/// binary does not carry is refused, naming those it does.
+#[allow(clippy::too_many_arguments)]
 pub fn open(
     word: &str,
     table: &toml::Table,
@@ -419,8 +431,17 @@ pub fn open(
     poll_interval: Duration,
     say_for: SayFor<'_>,
     wake_for: WakeFor<'_>,
+    halt: &Halt,
 ) -> Result<Vec<Part>, String> {
-    (entry(word, file)?.open)(table, file, data_dir, poll_interval, say_for, wake_for)
+    (entry(word, file)?.open)(
+        table,
+        file,
+        data_dir,
+        poll_interval,
+        say_for,
+        wake_for,
+        halt,
+    )
 }
 
 /// Enrolls the partition `label` of the implementation whose word is

@@ -16,7 +16,7 @@ Boomdrive's site, `site/`: the Method, its field notes and the fleet's measureme
 
 ### Requirement: Each of the site's checks is one task
 
-The site's check-fast tasks SHALL be one check each: `check`, Astro's type check; `prose`, Vale over the site's content; `build`, the site built into `site/dist`; `test`, the site's tests; and `workflow`, actionlint over `.github/workflows/pages.yml`. Its `install` and `vocab` tasks SHALL be in no layer, run as the tasks that need them ask (core.7).
+The site's check-fast tasks SHALL be one check each: `check`, Astro's type check; `build`, the site built into `site/dist`; `test`, the site's tests; and `workflow`, actionlint over `.github/workflows/pages.yml`. Its `install` and `vocab` tasks SHALL be in no layer, run as the tasks and the shell's scripts that need them ask. No task of the site's SHALL read a Markdown file of the site's but its type check and its build, Astro's own reading of its content (core.7; record 0049).
 
 #### Scenario: The site's type check
 
@@ -36,15 +36,6 @@ The site's check-fast tasks SHALL be one check each: `check`, Astro's type check
 
 - **WHEN** `site:install` runs in the gate's sandbox, which reaches nothing past the host
 - **THEN** it installs every package `site/bun.lock` locks, and `site:check` and `site:build`, which follow it, find each
-
-### Requirement: The site's words are held to its glossary
-
-`site:prose` SHALL run once `site:vocab` has written Vale's vocabulary and terms from the glossary, `site/src/content/terms/terms.yaml`, and SHALL fail on any error Vale reports over `site/src/content` under `site/.vale.ini` (site.4).
-
-#### Scenario: The prose of the site
-
-- **WHEN** `moon run site:prose` runs
-- **THEN** the vocabulary is written from the glossary first, and Vale reports no error over the site's content
 
 ### Requirement: The site is served under /boomdrive/
 

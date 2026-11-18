@@ -72,3 +72,9 @@ On 2026-11-11 a host hung: every program from the Nix store, nix-daemon, herdr, 
 - **devenv copies both files.** `.mcp.json` and `.claude/settings.json` are devenv's `copyMode = "copy"`: at every entry to the shell, and in the task script the shell's own `enterShell` runs (the amendment of 2026-11-07), devenv writes each as a regular file, swapped in whole so no tool sees it missing, and drops the link an earlier shell made. Their contents, their servers and the approval of those servers are as decided above, and git still ignores both.
 - **What a session may change.** The copy is writable, but devenv writes it again at the next entry to the shell, so a change made by hand lasts until then; a person's own settings for the repository go in `.claude/settings.local.json`, which devenv does not write.
 - **Paths not taken.** A link to a file inside a directory of its own in the store would have narrowed each watch to that directory, but it reaches past devenv's `claude.code` module, which names the file it writes, and leaves every other tool that resolves a link pointed at the store. Committing both files by hand is option 2 above, which the user's ask rules out.
+
+## Amendment, 2026-11-15: no task reads the skills
+
+Status: accepted, by record 0049, under boomdrivedev/blueprints principle 16.
+
+The root's toolchain check reads no Markdown file, OpenSpec's Claude Code skills among them, so it no longer fails a skill that names another release than the OpenSpec `devenv.nix` pins. The skills and commands are still the ones the pinned `openspec` writes, written again when the pin moves, as decided above; their writers keep that, and the toolchain check still holds `openspec` to its pin.

@@ -15,6 +15,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::Duration;
+use weir_bounded::{Halt, Stopped};
 use weir_branch::{Branch, Tip};
 use weir_capture::rec::Record;
 
@@ -32,6 +33,10 @@ pub struct Store {
     /// How long one try of its listing may take: thirty seconds, or a
     /// test's (record 0042).
     pub try_for: Duration,
+    /// The halt its listing, and every read and write of a branch it
+    /// gives, also ends at: the runner's, which the runner's stop sets, or
+    /// one never set (record 0042 as amended on 2026-11-12; core.58).
+    pub halt: Halt,
 }
 
 /// A partition's drive branch at one tip.
@@ -82,8 +87,8 @@ impl Request {
         self.act() == Some("launch")
     }
 
-    /// The launch a retry, land, confirm, drop or priority names, where
-    /// `Of` is whole.
+    /// The launch a retry, land, confirm, hold, drop or priority names,
+    /// where `Of` is whole.
     pub fn of(&self) -> Option<u64> {
         self.get("Of").and_then(whole)
     }
@@ -105,6 +110,17 @@ impl Request {
         self.preview_key()?;
         self.get("Branch")?;
         yes_or_no(self, "Done").ok()
+    }
+
+    /// The launch a priority request sets the priority of, where it reads
+    /// as a priority by [`want`]'s rules: its `Of` and its `Priority` each
+    /// a whole number. None where it does not read.
+    pub fn priority_of(&self) -> Option<u64> {
+        if self.act() != Some("priority") {
+            return None;
+        }
+        number(self, "Priority").ok().flatten()?;
+        self.of()
     }
 }
 
@@ -134,6 +150,23 @@ impl Main {
                 && later.preview_key() == Some(key)
                 && later.preview_done().is_some()
         })
+    }
+
+    /// Whether `request`, a priority request that reads, is crew's newest
+    /// priority of its launch: no request of a higher number that reads as
+    /// a priority names the same `Of`. Each priority sets the launch's
+    /// priority whole, and crew appends one at every start or reorder that
+    /// changes it, so a later one makes each earlier one moot (record 0002
+    /// as amended on 2026-11-16). False where `request` does not read as a
+    /// priority.
+    pub fn newest_priority(&self, request: &Request) -> bool {
+        let Some(of) = request.priority_of() else {
+            return false;
+        };
+        !self
+            .requests
+            .iter()
+            .any(|later| later.number > request.number && later.priority_of() == Some(of))
     }
 
     /// Whether the work a request serves is still in crew's plan:
@@ -185,18 +218,24 @@ impl Store {
     /// The state repository at `url` through the bare cache `cache`, its
     /// listing stopped at [`weir_bounded::TRY_FOR`], the limit weir-branch
     /// stops each try of its fetch and push at too (record 0042 as amended
-    /// on 2026-11-11).
+    /// on 2026-11-11), its halt never set: the runner's is given by the
+    /// part's crew (record 0042 as amended on 2026-11-12).
     pub fn new(cache: PathBuf, url: String) -> Store {
         Store {
             cache,
             url,
             try_for: weir_bounded::TRY_FOR,
+            halt: Halt::default(),
         }
     }
 
-    /// The branch `name` of the state repository.
+    /// The branch `name` of the state repository, carrying the store's
+    /// halt, so each try of weir-branch's fetch, listing and push of it,
+    /// for a read or a write, ends at the first of its limit and the halt,
+    /// and none begins once the halt is set (weir record 0008 as amended
+    /// 2026-11-12; record 0042 as amended on 2026-11-12; core.58).
     pub fn branch(&self, name: &str) -> Branch {
-        Branch::remote(name, &self.cache, &self.url)
+        Branch::remote(name, &self.cache, &self.url).with_halt(self.halt.clone())
     }
 
     /// `<label>/main` at its tip, or why it could not be read.
@@ -257,10 +296,13 @@ impl Store {
     /// The hosts whose runner's branch, `<label>/runner/<host>`, the state
     /// repository lists, in name order, by `git ls-remote` through the
     /// cache. The listing is a call to a remote: it runs in a process group
-    /// of its own and is stopped at `try_for` with everything it started,
-    /// failing then with words that name `git ls-remote`, the state
-    /// repository's URL and the limit, after git's last line where git
-    /// wrote one (record 0042; core.58).
+    /// of its own and is stopped at `try_for` or the store's halt,
+    /// whichever comes first, with everything it started, failing at its
+    /// limit with words that name `git ls-remote`, the state repository's
+    /// URL and the limit, and at the halt with words that name the two as
+    /// stopped as its caller asked, each after git's last line where git
+    /// wrote one; one begun with the halt set runs no git (record 0042 as
+    /// amended on 2026-11-12; core.58).
     pub fn hosts(&self, label: &str) -> Result<Vec<String>, String> {
         let prefix = format!("refs/heads/{label}/runner/");
         let mut command = Command::new("git");
@@ -273,18 +315,26 @@ impl Store {
             .env("LC_ALL", "C")
             .args(["ls-remote", "--", &self.url, &format!("{prefix}*")])
             .stdin(Stdio::null());
-        let output = weir_bounded::output(&mut command, self.try_for)
+        let output = weir_bounded::output(&mut command, self.try_for, &self.halt)
             .map_err(|error| format!("git could not be run: {error}"))?;
         let said = String::from_utf8_lossy(&output.stderr);
         let last = said.lines().rfind(|line| !line.trim().is_empty());
-        if output.stopped {
-            let stopped = weir_bounded::stopped("git ls-remote", &self.url, self.try_for);
+        let stopped = match output.stopped {
+            Some(Stopped::AtLimit) => Some(weir_bounded::stopped(
+                "git ls-remote",
+                &self.url,
+                self.try_for,
+            )),
+            Some(Stopped::Halted) => Some(weir_bounded::halted("git ls-remote", &self.url)),
+            None => None,
+        };
+        if let Some(stopped) = stopped {
             return Err(match last {
                 Some(line) => format!("{}; {stopped}", line.trim()),
                 None => stopped,
             });
         }
-        if !output.status.success() {
+        if !output.status.is_some_and(|status| status.success()) {
             return Err(format!(
                 "git ls-remote failed: {}",
                 last.unwrap_or("it said nothing")
@@ -466,7 +516,9 @@ pub type Unreadable = String;
 /// else its `Repo` as written. A `preview` is a preview of its `Branch` at
 /// its `Revision`, done where its `Done` says so (design Decision 10;
 /// core.55). A `confirm` confirms each `Delivery`, in the order written,
-/// as its one `Recipient` (core.56).
+/// as its one `Recipient` (core.56). A `hold` holds the move its launch's
+/// place waits on under its `Words` for its `Bound`, in whole seconds
+/// (core.59).
 pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<Want, Unreadable> {
     let id = ids::request(label, request.number);
     let of = || -> Result<Id, Unreadable> {
@@ -539,6 +591,19 @@ pub fn want(label: &str, request: &Request, repository: Option<&str>) -> Result<
             act(ActSort::Confirm {
                 recipient,
                 deliveries,
+            })
+        }
+        // A hold reads its Of, its Words as a retry's are read, and its
+        // Bound in whole seconds, and no other field of it (core.59;
+        // crew's unit a-bolt-waiting-on-the-user-waits-under-words).
+        Some("hold") => {
+            let words = request.get("Words").ok_or("it names no Words")?;
+            let bound = request.get("Bound").ok_or("it names no Bound")?;
+            let bound_interval = whole(bound)
+                .ok_or_else(|| format!("its Bound {bound}, which is no whole number of seconds"))?;
+            act(ActSort::Hold {
+                words: words.to_string(),
+                bound_interval,
             })
         }
         Some("drop") => act(ActSort::Drop),

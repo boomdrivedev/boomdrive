@@ -1,0 +1,25 @@
+# The configuration README gives a host. README shows its own copy,
+# which its writers keep to this file (record 0049); tests/examples.rs
+# reads this one.
+
+# The root each repository's view is kept under, at <repository_root>/<owner>/<name>; ~/Code where none is named.
+repository_root = "~/Code"
+# How often every repository is fetched; 2m where none is named.
+fetch_interval = "2m"
+# Whether each drive has a VS Code workspace, <repository_root>/<drive>.code-workspace; false where none is named.
+code_workspaces = true
+
+# The account `own`'s drive `home`: each repository it keeps, by its GitHub address.
+[accounts.own.drives.home]
+repositories = ["boomdrivedev/flume"]
+
+# The account `own`'s drive `work`.
+[accounts.own.drives.work]
+repositories = ["example/crew"]
+
+# The Boomdrive App whose key the runner holds, and mints every tool's forge token from; none where the table is absent.
+[forge]
+# The App's id, which each token's JWT names.
+app_id = 123456
+# The path of the App's private key, outside the Nix store and readable by its owner alone.
+key_file = "~/.config/boomdrive/app.pem"

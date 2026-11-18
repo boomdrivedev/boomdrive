@@ -1,7 +1,9 @@
 # The service-modules spec's cases on the tools' own modules (design
-# Decisions 4 and 5): Flume's, sluice's and crew's modules, each as its
-# flake gives it, imported by the platform's Boomdrive module and given
-# again beside it, and what the Boomdrive module sets of their options.
+# Decisions 4 and 5): Flume's, sluice's, crew's and timber's modules, each
+# as its flake gives it, imported by the platform's Boomdrive module and
+# given again beside it, and what the Boomdrive module sets of their
+# options (the change the-set-takes-timbers-own-module, design Decisions 1
+# to 5).
 # Each case runs on nix-darwin and on NixOS, unless it names a platform.
 t:
 let
@@ -12,6 +14,7 @@ let
     "crew"
     "flume"
     "sluice"
+    "timber"
   ];
 
   # Each tool's file, by the name its module writes it under.
@@ -19,6 +22,7 @@ let
     crew = "crew-teams.json";
     flume = "flume-config.toml";
     sluice = "sluice-config.toml";
+    timber = "timber-config.toml";
   };
 
   # nix-darwin's activation, as text: a regular expression may not hold a
@@ -37,6 +41,8 @@ let
       set = outputs.packages.aarch64-darwin;
       system = t.darwinSystem;
       systemOf = t.darwinOf;
+      # timber's flake's own module for the platform.
+      timber = inputs.timber.darwinModules.timber;
       # A tool's activation: the lines of the system's that name its file.
       activationOf =
         evaluated: tool:
@@ -49,6 +55,7 @@ let
       set = outputs.packages.x86_64-linux;
       system = t.nixosSystem;
       systemOf = t.nixosOf;
+      timber = inputs.timber.nixosModules.timber;
       # A tool's activation: its user activation snippet's text.
       activationOf =
         evaluated: tool: builtins.unsafeDiscardStringContext ((userScripts evaluated).${tool}.text or "");
@@ -111,6 +118,7 @@ let
         "default"
         "flume"
         "sluice"
+        "timber"
       ];
       inherit (systemOf [ modules.sluice ]) options;
       outside = outsideOf "sluice" options.services.sluice;
@@ -143,6 +151,22 @@ let
       !failures.success || failures.value == [ ]
     ) "a ${platform} system that imports default and boomdrive fails: ${toString failures.value}";
 
+  # A system of the runner's, of the platform's `default` and timber's
+  # flake's own module both: timber's key takes it once (the change
+  # the-set-takes-timbers-own-module, design Decision 1; Task notes 1.1).
+  timberBeside =
+    platform:
+    { system, timber, ... }:
+    let
+      failures = builtins.tryEval (
+        builtins.deepSeq (t.failures (system timber)) (t.failures (system timber))
+      );
+    in
+    t.expect failures.success "a ${platform} system that imports default and timber's own module does not evaluate"
+    ++
+      t.expect (!failures.success || failures.value == [ ])
+        "a ${platform} system that imports default and timber's own module fails: ${toString failures.value}";
+
   # crew turned on, with its host `host-a` and crew's settings `teams`.
   crewOf = teams: {
     services.crew = {
@@ -161,10 +185,16 @@ let
     { system, ... }:
     let
       evaluated = system { };
-      inherit (evaluated.config.services) crew flume sluice;
+      inherit (evaluated.config.services)
+        crew
+        flume
+        sluice
+        timber
+        ;
     in
     t.expect flume.enable "a ${platform} system of the runner alone leaves Flume's module off"
     ++ t.expect sluice.enable "a ${platform} system of the runner alone leaves sluice's module off"
+    ++ t.expect timber.enable "a ${platform} system of the runner alone leaves timber's module off"
     ++ t.expect (!crew.enable) "a ${platform} system of the runner alone turns crew's module on"
     ++ t.expect (
       t.failures evaluated == [ ]
@@ -193,18 +223,25 @@ let
           "crew"
           "flume"
           "sluice"
+          "timber"
         ];
 
-  # The three tools' users on NixOS, crew on, and again with sluice's own.
+  # The four tools' users on NixOS, crew on, and again with sluice's own.
   usersOf =
     given:
     let
-      inherit ((t.nixosSystem given).config.services) crew flume sluice;
+      inherit ((t.nixosSystem given).config.services)
+        crew
+        flume
+        sluice
+        timber
+        ;
     in
     {
       crew = crew.user;
       flume = flume.user;
       sluice = sluice.user;
+      timber = timber.user;
     };
   runnersUsers = usersOf crewOn;
   sluicesUser = usersOf {
@@ -319,16 +356,22 @@ let
   ) (linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText));
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
-  # The runner's crew table, under crew with no table written, for crew's
-  # drives `garden` and `home` on host-a with `away` on host-b written
-  # between them: the table holds them in label order (design Decision 3).
-  crewOrder =
+  # The runner's crew table, under crew with no table written, for the
+  # accounts `own`, with the drives `garden` and `home` on host-a, and
+  # `work`, with `away` on host-b and `field` on host-a: the table holds
+  # this host's in the accounts' order, each account's drives in the order
+  # of their names (the change a-drives-machine-and-state-are-named-once,
+  # design Decision 5).
+  accountsOrder =
     platform:
     { system, ... }:
     let
       evaluated = system {
-        imports = [ (crewOf settings.crewOrder) ];
-        services.boomdrive.settings.control_plane.type = "crew";
+        imports = [ (crewOf settings.crewDrives) ];
+        services.boomdrive = {
+          accounts = settings.crewAccounts;
+          settings.control_plane.type = "crew";
+        };
       };
       table = evaluated.config.services.boomdrive.settings.control_plane.crew;
       ordered = {
@@ -336,18 +379,21 @@ let
         partitions = [
           {
             label = "garden";
-            state_repository = "example/garden";
+            state_repository = "example/state";
           }
           {
             label = "home";
             state_repository = "example/state";
           }
+          {
+            label = "field";
+            state_repository = "example/work";
+          }
         ];
       };
     in
-    t.expect (
-      t.failures evaluated == [ ]
-    ) "a ${platform} system of crew's drives in label order fails: ${toString (t.failures evaluated)}"
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system of the accounts' drives in their order fails: ${toString (t.failures evaluated)}"
     ++ t.expect (
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
@@ -375,20 +421,47 @@ let
         "services.crew"
       ];
 
-  # Under crew, with no crew table written and crew's one drive on host-b
-  # while crew's host is host-a (design Decision 6).
+  # Under crew, with no crew table written and the accounts' one drive on
+  # host-b while crew's host is host-a (design Decision 6).
   elsewhere =
     platform:
     { system, ... }:
-    failsNaming "a ${platform} system under crew with no drive of crew's on its host"
+    failsNaming "a ${platform} system under crew with no drive of the accounts on its host"
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
-        services.boomdrive = settings.crewUnwritten;
+        services.boomdrive = settings.elsewhere;
       })
       [
         "services.crew.host"
         "host-a"
         "host-b"
+      ];
+
+  # Under crew, with no crew table written, an account with a drive and no
+  # state repository, beside crew's settings that write the drive's machine
+  # and state (the change a-drives-machine-and-state-are-named-once, design
+  # Decision 6).
+  stateless =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew whose account names no state repository" (system {
+      imports = [ (crewOf settings.crewModule) ];
+      services.boomdrive = settings.stateless;
+    }) [ "services.boomdrive.accounts.own.state_repository" ];
+
+  # Under crew, with no crew table written, a drive of crew's, `stray`,
+  # that no account names (design Decision 6).
+  stray =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with a drive of crew's no account names"
+      (system {
+        imports = [ (crewOf settings.crewStray) ];
+        services.boomdrive = settings.crewUnwritten;
+      })
+      [
+        "stray"
+        "services.boomdrive.accounts"
       ];
 
   # Whether crew's teams file, as crew's module renders it in `evaluated`,
@@ -455,82 +528,98 @@ let
   nixosTools = userScripts t.toolsNixosSystem;
   nixosNames = builtins.attrNames (removeAttrs nixosRunner [ "boomdrive" ]);
   textOf = scripts: tool: builtins.unsafeDiscardStringContext (scripts.${tool}.text or "");
+
+  # The configuration's own module of host-a in the Mac's flake README
+  # shows, examples/host-flake.nix (record 0049): its outputs called with a
+  # nix-darwin whose darwinSystem gives back its arguments and a set whose
+  # module is a marker.
+  hostModules =
+    ((import ./examples/host-flake.nix).outputs {
+      nix-darwin.lib.darwinSystem = arguments: arguments;
+      boomdrive.darwinModules.default = "the set's module";
+    }).darwinConfigurations.host-a.modules;
+  hostModule = lib.elemAt hostModules 1;
 in
 onEach "Each tool's options are its own flake's" ownOptions
 // onEach "The tools' modules re-exported" reExported
 // onEach "Imported twice" twice
+// onEach "timber's own module beside the set's" timberBeside
 // onEach "A host with the runner alone" runnerAlone
 // onEach "The set's packages" setsPackages
 // onEach "A host that keeps its own Flume file" ownFlumeFile
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
-// onEach "crew's drives in label order" crewOrder
+// onEach "The accounts' drives in their order" accountsOrder
 // onEach "Under crew with neither" neither
-// onEach "No drive of crew's on this host" elsewhere
+// onEach "No drive of the accounts on this host" elsewhere
+// onEach "An account under crew with no state repository" stateless
+// onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys
 // onEach "crew's old way of running" oldRuns
 // onEach "crew's old batch names" oldReview
 // {
-  # The README's install with nix writes no crew table beside crew's
-  # drives, and says the module writes it (design Decision 8).
-  "The README's crew table" =
-    t.expect (lib.any (lib.hasInfix ''type = "crew"'') t.nixBlocks) ''no nix block of the README's Installing with nix sets type = "crew"''
-    ++ t.expect (
-      !lib.any (lib.hasInfix "state_repository") t.nixBlocks
-    ) "a nix block of the README's Installing with nix names state_repository"
-    ++
-      lib.concatMap
-        (
-          words:
-          t.expect (lib.hasInfix words (toString t.installing)) "the README's Installing with nix says no ${words}"
-        )
-        [
-          "services.crew.host"
-          "written out wins"
-        ];
-
-  # The README's install with nix writes crew's settings by crew's names,
-  # its teams file's version 6's, and none of version 5's. The leading
-  # space of ` flume = {` tells a drive's key from `services.flume = {`,
-  # and of ` every =` and ` hours =` review's old keys from
-  # `after_hours =` (design Decisions 6 and 8).
-  "The README's crew settings" =
+  # The Mac's flake README shows sets the runner's control plane to crew's
+  # and writes no crew table beside crew's drives, which the module writes
+  # (design Decision 8; the change a-drives-machine-and-state-are-named-once,
+  # design Decision 9), and declares no source of crew's to Flume, which
+  # the module declares (Task notes 2.1 of the change
+  # the-set-declares-crews-source-to-flume).
+  "The host flake's crew table" =
     let
-      crewBlock = lib.findFirst (lib.hasInfix "services.crew") null t.nixBlocks;
+      controlPlane = hostModule.services.boomdrive.settings.control_plane;
     in
-    t.expect (crewBlock != null) "no nix block of the README's Installing with nix names services.crew"
+    t.expect (
+      lib.head hostModules == "the set's module"
+    ) "examples/host-flake.nix's host-a takes no darwinModules.default first"
     ++
-      lib.concatMap
+      t.expect
         (
-          word:
-          t.expect (
-            crewBlock != null && lib.hasInfix word crewBlock
-          ) "the README's nix block of services.crew names no ${word}"
+          controlPlane == {
+            type = "crew";
+          }
         )
-        [
-          "drives"
-          "runs"
-          "after_changes"
-          "after_hours"
-          "hosts"
-          "ssh ="
-          "kind ="
-        ]
+        "examples/host-flake.nix's control_plane is ${builtins.toJSON controlPlane}, not crew's type alone"
+    ++ t.expect (
+      !(hostModule.services.flume or { } ? sources)
+    ) "examples/host-flake.nix sets services.flume.sources";
+
+  # The Mac's flake README shows writes crew's settings by crew's names,
+  # its teams file's version 6's, and none of version 5's (design
+  # Decisions 6 and 8).
+  "The host flake's crew settings" =
+    let
+      crew = hostModule.services.crew.settings;
+      home = crew.drives.home;
+      host = crew.hosts.host-a;
+    in
+    t.expect (home ? runs) "examples/host-flake.nix's drive home has no runs"
     ++
-      lib.concatMap
-        (
-          word:
-          t.expect (
-            !lib.any (lib.hasInfix word) t.nixBlocks
-          ) "a nix block of the README's Installing with nix names ${word}"
-        )
-        [
-          "partitions"
-          " flume = {"
-          " every ="
-          " hours ="
-        ];
+      t.expect (home.review ? after_changes && home.review ? after_hours)
+        "examples/host-flake.nix's review is ${builtins.toJSON home.review}, not after_changes and after_hours"
+    ++ t.expect (
+      host ? ssh && host ? kind
+    ) "examples/host-flake.nix's host host-a is ${builtins.toJSON host}, not its ssh and kind"
+    ++ t.expect (!(crew ? partitions)) "examples/host-flake.nix's crew settings name partitions"
+    ++ t.expect (!(home ? flume)) "examples/host-flake.nix's drive home names flume"
+    ++ t.expect (
+      !(home.review ? every) && !(home.review ? hours)
+    ) "examples/host-flake.nix's review names every or hours";
+
+  # The Mac's flake README shows names the account's crew state repository
+  # in services.boomdrive.accounts, and neither a drive's state nor its
+  # machine in crew's settings (the change
+  # a-drives-machine-and-state-are-named-once, design Decision 9).
+  "The host flake's machine and state" =
+    let
+      account = hostModule.services.boomdrive.accounts.own;
+      home = hostModule.services.crew.settings.drives.home;
+    in
+    t.expect (
+      account.state_repository or null == "example/state"
+    ) ''examples/host-flake.nix's account own names no state_repository = "example/state"''
+    ++ t.expect (!(home ? state)) "examples/host-flake.nix's crew drive home names its state"
+    ++ t.expect (!(home ? machine)) "examples/host-flake.nix's crew drive home names its machine";
 
   "The tools' user on NixOS" =
     t.expect (
@@ -538,12 +627,13 @@ onEach "Each tool's options are its own flake's" ownOptions
         crew = "alice";
         flume = "alice";
         sluice = "alice";
+        timber = "alice";
       }
     ) "the tools' users of alice's runner are ${builtins.toJSON runnersUsers}, not alice's"
     ++ t.expect (sluicesUser.sluice == "bob") "sluice's user, set to bob, is ${sluicesUser.sluice}"
     ++ t.expect (
-      sluicesUser.flume == "alice" && sluicesUser.crew == "alice"
-    ) "Flume's and crew's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
+      sluicesUser.flume == "alice" && sluicesUser.crew == "alice" && sluicesUser.timber == "alice"
+    ) "Flume's, crew's and timber's users, beside sluice's bob, are ${builtins.toJSON sluicesUser}";
 
   "The tools' activation is their own on nix-darwin" =
     t.expect (t.failures t.toolsDarwinSystem == [ ])
@@ -584,5 +674,6 @@ onEach "Each tool's options are its own flake's" ownOptions
           "crew"
           "flume"
           "sluice"
+          "timber"
         ];
 }

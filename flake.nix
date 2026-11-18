@@ -35,7 +35,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:boomdrivedev/sluice/v0.86.0";
+      url = "github:boomdrivedev/sluice/v0.94.8";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -43,7 +43,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.21.2";
+      url = "github:boomdrivedev/flume/v0.26.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -51,7 +51,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.59.0";
+      url = "github:boomdrivedev/crew/v0.64.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
@@ -82,14 +82,16 @@
         rust-overlay.follows = "rust-overlay";
       };
     };
-    # timber through its own flake at its release tag, its CLI and both its
-    # plugins, herdr's and Claude Code's, from this one pin (record 0023 as
-    # amended on 2026-11-13; design Decision 1).
+    # timber through its own flake at its release tag, its CLI, its module
+    # and both its plugins, herdr's and Claude Code's, from this one pin
+    # (record 0023 as amended on 2026-11-13 and 2026-11-15; design
+    # Decision 1).
     timber = {
-      url = "github:boomdrivedev/timber/v0.6.0";
+      url = "github:boomdrivedev/timber/v0.7.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
+        nix-darwin.follows = "nix-darwin";
       };
     };
     # crew's companions (record 0044, point 6). Pending You's command line
@@ -165,12 +167,9 @@
             # timber's own flake's package, unchanged: its tagged tree
             # carries its version (timber's record 0031; core.44).
             timber = inputs.timber.packages.${system}.default;
-            sluice = import ./nix/packages/sluice.nix {
-              inherit lib;
-              package = inputs.sluice.packages.${system}.default;
-              src = inputs.sluice;
-              tag = tagOf (import ./flake.nix).inputs.sluice.url;
-            };
+            # sluice's own flake's package, unchanged: its tagged tree
+            # carries its version (sluice's record 0111; core.44).
+            sluice = inputs.sluice.packages.${system}.default;
             inherit (inputs.herdr.packages.${system}) herdr;
             worktrunk = import ./nix/packages/worktrunk.nix {
               package = inputs.worktrunk.packages.${system}.worktrunk;
@@ -237,15 +236,18 @@
 
       # A platform's modules (design Decision 4): `boomdrive`, also
       # `default`, is the runner's service, its options the runner's file
-      # (record 0020, core.46), with Flume's, sluice's and crew's own
-      # modules, each as its tool's flake gives it at the tag the lock
-      # names, none carried here (record 0023, core.18); and each tool's
-      # module again, as its flake gives it. Keyed, as Flume's is, so a
-      # system that imports `default` and `boomdrive` takes it once.
+      # (record 0020, core.46), with Flume's, sluice's, crew's and timber's
+      # own modules, each as its tool's flake gives it at the tag the lock
+      # names, none carried here (record 0023 as amended on 2026-11-15,
+      # core.18); and each tool's module again, as its flake gives it.
+      # Keyed, as Flume's and timber's are, so a system that imports
+      # `default` and `boomdrive`, or `default` and timber's flake's own
+      # module, takes each once.
       tools = [
         "flume"
         "sluice"
         "crew"
+        "timber"
       ];
       modulesOf =
         platform: file:

@@ -130,3 +130,24 @@ The NixOS module runs on Willdan's Graviton boxes, which are `aarch64-linux`. Th
 - **Not taken: a hosted runner service with `aarch64` KVM.** None was found.
 
 Nothing else of the decision above changes.
+
+## Amendment, 2026-11-15: the gate reads every script a Mac runs by /bin/sh with macOS's own /bin/sh, bash 3.2.57
+
+Status: accepted on 2026-11-15. The fix `main--activate-sh-parses-under-macos-sh` asks, in its brief, for "a moon check task that parses activate.sh with macOS's /bin/sh (or bash 3.2) so a script the Macs cannot read fails the gate"; its code stage chose the form, on the written rules.
+
+Deciders: the fix's brief, for the check; the fix's code stage, for its form.
+Sources: the fix's brief, 2026-11-15; `/bin/sh -n nix/modules/activate.sh` on a Mac, at main `23e41810`; GNU's release of bash 3.2.57; shfmt 3.14.1, as treefmt runs it; the change `activate-sh-parses-under-macos-sh`; rules core.7 and core.8.
+
+### Context and problem statement
+
+The nix-darwin module's activation runs `activate.sh` by `/bin/sh`, and the launcher's script runs by its `#!/bin/sh`. On a Mac that is bash 3.2.57 in POSIX mode, which reads a `case` pattern's bare `)` inside `$( )` as the substitution's end. From `e66a3d72` to `23e41810`, `activate.sh` held such a `case`, so no Mac could read it and each step behind `|| true` failed unseen. The gate runs the activation's cases by the devenv shell's `sh`, nixpkgs' bash 5, which reads the file.
+
+### Decision outcome
+
+- **The nix project's task `nix:mac-sh` reads every script under `nix/modules` and `nix/packages` with bash 3.2.57 in POSIX mode and `-n`,** running none, and fails naming each it cannot read.
+- **The bash is the tree's,** built by `devenv.nix` from GNU's release of 3.2.57, given to the task by `BOOMDRIVE_MAC_SH` and on no PATH, so the shell's `sh` and `bash` stay nixpkgs' bash 5, and asserted by `root:toolchain` (core.8). nixpkgs carries no bash 3. Its parser is made again from `parse.y` by bison, since the release's `y.tab.c` predates its patches, and its C is compiled as C89 with the warnings today's compilers make errors let pass. It builds on macOS and Linux, and each build refuses `23e41810`'s `activate.sh` as a Mac's `/bin/sh` does.
+- **No `case` stands inside a command substitution in these scripts.** The pattern's POSIX leading `(` would let bash 3.2 read one, but treefmt's shfmt drops it at every format (core.7), so such a `case` moves into a function of its own, called inside `$( )`.
+- **Not taken: the host's `/bin/sh`.** A Linux host that runs the gate has no `/bin/sh` that is bash 3.2, and a tool a task finds outside the tree's pin is what core.8 rules out.
+- **Not taken: running the activation's cases under bash 3.2.57 as well.** They pass with it as `sh` today; the brief asks that a script the Macs cannot read fail the gate, which reading does.
+
+Nothing else of the decision above changes. core.8's details name the build as not ruled out, in this amendment's commit.

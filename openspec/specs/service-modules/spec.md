@@ -16,12 +16,12 @@ Evaluation SHALL fail, naming the key's path, where a key of `settings` at any d
 
 ### Requirement: On nix-darwin the runner is a launchd agent of the primary user's login
 
-With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `<package>/bin/boomdrive run --config <the file>`, start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, be given `HOME` and `PATH` alone by the module, beside any variable the host gives the job, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
+With `services.boomdrive.enable`, the nix-darwin module SHALL declare `launchd.user.agents.boomdrive`, loaded in `system.primaryUser`'s login. It SHALL run `boomdrive run --config <the file>`, start at load, be kept alive at most once in 30 seconds, run as interactive, leave its process group when stopped, be given `HOME` and `PATH` alone by the module, beside any variable the host gives the job, and log to `logFile`. Evaluation SHALL fail where the primary user has no home.
 
 #### Scenario: The agent
 
 - **WHEN** the module is enabled for the primary user `alice`, whose home is `/Users/alice`
-- **THEN** the agent runs the package's `boomdrive run --config` with the file, `RunAtLoad`, `KeepAlive`, `ThrottleInterval` 30, `ProcessType` `Interactive` and `AbandonProcessGroup`, with `HOME` `/Users/alice`, and logs to `/Users/alice/Library/Logs/boomdrive.log`
+- **THEN** the agent runs `boomdrive run --config` with the file, `RunAtLoad`, `KeepAlive`, `ThrottleInterval` 30, `ProcessType` `Interactive` and `AbandonProcessGroup`, with `HOME` `/Users/alice`, and logs to `/Users/alice/Library/Logs/boomdrive.log`
 
 #### Scenario: No home for the primary user
 
@@ -131,12 +131,12 @@ Each module SHALL put `package` in the system profile, and each tool's own modul
 
 ### Requirement: On nix-darwin the agent waits for the Nix store
 
-The nix-darwin module's agent SHALL run its command behind `/bin/wait4path /nix/store`, the shell handing its process to the runner by `exec`, so an agent loaded before the Nix store's volume is mounted waits for it, and a stop's signal reaches the runner.
+The nix-darwin module's agent SHALL run its command behind `/bin/wait4path /nix/store`, the shell handing its process to the runner by `exec`, whether it runs the signed copy or the package's own binary, so an agent loaded before the Nix store's volume is mounted waits for it, and a stop's signal reaches the runner.
 
 #### Scenario: The agent waits for the Nix store
 
 - **WHEN** the module is enabled, with no `settings` or with a crew control plane's
-- **THEN** the agent's program is `/bin/sh -c` with a line that runs `/bin/wait4path /nix/store`, then `exec`s the package's `boomdrive run --config` with the file
+- **THEN** the agent's program is `/bin/sh -c` with a line that runs `/bin/wait4path /nix/store`, then `exec`s `boomdrive run --config` with the file, by the signed copy or by the package's `bin/boomdrive`, each by `exec`
 
 ### Requirement: The options are the runner's file, its accounts always written
 
@@ -149,7 +149,7 @@ The nix-darwin module's agent SHALL run its command behind `/bin/wait4path /nix/
 
 #### Scenario: A host under crew
 
-- **WHEN** `accounts` names the account `own`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and `settings` names `repository_root = "~/Code"`, `fetch_interval = "2m"`, `code_workspaces = true` and a crew control plane for the host `host-a` with the partition `home` at `example/state`
+- **WHEN** `accounts` names the account `own`, naming the state repository `example/state`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and `settings` names `repository_root = "~/Code"`, `fetch_interval = "2m"`, `code_workspaces = true` and a crew control plane for the host `host-a` with the partition `home` at `example/state`
 - **THEN** the file is `nix/tests/files/crew.toml`, byte for byte, on nix-darwin and on NixOS
 
 #### Scenario: A host under a hosted control plane
@@ -183,39 +183,44 @@ Evaluation SHALL fail where `settings` names `repositories` at its top, saying e
 
 ### Requirement: The modules bring each tool's own module
 
-`darwinModules.default` and `nixosModules.default`, each the same value as the platform's `boomdrive`, SHALL import the runner's module and Flume's, sluice's and crew's, each the module that tool's flake gives at the release tag the lock names. No file of this tree SHALL declare an option of `services.flume`, `services.sluice` or `services.crew`.
+`darwinModules.default` and `nixosModules.default`, each the same value as the platform's `boomdrive`, SHALL import the runner's module and Flume's, sluice's, crew's and timber's, each the module that tool's flake gives at the release tag the lock names. No file of this tree SHALL declare an option of `services.flume`, `services.sluice`, `services.crew` or `services.timber`.
 
 #### Scenario: Each tool's options are its own flake's
 
 - **WHEN** a system imports the platform's `default` module
-- **THEN** every option of `services.flume`, `services.sluice` and `services.crew` is declared in a file of that tool's input, and none in this tree, on nix-darwin and on NixOS
+- **THEN** every option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` is declared in a file of that tool's input, and none in this tree, on nix-darwin and on NixOS
 
 ### Requirement: The flake re-exports each tool's module
 
-The flake SHALL give each of Flume's, sluice's and crew's modules, as that tool's flake gives it, as `darwinModules.<tool>` and `nixosModules.<tool>`, beside `boomdrive` and `default`.
+The flake SHALL give each of Flume's, sluice's, crew's and timber's modules, as that tool's flake gives it, as `darwinModules.<tool>` and `nixosModules.<tool>`, beside `boomdrive` and `default`.
 
 #### Scenario: The tools' modules re-exported
 
 - **WHEN** the flake's `darwinModules` and `nixosModules` are listed, and a system imports the platform's `sluice` module alone
-- **THEN** each gives `boomdrive`, `crew`, `default`, `flume` and `sluice`, and the system declares `services.sluice` from sluice's input and no `services.boomdrive`
+- **THEN** each gives `boomdrive`, `crew`, `default`, `flume`, `sluice` and `timber`, and the system declares `services.sluice` from sluice's input and no `services.boomdrive`
 
 ### Requirement: The Boomdrive module is taken once however often it is imported
 
-The platform's `boomdrive` module SHALL carry the key `github:agentplot/boomdrive#<platform>Modules.boomdrive`, so a system that imports it more than once, as `default` and as `boomdrive`, takes it and the tools' modules it imports once.
+The platform's `boomdrive` module SHALL carry the key `github:agentplot/boomdrive#<platform>Modules.boomdrive`, so a system that imports it more than once, as `default` and as `boomdrive`, takes it and the tools' modules it imports once. A system that imports the platform's `default` module and timber's flake's own module for the platform SHALL take timber's module once.
 
 #### Scenario: Imported twice
 
 - **WHEN** a system imports the platform's `default` module and its `boomdrive` module
 - **THEN** it evaluates, failing no assertion, on nix-darwin and on NixOS
 
-### Requirement: The Boomdrive module turns on Flume's and sluice's modules and leaves crew's to the host
+#### Scenario: timber's own module beside the set's
 
-With `services.boomdrive.enable`, the modules SHALL set `services.flume.enable` and `services.sluice.enable` true by default, a host's own value winning. They SHALL leave `services.crew.enable` to the host. On NixOS they SHALL set `services.flume.user`, `services.sluice.user` and `services.crew.user` to `services.boomdrive.user` by default, a host's own value winning.
+- **WHEN** a system turns on `services.boomdrive`, importing the platform's `default` module and timber's flake's own `darwinModules.timber` or `nixosModules.timber`
+- **THEN** it evaluates, failing no assertion, on nix-darwin and on NixOS
+
+### Requirement: The Boomdrive module turns on Flume's, sluice's and timber's modules and leaves crew's to the host
+
+With `services.boomdrive.enable`, the modules SHALL set `services.flume.enable`, `services.sluice.enable` and `services.timber.enable` true by default, a host's own value winning. They SHALL leave `services.crew.enable` to the host. On NixOS they SHALL set `services.flume.user`, `services.sluice.user`, `services.crew.user` and `services.timber.user` to `services.boomdrive.user` by default, a host's own value winning.
 
 #### Scenario: A host with the runner alone
 
-- **WHEN** a system turns on `services.boomdrive` and sets no option of Flume's, sluice's or crew's
-- **THEN** `services.flume.enable` and `services.sluice.enable` are true, `services.crew.enable` is false, and the system fails no assertion, on nix-darwin and on NixOS
+- **WHEN** a system turns on `services.boomdrive` and sets no option of Flume's, sluice's, crew's or timber's
+- **THEN** `services.flume.enable`, `services.sluice.enable` and `services.timber.enable` are true, `services.crew.enable` is false, and the system fails no assertion, on nix-darwin and on NixOS
 
 #### Scenario: A host that keeps its own Flume file
 
@@ -225,16 +230,16 @@ With `services.boomdrive.enable`, the modules SHALL set `services.flume.enable` 
 #### Scenario: The tools' user on NixOS
 
 - **WHEN** the NixOS module is enabled for `alice`, with crew turned on with its host, its drives and its hosts, and again with `services.sluice.user = "bob"`
-- **THEN** Flume's, sluice's and crew's `user` are `alice` in the first, and sluice's is `bob` in the second
+- **THEN** Flume's, sluice's, crew's and timber's `user` are `alice` in the first, and sluice's is `bob` in the second
 
 ### Requirement: Each tool's package is the set's unless the host gives its own
 
-The modules SHALL set `services.flume.package`, `services.sluice.package` and `services.crew.package` to the set's package of that tool for the host's system by default, whether or not the runner is enabled. A host's own value SHALL win, and SHALL change nothing of the tool's file.
+The modules SHALL set `services.flume.package`, `services.sluice.package`, `services.crew.package` and `services.timber.package` to the set's package of that tool for the host's system by default, whether or not the runner is enabled. A host's own value SHALL win, and SHALL change nothing of the tool's file.
 
 #### Scenario: The set's packages
 
 - **WHEN** a system turns on `services.boomdrive` and crew with its host, its drives and its hosts, naming no tool's package
-- **THEN** the system profile holds the set's `boomdrive`, `flume`, `sluice` and `crew`, on nix-darwin and on NixOS
+- **THEN** the system profile holds the set's `boomdrive`, `flume`, `sluice`, `crew` and `timber`, on nix-darwin and on NixOS
 
 #### Scenario: A host's own crew
 
@@ -248,16 +253,21 @@ The modules SHALL set `services.flume.package`, `services.sluice.package` and `s
 
 ### Requirement: The Boomdrive module writes no file of the other tools'
 
-The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, run herdr's own `plugin link` for the plugins `services.boomdrive.herdr.plugins` lists, write or remove each of Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's and crew's files, crew's source in Flume's folder among them, SHALL each be written by that tool's own module, as it writes them without Boomdrive's.
+The modules' own activation SHALL link the runner's file, write Pending You's folder where crew's companions are installed, link `services.boomdrive.herdr.plugins` by herdr's own `plugin link`, write or remove Claude Code's two managed documents on nix-darwin, and do nothing else of a tool's. Flume's, sluice's, crew's and timber's files, crew's source in Flume's folder and Flume's and sluice's `[telemetry]` among them, SHALL each be written by that tool's own module, as without Boomdrive's.
 
 #### Scenario: The tools' activation is their own
 
-- **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's and crew's own modules alone, each turned on with the same settings, packages and user, and Flume's with crew's source declared as the modules declare it
+- **WHEN** a system with `services.boomdrive` and crew turned on is set beside one that imports Flume's, sluice's, crew's and timber's own modules alone, each turned on with the same settings, packages and user, and Flume's with crew's source declared as the modules declare it
 - **THEN** on nix-darwin their activations are the same but for the runner's own link, Pending You's folder, herdr's plugins' links and the managed telemetry and transcripts documents' steps, each run once, and on NixOS their user activations are the same but for the runner's own
+
+#### Scenario: The tools' telemetry is their own
+
+- **WHEN** a system with `services.boomdrive` and crew turned on names the collector `http://localhost:4318`, and is set beside one that imports Flume's, sluice's, crew's and timber's own modules alone, as above, with Flume's and sluice's `settings.telemetry` each `{ send = true; collector = "http://localhost:4318"; }`
+- **THEN** on nix-darwin their activations are the same but for what the scenario above leaves aside, and on NixOS their user activations' Flume and sluice snippets are each the same
 
 ### Requirement: The modules hold no option that installs a tool its own module installs
 
-The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, timber, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
+The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
 
 #### Scenario: The tools option is gone
 
@@ -267,15 +277,15 @@ The modules SHALL hold no option of their own that installs a tool whose own mod
 #### Scenario: The README's words
 
 - **WHEN** the README's install with nix is read
-- **THEN** it names `services.flume.package`, `services.sluice.package`, `services.crew.package`, `services.boomdrive.herdr.package`, `services.boomdrive.herdr.plugins`, `services.boomdrive.ghostty.package`, `services.boomdrive.portless.package`, `services.boomdrive.worktrunk.package`, `services.boomdrive.timber.package`, `services.boomdrive.launcher.package`, `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package`, `services.boomdrive.plannotator-tui.package` and `nix develop github:boomdrivedev/boomdrive`, and no `services.boomdrive.tools`
+- **THEN** it names `services.flume.package`, `services.sluice.package`, `services.crew.package`, `services.boomdrive.herdr.package`, `services.boomdrive.herdr.plugins`, `services.boomdrive.ghostty.package`, `services.boomdrive.portless.package`, `services.boomdrive.worktrunk.package`, `services.boomdrive.launcher.package`, `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package`, `services.boomdrive.plannotator-tui.package` and `nix develop github:boomdrivedev/boomdrive`, and no `services.boomdrive.tools`
 
 ### Requirement: A crew table written out wins whole
 
-Where the host writes `settings.control_plane.crew`, the file's `[control_plane.crew]` SHALL be that table, whole, with none of crew's drives merged into it.
+Where the host writes `settings.control_plane.crew`, the file's `[control_plane.crew]` SHALL be that table, whole, with none of the accounts' drives merged into it.
 
 #### Scenario: A table written out wins
 
-- **WHEN** `settings` names a crew control plane whose table is the host `host-a` with the partition `garden` at `example/garden` alone, and crew's module is on with the host `host-a` and the drives `home` on `host-a` and `away` on `host-b`
+- **WHEN** `settings` names a crew control plane whose table is the host `host-a` with the partition `garden` at `example/garden` alone, `accounts` names the account `own`, naming the state repository `example/state`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and crew's module is on with the host `host-a` and crew's own keys for the drive `home`
 - **THEN** `settings.control_plane.crew` is the table written, the partition `garden` alone, and the file is that table's rendering, on nix-darwin and on NixOS
 
 ### Requirement: No crew table beside another control plane
@@ -294,12 +304,12 @@ Where `settings` names no control plane, or one whose `type` is not `crew`, the 
 
 ### Requirement: The README writes no crew table beside crew's drives
 
-The README's install with nix SHALL set the runner's `control_plane.type = "crew"` beside `services.crew` and write no `control_plane.crew`. Its words SHALL say the module writes `[control_plane.crew]` from crew's drives whose `machine` is `services.crew.host`, and that a table written out wins.
+The README's install with nix SHALL set the runner's `control_plane.type = "crew"` beside `services.crew` and write no `control_plane.crew`. Its words SHALL say the module writes `[control_plane.crew]` from the drives of `services.boomdrive.accounts` whose `machine` is `services.crew.host`, or that name none, under an account that names its `state_repository`, and that a table written out wins.
 
 #### Scenario: The README's crew table
 
 - **WHEN** the README's install with nix is read
-- **THEN** a nix block in it sets `type = "crew"`, no nix block in it names `state_repository`, and its words name `services.crew.host` and say a table written out wins
+- **THEN** a nix block in it sets `type = "crew"`, no nix block in it names `control_plane.crew` or `partitions`, and its words name `services.crew.host` and say a table written out wins
 
 ### Requirement: Each repository is named once, under its drive and its owner
 
@@ -869,34 +879,6 @@ The README's **Installing with nix** SHALL say that, with crew's module on, the 
 - **WHEN** `settings.forge.key_file` is a Nix path value
 - **THEN** evaluation fails on the option's type
 
-### Requirement: Under crew, the runner's crew table is written from crew's drives on this host
-
-Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it: `host` as `services.crew.host`, and one entry of `partitions` for each of crew's drives whose `machine` is that host, in the order of their labels, each its `label` and its `state` as `state_repository` alone. `settings.control_plane.crew` SHALL read that table (record 0023; record 0032; core.18).
-
-#### Scenario: crew's drives on this host
-
-- **WHEN** `accounts` names the account `own`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and `settings` names `repository_root = "~/Code"`, `fetch_interval = "2m"`, `code_workspaces = true` and `control_plane.type = "crew"` with no `control_plane.crew`, and crew's module is on with the host `host-a` and the drives `home`, whose `machine` is `host-a` and `state` `example/state`, and `away`, whose `machine` is `host-b` and `state` `example/away`
-- **THEN** the file is `nix/tests/files/crew.toml`, byte for byte, on nix-darwin and on NixOS
-
-#### Scenario: crew's drives in label order
-
-- **WHEN** `control_plane.type = "crew"` is set with no `control_plane.crew`, and crew's module is on with the host `host-a` and the drives `garden` on `host-a` at `example/garden`, `away` on `host-b` at `example/away` and `home` on `host-a` at `example/state`
-- **THEN** `settings.control_plane.crew` is the host `host-a` with the partitions `garden` at `example/garden`, then `home` at `example/state`, each holding `label` and `state_repository` alone, on nix-darwin and on NixOS
-
-### Requirement: Under crew, a host the runner cannot serve fails evaluation
-
-With `services.boomdrive.enable`, evaluation SHALL fail where `settings.control_plane.type` is `crew` and `settings.control_plane.crew` is neither written by the host nor written by the modules, its words naming `settings.control_plane.crew` and `services.crew`. Evaluation SHALL fail where the modules would write the table and no drive of crew's has `services.crew.host` as its `machine`, its words naming `services.crew.host`, its value, and each `machine` crew's drives name.
-
-#### Scenario: Under crew with neither
-
-- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, and crew's module is off
-- **THEN** evaluation fails, naming `settings.control_plane.crew` and `services.crew`, on nix-darwin and on NixOS
-
-#### Scenario: No drive of crew's on this host
-
-- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, and crew's module is on with the host `host-a` and the one drive `away`, whose `machine` is `host-b`
-- **THEN** evaluation fails, naming `services.crew.host`, `host-a` and `host-b`, on nix-darwin and on NixOS
-
 ### Requirement: A host on the set loads crew's teams file at version 6, by crew's names
 
 Where crew's module is on, the set's crew SHALL render crew's teams file at version 6, by crew's names: each drive's `runs`, each main-level role `"standing"` or `"on-demand"`; its `review`'s `after_changes` and `after_hours`; and `hosts`, each with its `ssh` name and `kind`. A drive naming `flume`, or `review`'s `every` or `hours`, SHALL fail evaluation (crew record 0064 as amended on 2026-11-09).
@@ -1225,27 +1207,32 @@ The README's install with nix SHALL name `services.boomdrive.claude-code.telemet
 
 ### Requirement: The modules install timber, replaceable or dropped
 
-With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.timber.package` in the system profile, whether or not crew is on. It SHALL be the set's `timber` for the host's system by default, a host's own package SHALL replace it, and `null` SHALL install none. With the runner not enabled, the modules SHALL install no timber. The modules SHALL write no file of timber's.
+With `services.boomdrive.enable`, timber's own module, which the Boomdrive module turns on, SHALL put `services.timber.package` in the system profile, whether or not crew is on: the set's `timber` by default, a host's own where given, and none for `null`. A host's `services.timber.enable = false` SHALL install no timber of the set's and link no file of timber's. Without the runner, timber's module SHALL stay off. The Boomdrive module SHALL write no file of timber's.
 
 #### Scenario: timber with the runner
 
 - **WHEN** a system turns on `services.boomdrive` and names no timber
-- **THEN** the system profile holds the set's `timber`, on nix-darwin and on NixOS
+- **THEN** `services.timber.enable` is true and the system profile holds the set's `timber`, on nix-darwin and on NixOS
 
 #### Scenario: A host's own timber
 
-- **WHEN** `services.boomdrive.timber.package` is a package of the host's own
-- **THEN** the system profile holds it and not the set's timber, on nix-darwin and on NixOS
+- **WHEN** `services.timber.package` is a package of the host's own
+- **THEN** the system profile holds it and not the set's timber, and timber's activation links the same file it links with the set's, on nix-darwin and on NixOS
 
 #### Scenario: No timber of the set's
 
-- **WHEN** `services.boomdrive.timber.package` is `null`
-- **THEN** the system evaluates and its profile holds no timber of the set's, on nix-darwin and on NixOS
+- **WHEN** `services.timber.package` is `null`
+- **THEN** the system evaluates, its profile holds no timber of the set's, and timber's file is still linked, on nix-darwin and on NixOS
+
+#### Scenario: A host that keeps its own timber file
+
+- **WHEN** a system turns on `services.boomdrive` and sets `services.timber.enable = false`
+- **THEN** it evaluates, its activation links no file of timber's, and its system profile holds no timber of the set's, on nix-darwin and on NixOS
 
 #### Scenario: No timber without the runner
 
 - **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
-- **THEN** its system profile holds no timber of the set's, on nix-darwin and on NixOS
+- **THEN** `services.timber.enable` is false and its system profile holds no timber of the set's, on nix-darwin and on NixOS
 
 ### Requirement: timber's serving process is timber's own
 
@@ -1260,6 +1247,108 @@ The modules SHALL start no `timber serve`. No launchd daemon or agent, systemd u
 
 - **WHEN** the README's install with nix is read
 - **THEN** it names `github:boomdrivedev/boomdrive#timber`, `timber-herdr-plugin` and `timber serve`
+
+### Requirement: On nix-darwin the agent runs the signed copy of its own package
+
+The nix-darwin module's agent SHALL run the runner by `/Library/Application Support/Boomdrive/boomdrive` where `boomdrive.source` beside it names `<package>/bin/boomdrive`, and by `<package>/bin/boomdrive` where it does not, so it never runs a copy of another build.
+
+#### Scenario: The agent runs the copy of its own package
+
+- **WHEN** the module is enabled
+- **THEN** the agent's line compares `/Library/Application Support/Boomdrive/boomdrive.source` with the package's `bin/boomdrive`, `exec`s `/Library/Application Support/Boomdrive/boomdrive run --config` with the file where they are one, and `exec`s the package's `bin/boomdrive run --config` with the file where they are not
+
+### Requirement: On nix-darwin the runner keeps one code identity across builds
+
+With `services.boomdrive.enable`, each activation SHALL, as root and before nix-darwin loads its agents, keep a copy of `<package>/bin/boomdrive` at `/Library/Application Support/Boomdrive/boomdrive`, signed with the host's code-signing identity under the identifier `boomdrive`, and name its program in `boomdrive.source` beside it. It SHALL make a copy only where none is there, or where it was made from another program or is not signed with the identity.
+
+#### Scenario: The step runs before the agents load
+
+- **WHEN** the module is enabled
+- **THEN** `system.activationScripts.extraActivation.text` runs `activate.sh sign` with `/Library/Keychains/System.keychain`, `/Library/Application Support/Boomdrive` and the package's `bin/boomdrive`, its failure stopping nothing, and `postActivation.text` runs no `sign`
+
+#### Scenario: A new build
+
+- **WHEN** the step runs for a program other than the one `boomdrive.source` names
+- **THEN** it copies the program, signs the copy by the identity's SHA-1 with `--identifier boomdrive`, `--timestamp=none` and the keychain, removes `boomdrive.source`, puts the copy at `boomdrive` by a rename, then writes the program's path to `boomdrive.source`, and says one line naming the program
+
+#### Scenario: The same build
+
+- **WHEN** the step runs for the program `boomdrive.source` names, and the copy is signed with the identity
+- **THEN** it signs nothing, changes no file and says nothing
+
+#### Scenario: A copy signed with another identity
+
+- **WHEN** the step runs for the program `boomdrive.source` names, and the copy is not signed with the identity
+- **THEN** it signs a new copy, as for a new build
+
+### Requirement: No step signs without the runner
+
+Where a nix-darwin system imports the module and `services.boomdrive.enable` is off, its activation SHALL run no `activate.sh sign`.
+
+#### Scenario: No signing without the runner
+
+- **WHEN** a nix-darwin system imports the module and leaves `services.boomdrive.enable` off
+- **THEN** neither `extraActivation.text` nor `postActivation.text` runs `activate.sh sign`
+
+### Requirement: The copy's source never names a program the copy was not made from
+
+The step SHALL remove `boomdrive.source` before it replaces the copy, and SHALL write it only once the copy is in place, so an agent never runs a copy made from a program other than its package's.
+
+#### Scenario: A copy not put in place
+
+- **WHEN** the signed copy's rename to `boomdrive` fails
+- **THEN** `boomdrive` is as it was, `boomdrive.source` is not there, no other file is left in the folder, and the step says one line with the rename's words and exits 1
+
+### Requirement: A copy that cannot be signed stops nothing
+
+Where the copy cannot be made, signed or put in place, the step SHALL leave `boomdrive` as it was and no other file in the folder, SHALL say one line with the words of what failed, and SHALL exit 1, and the activation SHALL go on. Where the copy cannot be made or signed, it SHALL leave `boomdrive.source` as it was.
+
+#### Scenario: A signing refused
+
+- **WHEN** `codesign` refuses to sign the copy
+- **THEN** `boomdrive` and `boomdrive.source` are as they were, no other file is left in the folder, and the step says one line with `codesign`'s words and exits 1
+
+### Requirement: The host makes its code-signing identity once and keeps it in the System keychain
+
+The identity SHALL be a self-signed certificate for code signing named `Boomdrive runner` with its key, kept in `/Library/Keychains/System.keychain` and made by the step where that keychain holds none. Its key SHALL be imported non-extractable and usable by `codesign` alone, and SHALL be in no file once imported.
+
+#### Scenario: No identity yet
+
+- **WHEN** the step runs and the keychain holds no identity for code signing named `Boomdrive runner`
+- **THEN** it makes a key and a self-signed certificate for code signing with that name in a folder of its own, imports the key into the keychain with `-x` and `-T /usr/bin/codesign` and the certificate after it, removes that folder, says one line naming the identity's SHA-1, and signs the copy with it
+
+#### Scenario: No key in a file
+
+- **WHEN** the step has made the identity
+- **THEN** no file the step made holds the key or the certificate
+
+#### Scenario: An identity that cannot be made
+
+- **WHEN** the keychain refuses the key's import
+- **THEN** the step signs nothing, removes the folder it made, says one line with the keychain's words, and exits 1
+
+#### Scenario: Two identities of the name
+
+- **WHEN** the keychain holds two identities for code signing named `Boomdrive runner`
+- **THEN** the step signs nothing, says one line naming the SHA-1 of each, and exits 1
+
+### Requirement: Only root writes the signed copy's folder
+
+The step SHALL sign into its folder only where the folder is owned by the user the step runs as, root under nix-darwin, and is writable by no other user; otherwise it SHALL make no identity, sign nothing and write nothing there.
+
+#### Scenario: A folder another user can write
+
+- **WHEN** the folder is writable by its group or by others, or is owned by another user
+- **THEN** the step makes no identity, signs nothing, writes nothing in the folder, says one line naming the folder, and exits 1
+
+### Requirement: The README says the runner's grant is asked once
+
+The README's install with nix SHALL say that on nix-darwin each switch signs a copy of the runner at `/Library/Application Support/Boomdrive/boomdrive` with an identity the host makes once, `Boomdrive runner`, kept in its System keychain, that the agent runs that copy, and that macOS asks once for what the runner reads, a later build asking nothing again. It SHALL say that where the copy cannot be signed the agent runs the package's own runner and the switch says why.
+
+#### Scenario: The README's signed runner
+
+- **WHEN** the README's install with nix is read
+- **THEN** its words name `/Library/Application Support/Boomdrive/boomdrive`, `Boomdrive runner` and the System keychain, and say that macOS asks once and a later build asks nothing again, and that an unsigned copy leaves the agent running the package's own runner
 
 ### Requirement: Wherever the set installs Flume, the modules write Claude Code's managed transcripts document
 
@@ -1330,3 +1419,198 @@ The README's install with nix SHALL name `services.boomdrive.claude-code.cleanup
 
 - **WHEN** the README's install with nix is read
 - **THEN** a nix block names `services.boomdrive.claude-code.cleanupPeriodDays`, and its words name `365`, `10-boomdrive-transcripts.json`, `/Library/Application Support/ClaudeCode/managed-settings.d` and `/etc/claude-code/managed-settings.d`, and say that the document comes wherever Flume is on
+
+### Requirement: Each account names its crew state repository
+
+`services.boomdrive.accounts.<account>.state_repository` SHALL be declared, unset by default: the account's crew state repository, an address `<owner>/<name>`. A value that is no address of a GitHub repository SHALL fail the option's type. It SHALL be no key of the runner's file (core.5; record 0028).
+
+#### Scenario: A state repository of no address
+
+- **WHEN** `accounts.own.state_repository = "example"` is set
+- **THEN** evaluation of `services.boomdrive.accounts` fails
+
+### Requirement: With crew's module on, the modules give crew each drive's machine and its account's state repository
+
+Where `services.crew.enable` is true, whether or not `services.boomdrive.enable` is, the modules SHALL give `services.crew.settings.drives.<drive>` for each drive of each account that names its `state_repository`, this host's and others': its `machine`, the drive's `machine`, or `services.crew.host` where the drive names none; and its `state`, the account's `state_repository`. They SHALL give no other key of crew's drive, and nothing of an account that names no `state_repository` (record 0032).
+
+#### Scenario: Each drive's machine and state repository, given to crew
+
+- **WHEN** crew's module is on with the host `host-a`, the hosts `host-a` and `host-b`, and crew's own keys for the drives `garden`, `home`, `away` and `field`, and `accounts` names the account `own`, naming the state repository `example/state`, with the drives `garden`, whose `machine` is `host-a`, and `home`, naming none, and the account `work`, naming `example/work`, with the drives `away`, whose `machine` is `host-b`, and `field`, naming none
+- **THEN** crew's drives `garden` and `home` each have the `machine` `host-a` and the `state` `example/state`, `away` the `machine` `host-b` and the `state` `example/work`, and `field` the `machine` `host-a` and the `state` `example/work`; crew's teams file evaluates; the system fails no assertion; and the modules' definition of `services.crew.settings` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
+
+#### Scenario: Given without the runner
+
+- **WHEN** a system imports the platform's `default` module, leaves `services.boomdrive.enable` unset, and turns on crew and names the accounts as "Each drive's machine and state repository, given to crew" does
+- **THEN** crew's drives have the same `machine` and `state`, on nix-darwin and on NixOS
+
+#### Scenario: An account naming no state repository gives crew nothing
+
+- **WHEN** crew's module is on with the host `host-a` and the drive `home`, whose `machine` `host-a` and `state` `example/state` crew's settings write, and `accounts` names the account `own`, naming no state repository, whose drive `home` keeps the owner `agentplot`'s `flume`
+- **THEN** crew's drive `home` has the `machine` `host-a` and the `state` `example/state`, crew's teams file evaluates, and the system fails no assertion, on nix-darwin and on NixOS
+
+#### Scenario: A drive crew's settings do not configure
+
+- **WHEN** `accounts` names the accounts of "Each drive's machine and state repository, given to crew", and crew's module is on with the host `host-a` and crew's own keys for the drive `home` alone
+- **THEN** evaluation of crew's settings fails, on nix-darwin and on NixOS
+
+### Requirement: A host writes neither a drive's machine nor its state in crew's settings
+
+The modules SHALL give each drive's `machine` and `state` at the options' own priority, in a definition placed at `services.boomdrive.accounts`. So evaluation of crew's settings SHALL fail where a host also writes the `machine` or the `state` of a drive the accounts give, and crew's failure names `services.boomdrive.accounts` among the places that write it (record 0032).
+
+#### Scenario: A machine written twice
+
+- **WHEN** `accounts` and crew's settings are those of "Each drive's machine and state repository, given to crew", and crew's settings also give the drive `home` the `machine` `host-a`
+- **THEN** evaluation of crew's settings fails, and the modules' definition of `services.crew.settings` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
+
+#### Scenario: A state written twice
+
+- **WHEN** `accounts` and crew's settings are those of "Each drive's machine and state repository, given to crew", and crew's settings also give the drive `home` the `state` `example/state`
+- **THEN** evaluation of crew's settings fails, and the modules' definition of `services.crew.settings` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
+
+### Requirement: Under crew, the runner's crew table is written from the accounts' drives on this host
+
+Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it from the accounts: `host` as `services.crew.host`, and one partition for each drive of this host under an account that names its `state_repository`, holding the drive's name as `label` and its account's `state_repository` alone, accounts and each account's drives in the order of their names (records 0023 and 0032).
+
+#### Scenario: The accounts' drives on this host
+
+- **WHEN** `accounts` names the account `own`, naming the state repository `example/state`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and `settings` names `repository_root = "~/Code"`, `fetch_interval = "2m"`, `code_workspaces = true` and `control_plane.type = "crew"` with no `control_plane.crew`, and crew's module is on with the host `host-a` and crew's own keys for the drive `home`
+- **THEN** the file is `nix/tests/files/crew.toml`, byte for byte, on nix-darwin and on NixOS
+
+#### Scenario: The accounts' drives in their order
+
+- **WHEN** `control_plane.type = "crew"` is set with no `control_plane.crew`, and crew's module and the accounts are those of "Each drive's machine and state repository, given to crew"
+- **THEN** `settings.control_plane.crew` is the host `host-a` with the partitions `garden` at `example/state`, `home` at `example/state` and `field` at `example/work`, in that order, each holding `label` and `state_repository` alone, on nix-darwin and on NixOS
+
+### Requirement: Under crew, a host the runner cannot serve from its accounts fails evaluation
+
+With `services.boomdrive.enable` and `settings.control_plane.type` `crew`, evaluation SHALL fail where `settings.control_plane.crew` is written neither by the host nor by the modules, naming it and `services.crew`; and where the modules would write the table and it holds no drive, naming `services.crew.host`, its value, and each `machine` the accounts' drives name.
+
+#### Scenario: Under crew with neither
+
+- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, and crew's module is off
+- **THEN** evaluation fails, naming `settings.control_plane.crew` and `services.crew`, on nix-darwin and on NixOS
+
+#### Scenario: No drive of the accounts on this host
+
+- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the one account `work`, naming the state repository `example/away`, whose one drive `away` names the `machine` `host-b`, and crew's module is on with the host `host-a` and crew's own keys for the drive `away`
+- **THEN** evaluation fails, naming `services.crew.host`, `host-a` and `host-b`, on nix-darwin and on NixOS
+
+### Requirement: Under crew, each account with a drive names its state repository
+
+With `services.boomdrive.enable`, `settings.control_plane.type` `crew` and crew's module on, evaluation SHALL fail where an account that names a drive names no `state_repository`, its words naming `services.boomdrive.accounts.<account>.state_repository` for each such account (records 0028 and 0032; core.19).
+
+#### Scenario: An account under crew with no state repository
+
+- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the account `own`, naming no state repository, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and crew's module is on with the host `host-a` and the drive `home`, whose `machine` `host-a` and `state` `example/state` crew's settings write
+- **THEN** evaluation fails, naming `services.boomdrive.accounts.own.state_repository`, on nix-darwin and on NixOS
+
+### Requirement: Under crew, each drive of crew's is a drive of the accounts
+
+With `services.boomdrive.enable`, `settings.control_plane.type` `crew` and crew's module on, evaluation SHALL fail where `services.crew.settings.drives` names a drive that no account of `services.boomdrive.accounts` names, its words naming each such drive and `services.boomdrive.accounts` (record 0032).
+
+#### Scenario: A drive of crew's no account names
+
+- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the account `own`, naming the state repository `example/state`, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and crew's module is on with the host `host-a`, crew's own keys for the drive `home`, and the drive `stray`, whose `machine` `host-a` and `state` `example/state` crew's settings write
+- **THEN** evaluation fails, naming `stray` and `services.boomdrive.accounts`, on nix-darwin and on NixOS
+
+### Requirement: The README names each drive's machine and its account's state repository once
+
+The README's install with nix SHALL write each account's `state_repository` in `services.boomdrive.accounts`, and neither `state` nor `machine` in `services.crew.settings`. Its words SHALL say that, with crew's module on, the module gives crew each drive's `machine` and its account's `state_repository`, and that a host writing either in crew's settings fails evaluation.
+
+#### Scenario: The README's machine and state
+
+- **WHEN** the README's install with nix is read
+- **THEN** the nix block in it that names `services.crew` names `state_repository = "example/state"` before `services.crew = {`, and neither `state =` nor `machine =` after it, and its words name `services.boomdrive.accounts.<account>.state_repository`
+
+### Requirement: The Boomdrive module's own timber option is gone
+
+The modules SHALL hold no `services.boomdrive.timber.package`, since timber's own module installs timber: setting it SHALL fail evaluation, naming `services.timber.package` and `services.timber.enable`.
+
+#### Scenario: The timber option is gone
+
+- **WHEN** a system turns on `services.boomdrive` and sets `services.boomdrive.timber.package`
+- **THEN** evaluation fails, naming `services.timber.package` and `services.timber.enable`, on nix-darwin and on NixOS
+
+### Requirement: With the runner on and a collector named, the modules turn Flume's and sluice's telemetry on to it
+
+With `services.boomdrive.enable` on and `services.boomdrive.claude-code.telemetry.collector` set, the modules SHALL give `services.flume.settings.telemetry` and `services.sluice.settings.telemetry` each `send = true` and `collector`, the host's collector with one trailing `/` dropped. Each key SHALL be given apart at the modules' default priority, and the modules SHALL give no other key of either tool's `telemetry`.
+
+#### Scenario: The host's collector reaches Flume and sluice
+
+- **WHEN** a system turns on `services.boomdrive` and names the collector `http://localhost:4318`
+- **THEN** Flume's `settings.telemetry` and sluice's, each less its `null` keys, are each `{ send = true; collector = "http://localhost:4318"; }`, and the system fails no assertion, on nix-darwin and on NixOS
+
+#### Scenario: A collector's trailing slash
+
+- **WHEN** a system turns on `services.boomdrive` and names the collector `http://127.0.0.1:4318/`
+- **THEN** Flume's and sluice's `settings.telemetry.collector` are each `http://127.0.0.1:4318`, on nix-darwin and on NixOS
+
+### Requirement: Each tool keeps which of its signals it sends
+
+The modules SHALL give neither Flume's nor sluice's `telemetry` its `traces`, `metrics`, `logs`, `service` or `attributes`, nor sluice's its `logs_tail_bytes`, whatever `services.boomdrive.claude-code.telemetry`'s `metrics`, `logs` and `traces` say. A key a host sets in a tool's own `telemetry` SHALL be kept beside the modules' keys, and a host's `send` there SHALL win.
+
+#### Scenario: Each tool keeps its signals
+
+- **WHEN** a system turns on `services.boomdrive`, names a collector with `traces` on and `logs` off, and sets `services.flume.settings.telemetry.traces = false` and `services.sluice.settings.telemetry.logs = "tail"`
+- **THEN** Flume's `settings.telemetry`, less its `null` keys, is `send`, `collector` and `traces = false` alone, and sluice's is `send`, `collector` and `logs = "tail"` alone, on nix-darwin and on NixOS
+
+#### Scenario: A host turns a tool's sending off
+
+- **WHEN** a system turns on `services.boomdrive`, names a collector, and sets `services.sluice.settings.telemetry.send = false`
+- **THEN** sluice's `settings.telemetry.send` is false, its `collector` is still the host's, Flume's `send` is true, and the system fails no assertion, on nix-darwin and on NixOS
+
+### Requirement: No tool of the set sends to a collector other than the host's
+
+Where the modules give the tools' telemetry, evaluation SHALL fail unless Flume's and sluice's `settings.telemetry.collector`, each with one trailing `/` dropped, is the host's collector with one trailing `/` dropped, whatever priority the host gives it. The failure SHALL name the tool's option and `services.boomdrive.claude-code.telemetry.collector`.
+
+#### Scenario: The same collector named again
+
+- **WHEN** a system turns on `services.boomdrive`, names the collector `http://localhost:4318`, and sets `services.flume.settings.telemetry.collector = "http://localhost:4318/"`
+- **THEN** the system fails no assertion, on nix-darwin and on NixOS
+
+#### Scenario: A collector apart from the host's
+
+- **WHEN** a system turns on `services.boomdrive`, names the collector `http://localhost:4318`, and sets `services.flume.settings.telemetry.collector = "http://localhost:4317"`, and again with `services.sluice.settings.telemetry.collector` so set
+- **THEN** evaluation fails, naming the tool's option and `services.boomdrive.claude-code.telemetry.collector`, on nix-darwin and on NixOS
+
+#### Scenario: A forced collector apart from the host's
+
+- **WHEN** a system turns on `services.boomdrive`, names the collector `http://localhost:4318`, and sets `services.sluice.settings.telemetry.collector = lib.mkForce "http://localhost:4317"`
+- **THEN** evaluation fails, naming `services.sluice.settings.telemetry.collector` and `services.boomdrive.claude-code.telemetry.collector`, on nix-darwin and on NixOS
+
+### Requirement: With no collector, or without the runner, the modules give no tool's telemetry
+
+Where `services.boomdrive.claude-code.telemetry.collector` is `null`, or `services.boomdrive.enable` is off, the modules SHALL give no key of Flume's or sluice's `settings.telemetry`.
+
+#### Scenario: No tool's telemetry without a collector
+
+- **WHEN** a system turns on `services.boomdrive` and names no collector
+- **THEN** Flume's and sluice's `settings.telemetry` are each `null`, on nix-darwin and on NixOS
+
+#### Scenario: No tool's telemetry without the runner
+
+- **WHEN** a system imports the set's modules, turns `services.flume` and `services.sluice` on, names a collector, and leaves `services.boomdrive.enable` off
+- **THEN** Flume's and sluice's `settings.telemetry` are each `null`, on nix-darwin and on NixOS
+
+### Requirement: The README says the collector is Flume's and sluice's too
+
+The README's **Installing with nix** SHALL say that the collector the host names is Flume's and sluice's too, each turned on to send to it through `services.flume.settings.telemetry` and `services.sluice.settings.telemetry`. It SHALL say that which of its signals each tool sends stays that tool's own setting, that `send = false` there turns that tool's telemetry off, and that a tool's `collector` other than the host's fails evaluation.
+
+#### Scenario: The README's collector
+
+- **WHEN** the README's **Installing with nix** is read
+- **THEN** it names `services.flume.settings.telemetry`, `services.sluice.settings.telemetry` and `send = false`, and says that a tool's collector other than the host's fails evaluation
+
+### Requirement: A Mac's /bin/sh reads every script the modules and packages give it
+
+Every script under `nix/modules` and `nix/packages`, which a Mac runs by its `/bin/sh`, `activate.sh`, which the nix-darwin module's activation runs as `/bin/sh activate.sh`, and `launcher.sh`, the launcher's script, run by its `#!/bin/sh`, SHALL be one macOS's `/bin/sh`, bash 3.2.57 in POSIX mode, reads. The gate SHALL read each with that bash, as the tree pins it, on every host that runs the gate, and SHALL fail for a script it cannot read, naming the script and bash's words.
+
+#### Scenario: Each script read by macOS's /bin/sh
+
+- **WHEN** `nix:mac-sh` reads each script under `nix/modules` and `nix/packages` with bash 3.2.57 in POSIX mode and `-n`
+- **THEN** each is read, none is run, and the task passes
+
+#### Scenario: A script macOS's /bin/sh cannot read
+
+- **WHEN** a script under `nix/modules` holds a `case` whose pattern's bare `)` stands inside `$( )`, as `activate.sh` did at `23e41810`
+- **THEN** `nix:mac-sh` fails, naming the script and the line bash 3.2.57 names

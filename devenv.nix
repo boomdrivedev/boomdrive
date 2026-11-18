@@ -92,10 +92,10 @@ let
   # version as git is. treefmt.nix's clang-format is the same package.
   clangFormatVersion = "21.1.8";
 
-  # Vale, which site:prose runs over the site's words (site.4), from its
-  # own release, as boomdrive-web's shell took it: nixpkgs trails it
-  # (3.17.1 against 3.24.0). Bump the version and the four hashes from the
-  # release's checksums file.
+  # Vale, which the shell's prose runs over the site's words (site.4),
+  # from its own release, as boomdrive-web's shell took it: nixpkgs trails
+  # it (3.17.1 against 3.24.0). Bump the version and the four hashes from
+  # the release's checksums file.
   valeVersion = "3.24.0";
   valeAssets = {
     aarch64-darwin = {
@@ -134,6 +134,46 @@ let
         runHook postInstall
       '';
     };
+
+  # macOS's /bin/sh, bash 3.2.57 in POSIX mode, which nix:mac-sh reads the
+  # scripts a Mac runs by /bin/sh with: nix/modules/activate.sh, which the
+  # nix-darwin module's activation runs as `/bin/sh activate.sh`, and
+  # nix/packages/launcher.sh, the launcher's script, run by its `#!/bin/sh`
+  # (record 0020 as amended on 2026-11-15). Built from GNU's release of the
+  # version Apple's /bin/sh reports, since nixpkgs carries no bash 3 and a
+  # Linux host that runs the gate has no such /bin/sh of its own (core.8).
+  # Its parser is made again from parse.y by bison, since the release's
+  # y.tab.c predates its patches, and its C, of 2006, is compiled as C89
+  # with the warnings today's compilers make errors let pass. Given to
+  # nix:mac-sh by its path and on no PATH, so the shell's sh and bash stay
+  # nixpkgs' bash 5.
+  macShVersion = "3.2.57";
+  macSh = pkgs.stdenv.mkDerivation {
+    pname = "bash";
+    version = macShVersion;
+    src = pkgs.fetchurl {
+      url = "mirror://gnu/bash/bash-${macShVersion}.tar.gz";
+      hash = "sha256-P6na+F6/NQaPCQzlEoPd7rPHXrW8cLGkp8sFhov+BqQ=";
+    };
+    nativeBuildInputs = [ pkgs.bison ];
+    configureFlags = [
+      "--without-bash-malloc"
+      "--disable-nls"
+    ];
+    env = {
+      YACC = "bison -y";
+      NIX_CFLAGS_COMPILE = lib.concatStringsSep " " [
+        "-std=gnu89"
+        "-fcommon"
+        "-Wno-implicit-function-declaration"
+        "-Wno-implicit-int"
+        "-Wno-int-conversion"
+        "-Wno-incompatible-pointer-types"
+      ];
+    };
+    hardeningDisable = [ "format" ];
+    meta.mainProgram = "bash";
+  };
 
   # The flake's inputs as flake.lock locks them, fetched by this shell
   # outside the gate's sandbox (design Decision 14).
@@ -294,6 +334,9 @@ in
   # push (design, The user's to rule on).
   env.BOOMDRIVE_SET_FLUME = lib.getExe set.flume;
   env.BOOMDRIVE_SET_SLUICE = lib.getExe set.sluice;
+
+  # macOS's /bin/sh, given to nix:mac-sh by its path and on no PATH.
+  env.BOOMDRIVE_MAC_SH = lib.getExe macSh;
   cachix.pull = [ "boomdrive" ];
 
   # Claude Code's project files (record 0022): .mcp.json from the servers
@@ -407,7 +450,7 @@ in
   };
 
   # The site's scripts (design Decision 10), each run in site/, each check
-  # the gate's own task.
+  # the gate's own task but Vale, the writers' own.
   scripts.vocab = {
     description = "The glossary into Vale's vocabulary and terms: moon run site:vocab";
     exec = ''
@@ -415,18 +458,21 @@ in
       exec moon run site:vocab "$@"
     '';
   };
+  # Vale is the writers' check of their words and no task of the gate's
+  # (site.4; record 0049): prose writes the vocabulary, then runs Vale, and
+  # site-check runs it after the site's own tasks.
   scripts.prose = {
-    description = "Vale over the site's words, after vocab: moon run site:prose";
+    description = "Vale over the site's words, after vocab: the writers' own, no task of the gate's";
     exec = ''
       cd "$DEVENV_ROOT/site"
-      exec moon run site:prose "$@"
+      moon run site:vocab && exec vale src/content "$@"
     '';
   };
   scripts.site-check = {
-    description = "The site's checks: its type check, prose, build and tests";
+    description = "The site's checks: its type check, build and tests, then Vale over its words";
     exec = ''
       cd "$DEVENV_ROOT/site"
-      exec moon run site:check site:prose site:build site:test "$@"
+      moon run site:check site:build site:test "$@" && exec prose
     '';
   };
   scripts.site-dev = {

@@ -1,14 +1,21 @@
 //! The control pass (design Decision 5). It takes the runner's report,
 //! reads the host from Flume's status, hands the hello to the pull,
 //! answers each want in the control plane's order, but carries out an
-//! act on a place only once every launch the pull offers is taken, and
-//! none but the first once the next pass is due (record 0002; core.50),
-//! carries each place's status against Flume's listing as it stands once
-//! those answers are made (record 0027), opens each terminal pulled, and
-//! sends the whole report. Once the next pass is due, it also sends the
-//! report after each answer it makes, so no answer waits on the rest of
-//! the pass (record 0002 as amended on 2026-11-14; core.50). Once its
-//! control plane has taken a report
+//! act on a place only once every offer the pull gives is answered
+//! (record 0002; core.50), carries each place's status against Flume's
+//! listing as it stands once those answers are made (record 0027), opens
+//! each terminal pulled, and sends the whole report. Once the next pass is
+//! due, its launches and its acts take turns: it runs no `flume launch`
+//! after the first it ran, and holds each launch it would make after it
+//! for the next pass, `held` with the words [`TURN`], its room counted at
+//! its turn, and runs no act's command on a place after the first it ran,
+//! leaving the rest to the next pass (record 0002 as amended on 2026-11-14
+//! on taking turns; core.50). Once due, it also sends the report before
+//! each tool's command it runs for a want, and once it has answered its
+//! last want, so no answer waits on a command; what a send lets go or
+//! refuses is taken no more that pass, nor an act on a launch it let go or
+//! refused (record 0002 as amended on 2026-11-14; core.10, core.50). Once
+//! its control plane has taken a report
 //! holding a place's status, it confirms to Flume, as the runner, each end
 //! that status gives owed to it, so no end leaves Flume before its control
 //! plane holds it (record 0030 as amended on 2026-11-09; core.54). An act
@@ -20,8 +27,9 @@
 //! control plane only through `ControlPlane` (core.2), and acts on no
 //! place it did not launch. Work under a lease that has lapsed by the
 //! pass's clock waits for a live one (core.24). A preview its control plane asks for is brought up in a
-//! repository the runner keeps by sluice's own preview command, after
-//! every launch the pull offers, its ask awaited no longer than the
+//! repository the runner keeps by sluice's own preview command, once
+//! every offer the pull gives is answered, a launch held for its turn
+//! among them, its ask awaited no longer than the
 //! runner's patience; sluice's listing of it is carried until sluice lists
 //! it no more; and on its done, only what the runner asked sluice for is
 //! put away, by sluice's own release, with no output of a command carried
@@ -207,11 +215,20 @@ pub struct Carrier<'a> {
     pub least: &'a Least,
     /// Whether the next control pass is due, by the control timer or
     /// because the control plane woke the runner. Once it is, the pass
-    /// carries out no further act on a place, after its first, and
-    /// leaves the rest to that pass, whose launches go ahead of them
-    /// (core.50).
+    /// runs no `flume launch` after the first it ran, holding each launch
+    /// it would make after it for that pass, `held` with the words
+    /// [`TURN`], and carries out no act on a place after the first it ran,
+    /// leaving the rest to that pass, so its launches and its acts take
+    /// turns; and it sends its report before each tool's command it runs
+    /// for a want, and once it has answered its last want (core.50; record
+    /// 0002 as amended on 2026-11-14 on taking turns).
     pub due: &'a dyn Fn() -> bool,
 }
+
+/// The words of a launch a pass past due took and left for the next pass,
+/// which is due: it is answered `held` with them (design Decision 2;
+/// core.50).
+pub const TURN: &str = "waits for the next control pass, which is due";
 
 /// Whether the control plane's last pull was read, kept across control
 /// passes, so its reach is said once each way: when a pull first cannot
@@ -358,6 +375,7 @@ impl Carrier<'_> {
         let report = kept.or(pulled.report).unwrap_or_default();
         let mut work = Work {
             carrier: self,
+            plane,
             wants: &pulled.wants,
             saved,
             report,
@@ -367,6 +385,7 @@ impl Carrier<'_> {
             ran: false,
             now,
             round: Round::Wants,
+            launches_run: 0,
             acts_run: 0,
             left: BTreeSet::new(),
             waiting: Vec::new(),
@@ -374,29 +393,16 @@ impl Carrier<'_> {
             previews_left: BTreeSet::new(),
             unsent: false,
             sends_failed: false,
+            halted: false,
             gone: BTreeSet::new(),
         };
-        'carrying: for round in [Round::Wants, Round::OnPlaces] {
-            work.round = round;
-            if round == Round::OnPlaces {
-                for (offer, container, address) in std::mem::take(&mut work.waiting) {
-                    if work.gone.contains(&offer.id) {
-                        continue;
-                    }
-                    work.launch_once_kept(&offer, &container, &address, say);
-                    if !work.answered(plane, say) {
-                        say(self.line("nothing more is carried out this pass"));
-                        break 'carrying;
-                    }
-                }
-            }
-            for want in &pulled.wants {
-                work.want(want, say);
-                if !work.answered(plane, say) {
-                    say(self.line("nothing more is carried out this pass"));
-                    break 'carrying;
-                }
-            }
+        if work.answer_wants(say) {
+            // Once its last want is answered, a pass past due sends what it
+            // answered since its last send, so no answer waits on the
+            // carrying that follows (core.50).
+            work.send_due(say);
+        } else {
+            say(self.line("nothing more is carried out this pass"));
         }
         match work.left.len() {
             0 => {}
@@ -424,11 +430,11 @@ impl Carrier<'_> {
         work.carry_statuses(say);
         work.carry_entries(say);
         work.carry_previews(say);
-        work.save(&*plane, say);
+        work.save(say);
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
         }
-        let sent = work.send(plane, say);
+        let sent = work.send(say);
         // An end Flume owes the runner is confirmed only once its control
         // plane has taken the status that gives it, in a pass whose share
         // the file holds after the answer, and never below the least Flume
@@ -445,10 +451,13 @@ impl Carrier<'_> {
     }
 }
 
-/// One pass's work: the report as it stands, and what was read of the
-/// host.
+/// One pass's work: the report as it stands, what was read of the host,
+/// and the control plane it answers, which it reaches where it runs a
+/// tool's command, so that, once the next pass is due, it sends what it
+/// answered before that command runs (design Decision 3; core.50).
 struct Work<'p> {
     carrier: &'p Carrier<'p>,
+    plane: &'p mut dyn ControlPlane,
     /// What the pull gave, in the control plane's order.
     wants: &'p [Want],
     /// The part's share as the file holds it.
@@ -470,6 +479,11 @@ struct Work<'p> {
     /// The pass's clock, read once at its start.
     now: At,
     round: Round,
+    /// How many `flume launch` the pass has run, whatever Flume answered:
+    /// a launch found by its mark runs none. Once the next pass is due and
+    /// one has run, each launch the pass would make is held for its turn
+    /// (design Decisions 1 and 2; core.50).
+    launches_run: usize,
     /// How many acts the pass has run Flume's command for on their places.
     acts_run: usize,
     /// The acts on places left for the next pass, which is due.
@@ -489,8 +503,12 @@ struct Work<'p> {
     /// Whether a send made before the pass's end failed, which leaves the
     /// pass's answers to the send at its end.
     sends_failed: bool,
+    /// Whether the share could not be saved after a send's answer, which
+    /// ends the pass's answers (core.25).
+    halted: bool,
     /// What the control plane let go or refused at a send of this pass:
-    /// no want of it is taken more this pass (core.10).
+    /// no want of it, and no act on a launch of it, is taken more this
+    /// pass (core.10).
     gone: BTreeSet<Id>,
 }
 
@@ -498,14 +516,20 @@ struct Work<'p> {
 /// plane's order, so that no launch waits behind an act on a place
 /// (record 0002; core.50). An act on a place moves no room and lifts no
 /// hold within the pass, which read both from its listing before the pull,
-/// so taking it second changes no answer. The second round ends its acts on
-/// places once the next pass is due, after the first, so no launch the next
-/// pull offers waits behind them either. An act Flume refuses because its
-/// place no longer stands costs the pass the reading of Flume's refusal
-/// alone (record 0010; core.51). A launch whose clone the keeper holds at
-/// its turn is made before the second round, once that keep is done, its
-/// room counted at its turn, so no other launch waits on another
-/// repository's keep (record 0026; design Decision 4).
+/// so taking it second changes no answer. Once the next pass is due, the
+/// first round makes no launch after the first the pass ran, and holds
+/// each it would make for its turn, so the second round's first act waits
+/// behind one launch alone; and the second round ends its acts on places
+/// after the first the pass ran, so no launch the next pull offers waits
+/// behind more than one act: its launches and its acts take turns (record
+/// 0002 as amended on 2026-11-14 on taking turns). An act Flume refuses
+/// because its place no longer stands costs the pass the reading of
+/// Flume's refusal alone (record 0010; core.51). A launch whose clone the
+/// keeper holds at its turn is made before the second round, once that
+/// keep is done, its room counted at its turn, so no other launch waits on
+/// another repository's keep (record 0026; design Decision 4); once the
+/// pass is due and has run a launch, it is held for its turn without
+/// waiting on the keep.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Round {
     /// Every want: each offer, inbox and command, and each act and preview
@@ -520,12 +544,46 @@ enum Round {
 }
 
 impl Work<'_> {
+    /// Answers the pull's wants in the pass's two rounds, saving the share
+    /// once each is answered, and says whether every want was taken: where
+    /// the file does not hold the share, the pass carries out nothing more
+    /// (core.25).
+    fn answer_wants(&mut self, say: &mut dyn FnMut(String)) -> bool {
+        let wants = self.wants;
+        for round in [Round::Wants, Round::OnPlaces] {
+            self.round = round;
+            if round == Round::OnPlaces {
+                for (offer, container, address) in std::mem::take(&mut self.waiting) {
+                    if self.gone.contains(&offer.id) {
+                        continue;
+                    }
+                    self.launch_once_kept(&offer, &container, &address, say);
+                    if self.halted || !self.save(say) {
+                        return false;
+                    }
+                }
+            }
+            for want in wants {
+                self.want(want, say);
+                if self.halted || !self.save(say) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
         // The pull gave it before the control plane let it go or refused
-        // it at a send of this pass, so no launch, act or answer of it is
-        // made (core.10).
+        // it, or the launch it acts on, at a send of this pass, so no
+        // launch, act or answer of it is made (core.10).
         if self.gone.contains(want.id()) {
             return;
+        }
+        if let Want::Act(act) = want {
+            if self.gone.contains(&act.launch) {
+                return;
+            }
         }
         if self.round == Round::OnPlaces {
             match want {
@@ -552,7 +610,9 @@ impl Work<'_> {
     /// keeps nor drains is refused before any mark is read, and one in a
     /// repository it drains is answered `launched` only where Flume's
     /// listing holds its place under its mark, so a launch made just before
-    /// a stop is not made twice (core.10), and refused otherwise.
+    /// a stop is not made twice (core.10), and refused otherwise. Once the
+    /// next pass is due and the pass has run a launch, an offer that would
+    /// be launched is held for its turn, its room counted (core.50).
     fn offer(&mut self, offer: &Offer, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
         let repository = &offer.launch.repository;
@@ -622,6 +682,18 @@ impl Work<'_> {
         if self.below_least.is_some() {
             return;
         }
+        // Once the next pass is due and the pass has run a launch, the
+        // launch is left for its turn, its room counted now (core.50).
+        if self.turn_taken() {
+            if container.is_dir() {
+                self.room.take(stream);
+                self.hold_for_turn(offer, say);
+            }
+            return;
+        }
+        if !self.may_run(&[id], say) {
+            return;
+        }
         let Ok(address) = Address::parse(repository) else {
             return self.launch(offer, &container, say);
         };
@@ -641,7 +713,9 @@ impl Work<'_> {
 
     /// Launches `offer`, its room already counted, in the clone at
     /// `container` once the keeper's keep of `address` is done, holding
-    /// the clone's lock shared until `flume launch` ends.
+    /// the clone's lock shared until `flume launch` ends. Once the next
+    /// pass is due and the pass has run a launch, it is held for its turn
+    /// without waiting on the keep (design Decision 2; core.50).
     fn launch_once_kept(
         &mut self,
         offer: &Offer,
@@ -649,6 +723,15 @@ impl Work<'_> {
         address: &Address,
         say: &mut dyn FnMut(String),
     ) {
+        if self.turn_taken() {
+            if container.is_dir() {
+                self.hold_for_turn(offer, say);
+            }
+            return;
+        }
+        if !self.may_run(&[&offer.id], say) {
+            return;
+        }
         let held = self.carrier.locks.launch(address);
         if container.is_dir() {
             self.made(offer, container, say);
@@ -668,13 +751,32 @@ impl Work<'_> {
         self.made(offer, container, say);
     }
 
+    /// Whether the pass, past due, has run its one launch, so each launch
+    /// it would make after is held for its turn (design Decision 1;
+    /// core.50).
+    fn turn_taken(&self) -> bool {
+        self.launches_run > 0 && (self.carrier.due)()
+    }
+
+    /// Answers `offer`, its room counted, `held` for its turn with the
+    /// words [`TURN`], running no `flume launch`, and says so where the
+    /// answer changed. The next pass takes it as any held offer (design
+    /// Decision 2; core.10, core.50).
+    fn hold_for_turn(&mut self, offer: &Offer, say: &mut dyn FnMut(String)) {
+        if self.answer(offer, Outcome::Held, None, Some(TURN.to_string())) {
+            say(format!("{}: held: {TURN}", offer.id));
+        }
+    }
+
     /// Runs `flume launch` for `offer` in the clone at `container`, its
-    /// room counted (design Decision 9).
+    /// room counted, and counts it, whatever Flume answers (design
+    /// Decisions 1 and 9).
     fn made(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
         let args = launch_args(offer, container, self.priority(offer));
         let briefs = self.carrier.control_dir.join("briefs");
         self.ran = true;
+        self.launches_run += 1;
         match self.carrier.flume.launch(&args, &briefs) {
             Ok(Reply::Given(text)) => {
                 let answer = serde_json::from_str::<Value>(&text).ok();
@@ -786,9 +888,9 @@ impl Work<'_> {
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
     /// core.24). A confirm as the runner, or of no key, is refused at once,
-    /// running nothing (core.56). One on its launch's place is carried out
-    /// in the pass's second round alone, after every launch the pull offers
-    /// (core.50).
+    /// running nothing (core.56), as is a hold with no words (core.59).
+    /// One on its launch's place is carried out in the pass's second round
+    /// alone, once every offer the pull gives is answered (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
             return;
@@ -805,7 +907,7 @@ impl Work<'_> {
         if lapsed(launched.lease, self.now) {
             return;
         }
-        if let Some(words) = refused_confirm(&act.what) {
+        if let Some(words) = refused_confirm(&act.what).or_else(|| refused_hold(&act.what)) {
             self.acted(act, Outcome::Refused, Some(words), None, say);
             return;
         }
@@ -832,7 +934,9 @@ impl Work<'_> {
     /// the runner's words, naming the key, and runs nothing (core.56).
     /// Otherwise the act is Flume's own command on the place, never forced;
     /// once the next pass is due, the pass runs none but its first, and
-    /// leaves the act for that pass (core.50). Where Flume could not be
+    /// leaves the act for that pass (core.50). Once due, the report goes up
+    /// before each command, and where that send let go or refused the act
+    /// or its launch, nothing runs (core.10). Where Flume could not be
     /// run, nothing is kept, and the next pass carries it out.
     fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
         let unrun = |words: String, say: &mut dyn FnMut(String)| {
@@ -842,9 +946,13 @@ impl Work<'_> {
                 act.id, act.launch
             ));
         };
+        let ids = [&act.id, &act.launch];
         let status = if self.listed(place) {
             None
         } else {
+            if !self.may_run(&ids, say) {
+                return;
+            }
             match self.carrier.flume.status_of(None, place) {
                 Ok(Reply::Given(status)) => Some(status),
                 Ok(Reply::Refused(words)) => {
@@ -863,6 +971,9 @@ impl Work<'_> {
         }
         if self.acts_run > 0 && (self.carrier.due)() {
             self.left.insert(act.id.clone());
+            return;
+        }
+        if !self.may_run(&ids, say) {
             return;
         }
         self.acts_run += 1;
@@ -908,9 +1019,9 @@ impl Work<'_> {
     /// Answers `act` on a launch the runner holds not yet launched, from
     /// the report, running no command. A priority is done, and the launch
     /// carries it when made; a drop is done, and the launch is never made;
-    /// a retry, a land, a confirm or a done is refused, naming where the
-    /// launch stands, and a land so refused changes nothing of the launch
-    /// when it is made (core.53, core.56).
+    /// a retry, a land, a confirm, a hold or a done is refused, naming
+    /// where the launch stands, and a land or a hold so refused changes
+    /// nothing of the launch when it is made (core.53, core.56, core.59).
     fn act_unlaunched(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         let launched = &self.report.launches[&act.launch];
         let (lease, answer) = (launched.lease, launched.answer.clone());
@@ -930,7 +1041,11 @@ impl Work<'_> {
                     self.report.answer(&act.launch, lease, dropped);
                 }
             }
-            ActSort::Retry { .. } | ActSort::Land | ActSort::Confirm { .. } | ActSort::Done => {
+            ActSort::Retry { .. }
+            | ActSort::Land
+            | ActSort::Confirm { .. }
+            | ActSort::Hold { .. }
+            | ActSort::Done => {
                 let outcome = match answer.outcome {
                     Outcome::Held => "held",
                     Outcome::Done => "done",
@@ -1049,8 +1164,9 @@ impl Work<'_> {
     /// drains, or one it drains, is refused, since nothing new is made in
     /// one, and one whose clone is not yet made waits (core.5). A done
     /// whose repository has no clone is refused, since its checkout went
-    /// with the clone. Every other is left for the second round, after
-    /// every launch the pull offers (core.50).
+    /// with the clone. Every other is left for the second round, once
+    /// every offer the pull gives is answered, a launch held for its turn
+    /// among them (core.50).
     fn preview(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
         if let Some(previewed) = self.report.previews.get_mut(&preview.id) {
             previewed.lease = preview.lease;
@@ -1075,8 +1191,10 @@ impl Work<'_> {
         }
     }
 
-    /// Carries out `preview` in the pass's second round, after every launch
-    /// the pull offers, by sluice's own command (core.50, core.55). A
+    /// Carries out `preview` in the pass's second round, once every offer
+    /// the pull gives is answered, a launch held for its turn among them,
+    /// so it waits on no launch left for the next pass, by sluice's own
+    /// command (core.50, core.55; design Decision 5). A
     /// preview the report holds answered, or one whose lease has lapsed, is
     /// left as it stands.
     fn preview_command(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
@@ -1111,7 +1229,7 @@ impl Work<'_> {
         if held && self.done_given(preview) {
             return;
         }
-        if !self.preview_may_run(&preview.id) {
+        if !self.preview_may_run(&preview.id, say) {
             return;
         }
         let what = what_preview(preview);
@@ -1206,7 +1324,7 @@ impl Work<'_> {
                 sluice::text_of(&status.text, "name")
             })
             .unwrap_or_else(|| preview.revision.clone());
-        if !self.preview_may_run(&preview.id) {
+        if !self.preview_may_run(&preview.id, say) {
             return;
         }
         let what = what_preview(preview);
@@ -1260,10 +1378,14 @@ impl Work<'_> {
 
     /// Whether the pass may run sluice's command for preview `id`: once the
     /// next pass is due, none but its first, the rest left to that pass
-    /// (design Decision 7). Counts the one it may run.
-    fn preview_may_run(&mut self, id: &Id) -> bool {
+    /// (design Decision 7), and none the send before it let go or refused
+    /// (core.10). Counts the one it may run.
+    fn preview_may_run(&mut self, id: &Id, say: &mut dyn FnMut(String)) -> bool {
         if self.previews_run > 0 && (self.carrier.due)() {
             self.previews_left.insert(id.clone());
+            return false;
+        }
+        if !self.may_run(&[id], say) {
             return false;
         }
         self.previews_run += 1;
@@ -1699,14 +1821,15 @@ impl Work<'_> {
         }
     }
 
-    /// Saves the part's share, whose entries `plane` owns, where it
-    /// changed since the file was last written, every other part's share
-    /// kept as it stands, and says whether the file holds it.
-    fn save(&mut self, plane: &dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
+    /// Saves the part's share, whose entries its control plane owns, where
+    /// it changed since the file was last written, every other part's
+    /// share kept as it stands, and says whether the file holds it.
+    fn save(&mut self, say: &mut dyn FnMut(String)) -> bool {
         if self.report == self.saved {
             return true;
         }
         let (report, label) = (self.carrier.report, self.carrier.label);
+        let plane = &*self.plane;
         match report.save_share(label, &|id| plane.owns(id), &self.report) {
             Ok(()) => {
                 self.saved = self.report.clone();
@@ -1720,32 +1843,42 @@ impl Work<'_> {
         }
     }
 
-    /// Saves the part's share once a want is answered, and, once the next
-    /// pass is due, sends it, so no answer the pass made waits on the rest
-    /// of the pass (record 0002 as amended on 2026-11-14; core.50). Says
-    /// whether the file holds the share: where it does not, the pass
-    /// carries out nothing more (core.25).
-    fn answered(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
-        self.save(&*plane, say) && self.send_due(plane, say)
+    /// Whether a tool's command may run for the want whose ids, its own
+    /// and, for an act, its launch's, are `ids`. Once the next pass is
+    /// due, the share is first saved and sent where an answer changed it
+    /// since its last send, so no answer waits on the command (design
+    /// Decision 3; core.50); the want is then taken anew, and where the
+    /// control plane let go or refused it, or its launch, at that send or
+    /// one before, no command runs for it (design Decision 4; core.10).
+    /// Where the file does not hold the share, before the send or after
+    /// its answer, nothing more is carried out this pass (core.25).
+    fn may_run(&mut self, ids: &[&Id], say: &mut dyn FnMut(String)) -> bool {
+        if !self.save(say) || !self.send_due(say) {
+            self.halted = true;
+            return false;
+        }
+        !ids.iter().any(|id| self.gone.contains(*id))
     }
 
     /// Once the next control pass is due, sends the part's share where an
     /// answer changed it since it was last sent, and takes the control
     /// plane's answer as at the pass's end: what it let go or refused
-    /// leaves the report, and no want of it is taken more this pass
-    /// (core.10). A pass that ends before the next is due sends once, at
-    /// its end. A send that fails is said, and leaves the pass's answers to
-    /// the send at its end, so a control plane that cannot be reached is
-    /// tried once more that pass, not after each answer (core.22). Says
-    /// whether the file holds the share after the answer.
-    fn send_due(&mut self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> bool {
+    /// leaves the report, and no want of it, nor an act on a launch of it,
+    /// is taken more this pass (core.10). The pass sends so before each
+    /// tool's command it runs for a want, and once it has answered its last
+    /// want; a pass that ends before the next is due sends once, at its
+    /// end. A send that fails is said, and leaves the pass's answers to the
+    /// send at its end, so a control plane that cannot be reached is tried
+    /// once more that pass, not before each command (core.22). Says whether
+    /// the file holds the share after the answer.
+    fn send_due(&mut self, say: &mut dyn FnMut(String)) -> bool {
         if !self.unsent || self.sends_failed || !(self.carrier.due)() {
             return true;
         }
-        match plane.report(&self.report) {
+        match self.plane.report(&self.report) {
             Ok(reported) => {
                 self.reported(&reported, say);
-                let saved = self.save(&*plane, say);
+                let saved = self.save(say);
                 self.unsent = !saved;
                 saved
             }
@@ -1763,16 +1896,12 @@ impl Work<'_> {
     /// gives the control plane's answer where it took it, with whether the
     /// file holds the share once the answer is taken; one not sent gives
     /// none, and is kept in the file, to be sent at the next pass.
-    fn send(
-        &mut self,
-        plane: &mut dyn ControlPlane,
-        say: &mut dyn FnMut(String),
-    ) -> Option<(Reported, bool)> {
-        self.save(&*plane, say);
-        match plane.report(&self.report) {
+    fn send(&mut self, say: &mut dyn FnMut(String)) -> Option<(Reported, bool)> {
+        self.save(say);
+        match self.plane.report(&self.report) {
             Ok(reported) => {
                 self.reported(&reported, say);
-                let saved = self.save(&*plane, say);
+                let saved = self.save(say);
                 Some((reported, saved))
             }
             Err(Unsent(words)) => {
@@ -1952,6 +2081,15 @@ fn flume_act(what: &ActSort) -> flume::Act {
             recipient: recipient.clone(),
             keys: deliveries.clone(),
         },
+        // A hold is Flume's hold of the move the place waits on its caller
+        // for, with exactly the words and the bound it names (core.59).
+        ActSort::Hold {
+            words,
+            bound_interval,
+        } => flume::Act::Hold {
+            words: words.clone(),
+            bound_interval: *bound_interval,
+        },
         ActSort::Drop => flume::Act::Drop,
         ActSort::Priority(priority) => flume::Act::Priority(*priority),
         ActSort::Done => flume::Act::Done,
@@ -1982,12 +2120,28 @@ fn refused_confirm(what: &ActSort) -> Option<String> {
     }
 }
 
+/// The runner's words refusing `what`, where it is a hold with no words,
+/// which would take the place out of stalling with nothing said of who
+/// makes the move (core.59; Flume's 130). The runner judges no words but
+/// their absence.
+fn refused_hold(what: &ActSort) -> Option<String> {
+    match what {
+        ActSort::Hold { words, .. } if words.is_empty() => {
+            Some("a hold with no words says nothing of who makes the move".to_string())
+        }
+        _ => None,
+    }
+}
+
 /// An act's sort, as its lines name it.
 fn sort(what: &ActSort) -> String {
     match what {
         ActSort::Retry { .. } => "retry".to_string(),
         ActSort::Land => "land".to_string(),
         ActSort::Confirm { recipient, .. } => format!("confirm as {recipient}"),
+        // A hold's words stay out of its line, as a retry's do (core.11,
+        // core.59).
+        ActSort::Hold { bound_interval, .. } => format!("hold for {bound_interval}s"),
         ActSort::Drop => "drop".to_string(),
         ActSort::Priority(priority) => format!("priority {priority}"),
         ActSort::Done => "done".to_string(),

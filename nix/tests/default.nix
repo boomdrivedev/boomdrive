@@ -27,6 +27,7 @@ in
     // import ./tools.nix t
     // import ./drives.nix t
     // import ./sources.nix t
+    // import ./crew-drives.nix t
     // import ./cache.nix t
     // import ./workflow.nix t
     // import ./apps.nix t
@@ -36,6 +37,7 @@ in
     // import ./clone-dirs.nix t
     // import ./kept.nix t
     // import ./claude-code.nix t
+    // import ./collector.nix t
     // import ./boot.nix t
   );
 }

@@ -59,16 +59,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794337313,
-        "narHash": "sha256-9mLvHrFTa5d9xx4v5VuaasRe5I6rcowrlTeMYeGyU6M=",
+        "lastModified": 1794839894,
+        "narHash": "sha256-+nwYE93uWnU3AFjDNijS87xJmFU6Y7mDHhABB8fcp7Y=",
         "owner": "boomdrivedev",
         "repo": "crew",
-        "rev": "6698fdaef7c6eb2b1ec34808f1d7a9c016d85622",
+        "rev": "fbb3333207e53d2d94247d1a4f0ffc8896f6bd20",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.59.0",
+        "ref": "v0.64.2",
         "repo": "crew",
         "type": "github"
       }
@@ -125,16 +125,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794275970,
-        "narHash": "sha256-Z5xc84YtN1Uzpyq8Mf1WkuNF0FVLVCFwkSpo0SDr1bk=",
+        "lastModified": 1794860694,
+        "narHash": "sha256-1DsDltjjaa1l1j40fTPxB14WAkhicd5y+Lib6AMLV3U=",
         "owner": "boomdrivedev",
         "repo": "flume",
-        "rev": "65911c262b27556ce4a6dccb2bae943e8c314417",
+        "rev": "b52cb688f2014593cc8fc80321421af579247b61",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.21.2",
+        "ref": "v0.26.0",
         "repo": "flume",
         "type": "github"
       }
@@ -339,16 +339,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794341395,
-        "narHash": "sha256-3PhqmCW8w1DC5OTNJEtpK9IJkgIdvYJlIU0wd9U7gLs=",
+        "lastModified": 1794597375,
+        "narHash": "sha256-Xp2I0TqdmaRCnz/gLCfZlZgQjlMfovSxhPMTF2hJ4SA=",
         "owner": "boomdrivedev",
         "repo": "sluice",
-        "rev": "b839783d0f14974b157cb38fcc7aa0591136b8f9",
+        "rev": "35362f9b7453e99ab4b22b030a25e2d4d745dedf",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.86.0",
+        "ref": "v0.94.8",
         "repo": "sluice",
         "type": "github"
       }
@@ -385,6 +385,9 @@
     },
     "timber": {
       "inputs": {
+        "nix-darwin": [
+          "nix-darwin"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -393,16 +396,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794441265,
-        "narHash": "sha256-2PHNPFnjzNzp9LF7wCAG8d8NabZuiyszgVt7bNrIaMM=",
+        "lastModified": 1794665576,
+        "narHash": "sha256-irJc9fou9weoIlHWoqr4q+bb+DbBIotatNSeJEld1JE=",
         "owner": "boomdrivedev",
         "repo": "timber",
-        "rev": "d017f68cccc798a24b8f4543319ad959c3d7ca59",
+        "rev": "629361ba2bc2965b6ae94e3e92ac27036705e798",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.6.0",
+        "ref": "v0.7.0",
         "repo": "timber",
         "type": "github"
       }
