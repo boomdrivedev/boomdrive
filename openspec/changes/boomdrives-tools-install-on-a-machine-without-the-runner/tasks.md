@@ -25,7 +25,7 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 3. herdr's plugins follow the tools the set installs
 
-- [ ] 3.1 `services.boomdrive.herdr.plugins`' default holds the set's Flume, sluice and timber plugins, Pending You for Herdr and Annotate, in that order, each only where its tool's module or switch is on and its package is the set's own, its `defaultText` and description saying so (design Decision 3; Task notes 3.1). `nix/tests/apps.nix` gains the cases *The runner's plugins*, *A host's own Flume*, *Flume's module off*, *The plugins of the tools turned on without the runner* and *A host's own list*, on each platform. Done when those cases, each on nix-darwin and on NixOS, and *The companions' plugins with crew*, which reads both platforms, hold, with `sluice exec main -- moon run nix:test` passing.
+- [x] 3.1 `services.boomdrive.herdr.plugins`' default holds the set's Flume, sluice and timber plugins, Pending You for Herdr and Annotate, in that order, each only where its tool's module or switch is on and its package is the set's own, its `defaultText` and description saying so (design Decision 3; Task notes 3.1). `nix/tests/apps.nix` gains the cases *The runner's plugins*, *A host's own Flume*, *Flume's module off*, *The plugins of the tools turned on without the runner* and *A host's own list*, on each platform. Done when those cases, each on nix-darwin and on NixOS, and *The companions' plugins with crew*, which reads both platforms, hold, with `sluice exec main -- moon run nix:test` passing.
 
 ## 4. The set's user, with the runner or without
 

@@ -31,13 +31,18 @@
 # gives no nix-darwin or NixOS module; the modules start no proxy of it and
 # trust no certificate authority of it, which are the person's (record
 # 0023 as amended on 2026-11-11; design Decisions 5 and 6 of the change
-# portless-comes-with-the-flake). Where crew's module is on, the plugins'
-# default gains crew's companions' herdr plugins, Pending You for Herdr and
-# Annotate, which companions.nix installs the tools of (record 0044, point
-# 8). timber, which delivers what the merge queue lands, comes by its own
-# module, which flake.nix imports and tools.nix turns on with the runner,
-# whether or not crew is on; its herdr plugin is linked here with Flume's
-# and sluice's, and the modules write no file of timber's and start no
+# portless-comes-with-the-flake). The plugins' default is the set's plugin
+# of each tool the set installs, each only beside the set's own build of
+# it: Flume's, sluice's and timber's, then crew's companions' herdr
+# plugins, Pending You for Herdr and Annotate, which companions.nix
+# installs the tools of, each where its tool is on, with the runner or
+# without (record 0044, point 8, and record 0023, each as amended on
+# 2026-11-18; design Decision 3 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner). timber, which
+# delivers what the merge queue lands, comes by its own module, which
+# flake.nix imports and tools.nix turns on with the runner, whether or not
+# crew is on; its herdr plugin is linked here with Flume's and sluice's,
+# and the modules write no file of timber's and start no
 # `timber serve`, which is timber's own (record 0023 as amended on
 # 2026-11-13 and 2026-11-15; design Decisions 5 to 7 of the change
 # the-set-takes-timbers-own-module).
@@ -106,6 +111,14 @@ let
       inherit description;
     };
 
+  # Whether the set installs a tool of its own module, `name`, as its own
+  # build: the tool's module on with the set's package; and a companion of
+  # the Boomdrive module's, its switch on with the set's package (design
+  # Decision 3 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  tools = name: config.services.${name}.enable && config.services.${name}.package == set.${name};
+  companions = name: package: cfg.${name}.enable && cfg.${name}.package == set.${package};
+
   # A tool's switch, on by default with the runner, a host's own value
   # winning, with the runner or without (record 0023 as amended on
   # 2026-11-18; design Decisions 1 and 2 of the change
@@ -134,27 +147,32 @@ in
       package = installed "herdr" "herdr, the multiplexer Flume's terminal profile runs, installed where `services.boomdrive.herdr.enable` is on and running each plugin's link; a host's own replaces it, and `null` installs none and links no plugin.";
       plugins = mkOption {
         type = types.listOf types.package;
-        default = [
-          set.flume-herdr-plugin
-          set.sluice-herdr-plugin
-          set.timber-herdr-plugin
-        ]
-        ++ lib.optionals config.services.crew.enable [
-          set.pendingyou-herdr-plugin
-          set.plannotator-herdr-plugin
-        ];
+        # The set's plugin of each tool the set installs, beside the set's own
+        # build of it, so the plugin linked is built from the same pin as the
+        # command line installed (record 0023 as amended on 2026-11-18;
+        # design Decision 3 of the change
+        # boomdrives-tools-install-on-a-machine-without-the-runner;
+        # blueprints principle 17). Two derivations are equal by their
+        # `outPath`.
+        default =
+          lib.optional (tools "flume") set.flume-herdr-plugin
+          ++ lib.optional (tools "sluice") set.sluice-herdr-plugin
+          ++ lib.optional (tools "timber") set.timber-herdr-plugin
+          ++ lib.optional (companions "pendingyou" "pendingyou") set.pendingyou-herdr-plugin
+          ++ lib.optional (companions "plannotator-tui" "plannotator-tui") set.plannotator-herdr-plugin;
         defaultText = lib.literalExpression ''
-          [
-            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.flume-herdr-plugin
-            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.sluice-herdr-plugin
-            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.timber-herdr-plugin
-          ]
-          ++ lib.optionals config.services.crew.enable [
-            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.pendingyou-herdr-plugin
-            boomdrive.packages.''${pkgs.stdenv.hostPlatform.system}.plannotator-herdr-plugin
-          ]
+          let
+            set = boomdrive.packages.''${pkgs.stdenv.hostPlatform.system};
+            tool = name: config.services.''${name}.enable && config.services.''${name}.package == set.''${name};
+            companion = name: config.services.boomdrive.''${name}.enable && config.services.boomdrive.''${name}.package == set.''${name};
+          in
+          lib.optional (tool "flume") set.flume-herdr-plugin
+          ++ lib.optional (tool "sluice") set.sluice-herdr-plugin
+          ++ lib.optional (tool "timber") set.timber-herdr-plugin
+          ++ lib.optional (companion "pendingyou") set.pendingyou-herdr-plugin
+          ++ lib.optional (companion "plannotator-tui") set.plannotator-herdr-plugin
         '';
-        description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the runner's user: Flume's, sluice's and timber's, then, where crew's module is on, crew's companions', Pending You for Herdr and Annotate. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
+        description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the set's user, wherever `services.boomdrive.herdr.enable` is on, with the runner or without. By default, the set's plugin of each tool the set installs, each only beside the set's own build of it: Flume's, sluice's and timber's where that tool's module is on with the set's package, then Pending You for Herdr where `services.boomdrive.pendingyou.enable` is on with the set's Pending You, and Annotate where `services.boomdrive.plannotator-tui.enable` is on with the set's plannotator-tui. A host that runs its own build of a tool and wants its pane lists its own build's plugin here, and a list given is linked as given. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
       };
     };
     ghostty = {

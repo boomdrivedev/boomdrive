@@ -211,6 +211,97 @@ let
       ) "the NixOS user activation's ${name} links the plugins"
     ) others;
 
+  # herdr's plugins by default, those of the tools the set installs, each
+  # beside the set's own build of it (design Decision 3 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  pluginsAre =
+    platform: what: set: evaluated: names:
+    let
+      plugins = map (p: p.outPath) evaluated.config.services.boomdrive.herdr.plugins;
+      expected = map (name: set.${name}.outPath) names;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system ${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      plugins == expected
+    ) "the ${platform} plugins ${what} are ${toString plugins}, not the set's ${toString names}";
+
+  runnersPlugins =
+    platform:
+    { system, set, ... }:
+    pluginsAre platform "with the runner" set (system { }) [
+      "flume-herdr-plugin"
+      "sluice-herdr-plugin"
+      "timber-herdr-plugin"
+    ];
+
+  # A Flume of the host's own, laid out as a package with a bin.
+  ownFlume =
+    { pkgs, ... }:
+    {
+      services.flume.package = pkgs.runCommand "own-flume" { } "mkdir -p $out/bin";
+    };
+  hostsFlume =
+    platform:
+    { system, set, ... }:
+    pluginsAre platform "with the host's own Flume" set (system ownFlume) [
+      "sluice-herdr-plugin"
+      "timber-herdr-plugin"
+    ];
+
+  flumeOff =
+    platform:
+    { system, set, ... }:
+    pluginsAre platform "with Flume's module off" set (system { services.flume.enable = false; }) [
+      "sluice-herdr-plugin"
+      "timber-herdr-plugin"
+    ];
+
+  pluginsWithout =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    pluginsAre platform "with sluice and plannotator-tui turned on without the runner" set
+      (withoutOf {
+        imports = [ (users [ "sluice" ]) ];
+        services = {
+          sluice.enable = true;
+          boomdrive.plannotator-tui.enable = true;
+        };
+      })
+      [
+        "sluice-herdr-plugin"
+        "plannotator-herdr-plugin"
+      ];
+
+  hostsList =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system {
+        imports = [ ownTimber ];
+        services.boomdrive.herdr.plugins = [ set.timber-herdr-plugin ];
+      };
+      steps = map lib.trim (pluginSteps platform evaluated);
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.timber-herdr-plugin} || true";
+      expected =
+        if platform == "nix-darwin" then
+          "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}"
+        else
+          "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with its own list fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      steps == [ expected ]
+    ) "the ${platform} activation with its own list links ${builtins.toJSON steps}, not ${expected}";
+
   noSetsHerdr =
     platform:
     { system, ... }:
@@ -1262,6 +1353,11 @@ onEach "The way in with the runner" withRunner
 // onEach "The word of before" wordOfBefore
 // onEach "Flume's terminal without the runner" flumesTerminalWithout
 // onEach "No herdr of the set's" noSetsHerdr
+// onEach "The runner's plugins" runnersPlugins
+// onEach "A host's own Flume" hostsFlume
+// onEach "Flume's module off" flumeOff
+// onEach "The plugins of the tools turned on without the runner" pluginsWithout
+// onEach "A host's own list" hostsList
 // onEach "portless with the runner" portlessWithRunner
 // onEach "A host's own portless" hostsPortless
 // onEach "No portless of the set's" noPortless
