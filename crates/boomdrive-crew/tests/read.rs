@@ -15,6 +15,7 @@ use common::{
 use std::net::TcpListener;
 use std::path::Path;
 use std::time::{Duration, Instant};
+use weir_branch::{Branch, Halt};
 
 const CREW: &str = "example/crew";
 
@@ -346,6 +347,88 @@ fn a_confirm_naming_no_recipient_two_or_no_delivery_is_refused() {
         ("home/18", "it names no Recipient"),
         ("home/19", "it names no Delivery"),
         ("home/20", "it names Recipient twice"),
+    ] {
+        let Want::Act(refused) = want(&pulled, id) else {
+            panic!("{id} is not one the runner refuses")
+        };
+        let number = id.trim_start_matches("home/");
+        assert_eq!(refused.launch.as_str(), format!("request {number} ({why})"));
+    }
+}
+
+/// Neutral words saying who makes a hold's move and how.
+const WORDS: &str = "the user sends it on the landings card, row 3";
+
+/// The crew-control-plane spec's "A hold".
+#[test]
+fn a_hold_is_an_act_on_the_launch_it_names() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    act(
+                        17,
+                        "hold",
+                        Some("host-a"),
+                        "unit/a",
+                        12,
+                        &[("Words", WORDS), ("Bound", "28800")],
+                    ),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    assert_eq!(
+        *want(&pulled, "home/17"),
+        Want::Act(Act {
+            id: Id::new("home/17"),
+            launch: Id::new("home/12"),
+            lease: 1,
+            what: ActSort::Hold {
+                words: WORDS.to_string(),
+                bound_interval: 28800,
+            },
+        })
+    );
+}
+
+/// The crew-control-plane spec's "A hold naming no words, no bound, or a
+/// bound of no whole seconds".
+#[test]
+fn a_hold_naming_no_words_no_bound_or_a_bound_of_no_whole_seconds_is_refused() {
+    let state = State::new();
+    let hold = |n: u64, more: &[(&str, &str)]| act(n, "hold", Some("host-a"), "unit/a", 12, more);
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[
+                    launch(12, Some("host-a"), "unit/a", CREW, "a", &[]),
+                    hold(18, &[("Bound", "60")]),
+                    hold(19, &[("Words", WORDS)]),
+                    hold(20, &[("Words", WORDS), ("Bound", "8h")]),
+                ],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let (mut crew, _) = state.crew("host-a");
+    let pulled = pull(&mut crew, &kept());
+    for (id, why) in [
+        ("home/18", "it names no Words"),
+        ("home/19", "it names no Bound"),
+        (
+            "home/20",
+            "its Bound 8h, which is no whole number of seconds",
+        ),
     ] {
         let Want::Act(refused) = want(&pulled, id) else {
             panic!("{id} is not one the runner refuses")
@@ -722,6 +805,155 @@ fn a_state_repository_that_never_answers_a_write() {
 
     assert!(took < WEIRS_TRY, "the write took {took:?}");
     assert!(failed.ends_with(&fetch_stopped(&url)), "{failed}");
+}
+
+/// Runs `call`, setting `halt` from a thread of the test's `after` into
+/// it: what it gave, and how long it took.
+fn halted_after<T>(halt: &Halt, after: Duration, call: impl FnOnce() -> T) -> (T, Duration) {
+    let setter = halt.clone();
+    let setting = std::thread::spawn(move || {
+        std::thread::sleep(after);
+        setter.halt();
+    });
+    let started = Instant::now();
+    let given = call();
+    let took = started.elapsed();
+    setting.join().expect("the halt set");
+    (given, took)
+}
+
+/// How long a halted try may take: weir-bounded's grace, and a margin for
+/// the machine.
+const HALTED_WITHIN: Duration = Duration::from_secs(5);
+
+/// The crew-control-plane spec's "A store's branches carry its halt": a
+/// store's halt is never set when made, and every branch it gives carries
+/// it (record 0042 as amended on 2026-11-12).
+#[test]
+fn a_stores_branches_carry_its_halt() {
+    let store = Store::new("cache.git".into(), "https://example.invalid/s.git".into());
+    assert!(!store.halt.halted());
+    assert_eq!(
+        store.branch("home/main"),
+        Branch::remote("home/main", &store.cache, &store.url).with_halt(store.halt.clone())
+    );
+}
+
+/// The crew-control-plane spec's "A listing in flight when the runner
+/// stops" and "A listing's words at the runner's stop": a listing of a
+/// state repository that never answers, its store's halt set 300 ms in,
+/// fails well before its limit with the halted words, naming no limit
+/// (record 0042 as amended on 2026-11-12; core.58).
+#[test]
+fn a_listing_halted_in_flight() {
+    let state = State::new();
+    let cache = state.root.join("cache.git");
+    std::fs::create_dir_all(&cache).unwrap();
+    git(&cache, &["init", "--quiet", "--bare"], None);
+    let url = format!("{}/state.git", silent());
+    let mut store = Store::new(cache, url.clone());
+    store.try_for = Duration::from_secs(30);
+
+    let (listed, took) = halted_after(&store.halt, Duration::from_millis(300), || {
+        store.hosts("home")
+    });
+
+    let failed = listed.expect_err("a listing halted");
+    assert!(took < HALTED_WITHIN, "the listing took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git ls-remote with {url} was stopped as its caller asked"
+        )),
+        "{failed}"
+    );
+    assert!(!failed.contains("30s"), "{failed}");
+}
+
+/// The crew-control-plane spec's "A read in flight when the runner stops"
+/// and "A read's words at the runner's stop": weir-branch's fetch of
+/// `home/main`, its store's halt set 300 ms in, fails well before its
+/// limit with the halted words, naming no limit (weir record 0008 as
+/// amended 2026-11-12).
+#[test]
+fn a_read_halted_in_flight() {
+    let state = State::new();
+    let (store, url) = silent_store(&state);
+
+    let (read, took) = halted_after(&store.halt, Duration::from_millis(300), || {
+        store.main("home")
+    });
+
+    let Err(failed) = read else {
+        panic!("home/main read from a state repository that never answers");
+    };
+    assert!(took < HALTED_WITHIN, "the read took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git fetch with {url} was stopped as its caller asked"
+        )),
+        "{failed}"
+    );
+    assert!(!failed.contains("30s"), "{failed}");
+}
+
+/// The crew-control-plane spec's "A write in flight when the runner
+/// stops" and "A write's words at the runner's stop": a write whose read
+/// of the runner's branch is halted 300 ms in fails well before its limit
+/// with the halted words, having formed nothing (weir record 0008 as
+/// amended 2026-11-12).
+#[test]
+fn a_write_halted_in_flight() {
+    let state = State::new();
+    let (store, url) = silent_store(&state);
+
+    let (written, took) = halted_after(&store.halt, Duration::from_millis(300), || {
+        boomdrive_crew::write::write(&store, "home", "host-a", None, |_| {
+            panic!("formed from a tip a silent state repository gave")
+        })
+    });
+
+    let failed = written.expect_err("a write halted");
+    assert!(took < HALTED_WITHIN, "the write took {took:?}");
+    assert!(
+        failed.ends_with(&format!(
+            "git fetch with {url} was stopped as its caller asked"
+        )),
+        "{failed}"
+    );
+}
+
+/// The crew-control-plane spec's "A pull after the runner's stop" and "A
+/// pull's words after the runner's stop": a part given the runner's halt
+/// already set, over a state repository whose `home/main` holds a launch
+/// for this host, is unread with the halted words, and writes no branch
+/// of the runner's (record 0042 as amended on 2026-11-12; core.58).
+#[test]
+fn a_pull_after_the_runners_stop_is_unread() {
+    let state = State::new();
+    state.main(&[
+        (
+            "requests.rec",
+            &file(
+                REQUESTS,
+                &[launch(1, Some("host-a"), "unit/a", CREW, "a", &[])],
+            ),
+        ),
+        ("plan.rec", &plan(&["a"], &[])),
+    ]);
+    let halt = Halt::default();
+    halt.halt();
+    let (mut parts, _) = state.parts_halted_by("host-a", &[("home", "example/home-state")], &halt);
+
+    let unread = parts[0]
+        .plane
+        .pull(&kept(), &Report::default())
+        .expect_err("a pull after the runner's stop");
+
+    assert!(
+        unread.0.contains("was stopped as its caller asked"),
+        "{unread}"
+    );
+    assert_eq!(state.tip("home/runner/host-a"), None);
 }
 
 #[test]

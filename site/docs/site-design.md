@@ -235,8 +235,10 @@ on a NixOS machine (record 0043; site.8).
   a Nix file, each shown in a block as it stands, with the path it is
   written to where the reader writes it. The step names the one test of the
   gate that runs those files as they stand, in the runner's crate or the
-  flake's checks, and `site:test` fails a step whose test its project does
-  not hold, or a file no step shows.
+  flake's checks, which its writers keep to a test its project holds.
+  `site:test` reads the built page and the files, never a step's record,
+  and fails a block that is no file as it stands, or a file the page does
+  not show (record 0049).
 - **The reader's own names are placeholders.** `your-github-name`,
   `your-repository`, `your-host` and the drive `home` read as the reader's
   to replace; no drive or machine of ours appears (site.7).

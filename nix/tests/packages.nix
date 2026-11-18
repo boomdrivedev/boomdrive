@@ -20,11 +20,6 @@ let
   eachOf = given: check: lib.concatMap (system: check system given.packages.${system}) systems;
   each = eachOf outputs;
 
-  # A tree whose Cargo.toml says 9.9.9, as an input not a flake.
-  tree = {
-    outPath = toString ./tree-9.9.9;
-  };
-
   # The runner's source: this tree's top-level entries, and every file
   # under crates/, each as the source's filter takes it or leaves it.
   # The entries leave out those .gitignore names at the top of the tree:
@@ -254,26 +249,21 @@ in
     ) "packages.${system}.flume says ${flume.version}, not its tag's ${version}"
   );
 
+  # sluice's flake builds sluice's tagged tree, which carries its version
+  # (sluice's record 0111): the set's sluice is that package, unchanged.
   "sluice through its own flake" = each (
     system: packages:
     let
       inherit (packages) sluice;
       own = inputs.sluice.packages.${system}.default;
       version = t.lockedVersion "sluice";
-      given = sluice.drvAttrs.SLUICE_VERSION or "nothing";
     in
     t.expect (
-      toString sluice.src == toString own.src
-      && sluice.pname == own.pname
-      && sluice.cargoBuildFlags == own.cargoBuildFlags
-      && sluice.meta.homepage == own.meta.homepage
-    ) "packages.${system}.sluice is not sluice's flake's package"
+      sluice.drvPath == own.drvPath
+    ) "packages.${system}.sluice is not sluice's flake's packages.${system}.default"
     ++ t.expect (
       sluice.version == version
     ) "packages.${system}.sluice says ${sluice.version}, not its tag's ${version}"
-    ++ t.expect (
-      given == version
-    ) "packages.${system}.sluice's build is given SLUICE_VERSION ${given}, not its tag's ${version}"
   );
 
   # crew's tree carries its version, plugin/release.json, so the set's
@@ -293,25 +283,6 @@ in
       crew.version == version
     ) "packages.${system}.crew says ${crew.version}, not its tag's ${version}"
   );
-
-  # Where sluice's tree carries a version of its own, the package is
-  # sluice's flake's, unchanged (design Decision 3).
-  "sluice's version from its tree" = lib.concatMap (
-    system:
-    let
-      own = inputs.sluice.packages.${system}.default;
-      given = import ../packages/sluice.nix {
-        inherit lib;
-        package = own;
-        src = tree;
-        tag = "v0.68.0";
-      };
-    in
-    t.expect (
-      given.version == own.version
-      && (given.drvAttrs.SLUICE_VERSION or null) == (own.drvAttrs.SLUICE_VERSION or null)
-    ) "sluice of a tree that says 9.9.9 is given ${given.version}, not left as its flake's"
-  ) systems;
 
   "herdr through its own flake" = each (
     system: packages:

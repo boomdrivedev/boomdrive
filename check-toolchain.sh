@@ -4,12 +4,13 @@
 # pins, which rust-toolchain.toml names too, and git, recutils, OpenSpec,
 # the nix project's nix, nixfmt, statix, deadnix and actionlint, the
 # release's git-cliff and convco, the site's bun, Node.js, Vale and
-# Biome (record 0038), and the launcher's clang-format (design Decision 6
-# of the change each-drive-opens-from-the-launcher) the releases
-# devenv.nix pins, and OpenSpec's Claude Code skills its OpenSpec's
-# (record 0022). A tool found outside its pin, a runner's rustup default
-# say, fails here rather than holding the tree to another version's
-# rules.
+# Biome (record 0038), the launcher's clang-format (design Decision 6
+# of the change each-drive-opens-from-the-launcher) and macOS's /bin/sh,
+# bash 3.2.57 (record 0020 as amended on 2026-11-15), the releases
+# devenv.nix pins. It reads no Markdown file, OpenSpec's Claude Code
+# skills among them, whose release is their writers' to keep (record
+# 0049). A tool found outside its pin, a runner's rustup default say,
+# fails here rather than holding the tree to another version's rules.
 set -eu
 
 fail() {
@@ -59,20 +60,6 @@ release() {
 release git "$(pinned gitVersion)" git --version
 release recutils "$(pinned recutilsVersion)" recfix --version
 release openspec "$(pinned openspecVersion)" openspec --version
-
-# OpenSpec's Claude Code skills, which the tree tracks, are the ones the
-# pinned openspec writes, and are written again when the pin moves
-# (record 0022): each names the release that wrote it.
-openspec=$(pinned openspecVersion)
-skills=0
-for skill in .claude/skills/openspec-*/SKILL.md; do
-  [ -f "$skill" ] || break
-  skills=$((skills + 1))
-  grep -qx "  generatedBy: \"$openspec\"" "$skill" ||
-    fail "$skill is not openspec $openspec's: write the skills again with it"
-done
-[ "$skills" -gt 0 ] || fail "no OpenSpec skill under .claude/skills"
-echo "OpenSpec's $skills Claude Code skills are $openspec's"
 release nix "$(pinned nixVersion)" nix --version
 release nixfmt "$(pinned nixfmtVersion)" nixfmt --version
 release deadnix "$(pinned deadnixVersion)" deadnix --version
@@ -84,6 +71,11 @@ release node "$(pinned nodeVersion)" node --version
 release vale "$(pinned valeVersion)" vale --version
 release biome "$(pinned biomeVersion)" biome --version
 release clang-format "$(pinned clangFormatVersion)" clang-format --version
+
+# macOS's /bin/sh, which nix:mac-sh reads the Mac's scripts with, is on no
+# PATH: the shell gives it by its path.
+[ -n "${BOOMDRIVE_MAC_SH:-}" ] || fail "BOOMDRIVE_MAC_SH is not set: the devenv shell sets it"
+release "macOS's /bin/sh" "$(pinned macShVersion)" "$BOOMDRIVE_MAC_SH" --version
 
 # statix answers no --version: its version is the name of the store path
 # its program is in.

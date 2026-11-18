@@ -2309,7 +2309,7 @@ dependencies = [
 [[package]]
 name = "weir-bounded"
 version = "0.0.0"
-source = "git+https://github.com/boomdrivedev/weir?rev=9cba69196e9269a36b02024861340355bdbe6d4b#9cba69196e9269a36b02024861340355bdbe6d4b"
+source = "git+https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286d7572a4c70b5e61600f2d50609793820"
 dependencies = [
  "libc",
  "tempfile",
@@ -2318,7 +2318,7 @@ dependencies = [
 [[package]]
 name = "weir-branch"
 version = "0.0.0"
-source = "git+https://github.com/boomdrivedev/weir?rev=9cba69196e9269a36b02024861340355bdbe6d4b#9cba69196e9269a36b02024861340355bdbe6d4b"
+source = "git+https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286d7572a4c70b5e61600f2d50609793820"
 dependencies = [
  "tempfile",
  "time",
@@ -2328,7 +2328,7 @@ dependencies = [
 [[package]]
 name = "weir-capture"
 version = "0.0.0"
-source = "git+https://github.com/boomdrivedev/weir?rev=9cba69196e9269a36b02024861340355bdbe6d4b#9cba69196e9269a36b02024861340355bdbe6d4b"
+source = "git+https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286d7572a4c70b5e61600f2d50609793820"
 dependencies = [
  "jsonschema",
  "serde",
@@ -2341,7 +2341,7 @@ dependencies = [
 [[package]]
 name = "weir-signals"
 version = "0.0.0"
-source = "git+https://github.com/boomdrivedev/weir?rev=9cba69196e9269a36b02024861340355bdbe6d4b#9cba69196e9269a36b02024861340355bdbe6d4b"
+source = "git+https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286d7572a4c70b5e61600f2d50609793820"
 dependencies = [
  "time",
  "weir-capture",

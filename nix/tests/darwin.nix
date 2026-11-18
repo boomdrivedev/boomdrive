@@ -14,13 +14,35 @@ let
 
   # The agent's program, which launchd runs as the job's process.
   programOf = evaluated: (agentOf evaluated).ProgramArguments;
-  # What the shell runs first: it waits for the store's volume, then hands
-  # the job's process to the command, so a stop's signal reaches it.
-  wait = "/bin/wait4path /nix/store && exec ";
+  lineOf = evaluated: lib.last (programOf evaluated);
+  # What the shell runs first: it waits for the store's volume, then
+  # chooses the signed copy or the package's own runner, each branch
+  # handing the job's process to the runner by exec, so a stop's signal
+  # reaches it (the change the-runners-macos-grant-outlasts-a-new-build,
+  # design Decision 5).
+  wait = "/bin/wait4path /nix/store && ";
+  # The words of the line's `then` and `else` branches, after their exec,
+  # or "" where the line has no such branch.
+  thenOf =
+    line:
+    let
+      parts = lib.splitString "; then exec " line;
+    in
+    if lib.length parts != 2 then "" else lib.head (lib.splitString "; else exec " (lib.last parts));
+  elseOf =
+    line:
+    let
+      parts = lib.splitString "; else exec " line;
+    in
+    if lib.length parts != 2 || !lib.hasSuffix "; fi" (lib.last parts) then
+      ""
+    else
+      lib.removeSuffix "; fi" (lib.last parts);
   waits =
     evaluated:
     let
       program = programOf evaluated;
+      line = lib.elemAt program 2;
     in
     lib.length program == 3
     &&
@@ -28,10 +50,12 @@ let
         "/bin/sh"
         "-c"
       ]
-    && lib.hasPrefix wait (lib.elemAt program 2);
-  # The command's words: store paths and plain words, which the shell
-  # reads unquoted.
-  commandOf = evaluated: lib.splitString " " (lib.removePrefix wait (lib.last (programOf evaluated)));
+    && lib.hasPrefix wait line
+    && thenOf line != ""
+    && elseOf line != "";
+  # The command's words, read through the package's own branch: store paths
+  # and plain words, which the shell reads unquoted.
+  commandOf = evaluated: lib.splitString " " (elseOf (lineOf evaluated));
   # The word after `--config`, or "" where there is none.
   fileOf =
     evaluated:
@@ -113,9 +137,11 @@ let
         settings = teams;
       };
     };
-  fleet = crewWith settings.crewUnwritten settings.crewFleet;
+  # "A host under crew" with no table written, beside crew's own keys for
+  # its account's drive, whose machine and state the accounts give.
+  accountsHere = crewWith settings.crewUnwritten settings.crewKeys;
   # "A host under crew" whose crew table, written out, is the runner's
-  # partition `garden` alone, beside crew's fleet of drives.
+  # partition `garden` alone, beside crew's own keys for its drive.
   garden = {
     host = "host-a";
     partitions = [
@@ -132,7 +158,7 @@ let
       };
     };
   };
-  writtenOut = crewWith gardenSettings settings.crewFleet;
+  writtenOut = crewWith gardenSettings settings.crewKeys;
   writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
   render = import ../modules/toml.nix { inherit lib; };
   # The table the runner's file is rendered from, `accounts` joined to
@@ -145,6 +171,20 @@ let
 
   # Compared as text: a regular expression may not hold a store path.
   activation = builtins.unsafeDiscardStringContext base.config.system.activationScripts.postActivation.text;
+  extraActivationOf =
+    evaluated:
+    builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.extraActivation.text;
+  postActivationOf =
+    evaluated:
+    builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.postActivation.text;
+  # As root, with the operating system's folders alone on PATH, the System
+  # keychain, the signed copy's folder and the package's runner (the change
+  # the-runners-macos-grant-outlasts-a-new-build, design Decision 6).
+  signing = builtins.unsafeDiscardStringContext "/usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh ${../modules/activate.sh} sign /Library/Keychains/System.keychain '/Library/Application Support/Boomdrive' ${set.boomdrive}/bin/boomdrive || true";
+  signs = text: lib.hasInfix "activate.sh sign" text;
+  # A system that imports the module with the runner off.
+  runnerOff = t.darwinOf [ t.outputs.darwinModules.default ];
+
   # As the primary user, under their home, with the module's file.
   link = builtins.unsafeDiscardStringContext ''
     sudo --user=alice -- /usr/bin/env HOME=/Users/alice \
@@ -191,12 +231,30 @@ in
     lib.concatMap
       (
         evaluated:
-        t.expect (waits evaluated) "the agent's program does not wait for /nix/store, then exec its command: ${builtins.toJSON (programOf evaluated)}"
+        t.expect (waits evaluated) "the agent's program does not wait for /nix/store, then exec its command in each branch: ${builtins.toJSON (programOf evaluated)}"
       )
       [
         base
         crew
       ];
+
+  "The agent runs the copy of its own package" =
+    let
+      # Compared as text: a regular expression may not hold a store path.
+      line = builtins.unsafeDiscardStringContext (lineOf base);
+      compares = builtins.unsafeDiscardStringContext "if [ \"$(/bin/cat '/Library/Application Support/Boomdrive/boomdrive.source' 2>/dev/null)\" = ${set.boomdrive}/bin/boomdrive ]; ";
+    in
+    t.expect (lib.hasInfix compares line) "the agent's line does not compare boomdrive.source with the package's bin/boomdrive: ${line}"
+    ++
+      t.expect
+        (thenOf line == "'/Library/Application Support/Boomdrive/boomdrive' run --config ${fileOf base}")
+        "the agent's line runs ${thenOf line}, not the signed copy's run --config with the file, where boomdrive.source names its package"
+    ++
+      t.expect (elseOf line == "${set.boomdrive}/bin/boomdrive run --config ${fileOf base}")
+        "the agent's line runs ${elseOf line}, not the package's bin/boomdrive run --config with the file, where boomdrive.source does not name its package"
+    ++
+      t.expect (base.config.launchd.user.agents.boomdrive.command == "")
+        "the agent declares a command, ${base.config.launchd.user.agents.boomdrive.command}, beside its ProgramArguments";
 
   "No home for the primary user" =
     t.expect (t.failures noHome != [ ]) "the module evaluates for a primary user with no home"
@@ -283,10 +341,29 @@ in
     ) "no control plane beside crew fails: ${toString (t.failures noneBesideCrew)}"
     ++ t.expect (writes noneBesideCrew (builtins.readFile ./files/empty.toml)) "the agent's --config beside crew is not the file of nix/tests/files/empty.toml";
 
-  "crew's drives on this host on nix-darwin" =
-    t.expect (t.failures fleet == [ ]) "crew's drives on this host fail: ${toString (t.failures fleet)}"
-    ++ t.expect (writes fleet (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
+  "The accounts' drives on this host on nix-darwin" =
+    t.expect (
+      t.failures accountsHere == [ ]
+    ) "the accounts' drives on this host fail: ${toString (t.failures accountsHere)}"
+    ++ t.expect (writes accountsHere (builtins.readFile ./files/crew.toml)) "the agent's --config is not the file of nix/tests/files/crew.toml";
 
   "The activation links the file on nix-darwin" =
     t.expect (lib.hasInfix link activation) "the activation runs no `${link}`: ${activation}";
+
+  "The step runs before the agents load" =
+    t.expect (lib.hasInfix signing (extraActivationOf base)) "extraActivation runs no `${signing}`: ${extraActivationOf base}"
+    ++ t.expect (
+      !signs (postActivationOf base)
+    ) "postActivation runs activate.sh sign: ${postActivationOf base}";
+
+  "No signing without the runner" =
+    t.expect (
+      t.failures runnerOff == [ ]
+    ) "a system with the runner off fails: ${toString (t.failures runnerOff)}"
+    ++ t.expect (
+      !signs (extraActivationOf runnerOff)
+    ) "extraActivation runs activate.sh sign with the runner off: ${extraActivationOf runnerOff}"
+    ++ t.expect (
+      !signs (postActivationOf runnerOff)
+    ) "postActivation runs activate.sh sign with the runner off: ${postActivationOf runnerOff}";
 }

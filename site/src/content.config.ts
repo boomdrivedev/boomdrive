@@ -238,8 +238,9 @@ const pages = defineCollection({
 // each, its words the body, its place on each platform it is on, the files
 // under src/start/ it shows, with the path the reader writes each to where
 // they write one, and the one test of the gate that runs them. The page
-// reads each file at build and fails where one is missing; site:test holds
-// each test to its project's tree, which the build does not read.
+// reads each file at build and fails where one is missing; that the test is
+// one its project holds is the step's writers' to keep, and no task reads
+// the record for it (record 0049).
 const start = defineCollection({
   loader: glob({ pattern: "*.md", base: "./src/content/start" }),
   schema: z.object({

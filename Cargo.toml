@@ -36,14 +36,16 @@ serde_json = { version = "1", features = ["raw_value"] }
 # and written by its recutils reader and writer. weir-branch reads crew's
 # state repository at one tip and writes the runner's branch by weir's
 # write (design Decision 17), each try of its fetch, listing and push run
-# to weir-bounded's limit. weir-bounded runs each of the runner's own git
-# calls to a remote to the family's limit, in a process group of its own
-# (weir record 0008; record 0042 as amended on 2026-11-11; core.58). The
-# revision is 9cba691 or later, the first that holds weir-bounded.
-weir-signals = { git = "https://github.com/boomdrivedev/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
-weir-capture = { git = "https://github.com/boomdrivedev/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
-weir-branch = { git = "https://github.com/boomdrivedev/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
-weir-bounded = { git = "https://github.com/boomdrivedev/weir", rev = "9cba69196e9269a36b02024861340355bdbe6d4b" }
+# to weir-bounded's limit and its caller's halt. weir-bounded runs each of
+# the runner's own git calls to a remote to the family's limit, or to the
+# runner's halt, which its stop sets, in a process group of its own (weir
+# record 0008 as amended 2026-11-12; record 0042 as amended on 2026-11-11
+# and 2026-11-12; core.58). The revision is 5e3f128 or later, the first on
+# weir's main whose weir-bounded holds the halt.
+weir-signals = { git = "https://github.com/boomdrivedev/weir", rev = "5e3f1286d7572a4c70b5e61600f2d50609793820" }
+weir-capture = { git = "https://github.com/boomdrivedev/weir", rev = "5e3f1286d7572a4c70b5e61600f2d50609793820" }
+weir-branch = { git = "https://github.com/boomdrivedev/weir", rev = "5e3f1286d7572a4c70b5e61600f2d50609793820" }
+weir-bounded = { git = "https://github.com/boomdrivedev/weir", rev = "5e3f1286d7572a4c70b5e61600f2d50609793820" }
 # The digest an inbox item's brief is carried by (design Decision 14).
 sha2 = "0.10"
 # SIGTERM and SIGINT, which stop the runner between repositories

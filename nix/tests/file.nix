@@ -7,7 +7,8 @@
 # `repositories` of before, the accounts in `settings`, a key in a drive
 # the module does not declare, an owner and a name that make no address, a
 # drive's name under two accounts, or an address kept twice, fails it too
-# (record 0028). The App is named by `settings.forge`, its key file never
+# (record 0028), and so does an account's crew state repository that is no
+# address (record 0032). The App is named by `settings.forge`, its key file never
 # in the store and never a Nix path value (record 0007 as amended on
 # 2026-11-11).
 t:
@@ -120,6 +121,9 @@ let
   };
   pathKey = lib.recursiveUpdate settings.crew { settings.forge.key_file = ./app.pem; };
 
+  # An account's crew state repository that is no address.
+  noAddress.accounts.own.state_repository = "example";
+
   ownersLines = lib.splitString "\n" (rendered owners);
   ownersAt = lib.lists.findFirstIndex (line: line == "[accounts.own.drives.home]") null ownersLines;
   ownersDrive = if ownersAt == null then [ ] else lib.drop (ownersAt + 1) ownersLines;
@@ -189,6 +193,11 @@ in
       "agentplot/flume"
       "drives home and home"
     ]) "no failure names agentplot/flume kept twice by the drive home: ${toString (failures inOne)}";
+
+  "A state repository of no address" = t.expect (
+    !(builtins.tryEval (builtins.deepSeq (evaluated noAddress).services.boomdrive.accounts true))
+    .success
+  ) "accounts.own.state_repository = \"example\" evaluates";
 
   "A host under crew" = rendersAs "crew";
 

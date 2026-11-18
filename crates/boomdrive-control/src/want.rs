@@ -164,6 +164,20 @@ pub enum ActSort {
         recipient: String,
         deliveries: Vec<String>,
     },
+    /// A hold of the move its launch's place waits on its caller for,
+    /// written as `{"hold": {"words": …, "bound_interval": …}}`. It asks
+    /// that the move be held under `words`, the control plane's own,
+    /// saying who makes the move and how, for `bound_interval` whole
+    /// seconds from when Flume takes it, after which Flume lets the hold
+    /// lapse. The runner carries it out as Flume's hold of that waiting
+    /// move, with exactly those words and that bound (core.59; Flume's
+    /// 130). No version of the hosted protocol names a hold: version 1
+    /// and version 2 were each spoken by a release before it, and never
+    /// change (core.42).
+    Hold {
+        words: String,
+        bound_interval: u64,
+    },
     Drop,
     Priority(i64),
     Done,
@@ -250,8 +264,8 @@ pub trait Link: Send {
     /// The far end's next input, waiting up to `wait`, or none where
     /// nothing came.
     fn input(&mut self, wait: Duration) -> Option<Input>;
-    /// Sends the pane's screen, and says whether the far end still
-    /// listens.
+    /// Sends what Flume's relay shows of the agent, and says whether the
+    /// far end still listens.
     fn screen(&mut self, text: &str) -> bool;
     /// Closes the link, with words saying why.
     fn close(self: Box<Self>, words: &str);
@@ -260,7 +274,10 @@ pub trait Link: Send {
 /// What the far end of a terminal sends.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
+    /// Text, typed as it is.
     Text(String),
+    /// Keys by Flume's key names, as the far end gave them.
     Keys(Vec<String>),
+    /// The far end closed the terminal.
     Close,
 }

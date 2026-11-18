@@ -8,11 +8,9 @@ let
   inherit (t) lib;
   start = ../../site/src/start;
 
-  # The address README's Installing with nix names, its first `github:`
-  # in backticks, read as cache.nix reads README.
-  address = lib.findFirst (lib.hasPrefix "github:") null (
-    lib.splitString "`" (toString t.installing)
-  );
+  # The flake's address, which README's Installing with nix names and the
+  # Mac's install adds (record 0049).
+  address = "github:boomdrivedev/boomdrive";
 
   # A shell file's words, split at every run of white space.
   wordsOf = text: lib.filter (word: word != "") (lib.flatten (builtins.split "[[:space:]]+" text));
@@ -51,8 +49,7 @@ let
           lib.hasPrefix "${address}" installable
           && t.outputs.packages.aarch64-darwin ? ${packageOf installable};
     in
-    t.expect (address != null) "README's Installing with nix names no `github:` address"
-    ++ t.expect (
+    t.expect (
       lib.take 3 words == [
         "nix"
         "profile"
@@ -107,7 +104,10 @@ let
         }, not ${lib.concatMapStringsSep ", " describe want}";
   # NixOS's drive: a system of x86_64-linux whose normal user is you, of
   # the set's module and the drive step's file alone, as the host's flake
-  # gives them (design Decision 8).
+  # gives them (design Decision 8): the account me, with its state
+  # repository, whose drive home is kept under crew, crew's drive home
+  # given its machine and state by the set (the change
+  # a-drives-machine-and-state-are-named-once, design Decision 8).
   render = import ../modules/toml.nix { inherit lib; };
   inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   drive = t.nixosOf [
@@ -174,6 +174,26 @@ let
         };
       }
     ) "crew's drives are ${builtins.toJSON crewDrive}"
+    ++
+      t.expect
+        (
+          (written.services.boomdrive.accounts.me.state_repository or null) == "your-github-name/drive-state"
+        )
+        "nixos/boomdrive.nix's account me names the state repository ${
+          toString (written.services.boomdrive.accounts.me.state_repository or "none")
+        }, not your-github-name/drive-state"
+    ++
+      lib.concatMap
+        (
+          key:
+          t.expect (
+            !(written.services.crew.settings.drives.home ? ${key})
+          ) "nixos/boomdrive.nix writes crew's drive home's ${key}, which the set gives"
+        )
+        [
+          "machine"
+          "state"
+        ]
     ++
       t.expect (!(written.services ? flume))
         "nixos/boomdrive.nix writes Flume's settings itself: ${builtins.toJSON (builtins.attrNames written.services.flume)}"

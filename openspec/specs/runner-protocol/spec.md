@@ -78,7 +78,7 @@ Every object a version names SHALL take only the fields it names, at every depth
 
 ### Requirement: The messages carry the interface's shapes
 
-Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names among them, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
+Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Answer`, `Acted`, `Commanded` and `InboxCarried` as `boomdrive-control`'s serde types write them, every want and act sort the interface names but a hold, and its `Hello` and `Report` but for their copies. Version 1 SHALL carry the same but a preview, a land, a confirm and `previews`. An acted's and a commanded's outcome SHALL be `done` or `refused` (boomdrive-cloud record 0056; record 0037 as amended on 2026-11-09).
 
 #### Scenario: The interface's values pass
 
@@ -88,7 +88,7 @@ Version 2 SHALL carry the interface's `Id`, `Lease`, `Want`, `ToolVersion`, `Ans
 #### Scenario: Every sort the interface names
 
 - **WHEN** a value of every sort of `Want`, `ActSort` and `CommandSort`, each named by a match with no wildcard, is written by `boomdrive-control`'s types and checked against version 2's `want`
-- **THEN** the sorts named are every sort the interface has, and each value passes
+- **THEN** the sorts named are every sort the interface has, a hold among them, and each value passes but the hold's, which is refused
 
 #### Scenario: An act's outcome
 
@@ -219,12 +219,12 @@ An `enroll` SHALL hold `key`, 32 bytes, `signature`, 64 bytes, each in base64url
 
 ### Requirement: The README names the two paths and the signatures' contexts
 
-The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, and the bytes each enrollment's and connection's signature covers, each context starting `boomdrive.v2`, with a worked example of each. It SHALL name what a `pulled` and a `report` hold, and how version 1 differs. The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
+The protocol's README SHALL describe version 2: `runner/enroll` and `runner/connect` under the control plane's address, the kinds each takes, the subprotocol `boomdrive.v2`, the `BoomdriveHost` header, what a `pulled` and a `report` hold, how version 1 differs, and the bytes each signature covers, each context starting `boomdrive.v2`, with a copy of the worked examples the hosted tests read (record 0049). The hosted implementation SHALL sign exactly those bytes (records 0018 and 0037).
 
 #### Scenario: The README's worked contexts
 
-- **WHEN** the hosted implementation makes the enrollment's and the connection's contexts from the README's fixed key, token, origin, time and nonce
-- **THEN** each equals the README's worked bytes, and each starts with the bytes of `boomdrive.v2`
+- **WHEN** the hosted implementation makes the enrollment's and the connection's contexts from the fixed key, token, origin, time and nonce of the worked examples, `crates/boomdrive-hosted/tests/worked-bytes.json`
+- **THEN** each equals the worked examples' bytes, and each starts with the bytes of `boomdrive.v2`
 
 #### Scenario: The README of version 2
 
@@ -378,3 +378,12 @@ Every file under `protocol/v2/`, its schemas and its examples, SHALL stay as rel
 
 - **WHEN** a file under `protocol/v2/` differs from `v0.9.0`'s, or a file is added there
 - **THEN** `boomdrive-hosted`'s test `version_2_is_as_released` fails, naming the file
+
+### Requirement: No version carries a hold
+
+Version 1 and version 2 name no hold, and a release has spoken each, so neither SHALL change to carry one. A want whose act is a hold SHALL fail each version's check, and a hold SHALL reach the runner from a hosted control plane only in a later version that names it (core.42, core.59).
+
+#### Scenario: A hold is no act of version 1 or 2
+
+- **WHEN** a want whose act is a hold, as `boomdrive-control`'s types write it, is checked against version 1's `want` and against version 2's
+- **THEN** each refuses it

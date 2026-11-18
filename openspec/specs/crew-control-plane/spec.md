@@ -78,7 +78,7 @@ Each partition SHALL be a part of its own. A part whose `<label>/main` cannot be
 
 ### Requirement: Each request for this host is a want under the lease number 1
 
-crew's implementation SHALL give each request for this host, in `Request` order, as a want with the id `<label>/<Request>` and the lease number 1, with no expiry. A request naming a `Host` SHALL be for the host it names, and for no other. A launch naming no `Host`, and an act on one, SHALL be for this host as the requirements below give them. A request whose work has left crew's plan, and a launch a drop names, SHALL be given only as the requirements below give them.
+crew's implementation SHALL give each request for this host, in `Request` order, as a want with the id `<label>/<Request>` and the lease number 1, with no expiry. A request naming a `Host` SHALL be for the host it names, and for no other. A launch naming no `Host`, and an act on one, SHALL be for this host as the requirements below give them. A request whose work has left crew's plan, a dropped launch and a moot priority SHALL be given only as the requirements below give them.
 
 #### Scenario: Only this host's requests
 
@@ -157,7 +157,7 @@ A launch crew's implementation withdrew SHALL be claimed again only while no oth
 
 ### Requirement: An act naming no host is given to the runner that holds its launch
 
-A retry, land, confirm, drop or priority naming no `Host` SHALL be for this host only where the runner's report, or its own branch, answers the launch its `Of` names. Otherwise crew's implementation SHALL give nothing for it and write nothing of it.
+A retry, land, confirm, hold, drop or priority naming no `Host` SHALL be for this host only where the runner's report, or its own branch, answers the launch its `Of` names. Otherwise crew's implementation SHALL give nothing for it and write nothing of it.
 
 #### Scenario: An act on another host's launch
 
@@ -173,6 +173,11 @@ A retry, land, confirm, drop or priority naming no `Host` SHALL be for this host
 
 - **WHEN** `host-a` claims launch 21, which names no `Host`, and request 26 confirms ends of `Of: 21` as `scratch/planner`, naming no `Host`, while `home/runner/host-b` answers launch 20 and request 27 confirms ends of `Of: 20`, naming no `Host`
 - **THEN** `host-a`'s pull gives `home/26`, confirming ends of `home/21`, and nothing for 27
+
+#### Scenario: A hold naming no host, of a launch this runner holds
+
+- **WHEN** `host-a` claims launch 21, which names no `Host`, and request 26 holds `Of: 21` under `Words: the user sends it` with `Bound: 28800`, naming no `Host`, while `home/runner/host-b` answers launch 20 and request 27 holds `Of: 20` the same way, naming no `Host`
+- **THEN** `host-a`'s pull gives `home/26`, holding `home/21` under `the user sends it` for 28800 seconds, and nothing for 27
 
 ### Requirement: A launch request is an offer of what it names
 
@@ -673,3 +678,110 @@ crew's implementation SHALL read `<label>/main` and each runner's branch, and wr
 
 - **WHEN** crew's implementation writes `home/runner/host-a` to a state repository that takes the connection and never answers
 - **THEN** the write ends within thirty seconds, its grace and a margin, having formed nothing, and fails with words ending `git fetch with <url> was still going after 30s, the most a try may take, and was stopped`, naming the state repository's URL
+
+### Requirement: A hold request is an act holding the move its launch's place waits on
+
+A `hold` SHALL be given as an act on the launch `<label>/<Of>` holding the move its place waits on under its `Words`, as crew wrote them, for its `Bound` in whole seconds, and crew's implementation SHALL read no other field of it (core.59; crew's record 0067 as amended on 2026-11-14).
+
+#### Scenario: A hold
+
+- **WHEN** request 17 says `Act: hold`, `Of: 12`, `Words: the user sends it on the landings card, row 3` and `Bound: 28800`, naming this host
+- **THEN** the pull gives an act `home/17` on `home/12` under lease 1, holding the move under those words for 28800 seconds
+
+### Requirement: A hold naming no words, no bound, or a bound of no whole seconds cannot be read
+
+A hold that names no `Words`, names no `Bound`, or names a `Bound` that is no whole number of seconds SHALL be one crew's implementation cannot read. Where it names this host, it SHALL be given as one the runner refuses, with words naming the field. Where it names no `Host`, it SHALL be given nothing and named in the log.
+
+#### Scenario: A hold naming no words, no bound, or a bound of no whole seconds
+
+- **WHEN** request 18 holds `Of: 12` with `Bound: 60` and no `Words`, request 19 holds it with `Words` and no `Bound`, and request 20 holds it with `Words` and `Bound: 8h`, each naming this host
+- **THEN** the pull gives each as one the runner refuses, 18's words naming `Words`, 19's naming `Bound`, and 20's naming `Bound` and `8h`
+
+### Requirement: crew's implementation takes the runner's halt
+
+crew's implementation SHALL take the runner's halt, `weir-bounded`'s, at its opening, and give it to each part, each part to each partition's store, and each store to its listing and to every branch it gives weir-branch, so its reads and its writes carry it (weir record 0008 as amended 2026-11-12; record 0042 as amended on 2026-11-12; core.58).
+
+#### Scenario: A store's branches carry its halt
+
+- **WHEN** a store is made, and its branch `home/main` is asked for
+- **THEN** the store's halt is never set, and the branch carries the store's halt
+
+#### Scenario: A pull after the runner's stop
+
+- **WHEN** a part is made by `parts` with the runner's halt already set, over a state repository whose `home/main` holds a launch for this host, and it is pulled
+- **THEN** the pull is unread, and `home/runner/host-a` is not written
+
+### Requirement: A call to a state repository in flight ends at the runner's stop
+
+The store's listing of `<label>/runner/*`, and each try of weir-branch's fetch, listing and push of a branch the store gives, SHALL end at the first of its limit and the runner's halt. A try in flight when the halt is set SHALL have its group asked to end, given two seconds, then killed; a try begun once it is set SHALL run no git (weir record 0008 as amended 2026-11-12; core.58).
+
+#### Scenario: A listing in flight when the runner stops
+
+- **WHEN** crew's implementation lists `home/runner/*` of a state repository that takes the connection and never answers, with a limit of thirty seconds, and its store's halt is set 300 ms in
+- **THEN** the listing fails within five seconds
+
+#### Scenario: A read in flight when the runner stops
+
+- **WHEN** crew's implementation reads `home/main` of a state repository that takes the connection and never answers, and its store's halt is set 300 ms in
+- **THEN** the read fails within five seconds
+
+#### Scenario: A write in flight when the runner stops
+
+- **WHEN** crew's implementation writes `home/runner/host-a` to a state repository that takes the connection and never answers, and its store's halt is set 300 ms in
+- **THEN** the write fails within five seconds, having formed nothing
+
+### Requirement: A listing ended at the stop leaves its partition unread
+
+A listing ended at the runner's stop, or begun after it, SHALL fail with `weir-bounded`'s words for a halted call, `git ls-remote with <url> was stopped as its caller asked`, naming the state repository's URL, after git's last line on standard error and `; ` where git wrote one. Its partition SHALL be unread with those words, as any part that could not be read (record 0042 as amended on 2026-11-12).
+
+#### Scenario: A listing's words at the runner's stop
+
+- **WHEN** a listing of `home/runner/*` is halted in flight
+- **THEN** it fails with words ending `git ls-remote with <url> was stopped as its caller asked`, naming the state repository's URL and no limit
+
+### Requirement: A read or write ended at the stop leaves its partition unread or its report unsent
+
+A read or a write of weir-branch's ended at the runner's stop, or begun after it, SHALL fail with weir-branch's words, ending `git fetch with <url> was stopped as its caller asked` where its fetch was halted. A halted read SHALL leave its partition unread with those words, and a halted write its report unsent, as any that fails, neither tried again within its pull or report (weir record 0008 as amended 2026-11-12).
+
+#### Scenario: A read's words at the runner's stop
+
+- **WHEN** a read of `home/main` is halted in flight
+- **THEN** it fails with words ending `git fetch with <url> was stopped as its caller asked`, naming the state repository's URL and no limit
+
+#### Scenario: A write's words at the runner's stop
+
+- **WHEN** a write of `home/runner/host-a` is halted while it reads the branch
+- **THEN** it fails with words ending `git fetch with <url> was stopped as its caller asked`
+
+#### Scenario: A pull's words after the runner's stop
+
+- **WHEN** a part made with the runner's halt already set is pulled
+- **THEN** its pull is unread with words holding `was stopped as its caller asked`
+
+### Requirement: A priority the runner does not hold is given only while it is its launch's newest
+
+A `priority` request that crew's implementation reads, its `Of` and its `Priority` each a whole number, and that neither the runner's report nor this host's branch answers, SHALL be given only while no later request that reads as a priority names the same `Of`, whatever `Host` either names. A later priority makes each earlier one moot, since each sets its launch's priority whole. A priority the runner holds SHALL be given as before (record 0002 as amended on 2026-11-16).
+
+#### Scenario: Moot priorities the runner does not hold
+
+- **WHEN** the runner's report holds launches 12 and 13 launched, naming this host, and requests 14, 15 and 17 set `Of: 12`'s priority to 3, 5 and 7 while request 16 sets `Of: 13`'s to 2, each naming this host, and the runner holds none of them
+- **THEN** the pull gives `home/12`, `home/13`, `home/16` setting 2 and `home/17` setting 7, and nothing for 14 or 15
+
+#### Scenario: A priority the runner holds
+
+- **WHEN** the runner's report holds launch 12 launched, requests 14, 15 and 16 each set `Of: 12`'s priority, naming this host, and the report answers 14 `done`
+- **THEN** the pull gives `home/12`, `home/14` and `home/16`, and nothing for 15
+
+#### Scenario: Moot priorities naming no host
+
+- **WHEN** the runner's report holds launch 20, which names no `Host`, launched, and requests 21 and 22 set `Of: 20`'s priority to 3 and 5, naming no `Host`
+- **THEN** the pull gives `home/20` and `home/22` setting 5, and nothing for 21
+
+### Requirement: A priority that cannot be read makes no earlier one moot
+
+A request whose `Act` is `priority` but whose `Of` or `Priority` is no whole number SHALL make no earlier priority moot, and SHALL itself be given or left out as a request crew's implementation cannot read (record 0002 as amended on 2026-11-16).
+
+#### Scenario: A later priority that cannot be read
+
+- **WHEN** the runner's report holds launch 12 launched, request 14 sets `Of: 12`'s priority to 3, and request 15 names `Of: 12` with `Priority: high`, each naming this host
+- **THEN** the pull gives `home/12`, `home/14` setting 3, and `home/15` as one the runner refuses, its words naming `high`

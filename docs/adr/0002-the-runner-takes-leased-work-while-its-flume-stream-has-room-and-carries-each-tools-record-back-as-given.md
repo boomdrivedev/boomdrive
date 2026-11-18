@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. And on 2026-11-14: a control plane's hold of a place's waiting move, boomdrive-design's direction with the choices of the stage that built it, none of it the user's alone. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud's records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022, its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39, and its `design/domain-model.html` with its ledger items 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -313,6 +313,58 @@ core.56 holds it. The control-plane-interface, crew-control-plane, runner-protoc
 - A hosted control plane's readers confirm nothing through the runner until a later protocol version names a confirm and an end's delivery key. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
 - Flume's statement names, in its row of callers, a retry of a base place's submission as what the runner asks of Flume at its control plane's ask. A confirm its control plane asks, as the reader it names, joins it. That is the statement's owner's to amend, and is told to the orchestrator.
 
+## Amendment, 2026-11-14: a control plane's hold of a place's waiting move
+
+Status: accepted on 2026-11-14. The direction is boomdrive-design's, in crew's record 0067 as it amended it that day: crew posts `hold`, naming a proven bolt's launch and the words, and the runner carries it as Flume's hold of the base place's waiting move, with the words and bound given. The construct stage of the change `the-runner-carries-a-hold-of-a-places-waiting-move` chose four things, each cheap to change: a hold always names its bound, in whole seconds; a hold with no words is refused; crew's implementation reads the bound from a field `Bound`; and no version of the hosted protocol carries a hold. Nothing in it is the user's alone: Flume's clause 130 and its rule core.24 give a caller the hold, crew's record 0056 says how crew asks for it, and core.42 decides the protocol.
+
+The brief: "The runner takes hold from its control plane, naming a launch, words and a bound, and carries it as Flume's hold of that place's waiting move."
+
+Deciders: boomdrive-design, for the direction; the construct stage of the change `the-runner-carries-a-hold-of-a-places-waiting-move`, for the choices marked as its own.
+
+Sources: crew's record 0067 and its amendment of 2026-11-14; crew's record 0056; boomdrivedev/blueprints `design/flume/requirements.md`, clause 130; Flume's rule core.24, and `flume hold --waiting [--for <time>]` from Flume's `v0.17.0`; signal `2026-11-14-boomdrive-ops-f85c2fe2/01`; `crates/boomdrive-control/src/want.rs`, `crates/boomdrive/src/carry.rs` and `crates/boomdrive/src/flume.rs` at 6808fbf3; rules core.1, core.2, core.10, core.12, core.42, core.50, core.51 and core.53; the control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs.
+
+### Context
+
+Flume reads a place as stalled once its next move has been its caller's for five minutes under no hold's words, and delivers the stall once to each recipient of the place and to the answerer behind its stream. A caller may hold the move the place waits on it for, with words saying who makes it and how, and a bound after which the hold lapses. A later hold replaces it, and a retry naming the stage or the submission ends it as the move made. Flume watches no event for a hold and ends none itself.
+
+A proven bolt that waits on the user's send, a batch or a hold the user put on the drive or the kit, waits on its caller with no words, so its base place reads as stalled after five minutes. Its stall reaches ops, the operator and the user as though something had failed. crew talks only to the runner, by messages named for what they do (crew's record 0056, point 1), and the interface carries a retry, a land, a confirm, a drop, a priority and a done, and no hold.
+
+### Considered options
+
+1. A hold is an act of the interface's own, naming its launch, its words and its bound. The runner that holds the launch carries it out as Flume's hold of that place's waiting move.
+2. The bound is optional, as Flume's is, and a hold with none holds until the move is made.
+3. The bound is a time the hold lapses at, which the runner turns into a span.
+4. A longer stall bound given at a base place's launch.
+
+### Decision outcome
+
+Option 1.
+
+- **A hold is an act.** It names its launch, under that launch's lease, its words as the control plane gave them, and its bound in whole seconds. The interface writes it as `{"hold": {"words": …, "bound_interval": …}}`, the bound's key ending as core.12 has a duration's end.
+- **The runner carries it out as Flume's hold of the waiting move.** It runs `flume hold <place> --waiting --for=<n>s -- <words>` on the launch's place, as it carries out any act: once, in the pass's second round, after Flume's status of a place the listing does not hold, and never under a lapsed lease (core.10, core.24, core.50, core.51). The words follow `--`, so they are never read as a flag. Flume's answer is the hold's (core.1, core.11). Its line names it `hold for <n>s` and holds none of its words.
+- **The runner judges nothing of the wait.** Flume refuses a hold of a place that waits on no move of its caller's, and that refusal is the hold's answer. A later hold replaces the earlier in Flume, and a land ends it as the move made (core.53). The runner renews, ends and puts again no hold of its own accord.
+- **A hold always names its bound.** It is the stage's choice. A hold with none would hide the place's stall for good where the control plane never makes the move, and the amendment of crew's record 0067 keeps a stall saying something.
+- **A hold with no words is refused**, running nothing. It is the stage's choice. Flume takes the empty words, and the place would read neither stalled nor waiting on anyone.
+- **A hold of a launch held unlaunched is refused**, naming where the launch stands, as a retry, a land, a confirm or a done is.
+- **crew's implementation reads `Act: hold`** with its `Of`, its `Words` as a retry's are read, and its `Bound` in whole seconds. It is the stage's choice of the field `Bound`, clause 130's word, which crew's unit writes.
+- **No version of the hosted protocol carries a hold.** It is the stage's choice, within core.42. Version 1 was spoken by `v0.1.0` to `v0.7.3` and version 2 by `v0.9.0`, so neither changes. A later version, the runner's and the cloud's together, may name a hold.
+
+Not taken:
+
+- **Option 2.** A hold the control plane forgets would hide the place's stall for good.
+- **Option 3.** Flume takes a span. The runner would compute it from two hosts' clocks and judge a time already passed, and an act waits at most a pass or two before it runs.
+- **Option 4.** It hides a base place's real stalls before it is proven, and still stalls a bolt the user leaves overnight, as crew's record 0067's amendment found.
+- **One act holding a stage, the submission or the waiting move, naming which.** Nothing asks for a stage's or the submission's hold after the launch, and Flume bounds the waiting move's alone.
+- **Adding `hold` to version 2.** A release has spoken it, and core.42 rules out changing it.
+
+core.59 holds it. The control-plane-interface, crew-control-plane, runner-protocol and work-into-flume specs gain it through the change `the-runner-carries-a-hold-of-a-places-waiting-move`.
+
+### Consequences
+
+- crew's unit `a-bolt-waiting-on-the-user-waits-under-words` posts `Act: hold` with `Of`, `Words` and `Bound`, naming no `Host`, which goes to the runner that holds its launch. Its holds written before a host runs the release that carries this are carried once it does.
+- A hosted control plane's work stalls as it does today until a later protocol version names a hold. That is the cloud's and this repository's to follow together, and is told to the orchestrator.
+- Flume's statement names, in its row of callers, what the runner asks of Flume at its control plane's ask: a retry of a base place's submission as a land, and a confirm of ends. A hold of a place's waiting move, with its words and bound, joins them. That is the statement's owner's to amend, and is told to the orchestrator.
+
 ## Amendment, 2026-11-14: a pass past due sends its answers as it makes them
 
 Status: boomdrive-design's, on the stop-short of the fix `main--a-refused-request-leaves-the-runners-reports-going`, 2026-11-14. Cheap to change.
@@ -357,3 +409,34 @@ Option 1. Before the next pass is due, a pass takes its launches first, as the a
 
 `core.50` is amended with it.
 
+### Consequences
+
+- As designed by the construct stage of the change `launches-and-acts-take-turns-once-a-pass-is-due`, 2026-11-16, its own choices, cheap to change:
+  - **A pass's first is its first of each kind.** Once the next pass is due, a pass runs no `flume launch` after the first it ran, and no act's command on a place after the first it ran, whether that first ran before the pass fell due or after, as `core.50` had it for acts. A launch or an act in hand when the pass falls due is the one the other waits behind. A pass due from its start runs its first launch, then its first act, since before due its launches go first. Not taken: one more of each once due, whatever ran before, which holds the next pull behind the launch in hand and one more.
+  - **A launch the pass took and left is held.** It is answered `held`, with the words `waits for the next control pass, which is due`, said in one line as any held answer is, and its room is counted at its turn, so every offer after it gets the answer the control plane's order gives. The next pass takes it as any held offer, in the control plane's order (`core.10`). Its acts are answered as a held launch's are: a priority is done and carried when the launch is made, a drop is done and the launch never made, and a retry, a land, a confirm or a done is refused, naming where the launch stands. Not taken: leaving it unanswered, which this amendment rules out, and which crew reads as a launch its runner holds with no word why; and making it after the pass's acts, which holds the next pull behind it.
+  - **Once due, a send goes before each command.** The pass sends its report before each tool's command it runs for a want, a `flume launch`, Flume's status of a place or its command for an act, or sluice's preview or release, and once it has answered its last want, wherever an answer changed the report since the last send. It no longer sends after each want whose answer changed it, as the fix above built: a pass that holds many launches for their turn answers each with no command, and a send after each, under crew a commit and a push, would hold its first act behind them all. No answer waits on a command, and a launch's or an act's answer goes up before the next command runs. Where the answer to that send lets go or refuses the want about to run, or its launch, nothing runs for it, and no want the control plane let go or refused, nor an act on a launch it let go or refused, is taken more that pass (`core.10`).
+  - **A preview waits on no launch held for its turn.** Its command runs in the second round once every offer of its pull is answered, a launch held for its turn among them, and once due none after its first, as before (`core.55`).
+- Where a launch takes longer than `poll_interval`, a pass makes one launch and carries out one act on a place, so the launches of a long pull are made over as many passes, each adding its pull, its listing, its sends, its carrying and its settle.
+
+## Amendment, 2026-11-16: crew's implementation gives a priority only while it is its launch's newest
+
+Status: boomdrive-design's ruling, given in the brief of the fix `main--the-pull-gives-only-a-launchs-newest-priority`, 2026-11-16. It changes what crew's implementation gives, read from crew's own records, and no rule of the runner's, so it is cheap to change.
+
+### Context
+
+crew's bolt-teams appends a priority request for a launch at every start or reorder that changes its priority ("A start or a reorder appends each priority it changed"). Each sets the launch's priority whole, so a later one makes each earlier one the runner has not answered moot. crew's implementation gave them all. On 2026-11-16 `boomdrive/72` alone had priorities 479, 506, 538 and on to 1102. A pass past due runs one act on a place (`core.50`), and deneb's runner said "the next control pass is due, so 354 acts on places wait for it". The lands asked at 23:54Z (632 and 633) and 1032 to 1035 waited over five hours behind moot priorities.
+
+### Considered options
+
+1. **The pull gives a priority only while it is its launch's newest, or while the runner holds it (chosen)**, as it gives a preview request only while it is crew's newest of its host, repository and revision, or while the runner holds it (record 0031 as amended on 2026-11-09).
+2. **The runner skips a priority a later one in its pull supersedes.** The runner would judge crew's requests (`core.1`), and every control plane's implementation would lean on it.
+3. **Acts other than priorities go ahead of priorities in a pass.** It changes `core.50`'s order, and the moot priorities would still each run a `flume` command.
+
+### Decision outcome
+
+Option 1. A priority request that reads, its `Of` and its `Priority` each a whole number, is given only while no request of a higher number that reads as a priority names the same `Of`, or while the runner's report or its branch answers it. A priority the runner holds is given as before, answered from the report, and let go as before. The backlog clears at the next pull. `core.50`, the runner's carrying, Flume and crew's numbering stay as they are.
+
+### Consequences
+
+- `core.1`'s details already allow it: an implementation gives what it reads from the control plane's own rule, in the control plane's own records. No rule changes. The crew-control-plane spec gains it through the change `the-pull-gives-only-a-launchs-newest-priority`.
+- As built by that change, the code stage's own choices, cheap to change: a priority is newest by the launch its `Of` names, whatever `Host` either request names, since a launch is one place on one host; and only a later request that reads as a priority counts, so one whose `Of` or `Priority` is no whole number makes no earlier one moot, as `newest_preview` counts only a later request that reads as a preview. Not taken: keying on `Host` and `Of`, which keeps a moot priority given wherever crew addressed two hosts; and counting any later `Act: priority`, which leaves a launch with no priority given while crew's newest cannot be read.

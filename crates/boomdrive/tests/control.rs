@@ -15,8 +15,8 @@
 //! that cannot be read is said once until it is read again"; the
 //! configuration spec's "The configuration may name the control plane"
 //! and "The control-plane table is read when the runner starts"). The
-//! binary runs under the scratch host with stub `flume`, `sluice`,
-//! `herdr` and `systemd-creds` first on its `PATH`, crew's implementation
+//! binary runs under the scratch host with stub `flume`, `sluice` and
+//! `systemd-creds` first on its `PATH`, crew's implementation
 //! reaches the scratch forge's state repository through the scratch git
 //! configuration, and the hosted implementation a loopback port with
 //! nothing on it. The runner runs in-process over the fake control plane
@@ -35,7 +35,7 @@ use boomdrive_control::{
     Unsent, Wake, Want,
 };
 use common::{keeping, Origin, Scratch};
-use fakes::{offer, CredsStub, HeldFetch, HerdrStub, SluiceStub, Stub};
+use fakes::{offer, CredsStub, HeldFetch, SluiceStub, Stub};
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
@@ -73,12 +73,11 @@ fn carrying_drives(fetch_interval: &str, poll_interval: &str, drives: &str) -> S
     )
 }
 
-/// Stub `flume`, `sluice`, `herdr` and `systemd-creds`, each in a
-/// directory of its own.
+/// Stub `flume`, `sluice` and `systemd-creds`, each in a directory of its
+/// own.
 struct Tools {
     flume: Stub,
     sluice: SluiceStub,
-    herdr: HerdrStub,
     creds: CredsStub,
 }
 
@@ -87,7 +86,6 @@ impl Tools {
         Tools {
             flume: Stub::new(),
             sluice: SluiceStub::new(),
-            herdr: HerdrStub::new(),
             creds: CredsStub::new(),
         }
     }
@@ -96,20 +94,14 @@ impl Tools {
         Programs {
             flume: self.flume.program(),
             sluice: self.sluice.program(),
-            herdr: self.herdr.program(),
         }
     }
 
-    /// The test's `PATH` with the stubs first, so no real Flume, sluice,
-    /// herdr or `systemd-creds` runs.
+    /// The test's `PATH` with the stubs first, so no real Flume, sluice
+    /// or `systemd-creds` runs.
     fn path(&self) -> OsString {
-        let stubs = [
-            &self.flume.dir,
-            &self.sluice.dir,
-            &self.herdr.dir,
-            &self.creds.dir,
-        ]
-        .map(|dir| dir.path().to_path_buf());
+        let stubs = [&self.flume.dir, &self.sluice.dir, &self.creds.dir]
+            .map(|dir| dir.path().to_path_buf());
         let rest = std::env::var_os("PATH").unwrap_or_default();
         std::env::join_paths(stubs.iter().cloned().chain(std::env::split_paths(&rest)))
             .expect("a PATH")
@@ -350,6 +342,83 @@ fn a_control_plane_that_cannot_be_read() {
     assert_eq!(settles(&tools), 1, "{:?}", tools.flume_commands());
 }
 
+/// The running spec's "Stopped with a part's read in flight": `boomdrive
+/// run` carries crew's partition `home`, whose state repository takes the
+/// connection and never answers, and is sent SIGTERM once `home`'s read of
+/// `home/main` has taken it. The read is ended at the stop, well before
+/// its limit, `home` is named unread with the halted words, no settle
+/// runs, and nothing the read started outlives the runner (record 0042 as
+/// amended on 2026-11-12; core.58).
+#[test]
+fn stopped_with_a_read_in_flight() {
+    /// The runner's binary, killed where the test ends before it exits.
+    struct Child(std::process::Child);
+    impl Drop for Child {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("2m", "1m"));
+    let state = scratch.silent("example/home-state");
+    let tools = Tools::new();
+    let mut running = Child(
+        scratch
+            .boomdrive()
+            .arg("run")
+            .env("PATH", tools.path())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .expect("boomdrive runs"),
+    );
+    let said = running.0.stderr.take().expect("its standard error");
+    let reading = thread::spawn(move || {
+        let mut said = said;
+        let mut text = String::new();
+        std::io::Read::read_to_string(&mut said, &mut text).expect("its standard error");
+        text
+    });
+    assert!(
+        state.taken(Duration::from_secs(10)),
+        "home's read never reached its state repository"
+    );
+
+    let pid = libc::pid_t::try_from(running.0.id()).expect("a process id");
+    // SAFETY: kill(2) takes plain integers and touches no memory of ours.
+    assert_eq!(unsafe { libc::kill(pid, libc::SIGTERM) }, 0);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let status = loop {
+        if let Some(status) = running.0.try_wait().expect("its status") {
+            break status;
+        }
+        assert!(Instant::now() < deadline, "not stopped within five seconds");
+        thread::sleep(Duration::from_millis(10));
+    };
+    assert_eq!(status.code(), Some(0));
+    let said = reading.join().expect("its standard error read");
+    let unread: Vec<&str> = said
+        .lines()
+        .filter(|line| line.starts_with("boomdrive: home: the control plane could not be read: "))
+        .collect();
+    assert_eq!(unread.len(), 1, "{said}");
+    assert!(
+        unread[0].ends_with(
+            "git fetch with https://github.com/example/home-state.git was stopped as its \
+             caller asked"
+        ),
+        "{said}"
+    );
+    assert_eq!(said.lines().last(), Some("boomdrive: stopped"), "{said}");
+    assert_eq!(settles(&tools), 0, "{:?}", tools.flume_commands());
+    assert!(
+        state.closed(Duration::from_secs(1)),
+        "the read's connection outlived the runner"
+    );
+}
+
 /// The running spec's "One part unread": crew's control plane serves
 /// `home` and `work`, the state repository holds no `home/main`, and
 /// `work/main` holds a launch for this host. The runner names `home` as
@@ -430,7 +499,6 @@ fn no_control_plane() {
         [words(&["--json", "settle", "--every", "120s"])]
     );
     assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
-    assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
 }
 
 /// The running spec's "A settle Flume refuses": with no control plane, a
@@ -535,7 +603,6 @@ fn a_word_not_carried() {
         [words(&["--json", "settle", "--every", "120s"])]
     );
     assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
-    assert_eq!(tools.herdr.calls(), Vec::<Vec<String>>::new());
 }
 
 /// A loopback address with nothing listening on it.

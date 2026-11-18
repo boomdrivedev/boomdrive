@@ -64,9 +64,11 @@ let
         settings = teams;
       };
     };
-  fleet = crewWith settings.crewUnwritten settings.crewFleet;
+  # "A host under crew" with no table written, beside crew's own keys for
+  # its account's drive, whose machine and state the accounts give.
+  accountsHere = crewWith settings.crewUnwritten settings.crewKeys;
   # "A host under crew" whose crew table, written out, is the runner's
-  # partition `garden` alone, beside crew's fleet of drives.
+  # partition `garden` alone, beside crew's own keys for its drive.
   garden = {
     host = "host-a";
     partitions = [
@@ -83,7 +85,7 @@ let
       };
     };
   };
-  writtenOut = crewWith gardenSettings settings.crewFleet;
+  writtenOut = crewWith gardenSettings settings.crewKeys;
   writtenTable = writtenOut.config.services.boomdrive.settings.control_plane.crew;
   render = import ../modules/toml.nix { inherit lib; };
   # The table the runner's file is rendered from, `accounts` joined to
@@ -247,9 +249,11 @@ in
     ) "no control plane beside crew fails: ${toString (t.failures noneBesideCrew)}"
     ++ t.expect (runs noneBesideCrew (builtins.readFile ./files/empty.toml)) "the unit's --config beside crew is not the file of nix/tests/files/empty.toml";
 
-  "crew's drives on this host on NixOS" =
-    t.expect (t.failures fleet == [ ]) "crew's drives on this host fail: ${toString (t.failures fleet)}"
-    ++ t.expect (runs fleet (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
+  "The accounts' drives on this host on NixOS" =
+    t.expect (
+      t.failures accountsHere == [ ]
+    ) "the accounts' drives on this host fail: ${toString (t.failures accountsHere)}"
+    ++ t.expect (runs accountsHere (builtins.readFile ./files/crew.toml)) "the unit's --config is not the file of nix/tests/files/crew.toml";
 
   "The user activation on NixOS" =
     t.expect (lib.hasInfix keeps activation) "the user activation is not `${keeps}`: ${activation}";

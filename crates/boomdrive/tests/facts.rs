@@ -1,8 +1,9 @@
 //! The facts read from Flume's answers, over every one of Flume 0.4.1's
 //! own answers in `tests/fixtures/flume-0.4.1` (Task notes 3.2). The
-//! fixtures' README says what stood when each was read.
+//! fixtures' README, which no test reads, says what stood when each was
+//! read (record 0049).
 
-use boomdrive::facts::{self, Over, Pane, Room, StreamRoom};
+use boomdrive::facts::{self, Over, Room, StreamRoom};
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fs;
@@ -83,13 +84,6 @@ fn every_fixture_is_read() {
         held, read,
         "a fixture no test reads, or one read and not held"
     );
-    let readme = text("README.md");
-    for name in READ {
-        assert!(
-            readme.contains(&format!("`{name}`")),
-            "README says nothing of {name}"
-        );
-    }
 }
 
 #[test]
@@ -255,11 +249,6 @@ fn a_place_at_each_phase() {
         assert_eq!(facts::over(entry), None, "{name}");
         assert!(!facts::waits_delivered(entry), "{name}");
         assert_eq!(facts::submission_id(entry), None, "{name}");
-        assert_eq!(
-            facts::pane(entry),
-            None,
-            "{name}: the printed command shows no pane"
-        );
     }
     assert_ne!(construct, code, "the place moved on");
 
@@ -311,18 +300,10 @@ fn a_place_at_each_phase() {
 }
 
 #[test]
-fn a_live_place_shows_its_agents_pane() {
+fn a_live_place_is_live_and_unmarked() {
     let entry = only("status-live-agent.json");
     assert!(facts::live_or_making(&entry));
     assert_eq!(facts::mark(&entry), None);
-    assert_eq!(
-        facts::pane(&entry),
-        Some(Pane {
-            id: "w1:p1".into(),
-            socket_file: "/private/tmp/scratch/host/home/config/herdr/sessions/flume/herdr.sock"
-                .into()
-        })
-    );
 }
 
 #[test]

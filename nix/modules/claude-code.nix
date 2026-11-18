@@ -38,11 +38,16 @@ let
   # path: no user, query or fragment (Task notes 1.1).
   collector = types.strMatching "http://(localhost|127\\.0\\.0\\.1|\\[::1]):[0-9]{1,5}(/[A-Za-z0-9._~/-]*)?";
 
+  # The collector's base, its one trailing `/` dropped, which each signal's
+  # `/v1/<signal>` joins: the sessions', Flume's and sluice's alike (the
+  # change the-hosts-collector-reaches-sluice-and-flume, design Decision 4).
+  baseOf = lib.removeSuffix "/";
+
   # The document of `telemetry`, the option's value with a collector named.
   documentOf =
     telemetry:
     let
-      base = lib.removeSuffix "/" telemetry.collector;
+      base = baseOf telemetry.collector;
       upper = lib.toUpper;
       on = lib.filter (signal: telemetry.${signal}) signals;
     in
@@ -91,7 +96,7 @@ let
     };
 in
 {
-  inherit documentOf transcriptsOf;
+  inherit baseOf documentOf transcriptsOf;
 
   # Each document's name, and the platforms' managed-settings folders.
   name = "10-boomdrive-telemetry.json";
@@ -145,7 +150,13 @@ in
             `/Library/Application Support/ClaudeCode/managed-settings.d` on
             nix-darwin and `/etc/claude-code/managed-settings.d` on NixOS,
             which every session reads whatever its account and home, with
-            every content setting off. Where `null`, nothing is written.
+            every content setting off. With the runner on, it is Flume's
+            and sluice's collector too: the modules turn each on to send to
+            it through its own `services.flume.settings.telemetry` and
+            `services.sluice.settings.telemetry`, each keeping which of its
+            signals it sends as its own setting, and a tool's `collector`
+            other than this one fails evaluation. Where `null`, nothing is
+            written, and neither tool's telemetry is turned on.
           '';
         };
         metrics = signal true "Whether Claude Code's sessions export their metrics to `collector`.";

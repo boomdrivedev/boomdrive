@@ -96,19 +96,16 @@ fn each_drives_repositories_with_their_folders() {
 #[test]
 fn a_tool_missing() {
     let bench = Bench::new();
-    bench.tools.missing("herdr");
+    bench.tools.missing("sluice");
     let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a"))]);
     bench.pass(&mut plane);
     let tools = &plane.hellos()[0].tool_versions;
     assert!(
-        matches!(tools["herdr"], ToolVersion::Missing(_)),
+        matches!(tools["sluice"], ToolVersion::Missing(_)),
         "{tools:?}"
     );
     assert_eq!(tools["flume"], ToolVersion::Printed("flume 1.0.0".into()));
-    assert_eq!(
-        tools.keys().collect::<Vec<_>>(),
-        ["flume", "git", "herdr", "sluice"]
-    );
+    assert_eq!(tools.keys().collect::<Vec<_>>(), ["flume", "git", "sluice"]);
     assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
 }
 
@@ -589,6 +586,54 @@ fn a_launch_waits_for_its_own_repositorys_fetch_alone() {
     assert!(took >= KEEPING / 2, "flume's launch waited for the keep");
     assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));
     assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
+}
+
+/// The work-into-flume spec's "A launch that waited on its clone's keep is
+/// held without waiting on it": the next control pass is due from the
+/// pass's start, the keeper holds `agentplot/flume`'s lock for its fetch,
+/// and the pull offers a launch into `agentplot/flume`, then one into
+/// `agentplot/sluice`. The launch into `agentplot/sluice` is made, and the
+/// one into `agentplot/flume` held for its turn, no `flume launch` run for
+/// it, the pass ending while the keeper still holds the lock (design
+/// Decision 2; core.50).
+#[test]
+fn a_launch_that_waited_on_its_clones_keep_is_held_without_waiting_on_it() {
+    let bench = Bench::new();
+    let container = bench.container("agentplot/sluice");
+    bench.clones.ready("agentplot/sluice", &container);
+    let mut sluice = offer("home/2", "b");
+    sluice.launch.repository = "agentplot/sluice".into();
+    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a")), Want::Offer(sluice)]);
+    let keeper = keeping(&bench, KEPT, || {});
+
+    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &|| true);
+    let kept_still = !keeper.is_finished();
+    keeper.join().unwrap();
+
+    let launched: Vec<String> = bench
+        .flume
+        .launches()
+        .into_iter()
+        .map(|args| args.name)
+        .collect();
+    assert_eq!(launched, ["b"], "no flume launch for a");
+    assert!(kept_still, "the pass did not wait for the keep");
+    assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
+    let report = boomdrive::report::read(&bench.report_file())
+        .unwrap()
+        .unwrap();
+    let held = &report.launches[&id("home/1")].answer;
+    assert_eq!(
+        (held.outcome, held.words.as_deref()),
+        (Outcome::Held, Some(boomdrive::carry::TURN))
+    );
+    assert_eq!(
+        lines,
+        [
+            format!("home/2: launched at {}", place_of("b")),
+            format!("home/1: held: {}", boomdrive::carry::TURN),
+        ]
+    );
 }
 
 /// The clones spec's "Two parts launch into one clone at once": while
