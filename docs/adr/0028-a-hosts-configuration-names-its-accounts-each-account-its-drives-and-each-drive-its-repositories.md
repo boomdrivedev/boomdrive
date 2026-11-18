@@ -124,3 +124,13 @@ Status: decided on 2026-11-08 by the construct stage of the change `each-reposit
 - **Named once, at evaluation.** A drive's name under two accounts, an address kept twice, and a stream given by two drives each fail evaluation, naming what is given twice. The runner still refuses the first two at its start.
 
 core.46's details are amended in this amendment's commit with what it allows.
+
+## Amendment, 2026-11-18: a label's share is `owed`
+
+Status: decided on 2026-11-18 by the code stage of the fix `main--the-set-takes-flume-v0-29-0`, which moves the set to Flume v0.29.0. Flume's record 0063, accepted by the user on 2026-11-09, renames a label's `reserve` and `keep_free` to `owed` and `reserved` and names Boomdrive's drive option `owed` with them; the rest is the code stage's own, on the written rules, each cheap to change.
+
+Amends the amendment of 2026-11-08, its point "A drive's stream keys", where it names a label's `reserve` and `keep_free`.
+
+- **A label's share is `owed`.** A drive's `stream.labels.<label>.owed`, `operation` 1 and `planning` 2 by default, each default kept where a drive sets another label, is given Flume as the label's `owed`. The agents a label holds for itself alone are Flume's `reserved`, set in Flume's own `services.flume.settings.streams.<stream>`, as `keep_free` was. Flume v0.29.0 reads neither old word and refuses a stream's starts where its file names one (Flume's 181).
+- **The old word fails evaluation.** A drive's label that sets `reserve` fails evaluation, naming its option and `owed`, whether or not the runner is on, and gives Flume nothing. Not taken: `reserve` kept as the drive's word and given Flume as `owed`, which keeps a word beside the family's `reserved` that means its opposite (core.12; Flume's record 0063); both words taken, an alias Flume's record keeps none of; nix's own failure for an undeclared option, which names no replacement, where the set's removed options name theirs, as `services.boomdrive.timber.package` does.
+- **A stream's agents from 1.** A drive's `stream.agents` is a whole number from 1, as Flume's own option reads it at v0.29.0 (Flume's 143; its record 0063), so a drive of 0 agents fails at its own option. Not taken: from 0, which Flume's option then refuses, naming Flume's option and not the drive's.
