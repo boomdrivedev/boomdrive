@@ -291,6 +291,13 @@ fn a_field_the_version_does_not_name() {
         pulled["body"]["pulled"]["wants"][1]["act"]["what"]["confirm"]["stage"] = json!("code");
     });
     refused(&to, &confirmed, "a field a confirm does not name");
+    let name = "pulled-with-a-hold.json";
+    passes(&to, &example("to-runner", name), name);
+    let held = altered("to-runner", name, |pulled| {
+        pulled["body"]["pulled"]["wants"][1]["act"]["what"]["hold"]["reason"] =
+            json!("the user is away");
+    });
+    refused(&to, &held, "a field a hold does not name");
     let previewed = altered(
         "to-runner",
         "pulled-with-a-preview-and-its-done.json",

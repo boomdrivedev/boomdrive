@@ -42,7 +42,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 3. A hosted control plane's hold
 
 - [x] 3.1 A hold the fake control plane asks is given to the runner as an act, its id and launch under the partition's prefix, its words and bound as given. A hold of no words and bound 0 is given alike. No `message_refused` is sent for either. This proves the hosted-control-plane spec's "A hold carried" and "A hold the runner refuses" (design Decision 6; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-hosted --test plane -- a_hold_carried a_hold_the_runner_refuses` passes.
-- [ ] 3.2 `tests/refused.rs`'s `a_field_the_version_does_not_name` adds a field to a hold, beside what it adds now, and checks every example against version 3. This proves the runner-protocol spec's "A field the version does not name" (design Decision 1; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test refused a_field_the_version_does_not_name` passes.
+- [x] 3.2 `tests/refused.rs`'s `a_field_the_version_does_not_name` adds a field to a hold, beside what it adds now, and checks every example against version 3. This proves the runner-protocol spec's "A field the version does not name" (design Decision 1; Task notes 3.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test refused a_field_the_version_does_not_name` passes.
 
 ## 4. What the runner says of it
 
