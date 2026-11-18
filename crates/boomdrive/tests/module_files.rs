@@ -133,6 +133,7 @@ fn the_crew_file_opens_crews_implementation() {
         table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
+        &weir_bounded::Halt::default(),
     );
     assert!(opened.is_ok(), "{:?}", opened.err());
 }

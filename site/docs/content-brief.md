@@ -218,3 +218,8 @@ wants to see them together; all of them change in one place, and one preview
 covers the set. It runs as the `content` kind declared in
 `.config/flume.toml`, or, until flume runs this repository, as a crew chore
 whose text is the task line and this brief's path.
+
+Its preview opens in the session the place's stream gives it, which
+`flume open <session>` shows; a launch made from a pane puts the preview
+beside that pane instead by naming it, `--agent preview.beside=<pane>`, a
+herdr pane by its id or its label.

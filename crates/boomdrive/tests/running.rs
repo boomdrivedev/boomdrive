@@ -210,6 +210,130 @@ fn stopped_while_waiting() {
     assert_eq!(rest, "boomdrive: stopped\n");
 }
 
+/// Waits up to `within` for `running` to exit, and gives its exit, or
+/// fails naming `within`.
+fn exits_within(running: &mut Running, within: Duration) -> std::process::ExitStatus {
+    let deadline = Instant::now() + within;
+    loop {
+        if let Some(status) = running.0.try_wait().expect("its status") {
+            return status;
+        }
+        assert!(Instant::now() < deadline, "not stopped within {within:?}");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+/// Sends `signal` to `running`.
+fn signal(running: &Running, signal: libc::c_int) {
+    let pid = libc::pid_t::try_from(running.0.id()).expect("a process id");
+    // SAFETY: kill(2) takes plain integers and touches no memory of ours.
+    assert_eq!(unsafe { libc::kill(pid, signal) }, 0);
+}
+
+/// The running spec's "Stopped with a fetch in flight", for `boomdrive
+/// run`, and the clones spec's "A new clone halted in flight": the first
+/// fetch of a repository whose origin never answers is ended at the stop,
+/// well before its limit, the repository named not cloned with the halted
+/// words, nothing of it left, and nothing the fetch started outliving the
+/// runner (record 0042 as amended on 2026-11-12; core.58).
+#[test]
+fn stopped_with_a_fetch_in_flight() {
+    let scratch = Scratch::new();
+    let origin = scratch.silent("agentplot/flume");
+    let file = scratch.configure(&keeping(&["agentplot/flume"]));
+    let mut running = Running(
+        scratch
+            .boomdrive()
+            .arg("run")
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("boomdrive runs"),
+    );
+    let mut said = BufReader::new(running.0.stderr.take().expect("its standard error"));
+    let mut first = String::new();
+    said.read_line(&mut first).expect("its start line");
+    assert_eq!(
+        first,
+        format!("{}\n", started(&scratch, "1 repository", &file))
+    );
+    assert!(
+        origin.taken(Duration::from_secs(10)),
+        "the fetch never reached its origin"
+    );
+
+    signal(&running, libc::SIGTERM);
+    let status = exits_within(&mut running, Duration::from_secs(5));
+    assert_eq!(status.code(), Some(0));
+    let mut rest = String::new();
+    said.read_to_string(&mut rest).expect("its standard error");
+    assert_eq!(
+        rest,
+        "agentplot/flume: not cloned: git fetch with origin was stopped as its caller asked\n\
+         boomdrive: stopped\n"
+    );
+    assert!(!scratch.container("agentplot/flume").exists());
+    assert!(
+        origin.closed(Duration::from_secs(1)),
+        "the fetch's connection outlived the runner"
+    );
+}
+
+/// The running spec's "run --once stopped with a fetch in flight":
+/// SIGINT ends the first fetch in flight of a repository
+/// whose origin never answers, the repository named not cloned with the
+/// halted words, nothing of it left, no `flume` run, and nothing the fetch
+/// started outliving the runner, which exits 1 (record 0042 as amended on
+/// 2026-11-12; core.39, core.58).
+#[test]
+fn once_stopped_with_a_fetch_in_flight() {
+    let scratch = Scratch::new();
+    let calls = scratch.root.join("flume-calls");
+    let flume = scratch.bin.join("flume");
+    std::fs::write(
+        &flume,
+        format!("#!/bin/sh\necho \"$*\" >> '{}'\nexit 1\n", calls.display()),
+    )
+    .expect("the stub flume");
+    let origin = scratch.silent("agentplot/flume");
+    let file = scratch.configure(&keeping(&["agentplot/flume"]));
+    let mut running = Running(
+        scratch
+            .boomdrive()
+            .args(["run", "--once"])
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("boomdrive runs"),
+    );
+    let mut said = BufReader::new(running.0.stderr.take().expect("its standard error"));
+    let mut first = String::new();
+    said.read_line(&mut first).expect("its start line");
+    assert_eq!(
+        first,
+        format!("{}\n", started(&scratch, "1 repository", &file))
+    );
+    assert!(
+        origin.taken(Duration::from_secs(10)),
+        "the fetch never reached its origin"
+    );
+
+    signal(&running, libc::SIGINT);
+    let status = exits_within(&mut running, Duration::from_secs(5));
+    assert_eq!(status.code(), Some(1));
+    let mut rest = String::new();
+    said.read_to_string(&mut rest).expect("its standard error");
+    assert_eq!(
+        rest,
+        "agentplot/flume: not cloned: git fetch with origin was stopped as its caller asked\n\
+         boomdrive: stopped\n"
+    );
+    assert!(!scratch.container("agentplot/flume").exists());
+    assert!(!calls.exists(), "flume was run");
+    assert!(
+        origin.closed(Duration::from_secs(1)),
+        "the fetch's connection outlived the runner"
+    );
+}
+
 #[test]
 fn a_quiet_pass() {
     let scratch = Scratch::new();

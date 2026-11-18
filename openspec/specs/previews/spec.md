@@ -126,12 +126,17 @@ Where the report holds no preview a done would put away, the done SHALL be answe
 
 ### Requirement: A preview's command runs after every launch
 
-A preview's command, `sluice preview` or `sluice release`, SHALL run in the pass's second round, after every launch the pull offers, in the control plane's order, where a done is matched to what the report then holds. A preview answered from the report, one under a lapsed lease, a bring-up in a repository not kept, and a done whose repository has no clone SHALL be answered in the first. A pass's preview commands SHALL NOT have Flume's listing read again (core.50; record 0027).
+A preview's command, `sluice preview` or `sluice release`, SHALL run in the pass's second round, once every offer the pull gives is answered, in the control plane's order, a done matched to what the report then holds. A preview answered from the report, one under a lapsed lease, a bring-up in a repository not kept, and a done whose repository has no clone SHALL be answered in the first, and no preview command SHALL have Flume's listing read again (core.50, core.55; record 0027).
 
 #### Scenario: A launch ahead of a preview
 
 - **WHEN** a pull gives the preview `home/30`, then the offer `a`
 - **THEN** `a`'s `flume launch` is run before `sluice preview`
+
+#### Scenario: A preview past due waits on no launch held for its turn
+
+- **WHEN** the next control pass is due from a pass's start, and its pull gives the preview `home/30`, then offers `a` and `b`
+- **THEN** `a` is launched, `b` is answered `held` for its turn, and `home/30` is brought up in the same pass
 
 ### Requirement: Once the next pass is due, a pass runs no preview's command but its first
 

@@ -11,10 +11,13 @@ merge_queue = "sluice"
 # diagram, a page's words, a figure or a tools strip (site.5; record
 # 0038). change makes it and gets the checks green; preview serves the
 # place's own site and asks the operator whether it now says what the
-# task asked, a no going back to change with their words. The kind and its
-# prompts are the same in every family site; what tailors them here is
-# site/docs/content-brief.md and the task line. Each prompt is read from
-# this file's folder.
+# task asked, a no going back to change with their words. The preview's
+# one agent names no pane or session of a host's terminal, so it opens
+# where the place's stream puts it (Flume's 107 and 199), and beside a
+# pane only where its launch names one, `--agent preview.beside=<pane>`
+# (record 0045). The kind and its prompts are the same in every family
+# site; what tailors them here is site/docs/content-brief.md and the task
+# line. Each prompt is read from this file's folder.
 [kinds.content]
 branch = "content"
 lands = true
@@ -30,5 +33,5 @@ name = "preview"
 prompt = "../site/docs/prompts/content-preview.md"
 conversation = true
 wait = true
-agents = [{ beside = "operator" }]
+agents = [{}]
 on_fail = "change"

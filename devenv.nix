@@ -135,6 +135,46 @@ let
       '';
     };
 
+  # macOS's /bin/sh, bash 3.2.57 in POSIX mode, which nix:mac-sh reads the
+  # scripts a Mac runs by /bin/sh with: nix/modules/activate.sh, which the
+  # nix-darwin module's activation runs as `/bin/sh activate.sh`, and
+  # nix/packages/launcher.sh, the launcher's script, run by its `#!/bin/sh`
+  # (record 0020 as amended on 2026-11-15). Built from GNU's release of the
+  # version Apple's /bin/sh reports, since nixpkgs carries no bash 3 and a
+  # Linux host that runs the gate has no such /bin/sh of its own (core.8).
+  # Its parser is made again from parse.y by bison, since the release's
+  # y.tab.c predates its patches, and its C, of 2006, is compiled as C89
+  # with the warnings today's compilers make errors let pass. Given to
+  # nix:mac-sh by its path and on no PATH, so the shell's sh and bash stay
+  # nixpkgs' bash 5.
+  macShVersion = "3.2.57";
+  macSh = pkgs.stdenv.mkDerivation {
+    pname = "bash";
+    version = macShVersion;
+    src = pkgs.fetchurl {
+      url = "mirror://gnu/bash/bash-${macShVersion}.tar.gz";
+      hash = "sha256-P6na+F6/NQaPCQzlEoPd7rPHXrW8cLGkp8sFhov+BqQ=";
+    };
+    nativeBuildInputs = [ pkgs.bison ];
+    configureFlags = [
+      "--without-bash-malloc"
+      "--disable-nls"
+    ];
+    env = {
+      YACC = "bison -y";
+      NIX_CFLAGS_COMPILE = lib.concatStringsSep " " [
+        "-std=gnu89"
+        "-fcommon"
+        "-Wno-implicit-function-declaration"
+        "-Wno-implicit-int"
+        "-Wno-int-conversion"
+        "-Wno-incompatible-pointer-types"
+      ];
+    };
+    hardeningDisable = [ "format" ];
+    meta.mainProgram = "bash";
+  };
+
   # The flake's inputs as flake.lock locks them, fetched by this shell
   # outside the gate's sandbox (design Decision 14).
   flakeInputs = import ./nix/inputs.nix { };
@@ -294,6 +334,9 @@ in
   # push (design, The user's to rule on).
   env.BOOMDRIVE_SET_FLUME = lib.getExe set.flume;
   env.BOOMDRIVE_SET_SLUICE = lib.getExe set.sluice;
+
+  # macOS's /bin/sh, given to nix:mac-sh by its path and on no PATH.
+  env.BOOMDRIVE_MAC_SH = lib.getExe macSh;
   cachix.pull = [ "boomdrive" ];
 
   # Claude Code's project files (record 0022): .mcp.json from the servers

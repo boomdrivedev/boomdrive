@@ -35,7 +35,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:boomdrivedev/sluice/v0.86.0";
+      url = "github:boomdrivedev/sluice/v0.94.8";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -43,7 +43,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.24.0";
+      url = "github:boomdrivedev/flume/v0.26.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -51,7 +51,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.59.0";
+      url = "github:boomdrivedev/crew/v0.64.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
@@ -167,12 +167,9 @@
             # timber's own flake's package, unchanged: its tagged tree
             # carries its version (timber's record 0031; core.44).
             timber = inputs.timber.packages.${system}.default;
-            sluice = import ./nix/packages/sluice.nix {
-              inherit lib;
-              package = inputs.sluice.packages.${system}.default;
-              src = inputs.sluice;
-              tag = tagOf (import ./flake.nix).inputs.sluice.url;
-            };
+            # sluice's own flake's package, unchanged: its tagged tree
+            # carries its version (sluice's record 0111; core.44).
+            sluice = inputs.sluice.packages.${system}.default;
             inherit (inputs.herdr.packages.${system}) herdr;
             worktrunk = import ./nix/packages/worktrunk.nix {
               package = inputs.worktrunk.packages.${system}.worktrunk;
