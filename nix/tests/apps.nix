@@ -30,6 +30,9 @@ let
           outputs.darwinModules.default
           given
         ];
+      # The users a system without the runner gives the tools it turns on:
+      # on nix-darwin, the primary user alice, given already.
+      users = _: { };
       withCrew = t.darwinOf [
         outputs.darwinModules.default
         crewOn
@@ -45,6 +48,15 @@ let
           outputs.nixosModules.default
           given
         ];
+      # On NixOS, the set's user alice, and alice for each of `tools`.
+      users = tools: {
+        services = {
+          boomdrive.user = "alice";
+        }
+        // lib.genAttrs tools (_: {
+          user = "alice";
+        });
+      };
       withCrew = t.nixosOf [
         outputs.nixosModules.default
         crewOn
@@ -235,6 +247,37 @@ let
       terminal = "herdr";
       multiplexer = null;
     };
+
+  # Flume's terminal where herdr is turned on without the runner, and no
+  # window where Ghostty is not (design Decision 5 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  flumesTerminalWithout =
+    platform:
+    { withoutOf, users, ... }:
+    let
+      evaluated = withoutOf {
+        imports = [ (users [ "flume" ]) ];
+        services = {
+          flume.enable = true;
+          boomdrive.herdr.enable = true;
+        };
+      };
+      host = hostOf evaluated;
+      held = {
+        multiplexer = host.multiplexer or null;
+        terminal_app = host.terminal_app or null;
+      };
+      expected = {
+        multiplexer = "herdr";
+        terminal_app = null;
+      };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (held == expected)
+        "the ${platform} system without the runner gives Flume's host ${builtins.toJSON held}, not ${builtins.toJSON expected}";
 
   # portless, installed with the runner (design Decision 5 of the change
   # portless-comes-with-the-flake).
@@ -1190,6 +1233,7 @@ onEach "The way in with the runner" withRunner
 // onEach "Flume's terminal and window" flumesTerminal
 // onEach "A host's own window" hostsWindow
 // onEach "The word of before" wordOfBefore
+// onEach "Flume's terminal without the runner" flumesTerminalWithout
 // onEach "No herdr of the set's" noSetsHerdr
 // onEach "portless with the runner" portlessWithRunner
 // onEach "A host's own portless" hostsPortless

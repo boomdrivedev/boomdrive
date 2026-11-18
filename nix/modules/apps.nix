@@ -19,10 +19,13 @@
 # Decisions 1 and 2 of the change
 # boomdrives-tools-install-on-a-machine-without-the-runner; core.62).
 # The plugins are linked by the platform's
-# activation, darwin.nix's and nixos.nix's, with herdr's own command. With
-# the runner enabled, Flume's module is told herdr and Ghostty, its
-# `host.multiplexer` and `host.terminal_app`, each by default, so a host's
-# own wins, and whether or not the host keeps the set's herdr and Ghostty.
+# activation, darwin.nix's and nixos.nix's, with herdr's own command.
+# Where herdr is turned on, Flume's module is told herdr, its
+# `host.multiplexer`, and where Ghostty is, Ghostty, its
+# `host.terminal_app`, each by default, so a host's own wins, with the
+# runner or without, and whether or not the host keeps the set's herdr and
+# Ghostty (design Decision 5 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner).
 # portless, which gives each worktree's dev server a `.localhost` address
 # and whose routes crew's board reads, is installed the same way, since it
 # gives no nix-darwin or NixOS module; the modules start no proxy of it and
@@ -186,16 +189,20 @@ in
     (installing "launcher")
     (installing "portless")
 
-    # Flume's terminal and window (design Decision 7). `terminal` is the word
-    # a host wrote before for `multiplexer`, which Flume reads as it and
-    # refuses beside it (Flume's C.7), so where the host gives it no
-    # `multiplexer` is set. Flume's module declares no `terminal`, so the
+    # Flume's terminal and window (design Decision 7), each where its tool is
+    # turned on, with the runner or without (design Decision 5 of the change
+    # boomdrives-tools-install-on-a-machine-without-the-runner). `terminal`
+    # is the word a host wrote before for `multiplexer`, which Flume reads
+    # as it and refuses beside it (Flume's C.7), so where the host gives it
+    # no `multiplexer` is set. Flume's module declares no `terminal`, so the
     # condition reads no definition it guards.
-    (lib.mkIf cfg.enable {
-      services.flume.settings.host = {
-        multiplexer = lib.mkIf (!(config.services.flume.settings.host ? terminal)) (lib.mkDefault "herdr");
-        terminal_app = lib.mkDefault "ghostty";
-      };
+    (lib.mkIf cfg.herdr.enable {
+      services.flume.settings.host.multiplexer = lib.mkIf (
+        !(config.services.flume.settings.host ? terminal)
+      ) (lib.mkDefault "herdr");
+    })
+    (lib.mkIf cfg.ghostty.enable {
+      services.flume.settings.host.terminal_app = lib.mkDefault "ghostty";
     })
   ];
 }
