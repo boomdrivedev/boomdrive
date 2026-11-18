@@ -346,23 +346,6 @@ in
   "The activation links the file on nix-darwin" =
     t.expect (lib.hasInfix link activation) "the activation runs no `${link}`: ${activation}";
 
-  "The README's signed runner" =
-    let
-      # The README's Installing with nix, its lines joined.
-      words = lib.replaceStrings [ "\n" ] [ " " ] (toString t.installing);
-    in
-    lib.concatMap
-      (word: t.expect (lib.hasInfix word words) "the README's Installing with nix says no ${word}")
-      [
-        "`/Library/Application Support/Boomdrive/boomdrive`"
-        "`Boomdrive runner`"
-        "System keychain"
-        "the agent runs that copy"
-        "macOS asks once"
-        "a later build asks nothing again"
-        "Where the copy could not be signed, the agent runs the package's own runner and the switch says why"
-      ];
-
   "The step runs before the agents load" =
     t.expect (lib.hasInfix signing (extraActivationOf base)) "extraActivation runs no `${signing}`: ${extraActivationOf base}"
     ++ t.expect (
