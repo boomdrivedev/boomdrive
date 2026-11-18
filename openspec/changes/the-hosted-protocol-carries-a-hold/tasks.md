@@ -37,7 +37,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - `connection.rs`'s `a_message_of_version_1` and a new `a_message_of_version_2` each find a `pulled` of their version refused with version 3's words, and `refused.rs`'s `a_message_of_another_version` checks versions 2 and 3 against each other.
 
   This proves the hosted-control-plane spec's "A partition enrolled", "A connection proved", "A control plane that speaks version 1 alone", "A pulled with a field unnamed", "A message of version 1" and "A message of version 2". It also proves the runner-protocol spec's "A message of another version", "The interface's values pass", "Every example read and written back", "Every kind has an example", "The README's worked contexts", and every scenario they name as checked against version 3 (design Decisions 4 and 5; Task notes 2.1). True when `devenv shell -- cargo test -p boomdrive-hosted` passes.
-- [ ] 2.2 `crates/boomdrive/tests/forge_tokens.rs`'s `a_get_on_a_cloud_host_is_refused` asserts the words naming version 3. This proves the forge-tokens spec's "A get on a cloud host" (design Decision 4; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test forge_tokens a_get_on_a_cloud_host_is_refused` passes.
+- [x] 2.2 `crates/boomdrive/tests/forge_tokens.rs`'s `a_get_on_a_cloud_host_is_refused` asserts the words naming version 3. This proves the forge-tokens spec's "A get on a cloud host" (design Decision 4; Task notes 2.2). True when `devenv shell -- cargo test -p boomdrive --test forge_tokens a_get_on_a_cloud_host_is_refused` passes.
 
 ## 3. A hosted control plane's hold
 
