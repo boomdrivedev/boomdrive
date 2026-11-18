@@ -330,7 +330,7 @@ directory, a log or standard error.
 
 On a host whose control plane is hosted, the control plane holds the
 App and mints the host's tokens, and every operation is refused, exit 1:
-the hosted control plane mints this host's forge tokens, and version 2
+the hosted control plane mints this host's forge tokens, and version 3
 of its protocol carries none yet.
 
 The set's sluice takes no token from it yet: it reads a credential
@@ -1334,18 +1334,18 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
-The runner speaks version 2 of the protocol, `boomdrive.v2`, its schema
-under `crates/boomdrive-hosted/protocol/v2/`, which a control plane takes
-beside the version before it, version 1. Each upgrade asks for
-`boomdrive.v2` alone, and a control plane that answers without it is
-said once, naming `boomdrive.v2`, and tried again at the backoff's cap.
+The runner speaks version 3 of the protocol, `boomdrive.v3`, its schema
+under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes
+beside the version before it, version 2. Each upgrade asks for
+`boomdrive.v3` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v3`, and tried again at the backoff's cap.
 Each end of a place goes up with its delivery: its key, its delivery's
 key and expiry, the readers it is owed to and those that confirmed it,
 and each hand-over, the end of the place's work by a drop or a done
-among them. An end version 2 does not name goes up as its delivery
+among them. An end version 3 does not name goes up as its delivery
 alone, or is left out where even that fails, the rest of its status
 going up, with one line naming the launch and each end's path. Only a
-status that went up with every end in a form version 2 names is one the
+status that went up with every end in a form version 3 names is one the
 runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
@@ -1353,8 +1353,74 @@ runner under the partition's prefix and carried out as crew's is,
 by Flume's confirm of exactly its keys. A control plane's land and
 preview, with its done, are given to the runner as crew's are, and what
 the runner answered of each preview goes up with sluice's answer and
-listing as their copies. No version yet carries a hold of a place's
-waiting move, so a hosted control plane holds nothing through the runner.
+listing as their copies. A control plane's hold of the move a launch's
+place waits on it for is an act, given to the runner under the
+partition's prefix with its words and bound as given, and carried out as
+crew's is, by Flume's hold of that waiting move.
+
+### Reporting to an observer
+
+Beside its control plane, crew's or a hosted one, a runner may report
+each part's work to an observer on its own host, such as a control
+plane's local stage, which it takes nothing from. The managed layer
+names it in `[observer]`, here beside crew's control plane:
+
+```toml
+# An observer on this host, which the runner reports each observed part's work to and takes nothing from.
+[observer]
+# Where it is reached, `http://` or `https://` to a loopback address alone.
+url = "http://localhost:8787"
+
+# The part of the control plane it observes, by its label, and the repositories its observing hello names.
+[[observer.partitions]]
+label = "home"
+repositories = ["boomdrivedev/flume"]
+```
+
+Its keys are the hosted table's, read by the hosted implementation,
+but that `url` is at a loopback address alone: `localhost`,
+`127.0.0.0/8` or `::1`. Each partition's `label` names the part of the
+control plane whose work it observes, under crew a drive's partition,
+and its `repositories` are those its hello names, of those the host
+keeps. `[observer]` is refused where the file names no
+`[control_plane]`, and a local layer that sets it is not taken. It is
+taken when the runner starts, as `[control_plane]` is, and the table
+holds no token and no key. Each partition is enrolled once, as a hosted
+partition is, at the observer's `runner/enroll`, whatever
+`[control_plane]`'s `type`:
+
+    boomdrive enroll --observer [--config <file>] [--json] <label>
+
+Its key is kept in the host's credential store under
+`observer.<label>`, apart from any hosted partition's of that label. It
+answers `observer <label>: enrolled as host <host>`, or with `--json`
+`{"enrolled":{"partition":"<label>","host":"<host>"}}`, and is refused,
+exiting 2, where the file names no `[observer]` or no partition
+`<label>` in it.
+
+Each partition keeps one outgoing WebSocket on `boomdrive.v3`, proved,
+kept and tried again as a hosted partition's is. Its first message is an
+observing hello, `observing` true with the runner's versions, its tools'
+versions and the partition's repositories, and no capacity and no lease,
+since the observer is offered no room and gives none. Once each control
+pass of the part it observes has sent its report, the observer is
+handed an observed report: each launch of the part, by its id as the
+runner holds it, with its answer and its status and entry as version
+3's copies, and no lease, act, command, inbox or preview. Handing it
+returns at once: the newest report goes on a live connection, or after
+the hello of the next one, and no pass waits on the observer, reached
+or not. `run --once` hands it nothing. The runner takes no work from
+it: a `pulled` holding a want or a report, and every message of a
+terminal, is answered with `message_refused`, its words `this connection
+observes, and the runner takes no work from it`, and said in one line,
+`<label>: the observer sent <kind> <id>, which an observer gives none
+of, so it is refused`. Its answers wake nothing and change nothing, so
+no end is confirmed on them. It says one line when it becomes
+unreachable, `<label>: the observer is unreachable: <why>`, and one
+when it is reached again, `<label>: the observer is reached`. An
+observer whose label no part has is said once at start, `boomdrive:
+observer <label>: no part of the control plane is labelled <label>, so
+it observes nothing`.
 
 ## Rules and checks
 

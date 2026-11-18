@@ -27,6 +27,13 @@
 //! the key is kept and never the key, which is read at each mint and not
 //! with the configuration. Beside a control plane that holds the App,
 //! `[forge]` is refused, and the local layer may not set it.
+//!
+//! `[observer]` names an observer on the host, which the runner reports
+//! the work of its control plane's parts to and takes nothing from
+//! (record 0048; core.19): held as written and read by the hosted
+//! implementation, through `planes`, at every read of the file. It is
+//! refused where the file names no `[control_plane]`, and the local layer
+//! may not set it (core.17).
 
 use crate::planes;
 use serde::de::IgnoredAny;
@@ -62,6 +69,12 @@ pub struct Config {
     /// file names it: none where it does not, and every fetch goes
     /// through the host's own credential helper.
     pub forge: Option<ForgeApp>,
+    /// `[observer]`, as written, where the file names it: its keys are
+    /// the hosted implementation's, which read it with the file (design
+    /// Decision 3 of a-runner-reports-to-an-observer-it-takes-no-work-from;
+    /// record 0048). Read at every pass, it is taken when the runner
+    /// starts, as `[control_plane]` is.
+    pub observer: Option<Table>,
     /// How the local layer was read: none where there is no local file.
     pub local: LocalLayer,
 }
@@ -304,6 +317,7 @@ struct File {
     accounts: Option<IgnoredAny>,
     /// Read from the document's own tree, as `accounts` is (`forge`).
     forge: Option<IgnoredAny>,
+    observer: Option<Spanned<Value>>,
     #[serde(default, deserialize_with = "table")]
     control_plane: Option<Keys>,
     #[serde(default, deserialize_with = "pin_list")]
@@ -833,6 +847,17 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
         Some(_) => forge(document.get_ref(), control_plane.as_ref(), home, &refuse)?,
     };
 
+    let observer = match &raw.observer {
+        None => None,
+        Some(value) => {
+            let at = keys
+                .keys()
+                .find(|key| key.get_ref() == "observer")
+                .map_or(0, |key| key.span().start);
+            Some(observer(value, control_plane.as_ref(), at, file, &refuse)?)
+        }
+    };
+
     let pins = match &raw.pin {
         None => Vec::new(),
         Some(entries) => pins(entries.get_ref(), &source)?,
@@ -846,6 +871,7 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
             accounts,
             control_plane,
             forge,
+            observer,
             local: LocalLayer::NoFile,
         },
         pins,
@@ -1342,6 +1368,34 @@ fn forge(
         ));
     }
     Ok(Some(ForgeApp { app_id, key_file }))
+}
+
+/// `[observer]` as written in `value`, whose key stands at `at`, of the
+/// file `file`: the table whole, once the hosted implementation's reading
+/// takes it (design Decision 3 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; core.2). It is
+/// refused where `control_plane` is none, since it observes the work of
+/// that control plane's parts (record 0048; core.19).
+fn observer(
+    value: &Spanned<Value>,
+    control_plane: Option<&ControlPlaneTable>,
+    at: usize,
+    file: &Path,
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<Table, String> {
+    let Value::Table(table) = value.get_ref() else {
+        return Err(refuse(at, "`observer` is not a table".to_string()));
+    };
+    if control_plane.is_none() {
+        return Err(refuse(
+            at,
+            "`[observer]` observes the work of a `[control_plane]`'s parts, and the file names \
+             no `[control_plane]`"
+                .to_string(),
+        ));
+    }
+    planes::read_observer(table, file)?;
+    Ok(table.clone())
 }
 
 /// `[control_plane]` as written in `table`, whose key stands at `at`,
@@ -2105,6 +2159,7 @@ mod tests {
                 }],
                 control_plane: None,
                 forge: None,
+                observer: None,
                 local: LocalLayer::NoFile,
             })
         );
@@ -2310,6 +2365,68 @@ host = \"host-a\"
 label = \"home\"
 state_repository = \"example/home-state\"
 ";
+
+    /// `[observer]` at a loopback origin, observing the partition `home`
+    /// with `example/app`, with `url` as given.
+    fn observer_at(url: &str) -> String {
+        format!(
+            "[observer]\nurl = {url:?}\n\n[[observer.partitions]]\nlabel = \"home\"\n\
+             repositories = [\"example/app\"]\n"
+        )
+    }
+
+    /// The configuration spec's "An observer beside crew": `[observer]`
+    /// beside a crew control plane reads, held as written (design Decision
+    /// 3 of a-runner-reports-to-an-observer-it-takes-no-work-from).
+    #[test]
+    fn an_observer_beside_crew() {
+        let observer = observer_at("http://localhost:8787");
+        let config = read(&format!("{CONTROL_PLANE}\n{observer}")).unwrap();
+        let written: Table = toml::from_str(&observer).unwrap();
+        assert_eq!(config.observer.as_ref(), written["observer"].as_table());
+        assert_eq!(read(CONTROL_PLANE).unwrap().observer, None);
+    }
+
+    /// The configuration spec's "An observer of no control plane".
+    #[test]
+    fn an_observer_of_no_control_plane() {
+        let refusal = read(&format!(
+            "accounts = {{}}\n\n{}",
+            observer_at("http://localhost:8787")
+        ))
+        .unwrap_err();
+        assert_eq!(
+            refusal,
+            format!(
+                "{FILE}:3: `[observer]` observes the work of a `[control_plane]`'s parts, and \
+                 the file names no `[control_plane]`"
+            )
+        );
+        assert_eq!(
+            read(&format!(
+                "observer = \"http://localhost:8787\"\n{CONTROL_PLANE}"
+            ))
+            .map(drop),
+            Err(format!("{FILE}:1: `observer` is not a table"))
+        );
+    }
+
+    /// The configuration spec's "An observer off the host": refused by
+    /// the hosted implementation's reading, naming `[observer]` and `url`.
+    #[test]
+    fn an_observer_off_the_host() {
+        let refusal = read(&format!(
+            "{CONTROL_PLANE}\n{}",
+            observer_at("https://control.example")
+        ))
+        .unwrap_err();
+        assert!(
+            refusal.starts_with(&format!(
+                "{FILE}: [observer]: `url` is to a host that is not loopback"
+            )),
+            "{refusal}"
+        );
+    }
 
     /// The configuration spec's "crew named": the table `type` names is
     /// handed on whole.

@@ -5,12 +5,14 @@
 //! It takes each carried status of a report it takes, but those the test
 //! leaves.
 //! It owns every id, or, made by [`Fake::owning`], those under one prefix
-//! alone, so a test makes as many parts as it needs.
+//! alone, so a test makes as many parts as it needs. [`Observing`] is a
+//! fake observer, which holds each pass it is handed.
 
 use crate::want::{Id, Input, Link, Terminal, Want};
-use crate::{ControlPlane, Hello, Pulled, Report, Reported, Unread, Unsent};
+use crate::{ControlPlane, Hello, Observer, Pulled, Report, Reported, Unread, Unsent};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// A control plane in memory.
@@ -250,5 +252,105 @@ impl Link for FakeLink {
     fn close(self: Box<Self>, words: &str) {
         // A far end that stopped listening has nothing to be told.
         let _ = self.sent.send(Sent::Closed(words.to_string()));
+    }
+}
+
+/// Each pass a fake observer was handed: its hello and the part's share
+/// of the report, in order.
+pub type Observations = Arc<Mutex<Vec<(Hello, Report)>>>;
+
+/// An observer in memory, for tests (design Decision 5 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from): it holds each
+/// hello and share it is handed, shared with the test that holds
+/// [`Observing::held`], and gives nothing back.
+#[derive(Clone, Debug, Default)]
+pub struct Observing {
+    held: Observations,
+}
+
+impl Observing {
+    /// An observer holding nothing yet.
+    pub fn new() -> Observing {
+        Observing::default()
+    }
+
+    /// What it holds, shared: each pass it is handed from now on is seen
+    /// there.
+    pub fn held(&self) -> Observations {
+        self.held.clone()
+    }
+}
+
+impl Observer for Observing {
+    fn observe(&mut self, hello: &Hello, report: &Report) {
+        self.held
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push((hello.clone(), report.clone()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Capacity, Observed, INTERFACE_VERSION};
+
+    fn hello(runner_version: &str) -> Hello {
+        Hello {
+            interface_version: INTERFACE_VERSION,
+            runner_version: runner_version.to_string(),
+            tool_versions: BTreeMap::new(),
+            repositories: vec!["example/app".to_string()],
+            draining: Vec::new(),
+            drives: BTreeMap::new(),
+            capacity: Capacity::Missing("no flume in this test".to_string()),
+            leases: BTreeMap::new(),
+        }
+    }
+
+    /// The control-plane-interface spec's "An observer takes what it is
+    /// handed": two passes handed, both held in order, and nothing comes
+    /// back from either.
+    #[test]
+    fn an_observer_holds_what_it_is_handed() {
+        let observing = Observing::new();
+        let held = observing.held();
+        let mut observed = Observed {
+            label: "home".to_string(),
+            observer: Box::new(observing),
+        };
+        let first = Report::default();
+        let mut second = Report::default();
+        second.launches.insert(
+            Id::new("home/1"),
+            crate::Launched {
+                lease: crate::Lease {
+                    number: 1,
+                    expires: None,
+                },
+                repository: Some("example/app".to_string()),
+                answer: crate::Answer {
+                    outcome: crate::Outcome::Held,
+                    place_dir: None,
+                    words: None,
+                    at: crate::At::parse("2026-11-01T10:00:00Z").unwrap(),
+                },
+                status: None,
+                entry: None,
+            },
+        );
+        observed.observer.observe(&hello("boomdrive 0.1.0"), &first);
+        let () = observed
+            .observer
+            .observe(&hello("boomdrive 0.1.1"), &second);
+        let held = held.lock().unwrap();
+        assert_eq!(
+            *held,
+            [
+                (hello("boomdrive 0.1.0"), first),
+                (hello("boomdrive 0.1.1"), second)
+            ]
+        );
+        assert_eq!(observed.label, "home");
     }
 }

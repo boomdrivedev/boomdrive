@@ -20,7 +20,12 @@
 //! reaches the scratch forge's state repository through the scratch git
 //! configuration, and the hosted implementation a loopback port with
 //! nothing on it. The runner runs in-process over the fake control plane
-//! and control planes of the test's own, its parts `home` and `work`.
+//! and control planes of the test's own, its parts `home` and `work`, and
+//! hands each part's passes to an observer of its label, the fake
+//! observer or the hosted one at a loopback port with nothing on it (the
+//! running spec's "Each part's observer is handed its control passes,
+//! and no pass waits on it"; design Decision 7 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from).
 
 mod common;
 mod fakes;
@@ -29,10 +34,10 @@ mod records;
 
 use boomdrive::report;
 use boomdrive::run::{Programs, Runner, Stopper};
-use boomdrive_control::fake::Fake;
+use boomdrive_control::fake::{Fake, Observing};
 use boomdrive_control::{
-    Answer, At, ControlPlane, Hello, Id, Lease, Outcome, Part, Pulled, Report, Reported, Unread,
-    Unsent, Wake, Want,
+    Answer, At, ControlPlane, Hello, Id, Lease, Observed, Outcome, Part, Pulled, Report, Reported,
+    Unread, Unsent, Wake, Want,
 };
 use common::{keeping, Origin, Scratch};
 use fakes::{offer, CredsStub, HeldFetch, SluiceStub, Stub};
@@ -40,6 +45,7 @@ use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -791,6 +797,17 @@ impl Running {
         parts: Vec<(&str, Box<dyn ControlPlane + Send>)>,
         tools: Tools,
     ) -> Running {
+        Running::observed(scratch, parts, Vec::new(), tools)
+    }
+
+    /// Starts the runner as [`Running::carrying`] does, handing each
+    /// part's passes to the observer of its label among `observers`.
+    fn observed(
+        scratch: &Scratch,
+        parts: Vec<(&str, Box<dyn ControlPlane + Send>)>,
+        observers: Vec<Observed>,
+        tools: Tools,
+    ) -> Running {
         let overlay = scratch.overlay();
         let var = |name: &str| {
             overlay
@@ -816,6 +833,9 @@ impl Running {
                 },
                 tools.programs(),
             )
+            .expect("the configuration names a control plane");
+        runner
+            .observe_with(observers)
             .expect("the configuration names a control plane");
         let stopper = runner.stopper();
         let (said, lines) = mpsc::channel();
@@ -1533,4 +1553,200 @@ fn holding(scratch: &Scratch, id: &str, expires: At) {
     let control_dir = report::control_dir(&scratch.data());
     std::fs::create_dir_all(&control_dir).expect("the control directory");
     report::save(&report::file(&control_dir), &held).expect("the report saved");
+}
+
+/// The fake control plane as a part's, recording each hello it is handed
+/// and each report it takes, in order.
+struct Recorded {
+    fake: Fake,
+    hellos: Arc<Mutex<Vec<Hello>>>,
+    reports: Arc<Mutex<Vec<Report>>>,
+}
+
+impl ControlPlane for Recorded {
+    fn pull(&mut self, hello: &Hello, report: &Report) -> Result<Pulled, Unread> {
+        self.hellos.lock().unwrap().push(hello.clone());
+        self.fake.pull(hello, report)
+    }
+
+    fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
+        let reported = self.fake.report(report)?;
+        self.reports.lock().unwrap().push(report.clone());
+        Ok(reported)
+    }
+
+    fn owns(&self, id: &Id) -> bool {
+        self.fake.owns(id)
+    }
+}
+
+/// `observing` as the observer of the part `label`.
+fn observer_of(label: &str, observing: &Observing) -> Observed {
+    Observed {
+        label: label.to_string(),
+        observer: Box::new(observing.clone()),
+    }
+}
+
+/// Waits until `held` holds `passes` passes or more; panics where it does
+/// not in time.
+fn observed(held: &Arc<Mutex<Vec<(Hello, Report)>>>, passes: usize) {
+    let deadline = Instant::now() + PATIENCE;
+    while held.lock().unwrap().len() < passes {
+        assert!(
+            Instant::now() < deadline,
+            "{passes} passes not observed in time"
+        );
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// The running spec's "A part observed": the runner carries `home` and
+/// `work`, and an observer is opened for `home` alone. After each of
+/// `home`'s control passes, its observer holds that pass's hello and
+/// `home`'s share as reported, and nothing of `work`'s.
+#[test]
+fn a_part_observed() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+    let (hellos, reports) = (Arc::default(), Arc::default());
+    let home = Recorded {
+        fake: part_holding("home", vec![launch("home/1")]),
+        hellos: Arc::clone(&hellos),
+        reports: Arc::clone(&reports),
+    };
+    let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
+    let observing = Observing::new();
+    let held = observing.held();
+    let running = Running::observed(
+        &scratch,
+        vec![("home", Box::new(home)), ("work", work)],
+        vec![observer_of("home", &observing)],
+        tools,
+    );
+    work_heard.report();
+    observed(&held, 3);
+    running.stop();
+
+    let held = held.lock().unwrap();
+    let hellos = hellos.lock().unwrap();
+    let reports = reports.lock().unwrap();
+    assert_eq!(
+        held.len(),
+        hellos.len(),
+        "each of home's passes observed once"
+    );
+    for ((hello, _), handed) in held.iter().zip(hellos.iter()) {
+        assert_eq!(hello, handed, "the pass's own hello");
+    }
+    let (_, last) = held.last().expect("a pass observed");
+    assert_eq!(Some(last), reports.last(), "the share as reported");
+    assert!(last.launches.contains_key(&Id::new("home/1")), "{last:?}");
+    for (_, share) in held.iter() {
+        assert!(
+            share
+                .launches
+                .keys()
+                .all(|id| id.as_str().starts_with("home/")),
+            "an observer of home handed another part's: {share:?}"
+        );
+    }
+}
+
+/// The running spec's "An observer of no part": `[observer]` names
+/// `garden`, and the control plane serves `home` alone. One line at the
+/// start, before any of `home`'s, says so, `home` is carried as before,
+/// and `garden` is handed nothing.
+#[test]
+fn an_observer_of_no_part() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let (home, heard) = told(Fake::owning("home/"), 0);
+    let observing = Observing::new();
+    let held = observing.held();
+    let running = Running::observed(
+        &scratch,
+        vec![("home", home)],
+        vec![observer_of("garden", &observing)],
+        Tools::new(),
+    );
+    let line = "boomdrive: observer garden: no part of the control plane is labelled garden, \
+                so it observes nothing";
+    let (_, before) = running.until(line);
+    assert!(
+        before
+            .iter()
+            .all(|said| !said.starts_with("boomdrive: home")),
+        "{before:#?}"
+    );
+    heard.pull();
+    heard.report();
+    heard.pull();
+
+    let said: Vec<String> = running.stop().into_iter().map(|(_, line)| line).collect();
+    assert!(
+        said.iter().all(|said| !said.contains("garden")),
+        "said once: {said:#?}"
+    );
+    assert!(held.lock().unwrap().is_empty(), "garden was handed a pass");
+}
+
+/// The running spec's "An observer unreachable": the hosted observer of
+/// `home` names a loopback port with nothing on it, and `home` offers a
+/// launch whose stream has room. `home`'s launch is made and reported
+/// within seconds, as with no observer (design Decision 8; core.49).
+#[test]
+fn an_observer_unreachable() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let tools = Tools::new();
+    tools.flume.answers("launch", "launch.json", 0);
+    let table = boomdrive_hosted::table::Table::read_observer(
+        &toml::from_str(&format!(
+            "url = {:?}\n[[partitions]]\nlabel = \"home\"\nrepositories = [{KEPT:?}]\n",
+            loopback_with_nothing_on_it()
+        ))
+        .expect("a TOML table"),
+        &scratch.config_file(),
+    )
+    .expect("the observer table read");
+    use boomdrive_hosted::key::Store;
+    let memory = boomdrive_hosted::key::Memory::default();
+    memory
+        .write(
+            &table.key_name("home"),
+            &boomdrive_hosted::key::made().expect("a key"),
+        )
+        .expect("kept");
+    let observers = boomdrive_hosted::observer::observers(
+        &table,
+        Arc::new(memory),
+        Duration::from_secs(1),
+        &|_| Box::new(|_| {}),
+    )
+    .expect("opened");
+    let (home, heard) = told(part_holding("home", vec![launch("home/1")]), 0);
+    let began = Instant::now();
+    let running = Running::observed(&scratch, vec![("home", home)], observers, tools);
+
+    let (launched, _, _) = running.until_starting("home/1: launched at ");
+    let reported = heard.report();
+
+    assert!(
+        launched - began < Duration::from_secs(10),
+        "{:?}",
+        launched - began
+    );
+    assert!(
+        reported - began < Duration::from_secs(10),
+        "{:?}",
+        reported - began
+    );
+    heard.pull();
+    running.stop();
 }
