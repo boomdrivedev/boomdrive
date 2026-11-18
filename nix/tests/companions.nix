@@ -5,7 +5,8 @@
 # names; Plannotator and plannotator-tui through numtide/llm-agents.nix,
 # held to their release tags; and their herdr plugins, each held to the
 # version of the set's tool it runs; and the set's marketplace of their
-# Claude Code plugins (design Decision 5).
+# Claude Code plugins (design Decision 5), which lists every tool's
+# beside theirs (plugins.nix).
 t:
 let
   inherit (t) inputs lib outputs;
@@ -337,29 +338,29 @@ in
         packages.plannotator-tui.version
   );
 
-  "The marketplace's three plugins" = each (
+  # Every plugin a tool of the set ships, beside the companions' (record
+  # 0044 as amended on 2026-11-18), each at its tool's version.
+  "The marketplace's plugins" = each (
     system: packages:
     let
       market = packages.boomdrive-claude-plugins;
       given = map (plugin: {
         inherit (plugin) name version source;
       }) market.plugins;
+      at = name: tool: {
+        inherit name;
+        inherit (packages.${tool}) version;
+        source = "./plugins/${name}";
+      };
       expected = [
-        {
-          name = "pendingyou";
-          inherit (packages.pendingyou) version;
-          source = "./plugins/pendingyou";
-        }
-        {
-          name = "plannotator";
-          inherit (packages.plannotator) version;
-          source = "./plugins/plannotator";
-        }
-        {
-          name = "timber";
-          inherit (packages.timber) version;
-          source = "./plugins/timber";
-        }
+        (at "pendingyou" "pendingyou")
+        (at "plannotator" "plannotator")
+        (at "timber" "timber")
+        (at "flume" "flume")
+        (at "sluice" "sluice")
+        (at "sluice-board" "sluice")
+        (at "crew" "crew")
+        (at "worktrunk" "worktrunk")
       ];
     in
     t.expect (market.marketplace.name == "boomdrive")
