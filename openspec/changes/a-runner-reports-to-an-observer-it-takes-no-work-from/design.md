@@ -137,7 +137,7 @@ The observed report holds each launch of the part's share, by its id as the runn
 
 Each status and entry is cut as `Partition::upward` cuts it: `null` where its copy fails, and an end of a form version 3 does not name by its delivery alone. Each is said once while it lasts (core.11, core.27). The cut of one launch moves out of `Partition::upward` into a function both use, so the two never differ.
 
-Alternatives:
+Alternative:
 
 - **The whole share, acts, commands, inboxes and previews, each with its lease left out.** Record 0048, point 3, says "its reports are the reports that partition's control plane gets". The brief narrows it to "its reports of the places it follows", and the cloud's local stage shows "that host and its places" (its record 0069). Not taken: each of the four would need a lease-less copy of its definition, and each holds answers to wants the observer never gave. This is cheap to change until a release speaks version 3, and a later version may add them.
 
@@ -205,7 +205,7 @@ Nothing returns from an observer, and it is handed no wake. So nothing it is sen
 
 `planes.rs` gains `observers(table, file, poll_interval, say_for)`, which opens the hosted implementation's observers. It also gains `read_observer` and `enroll_observer`, beside the hosted entry, the one list that names an implementation (core.2).
 
-Alternatives:
+Alternative:
 
 - **An observer as a `ControlPlane` whose wants the runner drops.** Not taken. It would give wants to the runner's code and rely on the runner dropping each. `Observer` gives none.
 
