@@ -94,3 +94,11 @@ Not taken:
 - Bad: every `get` costs two calls to GitHub's API. sluice asks once an hour for each repository and process, so the cost is small.
 - Rule core.28 lets the runner's calls to the forge's API leave the host. Rule core.33's details name the keeping and the runner's own helper. Rule core.39's details name `forge-token`'s form.
 - The set gives sluice no credential command yet. The sluice the flake holds, v0.78.1, reads none; sluice reads `[forge] credential` from v0.84.0. Moving sluice's tag, and having the Boomdrive module give sluice `boomdrive forge-token`, is a change of its own (core.45, core.57).
+
+## Amendment, 2026-11-18: one App in every copy of the cloud, and its one read-only look
+
+Status: accepted by the user on 2026-11-18, in the design agent's pane, with boomdrivedev/boomdrive-cloud record 0073: "yes". The user's words that day: "I said we have one app."
+
+- **One App in every copy of the cloud.** Production, staging and a local run of the cloud each reach GitHub through the one Boomdrive App, each holding a private key of its own to it, so one copy's key is deleted on GitHub without touching the others (cloud record 0073).
+- **The App installs only on boomdrivedev while any key is held outside production.** A key to the App mints a token for every account that installed it. While a key is held anywhere but the production cloud, a copy of the cloud or a host such as deneb, the App is set on GitHub to install only on the boomdrivedev organization. Opening it to other accounts is a decision of its own.
+- **The cloud's one read-only look.** The mitigation "no cloud code makes a forge call with a token it minted" now reads: no cloud code reads a repository's content or writes to a repository, with any token. The cloud mints a token asking metadata read alone to list what an installation covers and to read one repository by its id when a member picks it, uses it for that read, and keeps it no longer.
