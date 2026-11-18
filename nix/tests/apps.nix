@@ -1036,6 +1036,31 @@ let
       (launcherOf evaluated).outPath == set.boomdrive-launcher.outPath
     ) "the ${platform} system with no drive installs a launcher that is not the set's";
 
+  # A drive gives Flume no stream without the runner, so the launcher
+  # holds none (design Decision 6 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  noEntriesWithout =
+    platform:
+    { withoutOf, set, ... }:
+    let
+      evaluated = withoutOf {
+        services.boomdrive = {
+          launcher.enable = true;
+          accounts.own.drives.home.repositories.agentplot = [ "flume" ];
+        };
+      };
+      installed = launcherOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (installed.outPath == set.boomdrive-launcher.outPath)
+        "the ${platform} system without the runner installs a launcher that is not the set's: ${
+          builtins.toJSON (installed.drives or null)
+        }"
+    ++ t.expect (builtins.elem set.boomdrive-launcher.outPath (profileOf evaluated)) "the ${platform} system profile without the runner holds no set's launcher";
+
   hostsLauncher =
     platform:
     { system, set, ... }:
@@ -1197,6 +1222,7 @@ onEach "The way in with the runner" withRunner
 // onEach "A drive of another machine has no entry" anotherMachine
 // onEach "A stream's own session named" sessionNamed
 // onEach "No drive, the set's launcher" noDrive
+// onEach "No entries without the runner" noEntriesWithout
 // onEach "A host's own launcher" hostsLauncher
 // {
   "The folder written on nix-darwin" = folderWritten "nix-darwin";

@@ -38,8 +38,12 @@
 # `timber serve`, which is timber's own (record 0023 as amended on
 # 2026-11-13 and 2026-11-15; design Decisions 5 to 7 of the change
 # the-set-takes-timbers-own-module).
-# The launcher is the set's made, by its override, for each drive of this
-# host, in the order of the drives' names: each entry is the drive's name
+# With the runner, the launcher is the set's made, by its override, for
+# each drive of this host, in the order of the drives' names, and without
+# it the set's own, `Default stream` alone, since a drive gives Flume its
+# stream only with the runner (record 0023 as amended on 2026-11-18;
+# design Decision 6 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner): each entry is the drive's name
 # and its stream's own session, the `session` Flume's settings name for the
 # stream, else the stream's name, so the override is made with the set's
 # own nixpkgs and its compiled menu is the set's (design Decisions 1 and 5
@@ -161,9 +165,13 @@ in
     launcher.enable = switch "the Boomdrive launcher";
     launcher.package = mkOption {
       type = types.nullOr types.package;
-      default = set.boomdrive-launcher.override { drives = entries; };
-      defaultText = lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.boomdrive-launcher.override { drives = <each drive of this host>; }";
-      description = "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS, a menu-bar app, and the desktop's applications on Linux, installed where `services.boomdrive.launcher.enable` is on. By default it is the set's made for this host's drives: each drive of this host, in the order of the drives' names, is an entry opening its stream's own session, the stream's `session` in Flume's settings, else the stream's name, beside `Default stream`; a drive of another machine has none. A host's own replaces it, installed as given, and `null` installs none.";
+      # A drive gives Flume its stream only with the runner (drives.nix;
+      # record 0028), so without it the launcher holds no drive (design
+      # Decision 6 of the change
+      # boomdrives-tools-install-on-a-machine-without-the-runner).
+      default = set.boomdrive-launcher.override { drives = if cfg.enable then entries else [ ]; };
+      defaultText = lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.boomdrive-launcher.override { drives = <each drive of this host where config.services.boomdrive.enable is on, else none>; }";
+      description = "The Boomdrive launcher, which runs `flume open`: `Boomdrive` in /Applications/Nix Apps on macOS, a menu-bar app, and the desktop's applications on Linux, installed where `services.boomdrive.launcher.enable` is on. By default it is the set's made for this host's drives: each drive of this host, in the order of the drives' names, is an entry opening its stream's own session, the stream's `session` in Flume's settings, else the stream's name, beside `Default stream`; a drive of another machine has none. Without the runner, where no drive gives Flume a stream, it is the set's own, `Default stream` alone. A host's own replaces it, installed as given, and `null` installs none.";
     };
     portless.enable = switch "portless";
     portless.package = installed "portless" "portless, which gives each worktree's dev server a `.localhost` address and whose routes crew's board reads, installed where `services.boomdrive.portless.enable` is on; a host's own replaces it, and `null` installs none. Its proxy and the trust of its certificate authority are the person's: `portless service install` or a first `portless run` at a terminal, and `portless trust`.";
