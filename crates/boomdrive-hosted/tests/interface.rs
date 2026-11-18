@@ -21,7 +21,7 @@
 mod common;
 
 use boomdrive_control::*;
-use common::{address, definition, example, passes, refused, to_runner, validator, V1};
+use common::{address, definition, example, passes, refused, to_runner, validator, V1, V3};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -129,6 +129,55 @@ fn a_hold_is_no_act_of_version_1_or_2() {
         &validator(&definition("wants.schema.json", "want")),
         &json,
         "a hold, in version 2",
+    );
+}
+
+/// A want whose act on `offer-1` is a hold under `words` for
+/// `bound_interval` seconds, as the interface writes it.
+fn hold_of(words: &str, bound_interval: u64) -> Value {
+    act_of(ActSort::Hold {
+        words: words.to_string(),
+        bound_interval,
+    })
+}
+
+/// The runner-protocol spec's "A hold is an act of version 3" and "A
+/// hold's bound past what JavaScript reads exactly": a hold of words and
+/// a bound, one of no words and one of bound 0 pass version 3's `want`,
+/// which bounds neither further, so a hold the runner refuses reaches it
+/// as an act (core.59); a hold of bound 2^53 fails it, as every integer of
+/// the protocol past what JavaScript reads exactly does; and
+/// `pulled-with-a-hold.json` passes version 3's `to-runner.schema.json`
+/// (design Decisions 1 and 2; record 0052).
+#[test]
+fn a_hold_is_an_act_of_version_3() {
+    let want = V3.validator(&V3.definition("wants.schema.json", "want"));
+    passes(
+        &want,
+        &hold_of("the user sends it on the landings card, row 3", 28800),
+        "a hold",
+    );
+    passes(&want, &hold_of("", 28800), "a hold of no words");
+    passes(
+        &want,
+        &hold_of("the user sends it on the landings card, row 3", 0),
+        "a hold of bound 0",
+    );
+    refused(
+        &want,
+        &hold_of("the user sends it", 1 << 53),
+        "a hold of bound 2^53",
+    );
+    let example = V3.example("to-runner", "pulled-with-a-hold.json");
+    passes(
+        &V3.messages_to_runner(),
+        &example,
+        "pulled-with-a-hold.json",
+    );
+    assert_eq!(
+        example["body"]["pulled"]["wants"][1]["act"]["what"],
+        hold_of("the user sends it on the landings card, row 3", 28800)["act"]["what"],
+        "pulled-with-a-hold.json holds a hold"
     );
 }
 

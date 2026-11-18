@@ -9,7 +9,7 @@
 
 pub mod fake;
 
-use boomdrive_hosted::protocol::{v1, v2};
+use boomdrive_hosted::protocol::{v1, v2, v3};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -40,8 +40,16 @@ pub const V2: Version = Version {
     files: v2::FILES,
 };
 
+/// Version 3, as this release speaks it, version 2 whole but for a
+/// control plane's hold (record 0052).
+pub const V3: Version = Version {
+    number: v3::VERSION,
+    address: v3::ADDRESS,
+    files: v3::FILES,
+};
+
 /// Each version, in order.
-pub const VERSIONS: [Version; 2] = [V1, V2];
+pub const VERSIONS: [Version; 3] = [V1, V2, V3];
 
 /// The version the runner speaks, which the free functions check.
 pub const CURRENT: Version = V2;
@@ -88,7 +96,8 @@ impl Version {
 
     /// Every one of its files under its `$id`, and nothing else.
     fn registry(&self) -> &'static Registry<'static> {
-        static REGISTRIES: [OnceLock<Registry<'static>>; 2] = [OnceLock::new(), OnceLock::new()];
+        static REGISTRIES: [OnceLock<Registry<'static>>; 3] =
+            [OnceLock::new(), OnceLock::new(), OnceLock::new()];
         let cell = &REGISTRIES[(self.number - 1) as usize];
         cell.get_or_init(|| {
             let resources = self
