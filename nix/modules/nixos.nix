@@ -5,8 +5,10 @@
 # profiles' (design Decision 11). Each tool of the set is installed by its
 # own module, which flake.nix imports beside this one; tools.nix sets
 # their options, and each tool's user, Flume's, sluice's, crew's and
-# timber's, is the runner's unless the host names its own (record 0023
-# and its amendment of 2026-11-15); drives.nix gives Flume's module each drive's
+# timber's, is the set's user, `services.boomdrive.user`, wherever the
+# host names it, with the runner or without, unless the host names the
+# tool's own (record 0023 and its amendments of 2026-11-15 and
+# 2026-11-18); drives.nix gives Flume's module each drive's
 # stream (record 0028), sources.nix declares crew's source to Flume's
 # module (record 0034), crew-drives.nix gives crew's module each drive's
 # machine and its account's state repository (record 0032), and
@@ -240,6 +242,20 @@ in
       '';
     })
 
+    # Each tool's module links its file for the set's user, unless the host
+    # names another, wherever the host names the set's user, with the runner
+    # or without; where it names none, each tool's module asks for its own
+    # (record 0023 as amended on 2026-11-18; design Decision 4 of the change
+    # boomdrives-tools-install-on-a-machine-without-the-runner).
+    (lib.mkIf named {
+      services = {
+        flume.user = lib.mkDefault user;
+        sluice.user = lib.mkDefault user;
+        crew.user = lib.mkDefault user;
+        timber.user = lib.mkDefault user;
+      };
+    })
+
     (lib.mkIf cfg.enable {
       assertions = [
         {
@@ -264,23 +280,15 @@ in
         };
       };
 
-      # Each tool's module links its file for the runner's user, unless the
-      # host names another; and crew's kept repositories, where crew's
-      # module is on and the runner keeps a repository (design Decisions 1,
-      # 4 and 6).
-      services = {
-        flume.user = lib.mkDefault user;
-        sluice.user = lib.mkDefault user;
-        timber.user = lib.mkDefault user;
-        crew = {
-          user = lib.mkDefault user;
-          settings.repositories = lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { }) (keptOf {
+      # crew's kept repositories, where crew's module is on and the runner
+      # keeps a repository (design Decisions 1, 4 and 6).
+      services.crew.settings.repositories =
+        lib.mkIf (config.services.crew.enable && cfg.cloneDirs != { })
+          (keptOf {
             inherit (cfg) cloneDirs;
             inherit home;
             root = cfg.settings.repository_root;
           });
-        };
-      };
 
       users.users.${user}.linger = true;
 
