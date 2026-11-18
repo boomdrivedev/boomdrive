@@ -17,7 +17,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - the new example against version 3's `to-runner.schema.json`, passing.
 
   This proves the runner-protocol spec's "A hold is an act of version 3" and "A hold's bound past what JavaScript reads exactly" (design Decisions 1 and 2; Task notes 1.2). True when `devenv shell -- cargo test -p boomdrive-hosted --test interface a_hold_is_an_act_of_version_3` passes.
-- [ ] 1.3 In `tests/interface.rs`:
+- [x] 1.3 In `tests/interface.rs`:
   - `a_confirm_is_an_act_of_version_2`, `a_land_is_an_act_of_version_2`, `a_preview_is_a_want_of_version_2` and `a_hold_is_no_act_of_version_1_or_2` check version 2 by `common::V2`;
   - the first three each gain a sibling of version 3, checking it by `common::V3`;
   - `every_sort_the_interface_names` checks every value against version 3's `want`, each passing, and against version 2's, each passing but the hold, which version 2 refuses. It still asserts every sort named.
