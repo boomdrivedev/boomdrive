@@ -44,4 +44,4 @@ A task is done once the check it names passes, run as it names it. The task grou
 
 ## 7. The specs
 
-- [ ] 7.1 The change's delta passes openspec's strict check and archives alone into specs that pass it, each requirement it writes under openspec's 500 characters. Done when `sluice exec main -- moon run root:changes` passes.
+- [x] 7.1 The change's delta passes openspec's strict check and archives alone into specs that pass it, each requirement it writes under openspec's 500 characters. Done when `sluice exec main -- moon run root:changes` passes.
