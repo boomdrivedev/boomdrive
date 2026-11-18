@@ -22,6 +22,17 @@ let
     "nix-darwin" = {
       system = t.darwinSystem;
       without = t.darwinOf [ outputs.darwinModules.default ];
+      # A system of the module `given` without the runner (design Decision 9
+      # of the change boomdrives-tools-install-on-a-machine-without-the-runner).
+      withoutOf =
+        given:
+        t.darwinOf [
+          outputs.darwinModules.default
+          given
+        ];
+      # The users a system without the runner gives the tools it turns on:
+      # on nix-darwin, the primary user alice, given already.
+      users = _: { };
       withCrew = t.darwinOf [
         outputs.darwinModules.default
         crewOn
@@ -31,6 +42,21 @@ let
     NixOS = {
       system = t.nixosSystem;
       without = t.nixosOf [ outputs.nixosModules.default ];
+      withoutOf =
+        given:
+        t.nixosOf [
+          outputs.nixosModules.default
+          given
+        ];
+      # On NixOS, the set's user alice, and alice for each of `tools`.
+      users = tools: {
+        services = {
+          boomdrive.user = "alice";
+        }
+        // lib.genAttrs tools (_: {
+          user = "alice";
+        });
+      };
       withCrew = t.nixosOf [
         outputs.nixosModules.default
         crewOn
@@ -185,6 +211,364 @@ let
       ) "the NixOS user activation's ${name} links the plugins"
     ) others;
 
+  # herdr's plugins by default, those of the tools the set installs, each
+  # beside the set's own build of it (design Decision 3 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  pluginsAre =
+    platform: what: set: evaluated: names:
+    let
+      plugins = map (p: p.outPath) evaluated.config.services.boomdrive.herdr.plugins;
+      expected = map (name: set.${name}.outPath) names;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system ${what} fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      plugins == expected
+    ) "the ${platform} plugins ${what} are ${toString plugins}, not the set's ${toString names}";
+
+  runnersPlugins =
+    platform:
+    { system, set, ... }:
+    pluginsAre platform "with the runner" set (system { }) [
+      "flume-herdr-plugin"
+      "sluice-herdr-plugin"
+      "timber-herdr-plugin"
+    ];
+
+  # A Flume of the host's own, laid out as a package with a bin.
+  ownFlume =
+    { pkgs, ... }:
+    {
+      services.flume.package = pkgs.runCommand "own-flume" { } "mkdir -p $out/bin";
+    };
+  hostsFlume =
+    platform:
+    { system, set, ... }:
+    pluginsAre platform "with the host's own Flume" set (system ownFlume) [
+      "sluice-herdr-plugin"
+      "timber-herdr-plugin"
+    ];
+
+  flumeOff =
+    platform:
+    { system, set, ... }:
+    pluginsAre platform "with Flume's module off" set (system { services.flume.enable = false; }) [
+      "sluice-herdr-plugin"
+      "timber-herdr-plugin"
+    ];
+
+  pluginsWithout =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    pluginsAre platform "with sluice and plannotator-tui turned on without the runner" set
+      (withoutOf {
+        imports = [ (users [ "sluice" ]) ];
+        services = {
+          sluice.enable = true;
+          boomdrive.plannotator-tui.enable = true;
+        };
+      })
+      [
+        "sluice-herdr-plugin"
+        "plannotator-herdr-plugin"
+      ];
+
+  hostsList =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system {
+        imports = [ ownTimber ];
+        services.boomdrive.herdr.plugins = [ set.timber-herdr-plugin ];
+      };
+      steps = map lib.trim (pluginSteps platform evaluated);
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.timber-herdr-plugin} || true";
+      expected =
+        if platform == "nix-darwin" then
+          "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}"
+        else
+          "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with its own list fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      steps == [ expected ]
+    ) "the ${platform} activation with its own list links ${builtins.toJSON steps}, not ${expected}";
+
+  # The set's user's steps without the runner on nix-darwin (design
+  # Decision 4 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  flumeAndHerdr = {
+    services = {
+      flume.enable = true;
+      boomdrive.herdr.enable = true;
+    };
+  };
+  linkedWithoutOnDarwin =
+    let
+      inherit (platforms."nix-darwin") set withoutOf;
+      evaluated = withoutOf flumeAndHerdr;
+      steps = pluginSteps "nix-darwin" evaluated;
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} || true";
+      expected = "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}";
+      text = activationOf "nix-darwin" evaluated;
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a nix-darwin system with Flume and herdr turned on without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (steps == [ expected ])
+        "the nix-darwin activation without the runner's plugin steps are ${builtins.toJSON steps}, not ${expected}"
+    ++ t.expect (
+      !lib.hasInfix "boomdrive-config.toml" text
+    ) "the nix-darwin activation without the runner links the runner's file: ${text}"
+    ++ t.expect (
+      !evaluated.config.launchd.user.agents ? boomdrive
+    ) "the nix-darwin system without the runner declares the agent boomdrive";
+
+  noPrimaryUser =
+    let
+      evaluated = platforms."nix-darwin".withoutOf {
+        imports = [ flumeAndHerdr ];
+        system.primaryUser = lib.mkForce null;
+      };
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (lib.hasInfix "services.boomdrive.herdr.enable" failures) "a nix-darwin system with no primary user that links the plugins fails naming no services.boomdrive.herdr.enable: ${failures}";
+
+  folderWithout =
+    platform: given:
+    let
+      inherit (platforms.${platform}) withoutOf;
+      evaluated = withoutOf {
+        imports = [ given ];
+        services.boomdrive.pendingyou.enable = true;
+      };
+      folder =
+        folderOf evaluated (homeOf platform)
+          evaluated.config.services.boomdrive.pendingyou.package;
+      expected = folderStepOf platform evaluated folder;
+      steps = map lib.trim (folderSteps platform evaluated);
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system with Pending You turned on without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (steps == [ expected ])
+        "the ${platform} activation without the runner's folder steps are ${builtins.toJSON steps}, not ${expected}"
+    ++
+      t.expect (folder.folder == "${homeOf platform}/.config/pendingyou")
+        "the ${platform} folder without the runner is ${folder.folder}, not ${homeOf platform}/.config/pendingyou";
+
+  # The set's user's steps without the runner on NixOS (design Decision 4
+  # of the change boomdrives-tools-install-on-a-machine-without-the-runner).
+  linkedWithoutOnNixOS =
+    let
+      inherit (platforms.NixOS) set withoutOf users;
+      evaluated = withoutOf {
+        imports = [
+          flumeAndHerdr
+          (users [ "flume" ])
+        ];
+      };
+      text = activationOf "NixOS" evaluated;
+      guarded = lib.splitString "if [ \"$(id -un)\" = alice ]; then" text;
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} || true";
+      expected = "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+      steps = map lib.trim (pluginSteps "NixOS" evaluated);
+      scripts = userScripts evaluated;
+      others = lib.filter (name: name != "boomdrive") (builtins.attrNames scripts);
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a NixOS system with Flume and herdr turned on without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (steps == [ expected ])
+        "the NixOS user activation without the runner's plugin steps are ${builtins.toJSON steps}, not ${expected}"
+    ++
+      t.expect (builtins.length guarded == 2 && lib.hasInfix expected (builtins.elemAt guarded 1))
+        "the NixOS user activation without the runner links the plugins outside its test of alice: ${text}"
+    ++ t.expect (
+      !lib.hasInfix "-activate.sh keep " text && !lib.hasInfix "boomdrive-config.toml" text
+    ) "the NixOS user activation without the runner runs the runner's steps: ${text}"
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !lib.hasInfix "-activate.sh plugins " (
+          builtins.unsafeDiscardStringContext (scripts.${name}.text or "")
+        )
+      ) "the NixOS user activation's ${name} links the plugins"
+    ) others
+    ++ t.expect (
+      !evaluated.config.systemd.user.services ? boomdrive
+    ) "the NixOS system without the runner declares the user unit boomdrive"
+    ++ t.expect (
+      evaluated.config.users.users.alice.linger != true
+    ) "alice lingers on the NixOS system without the runner";
+
+  noUser =
+    let
+      evaluated = platforms.NixOS.withoutOf {
+        imports = [ flumeAndHerdr ];
+        services.flume.user = "alice";
+      };
+      failures = toString (t.failures evaluated);
+    in
+    t.expect (lib.hasInfix "services.boomdrive.user" failures) "a NixOS system with no user that links the plugins fails naming no services.boomdrive.user: ${failures}";
+
+  folderWithoutOnNixOS =
+    let
+      evaluated = platforms.NixOS.withoutOf {
+        imports = [ (platforms.NixOS.users [ ]) ];
+        services.boomdrive.pendingyou.enable = true;
+      };
+      scripts = userScripts evaluated;
+      others = lib.filter (name: name != "boomdrive") (builtins.attrNames scripts);
+    in
+    folderWithout "NixOS" (platforms.NixOS.users [ ])
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !lib.hasInfix "-activate.sh pendingyou " (
+          builtins.unsafeDiscardStringContext (scripts.${name}.text or "")
+        )
+      ) "the NixOS user activation's ${name} without the runner writes Pending You's folder"
+    ) others;
+
+  # A host without the runner takes only what it turns on (design
+  # Decisions 1 to 7 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  tools = [
+    "flume"
+    "sluice"
+    "crew"
+    "timber"
+  ];
+  everyTool =
+    tools
+    ++ [
+      "herdr"
+      "ghostty"
+      "boomdrive-launcher"
+      "portless"
+      "worktrunk"
+    ]
+    ++ companions;
+  # The set's packages of `everyTool` and the runner's.
+  setsPackages = everyTool ++ [ "boomdrive" ];
+
+  nothingOn =
+    platform:
+    { withoutOf, set, ... }:
+    let
+      evaluated = withoutOf (
+        if platform == "nix-darwin" then { system.primaryUser = lib.mkForce null; } else { }
+      );
+      text = activationOf platform evaluated;
+      scripts = builtins.attrNames (userScripts evaluated);
+      ours = lib.filter (name: builtins.elem name ([ "boomdrive" ] ++ tools)) scripts;
+    in
+    profileHolds platform "with nothing turned on" set evaluated [ ] setsPackages
+    ++ t.expect (
+      signinsOf evaluated == [ ]
+    ) "the ${platform} system profile with nothing turned on holds pendingyou-signin"
+    ++ (
+      if platform == "nix-darwin" then
+        t.expect (
+          !lib.hasInfix "sudo --user" text
+        ) "the nix-darwin activation with nothing turned on runs a step as a user: ${text}"
+      else
+        t.expect (ours == [ ]) "the NixOS user activation with nothing turned on runs ${toString ours}"
+    );
+
+  onlyThose =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    let
+      evaluated = withoutOf {
+        imports = [
+          flumeAndHerdr
+          (users [ "flume" ])
+        ];
+      };
+      steps = map lib.trim (pluginSteps platform evaluated);
+      step = builtins.unsafeDiscardStringContext "${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} || true";
+      expected =
+        if platform == "nix-darwin" then
+          "sudo --user=alice -- /usr/bin/env HOME=/Users/alice /bin/sh ${step}"
+        else
+          "${builtins.unsafeDiscardStringContext evaluated.pkgs.runtimeShell} ${step}";
+    in
+    profileHolds platform "with Flume and herdr turned on without the runner" set evaluated [
+      "flume"
+      "herdr"
+    ] (lib.subtractLists [ "flume" "herdr" ] setsPackages)
+    ++
+      t.expect (steps == [ expected ])
+        "the ${platform} activation with Flume and herdr turned on without the runner links ${builtins.toJSON steps}, not ${expected}";
+
+  everyToolOn =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    let
+      evaluated = withoutOf {
+        imports = [
+          crewOn
+          (users tools)
+        ];
+        services = {
+          flume.enable = true;
+          sluice.enable = true;
+          timber.enable = true;
+          boomdrive =
+            lib.genAttrs
+              [
+                "herdr"
+                "ghostty"
+                "launcher"
+                "portless"
+                "worktrunk"
+                "pendingyou"
+                "plannotator"
+                "plannotator-tui"
+              ]
+              (_: {
+                enable = true;
+              });
+        };
+      };
+    in
+    profileHolds platform "with every tool turned on without the runner" set evaluated everyTool [
+      "boomdrive"
+    ];
+
+  timberWithout =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    profileHolds platform "with timber turned on without the runner" set (withoutOf {
+      imports = [ (users [ "timber" ]) ];
+      services.timber.enable = true;
+    }) [ "timber" ] [ ];
+
   noSetsHerdr =
     platform:
     { system, ... }:
@@ -221,6 +605,37 @@ let
       terminal = "herdr";
       multiplexer = null;
     };
+
+  # Flume's terminal where herdr is turned on without the runner, and no
+  # window where Ghostty is not (design Decision 5 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  flumesTerminalWithout =
+    platform:
+    { withoutOf, users, ... }:
+    let
+      evaluated = withoutOf {
+        imports = [ (users [ "flume" ]) ];
+        services = {
+          flume.enable = true;
+          boomdrive.herdr.enable = true;
+        };
+      };
+      host = hostOf evaluated;
+      held = {
+        multiplexer = host.multiplexer or null;
+        terminal_app = host.terminal_app or null;
+      };
+      expected = {
+        multiplexer = "herdr";
+        terminal_app = null;
+      };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (held == expected)
+        "the ${platform} system without the runner gives Flume's host ${builtins.toJSON held}, not ${builtins.toJSON expected}";
 
   # portless, installed with the runner (design Decision 5 of the change
   # portless-comes-with-the-flake).
@@ -773,6 +1188,33 @@ let
       ) "the NixOS user activation's ${name} writes Pending You's folder"
     ) others;
 
+  # A companion turned on by its own switch, without the runner or crew
+  # (design Decisions 1 and 2 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  companionWithout =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    let
+      evaluated = withoutOf {
+        imports = [ (users [ ]) ];
+        services.boomdrive.pendingyou.enable = true;
+      };
+    in
+    profileHolds platform "with Pending You turned on without the runner" set evaluated
+      [ "pendingyou" ]
+      [
+        "plannotator"
+        "plannotator-tui"
+      ]
+    ++
+      t.expect (builtins.length (signinsOf evaluated) == 1)
+        "the ${platform} system profile with Pending You turned on without the runner holds no pendingyou-signin";
+
   # A Pending You of the host's own, laid out as a package with a bin.
   ownPendingyou =
     { pkgs, ... }:
@@ -1022,6 +1464,31 @@ let
       (launcherOf evaluated).outPath == set.boomdrive-launcher.outPath
     ) "the ${platform} system with no drive installs a launcher that is not the set's";
 
+  # A drive gives Flume no stream without the runner, so the launcher
+  # holds none (design Decision 6 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  noEntriesWithout =
+    platform:
+    { withoutOf, set, ... }:
+    let
+      evaluated = withoutOf {
+        services.boomdrive = {
+          launcher.enable = true;
+          accounts.own.drives.home.repositories.agentplot = [ "flume" ];
+        };
+      };
+      installed = launcherOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system without the runner fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (installed.outPath == set.boomdrive-launcher.outPath)
+        "the ${platform} system without the runner installs a launcher that is not the set's: ${
+          builtins.toJSON (installed.drives or null)
+        }"
+    ++ t.expect (builtins.elem set.boomdrive-launcher.outPath (profileOf evaluated)) "the ${platform} system profile without the runner holds no set's launcher";
+
   hostsLauncher =
     platform:
     { system, set, ... }:
@@ -1063,35 +1530,128 @@ let
         !builtins.elem set.${name}.outPath profile
       ) "the ${platform} system profile without the runner holds the set's ${name}"
     ) apps;
+
+  # Each tool turned on by its own switch, with the runner or without
+  # (design Decisions 1 and 2 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  # `evaluated` holds the set's `held` and none of its `left`, failing no
+  # assertion.
+  profileHolds =
+    platform: what: set: evaluated: held: left:
+    let
+      profile = profileOf evaluated;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system ${what} fails: ${toString (t.failures evaluated)}"
+    ++ lib.concatMap (
+      name:
+      t.expect (builtins.elem set.${name}.outPath
+        profile
+      ) "the ${platform} system profile ${what} holds no set's ${name}"
+    ) held
+    ++ lib.concatMap (
+      name:
+      t.expect (
+        !builtins.elem set.${name}.outPath profile
+      ) "the ${platform} system profile ${what} holds the set's ${name}"
+    ) left;
+
+  wayInWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with herdr, Ghostty and the launcher turned on without the runner" set (
+      withoutOf
+        {
+          services.boomdrive = {
+            herdr.enable = true;
+            ghostty.enable = true;
+            launcher.enable = true;
+          };
+        }
+    ) apps [ ];
+
+  ghosttyOff =
+    platform:
+    { system, set, ... }:
+    profileHolds platform "with Ghostty turned off" set
+      (system { services.boomdrive.ghostty.enable = false; })
+      [
+        "herdr"
+        "boomdrive-launcher"
+      ]
+      [ "ghostty" ];
+
+  herdrOff =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.herdr.enable = false; };
+      steps = pluginSteps platform evaluated;
+    in
+    profileHolds platform "with herdr turned off" set evaluated [ ] [ "herdr" ]
+    ++ t.expect (
+      steps == [ ]
+    ) "the ${platform} activation with herdr turned off links plugins: ${builtins.toJSON steps}";
+
+  portlessWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with portless turned on without the runner" set (withoutOf {
+      services.boomdrive.portless.enable = true;
+    }) [ "portless" ] [ ];
+
+  worktrunkWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with worktrunk turned on without the runner" set (withoutOf {
+      services.boomdrive.worktrunk.enable = true;
+    }) [ "worktrunk" ] [ ];
 in
 onEach "The way in with the runner" withRunner
 // onEach "A host's own herdr" hostsHerdr
 // onEach "No Ghostty of the set's" noGhostty
 // onEach "Not without the runner" withoutRunner
+// onEach "The way in without the runner" wayInWithout
+// onEach "Ghostty turned off with the runner" ghosttyOff
+// onEach "herdr turned off" herdrOff
 // onEach "Flume's terminal and window" flumesTerminal
 // onEach "A host's own window" hostsWindow
 // onEach "The word of before" wordOfBefore
+// onEach "Flume's terminal without the runner" flumesTerminalWithout
 // onEach "No herdr of the set's" noSetsHerdr
+// onEach "The runner's plugins" runnersPlugins
+// onEach "A host's own Flume" hostsFlume
+// onEach "Flume's module off" flumeOff
+// onEach "The plugins of the tools turned on without the runner" pluginsWithout
+// onEach "A host's own list" hostsList
 // onEach "portless with the runner" portlessWithRunner
 // onEach "A host's own portless" hostsPortless
 // onEach "No portless of the set's" noPortless
 // onEach "No portless without the runner" portlessWithoutRunner
+// onEach "portless without the runner" portlessWithout
 // onEach "No proxy of the modules'" noProxy
 // onEach "worktrunk with the runner" worktrunkWithRunner
 // onEach "A host's own worktrunk" hostsWorktrunk
 // onEach "No worktrunk of the set's" noWorktrunk
 // onEach "No worktrunk without the runner" worktrunkWithoutRunner
+// onEach "worktrunk without the runner" worktrunkWithout
 // onEach "timber with the runner" timberWithRunner
 // onEach "A host's own timber" hostsTimber
 // onEach "No timber of the set's" noTimber
 // onEach "A host that keeps its own timber file" ownTimberFile
 // onEach "No timber without the runner" timberWithoutRunner
+// onEach "timber turned on without the runner" timberWithout
+// onEach "Nothing turned on" nothingOn
+// onEach "Only the tools turned on" onlyThose
+// onEach "Every tool turned on without the runner" everyToolOn
 // onEach "The timber option is gone" timberGone
 // onEach "No serving process of the modules'" noServe
 // onEach "The companions with the runner and crew" companionsWithCrew
 // onEach "A host's own Plannotator" hostsPlannotator
 // onEach "No companions without crew" noCompanionsWithoutCrew
 // onEach "No companions without the runner" noCompanionsWithoutRunner
+// onEach "A companion turned on without the runner" companionWithout
 // onEach "The sign-in's two commands" signinRead
 // onEach "The launchers run the given Pending You" launchersRunGiven
 // onEach "No Pending You of the set's" noSetsPendingyou
@@ -1101,6 +1661,7 @@ onEach "The way in with the runner" withRunner
 // onEach "A drive of another machine has no entry" anotherMachine
 // onEach "A stream's own session named" sessionNamed
 // onEach "No drive, the set's launcher" noDrive
+// onEach "No entries without the runner" noEntriesWithout
 // onEach "A host's own launcher" hostsLauncher
 // {
   "The folder written on nix-darwin" = folderWritten "nix-darwin";
@@ -1109,4 +1670,10 @@ onEach "The way in with the runner" withRunner
   "The companions' plugins with crew" = companionsPlugins;
   "The plugins linked on nix-darwin" = linkedOnDarwin;
   "The plugins linked on NixOS" = linkedOnNixOS;
+  "The plugins linked without the runner on nix-darwin" = linkedWithoutOnDarwin;
+  "No primary user on nix-darwin" = noPrimaryUser;
+  "The folder written without the runner on nix-darwin" = folderWithout "nix-darwin" { };
+  "The plugins linked without the runner on NixOS" = linkedWithoutOnNixOS;
+  "No user on NixOS" = noUser;
+  "The folder written without the runner on NixOS" = folderWithoutOnNixOS;
 }

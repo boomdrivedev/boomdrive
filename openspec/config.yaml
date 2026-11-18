@@ -24,13 +24,17 @@ context: |
   Plannotator and plannotator-tui, with their herdr plugins and the set's
   marketplace of their Claude Code plugins and timber's (record 0044),
   each tool's own module re-exported beside the runner's service,
-  services.boomdrive, as nix-darwin and NixOS modules, which with the
-  runner install herdr, Ghostty, portless, worktrunk, timber and the
+  services.boomdrive, as nix-darwin and NixOS modules, in which each tool
+  is turned on by a switch of its own, which the runner's turns on, so a
+  host without the runner takes the ones it wants, with their herdr
+  plugins (record 0023 as amended on 2026-11-18; core.62); with the
+  runner they install herdr, Ghostty, portless, worktrunk, timber and the
   Boomdrive launcher, a menu-bar app on macOS and a desktop entry on
   Linux, with an entry for each drive,
   that runs flume open, and link the set's herdr plugins, and with the
   runner and crew install the companions and pendingyou-signin, link
-  their herdr plugins and write Pending You's folder, and with the runner
+  their herdr plugins and write Pending You's folder, each as the set's
+  user, and with the runner
   and a collector the host names write Claude Code's managed telemetry
   document, which every session on the host reads (record 0013 as
   amended on 2026-11-12), and turn Flume's and sluice's own telemetry on

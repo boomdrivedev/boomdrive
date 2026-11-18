@@ -37,7 +37,11 @@ their Claude Code plugins and timber's (record 0044), each tool's own
 module re-exported beside the runner's service, `services.boomdrive`,
 as nix-darwin and NixOS modules, whose `accounts` and `settings` are
 the runner's file, each drive's stream given to Flume's module, and,
-with crew on, crew's source of kinds (record 0034). With the runner,
+with crew on, crew's source of kinds (record 0034). Each tool is turned
+on by a switch of its own, which the runner's turns on, so a host
+without the runner takes the ones it wants, with their herdr plugins,
+linked as the set's user (record 0023 as amended on 2026-11-18;
+core.62). With the runner,
 the modules install herdr, Ghostty, portless, worktrunk, timber and the
 Boomdrive launcher, a menu-bar app on macOS and a desktop entry on
 Linux, with an entry for each drive, that runs `flume open`, and link

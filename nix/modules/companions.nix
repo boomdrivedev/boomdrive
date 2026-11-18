@@ -1,14 +1,19 @@
-# crew's companions, which the Boomdrive module installs with the runner
-# where crew's module is on (record 0044, point 8; design Decisions 6 and
-# 9 of the change crews-companions-come-with-the-flake): Pending You,
-# Plannotator and plannotator-tui, none of which gives a nix-darwin or
-# NixOS module. Each package is the set's for the host's system by
-# default, so it is the path the family's cache holds whatever nixpkgs the
-# host runs (core.47); a host's own replaces it, and `null` installs none.
-# With `services.boomdrive` and `services.crew` both on they go in the
-# system profile, with `pendingyou-signin` beside a Pending You; without
-# either, none does. apps.nix links their herdr plugins, and darwin.nix
-# and nixos.nix write Pending You's folder (record 0044, point 7). No
+# crew's companions, which the Boomdrive module installs (record 0044,
+# point 8; design Decisions 6 and 9 of the change
+# crews-companions-come-with-the-flake): Pending You, Plannotator and
+# plannotator-tui, none of which gives a nix-darwin or NixOS module. Each
+# package is the set's for the host's system by default, so it is the path
+# the family's cache holds whatever nixpkgs the host runs (core.47); a
+# host's own replaces it, and `null` installs none. Each is turned on by a
+# switch of its own, `services.boomdrive.<companion>.enable`, on by default
+# where `services.boomdrive` and `services.crew` both are, and goes in the
+# system profile wherever its switch is on, with the runner or without,
+# with `pendingyou-signin` beside a Pending You (record 0044 as amended on
+# 2026-11-18; record 0023 as amended that day; design Decisions 1 and 2 of
+# the change boomdrives-tools-install-on-a-machine-without-the-runner;
+# core.62). apps.nix links their herdr plugins, and darwin.nix and
+# nixos.nix write Pending You's folder where its switch is on (record
+# 0044, point 7). No
 # module runs `claude` or writes into a Claude Code home: installing the
 # set's marketplace there is the unit
 # `the-companions-load-in-claude-codes-sessions` (record 0044, point 3).
@@ -30,8 +35,8 @@ let
   setText =
     name: lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.${name}";
 
-  # A companion the runner's host installs where crew's module is on: the
-  # set's `name` by default.
+  # A companion the host installs where its switch is on: the set's `name`
+  # by default.
   installed =
     name: description:
     mkOption {
@@ -67,22 +72,44 @@ let
       '';
     };
 
-  installing = cfg.enable && config.services.crew.enable;
+  # A companion's switch, on by default with the runner and crew, a host's
+  # own value winning, with the runner or without (design Decisions 1 and 2
+  # of the change boomdrives-tools-install-on-a-machine-without-the-runner).
+  switch =
+    what:
+    mkOption {
+      type = types.bool;
+      default = cfg.enable && config.services.crew.enable;
+      defaultText = lib.literalExpression "config.services.boomdrive.enable && config.services.crew.enable";
+      description = "Whether to install ${what}, its `package`, with the runner or without: on by default where `services.boomdrive.enable` and `services.crew.enable` both are, so a host without either turns it on here, and off installs none of it.";
+    };
+
+  # A companion's package in the system profile where its switch is on and
+  # the package is not `null`, and `pendingyou-signin` beside a Pending You.
+  installing =
+    companion: extra:
+    let
+      inherit (cfg.${companion}) package;
+    in
+    lib.mkIf cfg.${companion}.enable {
+      environment.systemPackages = lib.optionals (package != null) ([ package ] ++ extra package);
+    };
 in
 {
   options.services.boomdrive = {
-    pendingyou.package = installed "pendingyou" "Pending You's command line, which posts the cards a crew session waits on a person for, installed with the runner where crew's module is on, with `pendingyou-signin`, and run by the launchers each activation writes into ~/.config/pendingyou; a host's own replaces it, and `null` installs none, writes no folder and installs no `pendingyou-signin`.";
-    plannotator.package = installed "plannotator" "Plannotator, which reviews a plan in the browser, installed with the runner where crew's module is on; a host's own replaces it, and `null` installs none.";
-    plannotator-tui.package = installed "plannotator-tui" "plannotator-tui, which reviews a document in a herdr pane beside the agent's, installed with the runner where crew's module is on; a host's own replaces it, and `null` installs none. Where its pane opens is the person's, in ~/.config/plannotator-tui/config.toml.";
+    pendingyou.enable = switch "Pending You, with `pendingyou-signin`, and write its folder";
+    pendingyou.package = installed "pendingyou" "Pending You's command line, which posts the cards a crew session waits on a person for, installed where `services.boomdrive.pendingyou.enable` is on, with `pendingyou-signin`, and run by the launchers each activation writes into ~/.config/pendingyou; a host's own replaces it, and `null` installs none, writes no folder and installs no `pendingyou-signin`.";
+    plannotator.enable = switch "Plannotator";
+    plannotator.package = installed "plannotator" "Plannotator, which reviews a plan in the browser, installed where `services.boomdrive.plannotator.enable` is on; a host's own replaces it, and `null` installs none.";
+    plannotator-tui.enable = switch "plannotator-tui";
+    plannotator-tui.package = installed "plannotator-tui" "plannotator-tui, which reviews a document in a herdr pane beside the agent's, installed where `services.boomdrive.plannotator-tui.enable` is on; a host's own replaces it, and `null` installs none. Where its pane opens is the person's, in ~/.config/plannotator-tui/config.toml.";
   };
 
-  config = lib.mkIf installing {
-    environment.systemPackages =
-      lib.filter (package: package != null) [
-        cfg.pendingyou.package
-        cfg.plannotator.package
-        cfg.plannotator-tui.package
-      ]
-      ++ lib.optional (cfg.pendingyou.package != null) (signinOf cfg.pendingyou.package);
-  };
+  # Each companion's install reads its own switch (design Decision 1 of the
+  # change boomdrives-tools-install-on-a-machine-without-the-runner).
+  config = lib.mkMerge [
+    (installing "pendingyou" (package: [ (signinOf package) ]))
+    (installing "plannotator" (_: [ ]))
+    (installing "plannotator-tui" (_: [ ]))
+  ];
 }

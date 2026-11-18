@@ -215,7 +215,7 @@ The platform's `boomdrive` module SHALL carry the key `github:agentplot/boomdriv
 
 ### Requirement: The Boomdrive module turns on Flume's, sluice's and timber's modules and leaves crew's to the host
 
-With `services.boomdrive.enable`, the modules SHALL set `services.flume.enable`, `services.sluice.enable` and `services.timber.enable` true by default, a host's own value winning. They SHALL leave `services.crew.enable` to the host. On NixOS they SHALL set `services.flume.user`, `services.sluice.user`, `services.crew.user` and `services.timber.user` to `services.boomdrive.user` by default, a host's own value winning.
+With `services.boomdrive.enable`, the modules SHALL set `services.flume.enable`, `services.sluice.enable` and `services.timber.enable` true by default, a host's own value winning. They SHALL leave `services.crew.enable` to the host. On NixOS, wherever the host names `services.boomdrive.user`, with the runner or without, they SHALL set `services.flume.user`, `services.sluice.user`, `services.crew.user` and `services.timber.user` to it by default, a host's own value winning.
 
 #### Scenario: A host with the runner alone
 
@@ -231,6 +231,11 @@ With `services.boomdrive.enable`, the modules SHALL set `services.flume.enable`,
 
 - **WHEN** the NixOS module is enabled for `alice`, with crew turned on with its host, its drives and its hosts, and again with `services.sluice.user = "bob"`
 - **THEN** Flume's, sluice's, crew's and timber's `user` are `alice` in the first, and sluice's is `bob` in the second
+
+#### Scenario: The tools' user without the runner
+
+- **WHEN** a NixOS system leaves `services.boomdrive` off, sets `services.boomdrive.user = "alice"`, and turns on Flume's and sluice's modules, naming neither's user
+- **THEN** Flume's and sluice's `user` are `alice`, and the system fails no assertion
 
 ### Requirement: Each tool's package is the set's unless the host gives its own
 
@@ -429,7 +434,7 @@ The README's install with nix SHALL name `services.boomdrive.accounts`, each dri
 
 ### Requirement: The modules install herdr, Ghostty and the launcher, each replaceable or dropped
 
-With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.herdr.package`, `services.boomdrive.ghostty.package` and `services.boomdrive.launcher.package` in the system profile. Each SHALL be the set's for the host's system by default, the launcher made for each drive of this host; a host's own package SHALL replace each, installed as given, and `null` SHALL install none. With the runner not enabled, the modules SHALL install none of them.
+`services.boomdrive.herdr.enable`, `services.boomdrive.ghostty.enable` and `services.boomdrive.launcher.enable` SHALL each be `services.boomdrive.enable` by default, a host's own value winning. Where one is on, with the runner or without, the modules SHALL put its `package` in the system profile: the set's for the host's system by default, a host's own installed as given, and none for `null`. Where it is off, they SHALL install none of it.
 
 #### Scenario: The way in with the runner
 
@@ -453,12 +458,22 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.herd
 
 #### Scenario: Not without the runner
 
-- **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
+- **WHEN** a system imports the platform's module, leaves `services.boomdrive` off and turns on none of the three
 - **THEN** its system profile holds none of the set's `herdr`, `ghostty` and `boomdrive-launcher`, on nix-darwin and on NixOS
+
+#### Scenario: The way in without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on `services.boomdrive.herdr.enable`, `services.boomdrive.ghostty.enable` and `services.boomdrive.launcher.enable`
+- **THEN** its system profile holds the set's `herdr`, `ghostty` and `boomdrive-launcher`, on nix-darwin and on NixOS
+
+#### Scenario: Ghostty turned off with the runner
+
+- **WHEN** a system turns on `services.boomdrive` and sets `services.boomdrive.ghostty.enable = false`
+- **THEN** its system profile holds no Ghostty of the set's and holds the set's `herdr` and `boomdrive-launcher`, on nix-darwin and on NixOS
 
 ### Requirement: The modules link the set's herdr plugins with herdr's own command
 
-With `services.boomdrive.enable`, each activation SHALL run, as the runner's user, the installed herdr's own `herdr plugin link <plugin>` for each package of `services.boomdrive.herdr.plugins`, in order, with no `HERDR_*` variable of the caller's. The list's default SHALL be the set's Flume, sluice and timber plugins, then, with crew on, its companions'. The modules SHALL write no file of herdr's. With no herdr package or no plugin, none SHALL be linked.
+Wherever `services.boomdrive.herdr.enable` is on, with the runner or without, each activation SHALL run, as the set's user, the installed herdr's own `herdr plugin link <plugin>` for each package of `services.boomdrive.herdr.plugins`, in order, with no `HERDR_*` variable of the caller's. The modules SHALL write no file of herdr's. With herdr off, no herdr package or no plugin, none SHALL be linked.
 
 #### Scenario: The plugins linked on nix-darwin
 
@@ -485,6 +500,11 @@ With `services.boomdrive.enable`, each activation SHALL run, as the runner's use
 - **WHEN** `services.boomdrive.herdr.package` is `null`, or `services.boomdrive.herdr.plugins` is `[ ]`
 - **THEN** the activation links no plugin, on nix-darwin and on NixOS
 
+#### Scenario: herdr turned off
+
+- **WHEN** a system turns on `services.boomdrive` and sets `services.boomdrive.herdr.enable = false`
+- **THEN** its activation links no plugin, and its system profile holds no herdr of the set's, on nix-darwin and on NixOS
+
 ### Requirement: A plugin herdr refuses to link stops nothing else
 
 A link herdr refuses SHALL be said in one line naming the plugin and herdr's words, and SHALL stop no other plugin's link and nothing else of the activation.
@@ -496,7 +516,7 @@ A link herdr refuses SHALL be said in one line naming the plugin and herdr's wor
 
 ### Requirement: The modules name herdr and Ghostty Flume's terminal and window
 
-With `services.boomdrive.enable`, the modules SHALL set `services.flume.settings.host.multiplexer` to `herdr` and `services.flume.settings.host.terminal_app` to `ghostty` by default, each a host's own value winning. They SHALL do so whether or not the host keeps the set's herdr and Ghostty. Where the host's `services.flume.settings.host` gives `terminal`, the word Flume reads as `multiplexer` and refuses beside it, they SHALL set no `multiplexer`.
+Where `services.boomdrive.herdr.enable` is on, the modules SHALL set `services.flume.settings.host.multiplexer` to `herdr` by default, and where `services.boomdrive.ghostty.enable` is on, `services.flume.settings.host.terminal_app` to `ghostty` by default, a host's own value winning each time, with the runner or without, and whether or not the host keeps the set's herdr and Ghostty. Where the host's `services.flume.settings.host` gives `terminal`, they SHALL set no `multiplexer`.
 
 #### Scenario: Flume's terminal and window
 
@@ -513,9 +533,14 @@ With `services.boomdrive.enable`, the modules SHALL set `services.flume.settings
 - **WHEN** a system turns on `services.boomdrive` and sets `services.flume.settings.host.terminal = "herdr"`
 - **THEN** `services.flume.settings.host` gives `terminal` `herdr` and no `multiplexer`
 
+#### Scenario: Flume's terminal without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on Flume's module and `services.boomdrive.herdr.enable`, and not Ghostty's
+- **THEN** `services.flume.settings.host` gives `multiplexer` `herdr` and leaves `terminal_app` unset, on nix-darwin and on NixOS
+
 ### Requirement: The modules install portless, replaceable or dropped
 
-With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.portless.package` in the system profile. It SHALL be the set's portless for the host's system by default. A host's own package SHALL replace it, and `null` SHALL install none. With the runner not enabled, the modules SHALL install no portless.
+`services.boomdrive.portless.enable` SHALL be `services.boomdrive.enable` by default, a host's own value winning. Where it is on, with the runner or without, the modules SHALL put `services.boomdrive.portless.package` in the system profile: the set's portless for the host's system by default, a host's own replacing it, and none for `null`. Where it is off, the modules SHALL install no portless.
 
 #### Scenario: portless with the runner
 
@@ -534,8 +559,13 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.port
 
 #### Scenario: No portless without the runner
 
-- **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
+- **WHEN** a system imports the platform's module, leaves `services.boomdrive` off and does not turn portless on
 - **THEN** its system profile holds no portless of the set's, on nix-darwin and on NixOS
+
+#### Scenario: portless without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on `services.boomdrive.portless.enable`
+- **THEN** its system profile holds the set's `portless`, on nix-darwin and on NixOS
 
 ### Requirement: portless's proxy and its trust are the person's
 
@@ -553,7 +583,7 @@ The modules SHALL start no proxy of portless's. No launchd daemon or agent, syst
 
 ### Requirement: The modules install worktrunk, replaceable or dropped
 
-With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.worktrunk.package` in the system profile. It SHALL be the set's `worktrunk` for the host's system by default, a host's own package SHALL replace it, and `null` SHALL install none. With the runner not enabled, the modules SHALL install no worktrunk. The modules SHALL write no file of worktrunk's.
+`services.boomdrive.worktrunk.enable` SHALL be `services.boomdrive.enable` by default, a host's own value winning. Where it is on, with the runner or without, the modules SHALL put `services.boomdrive.worktrunk.package` in the system profile: the set's `worktrunk` for the host's system by default, a host's own replacing it, and none for `null`. Where it is off, the modules SHALL install no worktrunk. The modules SHALL write no file of worktrunk's.
 
 #### Scenario: worktrunk with the runner
 
@@ -572,12 +602,17 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.work
 
 #### Scenario: No worktrunk without the runner
 
-- **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
+- **WHEN** a system imports the platform's module, leaves `services.boomdrive` off and does not turn worktrunk on
 - **THEN** its system profile holds no worktrunk of the set's, on nix-darwin and on NixOS
+
+#### Scenario: worktrunk without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on `services.boomdrive.worktrunk.enable`
+- **THEN** its system profile holds the set's `worktrunk`, on nix-darwin and on NixOS
 
 ### Requirement: The launcher has an entry for each drive of this host
 
-With `services.boomdrive.enable`, the launcher the modules make SHALL be the set's `boomdrive-launcher` made, by its override, for one entry for each drive of this host, in the order of the drives' names, each entry's `drive` the drive's name, and the set's own `boomdrive-launcher` where this host has no drive. A drive of this host is one whose `machine` is unset or is `services.crew.host`. A drive of another machine SHALL have no entry.
+With `services.boomdrive.enable`, the launcher the modules make SHALL be the set's `boomdrive-launcher` made, by its override, for one entry for each drive of this host, in the order of the drives' names, each entry's `drive` the drive's name. A drive of this host is one whose `machine` is unset or is `services.crew.host`. A drive of another machine SHALL have no entry. With no drive of this host, or without the runner, it SHALL be the set's own `boomdrive-launcher`.
 
 #### Scenario: Each drive of this host in the launcher
 
@@ -592,6 +627,11 @@ With `services.boomdrive.enable`, the launcher the modules make SHALL be the set
 #### Scenario: No drive, the set's launcher
 
 - **WHEN** a system turns on `services.boomdrive` with no account
+- **THEN** the installed launcher is the set's `boomdrive-launcher`'s store path, on nix-darwin and on NixOS
+
+#### Scenario: No entries without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off, turns on `services.boomdrive.launcher.enable`, and has the account `own` with the drive `home` keeping one repository and naming no machine
 - **THEN** the installed launcher is the set's `boomdrive-launcher`'s store path, on nix-darwin and on NixOS
 
 ### Requirement: A drive's entry opens its stream's own session
@@ -916,9 +956,9 @@ The README's install with nix SHALL write `services.crew.settings` by crew's nam
 - **WHEN** the README's install with nix is read
 - **THEN** a nix block in it that names `services.crew` names `drives`, `runs`, `after_changes`, `after_hours`, `hosts`, `ssh` and `kind`, and no nix block in it names `partitions`, a key `flume`, `every =` or `hours =`
 
-### Requirement: The modules install crew's companions with the runner and crew, each replaceable or dropped
+### Requirement: The modules install crew's companions, each turned on by itself, replaceable or dropped
 
-With `services.boomdrive.enable` and `services.crew.enable`, the modules SHALL put `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package` and `services.boomdrive.plannotator-tui.package` in the system profile, and `pendingyou-signin` beside a Pending You. Each SHALL be the set's by default, a host's own replacing it and `null` installing none. Without the runner or crew, none SHALL be installed and no folder of Pending You's written.
+`services.boomdrive.pendingyou.enable`, `services.boomdrive.plannotator.enable` and `services.boomdrive.plannotator-tui.enable` SHALL each be on by default where `services.boomdrive.enable` and `services.crew.enable` both are, a host's own value winning. Where one is on, runner or not, the modules SHALL put its `package` in the system profile, and `pendingyou-signin` beside a Pending You: the set's by default, a host's own as given, none for `null`. Off, they SHALL install none of it.
 
 #### Scenario: The companions with the runner and crew
 
@@ -942,12 +982,17 @@ With `services.boomdrive.enable` and `services.crew.enable`, the modules SHALL p
 
 #### Scenario: No companions without the runner
 
-- **WHEN** a system imports the platform's module, turns on `services.crew` and leaves `services.boomdrive` off
+- **WHEN** a system imports the platform's module, turns on `services.crew`, leaves `services.boomdrive` off and turns on no companion
 - **THEN** its profile holds none of the set's `pendingyou`, `plannotator` and `plannotator-tui`, on nix-darwin and on NixOS
+
+#### Scenario: A companion turned on without the runner
+
+- **WHEN** a system leaves `services.boomdrive` and `services.crew` off and turns on `services.boomdrive.pendingyou.enable`
+- **THEN** its profile holds the set's `pendingyou` and `pendingyou-signin`, and neither the set's `plannotator` nor its `plannotator-tui`, on nix-darwin and on NixOS
 
 ### Requirement: Each activation writes Pending You's folder before it links the plugins
 
-Where the companions are installed and Pending You's package is not `null`, each activation SHALL run, as the runner's user, the step that writes Pending You's folder, `<home>/.config/pendingyou`, before the step that links the plugins.
+Wherever `services.boomdrive.pendingyou.enable` is on and its package is not `null`, with the runner or without, each activation SHALL run, as the set's user, the step that writes Pending You's folder, `<home>/.config/pendingyou`, before the step that links the plugins.
 
 #### Scenario: The folder written on nix-darwin
 
@@ -958,6 +1003,11 @@ Where the companions are installed and Pending You's package is not `null`, each
 
 - **WHEN** a NixOS system turns on `services.boomdrive` and `services.crew` for `alice`
 - **THEN** `alice`'s user activation runs the step that writes the folder into her home's `.config/pendingyou`, before the plugins' step, and another user's runs none
+
+#### Scenario: The folder written without the runner
+
+- **WHEN** a system leaves `services.boomdrive` and `services.crew` off and turns on `services.boomdrive.pendingyou.enable`, with the primary user `alice` on nix-darwin and `services.boomdrive.user = "alice"` on NixOS
+- **THEN** its activation runs, as `alice`, the step that writes the folder into `alice`'s home's `.config/pendingyou`, and on NixOS another user's runs none
 
 ### Requirement: Pending You's folder holds its launchers, its manifest and its wake mod
 
@@ -1207,7 +1257,7 @@ The README's install with nix SHALL name `services.boomdrive.claude-code.telemet
 
 ### Requirement: The modules install timber, replaceable or dropped
 
-With `services.boomdrive.enable`, timber's own module, which the Boomdrive module turns on, SHALL put `services.timber.package` in the system profile, whether or not crew is on: the set's `timber` by default, a host's own where given, and none for `null`. A host's `services.timber.enable = false` SHALL install no timber of the set's and link no file of timber's. Without the runner, timber's module SHALL stay off. The Boomdrive module SHALL write no file of timber's.
+With `services.boomdrive.enable`, timber's own module, which the Boomdrive module turns on, SHALL put `services.timber.package` in the system profile, whether or not crew is on: the set's `timber` by default, a host's own where given, none for `null`. A host's `services.timber.enable = false` SHALL install no timber of the set's and link no file of timber's. Without the runner, timber's module SHALL be off until the host turns it on. The Boomdrive module SHALL write no file of timber's.
 
 #### Scenario: timber with the runner
 
@@ -1233,6 +1283,11 @@ With `services.boomdrive.enable`, timber's own module, which the Boomdrive modul
 
 - **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
 - **THEN** `services.timber.enable` is false and its system profile holds no timber of the set's, on nix-darwin and on NixOS
+
+#### Scenario: timber turned on without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on timber's module, naming no package, with its user `alice` on NixOS
+- **THEN** its system profile holds the set's `timber`, on nix-darwin and on NixOS
 
 ### Requirement: timber's serving process is timber's own
 
@@ -1614,3 +1669,75 @@ Every script under `nix/modules` and `nix/packages`, which a Mac runs by its `/b
 
 - **WHEN** a script under `nix/modules` holds a `case` whose pattern's bare `)` stands inside `$( )`, as `activate.sh` did at `23e41810`
 - **THEN** `nix:mac-sh` fails, naming the script and the line bash 3.2.57 names
+
+### Requirement: Without the runner, the modules install only the tools the host turns on
+
+A system that imports the platform's module and leaves `services.boomdrive` off SHALL get from the set only the tools it turns on, each by its own module's `enable` or by the Boomdrive module's switch for it, each as its `package`, and their herdr plugins. With none turned on, its system profile SHALL hold no package of the set's, and its activation SHALL run no step of the set's as a user.
+
+#### Scenario: Nothing turned on
+
+- **WHEN** a system imports the platform's module, leaves `services.boomdrive` off and turns on no tool, on nix-darwin with no primary user and on NixOS with no `services.boomdrive.user`
+- **THEN** it evaluates, failing no assertion, its system profile holds no package of the set's, and its activation runs no step of the set's as a user, on nix-darwin and on NixOS
+
+#### Scenario: Only the tools turned on
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on Flume's module and `services.boomdrive.herdr.enable`, with `services.boomdrive.user = "alice"` on NixOS
+- **THEN** its system profile holds the set's `flume` and `herdr` and no other package of the set's, and its activation links the set's `flume-herdr-plugin` alone, on nix-darwin and on NixOS
+
+#### Scenario: Every tool turned on without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on Flume's, sluice's, crew's and timber's modules and every switch of the Boomdrive module's, naming no package, with `services.boomdrive.user = "alice"` on NixOS
+- **THEN** its system profile holds the set's `flume`, `sluice`, `crew`, `timber`, `herdr`, `ghostty`, `boomdrive-launcher`, `portless`, `worktrunk`, `pendingyou`, `plannotator` and `plannotator-tui`, each by the store path the set gives, and no `boomdrive`, on nix-darwin and on NixOS
+
+### Requirement: herdr's plugins by default are those of the tools the set installs
+
+`services.boomdrive.herdr.plugins` SHALL by default hold, in this order, the set's Flume, sluice and timber plugins, Pending You for Herdr and Annotate, each only where the set installs its tool: Flume's, sluice's or timber's module on, or `services.boomdrive.pendingyou.enable` or `services.boomdrive.plannotator-tui.enable` on, with that tool's package the set's own. A host's own list SHALL be linked as given.
+
+#### Scenario: The runner's plugins
+
+- **WHEN** a system turns on `services.boomdrive`, leaves crew off and names no package and no plugin
+- **THEN** `services.boomdrive.herdr.plugins` is the set's `flume-herdr-plugin`, `sluice-herdr-plugin` and `timber-herdr-plugin`, on nix-darwin and on NixOS
+
+#### Scenario: A host's own Flume
+
+- **WHEN** a system turns on `services.boomdrive`, gives `services.flume.package` a package of the host's own and names no plugin
+- **THEN** `services.boomdrive.herdr.plugins` is the set's `sluice-herdr-plugin` and `timber-herdr-plugin`, on nix-darwin and on NixOS
+
+#### Scenario: Flume's module off
+
+- **WHEN** a system turns on `services.boomdrive`, sets `services.flume.enable = false` and names no plugin
+- **THEN** `services.boomdrive.herdr.plugins` is the set's `sluice-herdr-plugin` and `timber-herdr-plugin`, on nix-darwin and on NixOS
+
+#### Scenario: The plugins of the tools turned on without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on sluice's module and `services.boomdrive.plannotator-tui.enable`, naming no plugin
+- **THEN** `services.boomdrive.herdr.plugins` is the set's `sluice-herdr-plugin` and `plannotator-herdr-plugin`, on nix-darwin and on NixOS
+
+#### Scenario: A host's own list
+
+- **WHEN** a system turns on `services.boomdrive` and sets `services.boomdrive.herdr.plugins` to the set's `timber-herdr-plugin` alone, with `services.timber.package` a package of the host's own
+- **THEN** its activation links the set's `timber-herdr-plugin` alone, on nix-darwin and on NixOS
+
+### Requirement: The set's user links the plugins and writes Pending You's folder, with the runner or without
+
+The steps that link herdr's plugins and write Pending You's folder SHALL run as the set's user: on nix-darwin `system.primaryUser`, under their home, and on NixOS `services.boomdrive.user`, in that user's activation alone. Without the runner, no other step of the set's SHALL run as that user, and no agent or unit SHALL be declared and no user linger. Where such a step runs and no user is named, evaluation SHALL fail, naming the option to set.
+
+#### Scenario: The plugins linked without the runner on nix-darwin
+
+- **WHEN** a nix-darwin system whose primary user is `alice`, at `/Users/alice`, leaves `services.boomdrive` off and turns on Flume's module and `services.boomdrive.herdr.enable`
+- **THEN** its activation runs, as `alice` under `/Users/alice`, the step that links the set's `flume-herdr-plugin` with the set's herdr, runs no link of the runner's file, and declares no agent `boomdrive`
+
+#### Scenario: The plugins linked without the runner on NixOS
+
+- **WHEN** a NixOS system leaves `services.boomdrive` off, sets `services.boomdrive.user = "alice"`, and turns on Flume's module, with its user `alice`, and `services.boomdrive.herdr.enable`
+- **THEN** `alice`'s user activation runs the step that links the set's `flume-herdr-plugin` with the set's herdr and no `keep`, another user's runs none, no user unit `boomdrive` is declared, and `alice` does not linger
+
+#### Scenario: No primary user on nix-darwin
+
+- **WHEN** a nix-darwin system with no primary user leaves `services.boomdrive` off and turns on Flume's module and `services.boomdrive.herdr.enable`
+- **THEN** evaluation fails, naming `services.boomdrive.herdr.enable`
+
+#### Scenario: No user on NixOS
+
+- **WHEN** a NixOS system leaves `services.boomdrive` off, names no `services.boomdrive.user`, and turns on `services.boomdrive.herdr.enable` and Flume's module, with its user `alice`
+- **THEN** evaluation fails, naming `services.boomdrive.user`
