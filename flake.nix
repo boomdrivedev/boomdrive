@@ -87,7 +87,7 @@
     # (record 0023 as amended on 2026-11-13 and 2026-11-15; design
     # Decision 1).
     timber = {
-      url = "github:boomdrivedev/timber/v0.7.0";
+      url = "github:boomdrivedev/timber/v0.8.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";

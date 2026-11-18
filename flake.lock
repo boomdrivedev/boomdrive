@@ -396,16 +396,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794665576,
-        "narHash": "sha256-irJc9fou9weoIlHWoqr4q+bb+DbBIotatNSeJEld1JE=",
+        "lastModified": 1794969722,
+        "narHash": "sha256-yquTQehGSvPEp4fw3oBGObACqv3TqtQ9FMKHCOLvNZo=",
         "owner": "boomdrivedev",
         "repo": "timber",
-        "rev": "629361ba2bc2965b6ae94e3e92ac27036705e798",
+        "rev": "22330429c3e803c01ef4a6ba7a47f58163bc8448",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.7.0",
+        "ref": "v0.8.0",
         "repo": "timber",
         "type": "github"
       }
