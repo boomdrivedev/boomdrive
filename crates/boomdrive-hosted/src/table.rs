@@ -47,6 +47,14 @@ impl Role {
         }
     }
 
+    /// What a line calls the end its connection reaches.
+    pub fn end(self) -> &'static str {
+        match self {
+            Role::ControlPlane => "the control plane",
+            Role::Observer => "the observer",
+        }
+    }
+
     /// The command that makes a partition's key in this role, for a
     /// refusal of a credential's key.
     fn enroll(self) -> &'static str {
