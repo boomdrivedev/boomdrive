@@ -7,6 +7,9 @@
 //! parts, `boomdrive enroll` through [`enroll`], and `boomdrive setup`
 //! through [`set_up_entry`] (record 0009 as amended 2026-11-11; design
 //! Decision 11 of the change a-persons-drive-is-set-up-by-one-command).
+//! An observer, `[observer]`, is the hosted implementation's whatever
+//! `[control_plane]`'s `type`, read, enrolled and opened through this
+//! list's functions alone (record 0048).
 
 use boomdrive_control::{Part, Wake};
 use std::path::{Path, PathBuf};
@@ -382,6 +385,15 @@ fn hosted_enroll(
             words: refused.words,
             host_to_fix: refused.host_to_fix,
         })
+}
+
+/// Reads the observer table, `[observer]`, `table`, of the configuration
+/// file `file`, by the hosted implementation's own reading, opening nothing
+/// and asking nothing of the host: words saying what it refuses, or nothing
+/// (design Decision 3 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+pub fn read_observer(table: &toml::Table, file: &Path) -> Result<(), String> {
+    boomdrive_hosted::table::Table::read_observer(table, file).map(drop)
 }
 
 /// The one entry that sets up a drive, with its setup, none where no
