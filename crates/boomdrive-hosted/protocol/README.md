@@ -13,9 +13,10 @@ core.42 and records 0015, 0037 and 0052, under `docs/`, the change that
 wrote version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`,
 the changes that wrote version 2,
 `the-hosted-protocol-carries-every-end-of-a-place` and
-`the-hosted-protocol-carries-land-and-preview`, and the change that
-wrote version 3, `the-hosted-protocol-carries-a-hold`. They cite
-boomdrive-cloud's records and rules by id.
+`the-hosted-protocol-carries-land-and-preview`, and the changes that
+wrote version 3, `the-hosted-protocol-carries-a-hold` and
+`a-runner-reports-to-an-observer-it-takes-no-work-from`, with record
+0048. They cite boomdrive-cloud's records and rules by id.
 
 ## Versions
 
@@ -35,7 +36,7 @@ it, so neither changes. The crate's test `files` holds each file of
 each of `v1/` to `v0.7.3`'s, so the gate fails a file of either changed
 or added. It also holds each file and example of `v3/` to version 2's,
 but for what *Version 2* names, so a change to version 3 that is not
-its hold fails there.
+its hold or its observing connection fails there.
 
 A connection asks for the WebSocket subprotocol `boomdrive.v3` at
 its upgrade, so a control plane that does not accept the version refuses
@@ -49,9 +50,9 @@ the connection before any message.
 | `to-runner.schema.json` | the envelope of every message a control plane sends |
 | `shared.schema.json` | what both directions use: ids, a time, integers, a lease, a repository's address, a commit, a digest, bytes, and `message_refused` |
 | `enrollment.schema.json` | `enroll`, and its answers `enrolled` and `enroll_refused` |
-| `hello.schema.json` | the hello, a tool's version, and the copy of Flume's host part |
+| `hello.schema.json` | the hello, the observing hello, a tool's version, and the copy of Flume's host part |
 | `wants.schema.json` | a want, an offer with its launch, an act, a command, an inbox, a preview, and `pulled` |
-| `report.schema.json` | the runner's report, with what it answered of each preview, and `reported` |
+| `report.schema.json` | the runner's report, with what it answered of each preview, the observed report, and `reported` |
 | `place-status.schema.json` | the copy of a Flume place's status |
 | `submission-entry.schema.json` | the copy of a sluice submission's entry |
 | `preview.schema.json` | the copies of sluice's answers of a preview and of a release |
@@ -96,8 +97,8 @@ alike, so a validator in either language refuses the same strings.
 | `enroll` | the runner, as the body of `POST runner/enroll` | a partition's public key, its signature over the enrollment's context, and the machine's name |
 | `enrolled` | the control plane, answering `enroll` | its id for the host |
 | `enroll_refused` | the control plane, answering `enroll` | the `enroll` message, by id, with words |
-| `hello` | the runner | the host's interface and runner versions, its tools' versions, the repositories it keeps for this control plane, its capacity, and the leases it holds |
-| `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, each inbox it carried, and in `previews` each preview it answered, with sluice's answer and its listing of the preview as their copies |
+| `hello` | the runner | the host's interface and runner versions, its tools' versions, the repositories it keeps for this control plane, its capacity, and the leases it holds; or, on an observing connection, the observing hello: `observing` true with the versions, tools' versions and repositories, and no capacity or lease |
+| `report` | the runner | the runner's whole report: each launch's answer with its place's status and its submission's entry as their copies, each act and command it carried out or refused, each inbox it carried, and in `previews` each preview it answered, with sluice's answer and its listing of the preview as their copies; or, on an observing connection, the observed report: `observing` true with each launch's answer, status and entry, and no lease |
 | `pulled` | the control plane | the whole of what it wants, in its order: offers, acts on a launch's place (a retry, a land of its work, `"land"`, a drop, a done, a priority, a confirm of a reader's ends by their delivery keys, or a hold of the move the place waits on, with words and a bound), commands, inboxes and previews, each a preview to bring up or, where `done`, to put away; and the runner's report as it holds it, or `null` |
 | `reported` | the control plane | the `report` message it answers, by id; the ids it lets go; the ids it refused, with its words |
 | `message_refused` | either | a message that failed its check, by id, with words |
@@ -133,9 +134,27 @@ socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
 Version 3 has no message for a forge token, for health, for the
-runner's own commands, for a terminal's certificate, or for an observing
-connection. The changes that build them add them, in a version of their
-own.
+runner's own commands, or for a terminal's certificate. The changes that
+build them add them, in a version of their own.
+
+**An observing connection** is a connection a runner keeps to an
+observer on its own host, which it reports a part's work to and takes
+nothing from (record 0048). It is enrolled and proved as a partition's,
+under a key of its own, and speaks `boomdrive.v3`. Its `hello` is the
+observing hello, `{"observing":true,"interface_version","runner_version","tool_versions","repositories"}`:
+the hello with no `capacity`, since the observer is offered no room, and
+no `leases`, since it gives none. Its `report` is the observed report,
+`{"observing":true,"launches":{…}}`: each launch of the part by its id
+as the runner holds it, with its `answer`, `status` and `entry` as a
+report's launch carries them, and no `lease`, act, command, inbox or
+preview. Each form is closed, and only the observing forms name
+`observing`, so no message passes as both a working form and an
+observing one. The observer answers the hello with a `pulled` of no want
+and a `null` report, and each report with `reported`, whose let-go and
+refused ids change nothing. The runner answers a `pulled` holding a want
+or a report, and every message of a terminal, with `message_refused`,
+its words saying the connection observes and the runner takes no work
+from it, and does nothing else with it.
 
 **A land** is an act on a launch's place, the word `"land"`: the
 landing of that launch's work. It holds nothing but its act's launch and
@@ -466,6 +485,9 @@ before the current one. It is version 3 but for these alone:
   files all the same.
 - **Its acts** hold no hold: a retry, a land, a drop, a done, a priority
   and a confirm.
+- **It has no observing connection**: its `hello` is the hello alone,
+  and its `report` the report alone, so neither an observing hello nor
+  an observed report passes it.
 
 ## Version 1
 
