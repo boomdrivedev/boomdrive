@@ -47,7 +47,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 4. What the runner says of it
 
 - [x] 4.1 `boomdrive-control`'s documentation of `ActSort::Land`, `ActSort::Confirm`, `ActSort::Hold`, `Want::Preview`, `Preview` and `Previewed` says version 3 of the hosted protocol carries each as the interface writes it, version 2 each but a hold, and version 1 none (design Decision 6). True when `sluice exec main -- moon run boomdrive-control:lint` passes.
-- [ ] 4.2 `crates/boomdrive-hosted/protocol/README.md` describes version 3 throughout:
+- [x] 4.2 `crates/boomdrive-hosted/protocol/README.md` describes version 3 throughout:
   - its envelope, subprotocol, contexts and worked bytes are version 3's;
   - each file's `$id` is under `boomdrivedev/boomdrive`;
   - its messages table names a hold among a `pulled`'s acts, with a paragraph on a hold;
