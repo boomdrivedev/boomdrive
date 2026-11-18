@@ -16,11 +16,12 @@ use boomdrive::git::Git;
 use boomdrive::locks::Locks;
 use boomdrive::pass::Outcome;
 use std::ffi::{OsStr, OsString};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -62,6 +63,52 @@ const FLUME: &str = r#"#!/bin/sh
 if [ "$1" = --json ] && [ "$2" = settle ]; then cat '{fixture}'; exit 0; fi
 exit 1
 "#;
+
+/// What a silent remote has seen: how many connections it took, and how
+/// many of them their far end has closed.
+#[derive(Debug, Default)]
+struct Seen {
+    taken: usize,
+    closed: usize,
+}
+
+/// A silent remote of [`Scratch::silent`]'s, which says when it takes a
+/// connection and when every connection it took has been closed by its far
+/// end: how a test sees a try's git and its helper end, since neither is a
+/// process the test started (the-runners-stop-ends-its-calls-in-flight,
+/// design Decision 9).
+#[derive(Clone, Debug, Default)]
+pub struct Silent(Arc<(Mutex<Seen>, Condvar)>);
+
+impl Silent {
+    /// Notes what `change` changes of what it has seen.
+    fn note(&self, change: impl FnOnce(&mut Seen)) {
+        let (seen, changed) = &*self.0;
+        change(&mut seen.lock().unwrap_or_else(|e| e.into_inner()));
+        changed.notify_all();
+    }
+
+    /// Waits `within` for `holds` to hold of what it has seen.
+    fn waits_for(&self, within: Duration, holds: impl Fn(&Seen) -> bool) -> bool {
+        let (seen, changed) = &*self.0;
+        let seen = seen.lock().unwrap_or_else(|e| e.into_inner());
+        let (seen, _) = changed
+            .wait_timeout_while(seen, within, |seen| !holds(seen))
+            .unwrap_or_else(|e| e.into_inner());
+        holds(&seen)
+    }
+
+    /// Whether it takes a connection within `within`.
+    pub fn taken(&self, within: Duration) -> bool {
+        self.waits_for(within, |seen| seen.taken > 0)
+    }
+
+    /// Whether every connection it took is closed by its far end within
+    /// `within`.
+    pub fn closed(&self, within: Duration) -> bool {
+        self.waits_for(within, |seen| seen.closed == seen.taken)
+    }
+}
 
 /// A scratch host, removed when dropped.
 pub struct Scratch {
@@ -280,17 +327,28 @@ impl Scratch {
 
     /// Makes `address`'s origin silent (record 0042's design Decision 6):
     /// a listener on the loopback address of the test's own, which takes
-    /// every connection on a thread of its own and holds it open without a
-    /// byte, and GitHub's https address of `address` rewritten to it over
-    /// http, which git prefers to the forge's shorter rewrite. Nothing
-    /// reaches the network (core.4).
-    pub fn silent(&self, address: &str) {
+    /// every connection and holds it open without a byte, and GitHub's
+    /// https address of `address` rewritten to it over http, which git
+    /// prefers to the forge's shorter rewrite. Nothing reaches the network
+    /// (core.4). What it gives says when a connection is taken and when
+    /// every one taken is closed, so a test sees a try's helper end
+    /// (the-runners-stop-ends-its-calls-in-flight, design Decision 9).
+    pub fn silent(&self, address: &str) -> Silent {
         let listener = TcpListener::bind("127.0.0.1:0").expect("a silent listener");
         let port = listener.local_addr().expect("its address").port();
+        let silent = Silent::default();
+        let noted = silent.clone();
         std::thread::spawn(move || {
-            let mut held = Vec::new();
-            for stream in listener.incoming().flatten() {
-                held.push(stream);
+            for mut stream in listener.incoming().flatten() {
+                noted.note(|seen| seen.taken += 1);
+                let noted = noted.clone();
+                // Read on a thread of its own until the far end closes
+                // it, writing nothing.
+                std::thread::spawn(move || {
+                    let mut buffer = [0u8; 4096];
+                    while matches!(stream.read(&mut buffer), Ok(read) if read > 0) {}
+                    noted.note(|seen| seen.closed += 1);
+                });
             }
         });
         let mut gitconfig = std::fs::OpenOptions::new()
@@ -305,6 +363,7 @@ impl Scratch {
              \tallow = always\n"
         )
         .expect("the silent origin's rewrite");
+        silent
     }
 
     /// One pass in-process over the configuration `text`, read as the

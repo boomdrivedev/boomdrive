@@ -57,7 +57,12 @@ they write Claude Code's managed transcripts document,
 `10-boomdrive-transcripts.json` beside it, holding
 `services.boomdrive.claude-code.cleanupPeriodDays` alone, a year by
 default, so every session on the host keeps its transcript that long
-(record 0046). None runs `claude` or writes into a Claude Code home. The
+(record 0046). None runs `claude` or writes into a Claude Code home. On
+macOS the module runs the runner from a copy at
+`/Library/Application Support/Boomdrive/boomdrive` that each activation
+signs, before the agents load, with the host's own code-signing
+identity, `Boomdrive runner` in its System keychain, so a grant of
+macOS privacy access holds for every later build (record 0047). The
 flake gives a shell, `devShells.<system>.default`, that starts herdr
 (record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every

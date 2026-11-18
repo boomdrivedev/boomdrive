@@ -130,6 +130,13 @@ pub enum Act {
         recipient: String,
         keys: Vec<String>,
     },
+    /// Flume's hold of the move the place waits on its caller for, under
+    /// `words`, for `bound_interval` whole seconds, after which Flume lets
+    /// the hold lapse (core.59; Flume's 130).
+    Hold {
+        words: String,
+        bound_interval: u64,
+    },
     Drop,
     Priority(i64),
     Done,
@@ -341,7 +348,8 @@ pub fn relay_args(place: &str) -> Vec<OsString> {
 
 /// The arguments of `act` on the place at `place`. A confirm is not
 /// passed the place, since `flume confirm` takes none and its keys name
-/// their own.
+/// their own. A hold's words follow `--`, so that they are never read as
+/// a flag, and its bound is joined to `--for` in whole seconds (core.59).
 fn act_args(place: &str, act: &Act) -> Vec<OsString> {
     match act {
         Act::Retry {
@@ -362,6 +370,17 @@ fn act_args(place: &str, act: &Act) -> Vec<OsString> {
             args
         }
         Act::Confirm { recipient, keys } => confirm_args(recipient, keys),
+        Act::Hold {
+            words,
+            bound_interval,
+        } => vec![
+            "hold".into(),
+            place.into(),
+            "--waiting".into(),
+            format!("--for={bound_interval}s").into(),
+            "--".into(),
+            words.into(),
+        ],
         Act::Drop => vec!["drop".into(), place.into()],
         Act::Priority(priority) => {
             vec!["priority".into(), place.into(), priority.to_string().into()]

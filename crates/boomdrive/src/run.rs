@@ -40,6 +40,7 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant};
+use weir_bounded::Halt;
 
 /// Where the runner says its lines, from the loop and every part's
 /// thread, each line whole.
@@ -183,21 +184,29 @@ impl Bells {
     }
 }
 
-/// Stops the runner: it finishes the git call in hand, keeps no further
-/// repository, begins no part's pass, lets each part end the pass in
-/// hand, and says it stopped.
+/// Stops the runner: it ends each try of a call to a remote in flight, its
+/// own git's or crew's implementation's, as the try's limit would, through
+/// the runner's halt, begins no such try, keeps no further repository,
+/// begins no part's pass, lets each part end the pass in hand, and says it
+/// stopped (record 0042 as amended on 2026-11-12; core.58).
 #[derive(Clone)]
 pub struct Stopper {
     events: Sender<Event>,
     stop: Arc<AtomicBool>,
     bells: Bells,
+    /// The runner's halt, `weir-bounded`'s, which every try made for the
+    /// runner reads.
+    halt: Halt,
 }
 
 impl Stopper {
-    /// Stops the runner, its keeping pass read between repositories, its
-    /// wait woken, and every part's wait woken.
+    /// Stops the runner: its stop flag set first, so a keeping pass whose
+    /// fetch the halt ends reads the stop before it begins the next
+    /// repository; then its halt, ending every try in flight and any begun
+    /// after; then its wait woken, and every part's wait woken.
     pub fn stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
+        self.halt.halt();
         let _ = self.events.send(Event::Stop);
         self.bells.stop();
     }
@@ -253,9 +262,17 @@ struct Control {
 impl Control {
     /// The control plane `table` names, of the configuration file `file`,
     /// keeping what it keeps under `data`, each part woken through its
-    /// bell among `bells`. An implementation says its lines on standard
-    /// error.
-    fn open(table: &ControlPlaneTable, file: &Path, data: &Path, bells: &Bells) -> Control {
+    /// bell among `bells`, and given `halt`, the runner's, at which every
+    /// call to a remote it makes for the runner ends (record 0042 as
+    /// amended on 2026-11-12; core.58). An implementation says its lines on
+    /// standard error.
+    fn open(
+        table: &ControlPlaneTable,
+        file: &Path,
+        data: &Path,
+        bells: &Bells,
+        halt: &Halt,
+    ) -> Control {
         Control {
             poll_interval: table.poll_interval,
             parts: planes::open(
@@ -266,6 +283,7 @@ impl Control {
                 table.poll_interval,
                 &|_| Box::new(|line| eprintln!("{line}")),
                 &|label| bells.waker(label),
+                halt,
             ),
         }
     }
@@ -295,6 +313,10 @@ pub struct Runner {
     notices: Notices,
     waiting: Receiver<Event>,
     stop: Arc<AtomicBool>,
+    /// The runner's halt, `weir-bounded`'s, given to its git and set by its
+    /// stop, so every try of a call to a remote made for the runner ends
+    /// at it (record 0042 as amended on 2026-11-12; core.58).
+    halt: Halt,
     /// Each part's bell, by its label.
     bells: Bells,
     /// Each clone's lock, which the keeper takes alone and a launch into
@@ -388,7 +410,10 @@ impl Runner {
     /// made, and no other runner holds it. Then the control plane the
     /// configuration names is opened as its parts; one that cannot be is
     /// named by [`Runner::unopened`], and the runner keeps its
-    /// repositories all the same.
+    /// repositories all the same. The runner makes its halt, gives it to
+    /// `git`, and keeps it for its stop, which sets it: a try of a call to
+    /// a remote in flight at the stop is ended there, and none begins
+    /// after it (record 0042 as amended on 2026-11-12; core.58).
     pub fn start(
         file: Option<&Path>,
         var: impl Fn(&str) -> Option<OsString>,
@@ -407,13 +432,15 @@ impl Runner {
             )
         })?;
         let lock = lock(&data)?;
+        let halt = Halt::default();
+        let git = git.halted_by(halt.clone());
         let (events, waiting) = mpsc::channel();
         let notices = Notices::new(events.clone());
         let bells = Bells::default();
         let control = config
             .control_plane
             .as_ref()
-            .map(|table| Control::open(table, &file, &data, &bells));
+            .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
         let watch = Watch::new(config.fetch_interval);
         Ok(Runner {
@@ -430,6 +457,7 @@ impl Runner {
             notices,
             waiting,
             stop: Arc::new(AtomicBool::new(false)),
+            halt,
             bells,
             locks: Locks::new(),
             forge: Forge::new(),
@@ -487,6 +515,7 @@ impl Runner {
             events: self.events.clone(),
             stop: Arc::clone(&self.stop),
             bells: self.bells.clone(),
+            halt: self.halt.clone(),
         }
     }
 
@@ -582,7 +611,12 @@ impl Runner {
     /// control plane unopened among it. Each part's pass carries out every
     /// act, since no pass follows it (core.50). Then the settle that ends
     /// them (record 0029): a settle refused or unanswered is said, and no
-    /// failure.
+    /// failure. Stopped, as `boomdrive run` is, it ends the try of a call
+    /// to a remote in flight and begins none, through its halt, keeps no
+    /// further repository, begins no part's pass once its keeping pass has
+    /// ended and no settle, lets each part end the pass in hand, says it
+    /// stopped, and fails (record 0042 as amended on 2026-11-12; core.39,
+    /// core.58).
     pub fn once(&mut self, say: Say<'_>) -> Outcome {
         let polls = self.polls();
         self.say_local(&mut LocalLayer::NoFile, &self.config.local, say);
@@ -596,6 +630,9 @@ impl Runner {
             &mut || false,
             &mut |line| say(line),
         );
+        if self.stopped(say) {
+            return Outcome::Failed;
+        }
         let carried = match &self.control {
             None => Outcome::Kept,
             Some(Control { parts: Err(_), .. }) => Outcome::Failed,
@@ -635,8 +672,20 @@ impl Runner {
                 }
             }
         };
+        if self.stopped(say) {
+            return Outcome::Failed;
+        }
         self.watch.settle(&self.programs.flume, polls, say);
         kept.and(carried)
+    }
+
+    /// Whether the runner was stopped, saying so where it was.
+    fn stopped(&self, say: Say<'_>) -> bool {
+        let stopped = self.stop.load(Ordering::SeqCst);
+        if stopped {
+            say("boomdrive: stopped".to_string());
+        }
+        stopped
     }
 
     /// Passes until stopped (design 10 and Decision 2). A keeping pass is
@@ -654,9 +703,11 @@ impl Runner {
     /// reported, before a lease of the part's not yet lapsed lapses, and
     /// at once when its implementation wakes it. Each pass, keeping or
     /// control, ends with one settle of every place, before its thread
-    /// waits (record 0029). Stopped, it keeps no further repository,
-    /// begins no part's pass and no settle, waits for each part to end the
-    /// pass in hand, and says so.
+    /// waits (record 0029). Stopped, it ends the try of a call to a remote
+    /// in flight, its own fetch's or a part's, and begins none, through
+    /// its halt (record 0042 as amended on 2026-11-12; core.58), keeps no
+    /// further repository, begins no part's pass and no settle, waits for
+    /// each part to end the pass in hand, and says so.
     pub fn keep(&mut self, say: Say<'_>) {
         let polls = self.polls();
         let mut parts = self.take_parts();
@@ -948,14 +999,14 @@ fn lock(data: &Path) -> Result<File, String> {
 /// one: starts the runner and says so on standard error, with why its
 /// control plane could not be opened where it could not, then makes one
 /// keeping pass and one control pass of each part where `once`, else
-/// passes until SIGTERM or SIGINT stops it. Exits 2 where the runner does
-/// not start, 1 where `once`'s passes failed, and 0 otherwise.
+/// passes until SIGTERM or SIGINT stops it. Either way SIGTERM and SIGINT
+/// stop it, ending each try of a call to a remote in flight (record 0042
+/// as amended on 2026-11-12; core.58). Exits 2 where the runner does not
+/// start, 1 where `once`'s passes failed or were stopped, and 0 otherwise.
 pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
     let started =
         Runner::start(file, |name| std::env::var_os(name), Git::default()).and_then(|runner| {
-            if !once {
-                runner.stop_on_signals()?;
-            }
+            runner.stop_on_signals()?;
             Ok(runner)
         });
     let mut runner = match started {
@@ -982,7 +1033,7 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_pass, Bell, Bells, Rang, Watch};
+    use super::{next_pass, Bell, Bells, Event, Rang, Stopper, Watch};
     use crate::carry::next_due;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
@@ -1060,6 +1111,30 @@ mod tests {
         stopped.stop();
         stopped.wake();
         assert_eq!(stopped.wait(Instant::now()), Rang::Stopped);
+    }
+
+    /// The running spec's "Stopped with a fetch in flight" and "Stopped
+    /// with a part's read in flight", at the stopper: a stop sets the stop
+    /// flag and the runner's halt, tells the loop and stops every part
+    /// (record 0042 as amended on 2026-11-12; core.58).
+    #[test]
+    fn a_stop_halts_every_try() {
+        let (events, waiting) = std::sync::mpsc::channel();
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let bells = Bells::default();
+        let bell = bells.of("home");
+        let halt = weir_bounded::Halt::default();
+        let stopper = Stopper {
+            events,
+            stop: std::sync::Arc::clone(&stop),
+            bells,
+            halt: halt.clone(),
+        };
+        stopper.stop();
+        assert!(stop.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(halt.halted());
+        assert!(matches!(waiting.try_recv(), Ok(Event::Stop)));
+        assert!(bell.stopped());
     }
 
     /// The running spec's "Passes on the timer": with `fetch_interval`
