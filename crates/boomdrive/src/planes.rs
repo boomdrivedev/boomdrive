@@ -396,6 +396,27 @@ pub fn read_observer(table: &toml::Table, file: &Path) -> Result<(), String> {
     boomdrive_hosted::table::Table::read_observer(table, file).map(drop)
 }
 
+/// Enrolls the partition `label` of the observer table, `[observer]`,
+/// `table`, of the configuration file `file`, by the hosted
+/// implementation's enrollment, with the one-time token `token` gives,
+/// whatever `[control_plane]`'s `type` (design Decision 4 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+pub fn enroll_observer(
+    table: &toml::Table,
+    file: &Path,
+    label: &str,
+    token: impl FnOnce() -> Result<String, String>,
+) -> Result<Enrolled, Refusal> {
+    boomdrive_hosted::enroll_observer(table, file, label, token)
+        .map(|enrolled| Enrolled {
+            host: enrolled.host,
+        })
+        .map_err(|refused| Refusal {
+            words: refused.words,
+            host_to_fix: refused.host_to_fix,
+        })
+}
+
 /// The one entry that sets up a drive, with its setup, none where no
 /// implementation this binary carries sets one up.
 pub fn set_up_entry() -> Option<(&'static Entry, &'static SetUp)> {
