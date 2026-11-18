@@ -583,19 +583,21 @@ services.boomdrive.accounts.own.drives.home = {
     name = "home";                  # the drive's name where unset
     agents = 4;                     # 4 where unset
     priority = 11;                  # Flume's own where unset
-    labels.review.reserve = 1;      # beside operation 1 and planning 2
+    labels.review.owed = 1;         # beside operation 1 and planning 2
   };
   repositories.boomdrivedev = [ "flume" "sluice" ];
 };
 ```
 
-A stream's `agents`, `priority` and each label's `reserve` are the
-drive's, and a label the drive does not set keeps the module's reserve,
-`operation` 1 and `planning` 2. A drive's reserves are within its room:
-Flume refuses a stream whose reserves pass its `agents`, naming it. Any
-other key of a stream, a label's `keep_free` among them, is Flume's own,
-set in `services.flume.settings.streams.<stream>`, beside the drive's;
-and a value the host sets there, or in a repository's
+A stream's `agents`, from 1, `priority` and the agents each label is
+`owed` are the drive's, and a label the drive does not set keeps the
+module's share, `operation` 1 and `planning` 2. What a drive's labels
+are owed together is within its room: Flume refuses a stream whose
+labels are owed more than its `agents`, naming it. A label's `reserve`,
+Flume's word before `owed`, fails evaluation, naming `owed`. Any other
+key of a stream, the agents a label holds `reserved` among them, is
+Flume's own, set in `services.flume.settings.streams.<stream>`, beside
+the drive's; and a value the host sets there, or in a repository's
 `services.flume.settings.repos."<owner>/<name>"`, wins over the
 drive's. Two drives of this host that give one stream fail evaluation. A
 drive whose work runs on another computer names it, `machine = "host-b"`,
