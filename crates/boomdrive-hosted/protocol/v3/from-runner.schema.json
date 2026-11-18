@@ -44,7 +44,15 @@
           ],
           "properties": {
             "hello": {
-              "$ref": "hello.schema.json#/$defs/hello"
+              "description": "The hello, or the observing hello on a connection that observes.",
+              "oneOf": [
+                {
+                  "$ref": "hello.schema.json#/$defs/hello"
+                },
+                {
+                  "$ref": "hello.schema.json#/$defs/observing_hello"
+                }
+              ]
             }
           }
         },
@@ -56,7 +64,15 @@
           ],
           "properties": {
             "report": {
-              "$ref": "report.schema.json#/$defs/report"
+              "description": "The report, or the observed report on a connection that observes.",
+              "oneOf": [
+                {
+                  "$ref": "report.schema.json#/$defs/report"
+                },
+                {
+                  "$ref": "report.schema.json#/$defs/observed_report"
+                }
+              ]
             }
           }
         },

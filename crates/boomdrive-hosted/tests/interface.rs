@@ -16,7 +16,9 @@
 //! carries no land" and "Version 1 carries no confirm"; core.42, core.53,
 //! core.55, core.56), and a want whose act is a hold fails the check of
 //! each (the runner-protocol spec's "A hold is no act of version 1 or 2";
-//! core.42, core.59).
+//! core.42, core.59). Version 3 alone carries an observing hello and an
+//! observed report, each a form of its kind no other form passes as
+//! (record 0048; record 0052 as amended on 2026-11-18).
 
 mod common;
 
@@ -179,6 +181,107 @@ fn a_hold_is_an_act_of_version_3() {
         hold_of("the user sends it on the landings card, row 3", 28800)["act"]["what"],
         "pulled-with-a-hold.json holds a hold"
     );
+}
+
+/// `value` with `member` set to `to`, at the object `pointer` names.
+fn with(value: &Value, pointer: &str, member: &str, to: Value) -> Value {
+    let mut changed = value.clone();
+    changed
+        .pointer_mut(pointer)
+        .and_then(Value::as_object_mut)
+        .unwrap_or_else(|| panic!("no object at {pointer}"))
+        .insert(member.to_string(), to);
+    changed
+}
+
+/// The runner-protocol spec's "The observing connection's examples", "An
+/// observing hello that offers room or holds a lease", "An observed report
+/// that names a lease or an act" and "No observing connection in version
+/// 1 or 2": version 3's three examples of the observing connection pass
+/// their direction's envelope; an observing hello with a capacity or
+/// leases, a hello with `observing`, an observed report whose launch
+/// holds a lease or that names acts, and a report with `observing` each
+/// fail version 3's `from-runner.schema.json`, so no message passes as
+/// two forms; and the observing hello and the observed report, each
+/// naming version 2 or 1, fail that version's envelope, a release having
+/// spoken each (design Decision 1; record 0048; record 0052 as amended on
+/// 2026-11-18; core.42).
+#[test]
+fn an_observing_hello_and_an_observed_report_are_of_version_3() {
+    let from_runner = V3.messages_from_runner();
+    let hello = V3.example("from-runner", "hello.json");
+    let observing = V3.example("from-runner", "hello-observing.json");
+    let report = V3.example("from-runner", "report.json");
+    let observed = V3.example("from-runner", "report-observed.json");
+    passes(&from_runner, &observing, "hello-observing.json");
+    passes(&from_runner, &observed, "report-observed.json");
+    passes(
+        &V3.messages_to_runner(),
+        &V3.example("to-runner", "pulled-answering-an-observing-hello.json"),
+        "pulled-answering-an-observing-hello.json",
+    );
+
+    refused(
+        &from_runner,
+        &with(
+            &observing,
+            "/body/hello",
+            "capacity",
+            hello["body"]["hello"]["capacity"].clone(),
+        ),
+        "an observing hello with a capacity",
+    );
+    refused(
+        &from_runner,
+        &with(&observing, "/body/hello", "leases", json!({})),
+        "an observing hello with leases",
+    );
+    refused(
+        &from_runner,
+        &with(&hello, "/body/hello", "observing", json!(true)),
+        "a hello with observing",
+    );
+
+    let live = V3.example("from-runner", "report-a-live-agent-with-its-pane.json");
+    let launches = observed["body"]["report"]["launches"].as_object().unwrap();
+    assert!(!launches.is_empty(), "report-observed.json holds a launch");
+    for id in launches.keys() {
+        let at = format!("/body/report/launches/{id}");
+        let lease = live
+            .pointer(&format!("{at}/lease"))
+            .unwrap_or_else(|| panic!("the live agent's report holds no lease of {at}"))
+            .clone();
+        refused(
+            &from_runner,
+            &with(&observed, &at, "lease", lease),
+            "an observed launch with its lease",
+        );
+    }
+    refused(
+        &from_runner,
+        &with(&observed, "/body/report", "acts", json!({})),
+        "an observed report with acts",
+    );
+    refused(
+        &from_runner,
+        &with(&report, "/body/report", "observing", json!(true)),
+        "a report with observing",
+    );
+
+    for (version, number) in [(V2, 2), (V1, 1)] {
+        for (name, example) in [
+            ("hello-observing.json", &observing),
+            ("report-observed.json", &observed),
+        ] {
+            let mut older = example.clone();
+            older["protocol_version"] = json!(number);
+            refused(
+                &version.messages_from_runner(),
+                &older,
+                &format!("{name}, in version {number}"),
+            );
+        }
+    }
 }
 
 /// The runner-protocol spec's "A confirm is no act of version 1".
