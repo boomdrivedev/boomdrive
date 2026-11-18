@@ -298,6 +298,22 @@ fn a_field_the_version_does_not_name() {
             json!("the user is away");
     });
     refused(&to, &held, "a field a hold does not name");
+    let observing = altered("from-runner", "hello-observing.json", |hello| {
+        hello["body"]["hello"]["reason"] = json!("a local stage");
+    });
+    refused(
+        &from,
+        &observing,
+        "a field an observing hello does not name",
+    );
+    let observed = altered("from-runner", "report-observed.json", |report| {
+        report["body"]["report"]["launches"]["offer-7"]["reason"] = json!("a local stage");
+    });
+    refused(
+        &from,
+        &observed,
+        "a field an observed report's launch does not name",
+    );
     let previewed = altered(
         "to-runner",
         "pulled-with-a-preview-and-its-done.json",
