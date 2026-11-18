@@ -11,7 +11,7 @@ mod common;
 
 use boomdrive_hosted::connection::{Connection, Dial, Say, Wake};
 use boomdrive_hosted::key::{Memory, Store};
-use boomdrive_hosted::protocol::v2::Hello;
+use boomdrive_hosted::protocol::v3::Hello;
 use boomdrive_hosted::table::Table;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
@@ -58,7 +58,7 @@ fn store(fake: &Fake, key: &SigningKey) -> Arc<dyn Store> {
     Arc::new(memory)
 }
 
-/// `home`'s hello, version 2's example of one.
+/// `home`'s hello, version 3's example of one.
 fn hello() -> Hello {
     serde_json::from_value(example("from-runner", "hello.json")["body"]["hello"].clone())
         .expect("the example is a hello")
@@ -313,8 +313,8 @@ async fn a_key_refused() {
 }
 
 /// The hosted-control-plane spec's "A control plane that speaks version
-/// 1 alone": an upgrade answered without `boomdrive.v2` is said once,
-/// naming the partition and `boomdrive.v2`, each later attempt waits for
+/// 1 alone": an upgrade answered without `boomdrive.v3` is said once,
+/// naming the partition and `boomdrive.v3`, each later attempt waits for
 /// the backoff's cap, and no message is sent (design Decision 4 of
 /// the-hosted-protocol-carries-every-end-of-a-place; core.22, core.23).
 #[tokio::test(start_paused = true)]
@@ -338,12 +338,12 @@ async fn a_control_plane_that_speaks_version_1_alone() {
     let lines = lines.all();
     assert_eq!(lines.len(), 1, "{lines:#?}");
     assert!(lines[0].starts_with("home: "), "{lines:#?}");
-    assert!(lines[0].contains("boomdrive.v2"), "{lines:#?}");
+    assert!(lines[0].contains("boomdrive.v3"), "{lines:#?}");
     for upgrade in upgrades(&taken) {
         let Taken::Upgrade { protocols, .. } = upgrade else {
             unreachable!("an upgrade");
         };
-        assert_eq!(protocols, &["boomdrive.v2".to_string()]);
+        assert_eq!(protocols, &["boomdrive.v3".to_string()]);
     }
     assert!(messages(&taken).is_empty(), "{taken:#?}");
     // A subprotocol refused waits at the backoff's cap.
@@ -628,7 +628,7 @@ fn a_pulled_with_a_field_unnamed() {
         .as_str()
         .expect("words");
     assert!(
-        words.starts_with("it fails version 2's check: /"),
+        words.starts_with("it fails version 3's check: /"),
         "{words}"
     );
     assert!(!words.contains("n0t-sh0wn"), "{words}");
@@ -640,7 +640,7 @@ fn a_pulled_with_a_field_unnamed() {
                 ..
             }
         )),
-        "every message the runner sent passes version 2: {taken:#?}"
+        "every message the runner sent passes version 3: {taken:#?}"
     );
 
     let read = connection.read(PATIENCE).expect("home is read");
@@ -655,12 +655,12 @@ fn a_pulled_with_a_field_unnamed() {
     );
 }
 
-/// The hosted-control-plane spec's "A message of version 1": a `pulled`
-/// naming `protocol_version` 1 fails version 2's check, is answered with
-/// `message_refused` naming it, and the pull gives none of its wants
-/// (design Decision 4 of the-hosted-protocol-carries-every-end-of-a-place).
-#[test]
-fn a_message_of_version_1() {
+/// A `pulled` of `version`, under the id `id`, fails version 3's check,
+/// is answered with `message_refused` naming it, its words saying so, and
+/// the pull gives none of its wants (design Decision 4 of
+/// the-hosted-protocol-carries-every-end-of-a-place and of
+/// the-hosted-protocol-carries-a-hold).
+fn a_message_of(version: common::Version, id: &str) {
     let fake = Fake::start();
     let key = home_key();
     fake.enrolled("home", &key.verifying_key());
@@ -677,9 +677,9 @@ fn a_message_of_version_1() {
     let read = connection.read(PATIENCE).expect("home is read");
     assert_eq!(read.wants.len(), 1);
 
-    let mut pulled = common::V1.example("to-runner", "pulled.json");
-    pulled["id"] = json!("plane:first");
-    assert_eq!(pulled["protocol_version"], 1);
+    let mut pulled = version.example("to-runner", "pulled.json");
+    pulled["id"] = json!(id);
+    assert_eq!(pulled["protocol_version"], version.number);
     assert!(fake.send("home", pulled));
 
     let taken = fake.wait_until("a message_refused", |t| sent(t, "message_refused") == 1);
@@ -687,18 +687,37 @@ fn a_message_of_version_1() {
         .into_iter()
         .find(|message| kind(message).as_deref() == Some("message_refused"))
         .expect("a refusal");
-    assert_eq!(refusal["body"]["message_refused"]["message"], "plane:first");
+    assert_eq!(refusal["body"]["message_refused"]["message"], id);
     let words = refusal["body"]["message_refused"]["words"]
         .as_str()
         .expect("words");
     assert!(
-        words.starts_with("it fails version 2's check: /"),
+        words.starts_with("it fails version 3's check: /"),
         "{words}"
     );
 
     let read = connection.read(PATIENCE).expect("home is read");
     let ids: Vec<&str> = read.wants.iter().map(|want| want.id().as_str()).collect();
-    assert_eq!(ids, ["offer-9"], "none of version 1's pulled's wants");
+    assert_eq!(
+        ids,
+        ["offer-9"],
+        "none of version {}'s pulled's wants",
+        version.number
+    );
+}
+
+/// The hosted-control-plane spec's "A message of version 1": a `pulled`
+/// naming `protocol_version` 1 fails version 3's check.
+#[test]
+fn a_message_of_version_1() {
+    a_message_of(common::V1, "plane:first");
+}
+
+/// The hosted-control-plane spec's "A message of version 2": a `pulled`
+/// naming `protocol_version` 2 fails version 3's check (record 0052).
+#[test]
+fn a_message_of_version_2() {
+    a_message_of(common::V2, "plane:second");
 }
 
 #[test]

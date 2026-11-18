@@ -1,13 +1,14 @@
-//! Version 2's examples, each a whole message under
+//! Version 3's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
 //! back as it was (design Decisions 2, 13 and 14 of
-//! the-runner-dials-the-hosted-control-plane). Version 1's examples
-//! still pass version 1's envelopes (record 0037).
+//! the-runner-dials-the-hosted-control-plane). Version 1's and version
+//! 2's examples still pass their own version's envelopes (records 0037
+//! and 0052).
 
 mod common;
 
-use boomdrive_hosted::protocol::v2::{FromRunner, Message, MessageId, ToRunner};
+use boomdrive_hosted::protocol::v3::{FromRunner, Message, MessageId, ToRunner};
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;

@@ -33,7 +33,8 @@ pub const V1: Version = Version {
     files: v1::FILES,
 };
 
-/// Version 2, as releases from `v0.8.0` speak it (record 0037).
+/// Version 2, as releases from `v0.8.0` to the last before version 3
+/// spoke it (record 0037).
 pub const V2: Version = Version {
     number: v2::VERSION,
     address: v2::ADDRESS,
@@ -52,7 +53,7 @@ pub const V3: Version = Version {
 pub const VERSIONS: [Version; 3] = [V1, V2, V3];
 
 /// The version the runner speaks, which the free functions check.
-pub const CURRENT: Version = V2;
+pub const CURRENT: Version = V3;
 
 /// The retriever every registry and validator is given: it refuses every
 /// address, whatever features cargo unifies into `jsonschema`, so a

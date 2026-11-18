@@ -202,10 +202,10 @@ fn a_confirm_is_no_act_of_version_1() {
 }
 
 /// One value of each want sort, a preview not done and one done among
-/// them, and of each act sort, a land and a confirm among them, and each
-/// command sort, and each other value of the interface, passes its
-/// definition in version 2 (the runner-protocol spec's "The interface's
-/// values pass").
+/// them, and of each act sort, a land, a confirm and a hold among them,
+/// and each command sort, and each other value of the interface, passes
+/// its definition in version 3 (the runner-protocol spec's "The
+/// interface's values pass").
 #[test]
 fn the_interfaces_values_pass() {
     passes_as("shared.schema.json", "id", &Id::new("example/12"));
@@ -257,6 +257,10 @@ fn the_interfaces_values_pass() {
         ActSort::Priority(5),
         ActSort::Done,
         confirm_of(&["change--a/0a1b2c3d/stage/code/1/delivered"]),
+        ActSort::Hold {
+            words: "the user sends it".to_string(),
+            bound_interval: 28800,
+        },
     ];
     wants.extend(acts.into_iter().map(|what| {
         Want::Act(Act {
@@ -382,7 +386,7 @@ fn the_interfaces_values_pass() {
         )]),
         ..Report::default()
     };
-    // Version 2 writes every part of a report, its `previews` among them,
+    // Version 3 writes every part of a report, its `previews` among them,
     // which the interface's file leaves out where it holds none (design
     // Decision 3 of the-hosted-protocol-carries-land-and-preview).
     let report_definition = validator(&definition("report.schema.json", "report"));

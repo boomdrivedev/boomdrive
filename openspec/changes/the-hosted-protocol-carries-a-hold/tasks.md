@@ -28,7 +28,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The runner speaks version 3
 
-- [ ] 2.1 The runner's message types move from `src/protocol/v2.rs` to `src/protocol/v3.rs`. `protocol::v2` keeps `VERSION`, `SUBPROTOCOL`, `ADDRESS` and `FILES` alone.
+- [x] 2.1 The runner's message types move from `src/protocol/v2.rs` to `src/protocol/v3.rs`. `protocol::v2` keeps `VERSION`, `SUBPROTOCOL`, `ADDRESS` and `FILES` alone.
   - `check.rs`, `copy.rs`, `connection.rs`, `enrollment.rs`, `key.rs`, `plane.rs` and `lib.rs` use version 3.
   - Every word the crate says naming the version it speaks is made from `VERSION`, and `NO_FORGE_TOKEN` names version 3. The crate's documentation and `Cargo.toml`'s comment name version 3.
   - The tests' `CURRENT` is `V3`, and `common::fake` speaks `boomdrive.v3`.
