@@ -16,7 +16,7 @@
 # with the file rendered from `accounts` and `settings` (design Decision
 # 9). NixOS restarts no changed user unit, so the user's activation links
 # the file at the runner's own path, writes Pending You's folder where
-# crew's companions are installed (record 0044, point 7), links the herdr
+# Pending You is turned on (record 0044, point 7), links the herdr
 # plugins apps.nix lists with herdr's own command (record 0023), then
 # starts the unit where it is not running and restarts it where the
 # running runner's command line is not the unit's; any other user's
@@ -73,9 +73,10 @@ let
   account = config.users.users.${user};
   inherit (account) home;
 
-  # Pending You's folder, where crew's companions are installed and
-  # Pending You's package is given (companions.nix; record 0044, point 7),
-  # written before the plugins are linked.
+  # Pending You's folder, where Pending You is turned on and its package is
+  # given (companions.nix; record 0044, point 7, as amended on
+  # 2026-11-18), written before the plugins are linked.
+  writingFolder = cfg.pendingyou.enable && cfg.pendingyou.package != null;
   folder = pkgs.callPackage ./pendingyou-folder.nix {
     inherit home;
     inherit (cfg.pendingyou) package;
@@ -86,9 +87,7 @@ let
   steps = [
     "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
   ]
-  ++
-    lib.optional (config.services.crew.enable && cfg.pendingyou.package != null)
-      "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
+  ++ lib.optional writingFolder "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
   ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
 
   # The unit's command line, which the activation compares the running

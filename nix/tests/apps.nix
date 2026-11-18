@@ -830,6 +830,33 @@ let
       ) "the NixOS user activation's ${name} writes Pending You's folder"
     ) others;
 
+  # A companion turned on by its own switch, without the runner or crew
+  # (design Decisions 1 and 2 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  companionWithout =
+    platform:
+    {
+      withoutOf,
+      users,
+      set,
+      ...
+    }:
+    let
+      evaluated = withoutOf {
+        imports = [ (users [ ]) ];
+        services.boomdrive.pendingyou.enable = true;
+      };
+    in
+    profileHolds platform "with Pending You turned on without the runner" set evaluated
+      [ "pendingyou" ]
+      [
+        "plannotator"
+        "plannotator-tui"
+      ]
+    ++
+      t.expect (builtins.length (signinsOf evaluated) == 1)
+        "the ${platform} system profile with Pending You turned on without the runner holds no pendingyou-signin";
+
   # A Pending You of the host's own, laid out as a package with a bin.
   ownPendingyou =
     { pkgs, ... }:
@@ -1257,6 +1284,7 @@ onEach "The way in with the runner" withRunner
 // onEach "A host's own Plannotator" hostsPlannotator
 // onEach "No companions without crew" noCompanionsWithoutCrew
 // onEach "No companions without the runner" noCompanionsWithoutRunner
+// onEach "A companion turned on without the runner" companionWithout
 // onEach "The sign-in's two commands" signinRead
 // onEach "The launchers run the given Pending You" launchersRunGiven
 // onEach "No Pending You of the set's" noSetsPendingyou

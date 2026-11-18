@@ -16,7 +16,7 @@
 # or the file changes, and leaves it running when neither does. The
 # activation links the file at the runner's own path, as the primary user,
 # for the commands a person runs by hand, writes Pending You's folder where
-# crew's companions are installed (record 0044, point 7), and links the
+# Pending You is turned on (record 0044, point 7), and links the
 # herdr plugins apps.nix lists with herdr's own command (record 0023).
 # Beside `logFile`, the agent's log, the module declares `dataDir`, the
 # runner's data folder by the runner's own rule (data-dir.nix) from the
@@ -131,9 +131,9 @@ let
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
 
-  # Pending You's folder, where crew's companions are installed and
-  # Pending You's package is given (companions.nix; record 0044, point 7).
-  writingFolder = config.services.crew.enable && cfg.pendingyou.package != null;
+  # Pending You's folder, where Pending You is turned on and its package is
+  # given (companions.nix; record 0044, point 7, as amended on 2026-11-18).
+  writingFolder = cfg.pendingyou.enable && cfg.pendingyou.package != null;
   folder = pkgs.callPackage ./pendingyou-folder.nix {
     inherit home;
     inherit (cfg.pendingyou) package;
