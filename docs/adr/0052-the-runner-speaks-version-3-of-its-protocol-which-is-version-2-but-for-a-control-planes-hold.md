@@ -9,6 +9,14 @@ decision-makers:
 
 # The runner speaks version 3 of its protocol, which is version 2 but for a control plane's hold
 
+Amended 2026-11-18, by the construct stage of change/a-runner-reports-to-an-observer-it-takes-no-work-from: version 3 also carries record 0048's observing connection. No release has spoken version 3, which is built on the bolt `bolt/a-hosted-control-plane-can-hold-a-waiting-place` and not yet landed, so the observing connection joins it, as this record's "Not taken" and the design of `the-hosted-protocol-carries-a-hold` allowed for a change built on that bolt. It adds two forms and changes no other:
+
+- `hello.schema.json` gains `observing_hello`: `observing`, `true`, with the hello's `interface_version`, `runner_version`, `tool_versions` and `repositories`, and no `capacity` or `leases`, so it offers no room and holds no lease.
+- `report.schema.json` gains `observed_report`, `observing`, `true`, with `launches`, each an `observed_launch`: the `launched` but its `lease`.
+- `from-runner.schema.json`'s `hello` and `report` kinds each take either form. Each form is closed, and `observing` is required in the observing forms and named in neither the hello nor the report, so no message passes as both.
+
+The test that holds version 3 to version 2 sets aside these three definitions and the two kinds' choice, beside the hold. Version 3's examples gain an observing hello, an observed report and a `pulled` answering an observing hello. Not taken: a version 4 for the observing connection alone, which boomdrive-cloud would pin beside version 3 for nothing a release has spoken. The cloud takes both the hold and the observing connection by its one move to version 3 (its record 0069).
+
 Status: accepted. The direction is the change's brief, quoted below. How version 3 meets it is the construct stage's own choice, made on this repository's rules: what version 3 holds beside version 2, its files' `$id`, and how the tests hold version 3 to version 2. Each is cheap to change until a release of the runner speaks version 3. From then on version 3 never changes (core.42), and a change to it is a version 4.
 
 The brief, 2026-11-18: "a new version of the runner's hosted protocol carries the hold act, its words and bound, so a hosted control plane can hold the move a place waits on it for as crew's can, versions 1 and 2 unchanged".
