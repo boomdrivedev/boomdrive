@@ -22,7 +22,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The interface's observer
 
-- [ ] 3.1 `boomdrive-control` gains `Observer` and `Observed`, and its `fake` module a fake observer, `Observing`, that holds what it is handed. This proves the control-plane-interface spec's "An observer takes what it is handed" (design Decision 5; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-control an_observer_holds_what_it_is_handed` passes.
+- [x] 3.1 `boomdrive-control` gains `Observer` and `Observed`, and its `fake` module a fake observer, `Observing`, that holds what it is handed. This proves the control-plane-interface spec's "An observer takes what it is handed" (design Decision 5; Task notes 3.1). True when `devenv shell -- cargo test -p boomdrive-control an_observer_holds_what_it_is_handed` passes.
 
 ## 4. The hosted observer
 
