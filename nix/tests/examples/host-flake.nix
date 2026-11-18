@@ -22,10 +22,13 @@
             # The rest of the host's configuration, system.primaryUser among it.
             services.boomdrive = {
               enable = true;
-              accounts.own.drives.home.repositories.boomdrivedev = [
-                "flume"
-                "sluice"
-              ];
+              accounts.own = {
+                state_repository = "example/state";
+                drives.home.repositories.boomdrivedev = [
+                  "flume"
+                  "sluice"
+                ];
+              };
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
@@ -38,8 +41,6 @@
               settings = {
                 drives.home = {
                   blueprints = [ "example/blueprints" ];
-                  state = "example/state";
-                  machine = "host-a";
                   session = "home";
                   folder = "/Users/alice/Code/boomdrivedev";
                   repos = [
