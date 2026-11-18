@@ -330,7 +330,7 @@ directory, a log or standard error.
 
 On a host whose control plane is hosted, the control plane holds the
 App and mints the host's tokens, and every operation is refused, exit 1:
-the hosted control plane mints this host's forge tokens, and version 2
+the hosted control plane mints this host's forge tokens, and version 3
 of its protocol carries none yet.
 
 The set's sluice takes no token from it yet: it reads a credential
@@ -1334,18 +1334,18 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
-The runner speaks version 2 of the protocol, `boomdrive.v2`, its schema
-under `crates/boomdrive-hosted/protocol/v2/`, which a control plane takes
-beside the version before it, version 1. Each upgrade asks for
-`boomdrive.v2` alone, and a control plane that answers without it is
-said once, naming `boomdrive.v2`, and tried again at the backoff's cap.
+The runner speaks version 3 of the protocol, `boomdrive.v3`, its schema
+under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes
+beside the version before it, version 2. Each upgrade asks for
+`boomdrive.v3` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v3`, and tried again at the backoff's cap.
 Each end of a place goes up with its delivery: its key, its delivery's
 key and expiry, the readers it is owed to and those that confirmed it,
 and each hand-over, the end of the place's work by a drop or a done
-among them. An end version 2 does not name goes up as its delivery
+among them. An end version 3 does not name goes up as its delivery
 alone, or is left out where even that fails, the rest of its status
 going up, with one line naming the launch and each end's path. Only a
-status that went up with every end in a form version 2 names is one the
+status that went up with every end in a form version 3 names is one the
 runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
@@ -1353,8 +1353,10 @@ runner under the partition's prefix and carried out as crew's is,
 by Flume's confirm of exactly its keys. A control plane's land and
 preview, with its done, are given to the runner as crew's are, and what
 the runner answered of each preview goes up with sluice's answer and
-listing as their copies. No version yet carries a hold of a place's
-waiting move, so a hosted control plane holds nothing through the runner.
+listing as their copies. A control plane's hold of the move a launch's
+place waits on it for is an act, given to the runner under the
+partition's prefix with its words and bound as given, and carried out as
+crew's is, by Flume's hold of that waiting move.
 
 ## Rules and checks
 

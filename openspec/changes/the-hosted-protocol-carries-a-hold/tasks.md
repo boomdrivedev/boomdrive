@@ -56,7 +56,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - a section **Version 2** says which releases spoke it and how it differs, and the section **Version 1** stays.
 
   This keeps the runner-protocol spec's "The README of version 2" and "The README of version 3" (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 4.3 README's hosted section says the runner speaks version 3 of the protocol, `boomdrive.v3`, under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes beside the version before. It says a hosted control plane's hold is carried out as crew's is, and no longer says no version carries a hold. README's forge-token section says version 3 of the protocol carries no token yet (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
+- [x] 4.3 README's hosted section says the runner speaks version 3 of the protocol, `boomdrive.v3`, under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes beside the version before. It says a hosted control plane's hold is carried out as crew's is, and no longer says no version carries a hold. README's forge-token section says version 3 of the protocol carries no token yet (design Decision 9). True when `sluice exec main -- moon run root:format` passes.
 
 ## 5. The specs
 
