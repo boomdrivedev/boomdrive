@@ -266,6 +266,11 @@ impl FakeFlume {
         self.state.borrow_mut().listing = Some(reply);
     }
 
+    /// The listing answered from the places again, as Flume gives it.
+    pub fn listing_as_flume(&self) {
+        self.state.borrow_mut().listing = None;
+    }
+
     /// The launch named `name` answered with `reply`.
     pub fn launch_answers(&self, name: &str, reply: Result<Reply, Unrun>) {
         self.state
