@@ -12,6 +12,7 @@ Today the set gives crew every drive of an account that names its `state_reposit
 - **The runner's crew table holds only the drives crew runs.** Under crew, with crew's module on and no table written, each partition is a drive of this host under an account that names its `state_repository`, as now, and the drive must also be one crew's settings set up. The failure where no such drive is this host's names the machines of those drives alone.
 - **An account needs a state repository only for a drive crew runs.** Under crew, with the runner and crew's module on, evaluation fails for an account that names no `state_repository` and holds a drive crew's settings set up, naming that account's option. An account none of whose drives crew's settings set up needs none.
 - **Unchanged:** a host's second write of a given drive's `machine` or `state` in crew's settings still fails crew's own check, naming `services.boomdrive.accounts`. So does a drive of crew's that no account names.
+- **Each tool's options stay its own.** The requirement "The modules bring each tool's own module" says each option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` is declared in its tool's input. This tree declares one again only to add, to its submodule type, a module giving facts the set knows. Today that is crew-drives.nix's declaration of `services.crew.settings` and its `drives` alone.
 - **The README** says what crew is given, and that an account needs a state repository only for a drive crew's settings set up.
 - **Record 0032** is amended with this change's forms. **core.57**, and **core.18**'s and **core.46**'s details, are amended with it. All are written in this change's own commit.
 
@@ -25,14 +26,14 @@ None.
 
 ### Modified Capabilities
 
-- `service-modules`: with crew's module on, the modules give a drive's machine and its account's state repository only where crew's settings set up the drive, and add no drive to crew's. The runner's crew table holds only this host's drives that crew's settings set up. Under crew, only an account holding a drive crew's settings set up must name its state repository. The README says so.
+- `service-modules`: with crew's module on, the modules give a drive's machine and its account's state repository only where crew's settings set up the drive, and add no drive to crew's. The runner's crew table holds only this host's drives that crew's settings set up. Under crew, only an account holding a drive crew's settings set up must name its state repository. Each tool's options stay declared in its own input, and this tree declares crew's settings again only to add the module that gives a drive its values. The README says so.
 
 ## Impact
 
 - `nix/modules/crew-drives.nix`: in place of defining `services.crew.settings.drives`, it adds a module to the type of crew's drives. That module gives `machine` and `state` to a drive crew's settings set up, under an account that names its state repository. Its definitions are placed at `services.boomdrive.accounts`.
 - `nix/modules/accounts.nix`: its header comment says what `crewDrivesOf` is now read for. The function stays as it is.
 - `nix/modules/options.nix`: the runner's crew table, the "no drive" failure and the state repository's failure read the drives crew's settings set up. The header comment, the `machine` and `state_repository` options' descriptions and the table's `defaultText` and `description` say so.
-- `nix/tests/settings.nix`: the fixture `reading`. `nix/tests/crew-drives.nix`: the placement check reads each given value's definitions, and the case of a drive crew's settings do not set up holds it given nothing. `nix/tests/tools.nix`: the cases of the table and the state repository.
+- `nix/tests/settings.nix`: the fixture `reading`. `nix/tests/crew-drives.nix`: the placement check reads each given value's definitions, and the case of a drive crew's settings do not set up holds it given nothing. `nix/tests/tools.nix`: the case of each tool's own options, and the cases of the table and the state repository.
 - `README.md`: **Installing with nix**.
 - `docs/adr/0032-…`, `docs/architecture/core.md`: record 0032's forms of 2026-11-18, core.57, and core.18's and core.46's details, written with this change.
 - Nothing else changes:

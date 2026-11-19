@@ -15,6 +15,7 @@ In this tree, from the change a-drives-machine-and-state-are-named-once:
   - `unnamed` lists the drives of crew's that no account names.
 - `nix/tests/crew-drives.nix` reads what crew is given. Its `placed` finds the module's definition among `options.services.crew.settings.definitionsWithLocations`. Its case "A drive crew's settings do not configure" holds crew's teams file failing, since a drive given and not set up lacks crew's own keys.
 - `nix/tests/tools.nix` holds the table's and the failures' cases, `accountsOrder`, `elsewhere`, `stateless` and `stray`, with the fixtures of `nix/tests/settings.nix`.
+- `nix/tests/tools.nix`'s case "Each tool's options are its own flake's" reads each option of `services.<tool>` by its `declarationPositions`, which name the file that declares it whatever that module's `_file`, and fails one declared in a file outside its tool's input. It carries the service-modules requirement "The modules bring each tool's own module", which carries record 0023's each tool by its own module.
 
 crew `v0.68.0`, the lock's (`nix/modules/options.nix` of crew's tree):
 
@@ -54,7 +55,9 @@ What this gives:
 - A drive crew's settings set up whose account names no `state_repository` is given nothing. Its machine and state are crew's settings' own, as before.
 - The values are given with crew's module on, whether or not the runner is, as before.
 
-The extension adds no key to crew's file and declares no option crew does not. It sets crew's `machine` and `state` of each drive, as core.46 and core.57 have the set set crew's module options. Its declaration of `services.crew.settings` lists `services.boomdrive.accounts` among that option's declarations.
+The extension adds no key to crew's file and declares no option crew does not. It sets crew's `machine` and `state` of each drive, as core.46 and core.57 have the set set crew's module options. Its declaration of `services.crew.settings` lists `services.boomdrive.accounts` among that option's `declarations`, and its `declarationPositions` name `nix/modules/crew-drives.nix`.
+
+That declaration is one of an option of crew's in this tree, so the change amends the service-modules requirement "The modules bring each tool's own module" and its scenario to admit it. The requirement carries record 0023's "each tool by its own module": each tool's options are the tool's own, a host can use the tool without Boomdrive, and this tree carries no copy of a tool's module. The declaration keeps all three. Every option is still declared in crew's input. The platform's crew module, re-exported, is crew's own with nothing added. And the declaration gives crew's values as core.57 has the set do. So the requirement says each option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` is declared in its tool's input, and this tree declares one again only to add, to that option's submodule type, a module giving facts the set knows, declaring no option the tool's input does not and setting no description, default or example. Its scenario names crew-drives.nix's declaration of `services.crew.settings` and its `drives` as the one such declaration.
 
 A prototype with the lock's nixpkgs `lib` checked each of these:
 
@@ -67,7 +70,7 @@ Not taken:
 
 - **Reading crew's drives' names to choose what to give.** Giving a drive's value defines the drive, so its names would depend on the giving, and evaluation recurses.
 - **Reading the host's own definitions of `services.crew.settings`, less the set's, for the drives they name.** A host's definitions may hold `lib.mkIf`, `lib.mkMerge` or a module function under `drives`. Collecting names from them would mean redoing the module system's merge, and a form it missed would leave a drive set up and given nothing.
-- **An option of crew's own that takes the accounts' values and applies them to the drives crew's settings set up.** That is a change of crew's for what the module system already gives here, through crew's own type.
+- **An option of crew's own that takes the accounts' values and applies them to the drives crew's settings set up**, which would leave this tree declaring no option of crew's. That is a crew release for what the module system already gives here, through crew's own type.
 - **`lib.mkDefault` on the given values.** It changes a value's priority, not whether the drive exists, so the set would still add the drive.
 
 ### 2. The runner's crew table holds the drives crew runs
@@ -106,13 +109,15 @@ Not taken:
 - "A drive crew's settings do not configure" reads the system of `crewAccounts` and `crewKeys`. It holds crew's drives to be `home` alone, with `host-a` and `example/state`, crew's teams file to evaluate and the system to fail no assertion.
 - The header comment says the set adds to crew's drive type, giving the drives crew's settings set up.
 
+`nix/tests/tools.nix`'s case "Each tool's options are its own flake's" fails an option of `services.<tool>` with no declaration in its tool's input, and one declared again in a file outside it but crew-drives.nix's declaration of `services.crew.settings` and its `drives`. It checks the options of that declaration's submodule types the same way, so every other option of crew's settings, and every option of a drive of crew's, is held to crew's input alone.
+
 `nix/tests/tools.nix` gains three cases:
 
 - "Only the drives crew's settings set up": the system of `crewAccounts` and `crewKeys` under crew with no table. It fails no assertion, and its table is `host-a` with the one partition `home` at `example/state`.
 - "No drive crew runs on this host": `elsewhereHome` with `crewElsewhere`. It fails, by `failsNaming`, naming `services.crew.host`, `host-a` and `host-b`.
 - "An account whose drives crew's settings do not set up": `reading` with `crewKeys`. It fails no assertion. crew's drives' names are `home` alone, the table is `host-a` with the one partition `home` at `example/state`, and Flume's streams hold `home` and `field`.
 
-Every case that stands still holds, with its name.
+Every other case that stands still holds, with its name.
 
 ### 6. The README
 
@@ -128,12 +133,12 @@ The paragraph on a drive's `machine` says the module gives it to crew's drive of
 
 ### 7. The records and rules
 
-Record 0032 gains "Amendment, 2026-11-18: the module's forms" after the amendment it carries out. It holds Decisions 1, 2, 3 and 4, each a choice of this stage's, cheap to change, with the path not taken. core.57's rule names crew's drives as each drive the host sets up in crew's own settings. Its details rule out a drive the set makes crew's that crew's settings do not set up. They allow a drive crew's settings do not set up, given nothing, its account naming no state repository where it holds no drive crew runs. core.18's details read the runner's crew table from the drives crew's settings set up. core.46's details give crew each such drive's machine and state. All are written in this change's own commit, and no task changes them.
+Record 0032 gains "Amendment, 2026-11-18: the module's forms" after the amendment it carries out. It holds Decisions 1, 2, 3 and 4, each a choice of this stage's, cheap to change, with the path not taken. core.57's rule names crew's drives as each drive the host sets up in crew's own settings. Its details rule out a drive the set makes crew's that crew's settings do not set up. They allow a drive crew's settings do not set up, given nothing, its account naming no state repository where it holds no drive crew runs. core.18's details read the runner's crew table from the drives crew's settings set up. core.46's details give crew each such drive's machine and state, and admit crew-drives.nix's declaration of `services.crew.settings` and its `drives`. The service-modules requirement "The modules bring each tool's own module" and its scenario are amended in this change's delta (Decision 1), and record 0032's forms name it. The records and rules are written with this change's design, and no task changes them.
 
 ### Rules relied on
 
 - **core.57**: a fact the set knows from the host's accounts is given through the tool's own module option, and a host writes it nowhere. Amended here to name the drives crew's settings set up.
-- **core.46, core.18**: the Boomdrive module sets crew's module options, `machine` and `state`, and writes no file of crew's. crew's module renders the teams file.
+- **core.46, core.18**: the Boomdrive module sets crew's module options, `machine` and `state`, and writes no file of crew's. It declares crew's `services.crew.settings` again only to add the module that gives them. crew's module renders the teams file.
 - **core.5**: the runner's file names its accounts, drives and repositories and no state repository, so it does not change. A drive crew does not run is kept like any drive.
 - **core.19**: a runner serves the one control plane its `type` names, so the failures of Decisions 3 and 4 hold only under crew.
 - **core.2**: no code outside the crew implementation names crew's records. The runner's crew implementation reads `[control_plane.crew]` as before.
@@ -144,7 +149,7 @@ Record 0032 gains "Amendment, 2026-11-18: the module's forms" after the amendmen
 
 ### Rules amended
 
-core.57 (rule and details), core.18's details and core.46's details, with record 0032's forms of 2026-11-18.
+core.57 (rule and details), core.18's details and core.46's details, with record 0032's forms of 2026-11-18. The service-modules requirement "The modules bring each tool's own module" and its scenario, in this change's delta (Decision 1).
 
 ### Rules departed from
 
@@ -173,7 +178,18 @@ None: a host that evaluates today gives crew the same drives and the runner the 
 
 ## Task notes
 
-**1.1** `crew-drives.nix` as Decision 1:
+**1.1** In `tools.nix`, `again` names the declarations this tree may make again, by the option's name, each with its file:
+
+```nix
+again = lib.genAttrs [
+  "services.crew.settings"
+  "services.crew.settings.drives"
+] (_: toString ../modules/crew-drives.nix);
+```
+
+`outsideOf` fails an option none of whose files is under its tool's input, or one of whose files outside it is not `again`'s file for its name. For each option `again` names, it checks the same way the options of `option.type.getSubOptions option.loc`, less `_module`. `filesOf` stays as it is.
+
+**1.2** `crew-drives.nix` as Decision 1:
 
 ```nix
 { config, lib, ... }:

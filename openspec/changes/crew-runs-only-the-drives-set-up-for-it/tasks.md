@@ -8,11 +8,14 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - The runner's code, its file's keys, `nix/tests/files` and `nix/tests/examples` do not change.
   - No flake input or tag moves, and no option crew does not declare is declared here.
   - Nothing outside the paths `proposal.md`'s Touches lists is changed.
-- **What is already written.** This change's own commit holds record 0032's forms of 2026-11-18, core.57, and core.18's and core.46's details. No task changes them. A task that relies on a choice the design names cites its Decision.
+- **What is already written.** The change's design holds record 0032's forms of 2026-11-18, core.57, and core.18's and core.46's details. No task changes them. A task that relies on a choice the design names cites its Decision.
 
 ## 1. crew is given only the drives its settings set up
 
-- [ ] 1.1 `nix/modules/crew-drives.nix` adds the giving module to the type of crew's drives, in place of defining `services.crew.settings.drives`. That module gives `machine` and `state` from `crewDrivesOf` only to a drive crew's settings set up, with crew's module on, each definition placed at `services.boomdrive.accounts`. `accounts.nix`'s header comment says so (design Decision 1; Task notes 1.1). `nix/tests/crew-drives.nix` reads each given value's place from `valueMeta` by `placedFor`. Its case "A drive crew's settings do not configure" holds crew's drives to be `home` alone, crew's teams file to evaluate and the system to fail no assertion (design Decision 5). True when `sluice exec main -- moon run nix:test` passes, proving each on nix-darwin and on NixOS:
+- [ ] 1.1 `nix/tests/tools.nix`'s case "Each tool's options are its own flake's" fails an option of `services.flume`, `services.sluice`, `services.crew` or `services.timber` with no declaration in its tool's input, and one declared again in any file of this tree but `nix/modules/crew-drives.nix`'s declaration of `services.crew.settings` and its `drives`. It checks every other option of crew's settings, and every option of a drive of crew's, the same way (design Decisions 1 and 5; Task notes 1.1). True when `sluice exec main -- moon run nix:test` passes, proving each on nix-darwin and on NixOS:
+  - "Each tool's options are its own flake's";
+  - "The tools' modules re-exported".
+- [ ] 1.2 `nix/modules/crew-drives.nix` adds the giving module to the type of crew's drives, in place of defining `services.crew.settings.drives`. That module gives `machine` and `state` from `crewDrivesOf` only to a drive crew's settings set up, with crew's module on, each definition placed at `services.boomdrive.accounts`. `accounts.nix`'s header comment says so (design Decision 1; Task notes 1.2). `nix/tests/crew-drives.nix` reads each given value's place from `valueMeta` by `placedFor`. Its case "A drive crew's settings do not configure" holds crew's drives to be `home` alone, crew's teams file to evaluate and the system to fail no assertion (design Decision 5). True when `sluice exec main -- moon run nix:test` passes, proving each on nix-darwin and on NixOS:
   - "Each drive's machine and state repository, given to crew";
   - "Given without the runner";
   - "An account naming no state repository gives crew nothing";
@@ -20,7 +23,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - "A machine written twice" and "A state written twice".
 
   Every case of `nix/tests/tools.nix`, `kept.nix`, `sources.nix`, `quick-start.nix` and `boot.nix` still holds.
-- [ ] 1.2 The README's **Installing with nix** says that, with crew's module on, each drive crew's settings set up, under an account that names its `state_repository`, is given its `machine` and its account's `state_repository`. It says a drive crew's settings do not set up is given nothing and is kept, with its stream, as any drive. The paragraph on a drive's `machine` says the same (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
+- [ ] 1.3 The README's **Installing with nix** says that, with crew's module on, each drive crew's settings set up, under an account that names its `state_repository`, is given its `machine` and its account's `state_repository`. It says a drive crew's settings do not set up is given nothing and is kept, with its stream, as any drive. The paragraph on a drive's `machine` says the same (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
 
 ## 2. The runner's crew table and the state repository's failure
 
@@ -39,4 +42,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 3. The format and the specs
 
 - [ ] 3.1 The nix files this change changes keep to the nix project's format and lint (Task notes 3.1). True when `sluice exec main -- moon run nix:format` and `sluice exec main -- moon run nix:lint` pass.
-- [ ] 3.2 The change's deltas archive into specs that pass OpenSpec's strict check. In `service-modules`, two requirements are renamed and seven modified (core.61). True when, after `devenv shell -- openspec archive crew-runs-only-the-drives-set-up-for-it --yes`, `sluice exec main -- moon run root:specs root:changes` passes.
+- [ ] 3.2 The change's deltas archive into specs that pass OpenSpec's strict check. In `service-modules`, two requirements are renamed and eight modified (core.61). True when, after `devenv shell -- openspec archive crew-runs-only-the-drives-set-up-for-it --yes`, `sluice exec main -- moon run root:specs root:changes` passes.

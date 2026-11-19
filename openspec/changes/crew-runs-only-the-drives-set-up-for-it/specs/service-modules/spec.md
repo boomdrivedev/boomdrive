@@ -46,6 +46,15 @@ The modules SHALL give each drive's `machine` and `state` at the options' own pr
 - **WHEN** `accounts` and crew's settings are those of "Each drive's machine and state repository, given to crew", and crew's settings also give the drive `home` the `state` `example/state`
 - **THEN** evaluation of crew's settings fails, and the modules' definition of crew's drive `home`'s `state` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
 
+### Requirement: The modules bring each tool's own module
+
+`darwinModules.default` and `nixosModules.default`, each the same value as the platform's `boomdrive`, SHALL import the runner's module and Flume's, sluice's, crew's and timber's, each the module that tool's flake gives at the release tag the lock names. Each option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` SHALL be declared in its tool's input; this tree SHALL declare one again only to add to its submodule type a module giving facts the set knows (core.57).
+
+#### Scenario: Each tool's options are its own flake's
+
+- **WHEN** a system imports the platform's `default` module
+- **THEN** every option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` is declared in a file of that tool's input; none is declared again in a file of this tree but `services.crew.settings` and its `drives`, each in `nix/modules/crew-drives.nix`, setting no description, default or example; and every other option of crew's settings, and every option of a drive of crew's, is declared in crew's input alone, on nix-darwin and on NixOS
+
 ### Requirement: Under crew, the runner's crew table is written from the accounts' drives on this host
 
 Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it from the accounts: `host` as `services.crew.host`, and a partition for each drive of this host that crew's settings set up, under an account naming its `state_repository`, holding the drive's name as `label` and that `state_repository` alone, accounts and drives in the order of their names (records 0023 and 0032).
