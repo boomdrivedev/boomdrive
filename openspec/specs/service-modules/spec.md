@@ -1702,7 +1702,7 @@ A system that imports the platform's module and leaves `services.boomdrive` off 
 #### Scenario: Every tool turned on without the runner
 
 - **WHEN** a system leaves `services.boomdrive` off and turns on Flume's, sluice's, crew's and timber's modules and every switch of the Boomdrive module's, naming no package, with `services.boomdrive.user = "alice"` on NixOS
-- **THEN** its system profile holds the set's `flume`, `sluice`, `crew`, `timber`, `herdr`, `ghostty`, `boomdrive-launcher`, `portless`, `worktrunk`, `pendingyou`, `plannotator` and `plannotator-tui`, each by the store path the set gives, and no `boomdrive`, on nix-darwin and on NixOS
+- **THEN** its system profile holds the set's `flume`, `sluice`, `crew`, `timber`, `herdr`, `rex`, `ghostty`, `boomdrive-launcher`, `portless`, `worktrunk`, `pendingyou`, `plannotator` and `plannotator-tui`, each by the store path the set gives, and no `boomdrive`, on nix-darwin and on NixOS
 
 ### Requirement: herdr's plugins by default are those of the tools the set installs
 
@@ -1946,7 +1946,7 @@ Where the modules write Pending You's folder, `environment.extraInit` SHALL hold
 
 ### Requirement: The modules install Rex, replaceable or dropped
 
-With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.rex.package` in the system profile. It SHALL be the set's `rex` for the host's system by default, a host's own package SHALL replace it, and `null` SHALL install none. With the runner not enabled, the modules SHALL install no Rex. They SHALL name Rex in no setting of Flume's, and no launchd daemon or agent, systemd unit or activation step of theirs SHALL run Rex.
+`services.boomdrive.rex.enable` SHALL be `services.boomdrive.enable` by default, a host's own value winning. Where it is on, with the runner or without, the modules SHALL put `services.boomdrive.rex.package` in the system profile: the set's `rex` for the host's system by default, a host's own replacing it, and none for `null`. Where it is off, they SHALL install no Rex. They SHALL name Rex in no setting of Flume's, and no step, unit, daemon or agent of theirs SHALL run Rex.
 
 #### Scenario: Rex with the runner
 
@@ -1965,8 +1965,13 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.rex.
 
 #### Scenario: No Rex without the runner
 
-- **WHEN** a system imports the platform's module and leaves `services.boomdrive` off
+- **WHEN** a system imports the platform's module, leaves `services.boomdrive` off and does not turn Rex on
 - **THEN** its system profile holds no Rex of the set's, on nix-darwin and on NixOS
+
+#### Scenario: Rex without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on `services.boomdrive.rex.enable`
+- **THEN** its system profile holds the set's `rex`, on nix-darwin and on NixOS
 
 #### Scenario: No Rex server of the modules'
 
