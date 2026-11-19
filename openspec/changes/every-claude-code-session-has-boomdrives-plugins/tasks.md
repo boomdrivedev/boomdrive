@@ -42,7 +42,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - *The server's file*.
 
   True when those cases hold, each on nix-darwin and on NixOS where it says so, with `sluice exec main -- moon run nix:test` passing.
-- [ ] 3.4 `nix/tests/apps.nix`'s *No Claude Code of the modules'* allows `activate.sh claude`'s step alone, run once. `nix/tests/activate.sh` gains *The step's commands*, holding the verb to the six commands the requirement names. `nix/tests/tools.nix`'s *The tools' activation is their own on nix-darwin* takes the step out with the runner's other steps (design Decision 10). True when the cases "No Claude Code of the modules'", "The step's commands", "The tools' activation is their own on nix-darwin" and "The tools' activation is their own on NixOS" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 3.4 `nix/tests/apps.nix`'s *No Claude Code of the modules'* allows `activate.sh claude`'s step alone, run once. `nix/tests/activate.sh` gains *The step's commands*, holding the verb to the six commands the requirement names. `nix/tests/tools.nix`'s *The tools' activation is their own on nix-darwin* and `nix/tests/collector.nix`'s *The tools' telemetry is their own on nix-darwin* take the step out with the runner's other steps, and `nix/tests/nixos.nix`'s *The user activation on NixOS* holds it between the plugins' links and `keep` (design Decision 10). True when the cases "No Claude Code of the modules'", "The step's commands", "The tools' activation is their own on nix-darwin", "The tools' activation is their own on NixOS", "The tools' telemetry is their own on nix-darwin" and "The user activation on NixOS" hold, with `sluice exec main -- moon run nix:test` passing.
 
 ## 4. The wake mod in every session
 
@@ -50,8 +50,8 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 5. The words
 
-- [ ] 5.1 The README's **Installing with nix** says what design Decision 9 lists, and no longer says no Claude Code home is installed into. No check reads these words (record 0049). True when `sluice exec main -- moon run root:format` passes.
-- [ ] 5.2 CLAUDE.md and `openspec/config.yaml` say the modules install the set's marketplace and the tools' plugins into each Claude Code home of Flume's accounts and the default home, by Claude Code's own commands, with Pending You's server and the wake mod's variable. They no longer say no module runs `claude` or touches a Claude Code home. True when `sluice exec main -- moon run root:format` passes.
+- [x] 5.1 The README's **Installing with nix** says what design Decision 9 lists, and no longer says no Claude Code home is installed into. No check reads these words (record 0049). True when `sluice exec main -- moon run root:format` passes.
+- [x] 5.2 CLAUDE.md and `openspec/config.yaml` say the modules install the set's marketplace and the tools' plugins into each Claude Code home of Flume's accounts and the default home, by Claude Code's own commands, with Pending You's server and the wake mod's variable. They no longer say no module runs `claude` or touches a Claude Code home. True when `sluice exec main -- moon run root:format` passes.
 
 ## 6. The specs
 

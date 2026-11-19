@@ -52,7 +52,7 @@ None.
 - `nix/modules/activate.sh`: the step, `activate.sh claude`.
 - `nix/modules/sessions.nix`, new: which plugins a host installs and removes, the server's file, and the login environment's lines, which are `nix/modules/plugin-dirs.sh`, new.
 - `nix/modules/darwin.nix`, `nix/modules/nixos.nix`, `nix/modules/companions.nix`, `nix/modules/pendingyou-folder.nix`.
-- `nix/tests/`: `activate.sh`, `sessions.nix` (new, in `default.nix`), `apps.nix`, `tools.nix`, `lib.nix`.
+- `nix/tests/`: `activate.sh`, `sessions.nix` (new, in `default.nix`), `apps.nix`, `tools.nix`, `collector.nix`, `nixos.nix`, `lib.nix`.
 - `README.md`, `CLAUDE.md`, `openspec/config.yaml`.
 - `docs/adr/0044-…md` and `docs/architecture/core.md`, in the commit that writes this change.
 - **What does not change.**
