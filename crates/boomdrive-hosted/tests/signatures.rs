@@ -1,8 +1,11 @@
 //! The protocol's worked contexts (the runner-protocol spec's "The README
-//! names the two paths and the signatures' contexts"; design Decisions 4
-//! and 5; record 0018): the enrollment's and the connection's contexts,
-//! signatures and header, made from the worked example's fixed key,
-//! token, origin, time and nonce, are its worked bytes. The example is
+//! names the paths and the signatures' contexts"; design Decisions 4 and
+//! 5; record 0018; design Decision 2 of
+//! a-cloud-host-gets-its-github-tokens-from-the-cloud): the enrollment's,
+//! the connection's and a forge token's ask's contexts, signatures and
+//! header, made from the worked example's fixed key, token, origin, time,
+//! nonce and repository, are its worked bytes, each starting with
+//! `boomdrive.v4`. The example is
 //! `tests/worked-bytes.json`, of which the protocol's README shows its
 //! own copy, which its writers keep to the file (record 0049).
 
@@ -12,7 +15,8 @@ use ed25519_dalek::SigningKey;
 use serde_json::Value;
 use std::path::Path;
 
-/// The worked example's values for `which`, `enrollment` or `connection`.
+/// The worked example's values for `which`, `enrollment`, `connection` or
+/// `forge_token`.
 fn worked(which: &str) -> Value {
     let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/worked-bytes.json");
     let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{}: {e}", file.display()));
@@ -123,4 +127,57 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
         enroll["signature"],
         key::base64url(&unhex(value(&values, "signature")))
     );
+}
+
+/// The runner-protocol spec's "The README's worked contexts" for the ask
+/// (design Decision 2 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
+/// record 0053): the context `forge token` made from the worked key,
+/// origin, time, nonce and the repository `example/app` is the worked
+/// bytes, starting with `boomdrive.v4`; the key's signature over it checks
+/// and is the worked one; and the ask's header is the worked header.
+#[test]
+fn the_asks_worked_context() {
+    let values = worked("forge_token");
+    let key = worked_key(&values);
+    let table = table(value(&values, "url"));
+    let time = values["time"].as_u64().expect("Unix seconds");
+    let nonce: [u8; 16] = unhex(value(&values, "nonce")).try_into().expect("16 bytes");
+    let repository = value(&values, "repository");
+    assert_eq!(repository, "example/app");
+
+    assert_eq!(
+        table.forge_token_address().as_str(),
+        value(&values, "address")
+    );
+    assert_eq!(table.origin(), value(&values, "origin"));
+    let context = key::forge_token_context(
+        &table.origin(),
+        &key.verifying_key(),
+        time,
+        &nonce,
+        repository,
+    );
+    assert_eq!(hex(&context), value(&values, "context"));
+    assert!(
+        context.starts_with(b"boomdrive.v4 "),
+        "the context starts with boomdrive.v4"
+    );
+    assert_eq!(context.len(), 121, "the count of the context's bytes");
+    let signature: [u8; 64] = unhex(value(&values, "signature"))
+        .try_into()
+        .expect("64 bytes");
+    key.verifying_key()
+        .verify_strict(&context, &ed25519_dalek::Signature::from_bytes(&signature))
+        .expect("the signature checks over the context");
+    assert_eq!(key::signature(&key, &context), key::base64url(&signature));
+
+    assert_eq!(
+        value(&values, "header"),
+        format!(
+            "Authorization: {}",
+            key::forge_token_statement(&key, &table.origin(), time, &nonce, repository)
+        )
+    );
+    let connection = key::connection_context(&table.origin(), &key.verifying_key(), time, &nonce);
+    assert_ne!(context, connection, "an ask's context is no connection's");
 }
