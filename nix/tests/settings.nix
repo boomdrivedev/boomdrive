@@ -57,6 +57,16 @@ let
     };
   };
 
+  # Under crew with no crew table, the one account `work`, naming the
+  # state repository `example/away`, whose one drive `away` is on `host-b`.
+  elsewhere = {
+    accounts.work = {
+      state_repository = "example/away";
+      drives.away.machine = "host-b";
+    };
+    settings.control_plane.type = "crew";
+  };
+
   # "A host under crew": the account `own` names its crew state
   # repository, which the runner's file does not hold.
   crew = {
@@ -200,20 +210,26 @@ in
     };
   };
 
-  # Under crew with no crew table, the one account `work`, naming the
-  # state repository `example/away`, whose one drive `away` is on `host-b`.
-  elsewhere = {
-    accounts.work = {
-      state_repository = "example/away";
-      drives.away.machine = "host-b";
-    };
-    settings.control_plane.type = "crew";
-  };
+  inherit elsewhere;
 
   # crew's own keys for elsewhere's drive `away`.
   crewElsewhere = {
     inherit hosts;
     drives.away = driveOf "away";
+  };
+
+  # elsewhere beside the account `own`, naming the state repository
+  # `example/state`, whose drive `home`, naming no machine, keeps
+  # agentplot's flume; it goes with crewElsewhere, which sets up `away`
+  # alone (the change crew-runs-only-the-drives-set-up-for-it, design
+  # Decision 5).
+  elsewhereHome = elsewhere // {
+    accounts = elsewhere.accounts // {
+      own = {
+        state_repository = "example/state";
+        drives.home.repositories.agentplot = [ "flume" ];
+      };
+    };
   };
 
   # Under crew with no crew table, the account `own`, naming no state

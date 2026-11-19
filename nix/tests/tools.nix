@@ -418,6 +418,37 @@ let
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
 
+  # crewAccounts beside crewKeys, which sets up `home` alone: the table
+  # holds `home` alone of this host's drives (the change
+  # crew-runs-only-the-drives-set-up-for-it, design Decision 5).
+  setUp =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (crewOf settings.crewKeys) ];
+        services.boomdrive = {
+          accounts = settings.crewAccounts;
+          settings.control_plane.type = "crew";
+        };
+      };
+      table = evaluated.config.services.boomdrive.settings.control_plane.crew;
+      expected = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system of the drives crew's settings set up fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (table == expected)
+        "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON expected}";
+
   # Each of `words` in the failures of `evaluated`, which fails.
   failsNaming =
     what: evaluated: words:
@@ -450,6 +481,24 @@ let
       (system {
         imports = [ (crewOf settings.crewElsewhere) ];
         services.boomdrive = settings.elsewhere;
+      })
+      [
+        "services.crew.host"
+        "host-a"
+        "host-b"
+      ];
+
+  # Under crew, with no crew table written, the drive `home` on this host,
+  # which crew's settings do not set up, beside `away` on host-b, which
+  # they do (the change crew-runs-only-the-drives-set-up-for-it, design
+  # Decision 5).
+  elsewhereHere =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with no drive crew runs on its host"
+      (system {
+        imports = [ (crewOf settings.crewElsewhere) ];
+        services.boomdrive = settings.elsewhereHome;
       })
       [
         "services.crew.host"
@@ -570,8 +619,10 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
 // onEach "The accounts' drives in their order" accountsOrder
+// onEach "Only the drives crew's settings set up" setUp
 // onEach "Under crew with neither" neither
 // onEach "No drive of the accounts on this host" elsewhere
+// onEach "No drive crew runs on this host" elsewhereHere
 // onEach "An account under crew with no state repository" stateless
 // onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew

@@ -10,16 +10,17 @@
 # account and a drive hold no key the module does not declare, so one
 # fails evaluation. A drive's stream and machine are given to Flume's
 # module (drives.nix), and with crew's module on its machine and its
-# account's state repository to crew's (crew-drives.nix), never to the
-# runner's file (core.5). `settings` holds the rest of the file, free-form
-# TOML with the README's keys declared for their types (RFC 42). Under
-# crew, with crew's module on, `control_plane.crew` is written from the
-# accounts' drives on this host under an account that names its state
-# repository, in the accounts' order, a table written out winning whole
-# (record 0023; record 0032 as amended on 2026-11-15; the change
-# crews-partitions-give-the-runner-its-crew-table). Under crew, an account
-# with a drive and no state repository, and a drive of crew's that no
-# account names, each fail evaluation (record 0032).
+# account's state repository to crew's drive of its name where crew's
+# settings set it up (crew-drives.nix), never to the runner's file
+# (core.5). `settings` holds the rest of the file, free-form TOML with the
+# README's keys declared for their types (RFC 42). Under crew, with crew's
+# module on, `control_plane.crew` is written from the accounts' drives on
+# this host that crew's settings set up, under an account that names its
+# state repository, in the accounts' order, a table written out winning
+# whole (record 0023; record 0032 as amended on 2026-11-15 and 2026-11-18;
+# the change crews-partitions-give-the-runner-its-crew-table). Under crew,
+# an account with a drive and no state repository, and a drive of crew's
+# that no account names, each fail evaluation (record 0032).
 # Any other key left unset is left out of the file, so the runner's own
 # default holds and the two never drift; a top-level key the module does
 # not declare passes to the file, and the runner judges it, but `accounts`
@@ -124,7 +125,7 @@ let
     { name, ... }:
     {
       options = {
-        machine = unset (types.strMatching "[a-z0-9][a-z0-9-]*") "The host the drive's work runs on, as `hostname -s` names it; this host, `services.crew.host`, where unset. A drive of another host gives Flume nothing, and this host keeps its repositories to read. With crew's module on, crew's drive of this name is given it as its `machine` (record 0032).";
+        machine = unset (types.strMatching "[a-z0-9][a-z0-9-]*") "The host the drive's work runs on, as `hostname -s` names it; this host, `services.crew.host`, where unset. A drive of another host gives Flume nothing, and this host keeps its repositories to read. With crew's module on, crew's drive of this name, where crew's settings set it up, is given it as its `machine` (record 0032 as amended on 2026-11-18).";
         stream = mkOption {
           type = stream name;
           default = { };
@@ -150,7 +151,7 @@ let
         default = { };
         description = "Each of the account's drives by its name, which is given once on the host: one account's body of work. Always written.";
       };
-      state_repository = unset (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+") "The account's crew state repository, `<owner>/<name>`, whose branch `<drive>/main` holds each of its drives' plan and run record: under crew, named here once, and given to crew's drives and the runner's crew table; none where unset, and the account's drives give crew nothing.";
+      state_repository = unset (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+") "The account's crew state repository, `<owner>/<name>`, whose branch `<drive>/main` holds each of its drives' plan and run record: under crew, named here once, and given to each drive of the account that crew's settings set up and to the runner's crew table; none where unset, and the account's drives give crew nothing.";
     };
   };
 
@@ -158,9 +159,10 @@ let
   # as options.nix evaluated alone does.
   crew = config.services.crew or { enable = false; };
   # The runner's crew table written from the accounts (record 0023; record
-  # 0032 as amended on 2026-11-15): crew's host, and each drive of this
-  # host, naming no machine or that host, under an account that names its
-  # state repository, in the accounts' order, as the runner's file lists
+  # 0032 as amended on 2026-11-15 and 2026-11-18): crew's host, and each
+  # drive of this host, naming no machine or that host, that crew's
+  # settings set up, under an account that names its state repository, in
+  # the accounts' order, as the runner's file lists
   # them, by its name as its label and its account's state repository
   # alone, since crew's implementation refuses any other key and reads each
   # partition by its label. The runner's own key stays `partitions`. None
@@ -172,7 +174,7 @@ let
         partitions = map (drive: {
           label = drive.name;
           inherit (drive) state_repository;
-        }) (lib.filter (drive: drive.state_repository != null) (hereOf crew.host drives));
+        }) (lib.filter (drive: drive.state_repository != null && crewRuns drive) (hereOf crew.host drives));
       }
     else
       null;
@@ -193,8 +195,8 @@ let
         crew = mkOption {
           type = types.nullOr (types.attrsOf toml);
           default = if config.type == "crew" then written else null;
-          defaultText = lib.literalMD "Under crew, with crew's module on, `host` from `services.crew.host` and, for each drive of `services.boomdrive.accounts` naming no `machine` or that host, under an account that names its `state_repository`, the drive's name as `label` and its account's `state_repository`, accounts and each account's drives in the order of their names; else `null`.";
-          description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Under crew, with crew's module on, the module writes it from the accounts' drives on this host under an account that names its `state_repository`; a table written out wins, whole.";
+          defaultText = lib.literalMD "Under crew, with crew's module on, `host` from `services.crew.host` and, for each drive of `services.boomdrive.accounts` naming no `machine` or that host that `services.crew.settings.drives` sets up, under an account that names its `state_repository`, the drive's name as `label` and its account's `state_repository`, accounts and each account's drives in the order of their names; else `null`.";
+          description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Under crew, with crew's module on, the module writes it from the accounts' drives on this host that crew's settings set up, under an account that names its `state_repository`; a table written out wins, whole.";
         };
         hosted = unset (types.attrsOf toml) "`[control_plane.hosted]`, handed whole to the hosted implementation, whose keys are its own. It holds no token or key: a partition's key is made on the host by `boomdrive enroll`.";
       };
@@ -294,15 +296,21 @@ let
 
   # Whether the runner's control plane is crew.
   crewPlane = (cfg.settings.control_plane.type or null) == "crew";
-  # The machines the drives of the accounts that name a state repository
-  # name, each once, in the accounts' order, or that no such drive is
-  # named; read only where crew's module is on.
+  # Whether crew's settings set up the drive, crew's drives' names being
+  # the host's settings' alone (crew-drives.nix); read only where crew's
+  # module is on (record 0032 as amended on 2026-11-18).
+  crewRuns = drive: crew.settings.drives ? ${drive.name};
+  # The machines the drives crew's settings set up, of the accounts that
+  # name a state repository, name, each once, in the accounts' order, or
+  # that no such drive is set up; read only where crew's module is on.
   crewMachines = lib.unique (
-    map (drive: drive.machine) (lib.filter (drive: drive.state_repository != null) drives)
+    map (drive: drive.machine) (
+      lib.filter (drive: drive.state_repository != null && crewRuns drive) drives
+    )
   );
   machines =
     if crewMachines == [ ] then
-      "the accounts name no drive under a state repository"
+      "crew's settings set up no drive of the accounts under a state repository"
     else
       "they name ${lib.concatStringsSep ", " crewMachines}";
 
@@ -420,7 +428,7 @@ in
             && cfg.settings.control_plane.crew == written
             && written.partitions == [ ]
           );
-        message = lib.optionalString crew.enable "services.boomdrive.settings.control_plane.crew is written from the drives of services.boomdrive.accounts whose machine is services.crew.host, ${crew.host}, or that name none, under an account that names its state_repository, and no drive is: ${machines}. Set services.crew.host to this host's machine, or give a drive of services.boomdrive.accounts this host as its machine (record 0032).";
+        message = lib.optionalString crew.enable "services.boomdrive.settings.control_plane.crew is written from the drives of services.boomdrive.accounts that services.crew.settings.drives sets up, whose machine is services.crew.host, ${crew.host}, or that name none, under an account that names its state_repository, and no drive is: ${machines}. Set services.crew.host to this host's machine, or give a drive crew's settings set up this host as its machine (record 0032).";
       }
       {
         assertion = !(crewPlane && crew.enable && stateless != [ ]);
