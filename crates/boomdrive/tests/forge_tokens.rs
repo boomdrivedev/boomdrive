@@ -664,58 +664,6 @@ fn hosted() -> String {
     )
 }
 
-/// The forge-tokens spec's "A get on a cloud host".
-#[test]
-fn a_get_on_a_cloud_host_is_refused() {
-    let scratch = Scratch::new();
-    scratch.configure(&hosted());
-
-    let (code, stdout, stderr) = refusal(&run(&scratch, &["get"], &for_path("agentplot/flume")));
-
-    assert_eq!(
-        (code, stdout.as_str(), stderr),
-        (
-            Some(1),
-            "",
-            format!(
-                "boomdrive forge-token: {}\n",
-                boomdrive_hosted::NO_FORGE_TOKEN
-            )
-        )
-    );
-    assert_eq!(
-        boomdrive_hosted::NO_FORGE_TOKEN,
-        "the hosted control plane mints this host's forge tokens, and version 3 of its \
-         protocol carries none yet"
-    );
-}
-
-/// The forge-tokens spec's "An erase on a cloud host".
-#[test]
-fn an_erase_on_a_cloud_host_is_refused() {
-    let scratch = Scratch::new();
-    scratch.configure(&hosted());
-
-    let (code, stdout, stderr) = refusal(&run(
-        &scratch,
-        &["erase"],
-        "protocol=https\nhost=github.com\npath=agentplot/flume\nusername=x-access-token\n\
-         password=ghs_n0t4r34lt0k3n\n",
-    ));
-
-    assert_eq!(
-        (code, stdout.as_str(), stderr),
-        (
-            Some(1),
-            "",
-            format!(
-                "boomdrive forge-token: {}\n",
-                boomdrive_hosted::NO_FORGE_TOKEN
-            )
-        )
-    );
-}
-
 /// The forge-tokens spec's "A repository no drive serves", by the binary,
 /// whose `--config` names the file.
 #[test]

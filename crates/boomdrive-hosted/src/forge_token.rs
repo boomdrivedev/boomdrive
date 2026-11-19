@@ -6,7 +6,9 @@
 //! served the repository, each partition so served asked in the table's
 //! order until one gives a token. Each ask is signed afresh over the
 //! context `forge token`, which binds its repository, with the partition's
-//! key read from the host's store at that ask (core.31, core.32).
+//! key read from the host's store at that ask (core.31, core.32). The
+//! store is opened at each token asked, so opening the tokens reads the
+//! hosted table alone.
 //!
 //! An ask opens no socket and no part, keeps nothing, and says no line:
 //! its answer, a token, the App's absence or a refusal, is its caller's,
@@ -38,12 +40,16 @@ const ANSWER_LIMIT: u64 = 64 * 1024;
 /// The path an ask goes to, as its words name it.
 const PATH: &str = "`runner/forge-token`";
 
-/// The hosted control plane's forge tokens: its table, the host's store
-/// or why it could not be opened, and how long the asks of one token may
-/// take.
+/// What opens the store each partition's key is read from, or says why it
+/// could not be opened: the host's own, [`key::store_for_host`], or a
+/// test's.
+pub type OpenStore = Box<dyn Fn() -> Result<Box<dyn Store>, String> + Send + Sync>;
+
+/// The hosted control plane's forge tokens: its table, what opens the
+/// host's store, and how long the asks of one token may take.
 pub struct Tokens {
     table: Table,
-    store: Result<Box<dyn Store>, String>,
+    store: OpenStore,
     ask_for: Duration,
 }
 
@@ -60,9 +66,9 @@ enum Passed {
 
 impl Tokens {
     /// The forge tokens of the hosted table `table`, each partition's key
-    /// read from `store`, or none where it could not be opened, its words
-    /// saying why; the asks of one token stopped at [`ASK_FOR`].
-    pub fn new(table: Table, store: Result<Box<dyn Store>, String>) -> Tokens {
+    /// read from the store `store` opens at each token asked; the asks of
+    /// one token stopped at [`ASK_FOR`].
+    pub fn new(table: Table, store: OpenStore) -> Tokens {
         Tokens {
             table,
             store,
@@ -86,13 +92,14 @@ impl Tokens {
     /// the ask and the repository.
     fn ask(
         &self,
+        store: &Result<Box<dyn Store>, String>,
         partition: &Partition,
         repository: &str,
         began: Instant,
     ) -> Result<ForgeToken, Passed> {
         let label = &partition.label;
         let enroll = self.table.enroll_command(label);
-        let store = self.store.as_ref().map_err(|words| {
+        let store = store.as_ref().map_err(|words| {
             Passed::NotAsked(format!(
                 "the host's credential store could not be opened: {words}; its key is made by \
                  `{enroll}`"
@@ -260,9 +267,10 @@ impl ForgeTokens for Tokens {
             };
         }
         let began = Instant::now();
+        let store = (self.store)();
         let mut passed = Vec::new();
         for partition in served {
-            match self.ask(partition, repository, began) {
+            match self.ask(&store, partition, repository, began) {
                 Ok(token) => return TokenAsked::Token(token),
                 Err(why) => passed.push((partition.label.as_str(), why)),
             }

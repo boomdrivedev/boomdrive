@@ -88,9 +88,12 @@ pub fn answer(
         .control_plane
         .as_ref()
         .and_then(|plane| planes::carried(&plane.implementation))
-        .and_then(|entry| entry.holds_the_app);
-    if let Some(words) = holds_the_app {
-        return Err(refused(words.to_string()));
+        .is_some_and(|entry| entry.holds_the_app.is_some());
+    if holds_the_app && !forge.asks() {
+        return Err(host(
+            "the configuration's control plane holds the Boomdrive App, and this forge mints"
+                .to_string(),
+        ));
     }
     let Some(app) = &config.forge else {
         return Err(host(

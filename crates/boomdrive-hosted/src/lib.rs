@@ -28,23 +28,13 @@ pub use plane::{open, Hosted};
 use std::path::Path;
 use table::Table;
 
-/// The words a cloud host's `boomdrive forge-token` refuses every
-/// operation with, until a version of the protocol carries a forge token:
-/// under the hosted control plane the Boomdrive App is the control plane's,
-/// which mints the host's tokens and sends them down the runner's own
-/// connection (record 0007 as amended on 2026-11-09; core.33). They name
-/// [`protocol::v3::VERSION`] as text, since a `const` is made of no
-/// `format!`: a later version changes the number here with its own, and a
-/// version that carries tokens changes these words with it.
-pub const NO_FORGE_TOKEN: &str =
-    "the hosted control plane mints this host's forge tokens, and version 3 of its protocol carries none yet";
-
 /// The hosted control plane's forge tokens, from the hosted table,
 /// `table`, of the configuration file `file`, each partition's key read
-/// from the host's own credential store at each ask; a store that cannot
-/// be opened is said by each ask, which then asks nothing (design
-/// Decision 7 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
-/// core.32, core.33). It opens no socket and no part.
+/// from the host's own credential store, opened at each token asked; a
+/// store that cannot be opened is said by each ask, which then asks
+/// nothing (design Decision 7 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud; core.32, core.33).
+/// It reads the table alone, and opens no store, socket or part.
 pub fn forge_tokens(
     table: &toml::Table,
     file: &Path,
@@ -52,7 +42,7 @@ pub fn forge_tokens(
     let table = Table::read(table, file)?;
     Ok(Box::new(forge_token::Tokens::new(
         table,
-        key::store_for_host(),
+        Box::new(key::store_for_host),
     )))
 }
 

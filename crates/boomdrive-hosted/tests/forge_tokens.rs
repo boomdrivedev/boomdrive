@@ -48,13 +48,16 @@ fn table(fake: &Fake, partitions: &[(&str, &[&str])]) -> Table {
 /// The forge tokens of `table`, each of `keyed`'s keys in a store in
 /// memory and enrolled with `fake`.
 fn tokens(fake: &Fake, table: Table, keyed: &[&str]) -> Tokens {
-    let memory = Memory::default();
+    let memory = Arc::new(Memory::default());
     for label in keyed {
         let key = key_of(label);
         memory.write(&table.key_name(label), &key).expect("kept");
         fake.enrolled(label, &key.verifying_key());
     }
-    Tokens::new(table, Ok(Box::new(memory)))
+    Tokens::new(
+        table,
+        Box::new(move || Ok(Box::new(memory.clone()) as Box<dyn Store>)),
+    )
 }
 
 /// Each forge token's ask the fake took, in order.
