@@ -21,6 +21,7 @@ use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
 use crate::forge::Forge;
 use crate::git::Git;
 use crate::locks::Locks;
+use crate::millpond::{self, Ticks};
 use crate::pass::{self, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
@@ -238,12 +239,14 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
     (last_start + interval).max(now)
 }
 
-/// The programs the runner runs for Flume and sluice: its settles, its
-/// parts' control passes' and its terminals' relays.
+/// The programs the runner runs for Flume, sluice and millpond: its
+/// settles and ticks, its parts' control passes' and its terminals'
+/// relays.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
     pub sluice: PathBuf,
+    pub millpond: PathBuf,
 }
 
 impl Programs {
@@ -252,6 +255,7 @@ impl Programs {
         Programs {
             flume: PathBuf::from("flume"),
             sluice: PathBuf::from("sluice"),
+            millpond: PathBuf::from("millpond"),
         }
     }
 
@@ -389,54 +393,63 @@ struct Host<'a> {
 }
 
 /// The runner's watch over the host: Flume's settle of every place,
-/// `flume settle --every <bound>`, run once and awaited at the end of
-/// each pass, keeping or control (core.13; record 0029). The loop and
-/// every part's thread share it, so no two settles run at once: a pass
-/// that ends while another's settle is under way shares that settle, as a
-/// keeping pass shares the settle of the control pass that follows it at
-/// once, and waits for nothing (core.49).
+/// `flume settle --every <bound>`, then millpond's tick of each inbox the
+/// configuration names, `millpond tick --inbox <name> --json`, each run
+/// once and awaited at the end of each pass, keeping or control, so the
+/// host keeps one clock (core.13; records 0029 and 0033). The loop and
+/// every part's thread share it, so no two settles or ticks run at once: a
+/// pass that ends while another's settle is under way shares that settle
+/// and its ticks, as a keeping pass shares the settle of the control pass
+/// that follows it at once, and waits for nothing (core.49).
 struct Watch {
-    /// The `fetch_interval` the latest reading of the configuration gave.
-    fetch_interval: Mutex<Duration>,
-    /// Whether the last settle was answered, held while a settle runs.
-    settles: Mutex<Settles>,
+    /// The `fetch_interval` and `inboxes` the latest reading of the
+    /// configuration gave.
+    read: Mutex<(Duration, Vec<String>)>,
+    /// Whether the last settle, and each inbox's last tick, was answered,
+    /// held while a settle and its ticks run.
+    settles: Mutex<(Settles, Ticks)>,
 }
 
 impl Watch {
-    /// A watch whose bound starts from `fetch_interval`, as the
-    /// configuration the runner started with gave it.
-    fn new(fetch_interval: Duration) -> Watch {
+    /// A watch whose bound starts from `fetch_interval`, and whose ticks
+    /// from `inboxes`, as the configuration the runner started with gave
+    /// them.
+    fn new(fetch_interval: Duration, inboxes: Vec<String>) -> Watch {
         Watch {
-            fetch_interval: Mutex::new(fetch_interval),
+            read: Mutex::new((fetch_interval, inboxes)),
             settles: Mutex::default(),
         }
     }
 
-    /// Takes the `fetch_interval` a reading of the configuration gave.
-    fn read(&self, fetch_interval: Duration) {
-        *self
-            .fetch_interval
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = fetch_interval;
+    /// Takes the `fetch_interval` and `inboxes` a reading of the
+    /// configuration gave.
+    fn read(&self, fetch_interval: Duration, inboxes: &[String]) {
+        *self.read.lock().unwrap_or_else(|e| e.into_inner()) = (fetch_interval, inboxes.to_vec());
     }
 
     /// Runs `flume`'s settle of every place, its bound the latest
     /// `fetch_interval`, or the shorter of it and `poll_interval` while
-    /// the runner makes control passes, and says its answer only where it
-    /// changes. Where another pass's settle is under way, runs none.
-    fn settle(&self, flume: &Path, poll_interval: Option<Duration>, say: Say<'_>) {
-        let mut settles = match self.settles.try_lock() {
+    /// the runner makes control passes, then millpond's tick of each inbox
+    /// the latest reading named, in its order, and says each answer only
+    /// where it changes. A tick that fails stops nothing, and an inbox the
+    /// configuration names none runs none (record 0033). Where another
+    /// pass's settle is under way, runs none.
+    fn settle(&self, programs: &Programs, poll_interval: Option<Duration>, say: Say<'_>) {
+        let mut held = match self.settles.try_lock() {
             Ok(settles) => settles,
             Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
             Err(std::sync::TryLockError::WouldBlock) => return,
         };
-        let fetch_interval = *self
-            .fetch_interval
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let (settles, ticks) = &mut *held;
+        let (fetch_interval, inboxes) = self.read.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let bound = settle::bound(fetch_interval, poll_interval);
-        let answer = flume::Cli::new(flume).settle_every(bound);
+        let answer = flume::Cli::new(&programs.flume).settle_every(bound);
         settles.heard(answer, &mut |line| say(line));
+        ticks.keep(&inboxes);
+        let millpond = millpond::Cli::new(&programs.millpond);
+        for inbox in &inboxes {
+            ticks.heard(inbox, millpond.tick(inbox), &mut |line| say(line));
+        }
     }
 }
 
@@ -480,7 +493,7 @@ impl Runner {
             Control::open(table, config.observer.as_ref(), &file, &data, &bells, &halt)
         });
         let report = ReportFile::new(&report::control_dir(&data));
-        let watch = Watch::new(config.fetch_interval);
+        let watch = Watch::new(config.fetch_interval, config.inboxes.clone());
         let forge = Forge::for_runner(&config, &file);
         Ok(Runner {
             git,
@@ -747,7 +760,7 @@ impl Runner {
         if self.stopped(say) {
             return Outcome::Failed;
         }
-        self.watch.settle(&self.programs.flume, polls, say);
+        self.watch.settle(&self.programs, polls, say);
         kept.and(carried)
     }
 
@@ -837,7 +850,7 @@ impl Runner {
                         Ok(config) => {
                             this.say_local(&mut said_local, &config.local, say);
                             fetch_interval = config.fetch_interval;
-                            this.watch.read(fetch_interval);
+                            this.watch.read(fetch_interval, &config.inboxes);
                             pass::pass(
                                 &this.git,
                                 &this.forge,
@@ -869,7 +882,7 @@ impl Runner {
                 // configuration that did not read settles all the same
                 // (record 0029).
                 if kept && !followed {
-                    this.watch.settle(&this.programs.flume, polls, say);
+                    this.watch.settle(&this.programs, polls, say);
                 }
                 loop {
                     if this.stop.load(Ordering::SeqCst) {
@@ -1065,8 +1078,7 @@ impl Host<'_> {
                             // place, no part of it, before the part waits
                             // (record 0029).
                             if !bell.stopped() {
-                                self.watch
-                                    .settle(&self.programs.flume, Some(poll_interval), say);
+                                self.watch.settle(self.programs, Some(poll_interval), say);
                             }
                         }
                     }
@@ -1257,7 +1269,12 @@ mod tests {
         );
         fs::write(&flume, program).unwrap();
         fs::set_permissions(&flume, fs::Permissions::from_mode(0o755)).unwrap();
-        let watch = Watch::new(Duration::from_secs(60));
+        let watch = Watch::new(Duration::from_secs(60), Vec::new());
+        let flume = super::Programs {
+            flume,
+            sluice: dir.path().join("sluice"),
+            millpond: dir.path().join("millpond"),
+        };
         let said = std::sync::Mutex::new(Vec::new());
         let say = |line: String| said.lock().unwrap().push(line);
         std::thread::scope(|scope| {
