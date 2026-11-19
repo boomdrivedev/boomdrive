@@ -131,8 +131,9 @@ let
   lastLogin = lastAt login;
 
   # Each tool's answer, as the booted-system spec names it: its program's
-  # `--version`, wt's for worktrunk, and crew's `_release`, each holding
-  # the set's version of that tool (design Decision 6).
+  # `--version`, wt's for worktrunk, crew's `_release` and Rex's
+  # `version`, each holding the set's version of that tool (design
+  # Decision 6; record 0023 as amended on 2026-11-18).
   tools = [
     "boomdrive"
     "flume"
@@ -140,6 +141,7 @@ let
     "crew"
     "timber"
     "herdr"
+    "rex"
     "worktrunk"
     "ghostty"
     "portless"
@@ -149,7 +151,12 @@ let
   ];
   programOf = name: if name == "worktrunk" then "wt" else name;
   expected = map (name: {
-    command = if name == "crew" then "crew _release" else "${programOf name} --version";
+    command =
+      {
+        crew = "crew _release";
+        rex = "rex version";
+      }
+      .${name} or "${programOf name} --version";
     inherit (set.${name}) version;
   }) tools;
   answers = boot.answers or [ ];
@@ -167,11 +174,15 @@ let
     ]
     && builtins.elem set.${name}.outPath profile
   ) (builtins.attrNames set);
-  # A package's answer: its own program's `--version`, or crew's
-  # `_release`, holding its version.
+  # A package's answer: its own program's `--version`, crew's `_release`
+  # or Rex's `version`, holding its version.
   answerOf = name: {
     command =
-      if name == "crew" then "crew _release" else "${set.${name}.meta.mainProgram or name} --version";
+      {
+        crew = "crew _release";
+        rex = "rex version";
+      }
+      .${name} or "${set.${name}.meta.mainProgram or name} --version";
     inherit (set.${name}) version;
   };
 

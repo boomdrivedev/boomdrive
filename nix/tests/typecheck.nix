@@ -25,6 +25,7 @@ let
     "plannotator-herdr-plugin"
     "plannotator-tui"
     "portless"
+    "rex"
     "sluice"
     "sluice-herdr-plugin"
     "timber"
