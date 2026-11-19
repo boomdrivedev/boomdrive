@@ -13,7 +13,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. Flume first
 
-- [ ] 1.1 **Waits on the Flume release that carries `flumes-status-names-each-accounts-claude-code-folder`** (design Decision 1; Task notes 1.1). Until that release is out, this task stays unticked, and the code stage stops short with `flume needs`, naming that unit and this task. Once it is out:
+- [x] 1.1 **Waits on the Flume release that carries `flumes-status-names-each-accounts-claude-code-folder`** (design Decision 1; Task notes 1.1). Until that release is out, this task stays unticked, and the code stage stops short with `flume needs`, naming that unit and this task. Once it is out:
   - `flake.nix`'s `flume` input names that release's tag, and the lock moves the `flume` node alone;
   - the set's herdr moves where that tag's tree pins another;
   - each option of Flume's module the set gives takes that release's names;
