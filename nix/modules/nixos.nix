@@ -80,11 +80,15 @@ let
     inherit (cfg.pendingyou) package;
   };
 
-  # The runner's user's steps before `keep`, in order: the link, Pending
-  # You's folder, then herdr's links of the plugins.
+  # The runner's user's steps before `keep`, in order: the link,
+  # millpond's host configuration's link, Pending You's folder, then
+  # herdr's links of the plugins.
   steps = [
     "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
   ]
+  ++ lib.optional (
+    cfg.millpond.file != null
+  ) "${pkgs.runtimeShell} ${./activate.sh} millpond ${cfg.millpond.file} || true"
   ++
     lib.optional (config.services.crew.enable && cfg.pendingyou.package != null)
       "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
@@ -125,6 +129,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     (import ./companions.nix { inherit packages; })
+    (import ./millpond.nix { inherit packages; })
     ./drives.nix
     ./clones.nix
     ./sources.nix

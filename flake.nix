@@ -107,6 +107,15 @@
         nix-darwin.follows = "nix-darwin";
       };
     };
+    # millpond through its own flake at its release tag, whose tick the
+    # runner's pass runs for each inbox the host keeps (record 0033).
+    millpond = {
+      url = "github:boomdrivedev/millpond/v0.1.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
+      };
+    };
     # crew's companions (record 0044, point 6). Pending You's command line
     # as Pending You publishes it on npm, since its source tags no release
     # and locks no dependency.
@@ -180,6 +189,13 @@
             # timber's own flake's package, unchanged: its tagged tree
             # carries its version (timber's record 0031; core.44).
             timber = inputs.timber.packages.${system}.default;
+            # millpond's own flake's package, its tagged tree carrying its
+            # version, its git crates fetched by their hashes
+            # (nix/packages/millpond.nix; record 0033; core.44).
+            millpond = pkgs.callPackage ./nix/packages/millpond.nix {
+              package = inputs.millpond.packages.${system}.millpond;
+              src = inputs.millpond;
+            };
             # sluice's own flake's package, unchanged: its tagged tree
             # carries its version (sluice's record 0111; core.44).
             sluice = inputs.sluice.packages.${system}.default;

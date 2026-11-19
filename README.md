@@ -270,7 +270,11 @@ Flume's watch and millpond's schedules; a file that names no `inboxes`
 runs none. millpond decides what a tick runs, and the runner reads
 nothing of its answer. It says one line when an inbox's tick is
 refused or gives no answer, and one when millpond ticks it again, and
-no tick stops a pass.
+no tick stops a pass. On a host on the set, the module installs millpond
+with the runner and names each inbox once, in
+`services.boomdrive.millpond.settings.inbox`: it writes millpond's own
+host configuration, linked at `~/.config/millpond/config.toml`, and the
+runner's `inboxes` from it.
 
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or

@@ -38,7 +38,9 @@ each tool's own module re-exported beside the runner's service, `services.boomdr
 as nix-darwin and NixOS modules, whose `accounts` and `settings` are
 the runner's file, each drive's stream given to Flume's module, and,
 with crew on, crew's source of kinds (record 0034). With the runner,
-the modules install herdr, Rex, Ghostty, portless, worktrunk, timber and
+the modules install herdr, Rex, Ghostty, portless, worktrunk, timber,
+millpond, whose host configuration and the runner's `inboxes` they write
+from `services.boomdrive.millpond.settings` (record 0033), and
 the Boomdrive launcher, a menu-bar app on macOS and a desktop entry on
 Linux, with an entry for each drive, that runs `flume open`, and link
 the set's herdr plugins with herdr's own command. With the runner and crew, they
