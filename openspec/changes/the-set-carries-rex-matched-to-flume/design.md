@@ -40,7 +40,13 @@ The flake's shell's `PATH` holds Rex beside herdr. Flume in the shell drives the
 
 Not taken: leaving Rex out, as Ghostty is, which is an app the person opens from a terminal they are already in, not a command Flume runs.
 
-### Decision 6: not in `herdr-plugins` or the quick start
+### Decision 6: the boot asks `rex version`
+
+The booted system holds Rex, as the modules install it with the runner, so the boot asks it its version as it asks every tool installed. Rex takes no `--version` and answers `rex version` with its release, `rex 0.1.0-preview.14`, and the boot runs that, as it runs crew's `_release`.
+
+Not taken: leaving Rex out of the boot's answers, which its case "Every tool installed answers" refuses for a tool the profile holds.
+
+### Decision 7: not in `herdr-plugins` or the quick start
 
 Rex has no herdr plugin, and the quick start's steps run none of it. A Mac set up by `boomdrive setup` may add `github:boomdrivedev/boomdrive#rex` by its profile line, which the README names, as it names worktrunk's and timber's.
 

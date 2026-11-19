@@ -14,6 +14,7 @@ Flume v0.29.0, the set's Flume, takes Rex 0.1.0-preview.14 from Rex's flake by t
 - **The module installs it.** `services.boomdrive.rex.package`, the set's `rex` by default, a host's own replacing it and `null` installing none, is put in the system profile with the runner, as worktrunk is. The modules name Rex in no setting of Flume's, so Flume's `host.multiplexer` stays `herdr` by default, and write no file of Rex's and start no server of it.
 - **The shell.** The flake's shell's `PATH` gains Rex beside herdr, since Flume in the shell drives whichever terminal its settings name from the `PATH`.
 - **The cache.** The workflow builds and pushes `rex` with every other package, since it builds every package the flake gives.
+- **The boot.** The booted system holds Rex, and asks it its version by `rex version`, since Rex takes no `--version`.
 - **The README** names Rex among the set, its option and its profile line.
 - **Record 0023** is amended on 2026-11-18 with how Rex comes with the flake; core.44's, core.45's and core.46's details say what they allow of it.
 
@@ -29,12 +30,14 @@ None.
 - `service-modules`: the modules install Rex with the runner by `services.boomdrive.rex.package`, replaceable or dropped, and name it in no Flume setting; the README names the option.
 - `binary-cache`: the workflow's builds and a host's profile hold the set's `rex`.
 - `way-in`: the flake's shell's `PATH` holds Rex.
+- `booted-system`: the boot runs `rex version`, Rex's own answer of its version, since Rex takes no `--version`.
 
 ## Impact
 
 - `flake.nix`, `flake.lock`: the input `rex` and the package `rex`. No other input moves.
 - `nix/modules/apps.nix`: the option `services.boomdrive.rex.package`, in the system profile with the runner.
 - `nix/shell.nix`: Rex on the shell's `PATH`.
+- `nix/boot.nix`, `nix/tests/boot.nix`: Rex's answer, `rex version`.
 - `nix/tests/packages.nix`: "Rex through its own flake", "Rex is Flume's" and "Rex other than Flume's".
 - `nix/tests/apps.nix`: Rex with the runner, a host's own, none, and none without the runner.
 - `nix/tests/typecheck.nix`, `nix/tests/cache.nix`, `nix/tests/way-in.nix`: `rex` among the set, the flake's own paths and the shell's tools.
@@ -51,6 +54,8 @@ flake.nix
 flake.lock
 nix/modules/apps.nix
 nix/shell.nix
+nix/boot.nix
+nix/tests/boot.nix
 nix/tests/packages.nix
 nix/tests/apps.nix
 nix/tests/typecheck.nix
