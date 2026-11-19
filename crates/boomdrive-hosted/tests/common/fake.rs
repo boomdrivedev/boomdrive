@@ -902,7 +902,12 @@ async fn forge_token(
         shared,
         &message,
         &refused,
-        (key, time, nonce, signed),
+        &Statement {
+            key,
+            time,
+            nonce,
+            signed,
+        },
         &id,
         &repository,
     );
@@ -924,16 +929,31 @@ async fn forge_token(
     }
 }
 
+/// What an ask's statement held, each part where it was read, and whether
+/// its signature checked.
+struct Statement {
+    key: Option<[u8; 32]>,
+    time: Option<u64>,
+    nonce: Option<[u8; 16]>,
+    signed: bool,
+}
+
 /// The partition an ask's statement proved, where it did, and the fake's
 /// answer to the ask, none where it never answers.
 fn forge_answer(
     shared: &Shared,
     message: &Value,
     refused: &Option<String>,
-    (key, time, nonce, signed): (Option<[u8; 32]>, Option<u64>, Option<[u8; 16]>, bool),
+    statement: &Statement,
     id: &str,
     repository: &str,
 ) -> (Option<String>, Option<(u16, String)>) {
+    let Statement {
+        key,
+        time,
+        nonce,
+        signed,
+    } = *statement;
     let mut state = shared.lock();
     let partition = key.and_then(|key| state.keys.get(&key).cloned());
     let refuse = |state: &mut State, status: u16, words: &str| {
