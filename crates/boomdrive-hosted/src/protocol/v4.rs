@@ -581,7 +581,7 @@ impl fmt::Debug for ForgeTokenGiven {
         f.debug_struct("ForgeTokenGiven")
             .field("forge_token", &self.forge_token)
             .field("repository", &self.repository)
-            .field("expires_at", &self.expires_at)
+            .field("expires_at", &format_args!("{}", self.expires_at))
             .finish_non_exhaustive()
     }
 }

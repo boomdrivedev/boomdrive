@@ -307,3 +307,36 @@ fn version_3s_examples_still_pass() {
         }
     }
 }
+
+/// The runner-protocol spec's "A token's Debug names its end alone"
+/// (design Decision 4 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
+/// core.4): version 4's `forge_token_given.json`, read into its type and
+/// written with `{:?}`, names its ask, its repository and its end, and no
+/// character of its token: the text is the same whatever the token is.
+#[test]
+fn a_tokens_debug_names_its_end_alone() {
+    let given = example("to-runner", "forge_token_given.json");
+    let token = given["body"]["forge_token_given"]["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    let written = |value: Value| -> String {
+        let message: Message<ToRunner> = serde_json::from_value(value).expect("a message");
+        let ToRunner::ForgeTokenGiven(given) = message.body else {
+            panic!("forge_token_given.json holds no forge_token_given");
+        };
+        format!("{given:?}")
+    };
+    let text = written(given.clone());
+    for named in ["runner:9", "example/app", "2026-11-18T13:00:00Z"] {
+        assert!(text.contains(named), "{text} names no {named}");
+    }
+    assert!(!text.contains(&token), "{text} holds the token");
+    let mut other = given;
+    other["body"]["forge_token_given"]["token"] = Value::from("another-token-entirely");
+    assert_eq!(
+        written(other),
+        text,
+        "the Debug of a token given turns on its token"
+    );
+}
