@@ -215,6 +215,16 @@ impl Forge {
         }
     }
 
+    /// The running runner's forge, made at its start: as [`Forge::of`]
+    /// makes it, but where the control plane's forge tokens could not be
+    /// opened, one whose every ask is refused with the open's words, so
+    /// each fetch goes with no credential and a failed one's line names
+    /// them (design Decision 8 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+    pub fn for_runner(config: &Config, file: &Path) -> Forge {
+        Forge::of(config, file).unwrap_or_else(|words| Forge::asking(Box::new(Unopened(words))))
+    }
+
     /// A forge asking `tokens`, a control plane's that holds the App, for
     /// each token in place of minting, whatever `[forge]` names (design
     /// Decision 8 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
@@ -476,6 +486,19 @@ impl Forge {
             .read_to_string(&mut text)
             .map_err(|error| unreachable(&error))?;
         Ok((status, serde_json::from_str(&text).unwrap_or(Value::Null)))
+    }
+}
+
+/// A control plane's forge tokens that could not be opened: every ask
+/// refused, as the host's to fix, with the open's words.
+struct Unopened(String);
+
+impl ForgeTokens for Unopened {
+    fn token(&self, _repository: &str) -> TokenAsked {
+        TokenAsked::Refused {
+            words: self.0.clone(),
+            host_to_fix: true,
+        }
     }
 }
 
