@@ -222,6 +222,30 @@
         "type": "github"
       }
     },
+    "millpond": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795103943,
+        "narHash": "sha256-yL6fliOt70DxjATCARB6BtKcWA6kXbmxv9y3KeEIs74=",
+        "owner": "boomdrivedev",
+        "repo": "millpond",
+        "rev": "7686c7e6b601077d94509e406036cff48040875d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "boomdrivedev",
+        "ref": "v0.1.0",
+        "repo": "millpond",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -313,6 +337,7 @@
         "herdr-annotate": "herdr-annotate",
         "herdr-pendingyou": "herdr-pendingyou",
         "llm-agents": "llm-agents",
+        "millpond": "millpond",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
         "pendingyou": "pendingyou",

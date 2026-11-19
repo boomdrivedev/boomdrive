@@ -3,6 +3,7 @@
 # and 10):
 #
 #   activate.sh link <file>
+#   activate.sh millpond <file>
 #   activate.sh keep <user> <program> <argument>...
 #   activate.sh plugins <herdr> <plugin>...
 #   activate.sh pendingyou <source> <folder>
@@ -16,6 +17,12 @@
 # named. Where config.toml.before-nix is there already, it changes neither,
 # names both and fails: the service reads its own --config either way. It
 # says a line only where it moved or linked something.
+#
+# millpond links ~/.config/millpond/config.toml, under XDG_CONFIG_HOME where
+# it is set, to the module's rendering of millpond's host configuration
+# (record 0033), as link does the runner's file: a link there is
+# replaced, and a file or folder there that is no link is moved once, to
+# config.toml.before-nix, or left where that is there already.
 #
 # keep is NixOS's step, since NixOS restarts no changed user unit: run by
 # <user>, it starts boomdrive.service where it is not running, restarts it
@@ -97,6 +104,7 @@ set -eu
 
 usage() {
   echo "usage: activate.sh link <file>" >&2
+  echo "       activate.sh millpond <file>" >&2
   echo "       activate.sh keep <user> <program> <argument>..." >&2
   echo "       activate.sh plugins <herdr> <plugin>..." >&2
   echo "       activate.sh pendingyou <source> <folder>" >&2
@@ -112,8 +120,18 @@ oneline() {
 }
 
 link() {
+  linked "$1" "$HOME/.config/boomdrive"
+}
+
+# millpond's host configuration, at millpond's own path.
+millpond() {
+  linked "$1" "${XDG_CONFIG_HOME:-$HOME/.config}/millpond"
+}
+
+# `$1` linked at `$2`/config.toml, as link says.
+linked() {
   file=$1
-  folder=$HOME/.config/boomdrive
+  folder=$2
   target=$folder/config.toml
   aside=$target.before-nix
 
@@ -451,6 +469,10 @@ case ${1:-} in
 link)
   [ $# -eq 2 ] || usage
   link "$2"
+  ;;
+millpond)
+  [ $# -eq 2 ] || usage
+  millpond "$2"
   ;;
 keep)
   [ $# -ge 3 ] || usage
