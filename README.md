@@ -491,11 +491,14 @@ and a key the host sets there wins.
 Each account under crew names its crew state repository once,
 `services.boomdrive.accounts.<account>.state_repository`, an address
 `<owner>/<name>`, which the runner's file does not hold. With crew's
-module on, whether or not the runner is, each drive of an account that
-names its `state_repository` gives crew's drive of the same name its
-`machine`, `services.crew.host` where the drive names none, and its
-account's `state_repository` as its `state`, every drive of the account
-whichever machine it runs on. A host writes neither in
+module on, whether or not the runner is, each drive crew's settings set
+up, `services.crew.settings.drives.<drive>`, under an account that names
+its `state_repository`, is given its `machine`, `services.crew.host`
+where the drive names none, and its account's `state_repository` as its
+`state`, whichever machine it runs on. A drive crew's settings do not set
+up is given nothing: crew has no drive of its name, and the drive's
+repositories are kept, and its stream given where it runs, as any
+drive's. A host writes neither in
 `services.crew.settings`: one that does fails evaluation, crew's failure
 naming `services.boomdrive.accounts` among the places that write it.
 Where `control_plane.type` is `crew` and no `control_plane.crew` is
@@ -609,7 +612,8 @@ there: a drive of another machine gives Flume nothing, and the runner
 still keeps its repositories, to read. A drive that names a `machine`
 where `services.crew.host` is not set fails evaluation. With crew's
 module on, the module gives the drive's `machine` to crew's drive of
-that name too, under an account that names its `state_repository`.
+that name too, where crew's settings set the drive up, under an account
+that names its `state_repository`.
 
 On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,

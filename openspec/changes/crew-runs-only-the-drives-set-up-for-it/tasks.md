@@ -23,7 +23,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - "A machine written twice" and "A state written twice".
 
   Every case of `nix/tests/tools.nix`, `kept.nix`, `sources.nix`, `quick-start.nix` and `boot.nix` still holds.
-- [ ] 1.3 The README's **Installing with nix** says that, with crew's module on, each drive crew's settings set up, under an account that names its `state_repository`, is given its `machine` and its account's `state_repository`. It says a drive crew's settings do not set up is given nothing and is kept, with its stream, as any drive. The paragraph on a drive's `machine` says the same (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
+- [x] 1.3 The README's **Installing with nix** says that, with crew's module on, each drive crew's settings set up, under an account that names its `state_repository`, is given its `machine` and its account's `state_repository`. It says a drive crew's settings do not set up is given nothing and is kept, with its stream, as any drive. The paragraph on a drive's `machine` says the same (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
 
 ## 2. The runner's crew table and the state repository's failure
 
