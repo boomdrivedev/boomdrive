@@ -950,6 +950,19 @@ async fn serve(
                             return Ended::Failed(failure);
                         }
                     }
+                    // A forge token's answer goes by its ask's own request
+                    // alone, so one sent here is refused and nothing of it,
+                    // its token least of all, is kept, said or given
+                    // (design Decision 2 of
+                    // a-cloud-host-gets-its-github-tokens-from-the-cloud;
+                    // core.4).
+                    ToRunner::ForgeTokenGiven(_) | ToRunner::ForgeTokenRefused(_) => {
+                        let words = "a forge token's answer is taken on `runner/forge-token` \
+                                     alone, never on `runner/connect`";
+                        if let Err(failure) = refuse(dial, &mut sender, &message.id, words).await {
+                            return Ended::Failed(failure);
+                        }
+                    }
                     _ => {}
                 }
             }

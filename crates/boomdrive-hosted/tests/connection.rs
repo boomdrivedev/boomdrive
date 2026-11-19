@@ -799,6 +799,63 @@ fn an_enrollments_answer_on_the_socket_is_refused() {
         .is_some_and(|words| words.contains("runner/enroll")));
 }
 
+/// The hosted-control-plane spec's "A forge token's answer on the
+/// socket" (design Decision 2 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud; core.4): a
+/// `forge_token_given` on `home`'s connection is answered with
+/// `message_refused` naming it, its words naming `runner/forge-token`; no
+/// line holds its token, and the runner is given nothing of it.
+#[test]
+fn a_forge_tokens_answer_on_the_socket() {
+    let fake = Fake::start();
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let runtime = runtime();
+    let connection = Connection::open(
+        runtime.handle(),
+        dial(&fake, store(&fake, &key), &lines, &wakes),
+    );
+    connection.hand(&hello()).expect("handed");
+    let before = connection.read(PATIENCE).expect("home is read");
+
+    let given = example("to-runner", "forge_token_given.json")["body"]["forge_token_given"].clone();
+    let token = given["token"].as_str().expect("a token").to_string();
+    let id = fake
+        .send_body("home", "forge_token_given", given)
+        .expect("sent");
+
+    let taken = fake.wait_until("a message_refused", |t| sent(t, "message_refused") == 1);
+    let refusal = messages(&taken)
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("message_refused"))
+        .expect("a refusal");
+    assert_eq!(refusal["body"]["message_refused"]["message"], json!(id));
+    let words = refusal["body"]["message_refused"]["words"]
+        .as_str()
+        .expect("words");
+    assert!(words.contains("runner/forge-token"), "{words}");
+    assert!(!words.contains(&token), "{words}");
+    assert!(
+        lines.all().iter().all(|line| !line.contains(&token)),
+        "{:#?}",
+        lines.all()
+    );
+    let after = connection.read(PATIENCE).expect("home is read");
+    let ids = |read: &boomdrive_hosted::connection::Read| -> Vec<String> {
+        read.wants
+            .iter()
+            .map(|want| want.id().to_string())
+            .collect()
+    };
+    assert_eq!(ids(&after), ids(&before), "nothing given to the runner");
+    assert_eq!(
+        after.report.is_some(),
+        before.report.is_some(),
+        "nothing given to the runner"
+    );
+}
+
 #[test]
 fn a_hello_the_control_plane_refuses_is_said_by_its_kind() {
     let fake = Fake::start();
