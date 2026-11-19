@@ -356,6 +356,11 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   and Flume's and sluice's herdr plugins from their tags;
 - herdr, through its own flake at the release Flume's tag pins, which
   Flume's terminal profile was checked against;
+- Rex, the other terminal Flume drives, through its own flake by the
+  URL its release keeps for good, the one Flume's tag locks, which
+  Flume's Rex profile was checked against. Rex publishes no source, so
+  its flake packages Rex's release binary, and the set's Rex moves only
+  with the set's Flume;
 - worktrunk, through its own flake at the release sluice's tag pins,
   which sluice's worktree driver was checked against;
 - timber, through its own flake at its release tag, which delivers what
@@ -406,6 +411,7 @@ at `share/herdr/plugins/flume` and `share/herdr/plugins/sluice`. Each
 plugin's own package has `bin/open.sh` at its top, so one profile cannot
 hold the two side by side; `boomdrive setup` links each from the
 profile. The same line may add `github:boomdrivedev/boomdrive#ghostty`,
+`github:boomdrivedev/boomdrive#rex`,
 `github:boomdrivedev/boomdrive#portless`,
 `github:boomdrivedev/boomdrive#worktrunk`,
 `github:boomdrivedev/boomdrive#timber`, and crew's companions,
@@ -439,7 +445,9 @@ changes every one of them, and builds them all.
 A host that trusts no cache, or declines nix's question, gets the same
 packages, built from the source the flake's lock names, at the same
 store paths. So does a host whose path the cache no longer holds.
-Distrust costs only the time to build.
+Distrust costs only the time to build. Rex, which publishes no source,
+is the one exception: such a host downloads Rex's release binary from
+where Rex's flake names.
 
 The flake at `main` moves with each change that lands, and its cache
 run pushes that commit's binaries. Each landing that git-cliff finds a
@@ -735,16 +743,22 @@ host a way to see its agents:
   dev server's `portless run` and crew's board find it.
 - It installs worktrunk's `wt`, `services.boomdrive.worktrunk.package`,
   which crew and sluice's worktree driver call.
+- It installs Rex, `services.boomdrive.rex.package`, the other terminal
+  Flume drives from the `PATH`. It names Rex in no setting of Flume's,
+  so Flume opens herdr until the host names Rex in
+  `services.flume.settings`, and it starts no Rex server: Flume's Rex
+  profile starts its own.
 - It turns on timber's module, which installs timber,
   `services.timber.package`, and links timber's file, and timber's herdr
   plugin is linked with Flume's and sluice's.
 
-Each of the five apps it installs by its own options, herdr, Ghostty,
-the launcher, portless and worktrunk, is the set's by default, and each
-may name the host's own package instead, or `null` for none:
+Each of the six apps it installs by its own options, herdr, Rex,
+Ghostty, the launcher, portless and worktrunk, is the set's by default,
+and each may name the host's own package instead, or `null` for none:
 
 ```nix
 services.boomdrive.herdr.package = null;
+services.boomdrive.rex.package = null;
 services.boomdrive.ghostty.package = null;
 services.boomdrive.launcher.package = null;
 services.boomdrive.portless.package = null;
@@ -932,9 +946,9 @@ afresh. A year of transcripts takes about twelve times the room thirty
 days do.
 
 The flake also gives a shell, its `PATH` the set's runner, Flume,
-sluice, crew, timber, herdr, portless, worktrunk, Pending You,
-Plannotator and plannotator-tui, that starts herdr on entering and leaves you in the
-shell when herdr ends:
+sluice, crew, timber, herdr, Rex, portless, worktrunk, Pending You,
+Plannotator and plannotator-tui, that starts herdr on entering and
+leaves you in the shell when herdr ends:
 
     nix develop github:boomdrivedev/boomdrive
 
