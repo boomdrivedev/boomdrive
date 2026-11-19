@@ -36,7 +36,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:boomdrivedev/sluice/v0.94.8";
+      url = "github:boomdrivedev/sluice/v0.97.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -52,7 +52,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.64.2";
+      url = "github:boomdrivedev/crew/v0.68.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
@@ -88,7 +88,7 @@
     # (record 0023 as amended on 2026-11-13 and 2026-11-15; design
     # Decision 1).
     timber = {
-      url = "github:boomdrivedev/timber/v0.7.0";
+      url = "github:boomdrivedev/timber/v0.8.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
