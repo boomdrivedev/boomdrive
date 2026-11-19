@@ -33,7 +33,11 @@
 # (tools.nix; record 0023), timber's among them (record 0023 as amended on
 # 2026-11-15), so `tools` and `timber.package` are gone, and setting
 # either fails evaluation, naming what replaces it (the change
-# the-set-takes-timbers-own-module, design Decision 6).
+# the-set-takes-timbers-own-module, design Decision 6). `enable` turns on
+# the runner, and by default each tool's switch, so a host without it
+# takes only the tools it turns on (record 0023 as amended on 2026-11-18;
+# design Decisions 1 and 2 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner).
 { packages }:
 {
   config,
@@ -325,7 +329,7 @@ in
   ];
 
   options.services.boomdrive = {
-    enable = lib.mkEnableOption "the runner, `boomdrive run`, as the host's service";
+    enable = lib.mkEnableOption "the runner, `boomdrive run`, as the host's service, and by default each tool of the set: Flume's, sluice's and timber's modules, and each switch of the Boomdrive module's, `herdr`, `ghostty`, `launcher`, `portless` and `worktrunk`, and, with crew's module on, `pendingyou`, `plannotator` and `plannotator-tui`; without it, a host turns on each tool it wants by its own switch";
 
     package = mkOption {
       type = types.package;

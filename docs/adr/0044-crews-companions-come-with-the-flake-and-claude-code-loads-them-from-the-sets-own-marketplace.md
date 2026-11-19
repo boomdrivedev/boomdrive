@@ -74,6 +74,16 @@ Status: decided on 2026-11-18 by boomdrive-design, cheap to change, after aftert
 - **Its install waits with the companions'.** No Claude Code home gets these plugins until point 3's unit, `the-companions-load-in-claude-codes-sessions`, installs the set's marketplace. That unit installs every plugin the marketplace lists, so a host whose own configuration installs Flume's or sluice's plugin today can drop that install once the unit has landed.
 - **Not taken:** each tool's own marketplace, carried as packages of their own, which each home would add beside the set's; and a host installing a tool's plugin from its own pin of the tool, which can disagree with the set's version of that tool.
 
+## Amendment, 2026-11-18: each companion has a switch of its own
+
+Status: decided on 2026-11-18 by the construct stage of the change `boomdrives-tools-install-on-a-machine-without-the-runner`, within record 0023's amendment of that day, which lets a host without the runner take the tools it turns on. A writing agent's choice, cheap to change; the change's design gives it in its Decisions 1, 3 and 4.
+
+Amends point 8.
+
+- **A switch for each.** Pending You, Plannotator and plannotator-tui are each turned on by `services.boomdrive.pendingyou.enable`, `services.boomdrive.plannotator.enable` and `services.boomdrive.plannotator-tui.enable`. Each is on by default where `services.boomdrive` and `services.crew` are both on, a host's own value winning, and a host without the runner or crew turns on the ones it wants.
+- **What comes with each.** Where Pending You is on, the modules install `pendingyou-signin` beside it and write its folder (point 7), with crew or without. Pending You for Herdr is in the herdr plugins' default where Pending You is on with the set's package, and Annotate where plannotator-tui is.
+- **Whose folder.** Point 7's folder is written as the set's user: the primary user on nix-darwin, and `services.boomdrive.user` on NixOS, with the runner or without.
+
 ## Amendment, 2026-11-18: the install into every Claude Code home, after Flume names each account's home
 
 Status: decided on 2026-11-18. Its first point is boomdrive-design's answer to the construct stage of the change `every-claude-code-session-has-boomdrives-plugins`, which stopped short because no Flume release gives an account's home. The rest are that construct stage's choices, cheap to change; the change's design gives each as a Decision.

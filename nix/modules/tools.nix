@@ -10,7 +10,12 @@
 # are turned on, since the runner runs Flume and sluice, and timber comes
 # with the runner whether or not crew is on, a host's `enable = false`
 # winning; crew's is the host's to turn on, with its `host`, its drives
-# and its hosts. nixos.nix gives each tool the runner's user. Nothing
+# and its hosts. Without the runner, none of the four modules is turned
+# on, and a host turns on each it wants by that tool's own `enable`, its
+# package the set's (record 0023 as amended on 2026-11-18; design
+# Decision 2 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner). nixos.nix
+# gives each tool the set's user wherever the host names it. Nothing
 # else: no key of a tool's `settings`, crew's `hosts`, `runs` and `review`
 # and every binding of timber's among them, and no file, link or
 # activation of theirs, which each tool's module writes from its own

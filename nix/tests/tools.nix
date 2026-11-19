@@ -621,6 +621,36 @@ onEach "Each tool's options are its own flake's" ownOptions
     ++ t.expect (!(home ? state)) "examples/host-flake.nix's crew drive home names its state"
     ++ t.expect (!(home ? machine)) "examples/host-flake.nix's crew drive home names its machine";
 
+  # The set's user given to the tools a host without the runner turns on
+  # (design Decision 4 of the change
+  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  "The tools' user without the runner" =
+    let
+      evaluated = t.nixosOf [
+        outputs.nixosModules.default
+        {
+          services = {
+            boomdrive.user = "alice";
+            flume.enable = true;
+            sluice.enable = true;
+          };
+        }
+      ];
+      users = {
+        flume = evaluated.config.services.flume.user;
+        sluice = evaluated.config.services.sluice.user;
+      };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "the NixOS system without the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      users == {
+        flume = "alice";
+        sluice = "alice";
+      }
+    ) "Flume's and sluice's users without the runner are ${builtins.toJSON users}, not alice's";
+
   "The tools' user on NixOS" =
     t.expect (
       runnersUsers == {
