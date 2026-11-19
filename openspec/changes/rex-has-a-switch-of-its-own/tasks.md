@@ -14,4 +14,4 @@ A task is done once the check it names passes, run as it names it.
 
 ## 2. The specs
 
-- [ ] 2.1 The change validates and archives into specs that pass OpenSpec's strict check (core.61). Done when `sluice exec main -- moon run root:specs root:changes` passes.
+- [x] 2.1 The change validates and archives into specs that pass OpenSpec's strict check (core.61). Done when `sluice exec main -- moon run root:specs root:changes` passes.
