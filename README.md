@@ -845,15 +845,38 @@ services.boomdrive.plannotator.package = null;
 services.boomdrive.plannotator-tui.package = null;
 ```
 
-The Claude Code plugins of the set's tools and companions, the set's
-marketplace `boomdrive-claude-plugins`, are installed into no Claude Code
-home yet:
-no switch runs `claude` or writes into a Claude Code home, and Claude
-Code stays yours. Installing them into every Claude Code home of the
-accounts, with Pending You's MCP server, and loading the folder's wake
-mod in each session, is a later unit's (record 0044, point 3); until it
-lands, the set installs them into no home and no session loads the wake
-mod from the set.
+With the runner and Flume, each switch installs the set's marketplace,
+`boomdrive-claude-plugins`, and the Claude Code plugins of the tools it
+installs into every Claude Code home your Flume accounts use, as
+`flume status` gives each account's home, and into Claude Code's default
+home, where your own sessions start (record 0044, point 3). It runs, as
+the set's user, Claude Code's own commands alone, finding `claude` on
+the service's `PATH` or in `~/.local/bin`:
+
+- `claude plugin marketplace add`, which adds the marketplace `boomdrive`
+  or points it at the switch's build, and `claude plugin list`;
+- `claude plugin install` for each plugin of a tool the switch installs
+  that the home lacks, `claude plugin update` for each whose version is
+  not the marketplace's, and `claude plugin uninstall` for each of the
+  marketplace's plugins whose tool the switch no longer installs: with
+  the runner and crew, that is every plugin the marketplace lists;
+- `claude mcp add-json --scope user pendingyou`, Pending You's MCP
+  server with the folder's headers helper, where Pending You's folder is
+  written and the home names no server `pendingyou`.
+
+Each switch changes nothing else in a Claude Code home: no other
+marketplace, plugin, server or setting, and it never removes a server.
+A home that installed one of these plugins from another marketplace, as
+`plannotator@plannotator`, keeps both until you uninstall your own. A
+command Claude Code refuses is said in one line, and stops nothing. A
+session already running loads the plugins at its next start, or after
+`/reload-plugins`.
+
+Where Pending You's folder is written, each login shell's environment
+puts its wake mod, `~/.config/pendingyou/mod`, on
+`CLAUDE_CODE_PLUGIN_DIRS`, once and ahead of any paths of yours, so every
+session, an agent Flume starts or your own, loads it; a user with no
+folder keeps the environment as it was.
 
 With no herdr package, or no plugin, nothing is linked. A host with a
 herdr of its own may give it as `services.boomdrive.herdr.package`, and
