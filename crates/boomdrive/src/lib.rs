@@ -19,6 +19,7 @@ pub mod hello;
 pub mod inbox;
 pub mod lacks;
 pub mod locks;
+pub mod millpond;
 pub mod pass;
 pub mod planes;
 pub mod report;

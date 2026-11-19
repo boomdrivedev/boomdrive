@@ -263,6 +263,15 @@ no end to a watch, so once the runner stops, its last watch stands until
 twice its bound has passed since that settle began, and the host then
 runs attended: Flume settles every place at each command that acts.
 
+After each settle, the runner runs millpond's tick of each inbox the
+configuration's `inboxes` names, `millpond tick --inbox <name> --json`,
+in that order, once and awaited, so the host keeps one clock for
+Flume's watch and millpond's schedules; a file that names no `inboxes`
+runs none. millpond decides what a tick runs, and the runner reads
+nothing of its answer. It says one line when an inbox's tick is
+refused or gives no answer, and one when millpond ticks it again, and
+no tick stops a pass.
+
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or
 written. A repository left by rule, for a folder of the user's or work

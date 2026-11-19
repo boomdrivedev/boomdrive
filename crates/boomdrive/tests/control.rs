@@ -100,6 +100,7 @@ impl Tools {
         Programs {
             flume: self.flume.program(),
             sluice: self.sluice.program(),
+            millpond: self.flume.dir.path().join("absent-millpond"),
         }
     }
 

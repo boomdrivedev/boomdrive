@@ -32,6 +32,8 @@ struct Running {
     thread: JoinHandle<()>,
     /// The stub `flume` the runner runs, whose calls a test reads.
     flume: Stub,
+    /// The stub `millpond` the runner runs, whose calls a test reads.
+    millpond: Stub,
 }
 
 impl Running {
@@ -48,9 +50,11 @@ impl Running {
         };
         let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
         let flume = Stub::new();
+        let millpond = Stub::new();
         runner.tools(Programs {
             flume: flume.program(),
             sluice: scratch.root.join("absent/sluice"),
+            millpond: millpond.program(),
         });
         let notices = runner.notices();
         let stopper = runner.stopper();
@@ -66,6 +70,7 @@ impl Running {
             lines,
             thread,
             flume,
+            millpond,
         }
     }
 
@@ -419,7 +424,71 @@ fn each_keeping_pass_ends_with_a_settle() {
 
     assert!(running.settles() >= 3, "{:?}", running.flume.calls());
     assert_eq!(
+        running.millpond.calls(),
+        [] as [Vec<String>; 0],
+        "no inbox named, so no tick"
+    );
+    assert_eq!(
         running.stop().last().map(String::as_str),
         Some("boomdrive: stopped")
     );
+}
+
+/// `millpond tick --inbox <inbox> --json`.
+fn tick(inbox: &str) -> Vec<String> {
+    ["tick", "--inbox", inbox, "--json"]
+        .map(String::from)
+        .to_vec()
+}
+
+/// The running spec's "Each pass ticks each inbox": the configuration
+/// names the inboxes `home` and `work`, and each keeping pass's settle is
+/// followed by one `millpond tick` of each, in that order, awaited before
+/// the next pass; an answered tick says nothing (record 0033; core.13).
+#[test]
+fn each_pass_ticks_each_inbox() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    scratch.configure(&format!(
+        "inboxes = [\"home\", \"work\"]\n{}",
+        every("1s", &["agentplot/flume"])
+    ));
+    let running = Running::start(&scratch);
+    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
+    running.settled(3);
+    let ticks = running.millpond.calls();
+    assert!(ticks.len() >= 4, "{ticks:?}");
+    for pair in ticks.chunks(2).filter(|pair| pair.len() == 2) {
+        assert_eq!(pair, [tick("home"), tick("work")]);
+    }
+    let lines = running.stop();
+    assert!(
+        !lines.iter().any(|line| line.contains("millpond")),
+        "{lines:#?}"
+    );
+}
+
+/// The running spec's "A refused tick said once until millpond ticks
+/// again": millpond refuses `home`'s ticks, and one line says so however
+/// many passes follow; no pass stops for it.
+#[test]
+fn a_refused_tick_is_said_once() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    scratch.configure(&format!(
+        "inboxes = [\"home\"]\n{}",
+        every("1s", &["agentplot/flume"])
+    ));
+    let running = Running::start(&scratch);
+    running.millpond.answers_text("--inbox", "", 1);
+    let mut said = running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
+    running.settled(3);
+    said.extend(running.stop());
+    let refused = "boomdrive: millpond refused the tick of the inbox home: millpond exited 1";
+    assert_eq!(
+        said.iter().filter(|line| *line == refused).count(),
+        1,
+        "{said:#?}"
+    );
+    assert_eq!(said.last().map(String::as_str), Some("boomdrive: stopped"));
 }

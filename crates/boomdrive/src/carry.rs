@@ -2412,6 +2412,7 @@ mod tests {
             control_plane: None,
             forge: None,
             observer: None,
+            inboxes: Vec::new(),
             local: crate::config::LocalLayer::NoFile,
         }
     }
