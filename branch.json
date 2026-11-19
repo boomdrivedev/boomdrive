@@ -1,0 +1,22 @@
+{
+  "schema": "sluice/branch@1",
+  "branch": "bolt/the-runner-asks-the-cloud-for-github-tokens",
+  "log": "sluice/log@1",
+  "base": "5ca77a2704f870592db9b200ead72010fe49792c",
+  "verified": true,
+  "covered_by": {
+    "at": "5ca77a2704f870592db9b200ead72010fe49792c",
+    "result": "passed",
+    "ran": 33,
+    "replayed": 0
+  },
+  "window": 2,
+  "next_place": 2,
+  "next_candidate": 2,
+  "candidates": [],
+  "landing": null,
+  "release": [],
+  "outbox": [],
+  "lead": "deneb",
+  "landed": "5ca77a2704f870592db9b200ead72010fe49792c"
+}

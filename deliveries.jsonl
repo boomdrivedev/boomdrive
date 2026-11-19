@@ -1,0 +1,4 @@
+{"format": "weir-delivery/1", "key": "3:landed", "readers": ["change/a-cloud-host-gets-its-github-tokens-from-the-cloud"], "message": "[sluice] #3 landed on bolt/the-runner-asks-the-cloud-for-github-tokens as 5ca77a2.", "recorded_at": "2026-11-19T04:52:55Z", "expires_at": "2026-11-26T04:52:55Z"}
+{"format": "weir-handover/1", "key": "3:landed", "reader": "change/a-cloud-host-gets-its-github-tokens-from-the-cloud", "by": "inbox", "at": "2026-11-19T05:01:39Z"}
+{"format": "weir-confirmation/1", "key": "3:landed", "reader": "change/a-cloud-host-gets-its-github-tokens-from-the-cloud", "at": "2026-11-19T05:01:45Z"}
+{"format": "weir-known/1", "reader": "change/a-cloud-host-gets-its-github-tokens-from-the-cloud", "known_at": "2026-11-19T05:01:45Z"}

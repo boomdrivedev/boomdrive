@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 3,
+  "branch": "bolt/the-runner-asks-the-cloud-for-github-tokens",
+  "head": "e090c1c5c81129c0dac79b7dac9496bc618b860d",
+  "from": {
+    "agent": "change/a-cloud-host-gets-its-github-tokens-from-the-cloud",
+    "worktree": "change/a-cloud-host-gets-its-github-tokens-from-the-cloud",
+    "path": "/Users/chuck/.local/share/flume/places/4665e7dad81e/change--a-cloud-host-gets-its-github-tokens-from-the-cloud",
+    "host": "deneb"
+  },
+  "submitted": "2026-11-19T04:47:06Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "e09a29a1c71efd831176a76af5500e3215c64694",
+    "on": "7896c95d8994fc9a7039f37db3fbb9b9a3928774",
+    "submissions": [
+      3
+    ]
+  },
+  "result": "passed",
+  "landed_as": "5ca77a2704f870592db9b200ead72010fe49792c"
+}
