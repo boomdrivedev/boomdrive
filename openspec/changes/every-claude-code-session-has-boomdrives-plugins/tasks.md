@@ -56,4 +56,4 @@ Work through the tasks in order. A task is true once the check it names passes, 
 ## 6. The specs
 
 - [x] 6.1 The change's deltas pass openspec's strict check. True when `sluice exec main -- moon run root:changes` passes.
-- [ ] 6.2 The deltas archive into specs that pass openspec's strict check. Each holds the base's words where `the-set-takes-flume-v0-29-0` or `boomdrives-tools-install-on-a-machine-without-the-runner` landed first (design Sequencing). True when, after `devenv shell -- openspec archive every-claude-code-session-has-boomdrives-plugins --yes`, `sluice exec main -- moon run root:specs` passes.
+- [x] 6.2 The deltas archive into specs that pass openspec's strict check. Each holds the base's words where `the-set-takes-flume-v0-29-0` or `boomdrives-tools-install-on-a-machine-without-the-runner` landed first (design Sequencing). True when, after `devenv shell -- openspec archive every-claude-code-session-has-boomdrives-plugins --yes`, `sluice exec main -- moon run root:specs` passes.
