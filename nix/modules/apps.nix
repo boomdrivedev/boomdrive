@@ -31,7 +31,14 @@
 # and sluice's, and the modules write no file of timber's and start no
 # `timber serve`, which is timber's own (record 0023 as amended on
 # 2026-11-13 and 2026-11-15; design Decisions 5 to 7 of the change
-# the-set-takes-timbers-own-module).
+# the-set-takes-timbers-own-module). Rex, the other terminal Flume carries
+# a profile for and drives from the PATH, is installed the same way, the
+# set's at the release Flume's tree locks; Rex's own NixOS module, which
+# runs Rex's server as a service, is not taken, and nix-darwin has none.
+# The modules name Rex in no setting of Flume's, whose terminal stays the
+# host's to choose, write no file of Rex's and start no server of it
+# (record 0023 as amended on 2026-11-18; design Decision 4 of the change
+# the-set-carries-rex-matched-to-flume).
 # The launcher is the set's made, by its override, for each drive of this
 # host, in the order of the drives' names: each entry is the drive's name
 # and its stream's own session, the `session` Flume's settings name for the
@@ -121,6 +128,7 @@ in
         description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the runner's user: Flume's, sluice's and timber's, then, where crew's module is on, crew's companions', Pending You for Herdr and Annotate. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
       };
     };
+    rex.package = installed "rex" "Rex, the terminal Flume's Rex profile drives from the PATH, installed with the runner at the release Flume's tree locks; a host's own replaces it, and `null` installs none. Which terminal Flume opens stays the host's Flume settings: the modules name Rex in none.";
     ghostty.package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed with the runner; a host's own replaces it, and `null` installs none.";
     worktrunk.package = installed "worktrunk" "worktrunk's `wt`, which crew and sluice's worktree driver call, installed with the runner; a host's own replaces it, and `null` installs none.";
     launcher.package = mkOption {
@@ -135,6 +143,7 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = lib.filter (package: package != null) [
       cfg.herdr.package
+      cfg.rex.package
       cfg.ghostty.package
       cfg.worktrunk.package
       cfg.launcher.package
