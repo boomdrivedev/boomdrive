@@ -92,3 +92,19 @@ removes, `a_get_on_a_cloud_host_is_refused` and
 Every path the branch changes since `main` is one the proposal's
 *Touches* lists. Record 0053, record 0007's amendment of 2026-11-18,
 core.33's rule and details and core.42's details are in the tree.
+
+## The archive
+
+`openspec archive a-cloud-host-gets-its-github-tokens-from-the-cloud --yes`
+applied the change's deltas and archived it as
+`openspec/changes/archive/2026-11-18-a-cloud-host-gets-its-github-tokens-from-the-cloud/`:
+
+| spec | added | modified | renamed |
+|---|---|---|---|
+| `clones` | 1 | 0 | 0 |
+| `forge-tokens` | 1 | 6 | 2 |
+| `hosted-control-plane` | 5 | 13 | 1 |
+| `runner-protocol` | 4 | 5 | 1 |
+
+It warned, without blocking, that a change of more than ten deltas might
+be split. `openspec validate --specs --strict` then passed all 27 specs.
