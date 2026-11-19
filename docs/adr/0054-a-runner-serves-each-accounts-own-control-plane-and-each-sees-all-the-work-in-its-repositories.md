@@ -1,5 +1,5 @@
 ---
-number: 53
+number: 54
 title: A runner serves each account's own control plane, and each sees all the work in its repositories
 status: accepted
 date: 2026-11-19
