@@ -85,7 +85,12 @@ fn the_app_not_installed_is_its_own_answer() {
         &address("agentplot/flume"),
     );
 
-    assert_eq!(minted, Ok(Minted::NotInstalled));
+    assert_eq!(
+        minted,
+        Ok(Minted::NotInstalled(
+            "GitHub finds no installation of app 1 on agentplot/flume".to_string()
+        ))
+    );
     assert_eq!(github.calls(), ["GET /repos/agentplot/flume/installation"]);
     assert!(github.tokens().is_empty());
 }
@@ -856,4 +861,119 @@ fn the_apps_absence_is_kept() {
     };
     assert_eq!((first, second), (nothing.clone(), nothing));
     assert_eq!(github.calls(), ["GET /repos/agentplot/flume/installation"]);
+}
+
+/// A forge asking `tokens`, a control plane's that holds the App, as a
+/// cloud host's runner makes it (design Decision 8 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+fn asking(tokens: &boomdrive_control::fake::Tokens) -> Forge {
+    Forge::asking(Box::new(tokens.clone()))
+}
+
+/// A token of `secret` the control plane gives, ending `lasting` from now.
+fn given(secret: &str, lasting: Duration) -> boomdrive_control::TokenAsked {
+    boomdrive_control::TokenAsked::Token(boomdrive_control::ForgeToken::new(
+        secret,
+        time::OffsetDateTime::now_utc() + lasting,
+    ))
+}
+
+/// The runner's own ask for `agentplot/flume`'s credential on a cloud
+/// host, which names no App.
+fn ask_a_cloud_host_for_flume(forge: &Forge) -> Asked {
+    forge.credential(None, &address("agentplot/flume"))
+}
+
+/// The forge-tokens spec's "A cloud host's token kept across passes": the
+/// control plane's token, ending in an hour, is given again, and the
+/// control plane is asked once.
+#[test]
+fn a_cloud_hosts_token_is_kept_across_passes() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        given("ghs_cloud", Duration::from_secs(60 * 60)),
+    );
+    let forge = asking(&tokens);
+
+    let first = ask_a_cloud_host_for_flume(&forge);
+    let second = ask_a_cloud_host_for_flume(&forge);
+
+    assert_eq!(first.refused, None);
+    assert_eq!(token_of(&first), "ghs_cloud");
+    assert_eq!(second, first);
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
+}
+
+/// The forge-tokens spec's "A cloud host's token near its end": the
+/// control plane's token ends in four minutes, so it is asked each time.
+#[test]
+fn a_cloud_hosts_token_near_its_end_is_asked_again() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        given("ghs_cloud", Duration::from_secs(4 * 60)),
+    );
+    let forge = asking(&tokens);
+
+    let first = token_of(&ask_a_cloud_host_for_flume(&forge));
+    let second = token_of(&ask_a_cloud_host_for_flume(&forge));
+
+    assert_eq!(
+        (first.as_str(), second.as_str()),
+        ("ghs_cloud", "ghs_cloud")
+    );
+    assert_eq!(tokens.asks("agentplot/flume"), 2);
+}
+
+/// The forge-tokens spec's "A cloud host's refusal kept not at all": the
+/// control plane refuses `agentplot/flume`'s token, so each ask gives no
+/// credential with its words, and the control plane is asked each time.
+#[test]
+fn a_cloud_hosts_refusal_is_kept_not_at_all() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::Refused {
+            words: "the drive's account is closed".to_string(),
+            host_to_fix: false,
+        },
+    );
+    let forge = asking(&tokens);
+
+    let first = ask_a_cloud_host_for_flume(&forge);
+    let second = ask_a_cloud_host_for_flume(&forge);
+
+    let refused = Asked {
+        credential: Credential::Nothing,
+        refused: Some("the drive's account is closed".to_string()),
+    };
+    assert_eq!((first, second), (refused.clone(), refused));
+    assert_eq!(tokens.asks("agentplot/flume"), 2);
+}
+
+/// The forge-tokens spec's "The control plane's word kept": the control
+/// plane says the App's installation does not cover `agentplot/flume`, so
+/// each ask gives no credential and no words, and the control plane is
+/// asked once.
+#[test]
+fn the_control_planes_word_that_the_app_is_not_installed_is_kept() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::NotInstalled(
+            "`home`: the installation does not cover agentplot/flume".to_string(),
+        ),
+    );
+    let forge = asking(&tokens);
+
+    let first = ask_a_cloud_host_for_flume(&forge);
+    let second = ask_a_cloud_host_for_flume(&forge);
+
+    let nothing = Asked {
+        credential: Credential::Nothing,
+        refused: None,
+    };
+    assert_eq!((first, second), (nothing.clone(), nothing));
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
 }

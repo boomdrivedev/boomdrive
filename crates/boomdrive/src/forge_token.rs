@@ -125,11 +125,8 @@ pub fn answer(
     }
     let token = match forge.mint(app, &address)? {
         Minted::Token(token) => token,
-        Minted::NotInstalled => {
-            return Err(refused(format!(
-                "GitHub finds no installation of app {} on {address}: install the app on it",
-                app.app_id
-            )))
+        Minted::NotInstalled(words) => {
+            return Err(refused(format!("{words}: install the app on it")))
         }
     };
     write!(
