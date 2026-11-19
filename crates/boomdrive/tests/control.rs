@@ -1476,6 +1476,10 @@ fn a_keeping_pass_under_way() {
     let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
     let running = Running::carrying(&scratch, vec![("work", work)], tools);
     running.until(&view_made(&scratch, &origin.tip("main")));
+    // `work/1` is launched before the fetch is held: a launch into the
+    // clone waits on its keep (core.49; record 0026), so one made after
+    // the hold would keep `work`'s pass waiting until the fetch ends.
+    running.until_starting("work/1: launched at ");
     held.hold();
     held.wait_held(PATIENCE);
     // Every pull and report the test has heard of may have come before

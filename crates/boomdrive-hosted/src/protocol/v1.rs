@@ -1,7 +1,7 @@
 //! Version 1 of the runner's protocol (design Decisions 2 to 13 of
 //! the-runner-dials-the-hosted-control-plane): its JSON Schema files,
 //! draft 2020-12, under `protocol/v1/`, as every release from `v0.1.0` to
-//! `v0.7.3` spoke it. The runner speaks version 3 alone, so this module
+//! `v0.7.3` spoke it. The runner speaks version 4 alone, so this module
 //! holds version 1's files and no type, and its files never change
 //! (core.42; record 0037).
 

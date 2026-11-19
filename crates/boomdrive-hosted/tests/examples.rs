@@ -1,14 +1,14 @@
-//! Version 3's examples, each a whole message under
+//! Version 4's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
 //! back as it was (design Decisions 2, 13 and 14 of
-//! the-runner-dials-the-hosted-control-plane). Version 1's and version
-//! 2's examples still pass their own version's envelopes (records 0037
-//! and 0052).
+//! the-runner-dials-the-hosted-control-plane). Version 1's, version 2's
+//! and version 3's examples still pass their own version's envelopes
+//! (records 0037, 0052 and 0053).
 
 mod common;
 
-use boomdrive_hosted::protocol::v3::{
+use boomdrive_hosted::protocol::v4::{
     FromRunner, HelloForm, Message, MessageId, ReportForm, ToRunner,
 };
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
@@ -20,7 +20,7 @@ use std::collections::BTreeSet;
 
 /// Every kind a runner sends, and every kind a control plane sends
 /// (design Decision 5).
-const FROM_RUNNER: [&str; 7] = [
+const FROM_RUNNER: [&str; 8] = [
     "enroll",
     "hello",
     "report",
@@ -28,8 +28,9 @@ const FROM_RUNNER: [&str; 7] = [
     "terminal_output",
     "terminal_closed",
     "message_refused",
+    "forge_token",
 ];
-const TO_RUNNER: [&str; 9] = [
+const TO_RUNNER: [&str; 11] = [
     "enrolled",
     "enroll_refused",
     "pulled",
@@ -39,6 +40,8 @@ const TO_RUNNER: [&str; 9] = [
     "terminal_input",
     "terminal_close",
     "message_refused",
+    "forge_token_given",
+    "forge_token_refused",
 ];
 
 /// Each example of `direction` read from its text into `Message<Body>`
@@ -275,4 +278,65 @@ fn version_2s_examples_still_pass() {
             );
         }
     }
+}
+
+/// The runner-protocol spec's "Version 3's examples still pass": each
+/// example of version 3 passes its direction's envelope of version 3,
+/// which the runner no longer speaks and a control plane may still take
+/// (core.42; record 0053).
+#[test]
+fn version_3s_examples_still_pass() {
+    let v3 = common::V3;
+    let directions = [
+        ("from-runner", v3.messages_from_runner()),
+        ("to-runner", v3.messages_to_runner()),
+    ];
+    for (direction, validator) in directions {
+        let examples = v3.examples(direction);
+        assert!(!examples.is_empty(), "no example of version 3 {direction}");
+        for (name, value) in examples {
+            assert_eq!(
+                value["protocol_version"], 3,
+                "version 3's {direction}/{name}"
+            );
+            passes(
+                &validator,
+                &value,
+                &format!("version 3's {direction}/{name}"),
+            );
+        }
+    }
+}
+
+/// The runner-protocol spec's "A token's Debug names its end alone"
+/// (design Decision 4 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
+/// core.4): version 4's `forge_token_given.json`, read into its type and
+/// written with `{:?}`, names its ask, its repository and its end, and no
+/// character of its token: the text is the same whatever the token is.
+#[test]
+fn a_tokens_debug_names_its_end_alone() {
+    let given = example("to-runner", "forge_token_given.json");
+    let token = given["body"]["forge_token_given"]["token"]
+        .as_str()
+        .expect("a token")
+        .to_string();
+    let written = |value: Value| -> String {
+        let message: Message<ToRunner> = serde_json::from_value(value).expect("a message");
+        let ToRunner::ForgeTokenGiven(given) = message.body else {
+            panic!("forge_token_given.json holds no forge_token_given");
+        };
+        format!("{given:?}")
+    };
+    let text = written(given.clone());
+    for named in ["runner:9", "example/app", "2026-11-18T13:00:00Z"] {
+        assert!(text.contains(named), "{text} names no {named}");
+    }
+    assert!(!text.contains(&token), "{text} holds the token");
+    let mut other = given;
+    other["body"]["forge_token_given"]["token"] = Value::from("another-token-entirely");
+    assert_eq!(
+        written(other),
+        text,
+        "the Debug of a token given turns on its token"
+    );
 }

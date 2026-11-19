@@ -8,7 +8,9 @@
 //! depends on no implementation of it, and holds a fake control plane and
 //! the cases every implementation passes. A part may also have an
 //! [`Observer`], which is handed the part's passes and gives nothing back
-//! (record 0048).
+//! (record 0048). An implementation whose control plane holds the forge's
+//! App also gives that App's tokens, as [`ForgeTokens`] (record 0053;
+//! core.33).
 
 pub mod fake;
 pub mod report;
@@ -27,6 +29,8 @@ pub use want::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 /// This interface's version, which every hello names.
 pub const INTERFACE_VERSION: u32 = 1;
@@ -68,6 +72,72 @@ pub trait Observer {
 pub struct Observed {
     pub label: String,
     pub observer: Box<dyn Observer + Send>,
+}
+
+/// What gives a served repository's forge token where the control plane
+/// holds the App, as the hosted control plane does: no part and nothing it
+/// opens, but what an implementation gives for that App's tokens, which
+/// `boomdrive forge-token` and the running runner each ask (design
+/// Decision 6 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
+/// record 0053; core.2, core.33). It names no path, kind or version of any
+/// protocol.
+pub trait ForgeTokens: Send + Sync {
+    /// The token of `repository`, by its address, `owner/name`, asked
+    /// afresh: nothing here keeps one.
+    fn token(&self, repository: &str) -> TokenAsked;
+}
+
+/// A forge token for one repository, and its end. Its `Debug` names its
+/// end and never its secret (core.4).
+#[derive(Clone, PartialEq, Eq)]
+pub struct ForgeToken {
+    secret: String,
+    ends: OffsetDateTime,
+}
+
+impl ForgeToken {
+    /// The token `secret`, ending at `ends`.
+    pub fn new(secret: impl Into<String>, ends: OffsetDateTime) -> ForgeToken {
+        ForgeToken {
+            secret: secret.into(),
+            ends,
+        }
+    }
+
+    /// The token's secret, which only a credential's answer is given.
+    pub fn secret(&self) -> &str {
+        &self.secret
+    }
+
+    /// When the token ends.
+    pub fn ends(&self) -> OffsetDateTime {
+        self.ends
+    }
+}
+
+impl fmt::Debug for ForgeToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ends = self
+            .ends
+            .format(&Rfc3339)
+            .unwrap_or_else(|_| self.ends.unix_timestamp().to_string());
+        f.debug_struct("ForgeToken")
+            .field("ends", &ends)
+            .finish_non_exhaustive()
+    }
+}
+
+/// What an ask of a repository's token gives: the token; the control
+/// plane's word that the App's installation does not cover the
+/// repository, with words; or a refusal, with words, and whether the host
+/// must be fixed before an ask can go (core.39's exit 2), as where no key
+/// of a partition served it is in the host's store. No words hold a token,
+/// a statement or a key (core.4, core.11).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TokenAsked {
+    Token(ForgeToken),
+    NotInstalled(String),
+    Refused { words: String, host_to_fix: bool },
 }
 
 /// What an implementation is handed for each part it opens, to wake the
@@ -195,4 +265,29 @@ pub struct Reported {
     /// answer of before, naming none, reads as naming none.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub statuses_taken: BTreeSet<Id>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A forge token's `Debug` names its end, and no character of its
+    /// secret: the text is the same whatever the secret is (core.4).
+    #[test]
+    fn a_forge_tokens_debug_names_its_end_alone() {
+        let ends = OffsetDateTime::parse("2026-11-18T13:00:00Z", &Rfc3339).unwrap();
+        let text = format!("{:?}", ForgeToken::new("ghs_n0t-sh0wn", ends));
+        assert!(text.contains("2026-11-18T13:00:00Z"), "{text}");
+        assert!(!text.contains("ghs_n0t-sh0wn"), "{text}");
+        assert_eq!(
+            format!("{:?}", ForgeToken::new("another-secret-entirely", ends)),
+            text,
+            "a forge token's Debug turns on its secret"
+        );
+        let given = format!(
+            "{:?}",
+            TokenAsked::Token(ForgeToken::new("ghs_n0t-sh0wn", ends))
+        );
+        assert!(!given.contains("ghs_n0t-sh0wn"), "{given}");
+    }
 }
