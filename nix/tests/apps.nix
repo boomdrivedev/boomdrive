@@ -1323,12 +1323,16 @@ let
     ) "the ${platform} activation with no Pending You writes its folder: ${builtins.toJSON steps}";
 
   # No activation step, launchd job or systemd unit of the modules' runs
-  # `claude` or names a Claude Code home or the set's marketplace (record
-  # 0044, point 3; design Decision 12 of the change
-  # crews-companions-come-with-the-flake): each one's text, as text, with
-  # the runner and crew on, with a collector of Claude Code's telemetry
-  # named and with none (design Decision 10 of the change
-  # every-claude-code-session-exports-to-the-hosts-collector).
+  # `claude` or names a Claude Code home or the set's marketplace, but
+  # activate.sh's `claude`, one step and run once (record 0044, point 3,
+  # and its amendments of 2026-11-18; design Decision 12 of the change
+  # crews-companions-come-with-the-flake, and design Decision 10 of the
+  # change every-claude-code-session-has-boomdrives-plugins): each one's
+  # text, as text, less that step's line, with the runner and crew on,
+  # with a collector of Claude Code's telemetry named and with none
+  # (design Decision 10 of the change
+  # every-claude-code-session-exports-to-the-hosts-collector). The step's
+  # line is the same wherever a text holds it, and no text holds it twice.
   claudeWords = [
     {
       what = "runs claude";
@@ -1362,18 +1366,32 @@ let
         named: evaluated:
         let
           steps = stepsOf platform evaluated;
+          isStep = lib.hasInfix "-activate.sh claude ";
+          stepLines = text: map lib.trim (lib.filter isStep (lib.splitString "\n" text));
+          less =
+            text: lib.concatStringsSep "\n" (lib.filter (line: !isStep line) (lib.splitString "\n" text));
+          held = lib.unique (lib.concatMap stepLines (builtins.attrValues steps));
         in
         lib.concatLists (
           lib.mapAttrsToList (
-            name: text:
+            name: whole:
+            let
+              text = less whole;
+            in
             lib.concatMap (
               word: t.expect (!word.holds (oneLine text)) "the ${platform} system ${named}'s ${name} ${word.what}"
             ) claudeWords
             ++ t.expect (
               !lib.hasInfix marketplace text && !lib.hasInfix "boomdrive-claude-plugins" text
             ) "the ${platform} system ${named}'s ${name} names the set's marketplace"
+            ++ t.expect (
+              builtins.length (stepLines whole) <= 1
+            ) "the ${platform} system ${named}'s ${name} runs activate.sh claude more than once"
           ) steps
         )
+        ++
+          t.expect (builtins.length held == 1)
+            "the ${platform} system ${named} runs ${toString (builtins.length held)} steps of activate.sh claude, not one: ${builtins.toJSON held}"
         ++ t.expect (
           t.failures evaluated == [ ]
         ) "the ${platform} system ${named} fails: ${toString (t.failures evaluated)}"

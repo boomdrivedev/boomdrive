@@ -13,10 +13,14 @@
 # the change boomdrives-tools-install-on-a-machine-without-the-runner;
 # core.62). apps.nix links their herdr plugins, and darwin.nix and
 # nixos.nix write Pending You's folder where its switch is on (record
-# 0044, point 7). No
-# module runs `claude` or writes into a Claude Code home: installing the
-# set's marketplace there is the unit
-# `the-companions-load-in-claude-codes-sessions` (record 0044, point 3).
+# 0044, point 7). With the runner and Flume, darwin.nix and nixos.nix run
+# activate.sh's `claude`, which installs the set's marketplace into every
+# Claude Code home of Flume's accounts and the default home by Claude
+# Code's own commands, Pending You's and Plannotator's plugins where each
+# one's switch is on, with Pending You's server where its folder is
+# written; sessions.nix puts the folder's wake mod on each login's
+# `CLAUDE_CODE_PLUGIN_DIRS` (record 0044, points 3 and 5, and its
+# amendments of 2026-11-18).
 { packages }:
 {
   config,

@@ -332,7 +332,10 @@ let
   # every-claude-code-session-exports-to-the-hosts-collector) and the
   # managed transcripts document's (design Decision 7 of the change
   # the-set-keeps-claude-codes-transcripts-a-year), each by its path, and
-  # nothing else to the tools' activations.
+  # the install into Claude Code's homes, activate.sh's `claude` (design
+  # Decision 10 of the change
+  # every-claude-code-session-has-boomdrives-plugins), and nothing else to
+  # the tools' activations.
   render = import ../modules/toml.nix { inherit lib; };
   inherit (import ../modules/accounts.nix { inherit lib; }) fileOf;
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
@@ -344,6 +347,7 @@ let
   '';
   darwinText = darwinActivation darwinRunner;
   pluginsLink = line: lib.hasInfix "-activate.sh plugins " line;
+  claudeStep = line: lib.hasInfix "-activate.sh claude " line;
   folderWrite = line: lib.hasInfix "-activate.sh pendingyou " line;
   managedStep =
     name: line:
@@ -352,7 +356,12 @@ let
   telemetryStep = managedStep "10-boomdrive-telemetry.json";
   transcriptsStep = managedStep "10-boomdrive-transcripts.json";
   darwinRest = lib.filter (
-    line: !pluginsLink line && !folderWrite line && !telemetryStep line && !transcriptsStep line
+    line:
+    !pluginsLink line
+    && !folderWrite line
+    && !claudeStep line
+    && !telemetryStep line
+    && !transcriptsStep line
   ) (linesOf (lib.replaceStrings [ runnerLink ] [ "" ] darwinText));
   darwinTools = linesOf (darwinActivation t.toolsDarwinSystem);
 
@@ -675,6 +684,9 @@ onEach "Each tool's options are its own flake's" ownOptions
     ++ t.expect (
       builtins.length (lib.filter pluginsLink (linesOf darwinText)) == 1
     ) "the nix-darwin activation with crew links herdr's plugins other than once: ${darwinText}"
+    ++ t.expect (
+      builtins.length (lib.filter claudeStep (linesOf darwinText)) == 1
+    ) "the nix-darwin activation with crew runs activate.sh claude other than once: ${darwinText}"
     ++
       t.expect (builtins.length (lib.filter telemetryStep (linesOf darwinText)) == 1)
         "the nix-darwin activation with crew runs the managed telemetry document's step other than once: ${darwinText}"
@@ -683,7 +695,7 @@ onEach "Each tool's options are its own flake's" ownOptions
         "the nix-darwin activation with crew runs the managed transcripts document's step other than once: ${darwinText}"
     ++
       t.expect (darwinRest == darwinTools)
-        "the nix-darwin activation less the runner's link, Pending You's folder, the plugins' and the managed telemetry and transcripts documents' steps is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
+        "the nix-darwin activation less the runner's link, Pending You's folder, the plugins', activate.sh claude's and the managed telemetry and transcripts documents' steps is ${builtins.toJSON darwinRest}, not the tools' own ${builtins.toJSON darwinTools}";
 
   "The tools' activation is their own on NixOS" =
     t.expect (

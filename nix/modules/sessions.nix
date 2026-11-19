@@ -17,6 +17,10 @@
 # - `argumentsOf`: the step's arguments after `claude`: the host's
 #   `flume`, the system's `jq`, the set's marketplace, the server's file,
 #   the plugins to install, then `--` and those to remove.
+# - `module`: where the modules write Pending You's folder, the lines of
+#   plugin-dirs.sh in `environment.extraInit`, on nix-darwin and on NixOS,
+#   which put the folder's wake mod on each login's
+#   `CLAUDE_CODE_PLUGIN_DIRS` (record 0044, point 5).
 #
 # This file writes nothing, and runs no `claude`.
 { lib, packages }:
@@ -84,4 +88,13 @@ rec {
     ++ plugins.install
     ++ [ "--" ]
     ++ plugins.remove;
+
+  module =
+    { config, ... }:
+    {
+      _file = ./sessions.nix;
+      config = lib.mkIf (installs config.services.boomdrive.pendingyou) {
+        environment.extraInit = builtins.readFile ./plugin-dirs.sh;
+      };
+    };
 }

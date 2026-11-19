@@ -22,7 +22,15 @@
 # user is the set's user, and without the runner no other step runs as
 # them and no agent is declared (record 0023 as amended on 2026-11-18;
 # design Decision 4 of the change
-# boomdrives-tools-install-on-a-machine-without-the-runner).
+# boomdrives-tools-install-on-a-machine-without-the-runner). Where the
+# runner and Flume, with a package, are on, the activation then runs, as
+# the primary user, after Flume's own step, Pending You's folder and
+# herdr's links, activate.sh's `claude` with what sessions.nix gives it,
+# which installs the set's marketplace and the plugins of the tools the
+# host installs, with Pending You's server, into every Claude Code home of
+# Flume's accounts and the default home by Claude Code's own commands
+# (record 0044, point 3, and its amendments of 2026-11-18; design Decision
+# 3 of the change every-claude-code-session-has-boomdrives-plugins).
 # Beside `logFile`, the agent's log, the module declares `dataDir`, the
 # runner's data folder by the runner's own rule (data-dir.nix) from the
 # primary user's home and the agent's own `XDG_DATA_HOME`, and clones.nix
@@ -66,6 +74,7 @@ let
   dataDirOf = import ./data-dir.nix { inherit lib; };
   keptOf = import ./kept.nix { inherit lib; };
   claudeCode = import ./claude-code.nix { inherit lib; };
+  sessions = import ./sessions.nix { inherit lib packages; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # Claude Code's managed telemetry document, written where the runner is
@@ -159,6 +168,18 @@ let
     "/usr/sbin"
     "/sbin"
   ];
+
+  # The install into Claude Code's homes, on the service's PATH and then
+  # ~/.local/bin, where Claude Code's own installer puts `claude` (design
+  # Decision 3 of the change every-claude-code-session-has-boomdrives-plugins).
+  claude = lib.escapeShellArgs (
+    [ "claude" ]
+    ++ sessions.argumentsOf {
+      inherit config pkgs folder;
+      writing = writingFolder;
+    }
+  );
+  claudePath = lib.concatStringsSep ":" (path ++ [ "${home}/.local/bin" ]);
 in
 {
   imports = [
@@ -172,6 +193,7 @@ in
     ./crew-drives.nix
     ./collector.nix
     claudeCode.module
+    sessions.module
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
@@ -317,6 +339,17 @@ in
             sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
           '';
       };
+    })
+
+    # The install into every Claude Code home, where the runner and Flume,
+    # with a package, are on: after every other step of the primary user's,
+    # Flume's own link of its file among them, so Flume's status reads the
+    # switch's file. It says one line for each thing it could not do, and
+    # stops nothing.
+    (lib.mkIf (sessions.runs config) {
+      system.activationScripts.postActivation.text = lib.mkAfter ''
+        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} PATH=${lib.escapeShellArg claudePath} /bin/sh ${./activate.sh} ${claude} || true
+      '';
     })
   ];
 }

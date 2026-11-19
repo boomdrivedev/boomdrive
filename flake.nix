@@ -208,7 +208,9 @@
           # The set's marketplace of every Claude Code plugin its tools
           # ship, crew's companions', timber's, Flume's, sluice's, crew's
           # and worktrunk's (record 0044, point 2, and its amendments of
-          # 2026-11-13 and 2026-11-18), which no module installs yet.
+          # 2026-11-13 and 2026-11-18), which the modules install into every
+          # Claude Code home of Flume's accounts and the default home, the
+          # plugins of the tools the host installs (record 0044, point 3).
           # worktrunk's plugin is of its tree at its tag, as its package's
           # source holds only what its build compiles.
           boomdrive-claude-plugins = pkgs.callPackage ./nix/packages/claude-plugins.nix {

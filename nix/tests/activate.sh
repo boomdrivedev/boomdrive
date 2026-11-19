@@ -731,6 +731,85 @@ run claude "$flume" "$jq" "$market" "$server"
 expect "$named" "claude with no plugin exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "claude with no plugin ran claude" missing "$claudes"
 
+# The only Claude Code commands the step runs are the six the
+# service-modules spec names (design Decision 10 of the change
+# every-claude-code-session-has-boomdrives-plugins): read in activate.sh,
+# where each of its calls of Claude Code is one of them and `claude` runs
+# in one place, and in every call the cases above recorded.
+named="The step's commands"
+read=$(grep -v '^[[:space:]]*#' "$activate" | grep -E '(^|[[:space:]])ask [a-z]' | sed 's/^[[:space:]]*//')
+# The patterns name activate.sh's own words, its `$` among them, as written.
+# shellcheck disable=SC2016
+others=$(printf '%s\n' "$read" | grep -vE '^(if )?ask (plugin marketplace add "\$marketplace" --json|plugin list --json|plugin install "\$plugin@boomdrive" --json|plugin update "\$plugin@boomdrive" --scope user --json|plugin uninstall "\$plugin@boomdrive" --json|mcp add-json --scope user pendingyou "\$\(cat "\$server"\)")( |;|$)' || true)
+expect "$named" "activate.sh asks Claude Code $others" [ -z "$others" ]
+expect "$named" "activate.sh asks Claude Code $(printf '%s\n' "$read" | wc -l | tr -d ' ') times, not the six commands once each" \
+  [ "$(printf '%s\n' "$read" | wc -l | tr -d ' ')" -eq 6 ]
+# shellcheck disable=SC2016
+expect "$named" "activate.sh runs claude in more than one place" \
+  [ "$(grep -c '"\$claude"' "$activate")" -eq 1 ]
+recorded=$(cat "$scratch"/*/claude-calls 2>/dev/null | awk '{ $1 = ""; sub(/^ /, ""); print }')
+others=$(printf '%s\n' "$recorded" | grep -vE '^claude (plugin marketplace add [^ ]+ --json|plugin list --json|plugin install [a-z-]+@boomdrive --json|plugin update [a-z-]+@boomdrive --scope user --json|plugin uninstall [a-z-]+@boomdrive --json|mcp add-json --scope user pendingyou .*)$' || true)
+expect "$named" "the cases recorded $others" [ -z "$others" ]
+for command in "plugin marketplace add" "plugin list" "plugin install" "plugin update" "plugin uninstall" "mcp add-json"; do
+  expect "$named" "no case recorded claude $command" names "$recorded" "claude $command" ""
+done
+
+# The login environment's lines, nix/modules/plugin-dirs.sh (design
+# Decision 8, Task notes 4.1, of the change
+# every-claude-code-session-has-boomdrives-plugins): run by sh in the
+# case's home, `$2` times, with CLAUDE_CODE_PLUGIN_DIRS exported as `$1`,
+# or unset where `$1` is `unset`; what a process started after them sees of
+# the variable, `unset` where it sees none.
+pluginDirs=$(cd "$(dirname "$0")/../modules" && pwd)/plugin-dirs.sh
+dirsAfter() {
+  HOME=$home given=$1 times=$2 lines=$pluginDirs sh -c '
+    if [ "$given" = unset ]; then
+      unset CLAUDE_CODE_PLUGIN_DIRS
+    else
+      CLAUDE_CODE_PLUGIN_DIRS=$given
+      export CLAUDE_CODE_PLUGIN_DIRS
+    fi
+    n=0
+    while [ "$n" -lt "$times" ]; do
+      . "$lines"
+      n=$((n + 1))
+    done
+    sh -c "printf %s \"\${CLAUDE_CODE_PLUGIN_DIRS-unset}\""
+  '
+}
+# A case's home, with Pending You's folder's wake mod in it.
+freshMod() {
+  fresh
+  mod=$home/.config/pendingyou/mod
+  mkdir -p "$mod/.claude-plugin"
+}
+
+named="A fresh environment"
+freshMod
+seen=$(dirsAfter unset 1)
+expect "$named" "the lines give CLAUDE_CODE_PLUGIN_DIRS $seen, not $mod, exported" [ "$seen" = "$mod" ]
+
+named="A person's own value"
+freshMod
+seen=$(dirsAfter /scratch/own 1)
+expect "$named" "the lines give CLAUDE_CODE_PLUGIN_DIRS $seen, not $mod:/scratch/own" [ "$seen" = "$mod:/scratch/own" ]
+
+named="Run twice"
+freshMod
+seen=$(dirsAfter /scratch/own 2)
+expect "$named" "the lines run twice give CLAUDE_CODE_PLUGIN_DIRS $seen, not $mod:/scratch/own" \
+  [ "$seen" = "$mod:/scratch/own" ]
+seen=$(dirsAfter "/scratch/own:$mod" 1)
+expect "$named" "the lines give CLAUDE_CODE_PLUGIN_DIRS $seen where it names the mod already, not /scratch/own:$mod" \
+  [ "$seen" = "/scratch/own:$mod" ]
+
+named="No folder"
+fresh
+seen=$(dirsAfter unset 1)
+expect "$named" "the lines with no folder give CLAUDE_CODE_PLUGIN_DIRS $seen, not none" [ "$seen" = unset ]
+seen=$(dirsAfter /scratch/own 1)
+expect "$named" "the lines with no folder give CLAUDE_CODE_PLUGIN_DIRS $seen, not /scratch/own" [ "$seen" = /scratch/own ]
+
 # A case's managed telemetry document: its source in the case's store,
 # read-only as the store keeps it, and its path in a scratch folder that
 # stands for Claude Code's managed-settings.d, missing until a case makes
