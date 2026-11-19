@@ -4,7 +4,7 @@
 //! under `protocol/`, and the runner's types for its messages (core.42).
 //! It holds the hosted table, the host's key and its stores, a
 //! partition's enrollment, each partition's connection, the cut of each
-//! tool's answer to its copy, the checks of version 3's messages, and
+//! tool's answer to its copy, the checks of version 4's messages, and
 //! `Hosted`, the `ControlPlane` over a partition's connection, which
 //! [`open`] opens as a part for each partition; and the observers of
 //! `[observer]`, which [`observer::open`] opens, one for each partition

@@ -19,7 +19,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The runner speaks version 4
 
-- [ ] 2.1 The runner's message types move from `src/protocol/v3.rs` to `src/protocol/v4.rs`, which gains the forge token's three kinds, and `protocol::v3` keeps `VERSION`, `SUBPROTOCOL`, `ADDRESS` and `FILES` alone:
+- [x] 2.1 The runner's message types move from `src/protocol/v3.rs` to `src/protocol/v4.rs`, which gains the forge token's three kinds, and `protocol::v3` keeps `VERSION`, `SUBPROTOCOL`, `ADDRESS` and `FILES` alone:
   - `check.rs`, `copy.rs`, `connection.rs`, `enrollment.rs`, `key.rs`, `observer.rs`, `plane.rs` and `lib.rs` use version 4, every word naming the version is made from `VERSION`, and the crate's documentation and `Cargo.toml`'s comment name version 4. `NO_FORGE_TOKEN` stays until 4.2;
   - the tests' `CURRENT` is `V4`, `common::fake` speaks `boomdrive.v4`, and `tests/worked-bytes.json` and version 4's `examples/from-runner/enroll.json` hold the bytes the crate makes for version 4's contexts;
   - each test that names version 3 as the version the runner speaks names version 4, by Task notes 2.1's list; `connection.rs` gains `a_message_of_version_3`, and `refused.rs`'s `a_message_of_another_version` checks versions 3 and 4 against each other.

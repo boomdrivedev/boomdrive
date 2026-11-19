@@ -2,7 +2,7 @@
 //! test code alone, listening on the loopback address. It answers
 //! `runner/enroll` with HTTP written by hand, and upgrades `runner/connect`
 //! by tokio-tungstenite's handshake. It checks every message it is sent
-//! against version 3, verifies the enrollment's and each connection's
+//! against version 4, verifies the enrollment's and each connection's
 //! signature over its context, built here from the protocol's README and
 //! not from the crate's code, and records what it took, in order. It holds
 //! each partition's last report as a control plane does, but for what it
@@ -16,6 +16,7 @@
 use super::from_runner;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use boomdrive_hosted::protocol::v4::VERSION;
 use ed25519_dalek::{Signature, VerifyingKey};
 use futures_util::{SinkExt, StreamExt};
 use jsonschema::Validator;
@@ -30,8 +31,8 @@ use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::{http, Message as Frame};
 
-/// The subprotocol of version 3, as the README names it.
-pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v3::SUBPROTOCOL;
+/// The subprotocol of version 4, as the README names it.
+pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v4::SUBPROTOCOL;
 
 /// The path the fake's address holds, under which its two paths go.
 const BASE_PATH: &str = "/boomdrive/";
@@ -50,7 +51,7 @@ pub enum Taken {
         /// The token it bore, as `Authorization: Bearer` carried it.
         bearer: Option<String>,
         message: Value,
-        /// Why the message failed version 3, where it did.
+        /// Why the message failed version 4, where it did.
         refused: Option<String>,
         /// Whether its signature checked over the enrollment's context.
         signed: bool,
@@ -75,7 +76,7 @@ pub enum Taken {
     Message {
         partition: String,
         message: Value,
-        /// Why it failed version 3, where it did.
+        /// Why it failed version 4, where it did.
         refused: Option<String>,
     },
     /// A WebSocket ping a partition's connection sent.
@@ -186,9 +187,9 @@ impl State {
         format!("plane:{}", self.next)
     }
 
-    /// A message of version 3 under a new id of the fake's.
+    /// A message of version 4 under a new id of the fake's.
     fn message(&mut self, kind: &str, body: Value) -> Value {
-        json!({ "protocol_version": 3, "id": self.id(), "body": { kind: body } })
+        json!({ "protocol_version": VERSION, "id": self.id(), "body": { kind: body } })
     }
 
     /// `partition`'s `pulled`, its wants and the report it holds.
@@ -222,7 +223,7 @@ impl Shared {
         self.taken.send_modify(|count| *count += 1);
     }
 
-    /// Why `message` fails version 3, where it does: each error's path
+    /// Why `message` fails version 4, where it does: each error's path
     /// in the message.
     fn refusal(&self, message: &Value) -> Option<String> {
         let errors: Vec<String> = self

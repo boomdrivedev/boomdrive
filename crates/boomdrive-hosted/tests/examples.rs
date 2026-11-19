@@ -1,14 +1,14 @@
-//! Version 3's examples, each a whole message under
+//! Version 4's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
 //! back as it was (design Decisions 2, 13 and 14 of
-//! the-runner-dials-the-hosted-control-plane). Version 1's and version
-//! 2's examples still pass their own version's envelopes (records 0037
-//! and 0052).
+//! the-runner-dials-the-hosted-control-plane). Version 1's, version 2's
+//! and version 3's examples still pass their own version's envelopes
+//! (records 0037, 0052 and 0053).
 
 mod common;
 
-use boomdrive_hosted::protocol::v3::{
+use boomdrive_hosted::protocol::v4::{
     FromRunner, HelloForm, Message, MessageId, ReportForm, ToRunner,
 };
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
@@ -20,7 +20,7 @@ use std::collections::BTreeSet;
 
 /// Every kind a runner sends, and every kind a control plane sends
 /// (design Decision 5).
-const FROM_RUNNER: [&str; 7] = [
+const FROM_RUNNER: [&str; 8] = [
     "enroll",
     "hello",
     "report",
@@ -28,8 +28,9 @@ const FROM_RUNNER: [&str; 7] = [
     "terminal_output",
     "terminal_closed",
     "message_refused",
+    "forge_token",
 ];
-const TO_RUNNER: [&str; 9] = [
+const TO_RUNNER: [&str; 11] = [
     "enrolled",
     "enroll_refused",
     "pulled",
@@ -39,6 +40,8 @@ const TO_RUNNER: [&str; 9] = [
     "terminal_input",
     "terminal_close",
     "message_refused",
+    "forge_token_given",
+    "forge_token_refused",
 ];
 
 /// Each example of `direction` read from its text into `Message<Body>`

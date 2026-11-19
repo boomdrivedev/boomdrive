@@ -63,7 +63,7 @@ pub const V4: Version = Version {
 pub const VERSIONS: [Version; 4] = [V1, V2, V3, V4];
 
 /// The version the runner speaks, which the free functions check.
-pub const CURRENT: Version = V3;
+pub const CURRENT: Version = V4;
 
 /// The retriever every registry and validator is given: it refuses every
 /// address, whatever features cargo unifies into `jsonschema`, so a
