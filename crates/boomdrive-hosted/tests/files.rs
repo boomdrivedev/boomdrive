@@ -9,7 +9,9 @@
 //! to version 2 but for its hold and its observing connection (design
 //! Decision 8 of the-hosted-protocol-carries-a-hold; design Decision 9 of
 //! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0052 as
-//! amended on 2026-11-18).
+//! amended on 2026-11-18); and version 4 held to version 3 but for a forge
+//! token's ask and answers (design Decision 5 of
+//! a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053).
 
 mod common;
 
@@ -905,6 +907,153 @@ fn version_3_is_version_2_but_for_its_hold_and_observing() {
         }
         if let Some(path) = first_difference(&read, &old, "") {
             panic!("version 3's example {name} differs from version 2's at {path}");
+        }
+    }
+}
+
+/// `value`'s `protocol_version` member at `pointer`, which must be 4, read
+/// as 3.
+fn read_as_version_3(value: &mut Value, pointer: &str, what: &str) {
+    let member = value
+        .pointer_mut(pointer)
+        .unwrap_or_else(|| panic!("{what} has no {pointer}"));
+    assert_eq!(*member, 4, "{what}'s {pointer} is not 4");
+    *member = Value::from(3);
+}
+
+/// The branch of an envelope's body that takes `kind` from
+/// `forge-token.schema.json`, its descriptions set aside (design
+/// Decision 1 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
+fn forge_token_branch(kind: &str) -> Value {
+    serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": [kind],
+        "properties": {
+            kind: { "$ref": format!("forge-token.schema.json#/$defs/{kind}") }
+        }
+    })
+}
+
+/// The runner-protocol spec's "Version 4 is version 3 but for a forge
+/// token" and "Version 4's examples are version 3's" (design Decision 5 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053): each
+/// schema file of version 4 but `forge-token.schema.json`, its
+/// descriptions set aside, its `$id` read as version 3's, its envelope's
+/// `protocol_version` read as 3 and the forge token's branches taken out
+/// of its body, equals version 3's file with its descriptions set aside;
+/// the branches taken out are exactly `forge_token` from the runner's and
+/// `forge_token_given` and `forge_token_refused` from the control plane's,
+/// each a reference to its kind. Version 4's examples are version 3's and
+/// the forge token's four, and each of version 3's, read with
+/// `protocol_version` 3 and `enroll.json`'s signature set aside, equals
+/// version 3's. A failure names the file and the pointer of the first
+/// difference, and no value (core.11).
+#[test]
+fn version_4_is_version_3_but_for_a_forge_token() {
+    let (v3, v4) = (common::V3, common::V4);
+    let names = |version: common::Version| -> BTreeSet<&'static str> {
+        version.files.iter().map(|(name, _)| *name).collect()
+    };
+    let mut expected = names(v3);
+    expected.insert("forge-token.schema.json");
+    assert_eq!(
+        names(v4),
+        expected,
+        "version 4's files are version 3's and forge-token.schema.json"
+    );
+    let old: BTreeMap<&str, Value> = v3.files().into_iter().collect();
+    let mut taken = BTreeMap::new();
+    for (name, value) in v4.files() {
+        if name == "forge-token.schema.json" {
+            continue;
+        }
+        let mut read = without_descriptions(&value);
+        read["$id"] = Value::from(v3.address(name));
+        if read.pointer("/properties/protocol_version").is_some() {
+            read_as_version_3(&mut read, "/properties/protocol_version/const", name);
+            let branches = read
+                .pointer_mut("/$defs/body/oneOf")
+                .and_then(Value::as_array_mut)
+                .unwrap_or_else(|| panic!("{name} holds no body's branches"));
+            let mut kinds = BTreeSet::new();
+            let mut at = 0;
+            while at < branches.len() {
+                let kind = branches[at]["required"][0]
+                    .as_str()
+                    .filter(|kind| kind.starts_with("forge_token"))
+                    .map(str::to_string);
+                match kind {
+                    Some(kind) => {
+                        let branch = branches.remove(at);
+                        if let Some(path) =
+                            first_difference(&branch, &forge_token_branch(&kind), "")
+                        {
+                            panic!(
+                                "{name}'s {kind} branch differs from design Decision 1's at {path}"
+                            );
+                        }
+                        kinds.insert(kind);
+                    }
+                    None => at += 1,
+                }
+            }
+            taken.insert(name, kinds);
+        }
+        if let Some(path) = first_difference(&read, &without_descriptions(&old[name]), "") {
+            panic!("version 4's {name} differs from version 3's at {path}");
+        }
+    }
+    let kinds = |names: &[&str]| -> BTreeSet<String> {
+        names.iter().map(|name| name.to_string()).collect()
+    };
+    assert_eq!(
+        taken,
+        BTreeMap::from([
+            ("from-runner.schema.json", kinds(&["forge_token"])),
+            (
+                "to-runner.schema.json",
+                kinds(&["forge_token_given", "forge_token_refused"])
+            ),
+        ]),
+        "the forge token's kinds taken out of the bodies"
+    );
+
+    let examples = |version: common::Version| -> BTreeSet<String> {
+        let root = version.dir().join("examples");
+        let mut found = Vec::new();
+        files_under(&root, &root, &mut found);
+        found.into_iter().collect()
+    };
+    let mut expected = examples(v3);
+    for added in [
+        "from-runner/forge_token.json",
+        "to-runner/forge_token_given.json",
+        "to-runner/forge_token_refused-not-installed.json",
+        "to-runner/forge_token_refused-a-repository-no-drive-serves.json",
+    ] {
+        expected.insert(added.to_string());
+    }
+    assert_eq!(
+        examples(v4),
+        expected,
+        "version 4's examples are version 3's and the forge token's four"
+    );
+    for name in examples(v3) {
+        let (direction, file) = name.split_once('/').unwrap();
+        let mut read = v4.example(direction, file);
+        read_as_version_3(&mut read, "/protocol_version", &name);
+        let mut old = v3.example(direction, file);
+        if name == "from-runner/enroll.json" {
+            for example in [&mut read, &mut old] {
+                example["body"]["enroll"]
+                    .as_object_mut()
+                    .and_then(|enroll| enroll.remove("signature"))
+                    .unwrap_or_else(|| panic!("{name} holds no signature"));
+            }
+        }
+        if let Some(path) = first_difference(&read, &old, "") {
+            panic!("version 4's example {name} differs from version 3's at {path}");
         }
     }
 }
