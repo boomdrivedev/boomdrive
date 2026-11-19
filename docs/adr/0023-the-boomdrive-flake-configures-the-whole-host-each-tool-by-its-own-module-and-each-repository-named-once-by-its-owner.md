@@ -173,3 +173,14 @@ Status: decided on 2026-11-18 by the code stage of the fix `main--the-set-carrie
 - **Not in `herdr-plugins` or the quick start.** A Mac set up by `boomdrive setup` may add `github:boomdrivedev/boomdrive#rex` by its profile line, which the README names.
 
 core.44's, core.45's and core.46's details are amended in this amendment's commit with what they allow.
+
+## Amendment, 2026-11-18: Rex has a switch of its own
+
+Status: decided on 2026-11-18 by the code stage of the fix `every-machine-takes-boomdrives-tools-1`, which merged `main`'s Rex into the bolt `every-machine-takes-boomdrives-tools`. The two amendments above of that day each decided alone: one that every tool of the set has a switch of its own, the other that Rex comes with the runner. core.62 decides between them, so this is the writing agent's reading of the written rules, cheap to change. The OpenSpec change `rex-has-a-switch-of-its-own` carries it.
+
+Amends "The Boomdrive module's own option, with the runner" above.
+
+- **Rex has a switch, as worktrunk has.** `services.boomdrive.rex.enable` is `services.boomdrive.enable` by default, a host's own value winning. Where it is on, with the runner or without, the modules install `services.boomdrive.rex.package`: the set's by default, a host's own as given, and none for `null`. Where it is off, they install no Rex. A host with the runner gets what `main` gave it. Not taken: Rex with the runner alone, which core.62 rules out as a tool only the runner's switch installs.
+- **The rest stands.** The modules still name Rex in no setting of Flume's, write no file of Rex's and start no server of it, with the runner or without. Rex has no herdr plugin, so `services.boomdrive.herdr.plugins` does not change.
+
+core.46's and core.62's details name Rex's switch in the merge commit that resolved the two amendments.
