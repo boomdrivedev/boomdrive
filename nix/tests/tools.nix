@@ -74,22 +74,42 @@ let
   # modules carry none, so their `declarations` name the file that imports
   # them.
   filesOf = option: map (position: toString position.file) option.declarationPositions;
-  # Each option of `services.<tool>` written outside the tool's input, by
-  # its name and its files.
+  # The declarations of a tool's option this tree makes again, by the
+  # option's name, each with its file: crew-drives.nix's of
+  # services.crew.settings and its drives, adding to crew's drive type the
+  # module that gives each drive crew's settings set up its machine and
+  # state (the change crew-runs-only-the-drives-set-up-for-it, design
+  # Decisions 1 and 5).
+  again = lib.genAttrs [
+    "services.crew.settings"
+    "services.crew.settings.drives"
+  ] (_: toString ../modules/crew-drives.nix);
+  # The options of an option's submodule type, less the module system's own.
+  subOptionsOf =
+    option: lib.collect lib.isOption (removeAttrs (option.type.getSubOptions option.loc) [ "_module" ]);
+  # Each option of `services.<tool>` with no declaration in the tool's
+  # input, or declared again in a file outside it but `again`'s file for
+  # its name, by its name and its files; the options of each declaration
+  # `again` names checked the same way, so it declares no option the tool's
+  # input does not.
   outsideOf =
     tool: options:
     let
       source = "${toString inputs.${tool}.outPath}/";
+      check =
+        option:
+        let
+          name = lib.showOption option.loc;
+          files = filesOf option;
+          admitted = again ? ${name};
+          stray = lib.filter (
+            file: !(lib.hasPrefix source file) && !(admitted && file == again.${name})
+          ) files;
+        in
+        lib.optional (!lib.any (lib.hasPrefix source) files || stray != [ ]) "${name} in ${toString files}"
+        ++ lib.optionals admitted (lib.concatMap check (subOptionsOf option));
     in
-    lib.concatMap (
-      option:
-      let
-        files = filesOf option;
-      in
-      lib.optional (
-        files == [ ] || !lib.all (lib.hasPrefix source) files
-      ) "${lib.showOption option.loc} in ${toString files}"
-    ) (lib.collect lib.isOption options);
+    lib.concatMap check (lib.collect lib.isOption options);
 
   ownOptions =
     platform:
