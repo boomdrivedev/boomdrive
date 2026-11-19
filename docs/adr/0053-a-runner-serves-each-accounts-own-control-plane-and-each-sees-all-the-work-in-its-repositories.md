@@ -1,7 +1,7 @@
 ---
 number: 53
 title: A runner serves each account's own control plane, and each sees all the work in its repositories
-status: proposed
+status: accepted
 date: 2026-11-19
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # A runner serves each account's own control plane, and each sees all the work in its repositories
 
-Status: proposed to the user on 2026-11-19, as `briefs.15` has it; accepted only on their yes.
+Status: accepted by the user on 2026-11-19, in the design agent's pane.
 
 deneb's runner connects to Boomdrive Cloud the normal way, beside crew, and the cloud shows all the work in your repositories, whoever started it. Each account on a host says where its work comes from, crew or a cloud. The runner keeps one ordinary connection for each, with the same messages any host sends. Each one sees every piece of work in its own repositories. It can act only on the work it started itself. Nothing here is a mode for one setup, so nothing comes out later.
 
