@@ -4,6 +4,7 @@
 //! design 3 to 6; core.14).
 
 mod common;
+mod fakes;
 mod github;
 
 use boomdrive::forge::Forge;
@@ -793,4 +794,183 @@ fn a_failed_fetch_drops_its_token() {
     assert!(!lines[0].contains("no forge token"), "{lines:?}");
     assert_eq!(bought, 1);
     assert_eq!(github.tokens().len(), 2);
+}
+
+/// A configuration keeping `agentplot/flume` in the drive `home`, its
+/// control plane the hosted one at `url`, whose partition `home` is served
+/// `agentplot/flume`: a cloud host's.
+fn on_a_cloud_host(url: &str) -> String {
+    format!(
+        "{}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\nurl = {url:?}\n\n\
+         [[control_plane.hosted.partitions]]\nlabel = \"home\"\n\
+         repositories = [\"agentplot/flume\"]\n",
+        keeping(&["agentplot/flume"])
+    )
+}
+
+/// A forge asking `tokens`, as a cloud host's runner makes it (design
+/// Decision 8 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
+fn asking(tokens: &boomdrive_control::fake::Tokens) -> Forge {
+    Forge::asking(Box::new(tokens.clone()))
+}
+
+/// The control plane gives `agentplot/flume` a token ending in an hour.
+fn the_cloud_gives_flume(tokens: &boomdrive_control::fake::Tokens) {
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::Token(boomdrive_control::ForgeToken::new(
+            "ghs_cloud",
+            time::OffsetDateTime::now_utc() + Duration::from_secs(60 * 60),
+        )),
+    );
+}
+
+/// The clones spec's "A cloud host's fetch given the control plane's
+/// token": `agentplot/flume`, whose origin needs no credential, is cloned,
+/// fetched and its view moved, through the control plane's token, which
+/// the control plane was asked for.
+#[test]
+fn a_cloud_hosts_fetch_is_given_the_control_planes_token() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    let tokens = boomdrive_control::fake::Tokens::new();
+    the_cloud_gives_flume(&tokens);
+    let forge = asking(&tokens);
+    let config = on_a_cloud_host("https://control.example");
+
+    let (outcome, _) = scratch.pass_with_forge(&config, &forge);
+    let landed = origin.commit("main", "README", "two\n");
+    let (again, lines) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!((outcome, again), (Outcome::Kept, Outcome::Kept));
+    assert_eq!(lines, [view_moved("agentplot/flume", "main", &landed)]);
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
+}
+
+/// The clones spec's "A repository the App's installation does not cover":
+/// the control plane says so, and `agentplot/flume` is cloned, fetched and
+/// its view moved with no credential, and no line names a forge token.
+#[test]
+fn a_repository_the_apps_installation_does_not_cover_on_a_cloud_host() {
+    let scratch = Scratch::new();
+    let origin = scratch.origin("agentplot/flume");
+    let commit = origin.tip("main");
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::NotInstalled(
+            "`home`: the installation does not cover agentplot/flume".to_string(),
+        ),
+    );
+    let forge = asking(&tokens);
+    let config = on_a_cloud_host("https://control.example");
+
+    let (outcome, lines) = scratch.pass_with_forge(&config, &forge);
+    let landed = origin.commit("main", "README", "two\n");
+    let (again, moved) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!((outcome, again), (Outcome::Kept, Outcome::Kept));
+    assert_eq!(
+        lines,
+        [
+            "agentplot/flume: cloned from https://github.com/agentplot/flume.git".to_string(),
+            view_made(&scratch, "agentplot/flume", &commit)
+        ]
+    );
+    assert_eq!(moved, [view_moved("agentplot/flume", "main", &landed)]);
+    assert!(
+        lines
+            .iter()
+            .chain(&moved)
+            .all(|line| !line.contains("forge token")),
+        "{lines:?} {moved:?}"
+    );
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
+}
+
+/// The forge-tokens spec's "A cloud host's failed fetch drops its token":
+/// the pass after a failed fetch asks the control plane again.
+#[test]
+fn a_cloud_hosts_failed_fetch_drops_its_token() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    let tokens = boomdrive_control::fake::Tokens::new();
+    the_cloud_gives_flume(&tokens);
+    let forge = asking(&tokens);
+    let config = on_a_cloud_host("https://control.example");
+    let (outcome, _) = scratch.pass_with_forge(&config, &forge);
+    assert_eq!(outcome, Outcome::Kept);
+    std::fs::rename(&flume.bare, flume.bare.with_extension("gone")).expect("origin taken away");
+
+    let (failed, lines) = scratch.pass_with_forge(&config, &forge);
+    let asked = tokens.asks("agentplot/flume");
+    std::fs::rename(flume.bare.with_extension("gone"), &flume.bare).expect("origin back");
+    let (kept, _) = scratch.pass_with_forge(&config, &forge);
+
+    assert_eq!((failed, kept), (Outcome::Failed, Outcome::Kept));
+    assert!(
+        lines[0].starts_with("agentplot/flume: not fetched: "),
+        "{lines:?}"
+    );
+    assert!(!lines[0].contains("no forge token"), "{lines:?}");
+    assert_eq!(asked, 1);
+    assert_eq!(tokens.asks("agentplot/flume"), 2);
+}
+
+/// The clones spec's "The running runner asks its control plane": `boomdrive
+/// run --once` on the scratch host, its stub Flume, sluice and
+/// `systemd-creds` first on its `PATH`, so no real store is reached (Task
+/// notes 4.3), the hosted control plane at a loopback port with nothing on
+/// it, its partition `home` served `agentplot/flume` with no key of `home`
+/// in the host's store, and the fetch of `agentplot/flume` failing: its line
+/// gives git's words, then `; no forge token: ` and words naming `boomdrive
+/// enroll home`.
+#[test]
+fn the_running_runner_asks_its_control_plane() {
+    let scratch = Scratch::new();
+    let flume = scratch.origin("agentplot/flume");
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    let port = listener.local_addr().expect("its address").port();
+    drop(listener);
+    let config = on_a_cloud_host(&format!("http://127.0.0.1:{port}/boomdrive"));
+    let tokens = boomdrive_control::fake::Tokens::new();
+    let (outcome, _) = scratch.pass_with_forge(&config, &asking(&tokens));
+    assert_eq!(outcome, Outcome::Kept);
+    std::fs::rename(&flume.bare, flume.bare.with_extension("gone")).expect("origin taken away");
+    scratch.configure(&config);
+    let (flume_stub, sluice, creds) = (
+        fakes::Stub::new(),
+        fakes::SluiceStub::new(),
+        fakes::CredsStub::new(),
+    );
+    let rest = std::env::var_os("PATH").unwrap_or_default();
+    let path = std::env::join_paths(
+        [&flume_stub.dir, &sluice.dir, &creds.dir]
+            .map(|dir| dir.path().to_path_buf())
+            .into_iter()
+            .chain(std::env::split_paths(&rest)),
+    )
+    .expect("a PATH");
+
+    let output = scratch
+        .boomdrive()
+        .args(["run", "--once"])
+        .env("PATH", path)
+        .output()
+        .expect("boomdrive runs");
+
+    let said = String::from_utf8_lossy(&output.stderr).into_owned();
+    let line = said
+        .lines()
+        .find(|line| line.contains("agentplot/flume: not fetched: "))
+        .unwrap_or_else(|| panic!("no line of the fetch: {said}"));
+    let (gits, asks) = line
+        .split_once("; no forge token: ")
+        .unwrap_or_else(|| panic!("no ask's words: {line}"));
+    assert!(
+        gits.len() > "agentplot/flume: not fetched: ".len(),
+        "{line}"
+    );
+    assert!(asks.contains("`boomdrive enroll home`"), "{line}");
+    assert!(!creds.kept_or_read(), "{:?}", creds.calls());
 }

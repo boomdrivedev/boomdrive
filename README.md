@@ -293,7 +293,8 @@ throttle keeps it from spinning.
 ## Giving every tool its forge token
 
 Every tool on a Boomdrive host takes its forge token from the runner
-(record 0007 as amended on 2026-11-09 and 2026-11-11; core.33).
+(record 0007 as amended on 2026-11-09, 2026-11-11 and 2026-11-18; record
+0053; core.33).
 `boomdrive forge-token [--config <file>] <get|erase>` speaks git's
 credential-helper protocol, reading the configuration as `run` does, its
 local layer over its managed one:
@@ -329,9 +330,28 @@ that holds no RSA private key in PEM. No token reaches a file, the data
 directory, a log or standard error.
 
 On a host whose control plane is hosted, the control plane holds the
-App and mints the host's tokens, and every operation is refused, exit 1:
-the hosted control plane mints this host's forge tokens, and version 3
-of its protocol carries none yet.
+App and mints the host's tokens, and no App's key is on the host. There
+`get` reads and checks git's request as above, then asks the hosted
+control plane for the repository's token, by one request of version 4
+of its protocol to `runner/forge-token`, under the key of a partition
+served the repository, each such partition asked in its table's order
+until one gives it, the asks together stopped at twenty seconds. It
+gives the token in the same three lines, and keeps it no longer.
+`[forge]` is refused beside the hosted control plane, and not read. A
+`get` the control plane answers that the App's installation does not
+cover the repository exits 1, saying to install the App there, with the
+control plane's words; any other refusal exits 1 with the hosted
+implementation's words, the control plane's as given; and one where no
+partition served the repository has its key in the host's store exits
+2, naming `boomdrive enroll <label>`. `erase` answers nothing, as on any
+host.
+
+The running runner's own fetches take their token the same way: on a
+host whose control plane holds the App, each fetch of a served
+repository is given the control plane's token, kept in the runner's
+memory as a minted token is, until five minutes before its end, the
+control plane's word that the App's installation does not cover a
+repository for fifty-five minutes, and a refusal not at all.
 
 The set's sluice takes no token from it yet. It reads a credential
 command, `[forge] credential`, as every sluice from v0.84.0 does
@@ -1339,18 +1359,21 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
-The runner speaks version 3 of the protocol, `boomdrive.v3`, its schema
-under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes
-beside the version before it, version 2. Each upgrade asks for
-`boomdrive.v3` alone, and a control plane that answers without it is
-said once, naming `boomdrive.v3`, and tried again at the backoff's cap.
+The runner speaks version 4 of the protocol, `boomdrive.v4`, its schema
+under `crates/boomdrive-hosted/protocol/v4/`, which a control plane takes
+beside the version before it, version 3. Each upgrade asks for
+`boomdrive.v4` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v4`, and tried again at the backoff's cap.
+Version 4 is version 3 but for a forge token's ask and its answers,
+which go by one request of their own to `runner/forge-token` and never
+on a partition's socket (*Giving every tool its forge token*).
 Each end of a place goes up with its delivery: its key, its delivery's
 key and expiry, the readers it is owed to and those that confirmed it,
 and each hand-over, the end of the place's work by a drop or a done
-among them. An end version 3 does not name goes up as its delivery
+among them. An end version 4 does not name goes up as its delivery
 alone, or is left out where even that fails, the rest of its status
 going up, with one line naming the launch and each end's path. Only a
-status that went up with every end in a form version 3 names is one the
+status that went up with every end in a form version 4 names is one the
 runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
@@ -1403,7 +1426,7 @@ answers `observer <label>: enrolled as host <host>`, or with `--json`
 exiting 2, where the file names no `[observer]` or no partition
 `<label>` in it.
 
-Each partition keeps one outgoing WebSocket on `boomdrive.v3`, proved,
+Each partition keeps one outgoing WebSocket on `boomdrive.v4`, proved,
 kept and tried again as a hosted partition's is. Its first message is an
 observing hello, `observing` true with the runner's versions, its tools'
 versions and the partition's repositories, and no capacity and no lease,
@@ -1411,7 +1434,7 @@ since the observer is offered no room and gives none. Once each control
 pass of the part it observes has sent its report, the observer is
 handed an observed report: each launch of the part, by its id as the
 runner holds it, with its answer and its status and entry as version
-3's copies, and no lease, act, command, inbox or preview. Handing it
+4's copies, and no lease, act, command, inbox or preview. Handing it
 returns at once: the newest report goes on a live connection, or after
 the hello of the next one, and no pass waits on the observer, reached
 or not. `run --once` hands it nothing. The runner takes no work from

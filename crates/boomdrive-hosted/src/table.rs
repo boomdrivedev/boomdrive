@@ -95,6 +95,7 @@ const LABEL_LENGTH: usize = 32;
 /// README, *The paths*).
 const ENROLL_PATH: &str = "runner/enroll";
 const CONNECT_PATH: &str = "runner/connect";
+const FORGE_TOKEN_PATH: &str = "runner/forge-token";
 
 /// The hosted table, or the observer table, read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -258,6 +259,13 @@ impl Table {
     /// Where an enrollment is sent: `runner/enroll` under the `url`.
     pub fn enroll_address(&self) -> Url {
         self.joined(ENROLL_PATH)
+    }
+
+    /// Where a forge token is asked: `runner/forge-token` under the `url`
+    /// (design Decision 2 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053).
+    pub fn forge_token_address(&self) -> Url {
+        self.joined(FORGE_TOKEN_PATH)
     }
 
     /// Where each partition's socket is opened: `runner/connect` under

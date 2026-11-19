@@ -341,9 +341,10 @@ pub struct Runner {
     /// the clone shared (design Decision 4).
     locks: Locks,
     /// What gives each fetch its credential, keeping the App's token for
-    /// each repository across passes, shared by the loop and the keeping
-    /// of a landing (record 0007 as amended on 2026-11-11; design Decisions
-    /// 3 and 5).
+    /// each repository across passes, minted from `[forge]`'s key or asked
+    /// of a control plane that holds the App, made at start, shared by the
+    /// loop and the keeping of a landing (record 0007 as amended on
+    /// 2026-11-11 and 2026-11-18; record 0053; design Decisions 3 and 5).
     forge: Forge,
     /// The one report file, each part keeping its share of it (design
     /// Decision 5).
@@ -460,6 +461,7 @@ impl Runner {
         });
         let report = ReportFile::new(&report::control_dir(&data));
         let watch = Watch::new(config.fetch_interval);
+        let forge = Forge::for_runner(&config, &file);
         Ok(Runner {
             git,
             home: env.home,
@@ -477,7 +479,7 @@ impl Runner {
             halt,
             bells,
             locks: Locks::new(),
-            forge: Forge::new(),
+            forge,
             report,
             _lock: lock,
         })

@@ -71,7 +71,7 @@ fn observer() -> Fake {
     fake
 }
 
-/// Version 3's example of an observing hello's body.
+/// Version 4's example of an observing hello's body.
 fn observing_hello() -> Value {
     example("from-runner", "hello-observing.json")["body"]["hello"].clone()
 }
@@ -169,7 +169,7 @@ fn reached(fake: &Fake, runtime: &tokio::runtime::Runtime, lines: &Lines) -> Con
 }
 
 /// The hosted-control-plane spec's "The observing hello", the
-/// connection's half: proved with the observer's key on `boomdrive.v3`,
+/// connection's half: proved with the observer's key on `boomdrive.v4`,
 /// its first message at every connection is the observing hello whole,
 /// and a working hello or report is not handed it.
 #[test]
@@ -434,7 +434,7 @@ fn runner_hello() -> Hello {
     }
 }
 
-/// The copy of a place's status version 3's example of a live agent
+/// The copy of a place's status version 4's example of a live agent
 /// carries.
 fn status_copy() -> Value {
     example("from-runner", "report-a-live-agent-with-its-pane.json")["body"]["report"]["launches"]
@@ -556,7 +556,7 @@ fn the_places_observed() {
     );
     for taken in &taken {
         if let Taken::Message { refused, .. } = taken {
-            assert_eq!(refused, &None, "each message passes version 3");
+            assert_eq!(refused, &None, "each message passes version 4");
         }
     }
 }
