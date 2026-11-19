@@ -45,7 +45,12 @@ context: |
   wherever they install Flume, with the
   runner or without, write Claude Code's managed transcripts document
   beside it, holding cleanupPeriodDays alone, a year by default (record
-  0046), touching no Claude Code home, and on macOS run the runner from a
+  0046), and with the runner and Flume install the set's marketplace and
+  the Claude Code plugins of the tools they install, with Pending You's
+  MCP server, into every Claude Code home of Flume's accounts and the
+  default home by Claude Code's own commands alone, and, where Pending
+  You's folder is written, put its wake mod on the login environment's
+  CLAUDE_CODE_PLUGIN_DIRS (record 0044, points 3 and 5), and on macOS run the runner from a
   copy the activation signs with the host's own code-signing identity,
   so a grant of macOS privacy access holds for every later build (record
   0047); and a shell,

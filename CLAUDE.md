@@ -61,7 +61,14 @@ they write Claude Code's managed transcripts document,
 `10-boomdrive-transcripts.json` beside it, holding
 `services.boomdrive.claude-code.cleanupPeriodDays` alone, a year by
 default, so every session on the host keeps its transcript that long
-(record 0046). None runs `claude` or writes into a Claude Code home. On
+(record 0046). With the runner and Flume, each activation installs the
+set's marketplace and the Claude Code plugins of the tools it installs,
+with Pending You's MCP server, into every Claude Code home of Flume's
+accounts and the default home, by Claude Code's own `claude plugin` and
+`claude mcp add-json` commands alone, changing nothing else there; and
+where Pending You's folder is written, the login environment puts its
+wake mod on `CLAUDE_CODE_PLUGIN_DIRS` (record 0044, points 3 and 5, as
+amended on 2026-11-18). On
 macOS the module runs the runner from a copy at
 `/Library/Application Support/Boomdrive/boomdrive` that each activation
 signs, before the agents load, with the host's own code-signing
