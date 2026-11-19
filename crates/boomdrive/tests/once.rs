@@ -24,9 +24,9 @@ use boomdrive_control::{
 };
 use fakes::{act, fixture, offer, place_of, Bench, FakeFlume, KEPT};
 use serde_json::Value;
-use std::cell::RefCell;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 fn retry() -> ActSort {
     ActSort::Retry {
@@ -69,7 +69,7 @@ fn a_retry_not_made_twice() {
 struct Watching<'a> {
     flume: &'a FakeFlume,
     file: PathBuf,
-    held: RefCell<Vec<Report>>,
+    held: Mutex<Vec<Report>>,
 }
 
 impl Flume for Watching<'_> {
@@ -79,7 +79,7 @@ impl Flume for Watching<'_> {
 
     fn act(&self, place: &str, act: &Act) -> Result<Reply, Unrun> {
         let held = boomdrive::report::read(&self.file).unwrap().unwrap();
-        self.held.borrow_mut().push(held);
+        self.held.lock().unwrap().push(held);
         self.flume.act(place, act)
     }
 
@@ -110,10 +110,10 @@ fn the_report_is_saved_after_each_act() {
     let watching = Watching {
         flume: &bench.flume,
         file: bench.report_file(),
-        held: RefCell::new(Vec::new()),
+        held: Mutex::new(Vec::new()),
     };
     bench.pass_over(&watching, &mut plane);
-    let held = watching.held.borrow();
+    let held = watching.held.lock().unwrap();
     assert_eq!(held.len(), 2);
     assert!(!held[0].acts.contains_key(&Id::new("a/1")));
     assert_eq!(held[1].acts[&Id::new("a/1")].outcome, Outcome::Done);
@@ -345,7 +345,7 @@ fn a_parts_save_keeps_every_other_parts_share() {
         Want::Offer(offer("home/3", "three")),
     ]);
 
-    let (_, lines) = bench.pass_of("home", &bench.flume, &mut home, &|| false);
+    let (_, lines) = bench.pass_of("home", &bench.flume, &mut home);
 
     assert_eq!(
         lines,
@@ -379,7 +379,7 @@ fn a_file_from_the_release_before() {
     boomdrive::report::save(&bench.report_file(), &file).unwrap();
     let mut work = part("work", true);
 
-    let (_, lines) = bench.pass_of("work", &bench.flume, &mut work, &|| false);
+    let (_, lines) = bench.pass_of("work", &bench.flume, &mut work);
 
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(bench.flume.acts(), [], "no flume command for work/2");
@@ -411,7 +411,7 @@ fn a_part_the_file_does_not_hold() {
     let mut work = part("work", true);
     work.report(&reported("work/1", Some("work/2"))).unwrap();
 
-    let (_, lines) = bench.pass_of("work", &bench.flume, &mut work, &|| false);
+    let (_, lines) = bench.pass_of("work", &bench.flume, &mut work);
 
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(bench.flume.acts(), [], "no flume command for work/2");
