@@ -10,7 +10,7 @@
 pub mod fake;
 pub mod waits;
 
-use boomdrive_hosted::protocol::{v1, v2, v3};
+use boomdrive_hosted::protocol::{v1, v2, v3, v4};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -42,16 +42,25 @@ pub const V2: Version = Version {
     files: v2::FILES,
 };
 
-/// Version 3, as this release speaks it, version 2 whole but for a
-/// control plane's hold (record 0052).
+/// Version 3, as releases from `v0.18.0` to the last before version 4
+/// spoke it, version 2 whole but for a control plane's hold and an
+/// observing connection (record 0052).
 pub const V3: Version = Version {
     number: v3::VERSION,
     address: v3::ADDRESS,
     files: v3::FILES,
 };
 
+/// Version 4, version 3 whole but for a forge token's ask and answers
+/// (record 0053).
+pub const V4: Version = Version {
+    number: v4::VERSION,
+    address: v4::ADDRESS,
+    files: v4::FILES,
+};
+
 /// Each version, in order.
-pub const VERSIONS: [Version; 3] = [V1, V2, V3];
+pub const VERSIONS: [Version; 4] = [V1, V2, V3, V4];
 
 /// The version the runner speaks, which the free functions check.
 pub const CURRENT: Version = V3;
@@ -98,8 +107,12 @@ impl Version {
 
     /// Every one of its files under its `$id`, and nothing else.
     fn registry(&self) -> &'static Registry<'static> {
-        static REGISTRIES: [OnceLock<Registry<'static>>; 3] =
-            [OnceLock::new(), OnceLock::new(), OnceLock::new()];
+        static REGISTRIES: [OnceLock<Registry<'static>>; 4] = [
+            OnceLock::new(),
+            OnceLock::new(),
+            OnceLock::new(),
+            OnceLock::new(),
+        ];
         let cell = &REGISTRIES[(self.number - 1) as usize];
         cell.get_or_init(|| {
             let resources = self

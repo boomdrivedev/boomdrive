@@ -64,6 +64,7 @@ fn each_file_is_a_schema_of_its_draft() {
     assert_eq!(common::V1.number, 1);
     assert_eq!(common::V2.number, 2);
     assert_eq!(common::V3.number, 3);
+    assert_eq!(common::V4.number, 4);
 }
 
 #[test]
