@@ -133,6 +133,57 @@ let
     else
       null;
 
+  # The release a Rex URL names, the last part of its path without
+  # `.tar.gz`: `0.1.0-preview.14` of Rex's release's own URL (design
+  # Decision 2 of the change the-set-carries-rex-matched-to-flume).
+  releaseOf = url: lib.removeSuffix ".tar.gz" (lib.last (lib.splitString "/" url));
+
+  # A system's Rex against the release its URL names: `version` is the
+  # package's, read from Rex's flake's sources.json.
+  rexRelease =
+    system: version: url:
+    t.expect (
+      version == releaseOf url
+    ) "packages.${system}.rex says ${version}, not ${releaseOf url}, the release ${url} names";
+
+  # The Rex flake.nix names and the lock locks, and the one Flume's
+  # devenv.lock locks at the tag the lock names for Flume (design Decision
+  # 3 of the change the-set-carries-rex-matched-to-flume): `named` is
+  # flake.nix's URL, `locked` the lock's node's `locked`, and `flumes`
+  # Flume's devenv.lock's node, whose `original` is devenv.yaml's URL.
+  setsRex = {
+    named = flake.inputs.rex.url;
+    inherit (t.lock.nodes.${t.lock.nodes.${t.lock.root}.inputs.rex}) locked;
+  };
+  flumesLock = "${inputs.flume.outPath}/devenv.lock";
+  flumesRex =
+    let
+      lock = builtins.fromJSON (builtins.readFile flumesLock);
+    in
+    lock.nodes.${lock.nodes.${lock.root}.inputs.rex or ""} or null;
+  rexHeld =
+    {
+      named,
+      locked,
+      flumes,
+    }:
+    t.expect (named == flumes.original.url)
+      "flake.nix names Rex by ${named}, and Flume's tree locks ${flumes.original.url}, the Rex its Rex profile was checked against"
+    ++
+      t.expect (locked.url == flumes.locked.url && locked.narHash == flumes.locked.narHash)
+        "flake.lock locks Rex at ${locked.url} (${locked.narHash}), and Flume's tree locks ${flumes.locked.url} (${flumes.locked.narHash})";
+
+  # A Rex release's own URL and a hash, as a lock's node holds them.
+  rexAt = release: hash: {
+    original.url = "https://pkgs.superlogical.com/rex/nix/preview/${release}.tar.gz";
+    locked = {
+      url = "https://pkgs.superlogical.com/rex/nix/preview/${release}.tar.gz";
+      narHash = "sha256-${hash}";
+    };
+  };
+  preview14 = rexAt "0.1.0-preview.14" "fourteen";
+  preview19 = rexAt "0.1.0-preview.19" "nineteen";
+
   # A system's Ghostty against the release Flume's ghostty window profile
   # was checked against (Flume's statement, C.8; design Decision 2). Flume's
   # tree pins no Ghostty to read, so the constant moves only with a check
@@ -432,6 +483,76 @@ in
         "0.80.0"
       ]
     ) "a worktrunk 0.80.0 beside sluice's pin of 0.81.0 gives ${builtins.toJSON found}";
+
+  # Rex's flake packages Rex's release binary, its version its release's
+  # (design Decision 2 of the change the-set-carries-rex-matched-to-flume):
+  # the set's Rex is that package, unchanged.
+  "Rex through its own flake" = each (
+    system: packages:
+    let
+      inherit (packages) rex;
+      own = inputs.rex.packages.${system}.rex;
+      program = rex.meta.mainProgram or "none";
+    in
+    t.expect (
+      rex.drvPath == own.drvPath
+    ) "packages.${system}.rex is not Rex's flake's packages.${system}.rex"
+    ++ t.expect (program == "rex") "packages.${system}.rex's program is ${program}, not rex"
+    ++ rexRelease system rex.version setsRex.named
+  );
+
+  "Rex other than its URL's release" =
+    let
+      found = rexRelease "aarch64-darwin" "0.1.0-preview.15" preview14.original.url;
+    in
+    t.expect (
+      builtins.length found == 1
+      && builtins.all (word: lib.hasInfix word (builtins.head found)) [
+        "0.1.0-preview.15"
+        "0.1.0-preview.14"
+      ]
+    ) "a Rex 0.1.0-preview.15 under the URL of 0.1.0-preview.14 gives ${builtins.toJSON found}";
+
+  "Rex is Flume's" =
+    if flumesRex == null then
+      [ "Flume's pin of Rex could not be read: ${flumesLock} locks no rex" ]
+    else
+      rexHeld (setsRex // { flumes = flumesRex; });
+
+  "Rex other than Flume's" =
+    let
+      found = rexHeld {
+        named = preview14.original.url;
+        inherit (preview14) locked;
+        flumes = preview19;
+      };
+    in
+    t.expect
+      (
+        builtins.length found == 2
+        && builtins.all (
+          failure: lib.hasInfix preview14.locked.url failure && lib.hasInfix preview19.locked.url failure
+        ) found
+      )
+      "a set's Rex 0.1.0-preview.14 beside Flume's lock of 0.1.0-preview.19 gives ${builtins.toJSON found}";
+
+  "Rex moved without the lock" =
+    let
+      found = rexHeld {
+        named = preview19.original.url;
+        inherit (preview14) locked;
+        flumes = preview19;
+      };
+    in
+    t.expect
+      (
+        builtins.length found == 1
+        && builtins.all (url: lib.hasInfix url (builtins.head found)) [
+          preview14.locked.url
+          preview19.locked.url
+        ]
+      )
+      "flake.nix naming Rex 0.1.0-preview.19 and a lock of 0.1.0-preview.14 gives ${builtins.toJSON found}";
 
   "A plugin newer than herdr" =
     let

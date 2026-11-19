@@ -33,6 +33,7 @@ let
     "plannotator"
     "plannotator-tui"
     "portless"
+    "rex"
     "sluice"
     "timber"
     "worktrunk"

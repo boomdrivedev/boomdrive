@@ -15,8 +15,9 @@ let
 
   # Each tool of the set the modules install, its command and the set's
   # version of it, which its answer holds (design Decision 6): its
-  # program's `--version`, and crew's `_release`, since crew's `--version`
-  # prints its usage.
+  # program's `--version`, crew's `_release`, since crew's `--version`
+  # prints its usage, and Rex's `version`, since Rex takes no `--version`
+  # (record 0023 as amended on 2026-11-18).
   tools = [
     "boomdrive"
     "flume"
@@ -24,6 +25,7 @@ let
     "crew"
     "timber"
     "herdr"
+    "rex"
     "worktrunk"
     "ghostty"
     "portless"
@@ -37,7 +39,12 @@ let
       package = set.${name};
     in
     {
-      command = if name == "crew" then "crew _release" else "${package.meta.mainProgram} --version";
+      command =
+        {
+          crew = "crew _release";
+          rex = "rex version";
+        }
+        .${name} or "${package.meta.mainProgram} --version";
       inherit (package) version;
     };
   answers = map answerOf tools;
