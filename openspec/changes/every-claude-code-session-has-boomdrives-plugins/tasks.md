@@ -28,7 +28,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The install into each home
 
-- [ ] 3.1 `nix/modules/activate.sh` gains the verb `claude`, as design Decisions 2 to 4 and 6 have it, and its header names it. `nix/tests/activate.sh` gains its cases, with stubs of `flume` and `claude` (Task notes 3.1):
+- [x] 3.1 `nix/modules/activate.sh` gains the verb `claude`, as design Decisions 2 to 4 and 6 have it, and its header names it. `nix/tests/activate.sh` gains its cases, with stubs of `flume` and `claude` (Task notes 3.1):
   - *Two accounts and the default home*, *An account with no home*, *Two accounts sharing one home*, *An account of another program* and *Flume's status cannot be read*;
   - *A fresh home*, *Nothing differs*, *A new build of a plugin*, *A plugin to remove* and *The home's own plugins*;
   - *A home with no server*, *A home that names one* and *No server given*;

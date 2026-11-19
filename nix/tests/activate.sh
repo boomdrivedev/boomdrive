@@ -459,6 +459,278 @@ run pendingyou "$source"
 expect "$named" "pendingyou with no folder exits $status, not 2" [ "$status" -eq 2 ]
 expect "$named" "pendingyou with no folder made $folder" missing "$folder"
 
+# A case of the install into Claude Code's homes (design Decisions 2 to 4
+# and 6, Task notes 3.1, of the change
+# every-claude-code-session-has-boomdrives-plugins): a marketplace in the
+# case's store listing flume at 0.31.0, timber at 0.7.0, pendingyou and
+# plannotator, Pending You's server's file, `serverFile`, which the step is
+# given only where a case sets `server` to it, `-` by default, and stubs of flume, run by its
+# path, and of claude, first on PATH. flume records its calls with the
+# others, and for `--json status` prints `status.json`, an empty pool by
+# default, or refuses where the case removed it, exiting 1. claude records
+# each call, after the CLAUDE_CONFIG_DIR it sees or `unset`, in
+# `claude-calls`; for `plugin list --json` it prints the home's
+# `plugins.json`, `$CLAUDE_CONFIG_DIR/plugins.json` or else
+# `$HOME/.claude/plugins.json`, or `[]` where there is none; and it
+# refuses the call whose line in `claude-calls` is the first line of
+# `refuse`, printing `{"outcome":"failed","message":"<words>"}` with the
+# words of its second line and exiting 1. jq is the shell's own.
+if ! jq=$(command -v jq); then
+  echo "nix: Claude Code's homes: found no jq on PATH for the step's cases"
+  jq=jq
+fi
+freshClaude() {
+  fresh
+  flume=$dir/store/flume/bin/flume
+  market=$dir/store/boomdrive-claude-plugins
+  serverFile=$dir/store/pendingyou-server.json
+  server=-
+  claudes=$dir/claude-calls
+  mkdir -p "$(dirname "$flume")" "$market/.claude-plugin"
+  cat >"$market/.claude-plugin/marketplace.json" <<'JSON'
+{"name":"boomdrive","plugins":[
+{"name":"flume","version":"0.31.0","source":"./plugins/flume"},
+{"name":"timber","version":"0.7.0","source":"./plugins/timber"},
+{"name":"pendingyou","version":"0.41.0","source":"./plugins/pendingyou"},
+{"name":"plannotator","version":"0.28.61","source":"./plugins/plannotator"}]}
+JSON
+  serverJSON='{"type":"http","url":"https://www.pendingyou.com/mcp","headersHelper":"/scratch/pendingyou-mcp-headers"}'
+  echo "$serverJSON" >"$serverFile"
+  statusOf ""
+  cat >"$flume" <<STUB
+#!/bin/sh
+echo "flume \$*" >>"$calls"
+if [ "\$*" = "--json status" ] && [ -e "$dir/status.json" ]; then
+  cat "$dir/status.json"
+  exit 0
+fi
+echo '{"refused":{"refusal":{"reason":"no host configuration"}}}'
+exit 1
+STUB
+  cat >"$dir/bin/claude" <<STUB
+#!/bin/sh
+seen=\${CLAUDE_CONFIG_DIR-unset}
+echo "\$seen claude \$*" >>"$claudes"
+if [ "\$seen claude \$*" = "\$(sed -n 1p "$dir/refuse" 2>/dev/null)" ]; then
+  printf '{"outcome":"failed","message":"%s"}\n' "\$(sed -n 2p "$dir/refuse")"
+  echo "refused" >&2
+  exit 1
+fi
+if [ "\$*" = "plugin list --json" ]; then
+  cat "\${CLAUDE_CONFIG_DIR:-\$HOME/.claude}/plugins.json" 2>/dev/null || echo '[]'
+  exit 0
+fi
+echo '{"outcome":"ok"}'
+STUB
+  chmod +x "$flume" "$dir/bin/claude"
+  # The two calls every home gets first.
+  firstTwo="claude plugin marketplace add $market --json;claude plugin list --json"
+}
+
+# Flume's status, its one pool holding the accounts `$1`.
+statusOf() {
+  printf '{"status":{"host":{"pools":[{"name":"work","accounts":[%s]}]}}}\n' "$1" >"$dir/status.json"
+}
+# An account named `$1` of the program `$2`, whose home is the JSON `$3`.
+accountOf() {
+  printf '{"name":"%s","program":"%s","running":0,"bound":null,"spent_until":null,"home":%s}' "$1" "$2" "$3"
+}
+# The home `$1` (the default home's .claude where empty) lists the
+# plugins `$2`, each `<id> <version>`, as `claude plugin list --json`.
+listing() {
+  into=${1:-$home/.claude}
+  mkdir -p "$into"
+  printf '%s\n' "$2" | "$jq" -R -s '
+    split("\n") | map(select(length > 0) | split(" ") | {id: .[0], version: .[1], scope: "user", enabled: true})
+  ' >"$into/plugins.json"
+}
+# The step with the plugins `$@` to install, then `--` and those to remove.
+runClaude() {
+  run claude "$flume" "$jq" "$market" "$server" "$@"
+}
+# The homes claude was called in, by the CLAUDE_CONFIG_DIR each saw, in
+# the order first called.
+homesCalled() {
+  if [ -e "$claudes" ]; then
+    awk '!seen[$1]++ { print $1 }' "$claudes" | paste -s -d ' ' -
+  fi
+}
+# The calls in the home `$1`, `unset` for the default, on one line.
+callsIn() {
+  if [ -e "$claudes" ]; then
+    awk -v home="$1" '$1 == home { $1 = ""; sub(/^ /, ""); print }' "$claudes" | paste -s -d ';' -
+  fi
+}
+named="Two accounts and the default home"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\""),$(accountOf work-2 claude "\"$dir/b\"")"
+runClaude flume
+expect "$named" "claude exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "claude ran in $(homesCalled), not the default home, then $dir/a, then $dir/b" \
+  [ "$(homesCalled)" = "unset $dir/a $dir/b" ]
+expect "$named" "claude says \"$out$err\"" [ -z "$out$err" ]
+
+named="An account with no home"
+freshClaude
+statusOf "$(accountOf work-1 claude null),$(accountOf work-2 claude "\"$dir/a\"")"
+runClaude flume
+expect "$named" "claude ran in $(homesCalled), not the default home once, then $dir/a" \
+  [ "$(homesCalled)" = "unset $dir/a" ]
+expect "$named" "the default home got $(callsIn unset)" \
+  [ "$(callsIn unset)" = "$firstTwo;claude plugin install flume@boomdrive --json" ]
+
+named="Two accounts sharing one home"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\""),$(accountOf work-2 claude "\"$dir/a\"")"
+runClaude flume
+expect "$named" "claude ran in $(homesCalled), not the default home, then $dir/a" \
+  [ "$(homesCalled)" = "unset $dir/a" ]
+expect "$named" "$dir/a got $(callsIn "$dir/a"), not its commands once" \
+  [ "$(callsIn "$dir/a")" = "$firstTwo;claude plugin install flume@boomdrive --json" ]
+
+named="An account of another program"
+freshClaude
+statusOf "$(accountOf other-1 codex "\"$dir/c\""),$(accountOf work-1 claude "\"$dir/a\"")"
+runClaude flume
+expect "$named" "claude ran in $(homesCalled), not the default home, then $dir/a" \
+  [ "$(homesCalled)" = "unset $dir/a" ]
+
+named="Flume's status cannot be read"
+freshClaude
+rm "$dir/status.json"
+runClaude flume
+expect "$named" "claude exits $status, not 0" [ "$status" -eq 0 ]
+expect "$named" "claude ran in $(homesCalled), not the default home alone" \
+  [ "$(homesCalled)" = unset ]
+expect "$named" "claude said \"$err\", not one line that Flume's status could not be read" \
+  [ "$(printf '%s\n' "$err" | wc -l | tr -d ' ')" -eq 1 ]
+expect "$named" "claude said \"$err\"" names "$err" "could not read Flume's status" "no host configuration"
+
+named="A fresh home"
+freshClaude
+runClaude flume timber -- pendingyou
+expect "$named" "the default home got $(callsIn unset), not the marketplace, the list and the install of flume and timber" \
+  [ "$(callsIn unset)" = "$firstTwo;claude plugin install flume@boomdrive --json;claude plugin install timber@boomdrive --json" ]
+
+named="Nothing differs"
+freshClaude
+listing "" "flume@boomdrive 0.31.0
+timber@boomdrive 0.7.0"
+runClaude flume timber -- pendingyou
+expect "$named" "the default home got $(callsIn unset), not the marketplace and the list alone" \
+  [ "$(callsIn unset)" = "$firstTwo" ]
+expect "$named" "claude says \"$out$err\"" [ -z "$out$err" ]
+
+named="A new build of a plugin"
+freshClaude
+listing "" "flume@boomdrive 0.31.0
+timber@boomdrive 0.6.0"
+runClaude flume timber
+expect "$named" "the default home got $(callsIn unset), not timber's update alone" \
+  [ "$(callsIn unset)" = "$firstTwo;claude plugin update timber@boomdrive --scope user --json" ]
+
+named="A plugin to remove"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\"")"
+listing "" "flume@boomdrive 0.31.0
+pendingyou@boomdrive 0.41.0"
+listing "$dir/a" "flume@boomdrive 0.31.0"
+runClaude flume -- pendingyou plannotator
+expect "$named" "the default home got $(callsIn unset), not pendingyou's uninstall alone" \
+  [ "$(callsIn unset)" = "$firstTwo;claude plugin uninstall pendingyou@boomdrive --json" ]
+expect "$named" "$dir/a got $(callsIn "$dir/a"), not the marketplace and the list alone" \
+  [ "$(callsIn "$dir/a")" = "$firstTwo" ]
+
+named="The home's own plugins"
+freshClaude
+listing "" "flume@boomdrive 0.31.0
+plannotator@plannotator 0.28.61
+foo@other 1.0.0"
+runClaude flume plannotator -- pendingyou
+expect "$named" "the default home got $(callsIn unset), not plannotator@boomdrive's install alone" \
+  [ "$(callsIn unset)" = "$firstTwo;claude plugin install plannotator@boomdrive --json" ]
+expect "$named" "claude named the home's own plugins: $(callsIn unset)" \
+  [ -z "$(grep -e 'plannotator@plannotator' -e 'foo@other' "$claudes")" ]
+
+named="A home with no server"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\"")"
+mkdir -p "$dir/a"
+echo '{"mcpServers":{"other":{"type":"http","url":"https://example.com/mcp"}}}' >"$dir/a/.claude.json"
+server=$serverFile
+runClaude flume
+expect "$named" "the default home got $(callsIn unset), not the server's add after the plugins" \
+  [ "$(callsIn unset)" = "$firstTwo;claude plugin install flume@boomdrive --json;claude mcp add-json --scope user pendingyou $serverJSON" ]
+expect "$named" "$dir/a got $(callsIn "$dir/a"), not the server's add after the plugins" \
+  [ "$(callsIn "$dir/a")" = "$firstTwo;claude plugin install flume@boomdrive --json;claude mcp add-json --scope user pendingyou $serverJSON" ]
+
+named="A home that names one"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\"")"
+mkdir -p "$dir/a"
+echo '{"mcpServers":{"pendingyou":{"type":"http","url":"https://example.com/own"}}}' >"$dir/a/.claude.json"
+echo '{"mcpServers":{"pendingyou":{"type":"http","url":"https://example.com/own"}}}' >"$home/.claude.json"
+server=$serverFile
+runClaude flume
+expect "$named" "claude ran $(grep ' mcp ' "$claudes")" [ -z "$(grep ' mcp ' "$claudes")" ]
+
+named="No server given"
+freshClaude
+echo '{"mcpServers":{"pendingyou":{"type":"http","url":"https://example.com/own"}}}' >"$home/.claude.json"
+runClaude flume
+expect "$named" "claude ran $(grep ' mcp ' "$claudes")" [ -z "$(grep ' mcp ' "$claudes")" ]
+expect "$named" "the server changed" \
+  holds "$home/.claude.json" '{"mcpServers":{"pendingyou":{"type":"http","url":"https://example.com/own"}}}'
+
+named="No Claude Code"
+freshClaude
+rm "$dir/bin/claude"
+bare=$(
+  printf '%s\n' "$PATH" | tr ':' '\n' | while IFS= read -r each; do
+    if [ -n "$each" ] && [ ! -x "$each/claude" ]; then
+      printf '%s:' "$each"
+    fi
+  done
+)
+status=0
+mkdir -p "$dir/tmp"
+HOME=$home TMPDIR=$dir/tmp PATH=$dir/bin:${bare%:} sh "$activate" claude "$flume" "$jq" "$market" "$server" flume \
+  >"$dir/out" 2>"$dir/err" || status=$?
+out=$(cat "$dir/out")
+err=$(cat "$dir/err")
+expect "$named" "claude exits $status, not 0" [ "$status" -eq 0 ]
+expect "$named" "claude said \"$err\", not one line that no claude was found" \
+  [ "$err" = "boomdrive: found no claude on PATH, so no Claude Code home has the set's plugins" ]
+expect "$named" "claude ran $(called)" missing "$calls"
+
+named="A command refused"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\"")"
+printf '%s\n%s\n' "$dir/a claude plugin install timber@boomdrive --json" "no such plugin" >"$dir/refuse"
+server=$serverFile
+runClaude timber flume
+expect "$named" "claude exits $status, not 0" [ "$status" -eq 0 ]
+expect "$named" "claude said \"$err\", not one line naming $dir/a, the command and Claude Code's words" \
+  [ "$err" = "boomdrive: Claude Code refused \`claude plugin install timber@boomdrive --json\` in $dir/a: no such plugin" ]
+expect "$named" "$dir/a got $(callsIn "$dir/a"), not the commands after the one refused" \
+  [ "$(callsIn "$dir/a")" = "$firstTwo;claude plugin install timber@boomdrive --json;claude plugin install flume@boomdrive --json;claude mcp add-json --scope user pendingyou $serverJSON" ]
+
+named="Every command held"
+freshClaude
+statusOf "$(accountOf work-1 claude "\"$dir/a\"")"
+listing "$dir/a" "timber@boomdrive 0.6.0
+pendingyou@boomdrive 0.41.0"
+server=$serverFile
+runClaude flume timber -- pendingyou
+expect "$named" "claude exits $status: $err" [ "$status" -eq 0 ]
+expect "$named" "claude says \"$out$err\"" [ -z "$out$err" ]
+
+named="claude's usage"
+freshClaude
+run claude "$flume" "$jq" "$market" "$server"
+expect "$named" "claude with no plugin exits $status, not 2" [ "$status" -eq 2 ]
+expect "$named" "claude with no plugin ran claude" missing "$claudes"
+
 # A case's managed telemetry document: its source in the case's store,
 # read-only as the store keeps it, and its path in a scratch folder that
 # stands for Claude Code's managed-settings.d, missing until a case makes

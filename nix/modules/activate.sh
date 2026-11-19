@@ -6,6 +6,7 @@
 #   activate.sh keep <user> <program> <argument>...
 #   activate.sh plugins <herdr> <plugin>...
 #   activate.sh pendingyou <source> <folder>
+#   activate.sh claude <flume> <jq> <marketplace> <server> <plugin>... [-- <plugin>...]
 #   activate.sh managed <path> [<source>]
 #   activate.sh sign <keychain> <folder> <program>
 #
@@ -52,6 +53,35 @@
 # are the command line's. It says one line naming each file it wrote, and
 # nothing where none differed; a file it cannot write is said in one line
 # naming it and stops the files after it. It exits 0.
+#
+# claude installs the set's marketplace of Claude Code plugins,
+# <marketplace>, into every Claude Code home of Flume's accounts and
+# Claude Code's default home, by Claude Code's own commands alone (record
+# 0044, points 1 and 3, and its amendments of 2026-11-18; design
+# Decisions 2 to 4 and 6 of the change
+# every-claude-code-session-has-boomdrives-plugins). It finds `claude` on
+# its PATH, and where it finds none it says so in one line and runs
+# nothing. It reads the homes from `<flume> --json status`, with <jq>: the
+# `home` of each account of `.status.host.pools[].accounts[]` whose
+# `program` is `claude` and which gives one, each once, in the order status
+# gives them, after the default home, with CLAUDE_CONFIG_DIR unset; where
+# Flume's status cannot be read, it says so in one line and takes the
+# default home alone. In each home, with CLAUDE_CONFIG_DIR set to it or
+# unset, and standard input from /dev/null, it runs `claude plugin
+# marketplace add <marketplace> --json`, which adds `boomdrive` or points it
+# at this build, and `claude plugin list --json`. Then, each naming
+# `<plugin>@boomdrive` with `--json`, it runs `install` for each plugin
+# before `--` the list lacks, `update --scope user` for each the list holds
+# at another version than the marketplace's, and `uninstall` for each
+# after `--` the list holds. Where <server> is a file, not `-`, and the
+# home's own .claude.json, `$CLAUDE_CONFIG_DIR/.claude.json` or else
+# `$HOME/.claude.json`, names no `mcpServers.pendingyou`, it then runs
+# `claude mcp add-json --scope user pendingyou` with the file's JSON. It
+# names no other marketplace, plugin or server, and removes no marketplace
+# or server. Each command Claude Code refuses or fails is said in one line,
+# naming the home, the command and Claude Code's words, the `message` of
+# its answer, and stops no other. It says nothing where every command held,
+# and exits 0.
 #
 # managed is nix-darwin's root step for each of Claude Code's two managed
 # documents, run as root once for each: the telemetry document (design
@@ -100,6 +130,7 @@ usage() {
   echo "       activate.sh keep <user> <program> <argument>..." >&2
   echo "       activate.sh plugins <herdr> <plugin>..." >&2
   echo "       activate.sh pendingyou <source> <folder>" >&2
+  echo "       activate.sh claude <flume> <jq> <marketplace> <server> <plugin>... [-- <plugin>...]" >&2
   echo "       activate.sh managed <path> [<source>]" >&2
   echo "       activate.sh sign <keychain> <folder> <program>" >&2
   exit 2
@@ -258,6 +289,133 @@ pendingyou() {
   done <<PATHS
 $paths
 PATHS
+}
+
+# Claude Code's command `claude $@` in the home $home, its default where
+# $home is empty: its answer in `answer`. Where Claude Code refuses or
+# fails it, one line names $where, the command and the answer's `message`,
+# or else Claude Code's words, and it returns 1.
+ask() {
+  if answer=$(
+    if [ -n "$home" ]; then
+      CLAUDE_CONFIG_DIR=$home
+      export CLAUDE_CONFIG_DIR
+    else
+      unset CLAUDE_CONFIG_DIR
+    fi
+    "$claude" "$@" </dev/null 2>"$errors"
+  ); then
+    return 0
+  fi
+  message=$(printf '%s\n' "$answer" | "$jq" -r '.message // empty' 2>/dev/null) || message=
+  if [ -z "$message" ]; then
+    message=$(oneline "$(cat "$errors" 2>/dev/null)")
+  fi
+  if [ -z "$message" ]; then
+    message=$(oneline "$answer")
+  fi
+  message=$(oneline "$message")
+  echo "boomdrive: Claude Code refused \`claude $*\` in $where: $message" >&2
+  return 1
+}
+
+# The second word of the line of `$2` whose first word is `$1`.
+versionOf() {
+  printf '%s\n' "$2" | awk -v name="$1" '$1 == name { print $2; exit }'
+}
+
+# Whether the home's list, $held, holds `$1`.
+holding() {
+  printf '%s\n' "$held" | awk -v name="$1" '$1 == name { found = 1 } END { exit !found }'
+}
+
+# The set's plugins in the home `$1`, Claude Code's default where empty.
+inHome() {
+  home=$1
+  if [ -n "$home" ]; then
+    where=$home
+  else
+    where="Claude Code's default home"
+  fi
+  ask plugin marketplace add "$marketplace" --json || true
+  held=
+  if ask plugin list --json; then
+    held=$(printf '%s\n' "$answer" | "$jq" -r '
+      .[]? | select((.id // "") | endswith("@boomdrive"))
+      | "\(.id | rtrimstr("@boomdrive")) \(.version // "")"
+    ' 2>/dev/null) || held=
+  fi
+  for plugin in $installing; do
+    if ! holding "$plugin"; then
+      ask plugin install "$plugin@boomdrive" --json || true
+    elif [ "$(versionOf "$plugin" "$held")" != "$(versionOf "$plugin" "$offered")" ]; then
+      ask plugin update "$plugin@boomdrive" --scope user --json || true
+    fi
+  done
+  for plugin in $removing; do
+    if holding "$plugin"; then
+      ask plugin uninstall "$plugin@boomdrive" --json || true
+    fi
+  done
+  if [ "$server" != - ] &&
+    ! "$jq" -e '.mcpServers.pendingyou' "${home:-$HOME}/.claude.json" >/dev/null 2>&1; then
+    ask mcp add-json --scope user pendingyou "$(cat "$server")" || true
+  fi
+}
+
+sessions() {
+  flume=$1
+  jq=$2
+  marketplace=$3
+  server=$4
+  shift 4
+  installing=
+  removing=
+  side=installing
+  for plugin in "$@"; do
+    if [ "$plugin" = -- ]; then
+      side=removing
+    elif [ "$side" = installing ]; then
+      installing="$installing $plugin"
+    else
+      removing="$removing $plugin"
+    fi
+  done
+
+  if ! claude=$(command -v claude); then
+    echo "boomdrive: found no claude on PATH, so no Claude Code home has the set's plugins" >&2
+    return
+  fi
+  errors=$(mktemp "${TMPDIR:-/tmp}/boomdrive.XXXXXXXX") || errors=/dev/null
+  if [ "$errors" != /dev/null ]; then
+    trap 'rm -f "$errors"' EXIT
+  fi
+  offered=$("$jq" -r '.plugins[]? | "\(.name) \(.version // "")"' \
+    "$marketplace/.claude-plugin/marketplace.json" 2>/dev/null) || offered=
+
+  if status=$("$flume" --json status </dev/null 2>"$errors") &&
+    homes=$(printf '%s\n' "$status" | "$jq" -r '
+      .status.host.pools[]?.accounts[]?
+      | select(.program == "claude") | .home
+      | select(type == "string" and . != "")
+    ' 2>/dev/null); then
+    homes=$(printf '%s\n' "$homes" | awk 'NF && !seen[$0]++')
+  else
+    words=$(oneline "$(cat "$errors" 2>/dev/null)")
+    if [ -z "$words" ]; then
+      words=$(oneline "$status")
+    fi
+    echo "boomdrive: could not read Flume's status, so the set's Claude Code plugins go into Claude Code's default home alone: $words" >&2
+    homes=
+  fi
+
+  inHome ""
+  while IFS= read -r each; do
+    [ -n "$each" ] || continue
+    inHome "$each"
+  done <<HOMES
+$homes
+HOMES
 }
 
 # <source> written to <path>, 0644, its folders made 0755 where they are
@@ -465,6 +623,11 @@ plugins)
 pendingyou)
   [ $# -eq 3 ] || usage
   pendingyou "$2" "$3"
+  ;;
+claude)
+  [ $# -ge 6 ] || usage
+  shift
+  sessions "$@"
   ;;
 managed)
   [ $# -eq 2 ] || [ $# -eq 3 ] || usage
