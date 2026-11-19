@@ -159,6 +159,29 @@ fn enrollments_kinds_in_the_other_direction() {
     }
 }
 
+/// The runner-protocol spec's "A forge token's kinds in the other
+/// direction" (design Decision 2 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud): version 4's
+/// `forge_token` is a runner's alone, and its `forge_token_given` and
+/// `forge_token_refused` a control plane's alone.
+#[test]
+fn a_forge_tokens_kinds_in_the_other_direction() {
+    let v4 = common::V4;
+    let (from, to) = (v4.messages_from_runner(), v4.messages_to_runner());
+    let ask = v4.example("from-runner", "forge_token.json");
+    passes(&from, &ask, "forge_token.json");
+    refused(&to, &ask, "a forge_token as a control plane's message");
+    for name in [
+        "forge_token_given.json",
+        "forge_token_refused-not-installed.json",
+        "forge_token_refused-a-repository-no-drive-serves.json",
+    ] {
+        let answer = v4.example("to-runner", name);
+        passes(&to, &answer, name);
+        refused(&from, &answer, &format!("{name} as a runner's message"));
+    }
+}
+
 /// The runner-protocol spec's "An enroll unsigned, or holding a token": an
 /// `enroll` holds the key's signature, the key is 32 bytes and the
 /// signature 64, and no `enroll` holds a token, which is the request's
