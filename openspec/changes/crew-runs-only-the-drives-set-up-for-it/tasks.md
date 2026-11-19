@@ -37,7 +37,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
   - "An account whose drives crew's settings do not set up";
   - "An account under crew with no state repository";
   - "A drive of crew's no account names".
-- [ ] 2.3 The README's **Installing with nix** says the runner's `[control_plane.crew]` holds this host's drives that crew's settings set up. It says that under crew an account needs a `state_repository` only for a drive crew's settings set up, and that a drive of crew's no account names still fails (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.3 The README's **Installing with nix** says the runner's `[control_plane.crew]` holds this host's drives that crew's settings set up. It says that under crew an account needs a `state_repository` only for a drive crew's settings set up, and that a drive of crew's no account names still fails (design Decision 6). True when `sluice exec main -- moon run root:format` passes.
 
 ## 3. The format and the specs
 

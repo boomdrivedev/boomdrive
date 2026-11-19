@@ -488,31 +488,34 @@ Flume, `services.flume.sources.crew`, naming the roles file crew writes,
 `~/.config/flume/sources/crew.toml`, so a host writes no file for it,
 and a key the host sets there wins.
 
-Each account under crew names its crew state repository once,
+An account names its crew state repository once,
 `services.boomdrive.accounts.<account>.state_repository`, an address
-`<owner>/<name>`, which the runner's file does not hold. With crew's
-module on, whether or not the runner is, each drive crew's settings set
-up, `services.crew.settings.drives.<drive>`, under an account that names
-its `state_repository`, is given its `machine`, `services.crew.host`
-where the drive names none, and its account's `state_repository` as its
-`state`, whichever machine it runs on. A drive crew's settings do not set
-up is given nothing: crew has no drive of its name, and the drive's
+`<owner>/<name>`, which the runner's file does not hold, where it holds
+a drive crew runs. With crew's module on, whether or not the runner is,
+each drive crew's settings set up,
+`services.crew.settings.drives.<drive>`, under an account that names its
+`state_repository`, is given its `machine`, `services.crew.host` where
+the drive names none, and its account's `state_repository` as its
+`state`, whichever machine it runs on. A drive crew's settings do not
+set up is given nothing: crew has no drive of its name, and the drive's
 repositories are kept, and its stream given where it runs, as any
-drive's. A host writes neither in
-`services.crew.settings`: one that does fails evaluation, crew's failure
-naming `services.boomdrive.accounts` among the places that write it.
-Where `control_plane.type` is `crew` and no `control_plane.crew` is
-written, the module writes the runner's `[control_plane.crew]` from the
-accounts: its `host` is `services.crew.host`, and it holds each drive of
-this host, naming no `machine` or that host, under an account that names
-its `state_repository`, in the accounts' order and each account's drives
-in the order of their names, by its name as `label`, with its account's
-`state_repository`. A table written out wins, whole. Under crew, an
-account with a drive and no `state_repository`, or a drive of crew's
-that no account names, fails evaluation. The module writes none of
-crew's `hosts`, `runs`, `review` or other keys of a drive: each host crew
-reaches, and each drive's own keys, how its roles run and batch among
-them, are the host's own, written in `services.crew.settings`:
+drive's. A host writes neither in `services.crew.settings`: one that
+does fails evaluation, crew's failure naming
+`services.boomdrive.accounts` among the places that write it. Where
+`control_plane.type` is `crew` and no `control_plane.crew` is written,
+the module writes the runner's `[control_plane.crew]` from the accounts:
+its `host` is `services.crew.host`, and it holds each drive of this
+host, naming no `machine` or that host, that crew's settings set up,
+under an account that names its `state_repository`, in the accounts'
+order and each account's drives in the order of their names, by its name
+as `label`, with its account's `state_repository`. A table written out
+wins, whole. Under crew, an account with a drive crew's settings set up
+and no `state_repository`, or a drive of crew's that no account names,
+fails evaluation, and an account none of whose drives crew runs needs no
+`state_repository`. The module writes none of crew's `hosts`, `runs`,
+`review` or other keys of a drive: each host crew reaches, and each
+drive's own keys, how its roles run and batch among them, are the host's
+own, written in `services.crew.settings`:
 
 ```nix
 {
