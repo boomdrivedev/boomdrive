@@ -22,8 +22,9 @@
 //! for its own git calls until [`RENEW_BEFORE`] its end, and the word that
 //! the App is not installed on one for as long (design Decision 3).
 
-use crate::config::{Address, ForgeApp};
+use crate::config::{Address, Config, ForgeApp};
 use crate::git::Credential;
+use crate::planes;
 use boomdrive_control::{ForgeTokens, TokenAsked};
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use serde::Serialize;
@@ -32,6 +33,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 use time::format_description::well_known::Rfc3339;
@@ -198,6 +200,21 @@ impl Forge {
         }
     }
 
+    /// The forge of `config`, read from the configuration file `file`, as
+    /// `boomdrive forge-token` and the running runner each make it: one
+    /// asking the control plane's forge tokens where it holds the App, or
+    /// the words saying why they could not be opened; else one minting
+    /// from the App's key `[forge]` names, calling GitHub's API (design
+    /// Decisions 8 and 9 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+    pub fn of(config: &Config, file: &Path) -> Result<Forge, String> {
+        match planes::forge_tokens(config, file) {
+            Some(Ok(tokens)) => Ok(Forge::asking(tokens)),
+            Some(Err(words)) => Err(words),
+            None => Ok(Forge::new()),
+        }
+    }
+
     /// A forge asking `tokens`, a control plane's that holds the App, for
     /// each token in place of minting, whatever `[forge]` names (design
     /// Decision 8 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
@@ -254,8 +271,8 @@ impl Forge {
                     ends: token.ends(),
                 })),
                 TokenAsked::NotInstalled(words) => Ok(Minted::NotInstalled(format!(
-                    "the control plane finds no installation of the app covering {address}: \
-                     {words}"
+                    "the control plane finds no installation of the app covering {address} \
+                     ({words})"
                 ))),
                 TokenAsked::Refused { words, host_to_fix } => Err(Refused { words, host_to_fix }),
             },
