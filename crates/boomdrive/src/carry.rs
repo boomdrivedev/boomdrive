@@ -1591,19 +1591,26 @@ impl Work<'_> {
 
     /// Confirms to Flume, as the runner, each end of a place it owes the
     /// runner, once the control plane's `answer` names the status that
-    /// gives it taken (design Decision 3; core.54; record 0030 as amended on
-    /// 2026-11-09): for each launch the pull gives, in its order, that the
-    /// report, after the answer, holds answered `launched` at a place in a
-    /// repository whose clone stands, named or dropped, whose carried status
-    /// is listed and named taken, the delivery key of each end the status
-    /// gives pending for [`flume::RECIPIENT`], in the status's order, by one
-    /// `flume confirm` for the launch. Nothing of Flume's answer is carried
-    /// or kept (core.11). A confirmation Flume refuses, or could not be run
-    /// for, is said in one line and made again at a later pass whose report
-    /// is taken, whose carried status gives the ends pending still. A
-    /// launch the report no longer holds, let go or its lease refused, has
-    /// nothing confirmed (core.10).
+    /// gives it taken, and only while Flume still lists it owed (design
+    /// Decision 3; core.54; record 0030 as amended on 2026-11-09): for each
+    /// launch the pull gives, in its order, that the report, after the
+    /// answer, holds answered `launched` at a place in a repository whose
+    /// clone stands, named or dropped, whose carried status is listed and
+    /// named taken, the delivery key of each end the status gives pending
+    /// for [`flume::RECIPIENT`], in the status's order, that Flume's
+    /// listing, read once more after the send and only where some key is to
+    /// be confirmed, still gives pending for it, by one `flume confirm` for
+    /// the launch. The send may take long, and Flume may forget a place's
+    /// record meanwhile: a key the listing no longer gives owed is not
+    /// confirmed, since Flume can only refuse it, and where the listing
+    /// cannot be read nothing is confirmed that pass. Nothing of Flume's
+    /// answer is carried or kept (core.11). A confirmation Flume refuses,
+    /// or could not be run for, is said in one line and made again at a
+    /// later pass whose report is taken, whose carried status and Flume's
+    /// listing give the ends pending still. A launch the report no longer
+    /// holds, let go or its lease refused, has nothing confirmed (core.10).
     fn confirm(&self, answer: &Reported, say: &mut dyn FnMut(String)) {
+        let mut owed = Vec::new();
         for offer in offers(self.wants) {
             let id = &offer.id;
             if !answer.statuses_taken.contains(id) {
@@ -1638,8 +1645,25 @@ impl Work<'_> {
             if keys.is_empty() {
                 continue;
             }
-            let named = facts::location(&entry).unwrap_or(place);
-            let recipient = flume::RECIPIENT;
+            let named = facts::location(&entry).unwrap_or(place).to_string();
+            owed.push((id, place.to_string(), named, keys));
+        }
+        if owed.is_empty() {
+            return;
+        }
+        let Some(listing) = listing_of(&self.carrier.flume.status(), self.carrier.label, say)
+        else {
+            return;
+        };
+        let recipient = flume::RECIPIENT;
+        for (id, place, named, mut keys) in owed {
+            let still = facts::entry(&listing, &place)
+                .map(|entry| facts::owed(entry, recipient))
+                .unwrap_or_default();
+            keys.retain(|key| still.contains(key));
+            if keys.is_empty() {
+                continue;
+            }
             match self.carrier.flume.confirm(recipient, &keys) {
                 Ok(Reply::Given(_)) => {}
                 Ok(Reply::Refused(words)) => say(format!(

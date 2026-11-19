@@ -1,8 +1,10 @@
 # The workflow `cache` (record 0020, core.47, design Decision 5): every
 # package the flake gives, the runner's among them, built for each system on
 # GitHub's hosted runner of that system and pushed to the family's cache,
-# boomdrive on Cachix, at each push to main, each tag v*, and by hand. main
-# holds only what the gate passed. The cache's token is read from 1Password
+# boomdrive on Cachix, once for each release, at its tag v*, which the
+# workflow release runs it at, and by hand; no push of a branch runs it, so
+# a release never waits behind a second build of the same work. main holds
+# only what the gate passed, and a release's tag is cut from it. The cache's token is read from 1Password
 # through a service account whose token is the one secret of the
 # environment cachix, which admits main and tags v* alone. Beside the
 # systems' builds, the job boot (aarch64-linux) boots a NixOS system with
@@ -14,8 +16,6 @@ name: cache
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -23,7 +23,7 @@ on:
 permissions:
   contents: read
 
-# One run for each ref at a time, none cancelled, so every commit of main
+# One run for each ref at a time, none cancelled, so every release's tag
 # is pushed.
 concurrency:
   group: cache-${{ github.ref }}

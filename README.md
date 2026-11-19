@@ -469,22 +469,21 @@ Distrust costs only the time to build. Rex, which publishes no source,
 is the one exception: such a host downloads Rex's release binary from
 where Rex's flake names.
 
-The flake at `main` moves with each change that lands, and its cache
-run pushes that commit's binaries. Each landing that git-cliff finds a
-new version in, from its Conventional Commits, is released as a tag
-`v<version>` on a release commit, cut from that commit of `main`, which
-writes the version into the tree, so the runner at the tag says it;
-`main`'s runner says `0.0.0`. The release has its notes, and the cache
-runs again at the tag. To stay on one set, pin a tag,
-`github:boomdrivedev/boomdrive/<tag>`, or a commit of `main` whose `cache`
-run passed:
+The flake at `main` moves with each change that lands. Each landing
+that git-cliff finds a new version in, from its Conventional Commits, is
+released as a tag `v<version>` on a release commit, cut from that commit
+of `main`, which writes the version into the tree, so the runner at the
+tag says it; `main`'s runner says `0.0.0`. The release has its notes,
+and the cache is built once for it, at its tag; no push of `main` builds
+it. To stay on one set, pin a tag, `github:boomdrivedev/boomdrive/<tag>`,
+whose `cache` run passed:
 
-    gh run list --repo boomdrivedev/boomdrive --workflow cache.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha'
+    gh run list --repo boomdrivedev/boomdrive --workflow cache.yml --event workflow_dispatch --status success --limit 1 --json headBranch --jq '.[0].headBranch'
 
 That run's job `boot (aarch64-linux)` boots a NixOS system with the
 module on `aarch64-linux`, its guest emulated on GitHub's arm runner:
 the service's user lingers, the runner's unit starts with no login, and
-each tool of the set answers its version. A NixOS host pins a commit
+each tool of the set answers its version. A NixOS host pins a tag
 whose boot passed.
 
 A host's configuration imports its platform's module,
