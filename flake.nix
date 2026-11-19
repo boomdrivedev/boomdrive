@@ -39,7 +39,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:boomdrivedev/sluice/v0.97.2";
+      url = "github:boomdrivedev/sluice/v0.97.5";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -47,7 +47,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.29.0";
+      url = "github:boomdrivedev/flume/v0.31.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -55,7 +55,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.68.0";
+      url = "github:boomdrivedev/crew/v0.68.1";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
@@ -89,7 +89,7 @@
     # The worktrunk sluice's tree pins at its tag, which sluice's worktree
     # driver was checked against (record 0023; design Decision 1).
     worktrunk = {
-      url = "github:max-sixty/worktrunk/v0.80.0";
+      url = "github:max-sixty/worktrunk/v0.82.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -100,7 +100,7 @@
     # (record 0023 as amended on 2026-11-13 and 2026-11-15; design
     # Decision 1).
     timber = {
-      url = "github:boomdrivedev/timber/v0.8.0";
+      url = "github:boomdrivedev/timber/v0.9.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
