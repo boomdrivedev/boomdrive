@@ -15,9 +15,9 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The words
 
-- [ ] 2.1 The README names Rex among the set, `services.boomdrive.rex.package` and `github:boomdrivedev/boomdrive#rex`; `CLAUDE.md` and `openspec/config.yaml` name Rex among the set. True when `sluice exec main -- moon run root:format` passes.
-- [ ] 2.2 Record 0023 holds its amendment of 2026-11-18, how Rex comes with the flake, and core.44's, core.45's and core.46's details say what they allow of Rex. True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.1 The README names Rex among the set, `services.boomdrive.rex.package` and `github:boomdrivedev/boomdrive#rex`; `CLAUDE.md` and `openspec/config.yaml` name Rex among the set. True when `sluice exec main -- moon run root:format` passes.
+- [x] 2.2 Record 0023 holds its amendment of 2026-11-18, how Rex comes with the flake, and core.44's, core.45's and core.46's details say what they allow of Rex. True when `sluice exec main -- moon run root:format` passes.
 
 ## 3. The specs
 
-- [ ] 3.1 The change validates and archives into specs that pass OpenSpec's strict check (core.61). True when `sluice exec main -- moon run root:specs root:changes` passes.
+- [x] 3.1 The change validates and archives into specs that pass OpenSpec's strict check (core.61). True when `sluice exec main -- moon run root:specs root:changes` passes.
