@@ -123,6 +123,18 @@
               "$ref": "shared.schema.json#/$defs/message_refused"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "forge_token"
+          ],
+          "properties": {
+            "forge_token": {
+              "$ref": "forge-token.schema.json#/$defs/forge_token"
+            }
+          }
         }
       ]
     }

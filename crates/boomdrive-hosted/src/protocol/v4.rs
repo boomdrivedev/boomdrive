@@ -65,4 +65,8 @@ pub const FILES: &[(&str, &str)] = &[
         "terminal.schema.json",
         include_str!("../../protocol/v4/terminal.schema.json"),
     ),
+    (
+        "forge-token.schema.json",
+        include_str!("../../protocol/v4/forge-token.schema.json"),
+    ),
 ];

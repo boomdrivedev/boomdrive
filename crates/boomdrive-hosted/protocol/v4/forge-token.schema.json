@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v4/forge-token.schema.json",
+  "description": "A forge token: the runner's ask for a served repository's token, the body of its one request to the control plane's runner/forge-token, and the control plane's answer, forge_token_given or forge_token_refused. None goes on a partition's socket.",
+  "$defs": {
+    "forge_token": {
+      "description": "The runner asks for a short-lived token of the forge for one repository a drive of the host serves, under the key of a partition served it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository"
+      ],
+      "properties": {
+        "repository": {
+          "description": "The repository the token is asked for.",
+          "$ref": "shared.schema.json#/$defs/repository"
+        }
+      }
+    },
+    "forge_token_given": {
+      "description": "The control plane minted a token for the repository from the App's installation on the host's account: the ask, by its message's id, the repository, the token and when it expires.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forge_token",
+        "repository",
+        "token",
+        "expires_at"
+      ],
+      "properties": {
+        "forge_token": {
+          "description": "The ask this answers, by its message's id.",
+          "$ref": "shared.schema.json#/$defs/message_id"
+        },
+        "repository": {
+          "description": "The repository the token is for, as the ask named it.",
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "token": {
+          "description": "The token as the forge gave it, which git's credential helper gives as its password: the one field of any version that holds a credential, never written to a file or a log.",
+          "type": "string",
+          "minLength": 1
+        },
+        "expires_at": {
+          "description": "When the token ends, as the forge gave it.",
+          "$ref": "shared.schema.json#/$defs/time"
+        }
+      }
+    },
+    "forge_token_refused": {
+      "description": "The control plane gave no token: the ask, by its message's id, the repository, whether the App's installation does not cover it, and words saying why, such as a repository registered to no drive the host serves.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forge_token",
+        "repository",
+        "not_installed",
+        "words"
+      ],
+      "properties": {
+        "forge_token": {
+          "description": "The ask this answers, by its message's id.",
+          "$ref": "shared.schema.json#/$defs/message_id"
+        },
+        "repository": {
+          "description": "The repository the ask named.",
+          "$ref": "shared.schema.json#/$defs/repository"
+        },
+        "not_installed": {
+          "description": "True alone where the App's installation on the host's account does not cover the repository.",
+          "type": "boolean"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

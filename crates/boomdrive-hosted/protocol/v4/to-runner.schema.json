@@ -131,6 +131,30 @@
               "$ref": "shared.schema.json#/$defs/message_refused"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "forge_token_given"
+          ],
+          "properties": {
+            "forge_token_given": {
+              "$ref": "forge-token.schema.json#/$defs/forge_token_given"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "forge_token_refused"
+          ],
+          "properties": {
+            "forge_token_refused": {
+              "$ref": "forge-token.schema.json#/$defs/forge_token_refused"
+            }
+          }
         }
       ]
     }

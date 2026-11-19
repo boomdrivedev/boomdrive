@@ -53,3 +53,61 @@ fn an_integer_past_what_javascript_reads_exactly() {
     refused(&signed, &json!(-9_007_199_254_740_992_i64), "-(2^53)");
     refused(&signed, &json!(1.5), "a fraction");
 }
+
+/// The runner-protocol spec's "A forge token's examples" (design
+/// Decision 1 of a-cloud-host-gets-its-github-tokens-from-the-cloud):
+/// version 4's ask and its three answers each pass their direction's
+/// envelope of version 4.
+#[test]
+fn a_forge_tokens_examples_pass() {
+    let v4 = common::V4;
+    let (from, to) = (v4.messages_from_runner(), v4.messages_to_runner());
+    let ask = v4.example("from-runner", "forge_token.json");
+    passes(&from, &ask, "from-runner/forge_token.json");
+    for name in [
+        "forge_token_given.json",
+        "forge_token_refused-not-installed.json",
+        "forge_token_refused-a-repository-no-drive-serves.json",
+    ] {
+        passes(&to, &v4.example("to-runner", name), name);
+    }
+}
+
+/// The runner-protocol spec's "A forge token's ask or answer that is not
+/// whole" (design Decision 1 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud): each kind is
+/// closed, every field required, an address `owner/name`, a time in UTC
+/// to the second, and a token of one character or more.
+#[test]
+fn a_forge_tokens_ask_or_answer_that_is_not_whole() {
+    let v4 = common::V4;
+    let (from, to) = (v4.messages_from_runner(), v4.messages_to_runner());
+    let ask = v4.example("from-runner", "forge_token.json");
+    let mut with_a_path = ask.clone();
+    with_a_path["body"]["forge_token"]["path"] = json!("/data/example/app");
+    refused(&from, &with_a_path, "an ask with a path added");
+    let mut bare = ask.clone();
+    bare["body"]["forge_token"]["repository"] = json!("flume");
+    refused(&from, &bare, "an ask whose repository is flume");
+
+    let given = v4.example("to-runner", "forge_token_given.json");
+    let mut no_end = given.clone();
+    no_end["body"]["forge_token_given"]
+        .as_object_mut()
+        .unwrap()
+        .remove("expires_at");
+    refused(&to, &no_end, "a token given with no expires_at");
+    let mut offset = given.clone();
+    offset["body"]["forge_token_given"]["expires_at"] = json!("2026-11-18T12:00:00+02:00");
+    refused(&to, &offset, "a token given whose expires_at has an offset");
+    let mut empty = given.clone();
+    empty["body"]["forge_token_given"]["token"] = json!("");
+    refused(&to, &empty, "a token given whose token is empty");
+
+    let mut unsaid = v4.example("to-runner", "forge_token_refused-not-installed.json");
+    unsaid["body"]["forge_token_refused"]
+        .as_object_mut()
+        .unwrap()
+        .remove("not_installed");
+    refused(&to, &unsaid, "a refusal with no not_installed");
+}
