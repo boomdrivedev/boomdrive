@@ -518,6 +518,44 @@ let
       services.boomdrive = settings.stateless;
     }) [ "services.boomdrive.accounts.own.state_repository" ];
 
+  # Under crew, with no crew table written, the account `work`, naming no
+  # state repository, whose drive `field` crew's settings do not set up,
+  # beside `own`'s `home`, which they do: crew has `home` alone, the table
+  # holds it, and Flume is given both drives' streams (the change
+  # crew-runs-only-the-drives-set-up-for-it, design Decision 5).
+  reading =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (crewOf settings.crewKeys) ];
+        services.boomdrive = settings.reading;
+      };
+      names = lib.attrNames evaluated.config.services.crew.settings.drives;
+      table = evaluated.config.services.boomdrive.settings.control_plane.crew;
+      expected = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+      streams = evaluated.config.services.flume.settings.streams;
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system whose account's drives crew's settings do not set up fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      names == [ "home" ]
+    ) "the ${platform} system's crew drives are ${toString names}, not home"
+    ++ t.expect (
+      table == expected
+    ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON expected}"
+    ++
+      t.expect (streams ? home && streams ? field)
+        "the ${platform} system's Flume streams are ${toString (lib.attrNames streams)}, not home and field";
+
   # Under crew, with no crew table written, a drive of crew's, `stray`,
   # that no account names (design Decision 6).
   stray =
@@ -624,6 +662,7 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "No drive of the accounts on this host" elsewhere
 // onEach "No drive crew runs on this host" elsewhereHere
 // onEach "An account under crew with no state repository" stateless
+// onEach "An account whose drives crew's settings do not set up" reading
 // onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys

@@ -19,8 +19,10 @@
 # state repository, in the accounts' order, a table written out winning
 # whole (record 0023; record 0032 as amended on 2026-11-15 and 2026-11-18;
 # the change crews-partitions-give-the-runner-its-crew-table). Under crew,
-# an account with a drive and no state repository, and a drive of crew's
-# that no account names, each fail evaluation (record 0032).
+# an account with a drive crew's settings set up and no state repository,
+# and a drive of crew's that no account names, each fail evaluation
+# (record 0032 as amended on 2026-11-18); an account none of whose drives
+# crew's settings set up needs no state repository.
 # Any other key left unset is left out of the file, so the runner's own
 # default holds and the two never drift; a top-level key the module does
 # not declare passes to the file, and the runner judges it, but `accounts`
@@ -314,11 +316,16 @@ let
     else
       "they name ${lib.concatStringsSep ", " crewMachines}";
 
-  # Under crew, the accounts that name a drive and no state repository,
-  # and the drives of crew's that no account names, read only where crew's
-  # module is on (record 0032).
+  # Under crew, the accounts that name no state repository and hold a
+  # drive crew's settings set up, and the drives of crew's that no account
+  # names, read only where crew's module is on (record 0032 as amended on
+  # 2026-11-18).
   stateless = lib.attrNames (
-    lib.filterAttrs (_: account: account.drives != { } && account.state_repository == null) cfg.accounts
+    lib.filterAttrs (
+      _: account:
+      account.state_repository == null
+      && lib.any (drive: crew.settings.drives ? ${drive}) (lib.attrNames account.drives)
+    ) cfg.accounts
   );
   unnamed = lib.subtractLists (map (drive: drive.name) drives) (lib.attrNames crew.settings.drives);
 in
@@ -438,7 +445,7 @@ in
           ) stateless
         } ${
           if lib.length stateless == 1 then "is" else "are"
-        } not set: under crew, each account names its crew state repository, which the module gives crew's drives and the runner's crew table (records 0028 and 0032).";
+        } not set: under crew, an account with a drive crew's settings set up names its crew state repository, which the module gives that drive and the runner's crew table (records 0028 and 0032 as amended on 2026-11-18).";
       }
       {
         assertion = !(crewPlane && crew.enable && unnamed != [ ]);

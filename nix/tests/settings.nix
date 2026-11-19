@@ -243,6 +243,23 @@ in
     settings.control_plane.type = "crew";
   };
 
+  # Under crew with no crew table, the account `own`, naming the state
+  # repository `example/state`, whose drive `home` keeps agentplot's flume,
+  # and the account `work`, naming no state repository, whose drive `field`
+  # keeps agentplot's sluice; it goes with crewKeys, which sets up `home`
+  # alone (the change crew-runs-only-the-drives-set-up-for-it, design
+  # Decision 5).
+  reading = {
+    accounts = {
+      own = {
+        state_repository = "example/state";
+        drives.home.repositories.agentplot = [ "flume" ];
+      };
+      work.drives.field.repositories.agentplot = [ "sluice" ];
+    };
+    settings.control_plane.type = "crew";
+  };
+
   # crewKeys with a second drive, `stray`, whose machine and state crew's
   # settings write, and which no account names.
   crewStray = {
