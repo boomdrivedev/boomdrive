@@ -15,8 +15,9 @@ use boomdrive_hosted::key::{Memory, Store};
 use boomdrive_hosted::table::Table;
 use common::fake::{self, Fake, Taken};
 use ed25519_dalek::SigningKey;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// A partition's key, fixed bytes of the test's own.
@@ -331,4 +332,121 @@ fn a_repository_no_partition_is_served() {
     let (words, _) = refusal(&asked);
     assert!(words.contains("example/service"), "{words}");
     assert!(fake.taken().is_empty(), "{:#?}", fake.taken());
+}
+
+/// The hosted-control-plane spec's "A control plane that speaks version
+/// 3": a control plane with no `runner/forge-token` answers 404 with no
+/// body, so the ask is refused, its words naming `runner/forge-token` and
+/// 404.
+#[test]
+fn a_control_plane_that_speaks_version_3() {
+    let fake = Fake::start();
+    let table = table(&fake, &[("home", &["example/app"])]);
+    let tokens = tokens(&fake, table, &["home"]);
+    fake.answer_forge_token("home", "example/app", fake::answered(404, ""));
+
+    let asked = tokens.token("example/app");
+
+    let (words, host_to_fix) = refusal(&asked);
+    assert!(!host_to_fix, "{words}");
+    assert!(words.contains("runner/forge-token"), "{words}");
+    assert!(words.contains("404"), "{words}");
+}
+
+/// An answer giving `token` for the ask, its body changed by `alter`.
+fn given_altered(
+    token: &str,
+    alter: impl Fn(&mut Value) + Send + Sync + 'static,
+) -> fake::ForgeAnswer {
+    let token = token.to_string();
+    Arc::new(move |ask: &Value| {
+        let mut body = json!({
+            "forge_token": ask["id"],
+            "repository": ask["body"]["forge_token"]["repository"],
+            "token": token,
+            "expires_at": "2026-11-18T13:00:00Z",
+        });
+        alter(&mut body);
+        Some((
+            200,
+            fake::message_text("plane:given", "forge_token_given", body),
+        ))
+    })
+}
+
+/// The hosted-control-plane spec's "A token given with a field unnamed":
+/// a `forge_token_given` holding `scope` fails version 4, so the ask is
+/// refused, its words naming `runner/forge-token` and the schema's path,
+/// and the token is in no words.
+#[test]
+fn a_token_given_with_a_field_unnamed() {
+    let fake = Fake::start();
+    let table = table(&fake, &[("home", &["example/app"])]);
+    let tokens = tokens(&fake, table, &["home"]);
+    fake.answer_forge_token(
+        "home",
+        "example/app",
+        given_altered("ghs_n0t-sh0wn", |body| body["scope"] = json!("contents")),
+    );
+
+    let asked = tokens.token("example/app");
+
+    let (words, _) = refusal(&asked);
+    assert!(words.contains("runner/forge-token"), "{words}");
+    assert!(words.contains("fails the schema's /"), "{words}");
+    assert!(!words.contains("ghs_n0t-sh0wn"), "{words}");
+}
+
+/// The hosted-control-plane spec's "A token for another repository": a
+/// `forge_token_given` for the ask of `example/app` naming
+/// `example/other` is refused, its words naming `runner/forge-token` and
+/// `example/other`, and the token is in no words.
+#[test]
+fn a_token_for_another_repository() {
+    let fake = Fake::start();
+    let table = table(&fake, &[("home", &["example/app"])]);
+    let tokens = tokens(&fake, table, &["home"]);
+    fake.answer_forge_token(
+        "home",
+        "example/app",
+        given_altered("ghs_n0t-sh0wn", |body| {
+            body["repository"] = json!("example/other")
+        }),
+    );
+
+    let asked = tokens.token("example/app");
+
+    let (words, _) = refusal(&asked);
+    assert!(words.contains("runner/forge-token"), "{words}");
+    assert!(words.contains("example/other"), "{words}");
+    assert!(!words.contains("ghs_n0t-sh0wn"), "{words}");
+}
+
+/// The hosted-control-plane spec's "The ask refused as a message": the
+/// fake answers 400 with `message_refused` naming the ask, with words, so
+/// the ask is refused, its words naming `runner/forge-token` and holding
+/// the fake's words as given.
+#[test]
+fn the_ask_refused_as_a_message() {
+    let fake = Fake::start();
+    let table = table(&fake, &[("home", &["example/app"])]);
+    let tokens = tokens(&fake, table, &["home"]);
+    let given = "/body/forge_token/repository is not one this control plane reads";
+    fake.answer_forge_token(
+        "home",
+        "example/app",
+        Arc::new(move |ask: &Value| {
+            let body = json!({ "message": ask["id"], "words": given });
+            Some((
+                400,
+                fake::message_text("plane:refused", "message_refused", body),
+            ))
+        }),
+    );
+
+    let asked = tokens.token("example/app");
+
+    let (words, _) = refusal(&asked);
+    assert!(words.contains("runner/forge-token"), "{words}");
+    assert!(words.contains(given), "{words}");
 }
