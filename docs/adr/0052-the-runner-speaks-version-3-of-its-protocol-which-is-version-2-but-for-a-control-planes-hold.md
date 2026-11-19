@@ -17,6 +17,8 @@ Amended 2026-11-18, by the construct stage of change/a-runner-reports-to-an-obse
 
 The test that holds version 3 to version 2 sets aside these three definitions and the two kinds' choice, beside the hold. Version 3's examples gain an observing hello, an observed report and a `pulled` answering an observing hello. Not taken: a version 4 for the observing connection alone, which boomdrive-cloud would pin beside version 3 for nothing a release has spoken. The cloud takes both the hold and the observing connection by its one move to version 3 (its record 0069).
 
+Amended 2026-11-19: record 0048 is withdrawn, so the runner opens no observing connection; version 3's observing hello stays as spoken (core.42), and a later version drops it.
+
 Status: accepted. The direction is the change's brief, quoted below. How version 3 meets it is the construct stage's own choice, made on this repository's rules: what version 3 holds beside version 2, its files' `$id`, and how the tests hold version 3 to version 2. Each is cheap to change until a release of the runner speaks version 3. From then on version 3 never changes (core.42), and a change to it is a version 4.
 
 The brief, 2026-11-18: "a new version of the runner's hosted protocol carries the hold act, its words and bound, so a hosted control plane can hold the move a place waits on it for as crew's can, versions 1 and 2 unchanged".
