@@ -28,7 +28,10 @@
 #
 # The sign-ins, the computer's key, the cards and the state are the
 # command line's own, and never here. `folder`, `texts` and `mod` are
-# given to the evaluated cases.
+# given to the evaluated cases, and `server`, the server signin/.claude.json
+# names, to sessions.nix, which adds it to each Claude Code home that names
+# none (design Decision 6 of the change
+# every-claude-code-session-has-boomdrives-plugins).
 {
   lib,
   runCommand,
@@ -56,6 +59,13 @@ let
   launcher = "${folder}/bin/pendingyou-hook";
   helper = "${folder}/bin/pendingyou-mcp-headers";
   lineOf = sub: "${quoted launcher} ${sub} --app claude-code || true";
+
+  # Pending You's MCP server, with the folder's headers helper.
+  server = {
+    type = "http";
+    url = "${origin}/mcp";
+    headersHelper = word helper;
+  };
 
   head = about: ''
     #!/bin/sh
@@ -116,13 +126,7 @@ let
       };
       permissionCards = true;
     };
-    "signin/.claude.json" = builtins.toJSON {
-      mcpServers.pendingyou = {
-        type = "http";
-        url = "${origin}/mcp";
-        headersHelper = word helper;
-      };
-    };
+    "signin/.claude.json" = builtins.toJSON { mcpServers.pendingyou = server; };
   };
   modes = {
     "bin/pendingyou-hook" = "0755";
@@ -139,6 +143,7 @@ runCommand "pendingyou-folder"
         texts
         modes
         mod
+        server
         ;
     };
   }
