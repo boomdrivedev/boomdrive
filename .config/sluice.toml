@@ -20,23 +20,30 @@ kind = "sandbox"
 # Nothing the checks run reaches past the host.
 network = "localhost"
 
-# A bolt is held to main's bar: its replay counts only when a sandboxed or
-# confined run recorded a pass for its key, since the cache also holds what
-# open shells ran.
+# The one signer whose runs the gates count: deneb, where the sessions run
+# and submit, signing as sessions with its own key, as sluice's own policy
+# names it. A branch that takes pull requests names its signers (sluice
+# record 0125, D22).
+[signers.sessions]
+ssh = "deneb ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHGx/Ip3yodP/Rg3DdMAjJXoYuBmMxTLpPrka3ei69M/ sluice deneb"
+
+# A bolt is held to main's bar: its replay counts only when a run deneb
+# signed recorded a pass for its key, since the cache also holds what open
+# shells ran.
 [branches."bolt/*"]
 required = ["#check-fast"]
-trust = ["confined", "sandbox"]
+trust = ["sessions"]
 parallel = 2
 batch = false
 flaky = "fail"
 timeout = "10m"
 remote = "origin"
 
-# A replay counts on main only when a sandboxed or confined run recorded a
-# pass for its key: the cache also holds what open shells ran.
+# A replay counts on main only when a run deneb signed recorded a pass for
+# its key: the cache also holds what open shells ran.
 [branches.main]
 required = ["#check-fast"]
-trust = ["confined", "sandbox"]
+trust = ["sessions"]
 parallel = 2
 batch = false
 flaky = "fail"

@@ -12,7 +12,8 @@
 # Decisions 6 and 9 of the change crews-companions-come-with-the-flake, and
 # timber's design Decisions 6 and 7 of the change
 # timber-comes-with-boomdrives-flake and design Decisions 2 to 8 of the
-# change the-set-takes-timbers-own-module.
+# change the-set-takes-timbers-own-module, and Rex's design Decision 4 of
+# the change the-set-carries-rex-matched-to-flume.
 t:
 let
   inherit (t) lib outputs;
@@ -452,6 +453,7 @@ let
     tools
     ++ [
       "herdr"
+      "rex"
       "ghostty"
       "boomdrive-launcher"
       "portless"
@@ -538,6 +540,7 @@ let
             lib.genAttrs
               [
                 "herdr"
+                "rex"
                 "ghostty"
                 "launcher"
                 "portless"
@@ -801,6 +804,74 @@ let
     t.expect (
       !builtins.elem set.worktrunk.outPath (profileOf without)
     ) "the ${platform} system profile without the runner holds the set's worktrunk";
+
+  # Rex, installed with the runner, named in no setting of Flume's, whose
+  # terminal stays herdr (design Decision 4 of the change
+  # the-set-carries-rex-matched-to-flume).
+  rexWithRunner =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { };
+      multiplexer = (hostOf evaluated).multiplexer or null;
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with the runner fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (builtins.elem set.rex.outPath (profileOf evaluated)) "the ${platform} system profile holds no set's rex"
+    ++
+      t.expect (multiplexer == "herdr")
+        "the ${platform} system gives Flume's host the multiplexer ${builtins.toJSON multiplexer}, not herdr";
+
+  # A Rex of the host's own, laid out as a package with a bin.
+  ownRex =
+    { pkgs, ... }:
+    {
+      services.boomdrive.rex.package = pkgs.runCommand "own-rex" { } "mkdir -p $out/bin";
+    };
+  hostsRex =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system ownRex;
+      profile = profileOf evaluated;
+    in
+    t.expect (builtins.elem evaluated.config.services.boomdrive.rex.package.outPath profile) "the ${platform} system profile holds no host's own rex"
+    ++ t.expect (
+      !builtins.elem set.rex.outPath profile
+    ) "the ${platform} system profile holds the set's rex beside the host's own";
+
+  noRex =
+    platform:
+    { system, set, ... }:
+    let
+      evaluated = system { services.boomdrive.rex.package = null; };
+    in
+    t.expect (
+      t.failures evaluated == [ ]
+    ) "a ${platform} system with no rex fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      !builtins.elem set.rex.outPath (profileOf evaluated)
+    ) "the ${platform} system profile with no rex holds the set's rex";
+
+  rexWithoutRunner =
+    platform:
+    { without, set, ... }:
+    t.expect (
+      !builtins.elem set.rex.outPath (profileOf without)
+    ) "the ${platform} system profile without the runner holds the set's rex";
+
+  noRexServer =
+    platform:
+    { system, set, ... }:
+    let
+      rex = builtins.unsafeDiscardStringContext set.rex.outPath;
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: text: t.expect (!lib.hasInfix rex text) "the ${platform} system's ${name} runs the set's rex"
+      ) (stepsOf platform (system { }))
+    );
 
   # timber, installed with the runner whether or not crew is on, by its
   # own module, which the Boomdrive module turns on (design Decisions 2, 3
@@ -1625,6 +1696,13 @@ let
     profileHolds platform "with worktrunk turned on without the runner" set (withoutOf {
       services.boomdrive.worktrunk.enable = true;
     }) [ "worktrunk" ] [ ];
+
+  rexWithout =
+    platform:
+    { withoutOf, set, ... }:
+    profileHolds platform "with Rex turned on without the runner" set (withoutOf {
+      services.boomdrive.rex.enable = true;
+    }) [ "rex" ] [ ];
 in
 onEach "The way in with the runner" withRunner
 // onEach "A host's own herdr" hostsHerdr
@@ -1654,6 +1732,12 @@ onEach "The way in with the runner" withRunner
 // onEach "No worktrunk of the set's" noWorktrunk
 // onEach "No worktrunk without the runner" worktrunkWithoutRunner
 // onEach "worktrunk without the runner" worktrunkWithout
+// onEach "Rex with the runner" rexWithRunner
+// onEach "A host's own Rex" hostsRex
+// onEach "No Rex of the set's" noRex
+// onEach "No Rex without the runner" rexWithoutRunner
+// onEach "Rex without the runner" rexWithout
+// onEach "No Rex server of the modules'" noRexServer
 // onEach "timber with the runner" timberWithRunner
 // onEach "A host's own timber" hostsTimber
 // onEach "No timber of the set's" noTimber
