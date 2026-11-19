@@ -367,7 +367,7 @@ The marketplace's `timber` plugin SHALL be the `plugins/claude-code` folder of t
 #### Scenario: The marketplace's plugins
 
 - **WHEN** the flake's packages are evaluated
-- **THEN** `boomdrive-claude-plugins` gives the marketplace `boomdrive` with `pendingyou` at `0.41.0`, `plannotator` at `0.28.61`, `timber` at `0.7.0`, `flume` at `0.29.0`, `sluice` and `sluice-board` at `0.94.8`, `crew` at `0.64.2` and `worktrunk` at `0.80.0`
+- **THEN** `boomdrive-claude-plugins` gives the marketplace `boomdrive` with `pendingyou`, `plannotator`, `timber`, `flume`, `sluice`, `sluice-board`, `crew` and `worktrunk`, each at the version of the set's tool it belongs to, `flume` at the set's Flume's `0.31.0`
 
 #### Scenario: No link into the store
 
