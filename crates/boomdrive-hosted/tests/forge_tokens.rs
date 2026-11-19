@@ -208,10 +208,127 @@ fn no_key_of_the_partition() {
 }
 
 /// The words `asked` gives, of any answer but a token.
-#[allow(dead_code)]
 fn words(asked: &TokenAsked) -> &str {
     match asked {
         TokenAsked::NotInstalled(words) | TokenAsked::Refused { words, .. } => words,
         TokenAsked::Token(_) => panic!("a token"),
     }
+}
+
+/// The partition each forge token's ask was proved by, in order.
+fn askers(taken: &[Taken]) -> Vec<Option<String>> {
+    asks(taken)
+        .into_iter()
+        .map(|ask| match ask {
+            Taken::ForgeToken { partition, .. } => partition.clone(),
+            _ => unreachable!("an ask"),
+        })
+        .collect()
+}
+
+/// The hosted-control-plane spec's "The second partition gives it":
+/// `home` and `work` are each served `example/app`; `home` is asked first,
+/// under its own key, and says the App is not installed, then `work`,
+/// under its own, which gives the token.
+#[test]
+fn the_second_partition_gives_it() {
+    let fake = Fake::start();
+    let table = table(
+        &fake,
+        &[("home", &["example/app"]), ("work", &["example/app"])],
+    );
+    let tokens = tokens(&fake, table, &["home", "work"]);
+    fake.answer_forge_token(
+        "home",
+        "example/app",
+        fake::refused(403, true, "home's installation does not cover example/app"),
+    );
+    fake.answer_forge_token(
+        "work",
+        "example/app",
+        fake::given("ghs_work", "2026-11-18T13:00:00Z"),
+    );
+
+    let asked = tokens.token("example/app");
+
+    let TokenAsked::Token(token) = asked else {
+        panic!("no token: {asked:?}");
+    };
+    assert_eq!(token.secret(), "ghs_work");
+    let taken = fake.taken();
+    assert_eq!(
+        askers(&taken),
+        [Some("home".to_string()), Some("work".to_string())],
+        "{taken:#?}"
+    );
+}
+
+/// The hosted-control-plane spec's "The App installed under no
+/// partition": each of `home` and `work` says the App's installation does
+/// not cover `example/app`, so the answer is the App's absence, its words
+/// naming each partition with the fake's words for it.
+#[test]
+fn the_app_installed_under_no_partition() {
+    let fake = Fake::start();
+    let table = table(
+        &fake,
+        &[("home", &["example/app"]), ("work", &["example/app"])],
+    );
+    let tokens = tokens(&fake, table, &["home", "work"]);
+    for (partition, words) in [
+        ("home", "home's installation does not cover example/app"),
+        ("work", "work's installation does not cover example/app"),
+    ] {
+        fake.answer_forge_token(partition, "example/app", fake::refused(403, true, words));
+    }
+
+    let asked = tokens.token("example/app");
+
+    let TokenAsked::NotInstalled(words) = &asked else {
+        panic!("not the App's absence: {asked:?}");
+    };
+    for named in [
+        "`home`: home's installation does not cover example/app",
+        "`work`: work's installation does not cover example/app",
+    ] {
+        assert!(words.contains(named), "{words}");
+    }
+    assert!(words.find("`home`") < words.find("`work`"), "{words}");
+    assert_eq!(askers(&fake.taken()).len(), 2);
+}
+
+/// The hosted-control-plane spec's "A refusal carried as given": the fake
+/// refuses `home`'s ask with `not_installed` false, so the ask is refused,
+/// its words naming `home` and holding the fake's words as given.
+#[test]
+fn a_refusal_carried_as_given() {
+    let fake = Fake::start();
+    let table = table(&fake, &[("home", &["example/app"])]);
+    let tokens = tokens(&fake, table, &["home"]);
+    let given = "example/app is registered to no drive this host serves";
+    fake.answer_forge_token("home", "example/app", fake::refused(403, false, given));
+
+    let asked = tokens.token("example/app");
+
+    let (words, host_to_fix) = refusal(&asked);
+    assert!(!host_to_fix, "{words}");
+    assert!(words.contains("`home`"), "{words}");
+    assert!(words.contains(given), "{words}");
+    assert_eq!(self::words(&asked), words);
+}
+
+/// The hosted-control-plane spec's "A repository no partition is served":
+/// a token asked for `example/service`, which no partition names, is
+/// refused naming it, and the fake takes no request.
+#[test]
+fn a_repository_no_partition_is_served() {
+    let fake = Fake::start();
+    let table = table(&fake, &[("home", &["example/app"])]);
+    let tokens = tokens(&fake, table, &["home"]);
+
+    let asked = tokens.token("example/service");
+
+    let (words, _) = refusal(&asked);
+    assert!(words.contains("example/service"), "{words}");
+    assert!(fake.taken().is_empty(), "{:#?}", fake.taken());
 }
