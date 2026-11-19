@@ -2,7 +2,10 @@
 # runner at this tree, Flume, sluice, crew, timber, herdr and worktrunk
 # each at a release tag through its own flake, timber's herdr plugin from
 # its same tag, and portless at its release tag through this flake's
-# recipe (records 0020 and 0023, core.44). crew's companions come with
+# recipe (records 0020 and 0023, core.44). Rex, which publishes no
+# source, is its own flake's package of its release binary, at the
+# release Flume's tree locks (record 0023 as amended on 2026-11-18).
+# crew's companions come with
 # them (record 0044): Pending You as it publishes it on npm, Plannotator
 # and plannotator-tui through numtide/llm-agents.nix's flake at their
 # release tags, and their herdr plugins at the commits the lock names.
@@ -15,7 +18,7 @@
 # devenv's (devenv.nix). Everything else of the flake's is under nix/, the
 # moon project `nix`.
 {
-  description = "Boomdrive: the runner, Flume, sluice, crew and timber, pinned together, with herdr, Ghostty, portless and worktrunk";
+  description = "Boomdrive: the runner, Flume, sluice, crew and timber, pinned together, with herdr, Rex, Ghostty, portless and worktrunk";
 
   # The family's cache, for a command run on this flake. A host's
   # configuration names the same two lines in its own nix settings, since
@@ -66,6 +69,15 @@
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
       };
+    };
+    # Rex, which Flume's Rex profile drives from the PATH, through its own
+    # flake by the URL its release keeps for good: the one Flume's tree
+    # locks at its tag, which Flume's Rex profile was checked against, and
+    # which moves with Flume's pin (record 0023 as amended on 2026-11-18).
+    # Its flake packages Rex's release binary, as Rex publishes no source.
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/preview/0.1.0-preview.14.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
     # portless publishes no flake, so the set builds it from its source at
     # its release tag by this flake's recipe, nix/packages/portless.nix
@@ -172,6 +184,11 @@
             # carries its version (sluice's record 0111; core.44).
             sluice = inputs.sluice.packages.${system}.default;
             inherit (inputs.herdr.packages.${system}) herdr;
+            # Rex's own flake's package, unchanged: Rex's release binary at
+            # the release Flume's Rex profile was checked against, its
+            # version that release's (record 0023 as amended on
+            # 2026-11-18).
+            inherit (inputs.rex.packages.${system}) rex;
             worktrunk = import ./nix/packages/worktrunk.nix {
               package = inputs.worktrunk.packages.${system}.worktrunk;
               tag = tagOf (import ./flake.nix).inputs.worktrunk.url;

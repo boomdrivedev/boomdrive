@@ -7,12 +7,12 @@ The flake's package set: the runner at this tree, and Flume, sluice and their he
 
 ### Requirement: The flake gives the family's host tools as packages
 
-The flake SHALL give, for each of its three systems, the packages `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `herdr-plugins`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `sluice`, `sluice-herdr-plugin`, `timber`, `timber-herdr-plugin` and `worktrunk`, `default` the runner's. It SHALL give no git, the host's own, and no tool a repository pins.
+The flake SHALL give, for each of its three systems, `boomdrive`, `boomdrive-claude-plugins`, `boomdrive-launcher`, `crew`, `flume`, `flume-herdr-plugin`, `ghostty`, `herdr`, `herdr-plugins`, `pendingyou`, `pendingyou-herdr-plugin`, `plannotator`, `plannotator-herdr-plugin`, `plannotator-tui`, `portless`, `rex`, `sluice`, `sluice-herdr-plugin`, `timber`, `timber-herdr-plugin` and `worktrunk`, `default` the runner's. It SHALL give no git, the host's own, and no tool a repository pins.
 
 #### Scenario: Every system's packages
 
 - **WHEN** the flake's outputs are evaluated for each of the three systems
-- **THEN** each gives the twenty packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
+- **THEN** each gives the twenty-one packages and `default`, each a derivation, and `default` is `boomdrive`, and the flake gives no other system
 
 #### Scenario: No tool of the host's own
 
@@ -112,7 +112,7 @@ The gate SHALL run the set's own Flume and sluice, the flake's packages of its l
 
 ### Requirement: Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs
 
-Each package but crew's companions' SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's, worktrunk's and timber's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree.
+Each package but crew's companions' and Rex's SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's, worktrunk's and timber's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree.
 
 #### Scenario: Flume through its own flake
 
@@ -401,3 +401,32 @@ The manifest of each of the marketplace's `flume`, `sluice`, `sluice-board`, `cr
 
 - **WHEN** worktrunk's manifest names no version and the set's worktrunk is `0.80.0`
 - **THEN** the marketplace lists `worktrunk` at `0.80.0` and neither the flake's test nor the build fails; and where the manifest says `0.79.0`, the flake's test fails, naming `worktrunk`, `0.79.0` and `0.80.0`
+
+### Requirement: Rex is Rex's flake's own, at the release Flume's tree locks
+
+The `rex` package SHALL be Rex's flake's own `rex` for each system, unchanged, its version the release the URL `flake.nix` names for Rex ends in. That URL SHALL be the one Flume's `devenv.lock`, at the tag the lock names for Flume, holds for Rex as its `original`, and the lock SHALL lock it at the URL and hash that `devenv.lock` locks. The flake's test SHALL fail where one does not hold, naming both, and where Flume's `devenv.lock` locks no Rex.
+
+#### Scenario: Rex through its own flake
+
+- **WHEN** `flake.nix` names Rex by `https://pkgs.superlogical.com/rex/nix/preview/0.1.0-preview.14.tar.gz`
+- **THEN** the `rex` package of each system is Rex's flake's own `rex` for that system, unchanged, its program `rex` and its version `0.1.0-preview.14`
+
+#### Scenario: Rex other than its URL's release
+
+- **WHEN** a system's Rex says `0.1.0-preview.15` and `flake.nix` names Rex by the URL of `0.1.0-preview.14`
+- **THEN** the flake's test fails, naming `0.1.0-preview.15` and `0.1.0-preview.14`
+
+#### Scenario: Rex is Flume's
+
+- **WHEN** the flake's test reads Flume's `devenv.lock` at the tag the lock names for Flume
+- **THEN** `flake.nix` names Rex by the URL it holds for Rex as its `original`, and the lock locks Rex at the URL and hash it locks
+
+#### Scenario: Rex other than Flume's
+
+- **WHEN** Flume's `devenv.lock` locks Rex's `0.1.0-preview.19`, and `flake.nix` and the lock name `0.1.0-preview.14`
+- **THEN** the flake's test fails, each failure naming both releases' URLs
+
+#### Scenario: Rex moved without the lock
+
+- **WHEN** Flume's `devenv.lock` and `flake.nix` name Rex's `0.1.0-preview.19`, and the lock locks `0.1.0-preview.14`
+- **THEN** the flake's test fails once, naming both releases' URLs

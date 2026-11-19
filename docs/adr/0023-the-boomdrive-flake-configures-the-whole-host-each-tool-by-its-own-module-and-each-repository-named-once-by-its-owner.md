@@ -159,3 +159,28 @@ Status: decided on 2026-11-18 by the design agent, on afterthought-design's ask 
 - **Rex is in the set beside herdr.** Rex is the other terminal Flume carries a profile for (flume record 0068), and Flume drives it from the `PATH`. The set gives Rex from Rex's own flake (core.44), built into the family's cache, as it gives herdr and Ghostty.
 - **At Flume's pin.** The set takes Rex at the revision the pinned Flume's Rex profile is tested against, read from that Flume tag, and moves it whenever the set moves Flume's pin, as it holds Ghostty at the release Flume's window is tested against. Not taken: Rex at a revision of the set's own choosing, which can drift from what Flume's Rex profile reads; waiting for Flume's flake to export Rex, which nothing else needs.
 - **The host chooses its terminal.** A host that takes the set gets Rex installed; which terminal Flume opens stays the host's Flume settings.
+
+## Amendment, 2026-11-18: how Rex comes with the flake
+
+Status: decided on 2026-11-18 by the code stage of the fix `main--the-set-carries-rex-matched-to-flume`, which builds the amendment above through the OpenSpec change `the-set-carries-rex-matched-to-flume`. These are the writing agent's choices, made within the amendment above and rules core.13, core.18, core.44, core.45 and core.46, each cheap to change. The change's design gives the path not taken for each, in its Decisions 1 to 7.
+
+- **By the URL Flume's tree locks.** `flake.nix` names Rex's flake by the URL its release keeps for good, the one Flume's `devenv.yaml` names at the tag the lock names for Flume, `https://pkgs.superlogical.com/rex/nix/preview/0.1.0-preview.14.tar.gz` at Flume v0.29.0, its `nixpkgs` following the flake's, and the lock locks it as Flume's `devenv.lock` does. Not taken: Rex's preview channel's URL, which says no release; Rex's own nixpkgs, a second nixpkgs in the lock.
+- **Rex's flake's own package, unchanged.** The set's `rex` is Rex's flake's `rex` for each of the set's three systems, the three that flake packages: Rex's release binary, as Rex publishes no source, its version the release its URL names. Rex's flake allows Rex alone of unfree packages, in its own nixpkgs, so the set allows no other and asks no host to.
+- **Held to Flume's `devenv.lock`.** The flake's test reads Flume's `devenv.lock` at the tag the lock names for Flume, and fails where `flake.nix` names another URL for Rex than its `original`, or the lock another URL or hash than it locks, naming both. A move of Flume's pin to a tag whose tree locks another Rex so fails the gate until the set's Rex moves with it. Not taken: reading `devenv.yaml`, which nix reads no YAML of; a version constant, as Ghostty's is, since Flume's tree pins its Rex where it pins no Ghostty.
+- **The Boomdrive module's own option, with the runner.** `services.boomdrive.rex.package` installs Rex with the runner, the set's by default, a host's own replacing it and `null` installing none, as worktrunk's does. The modules name Rex in no setting of Flume's, so Flume's `host.multiplexer` stays `herdr` by default, write no file of Rex's and start no server of it. Not taken: Rex's own NixOS module, which runs Rex's server as a system service no tool of the set asks for, and has no nix-darwin counterpart; its home-manager module, which system modules cannot import, and which writes into a home.
+- **In the flake's shell,** beside herdr, since Flume in the shell drives whichever terminal its settings name from the `PATH`. Not taken: leaving it out, as Ghostty is.
+- **The boot asks `rex version`.** The booted system holds Rex, and Rex takes no `--version`, so the boot asks its version as `rex version`, as it asks crew's as `crew _release`.
+- **Not in `herdr-plugins` or the quick start.** A Mac set up by `boomdrive setup` may add `github:boomdrivedev/boomdrive#rex` by its profile line, which the README names.
+
+core.44's, core.45's and core.46's details are amended in this amendment's commit with what they allow.
+
+## Amendment, 2026-11-18: Rex has a switch of its own
+
+Status: decided on 2026-11-18 by the code stage of the fix `every-machine-takes-boomdrives-tools-1`, which merged `main`'s Rex into the bolt `every-machine-takes-boomdrives-tools`. The two amendments above of that day each decided alone: one that every tool of the set has a switch of its own, the other that Rex comes with the runner. core.62 decides between them, so this is the writing agent's reading of the written rules, cheap to change. The OpenSpec change `rex-has-a-switch-of-its-own` carries it.
+
+Amends "The Boomdrive module's own option, with the runner" above.
+
+- **Rex has a switch, as worktrunk has.** `services.boomdrive.rex.enable` is `services.boomdrive.enable` by default, a host's own value winning. Where it is on, with the runner or without, the modules install `services.boomdrive.rex.package`: the set's by default, a host's own as given, and none for `null`. Where it is off, they install no Rex. A host with the runner gets what `main` gave it. Not taken: Rex with the runner alone, which core.62 rules out as a tool only the runner's switch installs.
+- **The rest stands.** The modules still name Rex in no setting of Flume's, write no file of Rex's and start no server of it, with the runner or without. Rex has no herdr plugin, so `services.boomdrive.herdr.plugins` does not change.
+
+core.46's and core.62's details name Rex's switch in the merge commit that resolved the two amendments.

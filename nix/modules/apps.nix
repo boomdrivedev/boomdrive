@@ -45,7 +45,14 @@
 # and the modules write no file of timber's and start no
 # `timber serve`, which is timber's own (record 0023 as amended on
 # 2026-11-13 and 2026-11-15; design Decisions 5 to 7 of the change
-# the-set-takes-timbers-own-module).
+# the-set-takes-timbers-own-module). Rex, the other terminal Flume carries
+# a profile for and drives from the PATH, is installed the same way, by a
+# switch of its own, the set's at the release Flume's tree locks; Rex's own
+# NixOS module, which runs Rex's server as a service, is not taken, and
+# nix-darwin has none. The modules name Rex in no setting of Flume's,
+# whose terminal stays the host's to choose, write no file of Rex's and
+# start no server of it (record 0023 as amended on 2026-11-18; design
+# Decision 4 of the change the-set-carries-rex-matched-to-flume; core.62).
 # With the runner, the launcher is the set's made, by its override, for
 # each drive of this host, in the order of the drives' names, and without
 # it the set's own, `Default stream` alone, since a drive gives Flume its
@@ -175,6 +182,10 @@ in
         description = "The herdr plugins each activation links, in order, with herdr's own `herdr plugin link`, as the set's user, wherever `services.boomdrive.herdr.enable` is on, with the runner or without. By default, the set's plugin of each tool the set installs, each only beside the set's own build of it: Flume's, sluice's and timber's where that tool's module is on with the set's package, then Pending You for Herdr where `services.boomdrive.pendingyou.enable` is on with the set's Pending You, and Annotate where `services.boomdrive.plannotator-tui.enable` is on with the set's plannotator-tui. A host that runs its own build of a tool and wants its pane lists its own build's plugin here, and a list given is linked as given. A relink enables a plugin the person disabled, so a host that wants one off leaves it out; one left out stays linked until `herdr plugin unlink`.";
       };
     };
+    rex = {
+      enable = switch "Rex";
+      package = installed "rex" "Rex, the terminal Flume's Rex profile drives from the PATH, installed where `services.boomdrive.rex.enable` is on, at the release Flume's tree locks; a host's own replaces it, and `null` installs none. Which terminal Flume opens stays the host's Flume settings: the modules name Rex in none.";
+    };
     ghostty = {
       enable = switch "Ghostty";
       package = installed "ghostty" "Ghostty, the terminal app Flume's window profile opens, installed where `services.boomdrive.ghostty.enable` is on; a host's own replaces it, and `null` installs none.";
@@ -202,6 +213,7 @@ in
   # change boomdrives-tools-install-on-a-machine-without-the-runner).
   config = lib.mkMerge [
     (installing "herdr")
+    (installing "rex")
     (installing "ghostty")
     (installing "worktrunk")
     (installing "launcher")

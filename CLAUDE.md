@@ -30,8 +30,8 @@ same way (record 0007 as amended; core.33).
 
 The flake at the root, `flake.nix` and `flake.lock`, with everything
 else of it under `nix/`, gives the runner, Flume, sluice, crew and
-timber pinned together, with herdr, its plugins, Ghostty, portless and
-worktrunk, and crew's companions, Pending You, Plannotator and
+timber pinned together, with herdr, its plugins, Rex, Ghostty, portless
+and worktrunk, and crew's companions, Pending You, Plannotator and
 plannotator-tui, with their herdr plugins and the set's marketplace of
 every Claude Code plugin its tools and companions ship (record 0044),
 each tool's own module re-exported beside the runner's service, `services.boomdrive`,
@@ -42,8 +42,8 @@ on by a switch of its own, which the runner's turns on, so a host
 without the runner takes the ones it wants, with their herdr plugins,
 linked as the set's user (record 0023 as amended on 2026-11-18;
 core.62). With the runner,
-the modules install herdr, Ghostty, portless, worktrunk, timber and the
-Boomdrive launcher, a menu-bar app on macOS and a desktop entry on
+the modules install herdr, Rex, Ghostty, portless, worktrunk, timber and
+the Boomdrive launcher, a menu-bar app on macOS and a desktop entry on
 Linux, with an entry for each drive, that runs `flume open`, and link
 the set's herdr plugins with herdr's own command. With the runner and crew, they
 install the companions and `pendingyou-signin`, link the companions'

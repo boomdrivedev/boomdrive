@@ -272,7 +272,7 @@ The modules' own activation SHALL link the runner's file, write Pending You's fo
 
 ### Requirement: The modules hold no option that installs a tool its own module installs
 
-The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Ghostty, portless, worktrunk, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
+The modules SHALL hold no option of their own that installs a tool whose own module installs it: setting `services.boomdrive.tools` SHALL fail evaluation, naming `services.flume.package` and `services.sluice.package`. Their own options SHALL install herdr, Rex, Ghostty, portless, worktrunk, the launcher, Pending You, Plannotator and plannotator-tui. The README's install with nix SHALL name each option that installs a tool of the set, and the shell, and no `services.boomdrive.tools`.
 
 #### Scenario: The tools option is gone
 
@@ -282,7 +282,7 @@ The modules SHALL hold no option of their own that installs a tool whose own mod
 #### Scenario: The README's words
 
 - **WHEN** the README's install with nix is read
-- **THEN** it names `services.flume.package`, `services.sluice.package`, `services.crew.package`, `services.boomdrive.herdr.package`, `services.boomdrive.herdr.plugins`, `services.boomdrive.ghostty.package`, `services.boomdrive.portless.package`, `services.boomdrive.worktrunk.package`, `services.boomdrive.launcher.package`, `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package`, `services.boomdrive.plannotator-tui.package` and `nix develop github:boomdrivedev/boomdrive`, and no `services.boomdrive.tools`
+- **THEN** it names `services.flume.package`, `services.sluice.package`, `services.crew.package`, `services.boomdrive.herdr.package`, `services.boomdrive.herdr.plugins`, `services.boomdrive.rex.package`, `services.boomdrive.ghostty.package`, `services.boomdrive.portless.package`, `services.boomdrive.worktrunk.package`, `services.boomdrive.launcher.package`, `services.boomdrive.pendingyou.package`, `services.boomdrive.plannotator.package`, `services.boomdrive.plannotator-tui.package` and `nix develop github:boomdrivedev/boomdrive`, and no `services.boomdrive.tools`
 
 ### Requirement: A crew table written out wins whole
 
@@ -1702,7 +1702,7 @@ A system that imports the platform's module and leaves `services.boomdrive` off 
 #### Scenario: Every tool turned on without the runner
 
 - **WHEN** a system leaves `services.boomdrive` off and turns on Flume's, sluice's, crew's and timber's modules and every switch of the Boomdrive module's, naming no package, with `services.boomdrive.user = "alice"` on NixOS
-- **THEN** its system profile holds the set's `flume`, `sluice`, `crew`, `timber`, `herdr`, `ghostty`, `boomdrive-launcher`, `portless`, `worktrunk`, `pendingyou`, `plannotator` and `plannotator-tui`, each by the store path the set gives, and no `boomdrive`, on nix-darwin and on NixOS
+- **THEN** its system profile holds the set's `flume`, `sluice`, `crew`, `timber`, `herdr`, `rex`, `ghostty`, `boomdrive-launcher`, `portless`, `worktrunk`, `pendingyou`, `plannotator` and `plannotator-tui`, each by the store path the set gives, and no `boomdrive`, on nix-darwin and on NixOS
 
 ### Requirement: herdr's plugins by default are those of the tools the set installs
 
@@ -1943,3 +1943,37 @@ Where the modules write Pending You's folder, `environment.extraInit` SHALL hold
 
 - **WHEN** a system turns on `services.boomdrive` and leaves `services.crew` off, or sets `services.boomdrive.pendingyou.package` to `null`
 - **THEN** its `environment.extraInit` holds none of the lines
+
+### Requirement: The modules install Rex, replaceable or dropped
+
+`services.boomdrive.rex.enable` SHALL be `services.boomdrive.enable` by default, a host's own value winning. Where it is on, with the runner or without, the modules SHALL put `services.boomdrive.rex.package` in the system profile: the set's `rex` for the host's system by default, a host's own replacing it, and none for `null`. Where it is off, they SHALL install no Rex. They SHALL name Rex in no setting of Flume's, and no step, unit, daemon or agent of theirs SHALL run Rex.
+
+#### Scenario: Rex with the runner
+
+- **WHEN** a system turns on `services.boomdrive` and names no Rex
+- **THEN** the system profile holds the set's `rex`, and Flume's `host.multiplexer` is still `herdr`, on nix-darwin and on NixOS
+
+#### Scenario: A host's own Rex
+
+- **WHEN** `services.boomdrive.rex.package` is a package of the host's own
+- **THEN** the system profile holds it and not the set's Rex, on nix-darwin and on NixOS
+
+#### Scenario: No Rex of the set's
+
+- **WHEN** `services.boomdrive.rex.package` is `null`
+- **THEN** the system evaluates and its profile holds no Rex of the set's, on nix-darwin and on NixOS
+
+#### Scenario: No Rex without the runner
+
+- **WHEN** a system imports the platform's module, leaves `services.boomdrive` off and does not turn Rex on
+- **THEN** its system profile holds no Rex of the set's, on nix-darwin and on NixOS
+
+#### Scenario: Rex without the runner
+
+- **WHEN** a system leaves `services.boomdrive` off and turns on `services.boomdrive.rex.enable`
+- **THEN** its system profile holds the set's `rex`, on nix-darwin and on NixOS
+
+#### Scenario: No Rex server of the modules'
+
+- **WHEN** a system turns on `services.boomdrive` and names no Rex
+- **THEN** no launchd daemon or agent, no systemd unit and no activation step of the system names the set's Rex, on nix-darwin and on NixOS
