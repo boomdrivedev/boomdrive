@@ -91,7 +91,7 @@ pub enum Call {
 /// Flume in memory.
 #[derive(Default)]
 pub struct FakeFlume {
-    state: RefCell<State>,
+    state: Mutex<State>,
 }
 
 #[derive(Default)]
@@ -119,10 +119,23 @@ struct State {
     calls: Vec<Call>,
     /// What Flume does on its own while the next launch or act runs.
     meanwhile: Option<Meanwhile>,
+    /// A launch, by its name, or an act, by its place, held until its
+    /// condition reads the calls made so far as met, or [`HELD`] has
+    /// passed.
+    holds: BTreeMap<String, Waits>,
+    /// Whether each launch or act held was let go by its condition, by
+    /// its name or place.
+    let_go: BTreeMap<String, bool>,
 }
 
+/// What a launch or an act waits on: the calls made so far read as met.
+type Waits = Box<dyn Fn(&[Call]) -> bool + Send>;
+
+/// The longest a held launch or act waits for its condition.
+pub const HELD: Duration = Duration::from_secs(10);
+
 /// What Flume does on its own while a command of the runner's runs.
-type Meanwhile = Box<dyn FnOnce(&FakeFlume)>;
+type Meanwhile = Box<dyn FnOnce(&FakeFlume) + Send>;
 
 /// A host part with no bound, its one stream `default`, and a pool whose
 /// account is named.
@@ -141,19 +154,19 @@ impl FakeFlume {
     /// A Flume standing no place, on a host with no bound.
     pub fn new() -> FakeFlume {
         let flume = FakeFlume::default();
-        flume.state.borrow_mut().host = unbounded();
+        flume.state().host = unbounded();
         flume
     }
 
     /// Stands a place whose entry is `entry`.
     pub fn stand(&self, entry: Value) {
-        self.state.borrow_mut().places.push(entry);
+        self.state().places.push(entry);
     }
 
     /// The entry of the place at `place`, where one stands, else the
     /// record Flume keeps of it tidied, `<place>@<at>`.
     pub fn entry(&self, place: &str) -> Option<Value> {
-        let state = self.state.borrow();
+        let state = self.state();
         let tidied = format!("{place}@");
         let standing = state.places.iter().find(|entry| entry["place"] == place);
         standing
@@ -169,7 +182,7 @@ impl FakeFlume {
 
     /// Sets the place at `place`'s field `field` to `value`.
     pub fn set(&self, place: &str, field: &str, value: Value) {
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state();
         let entry = state
             .places
             .iter_mut()
@@ -211,7 +224,7 @@ impl FakeFlume {
     /// phase is pending for each recipient an end of it is pending for.
     fn tidy_over(&self, place: &str, over: Value, key: &str, at: u64, pending_for: &[&str]) {
         self.end(place, key, pending_for);
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state();
         let entry = state
             .places
             .iter_mut()
@@ -229,7 +242,7 @@ impl FakeFlume {
     /// each of `pending_for`, its delivery keyed `<name>/t/<key>`, `<name>`
     /// the place's last path segment.
     pub fn end(&self, place: &str, key: &str, pending_for: &[&str]) {
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state();
         let entry = state
             .places
             .iter_mut()
@@ -250,90 +263,106 @@ impl FakeFlume {
     /// The place at `place` tidied, with nothing pending: no listing holds
     /// it, and `status <place>` is refused.
     pub fn tidy(&self, place: &str) {
-        self.state
-            .borrow_mut()
-            .places
-            .retain(|entry| entry["place"] != place);
+        self.state().places.retain(|entry| entry["place"] != place);
     }
 
     /// The host part, `status.host`.
     pub fn host(&self, host: Value) {
-        self.state.borrow_mut().host = host;
+        self.state().host = host;
     }
 
     /// The listing answered with `reply`, as a test scripts it whole.
     pub fn listing(&self, reply: Result<Reply, Unrun>) {
-        self.state.borrow_mut().listing = Some(reply);
+        self.state().listing = Some(reply);
     }
 
     /// The listing answered from the places again, as Flume gives it.
     pub fn listing_as_flume(&self) {
-        self.state.borrow_mut().listing = None;
+        self.state().listing = None;
     }
 
     /// The launch named `name` answered with `reply`.
     pub fn launch_answers(&self, name: &str, reply: Result<Reply, Unrun>) {
-        self.state
-            .borrow_mut()
-            .launches
-            .insert(name.to_string(), reply);
+        self.state().launches.insert(name.to_string(), reply);
     }
 
     /// An act on the place at `place` answered with `reply`.
     pub fn act_answers(&self, place: &str, reply: Result<Reply, Unrun>) {
-        self.state
-            .borrow_mut()
-            .acts
-            .insert(place.to_string(), reply);
+        self.state().acts.insert(place.to_string(), reply);
     }
 
     /// `status <place>` answered with `reply`.
     pub fn status_answers(&self, place: &str, reply: Result<Reply, Unrun>) {
-        self.state
-            .borrow_mut()
-            .statuses
-            .insert(place.to_string(), reply);
+        self.state().statuses.insert(place.to_string(), reply);
     }
 
     /// A confirmation whose first key is `key` answered with `reply`,
     /// until the test says otherwise.
     pub fn confirm_answers(&self, key: &str, reply: Result<Reply, Unrun>) {
-        self.state
-            .borrow_mut()
-            .confirms
-            .insert(key.to_string(), reply);
+        self.state().confirms.insert(key.to_string(), reply);
     }
 
     /// A confirmation whose first key is `key` answered as Flume answers
     /// it again.
     pub fn confirm_as_flume(&self, key: &str) {
-        self.state.borrow_mut().confirms.remove(key);
+        self.state().confirms.remove(key);
     }
 
     /// `then` done to Flume while the next launch or act runs, as Flume's
     /// own settling moves a place on while the runner waits on a command.
-    pub fn meanwhile(&self, then: impl FnOnce(&FakeFlume) + 'static) {
-        self.state.borrow_mut().meanwhile = Some(Box::new(then));
+    pub fn meanwhile(&self, then: impl FnOnce(&FakeFlume) + Send + 'static) {
+        self.state().meanwhile = Some(Box::new(then));
+    }
+
+    /// The launch named `name`, or the act on the place `name`, held while
+    /// it runs until `until` reads the calls made so far as met, or
+    /// [`HELD`] has passed, as a launch whose readying takes minutes.
+    pub fn hold(&self, name: &str, until: impl Fn(&[Call]) -> bool + Send + 'static) {
+        self.state().holds.insert(name.to_string(), Box::new(until));
+    }
+
+    /// Whether the launch or act `name` held was let go by its condition,
+    /// where it was held at all.
+    pub fn let_go_by(&self, name: &str) -> Option<bool> {
+        self.state().let_go.get(name).copied()
+    }
+
+    /// Waits, where the launch or act `name` is held, for its condition.
+    fn held(&self, name: &str) {
+        let Some(until) = self.state().holds.remove(name) else {
+            return;
+        };
+        let began = std::time::Instant::now();
+        let met = loop {
+            if until(&self.state().calls) {
+                break true;
+            }
+            if began.elapsed() >= HELD {
+                break false;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        self.state().let_go.insert(name.to_string(), met);
     }
 
     /// Every call left unrun with `words`, as when `flume` is not there.
     pub fn unrun(&self, words: &str) {
-        self.state.borrow_mut().unrun = Some(words.to_string());
+        self.state().unrun = Some(words.to_string());
     }
 
     /// Every call answered again.
     pub fn run(&self) {
-        self.state.borrow_mut().unrun = None;
+        self.state().unrun = None;
     }
 
     /// Each call made, in order.
     pub fn calls(&self) -> Vec<Call> {
-        self.state.borrow().calls.clone()
+        self.state().calls.clone()
     }
 
     /// Each call made, in order, forgotten once given.
     pub fn take_calls(&self) -> Vec<Call> {
-        std::mem::take(&mut self.state.borrow_mut().calls)
+        std::mem::take(&mut self.state().calls)
     }
 
     /// Each call but the listing: what acts on, launches or reads a place.
@@ -378,15 +407,21 @@ impl FakeFlume {
             .collect()
     }
 
+    /// Flume's state, held while a call reads or changes it, so calls made
+    /// side by side on the runner's threads each see it whole.
+    fn state(&self) -> std::sync::MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     fn call(&self, call: Call) -> Option<Unrun> {
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state();
         state.calls.push(call);
         state.unrun.clone().map(Unrun)
     }
 
     /// What Flume does on its own while a launch or an act runs.
     fn settle(&self) {
-        let meanwhile = self.state.borrow_mut().meanwhile.take();
+        let meanwhile = self.state().meanwhile.take();
         if let Some(then) = meanwhile {
             then(self);
         }
@@ -395,15 +430,14 @@ impl FakeFlume {
     /// Whether the place at `place` was launched with the runner among
     /// its recipients.
     fn held_for_runner(&self, place: &str) -> bool {
-        self.state
-            .borrow()
+        self.state()
             .recipients
             .get(place)
             .is_some_and(|named| named.iter().any(|name| name == flume::RECIPIENT))
     }
 
     fn listing_now(&self) -> Value {
-        let state = self.state.borrow();
+        let state = self.state();
         json!({ "status": { "places": state.places, "host": state.host } })
     }
 }
@@ -456,8 +490,9 @@ impl Flume for FakeFlume {
         if let Some(unrun) = self.call(Call::Launch(args.clone())) {
             return Err(unrun);
         }
+        self.held(&args.name);
         self.settle();
-        if let Some(reply) = self.state.borrow().launches.get(&args.name) {
+        if let Some(reply) = self.state().launches.get(&args.name) {
             return reply.clone();
         }
         let entry = json!({
@@ -472,8 +507,7 @@ impl Flume for FakeFlume {
             "stream": { "name": args.stream.as_deref().unwrap_or("default"), "from": "launch" },
         });
         self.stand(entry.clone());
-        self.state
-            .borrow_mut()
+        self.state()
             .recipients
             .insert(place_of(&args.name), flume::recipients(&args.recipients));
         Ok(Reply::Given(printed(
@@ -485,8 +519,9 @@ impl Flume for FakeFlume {
         if let Some(unrun) = self.call(Call::Act(place.to_string(), act.clone())) {
             return Err(unrun);
         }
+        self.held(place);
         self.settle();
-        if let Some(reply) = self.state.borrow().acts.get(place) {
+        if let Some(reply) = self.state().acts.get(place) {
             return reply.clone();
         }
         let word = match act {
@@ -517,7 +552,7 @@ impl Flume for FakeFlume {
             Act::Drop | Act::Done if self.held_for_runner(place) => {
                 let over = if *act == Act::Drop { "dropped" } else { "done" };
                 let at = {
-                    let mut state = self.state.borrow_mut();
+                    let mut state = self.state();
                     state.tidied_at += 1;
                     100 + state.tidied_at
                 };
@@ -537,7 +572,7 @@ impl Flume for FakeFlume {
         if let Some(unrun) = self.call(Call::Status) {
             return Err(unrun);
         }
-        if let Some(reply) = &self.state.borrow().listing {
+        if let Some(reply) = &self.state().listing {
             return reply.clone();
         }
         Ok(Reply::Given(printed(&self.listing_now())))
@@ -550,11 +585,11 @@ impl Flume for FakeFlume {
         }
         let scripted = keys
             .first()
-            .and_then(|first| self.state.borrow().confirms.get(first).cloned());
+            .and_then(|first| self.state().confirms.get(first).cloned());
         if let Some(reply) = scripted {
             return reply;
         }
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state();
         let mut confirmed = Vec::new();
         for key in keys {
             let under = |entry: &Value| {
@@ -600,10 +635,10 @@ impl Flume for FakeFlume {
         if let Some(unrun) = self.call(call) {
             return Err(unrun);
         }
-        if let Some(reply) = self.state.borrow().statuses.get(place) {
+        if let Some(reply) = self.state().statuses.get(place) {
             return reply.clone();
         }
-        let host = self.state.borrow().host.clone();
+        let host = self.state().host.clone();
         match self.entry(place) {
             Some(entry) => Ok(Reply::Given(printed(
                 &json!({ "status": { "places": [entry], "host": host } }),
@@ -849,54 +884,58 @@ impl Bench {
         self.pass_over(&self.flume, plane)
     }
 
-    /// One control pass against `plane` over `flume`, the next pass never
-    /// due, and the lines it said.
+    /// One control pass against `plane` over `flume`, and the lines it
+    /// said.
     pub fn pass_over(&self, flume: &dyn Flume, plane: &mut Fake) -> (Passed, Vec<String>) {
-        self.pass_due(flume, plane, &|| false)
-    }
-
-    /// One control pass against `plane` over `flume`, the next pass due
-    /// once `due` says so, and the lines it said.
-    pub fn pass_due(
-        &self,
-        flume: &dyn Flume,
-        plane: &mut Fake,
-        due: &dyn Fn() -> bool,
-    ) -> (Passed, Vec<String>) {
-        self.pass_of(PART, flume, plane, due)
+        self.pass_of(PART, flume, plane)
     }
 
     /// One control pass of the part `label`, whose control plane is
-    /// `plane`, over `flume`, the next pass due once `due` says so, and
-    /// the lines it said.
+    /// `plane`, over `flume`, waiting for every command it starts, as `run
+    /// --once`'s does, and the lines it said.
     pub fn pass_of(
         &self,
         label: &str,
         flume: &dyn Flume,
         plane: &mut dyn ControlPlane,
-        due: &dyn Fn() -> bool,
     ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
-        let sluice = sluice::Cli::new(self.sluice.program()).patient(self.sluice_patience.get());
-        let carrier = Carrier {
+        let sluice = self.sluice_cli();
+        let carrier = self.carrier(label, flume, &sluice, &control_dir);
+        let mut lines = Vec::new();
+        let passed = carrier.pass(plane, &mut |line| lines.push(line));
+        (passed, lines)
+    }
+
+    /// The stub `sluice`, awaited for the bench's patience.
+    pub fn sluice_cli(&self) -> sluice::Cli {
+        sluice::Cli::new(self.sluice.program()).patient(self.sluice_patience.get())
+    }
+
+    /// The carrier of the part `label` over `flume` and `sluice`, its
+    /// briefs under `control_dir`.
+    pub fn carrier<'a>(
+        &'a self,
+        label: &'a str,
+        flume: &'a dyn Flume,
+        sluice: &'a sluice::Cli,
+        control_dir: &'a Path,
+    ) -> Carrier<'a> {
+        Carrier {
             label,
             flume,
-            sluice: &sluice,
+            sluice,
             git: &self.git,
             clones: &self.clones,
             tools: &self.tools,
             notices: &self.notices,
-            control_dir: &control_dir,
+            control_dir,
             report: &self.report_file,
             locks: &self.locks,
             relays: &self.relays,
             reach: &self.reach,
             least: &self.least,
-            due,
-        };
-        let mut lines = Vec::new();
-        let passed = carrier.pass(plane, &mut |line| lines.push(line));
-        (passed, lines)
+        }
     }
 
     /// The report the file holds.
@@ -1005,8 +1044,9 @@ pub fn preview(id: &str, branch: &str, revision: &str, done: bool) -> Want {
     })
 }
 
-/// The stub's program. Each call writes its arguments, NUL-terminated, to
-/// `call-<n>`, whole once there, so a test that reads the calls while the
+/// The stub's program. Each call claims its number `<n>` by making the
+/// folder `claim-<n>`, so calls made side by side never share one, and
+/// writes its arguments, NUL-terminated, to `call-<n>`, whole once there, so a test that reads the calls while the
 /// runner runs never reads one half written. It writes whether
 /// `FLUME_RECIPIENT` was set to `recipient-<n>`, and the brief its
 /// `--brief-file` names to `brief-<n>`. It then prints the
@@ -1016,7 +1056,7 @@ pub fn preview(id: &str, branch: &str, revision: &str, done: bool) -> Want {
 const STUB: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
-while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+while ! mkdir "$dir/claim-$n" 2>/dev/null; do n=$((n + 1)); done
 for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
 mv "$dir/call-$n.part" "$dir/call-$n"
 if [ "${FLUME_RECIPIENT+set}" = set ]; then echo set; else echo unset; fi > "$dir/recipient-$n"
@@ -1128,7 +1168,8 @@ impl Stub {
     }
 }
 
-/// The stub `sluice`'s program. Each call writes its arguments,
+/// The stub `sluice`'s program. Each call claims its number as the stub
+/// `flume`'s does, and writes its arguments,
 /// NUL-terminated, to `call-<n>`, whole once there, and the directory it
 /// ran in to `dir-<n>`.
 /// Where the test wrote `<what>.wait`, it waits, as sluice's ask of a
@@ -1142,7 +1183,7 @@ impl Stub {
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
-while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+while ! mkdir "$dir/claim-$n" 2>/dev/null; do n=$((n + 1)); done
 for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
 mv "$dir/call-$n.part" "$dir/call-$n"
 pwd -P > "$dir/dir-$n"
@@ -1258,7 +1299,7 @@ impl SluiceStub {
 const RELAY: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
-while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+while ! mkdir "$dir/claim-$n" 2>/dev/null; do n=$((n + 1)); done
 for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
 mv "$dir/call-$n.part" "$dir/call-$n"
 if [ "${FLUME_RECIPIENT+set}" = set ]; then echo set; else echo unset; fi > "$dir/recipient-$n"
@@ -1375,7 +1416,7 @@ impl RelayStub {
 const SYSTEMD_CREDS: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
-while [ -e "$dir/call-$n" ]; do n=$((n + 1)); done
+while ! mkdir "$dir/claim-$n" 2>/dev/null; do n=$((n + 1)); done
 for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
 mv "$dir/call-$n.part" "$dir/call-$n"
 if [ "$1" = "--version" ]; then

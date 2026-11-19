@@ -627,7 +627,7 @@ fn a_record_flume_forgot_before_the_confirm() {
         flume: &bench.flume,
         record: record.clone(),
     };
-    let (passed, lines) = bench.pass_of(PART, &bench.flume, &mut forgetting, &|| false);
+    let (passed, lines) = bench.pass_of(PART, &bench.flume, &mut forgetting);
     assert!(passed.reported);
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
@@ -651,7 +651,6 @@ fn flumes_listing_unread_at_the_confirm() {
             plane: &mut plane,
             flume: &bench.flume,
         },
-        &|| false,
     );
     assert_eq!(confirmed(&bench), [] as [Vec<String>; 0]);
     bench.flume.listing_as_flume();

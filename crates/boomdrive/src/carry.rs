@@ -1,47 +1,52 @@
 //! The control pass (design Decision 5). It takes the runner's report,
-//! reads the host from Flume's status, hands the hello to the pull,
-//! answers each want in the control plane's order, but carries out an
-//! act on a place only once every offer the pull gives is answered
-//! (record 0002; core.50), carries each place's status against Flume's
-//! listing as it stands once those answers are made (record 0027), opens
-//! each terminal pulled, and sends the whole report. Once the next pass is
-//! due, its launches and its acts take turns: it runs no `flume launch`
-//! after the first it ran, and holds each launch it would make after it
-//! for the next pass, `held` with the words [`TURN`], its room counted at
-//! its turn, and runs no act's command on a place after the first it ran,
-//! leaving the rest to the next pass (record 0002 as amended on 2026-11-14
-//! on taking turns; core.50). Once due, it also sends the report before
-//! each tool's command it runs for a want, and once it has answered its
-//! last want, so no answer waits on a command; what a send lets go or
-//! refuses is taken no more that pass, nor an act on a launch it let go or
-//! refused (record 0002 as amended on 2026-11-14; core.10, core.50). Once
-//! its control plane has taken a report
-//! holding a place's status, it confirms to Flume, as the runner, each end
-//! that status gives owed to it, so no end leaves Flume before its control
-//! plane holds it (record 0030 as amended on 2026-11-09; core.54). An act
-//! on a place the listing read before the pull does not hold reads Flume's
-//! status of the place first, and takes Flume's refusal of it as its
-//! answer (record 0010; core.51). The runner takes only what it was
-//! offered, launches only through Flume's command line, and carries each
-//! answer as Flume gave it (core.1, core.9, core.10). It reaches its
-//! control plane only through `ControlPlane` (core.2), and acts on no
-//! place it did not launch. Work under a lease that has lapsed by the
-//! pass's clock waits for a live one (core.24). A preview its control plane asks for is brought up in a
-//! repository the runner keeps by sluice's own preview command, once
-//! every offer the pull gives is answered, a launch held for its turn
-//! among them, its ask awaited no longer than the
-//! runner's patience; sluice's listing of it is carried until sluice lists
-//! it no more; and on its done, only what the runner asked sluice for is
-//! put away, by sluice's own release, with no output of a command carried
-//! (core.55). A pass is over one part of the control plane (record 0026):
-//! it reads and saves that part's share of the report file alone, and
-//! each of its lines names the part's label after `boomdrive:`. Each act
-//! is said on standard error, one line each, prefixed with its id, which
-//! is the part's own, and a pass that changes nothing says nothing.
+//! reads the host from Flume's status, hands the hello to the pull, and
+//! carries each want the pull gives on a thread of its own as soon as the
+//! pull gives it, so no want waits on another want's command (record 0002
+//! as amended on 2026-11-19; core.50; [`crate::hands`]). A pull's launches
+//! take the stream's room in the control plane's order, and each runs at
+//! once; an act on a launch waits only until that launch is made and for
+//! the acts before it on the same launch; acts on different launches run
+//! side by side. Each answer comes back over the part's channel and goes up
+//! in the part's next send, which waits on no command and on no pass's
+//! end: between its passes a part takes each answer as it comes, starts
+//! what waited on it, and sends ([`Carrier::collect`]). A want being
+//! carried is not taken again from a later pull, and an answer for a lease
+//! the control plane let go or refused while its command ran is not
+//! reported (core.10). `run --once`'s one pass, and [`Carrier::pass`],
+//! wait for every command they started before they carry the statuses and
+//! send.
+//!
+//! The pass carries each place's status against Flume's listing as it
+//! stands once the answers it took are made (record 0027), opens each
+//! terminal pulled, and sends the whole report. Once its control plane has
+//! taken a report holding a place's status, it confirms to Flume, as the
+//! runner, each end that status gives owed to it that Flume still lists
+//! owed, so no end leaves Flume before its control plane holds it (record
+//! 0030 as amended on 2026-11-09; core.54). An act on a place the listing
+//! read before the pull does not hold reads Flume's status of the place
+//! first, and takes Flume's refusal of it as its answer (record 0010;
+//! core.51). The runner takes only what it was offered, launches only
+//! through Flume's command line, and carries each answer as Flume gave it
+//! (core.1, core.9, core.10). It reaches its control plane only through
+//! `ControlPlane` (core.2), and acts on no place it did not launch. Work
+//! under a lease that has lapsed by the pass's clock waits for a live one
+//! (core.24). A preview its control plane asks for is brought up in a
+//! repository the runner keeps by sluice's own preview command, on a thread
+//! of its own once every launch its pull offers is under way, its ask
+//! awaited no longer than the runner's patience; sluice's listing of it is
+//! carried until sluice lists it no more; and on its done, only what the
+//! runner asked sluice for is put away, by sluice's own release, with no
+//! output of a command carried (core.55). A pass is over one part of the
+//! control plane (record 0026): it reads and saves that part's share of the
+//! report file alone, and each of its lines names the part's label after
+//! `boomdrive:`. Each act is said on standard error, one line each,
+//! prefixed with its id, which is the part's own, and a pass that changes
+//! nothing says nothing.
 
 use crate::config::{Address, Config};
 use crate::flume::{self, Flume, LaunchArgs, Reply, Unrun};
 use crate::git::Git;
+use crate::hands::{self, ActRan, Done, Flight, Job, Ran, Underway};
 use crate::hello::{self, Tools};
 use crate::locks::Locks;
 use crate::report::{self, ReportFile};
@@ -56,7 +61,7 @@ use boomdrive_control::{
 };
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -213,22 +218,7 @@ pub struct Carrier<'a> {
     pub reach: &'a Reach,
     /// What was last said of Flume's version, kept across passes.
     pub least: &'a Least,
-    /// Whether the next control pass is due, by the control timer or
-    /// because the control plane woke the runner. Once it is, the pass
-    /// runs no `flume launch` after the first it ran, holding each launch
-    /// it would make after it for that pass, `held` with the words
-    /// [`TURN`], and carries out no act on a place after the first it ran,
-    /// leaving the rest to that pass, so its launches and its acts take
-    /// turns; and it sends its report before each tool's command it runs
-    /// for a want, and once it has answered its last want (core.50; record
-    /// 0002 as amended on 2026-11-14 on taking turns).
-    pub due: &'a dyn Fn() -> bool,
 }
-
-/// The words of a launch a pass past due took and left for the next pass,
-/// which is due: it is answered `held` with them (design Decision 2;
-/// core.50).
-pub const TURN: &str = "waits for the next control pass, which is due";
 
 /// Whether the control plane's last pull was read, kept across control
 /// passes, so its reach is said once each way: when a pull first cannot
@@ -327,9 +317,11 @@ impl Carrier<'_> {
     }
 
     /// One control pass of the part whose control plane is `plane`, each
-    /// line said to `say` as it is said. Its report is the part's share of
-    /// the report file, where the file holds it, else what the pull gives
-    /// back (design Decision 5). The part has no observer.
+    /// line said to `say` as it is said, which waits for every command it
+    /// started before it carries the statuses and sends, as `run --once`'s
+    /// pass does (core.50). Its report is the part's share of the report
+    /// file, where the file holds it, else what the pull gives back (design
+    /// Decision 5). The part has no observer.
     pub fn pass(&self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> Passed {
         self.observed_pass(plane, None, say)
     }
@@ -347,6 +339,116 @@ impl Carrier<'_> {
         &self,
         plane: &mut dyn ControlPlane,
         observer: Option<&mut dyn Observer>,
+        say: &mut dyn FnMut(String),
+    ) -> Passed {
+        hands::carried(self.flume, self.sluice, self.locks, &|| {}, |carrying| {
+            self.carry(plane, observer, carrying, true, say)
+        })
+    }
+
+    /// One control pass of a part that carries its commands across its
+    /// passes on `carrying`: the pass starts each want's command and waits
+    /// on none, so the part's next pull, listing, report and settle keep
+    /// their own pace (record 0002 as amended on 2026-11-19; core.50). Each
+    /// answer that came back since the part last took one is taken first.
+    pub fn carry_pass(
+        &self,
+        plane: &mut dyn ControlPlane,
+        observer: Option<&mut dyn Observer>,
+        carrying: &Underway,
+        say: &mut dyn FnMut(String),
+    ) -> Passed {
+        self.carry(plane, observer, carrying, false, say)
+    }
+
+    /// Takes each answer that came back on `carrying` since the part last
+    /// took one, between its passes, starts each act or preview of the
+    /// last pull that waited on one of them, and sends the part's share
+    /// where it changed, so no answer waits for the next pass (core.50).
+    /// Nothing is pulled and no listing read: Flume's is the last pass's.
+    /// Where the share cannot be read, the answers wait for the pass that
+    /// reads it.
+    pub fn collect(
+        &self,
+        plane: &mut dyn ControlPlane,
+        carrying: &Underway,
+        say: &mut dyn FnMut(String),
+    ) {
+        self.taking(plane, carrying, false, say);
+    }
+
+    /// Waits for every command in flight on `carrying` to end, as a part
+    /// does once the runner stops, takes their answers and sends them,
+    /// starting nothing more: a command once started is left to finish,
+    /// and its answer reported once (core.10).
+    pub fn finish(
+        &self,
+        plane: &mut dyn ControlPlane,
+        carrying: &Underway,
+        say: &mut dyn FnMut(String),
+    ) {
+        self.taking(plane, carrying, true, say);
+    }
+
+    /// Takes the answers `carrying` holds, every one in flight where
+    /// `finish`, then starts what waited on them unless `finish`, and sends
+    /// the share where it changed.
+    fn taking(
+        &self,
+        plane: &mut dyn ControlPlane,
+        carrying: &Underway,
+        finish: bool,
+        say: &mut dyn FnMut(String),
+    ) {
+        let done = if finish {
+            carrying.all()
+        } else {
+            carrying.arrived()
+        };
+        if done.is_empty() {
+            return;
+        }
+        let kept = match self.report.share(self.label, &|id| plane.owns(id)) {
+            Ok(kept) => kept.unwrap_or_default(),
+            Err(why) => {
+                say(self.line(&format!("{why}: the answers made wait for the next pass")));
+                return;
+            }
+        };
+        let wants = carrying.wants();
+        let listing = carrying.listing();
+        let mut work = Work {
+            carrier: self,
+            plane,
+            carrying,
+            wants: &wants,
+            saved: kept.clone(),
+            report: kept,
+            room: Room::read(None),
+            listing,
+            below_least: None,
+            ran: false,
+            now: At::now(),
+            unsent: false,
+            halted: false,
+        };
+        work.take(done, say);
+        if !finish && work.save(say) {
+            work.followers(false, say);
+        }
+        if work.save(say) && work.unsent {
+            work.send(say);
+        }
+    }
+
+    /// One control pass on `carrying`, waiting for every command it
+    /// started where `wait`.
+    fn carry(
+        &self,
+        plane: &mut dyn ControlPlane,
+        observer: Option<&mut dyn Observer>,
+        carrying: &Underway,
+        wait: bool,
         say: &mut dyn FnMut(String),
     ) -> Passed {
         // The pass's clock, read once, by which the work under each lease
@@ -391,52 +493,48 @@ impl Carrier<'_> {
         // data directory among it, is taken from the control plane, which
         // holds every answer the runner reported.
         let report = kept.or(pulled.report).unwrap_or_default();
+        carrying.begin_pass();
+        let mut room = Room::read(listing.as_ref());
+        // A launch in flight whose place Flume does not list yet holds its
+        // room, as the control plane's order gave it (core.50).
+        for (stream, mark) in carrying.launches() {
+            let listed = listing
+                .as_ref()
+                .is_some_and(|listing| facts::marked(listing, &mark).is_some());
+            if !listed {
+                room.take(stream.as_deref());
+            }
+        }
         let mut work = Work {
             carrier: self,
             plane,
+            carrying,
             wants: &pulled.wants,
             saved,
             report,
-            room: Room::read(listing.as_ref()),
+            room,
             listing,
             below_least,
             ran: false,
             now,
-            round: Round::Wants,
-            launches_run: 0,
-            acts_run: 0,
-            left: BTreeSet::new(),
-            waiting: Vec::new(),
-            previews_run: 0,
-            previews_left: BTreeSet::new(),
             unsent: false,
-            sends_failed: false,
             halted: false,
-            gone: BTreeSet::new(),
         };
-        if work.answer_wants(say) {
-            // Once its last want is answered, a pass past due sends what it
-            // answered since its last send, so no answer waits on the
-            // carrying that follows (core.50).
-            work.send_due(say);
-        } else {
+        // The answers that came back since the part last took one, which a
+        // pass of a part that carries across its passes takes first.
+        let arrived = carrying.arrived();
+        work.take(arrived, say);
+        if !work.save(say) || !work.answer_wants(say) {
             say(self.line("nothing more is carried out this pass"));
-        }
-        match work.left.len() {
-            0 => {}
-            1 => say(self.line("the next control pass is due, so 1 act on a place waits for it")),
-            n => say(self.line(&format!(
-                "the next control pass is due, so {n} acts on places wait for it"
-            ))),
-        }
-        match work.previews_left.len() {
-            0 => {}
-            1 => say(
-                "boomdrive: the next control pass is due, so 1 preview waits for it".to_string(),
-            ),
-            n => say(format!(
-                "boomdrive: the next control pass is due, so {n} previews wait for it"
-            )),
+        } else if wait {
+            while !carrying.idle() && !work.halted {
+                let done = carrying.all();
+                work.take(done, say);
+                if !work.save(say) {
+                    break;
+                }
+                work.followers(true, say);
+            }
         }
         // The commands the wants ran may have taken minutes, while Flume
         // moved places on, tidied some and let their records go: the
@@ -445,6 +543,7 @@ impl Carrier<'_> {
         if work.ran {
             work.listing = listing_of(&self.flume.status(), self.label, say);
         }
+        carrying.keep(work.wants, work.listing.as_ref());
         work.carry_statuses(say);
         work.carry_entries(say);
         work.carry_previews(say);
@@ -473,12 +572,12 @@ impl Carrier<'_> {
 }
 
 /// One pass's work: the report as it stands, what was read of the host,
-/// and the control plane it answers, which it reaches where it runs a
-/// tool's command, so that, once the next pass is due, it sends what it
-/// answered before that command runs (design Decision 3; core.50).
+/// the commands in flight, and the control plane it answers.
 struct Work<'p> {
     carrier: &'p Carrier<'p>,
     plane: &'p mut dyn ControlPlane,
+    /// The part's commands in flight, kept across its passes.
+    carrying: &'p Underway<'p>,
     /// What the pull gave, in the control plane's order.
     wants: &'p [Want],
     /// The part's share as the file holds it.
@@ -487,132 +586,83 @@ struct Work<'p> {
     report: Report,
     /// Flume's listing, `flume --json status`, where Flume gave it: the
     /// pass's own, read before the pull, and read again before the
-    /// statuses are carried where answering the wants ran a launch or an
-    /// act of Flume's.
+    /// statuses are carried where the pass took the answer of a launch or
+    /// an act of Flume's.
     listing: Option<Value>,
     room: Room,
     /// Why no offer is launched this pass, where Flume is older than the
     /// least the runner launches with (core.38).
     below_least: Option<String>,
-    /// Whether answering the wants ran a tool's command: a launch or an
-    /// act of Flume's. A command runs none (record 0027).
+    /// Whether the pass took the answer of a tool's command: a launch or
+    /// an act of Flume's. A command runs none (record 0027).
     ran: bool,
     /// The pass's clock, read once at its start.
     now: At,
-    round: Round,
-    /// How many `flume launch` the pass has run, whatever Flume answered:
-    /// a launch found by its mark runs none. Once the next pass is due and
-    /// one has run, each launch the pass would make is held for its turn
-    /// (design Decisions 1 and 2; core.50).
-    launches_run: usize,
-    /// How many acts the pass has run Flume's command for on their places.
-    acts_run: usize,
-    /// The acts on places left for the next pass, which is due.
-    left: BTreeSet<Id>,
-    /// Each offer whose clone the keeper held when its turn came, with
-    /// its clone's container and address, launched once the keep is done,
-    /// its room counted at its turn (design Decision 4).
-    waiting: Vec<(Offer, PathBuf, Address)>,
-    /// How many previews the pass has run sluice's command for, counted
-    /// apart from the acts' (design Decision 7).
-    previews_run: usize,
-    /// The previews left for the next pass, which is due.
-    previews_left: BTreeSet<Id>,
     /// Whether the share the file holds has an answer the control plane
-    /// has not been sent this pass.
+    /// has not been sent.
     unsent: bool,
-    /// Whether a send made before the pass's end failed, which leaves the
-    /// pass's answers to the send at its end.
-    sends_failed: bool,
-    /// Whether the share could not be saved after a send's answer, which
-    /// ends the pass's answers (core.25).
+    /// Whether the share could not be saved, which ends the pass's
+    /// answers (core.25).
     halted: bool,
-    /// What the control plane let go or refused at a send of this pass:
-    /// no want of it, and no act on a launch of it, is taken more this
-    /// pass (core.10).
-    gone: BTreeSet<Id>,
-}
-
-/// The pass's two rounds over the pull's wants, each in the control
-/// plane's order, so that no launch waits behind an act on a place
-/// (record 0002; core.50). An act on a place moves no room and lifts no
-/// hold within the pass, which read both from its listing before the pull,
-/// so taking it second changes no answer. Once the next pass is due, the
-/// first round makes no launch after the first the pass ran, and holds
-/// each it would make for its turn, so the second round's first act waits
-/// behind one launch alone; and the second round ends its acts on places
-/// after the first the pass ran, so no launch the next pull offers waits
-/// behind more than one act: its launches and its acts take turns (record
-/// 0002 as amended on 2026-11-14 on taking turns). An act Flume refuses
-/// because its place no longer stands costs the pass the reading of
-/// Flume's refusal alone (record 0010; core.51). A launch whose clone the
-/// keeper holds at its turn is made before the second round, once that
-/// keep is done, its room counted at its turn, so no other launch waits on
-/// another repository's keep (record 0026; design Decision 4); once the
-/// pass is due and has run a launch, it is held for its turn without
-/// waiting on the keep.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Round {
-    /// Every want: each offer, inbox and command, and each act and preview
-    /// answered from the report or refused, running no command. An act
-    /// that runs Flume's command on its launch's place, and a preview that
-    /// runs sluice's, is left for the second round.
-    Wants,
-    /// Each act left by the first, as Flume's command on its place, each
-    /// act whose launch the first round took, and each preview left by the
-    /// first, as sluice's command (core.55).
-    OnPlaces,
 }
 
 impl Work<'_> {
-    /// Answers the pull's wants in the pass's two rounds, saving the share
-    /// once each is answered, and says whether every want was taken: where
-    /// the file does not hold the share, the pass carries out nothing more
+    /// Answers the pull's wants in the control plane's order, starting
+    /// each one's command and waiting on none, saving the share once each
+    /// is answered, and says whether every want was taken: where the file
+    /// does not hold the share, the pass carries out nothing more
     /// (core.25).
     fn answer_wants(&mut self, say: &mut dyn FnMut(String)) -> bool {
-        let wants = self.wants;
-        for round in [Round::Wants, Round::OnPlaces] {
-            self.round = round;
-            if round == Round::OnPlaces {
-                for (offer, container, address) in std::mem::take(&mut self.waiting) {
-                    if self.gone.contains(&offer.id) {
-                        continue;
-                    }
-                    self.launch_once_kept(&offer, &container, &address, say);
-                    if self.halted || !self.save(say) {
-                        return false;
-                    }
-                }
-            }
-            for want in wants {
-                self.want(want, say);
-                if self.halted || !self.save(say) {
-                    return false;
-                }
+        // A preview's command starts once every launch its pull offers is
+        // under way, and waits on none (core.55).
+        let (previews, rest): (Vec<&Want>, Vec<&Want>) = self
+            .wants
+            .iter()
+            .partition(|want| matches!(want, Want::Preview(_)));
+        for want in rest.into_iter().chain(previews) {
+            self.want(want, say);
+            if self.halted || !self.save(say) {
+                return false;
             }
         }
         true
     }
 
+    /// Starts each want that waited on an answer now taken: an act on a
+    /// launch now made, or after an act on the same launch now answered,
+    /// a done of a preview whose bring-up has returned, and, where
+    /// `offers`, an offer whose After names a launch now made (core.50,
+    /// core.55). Between passes no offer is taken, since the room is the
+    /// next pass's to read.
+    fn followers(&mut self, offers: bool, say: &mut dyn FnMut(String)) {
+        for want in self.wants {
+            let follows = match want {
+                Want::Act(_) | Want::Preview(_) => true,
+                Want::Offer(_) => offers,
+                Want::Inbox(_) | Want::Command(_) => false,
+            };
+            if follows {
+                self.want(want, say);
+                if self.halted || !self.save(say) {
+                    return;
+                }
+            }
+        }
+    }
+
     fn want(&mut self, want: &Want, say: &mut dyn FnMut(String)) {
-        // The pull gave it before the control plane let it go or refused
-        // it, or the launch it acts on, at a send of this pass, so no
-        // launch, act or answer of it is made (core.10).
-        if self.gone.contains(want.id()) {
+        // A want in flight is not taken again (core.10), nor one started
+        // this pass whose tool could not be run, which waits for the next
+        // pass; nor one the control plane let go or refused while its
+        // command, or its launch's, ran.
+        let id = want.id();
+        if self.carrying.flying(id) || self.carrying.started(id) || self.carrying.gone(id) {
             return;
         }
         if let Want::Act(act) = want {
-            if self.gone.contains(&act.launch) {
+            if self.carrying.gone(&act.launch) {
                 return;
             }
-        }
-        if self.round == Round::OnPlaces {
-            match want {
-                Want::Act(act) => self.act(act, say),
-                Want::Preview(preview) => self.preview_command(preview, say),
-                Want::Offer(_) | Want::Inbox(_) | Want::Command(_) => {}
-            }
-            return;
         }
         match want {
             Want::Offer(offer) => self.offer(offer, say),
@@ -620,6 +670,35 @@ impl Work<'_> {
             Want::Inbox(inbox) => self.inbox(inbox, say),
             Want::Command(command) => self.command(command, say),
             Want::Preview(preview) => self.preview(preview, say),
+        }
+    }
+
+    /// Takes each of `done`, the answers of commands that returned, in
+    /// their order: an answer for a want, or an act on a launch, the
+    /// control plane let go or refused while it ran is not reported
+    /// (core.10).
+    fn take(&mut self, done: Vec<Done>, say: &mut dyn FnMut(String)) {
+        for Done { want, ran, .. } in done {
+            let launch = match &want {
+                Want::Act(act) => Some(&act.launch),
+                _ => None,
+            };
+            if self.carrying.gone(want.id()) || launch.is_some_and(|id| self.carrying.gone(id)) {
+                say(format!(
+                    "{}: let go by the control plane while its command ran: its answer is not reported",
+                    want.id()
+                ));
+                continue;
+            }
+            match (&want, ran) {
+                (Want::Offer(offer), Ran::Launch(reply)) => self.launched(offer, reply, say),
+                (Want::Act(act), Ran::Act(ran)) => self.acted_on(act, ran, say),
+                (Want::Preview(preview), Ran::Preview(asked)) => {
+                    self.brought_up(preview, asked, say)
+                }
+                (Want::Preview(preview), Ran::Release(reply)) => self.put_away(preview, reply, say),
+                _ => {}
+            }
         }
     }
 
@@ -631,9 +710,9 @@ impl Work<'_> {
     /// keeps nor drains is refused before any mark is read, and one in a
     /// repository it drains is answered `launched` only where Flume's
     /// listing holds its place under its mark, so a launch made just before
-    /// a stop is not made twice (core.10), and refused otherwise. Once the
-    /// next pass is due and the pass has run a launch, an offer that would
-    /// be launched is held for its turn, its room counted (core.50).
+    /// a stop is not made twice (core.10), and refused otherwise. One taken
+    /// is launched on a thread of its own, its room counted at its turn
+    /// (core.50).
     fn offer(&mut self, offer: &Offer, say: &mut dyn FnMut(String)) {
         let id = &offer.id;
         let repository = &offer.launch.repository;
@@ -681,6 +760,23 @@ impl Work<'_> {
             Keeping::NotYet => return,
             Keeping::NotNamed | Keeping::Dropped(_) => return refuse(self, say),
         };
+        // An offer whose After names a launch being made, or whose base is
+        // the branch of a place being made, as a unit's on its bolt's, waits
+        // until that launch is made, so its answer reads where that launch
+        // stands and its base stands (core.50).
+        let after_flying = offer
+            .launch
+            .after
+            .iter()
+            .any(|launch| self.carrying.flying(launch));
+        let base_making = offer
+            .launch
+            .base
+            .as_deref()
+            .is_some_and(|base| self.carrying.making(base));
+        if after_flying || base_making {
+            return;
+        }
         if let Some(words) = self.waits(&offer.launch.after) {
             if self.answer(offer, Outcome::Held, None, Some(words.clone())) {
                 say(format!("{id}: held: {words}"));
@@ -703,102 +799,44 @@ impl Work<'_> {
         if self.below_least.is_some() {
             return;
         }
-        // Once the next pass is due and the pass has run a launch, the
-        // launch is left for its turn, its room counted now (core.50).
-        if self.turn_taken() {
-            if container.is_dir() {
-                self.room.take(stream);
-                self.hold_for_turn(offer, say);
-            }
-            return;
-        }
-        if !self.may_run(&[id], say) {
-            return;
-        }
-        let Ok(address) = Address::parse(repository) else {
-            return self.launch(offer, &container, say);
-        };
-        match self.carrier.locks.try_launch(&address) {
-            Some(held) => {
-                self.launch(offer, &container, say);
-                drop(held);
-            }
-            None => {
-                // Its room is counted now, at its turn, so the launch is
-                // the one the control plane's order makes.
-                self.room.take(stream);
-                self.waiting.push((offer.clone(), container, address));
-            }
-        }
-    }
-
-    /// Launches `offer`, its room already counted, in the clone at
-    /// `container` once the keeper's keep of `address` is done, holding
-    /// the clone's lock shared until `flume launch` ends. Once the next
-    /// pass is due and the pass has run a launch, it is held for its turn
-    /// without waiting on the keep (design Decision 2; core.50).
-    fn launch_once_kept(
-        &mut self,
-        offer: &Offer,
-        container: &Path,
-        address: &Address,
-        say: &mut dyn FnMut(String),
-    ) {
-        if self.turn_taken() {
-            if container.is_dir() {
-                self.hold_for_turn(offer, say);
-            }
-            return;
-        }
-        if !self.may_run(&[&offer.id], say) {
-            return;
-        }
-        let held = self.carrier.locks.launch(address);
-        if container.is_dir() {
-            self.made(offer, container, say);
-        }
-        drop(held);
-    }
-
-    /// Launches `offer` in the clone at `container`, holding its lock,
-    /// where the clone is still there: one the keeper let go meanwhile is
-    /// one not yet made, and the offer is left unanswered (design
-    /// Decision 4; core.14).
-    fn launch(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
+        // A clone the keeper let go meanwhile is one not yet made, and the
+        // offer is left unanswered (design Decision 4; core.14).
         if !container.is_dir() {
             return;
         }
-        self.room.take(offer.launch.stream.as_deref());
-        self.made(offer, container, say);
+        // Its room is counted now, at its turn, so the launch is the one
+        // the control plane's order makes; it then runs at once, on a
+        // thread of its own, waiting only on its own clone's keep
+        // (record 0002 as amended on 2026-11-19; core.50).
+        self.room.take(stream);
+        let args = launch_args(offer, &container, self.priority(offer));
+        let job = Job::Launch {
+            args: Box::new(args),
+            briefs: self.carrier.control_dir.join("briefs"),
+            address: Address::parse(repository).ok(),
+            container,
+        };
+        let branch = branch_of(&offer.launch.kind, &offer.launch.name);
+        let flight = Flight::launch(offer.launch.stream.clone(), mark, branch);
+        self.carrying
+            .start(&Want::Offer(offer.clone()), job, flight);
     }
 
-    /// Whether the pass, past due, has run its one launch, so each launch
-    /// it would make after is held for its turn (design Decision 1;
-    /// core.50).
-    fn turn_taken(&self) -> bool {
-        self.launches_run > 0 && (self.carrier.due)()
-    }
-
-    /// Answers `offer`, its room counted, `held` for its turn with the
-    /// words [`TURN`], running no `flume launch`, and says so where the
-    /// answer changed. The next pass takes it as any held offer (design
-    /// Decision 2; core.10, core.50).
-    fn hold_for_turn(&mut self, offer: &Offer, say: &mut dyn FnMut(String)) {
-        if self.answer(offer, Outcome::Held, None, Some(TURN.to_string())) {
-            say(format!("{}: held: {TURN}", offer.id));
-        }
-    }
-
-    /// Runs `flume launch` for `offer` in the clone at `container`, its
-    /// room counted, and counts it, whatever Flume answers (design
-    /// Decisions 1 and 9).
-    fn made(&mut self, offer: &Offer, container: &Path, say: &mut dyn FnMut(String)) {
+    /// Takes Flume's answer to `offer`'s launch, `reply`, or none where its
+    /// clone was let go before the launch held its lock, which leaves the
+    /// offer unanswered (design Decisions 1 and 9).
+    fn launched(
+        &mut self,
+        offer: &Offer,
+        reply: Option<Result<Reply, Unrun>>,
+        say: &mut dyn FnMut(String),
+    ) {
         let id = &offer.id;
-        let args = launch_args(offer, container, self.priority(offer));
-        let briefs = self.carrier.control_dir.join("briefs");
+        let Some(reply) = reply else {
+            return;
+        };
         self.ran = true;
-        self.launches_run += 1;
-        match self.carrier.flume.launch(&args, &briefs) {
+        match reply {
             Ok(Reply::Given(text)) => {
                 let answer = serde_json::from_str::<Value>(&text).ok();
                 let place = answer
@@ -908,12 +946,19 @@ impl Work<'_> {
     /// Carries out or answers `act` on its launch (design Decision 9). An
     /// act the report holds is left as it stands, and one whose launch's
     /// lease in the report has lapsed is left untaken (design Decision 13;
-    /// core.24). A confirm as the runner, or of no key, is refused at once,
-    /// running nothing (core.56), as is a hold with no words (core.59).
-    /// One on its launch's place is carried out in the pass's second round
-    /// alone, once every offer the pull gives is answered (core.50).
+    /// core.24). One on a launch being made waits until it is made. A
+    /// confirm as the runner, or of no key, is refused at once, running
+    /// nothing (core.56), as is a hold with no words (core.59). One on its
+    /// launch's place is Flume's own command there, run on a thread of its
+    /// own once every act before it on the same launch is answered, so
+    /// acts on one launch run one at a time in the control plane's order
+    /// and acts on different launches side by side (core.50).
     fn act(&mut self, act: &Act, say: &mut dyn FnMut(String)) {
         if self.report.acts.contains_key(&act.id) {
+            return;
+        }
+        // An act on a launch being made waits until it is made.
+        if self.carrying.flying(&act.launch) {
             return;
         }
         let Some(launched) = self.report.launches.get(&act.launch) else {
@@ -936,30 +981,59 @@ impl Work<'_> {
             self.act_unlaunched(act, say);
             return;
         }
-        match launched.answer.place_dir.clone() {
-            Some(place) if self.round == Round::OnPlaces => self.act_on(act, &place, say),
-            Some(_) => {}
-            None => {
-                let words = format!("{} was launched at no place Flume named", act.launch);
-                self.acted(act, Outcome::Refused, Some(words), None, say);
-            }
+        let Some(place) = launched.answer.place_dir.clone() else {
+            let words = format!("{} was launched at no place Flume named", act.launch);
+            self.acted(act, Outcome::Refused, Some(words), None, say);
+            return;
+        };
+        if self.earlier_on_launch(act) {
+            return;
         }
+        let listed = self
+            .listing
+            .as_ref()
+            .and_then(|listing| facts::entry(listing, &place).cloned());
+        let job = Job::Act {
+            place,
+            listed,
+            what: act.what.clone(),
+        };
+        self.carrying.start(
+            &Want::Act(act.clone()),
+            job,
+            Flight::act(act.launch.clone()),
+        );
     }
 
-    /// Carries out `act` on the place at `place`, its answer Flume's. A
-    /// place the pass's listing does not hold is first asked of Flume's
-    /// status, which settles nothing: where Flume refuses it, that refusal
-    /// is the act's answer, as Flume gave it, and the act's command is not
-    /// run (core.51). A confirm naming a key that is the delivery of no end
-    /// of the place, as the listing or that status gives it, is refused in
-    /// the runner's words, naming the key, and runs nothing (core.56).
-    /// Otherwise the act is Flume's own command on the place, never forced;
-    /// once the next pass is due, the pass runs none but its first, and
-    /// leaves the act for that pass (core.50). Once due, the report goes up
-    /// before each command, and where that send let go or refused the act
-    /// or its launch, nothing runs (core.10). Where Flume could not be
+    /// Whether an act before `act` in the control plane's order, on the
+    /// same launch, is not yet answered: in flight,
+    /// or left by a Flume that could not be run (core.50).
+    fn earlier_on_launch(&self, act: &Act) -> bool {
+        self.wants
+            .iter()
+            .take_while(|want| want.id() != &act.id)
+            .any(|want| match want {
+                Want::Act(earlier) => {
+                    earlier.launch == act.launch
+                        && !self.report.acts.contains_key(&earlier.id)
+                        && !self.carrying.gone(&earlier.id)
+                }
+                _ => false,
+            })
+    }
+
+    /// Takes what Flume's command on `act`'s launch's place gave, `ran`,
+    /// as the act's answer (core.51, core.56). Where Flume could not be
     /// run, nothing is kept, and the next pass carries it out.
-    fn act_on(&mut self, act: &Act, place: &str, say: &mut dyn FnMut(String)) {
+    fn acted_on(&mut self, act: &Act, ran: ActRan, say: &mut dyn FnMut(String)) {
+        let Some(place) = self
+            .report
+            .launches
+            .get(&act.launch)
+            .and_then(|launched| launched.answer.place_dir.clone())
+        else {
+            return;
+        };
         let unrun = |words: String, say: &mut dyn FnMut(String)| {
             let what = sort(&act.what);
             say(format!(
@@ -967,74 +1041,26 @@ impl Work<'_> {
                 act.id, act.launch
             ));
         };
-        let ids = [&act.id, &act.launch];
-        let status = if self.listed(place) {
-            None
-        } else {
-            if !self.may_run(&ids, say) {
-                return;
+        match ran {
+            ActRan::StatusRefused(words) => {
+                self.acted(act, Outcome::Refused, Some(words), Some(&place), say)
             }
-            match self.carrier.flume.status_of(None, place) {
-                Ok(Reply::Given(status)) => Some(status),
-                Ok(Reply::Refused(words)) => {
-                    self.acted(act, Outcome::Refused, Some(words), Some(place), say);
-                    return;
-                }
-                Err(Unrun(words)) => return unrun(words, say),
-            }
-        };
-        if let ActSort::Confirm { deliveries, .. } = &act.what {
-            if let Some(key) = self.unheld(deliveries, place, status.as_deref()) {
+            ActRan::StatusUnrun(words) => unrun(words, say),
+            ActRan::Unheld(key) => {
                 let words = format!("{key} is the delivery of no end of {place} as Flume gives it");
                 self.acted(act, Outcome::Refused, Some(words), None, say);
-                return;
+            }
+            ActRan::Acted(reply) => {
+                self.ran = true;
+                match reply {
+                    Ok(Reply::Given(_)) => self.acted(act, Outcome::Done, None, Some(&place), say),
+                    Ok(Reply::Refused(words)) => {
+                        self.acted(act, Outcome::Refused, Some(words), Some(&place), say)
+                    }
+                    Err(Unrun(words)) => unrun(words, say),
+                }
             }
         }
-        if self.acts_run > 0 && (self.carrier.due)() {
-            self.left.insert(act.id.clone());
-            return;
-        }
-        if !self.may_run(&ids, say) {
-            return;
-        }
-        self.acts_run += 1;
-        self.ran = true;
-        match self.carrier.flume.act(place, &flume_act(&act.what)) {
-            Ok(Reply::Given(_)) => self.acted(act, Outcome::Done, None, Some(place), say),
-            Ok(Reply::Refused(words)) => {
-                self.acted(act, Outcome::Refused, Some(words), Some(place), say)
-            }
-            Err(Unrun(words)) => unrun(words, say),
-        }
-    }
-
-    /// The first of `keys` that is the delivery of no end of the place at
-    /// `place`, as the pass's listing gives its entry, else `status`,
-    /// Flume's answer to the place's status, where the listing does not
-    /// hold it (core.56). The runner reads Flume's own field, and judges
-    /// nothing of the end: whom it is owed and whether it is owed are
-    /// Flume's to answer (Flume's 43).
-    fn unheld<'k>(&self, keys: &'k [String], place: &str, status: Option<&str>) -> Option<&'k str> {
-        let answer = status.and_then(|status| serde_json::from_str::<Value>(status).ok());
-        let entry = match &answer {
-            Some(answer) => facts::entry(answer, place),
-            None => self
-                .listing
-                .as_ref()
-                .and_then(|listing| facts::entry(listing, place)),
-        };
-        let held = entry.map(facts::deliveries).unwrap_or_default();
-        keys.iter()
-            .map(String::as_str)
-            .find(|key| !held.contains(key))
-    }
-
-    /// Whether the pass's listing holds the place at `place`, standing or
-    /// as the record Flume keeps of it tidied.
-    fn listed(&self, place: &str) -> bool {
-        self.listing
-            .as_ref()
-            .is_some_and(|listing| facts::entry(listing, place).is_some())
     }
 
     /// Answers `act` on a launch the runner holds not yet launched, from
@@ -1177,17 +1203,16 @@ impl Work<'_> {
         self.report.commands.insert(command.id.clone(), commanded);
     }
 
-    /// Answers `preview` in the pass's first round, running no command
-    /// (core.55). A preview the report holds `done` or `refused` keeps its
-    /// answer, under the lease the control plane gives now (core.10), and
-    /// one whose lease has lapsed is left untaken, one held not asked again
-    /// (core.24). A bring-up in a repository the runner neither keeps nor
-    /// drains, or one it drains, is refused, since nothing new is made in
-    /// one, and one whose clone is not yet made waits (core.5). A done
-    /// whose repository has no clone is refused, since its checkout went
-    /// with the clone. Every other is left for the second round, once
-    /// every offer the pull gives is answered, a launch held for its turn
-    /// among them (core.50).
+    /// Answers or starts `preview` (core.55). A preview the report holds
+    /// `done` or `refused` keeps its answer, under the lease the control
+    /// plane gives now (core.10), and one whose lease has lapsed is left
+    /// untaken, one held not asked again (core.24). A bring-up in a
+    /// repository the runner neither keeps nor drains, or one it drains, is
+    /// refused, since nothing new is made in one, and one whose clone is
+    /// not yet made waits (core.5). A done whose repository has no clone is
+    /// refused, since its checkout went with the clone. Every other runs
+    /// sluice's command on a thread of its own, waiting on no other want's
+    /// command (core.50; design Decision 5).
     fn preview(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
         if let Some(previewed) = self.report.previews.get_mut(&preview.id) {
             previewed.lease = preview.lease;
@@ -1208,56 +1233,47 @@ impl Work<'_> {
                 let words = format!("no clone of {repository} stands on this host");
                 self.preview_refused(preview, words, say);
             }
-            _ => {}
+            (false, _) => self.bring_up(preview),
+            (true, _) => self.release(preview, say),
         }
     }
 
-    /// Carries out `preview` in the pass's second round, once every offer
-    /// the pull gives is answered, a launch held for its turn among them,
-    /// so it waits on no launch left for the next pass, by sluice's own
-    /// command (core.50, core.55; design Decision 5). A
-    /// preview the report holds answered, or one whose lease has lapsed, is
-    /// left as it stands.
-    fn preview_command(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
-        let held = match self.report.previews.get(&preview.id) {
-            Some(previewed) if previewed.outcome != Outcome::Held => return,
-            Some(_) => true,
-            None => false,
-        };
-        if lapsed(preview.lease, self.now) {
-            return;
-        }
-        match preview.done {
-            false => self.bring_up(preview, held, say),
-            true => self.put_away(preview, say),
-        }
-    }
-
-    /// Brings `preview` up by `sluice preview <branch> <revision> --json`,
-    /// in its repository's clone, once (design Decisions 2 and 3). A
-    /// preview held whose done the pull gives is not asked again: the done
-    /// puts away what sluice holds of it. Once the next pass is due, the
-    /// pass runs no preview's command but its first (design Decision 7).
-    /// sluice's answer is the preview's: `done` with what is carried of
-    /// it, or `refused` with sluice's words. Where sluice was interrupted
-    /// at the runner's patience, waiting at the host's bound, the preview
-    /// is held, said once, and asked again at the next pass. Where sluice
-    /// could not be run, nothing is kept, and the next pass asks again.
-    fn bring_up(&mut self, preview: &Preview, held: bool, say: &mut dyn FnMut(String)) {
+    /// Starts `preview`'s bring-up by `sluice preview <branch> <revision>
+    /// --json`, in its repository's clone, once (design Decisions 2 and
+    /// 3). A preview held whose done the pull gives is not asked again: the
+    /// done puts away what sluice holds of it.
+    fn bring_up(&mut self, preview: &Preview) {
         let Keeping::Ready(container) = self.carrier.clones.keeping(&preview.repository) else {
             return;
         };
+        let held = self.report.previews.contains_key(&preview.id);
         if held && self.done_given(preview) {
             return;
         }
-        if !self.preview_may_run(&preview.id, say) {
-            return;
-        }
+        let job = Job::Preview {
+            container,
+            branch: preview.branch.clone(),
+            revision: preview.revision.clone(),
+        };
+        let flight = Flight::preview(preview.repository.clone(), preview.revision.clone());
+        self.carrying
+            .start(&Want::Preview(preview.clone()), job, flight);
+    }
+
+    /// Takes sluice's answer to `preview`'s ask: `done` with what is
+    /// carried of it, or `refused` with sluice's words. Where sluice was
+    /// interrupted at the runner's patience, waiting at the host's bound,
+    /// the preview is held, said once, and asked again at the next pass.
+    /// Where sluice could not be run, nothing is kept, and the next pass
+    /// asks again.
+    fn brought_up(
+        &mut self,
+        preview: &Preview,
+        asked: Result<Asked, sluice::Unrun>,
+        say: &mut dyn FnMut(String),
+    ) {
+        let held = self.report.previews.contains_key(&preview.id);
         let what = what_preview(preview);
-        let asked = self
-            .carrier
-            .sluice
-            .preview(&container, &preview.branch, &preview.revision);
         match asked {
             Ok(Asked::Replied(sluice::Reply::Given(answer))) => {
                 let Some(text) = sluice::preview_carried(&answer) else {
@@ -1298,37 +1314,43 @@ impl Work<'_> {
         }
     }
 
-    /// Puts away, on `preview`'s done, what the report holds of its
-    /// repository and revision asked of sluice, brought up or held, by one
-    /// `sluice release <name> --json` in its repository's clone, named or
-    /// dropped (design Decision 6). The name is the one sluice gave the
-    /// first such preview, in its answer or else its listing, else the
-    /// revision. Where the report holds none, the done is refused and
-    /// sluice is not run, so a person's own preview is never put away.
-    /// sluice's answer is the done's. A preview held so put away is
-    /// refused, and asked of sluice no more; one brought up keeps its
-    /// answer, and its listing reads it gone.
-    fn put_away(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
-        let repository = &preview.repository;
-        let container = match self.carrier.clones.keeping(repository) {
-            Keeping::Ready(container) | Keeping::Dropped(container) => container,
-            Keeping::NotYet | Keeping::NotNamed => {
-                let words = format!("no clone of {repository} stands on this host");
-                return self.preview_refused(preview, words, say);
-            }
-        };
-        let asked: Vec<Id> = self
-            .report
+    /// The previews the report holds of `preview`'s repository and
+    /// revision asked of sluice, brought up or held, and not yet put away.
+    fn asked_of(&self, preview: &Preview) -> Vec<Id> {
+        self.report
             .previews
             .iter()
             .filter(|(_, previewed)| {
                 !previewed.done
                     && matches!(previewed.outcome, Outcome::Done | Outcome::Held)
                     && previewed.revision == preview.revision
-                    && same_repository(&previewed.repository, repository)
+                    && same_repository(&previewed.repository, &preview.repository)
             })
             .map(|(id, _)| id.clone())
-            .collect();
+            .collect()
+    }
+
+    /// Starts the putting away, on `preview`'s done, of what the report
+    /// holds of its repository and revision asked of sluice, by one `sluice
+    /// release <name> --json` in its repository's clone, named or dropped
+    /// (design Decision 6), once no bring-up of that revision is in flight.
+    /// The name is the one sluice gave the first such preview, in its answer
+    /// or else its listing, else the revision. Where the report holds none,
+    /// the done is refused and sluice is not run, so a person's own preview
+    /// is never put away.
+    fn release(&mut self, preview: &Preview, say: &mut dyn FnMut(String)) {
+        let repository = &preview.repository;
+        let container = match self.carrier.clones.keeping(repository) {
+            Keeping::Ready(container) | Keeping::Dropped(container) => container,
+            Keeping::NotYet | Keeping::NotNamed => return,
+        };
+        if self.carrying.previewing(
+            |flying| same_repository(flying, repository),
+            &preview.revision,
+        ) {
+            return;
+        }
+        let asked = self.asked_of(preview);
         let Some(first) = asked.first().map(|id| &self.report.previews[id]) else {
             let words = format!(
                 "no preview of {} in {repository} was brought up here at the control plane's asking",
@@ -1345,17 +1367,33 @@ impl Work<'_> {
                 sluice::text_of(&status.text, "name")
             })
             .unwrap_or_else(|| preview.revision.clone());
-        if !self.preview_may_run(&preview.id, say) {
-            return;
-        }
+        let flight = Flight::preview(repository.clone(), preview.revision.clone());
+        self.carrying.start(
+            &Want::Preview(preview.clone()),
+            Job::Release { container, name },
+            flight,
+        );
+    }
+
+    /// Takes sluice's answer to `preview`'s release, `reply`, as the
+    /// done's. A preview held so put away is refused, and asked of sluice
+    /// no more; one brought up keeps its answer, and its listing reads it
+    /// gone.
+    fn put_away(
+        &mut self,
+        preview: &Preview,
+        reply: Result<sluice::Reply, sluice::Unrun>,
+        say: &mut dyn FnMut(String),
+    ) {
         let what = what_preview(preview);
-        match self.carrier.sluice.release(&container, &name) {
+        match reply {
             Ok(sluice::Reply::Given(answer)) => {
                 let Some(text) = sluice::release_carried(&answer) else {
                     let words = "sluice's answer is no release".to_string();
                     return self.preview_refused(preview, words, say);
                 };
                 say(format!("{what}: put away"));
+                let asked = self.asked_of(preview);
                 self.previewed(preview, Outcome::Done, Some(text), None);
                 for id in asked {
                     let Some(previewed) = self.report.previews.get_mut(&id) else {
@@ -1395,22 +1433,6 @@ impl Work<'_> {
             }
             _ => false,
         })
-    }
-
-    /// Whether the pass may run sluice's command for preview `id`: once the
-    /// next pass is due, none but its first, the rest left to that pass
-    /// (design Decision 7), and none the send before it let go or refused
-    /// (core.10). Counts the one it may run.
-    fn preview_may_run(&mut self, id: &Id, say: &mut dyn FnMut(String)) -> bool {
-        if self.previews_run > 0 && (self.carrier.due)() {
-            self.previews_left.insert(id.clone());
-            return false;
-        }
-        if !self.may_run(&[id], say) {
-            return false;
-        }
-        self.previews_run += 1;
-        true
     }
 
     /// Answers `preview` refused by the runner, with `words`, running
@@ -1888,55 +1910,6 @@ impl Work<'_> {
         }
     }
 
-    /// Whether a tool's command may run for the want whose ids, its own
-    /// and, for an act, its launch's, are `ids`. Once the next pass is
-    /// due, the share is first saved and sent where an answer changed it
-    /// since its last send, so no answer waits on the command (design
-    /// Decision 3; core.50); the want is then taken anew, and where the
-    /// control plane let go or refused it, or its launch, at that send or
-    /// one before, no command runs for it (design Decision 4; core.10).
-    /// Where the file does not hold the share, before the send or after
-    /// its answer, nothing more is carried out this pass (core.25).
-    fn may_run(&mut self, ids: &[&Id], say: &mut dyn FnMut(String)) -> bool {
-        if !self.save(say) || !self.send_due(say) {
-            self.halted = true;
-            return false;
-        }
-        !ids.iter().any(|id| self.gone.contains(*id))
-    }
-
-    /// Once the next control pass is due, sends the part's share where an
-    /// answer changed it since it was last sent, and takes the control
-    /// plane's answer as at the pass's end: what it let go or refused
-    /// leaves the report, and no want of it, nor an act on a launch of it,
-    /// is taken more this pass (core.10). The pass sends so before each
-    /// tool's command it runs for a want, and once it has answered its last
-    /// want; a pass that ends before the next is due sends once, at its
-    /// end. A send that fails is said, and leaves the pass's answers to the
-    /// send at its end, so a control plane that cannot be reached is tried
-    /// once more that pass, not before each command (core.22). Says whether
-    /// the file holds the share after the answer.
-    fn send_due(&mut self, say: &mut dyn FnMut(String)) -> bool {
-        if !self.unsent || self.sends_failed || !(self.carrier.due)() {
-            return true;
-        }
-        match self.plane.report(&self.report) {
-            Ok(reported) => {
-                self.reported(&reported, say);
-                let saved = self.save(say);
-                self.unsent = !saved;
-                saved
-            }
-            Err(Unsent(words)) => {
-                say(self.carrier.line(&format!(
-                    "the report could not be sent: {words}: it is sent at the pass's end"
-                )));
-                self.sends_failed = true;
-                true
-            }
-        }
-    }
-
     /// Sends the part's share, which renews every lease it names, and
     /// gives the control plane's answer where it took it, with whether the
     /// file holds the share once the answer is taken; one not sent gives
@@ -1945,6 +1918,7 @@ impl Work<'_> {
         self.save(say);
         match self.plane.report(&self.report) {
             Ok(reported) => {
+                self.unsent = false;
                 self.reported(&reported, say);
                 let saved = self.save(say);
                 Some((reported, saved))
@@ -1965,8 +1939,9 @@ impl Work<'_> {
     /// host as Flume holds it, and named, and nothing of it is removed
     /// (core.10).
     fn reported(&mut self, reported: &Reported, say: &mut dyn FnMut(String)) {
-        self.gone.extend(reported.let_go.iter().cloned());
-        self.gone.extend(reported.refused.keys().cloned());
+        for id in reported.let_go.iter().chain(reported.refused.keys()) {
+            self.carrying.let_go(id);
+        }
         for id in &reported.let_go {
             if self.forget(id) {
                 say(format!("{id}: let go by the control plane"));
@@ -2098,49 +2073,6 @@ impl Standing {
     }
 }
 
-/// `what` as Flume's own command of its name.
-fn flume_act(what: &ActSort) -> flume::Act {
-    match what {
-        ActSort::Retry {
-            stage,
-            words,
-            submission,
-        } => flume::Act::Retry {
-            stage: stage.clone(),
-            words: words.clone(),
-            submission: *submission,
-        },
-        // A land is Flume's retry of the submission, naming no stage and
-        // no words, whatever the launch's kind (core.53).
-        ActSort::Land => flume::Act::Retry {
-            stage: None,
-            words: None,
-            submission: true,
-        },
-        // A confirm is Flume's confirm of exactly the keys it names, in
-        // its order, as the recipient it names (core.56).
-        ActSort::Confirm {
-            recipient,
-            deliveries,
-        } => flume::Act::Confirm {
-            recipient: recipient.clone(),
-            keys: deliveries.clone(),
-        },
-        // A hold is Flume's hold of the move the place waits on its caller
-        // for, with exactly the words and the bound it names (core.59).
-        ActSort::Hold {
-            words,
-            bound_interval,
-        } => flume::Act::Hold {
-            words: words.clone(),
-            bound_interval: *bound_interval,
-        },
-        ActSort::Drop => flume::Act::Drop,
-        ActSort::Priority(priority) => flume::Act::Priority(*priority),
-        ActSort::Done => flume::Act::Done,
-    }
-}
-
 /// The runner's words refusing `what`, where it is a confirm the runner
 /// carries out for no control plane: one made as the runner's own name,
 /// whose ends the runner carries and confirms itself (core.54), or one
@@ -2268,6 +2200,15 @@ fn count_down(room: &mut Option<facts::Room>) {
     if let Some(facts::Room::Count(count)) = room {
         *count -= 1;
     }
+}
+
+/// The branch Flume's place for a launch of `kind` named `name` works on,
+/// `<kind>/<name>`, the kind's own name where it is an identity
+/// `<source>/<name>@<version>` (Flume's 202).
+fn branch_of(kind: &str, name: &str) -> String {
+    let kind = kind.split('@').next().unwrap_or(kind);
+    let kind = kind.rsplit('/').next().unwrap_or(kind);
+    format!("{kind}/{name}")
 }
 
 /// The runner's mark on the place it launches for `id`, `boomdrive:<id>`

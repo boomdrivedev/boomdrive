@@ -167,7 +167,7 @@ impl fmt::Display for Unrun {
 
 /// Flume as the runner reaches it: `Cli` on a host, a fake in a test of
 /// the pass.
-pub trait Flume {
+pub trait Flume: Sync {
     /// One `flume launch`, its brief written to a file under `brief_dir`
     /// and removed once Flume answers.
     fn launch(&self, args: &LaunchArgs, brief_dir: &Path) -> Result<Reply, Unrun>;

@@ -1369,7 +1369,14 @@ fn a_slow_part() {
     let began = home_heard.pull();
 
     let (launched, _, _) = running.until_starting("work/1: launched at ");
-    let reported = work_heard.report();
+    // The pass's own report may go up before the launch's answer comes
+    // back, which goes up in the part's next send (core.50).
+    let reported = loop {
+        let reported = work_heard.report();
+        if reported >= launched {
+            break reported;
+        }
+    };
     let first = work_heard.pull();
     let second = work_heard.pull();
 

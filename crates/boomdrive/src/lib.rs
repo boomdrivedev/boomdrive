@@ -14,6 +14,7 @@ pub mod flume;
 pub mod forge;
 pub mod forge_token;
 pub mod git;
+pub mod hands;
 pub mod hello;
 pub mod inbox;
 pub mod lacks;

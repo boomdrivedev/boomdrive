@@ -73,8 +73,8 @@ fn each_part_counts_its_own_room() {
     home.set_wants(vec![in_stream("home/1", "a", None)]);
     let mut work = Fake::owning("work/");
     work.set_wants(vec![in_stream("work/1", "b", None)]);
-    let (_, home_lines) = bench.pass_of("home", &bench.flume, &mut home, &|| false);
-    let (_, work_lines) = bench.pass_of("work", &bench.flume, &mut work, &|| false);
+    let (_, home_lines) = bench.pass_of("home", &bench.flume, &mut home);
+    let (_, work_lines) = bench.pass_of("work", &bench.flume, &mut work);
     assert_eq!(home_lines, ["home/1: launched at /places/a"]);
     assert_eq!(work_lines, ["work/1: launched at /places/b"]);
     assert_eq!(outcome(&bench, "home/1"), Some(Outcome::Launched));

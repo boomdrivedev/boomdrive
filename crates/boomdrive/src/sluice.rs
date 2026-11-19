@@ -81,7 +81,7 @@ impl fmt::Display for Unrun {
 }
 
 /// sluice as the runner reaches it: `Cli` on a host, a stub in a test.
-pub trait Sluice {
+pub trait Sluice: Sync {
     /// `sluice status <id> --json`, the submission `id` of the repository
     /// whose clone is in `container_dir`.
     fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun>;

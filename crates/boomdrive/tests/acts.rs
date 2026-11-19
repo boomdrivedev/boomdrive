@@ -254,11 +254,10 @@ fn statuses_read(calls: &[Call], of: &str) -> Vec<String> {
         .collect()
 }
 
-/// The work-into-flume spec's "A launch ahead of acts on places that are
-/// over": acts on a place Flume no longer stands, ahead of an offer in
-/// the control plane's order, are answered after the launch, each with
-/// Flume's refusal of the place's status, read once and never again, and
-/// no act's command is run.
+/// Acts on a place Flume no longer stands, ahead of an offer in the
+/// control plane's order, are each answered with Flume's refusal of the
+/// place's status, read once and never again, while the offer is
+/// launched, and no act's command is run (core.50, core.51).
 #[test]
 fn a_launch_ahead_of_acts_on_places_that_are_over() {
     let bench = Bench::new();
@@ -282,18 +281,11 @@ fn a_launch_ahead_of_acts_on_places_that_are_over() {
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
     let calls = bench.flume.calls();
-    let b_launched = calls
-        .iter()
-        .position(|call| matches!(call, Call::Launch(args) if args.name == "b"))
-        .expect("b is launched");
-    let read_for_acts = calls
-        .iter()
-        .position(|call| *call == Call::StatusOf(None, p.clone()))
-        .expect("the place's status is read for the acts");
-    assert!(b_launched < read_for_acts, "{calls:?}");
     let container = bench.container(fakes::KEPT);
+    let mut read = statuses_read(&calls, &p);
+    read.sort();
     assert_eq!(
-        statuses_read(&calls, &p),
+        read,
         [
             format!("status {p}"),
             format!("status {p}"),
@@ -302,12 +294,14 @@ fn a_launch_ahead_of_acts_on_places_that_are_over() {
         "once for each act, then once for the status carried"
     );
     assert_eq!(made(&bench), ["launch b".to_string()], "no act is run");
+    let mut lines = lines;
+    lines.sort();
     assert_eq!(
         lines,
         [
-            format!("b: launched at {}", place_of("b")),
             format!("a/priority: priority 3 of a at {p}: refused by Flume: {reason}"),
             format!("a/retry: retry of a at {p}: refused by Flume: {reason}"),
+            format!("b: launched at {}", place_of("b")),
         ]
     );
     let report = bench.report();
@@ -419,102 +413,6 @@ fn an_act_whose_places_status_flume_could_not_be_read_for() {
     );
 }
 
-/// The work-into-flume spec's "Acts on places wait for the next pass once
-/// it is due": once the next control pass is due, a pass runs no act's
-/// command but its first; the rest are answered at the passes after, each
-/// of which takes its launches first.
-#[test]
-fn acts_on_places_wait_for_the_next_pass_once_it_is_due() {
-    let bench = Bench::new();
-    let mut plane = Fake::holding(vec![
-        Want::Offer(offer("a", "a")),
-        Want::Offer(offer("b", "b")),
-    ]);
-    bench.pass(&mut plane);
-    let (pa, pb) = (place_of("a"), place_of("b"));
-    plane.set_wants(vec![
-        act("a/priority", "a", ActSort::Priority(3)),
-        act("b/priority", "b", ActSort::Priority(4)),
-        Want::Offer(offer("a", "a")),
-        Want::Offer(offer("b", "b")),
-        Want::Offer(offer("c", "c")),
-    ]);
-    bench.flume.take_calls();
-    let due = || !bench.flume.acts().is_empty();
-    let (passed, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
-    assert!(passed.reported);
-    assert_eq!(
-        made(&bench),
-        ["launch c".to_string(), format!("Priority(3) at {pa}")]
-    );
-    assert_eq!(
-        lines,
-        [
-            format!("c: launched at {}", place_of("c")),
-            format!("a/priority: priority 3 of a at {pa}: done"),
-            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
-                .to_string(),
-        ]
-    );
-    assert!(!bench.report().acts.contains_key(&Id::new("b/priority")));
-    plane.set_wants(vec![
-        act("a/priority", "a", ActSort::Priority(3)),
-        act("b/priority", "b", ActSort::Priority(4)),
-        Want::Offer(offer("a", "a")),
-        Want::Offer(offer("b", "b")),
-        Want::Offer(offer("c", "c")),
-        Want::Offer(offer("d", "d")),
-    ]);
-    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &due);
-    assert_eq!(
-        made(&bench),
-        ["launch d".to_string(), format!("Priority(4) at {pb}")],
-        "the next pass's launch goes first, then the act left"
-    );
-    assert!(lines.contains(&format!("b/priority: priority 4 of b at {pb}: done")));
-}
-
-/// The running spec's "Acts left for the next pass": `home`'s next
-/// control pass falls due while its pass has two acts on places still to
-/// carry out. One line says so, naming `home` after `boomdrive:`, and each
-/// line about one want begins with its id, `home`'s own.
-#[test]
-fn acts_left_for_the_next_pass() {
-    let bench = Bench::new();
-    let mut plane = Fake::owning("home/");
-    plane.set_wants(vec![
-        Want::Offer(offer("home/a", "a")),
-        Want::Offer(offer("home/b", "b")),
-    ]);
-    bench.pass_of("home", &bench.flume, &mut plane, &|| false);
-    let (pa, pb) = (place_of("a"), place_of("b"));
-    plane.set_wants(vec![
-        Want::Offer(offer("home/a", "a")),
-        Want::Offer(offer("home/b", "b")),
-        act("home/a/priority", "home/a", ActSort::Priority(3)),
-        act("home/b/priority", "home/b", ActSort::Priority(4)),
-    ]);
-    bench.flume.take_calls();
-    let due = || !bench.flume.acts().is_empty();
-    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane, &due);
-    assert_eq!(made(&bench), [format!("Priority(3) at {pa}")]);
-    assert_eq!(
-        lines,
-        [
-            format!("home/a/priority: priority 3 of home/a at {pa}: done"),
-            "boomdrive: home: the next control pass is due, so 1 act on a place waits for it"
-                .to_string(),
-        ]
-    );
-    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane, &due);
-    assert_eq!(
-        lines,
-        [format!(
-            "home/b/priority: priority 4 of home/b at {pb}: done"
-        )]
-    );
-}
-
 /// An act ahead of its own launch in the control plane's order is
 /// carried out on the place that launch makes in the same pass.
 #[test]
@@ -565,5 +463,21 @@ fn a_drop_ahead_of_its_held_launch_keeps_it_unmade() {
             Outcome::Done,
             Some("dropped by b/drop before it was launched")
         )
+    );
+}
+
+/// The running spec's "A part's line names its label": a line of `home`'s
+/// pass names `home` after `boomdrive:`.
+#[test]
+fn a_parts_line_names_its_label() {
+    let bench = Bench::new();
+    let mut plane = Fake::owning("home/");
+    bench
+        .flume
+        .listing(Err(Unrun("flume was ended: signal: 9".into())));
+    let (_, lines) = bench.pass_of("home", &bench.flume, &mut plane);
+    assert_eq!(
+        lines,
+        ["boomdrive: home: Flume's status could not be read: flume was ended: signal: 9"]
     );
 }
