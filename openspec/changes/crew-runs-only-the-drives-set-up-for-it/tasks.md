@@ -41,5 +41,5 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 3. The format and the specs
 
-- [ ] 3.1 The nix files this change changes keep to the nix project's format and lint (Task notes 3.1). True when `sluice exec main -- moon run nix:format` and `sluice exec main -- moon run nix:lint` pass.
+- [x] 3.1 The nix files this change changes keep to the nix project's format and lint (Task notes 3.1). True when `sluice exec main -- moon run nix:format` and `sluice exec main -- moon run nix:lint` pass.
 - [ ] 3.2 The change's deltas archive into specs that pass OpenSpec's strict check. In `service-modules`, two requirements are renamed and eight modified (core.61). True when, after `devenv shell -- openspec archive crew-runs-only-the-drives-set-up-for-it --yes`, `sluice exec main -- moon run root:specs root:changes` passes.
