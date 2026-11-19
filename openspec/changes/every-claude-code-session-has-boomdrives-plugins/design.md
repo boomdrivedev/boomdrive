@@ -8,14 +8,14 @@ Record 0044 decides how Claude Code loads the set's plugins:
 - **Point 3.** Into each home Flume's status names, with Pending You's MCP server.
 - **Point 5.** The wake mod from Pending You's folder, by `CLAUDE_CODE_PLUGIN_DIRS` in each session's environment.
 
-Its amendment of 2026-11-18 adds every tool's own plugin to the marketplace. boomdrive-design's answer of 2026-11-18, quoted in the proposal, holds point 3: the homes come from Flume's status, and this change's code waits on the Flume release that gives them.
+Its amendments of 2026-11-18 add every tool's own plugin to the marketplace and give each companion a switch of its own. boomdrive-design's answer of 2026-11-18, quoted in the proposal, holds point 3: the homes come from Flume's status, which Flume v0.31.0 gives.
 
 What stands today:
 
-- **The marketplace.** `nix/packages/claude-plugins.nix` builds `boomdrive` with `pendingyou`, `plannotator` and `timber`, one store folder of regular files.
-- **Pending You's folder.** `activate.sh pendingyou` writes it as the runner's user. Its `signin/.claude.json` names Pending You's server: `type` `http`, `url` `https://www.pendingyou.com/mcp`, and `headersHelper` the folder's `bin/pendingyou-mcp-headers`.
+- **The marketplace.** `nix/packages/claude-plugins.nix` builds `boomdrive`, one store folder of regular files, with eight plugins, each at the set's version of its tool: `pendingyou`, `plannotator`, `timber`, `flume`, `sluice`, `sluice-board`, `crew` and `worktrunk` (the fix `the-sets-marketplace-holds-every-tools-claude-code-plugins`).
+- **Pending You's folder.** `activate.sh pendingyou` writes it as the set's user, where `services.boomdrive.pendingyou.enable` is on with a package, with the runner or without. Its `signin/.claude.json` names Pending You's server: `type` `http`, `url` `https://www.pendingyou.com/mcp`, and `headersHelper` the folder's `bin/pendingyou-mcp-headers`.
 - **What no module does.** No step runs `claude`. The test *No Claude Code of the modules'* holds every step to that.
-- **Flume's status.** `flume --json status` gives `.status.host.pools[].accounts[]`, each with its `name` and `program`. Flume's statement, C.4's row `home`, adds the account's configuration home: the `CLAUDE_CONFIG_DIR` its variables give, and none where they give none. No release gives it yet.
+- **Flume's status.** `flume --json status` gives `.status.host.pools[].accounts[]`, each with its `name` and `program`. From v0.31.0, each also gives `home`, its configuration home, as Flume's statement, C.4's row `home`, has it: Claude Code's `CLAUDE_CONFIG_DIR` its variables give, read against the login environment, and `null` where they give none. Where it cannot be read, `home` is `null` and `home_unread` says why.
 - **Flume's agents.** Each agent's environment is the host user's login environment, read by `$SHELL -l -c 'env -0'`, with the account's variables over it (Flume's 29). Flume starts each place's agent with its own plugin by `--plugin-dir`.
 
 What Claude Code 2.1.322 does, tried in a scratch home on 2026-11-18:
@@ -48,7 +48,7 @@ What Claude Code 2.1.322 does, tried in a scratch home on 2026-11-18:
 
 ### 1. The set takes the Flume that gives each account's home
 
-`flake.nix`'s Flume input moves to the first Flume release whose `flume --json status` gives each account's `home`, the release carrying `flumes-status-names-each-accounts-claude-code-folder`. The lock moves with it (core.45). Where that release's tree pins another herdr, the set's herdr moves with it (the family-packages spec, herdr is the release Flume's terminal profile was checked against). Where its module renames an option the set gives it, the set gives the new name, as the change `the-set-takes-flume-v0-29-0` did. The task waits on that release (Task notes 1.1).
+`flake.nix`'s Flume input moves to v0.31.0, the release carrying `flumes-status-names-each-accounts-claude-code-folder`, whose `flume --json status` gives each account's `home`. The lock moves with it (core.45). Its tree pins herdr 0.9.5, as v0.29.0's did, so the set's herdr stays (the family-packages spec, herdr is the release Flume's terminal profile was checked against), and its module renames no option the set gives it. Flume past v0.29.0 stops pushing sluice, so it comes only beside sluice 0.97 or later: the set's sluice 0.97.2, from the fix `the-set-takes-each-tools-latest-release`.
 
 Alternative: reading the homes from `services.flume.settings`' accounts. Not taken: Flume's C.4 says a tool "reads the homes from status and never from the host's configuration".
 
@@ -56,7 +56,7 @@ Alternative: reading the homes from `services.flume.settings`' accounts. Not tak
 
 The step reads the homes from the set's Flume, by `<flume> --json status`, as `.status.host.pools[].accounts[]`:
 
-- **An account's home.** Each account whose `program` is `claude` and whose `home` is a path gives that path.
+- **An account's home.** Each account whose `program` is `claude` and whose `home` is a path gives that path. One whose `home` is `null`, whether or not `home_unread` says why, gives none.
 - **The default home.** Claude Code's default home, `CLAUDE_CONFIG_DIR` unset, is always a home. It holds Flume's agents for an account that gives no home, an agent under no account, and a person's own session started with no `CLAUDE_CONFIG_DIR`.
 
 Each home is installed into once, in the order status gives it, the default home first. An account of another program is skipped. Where Flume's status cannot be read, the step says so in one line and installs into the default home alone.
@@ -109,31 +109,27 @@ The module splits the marketplace's plugins into those installed and those remov
 |---|---|
 | `flume` | `services.flume.enable`, with a package |
 | `sluice`, `sluice-board` | `services.sluice.enable`, with a package |
+| `crew` | `services.crew.enable`, with a package |
 | `timber` | `services.timber.enable`, with a package |
-| `pendingyou` | the companions are installed, with Pending You's package |
-| `plannotator` | the companions are installed, with Plannotator's package |
+| `worktrunk` | `services.boomdrive.worktrunk.enable`, with a package |
+| `pendingyou` | `services.boomdrive.pendingyou.enable`, with a package |
+| `plannotator` | `services.boomdrive.plannotator.enable`, with a package |
 
-The companions are installed where the runner and crew are on (record 0044, point 8). Each plugin not installed is removed, so a tool turned off leaves no plugin that calls it. With the runner and crew on and no package `null`, every plugin the marketplace lists is installed, as the amendment of 2026-11-18 asks.
+With the runner, Flume's, sluice's and timber's modules and worktrunk are on by default, and the companions where crew is on too, each a host's own value winning (record 0023 and record 0044 as amended on 2026-11-18). Each plugin not installed is removed, so a tool turned off leaves no plugin that calls it. With the runner and crew on and no package `null`, every plugin the marketplace lists is installed, as the amendment of 2026-11-18 asks.
 
 Alternative: every plugin on every host with the runner. Not taken: Pending You's hooks without its folder, and Flume's without Flume, would run for nothing in every session.
 
 ### 6. Pending You's server, the folder's
 
-`nix/modules/pendingyou-folder.nix` gives `passthru.server`, the JSON of the server its `signin/.claude.json` names. The module writes it into a store file, which is `<server>`, where the folder is written: crew on, Pending You's package not `null`. Elsewhere `<server>` is `-`.
+`nix/modules/pendingyou-folder.nix` gives `passthru.server`, the JSON of the server its `signin/.claude.json` names. The module writes it into a store file, which is `<server>`, where the folder is written: Pending You's switch on, its package not `null`. Elsewhere `<server>` is `-`.
 
 The step adds it only where the home names no `pendingyou`, and never removes or rewrites one. A person's own `pendingyou` stays theirs.
 
-### 7. Flume's and sluice's plugins in the marketplace
+### 7. The marketplace as the set builds it
 
-`claude-plugins.nix` takes `flume` and `sluice`, each the set's package with its source tree:
+The step installs from `boomdrive-claude-plugins` as it stands: each plugin copied whole from its tool's pin, and held by the build to the set's version of its tool (record 0044's amendment of 2026-11-18). The set's Flume moving to v0.31.0 moves the `flume` plugin with it.
 
-- `flume`: Flume's `plugins/claude`, copied whole, as `flume`;
-- `sluice`: sluice's `plugins/sluice`, copied whole, as `sluice`;
-- `sluice-board`: sluice's `plugins/sluice-board`, copied whole, as `sluice-board`.
-
-Neither tool's flake builds its plugin, so each is copied from the tree its tool is built from: the flake's `flume` and `sluice` inputs, at the tags the lock names (record 0044's amendment of 2026-11-18). The build fails where a plugin's `.claude-plugin/plugin.json` says another version than its tool's, naming both, as it fails for timber's. `passthru.sources` names each folder copied. The marketplace's description names every tool's plugins.
-
-Each plugin needs no package installed beside it. Flume's and sluice-board's modules import only types and Claude Code's own `claude-code` module, so each loads in place from the store.
+Each plugin loads in place from the store, needing no package beside it but its tool's, which Decision 5 installs it beside.
 
 In a place's agent, Flume's `--plugin-dir` copy replaces `flume@boomdrive` for that session. So Flume's hooks run once.
 
@@ -171,7 +167,7 @@ Alternatives:
 
 - **The step's cases.** They are in `nix/tests/activate.sh`, with stubs of `flume` and `claude` (Task notes 3.1).
 - **The modules' evaluated cases.** They are in `nix/tests/sessions.nix`, new, read by `nix/tests/default.nix`.
-- **The marketplace's cases.** They are in `nix/tests/companions.nix`.
+- **The marketplace's cases.** They are the set's, in `nix/tests/companions.nix` and `nix/tests/plugins.nix`, and hold with Flume v0.31.0.
 - **The cases this change modifies.** *No Claude Code of the modules'* allows the one step. *The tools' activation is their own* takes it out with the runner's other steps.
 
 ## Rules relied on
@@ -194,14 +190,14 @@ Alternatives:
 
 ## Sequencing
 
-- **The Flume unit first.** `flumes-status-names-each-accounts-claude-code-folder` lands and is released before this change's code (boomdrive-design, 2026-11-18). Task 1.1 waits on it.
-- **The set's Flume move in flight.** `the-set-takes-flume-v0-29-0` moves Flume to v0.29.0. Task 1.1 moves Flume from whatever the set then pins.
-- **The other unit of the bolt.** `boomdrives-tools-install-on-a-machine-without-the-runner` changes the same modules and the README's install. Whichever lands second holds the other's words and cases.
+- **The Flume unit first.** `flumes-status-names-each-accounts-claude-code-folder` is released in Flume v0.31.0, before this change's code (boomdrive-design, 2026-11-18).
+- **sluice before Flume.** No Flume past v0.29.0 goes into the set ahead of sluice 0.97 or later. This branch takes `main`, holding the fix `the-set-takes-each-tools-latest-release`, sluice 0.97.2, and the fix `the-sets-marketplace-holds-every-tools-claude-code-plugins`, before task 1.1 moves Flume.
+- **The other unit of the bolt.** `boomdrives-tools-install-on-a-machine-without-the-runner` landed on the bolt first, changing the same modules and the README's install. This change holds its words and cases: the set's user, each companion's switch, and the steps without the runner.
 
 ## Task notes
 
 - **0.** Every evaluated case runs against no store, as `nix/check.sh` does, with core.41's neutral names. No check builds a package or reaches the network. Two steps reach it, each in the devenv shell outside the sandbox: locking Flume's new tag, and building `packages.aarch64-darwin.boomdrive-claude-plugins` once, before task 2.1 is ticked.
-- **1.1.** Read the field's name from the release's `flume --json status`. Where it is not `home`, the change's words, the step and its stub take the release's name, and the task's summary says so. Where no Flume release gives the field, stop short with `flume needs`, naming `flumes-status-names-each-accounts-claude-code-folder` and this task.
+- **1.1.** The field is `home`, as v0.31.0's `AccountStatus` names it, with `home_unread` beside it where it cannot be read.
 - **3.1.**
   - The `flume` stub prints the case's `status.json` for `--json status`, or exits 1 where the case names no status.
   - The `claude` stub records each call with the `CLAUDE_CONFIG_DIR` it sees, `unset` where none.

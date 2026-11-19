@@ -31,22 +31,22 @@ Where `services.boomdrive.enable` is on and `services.flume.enable` is on with a
 
 ### Requirement: The plugins installed are those of the tools the host installs
 
-The step SHALL be given to install `flume` where Flume's module is on with a package, `sluice` and `sluice-board` where sluice's is, `timber` where timber's is, and `pendingyou` and `plannotator` where crew's companions are installed with Pending You's and Plannotator's packages. It SHALL be given to remove every other plugin the set's marketplace lists.
+The step SHALL be given to install each plugin whose tool the host installs with a package: `flume` by Flume's module, `sluice` and `sluice-board` by sluice's, `crew` by crew's, `timber` by timber's, and `worktrunk`, `pendingyou` and `plannotator` by `services.boomdrive.worktrunk.enable`, `services.boomdrive.pendingyou.enable` and `services.boomdrive.plannotator.enable`. It SHALL be given to remove every other plugin the set's marketplace lists.
 
 #### Scenario: Every plugin with the runner and crew
 
 - **WHEN** a system turns on `services.boomdrive` and `services.crew` and sets no package `null`
-- **THEN** the step installs `flume`, `sluice`, `sluice-board`, `timber`, `pendingyou` and `plannotator`, and removes none, on nix-darwin and on NixOS
+- **THEN** the step installs `flume`, `sluice`, `sluice-board`, `crew`, `timber`, `worktrunk`, `pendingyou` and `plannotator`, and removes none, on nix-darwin and on NixOS
 
 #### Scenario: No companions' plugins without crew
 
 - **WHEN** a system turns on `services.boomdrive` and leaves `services.crew` off
-- **THEN** the step installs `flume`, `sluice`, `sluice-board` and `timber`, removes `pendingyou` and `plannotator`, and is given no server, on nix-darwin and on NixOS
+- **THEN** the step installs `flume`, `sluice`, `sluice-board`, `timber` and `worktrunk`, removes `crew`, `pendingyou` and `plannotator`, and is given no server, on nix-darwin and on NixOS
 
 #### Scenario: A tool turned off
 
 - **WHEN** a system with the runner and crew sets `services.timber.enable` to `false`
-- **THEN** the step removes `timber` and installs the other five
+- **THEN** the step removes `timber` and installs the other seven
 
 ### Requirement: The homes are each Claude Code account's home Flume's status gives, and the default home
 

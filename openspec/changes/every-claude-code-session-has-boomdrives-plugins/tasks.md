@@ -13,7 +13,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 1. Flume first
 
-- [x] 1.1 **Waits on the Flume release that carries `flumes-status-names-each-accounts-claude-code-folder`** (design Decision 1; Task notes 1.1). Until that release is out, this task stays unticked, and the code stage stops short with `flume needs`, naming that unit and this task. Once it is out:
+- [x] 1.1 **The set takes Flume v0.31.0, the release that carries `flumes-status-names-each-accounts-claude-code-folder`**, on a branch that holds the set's sluice 0.97.2 (design Decision 1 and Sequencing; Task notes 1.1):
   - `flake.nix`'s `flume` input names that release's tag, and the lock moves the `flume` node alone;
   - the set's herdr moves where that tag's tree pins another;
   - each option of Flume's module the set gives takes that release's names;
@@ -23,8 +23,8 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The set's marketplace
 
-- [ ] 2.1 `nix/packages/claude-plugins.nix` takes the set's `flume` and `sluice` with their source trees, the flake's `flume` and `sluice` inputs. It copies Flume's `plugins/claude` whole as the plugin `flume`, and sluice's `plugins/sluice` and `plugins/sluice-board` whole as `sluice` and `sluice-board`. It lists them in `marketplace.json` at their tools' versions, and fails where a plugin's manifest says another version, naming the plugin and both versions. `passthru.sources` names each folder, and the header and the marketplace's description name every tool's plugins. `flake.nix` passes the two tools (design Decision 7; Task notes 0). True when `sluice exec main -- moon run nix:typecheck` passes.
-- [ ] 2.2 `nix/tests/companions.nix`'s *The marketplace's three plugins* becomes *The marketplace's six plugins*. It gains the cases *Flume's and sluice's plugins from their tools' sources*, *Flume's and sluice's plugins say their tools' versions* and *A plugin other than its tool*, the last reading the build's command for each version's check (design Decision 7). True when those four cases and "No link into the store" hold, with `sluice exec main -- moon run nix:test` passing.
+- [ ] 2.1 The set's marketplace, `boomdrive-claude-plugins`, builds with Flume v0.31.0: its eight plugins each copied whole from its tool's pin, `flume` at `0.31.0`, its build holding each manifest to its tool's version (design Decision 7; Task notes 0). True when `packages.aarch64-darwin.boomdrive-claude-plugins` builds once, in the devenv shell outside the sandbox, and `sluice exec main -- moon run nix:typecheck` passes.
+- [ ] 2.2 The set's cases of the marketplace hold with Flume v0.31.0 (design Decision 10). True when the cases "The marketplace's plugins", "No link into the store", "Each tool's plugins from its tool's pin", "Each tool's plugins say its tool's version" and "A plugin other than its tool" hold, with `sluice exec main -- moon run nix:test` passing.
 
 ## 3. The install into each home
 
@@ -36,7 +36,7 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
   True when those cases hold, with `sluice exec main -- moon run nix:test` passing.
 - [ ] 3.2 `nix/modules/pendingyou-folder.nix` gives `passthru.server`, the server its `signin/.claude.json` names. `nix/modules/sessions.nix`, new, gives the plugins to install and to remove for a system's config, and the server's file where Pending You's folder is written (design Decisions 5 and 6). True when `sluice exec main -- moon run nix:typecheck` passes.
-- [ ] 3.3 `nix/modules/darwin.nix` runs `activate.sh claude` in `postActivation` by `lib.mkAfter`. `nix/modules/nixos.nix` runs it last of the runner's user's steps before `keep`, and its user activation gains `deps = [ "flume" ]`. Each runs it where the runner and Flume, with a package, are on, with the profiles' `PATH` and `$HOME/.local/bin`, and each header names it (design Decision 3). `nix/tests/sessions.nix`, new, read by `nix/tests/default.nix`, holds the cases:
+- [ ] 3.3 `nix/modules/darwin.nix` runs `activate.sh claude` in `postActivation` by `lib.mkAfter`. `nix/modules/nixos.nix` runs it last of the runner's user's steps before `keep`, and its user activation gains `deps = [ "flume" ]`. Each runs it where the runner and Flume, with a package, are on, with the profiles' `PATH` and `$HOME/.local/bin`, and each header names it, as `flake.nix`'s comment on the marketplace and `nix/modules/companions.nix`'s header say the modules install it (design Decision 3). `nix/tests/sessions.nix`, new, read by `nix/tests/default.nix`, holds the cases:
   - *The step on nix-darwin*, *The step on NixOS*, *No step without the runner* and *No step without Flume's package*;
   - *Every plugin with the runner and crew*, *No companions' plugins without crew* and *A tool turned off*;
   - *The server's file*.
