@@ -330,14 +330,14 @@ directory, a log or standard error.
 
 On a host whose control plane is hosted, the control plane holds the
 App and mints the host's tokens, and every operation is refused, exit 1:
-the hosted control plane mints this host's forge tokens, and version 2
+the hosted control plane mints this host's forge tokens, and version 3
 of its protocol carries none yet.
 
-The set's sluice takes no token from it yet: it reads a credential
-command from v0.84.0 (boomdrivedev/sluice record 0108), and the set holds
-v0.78.1. Once the set holds a sluice that reads one, the Boomdrive
-module gives sluice `boomdrive forge-token` and the App's id itself, so
-a host writes no credential command of its own (core.57). Until then a
+The set's sluice takes no token from it yet. It reads a credential
+command, `[forge] credential`, as every sluice from v0.84.0 does
+(boomdrivedev/sluice record 0108), but the Boomdrive module does not
+yet give it `boomdrive forge-token` and the App's id. Once it does, a
+host writes no credential command of its own (core.57). Until then a
 host keeps sluice's own `[forge] key`.
 
 ## Installing with nix
@@ -385,10 +385,12 @@ gives the family's host tools pinned together, for `aarch64-darwin`,
   and the set's plannotator-tui, so herdr's link fetches nothing;
 - the set's marketplace of Claude Code plugins,
   `boomdrive-claude-plugins`: a marketplace named `boomdrive` holding
-  the companions' plugins, Pending You's hooks and skill and
-  Plannotator's own plugin, and timber's own plugin, from timber's tag,
-  which keeps a session in a timber repository publishing only through
-  `timber publish`.
+  every Claude Code plugin the set's tools ship, each from its tool's
+  tag and at its version: Flume's `flume`, sluice's `sluice` and
+  `sluice-board`, crew's `crew`, worktrunk's `worktrunk`, timber's
+  `timber`, which keeps a session in a timber repository publishing only
+  through `timber publish`, and the companions', Pending You's hooks and
+  skill and Plannotator's own plugin.
 
 Each tool reports its release's version, and the set is the one the
 runner's tests pass with. nixpkgs builds nothing for an Intel Mac, so
@@ -585,19 +587,21 @@ services.boomdrive.accounts.own.drives.home = {
     name = "home";                  # the drive's name where unset
     agents = 4;                     # 4 where unset
     priority = 11;                  # Flume's own where unset
-    labels.review.reserve = 1;      # beside operation 1 and planning 2
+    labels.review.owed = 1;         # beside operation 1 and planning 2
   };
   repositories.boomdrivedev = [ "flume" "sluice" ];
 };
 ```
 
-A stream's `agents`, `priority` and each label's `reserve` are the
-drive's, and a label the drive does not set keeps the module's reserve,
-`operation` 1 and `planning` 2. A drive's reserves are within its room:
-Flume refuses a stream whose reserves pass its `agents`, naming it. Any
-other key of a stream, a label's `keep_free` among them, is Flume's own,
-set in `services.flume.settings.streams.<stream>`, beside the drive's;
-and a value the host sets there, or in a repository's
+A stream's `agents`, from 1, `priority` and the agents each label is
+`owed` are the drive's, and a label the drive does not set keeps the
+module's share, `operation` 1 and `planning` 2. What a drive's labels
+are owed together is within its room: Flume refuses a stream whose
+labels are owed more than its `agents`, naming it. A label's `reserve`,
+Flume's word before `owed`, fails evaluation, naming `owed`. Any other
+key of a stream, the agents a label holds `reserved` among them, is
+Flume's own, set in `services.flume.settings.streams.<stream>`, beside
+the drive's; and a value the host sets there, or in a repository's
 `services.flume.settings.repos."<owner>/<name>"`, wins over the
 drive's. Two drives of this host that give one stream fail evaluation. A
 drive whose work runs on another computer names it, `machine = "host-b"`,
@@ -841,8 +845,9 @@ services.boomdrive.plannotator.package = null;
 services.boomdrive.plannotator-tui.package = null;
 ```
 
-The companions' Claude Code plugins and timber's, the set's marketplace
-`boomdrive-claude-plugins`, are installed into no Claude Code home yet:
+The Claude Code plugins of the set's tools and companions, the set's
+marketplace `boomdrive-claude-plugins`, are installed into no Claude Code
+home yet:
 no switch runs `claude` or writes into a Claude Code home, and Claude
 Code stays yours. Installing them into every Claude Code home of the
 accounts, with Pending You's MCP server, and loading the folder's wake
@@ -1400,18 +1405,18 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
-The runner speaks version 2 of the protocol, `boomdrive.v2`, its schema
-under `crates/boomdrive-hosted/protocol/v2/`, which a control plane takes
-beside the version before it, version 1. Each upgrade asks for
-`boomdrive.v2` alone, and a control plane that answers without it is
-said once, naming `boomdrive.v2`, and tried again at the backoff's cap.
+The runner speaks version 3 of the protocol, `boomdrive.v3`, its schema
+under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes
+beside the version before it, version 2. Each upgrade asks for
+`boomdrive.v3` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v3`, and tried again at the backoff's cap.
 Each end of a place goes up with its delivery: its key, its delivery's
 key and expiry, the readers it is owed to and those that confirmed it,
 and each hand-over, the end of the place's work by a drop or a done
-among them. An end version 2 does not name goes up as its delivery
+among them. An end version 3 does not name goes up as its delivery
 alone, or is left out where even that fails, the rest of its status
 going up, with one line naming the launch and each end's path. Only a
-status that went up with every end in a form version 2 names is one the
+status that went up with every end in a form version 3 names is one the
 runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
@@ -1419,8 +1424,74 @@ runner under the partition's prefix and carried out as crew's is,
 by Flume's confirm of exactly its keys. A control plane's land and
 preview, with its done, are given to the runner as crew's are, and what
 the runner answered of each preview goes up with sluice's answer and
-listing as their copies. No version yet carries a hold of a place's
-waiting move, so a hosted control plane holds nothing through the runner.
+listing as their copies. A control plane's hold of the move a launch's
+place waits on it for is an act, given to the runner under the
+partition's prefix with its words and bound as given, and carried out as
+crew's is, by Flume's hold of that waiting move.
+
+### Reporting to an observer
+
+Beside its control plane, crew's or a hosted one, a runner may report
+each part's work to an observer on its own host, such as a control
+plane's local stage, which it takes nothing from. The managed layer
+names it in `[observer]`, here beside crew's control plane:
+
+```toml
+# An observer on this host, which the runner reports each observed part's work to and takes nothing from.
+[observer]
+# Where it is reached, `http://` or `https://` to a loopback address alone.
+url = "http://localhost:8787"
+
+# The part of the control plane it observes, by its label, and the repositories its observing hello names.
+[[observer.partitions]]
+label = "home"
+repositories = ["boomdrivedev/flume"]
+```
+
+Its keys are the hosted table's, read by the hosted implementation,
+but that `url` is at a loopback address alone: `localhost`,
+`127.0.0.0/8` or `::1`. Each partition's `label` names the part of the
+control plane whose work it observes, under crew a drive's partition,
+and its `repositories` are those its hello names, of those the host
+keeps. `[observer]` is refused where the file names no
+`[control_plane]`, and a local layer that sets it is not taken. It is
+taken when the runner starts, as `[control_plane]` is, and the table
+holds no token and no key. Each partition is enrolled once, as a hosted
+partition is, at the observer's `runner/enroll`, whatever
+`[control_plane]`'s `type`:
+
+    boomdrive enroll --observer [--config <file>] [--json] <label>
+
+Its key is kept in the host's credential store under
+`observer.<label>`, apart from any hosted partition's of that label. It
+answers `observer <label>: enrolled as host <host>`, or with `--json`
+`{"enrolled":{"partition":"<label>","host":"<host>"}}`, and is refused,
+exiting 2, where the file names no `[observer]` or no partition
+`<label>` in it.
+
+Each partition keeps one outgoing WebSocket on `boomdrive.v3`, proved,
+kept and tried again as a hosted partition's is. Its first message is an
+observing hello, `observing` true with the runner's versions, its tools'
+versions and the partition's repositories, and no capacity and no lease,
+since the observer is offered no room and gives none. Once each control
+pass of the part it observes has sent its report, the observer is
+handed an observed report: each launch of the part, by its id as the
+runner holds it, with its answer and its status and entry as version
+3's copies, and no lease, act, command, inbox or preview. Handing it
+returns at once: the newest report goes on a live connection, or after
+the hello of the next one, and no pass waits on the observer, reached
+or not. `run --once` hands it nothing. The runner takes no work from
+it: a `pulled` holding a want or a report, and every message of a
+terminal, is answered with `message_refused`, its words `this connection
+observes, and the runner takes no work from it`, and said in one line,
+`<label>: the observer sent <kind> <id>, which an observer gives none
+of, so it is refused`. Its answers wake nothing and change nothing, so
+no end is confirmed on them. It says one line when it becomes
+unreachable, `<label>: the observer is unreachable: <why>`, and one
+when it is reached again, `<label>: the observer is reached`. An
+observer whose label no part has is said once at start, `boomdrive:
+observer <label>: no part of the control plane is labelled <label>, so
+it observes nothing`.
 
 ## Rules and checks
 

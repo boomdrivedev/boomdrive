@@ -87,7 +87,7 @@ fn a_partition_enrolled() {
         panic!("one enrollment taken: {taken:#?}");
     };
     assert_eq!(bearer.as_deref(), Some(TOKEN), "the request bore the token");
-    assert_eq!(refused, &None, "its enroll passed version 2");
+    assert_eq!(refused, &None, "its enroll passed version 3");
     assert!(signed, "its signature checked");
     assert_eq!(*status, 200);
     assert_eq!(message["body"]["enroll"]["machine"], json!("host-a"));
@@ -106,6 +106,82 @@ fn a_partition_enrolled() {
         "the key kept is the key enrolled"
     );
     assert_eq!(memory.accounts(), ["home@127.0.0.1"]);
+}
+
+/// The observer table naming `url`, with the partition `home`.
+fn observer_table(url: &str) -> Table {
+    let text = format!(
+        "url = {url:?}\n[[partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n"
+    );
+    Table::read_observer(
+        &toml::from_str(&text).expect("a TOML table"),
+        Path::new("/h/.config/boomdrive/config.toml"),
+    )
+    .expect("the observer table read")
+}
+
+/// The hosted-control-plane spec's "An observer enrolled beside crew", the
+/// enrollment's half (design Decision 4 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from): the fake
+/// control plane as the observer takes one `enroll` of version 3 at its
+/// `runner/enroll`, and the key is kept under `observer.home`, apart from
+/// a hosted partition `home`'s.
+#[test]
+fn an_observer_enrolled() {
+    let fake = Fake::start();
+    fake.issue("home", TOKEN, "h-1");
+    let table = observer_table(&fake.url());
+    let (memory, store) = memory();
+
+    let enrolled = enroll(&table, "home", given(TOKEN), store, "host-a");
+
+    assert_eq!(
+        enrolled,
+        Ok(Enrolled {
+            partition: "home".to_string(),
+            host: "h-1".to_string(),
+        })
+    );
+    let taken = fake.taken();
+    let [Taken::Enroll {
+        bearer,
+        refused,
+        signed,
+        status,
+        ..
+    }] = taken.as_slice()
+    else {
+        panic!("one enrollment taken: {taken:#?}");
+    };
+    assert_eq!(bearer.as_deref(), Some(TOKEN), "the request bore the token");
+    assert_eq!(refused, &None, "its enroll passed version 3");
+    assert!(signed, "its signature checked");
+    assert_eq!(*status, 200);
+    assert_eq!(memory.accounts(), ["observer.home@127.0.0.1"]);
+    let kept = memory
+        .read(&KeyName::new("observer.home", "127.0.0.1"))
+        .expect("the store read")
+        .expect("the key is in the store under `observer.home`");
+    assert_eq!(fake.keys("home"), [kept.verifying_key().to_bytes()]);
+    assert!(
+        matches!(memory.read(&KeyName::new("home", "127.0.0.1")), Ok(None)),
+        "no hosted partition's key is kept"
+    );
+
+    let refusal = enroll(
+        &table,
+        "garden",
+        never_asked,
+        || -> Result<Box<dyn Store>, String> { panic!("the store was looked for") },
+        "host-a",
+    );
+    assert_eq!(
+        refusal,
+        Err(Refusal {
+            words: "[observer] names no partition `garden`: it names `home`".to_string(),
+            host_to_fix: true,
+        })
+    );
 }
 
 #[test]
@@ -244,7 +320,7 @@ fn the_enrollments_message_refused() {
     fake.answer_enrollment(
         400,
         json!({
-            "protocol_version": 2,
+            "protocol_version": 3,
             "id": "plane:1",
             "body": { "message_refused": { "message": "runner:1", "words": "/body/enroll/machine is too long" } }
         }),
@@ -266,12 +342,12 @@ fn the_enrollments_message_refused() {
 }
 
 #[test]
-fn an_answer_that_fails_version_2() {
+fn an_answer_that_fails_version_3() {
     let fake = Fake::start();
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 2,
+            "protocol_version": 3,
             "id": "plane:1",
             "body": { "enrolled": { "host": "h-1", "certificate": "n0t-r34d" } }
         }),
@@ -285,7 +361,7 @@ fn an_answer_that_fails_version_2() {
     assert!(
         refusal
             .words
-            .starts_with("the control plane's answer, 200, fails version 2's check: "),
+            .starts_with("the control plane's answer, 200, fails version 3's check: "),
         "{}",
         refusal.words
     );
@@ -299,7 +375,7 @@ fn an_answer_of_another_kind() {
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 2,
+            "protocol_version": 3,
             "id": "plane:1",
             "body": { "pulled": { "wants": [], "report": null } }
         }),

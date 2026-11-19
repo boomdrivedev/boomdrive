@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v3/from-runner.schema.json",
+  "description": "A message a runner sends its control plane, in version 3: the version, the message's own id, and a body of one kind a runner sends.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "id",
+    "body"
+  ],
+  "properties": {
+    "protocol_version": {
+      "const": 3
+    },
+    "id": {
+      "$ref": "shared.schema.json#/$defs/message_id"
+    },
+    "body": {
+      "$ref": "#/$defs/body"
+    }
+  },
+  "$defs": {
+    "body": {
+      "description": "One kind a runner sends, by its name.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enroll"
+          ],
+          "properties": {
+            "enroll": {
+              "$ref": "enrollment.schema.json#/$defs/enroll"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hello"
+          ],
+          "properties": {
+            "hello": {
+              "description": "The hello, or the observing hello on a connection that observes.",
+              "oneOf": [
+                {
+                  "$ref": "hello.schema.json#/$defs/hello"
+                },
+                {
+                  "$ref": "hello.schema.json#/$defs/observing_hello"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "report"
+          ],
+          "properties": {
+            "report": {
+              "description": "The report, or the observed report on a connection that observes.",
+              "oneOf": [
+                {
+                  "$ref": "report.schema.json#/$defs/report"
+                },
+                {
+                  "$ref": "report.schema.json#/$defs/observed_report"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal_opened"
+          ],
+          "properties": {
+            "terminal_opened": {
+              "$ref": "terminal.schema.json#/$defs/terminal_opened"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal_output"
+          ],
+          "properties": {
+            "terminal_output": {
+              "$ref": "terminal.schema.json#/$defs/terminal_output"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal_closed"
+          ],
+          "properties": {
+            "terminal_closed": {
+              "$ref": "terminal.schema.json#/$defs/terminal_closed"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "message_refused"
+          ],
+          "properties": {
+            "message_refused": {
+              "$ref": "shared.schema.json#/$defs/message_refused"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

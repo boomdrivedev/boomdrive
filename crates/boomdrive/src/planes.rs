@@ -7,8 +7,11 @@
 //! parts, `boomdrive enroll` through [`enroll`], and `boomdrive setup`
 //! through [`set_up_entry`] (record 0009 as amended 2026-11-11; design
 //! Decision 11 of the change a-persons-drive-is-set-up-by-one-command).
+//! An observer, `[observer]`, is the hosted implementation's whatever
+//! `[control_plane]`'s `type`, read, enrolled and opened through this
+//! list's functions alone (record 0048).
 
-use boomdrive_control::{Part, Wake};
+use boomdrive_control::{Observed, Part, Wake};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use weir_bounded::Halt;
@@ -375,6 +378,52 @@ fn hosted_enroll(
     token: Token<'_>,
 ) -> Result<Enrolled, Refusal> {
     boomdrive_hosted::enroll(table, file, label, token)
+        .map(|enrolled| Enrolled {
+            host: enrolled.host,
+        })
+        .map_err(|refused| Refusal {
+            words: refused.words,
+            host_to_fix: refused.host_to_fix,
+        })
+}
+
+/// Opens the observers of the observer table, `[observer]`, `table`, of
+/// the configuration file `file`, by the hosted implementation, whatever
+/// `[control_plane]`'s `type`: one for each partition, in its order, its
+/// connection tried again on a backoff whose cap stops at `poll_interval`
+/// and saying its lines to the say `say_for` makes for its label, and none
+/// attempted before it is handed a pass (design Decisions 6 and 7 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+pub fn observers(
+    table: &toml::Table,
+    file: &Path,
+    poll_interval: Duration,
+    say_for: SayFor<'_>,
+) -> Result<Vec<Observed>, String> {
+    boomdrive_hosted::observer::open(table, file, poll_interval, say_for)
+}
+
+/// Reads the observer table, `[observer]`, `table`, of the configuration
+/// file `file`, by the hosted implementation's own reading, opening nothing
+/// and asking nothing of the host: words saying what it refuses, or nothing
+/// (design Decision 3 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+pub fn read_observer(table: &toml::Table, file: &Path) -> Result<(), String> {
+    boomdrive_hosted::table::Table::read_observer(table, file).map(drop)
+}
+
+/// Enrolls the partition `label` of the observer table, `[observer]`,
+/// `table`, of the configuration file `file`, by the hosted
+/// implementation's enrollment, with the one-time token `token` gives,
+/// whatever `[control_plane]`'s `type` (design Decision 4 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+pub fn enroll_observer(
+    table: &toml::Table,
+    file: &Path,
+    label: &str,
+    token: impl FnOnce() -> Result<String, String>,
+) -> Result<Enrolled, Refusal> {
+    boomdrive_hosted::enroll_observer(table, file, label, token)
         .map(|enrolled| Enrolled {
             host: enrolled.host,
         })

@@ -10,10 +10,15 @@
 //! shell, or the line by `sh -c` where the hook names no arguments, the
 //! hook's input on standard input, and `CLAUDE_PLUGIN_ROOT`,
 //! `CLAUDE_PROJECT_DIR` and `CLAUDE_CODE_SESSION_ID` over its own
-//! environment. In place of a model it makes the stage's one change: it
-//! runs SessionStart, then UserPromptSubmit with the prompt it was given,
-//! writes [`CHANGE`] and commits it on the place's branch, then runs Stop
-//! and SessionEnd, and exits 0. It reads no answer of a hook.
+//! environment. Every input but SessionStart's names the session's mode,
+//! `permission_mode`, as Claude Code's does: the mode `--permission-mode`
+//! names, or `default` where none is given, since Flume takes a stage's
+//! first prompt only in the mode its start asked, and otherwise ends the
+//! agent and starts the stage afresh (Flume's 161). In place of a model it
+//! makes the stage's one change: it runs SessionStart, then
+//! UserPromptSubmit with the prompt it was given, writes [`CHANGE`] and
+//! commits it on the place's branch, then runs Stop and SessionEnd, and
+//! exits 0. It reads no answer of a hook.
 
 use serde_json::{json, Value};
 use std::io::Write as _;
@@ -28,15 +33,20 @@ const SESSION: &str = "00000000-0000-4000-8000-000000000000";
 
 fn main() {
     let mut plugin = None;
+    let mut mode = String::from("default");
     let mut prompt = String::new();
     let mut words = std::env::args().skip(1);
     while let Some(word) = words.next() {
         match word.as_str() {
             "--plugin-dir" => plugin = words.next().map(PathBuf::from),
+            "--permission-mode" => {
+                if let Some(given) = words.next() {
+                    mode = given;
+                }
+            }
             "--model"
             | "--append-system-prompt"
             | "--append-system-prompt-file"
-            | "--permission-mode"
             | "--settings"
             | "--effort"
             | "--resume" => {
@@ -47,7 +57,7 @@ fn main() {
         }
     }
     let cwd = std::env::current_dir().expect("the place");
-    let session = Session::new(cwd, plugin);
+    let session = Session::new(cwd, plugin, mode);
     session.hook("SessionStart", json!({ "source": "startup" }));
     session.hook("UserPromptSubmit", json!({ "prompt": prompt }));
     session.change();
@@ -61,27 +71,34 @@ fn main() {
     session.hook("SessionEnd", json!({ "reason": "prompt_input_exit" }));
 }
 
-/// The session in the place `cwd`, under the plugin at `plugin`.
+/// The session in the place `cwd`, under the plugin at `plugin`, in the
+/// mode `mode`.
 struct Session {
     cwd: PathBuf,
     plugin: Option<PathBuf>,
+    mode: String,
     hooks: Value,
 }
 
 impl Session {
-    fn new(cwd: PathBuf, plugin: Option<PathBuf>) -> Session {
+    fn new(cwd: PathBuf, plugin: Option<PathBuf>, mode: String) -> Session {
         let hooks = plugin
             .as_deref()
             .and_then(|dir| std::fs::read_to_string(dir.join("hooks/hooks.json")).ok())
             .and_then(|text| serde_json::from_str::<Value>(&text).ok())
             .map(|file| file["hooks"].clone())
             .unwrap_or(Value::Null);
-        Session { cwd, plugin, hooks }
+        Session {
+            cwd,
+            plugin,
+            mode,
+            hooks,
+        }
     }
 
     /// Every command hook the plugin names for `event`, each run to its
     /// end with `input` and the session's common fields on its standard
-    /// input.
+    /// input, its mode among them but at SessionStart.
     fn hook(&self, event: &str, mut input: Value) {
         let transcript = transcript(&self.cwd);
         let fields = input.as_object_mut().expect("an object");
@@ -89,6 +106,9 @@ impl Session {
         fields.insert("transcript_path".into(), json!(transcript));
         fields.insert("cwd".into(), json!(self.cwd));
         fields.insert("hook_event_name".into(), json!(event));
+        if event != "SessionStart" {
+            fields.insert("permission_mode".into(), json!(self.mode));
+        }
         for group in self.hooks[event].as_array().into_iter().flatten() {
             for hook in group["hooks"].as_array().into_iter().flatten() {
                 if hook["type"] == "command" {

@@ -22,7 +22,8 @@ context: |
   sluice, crew and timber pinned together, with herdr, its plugins,
   Ghostty, portless and worktrunk, and crew's companions, Pending You,
   Plannotator and plannotator-tui, with their herdr plugins and the set's
-  marketplace of their Claude Code plugins and timber's (record 0044),
+  marketplace of every Claude Code plugin its tools and companions ship
+  (record 0044),
   each tool's own module re-exported beside the runner's service,
   services.boomdrive, as nix-darwin and NixOS modules, in which each tool
   is turned on by a switch of its own, which the runner's turns on, so a

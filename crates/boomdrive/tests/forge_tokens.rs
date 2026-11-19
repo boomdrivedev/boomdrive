@@ -680,7 +680,7 @@ fn a_get_on_a_cloud_host_is_refused() {
     );
     assert_eq!(
         boomdrive_hosted::NO_FORGE_TOKEN,
-        "the hosted control plane mints this host's forge tokens, and version 2 of its \
+        "the hosted control plane mints this host's forge tokens, and version 3 of its \
          protocol carries none yet"
     );
 }

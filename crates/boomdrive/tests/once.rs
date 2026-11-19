@@ -8,9 +8,13 @@
 //! all it keeps between passes is the report file. Each part keeps its
 //! share of the one file, the entries its control plane owns, and keeps
 //! every other part's share as it stands (record 0026; design Decision
-//! 5).
+//! 5). `run --once` hands no observer a pass (design Decision 7 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from).
 
+mod common;
 mod fakes;
+#[path = "../../boomdrive-crew/tests/common/mod.rs"]
+mod records;
 
 use boomdrive::facts;
 use boomdrive::flume::{Act, Flume, LaunchArgs, Reply, Unrun};
@@ -417,4 +421,54 @@ fn a_part_the_file_does_not_hold() {
         parts_named(&bench),
         Some(vec!["home".into(), "work".into()])
     );
+}
+
+/// The running spec's "One pass": `boomdrive run --once` with an observer
+/// of `home` named, at a loopback port where a listener records any
+/// connection, makes its control pass of `home`, which pulls and reports,
+/// and makes no connection to the observer (record 0048).
+#[test]
+fn one_pass_observes_nothing() {
+    let scratch = common::Scratch::new();
+    scratch.origin(KEPT);
+    let state = scratch.empty_origin("example/home-state");
+    state.commit(
+        "home/main",
+        "requests.rec",
+        &records::file(records::REQUESTS, &[]),
+    );
+    state.commit("home/main", "plan.rec", &records::plan(&[], &[]));
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    listener
+        .set_nonblocking(true)
+        .expect("a listener that waits on nothing");
+    let port = listener.local_addr().expect("its address").port();
+    scratch.configure(&format!(
+        "{}\n[control_plane]\ntype = \"crew\"\npoll_interval = \"1m\"\n\n\
+         [control_plane.crew]\nhost = \"host-a\"\n\n\
+         [[control_plane.crew.partitions]]\nlabel = \"home\"\n\
+         state_repository = \"example/home-state\"\n\n\
+         [observer]\nurl = \"http://127.0.0.1:{port}\"\n\n\
+         [[observer.partitions]]\nlabel = \"home\"\nrepositories = [{KEPT:?}]\n",
+        common::keeping(&[KEPT])
+    ));
+
+    let output = scratch
+        .boomdrive()
+        .args(["run", "--once"])
+        .output()
+        .expect("boomdrive runs");
+
+    let said = String::from_utf8_lossy(&output.stderr).into_owned();
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "home pulled and reported: {said}"
+    );
+    match listener.accept() {
+        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+        Ok((_, from)) => panic!("a connection was made to the observer from {from}: {said}"),
+        Err(error) => panic!("the listener failed: {error}"),
+    }
+    assert!(!said.contains("observer"), "{said}");
 }

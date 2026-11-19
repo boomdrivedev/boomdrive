@@ -33,8 +33,8 @@ else of it under `nix/`, gives the runner, Flume, sluice, crew and
 timber pinned together, with herdr, its plugins, Ghostty, portless and
 worktrunk, and crew's companions, Pending You, Plannotator and
 plannotator-tui, with their herdr plugins and the set's marketplace of
-their Claude Code plugins and timber's (record 0044), each tool's own
-module re-exported beside the runner's service, `services.boomdrive`,
+every Claude Code plugin its tools and companions ship (record 0044),
+each tool's own module re-exported beside the runner's service, `services.boomdrive`,
 as nix-darwin and NixOS modules, whose `accounts` and `settings` are
 the runner's file, each drive's stream given to Flume's module, and,
 with crew on, crew's source of kinds (record 0034). Each tool is turned

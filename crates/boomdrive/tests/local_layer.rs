@@ -191,6 +191,60 @@ fn taken_at_the_start() {
     assert!(scratch.clone_of("agentplot/sluice").exists());
 }
 
+/// The configuration spec's "An observer in the local layer": a local
+/// layer that sets `[observer]` is not taken, the managed layer is read
+/// alone, and the runner names `observer` as a key the local layer does
+/// not set (design Decision 3 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; core.17).
+#[test]
+fn an_observer_in_the_local_layer() {
+    let scratch = Scratch::new();
+    scratch.origin("agentplot/flume");
+    let managed = keeping(&["agentplot/flume"]);
+    scratch.configure(&managed);
+    let local = "[observer]\nurl = \"http://localhost:8787\"\n\n\
+                 [[observer.partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n";
+    scratch.configure_local(local);
+
+    let output = scratch
+        .boomdrive()
+        .args(["run", "--once"])
+        .output()
+        .expect("boomdrive runs");
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let said = stderr(&output);
+    let local_lines: Vec<&str> = said
+        .lines()
+        .filter(|line| line.contains("config.local.toml"))
+        .collect();
+    assert_eq!(
+        local_lines,
+        [not_taken(
+            &scratch,
+            "`observer` is a key the local layer does not set"
+        )],
+        "{said}"
+    );
+    assert!(scratch.clone_of("agentplot/flume").exists());
+    let config = config::parse_layers(
+        &managed,
+        &scratch.config_file(),
+        Some(local),
+        &scratch.local_file(),
+        &scratch.home,
+    )
+    .expect("a managed layer");
+    assert_eq!(config.observer, None, "the managed layer is read alone");
+    assert_eq!(
+        config.local,
+        config::LocalLayer::NotTaken {
+            keys: vec!["observer".to_string()],
+            fault: None,
+        }
+    );
+}
+
 /// The configuration spec's "A fault said once": a local layer that is
 /// not TOML for three passes is named once, and once mended is said taken
 /// once.

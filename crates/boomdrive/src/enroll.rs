@@ -5,6 +5,10 @@
 //! configuration as `run` reads it, its local layer over its managed one, reaches the implementation's
 //! enrollment through `planes::enroll` alone (core.2), takes no lock, and
 //! writes no configuration and nothing in the data directory (core.35).
+//! With `--observer`, the partition `<label>` of `[observer]` is enrolled
+//! the same way, through `planes::enroll_observer`, whatever
+//! `[control_plane]`'s `type` (design Decision 4 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
 
 use crate::config::{self, Env};
 use crate::planes::{self, Enrolled, Refusal};
@@ -14,16 +18,20 @@ use std::io::{BufRead, IsTerminal, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-/// Enrolls `label`, answering in words or, with `json`, as one JSON
-/// object, and exiting 0 enrolled, 1 refused by the control plane or
-/// unreachable, and 2 for a host that must be fixed (core.39).
-pub fn main(file: Option<&Path>, json: bool, label: &str) -> ExitCode {
-    let answer = enroll(
-        file,
-        label,
-        |name| std::env::var_os(name),
-        || read_token(label),
-    );
+/// Enrolls `label`, of the observer where `observer`, answering in words
+/// or, with `json`, as one JSON object, and exiting 0 enrolled, 1 refused
+/// by the control plane or unreachable, and 2 for a host that must be
+/// fixed (core.39).
+pub fn main(file: Option<&Path>, json: bool, observer: bool, label: &str) -> ExitCode {
+    let var = |name: &str| std::env::var_os(name);
+    let answer = match observer {
+        false => enroll(file, label, var, || read_token(label)),
+        true => enroll_observer(file, label, var, || read_token(label)),
+    };
+    let named = match observer {
+        false => label.to_string(),
+        true => format!("observer {label}"),
+    };
     match answer {
         Ok(enrolled) if json => {
             println!(
@@ -33,7 +41,7 @@ pub fn main(file: Option<&Path>, json: bool, label: &str) -> ExitCode {
             ExitCode::SUCCESS
         }
         Ok(enrolled) => {
-            println!("{label}: enrolled as host {}", enrolled.host);
+            println!("{named}: enrolled as host {}", enrolled.host);
             ExitCode::SUCCESS
         }
         Err(refusal) => {
@@ -79,6 +87,32 @@ pub fn enroll(
         label,
         token,
     )
+}
+
+/// Enrolls the partition `label` of the observer the configuration `file`
+/// names, else the default one, with the local layer over it, in the
+/// environment `var` gives, with the token `token` gives, as [`enroll`]
+/// enrolls a control plane's, whatever `[control_plane]`'s `type` (design
+/// Decision 4 of a-runner-reports-to-an-observer-it-takes-no-work-from). A
+/// configuration that cannot be read, or names no `[observer]`, is refused
+/// as the host's to fix, before the token is asked for.
+pub fn enroll_observer(
+    file: Option<&Path>,
+    label: &str,
+    var: impl Fn(&str) -> Option<OsString>,
+    token: impl FnOnce() -> Result<String, String>,
+) -> Result<Enrolled, Refusal> {
+    let env = Env::read(var).map_err(host)?;
+    let file = config::config_path(file, &env);
+    let local = config::local_path(&env);
+    let config = config::read_layers(&file, &local, &env.home).map_err(host)?;
+    let Some(table) = config.observer else {
+        return Err(host(format!(
+            "{}: names no `[observer]`, so no partition of an observer to enroll",
+            file.display()
+        )));
+    };
+    planes::enroll_observer(&table, &file, label, token)
 }
 
 /// The one-time token: asked for on standard error and read without echo

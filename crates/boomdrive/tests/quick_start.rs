@@ -733,6 +733,15 @@ fn a_change_the_drive_is_given_lands() {
         &format!("PATH='{}'\nexport PATH\n", set_path(&["flume", "sluice"])),
         &scratch.home.join(".profile"),
     );
+    // Those steps get the login environment alone, no GIT_CONFIG_GLOBAL,
+    // so their git reads the home's own configuration, as a reader's
+    // does: the scratch home's takes in the scratch's, whose forge is
+    // GitHub's addresses. sluice's release of the place reads main's
+    // policy from origin (sluice record 0120).
+    write_text(
+        &format!("[include]\n\tpath = {}\n", scratch.gitconfig.display()),
+        &scratch.home.join(".gitconfig"),
+    );
 
     let began = std::time::Instant::now();
     let mut said_last = String::new();
@@ -796,7 +805,7 @@ fn a_change_the_drive_is_given_lands() {
     };
     assert!(sent, "the fix landed with no send: {landed}");
     assert_eq!(ran.len(), 1, "{ran:?}");
-    assert_eq!(landed["identity"], "flume/fix@1", "{landed}");
+    assert_eq!(landed["identity"], "flume/fix@2", "{landed}");
     assert_eq!(landed["mark"], "boomdrive:home/1", "{landed}");
     assert_eq!(
         landed_commit(&landed),

@@ -52,7 +52,7 @@ let
   # Flume's settings of a system.
   flumeOf = evaluated: evaluated.config.services.flume.settings;
   # A stream of Flume's settings as the module gives it: its room, its
-  # priority and each label's reserve; null where there is none.
+  # priority and the agents each label is owed; null where there is none.
   streamOf =
     evaluated: name:
     let
@@ -64,9 +64,7 @@ let
     else
       {
         inherit (stream) agents priority;
-        reserves = lib.mapAttrs (_: label: label.reserve) (
-          if stream.labels == null then { } else stream.labels
-        );
+        owed = lib.mapAttrs (_: label: label.owed) (if stream.labels == null then { } else stream.labels);
       };
 
   holds =
@@ -84,7 +82,7 @@ let
     holds platform (system (home { })) "home" {
       agents = 4;
       priority = null;
-      reserves = {
+      owed = {
         operation = 1;
         planning = 2;
       };
@@ -97,15 +95,15 @@ let
       (system (home {
         priority = 11;
         labels = {
-          planning.reserve = 1;
-          review.reserve = 1;
+          planning.owed = 1;
+          review.owed = 1;
         };
       }))
       "home"
       {
         agents = 4;
         priority = 11;
-        reserves = {
+        owed = {
           operation = 1;
           planning = 1;
           review = 1;
@@ -213,24 +211,24 @@ let
         services.flume.settings = {
           streams.home = {
             agents = 6;
-            labels.operation.keep_free = 1;
+            labels.operation.reserved = 1;
           };
           repos."agentplot/flume".stream = "other";
         };
       };
-      keepFree = (flumeOf evaluated).streams.home.labels.operation.keep_free or null;
+      reserved = (flumeOf evaluated).streams.home.labels.operation.reserved or null;
     in
     holds platform evaluated "home" {
       agents = 6;
       priority = null;
-      reserves = {
+      owed = {
         operation = 1;
         planning = 2;
       };
     }
     ++
-      t.expect (keepFree == 1)
-        "the ${platform} system's Flume stream home keeps ${builtins.toJSON keepFree} free for operation, not 1"
+      t.expect (reserved == 1)
+        "the ${platform} system's Flume stream home holds ${builtins.toJSON reserved} reserved for operation, not 1"
     ++ reposHold platform evaluated { "agentplot/flume" = "other"; };
 
   # The drive `garden` of the account `work` on `machine`, keeping the
@@ -322,6 +320,56 @@ let
       ) failures;
     in
     t.expect names "no ${platform} failure names the stream home and the drives home and garden: ${toString failures}";
+
+  # A label's share by Flume's word before `owed` (flume record 0063),
+  # with the runner on and with it off.
+  oldWord =
+    platform:
+    { system, off }:
+    lib.concatMap
+      (
+        { runner, evaluated }:
+        let
+          failures = toString (t.failures evaluated);
+        in
+        lib.concatMap
+          (
+            words:
+            t.expect (lib.hasInfix words failures) "the ${platform} failure with the runner ${runner} names no ${words}: ${failures}"
+          )
+          [
+            "accounts.own.drives.home.stream.labels.review.reserve"
+            "set owed in place of reserve"
+          ]
+      )
+      [
+        {
+          runner = "on";
+          evaluated = system (home {
+            labels.review.reserve = 1;
+          });
+        }
+        {
+          runner = "off";
+          evaluated = off (home {
+            labels.review.reserve = 1;
+          });
+        }
+      ];
+
+  # A stream of no agents, which Flume reads from 1 (flume record 0063).
+  noAgents =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system (home {
+        agents = 0;
+      });
+      read = builtins.tryEval (
+        builtins.seq evaluated.config.services.boomdrive.accounts.own.drives.home.stream.agents true
+      );
+    in
+    t.expect (!read.success) "the ${platform} system takes a stream of 0 agents";
 in
 onEach "A drive's stream by default" byDefault
 // onEach "A drive that writes only what it changes" onlyChanges
@@ -334,3 +382,5 @@ onEach "A drive's stream by default" byDefault
 // onEach "A drive of this machine" thisMachine
 // onEach "No host to compare with" noHost
 // onEach "One stream for two drives" oneStream
+// onEach "A label's old word" oldWord
+// onEach "A stream of no agents" noAgents
