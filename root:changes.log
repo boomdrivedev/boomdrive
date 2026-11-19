@@ -1,0 +1,13 @@
+--- stderr ---
+changes: the open changes fail openspec validate --changes --strict:
+  ✗ change/the-runner-and-the-cloud-share-a-version
+    ⚠ [WARNING] runner-protocol/spec.md: ADDED "The runner names the versions it speaks in one file of data": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior.
+  Totals: 0 passed, 1 failed (1 items)
+  Details: openspec validate the-runner-and-the-cloud-share-a-version --type change
+changes: the-runner-and-the-cloud-share-a-version would not archive cleanly: the spec runner-protocol it writes fails openspec validate --strict:
+  Specification 'runner-protocol' has issues
+  ⚠ [WARNING] requirements[34]: Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior.
+  Next steps:
+    - Ensure spec includes ## Purpose and ## Requirements sections
+    - Each requirement MUST include at least one #### Scenario: block
+    - Re-run with --json to see structured report
