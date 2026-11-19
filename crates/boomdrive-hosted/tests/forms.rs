@@ -111,3 +111,35 @@ fn a_forge_tokens_ask_or_answer_that_is_not_whole() {
         .remove("not_installed");
     refused(&to, &unsaid, "a refusal with no not_installed");
 }
+
+/// The runner-protocol spec's "A forge token is no message of version 1, 2
+/// or 3" (design Decision 5 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud): version 4's ask and
+/// two of its answers, each naming an earlier version, are refused by that
+/// version's envelope of their direction, which a release has spoken and
+/// which never changes to carry a token (core.33, core.42; record 0053).
+#[test]
+fn no_forge_token_in_version_1_2_or_3() {
+    let v4 = common::V4;
+    let messages = [
+        ("from-runner", "forge_token.json"),
+        ("to-runner", "forge_token_given.json"),
+        ("to-runner", "forge_token_refused-not-installed.json"),
+    ];
+    for version in [common::V3, common::V2, common::V1] {
+        let n = version.number;
+        for (direction, name) in messages {
+            let validator = match direction {
+                "from-runner" => version.messages_from_runner(),
+                _ => version.messages_to_runner(),
+            };
+            let mut message = v4.example(direction, name);
+            message["protocol_version"] = json!(n);
+            refused(
+                &validator,
+                &message,
+                &format!("{direction}/{name} as a message of version {n}"),
+            );
+        }
+    }
+}

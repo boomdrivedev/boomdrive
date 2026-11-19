@@ -276,3 +276,31 @@ fn version_2s_examples_still_pass() {
         }
     }
 }
+
+/// The runner-protocol spec's "Version 3's examples still pass": each
+/// example of version 3 passes its direction's envelope of version 3,
+/// which the runner no longer speaks and a control plane may still take
+/// (core.42; record 0053).
+#[test]
+fn version_3s_examples_still_pass() {
+    let v3 = common::V3;
+    let directions = [
+        ("from-runner", v3.messages_from_runner()),
+        ("to-runner", v3.messages_to_runner()),
+    ];
+    for (direction, validator) in directions {
+        let examples = v3.examples(direction);
+        assert!(!examples.is_empty(), "no example of version 3 {direction}");
+        for (name, value) in examples {
+            assert_eq!(
+                value["protocol_version"], 3,
+                "version 3's {direction}/{name}"
+            );
+            passes(
+                &validator,
+                &value,
+                &format!("version 3's {direction}/{name}"),
+            );
+        }
+    }
+}

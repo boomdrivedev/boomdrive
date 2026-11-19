@@ -5,7 +5,8 @@
 //! the hosted implementation's crate"; design Decisions 1 and 6 of
 //! the-hosted-protocol-carries-every-end-of-a-place), and each version a
 //! release has spoken held to the files that release holds: version 1 to
-//! `v0.7.3`'s and version 2 to `v0.9.0`'s (core.42); and version 3 held
+//! `v0.7.3`'s, version 2 to `v0.9.0`'s and version 3 to `v0.18.0`'s
+//! (core.42); and version 3 held
 //! to version 2 but for its hold and its observing connection (design
 //! Decision 8 of the-hosted-protocol-carries-a-hold; design Decision 9 of
 //! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0052 as
@@ -507,6 +508,235 @@ const RELEASED_V2: &[(&str, &str)] = &[
     ),
 ];
 
+/// Each file under `protocol/v3/`, schemas and examples, with its SHA-256
+/// as release `v0.18.0` holds it, read by `git show v0.18.0:<path> |
+/// shasum -a 256`. Every release from `v0.18.0`, the first to speak
+/// version 3, to the last before version 4 holds the same bytes (the
+/// runner-protocol spec's "Version 3 stays as a release spoke it"; core.42;
+/// record 0053).
+const RELEASED_V3: &[(&str, &str)] = &[
+    (
+        "enrollment.schema.json",
+        "5bd67b5aebd6365c148b4a646a90701e507ec189d4f66512afc22620996d8512",
+    ),
+    (
+        "examples/from-runner/enroll.json",
+        "24cb9aab1b9d4eb4b7bc237bd73afdfa794cbf4a975b16b353d5a8f2b84dcf97",
+    ),
+    (
+        "examples/from-runner/hello-observing.json",
+        "0b7ae8e3c2e9ab94854c58948844378f98584432b41c7b9175d060caf9a4c367",
+    ),
+    (
+        "examples/from-runner/hello-with-flume-unread.json",
+        "80c8b820e388eba3f70bffce0012d60e264d23fcab2efb1159eb6af38dad4d28",
+    ),
+    (
+        "examples/from-runner/hello.json",
+        "974156c83afc8a0480a1998ae003c40740c6f0922c04702a57b7dbd11a0ade75",
+    ),
+    (
+        "examples/from-runner/message_refused.json",
+        "8b7db12c390c413d7e1487eb05b89c35ddd69d1badb4110395da1abc0ac34a89",
+    ),
+    (
+        "examples/from-runner/report-a-done-place-held-for-the-runner.json",
+        "5a34b7761f1ca36b615fdb5baeecfec0041ba7964754a923436774f868a14b53",
+    ),
+    (
+        "examples/from-runner/report-a-dropped-place-held-for-the-runner.json",
+        "05120f0b1bbfbdc90cfe8fa36a8faab9b02407e2b294a2e914b61091691878c4",
+    ),
+    (
+        "examples/from-runner/report-a-landing-kept-by-a-failed-teardown.json",
+        "5532f441842f243209aacdd19a95ac05df7473c9d5bd9bcf140d432b2949bbcb",
+    ),
+    (
+        "examples/from-runner/report-a-live-agent-with-its-pane.json",
+        "7a1fe35c754da81e950b2d1be08cc1583e752f273369c9c0c6405abe26e7d81b",
+    ),
+    (
+        "examples/from-runner/report-a-place-on-hold.json",
+        "1326da7b783030064c686d09c1ea84e38794f183920413931383c8b0d48dc3e9",
+    ),
+    (
+        "examples/from-runner/report-a-place-waiting-on-an-answer.json",
+        "a577fda088e79ed8ec23d0b114ecbf0d7205cc25d1da96979bf13c1ee9fe6960",
+    ),
+    (
+        "examples/from-runner/report-a-preview-brought-up.json",
+        "28a864b5afa5c83ee24b1979396237aaaca365022064852ede24466228c62cfe",
+    ),
+    (
+        "examples/from-runner/report-a-preview-held.json",
+        "03d8a8ac3e966683fc4c1c7dec98f03be5fb3e36e5520fc55fea71d2c95f3214",
+    ),
+    (
+        "examples/from-runner/report-a-preview-put-away.json",
+        "6435f7cc575a9185ec95bc451a370ff1559f7bb1b1f88c41a659ba075404c263",
+    ),
+    (
+        "examples/from-runner/report-a-preview-sluice-refused.json",
+        "82c49c3987054924d170ec7ed8aacd15fed1b19234e71d4c833b2699e54a38c0",
+    ),
+    (
+        "examples/from-runner/report-a-roles-run-delivered.json",
+        "f62a174a2f33fd27868fa33682ac10a401015cb5aef7b31d68826e48ee539cfa",
+    ),
+    (
+        "examples/from-runner/report-a-submission-failed.json",
+        "767e39a7ce780cc5083205f3bb49c9c19944ddd0d6f2112e90b33ddea5f351cb",
+    ),
+    (
+        "examples/from-runner/report-a-submission-under-test.json",
+        "9187b09ea5eb5cbb367b1c17c0e861887942e2e5df2b4b0874f9cc4022c4f2ca",
+    ),
+    (
+        "examples/from-runner/report-a-tidied-place.json",
+        "456781896df072a966e7083338d7531492aab5752cc2e00e6935dd0efa184bf2",
+    ),
+    (
+        "examples/from-runner/report-an-end-by-its-delivery-alone.json",
+        "a347ae740d405cac33ab81f6719dd012d669d703e86cb0c5c7bd2e7abf346e2e",
+    ),
+    (
+        "examples/from-runner/report-an-end-handed-over-at-a-sessions-start.json",
+        "2a7ec426c1cc0cabc5156f0d74508eb17ad6119bce8ed6baf2978ab4a6dadf4b",
+    ),
+    (
+        "examples/from-runner/report-an-end-owed-expired-and-one-confirmed.json",
+        "259e0cb174f08e82c98ea35637d9d42fc7c2cabd2beaa16d8e711ce62d1f5395",
+    ),
+    (
+        "examples/from-runner/report-observed.json",
+        "208b47dfea87c7bbd00b07a417e73aa8159fdf14092d35831323b4a6b7b8913f",
+    ),
+    (
+        "examples/from-runner/report.json",
+        "457e102a4fac5401b8dc0ff024efa7267f8541d693919d55412bf7463e82233f",
+    ),
+    (
+        "examples/from-runner/terminal_closed.json",
+        "f50d0b3d690cacdaf69268fc7eeeaadd57174109fed685b951c91230051b16c3",
+    ),
+    (
+        "examples/from-runner/terminal_opened.json",
+        "fbf3e79b0f5e8433757a632927518e556aec4cd13de4464f3929e527e74e8092",
+    ),
+    (
+        "examples/from-runner/terminal_output-a-redraw-after-a-resume.json",
+        "a66c1a2b8d4d59f2863766a0aabe9b8825732ac1db7203b03bc594adbda6386a",
+    ),
+    (
+        "examples/from-runner/terminal_output-bytes-as-they-come.json",
+        "93ba1391ff00bd3173264e2245c48d8fd8b7b570a4a1b5f6bdc36fc7f217c876",
+    ),
+    (
+        "examples/from-runner/terminal_output.json",
+        "ba4fc925717299888a01b9b8d97e0645ae339afe47ed08e079ab2c7a6be45248",
+    ),
+    (
+        "examples/to-runner/enroll_refused-a-lapsed-token.json",
+        "97c424d3285d14759146be24c24b76d3cbe82cbf0d8f47f7722410b08c5fae64",
+    ),
+    (
+        "examples/to-runner/enrolled.json",
+        "14e98877a890fb24f209001b25c1c4e50bcb32546eacccb3fc816db7dcb23a02",
+    ),
+    (
+        "examples/to-runner/message_refused.json",
+        "213b7798dce7b56d74a13f0eba6e11255382f49b476d3a381b66e076c1bc07b9",
+    ),
+    (
+        "examples/to-runner/pulled-answering-an-observing-hello.json",
+        "ed1a8fb71ef1a5d0da9476cf173f411b30cebc16b1abf99b4d569aedcfcbcfc8",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-confirm.json",
+        "4b3c126464cf340a7177241142d514bd1855b9818799911fc595a40796272f0a",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-hold.json",
+        "6607b1116f8929ea1f5fce5a6154fb52cceec01349cdf27ec8e7381d1c2bc396",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-land.json",
+        "af14b242dd7f2294f4b4f89bc4d66a35f6a3f410b3fe7fc231f09d36602cc0dd",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-preview-and-its-done.json",
+        "53b3ebaa208163c456f3fe1ae1638b5488950afb47b1d0f749a1360540d48c42",
+    ),
+    (
+        "examples/to-runner/pulled-with-the-report-held.json",
+        "4d4cd74e7837b95025db5c330054246c62802cbe7e0f7e1a8d6ec298a22932a0",
+    ),
+    (
+        "examples/to-runner/pulled.json",
+        "fa16e136449f427e26c942b6c44981b0c7ee9a3b99afb3a47f17ff0f47197f72",
+    ),
+    (
+        "examples/to-runner/reported.json",
+        "52ede7c8a59bd0b0bc933e6ce44c3ecbbd35bee2b9b5f9d6b6e86ea4917e7f79",
+    ),
+    (
+        "examples/to-runner/terminal_close.json",
+        "18b3066c3ce161bcd2dc9d56a8bed4e4454c944ad6d35a622518f8b0dc06ab3e",
+    ),
+    (
+        "examples/to-runner/terminal_input.json",
+        "cd4e4ea7000a6f05ce0d34ac1aa834e8ed5ca7f7f3bfcf28f2f1d7e32ace945b",
+    ),
+    (
+        "examples/to-runner/terminal_open.json",
+        "aa955dc0bd074fa30a726339be73c7ebe71f01044173adb1cd8ae78bdf6eb3fa",
+    ),
+    (
+        "examples/to-runner/terminal_resume.json",
+        "ca12b1e0781fa7d3ac6f1f6724c4e106ee0462bedd561cd986b1b6ddba70f913",
+    ),
+    (
+        "from-runner.schema.json",
+        "ad9d8928589fb6c401108d3e818babd233292809b2f0be4567bfd04c25cb9a1c",
+    ),
+    (
+        "hello.schema.json",
+        "f35f2734b1644628304c37b19a4b830d99800fdb18dd76282b306fa6dcde64a9",
+    ),
+    (
+        "place-status.schema.json",
+        "b08697aab4ab3a79d5c4e9cf051569cca8eefbc17291ebcef80a8ad1f28b3f59",
+    ),
+    (
+        "preview.schema.json",
+        "06847d20f8541cbc3f4bda25165c56a19fa6fcde6923f61f82ed21f4303ed24c",
+    ),
+    (
+        "report.schema.json",
+        "cbcfee0e6af30aedc9017b01cc1c10737547b9a314e2b4afcdea7a053f61eebe",
+    ),
+    (
+        "shared.schema.json",
+        "693edc8787c7b014fa2065fa7485e1ab9a4839e232735296c90e37256b05aa94",
+    ),
+    (
+        "submission-entry.schema.json",
+        "084c518dac79403ef89ce620aadece63ef3950a17281869901bab9710b794b21",
+    ),
+    (
+        "terminal.schema.json",
+        "07837b93ee67b28afd8b7ceeefc3e1ba40762351284e6d194cd9f217c12d259d",
+    ),
+    (
+        "to-runner.schema.json",
+        "e7d1d7c8655b0c284ebe558c3b6ad811a1ae6a23e7fbb4972b11cb5318383078",
+    ),
+    (
+        "wants.schema.json",
+        "db7f6760999c2eaa93e30077eef9af5fb5c31b81d000f7dd55e8e52e4ab0a133",
+    ),
+];
+
 /// Every file under `dir`, at any depth, by its path relative to `root`.
 fn files_under(root: &Path, dir: &Path, found: &mut Vec<String>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
@@ -568,6 +798,11 @@ fn version_1_is_as_released() {
 #[test]
 fn version_2_is_as_released() {
     held_as_released(common::V2, "v0.9.0", RELEASED_V2);
+}
+
+#[test]
+fn version_3_is_as_released() {
+    held_as_released(common::V3, "v0.18.0", RELEASED_V3);
 }
 
 /// `value` with every `description` set aside, at any depth.
