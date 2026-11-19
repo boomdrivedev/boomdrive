@@ -7,7 +7,7 @@
 
 ### Requirement: With the runner and Flume, each activation installs the set's plugins into every Claude Code home of Flume's accounts
 
-Where `services.boomdrive.enable` is on and `services.flume.enable` is on with a package, each activation SHALL run `activate.sh claude` once, as the runner's user, with `HOME` that user's home and `PATH` the service's profiles' folders, then `$HOME/.local/bin`, after Flume's own step, Pending You's folder and herdr's links. It SHALL be given the host's `flume`, the flake's `jq`, the set's marketplace, Pending You's server's file or `-`, and the plugins to install, then `--` and those to remove.
+Where `services.boomdrive.enable` is on and `services.flume.enable` is on with a package, each activation SHALL run `activate.sh claude` once, as the runner's user, with `HOME` that user's home and `PATH` the service's profiles' folders, then `$HOME/.local/bin`, after Flume's own step, Pending You's folder and herdr's links. It SHALL be given the host's `flume`, the system's `jq`, the set's marketplace, Pending You's server's file or `-`, and the plugins to install, then `--` and those to remove.
 
 #### Scenario: The step on nix-darwin
 

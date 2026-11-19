@@ -69,7 +69,7 @@ Alternative: the default home only where an account gives none. Not taken: a per
 activate.sh claude <flume> <jq> <marketplace> <server> <plugin>... [-- <plugin>...]
 ```
 
-- **The arguments.** `<flume>` is the host's Flume's program, `services.flume.package`'s `flume`. `<jq>` is the flake's `jq`. `<marketplace>` is the store folder of `boomdrive-claude-plugins`. `<server>` is a store file holding Pending You's server's JSON, or `-` for none. The plugins before `--` are installed, and those after it are removed.
+- **The arguments.** `<flume>` is the host's Flume's program, `services.flume.package`'s `flume`. `<jq>` is the system's `jq`, as `keep`'s `procps` is the system's, since the flake gives no `jq` of its own. `<marketplace>` is the store folder of `boomdrive-claude-plugins`. `<server>` is a store file holding Pending You's server's JSON, or `-` for none. The plugins before `--` are installed, and those after it are removed.
 - **Where it runs.** It runs as the runner's user with `HOME` that user's home. Its `PATH` is the profiles' folders the runner's service runs with, then `$HOME/.local/bin`, where Claude Code's own installer puts `claude`. It finds `claude` there. Where none is found, it says so in one line and runs nothing.
 - **When it runs.** It runs where `services.boomdrive.enable` is on and `services.flume.enable` is on with a package. It runs after Flume's own step, so Flume reads the switch's file:
   - on nix-darwin, after Pending You's folder and herdr's links in `postActivation`, by `lib.mkAfter`;
