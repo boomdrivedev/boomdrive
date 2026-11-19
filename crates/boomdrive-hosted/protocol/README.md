@@ -28,8 +28,10 @@ follows, is `v1/` (*Version 3*, *Version 2* and *Version 1*, below). A
 version may change until a release of the runner speaks it to a control
 plane. From that release on it never changes, and its directory is
 never removed: every change after it is a new version, in a directory of
-its own beside it. A control plane accepts the current version and the
-one before. The runner speaks the current version alone.
+its own beside it. The runner and a control plane always share a
+version they both speak: each side drops a version only once the other
+has moved past it, and opens one only once the other speaks the one
+before it (record 0056).
 
 The runner speaks version 4 alone, and a control plane takes it beside
 version 3. Releases of the runner spoke versions 3, 2 and 1 before it,
