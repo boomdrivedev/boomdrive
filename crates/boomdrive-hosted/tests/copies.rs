@@ -248,7 +248,7 @@ const CUT_FROM_SLUICE: &[&str] = &[
     "report-a-preview-sluice-refused.json",
 ];
 
-/// Version 2's files by their addresses.
+/// Version 3's files by their addresses.
 struct Schema(BTreeMap<String, Value>);
 
 impl Schema {
@@ -376,7 +376,7 @@ fn flumes_answers_as_copies() {
 }
 
 /// The runner-protocol spec's "sluice's answers of a preview as copies":
-/// each example of a preview passes version 2, and each preview's `copy`
+/// each example of a preview passes version 3, and each preview's `copy`
 /// is an object or `null`, as is its status's.
 #[test]
 fn sluices_previews_as_copies() {

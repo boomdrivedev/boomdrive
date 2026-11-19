@@ -132,12 +132,15 @@ let
     base.config.systemd.package
   ];
   # alice's alone: the link, the set's herdr plugins' links with the set's
-  # herdr (apps.nix), then keep with the unit's own command line, given
-  # ps and systemctl.
+  # herdr (apps.nix), the install into Claude Code's homes with no crew,
+  # so no companion's plugin and no server (sessions.nix; design Decision
+  # 3 of the change every-claude-code-session-has-boomdrives-plugins), then
+  # keep with the unit's own command line, given ps and systemctl.
   keeps = builtins.unsafeDiscardStringContext ''
     if [ "$(id -un)" = alice ]; then
       ${runtimeShell} ${activate} link ${fileOf base} || true
       ${runtimeShell} ${activate} plugins ${set.herdr}/bin/herdr ${set.flume-herdr-plugin} ${set.sluice-herdr-plugin} ${set.timber-herdr-plugin} || true
+      PATH=${service.environment.PATH}:/home/alice/.local/bin ${runtimeShell} ${activate} claude ${set.flume}/bin/flume ${lib.getExe base.pkgs.jq} ${set.boomdrive-claude-plugins} - timber flume sluice sluice-board worktrunk -- pendingyou plannotator crew || true
       PATH=${keepPath}:$PATH \
         ${runtimeShell} ${activate} keep alice ${lib.escapeShellArgs (argumentsOf base)}
     fi

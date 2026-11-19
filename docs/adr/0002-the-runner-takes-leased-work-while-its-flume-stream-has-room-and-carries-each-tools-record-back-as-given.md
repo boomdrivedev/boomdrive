@@ -347,7 +347,7 @@ Option 1.
 - **A hold with no words is refused**, running nothing. It is the stage's choice. Flume takes the empty words, and the place would read neither stalled nor waiting on anyone.
 - **A hold of a launch held unlaunched is refused**, naming where the launch stands, as a retry, a land, a confirm or a done is.
 - **crew's implementation reads `Act: hold`** with its `Of`, its `Words` as a retry's are read, and its `Bound` in whole seconds. It is the stage's choice of the field `Bound`, clause 130's word, which crew's unit writes.
-- **No version of the hosted protocol carries a hold.** It is the stage's choice, within core.42. Version 1 was spoken by `v0.1.0` to `v0.7.3` and version 2 by `v0.9.0`, so neither changes. A later version, the runner's and the cloud's together, may name a hold.
+- **No version of the hosted protocol carries a hold.** It is the stage's choice, within core.42. Version 1 was spoken by `v0.1.0` to `v0.7.3` and version 2 by `v0.9.0`, so neither changes. A later version, the runner's and the cloud's together, may name a hold. Version 3 is that version (record 0052).
 
 Not taken:
 

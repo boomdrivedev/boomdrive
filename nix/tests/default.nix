@@ -21,6 +21,7 @@ in
     // import ./packages.nix t
     // import ./companions.nix t
     // import ./timber.nix t
+    // import ./plugins.nix t
     // import ./file.nix t
     // import ./darwin.nix t
     // import ./nixos.nix t
@@ -37,6 +38,7 @@ in
     // import ./clone-dirs.nix t
     // import ./kept.nix t
     // import ./claude-code.nix t
+    // import ./sessions.nix t
     // import ./collector.nix t
     // import ./boot.nix t
   );

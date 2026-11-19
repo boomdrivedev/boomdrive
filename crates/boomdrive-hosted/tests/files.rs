@@ -3,8 +3,13 @@
 //! fetched, and its module's `FILES` holding each file (the
 //! runner-protocol spec's "Each version of the protocol is JSON Schema in
 //! the hosted implementation's crate"; design Decisions 1 and 6 of
-//! the-hosted-protocol-carries-every-end-of-a-place), and version 1 held
-//! to the files release `v0.7.3` holds.
+//! the-hosted-protocol-carries-every-end-of-a-place), and each version a
+//! release has spoken held to the files that release holds: version 1 to
+//! `v0.7.3`'s and version 2 to `v0.9.0`'s (core.42); and version 3 held
+//! to version 2 but for its hold and its observing connection (design
+//! Decision 8 of the-hosted-protocol-carries-a-hold; design Decision 9 of
+//! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0052 as
+//! amended on 2026-11-18).
 
 mod common;
 
@@ -58,6 +63,7 @@ fn each_file_is_a_schema_of_its_draft() {
     }
     assert_eq!(common::V1.number, 1);
     assert_eq!(common::V2.number, 2);
+    assert_eq!(common::V3.number, 3);
 }
 
 #[test]
@@ -286,6 +292,218 @@ const RELEASED_V1: &[(&str, &str)] = &[
     ),
 ];
 
+/// Each file under `protocol/v2/`, schemas and examples, with its SHA-256
+/// as release `v0.9.0` holds it, read by `git show v0.9.0:<path> |
+/// shasum -a 256`. Every release from `v0.8.0`, the first to speak
+/// version 2, holds the same bytes (the runner-protocol spec's "Version 2
+/// stays as a release spoke it"; core.42; record 0037).
+const RELEASED_V2: &[(&str, &str)] = &[
+    (
+        "enrollment.schema.json",
+        "362233c8ed7c06dc98d9a5c7f62cc1b80336908d67e0ad217a6d0b5460ef7d0c",
+    ),
+    (
+        "examples/from-runner/enroll.json",
+        "b6dbcbc9a1a3b998394256112bb593e559a5491ca9dd9105a74d06527c578b42",
+    ),
+    (
+        "examples/from-runner/hello-with-flume-unread.json",
+        "6280a5bbb0da3271fd11ae37eaddc5707e2f954d7acebc812014f024e65f7530",
+    ),
+    (
+        "examples/from-runner/hello.json",
+        "e83cb2927ac815d1ecdfbcd508dd0b4a1395b2b8ad2f7e763f6ed9504daeba1b",
+    ),
+    (
+        "examples/from-runner/message_refused.json",
+        "fbd9010be7bd3a25b189979b45e3e49d0153e4e189ef05eff70b1d6c9d2b79a9",
+    ),
+    (
+        "examples/from-runner/report-a-done-place-held-for-the-runner.json",
+        "22a0bcf32c16b03d4dc4cd6668805ba8ed862b058ed45db909472076b88d8335",
+    ),
+    (
+        "examples/from-runner/report-a-dropped-place-held-for-the-runner.json",
+        "8d551f6ab561b880c3534952d942e80b40e355c1e8b7ebdc7c21c9467c53d519",
+    ),
+    (
+        "examples/from-runner/report-a-landing-kept-by-a-failed-teardown.json",
+        "984a5e2de800557aa54fcc93f63c752a669cd7ef212cdcd99f456c44db3f2e07",
+    ),
+    (
+        "examples/from-runner/report-a-live-agent-with-its-pane.json",
+        "918e426863728bf8ad781d0033fe1a6cc1ab540445cf5b0683b19576db29196a",
+    ),
+    (
+        "examples/from-runner/report-a-place-on-hold.json",
+        "ad4efa1017c6f9c11bef1d88e0309ebfedf48339f6a61643a458fa402856b388",
+    ),
+    (
+        "examples/from-runner/report-a-place-waiting-on-an-answer.json",
+        "d236d628e87f9b7d33faafb2500dc6628e9eb8adb1470297feee4662c9071010",
+    ),
+    (
+        "examples/from-runner/report-a-preview-brought-up.json",
+        "a77f2f7dbd1c7edbf6e988db158ddfa6a06002d2edb961e67ceddf1d356cfb04",
+    ),
+    (
+        "examples/from-runner/report-a-preview-held.json",
+        "af1c0d79f6ee56f32181eb74731e7fd35443618e476dda7a93b287591f1b5faa",
+    ),
+    (
+        "examples/from-runner/report-a-preview-put-away.json",
+        "fadfcd6274c4314c6ad311fca5918bef9148560955f62ba7374581455802a8bb",
+    ),
+    (
+        "examples/from-runner/report-a-preview-sluice-refused.json",
+        "684dcee02d36478d3e58b39b83ed186201be4ff205a6ee8f68739ce2ef333355",
+    ),
+    (
+        "examples/from-runner/report-a-roles-run-delivered.json",
+        "a1678a03ff8707c7057cfc32b9aea643a1c52fc9d2eb1a0c45c7724c81675772",
+    ),
+    (
+        "examples/from-runner/report-a-submission-failed.json",
+        "847e103d170e463fd39be573bde1afab1282cf1eec114c4ac41a686d56874706",
+    ),
+    (
+        "examples/from-runner/report-a-submission-under-test.json",
+        "499c418ddecdf60b76a68bdf36347233551a17579bf1b2812fa887a46b4c79bd",
+    ),
+    (
+        "examples/from-runner/report-a-tidied-place.json",
+        "bd0aa28868650766e5372909a426f418e9bd16369b6a4e460751ede31aca026c",
+    ),
+    (
+        "examples/from-runner/report-an-end-by-its-delivery-alone.json",
+        "e0771355e71dbb8d9d6265a783a6d6142a9951a3af154917fffed7d32e38fe3c",
+    ),
+    (
+        "examples/from-runner/report-an-end-handed-over-at-a-sessions-start.json",
+        "8511608808cad446bb036768b5a4c6c3cbc3817d79c384493a226ef20210e312",
+    ),
+    (
+        "examples/from-runner/report-an-end-owed-expired-and-one-confirmed.json",
+        "f3c9683c1e02bacccf5687484ef1f197f95bab9ea93f0e74c8c72f7d35dd80e5",
+    ),
+    (
+        "examples/from-runner/report.json",
+        "3383568219b9c7727f9242b0e42166fafe8f42ae66688efecd99d6611a304ce9",
+    ),
+    (
+        "examples/from-runner/terminal_closed.json",
+        "de63df269a5ed837d01b8b144dd6b0ef7c7a56b385dfb7d084cf50390a89d41d",
+    ),
+    (
+        "examples/from-runner/terminal_opened.json",
+        "1e39ef3ce25147b8187c43251fde28eea9cf76bf87e055e7890a9b8e32ecb886",
+    ),
+    (
+        "examples/from-runner/terminal_output-a-redraw-after-a-resume.json",
+        "da5a885b2fb6cc0ac4263978a7cf0382d17fd341ee9a568c0bd8dca5cff5e3a3",
+    ),
+    (
+        "examples/from-runner/terminal_output-bytes-as-they-come.json",
+        "58b3a2c3ccefe205063293fb1576e11b74acb1c1528f1e428e17796990932320",
+    ),
+    (
+        "examples/from-runner/terminal_output.json",
+        "db868d698482fbcb1002e9708673164a5046cdc4d485cd15c705ba0c707a0b49",
+    ),
+    (
+        "examples/to-runner/enroll_refused-a-lapsed-token.json",
+        "8560fb8e56860ae57cc7b039ef855a727e1d71f9537c0e7c118f041f05e72c43",
+    ),
+    (
+        "examples/to-runner/enrolled.json",
+        "5c26b72f9b683c1031aef7694df34e571e0b776d7ecaed1dbdc15889309f1759",
+    ),
+    (
+        "examples/to-runner/message_refused.json",
+        "44ca0baddb83b8b3325f42ec16d29af2dd84bd7eea79df8c2025509aa0fcc91f",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-confirm.json",
+        "ef24929649effbac868707c9a98f906add0959bc9f00f4496f4d5f3f749c807c",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-land.json",
+        "1c636204950c04a4bc6e2048cb203bb374cefedc76470fb10c320688035b9846",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-preview-and-its-done.json",
+        "064fa055c49eeffd0c0092473e928d78f649302dcf40e32c5853f97c46f7a87b",
+    ),
+    (
+        "examples/to-runner/pulled-with-the-report-held.json",
+        "d9496301f0243f4d798256e7e590a9dfdce7013607aaa5b0ac48d54c9af0044d",
+    ),
+    (
+        "examples/to-runner/pulled.json",
+        "cd1a6612b116b0a16a0592f6fddd6dbd1239025b12ad139e44c68bc19290e3ba",
+    ),
+    (
+        "examples/to-runner/reported.json",
+        "28f129fe99cec9860301d224aa0726cdd2342d17df3fd1960f06823368fa4e5a",
+    ),
+    (
+        "examples/to-runner/terminal_close.json",
+        "3712fe25bc1080e79ef5e3c2aa4673a1a3f5df8e878ac1e5912f6d95c3ffe84a",
+    ),
+    (
+        "examples/to-runner/terminal_input.json",
+        "1b5104cfd52646260e7d6340908eaf683413d80367922ba351f21c4ab9101109",
+    ),
+    (
+        "examples/to-runner/terminal_open.json",
+        "4d9b5d8d5ce58e87026343dcb1545132cbd3549ce3e93b8a8d10f94e0b30337f",
+    ),
+    (
+        "examples/to-runner/terminal_resume.json",
+        "5b0e8b21cd3b4d693d8b98e17199459c6b51e4519e9f52ee74b82a1559bb8721",
+    ),
+    (
+        "from-runner.schema.json",
+        "29c511f05ed3ac1ba6aa96ff96565a3450a122603abce64fb81bd6af24edbf3b",
+    ),
+    (
+        "hello.schema.json",
+        "a44a7fe4a338c14ad131343dcc5f1ad79dd85d2cefb1eff5e4827464e7f70e1d",
+    ),
+    (
+        "place-status.schema.json",
+        "18a0186e3e15ef1d0b5f559cfc2c517cd3acd1efff0a9a077d68ba5a009a9b65",
+    ),
+    (
+        "preview.schema.json",
+        "11217ce5d0f3ee060578420b606f18c4a24166607f470be6c4c4a6d7b1871ef0",
+    ),
+    (
+        "report.schema.json",
+        "b8b39b3f5c0d6ee4b4a6843ba5d3dd3ac664f35253b77b1b45a7c3353beaafe8",
+    ),
+    (
+        "shared.schema.json",
+        "ca90b26bef37bdf1e341083da5b43b964b1e127e2a1ae25eef61874394b993fa",
+    ),
+    (
+        "submission-entry.schema.json",
+        "d55e15133d8008588b4b8aea0ec1c6dae332b40c4a9307ad4d00fdf56ee9f223",
+    ),
+    (
+        "terminal.schema.json",
+        "4d1f6be2ed9fd6578375f53ecc9538b9ef3c09ebddb25ab2913c01a46ea9eb2f",
+    ),
+    (
+        "to-runner.schema.json",
+        "c42a461337e95a9ab6e048b94fd763064f02f79d9a506ef28d478d855d37d476",
+    ),
+    (
+        "wants.schema.json",
+        "6a37ac187ae795163af44f36fbab1930b8cb911654d043a4a635d4851b241fa0",
+    ),
+];
+
 /// Every file under `dir`, at any depth, by its path relative to `root`.
 fn files_under(root: &Path, dir: &Path, found: &mut Vec<String>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
@@ -299,9 +517,11 @@ fn files_under(root: &Path, dir: &Path, found: &mut Vec<String>) {
     }
 }
 
-#[test]
-fn version_1_is_as_released() {
-    let root = common::V1.dir();
+/// Holds every file under `version`'s directory, schemas and examples,
+/// to its digest as release `tag` holds it, `released`: none missing,
+/// none differing and none added (core.42).
+fn held_as_released(version: common::Version, tag: &str, released: &[(&str, &str)]) {
+    let root = version.dir();
     let mut on_disk = Vec::new();
     files_under(&root, &root, &mut on_disk);
     let on_disk: BTreeMap<String, String> = on_disk
@@ -315,7 +535,7 @@ fn version_1_is_as_released() {
             (name, digest)
         })
         .collect();
-    let released: BTreeMap<String, String> = RELEASED_V1
+    let released: BTreeMap<String, String> = released
         .iter()
         .map(|(name, digest)| (name.to_string(), digest.to_string()))
         .collect();
@@ -323,7 +543,7 @@ fn version_1_is_as_released() {
     for (name, digest) in &released {
         match on_disk.get(name) {
             None => wrong.push(format!("{name} is missing")),
-            Some(found) if found != digest => wrong.push(format!("{name} differs from v0.7.3's")),
+            Some(found) if found != digest => wrong.push(format!("{name} differs from {tag}'s")),
             Some(_) => {}
         }
     }
@@ -332,6 +552,358 @@ fn version_1_is_as_released() {
     }
     assert!(
         wrong.is_empty(),
-        "version 1 is not as release v0.7.3 holds it: {wrong:#?}"
+        "version {} is not as release {tag} holds it: {wrong:#?}",
+        version.number
     );
+}
+
+#[test]
+fn version_1_is_as_released() {
+    held_as_released(common::V1, "v0.7.3", RELEASED_V1);
+}
+
+#[test]
+fn version_2_is_as_released() {
+    held_as_released(common::V2, "v0.9.0", RELEASED_V2);
+}
+
+/// `value` with every `description` set aside, at any depth.
+fn without_descriptions(value: &Value) -> Value {
+    match value {
+        Value::Object(members) => Value::Object(
+            members
+                .iter()
+                .filter(|(key, _)| key.as_str() != "description")
+                .map(|(key, member)| (key.clone(), without_descriptions(member)))
+                .collect(),
+        ),
+        Value::Array(elements) => Value::Array(elements.iter().map(without_descriptions).collect()),
+        other => other.clone(),
+    }
+}
+
+/// The JSON pointer of the first place `a` and `b` differ, or nothing
+/// where they are equal: the path alone, never a value (core.11).
+fn first_difference(a: &Value, b: &Value, at: &str) -> Option<String> {
+    match (a, b) {
+        (Value::Object(x), Value::Object(y)) => {
+            let keys: BTreeSet<&String> = x.keys().chain(y.keys()).collect();
+            keys.into_iter().find_map(|key| {
+                let here = format!("{at}/{}", key.replace('~', "~0").replace('/', "~1"));
+                match (x.get(key), y.get(key)) {
+                    (Some(p), Some(q)) => first_difference(p, q, &here),
+                    _ => Some(here),
+                }
+            })
+        }
+        (Value::Array(x), Value::Array(y)) => {
+            let found = x
+                .iter()
+                .zip(y)
+                .enumerate()
+                .find_map(|(i, (p, q))| first_difference(p, q, &format!("{at}/{i}")));
+            match found {
+                None if x.len() != y.len() => Some(format!("{at}/{}", x.len().min(y.len()))),
+                found => found,
+            }
+        }
+        _ if a == b => None,
+        _ => Some(if at.is_empty() {
+            "/".to_string()
+        } else {
+            at.to_string()
+        }),
+    }
+}
+
+/// `value`'s `protocol_version` member at `pointer`, which must be 3, read
+/// as 2.
+fn read_as_version_2(value: &mut Value, pointer: &str, what: &str) {
+    let member = value
+        .pointer_mut(pointer)
+        .unwrap_or_else(|| panic!("{what} has no {pointer}"));
+    assert_eq!(*member, 3, "{what}'s {pointer} is not 3");
+    *member = Value::from(2);
+}
+
+/// The hold's branch of version 3's `act_sort`, its descriptions set
+/// aside (design Decision 1): `ActSort::Hold` as the interface writes it.
+fn hold_branch() -> Value {
+    serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hold"],
+        "properties": {
+            "hold": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["words", "bound_interval"],
+                "properties": {
+                    "words": { "type": "string" },
+                    "bound_interval": { "$ref": "shared.schema.json#/$defs/unsigned_integer" }
+                }
+            }
+        }
+    })
+}
+
+/// `definition` taken out of `read`'s `$defs`, where `name` holds it.
+fn take_definition(read: &mut Value, name: &str, definition: &str) -> Value {
+    read.pointer_mut("/$defs")
+        .and_then(Value::as_object_mut)
+        .and_then(|defs| defs.remove(definition))
+        .unwrap_or_else(|| panic!("{name} holds no {definition}"))
+}
+
+/// `value`, an object, with `members` taken out of its `required` and its
+/// `properties`.
+fn without_members(value: &Value, members: &[&str]) -> Value {
+    let mut read = value.clone();
+    read["required"]
+        .as_array_mut()
+        .expect("a required list")
+        .retain(|member| !members.iter().any(|m| member == m));
+    let properties = read["properties"].as_object_mut().expect("properties");
+    for member in members {
+        properties.remove(*member);
+    }
+    read
+}
+
+/// `value`, an object, with `observing`, `{"const": true}`, put first in
+/// its `required` and its `properties` (design Decision 1).
+fn observing_first(value: &Value) -> Value {
+    let mut read = value.clone();
+    read["required"]
+        .as_array_mut()
+        .expect("a required list")
+        .insert(0, Value::from("observing"));
+    let mut properties = serde_json::Map::new();
+    properties.insert(
+        "observing".to_string(),
+        serde_json::json!({ "const": true }),
+    );
+    for (key, member) in read["properties"].as_object().expect("properties") {
+        properties.insert(key.clone(), member.clone());
+    }
+    read["properties"] = Value::Object(properties);
+    read
+}
+
+/// The observed report, its descriptions set aside, as design Decision 1
+/// gives it.
+fn observed_report() -> Value {
+    serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["observing", "launches"],
+        "properties": {
+            "observing": { "const": true },
+            "launches": {
+                "type": "object",
+                "propertyNames": { "$ref": "shared.schema.json#/$defs/id" },
+                "additionalProperties": { "$ref": "#/$defs/observed_launch" }
+            }
+        }
+    })
+}
+
+/// The kind `kind`'s branch of `read`'s envelope, its two forms checked,
+/// the working form at `working` and the observing one at `observing`,
+/// read as the reference to its working form alone (design Decision 9).
+fn read_as_its_working_form(
+    read: &mut Value,
+    name: &str,
+    kind: &str,
+    working: &str,
+    observing: &str,
+) {
+    let branches = read
+        .pointer_mut("/$defs/body/oneOf")
+        .and_then(Value::as_array_mut)
+        .unwrap_or_else(|| panic!("{name} holds no body's branches"));
+    let at: Vec<usize> = branches
+        .iter()
+        .enumerate()
+        .filter(|(_, branch)| branch["required"] == serde_json::json!([kind]))
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(at.len(), 1, "{name} holds one {kind}'s branch");
+    let forms = branches[at[0]]["properties"][kind].clone();
+    let expected = serde_json::json!({
+        "oneOf": [{ "$ref": working }, { "$ref": observing }]
+    });
+    if let Some(path) = first_difference(&forms, &expected, "") {
+        panic!("{name}'s {kind} kind differs from design Decision 1's at {path}");
+    }
+    branches[at[0]]["properties"][kind] = forms["oneOf"][0].clone();
+}
+
+/// The runner-protocol spec's "Version 3 is version 2 but for its hold"
+/// and "Version 3's examples are version 2's" (design Decisions 8 of
+/// the-hosted-protocol-carries-a-hold and 9 of
+/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0052 as
+/// amended on 2026-11-18): each schema file of version 3, its descriptions
+/// set aside, its `$id` read as version 2's, its envelope's
+/// `protocol_version` read as 2, the hold's branch taken out of
+/// `act_sort`, `observing_hello`, `observed_report` and `observed_launch`
+/// taken out of its `$defs`, and the `hello` and `report` kinds each read
+/// as the reference to its working form, equals version 2's file with its
+/// descriptions set aside; the hold's branch is the interface's
+/// `ActSort::Hold`; `observing_hello` is version 3's `hello` with
+/// `observing` in place of `capacity` and `leases`; `observed_launch` is
+/// `launched` without `lease`; `observed_report` is design Decision 1's;
+/// and each kind's second form is the reference to its observing form.
+/// Version 3's examples are version 2's, `to-runner/pulled-with-a-hold.json`
+/// and the observing connection's three, and each of version 2's, read
+/// with `protocol_version` 2 and `enroll.json`'s signature set aside,
+/// equals version 2's. A failure names the file and the pointer of the
+/// first difference, and no value (core.11).
+#[test]
+fn version_3_is_version_2_but_for_its_hold_and_observing() {
+    let (v2, v3) = (common::V2, common::V3);
+    let names = |version: common::Version| -> BTreeSet<&'static str> {
+        version.files.iter().map(|(name, _)| *name).collect()
+    };
+    assert_eq!(names(v3), names(v2), "version 3's files are version 2's");
+    let old: BTreeMap<&str, Value> = v2.files().into_iter().collect();
+    let mut holds = 0;
+    let mut observing = BTreeSet::new();
+    for (name, value) in v3.files() {
+        let mut read = without_descriptions(&value);
+        read["$id"] = Value::from(v2.address(name));
+        if read.pointer("/properties/protocol_version").is_some() {
+            read_as_version_2(&mut read, "/properties/protocol_version/const", name);
+        }
+        if let Some(branches) = read
+            .pointer_mut("/$defs/act_sort/oneOf")
+            .and_then(Value::as_array_mut)
+        {
+            let at: Vec<usize> = branches
+                .iter()
+                .enumerate()
+                .filter(|(_, branch)| branch["required"] == serde_json::json!(["hold"]))
+                .map(|(i, _)| i)
+                .collect();
+            assert_eq!(at.len(), 1, "{name}'s act_sort holds one hold's branch");
+            let branch = branches.remove(at[0]);
+            if let Some(path) = first_difference(&branch, &hold_branch(), "") {
+                panic!("{name}'s hold's branch differs from design Decision 1's at {path}");
+            }
+            holds += 1;
+        }
+        match name {
+            "hello.schema.json" => {
+                let form = take_definition(&mut read, name, "observing_hello");
+                let expected = observing_first(&without_members(
+                    &read["$defs"]["hello"],
+                    &["capacity", "leases"],
+                ));
+                if let Some(path) = first_difference(&form, &expected, "") {
+                    panic!("{name}'s observing_hello differs from its hello's at {path}");
+                }
+                observing.insert("observing_hello");
+            }
+            "report.schema.json" => {
+                let launch = take_definition(&mut read, name, "observed_launch");
+                let expected = without_members(&read["$defs"]["launched"], &["lease"]);
+                if let Some(path) = first_difference(&launch, &expected, "") {
+                    panic!("{name}'s observed_launch differs from its launched at {path}");
+                }
+                let report = take_definition(&mut read, name, "observed_report");
+                if let Some(path) = first_difference(&report, &observed_report(), "") {
+                    panic!("{name}'s observed_report differs from design Decision 1's at {path}");
+                }
+                observing.insert("observed_launch");
+                observing.insert("observed_report");
+            }
+            "from-runner.schema.json" => {
+                read_as_its_working_form(
+                    &mut read,
+                    name,
+                    "hello",
+                    "hello.schema.json#/$defs/hello",
+                    "hello.schema.json#/$defs/observing_hello",
+                );
+                read_as_its_working_form(
+                    &mut read,
+                    name,
+                    "report",
+                    "report.schema.json#/$defs/report",
+                    "report.schema.json#/$defs/observed_report",
+                );
+                observing.insert("the kinds' forms");
+            }
+            _ => {}
+        }
+        if let Some(path) = first_difference(&read, &without_descriptions(&old[name]), "") {
+            panic!("version 3's {name} differs from version 2's at {path}");
+        }
+    }
+    assert_eq!(holds, 1, "one act_sort of version 3 holds a hold");
+    assert_eq!(
+        observing,
+        BTreeSet::from([
+            "observing_hello",
+            "observed_launch",
+            "observed_report",
+            "the kinds' forms"
+        ]),
+        "version 3 holds the observing connection's forms"
+    );
+    let hold = serde_json::to_value(boomdrive_control::ActSort::Hold {
+        words: "the user sends it".to_string(),
+        bound_interval: 28800,
+    })
+    .unwrap();
+    let written: BTreeSet<&String> = hold["hold"].as_object().unwrap().keys().collect();
+    let required: BTreeSet<String> = hold_branch()["properties"]["hold"]["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|key| key.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        written,
+        required.iter().collect(),
+        "the hold's branch names what the interface writes"
+    );
+
+    let examples = |version: common::Version| -> BTreeSet<String> {
+        let root = version.dir().join("examples");
+        let mut found = Vec::new();
+        files_under(&root, &root, &mut found);
+        found.into_iter().collect()
+    };
+    let mut expected = examples(v2);
+    for added in [
+        "to-runner/pulled-with-a-hold.json",
+        "from-runner/hello-observing.json",
+        "from-runner/report-observed.json",
+        "to-runner/pulled-answering-an-observing-hello.json",
+    ] {
+        expected.insert(added.to_string());
+    }
+    assert_eq!(
+        examples(v3),
+        expected,
+        "version 3's examples are version 2's, pulled-with-a-hold.json and the observing connection's three"
+    );
+    for name in examples(v2) {
+        let (direction, file) = name.split_once('/').unwrap();
+        let mut read = v3.example(direction, file);
+        read_as_version_2(&mut read, "/protocol_version", &name);
+        let mut old = v2.example(direction, file);
+        if name == "from-runner/enroll.json" {
+            for example in [&mut read, &mut old] {
+                example["body"]["enroll"]
+                    .as_object_mut()
+                    .and_then(|enroll| enroll.remove("signature"))
+                    .unwrap_or_else(|| panic!("{name} holds no signature"));
+            }
+        }
+        if let Some(path) = first_difference(&read, &old, "") {
+            panic!("version 3's example {name} differs from version 2's at {path}");
+        }
+    }
 }

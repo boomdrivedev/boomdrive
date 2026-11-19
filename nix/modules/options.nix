@@ -69,12 +69,15 @@ let
     };
 
   # A drive's stream, which Flume's module is given (drives.nix): its name,
-  # its room, its priority and each label's reserve, record 0028's keys,
-  # with that record's room and reserves by default. Each default label's
-  # reserve is the module's own default, so a drive that sets another
-  # label, or one of these, keeps the rest; a label's reserve has none of
-  # its own. Any other key of a stream is Flume's own option,
-  # services.flume.settings.streams.<stream>.
+  # its room, its priority and the agents each label is owed, record
+  # 0028's keys, with that record's room and shares by default, each named
+  # and ranged as Flume's own option is (flume record 0063). Each default
+  # label's share is the module's own default, so a drive that sets
+  # another label, or one of these, keeps the rest; a label's `owed` has
+  # none of its own. Any other key of a stream, a label's `reserved` among
+  # them, is Flume's own option, services.flume.settings.streams.<stream>.
+  # A label's `reserve`, Flume's word before `owed`, is no option of the
+  # drive's: setting it fails evaluation, naming `owed` (drives.nix).
   stream =
     drive:
     types.submodule {
@@ -86,27 +89,35 @@ let
           description = "The name of the drive's stream in Flume, which each of the drive's repositories runs in.";
         };
         agents = mkOption {
-          type = types.ints.unsigned;
+          type = types.ints.positive;
           default = 4;
-          description = "The bound on the stream's agents running, Flume's `agents`; it holds each label's reserve.";
+          description = "The stream's agents running at once, Flume's `agents`, a whole number from 1; it holds what its labels are owed together.";
         };
         priority = unset types.int "The stream's priority, Flume's `priority`; Flume's own where unset.";
         labels = mkOption {
           type = types.attrsOf (
             types.submodule {
-              options.reserve = mkOption {
-                type = types.ints.unsigned;
-                description = "The stream's agents the label is owed, Flume's `reserve`.";
+              options = {
+                owed = mkOption {
+                  type = types.ints.unsigned;
+                  description = "The stream's agents the label's places are first in line for, Flume's `owed`, a whole number of agents from 0, lent while the label has nothing waiting.";
+                };
+                reserve = mkOption {
+                  type = types.nullOr types.unspecified;
+                  default = null;
+                  visible = false;
+                  description = "Flume's word before `owed`, which fails evaluation, naming `owed`.";
+                };
               };
             }
           );
           default = { };
-          description = "Each label's reserve of the stream's agents; `operation` 1 and `planning` 2 unless the drive gives its own.";
+          description = "The agents of the stream each label is owed; `operation` 1 and `planning` 2 unless the drive gives its own.";
         };
       };
       config.labels = {
-        operation.reserve = lib.mkDefault 1;
-        planning.reserve = lib.mkDefault 2;
+        operation.owed = lib.mkDefault 1;
+        planning.owed = lib.mkDefault 2;
       };
     };
 

@@ -1,11 +1,11 @@
-//! Version 2 names every end Flume 0.21.0 gives a place (the
-//! runner-protocol spec's "Version 2 names every end Flume 0.21.0 gives a
+//! Version 3 names every end Flume 0.21.0 gives a place (the
+//! runner-protocol spec's "Version 3 names every end Flume 0.21.0 gives a
 //! place"; design Decision 1 of
 //! the-hosted-protocol-carries-every-end-of-a-place; record 0037): each
 //! of a status copy's ends, a stage's, a submission's, a stall's and the
 //! end of the place's work by a drop or a done, with its key, its
 //! delivery's key and expiry, and the readers it is owed to and those that
-//! confirmed it, checked against version 2's copy of a place's status.
+//! confirmed it, checked against version 3's copy of a place's status.
 
 mod common;
 
@@ -18,7 +18,7 @@ fn place_status() -> Validator {
     validator(&definition("place-status.schema.json", "place_status"))
 }
 
-/// The status copy of a tidied place, version 2's example of one, its
+/// The status copy of a tidied place, version 3's example of one, its
 /// ends `ends`.
 fn copy_with(ends: Value) -> Value {
     let report = example("from-runner", "report-a-tidied-place.json");
@@ -158,7 +158,7 @@ fn moved() -> Value {
 }
 
 /// The runner-protocol spec's "An end of a form unnamed" (the
-/// requirement "An end of a form version 2 does not name goes up as its
+/// requirement "An end of a form version 3 does not name goes up as its
 /// delivery alone").
 #[test]
 fn an_end_of_a_form_unnamed() {

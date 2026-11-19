@@ -20,9 +20,16 @@
 # the file at the runner's own path, writes Pending You's folder where
 # Pending You is turned on (record 0044, point 7), links the herdr
 # plugins apps.nix lists with herdr's own command where herdr is turned on
-# (record 0023), then starts the unit where it is not running and
-# restarts it where the running runner's command line is not the unit's;
-# any other user's activation does nothing. Without the runner, the same
+# (record 0023), runs activate.sh's `claude` with what sessions.nix gives
+# it where Flume, with a package, is on, after Flume's own user snippet,
+# which installs the set's marketplace and the plugins of the tools the
+# host installs, with Pending You's server, into every Claude Code home of
+# Flume's accounts and the default home by Claude Code's own commands
+# (record 0044, point 3, and its amendments of 2026-11-18; design Decision
+# 3 of the change every-claude-code-session-has-boomdrives-plugins), then
+# starts the unit where it is not running and restarts it where the
+# running runner's command line is not the unit's; any other user's
+# activation does nothing. Without the runner, the same
 # user's activation writes the folder and links the plugins alone: the
 # user is the set's, `services.boomdrive.user`, who does not linger, and
 # no unit is declared; where such a step runs and no user is named,
@@ -63,6 +70,7 @@ let
   dataDirOf = import ./data-dir.nix { inherit lib; };
   keptOf = import ./kept.nix { inherit lib; };
   claudeCode = import ./claude-code.nix { inherit lib; };
+  sessions = import ./sessions.nix { inherit lib packages; };
   telemetry = cfg.claude-code.telemetry;
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
@@ -96,11 +104,27 @@ let
   # the runner, Pending You's folder, then herdr's links of the plugins,
   # each wherever its tool is on, with the runner or without (record 0023
   # as amended on 2026-11-18; design Decision 4 of the change
-  # boomdrives-tools-install-on-a-machine-without-the-runner).
+  # boomdrives-tools-install-on-a-machine-without-the-runner); then, with
+  # the runner and Flume, the install into Claude Code's homes (design
+  # Decision 3 of the change every-claude-code-session-has-boomdrives-plugins).
   steps =
     lib.optional cfg.enable "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
     ++ lib.optional writingFolder "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
-    ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true";
+    ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true"
+    ++ lib.optional installing "PATH=${lib.escapeShellArg claudePath} ${pkgs.runtimeShell} ${./activate.sh} ${claude} || true";
+
+  # The install into Claude Code's homes, where the runner and Flume, with
+  # a package, are on, on the service's PATH and then ~/.local/bin, where
+  # Claude Code's own installer puts `claude`.
+  installing = sessions.runs config;
+  claude = lib.escapeShellArgs (
+    [ "claude" ]
+    ++ sessions.argumentsOf {
+      inherit config pkgs folder;
+      writing = writingFolder;
+    }
+  );
+  claudePath = lib.concatStringsSep ":" (path ++ [ "${home}/.local/bin" ]);
 
   # The switches whose steps run as the set's user, which a failure names
   # where no user is.
@@ -156,6 +180,7 @@ in
     ./crew-drives.nix
     ./collector.nix
     claudeCode.module
+    sessions.module
   ];
 
   options.services.boomdrive.user = lib.mkOption {
@@ -236,10 +261,15 @@ in
         }
       ];
 
-      system.userActivationScripts.boomdrive.text = ''
-        if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
-        ${lib.concatMapStrings (step: "  ${step}\n") steps}${keeping}fi
-      '';
+      # After Flume's own snippet where the install into Claude Code's
+      # homes runs, so Flume's status reads the switch's file.
+      system.userActivationScripts.boomdrive = {
+        text = ''
+          if [ "$(id -un)" = ${lib.escapeShellArg user} ]; then
+          ${lib.concatMapStrings (step: "  ${step}\n") steps}${keeping}fi
+        '';
+        deps = lib.optional installing "flume";
+      };
     })
 
     # Each tool's module links its file for the set's user, unless the host

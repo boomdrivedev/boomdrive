@@ -1,0 +1,15 @@
+# The observer table README gives a host whose runner reports to an
+# observer on the host, beside crew's control plane, after the
+# configuration's and crew's tables. README shows its own copy, which its
+# writers keep to this file (record 0049); tests/examples.rs reads this
+# one.
+
+# An observer on this host, which the runner reports each observed part's work to and takes nothing from.
+[observer]
+# Where it is reached, `http://` or `https://` to a loopback address alone.
+url = "http://localhost:8787"
+
+# The part of the control plane it observes, by its label, and the repositories its observing hello names.
+[[observer.partitions]]
+label = "home"
+repositories = ["boomdrivedev/flume"]

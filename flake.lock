@@ -59,16 +59,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794839894,
-        "narHash": "sha256-+nwYE93uWnU3AFjDNijS87xJmFU6Y7mDHhABB8fcp7Y=",
+        "lastModified": 1795030834,
+        "narHash": "sha256-F/TKr/9nh3gq9SeLt35OWlUwYmtltSyIgi2ylpr0Z0I=",
         "owner": "boomdrivedev",
         "repo": "crew",
-        "rev": "fbb3333207e53d2d94247d1a4f0ffc8896f6bd20",
+        "rev": "f2fb30f743b8de565fab7967503b3198515ddd50",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.64.2",
+        "ref": "v0.68.0",
         "repo": "crew",
         "type": "github"
       }
@@ -125,16 +125,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794860694,
-        "narHash": "sha256-1DsDltjjaa1l1j40fTPxB14WAkhicd5y+Lib6AMLV3U=",
+        "lastModified": 1795048860,
+        "narHash": "sha256-b7ZslVgiYe1IPW+lQUY5LpTXOH6i9tcmwiEVQUeYcBA=",
         "owner": "boomdrivedev",
         "repo": "flume",
-        "rev": "b52cb688f2014593cc8fc80321421af579247b61",
+        "rev": "22b59820f739abf93e91fca6ac17ad270288d210",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.26.0",
+        "ref": "v0.31.0",
         "repo": "flume",
         "type": "github"
       }
@@ -339,16 +339,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794597375,
-        "narHash": "sha256-Xp2I0TqdmaRCnz/gLCfZlZgQjlMfovSxhPMTF2hJ4SA=",
+        "lastModified": 1795031322,
+        "narHash": "sha256-6EWA+3M21DBr/kpJa6Tp7a/kVlDLIHvVluk3leF7HWU=",
         "owner": "boomdrivedev",
         "repo": "sluice",
-        "rev": "35362f9b7453e99ab4b22b030a25e2d4d745dedf",
+        "rev": "f16039c9d8ee7524d30b6f075c1af677e196dcf5",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.94.8",
+        "ref": "v0.97.2",
         "repo": "sluice",
         "type": "github"
       }
@@ -396,16 +396,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794665576,
-        "narHash": "sha256-irJc9fou9weoIlHWoqr4q+bb+DbBIotatNSeJEld1JE=",
+        "lastModified": 1794969722,
+        "narHash": "sha256-yquTQehGSvPEp4fw3oBGObACqv3TqtQ9FMKHCOLvNZo=",
         "owner": "boomdrivedev",
         "repo": "timber",
-        "rev": "629361ba2bc2965b6ae94e3e92ac27036705e798",
+        "rev": "22330429c3e803c01ef4a6ba7a47f58163bc8448",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.7.0",
+        "ref": "v0.8.0",
         "repo": "timber",
         "type": "github"
       }

@@ -151,3 +151,11 @@ Amends "herdr and Ghostty are in the set" and "worktrunk and portless are in the
 - **What stays with the runner.** The runner itself, its file and its service, its signed copy on macOS, the drives' streams in Flume, crew's table and kept repositories, Claude Code's telemetry document and Flume's and sluice's telemetry. Claude Code's transcripts document stays wherever Flume is on (record 0046).
 
 core.18's and core.46's details are amended, and core.62 is written, in this amendment's commit.
+
+## Amendment, 2026-11-18: Rex in the set
+
+Status: decided on 2026-11-18 by the design agent, on afterthought-design's ask that the user wants to try Flume's Rex terminal and takes every tool only through this flake; its own choice, cheap to change.
+
+- **Rex is in the set beside herdr.** Rex is the other terminal Flume carries a profile for (flume record 0068), and Flume drives it from the `PATH`. The set gives Rex from Rex's own flake (core.44), built into the family's cache, as it gives herdr and Ghostty.
+- **At Flume's pin.** The set takes Rex at the revision the pinned Flume's Rex profile is tested against, read from that Flume tag, and moves it whenever the set moves Flume's pin, as it holds Ghostty at the release Flume's window is tested against. Not taken: Rex at a revision of the set's own choosing, which can drift from what Flume's Rex profile reads; waiting for Flume's flake to export Rex, which nothing else needs.
+- **The host chooses its terminal.** A host that takes the set gets Rex installed; which terminal Flume opens stays the host's Flume settings.
