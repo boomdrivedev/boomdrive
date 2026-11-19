@@ -23,8 +23,8 @@ Work through the tasks in order. A task is true once the check it names passes, 
 
 ## 2. The set's marketplace
 
-- [ ] 2.1 The set's marketplace, `boomdrive-claude-plugins`, builds with Flume v0.31.0: its eight plugins each copied whole from its tool's pin, `flume` at `0.31.0`, its build holding each manifest to its tool's version (design Decision 7; Task notes 0). True when `packages.aarch64-darwin.boomdrive-claude-plugins` builds once, in the devenv shell outside the sandbox, and `sluice exec main -- moon run nix:typecheck` passes.
-- [ ] 2.2 The set's cases of the marketplace hold with Flume v0.31.0 (design Decision 10). True when the cases "The marketplace's plugins", "No link into the store", "Each tool's plugins from its tool's pin", "Each tool's plugins say its tool's version" and "A plugin other than its tool" hold, with `sluice exec main -- moon run nix:test` passing.
+- [x] 2.1 The set's marketplace, `boomdrive-claude-plugins`, builds with Flume v0.31.0: its eight plugins each copied whole from its tool's pin, `flume` at `0.31.0`, its build holding each manifest to its tool's version (design Decision 7; Task notes 0). True when `packages.aarch64-darwin.boomdrive-claude-plugins` builds once, in the devenv shell outside the sandbox, and `sluice exec main -- moon run nix:typecheck` passes.
+- [x] 2.2 The set's cases of the marketplace hold with Flume v0.31.0 (design Decision 10). True when the cases "The marketplace's plugins", "No link into the store", "Each tool's plugins from its tool's pin", "Each tool's plugins say its tool's version" and "A plugin other than its tool" hold, with `sluice exec main -- moon run nix:test` passing.
 
 ## 3. The install into each home
 
