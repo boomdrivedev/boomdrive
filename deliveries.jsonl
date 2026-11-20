@@ -1,0 +1,4 @@
+{"format": "weir-delivery/1", "key": "23:landed", "readers": ["fix/a-host-chooses-the-drives-crew-runs-2"], "message": "[sluice] #23 landed on bolt/a-host-chooses-the-drives-crew-runs as 72af1ca.", "recorded_at": "2026-11-20T20:03:24Z", "expires_at": "2026-11-27T20:03:24Z"}
+{"format": "weir-handover/1", "key": "23:landed", "reader": "fix/a-host-chooses-the-drives-crew-runs-2", "by": "notice", "at": "2026-11-20T20:03:27Z"}
+{"format": "weir-confirmation/1", "key": "23:landed", "reader": "fix/a-host-chooses-the-drives-crew-runs-2", "at": "2026-11-20T20:03:36Z"}
+{"format": "weir-known/1", "reader": "fix/a-host-chooses-the-drives-crew-runs-2", "known_at": "2026-11-20T20:03:36Z"}

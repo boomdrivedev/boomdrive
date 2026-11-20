@@ -1,0 +1,17 @@
+{
+  "schema": "sluice/branch@1",
+  "branch": "bolt/a-host-chooses-the-drives-crew-runs",
+  "log": "sluice/log@1",
+  "base": "72af1cadd79b892c4e6997673614a4a76a864eb2",
+  "verified": false,
+  "window": 2,
+  "next_place": 2,
+  "next_candidate": 2,
+  "candidates": [],
+  "landing": null,
+  "release": [],
+  "outbox": [],
+  "lead": "deneb",
+  "landed": "72af1cadd79b892c4e6997673614a4a76a864eb2",
+  "kept": "2026-11-20T20:03:37Z"
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 23,
+  "branch": "bolt/a-host-chooses-the-drives-crew-runs",
+  "head": "bd5082b3b6c2fb362b37433059572130967d02a2",
+  "from": {
+    "agent": "fix/a-host-chooses-the-drives-crew-runs-2",
+    "worktree": "fix/a-host-chooses-the-drives-crew-runs-2",
+    "path": "/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/places/fix-a-host-chooses-the-drives-crew-runs-2",
+    "host": "deneb",
+    "session": "herdr:w2:p26@/Users/chuck/.config/herdr/sessions/boomdrive/herdr.sock"
+  },
+  "submitted": "2026-11-20T19:57:54Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "dcd2c0ba69b8371eececfaf4092708574b9b3bff",
+    "on": "2dae36ffdfcd7350fe2ad83bec8e9bbb30fdd186",
+    "submissions": [
+      23
+    ]
+  },
+  "result": "passed",
+  "landed_as": "72af1cadd79b892c4e6997673614a4a76a864eb2",
+  "subject": "main at 5b327e6 into the bolt",
+  "trace": "00-ece5f984ea27db2d442f1ba1bf65c24b-5b02887d9135cefe-01",
+  "under_test_ms": 309000
+}
