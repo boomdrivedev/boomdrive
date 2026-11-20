@@ -39,7 +39,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:boomdrivedev/sluice/v0.97.6";
+      url = "github:boomdrivedev/sluice/v0.99.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -47,7 +47,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.31.0";
+      url = "github:boomdrivedev/flume/v0.31.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
