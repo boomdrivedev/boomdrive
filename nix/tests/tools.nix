@@ -74,22 +74,42 @@ let
   # modules carry none, so their `declarations` name the file that imports
   # them.
   filesOf = option: map (position: toString position.file) option.declarationPositions;
-  # Each option of `services.<tool>` written outside the tool's input, by
-  # its name and its files.
+  # The declarations of a tool's option this tree makes again, by the
+  # option's name, each with its file: crew-drives.nix's of
+  # services.crew.settings and its drives, adding to crew's drive type the
+  # module that gives each drive crew's settings set up its machine and
+  # state (the change crew-runs-only-the-drives-set-up-for-it, design
+  # Decisions 1 and 5).
+  again = lib.genAttrs [
+    "services.crew.settings"
+    "services.crew.settings.drives"
+  ] (_: toString ../modules/crew-drives.nix);
+  # The options of an option's submodule type, less the module system's own.
+  subOptionsOf =
+    option: lib.collect lib.isOption (removeAttrs (option.type.getSubOptions option.loc) [ "_module" ]);
+  # Each option of `services.<tool>` with no declaration in the tool's
+  # input, or declared again in a file outside it but `again`'s file for
+  # its name, by its name and its files; the options of each declaration
+  # `again` names checked the same way, so it declares no option the tool's
+  # input does not.
   outsideOf =
     tool: options:
     let
       source = "${toString inputs.${tool}.outPath}/";
+      check =
+        option:
+        let
+          name = lib.showOption option.loc;
+          files = filesOf option;
+          admitted = again ? ${name};
+          stray = lib.filter (
+            file: !(lib.hasPrefix source file) && !(admitted && file == again.${name})
+          ) files;
+        in
+        lib.optional (!lib.any (lib.hasPrefix source) files || stray != [ ]) "${name} in ${toString files}"
+        ++ lib.optionals admitted (lib.concatMap check (subOptionsOf option));
     in
-    lib.concatMap (
-      option:
-      let
-        files = filesOf option;
-      in
-      lib.optional (
-        files == [ ] || !lib.all (lib.hasPrefix source) files
-      ) "${lib.showOption option.loc} in ${toString files}"
-    ) (lib.collect lib.isOption options);
+    lib.concatMap check (lib.collect lib.isOption options);
 
   ownOptions =
     platform:
@@ -398,6 +418,37 @@ let
       table == ordered
     ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON ordered}";
 
+  # crewAccounts beside crewKeys, which sets up `home` alone: the table
+  # holds `home` alone of this host's drives (the change
+  # crew-runs-only-the-drives-set-up-for-it, design Decision 5).
+  setUp =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (crewOf settings.crewKeys) ];
+        services.boomdrive = {
+          accounts = settings.crewAccounts;
+          settings.control_plane.type = "crew";
+        };
+      };
+      table = evaluated.config.services.boomdrive.settings.control_plane.crew;
+      expected = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system of the drives crew's settings set up fails: ${toString (t.failures evaluated)}"
+    ++
+      t.expect (table == expected)
+        "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON expected}";
+
   # Each of `words` in the failures of `evaluated`, which fails.
   failsNaming =
     what: evaluated: words:
@@ -437,6 +488,24 @@ let
         "host-b"
       ];
 
+  # Under crew, with no crew table written, the drive `home` on this host,
+  # which crew's settings do not set up, beside `away` on host-b, which
+  # they do (the change crew-runs-only-the-drives-set-up-for-it, design
+  # Decision 5).
+  elsewhereHere =
+    platform:
+    { system, ... }:
+    failsNaming "a ${platform} system under crew with no drive crew runs on its host"
+      (system {
+        imports = [ (crewOf settings.crewElsewhere) ];
+        services.boomdrive = settings.elsewhereHome;
+      })
+      [
+        "services.crew.host"
+        "host-a"
+        "host-b"
+      ];
+
   # Under crew, with no crew table written, an account with a drive and no
   # state repository, beside crew's settings that write the drive's machine
   # and state (the change a-drives-machine-and-state-are-named-once, design
@@ -448,6 +517,44 @@ let
       imports = [ (crewOf settings.crewModule) ];
       services.boomdrive = settings.stateless;
     }) [ "services.boomdrive.accounts.own.state_repository" ];
+
+  # Under crew, with no crew table written, the account `work`, naming no
+  # state repository, whose drive `field` crew's settings do not set up,
+  # beside `own`'s `home`, which they do: crew has `home` alone, the table
+  # holds it, and Flume is given both drives' streams (the change
+  # crew-runs-only-the-drives-set-up-for-it, design Decision 5).
+  reading =
+    platform:
+    { system, ... }:
+    let
+      evaluated = system {
+        imports = [ (crewOf settings.crewKeys) ];
+        services.boomdrive = settings.reading;
+      };
+      names = lib.attrNames evaluated.config.services.crew.settings.drives;
+      table = evaluated.config.services.boomdrive.settings.control_plane.crew;
+      expected = {
+        host = "host-a";
+        partitions = [
+          {
+            label = "home";
+            state_repository = "example/state";
+          }
+        ];
+      };
+      streams = evaluated.config.services.flume.settings.streams;
+    in
+    t.expect (t.failures evaluated == [ ])
+      "a ${platform} system whose account's drives crew's settings do not set up fails: ${toString (t.failures evaluated)}"
+    ++ t.expect (
+      names == [ "home" ]
+    ) "the ${platform} system's crew drives are ${toString names}, not home"
+    ++ t.expect (
+      table == expected
+    ) "the ${platform} runner's crew table is ${builtins.toJSON table}, not ${builtins.toJSON expected}"
+    ++
+      t.expect (streams ? home && streams ? field)
+        "the ${platform} system's Flume streams are ${toString (lib.attrNames streams)}, not home and field";
 
   # Under crew, with no crew table written, a drive of crew's, `stray`,
   # that no account names (design Decision 6).
@@ -550,9 +657,12 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "A host's own crew" ownCrew
 // onEach "No sluice of the set's" noSluice
 // onEach "The accounts' drives in their order" accountsOrder
+// onEach "Only the drives crew's settings set up" setUp
 // onEach "Under crew with neither" neither
 // onEach "No drive of the accounts on this host" elsewhere
+// onEach "No drive crew runs on this host" elsewhereHere
 // onEach "An account under crew with no state repository" stateless
+// onEach "An account whose drives crew's settings do not set up" reading
 // onEach "A drive of crew's no account names" stray
 // onEach "A host on the set's crew" setsCrew
 // onEach "crew's keys stay the host's" crewsKeys
