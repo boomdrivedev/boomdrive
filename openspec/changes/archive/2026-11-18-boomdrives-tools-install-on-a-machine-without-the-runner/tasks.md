@@ -11,7 +11,7 @@ A task is done once the check it names passes, run as it names it. The task grou
   - Every `.nix` file written is formatted by nixfmt and passes statix and deadnix, as `nix:format` and `nix:lint` hold it.
   - Nothing outside the paths `proposal.md`'s Touches lists is changed.
 - **Comments.** A task that changes a module also says so in that module's header comment and in its options' descriptions, citing record 0023 as amended on 2026-11-18 and the design's Decision.
-- **What is already written.** This change's own commit holds record 0023's amendment of 2026-11-18, record 0044's of that day, core.62, and core.18's and core.46's details. No task changes them.
+- **What is already written.** This change's own commit holds record 0023's amendment of 2026-11-18, record 0044's of that day, core.63, and core.18's and core.46's details. No task changes them.
 
 ## 1. herdr, Ghostty, the launcher, portless and worktrunk each have a switch
 

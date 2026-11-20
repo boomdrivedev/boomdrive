@@ -2,7 +2,7 @@
 
 ## Why
 
-`main` brought Rex into the set with the change `the-set-carries-rex-matched-to-flume`, installed with the runner by `services.boomdrive.rex.package`. The bolt `every-machine-takes-boomdrives-tools` gave every other tool of the set a switch of its own with the change `boomdrives-tools-install-on-a-machine-without-the-runner`, so a host without the runner takes the tools it turns on. core.62 rules out a tool of the set that only the runner's switch installs. Merging `main` into the bolt gave Rex its switch in `nix/modules/apps.nix`, as the merge's code needed one. The service-modules spec still says Rex comes with the runner alone. Record 0023, as amended on 2026-11-18 ("Rex has a switch of its own"), decides it.
+`main` brought Rex into the set with the change `the-set-carries-rex-matched-to-flume`, installed with the runner by `services.boomdrive.rex.package`. The bolt `every-machine-takes-boomdrives-tools` gave every other tool of the set a switch of its own with the change `boomdrives-tools-install-on-a-machine-without-the-runner`, so a host without the runner takes the tools it turns on. core.63 rules out a tool of the set that only the runner's switch installs. Merging `main` into the bolt gave Rex its switch in `nix/modules/apps.nix`, as the merge's code needed one. The service-modules spec still says Rex comes with the runner alone. Record 0023, as amended on 2026-11-18 ("Rex has a switch of its own"), decides it.
 
 ## What Changes
 

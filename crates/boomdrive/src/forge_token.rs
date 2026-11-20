@@ -4,17 +4,18 @@
 //! host that asks, git and sluice among them.
 //!
 //! It reads the configuration as `run` reads it, its local layer over its
-//! managed one. On a host whose control plane holds the App every
-//! operation is refused with the implementation's own words, until a
-//! version of the protocol carries a token (core.2). `get` reads git's
-//! `protocol`, `host` and `path`, and for `https`, `github.com` and a
-//! repository of a drive the host serves mints a token in its own process,
-//! gives it on standard output alone, and keeps it no longer: its asker
-//! keeps what it was given. `erase` reads what it is sent and answers
-//! nothing; since no process keeps a token it gave, it drops nothing and
-//! revokes nothing at GitHub, and the next `get` mints afresh, never giving
-//! the erased token. Nothing is written to the data directory, a file or a
-//! log (core.4, core.35).
+//! managed one, and makes its forge as the running runner does: on a host
+//! whose control plane holds the App, one asking the control plane, which
+//! mints the token, through the implementation's forge tokens (core.2;
+//! record 0053); elsewhere one minting from the App's key `[forge]` names.
+//! `get` reads git's `protocol`, `host` and `path`, and for `https`,
+//! `github.com` and a repository of a drive the host serves mints or asks a
+//! token in its own process, gives it on standard output alone, and keeps
+//! it no longer: its asker keeps what it was given. `erase` reads what it
+//! is sent and answers nothing; since no process keeps a token it gave, it
+//! drops nothing and revokes nothing at GitHub, and the next `get` mints or
+//! asks afresh, never giving the erased token. Nothing is written to the
+//! data directory, a file or a log (core.4, core.35).
 //!
 //! It takes no `--json`, departing from core.39 for this one command (its
 //! details say so): git reads a helper's standard output as the protocol,
@@ -26,10 +27,9 @@
 
 use crate::config::{self, Address, Config, Env};
 use crate::forge::{Forge, Minted, Refused};
-use crate::planes;
 use std::ffi::OsString;
 use std::io::{BufRead, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 /// What git or sluice asks of the helper.
@@ -43,16 +43,20 @@ pub enum Operation {
 
 /// Runs `boomdrive forge-token <operation>` with the configuration `file`,
 /// else the default one, with the local layer over it, on standard input
-/// and standard output, minting from GitHub's API. A configuration that
-/// cannot be read is a host to fix.
+/// and standard output, minting from GitHub's API, or asking the control
+/// plane where it holds the App (design Decision 9 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud). A configuration
+/// that cannot be read, or a control plane's forge tokens that cannot be
+/// opened, is a host to fix.
 pub fn main(file: Option<&Path>, operation: Operation) -> ExitCode {
-    let answered = read(file, |name| std::env::var_os(name)).and_then(|config| {
+    let answered = read(file, |name| std::env::var_os(name)).and_then(|(config, file)| {
+        let forge = Forge::of(&config, &file).map_err(host)?;
         answer(
             &config,
             operation,
             &mut std::io::stdin().lock(),
             &mut std::io::stdout().lock(),
-            &Forge::new(),
+            &forge,
         )
     });
     match answered {
@@ -65,18 +69,25 @@ pub fn main(file: Option<&Path>, operation: Operation) -> ExitCode {
 }
 
 /// The configuration `file`, else the default one, with the local layer
-/// over it, in the environment `var` gives, as `run` reads it; a host to
-/// fix where it cannot be read.
-fn read(file: Option<&Path>, var: impl Fn(&str) -> Option<OsString>) -> Result<Config, Refused> {
+/// over it, in the environment `var` gives, as `run` reads it, and the
+/// file it was read from; a host to fix where it cannot be read.
+fn read(
+    file: Option<&Path>,
+    var: impl Fn(&str) -> Option<OsString>,
+) -> Result<(Config, PathBuf), Refused> {
     let env = Env::read(var).map_err(host)?;
     let file = config::config_path(file, &env);
     let local = config::local_path(&env);
-    config::read_layers(&file, &local, &env.home).map_err(host)
+    let config = config::read_layers(&file, &local, &env.home).map_err(host)?;
+    Ok((config, file))
 }
 
 /// Answers `operation` under the configuration `config`, git's request read
-/// from `input` and the answer written to `output`, minting with `forge`
-/// (design Decision 4, steps 2 to 6): or why it is refused.
+/// from `input` and the answer written to `output`, minting or asking with
+/// `forge` (design Decision 4, steps 2 to 6; design Decision 9 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud): or why it is
+/// refused. `[forge]` is required only where `forge` mints; where it asks,
+/// the control plane holds the App, and `[forge]` is not read.
 pub fn answer(
     config: &Config,
     operation: Operation,
@@ -84,20 +95,13 @@ pub fn answer(
     output: &mut dyn Write,
     forge: &Forge,
 ) -> Result<(), Refused> {
-    let holds_the_app = config
-        .control_plane
-        .as_ref()
-        .and_then(|plane| planes::carried(&plane.implementation))
-        .and_then(|entry| entry.holds_the_app);
-    if let Some(words) = holds_the_app {
-        return Err(refused(words.to_string()));
-    }
-    let Some(app) = &config.forge else {
+    if !forge.asks() && config.forge.is_none() {
         return Err(host(
-            "the configuration names no [forge], the Boomdrive App's app_id and key_file"
+            "the configuration names no [forge], the Boomdrive App's app_id and key_file, and \
+             no control plane that holds the App"
                 .to_string(),
         ));
-    };
+    }
     let request = Request::read(input)?;
     if operation == Operation::Erase {
         return Ok(());
@@ -123,13 +127,10 @@ pub fn answer(
             "{address} is a repository of no drive this host serves"
         )));
     }
-    let token = match forge.mint(app, &address)? {
+    let token = match forge.fresh(config.forge.as_ref(), &address)? {
         Minted::Token(token) => token,
-        Minted::NotInstalled => {
-            return Err(refused(format!(
-                "GitHub finds no installation of app {} on {address}: install the app on it",
-                app.app_id
-            )))
+        Minted::NotInstalled(words) => {
+            return Err(refused(format!("{words}: install the app on it")))
         }
     };
     write!(

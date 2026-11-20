@@ -20,10 +20,9 @@ use boomdrive_control::{
 };
 use fakes::{fixture, offer, place_of, Bench, Call, Stub, KEPT};
 use serde_json::json;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs;
-use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
@@ -280,20 +279,29 @@ fn the_runner_is_one_more_recipient() {
     let none = offer("home/13", "b");
     let mut plane = Fake::holding(vec![Want::Offer(named), Want::Offer(none)]);
     bench.pass_over(&Cli::new(stub.program()), &mut plane);
-    let recipients: Vec<Vec<String>> = stub
+    // The launches run side by side, so the stub's calls are read by the
+    // launch each names.
+    let mut recipients: Vec<(String, Vec<String>)> = stub
         .calls()
         .into_iter()
         .filter(|call| call[1] == "launch")
         .map(|call| {
-            call.windows(2)
-                .filter(|pair| pair[0] == "--recipient")
-                .map(|pair| pair[1].clone())
-                .collect()
+            let of = |flag: &str| -> Vec<String> {
+                call.windows(2)
+                    .filter(|pair| pair[0] == flag)
+                    .map(|pair| pair[1].clone())
+                    .collect()
+            };
+            (of("--name").concat(), of("--recipient"))
         })
         .collect();
+    recipients.sort();
     assert_eq!(
         recipients,
-        [argv(&["home/planner", "boomdrive"]), Vec::<String>::new()]
+        [
+            ("a".to_string(), argv(&["home/planner", "boomdrive"])),
+            ("b".to_string(), Vec::<String>::new()),
+        ]
     );
 }
 
@@ -588,57 +596,10 @@ fn a_launch_waits_for_its_own_repositorys_fetch_alone() {
     assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
 }
 
-/// The work-into-flume spec's "A launch that waited on its clone's keep is
-/// held without waiting on it": the next control pass is due from the
-/// pass's start, the keeper holds `agentplot/flume`'s lock for its fetch,
-/// and the pull offers a launch into `agentplot/flume`, then one into
-/// `agentplot/sluice`. The launch into `agentplot/sluice` is made, and the
-/// one into `agentplot/flume` held for its turn, no `flume launch` run for
-/// it, the pass ending while the keeper still holds the lock (design
-/// Decision 2; core.50).
-#[test]
-fn a_launch_that_waited_on_its_clones_keep_is_held_without_waiting_on_it() {
-    let bench = Bench::new();
-    let container = bench.container("agentplot/sluice");
-    bench.clones.ready("agentplot/sluice", &container);
-    let mut sluice = offer("home/2", "b");
-    sluice.launch.repository = "agentplot/sluice".into();
-    let mut plane = Fake::holding(vec![Want::Offer(offer("home/1", "a")), Want::Offer(sluice)]);
-    let keeper = keeping(&bench, KEPT, || {});
-
-    let (_, lines) = bench.pass_due(&bench.flume, &mut plane, &|| true);
-    let kept_still = !keeper.is_finished();
-    keeper.join().unwrap();
-
-    let launched: Vec<String> = bench
-        .flume
-        .launches()
-        .into_iter()
-        .map(|args| args.name)
-        .collect();
-    assert_eq!(launched, ["b"], "no flume launch for a");
-    assert!(kept_still, "the pass did not wait for the keep");
-    assert_eq!(outcome(&bench, "home/2"), Some(Outcome::Launched));
-    let report = boomdrive::report::read(&bench.report_file())
-        .unwrap()
-        .unwrap();
-    let held = &report.launches[&id("home/1")].answer;
-    assert_eq!(
-        (held.outcome, held.words.as_deref()),
-        (Outcome::Held, Some(boomdrive::carry::TURN))
-    );
-    assert_eq!(
-        lines,
-        [
-            format!("home/2: launched at {}", place_of("b")),
-            format!("home/1: held: {}", boomdrive::carry::TURN),
-        ]
-    );
-}
-
 /// The clones spec's "Two parts launch into one clone at once": while
-/// `home`'s pass is launching into `agentplot/flume`, `work`'s pass offers
-/// a launch into it, which is made without waiting for `home`'s to end.
+/// `home`'s launch into `agentplot/flume` runs, holding the clone's lock,
+/// `work`'s pass offers a launch into it, which is made without waiting
+/// for `home`'s to end.
 #[test]
 fn two_parts_launch_into_one_clone_at_once() {
     let home = Bench::new();
@@ -648,28 +609,39 @@ fn two_parts_launch_into_one_clone_at_once() {
     home_plane.set_wants(vec![Want::Offer(offer("home/1", "a"))]);
     let mut work_plane = Fake::owning("work/");
     work_plane.set_wants(vec![Want::Offer(offer("work/1", "b"))]);
-    let during: Rc<RefCell<Option<Vec<String>>>> = Rc::default();
-    let said = Rc::clone(&during);
-    home.flume.meanwhile(move |_| {
+    let open = Arc::new(AtomicBool::new(false));
+    let opened = Arc::clone(&open);
+    home.flume.hold("a", move |_| opened.load(Ordering::SeqCst));
+    let sluice = home.sluice_cli();
+    let control_dir = home.control_dir();
+    let carrier = home.carrier("home", &home.flume, &sluice, &control_dir);
+    let (rang, woke) = mpsc::channel();
+    let wake = move || {
+        let _ = rang.send(());
+    };
+    boomdrive::hands::carried(&home.flume, &sluice, &home.locks, &wake, |underway| {
+        carrier.carry_pass(&mut home_plane, None, underway, &mut |_| {});
         // home's `flume launch` is running, and holds the clone's lock.
-        let (_, lines) = work.pass_of("work", &work.flume, &mut work_plane, &|| false);
-        *said.borrow_mut() = Some(lines);
+        while !home.flume.launches().iter().any(|args| args.name == "a") {
+            thread::sleep(Duration::from_millis(5));
+        }
+        let (_, during) = work.pass_of("work", &work.flume, &mut work_plane);
+        assert_eq!(
+            during,
+            [format!("work/1: launched at {}", fakes::place_of("b"))]
+        );
+        assert!(!underway.idle(), "home's launch still runs");
+        open.store(true, Ordering::SeqCst);
+        let mut lines = Vec::new();
+        while !underway.idle() || lines.is_empty() {
+            woke.recv_timeout(Duration::from_secs(10)).unwrap();
+            carrier.collect(&mut home_plane, underway, &mut |line| lines.push(line));
+        }
+        assert_eq!(
+            lines,
+            [format!("home/1: launched at {}", fakes::place_of("a"))]
+        );
     });
-
-    let (_, lines) = home.pass_of("home", &home.flume, &mut home_plane, &|| false);
-
-    let during = during
-        .borrow()
-        .clone()
-        .expect("work's pass ran during home's launch");
-    assert_eq!(
-        during,
-        [format!("work/1: launched at {}", fakes::place_of("b"))]
-    );
-    assert_eq!(
-        lines,
-        [format!("home/1: launched at {}", fakes::place_of("a"))]
-    );
 }
 
 /// The clones spec's "A clone let go before the launch": a pass finds

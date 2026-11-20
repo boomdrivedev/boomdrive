@@ -108,12 +108,12 @@ pub struct Commanded {
     pub at: At,
 }
 
-/// A preview the runner answered (core.55). Version 3 of the hosted
-/// protocol carries it in a report's `previews`, its `text` as the copy of
-/// the tool's answer and its `status` as the copy of the tool's listing,
-/// and version 2 alike; version 1 names none, and never will, a release
-/// having spoken it (core.42; record 0037 as amended on 2026-11-09; record
-/// 0052).
+/// A preview the runner answered (core.55). Versions 3 and 4 of the
+/// hosted protocol carry it in a report's `previews`, its `text` as the
+/// copy of the tool's answer and its `status` as the copy of the tool's
+/// listing, and version 2 alike; version 1 names none, and never will, a
+/// release having spoken it (core.42; record 0037 as amended on
+/// 2026-11-09; records 0052 and 0053).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Previewed {
     pub lease: Lease,

@@ -151,3 +151,20 @@ The nix-darwin module's activation runs `activate.sh` by `/bin/sh`, and the laun
 - **Not taken: running the activation's cases under bash 3.2.57 as well.** They pass with it as `sh` today; the brief asks that a script the Macs cannot read fail the gate, which reading does.
 
 Nothing else of the decision above changes. core.8's details name the build as not ruled out, in this amendment's commit.
+
+## Amendment, 2026-11-19: the cache is built once for each release, from its tag
+
+Status: the planner's unit `boomdrives-cache-is-built-once-for-each-release`, on signal `2026-11-19-boomdrive-ops-b31633c8/01-a-flake-change-reaches-a-host-in-minutes`, built outside Flume at the orchestrator's direction. Cheap to change.
+
+### Context and problem statement
+
+The workflow `cache` ran at each push to `main`, and the workflow `release`, at the same push, cut a release commit, tagged it and ran `cache` at the tag. So each release built every package twice, the commit of `main` and the release commit that differs from it only in the version it writes. On 2026-11-18 v0.18.1's `aarch64-darwin` build at the tag queued 21 minutes behind the push's build of the same work on GitHub's macOS runners, and the cache was green 31 minutes after the release (ops' reading of 2026-11-18, cause 4). A host takes a tag, so the push's build bought it nothing.
+
+### Decision outcome
+
+- **The cache is built once for each release, at its tag.** `cache` runs at a push of a tag `v*` and by hand, and at no push of a branch, `main`'s among them. `release` runs it at each tag it pushes, as before, since GitHub runs no workflow on a tag the workflow's own token pushed.
+- **The boot runs with it, at the tag,** and a box's pin reads its check on the release commit. A commit of `main` that no release names is built by no run, and a host pins a tag.
+- **Not taken: skipping the push's build when a release follows.** Whether a push is released is `release.sh next`'s answer, which `cache` would have to ask again, and the tag's build would still be a second run.
+- **Not taken: building at the push and not at the tag.** The tag's tree writes the version into the runner, so its paths are not the push's, and the host takes the tag's.
+
+Nothing else of the decision above changes. The binary-cache spec gains it through the change `boomdrives-cache-is-built-once-for-each-release`.

@@ -27,7 +27,7 @@ All twelve tasks are ticked, 1.1 to 7.1, and none is open:
 - Task 6.2's grep of `a switch of its own` prints one line in `CLAUDE.md` and one in `openspec/config.yaml`. `root:specs` passed.
 - Task 7.1's check is `root:changes`, above.
 
-The diff from `2ea1a481` stays inside the paths proposal.md's Touches lists, and the change's own directory. It adds no crate, gate tool or tracked file type, and changes no crate, package, lock, workflow, boot check or shell. Record 0023's and record 0044's amendments of 2026-11-18, core.62, and core.18's and core.46's details are in the change's first commit, `bb835cf7`. The code and tests cite them and change none of them.
+The diff from `2ea1a481` stays inside the paths proposal.md's Touches lists, and the change's own directory. It adds no crate, gate tool or tracked file type, and changes no crate, package, lock, workflow, boot check or shell. Record 0023's and record 0044's amendments of 2026-11-18, core.63, and core.18's and core.46's details are in the change's first commit, `bb835cf7`. The code and tests cite them and change none of them.
 
 ## The delta, requirement by requirement
 

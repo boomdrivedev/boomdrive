@@ -75,6 +75,11 @@ pub struct Config {
     /// record 0048). Read at every pass, it is taken when the runner
     /// starts, as `[control_plane]` is.
     pub observer: Option<Table>,
+    /// `inboxes`: each inbox this host keeps, by the name millpond's host
+    /// configuration gives it, whose `millpond tick` each pass runs once
+    /// beside Flume's settle (record 0033; core.13): none where the file
+    /// names none.
+    pub inboxes: Vec<String>,
     /// How the local layer was read: none where there is no local file.
     pub local: LocalLayer,
 }
@@ -318,6 +323,7 @@ struct File {
     /// Read from the document's own tree, as `accounts` is (`forge`).
     forge: Option<IgnoredAny>,
     observer: Option<Spanned<Value>>,
+    inboxes: Option<Spanned<Value>>,
     #[serde(default, deserialize_with = "table")]
     control_plane: Option<Keys>,
     #[serde(default, deserialize_with = "pin_list")]
@@ -858,6 +864,11 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
         }
     };
 
+    let inboxes = match &raw.inboxes {
+        None => Vec::new(),
+        Some(value) => inboxes(value, &refuse)?,
+    };
+
     let pins = match &raw.pin {
         None => Vec::new(),
         Some(entries) => pins(entries.get_ref(), &source)?,
@@ -872,6 +883,7 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
             control_plane,
             forge,
             observer,
+            inboxes,
             local: LocalLayer::NoFile,
         },
         pins,
@@ -1506,6 +1518,48 @@ fn named(value: &Value) -> String {
     }
 }
 
+/// `inboxes` as written in `value`: a list of millpond's names of the
+/// inboxes this host keeps, each a string that is not empty and named
+/// once, refused by `refuse` otherwise (record 0033).
+fn inboxes(
+    value: &Spanned<Value>,
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<Vec<String>, String> {
+    let at = value.span().start;
+    let words = "`inboxes` is a list of the names millpond's host configuration gives \
+                 the inboxes this host keeps";
+    let Some(list) = value.get_ref().as_array() else {
+        return Err(refuse(at, words.to_string()));
+    };
+    let mut names: Vec<String> = Vec::new();
+    for entry in list {
+        match entry.as_str() {
+            Some(name) if !name.is_empty() && !names.iter().any(|named| named == name) => {
+                names.push(name.to_string());
+            }
+            Some(name) if !name.is_empty() => {
+                return Err(refuse(at, format!("`inboxes` names {name:?} twice")));
+            }
+            _ => {
+                return Err(refuse(
+                    at,
+                    format!("{words}, and holds {} among them", named_entry(entry)),
+                ))
+            }
+        }
+    }
+    Ok(names)
+}
+
+/// An entry of a list as a refusal names it: its text, or what it is.
+fn named_entry(value: &Value) -> String {
+    match value.as_str() {
+        Some("") => "an empty name".to_string(),
+        Some(text) => format!("{text:?}"),
+        None => format!("a {}", value.type_str()),
+    }
+}
+
 /// A repository's view, `<repository_root>/<owner>/<name>` (design 7).
 pub fn view_path(config: &Config, address: &Address) -> PathBuf {
     config
@@ -1583,6 +1637,37 @@ mod tests {
 
     fn address(text: &str) -> Address {
         Address::parse(text).unwrap()
+    }
+
+    /// The configuration spec's "The inboxes a host keeps": `inboxes`
+    /// names each by millpond's name for it, in the file's order, and a
+    /// file that names none keeps none (record 0033).
+    #[test]
+    fn the_inboxes_a_host_keeps() {
+        let config = read("inboxes = [\"home\", \"work\"]\naccounts = {}\n").unwrap();
+        assert_eq!(config.inboxes, ["home", "work"]);
+        assert_eq!(read("accounts = {}\n").unwrap().inboxes, [] as [String; 0]);
+    }
+
+    /// The configuration spec's "An inbox named twice or not named": a
+    /// name given twice, an empty name or one that is not a string is
+    /// refused, naming the file and the line.
+    #[test]
+    fn an_inbox_named_twice_or_not_named() {
+        assert_eq!(
+            read("accounts = {}\ninboxes = [\"home\", \"home\"]\n").unwrap_err(),
+            "/c/config.toml:2: `inboxes` names \"home\" twice"
+        );
+        assert_eq!(
+            read("inboxes = [\"\"]\naccounts = {}\n").unwrap_err(),
+            "/c/config.toml:1: `inboxes` is a list of the names millpond's host configuration \
+             gives the inboxes this host keeps, and holds an empty name among them"
+        );
+        assert_eq!(
+            read("inboxes = \"home\"\naccounts = {}\n").unwrap_err(),
+            "/c/config.toml:1: `inboxes` is a list of the names millpond's host configuration \
+             gives the inboxes this host keeps"
+        );
     }
 
     /// `text`'s drives, each named with its account and its
@@ -2160,6 +2245,7 @@ mod tests {
                 control_plane: None,
                 forge: None,
                 observer: None,
+                inboxes: Vec::new(),
                 local: LocalLayer::NoFile,
             })
         );

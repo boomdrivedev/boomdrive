@@ -98,7 +98,8 @@ fn outcome(bench: &Bench, id: &str) -> Option<Outcome> {
     Some(launched.answer.outcome)
 }
 
-/// The work-into-flume spec's "A bolt and its unit".
+/// The work-into-flume spec's "A bolt and its unit" and "A unit waits for
+/// its bolt's launch": the unit's launch runs once the bolt's has returned.
 #[test]
 fn a_bolt_and_its_unit() {
     let bench = keeping_crew();

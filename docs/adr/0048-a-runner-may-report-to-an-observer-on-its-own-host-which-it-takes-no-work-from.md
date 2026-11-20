@@ -1,7 +1,7 @@
 ---
 number: 48
 title: A runner may report to an observer on its own host, which it takes no work from
-status: accepted
+status: rejected
 date: 2026-11-16
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # A runner may report to an observer on its own host, which it takes no work from
 
-Status: accepted by the user on 2026-11-16, in the design agent's pane. Point 1 is the user's choice; points 2 to 5 are boomdrive-design's, each cheap to change.
+Status: withdrawn by the user on 2026-11-19, in the design agent's pane. An observer served only a local copy of Boomdrive Cloud, which no customer runs, so a runner keeps no connection but the one to the control plane it takes work from. The real connection is record 0008's: the operator's own partitions move to the hosted control plane, and crew's implementation then leaves the runner.
 
 Deciders: the user, who chose a read-only mirror of the host's real runner for a local preview of Boomdrive Cloud over a full loop on a separate test runner, and so loosened core.19; boomdrive-design, for how the observer is reached and what it may ask.
 

@@ -28,7 +28,7 @@ context: |
   services.boomdrive, as nix-darwin and NixOS modules, in which each tool
   is turned on by a switch of its own, which the runner's turns on, so a
   host without the runner takes the ones it wants, with their herdr
-  plugins (record 0023 as amended on 2026-11-18; core.62); with the
+  plugins (record 0023 as amended on 2026-11-18; core.63); with the
   runner they install herdr, Rex, Ghostty, portless, worktrunk, timber
   and the Boomdrive launcher, a menu-bar app on macOS and a desktop
   entry on Linux, with an entry for each drive,

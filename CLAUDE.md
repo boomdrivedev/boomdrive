@@ -41,8 +41,10 @@ with crew on, crew's source of kinds (record 0034). Each tool is turned
 on by a switch of its own, which the runner's turns on, so a host
 without the runner takes the ones it wants, with their herdr plugins,
 linked as the set's user (record 0023 as amended on 2026-11-18;
-core.62). With the runner,
-the modules install herdr, Rex, Ghostty, portless, worktrunk, timber and
+core.63). With the runner,
+the modules install herdr, Rex, Ghostty, portless, worktrunk, timber,
+millpond, whose host configuration and the runner's `inboxes` they write
+from `services.boomdrive.millpond.settings` (record 0033), and
 the Boomdrive launcher, a menu-bar app on macOS and a desktop entry on
 Linux, with an entry for each drive, that runs `flume open`, and link
 the set's herdr plugins with herdr's own command. With the runner and crew, they
@@ -78,8 +80,9 @@ flake gives a shell, `devShells.<system>.default`, that starts herdr
 (record 0023). The
 workflow `.github/workflows/cache.yml` builds every package of every
 system the flake gives and pushes it to the family's cache, `boomdrive`
-on Cachix, at each push to `main` and each tag `v*` (records 0020 and
-0023, core.44 to core.47). It also boots a NixOS system with the module
+on Cachix, once for each release, at its tag `v*`, which `release`
+runs it at, and at no push of a branch (records 0020 as amended on
+2026-11-19 and 0023, core.44 to core.47). It also boots a NixOS system with the module
 on `aarch64-linux`, its guest emulated on GitHub's arm runner, the job
 `boot (aarch64-linux)`, whose check is the one a box's pin reads
 (record 0020 as amended on 2026-11-14).

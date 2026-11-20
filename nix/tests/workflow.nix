@@ -237,6 +237,10 @@ in
       && lib.last freeScript == "          df -h /"
     ) "the step does not say the free space of / before and after";
 
+  # The cache is built once for each release, from its tag (the change
+  # boomdrives-cache-is-built-once-for-each-release): no push of a branch,
+  # main's among them, runs it, so a release never waits behind a second
+  # build of the same commit.
   "A branch's push" =
     t.expect (
       captures "  ([a-z_]+):.*" on == [
@@ -245,14 +249,8 @@ in
       ]
     ) "the workflow runs on ${toString (captures "  ([a-z_]+):.*" on)}, not push and workflow_dispatch"
     ++ t.expect (
-      captures "    ([a-z_-]+):.*" on == [
-        "branches"
-        "tags"
-      ]
-    ) "the push's filters are ${toString (captures "    ([a-z_-]+):.*" on)}, not branches and tags"
-    ++
-      t.expect (itemsOf "    " "branches" on == [ "main" ])
-        "the push's branches are ${toString (itemsOf "    " "branches" on)}, not main alone"
+      captures "    ([a-z_-]+):.*" on == [ "tags" ]
+    ) "the push's filters are ${toString (captures "    ([a-z_-]+):.*" on)}, not tags alone"
     ++
       t.expect (itemsOf "    " "tags" on == [ "v*" ])
         "the push's tags are ${toString (itemsOf "    " "tags" on)}, not v* alone";

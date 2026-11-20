@@ -5,11 +5,11 @@
 Two changes of 2026-11-18 met at the merge of `main` at `f954b77` into the bolt `every-machine-takes-boomdrives-tools`:
 
 - **`the-set-carries-rex-matched-to-flume`**, on `main`, added `services.boomdrive.rex.package` to `nix/modules/apps.nix`'s list of packages under `lib.mkIf cfg.enable`, so Rex came with the runner alone.
-- **`boomdrives-tools-install-on-a-machine-without-the-runner`**, on the bolt, replaced that list with one `installing <tool>` for each tool, each reading `services.boomdrive.<tool>.enable`, and wrote core.62.
+- **`boomdrives-tools-install-on-a-machine-without-the-runner`**, on the bolt, replaced that list with one `installing <tool>` for each tool, each reading `services.boomdrive.<tool>.enable`, and wrote core.63.
 
 The merged `apps.nix` has no `cfg.enable` block left to hold Rex. Rules relied on:
 
-- **core.62:** the set installs a tool only where the host turns it on, each by a switch of its own, which the runner's turns on by default.
+- **core.63:** the set installs a tool only where the host turns it on, each by a switch of its own, which the runner's turns on by default.
 - **core.46:** the Boomdrive module's own options install the tools with no module of their own, each by a switch of its own.
 - **core.13:** the modules start no tool's process.
 
@@ -31,7 +31,7 @@ The merged `apps.nix` has no `cfg.enable` block left to hold Rex. Rules relied o
 
 `services.boomdrive.rex` gains `enable = switch "Rex"`, and `config` gains `(installing "rex")` beside herdr's. That is the helper every other app of `apps.nix` uses, so Rex reads as they do.
 
-Not taken: `(lib.mkIf cfg.enable { environment.systemPackages = … cfg.rex.package; })`, Rex with the runner alone, which core.62 rules out.
+Not taken: `(lib.mkIf cfg.enable { environment.systemPackages = … cfg.rex.package; })`, Rex with the runner alone, which core.63 rules out.
 
 ### Decision 2: Rex's cases follow worktrunk's
 

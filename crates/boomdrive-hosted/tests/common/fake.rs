@@ -1,10 +1,15 @@
 //! The fake hosted control plane (design Decision 14; Task notes 3.4):
 //! test code alone, listening on the loopback address. It answers
-//! `runner/enroll` with HTTP written by hand, and upgrades `runner/connect`
-//! by tokio-tungstenite's handshake. It checks every message it is sent
-//! against version 3, verifies the enrollment's and each connection's
-//! signature over its context, built here from the protocol's README and
-//! not from the crate's code, and records what it took, in order. It holds
+//! `runner/enroll` and `runner/forge-token` with HTTP written by hand, and
+//! upgrades `runner/connect` by tokio-tungstenite's handshake. It checks
+//! every message it is sent against version 4, verifies the enrollment's
+//! and each connection's signature over its context, built here from the
+//! protocol's README and not from the crate's code, and each forge token's
+//! ask's over the context the crate's `key` makes, so it proves the bytes
+//! the crate signs (Task notes 3.3 of
+//! a-cloud-host-gets-its-github-tokens-from-the-cloud), and records what it
+//! took, in order. A test sets what it answers each partition's ask of
+//! each repository's token, or that it never answers. It holds
 //! each partition's last report as a control plane does, but for what it
 //! lets go or refuses. A test sets each partition's wants and the report
 //! it holds, and can make it
@@ -16,6 +21,7 @@
 use super::from_runner;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use boomdrive_hosted::protocol::v4::VERSION;
 use ed25519_dalek::{Signature, VerifyingKey};
 use futures_util::{SinkExt, StreamExt};
 use jsonschema::Validator;
@@ -30,8 +36,8 @@ use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::{http, Message as Frame};
 
-/// The subprotocol of version 3, as the README names it.
-pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v3::SUBPROTOCOL;
+/// The subprotocol of version 4, as the README names it.
+pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v4::SUBPROTOCOL;
 
 /// The path the fake's address holds, under which its two paths go.
 const BASE_PATH: &str = "/boomdrive/";
@@ -50,12 +56,28 @@ pub enum Taken {
         /// The token it bore, as `Authorization: Bearer` carried it.
         bearer: Option<String>,
         message: Value,
-        /// Why the message failed version 3, where it did.
+        /// Why the message failed version 4, where it did.
         refused: Option<String>,
         /// Whether its signature checked over the enrollment's context.
         signed: bool,
         /// The status the fake answered.
         status: u16,
+    },
+    /// A forge token's ask at `runner/forge-token`.
+    ForgeToken {
+        /// The partition whose key its statement proved, where it did.
+        partition: Option<String>,
+        /// Its `Authorization` header, whole.
+        authorization: Option<String>,
+        /// The statement's nonce, where it could be read.
+        nonce: Option<Vec<u8>>,
+        message: Value,
+        /// Why the message failed version 4, where it did.
+        refused: Option<String>,
+        /// Whether its statement checked over the context `forge token`.
+        signed: bool,
+        /// The status the fake answered, none where it never answers.
+        status: Option<u16>,
     },
     /// An upgrade of `runner/connect`.
     Upgrade {
@@ -75,7 +97,7 @@ pub enum Taken {
     Message {
         partition: String,
         message: Value,
-        /// Why it failed version 3, where it did.
+        /// Why it failed version 4, where it did.
         refused: Option<String>,
     },
     /// A WebSocket ping a partition's connection sent.
@@ -94,7 +116,9 @@ impl Taken {
     /// The kind of a message taken, or of an enrollment's message.
     pub fn kind(&self) -> Option<String> {
         let message = match self {
-            Taken::Enroll { message, .. } | Taken::Message { message, .. } => message,
+            Taken::Enroll { message, .. }
+            | Taken::Message { message, .. }
+            | Taken::ForgeToken { message, .. } => message,
             _ => return None,
         };
         kind(message)
@@ -104,6 +128,60 @@ impl Taken {
 /// A message's kind, the one key of its body.
 pub fn kind(message: &Value) -> Option<String> {
     message.get("body")?.as_object()?.keys().next().cloned()
+}
+
+/// What the fake answers an ask of a forge token: given the ask's message,
+/// a status and the answer's text, or none, where it never answers.
+pub type ForgeAnswer = Arc<dyn Fn(&Value) -> Option<(u16, String)> + Send + Sync>;
+
+/// A message of version 4 of `kind` holding `body`, under the id `id`, as
+/// text.
+pub fn message_text(id: &str, kind: &str, body: Value) -> String {
+    json!({ "protocol_version": VERSION, "id": id, "body": { kind: body } }).to_string()
+}
+
+/// An answer giving `token`, ending at `expires_at`, for the ask and its
+/// repository.
+pub fn given(token: &str, expires_at: &str) -> ForgeAnswer {
+    let (token, expires_at) = (token.to_string(), expires_at.to_string());
+    Arc::new(move |ask: &Value| {
+        let body = json!({
+            "forge_token": ask["id"],
+            "repository": ask["body"]["forge_token"]["repository"],
+            "token": token,
+            "expires_at": expires_at,
+        });
+        Some((200, message_text("plane:given", "forge_token_given", body)))
+    })
+}
+
+/// An answer refusing the ask's token with `status`, `not_installed` and
+/// `words`.
+pub fn refused(status: u16, not_installed: bool, words: &str) -> ForgeAnswer {
+    let words = words.to_string();
+    Arc::new(move |ask: &Value| {
+        let body = json!({
+            "forge_token": ask["id"],
+            "repository": ask["body"]["forge_token"]["repository"],
+            "not_installed": not_installed,
+            "words": words,
+        });
+        Some((
+            status,
+            message_text("plane:refused", "forge_token_refused", body),
+        ))
+    })
+}
+
+/// An answer of `status` and `text`, whatever the ask.
+pub fn answered(status: u16, text: &str) -> ForgeAnswer {
+    let text = text.to_string();
+    Arc::new(move |_: &Value| Some((status, text.clone())))
+}
+
+/// No answer at all: the ask is taken and never answered.
+pub fn never() -> ForgeAnswer {
+    Arc::new(|_: &Value| None)
 }
 
 /// A one-time token the fake issued, for one partition.
@@ -175,6 +253,9 @@ struct State {
     connections: BTreeMap<String, Live>,
     /// The next enrollment's answer, where a test sets one.
     answer: Option<(u16, Value)>,
+    /// What each partition's ask of each repository's token is answered,
+    /// by the partition and the repository.
+    forge_answers: BTreeMap<(String, String), ForgeAnswer>,
     taken: Vec<Taken>,
     next: u64,
 }
@@ -186,9 +267,9 @@ impl State {
         format!("plane:{}", self.next)
     }
 
-    /// A message of version 3 under a new id of the fake's.
+    /// A message of version 4 under a new id of the fake's.
     fn message(&mut self, kind: &str, body: Value) -> Value {
-        json!({ "protocol_version": 3, "id": self.id(), "body": { kind: body } })
+        json!({ "protocol_version": VERSION, "id": self.id(), "body": { kind: body } })
     }
 
     /// `partition`'s `pulled`, its wants and the report it holds.
@@ -222,7 +303,7 @@ impl Shared {
         self.taken.send_modify(|count| *count += 1);
     }
 
-    /// Why `message` fails version 3, where it does: each error's path
+    /// Why `message` fails version 4, where it does: each error's path
     /// in the message.
     fn refusal(&self, message: &Value) -> Option<String> {
         let errors: Vec<String> = self
@@ -322,6 +403,16 @@ impl Fake {
     /// holds.
     pub fn answer_enrollment(&self, status: u16, answer: Value) {
         self.shared.lock().answer = Some((status, answer));
+    }
+
+    /// Answers `partition`'s asks of `repository`'s token with `answer`,
+    /// from the next ask on. An ask with none set is refused, 403, as a
+    /// repository registered to no drive the host serves.
+    pub fn answer_forge_token(&self, partition: &str, repository: &str, answer: ForgeAnswer) {
+        self.shared
+            .lock()
+            .forge_answers
+            .insert((partition.to_string(), repository.to_string()), answer);
     }
 
     /// Takes `key` as enrolled to `partition`, as an enrollment would.
@@ -586,7 +677,7 @@ fn now() -> u64 {
 }
 
 /// Serves one connection: an upgrade of `runner/connect`, or a request
-/// to `runner/enroll`.
+/// to `runner/enroll` or `runner/forge-token`.
 async fn serve(stream: TcpStream, shared: Arc<Shared>) {
     let down = shared.lock().down;
     if down {
@@ -595,7 +686,7 @@ async fn serve(stream: TcpStream, shared: Arc<Shared>) {
     }
     match request_line(&stream).await {
         Some(line) if line.starts_with("GET ") => connect(stream, shared).await,
-        Some(_) => enroll(stream, shared).await,
+        Some(_) => request(stream, shared).await,
         None => {}
     }
 }
@@ -619,8 +710,9 @@ async fn request_line(stream: &TcpStream) -> Option<String> {
     None
 }
 
-/// Answers a request to `runner/enroll`, written and read by hand.
-async fn enroll(stream: TcpStream, shared: Arc<Shared>) {
+/// Answers a request to `runner/enroll` or `runner/forge-token`, written
+/// and read by hand.
+async fn request(stream: TcpStream, shared: Arc<Shared>) {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
     if reader.read_line(&mut line).await.is_err() {
@@ -633,6 +725,7 @@ async fn enroll(stream: TcpStream, shared: Arc<Shared>) {
         .to_string();
     let mut length = 0usize;
     let mut bearer = None;
+    let mut authorization = None;
     loop {
         let mut header = String::new();
         match reader.read_line(&mut header).await {
@@ -648,7 +741,10 @@ async fn enroll(stream: TcpStream, shared: Arc<Shared>) {
         };
         match name.trim().to_ascii_lowercase().as_str() {
             "content-length" => length = value.trim().parse().unwrap_or_default(),
-            "authorization" => bearer = value.trim().strip_prefix("Bearer ").map(str::to_string),
+            "authorization" => {
+                authorization = Some(value.trim().to_string());
+                bearer = value.trim().strip_prefix("Bearer ").map(str::to_string);
+            }
             _ => {}
         }
     }
@@ -657,6 +753,10 @@ async fn enroll(stream: TcpStream, shared: Arc<Shared>) {
         return;
     }
     let mut stream = reader.into_inner();
+    if line.starts_with("POST ") && path == format!("{BASE_PATH}runner/forge-token") {
+        let message: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+        return forge_token(stream, &shared, message, authorization).await;
+    }
     if !line.starts_with("POST ") || path != format!("{BASE_PATH}runner/enroll") {
         let _ = answer(&mut stream, 404, "no such path".to_string()).await;
         return;
@@ -749,6 +849,160 @@ fn enrollment(
     (200, signed, reply)
 }
 
+/// Answers an ask of a forge token: its message checked against version 4,
+/// its statement checked over the context `forge token` the crate's `key`
+/// makes, of the fake's origin, the statement's key, time and nonce and
+/// the ask's repository, its key enrolled, its time within the window and
+/// its nonce unseen; then answered as the test set for its partition and
+/// repository, or never, and recorded.
+async fn forge_token(
+    mut stream: TcpStream,
+    shared: &Arc<Shared>,
+    message: Value,
+    authorization: Option<String>,
+) {
+    let refused = shared.refusal(&message);
+    let parts: Vec<&str> = authorization
+        .as_deref()
+        .and_then(|value| value.strip_prefix("BoomdriveHost "))
+        .map(|statement| statement.split('.').collect())
+        .unwrap_or_default();
+    let (key, time, nonce, signature) = match parts.as_slice() {
+        [key, time, nonce, signature] => (
+            decoded(key).and_then(|key| <[u8; 32]>::try_from(key).ok()),
+            time.parse::<u64>().ok(),
+            decoded(nonce).and_then(|nonce| <[u8; 16]>::try_from(nonce).ok()),
+            decoded(signature).and_then(|signature| <[u8; 64]>::try_from(signature).ok()),
+        ),
+        _ => (None, None, None, None),
+    };
+    let repository = message["body"]["forge_token"]["repository"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let id = message["id"].as_str().unwrap_or("unread").to_string();
+    let signed = match (key, time, nonce, signature) {
+        (Some(key), Some(time), Some(nonce), Some(signature)) => VerifyingKey::from_bytes(&key)
+            .is_ok_and(|public| {
+                let context = boomdrive_hosted::key::forge_token_context(
+                    &shared.origin,
+                    &public,
+                    time,
+                    &nonce,
+                    &repository,
+                );
+                public
+                    .verify_strict(&context, &Signature::from_bytes(&signature))
+                    .is_ok()
+            }),
+        _ => false,
+    };
+
+    let (partition, decision) = forge_answer(
+        shared,
+        &message,
+        &refused,
+        &Statement {
+            key,
+            time,
+            nonce,
+            signed,
+        },
+        &id,
+        &repository,
+    );
+    shared.take(Taken::ForgeToken {
+        partition,
+        authorization,
+        nonce: nonce.map(|nonce| nonce.to_vec()),
+        message,
+        refused,
+        signed,
+        status: decision.as_ref().map(|(status, _)| *status),
+    });
+    match decision {
+        Some((status, text)) => {
+            let _ = answer(&mut stream, status, text).await;
+        }
+        // Holds the request open, answering nothing, until the fake ends.
+        None => std::future::pending::<()>().await,
+    }
+}
+
+/// What an ask's statement held, each part where it was read, and whether
+/// its signature checked.
+struct Statement {
+    key: Option<[u8; 32]>,
+    time: Option<u64>,
+    nonce: Option<[u8; 16]>,
+    signed: bool,
+}
+
+/// The partition an ask's statement proved, where it did, and the fake's
+/// answer to the ask, none where it never answers.
+fn forge_answer(
+    shared: &Shared,
+    message: &Value,
+    refused: &Option<String>,
+    statement: &Statement,
+    id: &str,
+    repository: &str,
+) -> (Option<String>, Option<(u16, String)>) {
+    let Statement {
+        key,
+        time,
+        nonce,
+        signed,
+    } = *statement;
+    let mut state = shared.lock();
+    let partition = key.and_then(|key| state.keys.get(&key).cloned());
+    let refuse = |state: &mut State, status: u16, words: &str| {
+        let body = json!({
+            "forge_token": id,
+            "repository": repository,
+            "not_installed": false,
+            "words": words,
+        });
+        Some((
+            status,
+            state.message("forge_token_refused", body).to_string(),
+        ))
+    };
+    let decision: Option<(u16, String)> = if let Some(words) = refused {
+        let reply = state.message("message_refused", json!({ "message": id, "words": words }));
+        Some((400, reply.to_string()))
+    } else if !signed {
+        refuse(&mut state, 401, "the statement's signature does not check")
+    } else if time.is_none_or(|at| now().abs_diff(at) > WINDOW) {
+        refuse(
+            &mut state,
+            401,
+            "the statement's time is not within 300 seconds of the control plane's clock",
+        )
+    } else if !state
+        .nonces
+        .insert((key.unwrap_or_default(), nonce.unwrap_or_default().to_vec()))
+    {
+        refuse(&mut state, 401, "the statement's nonce was seen")
+    } else if let Some(partition) = partition.clone() {
+        match state
+            .forge_answers
+            .get(&(partition.clone(), repository.to_string()))
+            .cloned()
+        {
+            Some(answer) => answer(message),
+            None => refuse(
+                &mut state,
+                403,
+                &format!("{repository} is registered to no drive {partition} serves"),
+            ),
+        }
+    } else {
+        refuse(&mut state, 401, "this key is enrolled to no host")
+    };
+    (partition, decision)
+}
+
 /// Writes an HTTP answer of `status` holding `body`, and closes.
 async fn answer(stream: &mut TcpStream, status: u16, body: String) -> std::io::Result<()> {
     let reason = match status {
@@ -757,6 +1011,7 @@ async fn answer(stream: &mut TcpStream, status: u16, body: String) -> std::io::R
         401 => "Unauthorized",
         403 => "Forbidden",
         404 => "Not Found",
+        502 => "Bad Gateway",
         _ => "Answered",
     };
     let head = format!(

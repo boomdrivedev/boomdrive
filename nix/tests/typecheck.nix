@@ -19,6 +19,7 @@ let
     "ghostty"
     "herdr"
     "herdr-plugins"
+    "millpond"
     "pendingyou"
     "pendingyou-herdr-plugin"
     "plannotator"

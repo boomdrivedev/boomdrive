@@ -2,7 +2,10 @@
 //! "No version names a grant or a credential"; design Decision 14 of
 //! the-runner-dials-the-hosted-control-plane): a connection's account, and
 //! what it may do, come from its enrollment, never from a message
-//! (core.4; boomdrive-cloud records 0047 and 0065).
+//! (core.4; boomdrive-cloud records 0047 and 0065). Version 4's forge
+//! token alone is a credential by design, and its names alone are
+//! excepted (design Decision 3 of
+//! a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053).
 
 mod common;
 
@@ -19,6 +22,17 @@ const UNNAMED: [&str; 7] = [
     "credential",
     "secret",
     "password",
+];
+
+/// The names of version 4's forge token, which hold `token` by design: its
+/// three kinds, each answer's `forge_token`, and `forge_token_given`'s
+/// `token`, the one field of any version that names a credential (record
+/// 0053).
+const FORGE_TOKEN: [&str; 4] = [
+    "forge_token",
+    "forge_token_given",
+    "forge_token_refused",
+    "token",
 ];
 
 /// Every name in `value`, at any depth: each member's name, which takes
@@ -56,10 +70,14 @@ fn unnamed_word(name: &str) -> Option<&'static str> {
 fn every_name_read() {
     for version in VERSIONS {
         let n = version.number;
+        let excepted: &[&str] = if n == 4 { &FORGE_TOKEN } else { &[] };
         for (file, value) in version.files() {
             let mut found = BTreeSet::new();
             names(&value, &mut found);
-            for name in &found {
+            for name in found
+                .iter()
+                .filter(|name| !excepted.contains(&name.as_str()))
+            {
                 if let Some(word) = unnamed_word(name) {
                     panic!("version {n}'s {file} names {name:?}, a {word}'s name");
                 }
@@ -73,8 +91,25 @@ fn every_name_read() {
         for name in ["protocol_version", "hello", "share", "sealed", "lease"] {
             assert!(all.contains(name), "the walk of version {n} misses {name}");
         }
+        for name in FORGE_TOKEN {
+            assert_eq!(
+                all.contains(name),
+                n == 4,
+                "version {n} {} {name}",
+                if n == 4 { "does not name" } else { "names" }
+            );
+        }
     }
-    for name in ["forge_token", "roles", "grant", "Secret"] {
+    for name in FORGE_TOKEN {
+        assert!(unnamed_word(name).is_some(), "{name} is not caught");
+    }
+}
+
+/// The runner-protocol spec's "A word caught in any name": a word is
+/// caught alone or as a word of a name, in either case and in the plural.
+#[test]
+fn a_word_caught_in_any_name() {
+    for name in ["roles", "grant", "Secret", "credential_file"] {
         assert!(unnamed_word(name).is_some(), "{name} is not caught");
     }
 }

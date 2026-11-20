@@ -11,7 +11,7 @@
 # with `pendingyou-signin` beside a Pending You (record 0044 as amended on
 # 2026-11-18; record 0023 as amended that day; design Decisions 1 and 2 of
 # the change boomdrives-tools-install-on-a-machine-without-the-runner;
-# core.62). apps.nix links their herdr plugins, and darwin.nix and
+# core.63). apps.nix links their herdr plugins, and darwin.nix and
 # nixos.nix write Pending You's folder where its switch is on (record
 # 0044, point 7). With the runner and Flume, darwin.nix and nixos.nix run
 # activate.sh's `claude`, which installs the set's marketplace into every

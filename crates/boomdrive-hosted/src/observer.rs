@@ -5,7 +5,7 @@
 //! apart from the hosted parts'. An observer is handed each control pass
 //! of the part whose label is its partition's, and sends its observing
 //! hello, naming only the repositories its partition names of those kept,
-//! and an observed report of the part's launches, each cut to version 3's
+//! and an observed report of the part's launches, each cut to version 4's
 //! copies as a partition's report is. It waits on nothing and drops every
 //! answer, so nothing it is sent reaches the runner's work, and no end is
 //! confirmed on it (core.49, core.54).
@@ -14,7 +14,7 @@ use crate::check;
 use crate::connection::{self, Connection, Dial};
 use crate::key::{self, Store};
 use crate::plane::{self, cut_launch, Failing, Lacking, Say, Shared};
-use crate::protocol::v3::{self, ObservingHello};
+use crate::protocol::v4::{self, ObservingHello};
 use crate::table::Table;
 use boomdrive_control::{Hello, Observed, Observer, Report};
 use serde_json::{json, Value};
@@ -113,7 +113,7 @@ impl Observing {
     /// lease, since it gives none (record 0048, points 1 and 4; core.26).
     fn hello(&self, hello: &Hello) -> ObservingHello {
         ObservingHello {
-            observing: v3::Observing,
+            observing: v4::Observing,
             interface_version: hello.interface_version,
             runner_version: hello.runner_version.clone(),
             tool_versions: hello.tool_versions.clone(),
@@ -128,7 +128,7 @@ impl Observing {
 
     /// The part's `share` as the observer is told it: each launch, by its
     /// id as the runner holds it, with its answer, and its status and entry
-    /// cut to version 3's copies, and no lease, act, command, inbox or
+    /// cut to version 4's copies, and no lease, act, command, inbox or
     /// preview (design Decision 2).
     fn report(&mut self, share: &Report) -> Value {
         let was = std::mem::take(&mut self.failing);
