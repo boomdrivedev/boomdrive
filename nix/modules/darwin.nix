@@ -15,9 +15,22 @@
 # `settings` (design Decision 9), so nix-darwin reloads it when the package
 # or the file changes, and leaves it running when neither does. The
 # activation links the file at the runner's own path, as the primary user,
-# for the commands a person runs by hand, writes Pending You's folder where
-# crew's companions are installed (record 0044, point 7), and links the
-# herdr plugins apps.nix lists with herdr's own command (record 0023).
+# for the commands a person runs by hand. As the same user, with the runner
+# or without, it writes Pending You's folder where Pending You is turned on
+# (record 0044, point 7), and links the herdr plugins apps.nix lists with
+# herdr's own command where herdr is turned on (record 0023): the primary
+# user is the set's user, and without the runner no other step runs as
+# them and no agent is declared (record 0023 as amended on 2026-11-18;
+# design Decision 4 of the change
+# boomdrives-tools-install-on-a-machine-without-the-runner). Where the
+# runner and Flume, with a package, are on, the activation then runs, as
+# the primary user, after Flume's own step, Pending You's folder and
+# herdr's links, activate.sh's `claude` with what sessions.nix gives it,
+# which installs the set's marketplace and the plugins of the tools the
+# host installs, with Pending You's server, into every Claude Code home of
+# Flume's accounts and the default home by Claude Code's own commands
+# (record 0044, point 3, and its amendments of 2026-11-18; design Decision
+# 3 of the change every-claude-code-session-has-boomdrives-plugins).
 # Beside `logFile`, the agent's log, the module declares `dataDir`, the
 # runner's data folder by the runner's own rule (data-dir.nix) from the
 # primary user's home and the agent's own `XDG_DATA_HOME`, and clones.nix
@@ -61,6 +74,7 @@ let
   dataDirOf = import ./data-dir.nix { inherit lib; };
   keptOf = import ./kept.nix { inherit lib; };
   claudeCode = import ./claude-code.nix { inherit lib; };
+  sessions = import ./sessions.nix { inherit lib packages; };
   file = pkgs.writeText "boomdrive-config.toml" (render (fileOf cfg));
 
   # Claude Code's managed telemetry document, written where the runner is
@@ -90,9 +104,10 @@ let
     else
       "/bin/sh ${./activate.sh} managed ${transcriptsPath} || true\n";
 
-  # herdr's own link of each plugin, where a herdr and a plugin are given
-  # (apps.nix).
-  linking = cfg.herdr.package != null && cfg.herdr.plugins != [ ];
+  # herdr's own link of each plugin, where herdr is turned on and a herdr
+  # and a plugin are given (apps.nix; record 0023 as amended on
+  # 2026-11-18).
+  linking = cfg.herdr.enable && cfg.herdr.package != null && cfg.herdr.plugins != [ ];
   plugins = lib.escapeShellArgs (
     [
       "plugins"
@@ -130,9 +145,13 @@ let
   user = config.system.primaryUser;
   home = if user == null then null else config.users.users.${user}.home or null;
 
-  # Pending You's folder, where crew's companions are installed and
-  # Pending You's package is given (companions.nix; record 0044, point 7).
-  writingFolder = config.services.crew.enable && cfg.pendingyou.package != null;
+  # Pending You's folder, where Pending You is turned on and its package is
+  # given (companions.nix; record 0044, point 7, as amended on 2026-11-18).
+  writingFolder = cfg.pendingyou.enable && cfg.pendingyou.package != null;
+
+  # Whether millpond's host configuration is linked: where its switch is on
+  # with a package and an inbox named (millpond.nix).
+  millponding = cfg.millpond.file != null;
   folder = pkgs.callPackage ./pendingyou-folder.nix {
     inherit home;
     inherit (cfg.pendingyou) package;
@@ -153,6 +172,18 @@ let
     "/usr/sbin"
     "/sbin"
   ];
+
+  # The install into Claude Code's homes, on the service's PATH and then
+  # ~/.local/bin, where Claude Code's own installer puts `claude` (design
+  # Decision 3 of the change every-claude-code-session-has-boomdrives-plugins).
+  claude = lib.escapeShellArgs (
+    [ "claude" ]
+    ++ sessions.argumentsOf {
+      inherit config pkgs folder;
+      writing = writingFolder;
+    }
+  );
+  claudePath = lib.concatStringsSep ":" (path ++ [ "${home}/.local/bin" ]);
 in
 {
   imports = [
@@ -167,6 +198,7 @@ in
     ./crew-drives.nix
     ./collector.nix
     claudeCode.module
+    sessions.module
   ];
 
   options.services.boomdrive.logFile = lib.mkOption {
@@ -213,14 +245,19 @@ in
     # else.
     { system.activationScripts.postActivation.text = lib.mkBefore (managing + keeping); }
 
-    (lib.mkIf cfg.enable {
+    # The primary user's home, wherever a step of the set's runs as them,
+    # with the runner or without (design Decision 4 of the change
+    # boomdrives-tools-install-on-a-machine-without-the-runner).
+    (lib.mkIf (cfg.enable || millponding || writingFolder || linking) {
       assertions = [
         {
           assertion = user == null || home != null;
-          message = "services.boomdrive runs in the login of nix-darwin's primary user ${toString user}, whose home users.users.${toString user}.home is not set: set it, as the agent's HOME and its log's folder.";
+          message = "The set's steps run as nix-darwin's primary user ${toString user}, whose home users.users.${toString user}.home is not set: set it, as the home the runner's agent, its log, herdr's plugins and Pending You's folder are set up under.";
         }
       ];
+    })
 
+    (lib.mkIf cfg.enable {
       environment.systemPackages = [ cfg.package ];
 
       # crew's kept repositories, where crew's module is on and the runner
@@ -278,24 +315,52 @@ in
         # Activation runs as root, with root's HOME, so the link is made as the
         # primary user under their own home. A link that fails says why and
         # stops nothing else: the agent reads its own --config either way.
-        # Pending You's folder is written the same way, before the plugins, so
-        # Pending You for Herdr finds its launcher at its first link; the
-        # plugins are linked the same way, each refusal said and stopping none.
         activationScripts.postActivation.text = ''
           sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
             /bin/sh ${./activate.sh} link ${file} || true
-        ''
-        + lib.optionalString (cfg.millpond.file != null) ''
-          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
-            /bin/sh ${./activate.sh} millpond ${cfg.millpond.file} || true
-        ''
-        + lib.optionalString writingFolder ''
-          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
-        ''
-        + lib.optionalString linking ''
-          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
         '';
       };
+    })
+
+    # The set's user's steps, wherever each one's tool is on, with the runner
+    # or without, after the runner's link where the runner is on (record
+    # 0023 as amended on 2026-11-18; design Decision 4 of the change
+    # boomdrives-tools-install-on-a-machine-without-the-runner). Each runs
+    # as the primary user under their own home, as the link is. millpond's
+    # host configuration is linked first (record 0033), then Pending
+    # You's folder is written before the plugins, so Pending You for Herdr
+    # finds its launcher at its first link; the plugins are linked the same
+    # way, each refusal said and stopping none.
+    (lib.mkIf (millponding || writingFolder || linking) {
+      system = {
+        requiresPrimaryUser =
+          lib.optional millponding "services.boomdrive.millpond.enable"
+          ++ lib.optional linking "services.boomdrive.herdr.enable"
+          ++ lib.optional writingFolder "services.boomdrive.pendingyou.enable";
+
+        activationScripts.postActivation.text =
+          lib.optionalString millponding ''
+            sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+              /bin/sh ${./activate.sh} millpond ${cfg.millpond.file} || true
+          ''
+          + lib.optionalString writingFolder ''
+            sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
+          ''
+          + lib.optionalString linking ''
+            sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} ${plugins} || true
+          '';
+      };
+    })
+
+    # The install into every Claude Code home, where the runner and Flume,
+    # with a package, are on: after every other step of the primary user's,
+    # Flume's own link of its file among them, so Flume's status reads the
+    # switch's file. It says one line for each thing it could not do, and
+    # stops nothing.
+    (lib.mkIf (sessions.runs config) {
+      system.activationScripts.postActivation.text = lib.mkAfter ''
+        sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} PATH=${lib.escapeShellArg claudePath} /bin/sh ${./activate.sh} ${claude} || true
+      '';
     })
   ];
 }

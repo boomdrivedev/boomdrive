@@ -39,6 +39,7 @@ in
     // import ./clone-dirs.nix t
     // import ./kept.nix t
     // import ./claude-code.nix t
+    // import ./sessions.nix t
     // import ./collector.nix t
     // import ./boot.nix t
   );

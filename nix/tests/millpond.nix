@@ -6,6 +6,10 @@
 # at each activation, and gives the runner's file the names of its inboxes,
 # `inboxes`, on nix-darwin and on NixOS; with no inbox it writes no
 # configuration and names none, and with no package it installs nothing.
+# millpond is turned on by a switch of its own,
+# services.boomdrive.millpond.enable, on by default with the runner, so a
+# host without the runner takes it by that switch and a host with the
+# runner leaves it off by it (record 0023 as amended on 2026-11-18; core.63).
 t:
 let
   inherit (t) inputs lib outputs;
@@ -53,6 +57,41 @@ let
   none = t.darwinSystem {
     services.boomdrive.millpond = {
       package = null;
+      inherit settings;
+    };
+  };
+
+  # Systems without the runner: millpond's switch left as it is, and
+  # turned on.
+  darwinWithout =
+    given:
+    t.darwinOf [
+      outputs.darwinModules.default
+      given
+    ];
+  nixosWithout =
+    given:
+    t.nixosOf [
+      outputs.nixosModules.default
+      { services.boomdrive.user = "alice"; }
+      given
+    ];
+  offWithout = darwinWithout { services.boomdrive.millpond.settings = settings; };
+  darwinOn = darwinWithout {
+    services.boomdrive.millpond = {
+      enable = true;
+      inherit settings;
+    };
+  };
+  nixosOn = nixosWithout {
+    services.boomdrive.millpond = {
+      enable = true;
+      inherit settings;
+    };
+  };
+  offWith = t.darwinSystem {
+    services.boomdrive.millpond = {
+      enable = false;
       inherit settings;
     };
   };
@@ -149,6 +188,35 @@ in
     ++ t.expect (
       !((cfgOf none).settings ? inboxes) || (cfgOf none).settings.inboxes == null
     ) "a system with no millpond gives the runner inboxes";
+
+  "millpond's own switch" =
+    t.expect (
+      !(cfgOf offWithout).millpond.enable
+    ) "a nix-darwin system without the runner turns millpond on by default"
+    ++ t.expect (
+      (cfgOf offWithout).millpond.file == null && !(installs offWithout (millpondOf "aarch64-darwin"))
+    ) "a nix-darwin system without the runner, millpond's switch untouched, installs or writes millpond"
+    ++ t.expect (
+      textOf darwinOn == expected
+    ) "nix-darwin without the runner, millpond on, renders ${builtins.toJSON (textOf darwinOn)}"
+    ++ t.expect (installs darwinOn (millpondOf "aarch64-darwin")) "nix-darwin without the runner, millpond on, does not install the set's millpond"
+    ++ t.expect (lib.hasInfix "activate.sh millpond" (darwinSteps darwinOn)) "nix-darwin without the runner, millpond on, links no millpond configuration: ${darwinSteps darwinOn}"
+    ++ t.expect (
+      t.failures darwinOn == [ ]
+    ) "nix-darwin without the runner, millpond on, fails: ${toString (t.failures darwinOn)}"
+    ++ t.expect (
+      textOf nixosOn == expected
+    ) "NixOS without the runner, millpond on, renders ${builtins.toJSON (textOf nixosOn)}"
+    ++ t.expect (installs nixosOn (millpondOf "x86_64-linux")) "NixOS without the runner, millpond on, does not install the set's millpond"
+    ++ t.expect (lib.hasInfix "activate.sh millpond" (nixosSteps nixosOn)) "NixOS without the runner, millpond on, links no millpond configuration: ${nixosSteps nixosOn}"
+    ++ t.expect (
+      t.failures nixosOn == [ ]
+    ) "NixOS without the runner, millpond on, fails: ${toString (t.failures nixosOn)}"
+    ++ t.expect (
+      (cfgOf offWith).millpond.file == null
+      && !(installs offWith (millpondOf "aarch64-darwin"))
+      && !(lib.hasInfix "activate.sh millpond" (darwinSteps offWith))
+    ) "a system with the runner and millpond's switch off installs, writes or links millpond";
 
   "An inbox named twice" =
     let
