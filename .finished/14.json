@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 14,
+  "branch": "main",
+  "head": "755d805a168c9ffefccaf971c29b1a70105b3490",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/157",
+    "head": "design/the-runner-and-the-cloud-share-a-protocol-version"
+  },
+  "submitted": "2026-11-19T17:24:28Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "96ffb809e12da554d40919b271400abd2bdf15cd",
+    "on": "acbb07ecb60eafe78e9b1abd4e159a6677f21aba",
+    "submissions": [
+      14
+    ]
+  },
+  "result": "passed",
+  "landed_as": "42c70d6832e5e99dbcd6241d27e79d51eb001993",
+  "subject": "design/the-runner-and-the-cloud-share-a-protocol-version"
+}

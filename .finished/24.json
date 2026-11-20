@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 24,
+  "branch": "main",
+  "head": "72af1cadd79b892c4e6997673614a4a76a864eb2",
+  "from": {
+    "agent": "bolt/a-host-chooses-the-drives-crew-runs",
+    "worktree": "pull/165",
+    "head": "bolt/a-host-chooses-the-drives-crew-runs"
+  },
+  "submitted": "2026-11-20T20:03:55Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "502fa03ce58cc6e14e029b4ed435362e98b6e11d",
+    "on": "5b327e6994b0f8bd390683b3c5ad3e5cf51fa612",
+    "submissions": [
+      24
+    ]
+  },
+  "result": "passed",
+  "landed_as": "5acbce1eb18687d6e9bcb771c551e702481dc828",
+  "subject": "a host chooses the drives crew runs",
+  "under_test_ms": 231000
+}

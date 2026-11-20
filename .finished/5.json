@@ -1,0 +1,30 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 5,
+  "branch": "main",
+  "head": "4103a508725a3554bc33baf191e01d626b244906",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/148",
+    "head": "design/a-runner-serves-each-accounts-control-plane"
+  },
+  "submitted": "2026-11-19T13:19:26Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "withdrawn",
+  "tested": {
+    "combination": "cd656d780ee6d481111741f3c3ef75a5ef08e14a",
+    "on": "f954b77df2835c1532bd90581467d6117705a6ba",
+    "submissions": [
+      2,
+      4,
+      5
+    ]
+  },
+  "withdrawn": {
+    "by": "boomdrive-design",
+    "at": "2026-11-19T13:57:23Z"
+  },
+  "subject": "design/a-runner-serves-each-accounts-control-plane"
+}

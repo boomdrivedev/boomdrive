@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 8,
+  "branch": "main",
+  "head": "253c1f34a200d7f360920967d5095c5074feb920",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/150",
+    "head": "design/the-set-keeps-sluices-daemon"
+  },
+  "submitted": "2026-11-19T13:58:28Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "9c95839904fa5dfb9f956ef2b84838c11448014d",
+    "on": "6fa6df708a11079b7d90d0958c301c3f0e8f0146",
+    "submissions": [
+      8
+    ]
+  },
+  "result": "passed",
+  "landed_as": "077f8a00456f9b1b951b253f8d9aecf180b60411",
+  "subject": "design/the-set-keeps-sluices-daemon"
+}

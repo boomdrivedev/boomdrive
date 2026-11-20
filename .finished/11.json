@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 11,
+  "branch": "main",
+  "head": "f8a40e5a13b86edcc7e494b361648bd7544b0e89",
+  "from": {
+    "agent": "fix/the-runner-confirms-only-what-flume-still-owes",
+    "worktree": "pull/155",
+    "head": "fix/the-runner-confirms-only-what-flume-still-owes"
+  },
+  "submitted": "2026-11-19T16:57:48Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "6c5ed518ac86a7f6dc8d48e4f317efa25e231d38",
+    "on": "daf196df127fbe508f4a8c85d54523e5a012e736",
+    "submissions": [
+      11
+    ]
+  },
+  "result": "passed",
+  "landed_as": "bf569def2832dc86092ccba24c1e9749f3122e79",
+  "subject": "the runner confirms only what Flume still owes; boomdrive's cache is built once for each release"
+}

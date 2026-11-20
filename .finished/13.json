@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 13,
+  "branch": "main",
+  "head": "bc2667ce04bc6005b8253778f173fe54e02a481a",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/156",
+    "head": "design/a-launch-waits-for-the-launch-that-makes-its-base"
+  },
+  "submitted": "2026-11-19T17:23:39Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "801d3818942bf6d97576304dfcda4c864ca600ef",
+    "on": "8e89acb52ee0d553572362368dd0706c1acf511f",
+    "submissions": [
+      13
+    ]
+  },
+  "result": "passed",
+  "landed_as": "acbb07ecb60eafe78e9b1abd4e159a6677f21aba",
+  "subject": "design/a-launch-waits-for-the-launch-that-makes-its-base"
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 1,
+  "branch": "main",
+  "head": "7415e6a41bbc54087f36c2ff860a448c62cfce75",
+  "from": {
+    "agent": "fix/main--the-set-carries-rex-matched-to-flume",
+    "worktree": "pull/145",
+    "head": "fix/main--the-set-carries-rex-matched-to-flume"
+  },
+  "submitted": "2026-11-19T02:41:56Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "2ac40e07e7f64b19023fe93d9aa619cd35f866e8",
+    "on": "7896c95d8994fc9a7039f37db3fbb9b9a3928774",
+    "submissions": [
+      1
+    ]
+  },
+  "result": "passed",
+  "landed_as": "f954b77df2835c1532bd90581467d6117705a6ba",
+  "subject": "fix/main--the-set-carries-rex-matched-to-flume"
+}

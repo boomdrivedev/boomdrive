@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 6,
+  "branch": "main",
+  "head": "5ca77a2704f870592db9b200ead72010fe49792c",
+  "from": {
+    "agent": "bolt/the-runner-asks-the-cloud-for-github-tokens",
+    "worktree": "pull/149",
+    "head": "bolt/the-runner-asks-the-cloud-for-github-tokens"
+  },
+  "submitted": "2026-11-19T13:30:22Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "dbec16ef7182fe6c92556c91cc655b9f0e207a79",
+    "on": "fc5c6a5d5dc27fc22df3ff4cdd65268c8301f425",
+    "submissions": [
+      6
+    ]
+  },
+  "result": "passed",
+  "landed_as": "b339495b27358bc078a22326df99f79845f9668f",
+  "subject": "bolt/the-runner-asks-the-cloud-for-github-tokens"
+}

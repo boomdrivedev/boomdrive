@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 16,
+  "branch": "main",
+  "head": "78fcb1ab61a0244086e5b579e851600e356ddc81",
+  "from": {
+    "agent": "fix/the-runner-carries-its-work-side-by-side",
+    "worktree": "pull/159",
+    "head": "fix/the-runner-carries-its-work-side-by-side"
+  },
+  "submitted": "2026-11-19T18:03:53Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "66baf9aad8bb2efab521bce090934f0aa3756910",
+    "on": "144132f9c4a9a5d1ec978f2115f9a1506ebf60af",
+    "submissions": [
+      16
+    ]
+  },
+  "result": "passed",
+  "landed_as": "0c3c50477f5a822ddf8bc66a2c4a8b276a8b9ba6",
+  "subject": "the runner carries its work side by side"
+}

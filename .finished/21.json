@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 21,
+  "branch": "main",
+  "head": "1f0765cfd4532321259716612d3d7e7e02e38ba3",
+  "from": {
+    "agent": "chore/the-gate-reaches-the-cloud",
+    "worktree": "pull/163",
+    "head": "chore/the-gate-reaches-the-cloud"
+  },
+  "submitted": "2026-11-19T21:07:31Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 2,
+  "state": "landed",
+  "tested": {
+    "combination": "eb807537c02dc7e248bc2482f0fcf89a54b50fad",
+    "on": "62cc52f6bcd3190c0403842b9988faf44cb369db",
+    "submissions": [
+      21
+    ]
+  },
+  "result": "passed",
+  "landed_as": "5f927ac5c8148ce45b410ad59a6fa5e4515ce200",
+  "subject": "chore/the-gate-reaches-the-cloud"
+}

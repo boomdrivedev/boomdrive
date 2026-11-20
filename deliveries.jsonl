@@ -1,0 +1,27 @@
+{"format": "weir-known/1", "reader": "pull/145", "known_at": "2026-11-19T03:21:50Z"}
+{"format": "weir-delivery/1", "key": "2:landed", "readers": ["pull/146"], "message": "[sluice] #2 landed on main as 59ce302.", "recorded_at": "2026-11-19T15:44:08Z", "expires_at": "2026-11-26T15:44:08Z"}
+{"format": "weir-delivery/1", "key": "4:landed", "readers": ["pull/147"], "message": "[sluice] #4 landed on main as fc5c6a5.", "recorded_at": "2026-11-19T15:44:08Z", "expires_at": "2026-11-26T15:44:08Z"}
+{"format": "weir-handover/1", "key": "2:landed", "reader": "pull/146", "by": "wait", "at": "2026-11-19T15:44:30Z"}
+{"format": "weir-handover/1", "key": "4:landed", "reader": "pull/147", "by": "wait", "at": "2026-11-19T15:44:31Z"}
+{"format": "weir-known/1", "reader": "pull/149", "known_at": "2026-11-19T15:57:20Z"}
+{"format": "weir-known/1", "reader": "pull/151", "known_at": "2026-11-19T15:57:35Z"}
+{"format": "weir-known/1", "reader": "pull/150", "known_at": "2026-11-19T16:05:01Z"}
+{"format": "weir-known/1", "reader": "pull/148", "known_at": "2026-11-19T16:08:19Z"}
+{"format": "weir-known/1", "reader": "pull/153", "known_at": "2026-11-19T17:04:09Z"}
+{"format": "weir-delivery/1", "key": "11:landed", "readers": ["pull/155"], "message": "[sluice] #11 landed on main as bf569de.", "recorded_at": "2026-11-19T17:08:43Z", "expires_at": "2026-11-26T17:08:43Z"}
+{"format": "weir-handover/1", "key": "11:landed", "reader": "pull/155", "by": "wait", "at": "2026-11-19T17:08:54Z"}
+{"format": "weir-known/1", "reader": "pull/154", "known_at": "2026-11-19T17:26:08Z"}
+{"format": "weir-delivery/1", "key": "13:landed", "readers": ["pull/156"], "message": "[sluice] #13 landed on main as acbb07e.", "recorded_at": "2026-11-19T17:32:43Z", "expires_at": "2026-11-26T17:32:43Z"}
+{"format": "weir-handover/1", "key": "13:landed", "reader": "pull/156", "by": "wait", "at": "2026-11-19T17:32:50Z"}
+{"format": "weir-delivery/1", "key": "14:landed", "readers": ["pull/157"], "message": "[sluice] #14 landed on main as 42c70d6.", "recorded_at": "2026-11-19T17:36:00Z", "expires_at": "2026-11-26T17:36:00Z"}
+{"format": "weir-handover/1", "key": "14:landed", "reader": "pull/157", "by": "wait", "at": "2026-11-19T17:36:07Z"}
+{"format": "weir-known/1", "reader": "pull/158", "known_at": "2026-11-19T18:10:13Z"}
+{"format": "weir-known/1", "reader": "pull/159", "known_at": "2026-11-19T18:16:23Z"}
+{"format": "weir-known/1", "reader": "pull/160", "known_at": "2026-11-19T19:07:07Z"}
+{"format": "weir-known/1", "reader": "pull/161", "known_at": "2026-11-19T20:07:54Z"}
+{"format": "weir-known/1", "reader": "pull/162", "known_at": "2026-11-19T20:56:50Z"}
+{"format": "weir-known/1", "reader": "pull/163", "known_at": "2026-11-19T21:05:41Z"}
+{"format": "weir-known/1", "reader": "pull/164", "known_at": "2026-11-20T02:04:33Z"}
+{"format": "weir-known/1", "reader": "pull/165", "known_at": "2026-11-20T20:08:33Z"}
+{"format": "weir-known/1", "reader": "pull/166", "known_at": "2026-11-20T21:23:00Z"}
+{"format": "weir-known/1", "reader": "pull/167", "known_at": "2026-11-20T21:29:37Z"}
