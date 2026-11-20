@@ -37,7 +37,11 @@ every Claude Code plugin its tools and companions ship (record 0044),
 each tool's own module re-exported beside the runner's service, `services.boomdrive`,
 as nix-darwin and NixOS modules, whose `accounts` and `settings` are
 the runner's file, each drive's stream given to Flume's module, and,
-with crew on, crew's source of kinds (record 0034). With the runner,
+with crew on, crew's source of kinds (record 0034). Each tool is turned
+on by a switch of its own, which the runner's turns on, so a host
+without the runner takes the ones it wants, with their herdr plugins,
+linked as the set's user (record 0023 as amended on 2026-11-18;
+core.63). With the runner,
 the modules install herdr, Rex, Ghostty, portless, worktrunk, timber,
 millpond, whose host configuration and the runner's `inboxes` they write
 from `services.boomdrive.millpond.settings` (record 0033), and
@@ -59,7 +63,14 @@ they write Claude Code's managed transcripts document,
 `10-boomdrive-transcripts.json` beside it, holding
 `services.boomdrive.claude-code.cleanupPeriodDays` alone, a year by
 default, so every session on the host keeps its transcript that long
-(record 0046). None runs `claude` or writes into a Claude Code home. On
+(record 0046). With the runner and Flume, each activation installs the
+set's marketplace and the Claude Code plugins of the tools it installs,
+with Pending You's MCP server, into every Claude Code home of Flume's
+accounts and the default home, by Claude Code's own `claude plugin` and
+`claude mcp add-json` commands alone, changing nothing else there; and
+where Pending You's folder is written, the login environment puts its
+wake mod on `CLAUDE_CODE_PLUGIN_DIRS` (record 0044, points 3 and 5, as
+amended on 2026-11-18). On
 macOS the module runs the runner from a copy at
 `/Library/Application Support/Boomdrive/boomdrive` that each activation
 signs, before the agents load, with the host's own code-signing

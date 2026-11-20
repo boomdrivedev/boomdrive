@@ -241,7 +241,9 @@
           # The set's marketplace of every Claude Code plugin its tools
           # ship, crew's companions', timber's, Flume's, sluice's, crew's
           # and worktrunk's (record 0044, point 2, and its amendments of
-          # 2026-11-13 and 2026-11-18), which no module installs yet.
+          # 2026-11-13 and 2026-11-18), which the modules install into every
+          # Claude Code home of Flume's accounts and the default home, the
+          # plugins of the tools the host installs (record 0044, point 3).
           # worktrunk's plugin is of its tree at its tag, as its package's
           # source holds only what its build compiles.
           boomdrive-claude-plugins = pkgs.callPackage ./nix/packages/claude-plugins.nix {
@@ -285,7 +287,11 @@
       # (record 0020, core.46), with Flume's, sluice's, crew's and timber's
       # own modules, each as its tool's flake gives it at the tag the lock
       # names, none carried here (record 0023 as amended on 2026-11-15,
-      # core.18); and each tool's module again, as its flake gives it.
+      # core.18); and each tool's module again, as its flake gives it. Each
+      # tool is turned on by a switch of its own, its module's `enable` or
+      # the Boomdrive module's, which the runner's turns on, so a system
+      # that imports `default` without the runner takes the tools it turns
+      # on and nothing else (record 0023 as amended on 2026-11-18, core.63).
       # Keyed, as Flume's and timber's are, so a system that imports
       # `default` and `boomdrive`, or `default` and timber's flake's own
       # module, takes each once.

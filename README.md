@@ -520,7 +520,9 @@ your own there is moved once to `config.toml.before-nix`, and crew's to
 in the switch that takes this flake. `services.boomdrive.enable` turns
 on Flume's, sluice's and timber's modules; a host that runs crew turns
 on crew's, with its `host`, its drives' own keys and the hosts crew
-reaches, each written by crew's own names.
+reaches, each written by crew's own names. Without the runner, the
+module turns on none of the four: a host turns on each it wants by that
+tool's own `enable`, its package the set's.
 With crew's module on, the module declares crew's source of kinds to
 Flume, `services.flume.sources.crew`, naming the roles file crew writes,
 `~/.local/state/crew/flume/roles.toml`, and crew's kinds folder,
@@ -751,8 +753,15 @@ the runner. A host that keeps a tool's file its own sets that tool's
 `enable = false`, and installs the tool itself: a host that keeps its
 own `~/.config/timber/config.toml` sets `services.timber.enable = false`.
 
-With `services.boomdrive.enable`, the runner's module also gives the
-host a way to see its agents:
+Each of the other tools of the set has a switch of its own, which the
+runner's turns on: `services.boomdrive.herdr.enable`,
+`services.boomdrive.ghostty.enable`, `services.boomdrive.launcher.enable`,
+`services.boomdrive.portless.enable` and
+`services.boomdrive.worktrunk.enable` are each on by default where
+`services.boomdrive.enable` is, and a host's own value wins, with the
+runner or without. Where a switch is on, its tool's `package` is
+installed; where it is off, none of it is. So a host with the runner
+gets every one of them, and gives the host a way to see its agents:
 
 - It installs herdr, Ghostty and the Boomdrive launcher, made for
   each drive of the host, `Boomdrive` in `/Applications/Nix Apps` on
@@ -767,15 +776,26 @@ host a way to see its agents:
   Flume refuses. A drive of another machine has no entry. The menu
   stays in the menu bar until you quit it: after a switch that changes
   the drives, quit it and open it again.
-- At each switch it links each plugin of
-  `services.boomdrive.herdr.plugins`, by default the set's Flume,
-  sluice and timber plugins, into the runner's user's herdr with herdr's own
-  `herdr plugin link`, which starts no server. A relink enables a plugin
-  you disabled, so leave one you want off out of the list. A plugin
-  left out stays linked until `herdr plugin unlink`. A herdr already
-  running takes a new plugin at its next start.
-- It sets Flume's `host.multiplexer` to `herdr` and `host.terminal_app`
-  to `ghostty`, unless the host names its own in
+- Wherever herdr is on, at each switch it links each plugin of
+  `services.boomdrive.herdr.plugins` into the set's user's herdr with
+  herdr's own `herdr plugin link`, which starts no server. A relink
+  enables a plugin you disabled, so leave one you want off out of the
+  list. A plugin left out stays linked until `herdr plugin unlink`. A
+  herdr already running takes a new plugin at its next start.
+- herdr's plugins follow the tools the set installs: by default the
+  list holds the set's plugin of each tool the set installs, each only
+  beside the set's own build of it, so the plugin linked is built from
+  the same pin as the command line. Flume's, sluice's and timber's are
+  there where that tool's module is on with the set's package, then
+  Pending You for Herdr where Pending You is on with the set's, and
+  Annotate where plannotator-tui is on with the set's. A host that runs
+  its own build of a tool, or turns that tool's module off, gets no
+  plugin of the set's for it: where it wants that tool's pane, it lists
+  its own build's plugin in `services.boomdrive.herdr.plugins`, and a
+  list given is linked as given.
+- It sets Flume's `host.multiplexer` to `herdr` where herdr is on, and
+  `host.terminal_app` to `ghostty` where Ghostty is on, with the runner
+  or without, unless the host names its own in
   `services.flume.settings.host`. Where the host writes Flume's older
   `host.terminal`, it sets no `multiplexer`.
 - It installs portless, `services.boomdrive.portless.package`, where a
@@ -793,7 +813,9 @@ host a way to see its agents:
 
 Each of the six apps it installs by its own options, herdr, Rex,
 Ghostty, the launcher, portless and worktrunk, is the set's by default,
-and each may name the host's own package instead, or `null` for none:
+and each may name the host's own package instead, or `null` for none, or
+turn its switch off, `services.boomdrive.ghostty.enable = false`, which
+also leaves Flume's `host.terminal_app` the host's:
 
 ```nix
 services.boomdrive.herdr.package = null;
@@ -830,16 +852,21 @@ profile, sets `services.timber.package` to `null` or to its own, so one
 `timber` runs: a user's own comes ahead of the system
 profile's on `PATH`, and the set's goes unused.
 
-Where crew's module is on too, `services.crew.enable`, the runner's
-module also installs crew's companions:
+crew's companions each have a switch of their own too,
+`services.boomdrive.pendingyou.enable`,
+`services.boomdrive.plannotator.enable` and
+`services.boomdrive.plannotator-tui.enable`, each on by default where
+`services.boomdrive.enable` and crew's module, `services.crew.enable`,
+both are, and a host's own value wins, with the runner or without. With
+the runner and crew, the module so installs crew's companions:
 
 - It installs Pending You, Plannotator and plannotator-tui,
   `services.boomdrive.pendingyou.package`,
   `services.boomdrive.plannotator.package` and
   `services.boomdrive.plannotator-tui.package`, and adds their herdr
   plugins, Pending You for Herdr and Annotate, to the plugins' default
-  after Flume's and sluice's.
-- At each switch, as the runner's user, it writes Pending You's folder,
+  after Flume's, sluice's and timber's.
+- At each switch, as the set's user, it writes Pending You's folder,
   `~/.config/pendingyou`, before it links the plugins: the launcher
   Pending You's hooks run, `bin/pendingyou-hook`, and its MCP server's
   headers helper, `bin/pendingyou-mcp-headers`, each running the
@@ -861,8 +888,9 @@ module also installs crew's companions:
 
 Each of the three is the set's by default, and each may name the host's
 own package instead, or `null` for none. With Pending You `null`, no
-folder is written and no `pendingyou-signin` installed. Without the
-runner or without crew, none of them is installed:
+folder is written and no `pendingyou-signin` installed. The runner's
+switch turns each on by default where crew's module is on; without the
+runner or without crew, each is off until the host turns it on:
 
 ```nix
 services.boomdrive.pendingyou.package = null;
@@ -870,15 +898,38 @@ services.boomdrive.plannotator.package = null;
 services.boomdrive.plannotator-tui.package = null;
 ```
 
-The Claude Code plugins of the set's tools and companions, the set's
-marketplace `boomdrive-claude-plugins`, are installed into no Claude Code
-home yet:
-no switch runs `claude` or writes into a Claude Code home, and Claude
-Code stays yours. Installing them into every Claude Code home of the
-accounts, with Pending You's MCP server, and loading the folder's wake
-mod in each session, is a later unit's (record 0044, point 3); until it
-lands, the set installs them into no home and no session loads the wake
-mod from the set.
+With the runner and Flume, each switch installs the set's marketplace,
+`boomdrive-claude-plugins`, and the Claude Code plugins of the tools it
+installs into every Claude Code home your Flume accounts use, as
+`flume status` gives each account's home, and into Claude Code's default
+home, where your own sessions start (record 0044, point 3). It runs, as
+the set's user, Claude Code's own commands alone, finding `claude` on
+the service's `PATH` or in `~/.local/bin`:
+
+- `claude plugin marketplace add`, which adds the marketplace `boomdrive`
+  or points it at the switch's build, and `claude plugin list`;
+- `claude plugin install` for each plugin of a tool the switch installs
+  that the home lacks, `claude plugin update` for each whose version is
+  not the marketplace's, and `claude plugin uninstall` for each of the
+  marketplace's plugins whose tool the switch no longer installs: with
+  the runner and crew, that is every plugin the marketplace lists;
+- `claude mcp add-json --scope user pendingyou`, Pending You's MCP
+  server with the folder's headers helper, where Pending You's folder is
+  written and the home names no server `pendingyou`.
+
+Each switch changes nothing else in a Claude Code home: no other
+marketplace, plugin, server or setting, and it never removes a server.
+A home that installed one of these plugins from another marketplace, as
+`plannotator@plannotator`, keeps both until you uninstall your own. A
+command Claude Code refuses is said in one line, and stops nothing. A
+session already running loads the plugins at its next start, or after
+`/reload-plugins`.
+
+Where Pending You's folder is written, each login shell's environment
+puts its wake mod, `~/.config/pendingyou/mod`, on
+`CLAUDE_CODE_PLUGIN_DIRS`, once and ahead of any paths of yours, so every
+session, an agent Flume starts or your own, loads it; a user with no
+folder keeps the environment as it was.
 
 With no herdr package, or no plugin, nothing is linked. A host with a
 herdr of its own may give it as `services.boomdrive.herdr.package`, and
@@ -893,6 +944,44 @@ and the set's goes unused. worktrunk's shell integration, which lets
 `wt switch` change your shell's folder, is yours to install with
 worktrunk's own `wt config shell install`: neither the modules nor the
 shell install it.
+
+A host without the runner imports the same module and takes only the
+tools it turns on, each already built: Flume's, sluice's, crew's and
+timber's by their own modules' `enable`, and the others by their
+switches. Each tool's own module writes and links its file as it does
+with the runner. herdr's plugins follow the tools turned on, and are
+linked wherever herdr is on, with Pending You's folder written wherever
+Pending You is. Both are the set's user's: on nix-darwin
+`system.primaryUser`, under their home, and on NixOS
+`services.boomdrive.user`, which is also Flume's, sluice's, crew's and
+timber's `user` by default wherever the host names it, with the runner
+or without. Without the runner, nothing else runs as that user: no
+runner's file, agent or unit, and on NixOS the user does not linger. A
+step that would run as the set's user where none is named fails
+evaluation, naming the option to set. The launcher holds no drive
+without the runner, since a drive gives Flume its stream only with the
+runner: it is the set's own, `Default stream` alone. A NixOS host
+without the runner that wants Flume, sluice, herdr with their panes,
+worktrunk and plannotator-tui:
+
+```nix
+{
+  imports = [ boomdrive.nixosModules.default ];
+  services.flume.enable = true;
+  services.sluice.enable = true;
+  services.boomdrive = {
+    user = "alice";
+    herdr.enable = true;
+    worktrunk.enable = true;
+    plannotator-tui.enable = true;
+  };
+}
+```
+
+It installs the set's Flume, sluice, herdr, worktrunk and
+plannotator-tui, links Flume's and sluice's herdr plugins and Annotate
+into alice's herdr, and tells Flume herdr is its multiplexer. A host
+that imports the module and turns nothing on gets nothing of the set's.
 
 Every Claude Code session on the host exports Claude Code's own
 telemetry to the collector the host names, and nowhere else, whatever

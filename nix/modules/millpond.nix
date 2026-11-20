@@ -1,4 +1,6 @@
-# millpond with the runner (record 0033): the Boomdrive module installs
+# millpond, by a switch of its own, `services.boomdrive.millpond.enable`,
+# which the runner's turns on by default (record 0033; record 0023 as
+# amended on 2026-11-18; core.63): the Boomdrive module installs
 # millpond, whose tick the runner's pass runs for each inbox the host
 # keeps, writes millpond's host configuration from
 # `services.boomdrive.millpond.settings`, and gives the runner's file the
@@ -53,15 +55,24 @@ let
   };
 
   names = map (entry: entry.name) cfg.millpond.settings.inbox;
-  writing = cfg.enable && cfg.millpond.package != null;
+  writing = cfg.millpond.enable && cfg.millpond.package != null;
 in
 {
   options.services.boomdrive.millpond = {
+    # On by default with the runner, a host's own value winning, with the
+    # runner or without, as each tool's switch is (apps.nix).
+    enable = mkOption {
+      type = types.bool;
+      default = cfg.enable;
+      defaultText = lib.literalExpression "config.services.boomdrive.enable";
+      description = "Whether to install millpond, its `package`, and write its host configuration, with the runner or without: on by default where `services.boomdrive.enable` is, so a host without the runner turns it on here, and off installs none of it.";
+    };
+
     package = mkOption {
       type = types.nullOr types.package;
       default = set.millpond;
       defaultText = lib.literalExpression "boomdrive.packages.\${pkgs.stdenv.hostPlatform.system}.millpond";
-      description = "millpond, installed with the runner, whose tick the runner's pass runs for each inbox of `settings.inbox` (record 0033); a host's own replaces it, and `null` installs none, writes no configuration and names no inbox to the runner.";
+      description = "millpond, installed where `services.boomdrive.millpond.enable` is on, whose tick the runner's pass runs for each inbox of `settings.inbox` (record 0033); a host's own replaces it, and `null` installs none, writes no configuration and names no inbox to the runner.";
     };
 
     settings = mkOption {

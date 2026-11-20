@@ -271,8 +271,10 @@ let
   linesOf = text: lib.filter (line: line != "") (lib.splitString "\n" text);
 
   # nix-darwin's activation, as text, less the runner's link, Pending You's
-  # folder, the plugins' links and the managed telemetry and transcripts
-  # documents' steps.
+  # folder, the plugins' links, the install into Claude Code's homes
+  # (design Decision 10 of the change
+  # every-claude-code-session-has-boomdrives-plugins) and the managed
+  # telemetry and transcripts documents' steps.
   darwinActivation =
     evaluated:
     builtins.unsafeDiscardStringContext evaluated.config.system.activationScripts.postActivation.text;
@@ -290,6 +292,7 @@ let
     line:
     lib.hasInfix "-activate.sh plugins " line
     || lib.hasInfix "-activate.sh pendingyou " line
+    || lib.hasInfix "-activate.sh claude " line
     || managedStep "10-boomdrive-telemetry.json" line
     || managedStep "10-boomdrive-transcripts.json" line;
   darwinRest = lib.filter (line: !dropped line) (
@@ -326,7 +329,7 @@ onEach "The host's collector reaches Flume and sluice" reaches
     ++ t.expect (lib.hasInfix runnerLink (darwinActivation darwinRunner)) "the nix-darwin activation runs no `${runnerLink}`"
     ++
       t.expect (darwinRest == darwinTools)
-        "the nix-darwin activation with a collector, less the runner's link, Pending You's folder, the plugins' and the managed telemetry and transcripts documents' steps, is ${builtins.toJSON darwinRest}, not the tools' own given the same telemetry ${builtins.toJSON darwinTools}";
+        "the nix-darwin activation with a collector, less the runner's link, Pending You's folder, the plugins', activate.sh claude's and the managed telemetry and transcripts documents' steps, is ${builtins.toJSON darwinRest}, not the tools' own given the same telemetry ${builtins.toJSON darwinTools}";
 
   "The tools' telemetry is their own on NixOS" =
     failsNone "the NixOS system of the runner with crew and a collector" nixosRunner
