@@ -1,0 +1,4 @@
+{"format": "weir-delivery/1", "key": "25:landed", "readers": ["fix/every-machine-takes-boomdrives-tools-2"], "message": "[sluice] #25 landed on bolt/every-machine-takes-boomdrives-tools as 7523f1b.", "recorded_at": "2026-11-20T21:17:45Z", "expires_at": "2026-11-27T21:17:45Z"}
+{"format": "weir-handover/1", "key": "25:landed", "reader": "fix/every-machine-takes-boomdrives-tools-2", "by": "notice", "at": "2026-11-20T21:17:48Z"}
+{"format": "weir-confirmation/1", "key": "25:landed", "reader": "fix/every-machine-takes-boomdrives-tools-2", "at": "2026-11-20T21:18:18Z"}
+{"format": "weir-known/1", "reader": "fix/every-machine-takes-boomdrives-tools-2", "known_at": "2026-11-20T21:18:18Z"}

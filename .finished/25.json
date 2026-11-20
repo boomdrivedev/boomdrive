@@ -1,0 +1,30 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 25,
+  "branch": "bolt/every-machine-takes-boomdrives-tools",
+  "head": "a0feb5cf152a0f126b2db66e37cada1f803e6fe8",
+  "from": {
+    "agent": "fix/every-machine-takes-boomdrives-tools-2",
+    "worktree": "fix/every-machine-takes-boomdrives-tools-2",
+    "path": "/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/places/fix-every-machine-takes-boomdrives-tools-2",
+    "host": "deneb",
+    "session": "herdr:w2:p26@/Users/chuck/.config/herdr/sessions/boomdrive/herdr.sock"
+  },
+  "submitted": "2026-11-20T21:12:24Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "292ae5807b4202d9338fb330085306dcf04f5ae5",
+    "on": "76cb49a37e49c1393fdfe6947e1d41720e805513",
+    "submissions": [
+      25
+    ]
+  },
+  "result": "passed",
+  "landed_as": "7523f1b3d5c597223d2fbf17f8c438beae452aba",
+  "subject": "main at 5acbce1 into the bolt; millpond by its own switch",
+  "trace": "00-88e41974e74dd8d6f3aa9cddb22d3ee7-33f0a7f17311b444-01",
+  "under_test_ms": 301000
+}

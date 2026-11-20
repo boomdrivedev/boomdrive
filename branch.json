@@ -1,0 +1,17 @@
+{
+  "schema": "sluice/branch@1",
+  "branch": "bolt/every-machine-takes-boomdrives-tools",
+  "log": "sluice/log@1",
+  "base": "7523f1b3d5c597223d2fbf17f8c438beae452aba",
+  "verified": false,
+  "window": 2,
+  "next_place": 2,
+  "next_candidate": 2,
+  "candidates": [],
+  "landing": null,
+  "release": [],
+  "outbox": [],
+  "lead": "deneb",
+  "landed": "7523f1b3d5c597223d2fbf17f8c438beae452aba",
+  "kept": "2026-11-20T21:18:21Z"
+}
