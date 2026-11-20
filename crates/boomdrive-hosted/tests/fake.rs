@@ -2,12 +2,13 @@
 //! rest on (Task notes 3.4): it takes an upgrade only on a statement that
 //! proves an enrolled key, over its own origin, at a time within its
 //! window and with a nonce not seen; it checks every message against
-//! version 3; and it answers, withholds, drops and sends as a test asks.
+//! version 4; and it answers, withholds, drops and sends as a test asks.
 //! A client of the test's own dials it, on the loopback address.
 
 mod common;
 
 use boomdrive_hosted::key;
+use boomdrive_hosted::protocol::v4::VERSION;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
 use ed25519_dalek::SigningKey;
@@ -45,7 +46,7 @@ fn home_key() -> SigningKey {
 }
 
 /// Dials `fake` with `statement` as the upgrade's `Authorization`, asking
-/// for version 3's subprotocol.
+/// for version 4's subprotocol.
 async fn dial(fake: &Fake, statement: &str) -> Result<Socket, Error> {
     let mut request = fake
         .connect_address()
@@ -85,7 +86,9 @@ async fn next(socket: &mut Socket) -> Option<Value> {
 
 /// `body` of `kind` as a runner's message under `id`.
 fn message(id: &str, kind: &str, body: Value) -> Frame {
-    Frame::text(json!({ "protocol_version": 3, "id": id, "body": { kind: body } }).to_string())
+    Frame::text(
+        json!({ "protocol_version": VERSION, "id": id, "body": { kind: body } }).to_string(),
+    )
 }
 
 /// The example hello's body.

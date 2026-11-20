@@ -3,7 +3,7 @@
 //! `protocol/v2/`, as every release from `v0.8.0` to the last before
 //! version 3 spoke it. Version 2 is version 3 but for its subprotocol, its
 //! contexts, its files' `$id`s and a control plane's hold, which it does
-//! not have. The runner speaks version 3 alone, so this module holds
+//! not have. The runner speaks version 4 alone, so this module holds
 //! version 2's files and no type, and its files never change (core.42;
 //! record 0052).
 

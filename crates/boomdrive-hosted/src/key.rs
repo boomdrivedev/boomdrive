@@ -5,7 +5,7 @@
 //! and never a file in the clear; and the contexts it signs, as the
 //! protocol's README gives their bytes.
 
-use crate::protocol::v3::SUBPROTOCOL;
+use crate::protocol::v4::SUBPROTOCOL;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
@@ -398,13 +398,13 @@ pub fn nonce() -> Result<[u8; NONCE_LENGTH], String> {
     Ok(nonce)
 }
 
-/// `bytes` in base64url without padding, as version 3 carries bytes.
+/// `bytes` in base64url without padding, as version 4 carries bytes.
 pub fn base64url(bytes: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
 /// The context `name` over `fields`: the UTF-8 bytes of
-/// `boomdrive.v3`, a space and `name`, then each field after a NUL
+/// `boomdrive.v4`, a space and `name`, then each field after a NUL
 /// byte, with nothing after the last (the protocol's README, *The
 /// signatures*).
 pub fn context(name: &str, fields: &[&[u8]]) -> Vec<u8> {
@@ -471,5 +471,52 @@ pub fn statement(key: &SigningKey, origin: &str, time: u64, nonce: &[u8; NONCE_L
         "BoomdriveHost {}.{time}.{}.{signed}",
         base64url(public.as_bytes()),
         base64url(nonce)
+    )
+}
+
+/// A forge token's ask's context: the control plane's `origin`, the
+/// public key's bytes, `time`'s decimal digits, the nonce's bytes and the
+/// repository's address, `owner/name`, as its UTF-8 bytes, so a statement
+/// made for one repository is never taken for another, nor an ask's for a
+/// connection's (design Decision 2 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053).
+pub fn forge_token_context(
+    origin: &str,
+    key: &VerifyingKey,
+    time: u64,
+    nonce: &[u8; NONCE_LENGTH],
+    repository: &str,
+) -> Vec<u8> {
+    context(
+        "forge token",
+        &[
+            origin.as_bytes(),
+            key.as_bytes(),
+            time.to_string().as_bytes(),
+            nonce,
+            repository.as_bytes(),
+        ],
+    )
+}
+
+/// The `Authorization` header's value for one ask of `repository`'s
+/// forge token of the control plane at `origin`, at `time` in Unix
+/// seconds with `nonce`: `BoomdriveHost <key>.<time>.<nonce>.<signature>`,
+/// signed over [`forge_token_context`] (design Decision 2 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+pub fn forge_token_statement(
+    key: &SigningKey,
+    origin: &str,
+    time: u64,
+    nonce: &[u8; NONCE_LENGTH],
+    repository: &str,
+) -> String {
+    let public = key.verifying_key();
+    let context = forge_token_context(origin, &public, time, nonce, repository);
+    format!(
+        "BoomdriveHost {}.{time}.{}.{}",
+        base64url(public.as_bytes()),
+        base64url(nonce),
+        signature(key, &context)
     )
 }

@@ -140,6 +140,7 @@ let
     "sluice"
     "crew"
     "timber"
+    "millpond"
     "herdr"
     "rex"
     "worktrunk"
@@ -157,8 +158,11 @@ let
         rex = "rex version";
       }
       .${name} or "${programOf name} --version";
-    inherit (set.${name}) version;
+    version = heldOf name;
   }) tools;
+  # The version a tool's answer holds: its package's, but millpond's,
+  # whose `--version` names the revision it was built from (record 0033).
+  heldOf = name: if name == "millpond" then set.millpond.src.rev else set.${name}.version;
   answers = boot.answers or [ ];
   answersLine = "answers = json.loads(${builtins.toJSON (builtins.toJSON answers)})";
 
@@ -183,7 +187,7 @@ let
         rex = "rex version";
       }
       .${name} or "${set.${name}.meta.mainProgram or name} --version";
-    inherit (set.${name}) version;
+    version = heldOf name;
   };
 
   required = builtins.attrNames (lib.filterAttrs (_: on: on) boot.config.requiredFeatures);

@@ -174,7 +174,6 @@ impl Host {
             relays: &relays,
             reach: &reach,
             least: &least,
-            due: &|| false,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(crew, &mut |line| lines.push(line));

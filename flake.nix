@@ -39,7 +39,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sluice = {
-      url = "github:boomdrivedev/sluice/v0.97.2";
+      url = "github:boomdrivedev/sluice/v0.99.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -47,7 +47,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.29.0";
+      url = "github:boomdrivedev/flume/v0.31.2";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -55,7 +55,7 @@
       };
     };
     crew = {
-      url = "github:boomdrivedev/crew/v0.68.0";
+      url = "github:boomdrivedev/crew/v0.68.1";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         nix-darwin.follows = "nix-darwin";
@@ -89,7 +89,7 @@
     # The worktrunk sluice's tree pins at its tag, which sluice's worktree
     # driver was checked against (record 0023; design Decision 1).
     worktrunk = {
-      url = "github:max-sixty/worktrunk/v0.80.0";
+      url = "github:max-sixty/worktrunk/v0.82.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
@@ -100,11 +100,20 @@
     # (record 0023 as amended on 2026-11-13 and 2026-11-15; design
     # Decision 1).
     timber = {
-      url = "github:boomdrivedev/timber/v0.8.0";
+      url = "github:boomdrivedev/timber/v0.9.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
         nix-darwin.follows = "nix-darwin";
+      };
+    };
+    # millpond through its own flake at its release tag, whose tick the
+    # runner's pass runs for each inbox the host keeps (record 0033).
+    millpond = {
+      url = "github:boomdrivedev/millpond/v0.1.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        rust-overlay.follows = "rust-overlay";
       };
     };
     # crew's companions (record 0044, point 6). Pending You's command line
@@ -180,6 +189,13 @@
             # timber's own flake's package, unchanged: its tagged tree
             # carries its version (timber's record 0031; core.44).
             timber = inputs.timber.packages.${system}.default;
+            # millpond's own flake's package, its tagged tree carrying its
+            # version, its git crates fetched by their hashes
+            # (nix/packages/millpond.nix; record 0033; core.44).
+            millpond = pkgs.callPackage ./nix/packages/millpond.nix {
+              package = inputs.millpond.packages.${system}.millpond;
+              src = inputs.millpond;
+            };
             # sluice's own flake's package, unchanged: its tagged tree
             # carries its version (sluice's record 0111; core.44).
             sluice = inputs.sluice.packages.${system}.default;

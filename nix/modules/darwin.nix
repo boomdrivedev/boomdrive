@@ -160,6 +160,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     (import ./companions.nix { inherit packages; })
+    (import ./millpond.nix { inherit packages; })
     ./drives.nix
     ./clones.nix
     ./sources.nix
@@ -283,6 +284,10 @@ in
         activationScripts.postActivation.text = ''
           sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
             /bin/sh ${./activate.sh} link ${file} || true
+        ''
+        + lib.optionalString (cfg.millpond.file != null) ''
+          sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+            /bin/sh ${./activate.sh} millpond ${cfg.millpond.file} || true
         ''
         + lib.optionalString writingFolder ''
           sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
