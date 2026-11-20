@@ -1,10 +1,10 @@
-//! The validators of version 3 (design Decisions 9 and 10; core.42):
+//! The validators of version 4 (design Decisions 9 and 10; core.42):
 //! built once from its files alone, each under its `$id`, with every other
 //! address refused, so nothing is fetched. A check's words name the
 //! instance's path and the schema's, and never a value, since a value may
 //! be text the control plane must not hold (core.11).
 
-use crate::protocol::v3::{ADDRESS, FILES, VERSION};
+use crate::protocol::v4::{ADDRESS, FILES, VERSION};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::sync::OnceLock;
@@ -122,7 +122,7 @@ pub fn place_status() -> &'static Validator {
 }
 
 /// The validator of one end of a place's status copy,
-/// `place-status.schema.json`'s `end_record`: a form version 3 names, or
+/// `place-status.schema.json`'s `end_record`: a form version 4 names, or
 /// an end's delivery alone.
 pub fn end_record() -> &'static Validator {
     static VALIDATOR: OnceLock<Validator> = OnceLock::new();

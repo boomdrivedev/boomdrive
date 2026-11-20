@@ -1,0 +1,12 @@
+{
+  "protocol_version": 4,
+  "id": "plane:17",
+  "body": {
+    "forge_token_refused": {
+      "forge_token": "runner:9",
+      "repository": "example/app",
+      "not_installed": false,
+      "words": "example/app is registered to no drive this host serves"
+    }
+  }
+}

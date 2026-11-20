@@ -70,12 +70,17 @@ The boot's script SHALL run, as `alice` by a login shell, each tool of the set t
 #### Scenario: Each tool's answer
 
 - **WHEN** the boot is evaluated
-- **THEN** its answers are `boomdrive`, `flume`, `sluice`, `crew`, `timber`, `herdr`, `rex`, `wt`, `ghostty`, `portless`, `pendingyou`, `plannotator` and `plannotator-tui`, each with its command and the version of the flake's `aarch64-linux` package of that tool, and its script runs each answer
+- **THEN** its answers are `boomdrive`, `flume`, `sluice`, `crew`, `timber`, `millpond`, `herdr`, `rex`, `wt`, `ghostty`, `portless`, `pendingyou`, `plannotator` and `plannotator-tui`, each with its command and the version of the flake's `aarch64-linux` package of that tool, and its script runs each answer
 
 #### Scenario: Every tool installed answers
 
 - **WHEN** the system profile of the boot's machine is read
 - **THEN** each package of it that is one of the flake's `aarch64-linux` packages of a tool has an answer
+
+#### Scenario: millpond's answer is its revision
+
+- **WHEN** the booted system's millpond is asked `millpond --version`
+- **THEN** its answer holds the revision of millpond's tag the set names, since millpond's `--version` names the revision it was built from and no release
 
 ### Requirement: The workflow boots every commit a box may take
 

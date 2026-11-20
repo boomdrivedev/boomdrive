@@ -213,15 +213,6 @@ Where the configuration names a control plane and it opens, `boomdrive run` SHAL
 - **WHEN** a keeping pass is under way, its fetch of one repository held for a minute, and `work`'s control pass falls due
 - **THEN** `work`'s control pass pulls, answers and reports while the fetch is held
 
-### Requirement: The runner's lines of a part's pass name the part
-
-Each line the runner says of a part's control pass SHALL name the part's label after `boomdrive:`, as `boomdrive: <label>: <words>`. A line about one want SHALL begin with the want's id, as it does, the id being the part's own.
-
-#### Scenario: Acts left for the next pass
-
-- **WHEN** `home`'s next control pass falls due while its pass has two acts on places still to carry out
-- **THEN** one line says `boomdrive: home: the next control pass is due, so 1 act on a place waits for it`
-
 ### Requirement: Each pass ends with a settle of every place
 
 `boomdrive run` SHALL end each keeping pass, on its loop, and each part's control pass, on the part's thread, with one `flume --json settle --every <bound>`, awaited before that thread waits. The first keeping pass SHALL share the settles of the parts' first control passes. A pass that ends while another's settle is under way SHALL share it and run none. A keeping pass whose configuration did not read SHALL settle all the same, and a runner told to stop SHALL begin none (core.13; record 0029).
@@ -321,3 +312,40 @@ Where the configuration names an observer, `boomdrive run` SHALL open it when it
 
 - **WHEN** `boomdrive run --once` runs with an observer of `home` named
 - **THEN** no connection is made to the observer
+
+### Requirement: Each line of a part's pass names the part
+
+Each line the runner says of a part's control pass SHALL name the part's label after `boomdrive:`, as `boomdrive: <label>: <words>`. A line about one want SHALL begin with the want's id, as it does, the id being the part's own.
+
+#### Scenario: A part's line names its label
+
+- **WHEN** `home`'s control pass cannot read Flume's status, which answers `flume was ended: signal: 9`
+- **THEN** one line says `boomdrive: home: Flume's status could not be read: flume was ended: signal: 9`
+
+### Requirement: Each pass ticks each inbox after its settle
+
+After each settle, `boomdrive run` and `boomdrive run --once` SHALL run `millpond tick --inbox <name> --json` once for each inbox the configuration's `inboxes` names, in its order, each awaited on the settle's thread, and none where it names none. A pass that shares a settle under way SHALL share its ticks. millpond SHALL decide what a tick runs, and the runner SHALL read nothing of its answer but whether millpond gave one (record 0033; core.1, core.13).
+
+#### Scenario: Each pass ticks each inbox
+
+- **WHEN** the configuration names the inboxes `home` and `work`, and the runner makes three keeping passes with a stub `millpond`
+- **THEN** each pass's settle is followed by `millpond tick --inbox home --json`, then `millpond tick --inbox work --json`, and an answered tick says nothing
+
+#### Scenario: No inbox, no tick
+
+- **WHEN** the configuration names no `inboxes`
+- **THEN** the runner runs no `millpond` command
+
+### Requirement: A tick is said only when it changes
+
+Where an inbox's tick is refused, or gives no answer, the runner SHALL say so in one line only where that inbox's tick before was answered or it is its first, and SHALL say so again at its first tick answered after one that was not. No tick SHALL stop the runner or fail a pass, and none SHALL be carried to a control plane or kept (record 0033; core.11, core.23).
+
+#### Scenario: A refused tick said once until millpond ticks again
+
+- **WHEN** millpond refuses `home`'s ticks with the words ``this host keeps no inbox named `home` `` at two passes, then answers the third
+- **THEN** the first says ``boomdrive: millpond refused the tick of the inbox home: this host keeps no inbox named `home` ``, the second says nothing, and the third says `boomdrive: millpond ticks the inbox home again`
+
+#### Scenario: A tick with no answer
+
+- **WHEN** `millpond` cannot be run for two ticks of `home` in a row
+- **THEN** the first says `boomdrive: millpond gave no answer to the tick of the inbox home: ` and why, and the second says nothing

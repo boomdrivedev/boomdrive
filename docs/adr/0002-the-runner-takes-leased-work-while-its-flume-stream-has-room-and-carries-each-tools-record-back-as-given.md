@@ -9,7 +9,7 @@ decision-makers:
 
 # The runner takes leased work while its Flume stream has room, and carries each tool's record back as given
 
-Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. And on 2026-11-14: a control plane's hold of a place's waiting move, boomdrive-design's direction with the choices of the stage that built it, none of it the user's alone. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
+Status: accepted by the user on 2026-11-01, in the brief of the construct stage of the change `the-runner-carries-crews-work-into-flume`. Amended on 2026-11-07, below, four times: a pull's launches go ahead of its acts on places; a launch waits on no act of the pass before its own; a bolt is a launch, the runner carrying no branch command, which retires settled point 3; and crew's implementation offers a launch a drop names only where the runner launched it. Amended again on 2026-11-08: land is the message for a work's landing. And on 2026-11-09: a control plane's confirm of a reader's ends. And on 2026-11-14: a control plane's hold of a place's waiting move, boomdrive-design's direction with the choices of the stage that built it, none of it the user's alone. And on 2026-11-19, boomdrive-design's: each want is carried on its own thread, and answers come back over a channel, which retires the bounds of 2026-11-14 on a pass once the next is due. The user accepted the three amendments of 2026-11-07 to 2026-11-09 on their cards of 2026-11-09. The brief settled four points, quoted under *Decision outcome*, and folded in the runner's items of the cloud's domain-model ledger: 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. The user had accepted that ledger whole ("yes to all").
 
 Deciders: the user, 2026-11-01.
 Sources: agentplot/boomdrive-cloud's records 0002, 0003, 0005, 0007, 0009, 0016, 0017 and 0022, its rules core.4, core.13, core.18, core.19, core.28 and core.36 to core.39, and its `design/domain-model.html` with its ledger items 3.b, c-flume.a, c-sluice.a, c-inbox.a and N1.b. Also record 0001, flume's record 0020 and flywheel-next's `definitions/engine/lease.yaml` and `host.yaml`.
@@ -440,3 +440,37 @@ Option 1. A priority request that reads, its `Of` and its `Priority` each a whol
 
 - `core.1`'s details already allow it: an implementation gives what it reads from the control plane's own rule, in the control plane's own records. No rule changes. The crew-control-plane spec gains it through the change `the-pull-gives-only-a-launchs-newest-priority`.
 - As built by that change, the code stage's own choices, cheap to change: a priority is newest by the launch its `Of` names, whatever `Host` either request names, since a launch is one place on one host; and only a later request that reads as a priority counts, so one whose `Of` or `Priority` is no whole number makes no earlier one moot, as `newest_preview` counts only a later request that reads as a preview. Not taken: keying on `Host` and `Of`, which keeps a moot priority given wherever crew addressed two hosts; and counting any later `Act: priority`, which leaves a launch with no priority given while crew's newest cannot be read.
+
+## Amendment, 2026-11-19: each want is carried on its own thread, and answers come back over a channel
+
+Status: boomdrive-design's, on signal `2026-11-19-boomdrive-ops-7502663a/01-the-runner-carries-work-concurrently`, 2026-11-19. It retires the amendments of 2026-11-14 that bound a pass once the next was due, and the construct stage of the change that builds it makes its own choices within it, each cheap to change.
+
+### Context
+
+A part's control pass carries its wants one after another in one loop (`crates/boomdrive/src/carry.rs` at 7896c95d), each blocking on its tool's process. `flume launch` answers only once its place is readied and its first stage started (Flume's 6 and 11), and readying is sluice's equipping, from seconds to several minutes. So one slow launch holds every launch, land, answer and hold behind it. The amendments of 2026-11-14 bounded that wait to one launch or one act at a time once the next pass was due, which still made each act wait on a launch. On the evening of 2026-11-18, about ten launches (offers 2160 to 2175) took hours, and the user's lands and the signer fixes waited behind them. The runner already gives each part its own thread and reads its timers and events over a channel (`run.rs`). Within a part it carries nothing side by side.
+
+### Considered options
+
+1. **Each want on its own thread, its answer sent back over a channel (chosen).** A launch, an act on a place, a status of a place, a preview and a release each run their tool's command on a thread of their own as soon as the pull gives them. The part's pass collects their answers from one channel and reports them. Only the order that changes an outcome is kept.
+2. **Flume's launch answers before readying.** The loop stays serial, but a land's retry, a status or a preview still holds everything behind it, and every caller of `flume launch` would read a new answer.
+3. **A fixed pool of workers.** It bounds the commands at once, but a slow launch still takes a worker and a queue forms behind it. The stream's room already bounds the launches that may run at once.
+4. **Keep the turns of 2026-11-14.** Each act still waits on a launch, and each launch on an act.
+
+### Decision outcome
+
+Option 1, held to these:
+
+- **Nothing waits on another want's command.** A launch, an act, a status, a preview and a release run side by side, each on its own thread. The pull, the listing, the report and the settle keep their own pace and wait on no tool's command. No want is held for a turn, and a pass no longer leaves wants to the next pass because the next is due.
+- **Room is taken in the control plane's order.** A pull's launches take the stream's room in the control plane's order, as before, so the launches that start and the ones held are the ones a serial pass would start and hold. Every launch taken then runs at once. Flume's own room lock decides each start.
+- **Order is kept only where it changes the outcome.** An act on a launch waits until that launch is made, and the acts on one launch run one at a time in the control plane's order. Acts on different launches run independently of each other. A drop of a launch not yet made is done, and the launch is never made. A launch whose base branch another launch in flight makes, such as a bolt's unit started with its bolt, waits until that launch is made, since Flume refuses a launch whose base does not exist yet; it waits on nothing else. (Added 2026-11-19 by boomdrive-design, on boomdrive-unstick's build.)
+- **Each answer goes up once made.** Each thread sends its answer back to its part over a channel as soon as its command returns. The part sends its report when an answer changes it, putting together the answers that arrived since its last send. No answer waits on another command, or on the end of a pass.
+- **Once, across restarts.** A want being carried is not taken again from a later pull, and its answer is reported once (`core.10`). A launch in hand when the runner stops is answered from Flume's listing at the next start, never launched again. A command once started is left to finish, and an answer for a lease the control plane let go or refused meanwhile is not reported.
+- **The protocol is unchanged.** A want in hand is answered as the runner's protocol already answers a launch or an act it holds, so neither crew nor the hosted control plane changes.
+
+`core.50` and `core.55` are amended with it.
+
+### Consequences
+
+- The amendments of 2026-11-14 that bound a pass once the next was due no longer govern: a pass's first launch and first act, the launch left `held` for the next pass, and the send before each command. What they said about a send's timing is replaced by the channel above.
+- How many tool commands run at once is bounded by the stream's room for launches. Acts, statuses and previews are as many as the control plane asks for at once.
+- The construct designs the threads, the channel and how a want in hand is held, within `core.1`, `core.10` and `core.42`, and records its own choices here.

@@ -21,13 +21,14 @@ use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
 use crate::forge::Forge;
 use crate::git::Git;
 use crate::locks::Locks;
+use crate::millpond::{self, Ticks};
 use crate::pass::{self, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
 use crate::settle::{self, Settles};
 use crate::terminal::Relays;
-use crate::{clone, flume, hello, sluice};
-use boomdrive_control::{Observed, Observer, Part, Wake};
+use crate::{clone, flume, hands, hello, sluice};
+use boomdrive_control::{ControlPlane, Observed, Observer, Part, Wake};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use std::collections::BTreeMap;
@@ -75,9 +76,9 @@ impl Notices {
     }
 }
 
-/// A part's own wake, and the runner's stop as that part's thread waits
-/// for it: what the part's thread waits on between its passes, and what
-/// the pass under way reads to know the next is due (core.50).
+/// A part's own wake, the answers of its commands coming back, and the
+/// runner's stop as that part's thread waits for them: what the part's
+/// thread waits on between its passes (core.50).
 #[derive(Debug, Default)]
 pub struct Bell {
     rung: Mutex<Rung>,
@@ -88,6 +89,9 @@ pub struct Bell {
 struct Rung {
     /// Woken since the part's pass under way began.
     woken: bool,
+    /// An answer of a command of the part's came back since the part last
+    /// took them (record 0002 as amended on 2026-11-19).
+    answered: bool,
     stopped: bool,
 }
 
@@ -96,6 +100,9 @@ struct Rung {
 pub enum Rang {
     /// Its next pass is due by its timer, or it was woken.
     Due,
+    /// An answer of a command of the part's came back, which it takes
+    /// and sends before its next pass is due.
+    Answered,
     /// The runner stopped: it begins no pass.
     Stopped,
 }
@@ -109,6 +116,12 @@ impl Bell {
     /// pass's start.
     pub fn wake(&self) {
         self.rung().woken = true;
+        self.changed.notify_all();
+    }
+
+    /// Tells the part an answer of a command of its came back.
+    pub fn answered(&self) {
+        self.rung().answered = true;
         self.changed.notify_all();
     }
 
@@ -129,12 +142,16 @@ impl Bell {
         self.rung().stopped
     }
 
-    /// Takes the wake that a pass beginning now answers.
+    /// Takes the wake, and the answers, that a pass beginning now takes.
     pub fn begin_pass(&self) {
-        self.rung().woken = false;
+        let mut rung = self.rung();
+        rung.woken = false;
+        rung.answered = false;
     }
 
-    /// Waits until `due`, or until the part is woken or stopped.
+    /// Waits until `due`, or until the part is woken, an answer of its
+    /// comes back, or it is stopped. A pass due is told before an answer,
+    /// which the pass takes; an answer told is taken.
     pub fn wait(&self, due: Instant) -> Rang {
         let mut rung = self.rung();
         loop {
@@ -144,6 +161,10 @@ impl Bell {
             let left = due.saturating_duration_since(Instant::now());
             if rung.woken || left.is_zero() {
                 return Rang::Due;
+            }
+            if rung.answered {
+                rung.answered = false;
+                return Rang::Answered;
             }
             rung = self
                 .changed
@@ -218,12 +239,14 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
     (last_start + interval).max(now)
 }
 
-/// The programs the runner runs for Flume and sluice: its settles, its
-/// parts' control passes' and its terminals' relays.
+/// The programs the runner runs for Flume, sluice and millpond: its
+/// settles and ticks, its parts' control passes' and its terminals'
+/// relays.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
     pub sluice: PathBuf,
+    pub millpond: PathBuf,
 }
 
 impl Programs {
@@ -232,6 +255,7 @@ impl Programs {
         Programs {
             flume: PathBuf::from("flume"),
             sluice: PathBuf::from("sluice"),
+            millpond: PathBuf::from("millpond"),
         }
     }
 
@@ -341,9 +365,10 @@ pub struct Runner {
     /// the clone shared (design Decision 4).
     locks: Locks,
     /// What gives each fetch its credential, keeping the App's token for
-    /// each repository across passes, shared by the loop and the keeping
-    /// of a landing (record 0007 as amended on 2026-11-11; design Decisions
-    /// 3 and 5).
+    /// each repository across passes, minted from `[forge]`'s key or asked
+    /// of a control plane that holds the App, made at start, shared by the
+    /// loop and the keeping of a landing (record 0007 as amended on
+    /// 2026-11-11 and 2026-11-18; record 0053; design Decisions 3 and 5).
     forge: Forge,
     /// The one report file, each part keeping its share of it (design
     /// Decision 5).
@@ -368,54 +393,63 @@ struct Host<'a> {
 }
 
 /// The runner's watch over the host: Flume's settle of every place,
-/// `flume settle --every <bound>`, run once and awaited at the end of
-/// each pass, keeping or control (core.13; record 0029). The loop and
-/// every part's thread share it, so no two settles run at once: a pass
-/// that ends while another's settle is under way shares that settle, as a
-/// keeping pass shares the settle of the control pass that follows it at
-/// once, and waits for nothing (core.49).
+/// `flume settle --every <bound>`, then millpond's tick of each inbox the
+/// configuration names, `millpond tick --inbox <name> --json`, each run
+/// once and awaited at the end of each pass, keeping or control, so the
+/// host keeps one clock (core.13; records 0029 and 0033). The loop and
+/// every part's thread share it, so no two settles or ticks run at once: a
+/// pass that ends while another's settle is under way shares that settle
+/// and its ticks, as a keeping pass shares the settle of the control pass
+/// that follows it at once, and waits for nothing (core.49).
 struct Watch {
-    /// The `fetch_interval` the latest reading of the configuration gave.
-    fetch_interval: Mutex<Duration>,
-    /// Whether the last settle was answered, held while a settle runs.
-    settles: Mutex<Settles>,
+    /// The `fetch_interval` and `inboxes` the latest reading of the
+    /// configuration gave.
+    read: Mutex<(Duration, Vec<String>)>,
+    /// Whether the last settle, and each inbox's last tick, was answered,
+    /// held while a settle and its ticks run.
+    settles: Mutex<(Settles, Ticks)>,
 }
 
 impl Watch {
-    /// A watch whose bound starts from `fetch_interval`, as the
-    /// configuration the runner started with gave it.
-    fn new(fetch_interval: Duration) -> Watch {
+    /// A watch whose bound starts from `fetch_interval`, and whose ticks
+    /// from `inboxes`, as the configuration the runner started with gave
+    /// them.
+    fn new(fetch_interval: Duration, inboxes: Vec<String>) -> Watch {
         Watch {
-            fetch_interval: Mutex::new(fetch_interval),
+            read: Mutex::new((fetch_interval, inboxes)),
             settles: Mutex::default(),
         }
     }
 
-    /// Takes the `fetch_interval` a reading of the configuration gave.
-    fn read(&self, fetch_interval: Duration) {
-        *self
-            .fetch_interval
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = fetch_interval;
+    /// Takes the `fetch_interval` and `inboxes` a reading of the
+    /// configuration gave.
+    fn read(&self, fetch_interval: Duration, inboxes: &[String]) {
+        *self.read.lock().unwrap_or_else(|e| e.into_inner()) = (fetch_interval, inboxes.to_vec());
     }
 
     /// Runs `flume`'s settle of every place, its bound the latest
     /// `fetch_interval`, or the shorter of it and `poll_interval` while
-    /// the runner makes control passes, and says its answer only where it
-    /// changes. Where another pass's settle is under way, runs none.
-    fn settle(&self, flume: &Path, poll_interval: Option<Duration>, say: Say<'_>) {
-        let mut settles = match self.settles.try_lock() {
+    /// the runner makes control passes, then millpond's tick of each inbox
+    /// the latest reading named, in its order, and says each answer only
+    /// where it changes. A tick that fails stops nothing, and an inbox the
+    /// configuration names none runs none (record 0033). Where another
+    /// pass's settle is under way, runs none.
+    fn settle(&self, programs: &Programs, poll_interval: Option<Duration>, say: Say<'_>) {
+        let mut held = match self.settles.try_lock() {
             Ok(settles) => settles,
             Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
             Err(std::sync::TryLockError::WouldBlock) => return,
         };
-        let fetch_interval = *self
-            .fetch_interval
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let (settles, ticks) = &mut *held;
+        let (fetch_interval, inboxes) = self.read.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let bound = settle::bound(fetch_interval, poll_interval);
-        let answer = flume::Cli::new(flume).settle_every(bound);
+        let answer = flume::Cli::new(&programs.flume).settle_every(bound);
         settles.heard(answer, &mut |line| say(line));
+        ticks.keep(&inboxes);
+        let millpond = millpond::Cli::new(&programs.millpond);
+        for inbox in &inboxes {
+            ticks.heard(inbox, millpond.tick(inbox), &mut |line| say(line));
+        }
     }
 }
 
@@ -459,7 +493,8 @@ impl Runner {
             Control::open(table, config.observer.as_ref(), &file, &data, &bells, &halt)
         });
         let report = ReportFile::new(&report::control_dir(&data));
-        let watch = Watch::new(config.fetch_interval);
+        let watch = Watch::new(config.fetch_interval, config.inboxes.clone());
+        let forge = Forge::for_runner(&config, &file);
         Ok(Runner {
             git,
             home: env.home,
@@ -477,7 +512,7 @@ impl Runner {
             halt,
             bells,
             locks: Locks::new(),
-            forge: Forge::new(),
+            forge,
             report,
             _lock: lock,
         })
@@ -705,15 +740,7 @@ impl Runner {
                             scope.spawn(move || {
                                 let relays = host.programs.relays();
                                 let (reach, least) = (Reach::default(), Least::default());
-                                host.carry(
-                                    part,
-                                    None,
-                                    Ok(config),
-                                    &relays,
-                                    (&reach, &least),
-                                    &|| false,
-                                    say,
-                                )
+                                host.carry_once(part, Ok(config), &relays, (&reach, &least), say)
                             })
                         })
                         .collect();
@@ -733,7 +760,7 @@ impl Runner {
         if self.stopped(say) {
             return Outcome::Failed;
         }
-        self.watch.settle(&self.programs.flume, polls, say);
+        self.watch.settle(&self.programs, polls, say);
         kept.and(carried)
     }
 
@@ -823,7 +850,7 @@ impl Runner {
                         Ok(config) => {
                             this.say_local(&mut said_local, &config.local, say);
                             fetch_interval = config.fetch_interval;
-                            this.watch.read(fetch_interval);
+                            this.watch.read(fetch_interval, &config.inboxes);
                             pass::pass(
                                 &this.git,
                                 &this.forge,
@@ -855,7 +882,7 @@ impl Runner {
                 // configuration that did not read settles all the same
                 // (record 0029).
                 if kept && !followed {
-                    this.watch.settle(&this.programs.flume, polls, say);
+                    this.watch.settle(&this.programs, polls, say);
                 }
                 loop {
                     if this.stop.load(Ordering::SeqCst) {
@@ -980,8 +1007,13 @@ impl Host<'_> {
     /// its wake, through `bell`, says, its own reach, terminals and word
     /// of Flume's version kept across its passes, each pass followed by the
     /// settle of every place (record 0029), and each handed to its
-    /// observer, where it has one (record 0048). Stopped, it begins no
-    /// further pass and no settle.
+    /// observer, where it has one (record 0048). Each want's command runs
+    /// on a thread of its own, kept across the part's passes, and each
+    /// answer that comes back rings `bell`, so the part takes it, starts
+    /// what waited on it and sends it at once, between its passes (record
+    /// 0002 as amended on 2026-11-19; core.50). Stopped, it begins no
+    /// further pass and no settle, and waits for every command in flight
+    /// to end, taking and sending their answers.
     fn carry_on(
         &self,
         part: &mut Part,
@@ -991,47 +1023,115 @@ impl Host<'_> {
     ) {
         let relays = self.programs.relays();
         let (reach, least) = (Reach::default(), Least::default());
-        let mut due = Instant::now();
-        while bell.wait(due) == Rang::Due {
-            let began = Instant::now();
-            bell.begin_pass();
-            let read = config::read_layers(self.file, self.local, self.home);
-            let poll_interval = self.poll_interval;
-            let is_due = || began.elapsed() >= poll_interval || bell.woken();
-            let passed = self.carry(
-                part,
-                observer.as_deref_mut(),
-                read,
-                &relays,
-                (&reach, &least),
-                &is_due,
-                say,
-            );
-            due = passed.next_due(began, Instant::now(), poll_interval);
-            // The control pass ends with the settle of every place, no
-            // part of it, before the part waits (record 0029).
-            if !bell.stopped() {
-                self.watch
-                    .settle(&self.programs.flume, Some(poll_interval), say);
-            }
-        }
+        let flume = flume::Cli::new(&self.programs.flume);
+        let sluice = sluice::Cli::new(&self.programs.sluice);
+        hands::carried(
+            &flume,
+            &sluice,
+            self.locks,
+            &|| bell.answered(),
+            |underway| {
+                let mut due = Instant::now();
+                loop {
+                    match bell.wait(due) {
+                        Rang::Stopped => break,
+                        Rang::Answered => {
+                            let read = config::read_layers(self.file, self.local, self.home);
+                            self.carry(
+                                part,
+                                read,
+                                &relays,
+                                (&reach, &least),
+                                say,
+                                |carrier, plane| {
+                                    carrier.collect(plane, underway, &mut |line| say(line));
+                                    None
+                                },
+                            );
+                        }
+                        Rang::Due => {
+                            let began = Instant::now();
+                            bell.begin_pass();
+                            let read = config::read_layers(self.file, self.local, self.home);
+                            let poll_interval = self.poll_interval;
+                            let observer = observer.as_deref_mut();
+                            let passed = self.carry(
+                                part,
+                                read,
+                                &relays,
+                                (&reach, &least),
+                                say,
+                                |carrier, plane| {
+                                    let observer = observer.map(|observed| {
+                                        observed.observer.as_mut() as &mut dyn Observer
+                                    });
+                                    Some(carrier.carry_pass(
+                                        plane,
+                                        observer,
+                                        underway,
+                                        &mut |line| say(line),
+                                    ))
+                                },
+                            );
+                            due = passed.next_due(began, Instant::now(), poll_interval);
+                            // The control pass ends with the settle of every
+                            // place, no part of it, before the part waits
+                            // (record 0029).
+                            if !bell.stopped() {
+                                self.watch.settle(self.programs, Some(poll_interval), say);
+                            }
+                        }
+                    }
+                }
+                if !underway.idle() {
+                    let read = config::read_layers(self.file, self.local, self.home);
+                    self.carry(
+                        part,
+                        read,
+                        &relays,
+                        (&reach, &least),
+                        say,
+                        |carrier, plane| {
+                            carrier.finish(plane, underway, &mut |line| say(line));
+                            None
+                        },
+                    );
+                }
+            },
+        );
     }
 
-    /// One control pass of `part` against the configuration as `read`
-    /// gives it (design Decision 2), `due` saying whether the part's next
-    /// is due, its lines naming the part's label, handed to `observer`,
-    /// the part's, where it has one (record 0048). A configuration that did
-    /// not read is named, and nothing is carried until it reads again.
+    /// One control pass of `part`, as `run --once` makes it, against the
+    /// configuration as `read` gives it (design Decision 2), waiting for
+    /// every command it starts, its lines naming the part's label. A
+    /// configuration that did not read is named, and nothing is carried
+    /// until it reads again.
+    fn carry_once(
+        &self,
+        part: &mut Part,
+        read: Result<Config, String>,
+        relays: &Relays,
+        (reach, least): (&Reach, &Least),
+        say: Say<'_>,
+    ) -> Passed {
+        self.carry(part, read, relays, (reach, least), say, |carrier, plane| {
+            Some(carrier.pass(plane, &mut |line| say(line)))
+        })
+    }
+
+    /// `body` with the carrier of `part` against the configuration as
+    /// `read` gives it (design Decision 2), its lines naming the part's
+    /// label, and the part's control plane. A configuration that did not
+    /// read is named, and nothing is carried until it reads again.
     #[allow(clippy::too_many_arguments)]
     fn carry(
         &self,
         part: &mut Part,
-        observer: Option<&mut Observed>,
         read: Result<Config, String>,
         relays: &Relays,
         (reach, least): (&Reach, &Least),
-        due: &dyn Fn() -> bool,
         say: Say<'_>,
+        body: impl FnOnce(&Carrier, &mut dyn ControlPlane) -> Option<Passed>,
     ) -> Passed {
         let label = &part.label;
         let unread = |why: String| {
@@ -1075,10 +1175,11 @@ impl Host<'_> {
             relays,
             reach,
             least,
-            due,
         };
-        let observer = observer.map(|observed| observed.observer.as_mut() as &mut dyn Observer);
-        carrier.observed_pass(part.plane.as_mut(), observer, &mut |line| say(line))
+        body(&carrier, part.plane.as_mut()).unwrap_or(Passed {
+            expires: None,
+            reported: false,
+        })
     }
 }
 
@@ -1168,7 +1269,12 @@ mod tests {
         );
         fs::write(&flume, program).unwrap();
         fs::set_permissions(&flume, fs::Permissions::from_mode(0o755)).unwrap();
-        let watch = Watch::new(Duration::from_secs(60));
+        let watch = Watch::new(Duration::from_secs(60), Vec::new());
+        let flume = super::Programs {
+            flume,
+            sluice: dir.path().join("sluice"),
+            millpond: dir.path().join("millpond"),
+        };
         let said = std::sync::Mutex::new(Vec::new());
         let say = |line: String| said.lock().unwrap().push(line);
         std::thread::scope(|scope| {

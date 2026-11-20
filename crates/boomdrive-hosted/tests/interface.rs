@@ -3,12 +3,12 @@
 //! the interface's shapes"; design Decision 6 of
 //! the-runner-dials-the-hosted-control-plane): each value below, built as
 //! the interface's own tests build theirs, with digests and commits of
-//! full length, passes its definition. Version 3 carries every sort the
-//! interface names, a hold, a preview, a land and a confirm among them
-//! (the runner-protocol spec's "Every sort the interface names", "Version
+//! full length, passes its definition in version 4, the version the runner
+//! speaks. Versions 3 and 4 carry every sort the interface names, a hold,
+//! a preview, a land and a confirm among them (the runner-protocol spec's "Every sort the interface names", "Version
 //! 3 carries a control plane's hold", "Version 3 carries a control
 //! plane's confirm", "Version 3 carries a land" and "Version 3 carries a
-//! preview and its done"; record 0052). Version 2 carries every sort but
+//! preview and its done"; records 0052 and 0053). Version 2 carries every sort but
 //! the hold, since `v0.9.0` spoke it before the interface named one, and
 //! version 1 names no land, no confirm and no preview; a release has
 //! spoken each, so a want whose act is a land or a confirm, or a preview,
@@ -16,14 +16,14 @@
 //! carries no land" and "Version 1 carries no confirm"; core.42, core.53,
 //! core.55, core.56), and a want whose act is a hold fails the check of
 //! each (the runner-protocol spec's "A hold is no act of version 1 or 2";
-//! core.42, core.59). Version 3 alone carries an observing hello and an
-//! observed report, each a form of its kind no other form passes as
+//! core.42, core.59). Versions 3 and 4 alone carry an observing hello and
+//! an observed report, each a form of its kind no other form passes as
 //! (record 0048; record 0052 as amended on 2026-11-18).
 
 mod common;
 
 use boomdrive_control::*;
-use common::{definition, passes, refused, validator, Version, V1, V2, V3};
+use common::{definition, passes, refused, validator, Version, V1, V2, V3, V4};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -307,7 +307,7 @@ fn a_confirm_is_no_act_of_version_1() {
 /// One value of each want sort, a preview not done and one done among
 /// them, and of each act sort, a land, a confirm and a hold among them,
 /// and each command sort, and each other value of the interface, passes
-/// its definition in version 3 (the runner-protocol spec's "The
+/// its definition in version 4 (the runner-protocol spec's "The
 /// interface's values pass").
 #[test]
 fn the_interfaces_values_pass() {
@@ -489,7 +489,7 @@ fn the_interfaces_values_pass() {
         )]),
         ..Report::default()
     };
-    // Version 3 writes every part of a report, its `previews` among them,
+    // Version 4 writes every part of a report, its `previews` among them,
     // which the interface's file leaves out where it holds none (design
     // Decision 3 of the-hosted-protocol-carries-land-and-preview).
     let report_definition = validator(&definition("report.schema.json", "report"));
@@ -797,15 +797,16 @@ fn every_sort() -> Vec<Want> {
 /// Decision 8 of the-hosted-protocol-carries-land-and-preview, and design
 /// Decision 7 of the-hosted-protocol-carries-a-hold): a value of every
 /// sort of `Want`, `ActSort` and `CommandSort`, each named by a match with
-/// no `_` arm, passes version 3's `want`, a hold among them, and passes
-/// version 2's but the hold, which version 2 refuses, since `v0.9.0`
-/// spoke version 2 before the interface named one; and the sorts named are
-/// every sort the interface has. A sort the interface adds fails to build
-/// the match until it is named, then fails this test until a value of it
-/// is given, and fails version 3 until a version names it (core.42,
-/// core.59).
+/// no `_` arm, passes version 4's `want` and version 3's, a hold among
+/// them, and passes version 2's but the hold, which version 2 refuses,
+/// since `v0.9.0` spoke version 2 before the interface named one; and the
+/// sorts named are every sort the interface has. A sort the interface adds
+/// fails to build the match until it is named, then fails this test until
+/// a value of it is given, and fails version 4 until a version names it
+/// (core.42, core.59).
 #[test]
 fn every_sort_the_interface_names() {
+    let v4 = V4.validator(&V4.definition("wants.schema.json", "want"));
     let v3 = V3.validator(&V3.definition("wants.schema.json", "want"));
     let v2 = V2.validator(&V2.definition("wants.schema.json", "want"));
     let wants = every_sort();
@@ -824,6 +825,7 @@ fn every_sort_the_interface_names() {
             Want::Offer(_) | Want::Inbox(_) | Want::Preview(_) => {}
         }
         let json = serde_json::to_value(value).unwrap();
+        passes(&v4, &json, &format!("in version 4, {json}"));
         passes(&v3, &json, &format!("in version 3, {json}"));
         if in_version_2 {
             passes(&v2, &json, &format!("in version 2, {json}"));

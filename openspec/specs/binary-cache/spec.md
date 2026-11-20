@@ -21,7 +21,7 @@ The family's binary cache, `boomdrive` on Cachix, through which the set reaches 
 
 ### Requirement: The workflow builds and pushes every package of every system
 
-The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and by hand, and on no other push. For each system the flake gives, a job on GitHub's hosted runner of that system SHALL build every package the flake gives for it, the runner's among them, and push their store paths and runtime closures to the cache. A job whose build fails SHALL push nothing. Its one other job SHALL be the boot, `boot (aarch64-linux)`, which pushes nothing (booted-system).
+The workflow `cache` SHALL run on a push of a tag `v*` and by hand, and on no push of a branch. For each system the flake gives, a job on GitHub's hosted runner of that system SHALL build every package the flake gives for it, the runner's among them, and push their store paths and runtime closures to the cache. A job whose build fails SHALL push nothing. Its one other job SHALL be the boot, `boot (aarch64-linux)`, which pushes nothing (booted-system).
 
 #### Scenario: Each system has its job
 
@@ -30,8 +30,8 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 
 #### Scenario: The runner is pushed with its tools
 
-- **WHEN** a commit lands on `main`
-- **THEN** each system's job builds `boomdrive`, `boomdrive-launcher`, `boomdrive-claude-plugins`, `flume`, `sluice`, `crew`, `herdr`, `rex`, `ghostty`, `portless`, `worktrunk`, `timber`, `pendingyou`, `plannotator`, `plannotator-tui` and the five herdr plugins of that commit, and pushes them to the cache
+- **WHEN** a commit lands on `main` and is released as a tag
+- **THEN** the workflow runs once, at the tag, and each system's job builds `boomdrive`, `boomdrive-launcher`, `boomdrive-claude-plugins`, `flume`, `sluice`, `crew`, `herdr`, `rex`, `ghostty`, `portless`, `worktrunk`, `timber`, `millpond`, `pendingyou`, `plannotator`, `plannotator-tui` and the five herdr plugins of that commit, of the tag, and pushes them to the cache
 
 #### Scenario: A package that does not build
 
@@ -40,7 +40,7 @@ The workflow `cache` SHALL run on a push to `main`, on a push of a tag `v*`, and
 
 #### Scenario: A branch's push
 
-- **WHEN** a branch other than `main` is pushed
+- **WHEN** a branch is pushed, `main` among them
 - **THEN** the workflow does not run
 
 ### Requirement: The push's token is the workflow's alone
@@ -64,7 +64,7 @@ The modules' default packages SHALL be the flake's own, made with its locked nix
 #### Scenario: A host's own nixpkgs
 
 - **WHEN** a module is enabled, with crew turned on, in a system whose `pkgs` carries an overlay of the host's own
-- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `rex`, `ghostty`, `portless`, `worktrunk`, `timber`, `boomdrive-launcher`, `pendingyou`, `plannotator` and `plannotator-tui`, the store paths the flake gives, and the plugins it links are the flake's own `timber-herdr-plugin`, `pendingyou-herdr-plugin` and `plannotator-herdr-plugin` beside Flume's and sluice's
+- **THEN** the system profile holds the flake's own `boomdrive`, `flume`, `sluice`, `crew`, `herdr`, `rex`, `ghostty`, `portless`, `worktrunk`, `timber`, `millpond`, `boomdrive-launcher`, `pendingyou`, `plannotator` and `plannotator-tui`, the store paths the flake gives, and the plugins it links are the flake's own `timber-herdr-plugin`, `pendingyou-herdr-plugin` and `plannotator-herdr-plugin` beside Flume's and sluice's
 
 #### Scenario: The host's trust
 

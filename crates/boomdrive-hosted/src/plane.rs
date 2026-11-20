@@ -8,13 +8,13 @@
 //! share (record 0026; core.49). Every id a partition's control plane gives is handed to
 //! the runner as `<label>/<id>`, and has its prefix taken off as it goes
 //! up, so a partition's connection carries only its own repositories,
-//! leases and work. What goes up of each tool's answer is version 3's copy
+//! leases and work. What goes up of each tool's answer is version 4's copy
 //! of it, cut and checked.
 
 use crate::connection::{self, Answered, Connection, Dial};
 use crate::copy;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v3::{self, MessageId, VERSION};
+use crate::protocol::v4::{self, MessageId, VERSION};
 use crate::table::{self, Table};
 use boomdrive_control::{
     Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Previewed, Pulled,
@@ -174,7 +174,7 @@ impl Failing {
     }
 }
 
-/// The launch `id`'s status and entry, `launched`'s, cut to version 3's
+/// The launch `id`'s status and entry, `launched`'s, cut to version 4's
 /// copies, each `{copy, at, listed}`, or none where it is none or its copy
 /// fails, which `now` holds and is said where `was` did not hold it. A
 /// status goes up with each end of the place copied on its own, and one
@@ -314,18 +314,18 @@ impl Hosted {
         }
     }
 
-    /// The host's capacity as version 3 carries it: Flume's host part as
+    /// The host's capacity as version 4 carries it: Flume's host part as
     /// its copy, or `missing` with words naming the path where the copy
     /// fails, said once while it fails (design Decision 9).
-    fn capacity(&mut self, capacity: &Capacity) -> v3::Capacity {
+    fn capacity(&mut self, capacity: &Capacity) -> v4::Capacity {
         let part = match capacity {
-            Capacity::Missing(words) => return v3::Capacity::Missing(words.clone()),
+            Capacity::Missing(words) => return v4::Capacity::Missing(words.clone()),
             Capacity::Printed(part) => part,
         };
         match copy::host_part(part) {
             Ok(copy) => {
                 self.host_part_failing = false;
-                v3::Capacity::Printed(v3::HostPart {
+                v4::Capacity::Printed(v4::HostPart {
                     running: raw(&copy["running"]),
                     bound: raw(&copy["bound"]),
                     room: raw(&copy["room"]),
@@ -338,7 +338,7 @@ impl Hosted {
                 if !std::mem::replace(&mut self.host_part_failing, true) {
                     (self.say)(format!("hosted: {words}, so it goes up missing"));
                 }
-                v3::Capacity::Missing(words)
+                v4::Capacity::Missing(words)
             }
         }
     }
@@ -553,11 +553,11 @@ impl Partition {
 
     /// The runner's `hello` as this partition's control plane is told it
     /// (design Decision 8): only the repositories its table names, of
-    /// those kept, and none the runner drains, which version 3 cannot name
+    /// those kept, and none the runner drains, which version 4 cannot name
     /// (record 0021), and only its own leases, their prefixes taken off;
     /// the host's tools and capacity as every partition's.
-    fn hello(&self, hello: &Hello, capacity: v3::Capacity) -> v3::Hello {
-        v3::Hello {
+    fn hello(&self, hello: &Hello, capacity: v4::Capacity) -> v4::Hello {
+        v4::Hello {
             interface_version: hello.interface_version,
             runner_version: hello.runner_version.clone(),
             tool_versions: hello.tool_versions.clone(),
@@ -579,7 +579,7 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8). Version 3 carries a land, a
+    /// it is offered (design Decision 8). Version 4 carries a land, a
     /// confirm and a hold among the acts and a preview among the wants: a
     /// land, a confirm and a hold are each given as any act, their words
     /// and bound as given, read and refused by nothing here, and a preview
@@ -664,7 +664,7 @@ impl Partition {
     /// which the runner reads again from sluice's listing (design Decision
     /// 7 of the-hosted-protocol-carries-land-and-preview; core.10,
     /// core.55).
-    fn taken_back(&self, report: v3::Report) -> Report {
+    fn taken_back(&self, report: v4::Report) -> Report {
         Report {
             launches: report
                 .launches
@@ -739,7 +739,7 @@ impl Partition {
         }
     }
 
-    /// `part` as version 3's `report` carries it: each id with its prefix
+    /// `part` as version 4's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
     /// (design Decision 9). A status goes up with each end of the place
@@ -962,7 +962,7 @@ fn partial_words(id: &Id, placed: &copy::PlaceCopy) -> String {
     )
 }
 
-/// `value` as raw JSON, as version 3's host part carries each value.
+/// `value` as raw JSON, as version 4's host part carries each value.
 fn raw(value: &Value) -> Box<RawValue> {
     RawValue::from_string(value.to_string()).unwrap_or_else(|_| RawValue::NULL.to_owned())
 }

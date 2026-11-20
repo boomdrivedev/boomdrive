@@ -59,16 +59,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1795030834,
-        "narHash": "sha256-F/TKr/9nh3gq9SeLt35OWlUwYmtltSyIgi2ylpr0Z0I=",
+        "lastModified": 1795056199,
+        "narHash": "sha256-BrE7sEQhAli+jM0TAC6ziJ37iDZ9TysN8PZLvP+J9w4=",
         "owner": "boomdrivedev",
         "repo": "crew",
-        "rev": "f2fb30f743b8de565fab7967503b3198515ddd50",
+        "rev": "1da5d624ccdd4e011d85a05e797458a3c63a574a",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.68.0",
+        "ref": "v0.68.1",
         "repo": "crew",
         "type": "github"
       }
@@ -125,16 +125,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1795015923,
-        "narHash": "sha256-UXG7NxQBiZPci1oqCwP6tlXJLlf1S4VNUydcHayn1Ys=",
+        "lastModified": 1795138813,
+        "narHash": "sha256-BpfoGQ66vaIBeTibxILRwqPecaPMNft0cgtIpK9dIc4=",
         "owner": "boomdrivedev",
         "repo": "flume",
-        "rev": "7e9be28c0a049198244c39ff2e2a952cb7f6e219",
+        "rev": "74837e7e1549815bf95838d2fbf20a33b6d49f88",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.29.0",
+        "ref": "v0.31.2",
         "repo": "flume",
         "type": "github"
       }
@@ -219,6 +219,30 @@
         "owner": "numtide",
         "repo": "llm-agents.nix",
         "rev": "3c4f3e7ccf54c7279659536160f9c58de38073c1",
+        "type": "github"
+      }
+    },
+    "millpond": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795103943,
+        "narHash": "sha256-yL6fliOt70DxjATCARB6BtKcWA6kXbmxv9y3KeEIs74=",
+        "owner": "boomdrivedev",
+        "repo": "millpond",
+        "rev": "7686c7e6b601077d94509e406036cff48040875d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "boomdrivedev",
+        "ref": "v0.1.0",
+        "repo": "millpond",
         "type": "github"
       }
     },
@@ -313,6 +337,7 @@
         "herdr-annotate": "herdr-annotate",
         "herdr-pendingyou": "herdr-pendingyou",
         "llm-agents": "llm-agents",
+        "millpond": "millpond",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
         "pendingyou": "pendingyou",
@@ -357,16 +382,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1795031322,
-        "narHash": "sha256-6EWA+3M21DBr/kpJa6Tp7a/kVlDLIHvVluk3leF7HWU=",
+        "lastModified": 1795133136,
+        "narHash": "sha256-Zqqix4Bch/rSWA2qAmKUjE8DDSPOyWKV81atNvWRD3k=",
         "owner": "boomdrivedev",
         "repo": "sluice",
-        "rev": "f16039c9d8ee7524d30b6f075c1af677e196dcf5",
+        "rev": "cea8689074f424546866dd1daabebb5f0c5e7c9d",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.97.2",
+        "ref": "v0.99.2",
         "repo": "sluice",
         "type": "github"
       }
@@ -414,16 +439,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794969722,
-        "narHash": "sha256-yquTQehGSvPEp4fw3oBGObACqv3TqtQ9FMKHCOLvNZo=",
+        "lastModified": 1795027476,
+        "narHash": "sha256-6W7bmEkZY7zLU/eOabvhMLIdQbST2eT48sofnbz3ZOk=",
         "owner": "boomdrivedev",
         "repo": "timber",
-        "rev": "22330429c3e803c01ef4a6ba7a47f58163bc8448",
+        "rev": "a19830b277eea872383b1599eb7356e97ef147c7",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.8.0",
+        "ref": "v0.9.0",
         "repo": "timber",
         "type": "github"
       }
@@ -461,16 +486,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1790542548,
-        "narHash": "sha256-wT9V9A6ty4yCp/wJ9F92AC5SrsQzemEb8/d2NSjH/SY=",
+        "lastModified": 1794684427,
+        "narHash": "sha256-Zrgjcw9n3UIbw5hMl/2XSwD3YdOhE7sY1OqlJstS/mk=",
         "owner": "max-sixty",
         "repo": "worktrunk",
-        "rev": "b49ca7eea9b03145791a5b94eccaf9c59412ed37",
+        "rev": "66f0bf981ec2fad1feef8a1d816f20710d2bdb0d",
         "type": "github"
       },
       "original": {
         "owner": "max-sixty",
-        "ref": "v0.80.0",
+        "ref": "v0.82.0",
         "repo": "worktrunk",
         "type": "github"
       }
