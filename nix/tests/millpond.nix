@@ -194,8 +194,7 @@ in
       !(cfgOf offWithout).millpond.enable
     ) "a nix-darwin system without the runner turns millpond on by default"
     ++ t.expect (
-      (cfgOf offWithout).millpond.file == null
-      && !(installs offWithout (millpondOf "aarch64-darwin"))
+      (cfgOf offWithout).millpond.file == null && !(installs offWithout (millpondOf "aarch64-darwin"))
     ) "a nix-darwin system without the runner, millpond's switch untouched, installs or writes millpond"
     ++ t.expect (
       textOf darwinOn == expected
