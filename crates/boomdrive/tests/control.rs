@@ -100,6 +100,7 @@ impl Tools {
         Programs {
             flume: self.flume.program(),
             sluice: self.sluice.program(),
+            millpond: self.flume.dir.path().join("absent-millpond"),
         }
     }
 
@@ -1369,7 +1370,14 @@ fn a_slow_part() {
     let began = home_heard.pull();
 
     let (launched, _, _) = running.until_starting("work/1: launched at ");
-    let reported = work_heard.report();
+    // The pass's own report may go up before the launch's answer comes
+    // back, which goes up in the part's next send (core.50).
+    let reported = loop {
+        let reported = work_heard.report();
+        if reported >= launched {
+            break reported;
+        }
+    };
     let first = work_heard.pull();
     let second = work_heard.pull();
 
@@ -1476,6 +1484,10 @@ fn a_keeping_pass_under_way() {
     let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
     let running = Running::carrying(&scratch, vec![("work", work)], tools);
     running.until(&view_made(&scratch, &origin.tip("main")));
+    // `work/1` is launched before the fetch is held: a launch into the
+    // clone waits on its keep (core.49; record 0026), so one made after
+    // the hold would keep `work`'s pass waiting until the fetch ends.
+    running.until_starting("work/1: launched at ");
     held.hold();
     held.wait_held(PATIENCE);
     // Every pull and report the test has heard of may have come before

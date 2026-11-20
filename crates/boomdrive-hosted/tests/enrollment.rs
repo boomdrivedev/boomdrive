@@ -87,7 +87,7 @@ fn a_partition_enrolled() {
         panic!("one enrollment taken: {taken:#?}");
     };
     assert_eq!(bearer.as_deref(), Some(TOKEN), "the request bore the token");
-    assert_eq!(refused, &None, "its enroll passed version 3");
+    assert_eq!(refused, &None, "its enroll passed version 4");
     assert!(signed, "its signature checked");
     assert_eq!(*status, 200);
     assert_eq!(message["body"]["enroll"]["machine"], json!("host-a"));
@@ -123,7 +123,7 @@ fn observer_table(url: &str) -> Table {
 /// The hosted-control-plane spec's "An observer enrolled beside crew", the
 /// enrollment's half (design Decision 4 of
 /// a-runner-reports-to-an-observer-it-takes-no-work-from): the fake
-/// control plane as the observer takes one `enroll` of version 3 at its
+/// control plane as the observer takes one `enroll` of version 4 at its
 /// `runner/enroll`, and the key is kept under `observer.home`, apart from
 /// a hosted partition `home`'s.
 #[test]
@@ -154,7 +154,7 @@ fn an_observer_enrolled() {
         panic!("one enrollment taken: {taken:#?}");
     };
     assert_eq!(bearer.as_deref(), Some(TOKEN), "the request bore the token");
-    assert_eq!(refused, &None, "its enroll passed version 3");
+    assert_eq!(refused, &None, "its enroll passed version 4");
     assert!(signed, "its signature checked");
     assert_eq!(*status, 200);
     assert_eq!(memory.accounts(), ["observer.home@127.0.0.1"]);
@@ -320,7 +320,7 @@ fn the_enrollments_message_refused() {
     fake.answer_enrollment(
         400,
         json!({
-            "protocol_version": 3,
+            "protocol_version": 4,
             "id": "plane:1",
             "body": { "message_refused": { "message": "runner:1", "words": "/body/enroll/machine is too long" } }
         }),
@@ -347,7 +347,7 @@ fn an_answer_that_fails_version_3() {
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 3,
+            "protocol_version": 4,
             "id": "plane:1",
             "body": { "enrolled": { "host": "h-1", "certificate": "n0t-r34d" } }
         }),
@@ -361,7 +361,7 @@ fn an_answer_that_fails_version_3() {
     assert!(
         refusal
             .words
-            .starts_with("the control plane's answer, 200, fails version 3's check: "),
+            .starts_with("the control plane's answer, 200, fails version 4's check: "),
         "{}",
         refusal.words
     );
@@ -375,7 +375,7 @@ fn an_answer_of_another_kind() {
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 3,
+            "protocol_version": 4,
             "id": "plane:1",
             "body": { "pulled": { "wants": [], "report": null } }
         }),

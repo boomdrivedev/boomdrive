@@ -183,12 +183,12 @@ Evaluation SHALL fail where `settings` names `repositories` at its top, saying e
 
 ### Requirement: The modules bring each tool's own module
 
-`darwinModules.default` and `nixosModules.default`, each the same value as the platform's `boomdrive`, SHALL import the runner's module and Flume's, sluice's, crew's and timber's, each the module that tool's flake gives at the release tag the lock names. No file of this tree SHALL declare an option of `services.flume`, `services.sluice`, `services.crew` or `services.timber`.
+`darwinModules.default` and `nixosModules.default`, each the same value as the platform's `boomdrive`, SHALL import the runner's module and Flume's, sluice's, crew's and timber's, each the module that tool's flake gives at the release tag the lock names. Each option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` SHALL be declared in its tool's input; this tree SHALL declare one again only to add to its submodule type a module giving facts the set knows (core.57).
 
 #### Scenario: Each tool's options are its own flake's
 
 - **WHEN** a system imports the platform's `default` module
-- **THEN** every option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` is declared in a file of that tool's input, and none in this tree, on nix-darwin and on NixOS
+- **THEN** every option of `services.flume`, `services.sluice`, `services.crew` and `services.timber` is declared in a file of that tool's input; none is declared again in a file of this tree but `services.crew.settings` and its `drives`, each in `nix/modules/crew-drives.nix`, setting no description, default or example; and every other option of crew's settings, and every option of a drive of crew's, is declared in crew's input alone, on nix-darwin and on NixOS
 
 ### Requirement: The flake re-exports each tool's module
 
@@ -304,7 +304,7 @@ Where `settings` names no control plane, or one whose `type` is not `crew`, the 
 
 ### Requirement: The README writes no crew table beside crew's drives
 
-The README's install with nix SHALL set the runner's `control_plane.type = "crew"` beside `services.crew` and write no `control_plane.crew`. Its words SHALL say the module writes `[control_plane.crew]` from the drives of `services.boomdrive.accounts` whose `machine` is `services.crew.host`, or that name none, under an account that names its `state_repository`, and that a table written out wins.
+The README's install with nix SHALL set the runner's `control_plane.type = "crew"` beside `services.crew` and write no `control_plane.crew`. Its words SHALL say the module writes `[control_plane.crew]` from the drives of `services.boomdrive.accounts` that crew's settings set up, whose `machine` is `services.crew.host` or that name none, under an account that names its `state_repository`, and that a table written out wins.
 
 #### Scenario: The README's crew table
 
@@ -1434,14 +1434,14 @@ The README's install with nix SHALL name `services.boomdrive.claude-code.cleanup
 - **WHEN** `accounts.own.state_repository = "example"` is set
 - **THEN** evaluation of `services.boomdrive.accounts` fails
 
-### Requirement: With crew's module on, the modules give crew each drive's machine and its account's state repository
+### Requirement: With crew's module on, the modules give each drive crew's settings set up its machine and its account's state repository
 
-Where `services.crew.enable` is true, whether or not `services.boomdrive.enable` is, the modules SHALL give `services.crew.settings.drives.<drive>` for each drive of each account that names its `state_repository`, this host's and others': its `machine`, the drive's `machine`, or `services.crew.host` where the drive names none; and its `state`, the account's `state_repository`. They SHALL give no other key of crew's drive, and nothing of an account that names no `state_repository` (record 0032).
+Where `services.crew.enable` is true, whether or not `services.boomdrive.enable` is, the modules SHALL give each drive the host's crew settings set up, `services.crew.settings.drives.<drive>`, that an account naming its `state_repository` names: its `machine`, the drive's, or `services.crew.host` where the drive names none; and its `state`, the account's `state_repository`. They SHALL add no drive to crew's settings, and give no other key (record 0032 as amended on 2026-11-18).
 
 #### Scenario: Each drive's machine and state repository, given to crew
 
 - **WHEN** crew's module is on with the host `host-a`, the hosts `host-a` and `host-b`, and crew's own keys for the drives `garden`, `home`, `away` and `field`, and `accounts` names the account `own`, naming the state repository `example/state`, with the drives `garden`, whose `machine` is `host-a`, and `home`, naming none, and the account `work`, naming `example/work`, with the drives `away`, whose `machine` is `host-b`, and `field`, naming none
-- **THEN** crew's drives `garden` and `home` each have the `machine` `host-a` and the `state` `example/state`, `away` the `machine` `host-b` and the `state` `example/work`, and `field` the `machine` `host-a` and the `state` `example/work`; crew's teams file evaluates; the system fails no assertion; and the modules' definition of `services.crew.settings` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
+- **THEN** crew's drives `garden` and `home` each have the `machine` `host-a` and the `state` `example/state`, `away` the `machine` `host-b` and the `state` `example/work`, and `field` the `machine` `host-a` and the `state` `example/work`; crew's teams file evaluates; the system fails no assertion; and the modules' definitions of crew's drive `home`'s `machine` and `state` are placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
 
 #### Scenario: Given without the runner
 
@@ -1455,26 +1455,26 @@ Where `services.crew.enable` is true, whether or not `services.boomdrive.enable`
 
 #### Scenario: A drive crew's settings do not configure
 
-- **WHEN** `accounts` names the accounts of "Each drive's machine and state repository, given to crew", and crew's module is on with the host `host-a` and crew's own keys for the drive `home` alone
-- **THEN** evaluation of crew's settings fails, on nix-darwin and on NixOS
+- **WHEN** `accounts` names the accounts of "Each drive's machine and state repository, given to crew", and crew's module is on with the host `host-a`, the hosts `host-a` and `host-b`, and crew's own keys for the drive `home` alone
+- **THEN** crew's drives are `home` alone, with the `machine` `host-a` and the `state` `example/state`; crew's teams file evaluates; and the system fails no assertion, on nix-darwin and on NixOS
 
 ### Requirement: A host writes neither a drive's machine nor its state in crew's settings
 
-The modules SHALL give each drive's `machine` and `state` at the options' own priority, in a definition placed at `services.boomdrive.accounts`. So evaluation of crew's settings SHALL fail where a host also writes the `machine` or the `state` of a drive the accounts give, and crew's failure names `services.boomdrive.accounts` among the places that write it (record 0032).
+The modules SHALL give each drive's `machine` and `state` at the options' own priority, in definitions placed at `services.boomdrive.accounts`. So evaluation of crew's settings SHALL fail where a host also writes the `machine` or the `state` of a drive the modules give, and crew's failure names `services.boomdrive.accounts` among the places that write it (record 0032).
 
 #### Scenario: A machine written twice
 
 - **WHEN** `accounts` and crew's settings are those of "Each drive's machine and state repository, given to crew", and crew's settings also give the drive `home` the `machine` `host-a`
-- **THEN** evaluation of crew's settings fails, and the modules' definition of `services.crew.settings` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
+- **THEN** evaluation of crew's settings fails, and the modules' definition of crew's drive `home`'s `machine` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
 
 #### Scenario: A state written twice
 
 - **WHEN** `accounts` and crew's settings are those of "Each drive's machine and state repository, given to crew", and crew's settings also give the drive `home` the `state` `example/state`
-- **THEN** evaluation of crew's settings fails, and the modules' definition of `services.crew.settings` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
+- **THEN** evaluation of crew's settings fails, and the modules' definition of crew's drive `home`'s `state` is placed at `services.boomdrive.accounts`, on nix-darwin and on NixOS
 
 ### Requirement: Under crew, the runner's crew table is written from the accounts' drives on this host
 
-Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it from the accounts: `host` as `services.crew.host`, and one partition for each drive of this host under an account that names its `state_repository`, holding the drive's name as `label` and its account's `state_repository` alone, accounts and each account's drives in the order of their names (records 0023 and 0032).
+Where `settings.control_plane.type` is `crew`, crew's module is on and the host writes no `settings.control_plane.crew`, the modules SHALL write it from the accounts: `host` as `services.crew.host`, and a partition for each drive of this host that crew's settings set up, under an account naming its `state_repository`, holding the drive's name as `label` and that `state_repository` alone, accounts and drives in the order of their names (records 0023 and 0032).
 
 #### Scenario: The accounts' drives on this host
 
@@ -1486,9 +1486,14 @@ Where `settings.control_plane.type` is `crew`, crew's module is on and the host 
 - **WHEN** `control_plane.type = "crew"` is set with no `control_plane.crew`, and crew's module and the accounts are those of "Each drive's machine and state repository, given to crew"
 - **THEN** `settings.control_plane.crew` is the host `host-a` with the partitions `garden` at `example/state`, `home` at `example/state` and `field` at `example/work`, in that order, each holding `label` and `state_repository` alone, on nix-darwin and on NixOS
 
+#### Scenario: Only the drives crew's settings set up
+
+- **WHEN** `control_plane.type = "crew"` is set with no `control_plane.crew`, `accounts` names the accounts of "Each drive's machine and state repository, given to crew", and crew's module is on with the host `host-a`, the hosts `host-a` and `host-b`, and crew's own keys for the drive `home` alone
+- **THEN** `settings.control_plane.crew` is the host `host-a` with the one partition `home` at `example/state`, and the system fails no assertion, on nix-darwin and on NixOS
+
 ### Requirement: Under crew, a host the runner cannot serve from its accounts fails evaluation
 
-With `services.boomdrive.enable` and `settings.control_plane.type` `crew`, evaluation SHALL fail where `settings.control_plane.crew` is written neither by the host nor by the modules, naming it and `services.crew`; and where the modules would write the table and it holds no drive, naming `services.crew.host`, its value, and each `machine` the accounts' drives name.
+With `services.boomdrive.enable` and `settings.control_plane.type` `crew`, evaluation SHALL fail where `settings.control_plane.crew` is written neither by the host nor by the modules, naming it and `services.crew`; and where the modules would write the table and it holds no drive, naming `services.crew.host`, its value, and each `machine` the accounts' drives that crew's settings set up name.
 
 #### Scenario: Under crew with neither
 
@@ -1500,14 +1505,24 @@ With `services.boomdrive.enable` and `settings.control_plane.type` `crew`, evalu
 - **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the one account `work`, naming the state repository `example/away`, whose one drive `away` names the `machine` `host-b`, and crew's module is on with the host `host-a` and crew's own keys for the drive `away`
 - **THEN** evaluation fails, naming `services.crew.host`, `host-a` and `host-b`, on nix-darwin and on NixOS
 
-### Requirement: Under crew, each account with a drive names its state repository
+#### Scenario: No drive crew runs on this host
 
-With `services.boomdrive.enable`, `settings.control_plane.type` `crew` and crew's module on, evaluation SHALL fail where an account that names a drive names no `state_repository`, its words naming `services.boomdrive.accounts.<account>.state_repository` for each such account (records 0028 and 0032; core.19).
+- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the account `work` of "No drive of the accounts on this host" and the account `own`, naming the state repository `example/state`, whose drive `home`, naming no machine, keeps the owner `agentplot`'s `flume`, and crew's module is on with the host `host-a` and crew's own keys for the drive `away` alone
+- **THEN** evaluation fails, naming `services.crew.host`, `host-a` and `host-b`, on nix-darwin and on NixOS
+
+### Requirement: Under crew, each account with a drive crew's settings set up names its state repository
+
+With `services.boomdrive.enable`, `settings.control_plane.type` `crew` and crew's module on, evaluation SHALL fail where an account that names no `state_repository` holds a drive crew's settings set up, its words naming `services.boomdrive.accounts.<account>.state_repository` for each such account. An account none of whose drives crew's settings set up SHALL need none (records 0028 and 0032 as amended on 2026-11-18; core.19).
 
 #### Scenario: An account under crew with no state repository
 
 - **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the account `own`, naming no state repository, whose drive `home` keeps the owner `agentplot`'s `flume` and `sluice`, and crew's module is on with the host `host-a` and the drive `home`, whose `machine` `host-a` and `state` `example/state` crew's settings write
 - **THEN** evaluation fails, naming `services.boomdrive.accounts.own.state_repository`, on nix-darwin and on NixOS
+
+#### Scenario: An account whose drives crew's settings do not set up
+
+- **WHEN** `settings` names `control_plane.type = "crew"` and no `control_plane.crew`, `accounts` names the account `own`, naming the state repository `example/state`, whose drive `home` keeps the owner `agentplot`'s `flume`, and the account `work`, naming no state repository, whose drive `field` keeps the owner `agentplot`'s `sluice`, and crew's module is on with the host `host-a`, the hosts `host-a` and `host-b`, and crew's own keys for the drive `home` alone
+- **THEN** the system fails no assertion, crew's drives are `home` alone, `settings.control_plane.crew` is the host `host-a` with the one partition `home` at `example/state`, and Flume is given the streams `home` and `field`, on nix-darwin and on NixOS
 
 ### Requirement: Under crew, each drive of crew's is a drive of the accounts
 
@@ -1520,7 +1535,7 @@ With `services.boomdrive.enable`, `settings.control_plane.type` `crew` and crew'
 
 ### Requirement: The README names each drive's machine and its account's state repository once
 
-The README's install with nix SHALL write each account's `state_repository` in `services.boomdrive.accounts`, and neither `state` nor `machine` in `services.crew.settings`. Its words SHALL say that, with crew's module on, the module gives crew each drive's `machine` and its account's `state_repository`, and that a host writing either in crew's settings fails evaluation.
+The README's install with nix SHALL write each account's `state_repository` in `services.boomdrive.accounts`, and neither `state` nor `machine` in `services.crew.settings`. Its words SHALL say that, with crew's module on, the module gives each drive crew's settings set up its `machine` and its account's `state_repository`, and nothing of another drive, that an account needs one only for such a drive, and that a host writing either in crew's settings fails evaluation.
 
 #### Scenario: The README's machine and state
 
@@ -1657,3 +1672,40 @@ With `services.boomdrive.enable`, the modules SHALL put `services.boomdrive.rex.
 
 - **WHEN** a system turns on `services.boomdrive` and names no Rex
 - **THEN** no launchd daemon or agent, no systemd unit and no activation step of the system names the set's Rex, on nix-darwin and on NixOS
+
+### Requirement: The modules install millpond with the runner, replaceable or dropped
+
+With `services.boomdrive.enable`, the modules SHALL install `services.boomdrive.millpond.package`, the set's millpond by default, in the system profile. A host's own package SHALL replace it, and `null` SHALL install none, write no millpond configuration and name no inbox to the runner (record 0033).
+
+#### Scenario: The set's millpond
+
+- **WHEN** a system turns on `services.boomdrive` and names no millpond
+- **THEN** the set's millpond is in its system packages, on nix-darwin and on NixOS
+
+#### Scenario: No millpond
+
+- **WHEN** a system sets `services.boomdrive.millpond.package = null` and names inboxes
+- **THEN** no millpond is installed, no configuration of millpond's is rendered, and the runner's file names no `inboxes`
+
+### Requirement: The modules write millpond's host configuration and the runner's inboxes from one place
+
+With the runner and millpond, and `services.boomdrive.millpond.settings.inbox` naming any inbox, the modules SHALL render millpond's host configuration from `services.boomdrive.millpond.settings` at evaluation, each key as millpond names it, link it at each activation at `~/.config/millpond/config.toml`, and give the runner's file `inboxes`, the inboxes' names in order, a host's own `inboxes` winning. With no inbox, they SHALL render and link nothing of millpond's (record 0033).
+
+#### Scenario: Two inboxes
+
+- **WHEN** a system names the inboxes `home`, of `boomdrivedev/strategy`, and `work`, of `/Users/alice/Code/work` on the branch `signals`, with the host `deneb` and a secrets folder
+- **THEN** millpond's configuration renders the host, the secrets folder and both inboxes, `home` on the branch `inbox`; the activation links it at millpond's own path; and the runner's file says `inboxes = ["home", "work"]`, on nix-darwin and on NixOS
+
+#### Scenario: No inbox
+
+- **WHEN** a system turns on the runner and names no inbox
+- **THEN** no configuration of millpond's is rendered or linked, and the runner's file names no `inboxes`
+
+### Requirement: An inbox named twice or secrets in the store fail evaluation
+
+An inbox `services.boomdrive.millpond.settings.inbox` names more than once, or a `secrets` folder in the Nix store, SHALL fail evaluation, naming it (record 0033; core.4).
+
+#### Scenario: An inbox named twice
+
+- **WHEN** a system names the inbox `home` twice
+- **THEN** its evaluation fails, saying an inbox is named more than once

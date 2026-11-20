@@ -1,14 +1,14 @@
 //! The cut of a tool's answer to its copy (design Decision 9; core.11,
 //! core.27, core.42): a place's status, sluice's entry, sluice's answer
 //! and listing of a preview and its answer to a release, and Flume's host
-//! part, each cut by walking version 3's own definition of its copy, so
+//! part, each cut by walking version 4's own definition of its copy, so
 //! the schema is the one list of what goes up, then checked against that
 //! definition before it goes. The cut keeps each value as the tool printed
-//! it and writes none again. Because every object of version 3 is closed,
+//! it and writes none again. Because every object of version 4 is closed,
 //! the check holds the line and the cut only makes a copy that passes.
 
 use crate::check;
-use crate::protocol::v3::{ADDRESS, FILES};
+use crate::protocol::v4::{ADDRESS, FILES};
 use boomdrive_control::HostPart;
 use jsonschema::Validator;
 use serde_json::{Map, Value};
@@ -35,7 +35,7 @@ pub const RELEASE: &str = "preview.schema.json#/$defs/release";
 /// its named forms, or its delivery alone.
 pub const END_RECORD: &str = "place-status.schema.json#/$defs/end_record";
 
-/// The definition an end of a form version 3 does not name is cut by: its
+/// The definition an end of a form version 4 does not name is cut by: its
 /// delivery alone.
 pub const END_DELIVERY: &str = "place-status.schema.json#/$defs/end_delivery";
 
@@ -44,7 +44,7 @@ pub const END_DELIVERY: &str = "place-status.schema.json#/$defs/end_delivery";
 /// the-hosted-protocol-carries-every-end-of-a-place).
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlaceCopy {
-    /// The copy, which passes version 3's `place_status`.
+    /// The copy, which passes version 4's `place_status`.
     pub copy: Value,
     /// Each end carried by its delivery alone.
     pub by_delivery: Vec<usize>,
@@ -53,7 +53,7 @@ pub struct PlaceCopy {
 }
 
 impl PlaceCopy {
-    /// Whether every end went up in a form version 3 names.
+    /// Whether every end went up in a form version 4 names.
     pub fn whole(&self) -> bool {
         self.by_delivery.is_empty() && self.left_out.is_empty()
     }
@@ -62,7 +62,7 @@ impl PlaceCopy {
 /// How one of Flume's ends went into a copy.
 #[derive(Clone, Debug, PartialEq)]
 enum EndCopy {
-    /// Cut by the form version 3 names for its `of`, and passing.
+    /// Cut by the form version 4 names for its `of`, and passing.
     Named(Value),
     /// Cut to its delivery alone, and passing.
     Delivery(Value),
@@ -75,7 +75,7 @@ enum EndCopy {
 /// ends copied on its own, and checked whole; or why it is none, naming
 /// a path and never a value.
 ///
-/// Each end is cut by the form version 3 names for its `of` and checked;
+/// Each end is cut by the form version 4 names for its `of` and checked;
 /// where there is none, or the check fails, it is cut to its delivery
 /// alone and checked; and where that fails too, it is left out. The
 /// ends' copies stand in `ends` in Flume's order. A copy that fails with
@@ -132,7 +132,7 @@ fn end_copy(end: &Value) -> EndCopy {
     }
 }
 
-/// Each form of an end version 3 names, by its `of`, as a reference to
+/// Each form of an end version 4 names, by its `of`, as a reference to
 /// its branch of `end_record`.
 fn named_forms() -> &'static BTreeMap<String, String> {
     static FORMS: OnceLock<BTreeMap<String, String>> = OnceLock::new();
@@ -209,7 +209,7 @@ fn checked(validator: &Validator, copy: Value) -> Result<Value, String> {
     }
 }
 
-/// `value` cut by the definition `reference`, a file of version 3 and a
+/// `value` cut by the definition `reference`, a file of version 4 and a
 /// JSON pointer in it, `<file>#<pointer>`:
 ///
 /// - an object keeps only the properties its definition names, each cut
@@ -219,7 +219,7 @@ fn checked(validator: &Validator, copy: Value) -> Result<Value, String> {
 /// - a `oneOf` cuts by the one branch whose form the value takes: a
 ///   constant by its value, an object by its keys and their constants,
 ///   `null` by its type;
-/// - a `$ref` is followed within version 3's files;
+/// - a `$ref` is followed within version 4's files;
 /// - every other value, and one its definition carries whole, is kept as
 ///   the tool printed it.
 ///
@@ -232,7 +232,7 @@ pub fn cut(reference: &str, value: &Value) -> Value {
     }
 }
 
-/// Each of version 3's files by its name, read once.
+/// Each of version 4's files by its name, read once.
 fn files() -> &'static BTreeMap<&'static str, Value> {
     static FILES_READ: OnceLock<BTreeMap<&'static str, Value>> = OnceLock::new();
     FILES_READ.get_or_init(|| {
@@ -248,7 +248,7 @@ fn files() -> &'static BTreeMap<&'static str, Value> {
 
 /// What `reference` names, read from the file `from` where it names no
 /// file of its own, with the name of the file it is in; none where it is
-/// outside version 3's files.
+/// outside version 4's files.
 fn resolve(from: Option<&'static str>, reference: &str) -> Option<(&'static str, &'static Value)> {
     let reference = reference.strip_prefix(ADDRESS).unwrap_or(reference);
     let (file, pointer) = reference.split_once('#').unwrap_or((reference, ""));
@@ -436,11 +436,11 @@ mod tests {
         assert!(!words.contains("n0t-a-number"), "{words}");
     }
 
-    /// Version 3's example of a tidied place, as `flume --json status`
+    /// Version 4's example of a tidied place, as `flume --json status`
     /// would print it, its ends `ends`.
     fn status_with(ends: Value) -> String {
         let report: Value = serde_json::from_str(include_str!(
-            "../protocol/v3/examples/from-runner/report-a-tidied-place.json"
+            "../protocol/v4/examples/from-runner/report-a-tidied-place.json"
         ))
         .expect("the example");
         let mut place = report["body"]["report"]["launches"]["offer-6"]["status"]["copy"].clone();
@@ -448,7 +448,7 @@ mod tests {
         json!({ "status": { "places": [place] } }).to_string()
     }
 
-    /// A stage's end as Flume 0.21.0 prints it, beside what version 3
+    /// A stage's end as Flume 0.21.0 prints it, beside what version 4
     /// leaves out of it: its agent's last words and its screen.
     fn stage_end(state: &str) -> Value {
         json!({

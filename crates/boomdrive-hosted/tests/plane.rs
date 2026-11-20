@@ -3,7 +3,7 @@
 //! spec's "A pull gives each partition's wants under its own ids", "A
 //! partition's connection carries only its own repositories and work", "A
 //! report goes to each partition, answered by its id", "What goes up is
-//! version 3's copy, checked before it goes" and "A terminal the control
+//! version 4's copy, checked before it goes" and "A terminal the control
 //! plane opens is closed at once"; the control-plane-interface spec's "An
 //! implementation serves its control plane as parts" and "A part says
 //! which ids are its own"; design Decisions 7, 8, 9 and 11, and Decision
@@ -188,7 +188,7 @@ fn hello(report: &Report) -> Hello {
     }
 }
 
-/// An offer of version 3 of the launch `id` of `repository`, after the
+/// An offer of version 4 of the launch `id` of `repository`, after the
 /// launches `after`.
 fn offer(id: &str, repository: &str, after: &[&str]) -> Value {
     json!({ "offer": {
@@ -318,7 +318,7 @@ fn ids_under_their_partition() {
 }
 
 /// An act `id` on the launch `launch`, under its lease, a confirm as
-/// `recipient` of `deliveries`, as a control plane of version 3 asks it.
+/// `recipient` of `deliveries`, as a control plane of version 4 asks it.
 fn confirm(id: &str, launch: &str, recipient: &str, deliveries: &[&str]) -> Value {
     json!({ "act": {
         "id": id, "launch": launch, "lease": 1,
@@ -425,7 +425,7 @@ fn a_land_carried() {
 }
 
 /// A hold the partition's control plane asks of `l-1`, under the id `id`,
-/// with `words` and `bound_interval`, as version 3 writes it.
+/// with `words` and `bound_interval`, as version 4 writes it.
 fn hold(id: &str, words: &str, bound_interval: u64) -> Value {
     json!({ "act": {
         "id": id, "launch": "l-1", "lease": 1,
@@ -593,7 +593,7 @@ fn each_hello_its_own() {
 /// The hosted-control-plane spec's "No drive or folder goes up": the
 /// runner's hello names the drive `family` with `example/app` at its
 /// clone's folder, and `home`'s hello names `example/app` and neither the
-/// drive nor the folder, since version 3 carries neither (design Decision
+/// drive nor the folder, since version 4 carries neither (design Decision
 /// 6 of the-runner-names-each-repository-it-keeps; core.27, core.42).
 #[test]
 fn no_drive_or_folder_goes_up() {
@@ -625,7 +625,7 @@ fn no_drive_or_folder_goes_up() {
 }
 
 /// The hosted-control-plane spec's "A repository drained goes up in no
-/// hello": version 3 names no repository drained, nor the repository a
+/// hello": version 4 names no repository drained, nor the repository a
 /// launch was answered in (record 0021; core.42).
 #[test]
 fn a_repository_draining_goes_up_in_no_hello() {
@@ -687,7 +687,7 @@ fn each_report_its_own() {
 }
 
 /// A preview `id` of `main` in `repository` at `revision`, done or not,
-/// under a lease of its own, as a control plane of version 3 asks it.
+/// under a lease of its own, as a control plane of version 4 asks it.
 fn preview(id: &str, repository: &str, revision: &str, done: bool) -> Value {
     json!({ "preview": {
         "id": id,
@@ -1031,7 +1031,7 @@ fn a_value_flume_adds() {
         else {
             unreachable!();
         };
-        assert_eq!(refused, &None, "the report passes version 3");
+        assert_eq!(refused, &None, "the report passes version 4");
         assert_eq!(
             message["body"]["report"]["launches"]["l-1"]["status"],
             Value::Null
@@ -1135,7 +1135,7 @@ fn an_end_flume_adds() {
         else {
             unreachable!();
         };
-        assert_eq!(refused, &None, "the report passes version 3");
+        assert_eq!(refused, &None, "the report passes version 4");
         let copy = &message["body"]["report"]["launches"]["l-1"]["status"]["copy"];
         assert_eq!(
             copy["stages"][1]["state"],
@@ -1161,7 +1161,7 @@ fn an_end_flume_adds() {
     assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
     assert_eq!(
         lines[0],
-        "home/l-1: its status goes up with ends version 3 does not name: /ends/0 by its \
+        "home/l-1: its status goes up with ends version 4 does not name: /ends/0 by its \
          delivery alone, /ends/1 by its delivery alone, /ends/2 left out"
     );
     for value in ["moved", "dreaming", "construct", "scratch/planner"] {
@@ -1447,7 +1447,7 @@ fn previews_go_up_as_their_copies() {
     let sent = reports_sent(&fake);
     assert_eq!(sent.len(), 1, "{:#?}", fake.taken());
     let (message, refused) = &sent[0];
-    assert_eq!(refused, &None, "the report passes version 3");
+    assert_eq!(refused, &None, "the report passes version 4");
     let previews = &message["body"]["report"]["previews"];
     assert_eq!(
         keys(previews),
@@ -1511,7 +1511,7 @@ fn a_previews_copy_that_fails() {
     let sent = reports_sent(&fake);
     assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
     for (message, refused) in &sent {
-        assert_eq!(refused, &None, "the report passes version 3");
+        assert_eq!(refused, &None, "the report passes version 4");
         let previewed = &message["body"]["report"]["previews"]["preview-1"];
         assert_eq!(previewed["status"], Value::Null);
         assert_eq!(previewed["copy"]["state"], "starting");
@@ -1554,7 +1554,7 @@ fn a_launch_and_a_preview_of_one_id_both_failing() {
     let sent = reports_sent(&fake);
     assert_eq!(sent.len(), 2, "{:#?}", fake.taken());
     for (message, refused) in &sent {
-        assert_eq!(refused, &None, "the report passes version 3");
+        assert_eq!(refused, &None, "the report passes version 4");
         let report = &message["body"]["report"];
         assert_eq!(report["launches"]["l-1"]["status"], Value::Null);
         assert_eq!(report["previews"]["l-1"]["status"], Value::Null);

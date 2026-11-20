@@ -1,14 +1,14 @@
-//! What goes up is version 3's copy (the hosted-control-plane spec's
-//! "What goes up is version 3's copy, checked before it goes", its
+//! What goes up is version 4's copy (the hosted-control-plane spec's
+//! "What goes up is version 4's copy, checked before it goes", its
 //! scenario "Flume's places cut"; design Decisions 9 and 14 of
 //! the-runner-dials-the-hosted-control-plane, and Decisions 2 and 9 of
 //! the-hosted-protocol-carries-every-end-of-a-place): each place of Flume
 //! 0.21.0's and Flume 0.4.1's fixtures, each entry of sluice 0.61.1's,
 //! each preview and release of sluice 0.74.3's (Decision 4 of
 //! the-hosted-protocol-carries-land-and-preview) and Flume's host part,
-//! cut by walking version 3's schema, passes its definition and holds
-//! nothing version 3 leaves out. Each end of Flume
-//! 0.21.0's goes up in a form version 3 names, and each of Flume 0.4.1's,
+//! cut by walking version 4's schema, passes its definition and holds
+//! nothing version 4 leaves out. Each end of Flume
+//! 0.21.0's goes up in a form version 4 names, and each of Flume 0.4.1's,
 //! which has no key, is left out. The fixtures are the binary's, read
 //! where they are kept.
 
@@ -97,7 +97,7 @@ fn held(value: &Value, names: &[&str], at: &str, found: &mut Vec<String>) {
 }
 
 /// The copy of the place `name`, `text` as Flume printed it, which
-/// passes version 3's `place_status` and holds nothing version 3 leaves
+/// passes version 4's `place_status` and holds nothing version 4 leaves
 /// out, with Flume's ends it carried by their delivery alone and left out.
 fn cut_whole(name: &str, text: &str) -> copy::PlaceCopy {
     let validator = validator(&definition("place-status.schema.json", "place_status"));
@@ -139,7 +139,7 @@ fn flumes_places_cut() {
         let placed = cut_whole(&name, &text);
         assert!(
             placed.whole(),
-            "{name}: every end in a form version 3 names"
+            "{name}: every end in a form version 4 names"
         );
         let printed = flumes_ends(&text);
         let ends = placed.copy["ends"].as_array().expect("ends");

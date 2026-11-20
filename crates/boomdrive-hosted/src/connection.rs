@@ -1,6 +1,6 @@
 //! One partition's connection (design Decisions 5, 6 and 10; core.3,
 //! core.21 to core.23, core.31, core.42): one outgoing WebSocket to
-//! `runner/connect`, upgraded on version 3's subprotocol with a statement
+//! `runner/connect`, upgraded on version 4's subprotocol with a statement
 //! of the partition's key signed for that attempt alone. Its first message
 //! at every connection is the partition's whole hello, and its hello goes
 //! again whenever it changes. It is kept alive by the WebSocket protocol's
@@ -8,7 +8,7 @@
 //! pong has not come by the next ping. A connection lost, refused or not
 //! made is tried again on a backoff with jitter whose cap stops at
 //! `poll_interval`, and its reach is said once each way. Every message it
-//! is sent is checked against version 3 before it is read, and every
+//! is sent is checked against version 4 before it is read, and every
 //! message it sends is checked before it is sent. A report goes under a
 //! message id of its own, and the last one no `reported` answered is sent
 //! again under that id after the hello of every connection (core.21). A
@@ -32,7 +32,7 @@
 
 use crate::check;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v3::{
+use crate::protocol::v4::{
     Message, MessageId, Pulled, Report, Reported, ToRunner, SUBPROTOCOL, VERSION,
 };
 use crate::table::{Role, Table};
@@ -248,7 +248,7 @@ enum Ended {
 /// What the connection's task holds that the runner's loop reads.
 #[derive(Default)]
 struct State {
-    /// The hello last handed, as version 3 writes it.
+    /// The hello last handed, as version 4 writes it.
     hello: Option<Value>,
     phase: Phase,
     /// The last `pulled` its connection took since its hello.
@@ -336,9 +336,9 @@ impl Connection {
 
     /// Hands the connection the partition's hello, which it sends first at
     /// every connection, and at once on a live connection where it differs
-    /// from the hello it sent; or why the hello fails version 3, which is
+    /// from the hello it sent; or why the hello fails version 4, which is
     /// then not handed. It is written as JSON and checked against its
-    /// role's form: a [`Hello`](crate::protocol::v3::Hello), or an observer's
+    /// role's form: a [`Hello`](crate::protocol::v4::Hello), or an observer's
     /// observing hello.
     pub fn hand(&self, hello: &impl Serialize) -> Result<(), String> {
         let hello = serde_json::to_value(hello)
@@ -374,11 +374,11 @@ impl Connection {
         self.shared.lock().phase == Phase::Live
     }
 
-    /// Hands the connection the partition's report, version 3's body of a
+    /// Hands the connection the partition's report, version 4's body of a
     /// `report`, under a new message id, which it gives: sent at once on a
     /// live connection, and again under that id after the hello of every
     /// connection until it is answered or another is handed. A report that
-    /// fails version 3 is not handed, and why is given. It is checked
+    /// fails version 4 is not handed, and why is given. It is checked
     /// against its role's form: a report, or an observer's observed report.
     pub fn report(&self, report: &Value) -> Result<MessageId, String> {
         let form = match self.role {
@@ -533,7 +533,7 @@ fn drawn(cap: Duration) -> Duration {
     Duration::from_millis(u64::try_from(random % millis + 1).unwrap_or(u64::MAX))
 }
 
-/// Why a message of `kind` holding `body` fails version 3: checked first
+/// Why a message of `kind` holding `body` fails version 4: checked first
 /// against `definition`, the body's own, so the words name the path deep
 /// in the message, and then whole against `from-runner.schema.json`.
 fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Option<String> {
@@ -544,7 +544,7 @@ fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Opti
     deep.or_else(|| check::failure(check::from_runner(), &envelope(kind, body).1))
 }
 
-/// A message of version 3 of `kind` holding `body`, under a new id of
+/// A message of version 4 of `kind` holding `body`, under a new id of
 /// its own, a UUID of version 7, time-ordered and random, so that no id
 /// is given twice (design Decision 7).
 fn envelope(kind: &str, body: &Value) -> (String, Value) {
@@ -777,9 +777,9 @@ impl Sender {
 
 /// What a frame of the control plane's text held.
 enum Received {
-    /// A message that passed version 3, read.
+    /// A message that passed version 4, read.
     Message(Message<ToRunner>),
-    /// A message that failed version 3, by its id, with words naming the
+    /// A message that failed version 4, by its id, with words naming the
     /// paths that failed and never a value.
     Failing { id: MessageId, words: String },
     /// A message whose id cannot be read, which cannot be named.
@@ -950,6 +950,19 @@ async fn serve(
                             return Ended::Failed(failure);
                         }
                     }
+                    // A forge token's answer goes by its ask's own request
+                    // alone, so one sent here is refused and nothing of it,
+                    // its token least of all, is kept, said or given
+                    // (design Decision 2 of
+                    // a-cloud-host-gets-its-github-tokens-from-the-cloud;
+                    // core.4).
+                    ToRunner::ForgeTokenGiven(_) | ToRunner::ForgeTokenRefused(_) => {
+                        let words = "a forge token's answer is taken on `runner/forge-token` \
+                                     alone, never on `runner/connect`";
+                        if let Err(failure) = refuse(dial, &mut sender, &message.id, words).await {
+                            return Ended::Failed(failure);
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -1065,7 +1078,7 @@ async fn refuse_work(
 }
 
 /// Closes a connection that was sent `what`, a message that cannot be
-/// named, with code 1007, its payload not version 3's (design Decision
+/// named, with code 1007, its payload not version 4's (design Decision
 /// 10).
 async fn unnamed(
     label: &str,

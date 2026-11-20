@@ -8,16 +8,24 @@
 //! [`CALL_FOR`] (design Decision 2). GitHub's word that the App has no
 //! installation there is an answer of its own.
 //!
+//! On a host whose control plane holds the App, a [`Forge`] made by
+//! [`Forge::asking`] asks the control plane's forge tokens for each token
+//! in place of minting, whatever `[forge]` names (design Decision 8 of
+//! a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053), and
+//! keeps what it is given as it keeps what it mints.
+//!
 //! No token is kept but in a [`Forge`]'s memory, for the process that
-//! minted it: nothing is written to a file, the data directory, the host's
-//! credential store or a log, and no refusal's words hold a token, the JWT
-//! or the key (core.4, core.35). The running runner holds one `Forge`
-//! across its passes, which keeps one token for each repository for its
-//! own git calls until [`RENEW_BEFORE`] its end, and GitHub's word that the
-//! App is not installed on one for as long (design Decision 3).
+//! minted or asked it: nothing is written to a file, the data directory,
+//! the host's credential store or a log, and no refusal's words hold a
+//! token, the JWT or the key (core.4, core.35). The running runner holds
+//! one `Forge` across its passes, which keeps one token for each repository
+//! for its own git calls until [`RENEW_BEFORE`] its end, and the word that
+//! the App is not installed on one for as long (design Decision 3).
 
-use crate::config::{Address, ForgeApp};
+use crate::config::{Address, Config, ForgeApp};
 use crate::git::Credential;
+use crate::planes;
+use boomdrive_control::{ForgeTokens, TokenAsked};
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use serde::Serialize;
 use serde_json::Value;
@@ -25,6 +33,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 use time::format_description::well_known::Rfc3339;
@@ -89,12 +98,14 @@ impl fmt::Debug for Token {
     }
 }
 
-/// What a mint gives: a token, or GitHub's word that the App has no
-/// installation on the repository.
+/// What a mint or an ask gives: a token, or the word that the App has no
+/// installation covering the repository, GitHub's or the control plane's,
+/// with words saying whose (design Decision 8 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud).
 #[derive(Debug, PartialEq, Eq)]
 pub enum Minted {
     Token(Token),
-    NotInstalled,
+    NotInstalled(String),
 }
 
 /// A mint refused: words saying why, which hold no token, JWT or key, and
@@ -133,16 +144,25 @@ pub struct Asked {
     pub refused: Option<String>,
 }
 
-/// What mints the App's tokens: the API it calls, how long each call may
-/// take, and what it keeps for the runner's own git calls.
+/// What gives the App's tokens: where they come from, and what it keeps
+/// for the runner's own git calls.
 pub struct Forge {
-    api: String,
-    call_for: Duration,
+    source: Source,
     kept: Mutex<Kept>,
 }
 
-/// What a forge keeps: each repository's token, or GitHub's word that the
-/// App is not installed on it, for the App they were minted for.
+/// Where a forge's tokens come from.
+enum Source {
+    /// Minted from the App's key `[forge]` names: the API called, and how
+    /// long each call may take.
+    Mints { api: String, call_for: Duration },
+    /// Asked of the control plane, which holds the App (record 0053).
+    Asks(Box<dyn ForgeTokens>),
+}
+
+/// What a forge keeps: each repository's token, or the word that the App
+/// is not installed on it, for the App they were minted for, none where
+/// they were asked.
 #[derive(Default)]
 struct Kept {
     app: Option<ForgeApp>,
@@ -172,40 +192,130 @@ impl Forge {
     /// sets it (core.17).
     pub fn at(api: &str) -> Forge {
         Forge {
-            api: api.trim_end_matches('/').to_string(),
-            call_for: CALL_FOR,
+            source: Source::Mints {
+                api: api.trim_end_matches('/').to_string(),
+                call_for: CALL_FOR,
+            },
             kept: Mutex::default(),
         }
     }
 
-    /// `self`, each call stopped at `limit`, a test's shorter limit.
-    pub fn calling_for(self, limit: Duration) -> Forge {
+    /// The forge of `config`, read from the configuration file `file`, as
+    /// `boomdrive forge-token` and the running runner each make it: one
+    /// asking the control plane's forge tokens where it holds the App, or
+    /// the words saying why they could not be opened; else one minting
+    /// from the App's key `[forge]` names, calling GitHub's API (design
+    /// Decisions 8 and 9 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+    pub fn of(config: &Config, file: &Path) -> Result<Forge, String> {
+        match planes::forge_tokens(config, file) {
+            Some(Ok(tokens)) => Ok(Forge::asking(tokens)),
+            Some(Err(words)) => Err(words),
+            None => Ok(Forge::new()),
+        }
+    }
+
+    /// The running runner's forge, made at its start: as [`Forge::of`]
+    /// makes it, but where the control plane's forge tokens could not be
+    /// opened, one whose every ask is refused with the open's words, so
+    /// each fetch goes with no credential and a failed one's line names
+    /// them (design Decision 8 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+    pub fn for_runner(config: &Config, file: &Path) -> Forge {
+        Forge::of(config, file).unwrap_or_else(|words| Forge::asking(Box::new(Unopened(words))))
+    }
+
+    /// A forge asking `tokens`, a control plane's that holds the App, for
+    /// each token in place of minting, whatever `[forge]` names (design
+    /// Decision 8 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
+    pub fn asking(tokens: Box<dyn ForgeTokens>) -> Forge {
         Forge {
-            call_for: limit,
-            ..self
+            source: Source::Asks(tokens),
+            kept: Mutex::default(),
+        }
+    }
+
+    /// `self`, each call to GitHub's API stopped at `limit`, a test's
+    /// shorter limit; a forge that asks is as it was.
+    pub fn calling_for(self, limit: Duration) -> Forge {
+        match self.source {
+            Source::Mints { api, .. } => Forge {
+                source: Source::Mints {
+                    api,
+                    call_for: limit,
+                },
+                kept: self.kept,
+            },
+            source @ Source::Asks(_) => Forge {
+                source,
+                kept: self.kept,
+            },
+        }
+    }
+
+    /// Whether this forge asks a control plane for its tokens, and so reads
+    /// no `[forge]`.
+    pub fn asks(&self) -> bool {
+        matches!(self.source, Source::Asks(_))
+    }
+
+    /// What `boomdrive forge-token get` answers with for `address`: a
+    /// token minted from the App `app`, or asked of the control plane,
+    /// afresh, and never one kept (design Decision 8 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud). A forge that
+    /// mints refuses, as the host's to fix, where `app` is none; a forge
+    /// that asks reads no `app`, and gives the control plane's answer, its
+    /// refusal's words the implementation's.
+    pub fn fresh(&self, app: Option<&ForgeApp>, address: &Address) -> Result<Minted, Refused> {
+        match &self.source {
+            Source::Mints { .. } => match app {
+                Some(app) => self.mint(app, address),
+                None => Err(Refused::host(
+                    "the configuration names no [forge], the Boomdrive App's app_id and key_file"
+                        .to_string(),
+                )),
+            },
+            Source::Asks(tokens) => match tokens.token(&address.to_string()) {
+                TokenAsked::Token(token) => Ok(Minted::Token(Token {
+                    secret: token.secret().to_string(),
+                    ends: token.ends(),
+                })),
+                TokenAsked::NotInstalled(words) => Ok(Minted::NotInstalled(format!(
+                    "the control plane finds no installation of the app covering {address} \
+                     ({words})"
+                ))),
+                TokenAsked::Refused { words, host_to_fix } => Err(Refused { words, host_to_fix }),
+            },
         }
     }
 
     /// What the runner's own call to `address` is given, the App `app`
-    /// where the configuration names one (design Decisions 3 and 5): the
-    /// host's own helpers where it names none; else the token kept for
-    /// `address` while it ends more than [`RENEW_BEFORE`] from now, or one
-    /// minted and kept; no credential where the App is not installed
+    /// where the configuration names one (design Decisions 3 and 5): for a
+    /// forge that mints, the host's own helpers where it names none; else
+    /// the token kept for `address` while it ends more than
+    /// [`RENEW_BEFORE`] from now, or one minted, or asked of the control
+    /// plane, and kept; no credential where the App is not installed
     /// there, kept for [`NOT_INSTALLED_FOR`]; and no credential with the
-    /// mint's words where a mint was refused, which is kept not at all. An
-    /// App other than the one held empties what is kept first.
+    /// refusal's words where a mint or an ask was refused, which is kept
+    /// not at all. An App other than the one held empties what is kept
+    /// first. A forge that asks reads no `app` (design Decision 8 of
+    /// a-cloud-host-gets-its-github-tokens-from-the-cloud).
     pub fn credential(&self, app: Option<&ForgeApp>, address: &Address) -> Asked {
-        let Some(app) = app else {
-            return Asked {
-                credential: Credential::Host,
-                refused: None,
-            };
+        let app = match (&self.source, app) {
+            (Source::Asks(_), _) => None,
+            (Source::Mints { .. }, Some(app)) => Some(app),
+            (Source::Mints { .. }, None) => {
+                return Asked {
+                    credential: Credential::Host,
+                    refused: None,
+                }
+            }
         };
         let now = OffsetDateTime::now_utc();
         {
             let mut kept = self.kept();
-            if kept.app.as_ref() != Some(app) {
-                kept.app = Some(app.clone());
+            if kept.app.as_ref() != app {
+                kept.app = app.cloned();
                 kept.answers.clear();
             }
             match kept.answers.get(address) {
@@ -216,11 +326,11 @@ impl Forge {
                 _ => {}
             }
         }
-        // The lock is not held while GitHub is called, so no other
-        // repository's keep waits on this one's mint.
-        let minted = self.mint(app, address);
+        // The lock is not held while GitHub or the control plane is
+        // called, so no other repository's keep waits on this one's.
+        let minted = self.fresh(app, address);
         let mut kept = self.kept();
-        let held = kept.app.as_ref() == Some(app);
+        let held = kept.app.as_ref() == app;
         match minted {
             Ok(Minted::Token(token)) => {
                 let asked = Asked::token(&token);
@@ -229,7 +339,7 @@ impl Forge {
                 }
                 asked
             }
-            Ok(Minted::NotInstalled) => {
+            Ok(Minted::NotInstalled(_)) => {
                 if held {
                     let until = now + NOT_INSTALLED_FOR;
                     kept.answers
@@ -268,6 +378,11 @@ impl Forge {
     /// alone. Every other answer, and a call that could not be made or was
     /// stopped at its limit, refuses the mint, naming the call.
     pub fn mint(&self, app: &ForgeApp, address: &Address) -> Result<Minted, Refused> {
+        if self.asks() {
+            return Err(Refused::host(
+                "this forge asks its control plane for tokens, and mints none".to_string(),
+            ));
+        }
         let key = key(app)?;
         let jwt = jwt(app, &key, OffsetDateTime::now_utc())?;
 
@@ -279,7 +394,12 @@ impl Forge {
                     "GitHub answered 200 to {finding} with no installation's id"
                 ))
             })?,
-            (404, _) => return Ok(Minted::NotInstalled),
+            (404, _) => {
+                return Ok(Minted::NotInstalled(format!(
+                    "GitHub finds no installation of app {} on {address}",
+                    app.app_id
+                )))
+            }
             (status, answer) => return Err(answered(status, &answer, &finding)),
         };
 
@@ -316,10 +436,18 @@ impl Forge {
         body: Option<&str>,
         call: &str,
     ) -> Result<(u16, Value), Refused> {
+        let (api, call_for) = match &self.source {
+            Source::Mints { api, call_for } => (api.as_str(), *call_for),
+            Source::Asks(_) => {
+                return Err(Refused::host(
+                    "this forge asks its control plane for tokens, and mints none".to_string(),
+                ))
+            }
+        };
         let agent: ureq::Agent = ureq::Agent::config_builder()
             .http_status_as_error(false)
             .max_redirects(0)
-            .timeout_global(Some(self.call_for))
+            .timeout_global(Some(call_for))
             .user_agent("boomdrive")
             .tls_config(
                 TlsConfig::builder()
@@ -328,7 +456,7 @@ impl Forge {
             )
             .build()
             .into();
-        let url = format!("{}{path}", self.api);
+        let url = format!("{api}{path}");
         let bearer = format!("Bearer {jwt}");
         let unreachable = |error: &dyn fmt::Display| {
             Refused::github(format!("GitHub could not be reached to {call}: {error}"))
@@ -358,6 +486,19 @@ impl Forge {
             .read_to_string(&mut text)
             .map_err(|error| unreachable(&error))?;
         Ok((status, serde_json::from_str(&text).unwrap_or(Value::Null)))
+    }
+}
+
+/// A control plane's forge tokens that could not be opened: every ask
+/// refused, as the host's to fix, with the open's words.
+struct Unopened(String);
+
+impl ForgeTokens for Unopened {
+    fn token(&self, _repository: &str) -> TokenAsked {
+        TokenAsked::Refused {
+            words: self.0.clone(),
+            host_to_fix: true,
+        }
     }
 }
 

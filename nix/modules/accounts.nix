@@ -11,11 +11,11 @@
 # drives of this host, those that name no machine or name `host`, which
 # Flume's streams and the launcher's entries are both made from (design
 # Decision 5 of the change each-drive-opens-from-the-launcher).
-# `crewDrivesOf host drives` gives crew's drives, by the drive's name, each
-# drive under an account that names its crew state repository as
-# `{ machine, state }`: its machine, or `host` where it names none, and its
-# account's state repository, which crew-drives.nix gives crew's module
-# (record 0032). `fileOf` is
+# `crewDrivesOf host drives` gives, by the drive's name, each drive under
+# an account that names its crew state repository as `{ machine, state }`:
+# its machine, or `host` where it names none, and its account's state
+# repository, which crew-drives.nix gives each drive crew's settings set
+# up, and no other (record 0032 as amended on 2026-11-18). `fileOf` is
 # the table the runner's file is rendered from: `settings`, with `accounts`
 # from `accounts`, every account's `drives` and every drive's
 # `repositories` always written. A drive's stream and machine are the modules' options,
@@ -45,9 +45,10 @@ in
       ) accounts
     );
 
-  # crew's drives by their names, each holding its machine, `host` where
-  # the drive names none, and its account's crew state repository as its
-  # `state`, of the drives under an account that names one (record 0032).
+  # What crew-drives.nix gives each drive crew's settings set up, by the
+  # drive's name: its machine, `host` where the drive names none, and its
+  # account's crew state repository as its `state`, of the drives under an
+  # account that names one (record 0032 as amended on 2026-11-18).
   crewDrivesOf =
     host: drives:
     lib.listToAttrs (

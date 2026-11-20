@@ -124,29 +124,6 @@ Where the report holds no preview a done would put away, the done SHALL be answe
 - **WHEN** a pull gives a preview of `main` at `R9` marked done, and the report holds no preview of `R9`
 - **THEN** it is answered `refused` with the words `no preview of R9 in agentplot/flume was brought up here at the control plane's asking`, and no `sluice` command is run
 
-### Requirement: A preview's command runs after every launch
-
-A preview's command, `sluice preview` or `sluice release`, SHALL run in the pass's second round, once every offer the pull gives is answered, in the control plane's order, a done matched to what the report then holds. A preview answered from the report, one under a lapsed lease, a bring-up in a repository not kept, and a done whose repository has no clone SHALL be answered in the first, and no preview command SHALL have Flume's listing read again (core.50, core.55; record 0027).
-
-#### Scenario: A launch ahead of a preview
-
-- **WHEN** a pull gives the preview `home/30`, then the offer `a`
-- **THEN** `a`'s `flume launch` is run before `sluice preview`
-
-#### Scenario: A preview past due waits on no launch held for its turn
-
-- **WHEN** the next control pass is due from a pass's start, and its pull gives the preview `home/30`, then offers `a` and `b`
-- **THEN** `a` is launched, `b` is answered `held` for its turn, and `home/30` is brought up in the same pass
-
-### Requirement: Once the next pass is due, a pass runs no preview's command but its first
-
-Once the next control pass is due, the second round SHALL run no preview's command but its first, SHALL leave each after it to that pass, and SHALL say how many it left. The count SHALL be the previews' own, apart from the acts' on places (core.50, core.55).
-
-#### Scenario: Previews wait for the next pass once it is due
-
-- **WHEN** a pull gives the previews `home/30` and `home/32`, of `R1` and `R2`, and the next pass is due once one preview's command has run
-- **THEN** `home/30` is brought up, `home/32` is left unanswered, and a line reads `boomdrive: the next control pass is due, so 1 preview waits for it`
-
 ### Requirement: A preview's lease is kept as any lease is
 
 A preview under a lease lapsed by the pass's clock SHALL be left untaken, and a held one SHALL NOT be asked again, until a pull gives it under a live lease. A preview the control plane lets go, or whose report it refuses as no longer the runner's, SHALL leave the report, and its preview SHALL be left as sluice holds it, with nothing run against it (core.10, core.24).
@@ -160,3 +137,12 @@ A preview under a lease lapsed by the pass's clock SHALL be left untaken, and a 
 
 - **WHEN** a pull gives the preview `home/30` under a lease that expired before the pass began
 - **THEN** it is left unanswered, and no `sluice` command is run
+
+### Requirement: A preview's command starts once every launch is under way
+
+A preview's command, `sluice preview` or `sluice release`, SHALL start on a thread of its own once every launch its pull offers is under way, and SHALL wait on no other want's command; a done SHALL wait for a bring-up of its revision in flight. A preview answered from the report, under a lapsed lease, not kept or with no clone SHALL run no command (core.50, core.55).
+
+#### Scenario: A preview runs while a launch runs
+
+- **WHEN** a pull gives the preview `home/30`, then the offer `a`, whose launch is readied only once sluice has been asked for the preview
+- **THEN** `home/30` is brought up while `a`'s launch runs, and `a` is launched
