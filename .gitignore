@@ -1,4 +1,5 @@
-# Each entry is negated among root:format's inputs (moon.yml), so moon
+# Each entry is negated among root:format's inputs (moon.yml) where git
+# matches it, at any depth where it has no slash but a last one, so moon
 # hashes nothing git ignores: an entry added here is added there.
 
 .devenv/
@@ -13,9 +14,11 @@ devenv.local.nix
 /target
 
 # Claude Code's project files, which devenv writes from devenv.nix at each
-# entry to the shell (record 0022)
+# entry to the shell (record 0022), and the settings Claude Code writes
+# for a person's own use of a checkout (record 0054)
 /.mcp.json
 /.claude/settings.json
+/.claude/settings.local.json
 
 # The site's packages, its build and Astro's own files (site/)
 site/node_modules/
