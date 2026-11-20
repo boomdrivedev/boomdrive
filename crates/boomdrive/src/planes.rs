@@ -9,9 +9,12 @@
 //! Decision 11 of the change a-persons-drive-is-set-up-by-one-command).
 //! An observer, `[observer]`, is the hosted implementation's whatever
 //! `[control_plane]`'s `type`, read, enrolled and opened through this
-//! list's functions alone (record 0048).
+//! list's functions alone (record 0048). A control plane that holds the
+//! Boomdrive App gives the host's forge tokens through [`forge_tokens`]
+//! (record 0053).
 
-use boomdrive_control::{Observed, Part, Wake};
+use crate::config::Config;
+use boomdrive_control::{ForgeTokens, Observed, Part, Wake};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use weir_bounded::Halt;
@@ -61,6 +64,13 @@ pub type Enroller = fn(
 /// words saying why it could not be read.
 pub type Token<'a> = Box<dyn FnOnce() -> Result<String, String> + 'a>;
 
+/// Opens the forge tokens of an implementation whose control plane holds
+/// the Boomdrive App, from its own table, `[control_plane.<type>]`, of the
+/// configuration file `file`, reading that table alone (design Decision 6
+/// of a-cloud-host-gets-its-github-tokens-from-the-cloud; core.2, core.33).
+pub type TokensOpener =
+    fn(table: &toml::Table, file: &Path) -> Result<Box<dyn ForgeTokens>, String>;
+
 /// Reads an implementation's own table, `[control_plane.<type>]`, of the
 /// configuration file `file`, opening nothing and asking nothing of the
 /// host: words saying what it refuses, or nothing.
@@ -80,12 +90,12 @@ pub struct Entry {
     /// pass to be taken.
     pub read: Reader,
     /// Where its control plane holds the Boomdrive App and mints the
-    /// host's forge tokens, the words `boomdrive forge-token` refuses with
-    /// until its protocol carries a token, and the reason the
-    /// configuration's `[forge]` is refused beside it; none where the
-    /// runner holds the App's key (record 0007 as amended on 2026-11-09;
-    /// core.2, core.33; design Decision 6).
-    pub holds_the_app: Option<&'static str>,
+    /// host's forge tokens, what opens them, which `boomdrive forge-token`
+    /// and the running runner ask, and the reason the configuration's
+    /// `[forge]` is refused beside it; none where the runner holds the
+    /// App's key (record 0007 as amended on 2026-11-09 and 2026-11-18;
+    /// record 0053; core.2, core.33).
+    pub holds_the_app: Option<TokensOpener>,
     /// Its setup of a person's drive, none where it sets up none (record
     /// 0009 as amended 2026-11-11).
     pub set_up: Option<SetUp>,
@@ -229,7 +239,7 @@ pub const PLANES: [Entry; 2] = [
         enroll: Some(hosted_enroll),
         local_keys: &boomdrive_hosted::table::LOCAL_KEYS,
         read: hosted_read,
-        holds_the_app: Some(boomdrive_hosted::NO_FORGE_TOKEN),
+        holds_the_app: Some(hosted_tokens),
         set_up: None,
     },
 ];
@@ -266,6 +276,13 @@ fn crew(
     halt: &Halt,
 ) -> Result<Vec<Part>, String> {
     boomdrive_crew::open(table, file, data_dir, say_for, halt)
+}
+
+/// The hosted control plane's forge tokens, opened from its table, which
+/// ask it for each token under the key of a partition served the
+/// repository (record 0053).
+fn hosted_tokens(table: &toml::Table, file: &Path) -> Result<Box<dyn ForgeTokens>, String> {
+    boomdrive_hosted::forge_tokens(table, file)
 }
 
 /// crew's reading of its table.
@@ -493,6 +510,17 @@ pub fn open(
     )
 }
 
+/// The forge tokens of `config`'s control plane, read from the
+/// configuration file `file`, where its entry holds the Boomdrive App:
+/// opened from its own table, or why they could not be; none where the
+/// configuration names no control plane, or one that does not hold the App
+/// (design Decision 6 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
+pub fn forge_tokens(config: &Config, file: &Path) -> Option<Result<Box<dyn ForgeTokens>, String>> {
+    let plane = config.control_plane.as_ref()?;
+    let opener = carried(&plane.implementation)?.holds_the_app?;
+    Some(opener(&plane.implementation_table, file))
+}
+
 /// Enrolls the partition `label` of the implementation whose word is
 /// `word`, from its own table, `table`, of the configuration file `file`,
 /// with the one-time token `token` gives, or words saying why it could
@@ -525,13 +553,33 @@ pub fn enroll(
 #[cfg(test)]
 mod tests {
     use super::carried;
+    use std::path::Path;
 
+    /// crew's entry holds no App, and the hosted control plane's opens its
+    /// forge tokens from a hosted table, reading that table alone, so
+    /// opening them asks no store and no control plane anything (design
+    /// Decision 6 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
     #[test]
     fn only_the_hosted_control_plane_holds_the_app() {
-        assert_eq!(carried("crew").map(|entry| entry.holds_the_app), Some(None));
-        assert_eq!(
-            carried("hosted").map(|entry| entry.holds_the_app),
-            Some(Some(boomdrive_hosted::NO_FORGE_TOKEN))
+        let crew = carried("crew").expect("crew's entry");
+        assert!(crew.holds_the_app.is_none());
+        let hosted = carried("hosted").expect("the hosted entry");
+        let opener = hosted
+            .holds_the_app
+            .expect("the hosted control plane holds the App");
+        let table: toml::Table = toml::from_str(
+            "url = \"https://control.example\"\n\n[[partitions]]\nlabel = \"home\"\n\
+             repositories = [\"example/app\"]\n",
+        )
+        .expect("a hosted table");
+        let file = Path::new("/h/.config/boomdrive/config.toml");
+        assert!(opener(&table, file).is_ok());
+        let unread = opener(&toml::Table::new(), file)
+            .err()
+            .expect("a table with no url is refused");
+        assert!(
+            unread.contains("/h/.config/boomdrive/config.toml"),
+            "{unread}"
         );
     }
 }

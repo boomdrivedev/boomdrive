@@ -6,8 +6,13 @@
 # whose value is null is unset, and left out, so the runner's own default
 # holds (design Decision 8). Any value but a string, a boolean, an
 # integer, a list of strings, a table or a list of tables fails, naming its
-# path.
-{ lib }:
+# path. `header` is the file's first line, naming the options it is
+# written from; millpond.nix renders millpond's host configuration with
+# one of its own.
+{
+  lib,
+  header ? "# Written by the boomdrive flake's module from services.boomdrive.accounts and services.boomdrive.settings; a change goes there.",
+}:
 let
   inherit (builtins)
     attrNames
@@ -28,8 +33,6 @@ let
     imap0
     optionals
     ;
-
-  header = "# Written by the boomdrive flake's module from services.boomdrive.accounts and services.boomdrive.settings; a change goes there.";
 
   # TOML's basic string: `"`, `\` and every control character escaped.
   hex = n: lib.fixedWidthString 4 "0" (lib.toHexString n);

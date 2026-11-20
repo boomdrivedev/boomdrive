@@ -1,10 +1,12 @@
 # The service-modules spec's cases on crew's drives in crew's own module
 # (the change a-drives-machine-and-state-are-named-once, design Decisions 3,
-# 4 and 7): what the Boomdrive module gives
-# `config.services.crew.settings.drives` of the host's accounts, each
-# drive's machine and its account's state repository, with crew's module
-# on, whether or not the runner is; and that a host's second write of
-# either fails crew's own check, the module's definition placed at
+# 4 and 7; the change crew-runs-only-the-drives-set-up-for-it, design
+# Decisions 1 and 5): the Boomdrive module adds to the type of crew's
+# drives, giving each drive crew's settings set up, under an account of
+# the host's accounts that names its state repository, its machine and its
+# account's state repository, with crew's module on, whether or not the
+# runner is, and adding no drive to crew's; and a host's second write of
+# either fails crew's own check, each given value placed at
 # services.boomdrive.accounts. Each case runs on nix-darwin and on NixOS.
 t:
 let
@@ -59,14 +61,14 @@ let
     evaluated:
     (builtins.tryEval (builtins.deepSeq evaluated.config.services.crew.settings true)).success;
 
-  # Whether the module's definition of services.crew.settings is placed at
-  # services.boomdrive.accounts, reading no definition's value (design
-  # Decision 4).
-  placed =
-    evaluated:
-    lib.any (
-      definition: definition.file == "services.boomdrive.accounts"
-    ) evaluated.options.services.crew.settings.definitionsWithLocations;
+  # Whether a definition of crew's drive `home`'s `key` is placed at
+  # services.boomdrive.accounts, read from the submodules' `valueMeta`,
+  # reading no definition's value (the change
+  # crew-runs-only-the-drives-set-up-for-it, design Decisions 1 and 5).
+  placedFor =
+    key: evaluated:
+    lib.any (definition: definition.file == "services.boomdrive.accounts")
+      evaluated.options.services.crew.settings.valueMeta.configuration.options.drives.valueMeta.attrs.home.configuration.options.${key}.definitionsWithLocations;
 
   # crew's drives' machine and state alone.
   machinesAndStates =
@@ -115,7 +117,16 @@ let
     ++ t.expect (
       t.failures evaluated == [ ]
     ) "the ${platform} system fails: ${toString (t.failures evaluated)}"
-    ++ t.expect (placed evaluated) "the ${platform} module's definition of services.crew.settings is not placed at services.boomdrive.accounts";
+    ++
+      lib.concatMap
+        (
+          key:
+          t.expect (placedFor key evaluated) "the ${platform} module's definition of home's ${key} is not placed at services.boomdrive.accounts"
+        )
+        [
+          "machine"
+          "state"
+        ];
 
   runnerOff =
     platform:
@@ -150,11 +161,21 @@ let
       t.failures evaluated == [ ]
     ) "the ${platform} system fails: ${toString (t.failures evaluated)}";
 
+  # crewAccounts, whose drives `garden`, `away` and `field` crew's settings
+  # do not set up, beside crewKeys, which sets up `home` alone: crew is
+  # given `home` alone, and no drive of the others (the change
+  # crew-runs-only-the-drives-set-up-for-it, design Decision 5).
   unconfigured =
     platform:
     { system, ... }:
-    t.expect (!loads (system (crewWith settings.crewAccounts settings.crewKeys)))
-      "crew's teams file of a ${platform} system whose accounts give crew drives its settings do not configure evaluates";
+    let
+      evaluated = system (crewWith settings.crewAccounts settings.crewKeys);
+    in
+    holdsDrives platform evaluated { inherit (given) home; }
+    ++ t.expect (loads evaluated) "crew's teams file of the ${platform} system does not evaluate"
+    ++ t.expect (
+      t.failures evaluated == [ ]
+    ) "the ${platform} system fails: ${toString (t.failures evaluated)}";
 
   # crewDrives with the drive `home`'s `key` written in crew's settings too
   # (design Decision 4).
@@ -170,7 +191,7 @@ let
     in
     t.expect (!loads evaluated)
       "crew's teams file of a ${platform} system whose settings write home's ${key} beside the accounts evaluates"
-    ++ t.expect (placed evaluated) "the ${platform} module's definition of services.crew.settings is not placed at services.boomdrive.accounts";
+    ++ t.expect (placedFor key evaluated) "the ${platform} module's definition of home's ${key} is not placed at services.boomdrive.accounts";
 in
 onEach "Each drive's machine and state repository, given to crew" givenToCrew
 // onEach "Given without the runner" runnerOff

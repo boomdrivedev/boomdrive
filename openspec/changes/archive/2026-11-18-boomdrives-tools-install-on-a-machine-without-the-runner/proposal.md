@@ -17,7 +17,7 @@ As the modules read at `2ea1a481` on 2026-11-18, Flume, sluice, crew and timber 
 - **Flume's terminal words follow herdr and Ghostty.** Flume's `host.multiplexer` is `herdr` by default where herdr is on, and its `host.terminal_app` is `ghostty` where Ghostty is on.
 - **The launcher holds no drive without the runner.** It is the set's own, with `Default stream` alone.
 - **Words.** The README's install with nix, `CLAUDE.md`, `openspec/config.yaml` and the modules' comments say each tool has a switch of its own, which the runner's turns on, and how a host without the runner takes the ones it wants.
-- **Records and rules.** Record 0023 gains an amendment of 2026-11-18, and record 0044 one for point 8. core.62 is written, and core.18's and core.46's details are amended. All are in the commit that writes this change.
+- **Records and rules.** Record 0023 gains an amendment of 2026-11-18, and record 0044 one for point 8. core.63 is written, and core.18's and core.46's details are amended. All are in the commit that writes this change.
 
 ## Capabilities
 

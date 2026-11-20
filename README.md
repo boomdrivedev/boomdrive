@@ -263,6 +263,19 @@ no end to a watch, so once the runner stops, its last watch stands until
 twice its bound has passed since that settle began, and the host then
 runs attended: Flume settles every place at each command that acts.
 
+After each settle, the runner runs millpond's tick of each inbox the
+configuration's `inboxes` names, `millpond tick --inbox <name> --json`,
+in that order, once and awaited, so the host keeps one clock for
+Flume's watch and millpond's schedules; a file that names no `inboxes`
+runs none. millpond decides what a tick runs, and the runner reads
+nothing of its answer. It says one line when an inbox's tick is
+refused or gives no answer, and one when millpond ticks it again, and
+no tick stops a pass. On a host on the set, the module installs millpond
+with the runner and names each inbox once, in
+`services.boomdrive.millpond.settings.inbox`: it writes millpond's own
+host configuration, linked at `~/.config/millpond/config.toml`, and the
+runner's `inboxes` from it.
+
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or
 written. A repository left by rule, for a folder of the user's or work
@@ -293,7 +306,8 @@ throttle keeps it from spinning.
 ## Giving every tool its forge token
 
 Every tool on a Boomdrive host takes its forge token from the runner
-(record 0007 as amended on 2026-11-09 and 2026-11-11; core.33).
+(record 0007 as amended on 2026-11-09, 2026-11-11 and 2026-11-18; record
+0053; core.33).
 `boomdrive forge-token [--config <file>] <get|erase>` speaks git's
 credential-helper protocol, reading the configuration as `run` does, its
 local layer over its managed one:
@@ -329,9 +343,28 @@ that holds no RSA private key in PEM. No token reaches a file, the data
 directory, a log or standard error.
 
 On a host whose control plane is hosted, the control plane holds the
-App and mints the host's tokens, and every operation is refused, exit 1:
-the hosted control plane mints this host's forge tokens, and version 3
-of its protocol carries none yet.
+App and mints the host's tokens, and no App's key is on the host. There
+`get` reads and checks git's request as above, then asks the hosted
+control plane for the repository's token, by one request of version 4
+of its protocol to `runner/forge-token`, under the key of a partition
+served the repository, each such partition asked in its table's order
+until one gives it, the asks together stopped at twenty seconds. It
+gives the token in the same three lines, and keeps it no longer.
+`[forge]` is refused beside the hosted control plane, and not read. A
+`get` the control plane answers that the App's installation does not
+cover the repository exits 1, saying to install the App there, with the
+control plane's words; any other refusal exits 1 with the hosted
+implementation's words, the control plane's as given; and one where no
+partition served the repository has its key in the host's store exits
+2, naming `boomdrive enroll <label>`. `erase` answers nothing, as on any
+host.
+
+The running runner's own fetches take their token the same way: on a
+host whose control plane holds the App, each fetch of a served
+repository is given the control plane's token, kept in the runner's
+memory as a minted token is, until five minutes before its end, the
+control plane's word that the App's installation does not cover a
+repository for fifty-five minutes, and a refusal not at all.
 
 The set's sluice takes no token from it yet. It reads a credential
 command, `[forge] credential`, as every sluice from v0.84.0 does
@@ -449,22 +482,21 @@ Distrust costs only the time to build. Rex, which publishes no source,
 is the one exception: such a host downloads Rex's release binary from
 where Rex's flake names.
 
-The flake at `main` moves with each change that lands, and its cache
-run pushes that commit's binaries. Each landing that git-cliff finds a
-new version in, from its Conventional Commits, is released as a tag
-`v<version>` on a release commit, cut from that commit of `main`, which
-writes the version into the tree, so the runner at the tag says it;
-`main`'s runner says `0.0.0`. The release has its notes, and the cache
-runs again at the tag. To stay on one set, pin a tag,
-`github:boomdrivedev/boomdrive/<tag>`, or a commit of `main` whose `cache`
-run passed:
+The flake at `main` moves with each change that lands. Each landing
+that git-cliff finds a new version in, from its Conventional Commits, is
+released as a tag `v<version>` on a release commit, cut from that commit
+of `main`, which writes the version into the tree, so the runner at the
+tag says it; `main`'s runner says `0.0.0`. The release has its notes,
+and the cache is built once for it, at its tag; no push of `main` builds
+it. To stay on one set, pin a tag, `github:boomdrivedev/boomdrive/<tag>`,
+whose `cache` run passed:
 
-    gh run list --repo boomdrivedev/boomdrive --workflow cache.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha'
+    gh run list --repo boomdrivedev/boomdrive --workflow cache.yml --event workflow_dispatch --status success --limit 1 --json headBranch --jq '.[0].headBranch'
 
 That run's job `boot (aarch64-linux)` boots a NixOS system with the
 module on `aarch64-linux`, its guest emulated on GitHub's arm runner:
 the service's user lingers, the runner's unit starts with no login, and
-each tool of the set answers its version. A NixOS host pins a commit
+each tool of the set answers its version. A NixOS host pins a tag
 whose boot passed.
 
 A host's configuration imports its platform's module,
@@ -498,28 +530,34 @@ Flume, `services.flume.sources.crew`, naming the roles file crew writes,
 `~/.config/flume/sources/crew.toml`, so a host writes no file for it,
 and a key the host sets there wins.
 
-Each account under crew names its crew state repository once,
+An account names its crew state repository once,
 `services.boomdrive.accounts.<account>.state_repository`, an address
-`<owner>/<name>`, which the runner's file does not hold. With crew's
-module on, whether or not the runner is, each drive of an account that
-names its `state_repository` gives crew's drive of the same name its
-`machine`, `services.crew.host` where the drive names none, and its
-account's `state_repository` as its `state`, every drive of the account
-whichever machine it runs on. A host writes neither in
-`services.crew.settings`: one that does fails evaluation, crew's failure
-naming `services.boomdrive.accounts` among the places that write it.
-Where `control_plane.type` is `crew` and no `control_plane.crew` is
-written, the module writes the runner's `[control_plane.crew]` from the
-accounts: its `host` is `services.crew.host`, and it holds each drive of
-this host, naming no `machine` or that host, under an account that names
-its `state_repository`, in the accounts' order and each account's drives
-in the order of their names, by its name as `label`, with its account's
-`state_repository`. A table written out wins, whole. Under crew, an
-account with a drive and no `state_repository`, or a drive of crew's
-that no account names, fails evaluation. The module writes none of
-crew's `hosts`, `runs`, `review` or other keys of a drive: each host crew
-reaches, and each drive's own keys, how its roles run and batch among
-them, are the host's own, written in `services.crew.settings`:
+`<owner>/<name>`, which the runner's file does not hold, where it holds
+a drive crew runs. With crew's module on, whether or not the runner is,
+each drive crew's settings set up,
+`services.crew.settings.drives.<drive>`, under an account that names its
+`state_repository`, is given its `machine`, `services.crew.host` where
+the drive names none, and its account's `state_repository` as its
+`state`, whichever machine it runs on. A drive crew's settings do not
+set up is given nothing: crew has no drive of its name, and the drive's
+repositories are kept, and its stream given where it runs, as any
+drive's. A host writes neither in `services.crew.settings`: one that
+does fails evaluation, crew's failure naming
+`services.boomdrive.accounts` among the places that write it. Where
+`control_plane.type` is `crew` and no `control_plane.crew` is written,
+the module writes the runner's `[control_plane.crew]` from the accounts:
+its `host` is `services.crew.host`, and it holds each drive of this
+host, naming no `machine` or that host, that crew's settings set up,
+under an account that names its `state_repository`, in the accounts'
+order and each account's drives in the order of their names, by its name
+as `label`, with its account's `state_repository`. A table written out
+wins, whole. Under crew, an account with a drive crew's settings set up
+and no `state_repository`, or a drive of crew's that no account names,
+fails evaluation, and an account none of whose drives crew runs needs no
+`state_repository`. The module writes none of crew's `hosts`, `runs`,
+`review` or other keys of a drive: each host crew reaches, and each
+drive's own keys, how its roles run and batch among them, are the host's
+own, written in `services.crew.settings`:
 
 ```nix
 {
@@ -619,7 +657,8 @@ there: a drive of another machine gives Flume nothing, and the runner
 still keeps its repositories, to read. A drive that names a `machine`
 where `services.crew.host` is not set fails evaluation. With crew's
 module on, the module gives the drive's `machine` to crew's drive of
-that name too, under an account that names its `state_repository`.
+that name too, where crew's settings set the drive up, under an account
+that names its `state_repository`.
 
 On nix-darwin the runner is a launchd agent of `system.primaryUser`'s
 login, `org.nixos.boomdrive`, writing to `services.boomdrive.logFile`,
@@ -1222,16 +1261,15 @@ settles for both, so no launch waits behind a settle. A control pass:
   names any, marked `boomdrive:<id>`. A bolt is a launch
   like any other, of a kind that lands with no stages, whose branch
   sluice makes at Flume's asking, and its units are launches on that
-  branch. Once the next pass is due, it makes no launch after the first
-  it ran, and holds each it would make after it for the next pass,
-  `held` with the words `waits for the next control pass, which is due`,
-  its room counted at its turn;
+  branch, each launched once its bolt's launch has returned. The
+  launches take the stream's room in the control plane's order, and
+  each runs at once on a thread of its own, so no launch waits on
+  another's readying;
 - carries out each retry, land, confirm, hold, drop, priority or done
-  as Flume's own command on the launch's place, once every offer the
-  pull gives is answered, and, once the next pass is due, no further act
-  after the first it ran, so its launches and its acts take turns: no
-  act waits behind more than one launch, and no launch of the next pull
-  behind more than one act. A place Flume's
+  as Flume's own command on the launch's place, on a thread of its own,
+  once the launch is made and every act before it on the same launch is
+  answered, so no act waits on a launch or on an act of another launch.
+  A place Flume's
   listing does not hold is first asked of
   `flume --json status <place>`, which settles nothing, and Flume's
   refusal of it is the act's answer. A land is
@@ -1251,10 +1289,8 @@ settles for both, so no launch waits behind a settle. A control pass:
   for it;
 - brings up each preview the control plane asks for, of a branch at a
   revision, in a repository it keeps, as
-  `sluice preview <branch> <revision>`, once every offer the pull
-  gives is answered, a launch held for its turn among them, and, once
-  the next pass is due, no further preview
-  after its first. It waits at
+  `sluice preview <branch> <revision>`, on a thread of its own once
+  every launch the pull offers is under way. It waits at
   sluice's bound no longer than 20 seconds, then interrupts sluice,
   which ends its wait and nothing else, and asks again at the next
   pass. It carries sluice's listing of the preview, `sluice previews`,
@@ -1276,18 +1312,17 @@ settles for both, so no launch waits behind a settle. A control pass:
   a place tidied meanwhile is carried from Flume's record of it,
   `<location>@<at>`.
 
-A control pass sends its report to its control plane at its end. Once
-the next pass is due, it also sends it before each command it runs for
-a want, a `flume launch`, Flume's status of a place or its command on
-it, or sluice's preview or release, and once it has answered its last
-want, wherever an answer changed it since the last send, in place of
-after each answer. So no answer waits on a command, and the launches a
-pass holds for their turn go up together before its act runs; under
-crew each send is a commit to the runner's branch. What the control
-plane lets go or refuses at such a send leaves the report, and the pass
-takes it no more, nor an act on a launch it let go or refused. A send
-that fails before the pass's end is said once, and the pass's answers
-wait for the send at its end.
+A control pass waits on none of the commands it starts, and sends its
+report to its control plane at its end. Each command's answer comes
+back to its part over a channel as soon as the command returns, and the
+part takes it, starts what waited on it and sends its report between
+its passes, so no answer waits on another command or on the next pass;
+under crew each send is a commit to the runner's branch. A want whose
+command is in flight is not taken again from a later pull, and an
+answer for a lease the control plane let go or refused while its
+command ran is not reported. Stopped, the runner waits for each command
+in flight to end and sends its answer. `boomdrive run --once` waits for
+every command its one pass started before it sends.
 
 No pane holds the name `boomdrive`, so Flume sends it no notice and
 wakes nothing for it, and owes it each end of the place, a live place's
@@ -1442,18 +1477,21 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
-The runner speaks version 3 of the protocol, `boomdrive.v3`, its schema
-under `crates/boomdrive-hosted/protocol/v3/`, which a control plane takes
-beside the version before it, version 2. Each upgrade asks for
-`boomdrive.v3` alone, and a control plane that answers without it is
-said once, naming `boomdrive.v3`, and tried again at the backoff's cap.
+The runner speaks version 4 of the protocol, `boomdrive.v4`, its schema
+under `crates/boomdrive-hosted/protocol/v4/`, which a control plane takes
+beside the version before it, version 3. Each upgrade asks for
+`boomdrive.v4` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v4`, and tried again at the backoff's cap.
+Version 4 is version 3 but for a forge token's ask and its answers,
+which go by one request of their own to `runner/forge-token` and never
+on a partition's socket (*Giving every tool its forge token*).
 Each end of a place goes up with its delivery: its key, its delivery's
 key and expiry, the readers it is owed to and those that confirmed it,
 and each hand-over, the end of the place's work by a drop or a done
-among them. An end version 3 does not name goes up as its delivery
+among them. An end version 4 does not name goes up as its delivery
 alone, or is left out where even that fails, the rest of its status
 going up, with one line naming the launch and each end's path. Only a
-status that went up with every end in a form version 3 names is one the
+status that went up with every end in a form version 4 names is one the
 runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
@@ -1506,7 +1544,7 @@ answers `observer <label>: enrolled as host <host>`, or with `--json`
 exiting 2, where the file names no `[observer]` or no partition
 `<label>` in it.
 
-Each partition keeps one outgoing WebSocket on `boomdrive.v3`, proved,
+Each partition keeps one outgoing WebSocket on `boomdrive.v4`, proved,
 kept and tried again as a hosted partition's is. Its first message is an
 observing hello, `observing` true with the runner's versions, its tools'
 versions and the partition's repositories, and no capacity and no lease,
@@ -1514,7 +1552,7 @@ since the observer is offered no room and gives none. Once each control
 pass of the part it observes has sent its report, the observer is
 handed an observed report: each launch of the part, by its id as the
 runner holds it, with its answer and its status and entry as version
-3's copies, and no lease, act, command, inbox or preview. Handing it
+4's copies, and no lease, act, command, inbox or preview. Handing it
 returns at once: the newest report goes on a live connection, or after
 the hello of the next one, and no pass waits on the observer, reached
 or not. `run --once` hands it nothing. The runner takes no work from

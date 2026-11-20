@@ -27,7 +27,7 @@ Rules relied on:
 - **core.44:** each tool comes from its own flake or source at its release tag. A plugin comes from the same pin as its tool.
 - **core.46:** each tool's module writes its own file. The Boomdrive module's own options install the tools that have no module.
 - **core.47:** a module's package is the flake's own, so its path is the one the family's cache holds.
-- **core.62**, written with this change: the set installs a tool only where the host turns it on, by a switch of its own. The herdr plugins it links by default are those of the tools it installs, each beside the set's own build.
+- **core.63**, written with this change: the set installs a tool only where the host turns it on, by a switch of its own. The herdr plugins it links by default are those of the tools it installs, each beside the set's own build.
 - **Blueprints principle 16:** no check reads Markdown.
 
 ## Goals / Non-Goals
@@ -161,7 +161,7 @@ The README's **Installing with nix** says:
 
 `CLAUDE.md`'s and `openspec/config.yaml`'s summaries of the flake say each tool is turned on by a switch of its own, which the runner's turns on, so a host without the runner takes the ones it wants. No check reads these words (principle 16).
 
-Record 0023's amendment of 2026-11-18, record 0044's of that day, core.62, and core.18's and core.46's details are written in this change's own commit. No task changes them.
+Record 0023's amendment of 2026-11-18, record 0044's of that day, core.63, and core.18's and core.46's details are written in this change's own commit. No task changes them.
 
 ## Risks / Trade-offs
 

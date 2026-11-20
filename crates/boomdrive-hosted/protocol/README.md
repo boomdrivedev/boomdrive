@@ -9,36 +9,41 @@ are sent against the version before reading it, and refuse one that
 fails whole.
 
 This repository's records and rules are the protocol's source: rule
-core.42 and records 0015, 0037 and 0052, under `docs/`, the change that
-wrote version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`,
+core.42 and records 0015, 0037, 0052 and 0053, under `docs/`, the change
+that wrote version 1, `the-runner-keeps-its-protocol-as-one-json-schema-per-version`,
 the changes that wrote version 2,
 `the-hosted-protocol-carries-every-end-of-a-place` and
-`the-hosted-protocol-carries-land-and-preview`, and the changes that
-wrote version 3, `the-hosted-protocol-carries-a-hold` and
+`the-hosted-protocol-carries-land-and-preview`, the changes that wrote
+version 3, `the-hosted-protocol-carries-a-hold` and
 `a-runner-reports-to-an-observer-it-takes-no-work-from`, with record
-0048. They cite boomdrive-cloud's records and rules by id.
+0048, and the change that wrote version 4,
+`a-cloud-host-gets-its-github-tokens-from-the-cloud`. They cite
+boomdrive-cloud's records and rules by id.
 
 ## Versions
 
-Version 3 is `v3/`. Version 2, which it follows, is `v2/`, and version
-1, which version 2 follows, is `v1/` (*Version 2* and *Version 1*,
-below). A version may change until a release of the runner speaks it to
-a control plane. From that release on it never changes, and its
-directory is never removed: every change after it is a new version, in
-a directory of its own beside it. A control plane accepts the current
-version and the one before. The runner speaks the current version
-alone.
+Version 4 is `v4/`. Version 3, which it follows, is `v3/`, version 2,
+which version 3 follows, is `v2/`, and version 1, which version 2
+follows, is `v1/` (*Version 3*, *Version 2* and *Version 1*, below). A
+version may change until a release of the runner speaks it to a control
+plane. From that release on it never changes, and its directory is
+never removed: every change after it is a new version, in a directory of
+its own beside it. The runner and a control plane always share a
+version they both speak: each side drops a version only once the other
+has moved past it, and opens one only once the other speaks the one
+before it (record 0056).
 
-The runner speaks version 3 alone, and a control plane takes it beside
-version 2. Releases of the runner spoke version 2 and version 1 before
-it, so neither changes. The crate's test `files` holds each file of
-`v2/`, schemas and examples, to its digest as `v0.9.0` holds it, and
-each of `v1/` to `v0.7.3`'s, so the gate fails a file of either changed
-or added. It also holds each file and example of `v3/` to version 2's,
-but for what *Version 2* names, so a change to version 3 that is not
-its hold or its observing connection fails there.
+The runner speaks version 4 alone, and a control plane takes it beside
+version 3. Releases of the runner spoke versions 3, 2 and 1 before it,
+so none of them changes. The crate's test `files` holds each file of
+`v3/`, schemas and examples, to its digest as `v0.18.0` holds it, each
+of `v2/` to `v0.9.0`'s, and each of `v1/` to `v0.7.3`'s, so the gate
+fails a file of any of them changed or added. It also holds each file
+and example of `v4/` to version 3's, but for what *Version 3* names, so
+a change to version 4 that is not a forge token's ask and answers fails
+there.
 
-A connection asks for the WebSocket subprotocol `boomdrive.v3` at
+A connection asks for the WebSocket subprotocol `boomdrive.v4` at
 its upgrade, so a control plane that does not accept the version refuses
 the connection before any message.
 
@@ -57,12 +62,13 @@ the connection before any message.
 | `submission-entry.schema.json` | the copy of a sluice submission's entry |
 | `preview.schema.json` | the copies of sluice's answers of a preview and of a release |
 | `terminal.schema.json` | a key share and a terminal's messages |
+| `forge-token.schema.json` | `forge_token`, a forge token's ask, and its answers `forge_token_given` and `forge_token_refused` |
 
 `examples/from-runner/` and `examples/to-runner/` hold whole messages
 of every kind, each of which passes its direction's envelope.
 
 Each file's `$id` is its address among this repository's raw files at
-`main`, under `https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v3/`. No check fetches a `$id`: a validator is handed the version's
+`main`, under `https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v4/`. No check fetches a `$id`: a validator is handed the version's
 files, each under its `$id`, and nothing else, and every `$ref` is
 relative, to a file of the same version. A reference outside them fails
 to resolve. A pattern uses only what ECMA-262 and Rust's `regex` read
@@ -70,7 +76,7 @@ alike, so a validator in either language refuses the same strings.
 
 ## The forms
 
-- **Every message** is `{"protocol_version": 3, "id": …, "body": {"<kind>": {…}}}`.
+- **Every message** is `{"protocol_version": 4, "id": …, "body": {"<kind>": {…}}}`.
   The `id` is the sender's own for the message, 1 to 128 letters, digits
   and `._:/-`, unique among what that sender sends on its enrollment, and
   kept when the message is sent again. The body holds exactly one kind,
@@ -109,6 +115,9 @@ alike, so a validator in either language refuses the same strings.
 | `terminal_resume` | the control plane | the offset a reconnected browser has every byte up to |
 | `terminal_close` | the control plane | the terminal, closed from the browser's end |
 | `terminal_closed` | the runner | the terminal, closed by the runner, with its words |
+| `forge_token` | the runner, as the body of `POST runner/forge-token` | the repository whose token it asks |
+| `forge_token_given` | the control plane, answering `forge_token` | the `forge_token` message, by id, the repository, the token and `expires_at`, when it ends |
+| `forge_token_refused` | the control plane, answering `forge_token` | the `forge_token` message, by id, the repository, `not_installed`, and words |
 
 On the socket, their order:
 
@@ -133,14 +142,29 @@ the whole report, so a second delivery of either changes nothing. The
 socket is kept alive by the WebSocket protocol's own pings: no message
 is a heartbeat.
 
-Version 3 has no message for a forge token, for health, for the
-runner's own commands, or for a terminal's certificate. The changes that
-build them add them, in a version of their own.
+Version 4 has no message for health, for the runner's own commands, or
+for a terminal's certificate. The changes that build them add them, in a
+version of their own.
+
+**A forge token** is a short-lived token of the forge for one
+repository, which the control plane mints from the Boomdrive App's
+installation on the host's account, since under a hosted control plane
+the App is the control plane's and no App's key is on the host (record
+0007; record 0053; core.33). The runner asks for one by `forge_token`,
+naming the repository, in one request of its own at `runner/forge-token`
+(*A forge token's ask*, below), and the control plane answers it with
+`forge_token_given` or `forge_token_refused`, each naming the ask by its
+id and its repository. `forge_token_given`'s `token` is the one field of
+any version that holds a credential. `forge_token_refused`'s
+`not_installed` is true alone where the App's installation does not
+cover the repository, which the runner keeps as it keeps the forge's
+word that the App is not installed; every other refusal is carried by
+its words. None of the three goes on the socket.
 
 **An observing connection** is a connection a runner keeps to an
 observer on its own host, which it reports a part's work to and takes
 nothing from (record 0048). It is enrolled and proved as a partition's,
-under a key of its own, and speaks `boomdrive.v3`. Its `hello` is the
+under a key of its own, and speaks `boomdrive.v4`. Its `hello` is the
 observing hello, `{"observing":true,"interface_version","runner_version","tool_versions","repositories"}`:
 the hello with no `capacity`, since the observer is offered no room, and
 no `leases`, since it gives none. Its `report` is the observed report,
@@ -197,31 +221,35 @@ passed on as given, and Flume lets that hold lapse at once.
 
 ## The paths
 
-Two paths go under the control plane's address, the `url` of the
+Three paths go under the control plane's address, the `url` of the
 runner's `[control_plane.hosted]` table, which gains a `/` where it
 ends without one:
 
 | path | how | the kinds it takes |
 |---|---|---|
 | `runner/enroll` | one HTTPS `POST` | the runner's `enroll`, answered by the control plane's `enrolled`, `enroll_refused` or `message_refused` |
-| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `boomdrive.v3` | every other kind, each direction's its own |
+| `runner/connect` | a WebSocket upgrade of `GET`, over TLS, on the subprotocol `boomdrive.v4` | every other kind but a forge token's, each direction's its own |
+| `runner/forge-token` | one HTTPS `POST` | the runner's `forge_token`, answered by the control plane's `forge_token_given`, `forge_token_refused` or `message_refused` |
 
 Under the `url` `https://control.example/boomdrive`, they are
-`https://control.example/boomdrive/runner/enroll` and
-`wss://control.example/boomdrive/runner/connect`. A `url` is `https`,
+`https://control.example/boomdrive/runner/enroll`,
+`wss://control.example/boomdrive/runner/connect` and
+`https://control.example/boomdrive/runner/forge-token`. A `url` is `https`,
 or `http` only to a loopback address, as a test's control plane is,
 whose socket is then `ws`.
 
 The schema checks a message's form, not the path it came by: a control
-plane refuses an `enroll` on the socket, and any other kind on
-`runner/enroll`, by its path, and a runner refuses an `enrolled` or
-`enroll_refused` on the socket with `message_refused`.
+plane refuses an `enroll` or a `forge_token` on the socket, and any
+other kind on `runner/enroll` or `runner/forge-token`, by its path, and
+a runner refuses an `enrolled`, `enroll_refused`, `forge_token_given` or
+`forge_token_refused` on the socket with `message_refused`, its words
+naming the path that takes it.
 
 ## The signatures
 
 Each partition's key is an Ed25519 key pair the runner makes on the
 host, whose private key never leaves it. It signs a context: the UTF-8
-bytes of `boomdrive.v3`, a space and the context's name, then
+bytes of `boomdrive.v4`, a space and the context's name, then
 each of the context's fields after a NUL byte, with nothing after the
 last. A signature is Ed25519's as RFC 8032 gives it, 64 bytes, over the
 context's bytes themselves, never a digest of them.
@@ -229,8 +257,8 @@ context's bytes themselves, never a digest of them.
 Every field names what the signature binds, so a signature made for
 one context, one control plane or one token is never taken for
 another. The contexts are an enrollment's (`enroll`), a connection's
-(`connect`), and a terminal's share (`terminal share`, under *A
-terminal*).
+(`connect`), a forge token's ask (`forge token`), and a terminal's
+share (`terminal share`, under *A terminal*).
 
 A field that names the control plane is its `url`'s origin: the scheme,
 `://` and the host, then `:` and the port where the port is not the
@@ -249,7 +277,7 @@ POST <url>/runner/enroll
 Authorization: Bearer <token>
 Content-Type: application/json
 
-{"protocol_version":3,"id":"<the message's id>","body":{"enroll":{"key":"…","signature":"…","machine":"…"}}}
+{"protocol_version":4,"id":"<the message's id>","body":{"enroll":{"key":"…","signature":"…","machine":"…"}}}
 ```
 
 - **`key`** is the partition's public key, 32 bytes, 43 characters in
@@ -266,7 +294,7 @@ the key's 32 bytes. It binds the key to this control plane and this
 token, so no key is registered by one who does not hold it, and no
 signature is taken with another token.
 
-**The answer** is a message of version 3, which the runner checks
+**The answer** is a message of version 4, which the runner checks
 against `to-runner.schema.json` before it reads it:
 
 - `200`, with `enrolled`, holding `host`, the control plane's id for
@@ -297,20 +325,20 @@ url          https://control.example/boomdrive
 address      https://control.example/boomdrive/runner/enroll
 origin       https://control.example
 digest       sha256:2ff0ff8cabe082ca9b667090071b2f438a8c1665b25f655d7b305293a75fef7f
-context      626f6f6d64726976652e763320656e726f6c6c0068747470733a2f2f636f6e74
+context      626f6f6d64726976652e763420656e726f6c6c0068747470733a2f2f636f6e74
              726f6c2e6578616d706c65007368613235363a32666630666638636162653038
              3263613962363637303930303731623266343338613863313636356232356636
              3535643762333035323933613735666566376600d75a980182b10ab7d54bfed3
              c964073a0ee172f3daa62325af021a68f707511a
-signature    9060bb046e8be838400109370fd58e90db03c9dabc087bc025749e2bf681ffb0
-             4007c5fd3ff7bd3803d149c305314bc5952dbc6d34f19482fcaf231ed8a8800c
+signature    dab78bf41ec967944c20cd49484cc5057b0dba2310b09f4cd90f1f4317281332
+             8df5e6ab6b3745683550fc480aac7b376ca09fa2acbf2ca6e86488adf313130e
 ```
 
-Read as text, the context's 148 bytes are `boomdrive.v3 enroll`, a NUL,
+Read as text, the context's 148 bytes are `boomdrive.v4 enroll`, a NUL,
 the origin, a NUL, the digest, a NUL and the public key's bytes. In
 base64url, as `examples/from-runner/enroll.json` carries them, the key
 is `11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo` and the signature
-`kGC7BG6L6DhAAQk3D9WOkNsDydq8CHvAJXSeK_aB_7BAB8X9P_e9OAPRScMFMUvFlS28bTTxlIL8ryMe2KiADA`.
+`2reL9B7JZ5RMIM1JSEzFBXsNuiMQsJ9M2Q8fQxcoEzKN9earazdFaDVQ_EgKrHs3bKCfoqy_LKboZIit8xMTDg`.
 
 ## The connection's proof
 
@@ -320,7 +348,7 @@ header:
 
 ```text
 GET <url>/runner/connect
-Sec-WebSocket-Protocol: boomdrive.v3
+Sec-WebSocket-Protocol: boomdrive.v4
 Authorization: BoomdriveHost <key>.<time>.<nonce>.<signature>
 ```
 
@@ -344,7 +372,7 @@ It refuses the upgrade:
 
 - with `401` or `403` where it does not take the key: the partition is
   enrolled again with a new token;
-- without `boomdrive.v3` where it does not speak the version,
+- without `boomdrive.v4` where it does not speak the version,
   which the runner takes as a refusal.
 
 ### The connection's worked bytes
@@ -360,20 +388,101 @@ address      wss://control.example/boomdrive/runner/connect
 origin       https://control.example
 time         1793750400
 nonce        000102030405060708090a0b0c0d0e0f
-context      626f6f6d64726976652e763320636f6e6e6563740068747470733a2f2f636f6e
+context      626f6f6d64726976652e763420636f6e6e6563740068747470733a2f2f636f6e
              74726f6c2e6578616d706c6500d75a980182b10ab7d54bfed3c964073a0ee172
              f3daa62325af021a68f707511a00313739333735303430300000010203040506
              0708090a0b0c0d0e0f
-signature    0ac1795e852c9f1ae977e1ad8b1cad15bdb6ecdc7524eece91dd1889d933c596
-             8ebfdff54605c35c5cc31a98d08fe5e61d4e524573aaea031ae1eba120c6fd09
+signature    61ed882c6d7c158c5135736ff3e4c20c154b006782cbda4e3e914e3ece7b0016
+             0760411e53059577e4230aec6881b6c76900526a737ffb44378db1ad9bfc2b01
 ```
 
-Read as text, the context's 105 bytes are `boomdrive.v3 connect`,
+Read as text, the context's 105 bytes are `boomdrive.v4 connect`,
 a NUL, the origin, a NUL, the public key's bytes, a NUL, the time's
 digits, a NUL and the nonce's bytes. Its header is:
 
 ```text
-Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.CsF5XoUsnxrpd-GtixytFb227Nx1JO7Okd0YidkzxZaOv9_1RgXDXFzDGpjQj-XmHU5SRXOq6gMa4euhIMb9CQ
+Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.Ye2ILG18FYxRNXNv8-TCDBVLAGeCy9pOPpFOPs57ABYHYEEeUwWVd-QjCuxogbbHaQBSanN_-0Q3jbGtm_wrAQ
+```
+
+## A forge token's ask
+
+Under a hosted control plane, the runner asks for a served repository's
+token, for `boomdrive forge-token` and for its own fetches, by one
+request under the key of a partition served the repository, signed for
+that ask alone:
+
+```text
+POST <url>/runner/forge-token
+Authorization: BoomdriveHost <key>.<time>.<nonce>.<signature>
+Content-Type: application/json
+
+{"protocol_version":4,"id":"<the message's id>","body":{"forge_token":{"repository":"<owner>/<name>"}}}
+```
+
+`<key>`, `<time>`, `<nonce>` and `<signature>` are as a connection's
+(*The connection's proof*).
+
+**What its signature is made over**: the context `forge token`, whose
+fields are the control plane's origin; the key's 32 bytes; `<time>`'s
+digits, as the header carries them; the nonce's 16 bytes; and the
+repository's address, `owner/name`, as its UTF-8 bytes. Since its name
+and its last field differ from a connection's, a statement made for one
+repository is never taken for another, nor an ask's for a connection's.
+
+The control plane takes the statement as it takes an upgrade's: a key it
+enrolled and has not revoked, the signature, the time within 300
+seconds, and a nonce not seen with that key within that window. It mints
+a token only from the installation of the host's own account, for a
+repository that account registers to a drive the host serves.
+
+**The answer** is a message of version 4, which the runner checks
+against `to-runner.schema.json` before it reads it, whatever its
+status, and reads only where it names the ask by its id and its
+repository:
+
+- `200`, with `forge_token_given`, holding the token and `expires_at`;
+- `401` or `403`, with `forge_token_refused`, where it does not take the
+  key or the statement, the repository is not one the host's account
+  registers to a drive the host serves, or the App's installation does
+  not cover it, `not_installed` true alone for the last;
+- `400`, with `message_refused`, the ask having failed the control
+  plane's check;
+- `502`, with `forge_token_refused`, where the forge failed the mint.
+
+Where several partitions are served the repository, the runner asks
+under each in its table's order until one gives a token, its asks
+together stopped at twenty seconds. It keeps nothing of an ask but, in
+the running runner's memory, the token for its own fetches.
+
+### The ask's worked bytes
+
+From the same key, at the same time and nonce, for the repository
+`example/app`:
+
+```text
+secret key   9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+public key   d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+url          https://control.example/boomdrive
+address      https://control.example/boomdrive/runner/forge-token
+origin       https://control.example
+time         1793750400
+nonce        000102030405060708090a0b0c0d0e0f
+repository   example/app
+context      626f6f6d64726976652e763420666f72676520746f6b656e0068747470733a2f
+             2f636f6e74726f6c2e6578616d706c6500d75a980182b10ab7d54bfed3c96407
+             3a0ee172f3daa62325af021a68f707511a003137393337353034303000000102
+             030405060708090a0b0c0d0e0f006578616d706c652f617070
+signature    5c905aa7451c664c6e6ea6e28b951f179ed9d12e83ecc8307871daef571fbdf7
+             711bf9093629adb1365664dd7c76a7077d68bbf9ba5739af6065b6c9c9ae600d
+```
+
+Read as text, the context's 121 bytes are `boomdrive.v4 forge token`, a
+NUL, the origin, a NUL, the public key's bytes, a NUL, the time's
+digits, a NUL, the nonce's bytes, a NUL and the repository. Its header
+is:
+
+```text
+Authorization: BoomdriveHost 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo.1793750400.AAECAwQFBgcICQoLDA0ODw.XJBap0UcZkxubqbii5UfF57Z0S6D7MgweHHa71cfvfdxG_kJNimtsTZWZN18dqcHfWi7-bpXOa9gZbbJya5gDQ
 ```
 
 ## The copies
@@ -403,14 +512,14 @@ for the rest, so the cloud's check refuses it.
   `deliveries`, each hand-over to a reader `by` a `notice`, a `wait`,
   an `inbox` or a `session_start` collecting it.
 - **An end's delivery alone** (`end_delivery`) is how an end goes up
-  whose form version 3 does not name, or whose fields hold a value it
+  whose form version 4 does not name, or whose fields hold a value it
   does not have: its `of` as Flume printed it, its `key`, `read_at`,
   `delivery`, `expires_at`, `owed`, `confirmed` and `pending_for`, and
   nothing of what ended and no hand-over. The runner copies each end on
   its own: by the form its `of` names, else by its delivery alone, else
   it leaves the end out, and the rest of the place's status goes up. The
   runner takes a `reported` as holding a place's status only where every
-  end of it went up in a form version 3 names, so it confirms no end of
+  end of it went up in a form version 4 names, so it confirms no end of
   a place whose status went up with an end by its delivery alone or left
   out.
 - **The host's capacity** (`host_part` in `hello.schema.json`) is
@@ -466,6 +575,25 @@ them, and neither end keeps them.
   end, and `terminal_closed` says the runner closed it, with its words.
   A terminal is closed with its socket.
 
+## Version 3
+
+Version 3, `v3/`, is what every release of the runner from `v0.18.0` to
+the last before version 4 spoke. Its files and examples stay as those
+releases hold them, and a control plane may still take it as the version
+before the current one. It is version 4 but for these alone:
+
+- **Its name** is `boomdrive.v3`: the subprotocol its connections ask
+  for, every message's `protocol_version` 3, and the start of each
+  context its keys sign, `boomdrive.v3 enroll`, `boomdrive.v3 connect`
+  and `boomdrive.v3 terminal share`. A key enrolled under version 3
+  stays its partition's, and proves itself under version 4's context.
+- **Its files' `$id`s** are under
+  `https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v3/`.
+- **It has no forge token**: no `forge-token.schema.json`, no
+  `forge_token`, `forge_token_given` or `forge_token_refused`, no path
+  `runner/forge-token` and no context `forge token`, so a cloud host
+  speaking it takes no token from its control plane.
+
 ## Version 2
 
 Version 2, `v2/`, is what every release of the runner from `v0.8.0` to
@@ -477,7 +605,8 @@ before the current one. It is version 3 but for these alone:
   for, every message's `protocol_version` 2, and the start of each
   context its keys sign, `boomdrive.v2 enroll`, `boomdrive.v2 connect`
   and `boomdrive.v2 terminal share`. A key enrolled under version 2
-  stays its partition's, and proves itself under version 3's context.
+  stays its partition's, and proves itself under the current version's
+  context.
 - **Its files' `$id`s** are under
   `https://raw.githubusercontent.com/agentplot/boomdrive/main/crates/boomdrive-hosted/protocol/v2/`,
   the address the repository had when releases spoke it. Every `$ref` is
@@ -501,7 +630,8 @@ differs from version 2 in these alone:
   for, every message's `protocol_version` 1, and the start of each
   context its keys sign, `boomdrive.v1 enroll`, `boomdrive.v1 connect`
   and `boomdrive.v1 terminal share`. A key enrolled under version 1
-  stays its partition's, and proves itself under version 3's context.
+  stays its partition's, and proves itself under the current version's
+  context.
 - **Its acts** are a retry, a drop, a done and a priority: no land and
   no confirm.
 - **Its wants** hold no preview, and its report no `previews`.

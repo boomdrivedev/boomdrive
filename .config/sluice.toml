@@ -17,8 +17,12 @@ ports = ["web"]
 
 [executor]
 kind = "sandbox"
-# Nothing the checks run reaches past the host.
-network = "localhost"
+# The checks may reach past the host: boomdrive-hosted:cloud-protocol reads
+# boomdrive-cloud's main as GitHub holds it, so a change that would leave
+# the runner and the cloud no protocol version in common is refused at
+# the merge (record 0056, point 5; core.42). Every other check reaches
+# nothing past the host but what it starts there.
+network = true
 
 # The one signer whose runs the gates count: deneb, where the sessions run
 # and submit, signing as sessions with its own key, as sluice's own policy

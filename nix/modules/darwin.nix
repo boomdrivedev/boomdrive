@@ -148,6 +148,10 @@ let
   # Pending You's folder, where Pending You is turned on and its package is
   # given (companions.nix; record 0044, point 7, as amended on 2026-11-18).
   writingFolder = cfg.pendingyou.enable && cfg.pendingyou.package != null;
+
+  # Whether millpond's host configuration is linked: where its switch is on
+  # with a package and an inbox named (millpond.nix).
+  millponding = cfg.millpond.file != null;
   folder = pkgs.callPackage ./pendingyou-folder.nix {
     inherit home;
     inherit (cfg.pendingyou) package;
@@ -187,6 +191,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     (import ./companions.nix { inherit packages; })
+    (import ./millpond.nix { inherit packages; })
     ./drives.nix
     ./clones.nix
     ./sources.nix
@@ -243,7 +248,7 @@ in
     # The primary user's home, wherever a step of the set's runs as them,
     # with the runner or without (design Decision 4 of the change
     # boomdrives-tools-install-on-a-machine-without-the-runner).
-    (lib.mkIf (cfg.enable || writingFolder || linking) {
+    (lib.mkIf (cfg.enable || millponding || writingFolder || linking) {
       assertions = [
         {
           assertion = user == null || home != null;
@@ -321,18 +326,24 @@ in
     # or without, after the runner's link where the runner is on (record
     # 0023 as amended on 2026-11-18; design Decision 4 of the change
     # boomdrives-tools-install-on-a-machine-without-the-runner). Each runs
-    # as the primary user under their own home, as the link is. Pending
+    # as the primary user under their own home, as the link is. millpond's
+    # host configuration is linked first (record 0033), then Pending
     # You's folder is written before the plugins, so Pending You for Herdr
     # finds its launcher at its first link; the plugins are linked the same
     # way, each refusal said and stopping none.
-    (lib.mkIf (writingFolder || linking) {
+    (lib.mkIf (millponding || writingFolder || linking) {
       system = {
         requiresPrimaryUser =
-          lib.optional linking "services.boomdrive.herdr.enable"
+          lib.optional millponding "services.boomdrive.millpond.enable"
+          ++ lib.optional linking "services.boomdrive.herdr.enable"
           ++ lib.optional writingFolder "services.boomdrive.pendingyou.enable";
 
         activationScripts.postActivation.text =
-          lib.optionalString writingFolder ''
+          lib.optionalString millponding ''
+            sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} \
+              /bin/sh ${./activate.sh} millpond ${cfg.millpond.file} || true
+          ''
+          + lib.optionalString writingFolder ''
             sudo --user=${lib.escapeShellArg user} -- /usr/bin/env HOME=${lib.escapeShellArg home} /bin/sh ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true
           ''
           + lib.optionalString linking ''

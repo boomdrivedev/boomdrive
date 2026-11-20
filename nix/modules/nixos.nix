@@ -95,13 +95,18 @@ let
   # given (companions.nix; record 0044, point 7, as amended on
   # 2026-11-18), written before the plugins are linked.
   writingFolder = cfg.pendingyou.enable && cfg.pendingyou.package != null;
+
+  # Whether millpond's host configuration is linked: where its switch is on
+  # with a package and an inbox named (millpond.nix).
+  millponding = cfg.millpond.file != null;
   folder = pkgs.callPackage ./pendingyou-folder.nix {
     inherit home;
     inherit (cfg.pendingyou) package;
   };
 
   # The set's user's steps before `keep`, in order: the runner's link with
-  # the runner, Pending You's folder, then herdr's links of the plugins,
+  # the runner, millpond's host configuration's link (record 0033), Pending
+  # You's folder, then herdr's links of the plugins,
   # each wherever its tool is on, with the runner or without (record 0023
   # as amended on 2026-11-18; design Decision 4 of the change
   # boomdrives-tools-install-on-a-machine-without-the-runner); then, with
@@ -109,6 +114,7 @@ let
   # Decision 3 of the change every-claude-code-session-has-boomdrives-plugins).
   steps =
     lib.optional cfg.enable "${pkgs.runtimeShell} ${./activate.sh} link ${file} || true"
+    ++ lib.optional millponding "${pkgs.runtimeShell} ${./activate.sh} millpond ${cfg.millpond.file} || true"
     ++ lib.optional writingFolder "${pkgs.runtimeShell} ${./activate.sh} pendingyou ${folder} ${lib.escapeShellArg folder.folder} || true"
     ++ lib.optional linking "${pkgs.runtimeShell} ${./activate.sh} ${plugins} || true"
     ++ lib.optional installing "PATH=${lib.escapeShellArg claudePath} ${pkgs.runtimeShell} ${./activate.sh} ${claude} || true";
@@ -130,6 +136,7 @@ let
   # where no user is.
   needing =
     lib.optional cfg.enable "services.boomdrive.enable"
+    ++ lib.optional millponding "services.boomdrive.millpond.enable"
     ++ lib.optional writingFolder "services.boomdrive.pendingyou.enable"
     ++ lib.optional linking "services.boomdrive.herdr.enable";
 
@@ -174,6 +181,7 @@ in
     (import ./tools.nix { inherit packages; })
     (import ./apps.nix { inherit packages; })
     (import ./companions.nix { inherit packages; })
+    (import ./millpond.nix { inherit packages; })
     ./drives.nix
     ./clones.nix
     ./sources.nix

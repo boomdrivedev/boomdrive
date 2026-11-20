@@ -17,13 +17,16 @@ let
   # version of it, which its answer holds (design Decision 6): its
   # program's `--version`, crew's `_release`, since crew's `--version`
   # prints its usage, and Rex's `version`, since Rex takes no `--version`
-  # (record 0023 as amended on 2026-11-18).
+  # (record 0023 as amended on 2026-11-18). millpond's `--version` names
+  # the revision it was built from and no release, so its answer holds the
+  # revision of the set's tag (record 0033).
   tools = [
     "boomdrive"
     "flume"
     "sluice"
     "crew"
     "timber"
+    "millpond"
     "herdr"
     "rex"
     "worktrunk"
@@ -45,7 +48,7 @@ let
           rex = "rex version";
         }
         .${name} or "${package.meta.mainProgram} --version";
-      inherit (package) version;
+      version = if name == "millpond" then package.src.rev else package.version;
     };
   answers = map answerOf tools;
 in

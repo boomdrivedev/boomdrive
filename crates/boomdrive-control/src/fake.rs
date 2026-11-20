@@ -6,10 +6,15 @@
 //! leaves.
 //! It owns every id, or, made by [`Fake::owning`], those under one prefix
 //! alone, so a test makes as many parts as it needs. [`Observing`] is a
-//! fake observer, which holds each pass it is handed.
+//! fake observer, which holds each pass it is handed, and [`Tokens`] a
+//! fake control plane's forge tokens, which gives each repository the
+//! answer a test sets and counts each ask.
 
 use crate::want::{Id, Input, Link, Terminal, Want};
-use crate::{ControlPlane, Hello, Observer, Pulled, Report, Reported, Unread, Unsent};
+use crate::{
+    ControlPlane, ForgeTokens, Hello, Observer, Pulled, Report, Reported, TokenAsked, Unread,
+    Unsent,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
@@ -290,6 +295,57 @@ impl Observer for Observing {
     }
 }
 
+/// A control plane's forge tokens in memory: each repository gives the
+/// answer a test set for it, or a refusal naming it where none is set, and
+/// each repository's asks are counted. Its clones share what they hold, so
+/// a test keeps one while the runner is handed another (design Decision 6
+/// of a-cloud-host-gets-its-github-tokens-from-the-cloud).
+#[derive(Clone, Debug, Default)]
+pub struct Tokens {
+    held: Arc<Mutex<TokensHeld>>,
+}
+
+#[derive(Debug, Default)]
+struct TokensHeld {
+    answers: BTreeMap<String, TokenAsked>,
+    asks: BTreeMap<String, usize>,
+}
+
+impl Tokens {
+    /// Forge tokens giving nothing set.
+    pub fn new() -> Tokens {
+        Tokens::default()
+    }
+
+    /// Gives `answer` for `repository` from the next ask on.
+    pub fn set(&self, repository: &str, answer: TokenAsked) {
+        self.held().answers.insert(repository.to_string(), answer);
+    }
+
+    /// How many times `repository`'s token was asked.
+    pub fn asks(&self, repository: &str) -> usize {
+        self.held().asks.get(repository).copied().unwrap_or(0)
+    }
+
+    fn held(&self) -> std::sync::MutexGuard<'_, TokensHeld> {
+        self.held.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+impl ForgeTokens for Tokens {
+    fn token(&self, repository: &str) -> TokenAsked {
+        let mut held = self.held();
+        *held.asks.entry(repository.to_string()).or_default() += 1;
+        held.answers
+            .get(repository)
+            .cloned()
+            .unwrap_or_else(|| TokenAsked::Refused {
+                words: format!("the fake gives no token for {repository}"),
+                host_to_fix: false,
+            })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,5 +408,33 @@ mod tests {
             ]
         );
         assert_eq!(observed.label, "home");
+    }
+
+    /// A fake's forge tokens give the answer set for a repository, a
+    /// refusal for one with none set, and count each repository's asks,
+    /// whichever clone was asked.
+    #[test]
+    fn the_fake_tokens_count_each_ask() {
+        use crate::ForgeToken;
+        use time::format_description::well_known::Rfc3339;
+        use time::OffsetDateTime;
+
+        let tokens = Tokens::new();
+        let ends = OffsetDateTime::parse("2026-11-18T13:00:00Z", &Rfc3339).unwrap();
+        let given = TokenAsked::Token(ForgeToken::new("ghs_example", ends));
+        tokens.set("example/app", given.clone());
+        let handed: Box<dyn ForgeTokens> = Box::new(tokens.clone());
+        assert_eq!(handed.token("example/app"), given);
+        assert_eq!(handed.token("example/app"), given);
+        assert!(matches!(
+            handed.token("example/service"),
+            TokenAsked::Refused {
+                host_to_fix: false,
+                ..
+            }
+        ));
+        assert_eq!(tokens.asks("example/app"), 2);
+        assert_eq!(tokens.asks("example/service"), 1);
+        assert_eq!(tokens.asks("example/other"), 0);
     }
 }

@@ -17,7 +17,7 @@
 # the runner or without, so a host without the runner takes the ones it
 # turns on and nothing else (record 0023 as amended on 2026-11-18; design
 # Decisions 1 and 2 of the change
-# boomdrives-tools-install-on-a-machine-without-the-runner; core.62).
+# boomdrives-tools-install-on-a-machine-without-the-runner; core.63).
 # The plugins are linked by the platform's
 # activation, darwin.nix's and nixos.nix's, with herdr's own command.
 # Where herdr is turned on, Flume's module is told herdr, its
@@ -52,7 +52,7 @@
 # nix-darwin has none. The modules name Rex in no setting of Flume's,
 # whose terminal stays the host's to choose, write no file of Rex's and
 # start no server of it (record 0023 as amended on 2026-11-18; design
-# Decision 4 of the change the-set-carries-rex-matched-to-flume; core.62).
+# Decision 4 of the change the-set-carries-rex-matched-to-flume; core.63).
 # With the runner, the launcher is the set's made, by its override, for
 # each drive of this host, in the order of the drives' names, and without
 # it the set's own, `Default stream` alone, since a drive gives Flume its

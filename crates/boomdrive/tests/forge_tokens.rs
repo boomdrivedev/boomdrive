@@ -4,6 +4,7 @@
 //! reaches the network, and each test binary makes its own key (core.4).
 
 mod common;
+mod fakes;
 mod github;
 
 use boomdrive::config::{Address, ForgeApp};
@@ -85,7 +86,12 @@ fn the_app_not_installed_is_its_own_answer() {
         &address("agentplot/flume"),
     );
 
-    assert_eq!(minted, Ok(Minted::NotInstalled));
+    assert_eq!(
+        minted,
+        Ok(Minted::NotInstalled(
+            "GitHub finds no installation of app 1 on agentplot/flume".to_string()
+        ))
+    );
     assert_eq!(github.calls(), ["GET /repos/agentplot/flume/installation"]);
     assert!(github.tokens().is_empty());
 }
@@ -628,7 +634,7 @@ fn no_forge_must_be_fixed() {
     assert_eq!(
         stderr,
         "boomdrive forge-token: the configuration names no [forge], the Boomdrive App's app_id \
-         and key_file\n"
+         and key_file, and no control plane that holds the App\n"
     );
 }
 
@@ -659,56 +665,310 @@ fn hosted() -> String {
     )
 }
 
-/// The forge-tokens spec's "A get on a cloud host".
-#[test]
-fn a_get_on_a_cloud_host_is_refused() {
-    let scratch = Scratch::new();
-    scratch.configure(&hosted());
-
-    let (code, stdout, stderr) = refusal(&run(&scratch, &["get"], &for_path("agentplot/flume")));
-
-    assert_eq!(
-        (code, stdout.as_str(), stderr),
-        (
-            Some(1),
-            "",
-            format!(
-                "boomdrive forge-token: {}\n",
-                boomdrive_hosted::NO_FORGE_TOKEN
-            )
-        )
+/// `boomdrive forge-token <operation>` answered in-process on a cloud
+/// host, its forge asking `tokens`, as the control plane's, with `request`
+/// as its standard input, under the scratch host's configuration: what it
+/// answered, and what it wrote on its standard output (Task notes 4.3).
+fn ask_a_cloud_host(
+    scratch: &Scratch,
+    tokens: &boomdrive_control::fake::Tokens,
+    operation: Operation,
+    request: &str,
+) -> (Result<(), Refused>, String) {
+    let config = boomdrive::config::read_layers(
+        &scratch.config_file(),
+        &scratch.local_file(),
+        &scratch.home,
+    )
+    .expect("a configuration");
+    let mut output = Vec::new();
+    let answered = forge_token::answer(
+        &config,
+        operation,
+        &mut request.as_bytes(),
+        &mut output,
+        &Forge::asking(Box::new(tokens.clone())),
     );
-    assert_eq!(
-        boomdrive_hosted::NO_FORGE_TOKEN,
-        "the hosted control plane mints this host's forge tokens, and version 3 of its \
-         protocol carries none yet"
+    (answered, String::from_utf8(output).expect("words"))
+}
+
+/// The control plane's token `secret` for `agentplot/flume`, ending at
+/// 2026-11-18T13:00:00Z.
+fn the_cloud_gives(tokens: &boomdrive_control::fake::Tokens, secret: &str) {
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::Token(boomdrive_control::ForgeToken::new(
+            secret,
+            boomdrive_control::At::parse("2026-11-18T13:00:00Z")
+                .expect("a time")
+                .time(),
+        )),
     );
 }
 
-/// The forge-tokens spec's "An erase on a cloud host".
+/// The three lines a `get` gives for `secret`, ending at
+/// 2026-11-18T13:00:00Z, 1795006800 in Unix seconds.
+fn the_cloud_answer(secret: &str) -> String {
+    format!("username=x-access-token\npassword={secret}\npassword_expiry_utc=1795006800\n")
+}
+
+/// The forge-tokens spec's "A get on a cloud host": the three lines with
+/// the control plane's token and its end in Unix seconds, nothing else,
+/// and an answer.
 #[test]
-fn an_erase_on_a_cloud_host_is_refused() {
+fn a_get_on_a_cloud_host() {
     let scratch = Scratch::new();
     scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+    the_cloud_gives(&tokens, "ghs_cloud");
 
-    let (code, stdout, stderr) = refusal(&run(
+    let (answered, output) = ask_a_cloud_host(
         &scratch,
-        &["erase"],
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume.git"),
+    );
+
+    assert_eq!(answered, Ok(()));
+    assert_eq!(output, the_cloud_answer("ghs_cloud"));
+    assert_eq!(
+        boomdrive_control::At::parse("2026-11-18T13:00:00Z")
+            .unwrap()
+            .time()
+            .unix_timestamp(),
+        1_795_006_800
+    );
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
+}
+
+/// The forge-tokens spec's "Each get on a cloud host asks": two `get`s ask
+/// the control plane twice, and each gives the token it was given.
+#[test]
+fn each_get_on_a_cloud_host_asks() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+
+    the_cloud_gives(&tokens, "ghs_first");
+    let (first, once) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume"),
+    );
+    the_cloud_gives(&tokens, "ghs_second");
+    let (second, again) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume"),
+    );
+
+    assert_eq!((first, second), (Ok(()), Ok(())));
+    assert_eq!(once, the_cloud_answer("ghs_first"));
+    assert_eq!(again, the_cloud_answer("ghs_second"));
+    assert_eq!(tokens.asks("agentplot/flume"), 2);
+}
+
+/// The forge-tokens spec's "A repository no drive serves on a cloud host":
+/// refused naming `someone/else`, and the control plane not asked.
+#[test]
+fn a_repository_no_drive_serves_on_a_cloud_host() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+
+    let asked = ask_a_cloud_host(&scratch, &tokens, Operation::Get, &for_path("someone/else"));
+
+    refused_with(
+        asked,
+        "someone/else is a repository of no drive this host serves",
+    );
+    assert_eq!(tokens.asks("someone/else"), 0);
+}
+
+/// The forge-tokens spec's "An erase on a cloud host": nothing printed, an
+/// answer, and the control plane not asked.
+#[test]
+fn an_erase_on_a_cloud_host() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+
+    let (answered, output) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Erase,
         "protocol=https\nhost=github.com\npath=agentplot/flume\nusername=x-access-token\n\
          password=ghs_n0t4r34lt0k3n\n",
-    ));
-
-    assert_eq!(
-        (code, stdout.as_str(), stderr),
-        (
-            Some(1),
-            "",
-            format!(
-                "boomdrive forge-token: {}\n",
-                boomdrive_hosted::NO_FORGE_TOKEN
-            )
-        )
     );
+
+    assert_eq!((answered, output.as_str()), (Ok(()), ""));
+    assert_eq!(tokens.asks("agentplot/flume"), 0);
+}
+
+/// The forge-tokens spec's "The App not installed on a cloud host": refused,
+/// not the host's to fix, saying to install the app on `agentplot/flume`
+/// and holding the control plane's words.
+#[test]
+fn the_app_not_installed_on_a_cloud_host() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::NotInstalled(
+            "`home`: the installation on this host's account does not cover agentplot/flume"
+                .to_string(),
+        ),
+    );
+
+    let (answered, output) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume"),
+    );
+
+    let refused = answered.expect_err("a refusal");
+    assert_eq!(output, "");
+    assert!(!refused.host_to_fix, "{refused:?}");
+    assert!(
+        refused.words.contains("agentplot/flume") && refused.words.contains("install the app"),
+        "{}",
+        refused.words
+    );
+    assert!(
+        refused.words.contains(
+            "`home`: the installation on this host's account does not cover agentplot/flume"
+        ),
+        "{}",
+        refused.words
+    );
+}
+
+/// The forge-tokens spec's "A cloud host's refusal": refused, not the
+/// host's to fix, in one line holding the control plane's words.
+#[test]
+fn a_cloud_hosts_refusal() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::Refused {
+            words: "`home`: the control plane refused agentplot/flume's token: the drive's \
+                    account is closed"
+                .to_string(),
+            host_to_fix: false,
+        },
+    );
+
+    let (answered, output) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume"),
+    );
+
+    let refused = answered.expect_err("a refusal");
+    assert_eq!(output, "");
+    assert!(!refused.host_to_fix, "{refused:?}");
+    assert!(
+        refused.words.contains("the drive's account is closed"),
+        "{}",
+        refused.words
+    );
+    assert!(!refused.words.contains('\n'), "one line: {}", refused.words);
+}
+
+/// The forge-tokens spec's "Nothing is left behind on a cloud host": a
+/// `get` given the control plane's token, then a `get` the control plane
+/// refuses, leave the scratch host's data and configuration directories as
+/// they were, and no refusal holds the token.
+#[test]
+fn nothing_is_left_behind_on_a_cloud_host() {
+    let scratch = Scratch::new();
+    scratch.configure(&hosted());
+    let tokens = boomdrive_control::fake::Tokens::new();
+    the_cloud_gives(&tokens, "ghs_n0t-l3ft");
+    let config_dir = scratch.home.join(".config");
+    let before = (files(&scratch.data()), files(&config_dir));
+
+    let (answered, _) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume"),
+    );
+    assert_eq!(answered, Ok(()));
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::Refused {
+            words: "the drive's account is closed".to_string(),
+            host_to_fix: false,
+        },
+    );
+    let (answered, output) = ask_a_cloud_host(
+        &scratch,
+        &tokens,
+        Operation::Get,
+        &for_path("agentplot/flume"),
+    );
+
+    let refused = answered.expect_err("a refusal");
+    assert_eq!(output, "");
+    assert!(!refused.words.contains("ghs_n0t-l3ft"), "{}", refused.words);
+    assert_eq!((files(&scratch.data()), files(&config_dir)), before);
+}
+
+/// The forge-tokens spec's "A cloud host with no partition's key", by the
+/// binary on the scratch host, its stub `systemd-creds` first on its
+/// `PATH`, so no real store is reached (Task notes 4.3): the hosted control
+/// plane at a loopback port with nothing on it, its partition `home` served
+/// `agentplot/flume` and no key of `home` in the host's store, so it exits
+/// 2, with nothing on standard output and one line naming
+/// `boomdrive enroll home`.
+#[test]
+fn a_cloud_host_with_no_partitions_key() {
+    let scratch = Scratch::new();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    let port = listener.local_addr().expect("its address").port();
+    drop(listener);
+    scratch.configure(&format!(
+        "{}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+         url = \"http://127.0.0.1:{port}/boomdrive\"\n\n[[control_plane.hosted.partitions]]\n\
+         label = \"home\"\nrepositories = [\"agentplot/flume\"]\n",
+        keeping(&["agentplot/flume"])
+    ));
+    let creds = fakes::CredsStub::new();
+    let rest = std::env::var_os("PATH").unwrap_or_default();
+    let path = std::env::join_paths(
+        std::iter::once(creds.dir.path().to_path_buf()).chain(std::env::split_paths(&rest)),
+    )
+    .expect("a PATH");
+    let mut child = scratch
+        .boomdrive()
+        .args(["forge-token", "get"])
+        .env("PATH", path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the runner run");
+    child
+        .stdin
+        .take()
+        .expect("its standard input")
+        .write_all(for_path("agentplot/flume").as_bytes())
+        .expect("the request written");
+    let output = child.wait_with_output().expect("its answer");
+
+    let (code, stdout, stderr) = refusal(&output);
+    assert_eq!((code, stdout.as_str()), (Some(2), ""), "{stderr}");
+    assert_eq!(stderr.lines().count(), 1, "{stderr}");
+    assert!(stderr.starts_with("boomdrive forge-token: "), "{stderr}");
+    assert!(stderr.contains("`boomdrive enroll home`"), "{stderr}");
 }
 
 /// The forge-tokens spec's "A repository no drive serves", by the binary,
@@ -856,4 +1116,119 @@ fn the_apps_absence_is_kept() {
     };
     assert_eq!((first, second), (nothing.clone(), nothing));
     assert_eq!(github.calls(), ["GET /repos/agentplot/flume/installation"]);
+}
+
+/// A forge asking `tokens`, a control plane's that holds the App, as a
+/// cloud host's runner makes it (design Decision 8 of
+/// a-cloud-host-gets-its-github-tokens-from-the-cloud).
+fn asking(tokens: &boomdrive_control::fake::Tokens) -> Forge {
+    Forge::asking(Box::new(tokens.clone()))
+}
+
+/// A token of `secret` the control plane gives, ending `lasting` from now.
+fn given(secret: &str, lasting: Duration) -> boomdrive_control::TokenAsked {
+    boomdrive_control::TokenAsked::Token(boomdrive_control::ForgeToken::new(
+        secret,
+        time::OffsetDateTime::now_utc() + lasting,
+    ))
+}
+
+/// The runner's own ask for `agentplot/flume`'s credential on a cloud
+/// host, which names no App.
+fn ask_a_cloud_host_for_flume(forge: &Forge) -> Asked {
+    forge.credential(None, &address("agentplot/flume"))
+}
+
+/// The forge-tokens spec's "A cloud host's token kept across passes": the
+/// control plane's token, ending in an hour, is given again, and the
+/// control plane is asked once.
+#[test]
+fn a_cloud_hosts_token_is_kept_across_passes() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        given("ghs_cloud", Duration::from_secs(60 * 60)),
+    );
+    let forge = asking(&tokens);
+
+    let first = ask_a_cloud_host_for_flume(&forge);
+    let second = ask_a_cloud_host_for_flume(&forge);
+
+    assert_eq!(first.refused, None);
+    assert_eq!(token_of(&first), "ghs_cloud");
+    assert_eq!(second, first);
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
+}
+
+/// The forge-tokens spec's "A cloud host's token near its end": the
+/// control plane's token ends in four minutes, so it is asked each time.
+#[test]
+fn a_cloud_hosts_token_near_its_end_is_asked_again() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        given("ghs_cloud", Duration::from_secs(4 * 60)),
+    );
+    let forge = asking(&tokens);
+
+    let first = token_of(&ask_a_cloud_host_for_flume(&forge));
+    let second = token_of(&ask_a_cloud_host_for_flume(&forge));
+
+    assert_eq!(
+        (first.as_str(), second.as_str()),
+        ("ghs_cloud", "ghs_cloud")
+    );
+    assert_eq!(tokens.asks("agentplot/flume"), 2);
+}
+
+/// The forge-tokens spec's "A cloud host's refusal kept not at all": the
+/// control plane refuses `agentplot/flume`'s token, so each ask gives no
+/// credential with its words, and the control plane is asked each time.
+#[test]
+fn a_cloud_hosts_refusal_is_kept_not_at_all() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::Refused {
+            words: "the drive's account is closed".to_string(),
+            host_to_fix: false,
+        },
+    );
+    let forge = asking(&tokens);
+
+    let first = ask_a_cloud_host_for_flume(&forge);
+    let second = ask_a_cloud_host_for_flume(&forge);
+
+    let refused = Asked {
+        credential: Credential::Nothing,
+        refused: Some("the drive's account is closed".to_string()),
+    };
+    assert_eq!((first, second), (refused.clone(), refused));
+    assert_eq!(tokens.asks("agentplot/flume"), 2);
+}
+
+/// The forge-tokens spec's "The control plane's word kept": the control
+/// plane says the App's installation does not cover `agentplot/flume`, so
+/// each ask gives no credential and no words, and the control plane is
+/// asked once.
+#[test]
+fn the_control_planes_word_that_the_app_is_not_installed_is_kept() {
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "agentplot/flume",
+        boomdrive_control::TokenAsked::NotInstalled(
+            "`home`: the installation does not cover agentplot/flume".to_string(),
+        ),
+    );
+    let forge = asking(&tokens);
+
+    let first = ask_a_cloud_host_for_flume(&forge);
+    let second = ask_a_cloud_host_for_flume(&forge);
+
+    let nothing = Asked {
+        credential: Credential::Nothing,
+        refused: None,
+    };
+    assert_eq!((first, second), (nothing.clone(), nothing));
+    assert_eq!(tokens.asks("agentplot/flume"), 1);
 }
