@@ -1,0 +1,222 @@
+-- allium: 3
+-- One step shape, used at every level of the Boomdrive drive.
+-- A step takes work that keeps its input contract, does its work, and
+-- gives work that keeps its output contract. Its work is simple, a sequence
+-- of steps of this same shape, or parts of this shape run side by side.
+-- The tool that keeps the step's record records each act on it.
+
+------------------------------------------------------------
+-- Value Types
+------------------------------------------------------------
+
+-- What a step reads and what it gives, by name.
+value Contract {
+    name: String
+}
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+enum Tool { headwater | millpond | flume | sounding | boom | planning | sluice | timber }
+enum Level { portfolio | drive | construction | merge_queue }
+enum Runs { alone | sequence | in_parallel }
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- The definition of a step: one per step, at every level.
+entity Step {
+    name: String
+    level: Level
+    recorded_by: Tool
+    input: Contract
+    output: Contract
+    -- The step whose work this step is part of; none at the top.
+    parent: Step?
+    -- The step that takes this one's output; none at a sequence's end.
+    next: Step?
+    -- Whether it is the first step of its parent's sequence.
+    first: Boolean
+    -- What the recording tool's records and spans call it; none where
+    -- nothing does.
+    span: String?
+    -- How many pieces of work the step serves at once.
+    capacity: Integer
+    runs: Runs
+
+    children: Step with parent = this
+    failures: Failure with step = this
+    works: Work with step = this
+
+    -- The measures, read from the works: work in progress, and what
+    -- was sent back of what finished, the step's failure rate.
+    in_progress: works where status = waiting or status = in_service
+    sent_back: works where status = sent_back
+    finished: works where status = done or status = sent_back
+}
+
+-- A way a step fails, and the step it sends the work back to.
+entity Failure {
+    step: Step
+    name: String
+    back_to: Step
+    span: String?
+}
+
+-- One piece of work in one step.
+entity Work {
+    step: Step
+    -- The link: the work of the step before, by its hash.
+    before: Work?
+    -- The work of the parent step that this work is part of.
+    inside: Work?
+    status: waiting | in_service | done | sent_back
+    waited: Duration
+    served: Duration
+    failed_as: Failure when status = sent_back
+
+    parts: Work with inside = this
+    all_parts_done: parts.count > 0 and parts.all(p => p.status = done)
+
+    transitions status {
+        waiting -> in_service
+        in_service -> done
+        in_service -> sent_back
+        terminal: done, sent_back
+    }
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+rule WorkArrives {
+    when: WorkOffered(step, before, inside)
+    requires: before = null or before.status = done
+    ensures: Work.created(step: step, before: before, inside: inside,
+        status: waiting, waited: 0.seconds, served: 0.seconds)
+}
+
+-- A simple step serves the work itself, within its capacity.
+rule ServiceStarts {
+    when: StepTakes(work)
+    requires: work.status = waiting
+    requires: work.step.runs = alone
+    ensures: work.status = in_service
+}
+
+-- A sequence serves the work by offering it to its first step.
+rule SequenceStarts {
+    when: SequenceTakes(work, first)
+    requires: work.status = waiting
+    requires: work.step.runs = sequence
+    requires: first.parent = work.step
+    requires: first.first
+    ensures: work.status = in_service
+    ensures: WorkOffered(first, work.before, work)
+}
+
+-- Parts run side by side: the work is offered to every child step.
+rule PartsStart {
+    when: PartsTake(work)
+    requires: work.status = waiting
+    requires: work.step.runs = in_parallel
+    ensures: work.status = in_service
+    ensures:
+        for part in work.step.children:
+            WorkOffered(part, work.before, work)
+}
+
+rule PartsJoin {
+    when: work: Work.all_parts_done
+    requires: work.status = in_service
+    requires: work.step.runs = in_parallel
+    ensures: StepDelivers(work)
+}
+
+rule StepGives {
+    when: StepDelivers(work)
+    requires: work.status = in_service
+    ensures: work.status = done
+    ensures:
+        if work.step.next != null:
+            WorkOffered(work.step.next, work, work.inside)
+}
+
+rule StepFails {
+    when: StepFailsWork(work, failure)
+    requires: work.status = in_service
+    requires: failure.step = work.step
+    ensures: work.status = sent_back
+    ensures: work.failed_as = failure
+    ensures: WorkOffered(failure.back_to, work.before, work.inside)
+}
+
+-- The last step of a sequence gives its parent's output.
+rule SequenceEnds {
+    when: last: Work.status transitions_to done
+    requires: last.inside != null
+    requires: last.inside.step.runs = sequence
+    requires: last.step.next = null
+    ensures: StepDelivers(last.inside)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Each link joins two steps whose contracts meet.
+invariant LinksKeepContracts {
+    for w in Works:
+        w.before != null and w.before.step.level = w.step.level
+            implies w.before.step.output = w.step.input
+}
+
+-- A sequence keeps its parent's contract at both ends.
+invariant SequencesEndWithTheirParentsOutput {
+    for s in Steps:
+        s.parent != null and s.next = null implies s.output = s.parent.output
+}
+
+invariant SequencesStartWithTheirParentsInput {
+    for s in Steps:
+        s.parent != null and s.first implies s.input = s.parent.input
+}
+
+-- A failure sends work back within its own level, or to the level below
+-- the step whose work it is part of.
+invariant FailuresGoBackToAnEarlierStep {
+    for f in Failures:
+        f.back_to != f.step or f.step.runs = alone
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor RecordingTool {
+    identified_by: Step where capacity > 0
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- The tool that keeps a step's record moves its work.
+surface StepRecord {
+    facing tool: RecordingTool
+    context work: Work where step = tool
+    exposes:
+        work.status
+        work.waited
+        work.served
+    provides:
+        WorkOffered(tool, work.before, work.inside)
+        StepTakes(work) when work.status = waiting
+        SequenceTakes(work, tool) when work.status = waiting
+        PartsTake(work) when work.status = waiting
+        StepDelivers(work) when work.status = in_service
+        StepFailsWork(work, tool) when work.status = in_service
+}

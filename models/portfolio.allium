@@ -1,0 +1,145 @@
+-- allium: 3
+-- Level 0: the portfolio, every repository of every drive. Each
+-- repository runs the drive's lineage (level 1). A promotion in one
+-- repository is a release that headwater finds for each repository that
+-- depends on it, and that release starts a lineage there. So the lineage's
+-- output is the input of the lineages downstream of it.
+use "./step.allium" as step
+
+------------------------------------------------------------
+-- External Entities
+------------------------------------------------------------
+
+-- A git repository, and the repositories that depend on what it
+-- releases, as each of them declares it.
+external entity Repository {
+    name: String
+    dependents: Set<Repository>
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- One run of the drive's lineage in one repository, from an intent to its
+-- end. Level 1 refines it.
+entity Lineage {
+    repository: Repository
+    -- The link across repositories: the lineage whose release started it.
+    upstream: Lineage?
+    status: running | promoted | ended
+
+    releases: Release with lineage = this
+
+    transitions status {
+        running -> promoted
+        running -> ended
+        terminal: promoted, ended
+    }
+}
+
+-- A release that headwater finds for one dependent repository.
+entity Release {
+    lineage: Lineage
+    dependent: Repository
+    status: found | captured
+
+    transitions status {
+        found -> captured
+        terminal: captured
+    }
+}
+
+------------------------------------------------------------
+-- Defaults
+------------------------------------------------------------
+
+default step/Step lineage_step = { name: "drive lineage", level: portfolio, recorded_by: millpond,
+    input: { name: "signals" }, output: { name: "promoted" },
+    parent: null, next: release_step, first: false, span: null,
+    capacity: 1, runs: sequence }
+default step/Step release_step = { name: "dependency release", level: portfolio, recorded_by: headwater,
+    input: { name: "promoted" }, output: { name: "signals" },
+    parent: null, next: lineage_step, first: false, span: null,
+    capacity: 1, runs: alone }
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- Curation proposes an intent in a repository: a lineage opens there.
+rule LineageOpened {
+    when: LineageOpens(repository)
+    ensures: Lineage.created(repository: repository, status: running)
+}
+
+-- Level 1 witnesses these two: its lineage reaches a promotion, or ends
+-- with none (dropped, or a version the gate refused).
+rule LineagePromoted {
+    when: LineagePromotes(lineage)
+    requires: lineage.status = running
+    ensures: lineage.status = promoted
+}
+
+rule LineageEnded {
+    when: LineageStops(lineage)
+    requires: lineage.status = running
+    ensures: lineage.status = ended
+}
+
+-- headwater finds the new release for each repository that depends on
+-- the one that promoted it.
+rule ReleaseFound {
+    when: lineage: Lineage.status transitions_to promoted
+    for dependent in lineage.repository.dependents:
+        ensures: Release.created(lineage: lineage, dependent: dependent, status: found)
+}
+
+-- millpond takes the release as a capture, and a lineage opens in the
+-- dependent repository, linked to the lineage upstream.
+rule ReleaseCaptured {
+    when: CaptureTaken(release)
+    requires: release.status = found
+    ensures: release.status = captured
+    ensures: Lineage.created(repository: release.dependent, upstream: release.lineage,
+        status: running)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- A repository does not depend on itself. A longer cycle, A on B on A,
+-- would start lineages with no end; Allium cannot say "no cycle of any
+-- length".
+invariant NoRepositoryDependsOnItself {
+    for r in Repositories:
+        not (r in r.dependents)
+}
+
+invariant ALineageStartsInTheDependentRepository {
+    for c in Lineages:
+        c.upstream != null implies c.repository in c.upstream.repository.dependents
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor Headwater {
+    identified_by: Repository where dependents.count > 0
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- headwater offers each release it found to the dependent's inbox.
+surface DependencyFeed {
+    facing headwater: Headwater
+    context release: Release where lineage.repository = headwater
+    exposes:
+        release.status
+    provides:
+        CaptureTaken(release) when release.status = found
+}

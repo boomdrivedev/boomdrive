@@ -1,0 +1,278 @@
+-- allium: 3
+-- Level 1: the drive's lineage, from an intent to a promotion.
+-- Each step is an instance of step/Step. DriveWork is the lineage's view
+-- of one intent, read from the records of the tools that keep each step.
+-- It refines level 0's drive lineage, in one repository.
+use "./step.allium" as step
+use "./portfolio.allium" as portfolio
+
+------------------------------------------------------------
+-- External Entities
+------------------------------------------------------------
+
+-- The person who answers on the rail. Boom registers the person's key.
+external entity Person {
+    name: String
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+entity DriveWork {
+    lineage: portfolio/Lineage
+    status: intent | route | elaboration | plan | construction
+          | merge_queue | publish | promote | promoted | refused | dropped
+    -- The route the person picked: a kind that delivers outputs for a
+    -- plan, or a kind that lands (a chore).
+    lands: Boolean
+    approved_by: Person when status = construction | merge_queue | publish | promote | promoted | refused
+
+    transitions status {
+        intent -> route
+        intent -> dropped
+        route -> elaboration
+        route -> merge_queue
+        elaboration -> plan
+        elaboration -> dropped
+        plan -> construction
+        construction -> merge_queue
+        construction -> dropped
+        merge_queue -> construction
+        merge_queue -> route
+        merge_queue -> publish
+        publish -> promote
+        publish -> refused
+        promote -> promoted
+        terminal: promoted, refused, dropped
+    }
+}
+
+-- A bolt, recorded by planning. The person holds and releases it, unsigned.
+entity Bolt {
+    status: open | held
+    transitions status {
+        open -> held
+        held -> open
+    }
+}
+
+------------------------------------------------------------
+-- Defaults
+------------------------------------------------------------
+
+default step/Step intent_step = { name: "intent", level: drive, recorded_by: millpond,
+    input: { name: "signals" }, output: { name: "intent-answered" },
+    parent: portfolio/lineage_step, next: route_step, first: true, span: null, capacity: 1, runs: alone }
+default step/Step route_step = { name: "route", level: drive, recorded_by: millpond,
+    input: { name: "intent-answered" }, output: { name: "routed" },
+    parent: portfolio/lineage_step, next: elaboration_step, first: false, span: "place", capacity: 1, runs: alone }
+default step/Step elaboration_step = { name: "elaboration", level: drive, recorded_by: sounding,
+    input: { name: "routed" }, output: { name: "elaboration-ended" },
+    parent: portfolio/lineage_step, next: plan_step, first: false, span: "place", capacity: 1, runs: alone }
+default step/Step plan_step = { name: "plan", level: drive, recorded_by: planning,
+    input: { name: "elaboration-ended" }, output: { name: "approved" },
+    parent: portfolio/lineage_step, next: construction_step, first: false, span: null, capacity: 1, runs: alone }
+default step/Step construction_step = { name: "construction", level: drive, recorded_by: flume,
+    input: { name: "approved" }, output: { name: "change-record" },
+    parent: portfolio/lineage_step, next: queue_step, first: false, span: "place", capacity: 1, runs: sequence }
+default step/Step queue_step = { name: "merge queue", level: drive, recorded_by: sluice,
+    input: { name: "change-record" }, output: { name: "landed" },
+    parent: portfolio/lineage_step, next: publish_step, first: false, span: null, capacity: 1, runs: sequence }
+default step/Step publish_step = { name: "publish", level: drive, recorded_by: timber,
+    input: { name: "landed" }, output: { name: "accepted" },
+    parent: portfolio/lineage_step, next: promote_step, first: false, span: null, capacity: 1, runs: alone }
+default step/Step promote_step = { name: "promote", level: drive, recorded_by: timber,
+    input: { name: "accepted" }, output: { name: "promoted" },
+    parent: portfolio/lineage_step, next: null, first: false, span: null, capacity: 1, runs: alone }
+
+default step/Failure queue_sends_change_back = { step: queue_step, name: "blamed or conflicting",
+    back_to: construction_step, span: "sluice.blame" }
+default step/Failure queue_sends_chore_back = { step: queue_step, name: "a chore blamed or conflicting",
+    back_to: route_step, span: "sluice.blame" }
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- Curation joins signals into a proposed intent (millpond).
+rule CurationProposesIntent {
+    when: CurationProposes(repository)
+    ensures: portfolio/LineageOpens(repository)
+}
+
+-- Each lineage level 0 opens starts at an intent: one curation proposed,
+-- or one a release upstream started.
+rule IntentProposed {
+    when: lineage: portfolio/Lineage.created
+    ensures: DriveWork.created(lineage: lineage, status: intent, lands: false)
+}
+
+-- The person answers yes, drop or split (millpond: intent-answered).
+rule IntentAnswered {
+    when: PersonAnswersIntent(work, yes)
+    requires: work.status = intent
+    ensures:
+        if yes:
+            work.status = route
+        else:
+            work.status = dropped
+            portfolio/LineageStops(work.lineage)
+}
+
+-- The person picks a kind that takes an intent (millpond: routed);
+-- flume launches it with the intent as its input (flume 228).
+rule RoutePicked {
+    when: PersonPicksRoute(work, lands)
+    requires: work.status = route
+    ensures: work.lands = lands
+    ensures:
+        if lands:
+            ChoreLaunched(work)
+        else:
+            work.status = elaboration
+}
+
+-- A chore's place delivers and flume submits it.
+rule ChoreSubmitted {
+    when: ChoreDelivers(work)
+    requires: work.status = route
+    requires: work.lands
+    ensures: work.status = merge_queue
+    ensures: WorkSubmitted(work)
+}
+
+-- The person accepts the elaboration's conclusion (sounding:
+-- elaboration-ended), or drops it. Go on is another round, no move.
+rule ElaborationDecided {
+    when: PersonDecidesElaboration(work, accept)
+    requires: work.status = elaboration
+    ensures:
+        if accept:
+            work.status = plan
+        else:
+            work.status = dropped
+            portfolio/LineageStops(work.lineage)
+}
+
+-- The person approves the plan with the key (Boom: approved), and flume
+-- launches each unit with the approval as its input.
+rule PlanApproved {
+    when: PersonApprovesPlan(work, person)
+    requires: work.status = plan
+    ensures: work.status = construction
+    ensures: work.approved_by = person
+    ensures: ConstructionLaunched(work)
+}
+
+rule BoltHeld {
+    when: PersonHoldsBolt(bolt)
+    requires: bolt.status = open
+    ensures: bolt.status = held
+}
+
+rule BoltReleased {
+    when: PersonReleasesBolt(bolt)
+    requires: bolt.status = held
+    ensures: bolt.status = open
+}
+
+-- The levels below witness these three: construction (change@3)
+-- delivers, and the merge queue (sluice) lands work or sends it back.
+rule ConstructionDelivered {
+    when: ConstructionDelivers(work)
+    requires: work.status = construction
+    ensures: work.status = merge_queue
+}
+
+rule QueueSendsBack {
+    when: QueueFails(work)
+    requires: work.status = merge_queue
+    ensures:
+        if work.lands:
+            work.status = route
+        else:
+            work.status = construction
+}
+
+rule QueueLanded {
+    when: QueueLands(work)
+    requires: work.status = merge_queue
+    ensures: work.status = publish
+}
+
+-- timber's gate judges the version by its claims and the policy.
+rule VersionJudged {
+    when: GateJudges(work, accepted)
+    requires: work.status = publish
+    ensures:
+        if accepted:
+            work.status = promote
+        else:
+            work.status = refused
+            portfolio/LineageStops(work.lineage)
+}
+
+rule ChannelMoved {
+    when: PromotionAsked(work)
+    requires: work.status = promote
+    ensures: work.status = promoted
+    ensures: portfolio/LineagePromotes(work.lineage)
+}
+
+rule PersonDropsWork {
+    when: PersonDrops(work)
+    requires: work.status = construction
+    ensures: work.status = dropped
+    ensures: portfolio/LineageStops(work.lineage)
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor Operator {
+    identified_by: Person where name != ""
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- The rail: each act of the person, recorded by the tool that keeps
+-- what it changes.
+surface Rail {
+    facing person: Operator
+    context work: DriveWork
+    exposes:
+        work.status
+    provides:
+        PersonAnswersIntent(work, yes) when work.status = intent
+        PersonPicksRoute(work, lands) when work.status = route
+        PersonDecidesElaboration(work, accept) when work.status = elaboration
+        PersonApprovesPlan(work, person) when work.status = plan
+        PersonDrops(work) when work.status = construction
+        PersonHoldsBolt(bolt)
+        PersonReleasesBolt(bolt)
+
+    @guarantee OnlyAcceptAndApprovalAreSigned
+        -- The key signs a claim's accept and a plan's approval. Every
+        -- other act is a record with the person's name and no signature.
+
+    @guarantee NoLandingIsThePersonsAct
+        -- The rail offers no act that lands work. A bolt lands on green
+        -- unless it is held.
+}
+
+-- What the tools do between the person's acts.
+surface Tools {
+    facing tool: step/RecordingTool
+    context work: DriveWork
+    exposes:
+        tool.name
+    provides:
+        CurationProposes(repository)
+        ChoreDelivers(work) when work.status = route
+        GateJudges(work, accepted) when work.status = publish
+        PromotionAsked(work) when work.status = promote
+}

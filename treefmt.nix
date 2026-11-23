@@ -59,6 +59,9 @@ in
     "site/node_modules/**"
     "site/dist/**"
     "site/.astro/**"
+    # The design models, in Allium: Allium has no formatter;
+    # models:typecheck runs its checker over each model.
+    "*.allium"
   ];
 
   programs.rustfmt.enable = true;
