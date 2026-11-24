@@ -48,6 +48,7 @@ weir-branch = { git = "https://github.com/boomdrivedev/weir", rev = "5e3f1286d75
 weir-bounded = { git = "https://github.com/boomdrivedev/weir", rev = "5e3f1286d7572a4c70b5e61600f2d50609793820" }
 # The digest an inbox item's brief is carried by (design Decision 14).
 sha2 = "0.10"
+sha1 = "0.11"
 # SIGTERM and SIGINT, which stop the runner between repositories
 # (design 10).
 signal-hook = "0.3"

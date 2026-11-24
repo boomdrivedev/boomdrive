@@ -11,6 +11,7 @@ pub mod config;
 pub mod enroll;
 pub mod facts;
 pub mod flume;
+pub mod flume_host;
 pub mod forge;
 pub mod forge_token;
 pub mod git;

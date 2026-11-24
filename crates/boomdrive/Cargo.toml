@@ -57,6 +57,9 @@ time.workspace = true
 # Each owner's VS Code workspace is read and written with its members in
 # their order (design Decision 4).
 serde_json = { workspace = true, features = ["preserve_order"] }
+# flume host's socket, named by the SHA-1 of flume's state folder as
+# flume host names it (the change the-runner-hears-flume-by-subscription).
+sha1.workspace = true
 sha2.workspace = true
 signal-hook.workspace = true
 toml.workspace = true

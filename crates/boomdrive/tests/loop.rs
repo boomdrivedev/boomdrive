@@ -12,7 +12,7 @@ mod fakes;
 use boomdrive::config::Address;
 use boomdrive::run::{Notices, Programs, Runner, Stopper};
 use common::{keeping, Scratch};
-use fakes::{HeldFetch, Stub};
+use fakes::{HeldFetch, Stub, StubHost};
 use std::ffi::OsStr;
 use std::sync::mpsc::{self, Receiver};
 use std::thread::{self, JoinHandle};
@@ -31,6 +31,8 @@ struct Running {
     flume: Stub,
     /// The stub `millpond` the runner runs, whose calls a test reads.
     millpond: Stub,
+    /// A stub flume host, which a runner that carries no part never asks.
+    host: StubHost,
 }
 
 impl Running {
@@ -48,6 +50,8 @@ impl Running {
         let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
         let flume = Stub::new();
         let millpond = Stub::new();
+        let host = StubHost::new(flume.dir.path());
+        runner.flume_socket(host.socket.clone());
         runner.tools(Programs {
             flume: flume.program(),
             sluice: scratch.root.join("absent/sluice"),
@@ -68,6 +72,7 @@ impl Running {
             thread,
             flume,
             millpond,
+            host,
         }
     }
 
@@ -404,8 +409,9 @@ fn a_file_broken_while_running() {
 
 /// The running spec's "No pass runs a settle": naming no control plane
 /// and no inbox, and keeping each second, the runner makes three keeping
-/// passes and asks the stub `flume` and the stub `millpond` nothing, since
-/// `flume host` keeps the host's watch (core.13).
+/// passes and asks the stub `flume`, the stub `millpond` and the stub
+/// flume host nothing, since `flume host` keeps the host's watch and a
+/// runner that carries no part reads no status (core.13).
 #[test]
 fn no_pass_runs_a_settle() {
     let scratch = Scratch::new();
@@ -420,6 +426,8 @@ fn no_pass_runs_a_settle() {
     }
 
     assert_eq!(running.flume.calls(), [] as [Vec<String>; 0]);
+    // The running spec's "A runner that carries no part".
+    assert_eq!(running.host.asks(), [] as [String; 0]);
     assert_eq!(
         running.millpond.calls(),
         [] as [Vec<String>; 0],

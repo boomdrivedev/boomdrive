@@ -19,6 +19,7 @@
 
 use crate::carry::{Carrier, Configured, Elsewhere, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
+use crate::flume_host::{self, Source, Subscription, Where};
 use crate::forge::Forge;
 use crate::git::Git;
 use crate::locks::Locks;
@@ -197,6 +198,14 @@ impl Bells {
         Box::new(move || bell.wake())
     }
 
+    /// Wakes every part, as a change of Flume's status heard does (the
+    /// change the-runner-hears-flume-by-subscription, Decision 4).
+    fn wake_all(&self) {
+        for bell in self.bells().values() {
+            bell.wake();
+        }
+    }
+
     /// Stops every part.
     fn stop(&self) {
         for bell in self.bells().values() {
@@ -328,6 +337,9 @@ pub struct Runner {
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
+    /// Where flume host's socket is, by the environment the runner started
+    /// in unless a test puts its own in place.
+    flume_socket: Where,
     /// The runner's ticks of each inbox, shared by the loop and every
     /// part's thread.
     ticker: Ticker,
@@ -370,6 +382,12 @@ struct Host<'a> {
     locks: &'a Locks,
     report: &'a ReportFile,
     ticker: &'a Ticker,
+    /// Where flume host's socket is.
+    flume_socket: &'a Where,
+    /// The runner's subscription to flume host, which each pass reads
+    /// Flume's status from; none for `run --once`, whose passes ask flume
+    /// host once for each read.
+    subscription: Option<&'a Subscription>,
 }
 
 /// The runner's ticks: millpond's tick of each inbox the configuration
@@ -440,6 +458,7 @@ impl Runner {
         var: impl Fn(&str) -> Option<OsString>,
         git: Git,
     ) -> Result<Runner, String> {
+        let flume_socket = Where::from_env(&var);
         let env = Env::read(var)?;
         let file = config::config_path(file, &env);
         let local = config::local_path(&env);
@@ -474,6 +493,7 @@ impl Runner {
             config,
             programs: Programs::on_path(),
             control,
+            flume_socket,
             ticker,
             events,
             notices,
@@ -524,6 +544,12 @@ impl Runner {
     /// not.
     pub fn tools(&mut self, programs: Programs) {
         self.programs = programs;
+    }
+
+    /// Puts flume host's socket at `socket`, in place of the one the
+    /// runner's environment names: a test's stub flume host.
+    pub fn flume_socket(&mut self, socket: PathBuf) {
+        self.flume_socket = Where::At(socket);
     }
 
     /// What tells the runner of landings.
@@ -610,6 +636,8 @@ impl Runner {
             locks: &self.locks,
             report: &self.report,
             ticker: &self.ticker,
+            flume_socket: &self.flume_socket,
+            subscription: None,
         })
     }
 
@@ -724,9 +752,23 @@ impl Runner {
             .map(|part| self.bells.of(&part.label))
             .collect();
         let this = &*self;
-        let host = this.host();
+        // One subscription to flume host for every part, held while the
+        // runner carries any (the change the-runner-hears-flume-by-
+        // subscription, Decision 1).
+        let subscription = Subscription::new(this.flume_socket.clone());
+        let carries = !parts.is_empty();
+        let host = this.host().map(|host| Host {
+            subscription: Some(&subscription),
+            ..host
+        });
         let mut unstarted = Some(parts.iter_mut().zip(bells.iter()));
         thread::scope(|scope| {
+            if carries && host.is_some() {
+                let (subscription, stop, bells) = (&subscription, &*this.stop, &this.bells);
+                scope.spawn(move || {
+                    subscription.hold(stop, &|| bells.wake_all(), &|line| say(line));
+                });
+            }
             let mut started = Some(this.config.clone());
             let mut fetch_interval = this.config.fetch_interval;
             let mut keep_due = Instant::now();
@@ -1038,7 +1080,14 @@ impl Host<'_> {
                 ));
             }
         };
-        let flume = flume::Cli::new(&self.programs.flume);
+        let cli = flume::Cli::new(&self.programs.flume);
+        let flume = flume_host::Resident {
+            cli: &cli,
+            source: match self.subscription {
+                Some(subscription) => Source::Subscription(subscription),
+                None => Source::Ask(self.flume_socket),
+            },
+        };
         let sluice = sluice::Cli::new(&self.programs.sluice);
         let tools = self.programs.tools();
         let control_dir = report::control_dir(self.data);

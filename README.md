@@ -1245,14 +1245,27 @@ the places it did not lease.
 
 A control pass runs after the first keeping pass, then each
 `poll_interval` after the start of the one before, sooner, after a pass
-that reported, where a lease not yet lapsed would lapse first, and at
-once when the control plane wakes the runner. The runner says once that
-its control plane could not be read, and once that it is read again.
+that reported, where a lease not yet lapsed would lapse first, at
+once when the control plane wakes the runner, and at once when Flume's
+status changes. The runner says once that its control plane could not
+be read, and once that it is read again.
+
+While it carries a control plane's parts, the runner holds one
+subscription to flume host, Flume's resident, on its socket,
+`host-<key>.sock` in `$FLUME_USER_SCRATCH` or `/tmp/flume-<uid>`, and
+keeps the latest status flume host sends; it runs no `flume --json
+status` of its own. Each status that differs from the one held wakes
+every part. `--once` asks flume host for the status once for each read.
+Where no flume host answers, Flume's status cannot be read, and a pass
+launches nothing; the runner tries again after a second, doubling up to
+a minute, and says `boomdrive: flume host does not answer: <why>` once
+and `boomdrive: flume host answers again` once it does.
+
 Each control pass ends with the ticks of each inbox, on its part's
 thread, and the first, which follows the first keeping pass at once,
 ticks for both. A control pass:
 
-- reads `flume --json status`, and hands the control plane the
+- reads Flume's status from flume host, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,
   apart from them those it drains, Flume's host part as Flume printed
   it, and the leases the runner holds;
