@@ -10,7 +10,7 @@ Record 0054 (accepted 2026-11-19, point 3 as amended with record 0056) and the r
 
 `[accounts.<account>]` holds `control_plane`, `"crew"` or `"hosted"`, beside `drives`. `[control_plane]` holds `poll_interval` and the table of each implementation an account names, `[control_plane.crew]` and `[control_plane.hosted]`, each handed whole to its implementation as before. The configuration is refused where an account names an implementation this binary does not carry, or one whose table `[control_plane]` does not hold; where `[control_plane]` holds a table no account names; where it holds `type`, the words naming `accounts.<account>.control_plane`; and where it holds no table at all. An account naming none is served by no control plane: its repositories are kept and no work comes for them. The local layer sets no account's `control_plane` (core.17). `poll_interval` is every part's.
 
-A host serves at most one plane of each implementation. A second hosted plane, such as production beside a local copy, is a later change of `[control_plane]`'s shape, which core.19 already allows.
+A host serves at most one plane of each implementation. A second hosted plane, such as production beside a local copy, is a later change of `[control_plane]`'s shape, which core.19 already allows. A repository stays in one drive on a host (record 0028), so it has one account and one plane; record 0054's repository in drives of two accounts, reported to both, is a later change of that rule.
 
 ### Decision 2: The runner opens each plane its accounts name, in `PLANES`' order
 

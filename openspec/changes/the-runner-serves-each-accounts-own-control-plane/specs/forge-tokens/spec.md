@@ -8,8 +8,3 @@ Where an account names a control plane that holds the App, a repository whose ev
 
 - **WHEN** the account `own` names crew and keeps `agentplot/flume`, the account `cloud` names the hosted control plane and keeps `example/app`, `[forge]` names the App, and git asks `get` for each
 - **THEN** `example/app`'s token is asked of the hosted control plane, and `agentplot/flume`'s is minted from the App's key
-
-#### Scenario: A repository both accounts serve
-
-- **WHEN** `agentplot/flume` is kept by the account `own`, which names crew, and by the account `cloud`, which names the hosted control plane, and `[forge]` names the App
-- **THEN** `agentplot/flume`'s token is minted from the App's key, and the hosted control plane is not asked
