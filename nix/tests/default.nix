@@ -22,6 +22,7 @@ in
     // import ./companions.nix t
     // import ./timber.nix t
     // import ./millpond.nix t
+    // import ./flume-host.nix t
     // import ./plugins.nix t
     // import ./file.nix t
     // import ./darwin.nix t
