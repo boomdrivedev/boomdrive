@@ -382,16 +382,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1795133136,
-        "narHash": "sha256-Zqqix4Bch/rSWA2qAmKUjE8DDSPOyWKV81atNvWRD3k=",
+        "lastModified": 1795481560,
+        "narHash": "sha256-3COPjewKne59+zmzzMPAMubQUXBvFt3YB3pkS6pxY+w=",
         "owner": "boomdrivedev",
         "repo": "sluice",
-        "rev": "cea8689074f424546866dd1daabebb5f0c5e7c9d",
+        "rev": "b041bd05b8e5cd91c120a71cfd4dabeb9baa72de",
         "type": "github"
       },
       "original": {
         "owner": "boomdrivedev",
-        "ref": "v0.99.2",
+        "ref": "v0.105.1",
         "repo": "sluice",
         "type": "github"
       }
