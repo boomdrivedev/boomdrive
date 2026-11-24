@@ -61,16 +61,17 @@ let
   # state repository `example/away`, whose one drive `away` is on `host-b`.
   elsewhere = {
     accounts.work = {
+      control_plane = "crew";
       state_repository = "example/away";
       drives.away.machine = "host-b";
     };
-    settings.control_plane.type = "crew";
   };
 
   # "A host under crew": the account `own` names its crew state
   # repository, which the runner's file does not hold.
   crew = {
     accounts.own = {
+      control_plane = "crew";
       state_repository = "example/state";
       drives.home.repositories.agentplot = [
         "flume"
@@ -86,7 +87,6 @@ let
         key_file = "~/.config/boomdrive/app.pem";
       };
       control_plane = {
-        type = "crew";
         crew = {
           host = "host-a";
           partitions = [
@@ -109,12 +109,14 @@ in
   # partition, and nothing else set, which setup's own test holds setup's
   # file to past its first line.
   setup = {
-    accounts.own.drives.home.repositories.agentplot = [
-      "flume"
-      "sluice"
-    ];
+    accounts.own = {
+      control_plane = "crew";
+      drives.home.repositories.agentplot = [
+        "flume"
+        "sluice"
+      ];
+    };
     settings.control_plane = {
-      type = "crew";
       crew = {
         host = "host-a";
         partitions = [
@@ -135,11 +137,13 @@ in
   # account `work`, with no drive, none.
   hosted = {
     accounts = {
-      home.drives.garden.repositories.agentplot = [ "flume" ];
-      work = { };
+      home = {
+        control_plane = "hosted";
+        drives.garden.repositories.agentplot = [ "flume" ];
+      };
+      work.control_plane = "hosted";
     };
     settings.control_plane = {
-      type = "hosted";
       hosted = {
         url = "https://control.example";
         partitions = [
@@ -158,11 +162,7 @@ in
 
   # "A host under crew" with no crew table, for the module to write.
   crewUnwritten = crew // {
-    settings = crew.settings // {
-      control_plane = {
-        type = "crew";
-      };
-    };
+    settings = removeAttrs crew.settings [ "control_plane" ];
   };
 
   # crew's teams file for one drive, `home`, on `host-a`.
@@ -184,6 +184,7 @@ in
   # `field` naming no machine.
   crewAccounts = {
     own = {
+      control_plane = "crew";
       state_repository = "example/state";
       drives = {
         garden.machine = "host-a";
@@ -191,6 +192,7 @@ in
       };
     };
     work = {
+      control_plane = "crew";
       state_repository = "example/work";
       drives = {
         away.machine = "host-b";
@@ -236,11 +238,13 @@ in
   # repository, whose drive `home` keeps agentplot's flume and sluice; it
   # goes with crewModule, which writes home's machine and state.
   stateless = {
-    accounts.own.drives.home.repositories.agentplot = [
-      "flume"
-      "sluice"
-    ];
-    settings.control_plane.type = "crew";
+    accounts.own = {
+      control_plane = "crew";
+      drives.home.repositories.agentplot = [
+        "flume"
+        "sluice"
+      ];
+    };
   };
 
   # Under crew with no crew table, the account `own`, naming the state
@@ -252,12 +256,15 @@ in
   reading = {
     accounts = {
       own = {
+        control_plane = "crew";
         state_repository = "example/state";
         drives.home.repositories.agentplot = [ "flume" ];
       };
-      work.drives.field.repositories.agentplot = [ "sluice" ];
+      work = {
+        control_plane = "crew";
+        drives.field.repositories.agentplot = [ "sluice" ];
+      };
     };
-    settings.control_plane.type = "crew";
   };
 
   # crewKeys with a second drive, `stray`, whose machine and state crew's

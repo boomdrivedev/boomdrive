@@ -397,10 +397,7 @@ let
     let
       evaluated = system {
         imports = [ (crewOf settings.crewDrives) ];
-        services.boomdrive = {
-          accounts = settings.crewAccounts;
-          settings.control_plane.type = "crew";
-        };
+        services.boomdrive.accounts = settings.crewAccounts;
       };
       table = evaluated.config.services.boomdrive.settings.control_plane.crew;
       ordered = {
@@ -436,10 +433,7 @@ let
     let
       evaluated = system {
         imports = [ (crewOf settings.crewKeys) ];
-        services.boomdrive = {
-          accounts = settings.crewAccounts;
-          settings.control_plane.type = "crew";
-        };
+        services.boomdrive.accounts = settings.crewAccounts;
       };
       table = evaluated.config.services.boomdrive.settings.control_plane.crew;
       expected = {
@@ -678,7 +672,7 @@ onEach "Each tool's options are its own flake's" ownOptions
 // onEach "crew's old way of running" oldRuns
 // onEach "crew's old batch names" oldReview
 // {
-  # The Mac's flake README shows sets the runner's control plane to crew's
+  # The Mac's flake README shows names crew as its account's control plane
   # and writes no crew table beside crew's drives, which the module writes
   # (design Decision 8; the change a-drives-machine-and-state-are-named-once,
   # design Decision 9), and declares no source of crew's to Flume, which
@@ -686,19 +680,15 @@ onEach "Each tool's options are its own flake's" ownOptions
   # the-set-declares-crews-source-to-flume).
   "The host flake's crew table" =
     let
-      controlPlane = hostModule.services.boomdrive.settings.control_plane;
+      controlPlane = hostModule.services.boomdrive.settings.control_plane or null;
     in
     t.expect (
       lib.head hostModules == "the set's module"
     ) "examples/host-flake.nix's host-a takes no darwinModules.default first"
     ++
       t.expect
-        (
-          controlPlane == {
-            type = "crew";
-          }
-        )
-        "examples/host-flake.nix's control_plane is ${builtins.toJSON controlPlane}, not crew's type alone"
+        (controlPlane == null && hostModule.services.boomdrive.accounts.own.control_plane == "crew")
+        "examples/host-flake.nix's control_plane is ${builtins.toJSON controlPlane}, and its account own names no crew, not crew named by its account alone"
     ++ t.expect (
       !(hostModule.services.flume or { } ? sources)
     ) "examples/host-flake.nix sets services.flume.sources";

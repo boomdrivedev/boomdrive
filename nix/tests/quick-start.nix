@@ -148,12 +148,12 @@ let
     ) "the runner's user is ${config.services.boomdrive.user}, not you"
     ++ t.expect (
       file.accounts == {
-        me.drives.home.repositories = [ "your-github-name/your-repository" ];
+        me = {
+          control_plane = "crew";
+          drives.home.repositories = [ "your-github-name/your-repository" ];
+        };
       }
     ) "the runner's file's accounts are ${builtins.toJSON file.accounts}"
-    ++ t.expect (
-      (file.control_plane.type or null) == "crew"
-    ) "the runner's file's control plane is no crew"
     ++ t.expect (
       crewTable == {
         host = "your-host";

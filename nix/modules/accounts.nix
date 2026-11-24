@@ -2,9 +2,10 @@
 # each-repository-is-named-once-by-its-owner, design Decision 1; record
 # 0028), the one place that reads it, so both platforms render one text.
 # `drivesOf` lists each drive, in the accounts' and then the drives' name
-# order, as `{ account, name, machine, stream, state_repository, addresses }`,
-# each carrying its account's crew state repository, null where the
-# account names none (record 0032), its addresses
+# order, as `{ account, name, machine, stream, control_plane,
+# state_repository, addresses }`, each carrying its account's control
+# plane and crew state repository, each null where the account names none
+# (records 0032 and 0054), its addresses
 # `<owner>/<name>`, owner by owner in the order of the owners' names, each
 # owner's names in the order given: nix keeps no order of an attribute
 # set's names, so the owners' names give it. `hereOf host` keeps the
@@ -18,7 +19,8 @@
 # up, and no other (record 0032 as amended on 2026-11-18). `fileOf` is
 # the table the runner's file is rendered from: `settings`, with `accounts`
 # from `accounts`, every account's `drives` and every drive's
-# `repositories` always written. A drive's stream and machine are the modules' options,
+# `repositories` always written, and an account's `control_plane` where it
+# names one (record 0054). A drive's stream and machine are the modules' options,
 # never keys of the runner's file (core.5).
 { lib }:
 let
@@ -34,11 +36,17 @@ in
         account:
         {
           drives,
+          control_plane ? null,
           state_repository ? null,
           ...
         }:
         lib.mapAttrsToList (name: drive: {
-          inherit account name state_repository;
+          inherit
+            account
+            name
+            control_plane
+            state_repository
+            ;
           inherit (drive) machine stream;
           addresses = addressesOf drive;
         }) drives
@@ -69,8 +77,14 @@ in
     cfg:
     cfg.settings
     // {
-      accounts = lib.mapAttrs (_: account: {
-        drives = lib.mapAttrs (_: drive: { repositories = addressesOf drive; }) account.drives;
-      }) cfg.accounts;
+      accounts = lib.mapAttrs (
+        _: account:
+        {
+          drives = lib.mapAttrs (_: drive: { repositories = addressesOf drive; }) account.drives;
+        }
+        // lib.optionalAttrs ((account.control_plane or null) != null) {
+          inherit (account) control_plane;
+        }
+      ) cfg.accounts;
     };
 }

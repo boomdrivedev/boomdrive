@@ -172,7 +172,7 @@ let
     config.systemd.package
   ];
 
-  hosted = (cfg.settings.control_plane.type or null) == "hosted";
+  hosted = lib.any (account: account.control_plane == "hosted") (lib.attrValues cfg.accounts);
   systemd = config.systemd.package.version;
 in
 {

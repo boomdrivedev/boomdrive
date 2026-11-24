@@ -23,6 +23,7 @@
             services.boomdrive = {
               enable = true;
               accounts.own = {
+                control_plane = "crew";
                 state_repository = "example/state";
                 drives.home.repositories.boomdrivedev = [
                   "flume"
@@ -32,7 +33,6 @@
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
-                control_plane.type = "crew";
               };
             };
             services.crew = {
