@@ -149,6 +149,15 @@ impl Family {
             ("XDG_STATE_HOME".into(), home.join(".local/state").into()),
             ("XDG_CACHE_HOME".into(), home.join(".cache").into()),
             ("TMPDIR".into(), self.scratch.root.join("tmp").into()),
+            // sluice's short directory of the user's, where its host
+            // process binds its socket, in the scratch folder: the gate
+            // runs these tests under sluice's sandbox, where a program a
+            // test starts may write the scratch folder and not
+            // `/tmp/sluice-<uid>`, as sluice's own tests name it.
+            (
+                "SLUICE_USER_SCRATCH".into(),
+                self.scratch.root.join("u").into(),
+            ),
             ("PATH".into(), path),
         ]);
         environment
