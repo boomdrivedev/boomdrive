@@ -66,8 +66,7 @@ pub struct Config {
     pub forge: Option<ForgeApp>,
     /// `inboxes`: each inbox this host keeps, by the name millpond's host
     /// configuration gives it, whose `millpond tick` each pass runs once
-    /// beside Flume's settle (record 0033; core.13): none where the file
-    /// names none.
+    /// at its end (record 0033; core.13): none where the file names none.
     pub inboxes: Vec<String>,
     /// How the local layer was read: none where there is no local file.
     pub local: LocalLayer,

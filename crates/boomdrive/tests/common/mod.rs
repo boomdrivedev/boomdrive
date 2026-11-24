@@ -1,11 +1,11 @@
 //! The scratch host every test runs on (design 11): a temporary directory
 //! holding the home, a git configuration, a forge standing in for GitHub,
-//! and a stub `flume` that answers the runner's settle. Every git call a
+//! and a stub `flume` that answers nothing. Every git call a
 //! test makes, and every one the runner makes in it, runs under its
 //! environment, so no test reads the user's git configuration, reaches
 //! the network or holds a credential (core.4), and every run of the
-//! runner's binary finds the stub first on its `PATH`, so none settles a
-//! Flume of the host's (record 0029).
+//! runner's binary finds the stub first on its `PATH`, so none reaches a
+//! Flume of the host's.
 
 #![allow(dead_code)]
 
@@ -56,13 +56,9 @@ pub fn drives(drives: &[(&str, &[&str])]) -> String {
         .collect()
 }
 
-/// The scratch host's stub `flume`: it answers `--json settle` with Flume
-/// 0.17.1's answer on a scratch host holding no place, `{fixture}`, and
-/// exit 0, and anything else with nothing and exit 1.
-const FLUME: &str = r#"#!/bin/sh
-if [ "$1" = --json ] && [ "$2" = settle ]; then cat '{fixture}'; exit 0; fi
-exit 1
-"#;
+/// The scratch host's stub `flume`: it answers anything with nothing and
+/// exit 1.
+const FLUME: &str = "#!/bin/sh\nexit 1\n";
 
 /// What a silent remote has seen: how many connections it took, and how
 /// many of them their far end has closed.
@@ -160,14 +156,8 @@ impl Scratch {
         .expect("the scratch git configuration");
         let bin = root.join("bin");
         std::fs::create_dir_all(&bin).expect("the stub's folder");
-        let settled =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json");
         let flume = bin.join("flume");
-        std::fs::write(
-            &flume,
-            FLUME.replace("{fixture}", &settled.to_string_lossy()),
-        )
-        .expect("the stub flume");
+        std::fs::write(&flume, FLUME).expect("the stub flume");
         let mut permissions = std::fs::metadata(&flume)
             .expect("the stub's metadata")
             .permissions();
@@ -217,8 +207,7 @@ impl Scratch {
     }
 
     /// The runner's binary under the scratch environment, the stub
-    /// `flume` first on its `PATH`, so its settle runs no Flume of the
-    /// host's. A test that sets `PATH` itself puts its own stubs first.
+    /// `flume` first on its `PATH`, so it runs no Flume of the host's. A test that sets `PATH` itself puts its own stubs first.
     pub fn boomdrive(&self) -> Command {
         let mut path = OsString::from(&self.bin);
         if let Some(own) = std::env::var_os("PATH") {

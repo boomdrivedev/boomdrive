@@ -1,13 +1,12 @@
 //! millpond's tick, `millpond tick --inbox <name> --json`, the runner's
-//! second housekeeping beside Flume's settle: each pass, keeping or a
-//! part's control pass, runs it once for each inbox the configuration
-//! names, awaited on the settle's thread, so the host keeps one clock
-//! (record 0033; core.13). millpond decides what is due and what a tick
+//! one housekeeping: each pass, keeping or a part's control pass, runs it
+//! once for each inbox the configuration names, awaited on that pass's
+//! thread (record 0033; core.13). millpond decides what is due and what a tick
 //! runs (core.1). The runner reads nothing of a tick's answer but whether
 //! millpond gave one: it is carried to no control plane and kept nowhere
 //! (core.11), and a tick that fails stops no pass. What the runner says of
 //! an inbox's ticks it says only when that changes, as it says its
-//! settles (core.23).
+//! control plane's reach (core.23).
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
