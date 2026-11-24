@@ -25,4 +25,4 @@
 
 ## 5. The gate
 
-- [ ] 5.1 The fast layer passes. True when `sluice exec main` passes.
+- [x] 5.1 The fast layer passes. True when `sluice exec main` passes.

@@ -224,7 +224,7 @@ Setup SHALL pass crew no `--flume`, `--roles` or `--console`. It SHALL carry cre
 
 ### Requirement: The runner's file holds the keys Nix writes
 
-Setup SHALL write the runner's managed layer, `config.toml`, holding `accounts`, with each account, drive and repository setup has set up, and `[control_plane]`, with `type` the implementation's word and its own table: crew's `host`, and a partition for each drive with its `label` and `state_repository`. Past its first line, it SHALL be byte for byte the file Nix's module renders for the same accounts and control plane (record 0009 as amended 2026-11-09).
+Setup SHALL write the runner's managed layer, `config.toml`, holding `accounts`, each account it set up naming the implementation as its `control_plane`, and `[control_plane]`, holding the implementation's own table: crew's `host`, and a partition for each drive with its `label` and `state_repository`. Past its first line, it SHALL be byte for byte the file Nix's module renders for the same accounts and control plane (record 0009 as amended 2026-11-09).
 
 #### Scenario: One drive under crew
 

@@ -31,12 +31,12 @@ The hosted implementation SHALL open from `[control_plane.hosted]`: `url`, requi
 
 ### Requirement: A partition is enrolled once by boomdrive enroll
 
-`boomdrive enroll <label>` SHALL read the token from standard input, make an Ed25519 key in memory, and send one `POST runner/enroll` under `url`, the token its bearer and its body an `enroll` of version 4. It SHALL keep the key only once `enrolled` answers, print `enrolled` or the refusal's words as given, and write no configuration and nothing in the data directory (core.31, core.39; records 0006, 0037, 0052 and 0053).
+`boomdrive enroll <label>` SHALL read the token from standard input, make an Ed25519 key in memory, and send one `POST runner/enroll` under `url`, the token its bearer and its body an `enroll` of version 5. It SHALL keep the key only once `enrolled` answers, print `enrolled` or the refusal's words as given, and write no configuration and nothing in the data directory (core.31, core.39; records 0006, 0037, 0052 and 0053).
 
 #### Scenario: A partition enrolled
 
 - **WHEN** partition `home` is enrolled with a token, and the fake control plane takes the `enroll` and answers `enrolled` with host `h-1`
-- **THEN** the request bore the token, its `enroll` passed version 4 and its signature checked over version 4's context, the key is in the store under `home`, and the enrollment names host `h-1`
+- **THEN** the request bore the token, its `enroll` passed version 5 and its signature checked over version 5's context, the key is in the store under `home`, and the enrollment names host `h-1`
 
 #### Scenario: A lapsed token
 
@@ -55,11 +55,11 @@ The hosted implementation SHALL open from `[control_plane.hosted]`: `url`, requi
 
 ### Requirement: boomdrive enroll refuses what it cannot enroll
 
-`boomdrive enroll` SHALL be refused, exiting 2 before any request, where the configuration names no control plane whose implementation enrolls, where its table has no partition of the label, where the token is empty, and where the host has no credential store. A control plane that cannot be reached SHALL be refused with exit 1, and no key written.
+`boomdrive enroll` SHALL be refused, exiting 2 before any request, where no account names a control plane whose implementation enrolls, where its table has no partition of the label, where the token is empty, and where the host has no credential store. A control plane that cannot be reached SHALL be refused with exit 1, and no key written.
 
 #### Scenario: crew's control plane
 
-- **WHEN** `boomdrive enroll home` runs with `type = "crew"`
+- **WHEN** `boomdrive enroll home` runs where every account names crew
 - **THEN** it is refused naming crew's control plane as one that enrolls nothing, and exits 2
 
 #### Scenario: An unknown label
@@ -88,12 +88,12 @@ Each partition's key SHALL be kept only in the macOS keychain, or as a user-scop
 
 ### Requirement: Every connection proves the host's key
 
-Each upgrade of `runner/connect` SHALL ask for `boomdrive.v4` alone and carry `Authorization: BoomdriveHost` with the key, the time, a nonce and a signature over version 4's context, made afresh for each attempt. The runner SHALL keep nothing of enrollment but the key, which it proves under version 4 whichever version enrolled it. A key or a subprotocol refused SHALL be said once and tried again at the backoff's cap (core.22, core.23, core.31, core.35; records 0037, 0052 and 0053).
+Each upgrade of `runner/connect` SHALL ask for `boomdrive.v5` alone and carry `Authorization: BoomdriveHost` with the key, the time, a nonce and a signature over version 5's context, made afresh for each attempt. The runner SHALL keep nothing of enrollment but the key, which it proves under version 5 whichever version enrolled it. A key or a subprotocol refused SHALL be said once and tried again at the backoff's cap (core.22, core.23, core.31, core.35; records 0037, 0052 and 0053).
 
 #### Scenario: A connection proved
 
 - **WHEN** partition `home` dials the fake control plane twice
-- **THEN** each upgrade asks for `boomdrive.v4` alone, its signature checks over its context of version 4 with `home`'s key, and the two nonces differ
+- **THEN** each upgrade asks for `boomdrive.v5` alone, its signature checks over its context of version 5 with `home`'s key, and the two nonces differ
 
 #### Scenario: A key refused
 
@@ -103,7 +103,7 @@ Each upgrade of `runner/connect` SHALL ask for `boomdrive.v4` alone and carry `A
 #### Scenario: A control plane that speaks version 1 alone
 
 - **WHEN** the fake control plane answers `home`'s upgrades without the subprotocol, three times
-- **THEN** one line names `home` and `boomdrive.v4`, each later attempt waits for the backoff's cap, and no message is sent
+- **THEN** one line names `home` and `boomdrive.v5`, each later attempt waits for the backoff's cap, and no message is sent
 
 ### Requirement: Each partition keeps one outgoing connection, its whole hello first
 
@@ -158,7 +158,7 @@ Each partition SHALL be a part of its own. A part's pull SHALL give the wants of
 
 ### Requirement: A partition's connection carries only its own repositories and work
 
-Each partition's hello SHALL name only the repositories its table names, of those kept with their clones made, and only its own leases. No hello SHALL name a repository the runner drains, and no report the repository a launch was answered in, since version 4 carries neither. Each report SHALL carry only the entries under its prefix. A want naming a repository the partition does not name SHALL not be given to the runner, and one line SHALL name it (core.26; ledger 3.b; record 0053).
+Each partition's hello SHALL name only the repositories its table names, of those kept with their clones made, and only its own leases. No hello SHALL name a repository the runner drains, and no report the repository a launch was answered in, since version 5 carries neither. Each report SHALL carry only the entries under its prefix. A want naming a repository the partition does not name SHALL not be given to the runner, and one line SHALL name it (core.26; ledger 3.b; record 0053).
 
 #### Scenario: Each hello its own
 
@@ -194,14 +194,14 @@ A part's report SHALL send its connection the part's share as `report` under a n
 - **WHEN** `work`'s control plane takes a `report` and never answers it, and `home`'s answers at once
 - **THEN** `home`'s part's report is answered at once, and `work`'s part's report is unsent after 10 seconds
 
-### Requirement: What goes up is version 4's copy, checked before it goes
+### Requirement: What goes up is version 5's copy, checked before it goes
 
-Each place's status, sluice entry, preview's answer and listing, and host part SHALL go up cut to version 4's copy by walking its schema, and checked against it. A copy that fails outside a place's ends SHALL go up `null`, or the host part `missing`, with one line naming the launch or the preview and the schema's path, never a value. Every message SHALL be checked against `from-runner.schema.json` before it is sent (core.11, core.27, core.42; record 0037 as amended on 2026-11-09; record 0052).
+Each place's status, sluice entry, preview's answer and listing, and host part SHALL go up cut to version 5's copy by walking its schema, and checked against it. A copy that fails outside a place's ends SHALL go up `null`, or the host part `missing`, with one line naming the launch or the preview and the schema's path, never a value. Every message SHALL be checked against `from-runner.schema.json` before it is sent (core.11, core.27, core.42; record 0037 as amended on 2026-11-09; record 0052).
 
 #### Scenario: Flume's places cut
 
 - **WHEN** each place of Flume 0.21.0's and Flume 0.4.1's fixtures is carried in a report
-- **THEN** its copy passes `place-status.schema.json` of version 4 and holds no `last_words`, `screen`, `printed`, task `text`, `readiness` or `repository`; each end of Flume 0.21.0's goes up in a form version 4 names, with its `key` and `delivery`; and each end of Flume 0.4.1's, which Flume printed with no `key`, is left out
+- **THEN** its copy passes `place-status.schema.json` of version 5 and holds no `last_words`, `screen`, `printed`, task `text`, `readiness` or `repository`; each end of Flume 0.21.0's goes up in a form version 5 names, with its `key` and `delivery`; and each end of Flume 0.4.1's, which Flume printed with no `key`, is left out
 
 #### Scenario: A value Flume adds
 
@@ -211,7 +211,7 @@ Each place's status, sluice entry, preview's answer and listing, and host part S
 #### Scenario: sluice's previews cut
 
 - **WHEN** sluice 0.74.3's answer of a preview brought up and each row of its listing are cut as a preview's copy, and its answers of a release as a release's copy
-- **THEN** each copy passes its definition of version 4, keeps the `state` or `released` sluice printed, and no preview's copy holds `checkout`, `names`, `ports`, `exit` or `output`
+- **THEN** each copy passes its definition of version 5, keeps the `state` or `released` sluice printed, and no preview's copy holds `checkout`, `names`, `ports`, `exit` or `output`
 
 #### Scenario: A preview's copy that fails
 
@@ -220,27 +220,27 @@ Each place's status, sluice entry, preview's answer and listing, and host part S
 
 ### Requirement: Every message the runner is sent is checked before it is read
 
-Every message a connection receives SHALL be checked against `to-runner.schema.json` of version 4 before it is read. One that fails SHALL be answered with `message_refused` naming it, with words naming the schema's path, and nothing else done with it, as SHALL an `enrolled` or `enroll_refused`, which only `runner/enroll` takes. One whose id cannot be read SHALL close the connection, which is tried again on the backoff (core.42; records 0052 and 0053).
+Every message a connection receives SHALL be checked against `to-runner.schema.json` of version 5 before it is read. One that fails SHALL be answered with `message_refused` naming it, with words naming the schema's path, and nothing else done with it, as SHALL an `enrolled` or `enroll_refused`, which only `runner/enroll` takes. One whose id cannot be read SHALL close the connection, which is tried again on the backoff (core.42; records 0052 and 0053).
 
 #### Scenario: A pulled with a field unnamed
 
-- **WHEN** the fake control plane sends a `pulled` whose launch holds a field version 4 does not name
+- **WHEN** the fake control plane sends a `pulled` whose launch holds a field version 5 does not name
 - **THEN** the runner answers `message_refused` naming that message, and the pull gives none of its wants
 
 #### Scenario: A message of version 1
 
 - **WHEN** the fake control plane sends a `pulled` naming `protocol_version` 1
-- **THEN** the runner answers `message_refused` naming that message, its words saying it fails version 4's check, and the pull gives none of its wants
+- **THEN** the runner answers `message_refused` naming that message, its words saying it fails version 5's check, and the pull gives none of its wants
 
 #### Scenario: A message of version 2
 
 - **WHEN** the fake control plane sends a `pulled` naming `protocol_version` 2
-- **THEN** the runner answers `message_refused` naming that message, its words saying it fails version 4's check, and the pull gives none of its wants
+- **THEN** the runner answers `message_refused` naming that message, its words saying it fails version 5's check, and the pull gives none of its wants
 
 #### Scenario: A message of version 3
 
 - **WHEN** the fake control plane sends a `pulled` naming `protocol_version` 3
-- **THEN** the runner answers `message_refused` naming that message, its words saying it fails version 4's check, and the pull gives none of its wants
+- **THEN** the runner answers `message_refused` naming that message, its words saying it fails version 5's check, and the pull gives none of its wants
 
 #### Scenario: An enrollment's answer on the socket
 
@@ -258,11 +258,11 @@ Every `terminal_open` SHALL be answered with `terminal_closed`, its words saying
 
 ### Requirement: A report's answer names taken each status that went up as its copy
 
-The answer to a part's report SHALL name taken each launch whose status went up whole as its copy in the report it answers, every end of it in a form version 4 names. It SHALL name none whose status went up `null`, and none whose status went up with an end carried by its delivery alone or left out. An answer to an earlier report SHALL name none (core.11, core.27, core.42, core.54; records 0030 as amended on 2026-11-09, 0037, 0052 and 0053).
+The answer to a part's report SHALL name taken each launch whose status went up whole as its copy in the report it answers, every end of it in a form version 5 names. It SHALL name none whose status went up `null`, and none whose status went up with an end carried by its delivery alone or left out. An answer to an earlier report SHALL name none (core.11, core.27, core.42, core.54; records 0030 as amended on 2026-11-09, 0037, 0052 and 0053).
 
 #### Scenario: A status that goes up as its copy
 
-- **WHEN** a place's status passes version 4
+- **WHEN** a place's status passes version 5
 - **THEN** its copy goes up with the time it was read and no `repository`, and the report's answer names that launch's status taken
 
 #### Scenario: A status that goes up null
@@ -282,16 +282,16 @@ The answer to a part's report SHALL name taken each launch whose status went up 
 
 ### Requirement: Each end of a place's status is copied on its own
 
-Each end of a place's status SHALL be cut by the form version 4 names for its `of`, and checked; where there is none, or the check fails, cut to its delivery alone and checked; and where that fails too, left out. The rest of the status SHALL go up as its copy whatever its ends. A status with an end carried by its delivery alone or left out SHALL be said in one line while it lasts, naming the launch and each end's path, never a value (core.11, core.27, core.42; records 0037 and 0052).
+Each end of a place's status SHALL be cut by the form version 5 names for its `of`, and checked; where there is none, or the check fails, cut to its delivery alone and checked; and where that fails too, left out. The rest of the status SHALL go up as its copy whatever its ends. A status with an end carried by its delivery alone or left out SHALL be said in one line while it lasts, naming the launch and each end's path, never a value (core.11, core.27, core.42; records 0037 and 0052).
 
 #### Scenario: An end Flume adds
 
-- **WHEN** a place's status holds an end whose `of` is `moved`, a stage's end whose `state` version 4 does not have, an end with no `key`, and a submission's end that passes
+- **WHEN** a place's status holds an end whose `of` is `moved`, a stage's end whose `state` version 5 does not have, an end with no `key`, and a submission's end that passes
 - **THEN** the first two go up as their delivery alone, the third is left out, the fourth goes up whole, the rest of the status goes up as its copy, the report passes and is sent, and one line names the launch and each of the three ends' paths, and no value
 
 ### Requirement: A control plane's confirm is given to the runner as any act
 
-A `pulled` holding an act whose `what` is a confirm SHALL pass version 4's check and be given to the runner as an act, its id and its launch under the partition's prefix, its recipient and its delivery keys as the control plane gave them, in its order. The hosted implementation SHALL refuse nothing of a confirm and read nothing of it, the runner carrying it out as it carries crew's (core.2, core.26, core.56; records 0037, 0052 and 0053).
+A `pulled` holding an act whose `what` is a confirm SHALL pass version 5's check and be given to the runner as an act, its id and its launch under the partition's prefix, its recipient and its delivery keys as the control plane gave them, in its order. The hosted implementation SHALL refuse nothing of a confirm and read nothing of it, the runner carrying it out as it carries crew's (core.2, core.26, core.56; records 0037, 0052 and 0053).
 
 #### Scenario: A confirm carried
 
@@ -314,7 +314,7 @@ A part's report SHALL carry each of its previews under its id without the partit
 
 ### Requirement: A control plane's land is given to the runner as any act
 
-A `pulled` holding an act whose `what` is `land` SHALL pass version 4's check and be given to the runner as an act, its id and its launch under the partition's prefix. The hosted implementation SHALL read nothing of a land, the runner carrying it out as it carries crew's (core.2, core.26, core.53; record 0037 as amended on 2026-11-09; records 0052 and 0053).
+A `pulled` holding an act whose `what` is `land` SHALL pass version 5's check and be given to the runner as an act, its id and its launch under the partition's prefix. The hosted implementation SHALL read nothing of a land, the runner carrying it out as it carries crew's (core.2, core.26, core.53; record 0037 as amended on 2026-11-09; records 0052 and 0053).
 
 #### Scenario: A land carried
 
@@ -323,7 +323,7 @@ A `pulled` holding an act whose `what` is `land` SHALL pass version 4's check an
 
 ### Requirement: A control plane's preview is given to the runner under the partition's prefix
 
-A `pulled` holding a preview SHALL pass version 4's check and be given to the runner, its id under the partition's prefix and every other field as given, in the control plane's order. A preview of a repository the partition is not served SHALL be withheld, one line naming it while it is offered. The hosted implementation SHALL read nothing else of a preview (core.2, core.26, core.55; record 0037 as amended on 2026-11-09; records 0052 and 0053).
+A `pulled` holding a preview SHALL pass version 5's check and be given to the runner, its id under the partition's prefix and every other field as given, in the control plane's order. A preview of a repository the partition is not served SHALL be withheld, one line naming it while it is offered. The hosted implementation SHALL read nothing else of a preview (core.2, core.26, core.55; record 0037 as amended on 2026-11-09; records 0052 and 0053).
 
 #### Scenario: A preview carried
 
@@ -351,7 +351,7 @@ A report the control plane hands back in a `pulled` SHALL give the runner each p
 
 ### Requirement: No hello names a drive or a clone's folder
 
-A partition's hello SHALL name no drive and no clone's folder, since version 4 carries neither and a path goes up only where the protocol's copy names it (core.27, core.28, core.42; record 0053).
+A partition's hello SHALL name no drive and no clone's folder, since version 5 carries neither and a path goes up only where the protocol's copy names it (core.27, core.28, core.42; record 0053).
 
 #### Scenario: No drive or folder goes up
 
@@ -360,7 +360,7 @@ A partition's hello SHALL name no drive and no clone's folder, since version 4 c
 
 ### Requirement: A control plane's hold is given to the runner as any act
 
-A `pulled` holding an act whose `what` is a hold SHALL pass version 4's check and be given to the runner as an act, its id and its launch under the partition's prefix, its words and its bound as the control plane gave them. The hosted implementation SHALL refuse nothing of a hold and read nothing of it, the runner carrying it out as it carries crew's (core.2, core.26, core.59; records 0052 and 0053).
+A `pulled` holding an act whose `what` is a hold SHALL pass version 5's check and be given to the runner as an act, its id and its launch under the partition's prefix, its words and its bound as the control plane gave them. The hosted implementation SHALL refuse nothing of a hold and read nothing of it, the runner carrying it out as it carries crew's (core.2, core.26, core.59; records 0052 and 0053).
 
 #### Scenario: A hold carried
 
@@ -372,117 +372,14 @@ A `pulled` holding an act whose `what` is a hold SHALL pass version 4's check an
 - **WHEN** `home`'s control plane asks act `hold-2` on `l-1`, a hold whose words are empty and whose bound is 0
 - **THEN** `home`'s part's pull gives act `home/hold-2` with no words and a bound of 0, the runner sent no `message_refused`, and it is the runner's to refuse
 
-### Requirement: The observer table names a loopback origin and the partitions it observes
+### Requirement: A served repository's token is asked by one request of version 5
 
-The hosted implementation SHALL read `[observer]` as it reads the hosted table, but that its `url` SHALL be `http://` or `https://` to a loopback address alone, and that each partition's `label` names the part whose work it observes. A refusal SHALL name `[observer]`, the file and the key, its value in no output (core.19, core.26; record 0048).
-
-#### Scenario: The observer read
-
-- **WHEN** `[observer]` says `url = "http://localhost:8787"` and the partition `home`, with `example/app`
-- **THEN** it is read, observing `home` with `example/app`
-
-#### Scenario: An observer off the host
-
-- **WHEN** `[observer]` says `url = "https://control.example"`
-- **THEN** it is refused, naming `[observer]` and `url` and saying an observer is reached at a loopback address alone
-
-#### Scenario: A token in the observer table
-
-- **WHEN** `[observer]` says `token = "..."`
-- **THEN** it is refused, naming `token` and saying the host's key is made by `boomdrive enroll --observer`, and the value appears in no output
-
-### Requirement: An observer's partition is enrolled once by boomdrive enroll --observer
-
-`boomdrive enroll --observer <label>` SHALL enroll the partition `<label>` of `[observer]` as `boomdrive enroll` enrolls a hosted partition, at the observer's `runner/enroll`, whatever `[control_plane]`'s `type`. It SHALL keep the key under `observer.<label>`, which no hosted partition's label can be, and refuse with exit 2 where the file names no `[observer]` or no partition `<label>` in it (core.31, core.32; records 0006, 0018 and 0048; record 0053).
-
-#### Scenario: An observer enrolled beside crew
-
-- **WHEN** `boomdrive enroll --observer home` runs with `type = "crew"`, and the fake observer takes the `enroll` and answers `enrolled` with host `h-1`
-- **THEN** the request went to the observer's `runner/enroll`, its `enroll` passed version 4, the key is in the store under `observer.home`, and the enrollment names host `h-1`
-
-#### Scenario: Kept apart from a partition of the same label
-
-- **WHEN** an observer's partition `home` is enrolled into the `systemd-creds` store, its program a stub reporting version 256
-- **THEN** the stub is run as `encrypt --user --name=boomdrive.observer.home.<the url's host>`
-
-#### Scenario: No observer named
-
-- **WHEN** `boomdrive enroll --observer home` runs with no `[observer]`
-- **THEN** it is refused naming `[observer]`, and exits 2
-
-### Requirement: An observer is told the observing hello and the places the part follows, with no lease
-
-An observer's partition SHALL keep one outgoing connection, proved as a hosted partition's is, whose first message is its whole observing hello, naming only the repositories its partition names of those kept. After each control pass of the part it observes, it SHALL be sent an observed report of that part's launches, each id as the runner holds it, its answer, and its status and entry as version 3's copies, and no lease, act, command, inbox or preview (core.26, core.27; record 0048).
-
-#### Scenario: The observing hello
-
-- **WHEN** an observer of `home`, which names `example/app`, is handed a hello keeping `example/app` and `example/service`, with a capacity and a lease
-- **THEN** its first message is a `hello` with `observing` true, naming `example/app` alone, and no capacity and no lease
-
-#### Scenario: The places observed
-
-- **WHEN** an observer of `home` is handed a share holding the launch `home/1` with its place's status, and an act `home/2`
-- **THEN** it sends a `report` with `observing` true, holding `home/1` with its answer and its status's copy and no lease, and no act
-
-### Requirement: What an observer sends of work is refused and said
-
-The runner SHALL take no work from an observer. A `pulled` holding no want and no report SHALL be its answer to the hello. A `pulled` holding a want or a report, and every `terminal_open`, `terminal_input`, `terminal_resume` and `terminal_close`, SHALL be answered with `message_refused`, its words saying the connection observes, and said in one line naming its kind and id, and nothing else SHALL be done with it (core.1, core.19; record 0048).
-
-#### Scenario: An offer from an observer
-
-- **WHEN** the fake observer answers `home`'s observing hello with a `pulled` holding an offer
-- **THEN** the runner answers `message_refused` naming it, its words saying the connection observes, and one line names the `pulled` and its id
-
-#### Scenario: A terminal from an observer
-
-- **WHEN** the fake observer sends `terminal_open` on `home`'s connection
-- **THEN** the runner answers `message_refused` naming it, sends no `terminal_closed`, and makes no key
-
-### Requirement: An observer's answers change nothing and wake nothing
-
-A `reported` from an observer SHALL answer its observed report, so it is not sent again, and its let-go and refused ids SHALL change nothing. No message from an observer SHALL wake the runner, and none SHALL name a status taken, so no end is confirmed on an observer's answer (core.10, core.54; record 0048).
-
-#### Scenario: A report's answer that lets go
-
-- **WHEN** the fake observer answers an observed report with a `reported` letting go `home/1`
-- **THEN** the observed report is not sent again, and the next observed report still holds `home/1`
-
-#### Scenario: A pulled wakes nothing
-
-- **WHEN** the fake observer sends `home`'s observer three `pulled`, each holding no want
-- **THEN** the wake the observer was opened beside is never called
-
-### Requirement: Nothing waits on an observer
-
-Handing an observer its hello and report SHALL return at once, whether its connection is live, being attempted, or waiting on its backoff, and SHALL wait for no answer. Its newest report SHALL be sent at once on a live connection, and after the hello of its next one, replacing any it was not answered for. An observer's connection lost SHALL be tried again on the backoff a hosted partition's is (core.21, core.22; record 0048).
-
-#### Scenario: An observer down
-
-- **WHEN** the fake observer is down, and an observer of `home` is handed a hello and a report three times
-- **THEN** each handing returns within 100 milliseconds
-
-#### Scenario: Back again
-
-- **WHEN** the fake observer is down while an observer of `home` is handed two reports, and then comes back
-- **THEN** after the observing hello, the second report alone is sent
-
-### Requirement: An observer's reach is said once each way
-
-An observer's partition SHALL say one line when its connection is lost or cannot be made, `<label>: the observer is unreachable: <why>`, and one when it takes its first `pulled`, `<label>: the observer is reached`, and a refusal of its key in one line naming `boomdrive enroll --observer <label>` (core.23; record 0048).
-
-#### Scenario: An observer's outage
-
-- **WHEN** an observer of `home` is reached, then the fake observer stops answering for five attempts, then answers
-- **THEN** `home` says the observer is reached, once that it is unreachable, and once that it is reached again
-
-### Requirement: A served repository's token is asked by one request of version 4
-
-The hosted implementation SHALL ask for a repository's token by one `POST runner/forge-token` under `url`, its body a `forge_token` of version 4 naming the repository, its `Authorization` a `BoomdriveHost` statement signed over version 4's `forge token` context, made afresh for each ask with a partition's key read from the host's store. It SHALL open no socket and no part, keep nothing of an ask, and stop its asks at twenty seconds (core.3, core.31, core.33, core.35; record 0053).
+The hosted implementation SHALL ask for a repository's token by one `POST runner/forge-token` under `url`, its body a `forge_token` of version 5 naming the repository, its `Authorization` a `BoomdriveHost` statement signed over version 5's `forge token` context, made afresh for each ask with a partition's key read from the host's store. It SHALL open no socket and no part, keep nothing of an ask, and stop its asks at twenty seconds (core.3, core.31, core.33, core.35; record 0053).
 
 #### Scenario: A token given
 
 - **WHEN** `home`, served `example/app`, asks for `example/app`'s token, and the fake control plane answers `forge_token_given` with a token and `expires_at` `2026-11-18T13:00:00Z`
-- **THEN** the ask's body passed version 4 and named `example/app`, its signature checks over the `forge token` context with `home`'s key and `example/app`, and the answer is that token, ending at that time
+- **THEN** the ask's body passed version 5 and named `example/app`, its signature checks over the `forge token` context with `home`'s key and `example/app`, and the answer is that token, ending at that time
 
 #### Scenario: Each ask signed afresh
 
@@ -518,9 +415,9 @@ The hosted implementation SHALL ask under each partition whose `repositories` ho
 - **WHEN** a token is asked for `example/service`, which no partition names
 - **THEN** it is refused naming `example/service`, and the fake control plane took no request
 
-### Requirement: An ask's answer is checked against version 4 before it is read
+### Requirement: An ask's answer is checked against version 5 before it is read
 
-An answer to an ask SHALL be read only once it passes `to-runner.schema.json` of version 4, whatever its status, and only where it is a `forge_token_given` or `forge_token_refused` naming the ask and its repository. An answer that is no such message, or that never comes, SHALL refuse that partition's ask, naming `runner/forge-token` and the status, and no value of the answer (core.11, core.42; record 0053).
+An answer to an ask SHALL be read only once it passes `to-runner.schema.json` of version 5, whatever its status, and only where it is a `forge_token_given` or `forge_token_refused` naming the ask and its repository. An answer that is no such message, or that never comes, SHALL refuse that partition's ask, naming `runner/forge-token` and the status, and no value of the answer (core.11, core.42; record 0053).
 
 #### Scenario: A control plane that speaks version 3
 
@@ -559,3 +456,17 @@ A `forge_token_given` or `forge_token_refused` a partition's connection receives
 
 - **WHEN** the fake control plane sends `forge_token_given` on `home`'s connection
 - **THEN** the runner answers `message_refused` naming it, its words naming `runner/forge-token`, and nothing of it is kept, said or given to the runner
+
+### Requirement: Each partition is told of the unleased places in its repositories alone
+
+Each partition's report SHALL hold `unleased`: each unleased place of its share whose repository its table names, each status cut to version 5's copy as a launch's is, and no other. A place in a repository its table does not name SHALL not go up on its connection (record 0054; core.26, core.27).
+
+#### Scenario: A place in the partition's repositories
+
+- **WHEN** the partition `home`, whose table names `agentplot/flume`, is handed a share whose `unleased` holds a place in `agentplot/flume` and one in `agentplot/sluice`
+- **THEN** its report's `unleased` names the place in `agentplot/flume` alone, its status a copy of version 5, with no `lease`
+
+#### Scenario: No unleased place
+
+- **WHEN** the partition `home` is handed a share holding no unleased place
+- **THEN** its report names `unleased` as `{}`
