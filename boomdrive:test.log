@@ -1,0 +1,757 @@
+--- stdout ---
+
+running 227 tests
+test carry::tests::a_lapsed_lease ... ok
+test carry::tests::a_pass_that_did_not_report ... ok
+test carry::tests::a_lease_lapsed_by_the_clock ... ok
+test carry::tests::renewed_before_it_lapses ... ok
+test carry::tests::a_repository_is_kept_as_the_configuration_and_the_clones_have_it ... ok
+test carry::tests::a_clone_the_configuration_drops_is_dropped ... ok
+test clone::tests::a_clones_paths ... ok
+test clone::tests::an_occasion_comes_past_either_bound ... ok
+test carry::tests::each_drive_names_its_repositories_whose_clones_are_made ... ok
+test clone::tests::worktrees_listed ... ok
+test clone::tests::partial_folders ... ok
+test code_workspace::tests::a_folder_is_named ... ok
+test code_workspace::tests::a_link_is_named ... ok
+test code_workspace::tests::a_trailing_comma_is_named ... ok
+test code_workspace::tests::a_comment_is_named_and_never_quoted ... ok
+test code_workspace::tests::a_drive_keeping_none ... ok
+test code_workspace::tests::an_owner_written_in_two_cases ... ok
+test code_workspace::tests::folders_already_wanted_are_left ... ok
+test code_workspace::tests::folders_already_wanted_in_another_layout_are_left ... ok
+test code_workspace::tests::a_file_without_folders_gains_them_first ... ok
+test code_workspace::tests::json_that_is_not_an_object_is_named ... ok
+test code_workspace::tests::folders_are_set_where_they_stand ... ok
+test code_workspace::tests::nothing_there_is_made ... ok
+test code_workspace::tests::other_folders_are_set_and_the_rest_kept ... ok
+test code_workspace::tests::a_write_makes_the_repository_root ... ok
+test code_workspace::tests::a_write_keeps_the_old_files_permissions_and_leaves_no_partial_file ... ok
+test code_workspace::tests::two_drives_sharing_an_owner ... ok
+test config::tests::a_broken_file_is_named_by_its_line_and_never_quoted ... ok
+test config::tests::a_drive_keeping_none ... ok
+test config::tests::a_control_plane_of_another_kind_is_named_by_its_key ... ok
+test code_workspace::tests::what_stands_is_read_without_following_a_link ... ok
+test config::tests::a_drive_pinned ... ok
+test config::tests::a_control_plane_named_in_the_local_layer ... ok
+test config::tests::a_drive_only_the_local_layer_names ... ok
+test config::tests::a_drive_with_no_list ... ok
+test config::tests::a_flat_list_in_the_local_layer ... ok
+test config::tests::a_drive_the_managed_layer_holds_under_another_account ... ok
+test config::tests::a_flat_list_of_before ... ok
+test config::tests::a_home_relative_root ... ok
+test config::tests::a_key_file_missing_from_the_forge_table ... ok
+test config::tests::a_key_file_in_the_store ... ok
+test config::tests::a_key_held_elsewhere_is_named_before_what_else_is_wrong ... ok
+test config::tests::a_key_in_an_account ... ok
+test config::tests::a_key_in_a_drive ... ok
+test config::tests::a_key_in_a_local_drive ... ok
+test config::tests::a_key_of_before ... ok
+test config::tests::a_keys_text_in_the_forge_table ... ok
+test config::tests::a_key_the_control_plane_table_does_not_hold ... ok
+test config::tests::a_kinds_file_named ... ok
+test config::tests::a_fault_of_the_managed_table_alone ... ok
+test config::tests::a_local_address_out_of_form ... ok
+test config::tests::a_level_of_another_kind_is_named_by_its_path ... ok
+test config::tests::a_local_file_that_is_not_toml ... ok
+test config::tests::a_local_drive_named_twice_or_out_of_form ... ok
+test config::tests::a_managed_layer_at_fault ... ok
+test config::tests::a_local_table_of_another_kind ... ok
+test config::tests::a_misspelt_key ... ok
+test config::tests::a_name_out_of_form ... ok
+test config::tests::a_local_layer_naming_one_repository_twice ... ok
+test config::tests::a_period_of_nothing ... ok
+test config::tests::a_pin_in_the_local_layer ... ok
+test config::tests::a_pin_of_another_kind ... ok
+test config::tests::a_partition_the_implementation_refuses ... ok
+test config::tests::a_pin_quoted ... ok
+test config::tests::a_poll_interval_of_nothing ... ok
+test config::tests::a_relative_root ... ok
+test config::tests::a_repository_both_layers_name ... ok
+test config::tests::a_relative_key_file ... ok
+test config::tests::a_pin_of_nothing ... ok
+test config::tests::a_stream_named ... ok
+test config::tests::a_repository_the_managed_layer_keeps_in_another_drive ... ok
+test config::tests::a_root_in_the_local_layer ... ok
+test config::tests::a_token ... ok
+test config::tests::a_value_of_another_kind_is_named_by_its_key ... ok
+test config::tests::a_token_in_the_local_layer ... ok
+test config::tests::addresses ... ok
+test config::tests::a_table_pinned ... ok
+test config::tests::a_whole_file ... ok
+test config::tests::an_address_with_no_owner ... ok
+test config::tests::an_account_with_no_drives ... ok
+test config::tests::a_stream_in_a_drive ... ok
+test config::tests::an_inbox_named_twice_or_not_named ... ok
+test config::tests::an_app_id_that_is_no_positive_integer ... ok
+test config::tests::an_observer_of_no_control_plane ... ok
+test config::tests::an_observer_off_the_host ... ok
+test config::tests::forge_that_is_not_a_table ... ok
+test config::tests::intervals ... ok
+test config::tests::drives_of_two_accounts ... ok
+test config::tests::keeping_none ... ok
+test config::tests::no_accounts ... ok
+test config::tests::an_observer_beside_crew ... ok
+test config::tests::no_control_plane ... ok
+test config::tests::no_period ... ok
+test config::tests::no_local_file ... ok
+test config::tests::no_app_named ... ok
+test config::tests::no_poll_interval ... ok
+test config::tests::no_type ... ok
+test config::tests::no_workspaces_setting ... ok
+test config::tests::one_drive_in_two_accounts ... ok
+test config::tests::one_drive ... ok
+test config::tests::one_repository_twice ... ok
+test config::tests::one_repository_in_two_drives ... ok
+test config::tests::partitions_named_in_the_local_layer_alone ... ok
+test config::tests::poll_intervals ... ok
+test config::tests::partitions_of_a_control_plane_the_managed_layer_does_not_name ... ok
+test config::tests::repositories_pinned ... ok
+test config::tests::the_app_in_the_local_layer ... ok
+test config::tests::the_app_named ... ok
+test config::tests::the_app_beside_a_hosted_control_plane ... ok
+test config::tests::the_control_plane_named ... ok
+test config::tests::the_environment_needs_a_home ... ok
+test config::tests::the_file_and_the_data_directory ... ok
+test config::tests::the_local_layers_file ... ok
+test config::tests::the_inboxes_a_host_keeps ... ok
+test config::tests::workspaces_asked_for_in_words ... ok
+test config::tests::the_local_layers_partitions ... ok
+test config::tests::the_local_layers_repositories ... ok
+test facts::tests::a_field_absent_reads_as_none ... ok
+test facts::tests::a_field_of_another_type_reads_as_none ... ok
+test facts::tests::a_record_pending_for_a_recipient ... ok
+test facts::tests::a_phase_as_flume_writes_each ... ok
+test facts::tests::a_tidied_record_is_its_places_entry ... ok
+test facts::tests::a_place_that_has_ended ... ok
+test facts::tests::rooms ... ok
+test facts::tests::the_ends_owed_to_a_recipient ... ok
+test flume::tests::a_flume_older_than_the_least_is_refused ... ok
+test flume::tests::a_mark_names_one_file ... ok
+test flume::tests::the_runner_is_named_after_a_launchs_recipients ... ok
+test flume::tests::versions_taken ... ok
+test config::tests::the_data_directory_is_the_runners_own ... ok
+test forge::tests::a_key_file_that_cannot_be_read_is_refused ... ok
+test forge::tests::a_tokens_debug_holds_no_secret ... ok
+test forge_token::tests::a_path_is_read_as_an_address ... ok
+test forge::tests::a_key_file_that_is_no_key_is_refused ... ok
+test git::tests::a_call_given_nothing_gives_git_no_credential ... ok
+test git::tests::a_call_runs_where_it_names ... ok
+test git::tests::a_call_to_a_remote_begun_after_its_halt ... ok
+test git::tests::a_call_given_a_token_gives_git_that_token_alone ... ok
+test forge::tests::a_key_others_may_read_is_refused ... ok
+test git::tests::a_credentials_debug_holds_no_token ... ok
+test forge::tests::a_jwt_names_the_app_and_lasts_nine_minutes ... ok
+test git::tests::a_git_carries_the_halt_it_is_given ... ok
+test git::tests::a_git_tries_for_the_familys_limit ... ok
+test git::tests::a_failure_is_named_by_gits_last_line ... ok
+test git::tests::an_old_git ... ok
+test git::tests::git_asks_no_one ... ok
+test git::tests::junk_is_no_version ... ok
+test git::tests::ssh_urls ... ok
+test git::tests::versions_taken ... ok
+test inbox::tests::a_digest_of_bytes ... ok
+test inbox::tests::each_blob_listed ... ok
+test lacks::tests::a_commit_in_the_view ... ok
+test lacks::tests::a_ref_the_forge_lacks ... ok
+test lacks::tests::a_worktree_whose_folder_is_there ... ok
+test lacks::tests::changes_in_the_view ... ok
+test lacks::tests::each_holdings_words ... ok
+test lacks::tests::every_holding_together ... ok
+test lacks::tests::ignored_files_hold_nothing ... ok
+test lacks::tests::nothing_held ... ok
+test lacks::tests::origins_refs_and_the_runners_are_not_counted ... ok
+test git::tests::an_answer_is_yes_no_or_a_failure ... ok
+test git::tests::a_call_to_a_remote_halted ... ok
+test locks::tests::launches_of_one_address_hold_none_of_each_other ... ok
+test locks::tests::nothing_of_one_address_holds_another ... ok
+test millpond::tests::a_refused_tick_is_said_once_until_millpond_ticks_again ... ok
+test millpond::tests::an_answered_tick_says_nothing ... ok
+test millpond::tests::each_inbox_is_said_apart ... ok
+test planes::tests::only_the_hosted_control_plane_holds_the_app ... ok
+test report::tests::a_file_that_is_no_report_is_named ... ok
+test report::tests::a_file_with_no_parts_holds_every_part ... ok
+test report::tests::a_missing_file_reads_as_none ... ok
+test report::tests::a_part_the_file_does_not_name_has_no_share ... ok
+test report::tests::a_place_pending_for_the_runner_has_not_ended ... ok
+test report::tests::a_report_saved_again_replaces_the_last ... ok
+test report::tests::a_report_saved_reads_back ... ok
+test locks::tests::a_keep_holds_a_launch_and_a_keep_of_its_address ... ok
+test locks::tests::a_launch_holds_a_keep_and_a_waiting_keep_holds_launches ... ok
+test report::tests::a_save_keeps_every_other_parts_entries ... ok
+test report::tests::the_places_that_hold_a_repository ... ok
+test report::tests::a_save_keeps_every_parts_previews ... ok
+test run::tests::a_stop_ends_every_wait ... ok
+test run::tests::a_stop_halts_every_try ... ok
+test run::tests::a_wake_is_read_by_its_parts_pass_under_way ... ok
+test run::tests::on_the_control_timer ... ok
+test run::tests::passes_on_the_timer ... ok
+test settle::tests::a_refusal_is_said_once_until_flume_settles_again ... ok
+test settle::tests::a_settle_with_no_answer_is_said_once ... ok
+test settle::tests::an_answered_settle_says_nothing ... ok
+test settle::tests::every_is_whole_seconds ... ok
+test settle::tests::the_bound_is_the_fetch_interval_with_no_control_pass ... ok
+test settle::tests::the_bound_is_the_shorter_interval ... ok
+test setup::answers::a_repository_added_twice ... ok
+test setup::answers::a_repository_in_another_drive ... ok
+test setup::answers::a_terminal_is_asked_in_order ... ok
+test setup::answers::an_account_out_of_form ... ok
+test setup::answers::an_answer_missing_with_no_terminal_names_each_flag ... ok
+test setup::answers::the_last_repository_removed ... ok
+test setup::answers::the_whole_list_beside_a_change_to_it ... ok
+test setup::answers::two_drives_and_no_drive_named ... ok
+test setup::check_host::a_linked_runner_file_is_nixs ... ok
+test setup::check_host::a_program_missing_is_named ... ok
+test setup::check_host::both_files_there_are_named ... ok
+test setup::check_host::on_linux_setup_is_refused ... ok
+test setup::the_agent_is_nix_darwins_under_setups_label ... ok
+test sluice::tests::a_failed_that_is_no_list_of_rows_is_left_out ... ok
+test sluice::tests::a_rows_log_is_left_out_wherever_it_is ... ok
+test sluice::tests::a_value_is_its_text_as_printed ... ok
+test sluice::tests::an_answer_that_is_no_object_carries_nothing ... ok
+test sluice::tests::an_id_and_a_final_state ... ok
+test sluice::tests::the_fields_carried_and_no_others ... ok
+test view::tests::a_folder_not_the_clones_worktree_is_named ... ok
+test view::tests::a_tracked_change_is_left ... ok
+test view::tests::an_old_view_holding_nothing_is_removed ... ok
+test view::tests::an_old_view_holding_work_is_left ... ok
+test view::tests::an_old_view_that_is_gone_is_forgotten ... ok
+test view::tests::at_origin_already_is_left ... ok
+test view::tests::missing_but_registered_is_made_by_force ... ok
+test view::tests::missing_is_made ... ok
+test view::tests::moved_by_the_user_is_left ... ok
+test view::tests::never_recorded_is_left ... ok
+test view::tests::no_target_is_left ... ok
+test view::tests::on_a_branch_is_left ... ok
+test view::tests::status_read ... ok
+test view::tests::where_the_runner_put_it_is_moved ... ok
+test run::tests::a_settle_under_way_is_shared ... ok
+test report::tests::parts_saving_at_once_keep_each_others_entries ... ok
+test git::tests::a_call_to_a_remote_stopped_at_its_limit ... ok
+
+test result: ok. 227 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.02s
+
+
+running 1 test
+test tests::the_command_line_is_well_formed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+test a_drop_ahead_of_its_held_launch_keeps_it_unmade ... ok
+test a_launch_ahead_of_acts_on_places_that_are_over ... ok
+test a_parts_line_names_its_label ... ok
+test a_land ... ok
+test a_done ... ok
+test a_drop ... ok
+test a_priority ... ok
+test an_act_flume_could_not_run ... ok
+test an_act_on_a_launch_the_same_pass_takes ... ok
+test an_act_on_a_place_the_listing_does_not_hold_which_flume_stands ... ok
+test an_act_refused_by_its_places_status_reads_the_listing_once ... ok
+test an_act_whose_places_status_flume_could_not_be_read_for ... ok
+test a_refusal_carried_with_flumes_words ... ok
+test a_retry_of_the_submission ... ok
+test a_retry_with_words ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+
+running 15 tests
+test a_dependent_of_a_dropped_launch ... ok
+test a_dependent_launched_once_flumes_own_status_reads_landed ... ok
+test a_confirm_of_a_held_launch ... ok
+test a_dependent_held_then_launched ... ok
+test a_dependent_of_a_landing_held_for_the_runner ... ok
+test a_drop_of_a_held_launch ... ok
+test a_held_launch_with_no_room_names_its_stream ... ok
+test a_hold_of_a_held_launch ... ok
+test a_retry_of_a_dropped_launch ... ok
+test a_land_of_a_held_launch ... ok
+test a_priority_of_a_held_launch ... ok
+test an_act_on_a_launch_not_yet_taken_waits ... ok
+test a_retry_or_a_done_of_a_held_launch ... ok
+test an_act_on_anothers_launch ... ok
+test held_words_for_each_standing ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+
+running 4 tests
+test a_bolt_counts_against_its_streams_room_within_its_pass ... ok
+test a_bolts_send ... ok
+test a_send_flume_refuses ... ok
+test a_bolt_and_its_unit ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+
+running 25 tests
+test a_clone_recording_its_address_under_another_name ... ok
+test a_clone_is_found_by_its_record_without_case ... ok
+test a_clone_left_unfinished_is_made_again ... ok
+test a_cloud_hosts_failed_fetch_drops_its_token ... ok
+test a_clone_whose_origin_never_answers ... ok
+test a_folder_already_there ... ok
+test a_cloud_hosts_fetch_is_given_the_control_planes_token ... ok
+test a_failed_fetch_drops_its_token ... ok
+test a_mint_refused_is_named_after_gits_words ... ok
+test a_new_repository_is_cloned ... ok
+test a_repository_the_app_is_not_installed_on_is_fetched ... ok
+test a_fetch_whose_origin_never_answers ... ok
+test a_repository_the_apps_installation_does_not_cover_on_a_cloud_host ... ok
+test a_head_that_cannot_be_settled ... ok
+test ahead_of_origin ... ok
+test behind_origin ... ok
+test one_fetch_fails ... ok
+test origin_deletes_a_branch ... ok
+test origin_cannot_be_reached ... ok
+test origin_gains_a_commit ... ok
+test origin_renames_its_default_branch ... ok
+test sluice_keeps_the_default_branch ... ok
+test the_host_rewrites_https_to_ssh ... ok
+test the_running_runner_asks_its_control_plane ... ok
+test two_passes_buy_one_token ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.84s
+
+
+running 14 tests
+test a_drive_keeping_none ... ok
+test a_link_at_the_workspaces_path ... ok
+test a_kept_repository_with_no_view ... ok
+test a_new_root ... ok
+test a_dropped_repository_leaves_its_workspace ... ok
+test a_stopped_pass_writes_no_workspace ... ok
+test a_comment_in_the_workspace ... ok
+test a_quiet_pass_leaves_the_workspaces ... ok
+test a_workspace_that_cannot_be_written ... ok
+test no_workspace_asked_for ... ok
+test a_repository_moved_to_another_drive ... ok
+test folders_edited_by_hand ... ok
+test the_users_settings_kept ... ok
+test the_first_workspaces ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.54s
+
+
+running 5 tests
+test a_boom_command ... ok
+test a_clone_not_yet_made ... ok
+test a_branch_command ... ok
+test a_command_given_twice ... ok
+test a_branch_command_an_earlier_release_carried_out ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+
+running 7 tests
+test a_confirm_of_no_key_is_refused ... ok
+test a_key_of_no_end_of_the_launchs_place_is_refused ... ok
+test a_confirm_as_the_runner_is_refused ... ok
+test a_confirm_names_only_the_keys_it_was_given ... ok
+test a_tidied_places_record_is_confirmed ... ok
+test flumes_refusal_is_the_confirms_answer ... ok
+test a_place_the_listing_does_not_hold_is_held_to_its_status ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+
+running 31 tests
+test a_control_plane_that_cannot_be_read ... ok
+test a_failing_part ... ok
+test a_lapsed_lease_sets_no_pass_sooner ... ok
+test a_part_observed ... ok
+test a_poll_interval_changed_while_running ... ok
+test a_keeping_pass_under_way ... ok
+test a_quiet_control_pass_says_nothing ... ok
+test a_settle_flume_refuses ... ok
+test a_word_not_carried ... ok
+test a_pass_that_did_not_report_sets_no_pass_sooner ... ok
+test an_observer_unreachable ... ok
+test an_observer_of_no_part ... ok
+test a_slow_part ... ok
+test control_passes_on_their_own_timer ... ok
+test each_control_pass_ends_with_a_settle ... ok
+test no_control_plane ... ok
+test each_parts_reach_its_own ... ok
+test flumes_status_refused ... ok
+test one_control_pass ... ok
+test one_part_unread ... ok
+test passes_back_to_back_share_one_settle ... ok
+test stopped_with_a_parts_pass_under_way ... ok
+test one_part_woken ... ok
+test stopped_with_a_read_in_flight ... ok
+test the_hosted_control_plane_named ... ok
+test each_part_on_its_own_timer ... ok
+test the_runners_branch_names_each_repository_of_its_drive ... ok
+test the_configuration_broken_while_running ... ok
+test woken_by_the_control_plane ... ok
+test the_timer_kept_from_the_woken_pass ... ok
+test three_passes_unread_then_read ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.10s
+
+
+running 7 tests
+test a_departed_drives_workspace_the_runner_cannot_read ... ok
+test a_workspace_of_the_persons_own ... ok
+test a_departed_drives_workspace_not_asked_for ... ok
+test a_view_still_holding_work ... ok
+test the_drives_last_view ... ok
+test its_repositories_moved ... ok
+test the_clone_records_its_drive ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.52s
+
+
+running 20 tests
+test a_commit_in_the_view ... ok
+test a_place_in_the_clone ... ok
+test a_branch_the_forge_lacks ... ok
+test a_stranger_in_the_data_directory ... ok
+test a_report_that_cannot_be_read ... ok
+test a_change_in_the_view ... ok
+test an_old_views_folder_of_the_users_holds_nothing ... ok
+test dropped_while_a_place_is_live ... ok
+test dropped_while_holding_work ... ok
+test an_owners_workspace_from_before ... ok
+test dropped_with_nothing_of_its_own ... ok
+test left_for_the_user ... ok
+test emptied_later ... ok
+test only_ignored_files ... ok
+test the_owners_last_view ... ok
+test the_place_no_longer_listed ... ok
+test the_owners_folder_holds_more ... ok
+test the_place_tidied ... ok
+test the_views_folder_is_not_the_view_any_more ... ok
+test the_places_end_held_for_the_runner ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.03s
+
+
+running 11 tests
+test an_unknown_label ... ok
+test an_empty_token ... ok
+test crews_control_plane ... ok
+test no_control_plane ... ok
+test no_label ... ok
+test a_partition_of_the_local_layer ... ok
+test no_observer_named ... ok
+test an_observer_enrolled_beside_crew ... ok
+test nothing_listening ... ok
+test the_answer_as_json ... ok
+test the_token_never_shown ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+
+running 10 tests
+test a_launch_held_runs_no_sluice ... ok
+test a_landed_entry ... ok
+test a_sluice_not_there ... ok
+test a_new_submission_is_read ... ok
+test a_failed_row_without_its_log ... ok
+test an_entry_carried ... ok
+test an_entry_carried_from_a_repository_drained ... ok
+test no_submission ... ok
+test an_entry_is_read_until_it_is_final ... ok
+test an_entry_sluice_refuses_keeps_what_was_carried ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+
+running 5 tests
+test the_configuration_reads ... ok
+test the_local_layer_reads ... ok
+test the_control_plane_opens_crews_implementation ... ok
+test the_hosted_table_reads ... ok
+test the_observer_table_reads ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test a_live_place_is_live_and_unmarked ... ok
+test every_fixture_is_read ... ok
+test a_refusal_and_an_acts_answer_hold_no_place ... ok
+test a_place_at_each_phase ... ok
+test the_host_and_its_streams_room ... ok
+test the_place_a_launch_names ... ok
+test a_places_entry_sliced_from_the_listing ... ok
+test the_listing_of_every_place ... ok
+test the_host_part_as_flume_printed_it ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 7 tests
+test flumes_status_of_a_scratch_host ... ok
+test each_tools_version_is_its_tags ... ok
+test the_sets_flume_answers_a_relay ... ok
+test the_sets_flume_keeps_the_runners_watch ... ok
+test not_the_hosts_tools ... ok
+test the_sets_flume_takes_the_runner_as_a_recipient ... ok
+test a_submission_sluice_has_no_record_of ... FAILED
+
+failures:
+
+---- a_submission_sluice_has_no_record_of stdout ----
+
+thread 'a_submission_sluice_has_no_record_of' (85418848) panicked at crates/boomdrive/tests/family.rs:379:5:
+assertion `left == right` failed: Output { status: ExitStatus(unix_wait_status(768)), stdout: "{\"error\":{\"kind\":\"internal\",\"message\":\"sluice's host process did not answer: sluice's host process did not answer within 10 seconds of its start; see /private/tmp/sluice-501/b682b192ee/8cf0850b5f/boomdrive-Ty3Xuv/home/.local/state/sluice/host/log\",\"next\":[]}}\n", stderr: "sluice: sluice's host process did not answer: sluice's host process did not answer within 10 seconds of its start; see /private/tmp/sluice-501/b682b192ee/8cf0850b5f/boomdrive-Ty3Xuv/home/.local/state/sluice/host/log\n" }
+  left: Some(3)
+ right: Some(1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_submission_sluice_has_no_record_of
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.84s
+
+--- stderr ---
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling cfg-if v1.0.5
+   Compiling version_check v0.9.5
+   Compiling typenum v1.20.1
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling serde_core v1.0.229
+   Compiling zeroize v1.9.1
+   Compiling syn v3.0.9
+   Compiling getrandom v0.2.17
+   Compiling once_cell v1.21.4
+   Compiling num-integer v0.1.47
+   Compiling synstructure v0.14.0
+   Compiling zerocopy v0.8.63
+   Compiling smallvec v1.16.4
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.4
+   Compiling stable_deref_trait v1.2.1
+   Compiling serde v1.0.229
+   Compiling zerofrom v0.1.8
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling itoa v1.0.18
+   Compiling cc v1.11.0
+   Compiling yoke v0.8.4
+   Compiling serde_derive v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling memchr v2.8.3
+   Compiling ring v0.17.14
+   Compiling zerovec-derive v0.11.7
+   Compiling generic-array v0.14.7
+   Compiling const-oid v0.9.6
+   Compiling num-bigint v0.4.8
+   Compiling displaydoc v0.2.7
+   Compiling zerovec v0.11.9
+   Compiling hybrid-array v0.4.15
+   Compiling rand_core v0.10.1
+   Compiling zmij v1.0.23
+   Compiling getrandom v0.4.3
+   Compiling foldhash v0.2.0
+   Compiling equivalent v1.0.3
+   Compiling allocator-api2 v0.2.21
+   Compiling hashbrown v0.17.1
+   Compiling num-iter v0.1.46
+   Compiling rustls-pki-types v1.15.1
+   Compiling getrandom v0.3.4
+   Compiling subtle v2.6.1
+   Compiling log v0.4.35
+   Compiling serde_json v1.0.154
+   Compiling time-core v0.1.9
+   Compiling num-conv v0.2.2
+   Compiling untrusted v0.9.0
+   Compiling time-macros v0.2.32
+   Compiling indexmap v2.14.2
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling errno v0.3.14
+   Compiling ahash v0.8.12
+   Compiling deranged v0.5.9
+   Compiling parking_lot_core v0.9.12
+   Compiling regex-syntax v0.8.11
+   Compiling ref-cast v1.0.27
+   Compiling heck v0.5.0
+   Compiling powerfmt v0.2.1
+   Compiling percent-encoding v2.3.2
+   Compiling const-oid v0.10.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling time v0.3.55
+   Compiling digest v0.11.3
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling tinystr v0.8.5
+   Compiling num-rational v0.4.2
+   Compiling aho-corasick v1.1.5
+   Compiling ref-cast-impl v1.0.27
+   Compiling num-complex v0.4.6
+   Compiling rand_core v0.6.4
+   Compiling cpufeatures v0.3.1
+   Compiling litemap v0.8.3
+   Compiling utf_types v1.0.0
+   Compiling bytes v1.12.1
+   Compiling writeable v0.6.4
+   Compiling rustls v0.23.46
+   Compiling rustix v1.1.6
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling icu_locale_core v2.4.0
+   Compiling utf8_iter v1.1.0
+   Compiling num v0.4.3
+   Compiling regex-automata v0.4.18
+   Compiling digest v0.10.7
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling rustls-webpki v0.103.16
+   Compiling potential_utf v0.1.6
+   Compiling zerotrie v0.2.5
+   Compiling syn v2.0.119
+   Compiling bit-vec v0.8.0
+   Compiling thiserror v2.0.21
+   Compiling unicode-general-category v1.1.0
+   Compiling jsonschema-value v0.60.1
+   Compiling httparse v1.10.1
+   Compiling borrow-or-share v0.2.4
+   Compiling icu_properties_data v2.4.0
+   Compiling icu_normalizer_data v2.4.0
+   Compiling data-encoding v2.11.1
+   Compiling fluent-uri v0.4.1
+   Compiling icu_provider v2.4.0
+   Compiling strum_macros v0.28.0
+   Compiling bit-set v0.8.0
+   Compiling icu_collections v2.4.0
+   Compiling security-framework v3.7.0
+   Compiling parking_lot v0.12.5
+   Compiling fraction v0.17.0
+   Compiling thiserror-impl v2.0.21
+   Compiling semver v1.0.28
+   Compiling vsimd v0.8.0
+   Compiling winnow v1.0.4
+   Compiling num-cmp v0.1.0
+   Compiling bytecount v0.6.9
+   Compiling micromap v0.3.0
+   Compiling outref v0.5.2
+   Compiling referencing v0.60.1
+   Compiling uuid-simd v0.8.0
+   Compiling strum v0.28.0
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling rustc_version v0.4.1
+   Compiling fancy-regex v0.19.2
+   Compiling regex v1.13.1
+   Compiling http v1.5.0
+   Compiling jsonschema-regex v0.60.1
+   Compiling email_address v0.2.9
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling pin-project-lite v0.2.17
+   Compiling icu_properties v2.4.0
+   Compiling jsonschema v0.60.1
+   Compiling icu_normalizer v2.4.0
+   Compiling toml v1.1.8+spec-1.1.0
+   Compiling curve25519-dalek v4.1.3
+   Compiling signature v2.2.0
+   Compiling chacha20 v0.10.2
+   Compiling tokio-macros v2.7.2
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling fastrand v2.5.0
+   Compiling utf8parse v0.2.2
+   Compiling tempfile v3.27.0
+   Compiling tokio v1.54.1
+   Compiling anstyle-parse v1.0.0
+   Compiling idna_adapter v1.2.2
+   Compiling rand v0.10.3
+   Compiling sha2 v0.11.1
+   Compiling sha1 v0.11.0
+   Compiling cpufeatures v0.2.17
+   Compiling futures-task v0.3.34
+   Compiling colorchoice v1.0.5
+   Compiling futures-core v0.3.34
+   Compiling base64 v0.23.1
+   Compiling slab v0.4.12
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling base64ct v1.8.3
+   Compiling base64 v0.22.1
+   Compiling futures-sink v0.3.34
+   Compiling anstyle-query v1.1.5
+   Compiling futures-util v0.3.34
+   Compiling anstream v1.0.0
+   Compiling pem-rfc7468 v0.7.0
+   Compiling ureq-proto v0.7.1
+   Compiling sha2 v0.10.9
+   Compiling tungstenite v0.30.0
+   Compiling idna v1.1.0
+   Compiling weir-bounded v0.0.0 (https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286)
+   Compiling ed25519 v2.2.3
+   Compiling rustls-platform-verifier v0.7.1
+   Compiling rustls-native-certs v0.8.5
+   Compiling boomdrive-control v0.0.0 (/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/boomdrive.git/sluice/.places/sluice+2Ftry+2Fmain+2F43/crates/boomdrive-control)
+   Compiling form_urlencoded v1.2.2
+   Compiling keyring-core v1.0.1
+   Compiling webpki-roots v1.0.11
+   Compiling clap_lex v1.1.1
+   Compiling utf8-zero v0.8.1
+   Compiling strsim v0.11.1
+   Compiling signal-hook v0.3.18
+   Compiling clap_builder v4.6.7
+   Compiling tokio-rustls v0.26.6
+   Compiling ureq v3.5.1
+   Compiling tokio-tungstenite v0.30.0
+   Compiling apple-native-keyring-store v1.0.2
+   Compiling url v2.5.8
+   Compiling ed25519-dalek v2.2.0
+   Compiling weir-branch v0.0.0 (https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286)
+   Compiling der v0.7.10
+   Compiling pem v3.0.6
+   Compiling simple_asn1 v0.6.4
+   Compiling gethostname v1.1.0
+   Compiling clap_derive v4.6.7
+   Compiling signal-hook-registry v1.4.8
+   Compiling uuid v1.29.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling rtoolbox v0.0.6
+   Compiling rand_chacha v0.3.1
+   Compiling rpassword v7.5.4
+   Compiling jsonwebtoken v9.3.1
+   Compiling spki v0.7.3
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling weir-capture v0.0.0 (https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286)
+   Compiling clap v4.6.7
+   Compiling boomdrive-hosted v0.0.0 (/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/boomdrive.git/sluice/.places/sluice+2Ftry+2Fmain+2F43/crates/boomdrive-hosted)
+   Compiling lazy_static v1.5.1
+   Compiling pkcs8 v0.10.2
+   Compiling rand v0.8.8
+   Compiling pkcs1 v0.7.5
+   Compiling boomdrive-crew v0.0.0 (/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/boomdrive.git/sluice/.places/sluice+2Ftry+2Fmain+2F43/crates/boomdrive-crew)
+   Compiling weir-signals v0.0.0 (https://github.com/boomdrivedev/weir?rev=5e3f1286d7572a4c70b5e61600f2d50609793820#5e3f1286)
+   Compiling rsa v0.9.10
+   Compiling boomdrive v0.0.0 (/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/boomdrive.git/sluice/.places/sluice+2Ftry+2Fmain+2F43/crates/boomdrive)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 29.53s
+     Running unittests src/lib.rs (target/debug/deps/boomdrive-09395f7a6c21986d)
+     Running unittests src/main.rs (target/debug/deps/boomdrive-347ee1f16c8a4a84)
+     Running tests/acts.rs (target/debug/deps/acts-32b61c6ac06c431e)
+     Running tests/after.rs (target/debug/deps/after-d451756e9a7ba61d)
+     Running tests/bolts.rs (target/debug/deps/bolts-656e0835c6a7ed04)
+     Running tests/clones.rs (target/debug/deps/clones-defe489489ccc750)
+     Running tests/code_workspaces.rs (target/debug/deps/code_workspaces-53604d28135f7d03)
+     Running tests/commands.rs (target/debug/deps/commands-7620f73fd896207f)
+     Running tests/confirms.rs (target/debug/deps/confirms-dda617f579a9c42f)
+     Running tests/control.rs (target/debug/deps/control-32eb4d7cb002d2b6)
+     Running tests/drive_workspaces.rs (target/debug/deps/drive_workspaces-6a8d0020a7e05052)
+     Running tests/dropped.rs (target/debug/deps/dropped-61b1dfa611383474)
+     Running tests/enroll.rs (target/debug/deps/enroll-1391ce1b36097d0b)
+     Running tests/entries.rs (target/debug/deps/entries-1d02c84ad231d06e)
+     Running tests/examples.rs (target/debug/deps/examples-76e9733cea8b28c8)
+     Running tests/facts.rs (target/debug/deps/facts-f6edca7d05bad4e8)
+     Running tests/family.rs (target/debug/deps/family-57bed4e9908b3d57)
+error: test failed, to rerun pass `-p boomdrive --test family`
