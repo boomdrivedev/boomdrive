@@ -1,7 +1,7 @@
 //! The hosted control plane's forge tokens (the hosted-control-plane
 //! spec's "A served repository's token is asked by one request of version
 //! 4", "Each partition served the repository is asked in the table's
-//! order", "An ask's answer is checked against version 4 before it is
+//! order", "An ask's answer is checked against version 5 before it is
 //! read" and "A host with no partition's key must be fixed"; design
 //! Decisions 2 and 7 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
 //! record 0053), over the fake hosted control plane on the loopback
@@ -77,7 +77,7 @@ fn refusal(asked: &TokenAsked) -> (&str, bool) {
 }
 
 /// The hosted-control-plane spec's "A token given": the ask's body passed
-/// version 4 and named `example/app`, its statement checks over the
+/// version 5 and named `example/app`, its statement checks over the
 /// context `forge token` with `home`'s key and `example/app`, and the
 /// answer is the fake's token, ending at its time.
 #[test]
@@ -116,8 +116,8 @@ fn a_token_given() {
         unreachable!("an ask");
     };
     assert_eq!(partition.as_deref(), Some("home"));
-    assert_eq!(refused, &None, "the ask passed version 4");
-    assert_eq!(message["protocol_version"], json!(4));
+    assert_eq!(refused, &None, "the ask passed version 5");
+    assert_eq!(message["protocol_version"], json!(5));
     assert_eq!(
         message["body"],
         json!({ "forge_token": { "repository": "example/app" } })
@@ -378,7 +378,7 @@ fn given_altered(
 }
 
 /// The hosted-control-plane spec's "A token given with a field unnamed":
-/// a `forge_token_given` holding `scope` fails version 4, so the ask is
+/// a `forge_token_given` holding `scope` fails version 5, so the ask is
 /// refused, its words naming `runner/forge-token` and the schema's path,
 /// and the token is in no words.
 #[test]

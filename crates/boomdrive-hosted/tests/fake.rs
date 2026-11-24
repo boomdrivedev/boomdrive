@@ -8,7 +8,7 @@
 mod common;
 
 use boomdrive_hosted::key;
-use boomdrive_hosted::protocol::v4::VERSION;
+use boomdrive_hosted::protocol::v5::VERSION;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
 use ed25519_dalek::SigningKey;

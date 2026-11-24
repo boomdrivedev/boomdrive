@@ -6,73 +6,14 @@
 //! in the host's credential store (core.4, core.32). A refusal names the
 //! file and the key, and never quotes the `url` or a key the
 //! implementation does not read, a value put there by mistake among it.
-//!
-//! The observer table, `[observer]`, is read the same way, but that its
-//! `url` is at a loopback address alone, each partition's `label` names the
-//! part whose work it observes, and its keys are made by `boomdrive enroll
-//! --observer` and kept under `observer.<label>` (design Decisions 3 and 4
-//! of a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048;
-//! core.19).
 
 use crate::key::KeyName;
 use std::path::Path;
 use toml::Value;
 use url::{Host, Url};
 
-/// What a table is read for: the partitions of the control plane the
-/// runner takes work from, or those an observer on the host observes
-/// (record 0048).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Role {
-    /// `[control_plane.hosted]`.
-    ControlPlane,
-    /// `[observer]`.
-    Observer,
-}
-
-impl Role {
-    /// The table as the runner's configuration names it.
-    pub fn table(self) -> &'static str {
-        match self {
-            Role::ControlPlane => "[control_plane.hosted]",
-            Role::Observer => "[observer]",
-        }
-    }
-
-    /// The command that enrolls the partition `label` in this role.
-    pub fn enroll_command(self, label: &str) -> String {
-        match self {
-            Role::ControlPlane => format!("boomdrive enroll {label}"),
-            Role::Observer => format!("boomdrive enroll --observer {label}"),
-        }
-    }
-
-    /// What a line calls the end its connection reaches.
-    pub fn end(self) -> &'static str {
-        match self {
-            Role::ControlPlane => "the control plane",
-            Role::Observer => "the observer",
-        }
-    }
-
-    /// The command that makes a partition's key in this role, for a
-    /// refusal of a credential's key.
-    fn enroll(self) -> &'static str {
-        match self {
-            Role::ControlPlane => "boomdrive enroll",
-            Role::Observer => "boomdrive enroll --observer",
-        }
-    }
-
-    /// The prefix of each of its partitions' key labels, where a label is
-    /// not the key's alone.
-    fn key_prefix(self) -> &'static str {
-        match self {
-            Role::ControlPlane => "",
-            Role::Observer => "observer.",
-        }
-    }
-}
+/// The table as the runner's configuration names it.
+pub const TABLE: &str = "[control_plane.hosted]";
 
 /// The keys the hosted implementation reads, at the table's top and in
 /// each partition.
@@ -97,15 +38,13 @@ const ENROLL_PATH: &str = "runner/enroll";
 const CONNECT_PATH: &str = "runner/connect";
 const FORGE_TOKEN_PATH: &str = "runner/forge-token";
 
-/// The hosted table, or the observer table, read.
+/// The hosted table, read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Table {
     /// The control plane's address, under which its two paths go.
     pub url: Url,
     /// Each partition served, in the table's order.
     pub partitions: Vec<Partition>,
-    /// What the table was read for.
-    pub role: Role,
 }
 
 /// A partition served: one enrollment, its label the host's own name for
@@ -120,21 +59,10 @@ impl Table {
     /// Reads the hosted table, `table`, from the configuration file
     /// `file`.
     pub fn read(table: &toml::Table, file: &Path) -> Result<Table, String> {
-        Table::read_as(table, file, Role::ControlPlane)
-    }
-
-    /// Reads the observer table, `[observer]`, `table`, from the
-    /// configuration file `file`: as the hosted table is read, but that its
-    /// `url` is at a loopback address alone (record 0048, point 2).
-    pub fn read_observer(table: &toml::Table, file: &Path) -> Result<Table, String> {
-        Table::read_as(table, file, Role::Observer)
-    }
-
-    fn read_as(table: &toml::Table, file: &Path, role: Role) -> Result<Table, String> {
-        let name = role.table();
+        let name = TABLE;
         let refuse = |words: String| format!("{}: {name}: {words}", file.display());
-        unread(table, &KEYS, "", role).map_err(refuse)?;
-        let url = address(table.get("url"), role).map_err(refuse)?;
+        unread(table, &KEYS, "").map_err(refuse)?;
+        let url = address(table.get("url")).map_err(refuse)?;
 
         let entries = match table.get("partitions") {
             None => {
@@ -181,7 +109,7 @@ impl Table {
                 Some(_) => return Err(refuse(format!("{which}'s `label` is not a string"))),
             };
             let which = format!("`partitions` entry `{label}`");
-            unread(entry, &PARTITION_KEYS, &format!("{which} "), role).map_err(refuse)?;
+            unread(entry, &PARTITION_KEYS, &format!("{which} ")).map_err(refuse)?;
             let repositories = match entry.get("repositories") {
                 None => {
                     return Err(refuse(format!(
@@ -219,11 +147,7 @@ impl Table {
                 repositories,
             });
         }
-        Ok(Table {
-            url,
-            partitions,
-            role,
-        })
+        Ok(Table { url, partitions })
     }
 
     /// The partition labelled `label`.
@@ -242,18 +166,15 @@ impl Table {
     }
 
     /// What `label`'s key is kept under in the host's credential store:
-    /// the label and the control plane's host (design Decision 3), an
-    /// observer's label as `observer.<label>`, which no hosted partition's
-    /// can be, since a label holds no `.` (design Decision 4 of
-    /// a-runner-reports-to-an-observer-it-takes-no-work-from).
+    /// the label and the control plane's host (design Decision 3).
     pub fn key_name(&self, label: &str) -> KeyName {
         let plane = self.url.host_str().unwrap_or_default().to_lowercase();
-        KeyName::new(&format!("{}{label}", self.role.key_prefix()), &plane)
+        KeyName::new(label, &plane)
     }
 
     /// The command that enrolls the partition `label` of this table.
     pub fn enroll_command(&self, label: &str) -> String {
-        self.role.enroll_command(label)
+        format!("boomdrive enroll {label}")
     }
 
     /// Where an enrollment is sent: `runner/enroll` under the `url`.
@@ -297,19 +218,10 @@ impl Table {
 }
 
 /// The `url` `value` gives, or why it is refused, its value never quoted:
-/// a user written into it may hold a password. An observer's is at a
-/// loopback address alone, `https://` among it.
-fn address(value: Option<&Value>, role: Role) -> Result<Url, String> {
-    let rule = match role {
-        Role::ControlPlane => {
-            "the control plane's address is `https://`, or `http://` to a loopback address, \
-             with no user, query or fragment"
-        }
-        Role::Observer => {
-            "an observer is reached at a loopback address alone: its address is `http://` or \
-             `https://` to `localhost`, `127.0.0.0/8` or `::1`, with no user, query or fragment"
-        }
-    };
+/// a user written into it may hold a password.
+fn address(value: Option<&Value>) -> Result<Url, String> {
+    let rule = "the control plane's address is `https://`, or `http://` to a loopback address, \
+                with no user, query or fragment";
     let text = match value {
         None => return Err(format!("names no `url`: {rule}, and is required")),
         Some(Value::String(text)) => text,
@@ -324,9 +236,6 @@ fn address(value: Option<&Value>, role: Role) -> Result<Url, String> {
     };
     match (url.scheme(), url.host()) {
         (_, None) => return Err(format!("`url` names no host: {rule}")),
-        ("http" | "https", _) if role == Role::Observer && !loopback => {
-            return Err(format!("`url` is to a host that is not loopback: {rule}"))
-        }
         ("https", _) => {}
         ("http", _) if loopback => {}
         ("http", _) => {
@@ -382,16 +291,16 @@ fn is_address(text: &str) -> bool {
 
 /// Refuses each key of `table` that `read` does not hold, named and never
 /// quoted, a credential's key saying where the host's key is (core.4).
-fn unread(table: &toml::Table, read: &[&str], within: &str, role: Role) -> Result<(), String> {
+fn unread(table: &toml::Table, read: &[&str], within: &str) -> Result<(), String> {
     let refused: Vec<String> = table
         .keys()
         .filter(|key| !read.contains(&key.as_str()))
         .map(|key| {
             let elsewhere = match key.as_str() {
-                key if CREDENTIALS.contains(&key) => format!(
-                    ": the host's key is kept in its credential store, made by `{}`",
-                    role.enroll()
-                ),
+                key if CREDENTIALS.contains(&key) => {
+                    ": the host's key is kept in its credential store, made by `boomdrive enroll`"
+                        .to_string()
+                }
                 "kinds" | "kind" | "kinds_file" => {
                     ": kinds are Flume's host configuration".to_string()
                 }
@@ -690,113 +599,5 @@ mod tests {
         )
         .unwrap_err()
         .contains("`partitions` entry `home` names no `repositories`"));
-    }
-
-    /// The observer table as `text`, written under `[observer]`, read.
-    fn read_observer(text: &str) -> Result<Table, String> {
-        let table: toml::Table = toml::from_str(text).expect("a TOML table");
-        Table::read_observer(&table, Path::new(FILE))
-    }
-
-    /// The hosted-control-plane spec's "The observer read".
-    #[test]
-    fn an_observer_read() {
-        let table = read_observer(
-            "url = \"http://localhost:8787\"\n[[partitions]]\nlabel = \"home\"\n\
-             repositories = [\"example/app\"]\n",
-        )
-        .unwrap();
-        assert_eq!(table.role, Role::Observer);
-        assert_eq!(table.url.as_str(), "http://localhost:8787/");
-        assert_eq!(
-            table.partitions,
-            [Partition {
-                label: "home".to_string(),
-                repositories: vec!["example/app".to_string()],
-            }]
-        );
-        assert_eq!(
-            table.connect_address().as_str(),
-            "ws://localhost:8787/runner/connect"
-        );
-        assert_eq!(
-            table.enroll_command("home"),
-            "boomdrive enroll --observer home"
-        );
-        for url in [
-            "https://localhost:8787",
-            "http://127.0.0.1:8787",
-            "http://127.1.2.3:8787",
-            "https://[::1]:8787",
-        ] {
-            assert!(read_observer(&with_url(url)).is_ok(), "{url}");
-        }
-        let hosted = read_table(&with_url("https://control.example")).unwrap();
-        assert_eq!(hosted.role, Role::ControlPlane);
-        assert_eq!(hosted.enroll_command("home"), "boomdrive enroll home");
-    }
-
-    /// The hosted-control-plane spec's "An observer off the host".
-    #[test]
-    fn an_observer_off_the_host() {
-        for url in [
-            "https://control.example",
-            "http://control.example",
-            "https://10.0.0.1",
-        ] {
-            let refusal = read_observer(&with_url(url)).unwrap_err();
-            assert_eq!(
-                refusal,
-                format!(
-                    "{FILE}: [observer]: `url` is to a host that is not loopback: an observer is \
-                     reached at a loopback address alone: its address is `http://` or \
-                     `https://` to `localhost`, `127.0.0.0/8` or `::1`, with no user, query or \
-                     fragment"
-                ),
-                "{url}"
-            );
-        }
-        assert!(read_observer(&with_url("ws://localhost:8787"))
-            .unwrap_err()
-            .starts_with(&format!("{FILE}: [observer]: `url` is `ws:`")));
-        assert!(read_observer(PARTITIONS)
-            .unwrap_err()
-            .starts_with(&format!("{FILE}: [observer]: names no `url`")));
-        assert!(
-            read_observer("url = \"http://localhost:8787\"\npartitions = 1\n")
-                .unwrap_err()
-                .contains("write each as `[[observer.partitions]]`")
-        );
-    }
-
-    /// The hosted-control-plane spec's "A token in the observer table".
-    #[test]
-    fn an_observer_with_a_token() {
-        let value = "n0t-4-r34l-t0k3n";
-        let refusal = read_observer(&format!(
-            "token = {value:?}\n{}",
-            with_url("http://localhost:8787")
-        ))
-        .unwrap_err();
-        assert_eq!(
-            refusal,
-            format!(
-                "{FILE}: [observer]: names `token`, which the hosted implementation does not \
-                 read: the host's key is kept in its credential store, made by `boomdrive \
-                 enroll --observer`"
-            )
-        );
-        assert!(!refusal.contains(value), "{refusal}");
-    }
-
-    /// An observer's key is kept under `observer.<label>`, which no hosted
-    /// partition's label can be (design Decision 4).
-    #[test]
-    fn an_observers_key_name() {
-        let table = read_observer(&with_url("http://localhost:8787")).unwrap();
-        let name = table.key_name("home");
-        assert_eq!(name.account(), "observer.home@localhost");
-        assert_eq!(name.credential(), "boomdrive.observer.home.localhost");
-        assert!(!is_label(name.label()));
     }
 }

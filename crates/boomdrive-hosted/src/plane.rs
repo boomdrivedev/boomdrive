@@ -8,13 +8,13 @@
 //! share (record 0026; core.49). Every id a partition's control plane gives is handed to
 //! the runner as `<label>/<id>`, and has its prefix taken off as it goes
 //! up, so a partition's connection carries only its own repositories,
-//! leases and work. What goes up of each tool's answer is version 4's copy
+//! leases and work. What goes up of each tool's answer is version 5's copy
 //! of it, cut and checked.
 
 use crate::connection::{self, Answered, Connection, Dial};
 use crate::copy;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v4::{self, MessageId, VERSION};
+use crate::protocol::v5::{self, MessageId, VERSION};
 use crate::table::{self, Table};
 use boomdrive_control::{
     Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Previewed, Pulled,
@@ -91,9 +91,7 @@ pub struct Hosted {
 }
 
 /// The runtime every part opened together shares, stopped once the last
-/// part holding it is dropped; an observer's are opened on one of their
-/// own (design Decision 6 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from).
+/// part holding it is dropped.
 pub(crate) struct Shared(pub(crate) Option<Runtime>);
 
 impl Shared {
@@ -174,18 +172,15 @@ impl Failing {
     }
 }
 
-/// The launch `id`'s status and entry, `launched`'s, cut to version 4's
+/// The launch `id`'s status and entry, `launched`'s, cut to version 5's
 /// copies, each `{copy, at, listed}`, or none where it is none or its copy
 /// fails, which `now` holds and is said where `was` did not hold it. A
 /// status goes up with each end of the place copied on its own, and one
 /// with an end carried by its delivery alone or left out is said once
 /// while it does, naming each end's path and never a value (design
 /// Decision 9; design Decision 2 of
-/// the-hosted-protocol-carries-every-end-of-a-place). A partition's report
-/// and an observer's are cut by it alike (design Decision 2 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from; core.11,
-/// core.27).
-pub(crate) fn cut_launch(
+/// the-hosted-protocol-carries-every-end-of-a-place; core.11, core.27).
+fn cut_launch(
     id: &Id,
     launched: &Launched,
     was: &Failing,
@@ -221,6 +216,40 @@ pub(crate) fn cut_launch(
     let status = carried("status", &launched.status);
     let entry = carried("entry", &launched.entry);
     (status, entry)
+}
+
+/// The status of the unleased place `place`, cut to version 5's copy,
+/// `{copy, at, listed}`, or none where its copy fails, which `now` holds
+/// and is said where `was` did not hold it, as a launch's is (record
+/// 0054; core.27).
+fn cut_status(
+    place: &str,
+    carried: &Carried,
+    was: &Failing,
+    now: &mut Failing,
+    say: &connection::Say,
+) -> Option<Value> {
+    let id = Id::new(place);
+    let copied = copy::place_entry(&carried.text).map(|placed| {
+        if !placed.whole() {
+            if !was.partial.contains(&id) {
+                say(partial_words(&id, &placed));
+            }
+            now.partial.insert(id.clone());
+        }
+        placed.copy
+    });
+    match copied {
+        Ok(copy) => Some(json!({
+            "copy": copy,
+            "at": carried.at,
+            "listed": carried.listed,
+        })),
+        Err(words) => {
+            now.fails(was, ("place", id, "status"), &words, say);
+            None
+        }
+    }
 }
 
 impl Hosted {
@@ -314,18 +343,18 @@ impl Hosted {
         }
     }
 
-    /// The host's capacity as version 4 carries it: Flume's host part as
+    /// The host's capacity as version 5 carries it: Flume's host part as
     /// its copy, or `missing` with words naming the path where the copy
     /// fails, said once while it fails (design Decision 9).
-    fn capacity(&mut self, capacity: &Capacity) -> v4::Capacity {
+    fn capacity(&mut self, capacity: &Capacity) -> v5::Capacity {
         let part = match capacity {
-            Capacity::Missing(words) => return v4::Capacity::Missing(words.clone()),
+            Capacity::Missing(words) => return v5::Capacity::Missing(words.clone()),
             Capacity::Printed(part) => part,
         };
         match copy::host_part(part) {
             Ok(copy) => {
                 self.host_part_failing = false;
-                v4::Capacity::Printed(v4::HostPart {
+                v5::Capacity::Printed(v5::HostPart {
                     running: raw(&copy["running"]),
                     bound: raw(&copy["bound"]),
                     room: raw(&copy["room"]),
@@ -338,7 +367,7 @@ impl Hosted {
                 if !std::mem::replace(&mut self.host_part_failing, true) {
                     (self.say)(format!("hosted: {words}, so it goes up missing"));
                 }
-                v4::Capacity::Missing(words)
+                v5::Capacity::Missing(words)
             }
         }
     }
@@ -553,11 +582,11 @@ impl Partition {
 
     /// The runner's `hello` as this partition's control plane is told it
     /// (design Decision 8): only the repositories its table names, of
-    /// those kept, and none the runner drains, which version 4 cannot name
+    /// those kept, and none the runner drains, which version 5 cannot name
     /// (record 0021), and only its own leases, their prefixes taken off;
     /// the host's tools and capacity as every partition's.
-    fn hello(&self, hello: &Hello, capacity: v4::Capacity) -> v4::Hello {
-        v4::Hello {
+    fn hello(&self, hello: &Hello, capacity: v5::Capacity) -> v5::Hello {
+        v5::Hello {
             interface_version: hello.interface_version,
             runner_version: hello.runner_version.clone(),
             tool_versions: hello.tool_versions.clone(),
@@ -579,7 +608,7 @@ impl Partition {
     /// The wants of the partition's control plane as the runner takes
     /// them, their ids under its prefix, but for a want naming a
     /// repository the partition is not served, which is said once while
-    /// it is offered (design Decision 8). Version 4 carries a land, a
+    /// it is offered (design Decision 8). Version 5 carries a land, a
     /// confirm and a hold among the acts and a preview among the wants: a
     /// land, a confirm and a hold are each given as any act, their words
     /// and bound as given, read and refused by nothing here, and a preview
@@ -664,7 +693,7 @@ impl Partition {
     /// which the runner reads again from sluice's listing (design Decision
     /// 7 of the-hosted-protocol-carries-land-and-preview; core.10,
     /// core.55).
-    fn taken_back(&self, report: v4::Report) -> Report {
+    fn taken_back(&self, report: v5::Report) -> Report {
         Report {
             launches: report
                 .launches
@@ -716,11 +745,14 @@ impl Partition {
                     (self.prefixed(&id), previewed)
                 })
                 .collect(),
+            unleased: BTreeMap::new(),
         }
     }
 
     /// The partition's own part of the runner's `report`: the entries
-    /// whose ids carry its prefix, still under it.
+    /// whose ids carry its prefix, still under it, and the unleased places
+    /// in the repositories its table names, and no other (record 0054;
+    /// core.26).
     fn part(&self, report: &Report) -> Report {
         let prefix = self.prefix();
         fn own<T: Clone>(entries: &BTreeMap<Id, T>, prefix: &str) -> BTreeMap<Id, T> {
@@ -736,10 +768,24 @@ impl Partition {
             commands: own(&report.commands, &prefix),
             inboxes: own(&report.inboxes, &prefix),
             previews: own(&report.previews, &prefix),
+            unleased: report
+                .unleased
+                .iter()
+                .filter(|(_, place)| self.serves(&place.repository))
+                .map(|(place, unleased)| (place.clone(), unleased.clone()))
+                .collect(),
         }
     }
 
-    /// `part` as version 4's `report` carries it: each id with its prefix
+    /// Whether the partition is served `repository`, compared without
+    /// case as GitHub compares an address.
+    fn serves(&self, repository: &str) -> bool {
+        self.repositories
+            .iter()
+            .any(|served| served.eq_ignore_ascii_case(repository))
+    }
+
+    /// `part` as version 5's `report` carries it: each id with its prefix
     /// taken off, and each launch's status and entry as its copy, or
     /// `null` where the copy fails, which is said once while it fails
     /// (design Decision 9). A status goes up with each end of the place
@@ -811,6 +857,14 @@ impl Partition {
                 }),
             );
         }
+        let mut unleased = serde_json::Map::new();
+        for (place, elsewhere) in &part.unleased {
+            let status = cut_status(place, &elsewhere.status, &was, &mut now, say);
+            unleased.insert(
+                place.clone(),
+                json!({ "repository": elsewhere.repository, "status": status }),
+            );
+        }
         self.failing = now;
         let acts: serde_json::Map<String, Value> = part
             .acts
@@ -837,6 +891,7 @@ impl Partition {
             "commands": commands,
             "inboxes": inboxes,
             "previews": previews,
+            "unleased": unleased,
         })
     }
 
@@ -907,6 +962,7 @@ impl Partition {
                 part.inboxes.remove(id);
                 part.previews.remove(id);
             }
+            part.unleased.clear();
             let taken = statuses
                 .into_iter()
                 .filter(|id| part.launches.contains_key(id))
@@ -962,7 +1018,7 @@ fn partial_words(id: &Id, placed: &copy::PlaceCopy) -> String {
     )
 }
 
-/// `value` as raw JSON, as version 4's host part carries each value.
+/// `value` as raw JSON, as version 5's host part carries each value.
 fn raw(value: &Value) -> Box<RawValue> {
     RawValue::from_string(value.to_string()).unwrap_or_else(|_| RawValue::NULL.to_owned())
 }

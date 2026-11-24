@@ -2,7 +2,7 @@
 //! a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053;
 //! core.33): under a hosted control plane the Boomdrive App is the control
 //! plane's, so a served repository's token is asked of it by one
-//! `POST runner/forge-token` of version 4, under the key of a partition
+//! `POST runner/forge-token` of version 5, under the key of a partition
 //! served the repository, each partition so served asked in the table's
 //! order until one gives a token. Each ask is signed afresh over the
 //! context `forge token`, which binds its repository, with the partition's
@@ -13,13 +13,13 @@
 //! An ask opens no socket and no part, keeps nothing, and says no line:
 //! its answer, a token, the App's absence or a refusal, is its caller's,
 //! and no words of it hold a token, a statement or a key (core.4,
-//! core.11, core.35). Every answer is checked against version 4 before it
+//! core.11, core.35). Every answer is checked against version 5 before it
 //! is read, whatever its status (core.42), and the asks together stop at
 //! [`ASK_FOR`].
 
 use crate::check;
 use crate::key::{self, Store};
-use crate::protocol::v4::{self, FromRunner, Message, MessageId, ToRunner, VERSION};
+use crate::protocol::v5::{self, FromRunner, Message, MessageId, ToRunner, VERSION};
 use crate::table::{Partition, Table};
 use boomdrive_control::{ForgeToken, ForgeTokens, TokenAsked};
 use serde_json::Value;
@@ -88,7 +88,7 @@ impl Tokens {
 
     /// One partition's ask of `repository`'s token, the asks having begun
     /// at `began`: its key read, a statement signed for it, and one
-    /// request sent, its answer read once it passes version 4 and names
+    /// request sent, its answer read once it passes version 5 and names
     /// the ask and the repository.
     fn ask(
         &self,
@@ -129,7 +129,7 @@ impl Tokens {
         let id = MessageId::new(Uuid::now_v7().to_string());
         let message = Message::new(
             id.clone(),
-            FromRunner::ForgeToken(v4::ForgeToken {
+            FromRunner::ForgeToken(v5::ForgeToken {
                 repository: repository.to_string(),
             }),
         );
@@ -261,7 +261,7 @@ impl ForgeTokens for Tokens {
             return TokenAsked::Refused {
                 words: format!(
                     "{repository} is a repository no partition of {} is served",
-                    self.table.role.table()
+                    crate::table::TABLE
                 ),
                 host_to_fix: false,
             };

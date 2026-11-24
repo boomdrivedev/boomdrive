@@ -387,6 +387,7 @@ fn a_report() {
             },
         )]),
         previews: BTreeMap::new(),
+        unleased: BTreeMap::new(),
     };
     round_trip(&launched);
     round_trip(&report);
@@ -410,6 +411,29 @@ fn a_report_from_before_reads() {
     assert!(read.draining.is_empty());
     assert!(read.drives.is_empty());
     round_trip(&read);
+}
+
+/// The control-plane-interface spec's "A report written with unleased
+/// places": the share's unleased places are the pass's own, and the
+/// written report holds none of them (record 0054; core.35).
+#[test]
+fn a_report_written_holds_no_unleased_place() {
+    let mut report = Report::default();
+    report.unleased.insert(
+        "/p/places/note--by-hand".to_string(),
+        Unleased {
+            repository: "agentplot/flume".to_string(),
+            status: Carried {
+                text: "{\"place\":\"/p/places/note--by-hand\"}".to_string(),
+                at: at("2026-11-01T10:00:00Z"),
+                listed: true,
+            },
+        },
+    );
+    let written = serde_json::to_value(&report).unwrap();
+    assert!(written.get("unleased").is_none(), "{written}");
+    let read: Report = serde_json::from_value(written).unwrap();
+    assert_eq!(read, Report::default());
 }
 
 fn previewed(lease: Lease, outcome: Outcome) -> Previewed {

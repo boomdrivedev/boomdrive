@@ -24,7 +24,7 @@ const UNNAMED: [&str; 7] = [
     "password",
 ];
 
-/// The names of version 4's forge token, which hold `token` by design: its
+/// The names of the forge token of versions 4 and 5, which hold `token` by design: its
 /// three kinds, each answer's `forge_token`, and `forge_token_given`'s
 /// `token`, the one field of any version that names a credential (record
 /// 0053).
@@ -70,7 +70,7 @@ fn unnamed_word(name: &str) -> Option<&'static str> {
 fn every_name_read() {
     for version in VERSIONS {
         let n = version.number;
-        let excepted: &[&str] = if n == 4 { &FORGE_TOKEN } else { &[] };
+        let excepted: &[&str] = if n >= 4 { &FORGE_TOKEN } else { &[] };
         for (file, value) in version.files() {
             let mut found = BTreeSet::new();
             names(&value, &mut found);
@@ -94,9 +94,9 @@ fn every_name_read() {
         for name in FORGE_TOKEN {
             assert_eq!(
                 all.contains(name),
-                n == 4,
+                n >= 4,
                 "version {n} {} {name}",
-                if n == 4 { "does not name" } else { "names" }
+                if n >= 4 { "does not name" } else { "names" }
             );
         }
     }

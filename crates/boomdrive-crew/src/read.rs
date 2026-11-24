@@ -198,20 +198,21 @@ pub struct Runner {
 }
 
 /// A runner's files at a tip, by name: `runner.rec`, `answers.rec`,
-/// `places.rec`, `repositories.rec` and `previews.rec`, each none where
-/// the tip lacks it.
+/// `places.rec`, `repositories.rec`, `previews.rec` and `unleased.rec`,
+/// each none where the tip lacks it.
 pub type RunnerFiles = BTreeMap<&'static str, Option<String>>;
 
 /// The runner's files a branch holds. Another runner's
 /// `repositories.rec` is read with its tip but read for nothing, since
 /// crew's implementation never needs where another runner keeps a kit
 /// (the-runner-names-each-repository-it-keeps, design Decision 3).
-pub const FILES: [&str; 5] = [
+pub const FILES: [&str; 6] = [
     "runner.rec",
     "answers.rec",
     "places.rec",
     "repositories.rec",
     "previews.rec",
+    "unleased.rec",
 ];
 
 impl Store {

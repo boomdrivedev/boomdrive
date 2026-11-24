@@ -1,0 +1,12 @@
+{
+  "protocol_version": 5,
+  "id": "plane:15",
+  "body": {
+    "forge_token_given": {
+      "forge_token": "runner:9",
+      "repository": "example/app",
+      "token": "ghs_example",
+      "expires_at": "2026-11-18T13:00:00Z"
+    }
+  }
+}

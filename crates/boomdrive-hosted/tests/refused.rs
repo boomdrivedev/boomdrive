@@ -5,8 +5,8 @@
 
 mod common;
 
-use boomdrive_hosted::protocol::v4::{FromRunner, Message, ToRunner};
-use common::{example, examples, from_runner, passes, refused, to_runner, V1, V2, V3, V4};
+use boomdrive_hosted::protocol::v5::{FromRunner, Message, ToRunner};
+use common::{example, examples, from_runner, passes, refused, to_runner, V1, V2, V3, V4, V5};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -38,25 +38,41 @@ fn a_message_with_no_id() {
 }
 
 /// The runner-protocol spec's "A message of another version": every
-/// message of a version names it, so a hello naming 3 is no message of
-/// version 4, one naming 4 is none of version 3, one naming 2 is none of
-/// version 3, one naming 3 is none of version 2, and one naming 1 is none
-/// of version 4; and one naming any other number, or the version as
-/// text, is none of version 4 (core.42; records 0052 and 0053).
+/// message of a version names it, so a hello naming 4 is no message of
+/// version 5 and one naming 5 none of version 4, and each older pair
+/// likewise; and one naming any other number, or the version as text, is
+/// none of version 5 (core.42; records 0052, 0053 and 0054).
 #[test]
 fn a_message_of_another_version() {
     let validator = from_runner();
-    for version in [json!(1), json!(2), json!(3), json!(5), json!(0), json!("4")] {
+    for version in [
+        json!(1),
+        json!(2),
+        json!(3),
+        json!(4),
+        json!(6),
+        json!(0),
+        json!("5"),
+    ] {
         let other = altered("from-runner", "hello.json", |hello| {
             hello["protocol_version"] = version.clone();
         });
         refused(
             &validator,
             &other,
-            &format!("a hello naming protocol_version {version}, against version 4"),
+            &format!("a hello naming protocol_version {version}, against version 5"),
         );
     }
-    for (version, against) in [(V3, V4), (V4, V3), (V2, V3), (V3, V2), (V1, V4), (V2, V1)] {
+    for (version, against) in [
+        (V4, V5),
+        (V5, V4),
+        (V3, V4),
+        (V4, V3),
+        (V2, V3),
+        (V3, V2),
+        (V1, V4),
+        (V2, V1),
+    ] {
         let own = version.example("from-runner", "hello.json");
         passes(
             &version.messages_from_runner(),
@@ -322,22 +338,6 @@ fn a_field_the_version_does_not_name() {
             json!("the user is away");
     });
     refused(&to, &held, "a field a hold does not name");
-    let observing = altered("from-runner", "hello-observing.json", |hello| {
-        hello["body"]["hello"]["reason"] = json!("a local stage");
-    });
-    refused(
-        &from,
-        &observing,
-        "a field an observing hello does not name",
-    );
-    let observed = altered("from-runner", "report-observed.json", |report| {
-        report["body"]["report"]["launches"]["offer-7"]["reason"] = json!("a local stage");
-    });
-    refused(
-        &from,
-        &observed,
-        "a field an observed report's launch does not name",
-    );
     let previewed = altered(
         "to-runner",
         "pulled-with-a-preview-and-its-done.json",

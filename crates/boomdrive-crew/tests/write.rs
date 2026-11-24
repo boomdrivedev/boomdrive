@@ -6,7 +6,7 @@ mod common;
 
 use boomdrive_control::{
     Acted, Answer, At, Carried, ControlPlane, Id, Launched, Lease, Outcome, Previewed, Report,
-    Reported,
+    Reported, Unleased,
 };
 use boomdrive_crew::read::{host_read, RunnerFiles};
 use common::{act, file, hello, hello_of, launch, plan, pull, State, REQUESTS};
@@ -601,6 +601,67 @@ fn a_branch_with_no_preview() {
     crew.report(&report_launched("{}")).expect("a report");
     assert!(state.file(BRANCH, "answers.rec").is_some());
     assert_eq!(state.file(BRANCH, "previews.rec"), None);
+}
+
+/// The descriptor of `unleased.rec` this repository proposes for crew
+/// (record 0054).
+const UNLEASED: &str = "%rec: Unleased\n%key: Place\n%type: At date\n\
+                        %mandatory: Place Repository At Status\n\
+                        %allowed: Place Repository At Status\n";
+
+/// A place started by hand in `repository`, its status `status`.
+fn unleased(repository: &str, status: &str) -> Unleased {
+    Unleased {
+        repository: repository.to_string(),
+        status: Carried {
+            text: status.to_string(),
+            at: at("2026-11-01T10:03:00Z"),
+            listed: true,
+        },
+    }
+}
+
+/// The crew-control-plane spec's "A place started by hand": the unleased
+/// place in the drive's repository is written in `unleased.rec`, under
+/// its descriptor byte for byte, and the one in a repository the drive
+/// does not keep is not, the file passing `recfix --check` (record 0054).
+#[test]
+fn a_place_started_by_hand_is_written_in_unleased_rec() {
+    let (state, mut crew) = pulled();
+    let mut report = report_launched("{}");
+    report.unleased.insert(
+        "/p/places/note--by-hand".to_string(),
+        unleased(CREW, "{\"place\":\"/p/places/note--by-hand\"}"),
+    );
+    report.unleased.insert(
+        "/p/places/note--elsewhere".to_string(),
+        unleased("agentplot/sluice", "{}"),
+    );
+    let answer = crew.report(&report).expect("a report");
+    assert!(answer.let_go.is_empty() && answer.refused.is_empty());
+    let unleased = state.file(BRANCH, "unleased.rec").expect("unleased.rec");
+    assert_eq!(
+        unleased,
+        format!(
+            "{UNLEASED}\nPlace: /p/places/note--by-hand\nRepository: {CREW}\n\
+             At: 2026-11-01T10:03:00Z\nStatus: {{\"place\":\"/p/places/note--by-hand\"}}\n"
+        )
+    );
+    assert_eq!(recfix(&unleased), None, "{unleased}");
+    let message = common::git(&state.bare(), &["log", "-1", "--format=%s", BRANCH], None);
+    assert!(
+        message.contains("unleased /p/places/note--by-hand"),
+        "{message}"
+    );
+}
+
+/// The crew-control-plane spec's "A branch with no unleased place".
+#[test]
+fn a_branch_with_no_unleased_place() {
+    let (state, mut crew) = pulled();
+    crew.report(&report_launched("{}")).expect("a report");
+    assert!(state.file(BRANCH, "answers.rec").is_some());
+    assert_eq!(state.file(BRANCH, "unleased.rec"), None);
 }
 
 /// The crew-control-plane spec's "A preview read back": a pull handed no

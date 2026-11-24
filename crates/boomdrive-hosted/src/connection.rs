@@ -1,6 +1,6 @@
 //! One partition's connection (design Decisions 5, 6 and 10; core.3,
 //! core.21 to core.23, core.31, core.42): one outgoing WebSocket to
-//! `runner/connect`, upgraded on version 4's subprotocol with a statement
+//! `runner/connect`, upgraded on version 5's subprotocol with a statement
 //! of the partition's key signed for that attempt alone. Its first message
 //! at every connection is the partition's whole hello, and its hello goes
 //! again whenever it changes. It is kept alive by the WebSocket protocol's
@@ -8,7 +8,7 @@
 //! pong has not come by the next ping. A connection lost, refused or not
 //! made is tried again on a backoff with jitter whose cap stops at
 //! `poll_interval`, and its reach is said once each way. Every message it
-//! is sent is checked against version 4 before it is read, and every
+//! is sent is checked against version 5 before it is read, and every
 //! message it sends is checked before it is sent. A report goes under a
 //! message id of its own, and the last one no `reported` answered is sent
 //! again under that id after the hello of every connection (core.21). A
@@ -19,23 +19,13 @@
 //! loop reaches it through [`Connection`] alone. It keeps nothing of
 //! enrollment but the key, read again from the host's store at every
 //! attempt (core.35).
-//!
-//! An observer's connection is dialed in the observing role (design
-//! Decision 6 of a-runner-reports-to-an-observer-it-takes-no-work-from;
-//! record 0048): kept, proved and tried again as a partition's is, its
-//! hello and report checked against the observing forms, it takes no work.
-//! A `pulled` holding a want or a report, and every message of a terminal,
-//! is answered with `message_refused` and said in one line, and nothing
-//! else is done with it. No message of an observer's wakes the runner, and
-//! its lines name the observer where a partition's name the control
-//! plane.
 
 use crate::check;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v4::{
+use crate::protocol::v5::{
     Message, MessageId, Pulled, Report, Reported, ToRunner, SUBPROTOCOL, VERSION,
 };
-use crate::table::{Role, Table};
+use crate::table::Table;
 use boomdrive_control::Want;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -83,10 +73,6 @@ const KINDS_KEPT: usize = 32;
 /// amended on 2026-11-15).
 pub const NO_TERMINAL: &str = "this runner has no end-to-end exchange for a terminal yet and relays none in the clear, so it closes it at once";
 
-/// The words every message of work an observer sends is refused with: the
-/// runner takes no work from an observer (record 0048, point 1; core.19).
-pub const OBSERVES: &str = "this connection observes, and the runner takes no work from it";
-
 /// Where a connection says its lines, one each, from its runtime's
 /// threads.
 pub type Say = Arc<dyn Fn(String) + Send + Sync>;
@@ -114,14 +100,11 @@ pub struct Dial {
     pub poll_interval: Duration,
     pub say: Say,
     pub wake: Wake,
-    /// Whether it is a partition's of the control plane the runner takes
-    /// work from, or an observer's.
-    pub role: Role,
 }
 
 impl Dial {
     /// The connection of `table`'s partition `label`, its key read from
-    /// `store`, in the table's role.
+    /// `store`.
     pub fn new(
         table: &Table,
         label: &str,
@@ -139,31 +122,12 @@ impl Dial {
             poll_interval,
             say,
             wake,
-            role: table.role,
-        }
-    }
-
-    /// The connection of the observer table `table`'s partition `label`,
-    /// in the observing role, its key read from `store`, with a wake that
-    /// does nothing (design Decision 6 of
-    /// a-runner-reports-to-an-observer-it-takes-no-work-from).
-    pub fn observing(
-        table: &Table,
-        label: &str,
-        store: Arc<dyn Store>,
-        poll_interval: Duration,
-        say: Say,
-    ) -> Dial {
-        let wake: Wake = Arc::new(|| {});
-        Dial {
-            role: Role::Observer,
-            ..Dial::new(table, label, store, poll_interval, say, wake)
         }
     }
 
     /// The command that enrolls its partition.
     fn enroll(&self) -> String {
-        self.role.enroll_command(&self.label)
+        format!("boomdrive enroll {}", self.label)
     }
 }
 
@@ -248,7 +212,7 @@ enum Ended {
 /// What the connection's task holds that the runner's loop reads.
 #[derive(Default)]
 struct State {
-    /// The hello last handed, as version 4 writes it.
+    /// The hello last handed, as version 5 writes it.
     hello: Option<Value>,
     phase: Phase,
     /// The last `pulled` its connection took since its hello.
@@ -306,7 +270,6 @@ enum Command {
 /// closes the connection.
 pub struct Connection {
     label: String,
-    role: Role,
     shared: Arc<Shared>,
     commands: mpsc::UnboundedSender<Command>,
     task: Option<JoinHandle<()>>,
@@ -318,11 +281,10 @@ impl Connection {
     pub fn open(runtime: &Handle, dial: Dial) -> Connection {
         let shared = Arc::new(Shared::default());
         let (commands, received) = mpsc::unbounded_channel();
-        let (label, role) = (dial.label.clone(), dial.role);
+        let label = dial.label.clone();
         let task = runtime.spawn(run(dial, shared.clone(), received));
         Connection {
             label,
-            role,
             shared,
             commands,
             task: Some(task),
@@ -336,18 +298,13 @@ impl Connection {
 
     /// Hands the connection the partition's hello, which it sends first at
     /// every connection, and at once on a live connection where it differs
-    /// from the hello it sent; or why the hello fails version 4, which is
-    /// then not handed. It is written as JSON and checked against its
-    /// role's form: a [`Hello`](crate::protocol::v4::Hello), or an observer's
-    /// observing hello.
+    /// from the hello it sent; or why the hello fails version 5, which is
+    /// then not handed. It is written as JSON and checked against
+    /// version 5's [`Hello`](crate::protocol::v5::Hello).
     pub fn hand(&self, hello: &impl Serialize) -> Result<(), String> {
         let hello = serde_json::to_value(hello)
             .map_err(|e| format!("the hello could not be written: {e}"))?;
-        let form = match self.role {
-            Role::ControlPlane => check::hello(),
-            Role::Observer => check::observing_hello(),
-        };
-        if let Some(words) = failure(form, "hello", &hello) {
+        if let Some(words) = failure(check::hello(), "hello", &hello) {
             return Err(format!(
                 "the hello fails version {VERSION}'s check, so it is not sent: {words}"
             ));
@@ -374,18 +331,13 @@ impl Connection {
         self.shared.lock().phase == Phase::Live
     }
 
-    /// Hands the connection the partition's report, version 4's body of a
+    /// Hands the connection the partition's report, version 5's body of a
     /// `report`, under a new message id, which it gives: sent at once on a
     /// live connection, and again under that id after the hello of every
     /// connection until it is answered or another is handed. A report that
-    /// fails version 4 is not handed, and why is given. It is checked
-    /// against its role's form: a report, or an observer's observed report.
+    /// fails version 5 is not handed, and why is given.
     pub fn report(&self, report: &Value) -> Result<MessageId, String> {
-        let form = match self.role {
-            Role::ControlPlane => check::report(),
-            Role::Observer => check::observed_report(),
-        };
-        if let Some(words) = failure(form, "report", report) {
+        if let Some(words) = failure(check::report(), "report", report) {
             return Err(format!(
                 "the report fails version {VERSION}'s check, so it is not sent: {words}"
             ));
@@ -533,7 +485,7 @@ fn drawn(cap: Duration) -> Duration {
     Duration::from_millis(u64::try_from(random % millis + 1).unwrap_or(u64::MAX))
 }
 
-/// Why a message of `kind` holding `body` fails version 4: checked first
+/// Why a message of `kind` holding `body` fails version 5: checked first
 /// against `definition`, the body's own, so the words name the path deep
 /// in the message, and then whole against `from-runner.schema.json`.
 fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Option<String> {
@@ -544,7 +496,7 @@ fn failure(definition: &jsonschema::Validator, kind: &str, body: &Value) -> Opti
     deep.or_else(|| check::failure(check::from_runner(), &envelope(kind, body).1))
 }
 
-/// A message of version 4 of `kind` holding `body`, under a new id of
+/// A message of version 5 of `kind` holding `body`, under a new id of
 /// its own, a UUID of version 7, time-ordered and random, so that no id
 /// is given twice (design Decision 7).
 fn envelope(kind: &str, body: &Value) -> (String, Value) {
@@ -777,9 +729,9 @@ impl Sender {
 
 /// What a frame of the control plane's text held.
 enum Received {
-    /// A message that passed version 4, read.
+    /// A message that passed version 5, read.
     Message(Message<ToRunner>),
-    /// A message that failed version 4, by its id, with words naming the
+    /// A message that failed version 5, by its id, with words naming the
     /// paths that failed and never a value.
     Failing { id: MessageId, words: String },
     /// A message whose id cannot be read, which cannot be named.
@@ -875,28 +827,12 @@ async fn serve(
                     }
                     Received::Unnamed(what) => return unnamed(label, sender, frames, what).await,
                 };
-                let observing = dial.role == Role::Observer;
                 match message.body {
-                    ToRunner::Pulled(pulled) if observing => {
-                        if first {
-                            backoff.reset();
-                        }
-                        let work = !pulled.wants.is_empty() || pulled.report.is_some();
-                        reached(dial, shared, None, first);
-                        first = false;
-                        if work {
-                            if let Err(failure) =
-                                refuse_work(dial, &mut sender, "pulled", &message.id).await
-                            {
-                                return Ended::Failed(failure);
-                            }
-                        }
-                    }
                     ToRunner::Pulled(pulled) => {
                         if first {
                             backoff.reset();
                         }
-                        reached(dial, shared, Some(pulled), first);
+                        reached(dial, shared, pulled, first);
                         first = false;
                     }
                     ToRunner::Reported(reported) => {
@@ -906,8 +842,7 @@ async fn serve(
                     ToRunner::MessageRefused(refusal) => {
                         let kind = sender.kinds.of(&refusal.message);
                         (dial.say)(format!(
-                            "{label}: {} refused the runner's {kind} {}: {}",
-                            dial.role.end(),
+                            "{label}: the control plane refused the runner's {kind} {}: {}",
                             refusal.message,
                             one_line(&refusal.words)
                         ));
@@ -918,23 +853,6 @@ async fn serve(
                             .is_some_and(|(id, _)| *id == refusal.message);
                         if kind == "report" || held {
                             answered(shared, refusal.message, Answered::Refused(refusal.words));
-                        }
-                    }
-                    ToRunner::TerminalOpen(_)
-                    | ToRunner::TerminalInput(_)
-                    | ToRunner::TerminalResume(_)
-                    | ToRunner::TerminalClose(_)
-                        if observing =>
-                    {
-                        let kind = match message.body {
-                            ToRunner::TerminalOpen(_) => "terminal_open",
-                            ToRunner::TerminalInput(_) => "terminal_input",
-                            ToRunner::TerminalResume(_) => "terminal_resume",
-                            _ => "terminal_close",
-                        };
-                        if let Err(failure) = refuse_work(dial, &mut sender, kind, &message.id).await
-                        {
-                            return Ended::Failed(failure);
                         }
                     }
                     ToRunner::TerminalOpen(open) => {
@@ -1051,34 +969,15 @@ async fn refuse(
     words: &str,
 ) -> Result<(), Failure> {
     (dial.say)(format!(
-        "{}: {}'s message {id} is refused: {words}",
-        dial.label,
-        dial.role.end()
+        "{}: the control plane's message {id} is refused: {words}",
+        dial.label
     ));
     let body = json!({ "message": id, "words": words });
     sender.send("message_refused", &body).await
 }
 
-/// Refuses the observer's message `id`, of `kind`, a message of work the
-/// runner takes none of from an observer: one line naming its kind and id,
-/// and `message_refused` naming it with [`OBSERVES`], and nothing else
-/// done with it (record 0048, point 1; core.19).
-async fn refuse_work(
-    dial: &Dial,
-    sender: &mut Sender,
-    kind: &str,
-    id: &MessageId,
-) -> Result<(), Failure> {
-    (dial.say)(format!(
-        "{}: the observer sent {kind} {id}, which an observer gives none of, so it is refused",
-        dial.label
-    ));
-    let body = json!({ "message": id, "words": OBSERVES });
-    sender.send("message_refused", &body).await
-}
-
 /// Closes a connection that was sent `what`, a message that cannot be
-/// named, with code 1007, its payload not version 4's (design Decision
+/// named, with code 1007, its payload not version 5's (design Decision
 /// 10).
 async fn unnamed(
     label: &str,
@@ -1100,27 +999,22 @@ async fn unnamed(
 
 /// The partition's connection took `pulled`, its first since its hello
 /// where `first`: the partition is reached, which is said where it was
-/// not, and the runner is woken. An observer's `pulled` is kept nowhere
-/// and wakes nothing.
-fn reached(dial: &Dial, shared: &Shared, pulled: Option<Pulled>, first: bool) {
+/// not, and the runner is woken.
+fn reached(dial: &Dial, shared: &Shared, pulled: Pulled, first: bool) {
     let say = shared.change(|state| {
-        if let Some(pulled) = pulled {
-            if first {
-                state.held = pulled.report.clone();
-            }
-            state.pulled = Some(pulled);
+        if first {
+            state.held = pulled.report.clone();
         }
+        state.pulled = Some(pulled);
         state.phase = Phase::Live;
         state.why = None;
         state.said.clear();
         state.reached.replace(true) != Some(true)
     });
     if say {
-        (dial.say)(format!("{}: {} is reached", dial.label, dial.role.end()));
+        (dial.say)(format!("{}: the control plane is reached", dial.label));
     }
-    if dial.role == Role::ControlPlane {
-        (dial.wake)();
-    }
+    (dial.wake)();
 }
 
 /// The partition's attempt failed, or its connection was lost, for
@@ -1147,10 +1041,8 @@ fn unreached(dial: &Dial, shared: &Shared, failure: Failure) {
     });
     if say {
         (dial.say)(format!(
-            "{}: {} is unreachable: {}",
-            dial.label,
-            dial.role.end(),
-            failure.words
+            "{}: the control plane is unreachable: {}",
+            dial.label, failure.words
         ));
     }
 }

@@ -11,7 +11,7 @@ mod common;
 
 use boomdrive_hosted::connection::{Connection, Dial, Say, Wake};
 use boomdrive_hosted::key::{Memory, Store};
-use boomdrive_hosted::protocol::v4::Hello;
+use boomdrive_hosted::protocol::v5::Hello;
 use boomdrive_hosted::table::Table;
 use common::example;
 use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
@@ -58,7 +58,7 @@ fn store(fake: &Fake, key: &SigningKey) -> Arc<dyn Store> {
     Arc::new(memory)
 }
 
-/// `home`'s hello, version 4's example of one.
+/// `home`'s hello, version 5's example of one.
 fn hello() -> Hello {
     serde_json::from_value(example("from-runner", "hello.json")["body"]["hello"].clone())
         .expect("the example is a hello")
@@ -313,8 +313,8 @@ async fn a_key_refused() {
 }
 
 /// The hosted-control-plane spec's "A control plane that speaks version
-/// 1 alone": an upgrade answered without `boomdrive.v4` is said once,
-/// naming the partition and `boomdrive.v4`, each later attempt waits for
+/// 1 alone": an upgrade answered without `boomdrive.v5` is said once,
+/// naming the partition and `boomdrive.v5`, each later attempt waits for
 /// the backoff's cap, and no message is sent (design Decision 4 of
 /// the-hosted-protocol-carries-every-end-of-a-place; core.22, core.23).
 #[tokio::test(start_paused = true)]
@@ -339,7 +339,7 @@ async fn a_control_plane_that_speaks_version_1_alone() {
     assert_eq!(lines.len(), 1, "{lines:#?}");
     assert!(lines[0].starts_with("home: "), "{lines:#?}");
     assert!(lines[0].contains(SUBPROTOCOL), "{lines:#?}");
-    assert_eq!(SUBPROTOCOL, "boomdrive.v4");
+    assert_eq!(SUBPROTOCOL, "boomdrive.v5");
     for upgrade in upgrades(&taken) {
         let Taken::Upgrade { protocols, .. } = upgrade else {
             unreachable!("an upgrade");
@@ -629,7 +629,7 @@ fn a_pulled_with_a_field_unnamed() {
         .as_str()
         .expect("words");
     assert!(
-        words.starts_with("it fails version 4's check: /"),
+        words.starts_with("it fails version 5's check: /"),
         "{words}"
     );
     assert!(!words.contains("n0t-sh0wn"), "{words}");
@@ -641,7 +641,7 @@ fn a_pulled_with_a_field_unnamed() {
                 ..
             }
         )),
-        "every message the runner sent passes version 4: {taken:#?}"
+        "every message the runner sent passes version 5: {taken:#?}"
     );
 
     let read = connection.read(PATIENCE).expect("home is read");
@@ -656,7 +656,7 @@ fn a_pulled_with_a_field_unnamed() {
     );
 }
 
-/// A `pulled` of `version`, under the id `id`, fails version 4's check,
+/// A `pulled` of `version`, under the id `id`, fails version 5's check,
 /// is answered with `message_refused` naming it, its words saying so, and
 /// the pull gives none of its wants (design Decision 4 of
 /// the-hosted-protocol-carries-every-end-of-a-place and of
@@ -694,7 +694,7 @@ fn a_message_of(version: common::Version, id: &str) {
         .as_str()
         .expect("words");
     assert!(
-        words.starts_with("it fails version 4's check: /"),
+        words.starts_with("it fails version 5's check: /"),
         "{words}"
     );
 
@@ -709,24 +709,31 @@ fn a_message_of(version: common::Version, id: &str) {
 }
 
 /// The hosted-control-plane spec's "A message of version 1": a `pulled`
-/// naming `protocol_version` 1 fails version 4's check.
+/// naming `protocol_version` 1 fails version 5's check.
 #[test]
 fn a_message_of_version_1() {
     a_message_of(common::V1, "plane:first");
 }
 
 /// The hosted-control-plane spec's "A message of version 2": a `pulled`
-/// naming `protocol_version` 2 fails version 4's check (record 0052).
+/// naming `protocol_version` 2 fails version 5's check (record 0052).
 #[test]
 fn a_message_of_version_2() {
     a_message_of(common::V2, "plane:second");
 }
 
 /// The hosted-control-plane spec's "A message of version 3": a `pulled`
-/// naming `protocol_version` 3 fails version 4's check (record 0053).
+/// naming `protocol_version` 3 fails version 5's check (record 0053).
 #[test]
 fn a_message_of_version_3() {
     a_message_of(common::V3, "plane:third");
+}
+
+/// The hosted-control-plane spec's "A message of version 4": a `pulled`
+/// naming `protocol_version` 4 fails version 5's check (record 0054).
+#[test]
+fn a_message_of_version_4() {
+    a_message_of(common::V4, "plane:fourth");
 }
 
 #[test]

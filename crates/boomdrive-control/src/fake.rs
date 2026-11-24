@@ -5,15 +5,13 @@
 //! It takes each carried status of a report it takes, but those the test
 //! leaves.
 //! It owns every id, or, made by [`Fake::owning`], those under one prefix
-//! alone, so a test makes as many parts as it needs. [`Observing`] is a
-//! fake observer, which holds each pass it is handed, and [`Tokens`] a
+//! alone, so a test makes as many parts as it needs. [`Tokens`] is a
 //! fake control plane's forge tokens, which gives each repository the
 //! answer a test sets and counts each ask.
 
 use crate::want::{Id, Input, Link, Terminal, Want};
 use crate::{
-    ControlPlane, ForgeTokens, Hello, Observer, Pulled, Report, Reported, TokenAsked, Unread,
-    Unsent,
+    ControlPlane, ForgeTokens, Hello, Pulled, Report, Reported, TokenAsked, Unread, Unsent,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
@@ -260,41 +258,6 @@ impl Link for FakeLink {
     }
 }
 
-/// Each pass a fake observer was handed: its hello and the part's share
-/// of the report, in order.
-pub type Observations = Arc<Mutex<Vec<(Hello, Report)>>>;
-
-/// An observer in memory, for tests (design Decision 5 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from): it holds each
-/// hello and share it is handed, shared with the test that holds
-/// [`Observing::held`], and gives nothing back.
-#[derive(Clone, Debug, Default)]
-pub struct Observing {
-    held: Observations,
-}
-
-impl Observing {
-    /// An observer holding nothing yet.
-    pub fn new() -> Observing {
-        Observing::default()
-    }
-
-    /// What it holds, shared: each pass it is handed from now on is seen
-    /// there.
-    pub fn held(&self) -> Observations {
-        self.held.clone()
-    }
-}
-
-impl Observer for Observing {
-    fn observe(&mut self, hello: &Hello, report: &Report) {
-        self.held
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .push((hello.clone(), report.clone()));
-    }
-}
-
 /// A control plane's forge tokens in memory: each repository gives the
 /// answer a test set for it, or a refusal naming it where none is set, and
 /// each repository's asks are counted. Its clones share what they hold, so
@@ -349,65 +312,31 @@ impl ForgeTokens for Tokens {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Capacity, Observed, INTERFACE_VERSION};
 
-    fn hello(runner_version: &str) -> Hello {
-        Hello {
-            interface_version: INTERFACE_VERSION,
-            runner_version: runner_version.to_string(),
-            tool_versions: BTreeMap::new(),
-            repositories: vec!["example/app".to_string()],
-            draining: Vec::new(),
-            drives: BTreeMap::new(),
-            capacity: Capacity::Missing("no flume in this test".to_string()),
-            leases: BTreeMap::new(),
-        }
-    }
-
-    /// The control-plane-interface spec's "An observer takes what it is
-    /// handed": two passes handed, both held in order, and nothing comes
-    /// back from either.
+    /// The control-plane-interface spec's "The fake holds what it is
+    /// handed": a share's unleased place is held with the report, and the
+    /// answer lets go of nothing (record 0054).
     #[test]
-    fn an_observer_holds_what_it_is_handed() {
-        let observing = Observing::new();
-        let held = observing.held();
-        let mut observed = Observed {
-            label: "home".to_string(),
-            observer: Box::new(observing),
-        };
-        let first = Report::default();
-        let mut second = Report::default();
-        second.launches.insert(
-            Id::new("home/1"),
-            crate::Launched {
-                lease: crate::Lease {
-                    number: 1,
-                    expires: None,
-                },
-                repository: Some("example/app".to_string()),
-                answer: crate::Answer {
-                    outcome: crate::Outcome::Held,
-                    place_dir: None,
-                    words: None,
+    fn the_fake_holds_an_unleased_place() {
+        let mut fake = Fake::new();
+        let mut share = Report::default();
+        share.unleased.insert(
+            "/p/places/note--by-hand".to_string(),
+            crate::Unleased {
+                repository: "agentplot/flume".to_string(),
+                status: crate::Carried {
+                    text: "{}".to_string(),
                     at: crate::At::parse("2026-11-01T10:00:00Z").unwrap(),
+                    listed: true,
                 },
-                status: None,
-                entry: None,
             },
         );
-        observed.observer.observe(&hello("boomdrive 0.1.0"), &first);
-        let () = observed
-            .observer
-            .observe(&hello("boomdrive 0.1.1"), &second);
-        let held = held.lock().unwrap();
-        assert_eq!(
-            *held,
-            [
-                (hello("boomdrive 0.1.0"), first),
-                (hello("boomdrive 0.1.1"), second)
-            ]
-        );
-        assert_eq!(observed.label, "home");
+        let answer = fake.report(&share).expect("the fake takes the report");
+        assert!(answer.let_go.is_empty());
+        assert!(answer.refused.is_empty());
+        assert!(fake.reports()[0]
+            .unleased
+            .contains_key("/p/places/note--by-hand"));
     }
 
     /// A fake's forge tokens give the answer set for a repository, a

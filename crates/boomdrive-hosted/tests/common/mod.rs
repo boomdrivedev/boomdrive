@@ -10,7 +10,7 @@
 pub mod fake;
 pub mod waits;
 
-use boomdrive_hosted::protocol::{v1, v2, v3, v4};
+use boomdrive_hosted::protocol::{v1, v2, v3, v4, v5};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -51,7 +51,8 @@ pub const V3: Version = Version {
     files: v3::FILES,
 };
 
-/// Version 4, version 3 whole but for a forge token's ask and answers
+/// Version 4, as releases from `v0.21.0` to the last before version 5
+/// spoke it, version 3 whole but for a forge token's ask and answers
 /// (record 0053).
 pub const V4: Version = Version {
     number: v4::VERSION,
@@ -59,11 +60,19 @@ pub const V4: Version = Version {
     files: v4::FILES,
 };
 
+/// Version 5, version 4 whole but for its observing forms, which it does
+/// not have, and a report's unleased places (record 0054).
+pub const V5: Version = Version {
+    number: v5::VERSION,
+    address: v5::ADDRESS,
+    files: v5::FILES,
+};
+
 /// Each version, in order.
-pub const VERSIONS: [Version; 4] = [V1, V2, V3, V4];
+pub const VERSIONS: [Version; 5] = [V1, V2, V3, V4, V5];
 
 /// The version the runner speaks, which the free functions check.
-pub const CURRENT: Version = V4;
+pub const CURRENT: Version = V5;
 
 /// The retriever every registry and validator is given: it refuses every
 /// address, whatever features cargo unifies into `jsonschema`, so a
@@ -107,7 +116,8 @@ impl Version {
 
     /// Every one of its files under its `$id`, and nothing else.
     fn registry(&self) -> &'static Registry<'static> {
-        static REGISTRIES: [OnceLock<Registry<'static>>; 4] = [
+        static REGISTRIES: [OnceLock<Registry<'static>>; 5] = [
+            OnceLock::new(),
             OnceLock::new(),
             OnceLock::new(),
             OnceLock::new(),

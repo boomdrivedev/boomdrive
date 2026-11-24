@@ -935,6 +935,7 @@ fn claim_texts(
             .unwrap_or_else(|| write::places_text(&BTreeMap::new(), &BTreeMap::new())),
         repositories: write::repositories_text(kept),
         previews: old.get("previews.rec").cloned().flatten(),
+        unleased: old.get("unleased.rec").cloned().flatten(),
     }
 }
 
@@ -1088,6 +1089,7 @@ impl ControlPlane for Crew {
                     .collect();
                 let since = write::since_at(old).unwrap_or_else(|| at.clone());
                 let previews_held = old.get("previews.rec").is_some_and(Option::is_some);
+                let unleased_held = old.get("unleased.rec").is_some_and(Option::is_some);
                 Ok(write::texts(
                     label,
                     &host,
@@ -1098,6 +1100,7 @@ impl ControlPlane for Crew {
                     &addresses,
                     &repositories,
                     previews_held,
+                    unleased_held,
                 ))
             });
             match written {
