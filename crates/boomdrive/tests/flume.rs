@@ -1,8 +1,7 @@
 //! Flume's command line against a stub `flume` written into each test's
 //! own temporary directory (design Decision 21): the argv it is given,
 //! its environment, the brief's file, and the reading of each answer by
-//! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), Flume
-//! 0.17.1's to the settle that keeps the host's watch (record 0029), and
+//! Flume's exit, over Flume 0.4.1's own answers (Task notes 3.1), and
 //! the runner named one more recipient, confirming a place's ends as
 //! that recipient (record 0030 as amended on 2026-11-09), a control
 //! plane's confirm of a reader's ends as Flume's confirm (core.56), and a
@@ -14,7 +13,6 @@ use std::ffi::OsString;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use tempfile::TempDir;
 
 /// A fixture of Flume 0.4.1's, as it printed it.
@@ -22,12 +20,6 @@ fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/flume-0.4.1")
         .join(name)
-}
-
-/// Flume 0.17.1's answer to `--json settle --every 60s` on a scratch host
-/// holding no place, as it printed it.
-fn settled() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json")
 }
 
 /// The stub's program. Each call writes its arguments, NUL-terminated, to
@@ -741,46 +733,4 @@ fn a_refused_launch_leaves_no_brief() {
         0,
         "a brief is left"
     );
-}
-
-/// The settle that ends each turn of the runner's passes (record 0029;
-/// design Decision 6): `--json settle --every <n>s`, run with no
-/// `FLUME_RECIPIENT`, its answer given as Flume printed it, and a refusal
-/// on exit 1 given with Flume's reason.
-#[test]
-fn a_settle_as_the_hosts_watch() {
-    std::env::set_var("FLUME_RECIPIENT", "someone/else");
-    let stub = Stub::new();
-    stub.answers_from(Some(settled()), None, 0);
-    let cli = stub.cli();
-    let printed = fs::read_to_string(settled()).expect("the fixture");
-    assert_eq!(
-        cli.settle_every(Duration::from_secs(120)),
-        Ok(Reply::Given(printed))
-    );
-    let refusal = stub.dir.path().join("refused.json");
-    fs::write(
-        &refusal,
-        "{\"refused\":{\"refusal\":{\"reason\":\"no store\"}}}\n",
-    )
-    .expect("the refusal");
-    stub.answers_from(Some(refusal), Some(fixture("usage.stderr")), 1);
-    assert_eq!(
-        cli.settle_every(Duration::from_secs(60)),
-        Ok(Reply::Refused("no store".to_string()))
-    );
-    assert_eq!(
-        stub.calls(),
-        [
-            argv(&["--json", "settle", "--every", "120s"]),
-            argv(&["--json", "settle", "--every", "60s"]),
-        ]
-    );
-    for n in 1..=2 {
-        assert_eq!(
-            stub.read(&format!("recipient-{n}")).as_deref(),
-            Some("unset\n"),
-            "settle {n} ran with FLUME_RECIPIENT set"
-        );
-    }
 }

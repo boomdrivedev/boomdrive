@@ -1102,17 +1102,11 @@ impl Stub {
         }
     }
 
-    /// A stub answering `status` with `status.json`, and `settle` with
-    /// Flume 0.17.1's `settled.json`.
+    /// A stub answering `status` with `status.json`.
     pub fn new() -> Stub {
         let stub = Stub::absent();
         stub.write();
         stub.answers("status", "status.json", 0);
-        stub.answers_from(
-            "settle",
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flume-0.17.1/settled.json"),
-            0,
-        );
         stub
     }
 

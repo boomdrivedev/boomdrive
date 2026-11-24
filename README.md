@@ -238,43 +238,30 @@ room. A hosted partition is an account's enrollment, so the drives of
 one hosted account share that account's connection, in the order its
 control plane gives their work.
 
-Each pass ends, before its thread waits, with Flume's settle of every
-place, `flume --json settle --every <bound>`, run once and awaited: a
-keeping pass on the runner's loop, and each part's control pass on the
-part's thread. So the runner keeps Flume's watch over its host: while
-it runs, Flume runs unattended, and every place waiting on it, a
-submitted place with no agent among them, moves within the bound. The
-first keeping pass, which each part's first control pass follows at
-once, shares their settles, so no launch waits behind a settle. No two
-settles run at once: a pass that ends while another's settle is under
-way shares it, and waits for nothing. The bound is `fetch_interval` in
-whole seconds, or the shorter of it and `poll_interval` while the
-runner makes control passes. A keeping pass whose reading of the
-configuration failed settles all the same: the watch is the host's, not
-the file's. A landing kept between passes is followed by no settle, and
-a runner told to stop begins none. The runner reads
-nothing of the settle's answer, and carries and keeps none of it. It
-says nothing while Flume settles; it says one line when a settle is
-refused, `boomdrive: Flume refused the settle of every place: <words>`,
-or gives no answer, `boomdrive: Flume gave no answer to the settle of
-every place: <why>`, and one when Flume settles again, `boomdrive: Flume
-settles every place again`. A refused settle stops nothing. Flume offers
-no end to a watch, so once the runner stops, its last watch stands until
-twice its bound has passed since that settle began, and the host then
-runs attended: Flume settles every place at each command that acts.
+The runner keeps no watch over Flume's places, and runs no `flume
+settle`. Flume's resident, `flume host`, keeps that watch: it settles
+the places at each change it hears from sluice's resident, and a minute
+after its last settle. On a host on the set, Flume's own module runs it
+as the user's service, the launchd agent `flume-host` on nix-darwin and
+the user unit `flume-host` on NixOS.
 
-After each settle, the runner runs millpond's tick of each inbox the
-configuration's `inboxes` names, `millpond tick --inbox <name> --json`,
-in that order, once and awaited, so the host keeps one clock for
-Flume's watch and millpond's schedules; a file that names no `inboxes`
-runs none. millpond decides what a tick runs, and the runner reads
-nothing of its answer. It says one line when an inbox's tick is
-refused or gives no answer, and one when millpond ticks it again, and
-no tick stops a pass. On a host on the set, the module installs millpond
-with the runner and names each inbox once, in
-`services.boomdrive.millpond.settings.inbox`: it writes millpond's own
-host configuration, linked at `~/.config/millpond/config.toml`, and the
-runner's `inboxes` from it.
+Each pass ends, before its thread waits, with millpond's tick of each
+inbox the configuration's `inboxes` names, `millpond tick --inbox <name>
+--json`, in that order, once and awaited: a keeping pass on the
+runner's loop, and each part's control pass on the part's thread. A
+file that names no `inboxes` runs none. The first keeping pass, which
+each part's first control pass follows at once, shares their ticks. No
+two passes tick at once: a pass that ends while another's ticks are
+under way shares them, and waits for nothing. A keeping pass whose
+reading of the configuration failed ticks all the same, the inboxes of
+the last reading, and a runner told to stop begins none. millpond
+decides what a tick runs, and the runner reads nothing of its answer.
+It says one line when an inbox's tick is refused or gives no answer,
+and one when millpond ticks it again, and no tick stops a pass. On a
+host on the set, the module installs millpond with the runner and names
+each inbox once, in `services.boomdrive.millpond.settings.inbox`: it
+writes millpond's own host configuration, linked at
+`~/.config/millpond/config.toml`, and the runner's `inboxes` from it.
 
 `boomdrive run --once` makes one pass and exits, 0 when every git call
 succeeded and 1 when one failed, or a workspace could not be read or
@@ -285,12 +272,12 @@ the configuration names a control plane, `--once` makes one control
 pass of each part after the keeping pass, side by side, and exits 1 too
 when no part both pulled and reported. A part that could not be read
 while another reported, or a tool a pass could not run or read, is
-named, and is not a failure. `--once` settles every place once, after
-its passes, and a settle Flume refused or gave no answer to is named,
-and is not a failure either. `--once` stops on SIGTERM or SIGINT as
+named, and is not a failure. `--once` ticks each inbox once, after its
+passes, and a tick millpond refused or gave no answer to is named, and
+is not a failure either. `--once` stops on SIGTERM or SIGINT as
 `run` does, ending each call to a remote in flight and beginning none
 after; once stopped it keeps no further repository and begins no part's
-pass and no settle, lets each part end the pass in hand, says
+pass and no tick, lets each part end the pass in hand, says
 `boomdrive: stopped`, and exits 1.
 
 Either form refuses to start, exiting 2 and touching nothing, when
@@ -1261,9 +1248,9 @@ A control pass runs after the first keeping pass, then each
 that reported, where a lease not yet lapsed would lapse first, and at
 once when the control plane wakes the runner. The runner says once that
 its control plane could not be read, and once that it is read again.
-Each control pass ends with the settle of every place, on its part's
+Each control pass ends with the ticks of each inbox, on its part's
 thread, and the first, which follows the first keeping pass at once,
-settles for both, so no launch waits behind a settle. A control pass:
+ticks for both. A control pass:
 
 - reads `flume --json status`, and hands the control plane the
   host's tools' versions, the repositories kept with their clones made,

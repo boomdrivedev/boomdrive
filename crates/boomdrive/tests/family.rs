@@ -261,35 +261,6 @@ fn flumes_status_of_a_scratch_host() {
     family.no_host_tool_ran();
 }
 
-/// The family-packages spec's "The set's Flume keeps the runner's watch":
-/// the set's Flume, asked `--json settle --every 60s` on a scratch host
-/// that holds no place as the runner asks it (record 0029), gives its
-/// settled answer, read as given, and its `--json status` then gives the
-/// host's watch with a bound of 60 seconds.
-#[test]
-fn the_sets_flume_keeps_the_runners_watch() {
-    let family = Family::new();
-    let cli = flume::Cli::new(family.set("flume"));
-    let settle = cli.settle_every(Duration::from_secs(60));
-    let Ok(flume::Reply::Given(text)) = &settle else {
-        panic!("the set's Flume's settle of the scratch host: {settle:?}");
-    };
-    let settled: Value = serde_json::from_str(text).expect("the settle's answer is JSON");
-    assert_eq!(settled["settled"]["places"], Value::Array(vec![]), "{text}");
-
-    let status = cli.status();
-    let Ok(flume::Reply::Given(text)) = &status else {
-        panic!("the set's Flume's status after the settle: {status:?}");
-    };
-    let listing: Value = serde_json::from_str(text).expect("Flume's status is JSON");
-    assert_eq!(
-        listing.pointer("/status/host/watch"),
-        Some(&serde_json::json!({"bound": {"seconds": 60}})),
-        "{text}"
-    );
-    family.no_host_tool_ran();
-}
-
 /// The family-packages spec's "The set's Flume takes the runner as a
 /// recipient" (design Decision 8): the set's Flume, asked on a scratch
 /// host as the runner asks it, to launch in a folder that holds no

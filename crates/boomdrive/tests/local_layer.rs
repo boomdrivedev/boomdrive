@@ -26,13 +26,13 @@ struct Running {
     stopper: Stopper,
     lines: Receiver<String>,
     thread: JoinHandle<()>,
-    /// The `flume` the runner's settles run, held while it runs.
+    /// The stub `flume` the runner runs, held while it runs.
     _flume: Stub,
 }
 
 impl Running {
     /// Starts the runner on the scratch host's default configuration
-    /// file, and its loop, its settles answered by a stub `flume`.
+    /// file, and its loop, running a stub `flume`.
     fn start(scratch: &Scratch) -> Running {
         let overlay = scratch.overlay();
         let var = |name: &str| {

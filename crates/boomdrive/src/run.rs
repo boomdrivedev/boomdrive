@@ -11,10 +11,11 @@
 //! keeping pass. What they share is a clone's lock, for one keep or one
 //! launch, the report file's own lock, for one save of a part's share, and
 //! Flume's room (design Decisions 2 to 6). Each pass, keeping or control,
-//! ends with Flume's settle of every place, which keeps Flume's watch
-//! over the host while the runner runs, and which no two passes run at
-//! once (record 0029). The runner opens no listening socket: every
-//! connection it makes is outgoing (core.3).
+//! ends with millpond's tick of each inbox the configuration names, which
+//! no two passes run at once (record 0033). The runner runs no settle of
+//! Flume's: `flume host`, Flume's resident, keeps watch over the host
+//! (core.13; one-resident-per-tool). The runner opens no listening
+//! socket: every connection it makes is outgoing (core.3).
 
 use crate::carry::{Carrier, Configured, Elsewhere, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
@@ -25,7 +26,6 @@ use crate::millpond::{self, Ticks};
 use crate::pass::{self, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
-use crate::settle::{self, Settles};
 use crate::terminal::Relays;
 use crate::{clone, flume, hands, hello, sluice};
 use boomdrive_control::{ControlPlane, Part, Wake};
@@ -240,8 +240,7 @@ pub fn next_pass(last_start: Instant, interval: Duration, now: Instant) -> Insta
 }
 
 /// The programs the runner runs for Flume, sluice and millpond: its
-/// settles and ticks, its parts' control passes' and its terminals'
-/// relays.
+/// ticks, its parts' control passes' and its terminals' relays.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Programs {
     pub flume: PathBuf,
@@ -329,9 +328,9 @@ pub struct Runner {
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
-    /// The runner's settles of every place, shared by the loop and every
+    /// The runner's ticks of each inbox, shared by the loop and every
     /// part's thread.
-    watch: Watch,
+    ticker: Ticker,
     events: Sender<Event>,
     notices: Notices,
     waiting: Receiver<Event>,
@@ -370,62 +369,51 @@ struct Host<'a> {
     notices: &'a Notices,
     locks: &'a Locks,
     report: &'a ReportFile,
-    watch: &'a Watch,
+    ticker: &'a Ticker,
 }
 
-/// The runner's watch over the host: Flume's settle of every place,
-/// `flume settle --every <bound>`, then millpond's tick of each inbox the
-/// configuration names, `millpond tick --inbox <name> --json`, each run
-/// once and awaited at the end of each pass, keeping or control, so the
-/// host keeps one clock (core.13; records 0029 and 0033). The loop and
-/// every part's thread share it, so no two settles or ticks run at once: a
-/// pass that ends while another's settle is under way shares that settle
-/// and its ticks, as a keeping pass shares the settle of the control pass
-/// that follows it at once, and waits for nothing (core.49).
-struct Watch {
-    /// The `fetch_interval` and `inboxes` the latest reading of the
-    /// configuration gave.
-    read: Mutex<(Duration, Vec<String>)>,
-    /// Whether the last settle, and each inbox's last tick, was answered,
-    /// held while a settle and its ticks run.
-    settles: Mutex<(Settles, Ticks)>,
+/// The runner's ticks: millpond's tick of each inbox the configuration
+/// names, `millpond tick --inbox <name> --json`, each run once and awaited
+/// at the end of each pass, keeping or control (core.13; record 0033).
+/// The loop and every part's thread share it, so no two ticks run at once:
+/// a pass that ends while another's ticks are under way shares them, as a
+/// keeping pass shares the ticks of the control pass that follows it at
+/// once, and waits for nothing (core.49).
+struct Ticker {
+    /// The `inboxes` the latest reading of the configuration gave.
+    read: Mutex<Vec<String>>,
+    /// Whether each inbox's last tick was answered, held while the ticks
+    /// run.
+    ticks: Mutex<Ticks>,
 }
 
-impl Watch {
-    /// A watch whose bound starts from `fetch_interval`, and whose ticks
-    /// from `inboxes`, as the configuration the runner started with gave
-    /// them.
-    fn new(fetch_interval: Duration, inboxes: Vec<String>) -> Watch {
-        Watch {
-            read: Mutex::new((fetch_interval, inboxes)),
-            settles: Mutex::default(),
+impl Ticker {
+    /// A ticker whose ticks start from `inboxes`, as the configuration the
+    /// runner started with gave them.
+    fn new(inboxes: Vec<String>) -> Ticker {
+        Ticker {
+            read: Mutex::new(inboxes),
+            ticks: Mutex::default(),
         }
     }
 
-    /// Takes the `fetch_interval` and `inboxes` a reading of the
-    /// configuration gave.
-    fn read(&self, fetch_interval: Duration, inboxes: &[String]) {
-        *self.read.lock().unwrap_or_else(|e| e.into_inner()) = (fetch_interval, inboxes.to_vec());
+    /// Takes the `inboxes` a reading of the configuration gave.
+    fn read(&self, inboxes: &[String]) {
+        *self.read.lock().unwrap_or_else(|e| e.into_inner()) = inboxes.to_vec();
     }
 
-    /// Runs `flume`'s settle of every place, its bound the latest
-    /// `fetch_interval`, or the shorter of it and `poll_interval` while
-    /// the runner makes control passes, then millpond's tick of each inbox
-    /// the latest reading named, in its order, and says each answer only
-    /// where it changes. A tick that fails stops nothing, and an inbox the
-    /// configuration names none runs none (record 0033). Where another
-    /// pass's settle is under way, runs none.
-    fn settle(&self, programs: &Programs, poll_interval: Option<Duration>, say: Say<'_>) {
-        let mut held = match self.settles.try_lock() {
-            Ok(settles) => settles,
+    /// Runs millpond's tick of each inbox the latest reading named, in its
+    /// order, and says each answer only where it changes. A tick that
+    /// fails stops nothing, and where the configuration names no inbox,
+    /// none runs (record 0033). Where another pass's ticks are under way,
+    /// runs none.
+    fn tick(&self, programs: &Programs, say: Say<'_>) {
+        let mut ticks = match self.ticks.try_lock() {
+            Ok(ticks) => ticks,
             Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
             Err(std::sync::TryLockError::WouldBlock) => return,
         };
-        let (settles, ticks) = &mut *held;
-        let (fetch_interval, inboxes) = self.read.lock().unwrap_or_else(|e| e.into_inner()).clone();
-        let bound = settle::bound(fetch_interval, poll_interval);
-        let answer = flume::Cli::new(&programs.flume).settle_every(bound);
-        settles.heard(answer, &mut |line| say(line));
+        let inboxes = self.read.lock().unwrap_or_else(|e| e.into_inner()).clone();
         ticks.keep(&inboxes);
         let millpond = millpond::Cli::new(&programs.millpond);
         for inbox in &inboxes {
@@ -475,7 +463,7 @@ impl Runner {
             .as_ref()
             .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
-        let watch = Watch::new(config.fetch_interval, config.inboxes.clone());
+        let ticker = Ticker::new(config.inboxes.clone());
         let forge = Forge::for_runner(&config, &file);
         Ok(Runner {
             git,
@@ -486,7 +474,7 @@ impl Runner {
             config,
             programs: Programs::on_path(),
             control,
-            watch,
+            ticker,
             events,
             notices,
             waiting,
@@ -621,21 +609,8 @@ impl Runner {
             notices: &self.notices,
             locks: &self.locks,
             report: &self.report,
-            watch: &self.watch,
+            ticker: &self.ticker,
         })
-    }
-
-    /// The interval between control passes where the runner makes them,
-    /// its control plane opened as parts; none where it makes none.
-    fn polls(&self) -> Option<Duration> {
-        match &self.control {
-            Some(Control {
-                poll_interval,
-                parts: Ok(parts),
-                ..
-            }) if !parts.is_empty() => Some(*poll_interval),
-            _ => None,
-        }
     }
 
     /// One keeping pass over the configuration the runner started with,
@@ -644,16 +619,15 @@ impl Runner {
     /// part, side by side (design Decision 2): failed where a git call of
     /// the keeping pass failed, or no part both pulled and reported, its
     /// control plane unopened among it. Each part's pass carries out every
-    /// act, since no pass follows it (core.50). Then the settle that ends
-    /// them (record 0029): a settle refused or unanswered is said, and no
+    /// act, since no pass follows it (core.50). Then the ticks that end
+    /// them (record 0033): a tick refused or unanswered is said, and no
     /// failure. Stopped, as `boomdrive run` is, it ends the try of a call
     /// to a remote in flight and begins none, through its halt, keeps no
     /// further repository, begins no part's pass once its keeping pass has
-    /// ended and no settle, lets each part end the pass in hand, says it
+    /// ended and no tick, lets each part end the pass in hand, says it
     /// stopped, and fails (record 0042 as amended on 2026-11-12; core.39,
     /// core.58).
     pub fn once(&mut self, say: Say<'_>) -> Outcome {
-        let polls = self.polls();
         self.say_local(&mut LocalLayer::NoFile, &self.config.local, say);
         let kept = pass::pass(
             &self.git,
@@ -710,7 +684,7 @@ impl Runner {
         if self.stopped(say) {
             return Outcome::Failed;
         }
-        self.watch.settle(&self.programs, polls, say);
+        self.ticker.tick(&self.programs, say);
         kept.and(carried)
     }
 
@@ -737,14 +711,13 @@ impl Runner {
     /// the start of the part's one before, sooner, after a pass that
     /// reported, before a lease of the part's not yet lapsed lapses, and
     /// at once when its implementation wakes it. Each pass, keeping or
-    /// control, ends with one settle of every place, before its thread
-    /// waits (record 0029). Stopped, it ends the try of a call to a remote
+    /// control, ends with the ticks of each inbox, before its thread
+    /// waits (record 0033). Stopped, it ends the try of a call to a remote
     /// in flight, its own fetch's or a part's, and begins none, through
     /// its halt (record 0042 as amended on 2026-11-12; core.58), keeps no
-    /// further repository, begins no part's pass and no settle, waits for
+    /// further repository, begins no part's pass and no tick, waits for
     /// each part to end the pass in hand, and says so.
     pub fn keep(&mut self, say: Say<'_>) {
-        let polls = self.polls();
         let mut parts = self.take_parts();
         let bells: Vec<Arc<Bell>> = parts
             .iter()
@@ -771,7 +744,7 @@ impl Runner {
                         Ok(config) => {
                             this.say_local(&mut said_local, &config.local, say);
                             fetch_interval = config.fetch_interval;
-                            this.watch.read(fetch_interval, &config.inboxes);
+                            this.ticker.read(&config.inboxes);
                             pass::pass(
                                 &this.git,
                                 &this.forge,
@@ -798,12 +771,11 @@ impl Runner {
                     }
                 }
                 // A keeping pass that each part's first control pass
-                // follows at once shares their settle, so no launch waits
-                // behind a settle of every place; a keeping pass on a
-                // configuration that did not read settles all the same
-                // (record 0029).
+                // follows at once shares their ticks, so no launch waits
+                // behind a tick; a keeping pass on a configuration that did
+                // not read ticks all the same (record 0033).
                 if kept && !followed {
-                    this.watch.settle(&this.programs, polls, say);
+                    this.ticker.tick(&this.programs, say);
                 }
                 loop {
                     if this.stop.load(Ordering::SeqCst) {
@@ -925,13 +897,13 @@ impl Host<'_> {
     /// (design Decision 2): a pass at once, then each when its timer or
     /// its wake, through `bell`, says, its own reach, terminals, word of
     /// Flume's version and the places it did not launch kept across its
-    /// passes, each pass followed by the settle of every place (record
-    /// 0029). Each want's command runs
+    /// passes, each pass followed by the ticks of each inbox (record
+    /// 0033). Each want's command runs
     /// on a thread of its own, kept across the part's passes, and each
     /// answer that comes back rings `bell`, so the part takes it, starts
     /// what waited on it and sends it at once, between its passes (record
     /// 0002 as amended on 2026-11-19; core.50). Stopped, it begins no
-    /// further pass and no settle, and waits for every command in flight
+    /// further pass and no tick, and waits for every command in flight
     /// to end, taking and sending their answers.
     fn carry_on(&self, part: &mut Part, bell: &Bell, say: Say<'_>) {
         let relays = self.programs.relays();
@@ -978,11 +950,11 @@ impl Host<'_> {
                                 },
                             );
                             due = passed.next_due(began, Instant::now(), poll_interval);
-                            // The control pass ends with the settle of every
-                            // place, no part of it, before the part waits
-                            // (record 0029).
+                            // The control pass ends with the ticks of each
+                            // inbox, no part of it, before the part waits
+                            // (record 0033).
                             if !bell.stopped() {
-                                self.watch.settle(self.programs, Some(poll_interval), say);
+                                self.ticker.tick(self.programs, say);
                             }
                         }
                     }
@@ -1152,53 +1124,53 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_pass, Bell, Bells, Event, Rang, Stopper, Watch};
+    use super::{next_pass, Bell, Bells, Event, Rang, Stopper, Ticker};
     use crate::carry::next_due;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use std::time::{Duration, Instant};
 
-    /// The running spec's "A pass ends while a settle is under way": a
-    /// pass that ends while another's settle runs runs none, and returns
-    /// without waiting for it, which it could not do here, the first
-    /// settle running until the test lets it go; a pass after the first
-    /// settle ended runs its own.
+    /// The running spec's "A pass ends while a tick is under way": a pass
+    /// that ends while another's ticks run runs none, and returns without
+    /// waiting for them, which it could not do here, the first tick running
+    /// until the test lets it go; a pass after the first ticks ended runs
+    /// its own.
     #[test]
-    fn a_settle_under_way_is_shared() {
+    fn a_tick_under_way_is_shared() {
         let dir = tempfile::tempdir().unwrap();
-        let (flume, calls, go) = (
-            dir.path().join("flume"),
+        let (millpond, calls, go) = (
+            dir.path().join("millpond"),
             dir.path().join("calls"),
             dir.path().join("go"),
         );
         let program = format!(
-            "#!/bin/sh\necho settle >> '{}'\nwhile [ ! -e '{}' ]; do sleep 0.02; done\n\
-             echo '{{\"settled\":{{\"places\":[]}}}}'\n",
+            "#!/bin/sh\necho \"$3\" >> '{}'\nwhile [ ! -e '{}' ]; do sleep 0.02; done\n\
+             echo '{{}}'\n",
             calls.display(),
             go.display()
         );
-        fs::write(&flume, program).unwrap();
-        fs::set_permissions(&flume, fs::Permissions::from_mode(0o755)).unwrap();
-        let watch = Watch::new(Duration::from_secs(60), Vec::new());
-        let flume = super::Programs {
-            flume,
+        fs::write(&millpond, program).unwrap();
+        fs::set_permissions(&millpond, fs::Permissions::from_mode(0o755)).unwrap();
+        let ticker = Ticker::new(vec!["home".to_string()]);
+        let programs = super::Programs {
+            flume: dir.path().join("flume"),
             sluice: dir.path().join("sluice"),
-            millpond: dir.path().join("millpond"),
+            millpond,
         };
         let said = std::sync::Mutex::new(Vec::new());
         let say = |line: String| said.lock().unwrap().push(line);
         std::thread::scope(|scope| {
-            let first = scope.spawn(|| watch.settle(&flume, None, &say));
+            let first = scope.spawn(|| ticker.tick(&programs, &say));
             while !calls.exists() {
                 std::thread::sleep(Duration::from_millis(10));
             }
-            watch.settle(&flume, Some(Duration::from_secs(1)), &say);
+            ticker.tick(&programs, &say);
             fs::write(&go, "").unwrap();
             first.join().unwrap();
         });
-        assert_eq!(fs::read_to_string(&calls).unwrap(), "settle\n");
-        watch.settle(&flume, None, &say);
-        assert_eq!(fs::read_to_string(&calls).unwrap(), "settle\nsettle\n");
+        assert_eq!(fs::read_to_string(&calls).unwrap(), "home\n");
+        ticker.tick(&programs, &say);
+        assert_eq!(fs::read_to_string(&calls).unwrap(), "home\nhome\n");
         assert_eq!(*said.lock().unwrap(), [] as [String; 0]);
     }
 

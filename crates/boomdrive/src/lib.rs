@@ -24,7 +24,6 @@ pub mod pass;
 pub mod planes;
 pub mod report;
 pub mod run;
-pub mod settle;
 /// `boomdrive setup`, a person's drive set up by one command (record 0009
 /// as amended 2026-11-09 and 2026-11-11).
 pub mod setup;

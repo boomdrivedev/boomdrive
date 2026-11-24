@@ -43,50 +43,6 @@ How `boomdrive` runs on a host. It covers the version it prints, and `boomdrive 
 - **WHEN** a pass of `boomdrive run` finds `agentplot/flume`'s fetch failing
 - **THEN** the runner names it and goes on, keeping every other repository, and tries `agentplot/flume` again at the next pass
 
-### Requirement: boomdrive run --once makes one pass
-
-`boomdrive run --once` SHALL make one keeping pass, as `boomdrive run` does, then, where the configuration names a control plane, one control pass of each part, side by side, then the settle that ends them, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and some part both pulled and reported, and 1 otherwise. What the specs leave and name SHALL be no failure: an offer left for want of room, a tool not run or read, a part unread while another reported.
-
-#### Scenario: Every repository kept
-
-- **WHEN** `boomdrive run --once` clones and fetches every configured repository and makes their views
-- **THEN** it exits 0
-
-#### Scenario: A clone failed
-
-- **WHEN** `boomdrive run --once` cannot clone one configured repository
-- **THEN** it keeps the others and exits 1
-
-#### Scenario: Left for the user
-
-- **WHEN** `boomdrive run --once` leaves a dropped repository held by a branch the forge lacks, and every git call succeeds
-- **THEN** it exits 0
-
-#### Scenario: One control pass
-
-- **WHEN** `boomdrive run --once` runs with crew's control plane, `fetch_interval` two minutes and `poll_interval` one minute, over a scratch state repository holding a launch for this host, and a stub `flume` that launches it
-- **THEN** it keeps the repositories, launches once, writes the runner's branch, runs `flume --json settle --every 60s` after every other `flume` command, and exits 0
-
-#### Scenario: Flume's status refused
-
-- **WHEN** `boomdrive run --once` runs with crew's control plane over a scratch state repository holding a launch for this host, and a stub `flume` that refuses its status
-- **THEN** it names Flume's status as unread, launches nothing, writes the runner's branch, and exits 0
-
-#### Scenario: A control plane that cannot be read
-
-- **WHEN** `boomdrive run --once` runs with crew's control plane and no partition's state repository can be read
-- **THEN** it keeps the repositories, names each part as unread, runs no `flume` command but each hello's `flume --json status` and `flume --version` and the settle that ends the pass, and exits 1
-
-#### Scenario: One part unread
-
-- **WHEN** `boomdrive run --once` runs with crew's control plane serving the partitions `home` and `work`, the state repository holds no `home/main`, and `work/main` holds a launch for this host
-- **THEN** it names `home` as unread, launches `work`'s launch once, writes `work`'s runner branch, and exits 0
-
-#### Scenario: A settle Flume refuses
-
-- **WHEN** `boomdrive run --once` keeps its repositories with no control plane, and a stub `flume` refuses its settle with the words `no store`
-- **THEN** it says `boomdrive: Flume refused the settle of every place: no store`, and exits 0
-
 ### Requirement: One runner per data directory
 
 `boomdrive run`, with or without `--once`, SHALL hold an exclusive lock on its data directory for as long as it runs. Whichever starts while another holds the lock SHALL exit 2, naming the data directory as held, and touch nothing.
@@ -213,66 +169,9 @@ Where the configuration names a control plane and it opens, `boomdrive run` SHAL
 - **WHEN** a keeping pass is under way, its fetch of one repository held for a minute, and `work`'s control pass falls due
 - **THEN** `work`'s control pass pulls, answers and reports while the fetch is held
 
-### Requirement: Each pass ends with a settle of every place
-
-`boomdrive run` SHALL end each keeping pass, on its loop, and each part's control pass, on the part's thread, with one `flume --json settle --every <bound>`, awaited before that thread waits. The first keeping pass SHALL share the settles of the parts' first control passes. A pass that ends while another's settle is under way SHALL share it and run none. A keeping pass whose configuration did not read SHALL settle all the same, and a runner told to stop SHALL begin none (core.13; record 0029).
-
-#### Scenario: Passes back to back share one settle
-
-- **WHEN** `fetch_interval` and `poll_interval` are an hour, and the runner's first keeping pass and its part's first control pass run back to back with a stub `flume`
-- **THEN** one `flume --json settle --every 3600s` runs, after every other `flume` command of the control pass, and no other settle runs before the next pass
-
-#### Scenario: Each control pass ends with a settle
-
-- **WHEN** `fetch_interval` is an hour and `poll_interval` a second, and the runner makes three control passes of its part with a stub `flume`
-- **THEN** each control pass's `flume` commands end with one `flume --json settle --every 1s`, before the next control pass reads Flume's status
-
-#### Scenario: Each keeping pass ends with a settle
-
-- **WHEN** the configuration names no control plane, `fetch_interval` is one second, and the runner makes three keeping passes with a stub `flume`
-- **THEN** each keeping pass is followed by one `flume --json settle --every 1s`, and the stub is asked nothing else
-
-#### Scenario: A pass on a broken configuration settles
-
-- **WHEN** the configuration of a running runner that keeps a repository each second is made invalid, with a stub `flume`
-- **THEN** each pass names the file and keeps nothing, and is followed by one `flume --json settle --every 1s` all the same
-
-#### Scenario: A pass ends while a settle is under way
-
-- **WHEN** one pass's settle is under way, and another pass ends
-- **THEN** the other pass runs no settle, and returns without waiting for the one under way to end
-
-### Requirement: The settle's bound is the runner's interval
-
-The bound of the settle SHALL be written `<n>s`, in whole seconds: `fetch_interval`, or the shorter of `fetch_interval` and `poll_interval` while the runner makes control passes, `fetch_interval` being the one the latest reading of the configuration gave (record 0029).
-
-#### Scenario: The shorter interval
-
-- **WHEN** `boomdrive run --once` runs with crew's control plane, `fetch_interval` two minutes and `poll_interval` one minute
-- **THEN** its settle is `flume --json settle --every 60s`
-
-#### Scenario: A control plane that could not be opened
-
-- **WHEN** the account `own` names the hosted control plane, whose table names no `url`, and the configuration names no `fetch_interval`
-- **THEN** `boomdrive run --once` runs no `flume` command but `flume --json settle --every 120s`
-
-### Requirement: The settle is the runner's own and said only when it changes
-
-The settle SHALL be no part of a control pass: no want's answer SHALL turn on it, and its answer SHALL be carried to no control plane and kept nowhere. Where a settle is refused, or gives no answer, the runner SHALL say so in one line only where the settle before was answered or it is the first, and SHALL say `boomdrive: Flume settles every place again` at the first settle answered after one that was not. No settle SHALL stop the runner or fail a pass (core.1, core.11, core.23).
-
-#### Scenario: A refusal said once until Flume settles again
-
-- **WHEN** Flume refuses three settles in a row with the words `no store`, then answers the fourth
-- **THEN** the first says `boomdrive: Flume refused the settle of every place: no store`, the fourth says `boomdrive: Flume settles every place again`, and the second and third say nothing
-
-#### Scenario: A settle with no answer
-
-- **WHEN** `flume` cannot be run for two settles in a row
-- **THEN** the first says `boomdrive: Flume gave no answer to the settle of every place: ` and why, and the second says nothing
-
 ### Requirement: A stop of the runner ends its calls in flight
 
-Sent SIGTERM or SIGINT, `boomdrive run` and `boomdrive run --once` SHALL end each try of a call to a remote in flight as its limit would, through the runner's halt, `weir-bounded`'s, begin no such try, keep no further repository, begin no part's pass and no settle, and let each part end the pass in hand. `boomdrive run` SHALL then exit 0, and `boomdrive run --once` SHALL say `boomdrive: stopped` and exit 1 (record 0042 as amended on 2026-11-12; core.39, core.58).
+Sent SIGTERM or SIGINT, `boomdrive run` and `boomdrive run --once` SHALL end each try of a call to a remote in flight as its limit would, through the runner's halt, `weir-bounded`'s, begin no such try, keep no further repository, begin no part's pass and no tick, and let each part end the pass in hand. `boomdrive run` SHALL then exit 0, and `boomdrive run --once` SHALL say `boomdrive: stopped` and exit 1 (record 0042 as amended on 2026-11-12; core.39, core.58).
 
 #### Scenario: Stopped with a fetch in flight
 
@@ -282,7 +181,7 @@ Sent SIGTERM or SIGINT, `boomdrive run` and `boomdrive run --once` SHALL end eac
 #### Scenario: Stopped with a part's read in flight
 
 - **WHEN** `boomdrive run` carries crew's partition `home`, whose state repository takes the connection and never answers, and is sent SIGTERM once `home`'s read of `home/main` has taken it
-- **THEN** it exits 0 within five seconds; one line reads `boomdrive: home: the control plane could not be read: ` followed by words ending `git fetch with <url> was stopped as its caller asked`, naming the state repository's URL; its last line is `boomdrive: stopped`; it runs no settle; and the state repository's connection is closed within a second of its exit
+- **THEN** it exits 0 within five seconds; one line reads `boomdrive: home: the control plane could not be read: ` followed by words ending `git fetch with <url> was stopped as its caller asked`, naming the state repository's URL; its last line is `boomdrive: stopped`; and the state repository's connection is closed within a second of its exit
 
 #### Scenario: run --once stopped with a fetch in flight
 
@@ -298,14 +197,14 @@ Each line the runner says of a part's control pass SHALL name the part's label a
 - **WHEN** `home`'s control pass cannot read Flume's status, which answers `flume was ended: signal: 9`
 - **THEN** one line says `boomdrive: home: Flume's status could not be read: flume was ended: signal: 9`
 
-### Requirement: Each pass ticks each inbox after its settle
+### Requirement: Each pass ends with a tick of each inbox
 
-After each settle, `boomdrive run` and `boomdrive run --once` SHALL run `millpond tick --inbox <name> --json` once for each inbox the configuration's `inboxes` names, in its order, each awaited on the settle's thread, and none where it names none. A pass that shares a settle under way SHALL share its ticks. millpond SHALL decide what a tick runs, and the runner SHALL read nothing of its answer but whether millpond gave one (record 0033; core.1, core.13).
+`boomdrive run` SHALL end each keeping pass and each part's control pass with `millpond tick --inbox <name> --json`, once for each inbox the configuration's `inboxes` names, in its order, awaited on that pass's thread, and none where it names none; `boomdrive run --once` SHALL end its passes so. millpond SHALL decide what a tick runs, and the runner SHALL read nothing of its answer but whether millpond gave one (record 0033; core.1, core.13).
 
 #### Scenario: Each pass ticks each inbox
 
 - **WHEN** the configuration names the inboxes `home` and `work`, and the runner makes three keeping passes with a stub `millpond`
-- **THEN** each pass's settle is followed by `millpond tick --inbox home --json`, then `millpond tick --inbox work --json`, and an answered tick says nothing
+- **THEN** each pass ends with `millpond tick --inbox home --json`, then `millpond tick --inbox work --json`, and an answered tick says nothing
 
 #### Scenario: No inbox, no tick
 
@@ -339,3 +238,75 @@ Where an inbox's tick is refused, or gives no answer, the runner SHALL say so in
 
 - **WHEN** crew's table and the hosted table each name the partition `home`
 - **THEN** `boomdrive run` refuses to start, exiting 2, naming `home`, `crew` and `hosted`
+
+### Requirement: The runner runs no settle of Flume's
+
+`boomdrive run` and `boomdrive run --once` SHALL run no `flume settle`, in no pass, keeping or control. Flume's watch over the host SHALL be `flume host`'s, which the host's service manager runs (core.13; `one-resident-per-tool`).
+
+#### Scenario: No pass runs a settle
+
+- **WHEN** the configuration names no control plane, `fetch_interval` is one second, and the runner makes three keeping passes with a stub `flume`
+- **THEN** the stub `flume` is asked nothing
+
+#### Scenario: A control pass runs no settle
+
+- **WHEN** `fetch_interval` is an hour and `poll_interval` a second, and the runner makes three control passes of its part with a stub `flume`
+- **THEN** the stub `flume` is asked for no settle, and each control pass reads Flume's status
+
+### Requirement: boomdrive run --once makes one pass and exits
+
+`boomdrive run --once` SHALL make one keeping pass, as `boomdrive run` does, then, where the configuration names a control plane, one control pass of each part, side by side, then the ticks that end them, and exit. It SHALL exit 0 when every git call of the keeping pass succeeded and some part both pulled and reported, and 1 otherwise. What the specs leave and name SHALL be no failure: an offer left for want of room, a tool not run or read, a part unread while another reported.
+
+#### Scenario: Every repository kept
+
+- **WHEN** `boomdrive run --once` clones and fetches every configured repository and makes their views
+- **THEN** it exits 0
+
+#### Scenario: A clone failed
+
+- **WHEN** `boomdrive run --once` cannot clone one configured repository
+- **THEN** it keeps the others and exits 1
+
+#### Scenario: Left for the user
+
+- **WHEN** `boomdrive run --once` leaves a dropped repository held by a branch the forge lacks, and every git call succeeds
+- **THEN** it exits 0
+
+#### Scenario: One control pass
+
+- **WHEN** `boomdrive run --once` runs with crew's control plane, `fetch_interval` two minutes and `poll_interval` one minute, over a scratch state repository holding a launch for this host, and a stub `flume` that launches it
+- **THEN** it keeps the repositories, launches once, writes the runner's branch, asks the stub `flume` for no settle, and exits 0
+
+#### Scenario: Flume's status refused
+
+- **WHEN** `boomdrive run --once` runs with crew's control plane over a scratch state repository holding a launch for this host, and a stub `flume` that refuses its status
+- **THEN** it names Flume's status as unread, launches nothing, writes the runner's branch, and exits 0
+
+#### Scenario: A control plane that cannot be read
+
+- **WHEN** `boomdrive run --once` runs with crew's control plane and no partition's state repository can be read
+- **THEN** it keeps the repositories, names each part as unread, runs no `flume` command but each hello's `flume --json status` and `flume --version`, and exits 1
+
+#### Scenario: One part unread
+
+- **WHEN** `boomdrive run --once` runs with crew's control plane serving the partitions `home` and `work`, the state repository holds no `home/main`, and `work/main` holds a launch for this host
+- **THEN** it names `home` as unread, launches `work`'s launch once, writes `work`'s runner branch, and exits 0
+
+### Requirement: Passes share their ticks
+
+The first keeping pass SHALL share the ticks of the parts' first control passes. A pass that ends while another's ticks are under way SHALL share them, run none and wait for none. A keeping pass whose configuration did not read SHALL tick all the same, the inboxes of the last reading, and a runner told to stop SHALL begin none (record 0033; core.13, core.49).
+
+#### Scenario: Passes back to back share their ticks
+
+- **WHEN** the configuration names the inbox `home`, `fetch_interval` and `poll_interval` are an hour, and the runner's first keeping pass and its part's first control pass run back to back with a stub `millpond`
+- **THEN** one `millpond tick --inbox home --json` runs, and no other tick runs before the next pass
+
+#### Scenario: A pass ends while a tick is under way
+
+- **WHEN** one pass's ticks are under way, and another pass ends
+- **THEN** the other pass runs no tick, and returns without waiting for the ones under way to end
+
+#### Scenario: A pass on a broken configuration ticks
+
+- **WHEN** the configuration of a running runner that names the inbox `home` and keeps a repository each second is made invalid
+- **THEN** each pass names the file and keeps nothing, and is followed by `millpond tick --inbox home --json` all the same
