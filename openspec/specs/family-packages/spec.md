@@ -76,40 +76,6 @@ Flume's, sluice's and timber's herdr plugin packages SHALL each be its tool's `p
 - **WHEN** the lock names timber's tag `v0.6.0`
 - **THEN** `timber-herdr-plugin` is that tag's `plugins/herdr`, taken from the source of the set's `timber`, its version `0.6.0`, and nothing in it rewritten
 
-### Requirement: The set is the one the runner's tests pass with
-
-The gate SHALL run the set's own Flume and sluice, the flake's packages of its lock, given to the runner's tests by their paths. Those tests SHALL check each program's version against its tag, and read the answers a scratch host gives with the runner's own readers. No test of the set SHALL run a Flume or a sluice found on the host's `PATH`.
-
-#### Scenario: Each tool's version
-
-- **WHEN** the runner's tests run in the gate
-- **THEN** the set's Flume says `flume <Flume's tag without the v>` and its sluice says `sluice <sluice's tag without the v>`
-
-#### Scenario: Flume's status of a scratch host
-
-- **WHEN** the set's Flume is asked `--json status` on a scratch host that holds no place
-- **THEN** the runner reads the answer as Flume's status, with no place and the host part as Flume printed it
-
-#### Scenario: The set's Flume keeps the runner's watch
-
-- **WHEN** the set's Flume is asked `--json settle --every 60s` on a scratch host that holds no place, as the runner asks it
-- **THEN** the runner reads the answer as given, and the set's Flume's `--json status` then gives the host's watch with a bound of 60 seconds
-
-#### Scenario: The set's Flume takes the runner as a recipient
-
-- **WHEN** the set's Flume, on a scratch host, is asked `--json launch` with `--recipient scratch/planner --recipient boomdrive` in a folder that holds no repository, and `--json confirm --recipient=boomdrive -- <a key no end is under>`, each as the runner asks it
-- **THEN** each exits 1 with Flume's refusal, which the runner reads as Flume's reason, and neither is a usage error; and the set's Flume is no older than the least the runner names
-
-#### Scenario: A submission sluice has no record of
-
-- **WHEN** the set's sluice is asked, in a scratch repository, for the entry of a submission it has no record of
-- **THEN** the runner reads its answer as a missing entry
-
-#### Scenario: Not the host's tools
-
-- **WHEN** the runner's tests of the set run in a shell whose `PATH` holds another `flume` and `sluice`
-- **THEN** they run the set's, by their paths
-
 ### Requirement: Each package is made from this tree, its tool's own flake or source at its release tag, or the flake's nixpkgs
 
 Each package but crew's companions' and Rex's SHALL be a derivation of the source the lock names by its hash: the runner's and the launcher's of this tree; Flume's, sluice's, crew's, herdr's, worktrunk's and timber's of their release tags, each through its own flake; portless's of its release tag, by this flake's recipe; and Ghostty's of the flake's nixpkgs. Each tool's version but Ghostty's SHALL be its tag's without the `v`, read from its tagged tree.
@@ -439,3 +405,32 @@ The set's millpond SHALL be millpond's own flake's package at the release tag `f
 
 - **WHEN** the flake's packages are evaluated for each system
 - **THEN** `millpond` is built from millpond's flake's package, says the tag's version, and each git crate it fetches is held at its `Cargo.lock`'s revision
+
+### Requirement: The runner's tests pass with the set's own tools
+
+The gate SHALL run the set's own Flume and sluice, the flake's packages of its lock, given to the runner's tests by their paths. Those tests SHALL check each program's version against its tag, and read the answers a scratch host gives with the runner's own readers. No test of the set SHALL run a Flume or a sluice found on the host's `PATH`.
+
+#### Scenario: Each tool's version
+
+- **WHEN** the runner's tests run in the gate
+- **THEN** the set's Flume says `flume <Flume's tag without the v>` and its sluice says `sluice <sluice's tag without the v>`
+
+#### Scenario: Flume's status of a scratch host
+
+- **WHEN** the set's Flume is asked `--json status` on a scratch host that holds no place
+- **THEN** the runner reads the answer as Flume's status, with no place and the host part as Flume printed it
+
+#### Scenario: The set's Flume takes the runner as a recipient
+
+- **WHEN** the set's Flume, on a scratch host, is asked `--json launch` with `--recipient scratch/planner --recipient boomdrive` in a folder that holds no repository, and `--json confirm --recipient=boomdrive -- <a key no end is under>`, each as the runner asks it
+- **THEN** each exits 1 with Flume's refusal, which the runner reads as Flume's reason, and neither is a usage error; and the set's Flume is no older than the least the runner names
+
+#### Scenario: A submission sluice has no record of
+
+- **WHEN** the set's sluice is asked, in a scratch repository, for the entry of a submission it has no record of
+- **THEN** the runner reads its answer as a missing entry
+
+#### Scenario: Not the host's tools
+
+- **WHEN** the runner's tests of the set run in a shell whose `PATH` holds another `flume` and `sluice`
+- **THEN** they run the set's, by their paths

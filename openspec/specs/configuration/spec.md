@@ -453,7 +453,7 @@ The configuration file's top-level `inboxes` SHALL be a list of the names millpo
 #### Scenario: The inboxes a host keeps
 
 - **WHEN** the file says `inboxes = ["home", "work"]`
-- **THEN** the runner ticks `home`, then `work`, after each settle; and a file naming no `inboxes` ticks none
+- **THEN** the runner ticks `home`, then `work`, at the end of each pass; and a file naming no `inboxes` ticks none
 
 #### Scenario: An inbox named twice or not named
 
@@ -482,7 +482,7 @@ The configuration MAY hold a `[control_plane]` table: `poll_interval` and the ta
 #### Scenario: No control plane
 
 - **WHEN** the configuration holds no `[control_plane]` and names no `fetch_interval`
-- **THEN** `boomdrive run --once` keeps the repositories, makes no control pass, and runs no `flume` command but the settle that ends its pass, `flume --json settle --every 120s`
+- **THEN** `boomdrive run --once` keeps the repositories, makes no control pass, and runs no `flume` command
 
 ### Requirement: Each account names its control plane
 
