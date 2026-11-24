@@ -2,8 +2,11 @@
 # configuration's. README shows its own copy, which its writers keep to
 # this file (record 0049); tests/examples.rs reads this one.
 
+# The account `own` is served by the control plane crew, whose table follows.
+[accounts.own]
+control_plane = "crew"
+
 [control_plane]
-type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]

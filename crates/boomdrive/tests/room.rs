@@ -223,11 +223,14 @@ fn flumes_own_streams() {
         in_stream("home/4", "d", Some("default")),
     ]);
     bench.pass(&mut plane);
-    let launched: Vec<_> = bench
+    // Each launch is made on a thread of its own (core.50), so they are
+    // compared in no order.
+    let mut launched: Vec<_> = bench
         .flume
         .launches()
         .into_iter()
         .map(|args| args.name)
         .collect();
+    launched.sort();
     assert_eq!(launched, ["b", "d"]);
 }

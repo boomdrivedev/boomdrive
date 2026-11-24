@@ -157,6 +157,13 @@ let
         default = { };
         description = "Each of the account's drives by its name, which is given once on the host: one account's body of work. Always written.";
       };
+      control_plane =
+        unset
+          (types.enum [
+            "crew"
+            "hosted"
+          ])
+          "The control plane that serves the account, `crew` or `hosted`, whose table `settings.control_plane` holds: the runner's `accounts.<account>.control_plane`, each account naming its own (record 0054); none where unset, and no control plane serves the account.";
       state_repository = unset (types.strMatching "[A-Za-z0-9-]+/[A-Za-z0-9._-]+") "The account's crew state repository, `<owner>/<name>`, whose branch `<drive>/main` holds each of its drives' plan and run record: under crew, named here once, and given to each drive of the account that crew's settings set up and to the runner's crew table; none where unset, and the account's drives give crew nothing.";
     };
   };
@@ -167,8 +174,9 @@ let
   # The runner's crew table written from the accounts (record 0023; record
   # 0032 as amended on 2026-11-15 and 2026-11-18): crew's host, and each
   # drive of this host, naming no machine or that host, that crew's
-  # settings set up, under an account that names its state repository, in
-  # the accounts' order, as the runner's file lists
+  # settings set up, under an account that names crew as its control plane
+  # and its state repository, in the accounts' order, as the runner's file
+  # lists
   # them, by its name as its label and its account's state repository
   # alone, since crew's implementation refuses any other key and reads each
   # partition by its label. The runner's own key stays `partitions`. None
@@ -177,37 +185,34 @@ let
     if crew.enable then
       {
         inherit (crew) host;
-        partitions = map (drive: {
-          label = drive.name;
-          inherit (drive) state_repository;
-        }) (lib.filter (drive: drive.state_repository != null && crewRuns drive) (hereOf crew.host drives));
+        partitions =
+          map
+            (drive: {
+              label = drive.name;
+              inherit (drive) state_repository;
+            })
+            (
+              lib.filter (
+                drive: drive.control_plane == "crew" && drive.state_repository != null && crewRuns drive
+              ) (hereOf crew.host drives)
+            );
       }
     else
       null;
 
-  controlPlane = types.submodule (
-    { config, ... }:
-    {
-      freeformType = toml;
-      options = {
-        type = mkOption {
-          type = types.enum [
-            "crew"
-            "hosted"
-          ];
-          description = "The control plane's implementation the runner opens.";
-        };
-        poll_interval = unset interval "How often a control pass is made; the runner's `1m` where unset.";
-        crew = mkOption {
-          type = types.nullOr (types.attrsOf toml);
-          default = if config.type == "crew" then written else null;
-          defaultText = lib.literalMD "Under crew, with crew's module on, `host` from `services.crew.host` and, for each drive of `services.boomdrive.accounts` naming no `machine` or that host that `services.crew.settings.drives` sets up, under an account that names its `state_repository`, the drive's name as `label` and its account's `state_repository`, accounts and each account's drives in the order of their names; else `null`.";
-          description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Under crew, with crew's module on, the module writes it from the accounts' drives on this host that crew's settings set up, under an account that names its `state_repository`; a table written out wins, whole.";
-        };
-        hosted = unset (types.attrsOf toml) "`[control_plane.hosted]`, handed whole to the hosted implementation, whose keys are its own. It holds no token or key: a partition's key is made on the host by `boomdrive enroll`.";
+  controlPlane = types.submodule (_: {
+    freeformType = toml;
+    options = {
+      poll_interval = unset interval "How often a control pass is made; the runner's `1m` where unset.";
+      crew = mkOption {
+        type = types.nullOr (types.attrsOf toml);
+        default = if crewPlane then written else null;
+        defaultText = lib.literalMD "Where an account names crew, with crew's module on, `host` from `services.crew.host` and, for each drive of `services.boomdrive.accounts` naming no `machine` or that host that `services.crew.settings.drives` sets up, under an account that names crew and its `state_repository`, the drive's name as `label` and its account's `state_repository`, accounts and each account's drives in the order of their names; else `null`.";
+        description = "`[control_plane.crew]`, handed whole to crew's implementation, whose keys are its own. Where an account names crew, with crew's module on, the module writes it from the drives on this host that crew's settings set up, under an account that names crew and its `state_repository`; a table written out wins, whole.";
       };
-    }
-  );
+      hosted = unset (types.attrsOf toml) "`[control_plane.hosted]`, handed whole to the hosted implementation, whose keys are its own. It holds no token or key: a partition's key is made on the host by `boomdrive enroll`.";
+    };
+  });
 
   # `[forge]`, the Boomdrive App whose key the runner holds (record 0007 as
   # amended on 2026-11-11): its id, and the path of its key, a string, so a
@@ -300,8 +305,14 @@ let
     ) drives
   );
 
-  # Whether the runner's control plane is crew.
-  crewPlane = (cfg.settings.control_plane.type or null) == "crew";
+  # The control planes the accounts name, each once, and whether crew is
+  # among them (record 0054).
+  planes = lib.unique (
+    lib.filter (plane: plane != null) (
+      lib.mapAttrsToList (_: account: account.control_plane) cfg.accounts
+    )
+  );
+  crewPlane = lib.elem "crew" planes;
   # Whether crew's settings set up the drive, crew's drives' names being
   # the host's settings' alone (crew-drives.nix); read only where crew's
   # module is on (record 0032 as amended on 2026-11-18).
@@ -327,7 +338,8 @@ let
   stateless = lib.attrNames (
     lib.filterAttrs (
       _: account:
-      account.state_repository == null
+      account.control_plane == "crew"
+      && account.state_repository == null
       && lib.any (drive: crew.settings.drives ? ${drive}) (lib.attrNames account.drives)
     ) cfg.accounts
   );
@@ -378,7 +390,12 @@ in
           repository_root = unset types.str "The root each repository's view is kept under, an absolute path or one beginning with `~/`; the runner's `~/Code` where unset.";
           fetch_interval = unset interval "How often every repository is fetched; the runner's `2m` where unset.";
           code_workspaces = unset types.bool "Whether each drive has a VS Code workspace at the repository root; the runner's `false` where unset.";
-          control_plane = unset controlPlane "`[control_plane]`, the control plane whose work the runner carries; none where unset.";
+          control_plane = mkOption {
+            type = types.nullOr controlPlane;
+            default = if planes == [ ] then null else { };
+            defaultText = lib.literalMD "`{ }` where an account names a control plane, else `null`.";
+            description = "`[control_plane]`, the table of each control plane the accounts name and how often each part makes a control pass; none where no account names one (record 0054).";
+          };
           forge = unset forgeApp "`[forge]`, the Boomdrive App whose key the runner holds, and mints every tool's forge token from, on a host whose control plane does not hold the App: its `app_id` and its `key_file`, the path of its key outside the Nix store; none where unset, and every fetch goes through the host's own credential helper (record 0007 as amended on 2026-11-11).";
         };
       };
@@ -428,8 +445,12 @@ in
         }: a repository belongs to one drive, which names it once (record 0028).";
       }
       {
+        assertion = !((cfg.settings.control_plane or null) != null && cfg.settings.control_plane ? type);
+        message = "services.boomdrive.settings.control_plane.type is set: each account names its control plane, services.boomdrive.accounts.<account>.control_plane, and settings.control_plane holds the table of each (record 0054).";
+      }
+      {
         assertion = !(crewPlane && cfg.settings.control_plane.crew == null);
-        message = "services.boomdrive.settings.control_plane.type is crew, and no services.boomdrive.settings.control_plane.crew is written: write that table, or turn on crew's module, services.crew, with its host, its drives' own keys and its hosts, and the module writes it from the drives of services.boomdrive.accounts on this host (records 0023 and 0032).";
+        message = "an account of services.boomdrive.accounts names control_plane = crew, and no services.boomdrive.settings.control_plane.crew is written: write that table, or turn on crew's module, services.crew, with its host, its drives' own keys and its hosts, and the module writes it from the drives of services.boomdrive.accounts on this host (records 0023 and 0032).";
       }
       {
         assertion =
@@ -443,7 +464,7 @@ in
       }
       {
         assertion = !(crewPlane && crew.enable && stateless != [ ]);
-        message = "services.boomdrive.settings.control_plane.type is crew, and ${
+        message = "an account of services.boomdrive.accounts names control_plane = crew, and ${
           lib.concatMapStringsSep ", " (
             account: "services.boomdrive.accounts.${account}.state_repository"
           ) stateless

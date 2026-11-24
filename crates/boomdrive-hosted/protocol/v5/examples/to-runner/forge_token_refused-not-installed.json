@@ -1,0 +1,12 @@
+{
+  "protocol_version": 5,
+  "id": "plane:16",
+  "body": {
+    "forge_token_refused": {
+      "forge_token": "runner:9",
+      "repository": "example/app",
+      "not_installed": true,
+      "words": "the Boomdrive app's installation on this host's account does not cover example/app; install the app on it"
+    }
+  }
+}

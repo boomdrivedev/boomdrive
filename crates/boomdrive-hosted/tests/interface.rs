@@ -16,14 +16,13 @@
 //! carries no land" and "Version 1 carries no confirm"; core.42, core.53,
 //! core.55, core.56), and a want whose act is a hold fails the check of
 //! each (the runner-protocol spec's "A hold is no act of version 1 or 2";
-//! core.42, core.59). Versions 3 and 4 alone carry an observing hello and
-//! an observed report, each a form of its kind no other form passes as
-//! (record 0048; record 0052 as amended on 2026-11-18).
+//! core.42, core.59). Version 5 carries a report's unleased places, and
+//! no observing hello or observed report (record 0054).
 
 mod common;
 
 use boomdrive_control::*;
-use common::{definition, passes, refused, validator, Version, V1, V2, V3, V4};
+use common::{definition, passes, refused, validator, Version, V1, V2, V3, V4, V5};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -194,93 +193,39 @@ fn with(value: &Value, pointer: &str, member: &str, to: Value) -> Value {
     changed
 }
 
-/// The runner-protocol spec's "The observing connection's examples", "An
-/// observing hello that offers room or holds a lease", "An observed report
-/// that names a lease or an act" and "No observing connection in version
-/// 1 or 2": version 3's three examples of the observing connection pass
-/// their direction's envelope; an observing hello with a capacity or
-/// leases, a hello with `observing`, an observed report whose launch
-/// holds a lease or that names acts, and a report with `observing` each
-/// fail version 3's `from-runner.schema.json`, so no message passes as
-/// two forms; and the observing hello and the observed report, each
-/// naming version 2 or 1, fail that version's envelope, a release having
-/// spoken each (design Decision 1; record 0048; record 0052 as amended on
-/// 2026-11-18; core.42).
+/// The runner-protocol spec's "A place started elsewhere", "An unleased
+/// place that names a lease" and "No observing connection in version 5":
+/// version 5's report of a place started elsewhere passes, with a lease
+/// added to its place or with no `unleased` it fails, and version 4's
+/// observing hello and observed report, each naming version 5, fail
+/// version 5's envelope (record 0054; core.10, core.42).
 #[test]
-fn an_observing_hello_and_an_observed_report_are_of_version_3() {
-    let from_runner = V3.messages_from_runner();
-    let hello = V3.example("from-runner", "hello.json");
-    let observing = V3.example("from-runner", "hello-observing.json");
-    let report = V3.example("from-runner", "report.json");
-    let observed = V3.example("from-runner", "report-observed.json");
-    passes(&from_runner, &observing, "hello-observing.json");
-    passes(&from_runner, &observed, "report-observed.json");
-    passes(
-        &V3.messages_to_runner(),
-        &V3.example("to-runner", "pulled-answering-an-observing-hello.json"),
-        "pulled-answering-an-observing-hello.json",
-    );
-
+fn an_unleased_place_is_of_version_5_and_no_observing_form() {
+    let from_runner = V5.messages_from_runner();
+    let name = "report-a-place-started-elsewhere.json";
+    let elsewhere = V5.example("from-runner", name);
+    passes(&from_runner, &elsewhere, name);
+    let at = "/body/report/unleased/~1home~1runner~1places~1note--by-hand";
     refused(
         &from_runner,
         &with(
-            &observing,
-            "/body/hello",
-            "capacity",
-            hello["body"]["hello"]["capacity"].clone(),
+            &elsewhere,
+            at,
+            "lease",
+            json!({ "number": 1, "expires": null }),
         ),
-        "an observing hello with a capacity",
+        "an unleased place with a lease",
     );
-    refused(
-        &from_runner,
-        &with(&observing, "/body/hello", "leases", json!({})),
-        "an observing hello with leases",
-    );
-    refused(
-        &from_runner,
-        &with(&hello, "/body/hello", "observing", json!(true)),
-        "a hello with observing",
-    );
-
-    let live = V3.example("from-runner", "report-a-live-agent-with-its-pane.json");
-    let launches = observed["body"]["report"]["launches"].as_object().unwrap();
-    assert!(!launches.is_empty(), "report-observed.json holds a launch");
-    for id in launches.keys() {
-        let at = format!("/body/report/launches/{id}");
-        let lease = live
-            .pointer(&format!("{at}/lease"))
-            .unwrap_or_else(|| panic!("the live agent's report holds no lease of {at}"))
-            .clone();
-        refused(
-            &from_runner,
-            &with(&observed, &at, "lease", lease),
-            "an observed launch with its lease",
-        );
-    }
-    refused(
-        &from_runner,
-        &with(&observed, "/body/report", "acts", json!({})),
-        "an observed report with acts",
-    );
-    refused(
-        &from_runner,
-        &with(&report, "/body/report", "observing", json!(true)),
-        "a report with observing",
-    );
-
-    for (version, number) in [(V2, 2), (V1, 1)] {
-        for (name, example) in [
-            ("hello-observing.json", &observing),
-            ("report-observed.json", &observed),
-        ] {
-            let mut older = example.clone();
-            older["protocol_version"] = json!(number);
-            refused(
-                &version.messages_from_runner(),
-                &older,
-                &format!("{name}, in version {number}"),
-            );
-        }
+    let mut none = elsewhere.clone();
+    none["body"]["report"]
+        .as_object_mut()
+        .unwrap()
+        .remove("unleased");
+    refused(&from_runner, &none, "a report with no unleased");
+    for name in ["hello-observing.json", "report-observed.json"] {
+        let mut observing = V4.example("from-runner", name);
+        observing["protocol_version"] = json!(5);
+        refused(&from_runner, &observing, &format!("{name}, in version 5"));
     }
 }
 
@@ -489,14 +434,17 @@ fn the_interfaces_values_pass() {
         )]),
         ..Report::default()
     };
-    // Version 4 writes every part of a report, its `previews` among them,
+    // Version 5 writes every part of a report, its `previews` among them,
     // which the interface's file leaves out where it holds none (design
-    // Decision 3 of the-hosted-protocol-carries-land-and-preview).
+    // Decision 3 of the-hosted-protocol-carries-land-and-preview), and its
+    // `unleased`, which the interface's file never holds (record 0054).
     let report_definition = validator(&definition("report.schema.json", "report"));
     for report in [report, Report::default()] {
         let mut json = serde_json::to_value(&report).unwrap();
         assert!(json.get("previews").is_none(), "{json}");
+        assert!(json.get("unleased").is_none(), "{json}");
         json["previews"] = json!({});
+        json["unleased"] = json!({});
         passes(&report_definition, &json, &json.to_string());
     }
 }

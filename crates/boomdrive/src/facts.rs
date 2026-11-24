@@ -19,6 +19,34 @@ pub fn places(answer: &Value) -> &[Value] {
         .map_or(&[], Vec::as_slice)
 }
 
+/// Each place's entry in the text of a `flume --json status`, read, with
+/// its text sliced as Flume printed it; none where the text is not JSON or
+/// holds no listing (record 0054).
+pub fn raw_places(text: &str) -> Vec<(Value, String)> {
+    #[derive(Deserialize)]
+    struct Places<'a> {
+        #[serde(borrow)]
+        status: Status<'a>,
+    }
+    #[derive(Deserialize)]
+    struct Status<'a> {
+        #[serde(borrow, default)]
+        places: Vec<&'a RawValue>,
+    }
+    let Ok(listing) = serde_json::from_str::<Places<'_>>(text) else {
+        return Vec::new();
+    };
+    listing
+        .status
+        .places
+        .into_iter()
+        .filter_map(|raw| {
+            let entry: Value = serde_json::from_str(raw.get()).ok()?;
+            Some((entry, raw.get().to_string()))
+        })
+        .collect()
+}
+
 /// The entry of the place at `location` in `answer`: the place standing
 /// there, else the record Flume keeps of it once tidied while an end of
 /// it is pending, `<location>@<at>`, the latest where it keeps several

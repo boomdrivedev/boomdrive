@@ -2,7 +2,7 @@
 //! test code alone, listening on the loopback address. It answers
 //! `runner/enroll` and `runner/forge-token` with HTTP written by hand, and
 //! upgrades `runner/connect` by tokio-tungstenite's handshake. It checks
-//! every message it is sent against version 4, verifies the enrollment's
+//! every message it is sent against version 5, verifies the enrollment's
 //! and each connection's signature over its context, built here from the
 //! protocol's README and not from the crate's code, and each forge token's
 //! ask's over the context the crate's `key` makes, so it proves the bytes
@@ -21,7 +21,7 @@
 use super::from_runner;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use boomdrive_hosted::protocol::v4::VERSION;
+use boomdrive_hosted::protocol::v5::VERSION;
 use ed25519_dalek::{Signature, VerifyingKey};
 use futures_util::{SinkExt, StreamExt};
 use jsonschema::Validator;
@@ -36,8 +36,8 @@ use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::{http, Message as Frame};
 
-/// The subprotocol of version 4, as the README names it.
-pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v4::SUBPROTOCOL;
+/// The subprotocol of version 5, as the README names it.
+pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v5::SUBPROTOCOL;
 
 /// The path the fake's address holds, under which its two paths go.
 const BASE_PATH: &str = "/boomdrive/";
@@ -56,7 +56,7 @@ pub enum Taken {
         /// The token it bore, as `Authorization: Bearer` carried it.
         bearer: Option<String>,
         message: Value,
-        /// Why the message failed version 4, where it did.
+        /// Why the message failed version 5, where it did.
         refused: Option<String>,
         /// Whether its signature checked over the enrollment's context.
         signed: bool,
@@ -72,7 +72,7 @@ pub enum Taken {
         /// The statement's nonce, where it could be read.
         nonce: Option<Vec<u8>>,
         message: Value,
-        /// Why the message failed version 4, where it did.
+        /// Why the message failed version 5, where it did.
         refused: Option<String>,
         /// Whether its statement checked over the context `forge token`.
         signed: bool,
@@ -97,7 +97,7 @@ pub enum Taken {
     Message {
         partition: String,
         message: Value,
-        /// Why it failed version 4, where it did.
+        /// Why it failed version 5, where it did.
         refused: Option<String>,
     },
     /// A WebSocket ping a partition's connection sent.
@@ -134,7 +134,7 @@ pub fn kind(message: &Value) -> Option<String> {
 /// a status and the answer's text, or none, where it never answers.
 pub type ForgeAnswer = Arc<dyn Fn(&Value) -> Option<(u16, String)> + Send + Sync>;
 
-/// A message of version 4 of `kind` holding `body`, under the id `id`, as
+/// A message of version 5 of `kind` holding `body`, under the id `id`, as
 /// text.
 pub fn message_text(id: &str, kind: &str, body: Value) -> String {
     json!({ "protocol_version": VERSION, "id": id, "body": { kind: body } }).to_string()
@@ -267,7 +267,7 @@ impl State {
         format!("plane:{}", self.next)
     }
 
-    /// A message of version 4 under a new id of the fake's.
+    /// A message of version 5 under a new id of the fake's.
     fn message(&mut self, kind: &str, body: Value) -> Value {
         json!({ "protocol_version": VERSION, "id": self.id(), "body": { kind: body } })
     }
@@ -303,7 +303,7 @@ impl Shared {
         self.taken.send_modify(|count| *count += 1);
     }
 
-    /// Why `message` fails version 4, where it does: each error's path
+    /// Why `message` fails version 5, where it does: each error's path
     /// in the message.
     fn refusal(&self, message: &Value) -> Option<String> {
         let errors: Vec<String> = self
@@ -849,7 +849,7 @@ fn enrollment(
     (200, signed, reply)
 }
 
-/// Answers an ask of a forge token: its message checked against version 4,
+/// Answers an ask of a forge token: its message checked against version 5,
 /// its statement checked over the context `forge token` the crate's `key`
 /// makes, of the fake's origin, the statement's key, time and nonce and
 /// the ask's repository, its key enrolled, its time within the window and

@@ -6,10 +6,8 @@
 //! partition's enrollment, each partition's connection, the cut of each
 //! tool's answer to its copy, the checks of version 4's messages, and
 //! `Hosted`, the `ControlPlane` over a partition's connection, which
-//! [`open`] opens as a part for each partition; the observers of
-//! `[observer]`, which [`observer::open`] opens, one for each partition
-//! (record 0048); and the control plane's forge tokens, which
-//! [`forge_tokens`] opens (record 0053).
+//! [`open`] opens as a part for each partition; and the control plane's
+//! forge tokens, which [`forge_tokens`] opens (record 0053).
 
 pub mod check;
 pub mod connection;
@@ -17,7 +15,6 @@ pub mod copy;
 pub mod enrollment;
 pub mod forge_token;
 pub mod key;
-pub mod observer;
 pub mod plane;
 pub mod protocol;
 pub mod table;
@@ -57,22 +54,6 @@ pub fn enroll(
     token: impl FnOnce() -> Result<String, String>,
 ) -> Result<Enrolled, Refusal> {
     let table = Table::read(table, file).map_err(Refusal::host)?;
-    enrollment::enroll(&table, label, token, key::store_for_host, &machine())
-}
-
-/// Enrolls the partition `label` of the observer table, `[observer]`,
-/// `table`, of the configuration file `file`, as [`enroll`] enrolls a
-/// hosted partition, at the observer's `runner/enroll`, its key kept in
-/// the host's own credential store under `observer.<label>` (design
-/// Decision 4 of a-runner-reports-to-an-observer-it-takes-no-work-from;
-/// record 0048; core.31, core.32).
-pub fn enroll_observer(
-    table: &toml::Table,
-    file: &Path,
-    label: &str,
-    token: impl FnOnce() -> Result<String, String>,
-) -> Result<Enrolled, Refusal> {
-    let table = Table::read_observer(table, file).map_err(Refusal::host)?;
     enrollment::enroll(&table, label, token, key::store_for_host, &machine())
 }
 

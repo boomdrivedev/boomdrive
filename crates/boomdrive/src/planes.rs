@@ -1,20 +1,19 @@
 //! The control planes this binary carries (design Decisions 1 and 4;
-//! core.2): each implementation's word, as `[control_plane]`'s `type`
+//! core.2): each implementation's word, as an account's `control_plane`
 //! names it, against the function that opens it and the one that enrolls
 //! a partition of it, where it has one. The list is data, and the one
 //! place outside an implementation that names one: every other module
-//! reaches the control plane through `ControlPlane` alone, served as
-//! parts, `boomdrive enroll` through [`enroll`], and `boomdrive setup`
-//! through [`set_up_entry`] (record 0009 as amended 2026-11-11; design
-//! Decision 11 of the change a-persons-drive-is-set-up-by-one-command).
-//! An observer, `[observer]`, is the hosted implementation's whatever
-//! `[control_plane]`'s `type`, read, enrolled and opened through this
-//! list's functions alone (record 0048). A control plane that holds the
-//! Boomdrive App gives the host's forge tokens through [`forge_tokens`]
-//! (record 0053).
+//! reaches the control planes through `ControlPlane` alone, every plane an
+//! account names served as parts side by side (record 0054), `boomdrive
+//! enroll` through [`enroll`], and `boomdrive setup` through
+//! [`set_up_entry`] (record 0009 as amended 2026-11-11; design Decision 11
+//! of the change a-persons-drive-is-set-up-by-one-command). A control
+//! plane that holds the Boomdrive App gives the forge tokens of its
+//! accounts' repositories through [`forge_tokens`] (records 0053 and
+//! 0054).
 
-use crate::config::Config;
-use boomdrive_control::{ForgeTokens, Observed, Part, Wake};
+use crate::config::{Address, Config, ControlPlaneTable};
+use boomdrive_control::{ForgeTokens, Part, Wake};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use weir_bounded::Halt;
@@ -78,7 +77,7 @@ pub type Reader = fn(table: &toml::Table, file: &Path) -> Result<(), String>;
 
 /// An implementation this binary carries.
 pub struct Entry {
-    /// The word `[control_plane]`'s `type` names it by.
+    /// The word an account's `control_plane` names it by.
     pub word: &'static str,
     pub open: Opener,
     /// Its enrollment, none where its partitions enroll nothing.
@@ -404,52 +403,6 @@ fn hosted_enroll(
         })
 }
 
-/// Opens the observers of the observer table, `[observer]`, `table`, of
-/// the configuration file `file`, by the hosted implementation, whatever
-/// `[control_plane]`'s `type`: one for each partition, in its order, its
-/// connection tried again on a backoff whose cap stops at `poll_interval`
-/// and saying its lines to the say `say_for` makes for its label, and none
-/// attempted before it is handed a pass (design Decisions 6 and 7 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
-pub fn observers(
-    table: &toml::Table,
-    file: &Path,
-    poll_interval: Duration,
-    say_for: SayFor<'_>,
-) -> Result<Vec<Observed>, String> {
-    boomdrive_hosted::observer::open(table, file, poll_interval, say_for)
-}
-
-/// Reads the observer table, `[observer]`, `table`, of the configuration
-/// file `file`, by the hosted implementation's own reading, opening nothing
-/// and asking nothing of the host: words saying what it refuses, or nothing
-/// (design Decision 3 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
-pub fn read_observer(table: &toml::Table, file: &Path) -> Result<(), String> {
-    boomdrive_hosted::table::Table::read_observer(table, file).map(drop)
-}
-
-/// Enrolls the partition `label` of the observer table, `[observer]`,
-/// `table`, of the configuration file `file`, by the hosted
-/// implementation's enrollment, with the one-time token `token` gives,
-/// whatever `[control_plane]`'s `type` (design Decision 4 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
-pub fn enroll_observer(
-    table: &toml::Table,
-    file: &Path,
-    label: &str,
-    token: impl FnOnce() -> Result<String, String>,
-) -> Result<Enrolled, Refusal> {
-    boomdrive_hosted::enroll_observer(table, file, label, token)
-        .map(|enrolled| Enrolled {
-            host: enrolled.host,
-        })
-        .map_err(|refused| Refusal {
-            words: refused.words,
-            host_to_fix: refused.host_to_fix,
-        })
-}
-
 /// The one entry that sets up a drive, with its setup, none where no
 /// implementation this binary carries sets one up.
 pub fn set_up_entry() -> Option<(&'static Entry, &'static SetUp)> {
@@ -463,16 +416,9 @@ pub fn carried(word: &str) -> Option<&'static Entry> {
     PLANES.iter().find(|entry| entry.word == word)
 }
 
-/// The entry whose word is `word`, or why there is none, naming the
-/// words this binary carries.
-fn entry(word: &str, file: &Path) -> Result<&'static Entry, String> {
-    carried(word).ok_or_else(|| {
-        format!(
-            "{}: `type` is {word:?}, a control plane this binary does not carry: it carries {}",
-            file.display(),
-            listed(PLANES.iter())
-        )
-    })
+/// The words this binary carries, each quoted, joined by commas.
+pub fn words() -> String {
+    listed(PLANES.iter())
 }
 
 /// Each entry's word, quoted, joined by commas.
@@ -481,73 +427,116 @@ fn listed<'a>(entries: impl Iterator<Item = &'a Entry>) -> String {
     words.join(", ")
 }
 
-/// Opens the implementation whose word is `word` from its own table,
-/// `table`, of the configuration file `file`, keeping what it keeps under
-/// `data_dir`, each part making a control pass each `poll_interval`, as
-/// its parts, each handed the say and the wake `say_for` and `wake_for`
-/// make for its label, and given `halt`, the runner's (record 0042 as
-/// amended on 2026-11-12); or why it could not be opened. A word this
-/// binary does not carry is refused, naming those it does.
-#[allow(clippy::too_many_arguments)]
+/// Opens each implementation whose table `table`, the configuration's
+/// `[control_plane]`, holds, of the configuration file `file`, in this
+/// list's order, keeping what each keeps under `data_dir`, each part
+/// making a control pass each `poll_interval`, as one list of parts, each
+/// handed the say and the wake `say_for` and `wake_for` make for its
+/// label, and given `halt`, the runner's (record 0042 as amended on
+/// 2026-11-12); or why one could not be opened. A label two parts give is
+/// refused, naming both implementations, since the report file keeps each
+/// part's share by its label (record 0054; core.49).
 pub fn open(
-    word: &str,
-    table: &toml::Table,
+    table: &ControlPlaneTable,
     file: &Path,
     data_dir: &Path,
-    poll_interval: Duration,
     say_for: SayFor<'_>,
     wake_for: WakeFor<'_>,
     halt: &Halt,
 ) -> Result<Vec<Part>, String> {
-    (entry(word, file)?.open)(
-        table,
-        file,
-        data_dir,
-        poll_interval,
-        say_for,
-        wake_for,
-        halt,
-    )
+    let mut parts: Vec<Part> = Vec::new();
+    let mut words: Vec<&str> = Vec::new();
+    for entry in &PLANES {
+        let Some(own) = table.table(entry.word) else {
+            continue;
+        };
+        let opened = (entry.open)(
+            own,
+            file,
+            data_dir,
+            table.poll_interval,
+            say_for,
+            wake_for,
+            halt,
+        )?;
+        for part in opened {
+            if let Some(at) = parts.iter().position(|kept| kept.label == part.label) {
+                return Err(format!(
+                    "{}: the partition `{}` is named by `[control_plane.{}]` and \
+                     `[control_plane.{}]`: a part's label is given once on the host",
+                    file.display(),
+                    part.label,
+                    words[at],
+                    entry.word
+                ));
+            }
+            parts.push(part);
+            words.push(entry.word);
+        }
+    }
+    Ok(parts)
 }
 
-/// The forge tokens of `config`'s control plane, read from the
-/// configuration file `file`, where its entry holds the Boomdrive App:
-/// opened from its own table, or why they could not be; none where the
-/// configuration names no control plane, or one that does not hold the App
-/// (design Decision 6 of a-cloud-host-gets-its-github-tokens-from-the-cloud).
-pub fn forge_tokens(config: &Config, file: &Path) -> Option<Result<Box<dyn ForgeTokens>, String>> {
+/// A control plane's forge tokens, opened, or why they could not be.
+pub type Opened = Result<Box<dyn ForgeTokens>, String>;
+
+/// The forge tokens of the control plane that holds the Boomdrive App, of
+/// `config`, read from the configuration file `file`, where an account
+/// names it: opened from its own table, or why they could not be, with the
+/// repositories of every account that names it, whose tokens are asked of
+/// it; none where no account names a plane that holds the App (design
+/// Decision 6 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
+/// record 0054; core.33).
+pub fn forge_tokens(config: &Config, file: &Path) -> Option<(Opened, Vec<Address>)> {
     let plane = config.control_plane.as_ref()?;
-    let opener = carried(&plane.implementation)?.holds_the_app?;
-    Some(opener(&plane.implementation_table, file))
+    PLANES.iter().find_map(|entry| {
+        let opener = entry.holds_the_app?;
+        let accounts: Vec<_> = config
+            .accounts
+            .iter()
+            .filter(|account| account.control_plane.as_deref() == Some(entry.word))
+            .collect();
+        if accounts.is_empty() {
+            return None;
+        }
+        let repositories = accounts
+            .iter()
+            .flat_map(|account| &account.drives)
+            .flat_map(|drive| drive.repositories.iter().cloned())
+            .collect();
+        Some((opener(plane.table(entry.word)?, file), repositories))
+    })
 }
 
-/// Enrolls the partition `label` of the implementation whose word is
-/// `word`, from its own table, `table`, of the configuration file `file`,
-/// with the one-time token `token` gives, or words saying why it could
-/// not be read (design Decision 4). A word this binary does not carry, or
-/// one whose implementation enrolls nothing, is refused as the host's to
-/// fix before the token is asked for.
+/// Enrolls the partition `label` of the control plane whose implementation
+/// enrolls, from its own table in `table`, the configuration's
+/// `[control_plane]`, of the configuration file `file`, with the one-time
+/// token `token` gives, or words saying why it could not be read (design
+/// Decision 4). Where `table` holds no table of an implementation that
+/// enrolls, it is refused as the host's to fix before the token is asked
+/// for.
 pub fn enroll(
-    word: &str,
-    table: &toml::Table,
+    table: &ControlPlaneTable,
     file: &Path,
     label: &str,
     token: impl FnOnce() -> Result<String, String>,
 ) -> Result<Enrolled, Refusal> {
-    let host = |words| Refusal {
-        words,
-        host_to_fix: true,
+    let enrolling = PLANES.iter().find_map(|entry| {
+        let enroller = entry.enroll?;
+        Some((enroller, table.table(entry.word)?))
+    });
+    let Some((enroller, own)) = enrolling else {
+        return Err(Refusal {
+            words: format!(
+                "{}: no account names a control plane that enrolls: `boomdrive enroll` enrolls a \
+                 partition of {}",
+                file.display(),
+                listed(PLANES.iter().filter(|entry| entry.enroll.is_some()))
+            ),
+            host_to_fix: true,
+        });
     };
-    let entry = entry(word, file).map_err(host)?;
-    let Some(enroller) = entry.enroll else {
-        return Err(host(format!(
-            "{}: `type` is {word:?}, a control plane that enrolls nothing: `boomdrive enroll` \
-             enrolls a partition of {}",
-            file.display(),
-            listed(PLANES.iter().filter(|entry| entry.enroll.is_some()))
-        )));
-    };
-    enroller(table, file, label, Box::new(token))
+    enroller(own, file, label, Box::new(token))
 }
 
 #[cfg(test)]

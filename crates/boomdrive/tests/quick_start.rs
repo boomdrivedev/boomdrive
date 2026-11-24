@@ -365,9 +365,10 @@ fn setup_sets_up_the_drive_as_written() {
     );
 
     let table = config.control_plane.expect("a control plane");
-    assert_eq!(table.implementation, "crew");
-    let crew = boomdrive_crew::config::read(&table.implementation_table, &stand.config())
-        .unwrap_or_else(|error| panic!("crew's table: {error}"));
+    assert_eq!(table.implementations.len(), 1);
+    let crew =
+        boomdrive_crew::config::read(table.table("crew").expect("crew's table"), &stand.config())
+            .unwrap_or_else(|error| panic!("crew's table: {error}"));
     let partitions: Vec<(String, String)> = crew
         .partitions
         .iter()

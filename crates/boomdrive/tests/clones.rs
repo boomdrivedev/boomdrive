@@ -801,7 +801,7 @@ fn a_failed_fetch_drops_its_token() {
 /// `agentplot/flume`: a cloud host's.
 fn on_a_cloud_host(url: &str) -> String {
     format!(
-        "{}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\nurl = {url:?}\n\n\
+        "{}\naccounts.own.control_plane = \"hosted\"\n[control_plane]\n\n[control_plane.hosted]\nurl = {url:?}\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"home\"\n\
          repositories = [\"agentplot/flume\"]\n",
         keeping(&["agentplot/flume"])

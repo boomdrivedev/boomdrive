@@ -73,7 +73,7 @@ impl Part<'_> {
         let mut lines = Vec::new();
         let passed = self
             .carrier
-            .carry_pass(plane, None, self.underway, &mut |line| lines.push(line));
+            .carry_pass(plane, self.underway, &mut |line| lines.push(line));
         (passed, lines)
     }
 

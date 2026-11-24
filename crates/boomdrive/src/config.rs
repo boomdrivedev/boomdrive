@@ -2,8 +2,9 @@
 //! serves, each account's drives and each drive's repositories by their
 //! GitHub address (record 0028; core.5), the root their views are kept
 //! under, how often they are fetched, whether each drive has a VS Code
-//! workspace, and the control plane whose work it carries, each key named
-//! for what it holds (core.12). A refusal names the file, the line and the
+//! workspace, and the control planes whose work it carries, each account
+//! naming its own (record 0054), each key named for what it holds
+//! (core.12). A refusal names the file, the line and the
 //! key or entry. It is built from what is wrong and never from the file's
 //! text around it, a value put there by mistake among it (core.4).
 //!
@@ -27,13 +28,6 @@
 //! the key is kept and never the key, which is read at each mint and not
 //! with the configuration. Beside a control plane that holds the App,
 //! `[forge]` is refused, and the local layer may not set it.
-//!
-//! `[observer]` names an observer on the host, which the runner reports
-//! the work of its control plane's parts to and takes nothing from
-//! (record 0048; core.19): held as written and read by the hosted
-//! implementation, through `planes`, at every read of the file. It is
-//! refused where the file names no `[control_plane]`, and the local layer
-//! may not set it (core.17).
 
 use crate::planes;
 use serde::de::IgnoredAny;
@@ -62,19 +56,14 @@ pub struct Config {
     /// Each account the host serves, in the file's order, its drives
     /// holding the repositories it keeps (record 0028).
     pub accounts: Vec<Account>,
-    /// `[control_plane]`, where the file holds it. Read at every pass, it
-    /// is taken when the runner starts (design Decision 4).
+    /// `[control_plane]`, where the file holds it: the table of each
+    /// control plane an account names. Read at every pass, it is taken
+    /// when the runner starts (design Decision 4; record 0054).
     pub control_plane: Option<ControlPlaneTable>,
     /// `[forge]`, the Boomdrive App whose key the runner holds, where the
     /// file names it: none where it does not, and every fetch goes
     /// through the host's own credential helper.
     pub forge: Option<ForgeApp>,
-    /// `[observer]`, as written, where the file names it: its keys are
-    /// the hosted implementation's, which read it with the file (design
-    /// Decision 3 of a-runner-reports-to-an-observer-it-takes-no-work-from;
-    /// record 0048). Read at every pass, it is taken when the runner
-    /// starts, as `[control_plane]` is.
-    pub observer: Option<Table>,
     /// `inboxes`: each inbox this host keeps, by the name millpond's host
     /// configuration gives it, whose `millpond tick` each pass runs once
     /// beside Flume's settle (record 0033; core.13): none where the file
@@ -137,6 +126,10 @@ impl Config {
 pub struct Account {
     /// The account's name, as the file's key writes it.
     pub name: String,
+    /// `control_plane`: the word of the implementation whose control plane
+    /// serves the account, whose table `[control_plane]` holds; none where
+    /// no control plane serves it (record 0054; core.19).
+    pub control_plane: Option<String>,
     /// Each of the account's drives, in the file's order.
     pub drives: Vec<Drive>,
 }
@@ -153,19 +146,35 @@ pub struct Drive {
     pub repositories: Vec<Address>,
 }
 
-/// `[control_plane]` (design Decision 4): the implementation the runner
-/// opens, how often it makes a control pass, and the implementation's own
-/// table.
+/// `[control_plane]` (design Decision 4; record 0054): how often each
+/// part makes a control pass, and the table of each control plane an
+/// account names, each handed whole to its implementation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlPlaneTable {
-    /// `type`: the word of the implementation to open.
-    pub implementation: String,
     /// How often a control pass is made.
     pub poll_interval: Duration,
-    /// The table `type` names, `[control_plane.<type>]`, handed whole to
-    /// the implementation, whose keys are its own (core.2): empty where
+    /// Each implementation's own table, `[control_plane.<type>]`, by its
+    /// word, in the file's order, its keys the implementation's (core.2).
+    pub implementations: Vec<(String, Table)>,
+}
+
+impl ControlPlaneTable {
+    /// The table of the implementation whose word is `word`, none where
     /// the file holds none.
-    pub implementation_table: Table,
+    pub fn table(&self, word: &str) -> Option<&Table> {
+        self.implementations
+            .iter()
+            .find(|(named, _)| named == word)
+            .map(|(_, table)| table)
+    }
+
+    /// The table of the implementation whose word is `word`, to set.
+    fn table_mut(&mut self, word: &str) -> Option<&mut Table> {
+        self.implementations
+            .iter_mut()
+            .find(|(named, _)| named == word)
+            .map(|(_, table)| table)
+    }
 }
 
 /// `[forge]`: the Boomdrive App the runner holds the key of, and mints
@@ -322,7 +331,6 @@ struct File {
     accounts: Option<IgnoredAny>,
     /// Read from the document's own tree, as `accounts` is (`forge`).
     forge: Option<IgnoredAny>,
-    observer: Option<Spanned<Value>>,
     inboxes: Option<Spanned<Value>>,
     #[serde(default, deserialize_with = "table")]
     control_plane: Option<Keys>,
@@ -484,7 +492,7 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
     let mut merged = alone.clone();
     let mut passed_over = Vec::new();
     let mut drives_set: Vec<Vec<String>> = Vec::new();
-    let mut set_in: Option<&'static planes::Entry> = None;
+    let mut set_in: Vec<&'static planes::Entry> = Vec::new();
     for (path, value) in found.units {
         if let Some(pin) = pins.iter().find(|pin| path.starts_with(&pin.path)) {
             passed_over.push(PinnedKey {
@@ -503,15 +511,18 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
                     );
                     return not_taken(alone, vec![], Some(fault));
                 };
-                if plane.implementation != *word {
+                let Some(own) = plane.table_mut(word) else {
                     let fault = refused(format!(
-                        "is set, but the managed layer's `[control_plane]` names the type {:?}",
-                        plane.implementation
+                        "is set, but the managed layer names no `[control_plane.{word}]`"
                     ));
                     return not_taken(alone, vec![], Some(fault));
+                };
+                own.insert(key.clone(), value);
+                if let Some(entry) = planes::carried(word) {
+                    if !set_in.iter().any(|set| set.word == entry.word) {
+                        set_in.push(entry);
+                    }
                 }
-                plane.implementation_table.insert(key.clone(), value);
-                set_in = planes::carried(word);
             }
             _ => unreachable!("every unit is a key of the local layer's"),
         }
@@ -526,12 +537,16 @@ fn over(alone: Config, pins: &[Pin], text: &str, file: &Path) -> Config {
     // The implementation's own reading of its table, as the local layer
     // leaves it: a fault the managed layer's table has alone is not the
     // local layer's, and the implementation names it at its opening.
-    if let (Some(entry), Some(plane), Some(managed)) =
-        (set_in, &merged.control_plane, &alone.control_plane)
-    {
-        if let Err(fault) = (entry.read)(&plane.implementation_table, file) {
-            if (entry.read)(&managed.implementation_table, file).err() != Some(fault.clone()) {
-                return not_taken(alone, vec![], Some(fault));
+    if let (Some(plane), Some(managed)) = (&merged.control_plane, &alone.control_plane) {
+        for entry in set_in {
+            let (Some(own), Some(managed)) = (plane.table(entry.word), managed.table(entry.word))
+            else {
+                continue;
+            };
+            if let Err(fault) = (entry.read)(own, file) {
+                if (entry.read)(managed, file).err() != Some(fault.clone()) {
+                    return not_taken(alone, vec![], Some(fault));
+                }
             }
         }
     }
@@ -835,33 +850,40 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
         ));
     }
     let document = DeTable::parse(text).map_err(broken)?;
-    let accounts = accounts(document.get_ref(), &refuse, &line)?;
 
-    let control_plane = match &raw.control_plane {
-        None => None,
+    let (control_plane, tables_at) = match &raw.control_plane {
+        None => (None, Vec::new()),
         Some(table) => {
             let at = keys
                 .keys()
                 .find(|key| key.get_ref() == "control_plane")
                 .map_or(0, |key| key.span().start);
-            Some(control_plane(table, at, &refuse)?)
+            let (plane, tables_at) = control_plane(table, at, &refuse)?;
+            (Some(plane), tables_at)
         }
     };
+    let held: Vec<&str> = tables_at.iter().map(|(word, _)| word.as_str()).collect();
+    let accounts = accounts(document.get_ref(), &held, &refuse, &line)?;
+    // Each control plane's table serves the accounts that name it, and a
+    // table no account names serves none, which is refused, so no table
+    // is written and read for nothing (record 0054).
+    if let Some((word, at)) = tables_at.iter().find(|(word, _)| {
+        !accounts
+            .iter()
+            .any(|account| account.control_plane.as_deref() == Some(word.as_str()))
+    }) {
+        return Err(refuse(
+            *at,
+            format!(
+                "`[control_plane.{word}]` serves no account: name it in each account it serves, \
+                 `accounts.<account>.control_plane = {word:?}`"
+            ),
+        ));
+    }
 
     let forge = match raw.forge {
         None => None,
-        Some(_) => forge(document.get_ref(), control_plane.as_ref(), home, &refuse)?,
-    };
-
-    let observer = match &raw.observer {
-        None => None,
-        Some(value) => {
-            let at = keys
-                .keys()
-                .find(|key| key.get_ref() == "observer")
-                .map_or(0, |key| key.span().start);
-            Some(observer(value, control_plane.as_ref(), at, file, &refuse)?)
-        }
+        Some(_) => forge(document.get_ref(), &accounts, home, &refuse)?,
     };
 
     let inboxes = match &raw.inboxes {
@@ -882,7 +904,6 @@ fn parse_managed(text: &str, file: &Path, home: &Path) -> Result<(Config, Vec<Pi
             accounts,
             control_plane,
             forge,
-            observer,
             inboxes,
             local: LocalLayer::NoFile,
         },
@@ -933,6 +954,7 @@ fn entry<'t, 'i>(
 /// its path, and `line` gives the line a place stands on.
 fn accounts(
     document: &Tree<'_>,
+    held: &[&str],
     refuse: &impl Fn(usize, String) -> String,
     line: &impl Fn(usize) -> usize,
 ) -> Result<Vec<Account>, String> {
@@ -958,11 +980,15 @@ fn accounts(
         let account = table_at(value, &path, at, refuse)?;
         only(
             account,
-            "drives",
+            &["drives", "control_plane"],
             &path,
-            "an account holds only `drives`",
+            "an account holds only `drives` and `control_plane`",
             refuse,
         )?;
+        let control_plane = match entry(account, "control_plane") {
+            None => None,
+            Some((_, word)) => Some(plane_named(word, &path, held, refuse)?),
+        };
         let Some((drives_key, drives)) = entry(account, "drives") else {
             return Err(refuse(
                 at,
@@ -1000,7 +1026,7 @@ fn accounts(
             let drive = table_at(value, &path, at, refuse)?;
             only(
                 drive,
-                "repositories",
+                &["repositories"],
                 &path,
                 "a drive holds only `repositories`",
                 refuse,
@@ -1032,10 +1058,50 @@ fn accounts(
         }
         accounts.push(Account {
             name: account_name.to_string(),
+            control_plane,
             drives: account_drives,
         });
     }
     Ok(accounts)
+}
+
+/// The control plane an account names, `word`, at `path`: the word of an
+/// implementation this binary carries whose table `[control_plane]`
+/// holds, `held`; refused by `refuse` otherwise, naming what it may be
+/// (record 0054).
+fn plane_named(
+    word: &Spanned<DeValue<'_>>,
+    path: &str,
+    held: &[&str],
+    refuse: &impl Fn(usize, String) -> String,
+) -> Result<String, String> {
+    let at = word.span().start;
+    let Some(word) = word.get_ref().as_str() else {
+        return Err(refuse(
+            at,
+            format!("`{path}.control_plane` is not a string: it is the word of a control plane"),
+        ));
+    };
+    if planes::carried(word).is_none() {
+        return Err(refuse(
+            at,
+            format!(
+                "`{path}.control_plane` is {word:?}, a control plane this binary does not \
+                 carry: it carries {}",
+                planes::words()
+            ),
+        ));
+    }
+    if !held.contains(&word) {
+        return Err(refuse(
+            at,
+            format!(
+                "`{path}.control_plane` is {word:?}, and `[control_plane]` holds no \
+                 `[control_plane.{word}]`, its table"
+            ),
+        ));
+    }
+    Ok(word.to_string())
 }
 
 /// Adds to `accounts`, the managed layer's, the repositories of each drive
@@ -1140,6 +1206,7 @@ fn add_drives(
                 None => {
                     accounts.push(Account {
                         name: account_name.to_string(),
+                        control_plane: None,
                         drives: Vec::new(),
                     });
                     accounts.len() - 1
@@ -1230,14 +1297,14 @@ pub fn in_form(name: &str) -> bool {
 /// table holds, `holds`.
 fn only(
     table: &Tree<'_>,
-    read: &str,
+    read: &[&str],
     path: &str,
     holds: &str,
     refuse: &impl Fn(usize, String) -> String,
 ) -> Result<(), String> {
     let Some((key, _)) = in_order(table)
         .into_iter()
-        .find(|(key, _)| key.get_ref() != read)
+        .find(|(key, _)| !read.contains(&key.get_ref().as_ref()))
     else {
         return Ok(());
     };
@@ -1290,13 +1357,14 @@ fn addresses<'t, 'i>(
 /// Boomdrive App, by its `app_id`, a positive integer, and its `key_file`,
 /// absolute or beneath `~/` as `home`, and outside the Nix store, both
 /// required and nothing else; none where the file names no `[forge]`.
-/// Beside a control plane that holds the App, `control_plane`, it is
-/// refused, as the implementation's entry says (core.2, core.33). Each
+/// Where every account of `accounts` names a control plane that holds the
+/// App, it is refused, as the implementation's entry says (core.2,
+/// core.33; record 0054). Each
 /// refusal is made by `refuse`, naming its key by its path and never its
 /// value (core.4), and the key file is not read.
 fn forge(
     document: &Tree<'_>,
-    control_plane: Option<&ControlPlaneTable>,
+    accounts: &[Account],
     home: &Path,
     refuse: &impl Fn(usize, String) -> String,
 ) -> Result<Option<ForgeApp>, String> {
@@ -1304,19 +1372,25 @@ fn forge(
         return Ok(None);
     };
     let at = key.span().start;
-    if let Some(plane) = control_plane {
-        let holds = planes::carried(&plane.implementation).and_then(|entry| entry.holds_the_app);
-        if holds.is_some() {
-            return Err(refuse(
-                at,
-                format!(
-                    "`forge` names the Boomdrive App's key, but the control plane `{}` holds \
-                     the App and mints this host's forge tokens: no App's key or id is on its \
-                     host",
-                    plane.implementation
-                ),
-            ));
-        }
+    let holding: Vec<&str> = accounts
+        .iter()
+        .map(|account| {
+            account
+                .control_plane
+                .as_deref()
+                .filter(|word| planes::carried(word).is_some_and(|e| e.holds_the_app.is_some()))
+        })
+        .collect::<Option<Vec<&str>>>()
+        .unwrap_or_default();
+    if let Some(word) = holding.first() {
+        return Err(refuse(
+            at,
+            format!(
+                "`forge` names the Boomdrive App's key, but the control plane `{word}` holds \
+                 the App and mints this host's forge tokens, and every account names it: no \
+                 App's key or id is on its host"
+            ),
+        ));
     }
     let table = table_at(value, "forge", at, refuse)?;
     if let Some((key, _)) = in_order(table)
@@ -1382,67 +1456,31 @@ fn forge(
     Ok(Some(ForgeApp { app_id, key_file }))
 }
 
-/// `[observer]` as written in `value`, whose key stands at `at`, of the
-/// file `file`: the table whole, once the hosted implementation's reading
-/// takes it (design Decision 3 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from; core.2). It is
-/// refused where `control_plane` is none, since it observes the work of
-/// that control plane's parts (record 0048; core.19).
-fn observer(
-    value: &Spanned<Value>,
-    control_plane: Option<&ControlPlaneTable>,
-    at: usize,
-    file: &Path,
-    refuse: &impl Fn(usize, String) -> String,
-) -> Result<Table, String> {
-    let Value::Table(table) = value.get_ref() else {
-        return Err(refuse(at, "`observer` is not a table".to_string()));
-    };
-    if control_plane.is_none() {
-        return Err(refuse(
-            at,
-            "`[observer]` observes the work of a `[control_plane]`'s parts, and the file names \
-             no `[control_plane]`"
-                .to_string(),
-        ));
-    }
-    planes::read_observer(table, file)?;
-    Ok(table.clone())
-}
-
 /// `[control_plane]` as written in `table`, whose key stands at `at`,
-/// each refusal made by `refuse` (design Decision 4). It holds `type`,
-/// `poll_interval` and the table `type` names, and nothing else.
+/// each refusal made by `refuse` (design Decision 4; record 0054): its
+/// `poll_interval`, and the table of each implementation this binary
+/// carries that it holds, in the file's order, with where each table's
+/// key stands. It holds nothing else, and at least one table; `type`, the
+/// one control plane of before, is refused, naming where each account's
+/// plane is named.
 fn control_plane(
     table: &Keys,
     at: usize,
     refuse: &impl Fn(usize, String) -> String,
-) -> Result<ControlPlaneTable, String> {
-    let find = |name: &str| table.iter().find(|(key, _)| key.get_ref() == name);
+) -> Result<(ControlPlaneTable, Vec<(String, usize)>), String> {
+    if let Some((key, _)) = table.iter().find(|(key, _)| key.get_ref() == "type") {
+        return Err(refuse(
+            key.span().start,
+            "`type` in `[control_plane]` is gone: each account names its control plane, \
+             `accounts.<account>.control_plane`, and `[control_plane]` holds the table of each"
+                .to_string(),
+        ));
+    }
 
-    let implementation = match find("type") {
-        None => {
-            return Err(refuse(
-                at,
-                "`type` is required in `[control_plane]`: the word of the control plane's \
-                 implementation"
-                    .to_string(),
-            ))
-        }
-        Some((_, word)) => match word.get_ref().as_str() {
-            Some(word) => word.to_string(),
-            None => {
-                return Err(refuse(
-                    word.span().start,
-                    "`type` is not a string: it is the word of the control plane's \
-                     implementation"
-                        .to_string(),
-                ))
-            }
-        },
-    };
-
-    let poll_interval = match find("poll_interval") {
+    let poll_interval = match table
+        .iter()
+        .find(|(key, _)| key.get_ref() == "poll_interval")
+    {
         None => POLL_INTERVAL,
         Some((_, interval)) => interval
             .get_ref()
@@ -1461,43 +1499,55 @@ fn control_plane(
             })?,
     };
 
-    let read = ["type", "poll_interval", implementation.as_str()];
-    if let Some((key, _)) = table
+    let mut keys: Vec<(&Spanned<String>, &Spanned<Value>)> = table
         .iter()
-        .filter(|(key, _)| !read.contains(&key.get_ref().as_str()))
-        .min_by_key(|(key, _)| key.span().start)
-    {
+        .filter(|(key, _)| key.get_ref() != "poll_interval")
+        .collect();
+    keys.sort_by_key(|(key, _)| key.span().start);
+    let mut implementations = Vec::new();
+    let mut tables_at = Vec::new();
+    for (key, value) in keys {
+        let word = key.get_ref();
+        if planes::carried(word).is_none() {
+            return Err(refuse(
+                key.span().start,
+                format!(
+                    "unknown field `{word}` in `[control_plane]`: it holds `poll_interval` and \
+                     the table of each control plane an account names, of {}",
+                    planes::words()
+                ),
+            ));
+        }
+        let Value::Table(own) = value.get_ref() else {
+            return Err(refuse(
+                key.span().start,
+                format!(
+                    "`{word}` in `[control_plane]` is not a table: it is \
+                     `[control_plane.{word}]`, the implementation's own table"
+                ),
+            ));
+        };
+        implementations.push((word.clone(), own.clone()));
+        tables_at.push((word.clone(), key.span().start));
+    }
+    if implementations.is_empty() {
         return Err(refuse(
-            key.span().start,
+            at,
             format!(
-                "unknown field `{}` in `[control_plane]`: it holds `type`, `poll_interval` \
-                 and the table `type` names",
-                key.get_ref()
+                "`[control_plane]` holds no control plane's table: it holds \
+                 `[control_plane.<type>]` for each control plane an account names, of {}",
+                planes::words()
             ),
         ));
     }
 
-    let implementation_table = match find(&implementation) {
-        None => Table::new(),
-        Some((key, value)) => match value.get_ref() {
-            Value::Table(own) => own.clone(),
-            _ => {
-                return Err(refuse(
-                    key.span().start,
-                    format!(
-                        "`{implementation}` in `[control_plane]` is not a table: it is \
-                         `[control_plane.{implementation}]`, the implementation's own table"
-                    ),
-                ))
-            }
+    Ok((
+        ControlPlaneTable {
+            poll_interval,
+            implementations,
         },
-    };
-
-    Ok(ControlPlaneTable {
-        implementation,
-        poll_interval,
-        implementation_table,
-    })
+        tables_at,
+    ))
 }
 
 /// A repository root: an absolute path, or `~/…` beneath `home`. Nothing
@@ -2138,7 +2188,8 @@ mod tests {
         assert_eq!(
             refusal,
             Err(format!(
-                "{FILE}:2: unknown field `accounts.own.state`: an account holds only `drives`"
+                "{FILE}:2: unknown field `accounts.own.state`: an account holds only `drives` and \
+                 `control_plane`"
             ))
         );
         assert!(!refusal.unwrap_err().contains("example/state"));
@@ -2237,6 +2288,7 @@ mod tests {
                 code_workspaces: true,
                 accounts: vec![Account {
                     name: "own".to_string(),
+                    control_plane: None,
                     drives: vec![Drive {
                         name: "home".to_string(),
                         repositories: vec![address("agentplot/flume"), address("example/crew")],
@@ -2244,7 +2296,6 @@ mod tests {
                 }],
                 control_plane: None,
                 forge: None,
-                observer: None,
                 inboxes: Vec::new(),
                 local: LocalLayer::NoFile,
             })
@@ -2410,12 +2461,21 @@ mod tests {
             read(&text),
             Err(format!(
                 "{FILE}:13: `forge` names the Boomdrive App's key, but the control plane \
-                 `hosted` holds the App and mints this host's forge tokens: no App's key or \
-                 id is on its host"
+                 `hosted` holds the App and mints this host's forge tokens, and every account \
+                 names it: no App's key or id is on its host"
             ))
         );
         let crew = format!("{CONTROL_PLANE}\n[forge]\napp_id = 1\nkey_file = \"/etc/app.pem\"\n");
         assert!(read(&crew).unwrap().forge.is_some());
+    }
+
+    /// The configuration spec's "The App beside crew and a hosted control
+    /// plane": an account under crew keeps `[forge]` beside an account
+    /// under the cloud (record 0054).
+    #[test]
+    fn the_app_beside_crew_and_a_hosted_control_plane() {
+        let text = format!("{SIDE_BY_SIDE}\n[forge]\napp_id = 1\nkey_file = \"/etc/app.pem\"\n");
+        assert_eq!(read(&text).unwrap().forge.map(|app| app.app_id), Some(1));
     }
 
     /// The configuration spec's "The App in the local layer": the local
@@ -2438,10 +2498,11 @@ mod tests {
     }
 
     /// Design Decision 4's example of `[control_plane]`.
-    const CONTROL_PLANE: &str = "accounts = {}
+    const CONTROL_PLANE: &str = "[accounts.own]
+control_plane = \"crew\"
+drives = {}
 
 [control_plane]
-type = \"crew\"
 poll_interval = \"1m\"
 
 [control_plane.crew]
@@ -2452,134 +2513,189 @@ label = \"home\"
 state_repository = \"example/home-state\"
 ";
 
-    /// `[observer]` at a loopback origin, observing the partition `home`
-    /// with `example/app`, with `url` as given.
-    fn observer_at(url: &str) -> String {
-        format!(
-            "[observer]\nurl = {url:?}\n\n[[observer.partitions]]\nlabel = \"home\"\n\
-             repositories = [\"example/app\"]\n"
-        )
-    }
+    /// The account `own` under crew and the account `cloud` under a
+    /// hosted control plane, side by side (record 0054).
+    const SIDE_BY_SIDE: &str = "[accounts.own]
+control_plane = \"crew\"
+drives.home.repositories = [\"agentplot/flume\"]
 
-    /// The configuration spec's "An observer beside crew": `[observer]`
-    /// beside a crew control plane reads, held as written (design Decision
-    /// 3 of a-runner-reports-to-an-observer-it-takes-no-work-from).
-    #[test]
-    fn an_observer_beside_crew() {
-        let observer = observer_at("http://localhost:8787");
-        let config = read(&format!("{CONTROL_PLANE}\n{observer}")).unwrap();
-        let written: Table = toml::from_str(&observer).unwrap();
-        assert_eq!(config.observer.as_ref(), written["observer"].as_table());
-        assert_eq!(read(CONTROL_PLANE).unwrap().observer, None);
-    }
+[accounts.cloud]
+control_plane = \"hosted\"
+drives.garden.repositories = [\"example/app\"]
 
-    /// The configuration spec's "An observer of no control plane".
-    #[test]
-    fn an_observer_of_no_control_plane() {
-        let refusal = read(&format!(
-            "accounts = {{}}\n\n{}",
-            observer_at("http://localhost:8787")
-        ))
-        .unwrap_err();
-        assert_eq!(
-            refusal,
-            format!(
-                "{FILE}:3: `[observer]` observes the work of a `[control_plane]`'s parts, and \
-                 the file names no `[control_plane]`"
-            )
-        );
-        assert_eq!(
-            read(&format!(
-                "observer = \"http://localhost:8787\"\n{CONTROL_PLANE}"
-            ))
-            .map(drop),
-            Err(format!("{FILE}:1: `observer` is not a table"))
-        );
-    }
+[control_plane.crew]
+host = \"host-a\"
 
-    /// The configuration spec's "An observer off the host": refused by
-    /// the hosted implementation's reading, naming `[observer]` and `url`.
-    #[test]
-    fn an_observer_off_the_host() {
-        let refusal = read(&format!(
-            "{CONTROL_PLANE}\n{}",
-            observer_at("https://control.example")
-        ))
-        .unwrap_err();
-        assert!(
-            refusal.starts_with(&format!(
-                "{FILE}: [observer]: `url` is to a host that is not loopback"
-            )),
-            "{refusal}"
-        );
-    }
+[[control_plane.crew.partitions]]
+label = \"home\"
+state_repository = \"example/home-state\"
 
-    /// The configuration spec's "crew named": the table `type` names is
-    /// handed on whole.
+[control_plane.hosted]
+url = \"https://control.example\"
+
+[[control_plane.hosted.partitions]]
+label = \"cloud\"
+repositories = [\"example/app\"]
+";
+
+    /// The configuration spec's "crew named": the table of the plane an
+    /// account names is handed on whole.
     #[test]
     fn the_control_plane_named() {
-        let table = read(CONTROL_PLANE).unwrap().control_plane.unwrap();
+        let config = read(CONTROL_PLANE).unwrap();
         let own: Table = toml::from_str(
             "host = \"host-a\"\n\n[[partitions]]\nlabel = \"home\"\n\
              state_repository = \"example/home-state\"\n",
         )
         .unwrap();
         assert_eq!(
-            table,
-            ControlPlaneTable {
-                implementation: "crew".to_string(),
+            config.control_plane,
+            Some(ControlPlaneTable {
                 poll_interval: Duration::from_secs(60),
-                implementation_table: own,
-            }
+                implementations: vec![("crew".to_string(), own)],
+            })
+        );
+        assert_eq!(config.accounts[0].control_plane.as_deref(), Some("crew"));
+    }
+
+    /// The configuration spec's "crew and a cloud side by side": each
+    /// account names its own control plane, and each table is held, in the
+    /// file's order (record 0054).
+    #[test]
+    fn crew_and_a_cloud_side_by_side() {
+        let config = read(SIDE_BY_SIDE).unwrap();
+        let planes: Vec<(&str, Option<&str>)> = config
+            .accounts
+            .iter()
+            .map(|account| (account.name.as_str(), account.control_plane.as_deref()))
+            .collect();
+        assert_eq!(planes, [("own", Some("crew")), ("cloud", Some("hosted"))]);
+        let table = config.control_plane.unwrap();
+        let words: Vec<&str> = table
+            .implementations
+            .iter()
+            .map(|(word, _)| word.as_str())
+            .collect();
+        assert_eq!(words, ["crew", "hosted"]);
+        assert_eq!(
+            table.table("hosted").unwrap()["url"].as_str(),
+            Some("https://control.example")
         );
     }
 
     /// The configuration spec's "No control plane".
     #[test]
     fn no_control_plane() {
-        assert_eq!(read("accounts = {}\n").unwrap().control_plane, None);
+        let config = read("accounts = {}\n").unwrap();
+        assert_eq!(config.control_plane, None);
+        let config = read(&in_drive("home", &["agentplot/flume"])).unwrap();
+        assert_eq!(config.accounts[0].control_plane, None);
     }
 
-    /// The configuration spec's "No type".
+    /// The configuration spec's "A type of before": `type` is refused,
+    /// naming where each account's plane is named (record 0054).
     #[test]
-    fn no_type() {
+    fn a_type_of_before() {
+        let text = CONTROL_PLANE.replace("[control_plane]\n", "[control_plane]\ntype = \"crew\"\n");
+        assert_eq!(
+            read(&text),
+            Err(format!(
+                "{FILE}:6: `type` in `[control_plane]` is gone: each account names its control \
+                 plane, `accounts.<account>.control_plane`, and `[control_plane]` holds the \
+                 table of each"
+            ))
+        );
+    }
+
+    /// The configuration spec's "A table no account names".
+    #[test]
+    fn a_table_no_account_names() {
+        let text = format!(
+            "{CONTROL_PLANE}\n[control_plane.hosted]\nurl = \"https://control.example\"\n\
+             partitions = []\n"
+        );
+        assert_eq!(
+            read(&text),
+            Err(format!(
+                "{FILE}:15: `[control_plane.hosted]` serves no account: name it in each account \
+                 it serves, `accounts.<account>.control_plane = \"hosted\"`"
+            ))
+        );
+    }
+
+    /// `[control_plane]` holding no control plane's table is refused.
+    #[test]
+    fn a_control_plane_table_of_no_plane() {
         assert_eq!(
             read("accounts = {}\n\n[control_plane]\npoll_interval = \"30s\"\n"),
             Err(format!(
-                "{FILE}:3: `type` is required in `[control_plane]`: the word of the control \
-                 plane's implementation"
+                "{FILE}:3: `[control_plane]` holds no control plane's table: it holds \
+                 `[control_plane.<type>]` for each control plane an account names, of `crew`, \
+                 `hosted`"
             ))
         );
+    }
+
+    /// The configuration spec's "A plane with no table".
+    #[test]
+    fn a_plane_with_no_table() {
+        let text = CONTROL_PLANE.replace("control_plane = \"crew\"", "control_plane = \"hosted\"");
         assert_eq!(
-            read("accounts = {}\n[control_plane]\ntype = 3\n"),
+            read(&text),
             Err(format!(
-                "{FILE}:3: `type` is not a string: it is the word of the control plane's \
-                 implementation"
+                "{FILE}:2: `accounts.own.control_plane` is \"hosted\", and `[control_plane]` \
+                 holds no `[control_plane.hosted]`, its table"
             ))
         );
+    }
+
+    /// The configuration spec's "A plane this binary does not carry".
+    #[test]
+    fn a_plane_this_binary_does_not_carry() {
+        let text = CONTROL_PLANE.replace("control_plane = \"crew\"", "control_plane = \"cloud\"");
+        assert_eq!(
+            read(&text),
+            Err(format!(
+                "{FILE}:2: `accounts.own.control_plane` is \"cloud\", a control plane this \
+                 binary does not carry: it carries `crew`, `hosted`"
+            ))
+        );
+        let text = CONTROL_PLANE.replace("control_plane = \"crew\"", "control_plane = 3");
+        assert_eq!(
+            read(&text),
+            Err(format!(
+                "{FILE}:2: `accounts.own.control_plane` is not a string: it is the word of a \
+                 control plane"
+            ))
+        );
+    }
+
+    /// The configuration spec's "A plane in the local layer": the local
+    /// layer sets no account's plane (core.17).
+    #[test]
+    fn a_plane_in_the_local_layer() {
+        let config = layers(
+            CONTROL_PLANE,
+            Some("[accounts.own]\ncontrol_plane = \"hosted\"\n"),
+        )
+        .unwrap();
+        assert_eq!(config.local, for_keys(&["accounts.own.control_plane"]));
+        assert_eq!(config.accounts[0].control_plane.as_deref(), Some("crew"));
     }
 
     /// The configuration spec's "No poll interval".
     #[test]
     fn no_poll_interval() {
-        let table = read("accounts = {}\n[control_plane]\ntype = \"crew\"\n")
-            .unwrap()
-            .control_plane
-            .unwrap();
+        let text = CONTROL_PLANE.replace("poll_interval = \"1m\"\n", "");
+        let table = read(&text).unwrap().control_plane.unwrap();
         assert_eq!(table.poll_interval, Duration::from_secs(60));
-        assert_eq!(table.implementation_table, Table::new());
     }
 
     #[test]
     fn poll_intervals() {
         for (interval, seconds) in [("30s", 30), ("5m", 300), ("1h", 3600)] {
-            let table = read(&format!(
-                "accounts = {{}}\n[control_plane]\ntype = \"crew\"\n\
-                 poll_interval = \"{interval}\"\n"
-            ))
-            .unwrap()
-            .control_plane
-            .unwrap();
+            let text = CONTROL_PLANE.replace("\"1m\"", &format!("\"{interval}\""));
+            let table = read(&text).unwrap().control_plane.unwrap();
             assert_eq!(
                 table.poll_interval,
                 Duration::from_secs(seconds),
@@ -2596,45 +2712,34 @@ state_repository = \"example/home-state\"
             ("\"soon\"", "\"soon\""),
             ("60", "not a string"),
         ] {
+            let text = CONTROL_PLANE.replace("\"1m\"", interval);
             assert_eq!(
-                read(&format!(
-                    "accounts = {{}}\n[control_plane]\ntype = \"crew\"\n\
-                     poll_interval = {interval}\n"
-                )),
+                read(&text),
                 Err(format!(
-                    "{FILE}:4: `poll_interval` is {named}: an interval is `<n>s`, `<n>m` or \
+                    "{FILE}:6: `poll_interval` is {named}: an interval is `<n>s`, `<n>m` or \
                      `<n>h`, with n above zero"
                 ))
             );
         }
     }
 
-    /// `[control_plane]` holds `type`, `poll_interval` and the table
-    /// `type` names, and a key of anything else is refused, its value in
-    /// no output.
+    /// `[control_plane]` holds `poll_interval` and the table of each
+    /// control plane an account names, and a key of anything else is
+    /// refused, its value in no output.
     #[test]
     fn a_key_the_control_plane_table_does_not_hold() {
-        for (key, line) in [
-            ("token = \"ghp_n0t4r34lt0k3n\"", 4),
-            ("[control_plane.hosted]\ntoken = \"ghp_n0t4r34lt0k3n\"", 4),
-        ] {
-            let refusal = read(&format!(
-                "accounts = {{}}\n[control_plane]\ntype = \"crew\"\n{key}\n"
+        let text = CONTROL_PLANE.replace(
+            "poll_interval = \"1m\"\n",
+            "poll_interval = \"1m\"\ntoken = \"ghp_n0t4r34lt0k3n\"\n",
+        );
+        assert_eq!(
+            read(&text),
+            Err(format!(
+                "{FILE}:7: unknown field `token` in `[control_plane]`: it holds \
+                 `poll_interval` and the table of each control plane an account names, of \
+                 `crew`, `hosted`"
             ))
-            .unwrap_err();
-            let name = if key.starts_with('[') {
-                "hosted"
-            } else {
-                "token"
-            };
-            assert_eq!(
-                refusal,
-                format!(
-                    "{FILE}:{line}: unknown field `{name}` in `[control_plane]`: it holds \
-                     `type`, `poll_interval` and the table `type` names"
-                )
-            );
-        }
+        );
     }
 
     #[test]
@@ -2644,7 +2749,7 @@ state_repository = \"example/home-state\"
             Err(format!("{FILE}:2: `control_plane` is not a table"))
         );
         assert_eq!(
-            read("accounts = {}\n[control_plane]\ntype = \"crew\"\ncrew = 3\n"),
+            read("accounts.own.drives = {}\naccounts.own.control_plane = \"crew\"\n[control_plane]\ncrew = 3\n"),
             Err(format!(
                 "{FILE}:4: `crew` in `[control_plane]` is not a table: it is \
                  `[control_plane.crew]`, the implementation's own table"
@@ -2803,7 +2908,12 @@ state_repository = \"example/home-state\"
 
     /// The hosted table's partitions' labels, as `config` hands them on.
     fn hosted_labels(config: &Config) -> Vec<String> {
-        let table = &config.control_plane.as_ref().unwrap().implementation_table;
+        let table = config
+            .control_plane
+            .as_ref()
+            .unwrap()
+            .table("hosted")
+            .unwrap();
         table["partitions"]
             .as_array()
             .unwrap()
@@ -2836,7 +2946,7 @@ state_repository = \"example/home-state\"
     /// its partitions' labels, with `top` above it.
     fn hosted(top: &str, partitions: &[&str]) -> String {
         let mut text = format!(
-            "{top}{}\n[control_plane]\ntype = \"hosted\"\n\n\
+            "{top}{}\naccounts.own.control_plane = \"hosted\"\n[control_plane]\n\n\
              [control_plane.hosted]\nurl = \"https://control.example\"\n",
             in_drive("home", &["agentplot/flume"])
         );
@@ -3034,7 +3144,12 @@ state_repository = \"example/home-state\"
     fn the_local_layers_partitions() {
         let config = layers(&hosted("", &["home"]), Some(&hosted_local("", &["work"]))).unwrap();
         assert_eq!(hosted_labels(&config), ["work"]);
-        let table = &config.control_plane.as_ref().unwrap().implementation_table;
+        let table = config
+            .control_plane
+            .as_ref()
+            .unwrap()
+            .table("hosted")
+            .unwrap();
         assert_eq!(table["url"].as_str(), Some("https://control.example"));
         assert_eq!(kept(&config), ["agentplot/flume"]);
         assert!(matches!(config.local, LocalLayer::Taken { .. }));
@@ -3285,12 +3400,12 @@ state_repository = \"example/home-state\"
         assert_eq!(
             fault_of(&config),
             format!(
-                "{LOCAL}: `control_plane.hosted.partitions` is set, but the managed layer's \
-                 `[control_plane]` names the type \"crew\""
+                "{LOCAL}: `control_plane.hosted.partitions` is set, but the managed layer names \
+                 no `[control_plane.hosted]`"
             )
         );
         assert_eq!(
-            config.control_plane.unwrap().implementation_table["host"].as_str(),
+            config.control_plane.unwrap().table("crew").unwrap()["host"].as_str(),
             Some("host-a")
         );
 

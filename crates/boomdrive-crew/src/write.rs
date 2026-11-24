@@ -8,7 +8,10 @@
 //! (the-runner-names-each-repository-it-keeps, design Decisions 3 and 4);
 //! and, where a preview is or was answered, `previews.rec`, under the
 //! descriptor this repository proposes for crew to hold (design Decision
-//! 10; core.55); each formed from the runner's report, the claims
+//! 10; core.55); and, where a place the partition did not lease is or
+//! was given in its drive's repositories, `unleased.rec`, under the
+//! descriptor this repository proposes for crew to hold (record 0054);
+//! each formed from the runner's report, the claims
 //! standing and the drives of the latest hello alone. Nothing is written
 //! when the files' text equals the tip's, and no ref but the runner's
 //! branch is ever pushed, never with force.
@@ -89,11 +92,24 @@ pub const PREVIEWS: &str = "\
 %allowed: Request Outcome Text Status Listed Words At
 ";
 
+/// The descriptor of `unleased.rec`, as this repository proposes it for
+/// crew to hold: each place in the partition's drive's repositories that
+/// the partition did not lease, by its place, which crew acts on none of
+/// (record 0054; core.10).
+pub const UNLEASED: &str = "\
+%rec: Unleased
+%key: Place
+%type: At date
+%mandatory: Place Repository At Status
+%allowed: Place Repository At Status
+";
+
 /// The age past which another writer's lock on the cache is stale.
 const STALE_AFTER: Duration = Duration::from_secs(5 * 60);
 
 /// The runner's files' text: its four, every write holding
-/// `repositories.rec`, and `previews.rec` where the branch is to hold one.
+/// `repositories.rec`, and `previews.rec` and `unleased.rec` where the
+/// branch is to hold each.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Texts {
     pub runner: String,
@@ -101,6 +117,7 @@ pub struct Texts {
     pub places: String,
     pub repositories: String,
     pub previews: Option<String>,
+    pub unleased: Option<String>,
 }
 
 impl Texts {
@@ -113,6 +130,9 @@ impl Texts {
         ];
         if let Some(previews) = &self.previews {
             paths.push(("previews.rec", previews));
+        }
+        if let Some(unleased) = &self.unleased {
+            paths.push(("unleased.rec", unleased));
         }
         paths
     }
@@ -201,6 +221,28 @@ pub fn previews_text(previews: &BTreeMap<u64, Record>) -> String {
     under(PREVIEWS, &previews.values().cloned().collect::<Vec<_>>())
 }
 
+/// `unleased.rec` of `report`'s unleased places in the repositories of
+/// `kept`, each by its place, in the order of their places (record 0054).
+pub fn unleased_text(report: &Report, kept: &[KeptRepository]) -> String {
+    let records: Vec<Record> = report
+        .unleased
+        .iter()
+        .filter(|(_, place)| {
+            kept.iter()
+                .any(|kept| kept.address.eq_ignore_ascii_case(&place.repository))
+        })
+        .map(|(place, unleased)| {
+            let mut record = Record::new();
+            record.push("Place", place.as_str());
+            record.push("Repository", unleased.repository.as_str());
+            record.push("At", unleased.status.at.to_string());
+            record.push("Status", unleased.status.text.as_str());
+            record
+        })
+        .collect();
+    under(UNLEASED, &records)
+}
+
 /// A preview's record: its request, its outcome, sluice's answer as
 /// carried as its `Text`, sluice's listing as carried as its `Status`
 /// with `Listed`, its `Words`, and its `At`, the status's time where a
@@ -255,7 +297,10 @@ pub fn statuses_held(label: &str, report: &Report) -> BTreeSet<Id> {
 /// repositories of the partition's drive the runner keeps; and
 /// `previews.rec`, one `Preview` per preview request the report answers,
 /// where the report holds one, or the descriptor alone where it holds none
-/// and the tip, as `previews_held` says, holds the file.
+/// and the tip, as `previews_held` says, holds the file; and
+/// `unleased.rec` of each unleased place in `kept`'s repositories, where
+/// the report holds one, or the descriptor alone where the tip, as
+/// `unleased_held` says, holds the file (record 0054).
 #[allow(clippy::too_many_arguments)]
 pub fn texts(
     label: &str,
@@ -267,6 +312,7 @@ pub fn texts(
     addresses: &BTreeMap<String, String>,
     kept: &[KeptRepository],
     previews_held: bool,
+    unleased_held: bool,
 ) -> Texts {
     let mut answers: BTreeMap<u64, Record> = claims
         .iter()
@@ -341,6 +387,10 @@ pub fn texts(
         places: places_text(&places, &runs),
         repositories: repositories_text(kept),
         previews: (!previews.is_empty() || previews_held).then(|| previews_text(&previews)),
+        unleased: {
+            let text = unleased_text(report, kept);
+            (text != under(UNLEASED, &[]) || unleased_held).then_some(text)
+        },
     }
 }
 
@@ -359,7 +409,8 @@ pub fn files_at(tip: Option<&Tip>) -> Result<read::RunnerFiles, String> {
 
 /// What a write changes, as its commit names it: `runner`, then
 /// `answers <n>…`, `places <n>…`, `runs <address>…`, `repositories
-/// <address>…` and `previews <n>…`, each naming the records added, changed
+/// <address>…`, `previews <n>…` and `unleased <place>…`, each naming the
+/// records added, changed
 /// or removed; none where every file's text is the tip's.
 pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
     let changed = new
@@ -392,6 +443,7 @@ pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
             "repositories",
         ),
         ("previews.rec", "Preview", "Request", "previews"),
+        ("unleased.rec", "Unleased", "Place", "unleased"),
     ] {
         let before = keyed(set, key, old.get(path).and_then(Option::as_ref));
         let after = keyed(
@@ -401,6 +453,7 @@ pub fn what(old: &read::RunnerFiles, new: &Texts) -> Option<String> {
                 "answers.rec" => Some(&new.answers),
                 "repositories.rec" => Some(&new.repositories),
                 "previews.rec" => new.previews.as_ref(),
+                "unleased.rec" => new.unleased.as_ref(),
                 _ => Some(&new.places),
             },
         );

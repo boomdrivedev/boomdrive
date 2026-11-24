@@ -163,25 +163,6 @@ No key, at the top, in an account or in a drive, SHALL name a stream, a kind, a 
 - **WHEN** the configuration says `repositories = ["agentplot/flume"]` at its top
 - **THEN** it is refused, naming `repositories` as held by `accounts`, each repository named under its drive
 
-### Requirement: The configuration may name the control plane
-
-The configuration MAY hold a `[control_plane]` table. In it, `type`, the word of the implementation to open, SHALL be required, and the table named by `type` SHALL be handed whole to that implementation, which reads its own keys. Where the configuration holds no `[control_plane]`, the runner SHALL keep its repositories and make no control pass.
-
-#### Scenario: crew named
-
-- **WHEN** the configuration holds `[control_plane]` with `type = "crew"` and a `[control_plane.crew]` table
-- **THEN** the runner opens crew's implementation with that table
-
-#### Scenario: No type
-
-- **WHEN** the configuration holds `[control_plane]` with `poll_interval = "30s"` and no `type`
-- **THEN** it is refused, naming `type` as required
-
-#### Scenario: No control plane
-
-- **WHEN** the configuration holds no `[control_plane]` and names no `fetch_interval`
-- **THEN** `boomdrive run --once` keeps the repositories, makes no control pass, and runs no `flume` command but the settle that ends its pass, `flume --json settle --every 120s`
-
 ### Requirement: How often the control plane is polled is a setting with a default
 
 `[control_plane]`'s `poll_interval` SHALL be how often the runner makes a control pass, a whole number of seconds, minutes or hours written `<n>s`, `<n>m` or `<n>h`, more than zero. Where it is absent, the interval SHALL be one minute. Any other value SHALL be refused, naming it.
@@ -259,7 +240,7 @@ A drive both layers name under one account SHALL keep the managed layer's reposi
 
 #### Scenario: The local layer's partitions
 
-- **WHEN** the managed layer names `[control_plane]` with `type = "hosted"` and `[control_plane.hosted]` with a `url` and the partition `home`, and the local layer names the hosted partition `work` alone
+- **WHEN** the managed layer's account `own` says `control_plane = "hosted"`, its `[control_plane.hosted]` names a `url` and the partition `home`, and the local layer names the hosted partition `work` alone
 - **THEN** the table handed to the hosted implementation holds the managed layer's `url` and the partition `work` alone
 
 ### Requirement: A local layer that sets any other key is not taken
@@ -363,7 +344,7 @@ A keeping pass SHALL say one line naming the local file where its reading of the
 
 ### Requirement: The configuration names its accounts, each account's drives and each drive's repositories
 
-The configuration SHALL name what the host keeps under `accounts`: a table of accounts, each holding `drives`, a table of drives, each holding `repositories`, the drive's repositories in the order kept. `accounts`, each account's `drives` and each drive's `repositories` SHALL be required, and each MAY be empty, so a host that keeps none says `accounts = {}`. The runner SHALL keep every drive's repositories, in the file's order (record 0028; core.5).
+The configuration SHALL name what the host keeps under `accounts`: a table of accounts, each holding `drives`, a table of drives, each holding `repositories`, the drive's repositories in the order kept, and MAY hold `control_plane`. `accounts`, each account's `drives` and each drive's `repositories` SHALL be required, and each MAY be empty, so a host that keeps none says `accounts = {}`. The runner SHALL keep every drive's repositories, in the file's order (record 0028; core.5).
 
 #### Scenario: One drive
 
@@ -448,41 +429,22 @@ The configuration MAY hold a `[forge]` table naming the Boomdrive App whose key 
 
 ### Requirement: The App is named only in the managed layer of a host that holds it
 
-Where the configuration's control plane holds the App, as the hosted control plane does, `[forge]` SHALL be refused, naming it. The local layer SHALL not set `[forge]` (record 0007 as amended on 2026-11-09; core.17, core.33).
+Where every account names a control plane that holds the App, as the hosted control plane does, `[forge]` SHALL be refused, naming it. Where any account names another plane, or none, `[forge]` MAY be named. The local layer SHALL not set `[forge]` (record 0007 as amended on 2026-11-09; record 0054; core.17, core.33).
 
 #### Scenario: The App beside a hosted control plane
 
-- **WHEN** the configuration names `[forge]` and its `[control_plane]` says `type = "hosted"`
+- **WHEN** the configuration names `[forge]`, and its one account says `control_plane = "hosted"`
 - **THEN** it is refused, naming `forge` and saying the hosted control plane holds the App
+
+#### Scenario: The App beside crew and a hosted control plane
+
+- **WHEN** the configuration names `[forge]`, the account `own` says `control_plane = "crew"` and the account `cloud` says `control_plane = "hosted"`
+- **THEN** it reads, holding `[forge]`
 
 #### Scenario: The App in the local layer
 
 - **WHEN** the local layer says `[forge]` with `app_id = 1`
 - **THEN** the local layer is not taken, and the runner names `forge`
-
-### Requirement: The managed layer may name an observer
-
-The managed layer MAY hold an `[observer]` table, handed whole to the hosted implementation, which reads its keys. It SHALL be refused where the file names no `[control_plane]`, whose parts' work it would observe. A local layer that sets it SHALL not be taken. It SHALL be read when the runner starts, as `[control_plane]` is (core.17, core.19; record 0048).
-
-#### Scenario: An observer beside crew
-
-- **WHEN** the configuration holds `[control_plane]` with `type = "crew"`, and `[observer]` with `url = "http://localhost:8787"` and the partition `home`
-- **THEN** it reads, holding the `[observer]` table as written
-
-#### Scenario: An observer of no control plane
-
-- **WHEN** the configuration holds `[observer]` and no `[control_plane]`
-- **THEN** it is refused, naming `[observer]` and saying it observes the work of a `[control_plane]`'s parts
-
-#### Scenario: An observer in the local layer
-
-- **WHEN** the local layer sets `[observer]`
-- **THEN** the local layer is not taken, the managed layer is read alone, and the runner names `observer` as a key the local layer does not set
-
-#### Scenario: An observer off the host
-
-- **WHEN** the configuration's `[observer]` says `url = "https://control.example"`
-- **THEN** it is refused, naming `[observer]` and `url`
 
 ### Requirement: The configuration names the inboxes the host keeps
 
@@ -497,3 +459,51 @@ The configuration file's top-level `inboxes` SHALL be a list of the names millpo
 
 - **WHEN** the file's `inboxes` names `home` twice, holds an empty name, or is a string
 - **THEN** the file is refused, naming its line and `inboxes`
+
+### Requirement: The control-plane table holds the table of each plane the accounts name
+
+The configuration MAY hold a `[control_plane]` table: `poll_interval` and the table of each implementation an account names, each handed whole to its implementation. It SHALL be refused where it holds `type`, naming `accounts.<account>.control_plane`; where it holds a table no account names, or none; and where it holds any other key. Where no account names a control plane, the runner SHALL make no control pass (record 0054; core.19).
+
+#### Scenario: crew named
+
+- **WHEN** the account `own` says `control_plane = "crew"`, and the configuration holds `[control_plane]` with a `[control_plane.crew]` table
+- **THEN** the runner opens crew's implementation with that table
+
+#### Scenario: A type of before
+
+- **WHEN** the configuration holds `[control_plane]` with `type = "crew"` and a `[control_plane.crew]` table
+- **THEN** it is refused, naming `type` and saying each account names its control plane by `accounts.<account>.control_plane`
+
+#### Scenario: A table no account names
+
+- **WHEN** the account `own` says `control_plane = "crew"`, and `[control_plane]` holds `[control_plane.crew]` and `[control_plane.hosted]`
+- **THEN** it is refused, naming `[control_plane.hosted]` as a table no account names
+
+#### Scenario: No control plane
+
+- **WHEN** the configuration holds no `[control_plane]` and names no `fetch_interval`
+- **THEN** `boomdrive run --once` keeps the repositories, makes no control pass, and runs no `flume` command but the settle that ends its pass, `flume --json settle --every 120s`
+
+### Requirement: Each account names its control plane
+
+An account MAY hold `control_plane`, the word of the implementation that serves it, `crew` or `hosted`. It SHALL be refused, naming `accounts.<account>.control_plane`, where it is not a string, where it names an implementation this binary does not carry, naming those it carries, or where `[control_plane]` holds no table of it. An account that names none SHALL be served by no control plane. The local layer SHALL not set it (record 0054; core.17, core.19).
+
+#### Scenario: crew and a cloud side by side
+
+- **WHEN** the account `own` says `control_plane = "crew"`, the account `cloud` says `control_plane = "hosted"`, and `[control_plane]` holds `[control_plane.crew]` and `[control_plane.hosted]`
+- **THEN** it reads, `own` served by crew and `cloud` by the hosted control plane
+
+#### Scenario: A plane with no table
+
+- **WHEN** the account `own` says `control_plane = "hosted"`, and `[control_plane]` holds `[control_plane.crew]` alone
+- **THEN** it is refused, naming `accounts.own.control_plane` and `[control_plane.hosted]`
+
+#### Scenario: A plane this binary does not carry
+
+- **WHEN** the account `own` says `control_plane = "cloud"`
+- **THEN** it is refused, naming `accounts.own.control_plane` and the words `crew` and `hosted`
+
+#### Scenario: A plane in the local layer
+
+- **WHEN** the local layer says `control_plane = "hosted"` in the account `own`
+- **THEN** the local layer is not taken, and the runner names `accounts.own.control_plane`

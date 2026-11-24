@@ -737,6 +737,255 @@ const RELEASED_V3: &[(&str, &str)] = &[
     ),
 ];
 
+/// Each file under `protocol/v4/`, schemas and examples, with its SHA-256
+/// as release `v0.21.0` holds it, read by `git show v0.21.0:<path> |
+/// shasum -a 256`. Every release from `v0.21.0`, the first to speak
+/// version 4, to the last before version 5 holds the same bytes (the
+/// runner-protocol spec's "Version 4 stays as a release spoke it"; core.42;
+/// record 0054).
+const RELEASED_V4: &[(&str, &str)] = &[
+    (
+        "enrollment.schema.json",
+        "a013b0bc9610dfb53d38ba8e72a241e421f7c0939e191f18f05554ccc7f3a649",
+    ),
+    (
+        "examples/from-runner/enroll.json",
+        "0a10e831a87bdc0165daa7f5669a719bca275c1b53459b370bf46bd7b3f5a6d5",
+    ),
+    (
+        "examples/from-runner/forge_token.json",
+        "91bd084e7d65c95bb1f77703f8c2c0ac748b2f46210474424eefcb5d0dd67fb1",
+    ),
+    (
+        "examples/from-runner/hello-observing.json",
+        "d7cb574ee3075e66f06cd3c69d3238a4a463a79687c868e7032fc99ce70731f1",
+    ),
+    (
+        "examples/from-runner/hello-with-flume-unread.json",
+        "2c9aedabc68dd942a324b6bc5a487d25be7598eb8c79b6bd145a7047fc2d0e26",
+    ),
+    (
+        "examples/from-runner/hello.json",
+        "5fa401ae6b4166da55e6416c136c46bf5900a1278b5db949fc0784b0f602ac22",
+    ),
+    (
+        "examples/from-runner/message_refused.json",
+        "ad123705016fcbd69e25cda3730f5d8295e32cc74a6f7300985a343e9cd3e42c",
+    ),
+    (
+        "examples/from-runner/report-a-done-place-held-for-the-runner.json",
+        "fabb3757b5383eb81f06d92d5cf8502d0fef43c07820ece3dbd6d2d64ac87223",
+    ),
+    (
+        "examples/from-runner/report-a-dropped-place-held-for-the-runner.json",
+        "9186aec4da159e1590a4d25bc8e2722227538c165fdd9ec3ca4fc1b8cedabd9b",
+    ),
+    (
+        "examples/from-runner/report-a-landing-kept-by-a-failed-teardown.json",
+        "dac7c196f6bc0abafa0039576d8bc1a252d43dc54b1114b6578e0383c3117b9e",
+    ),
+    (
+        "examples/from-runner/report-a-live-agent-with-its-pane.json",
+        "6f2ce68276d4d7823473ff9c1b557e1297b9b1cde2927650dc99a184f5b4b78d",
+    ),
+    (
+        "examples/from-runner/report-a-place-on-hold.json",
+        "ba44579c3fae5dba565be2acadb30a0840791e7f4b18445706c63a4065087489",
+    ),
+    (
+        "examples/from-runner/report-a-place-waiting-on-an-answer.json",
+        "6fb78893966c432f35f508f287a3b6629f1102fa8f965b575b47aeae102c1817",
+    ),
+    (
+        "examples/from-runner/report-a-preview-brought-up.json",
+        "ce0cd7bb35f1ca856b7dc5efb3b423aff8c542812b2a86ca2a33a8ed64289906",
+    ),
+    (
+        "examples/from-runner/report-a-preview-held.json",
+        "7e7d095b2bb7f9a242fd7eea069245c8612e435604066490152f84f470e9feaf",
+    ),
+    (
+        "examples/from-runner/report-a-preview-put-away.json",
+        "9fd8d70b09aef833e1b79f687d20b75fdd34847110cdb727a1de2c84864b17c2",
+    ),
+    (
+        "examples/from-runner/report-a-preview-sluice-refused.json",
+        "c6038f4e06fefaec0074e8f5c32067d80d551f7cf4e5f5bd1e8ba47970109e4c",
+    ),
+    (
+        "examples/from-runner/report-a-roles-run-delivered.json",
+        "e4d7422bd4fc270c917676428d57204ea90a6379be56a6a2b04f8c48737198b9",
+    ),
+    (
+        "examples/from-runner/report-a-submission-failed.json",
+        "3d6dba5921e6d857bdb02511af61f4401f74858bfd60d2f5521a0066d87b3c5a",
+    ),
+    (
+        "examples/from-runner/report-a-submission-under-test.json",
+        "5dfe8b7da19deeb811b3488e370af6abfcf84e0732091a9c5ffddd997b310b39",
+    ),
+    (
+        "examples/from-runner/report-a-tidied-place.json",
+        "444b34cbdfb3f137de60a39cdb88095fbc3da28617a3403e38d103d1f141bc69",
+    ),
+    (
+        "examples/from-runner/report-an-end-by-its-delivery-alone.json",
+        "f746c714da7cd86d8d166110463c306d6b5f1696f107b671a2ab0f120c6a60b8",
+    ),
+    (
+        "examples/from-runner/report-an-end-handed-over-at-a-sessions-start.json",
+        "31ad52841bad615d5592f404386c5339c0ea141c705f1e473252185f596073df",
+    ),
+    (
+        "examples/from-runner/report-an-end-owed-expired-and-one-confirmed.json",
+        "94913d29674ee0fe7cf6a0700cc7cc6138ee53fd9dc837a3c25ffa6e799c5fd2",
+    ),
+    (
+        "examples/from-runner/report-observed.json",
+        "20bf9e6e3a69753e99fdfe69a972d852f114edca6ac39508d71db70dd42bca0a",
+    ),
+    (
+        "examples/from-runner/report.json",
+        "d0b6ca1d9530c16beacb56d5c4233669fc681a53df67b1f17d219cd10b3dcd06",
+    ),
+    (
+        "examples/from-runner/terminal_closed.json",
+        "c613931a44eaf5d0d8a5dade439057f22b6bed66e52d897fe43f09f976829cfe",
+    ),
+    (
+        "examples/from-runner/terminal_opened.json",
+        "413df0a2607c6dc5facd201477186be043143d4a036b4141f70f61272ec04a3d",
+    ),
+    (
+        "examples/from-runner/terminal_output-a-redraw-after-a-resume.json",
+        "e9725ac54704efc51cdf1732e11687f446d71e88d8328af9ea00080c04000a36",
+    ),
+    (
+        "examples/from-runner/terminal_output-bytes-as-they-come.json",
+        "0edbc732e88f30f9011a9bff8b900e42c2695f030dd6e6f9f47af3904b0ab67e",
+    ),
+    (
+        "examples/from-runner/terminal_output.json",
+        "c26edf946a1ca00dbe9a03c75ba0c36b2f323fec691efe5160e5062124680f10",
+    ),
+    (
+        "examples/to-runner/enroll_refused-a-lapsed-token.json",
+        "24f5d5af5c595be8337519ae17284448200f486c2c1fff224a2298dc64d570a9",
+    ),
+    (
+        "examples/to-runner/enrolled.json",
+        "b987faa71a4250ea4f209d9e49a49ac633280168f3efebaf63687f2517e6f709",
+    ),
+    (
+        "examples/to-runner/forge_token_given.json",
+        "18277dd604aabb0977666cb4cfd7586e52f34fd7fdb131fc533f69fed6df4166",
+    ),
+    (
+        "examples/to-runner/forge_token_refused-a-repository-no-drive-serves.json",
+        "725b608bfef2615d4a89f2e6558a62a67f42eeb773c57be2af8b4123b4fdac51",
+    ),
+    (
+        "examples/to-runner/forge_token_refused-not-installed.json",
+        "60749969f9c6c3057f7ed2e4e04a149caab1be5bb8722295f30df54a2703d770",
+    ),
+    (
+        "examples/to-runner/message_refused.json",
+        "2780ddbada9e588d55a99117f050efd9e2e25094940c12c7d914ed2e7087bde4",
+    ),
+    (
+        "examples/to-runner/pulled-answering-an-observing-hello.json",
+        "e9541a220a97c88d9788a401c1799060dae0f4a26b162840876e41178ad46932",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-confirm.json",
+        "12181feb56bbf2e491f2d10e0616514e30d912d9341673f8e1ddf1c84484f470",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-hold.json",
+        "6e0ddf52dc8c3bdec27e6a7687b6ea0656947cb09f08430732902c7474da8a3b",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-land.json",
+        "29f5b7dca165ce930b821b6bb7dea0d0a4936aa8892eb92144df11bfecb02393",
+    ),
+    (
+        "examples/to-runner/pulled-with-a-preview-and-its-done.json",
+        "249039dc07806933e6f9adbe11cdca7e594d7436bdacf6d23fd33e8ecc962305",
+    ),
+    (
+        "examples/to-runner/pulled-with-the-report-held.json",
+        "f0803506a745cb6f02f5f0ef8b8224be50a4afec22ac850f27a65caa0ab37793",
+    ),
+    (
+        "examples/to-runner/pulled.json",
+        "d72a6b74270236143a6e66b1632a358b8a7309fdfee2706126efa96d12d7695c",
+    ),
+    (
+        "examples/to-runner/reported.json",
+        "00402d44cd08a0786d9cc59f91832b50a1d6776d5ef2f5b417e0764e4223418f",
+    ),
+    (
+        "examples/to-runner/terminal_close.json",
+        "64520f1b350f8aa4ec823d9a8394dfead21a075bc324f6e621b054feb5ed6168",
+    ),
+    (
+        "examples/to-runner/terminal_input.json",
+        "6c92e44d45d9ef44df9250bcbe3e54d2aff8a292d328872af2b362581a6d180a",
+    ),
+    (
+        "examples/to-runner/terminal_open.json",
+        "cf1cbe5ef5c59e36e6714e58178420b77a3acded0f9c372ef4a13da6965cfbd5",
+    ),
+    (
+        "examples/to-runner/terminal_resume.json",
+        "b889f44f763b1345e9f69be5248f62f2265262de29a292e7a2057f12148ab934",
+    ),
+    (
+        "forge-token.schema.json",
+        "ea98f111e56e84ba2a2393ec1db9fab1fc759611ae52e33ea5000baf41a09acb",
+    ),
+    (
+        "from-runner.schema.json",
+        "09dbf915b5d504fb05c904508c1215f2093de9b3c4bdb68273a5ceb72626b176",
+    ),
+    (
+        "hello.schema.json",
+        "fecc35e3c94c20433e03c8b1241890f70a30325ea8c616cb876418f836fbc7ff",
+    ),
+    (
+        "place-status.schema.json",
+        "0ec61007ed69553e66df3861ced4952445aafd01dccd6ab4d551b3c236e7df7b",
+    ),
+    (
+        "preview.schema.json",
+        "243d19b9d79c7d8db9485a923be33fe69e358718e37d8aef9b38eccceb9d2d8a",
+    ),
+    (
+        "report.schema.json",
+        "0f0e33cec3c217bc5a38c14e51d1dbde82be4bb033a83ad56608b5c7da906b33",
+    ),
+    (
+        "shared.schema.json",
+        "5c2a7467f53e3476139d86f66355adc64b2b315f0824d9e11d6b1155496af245",
+    ),
+    (
+        "submission-entry.schema.json",
+        "6eb8ecdfdc845cfc5ad9e08790e84975d6ec606f6408d117175665a80600116e",
+    ),
+    (
+        "terminal.schema.json",
+        "1fad7e3e7b6da9ed9e06ef870beae892b2b927f3efdaa09a8e483fc2b0405a52",
+    ),
+    (
+        "to-runner.schema.json",
+        "d4cdfe0984c7d3de2f93f444aa36b620050af014baac713bf0dc00d8cd90cc31",
+    ),
+    (
+        "wants.schema.json",
+        "8c8eb7d42f7d4bb6f4ea730bdeeffdd22c47d516e1d7ecb29b89c8fafc909e3d",
+    ),
+];
+
 /// Every file under `dir`, at any depth, by its path relative to `root`.
 fn files_under(root: &Path, dir: &Path, found: &mut Vec<String>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
@@ -803,6 +1052,11 @@ fn version_2_is_as_released() {
 #[test]
 fn version_3_is_as_released() {
     held_as_released(common::V3, "v0.18.0", RELEASED_V3);
+}
+
+#[test]
+fn version_4_is_as_released() {
+    held_as_released(common::V4, "v0.21.0", RELEASED_V4);
 }
 
 /// `value` with every `description` set aside, at any depth.
@@ -1289,6 +1543,147 @@ fn version_4_is_version_3_but_for_a_forge_token() {
         }
         if let Some(path) = first_difference(&read, &old, "") {
             panic!("version 4's example {name} differs from version 3's at {path}");
+        }
+    }
+}
+
+/// `value`, a message of version 5, with its `protocol_version` read as 4,
+/// and `unleased` taken out of every report it holds, at any depth.
+fn example_read_as_version_4(value: &mut Value, what: &str) {
+    assert_eq!(
+        value["protocol_version"], 5,
+        "{what}'s protocol_version is not 5"
+    );
+    value["protocol_version"] = Value::from(4);
+    fn without_unleased(value: &mut Value) {
+        match value {
+            Value::Object(members) => {
+                if members.contains_key("launches") && members.contains_key("previews") {
+                    members.remove("unleased");
+                }
+                members.values_mut().for_each(without_unleased);
+            }
+            Value::Array(items) => items.iter_mut().for_each(without_unleased),
+            _ => {}
+        }
+    }
+    without_unleased(value);
+}
+
+/// The runner-protocol spec's "Version 5 is version 4 but for its unleased
+/// places" and "Version 5's examples are version 4's" (record 0054): each
+/// schema file of version 5, its descriptions set aside, its `$id` read as
+/// version 4's, its envelope's `protocol_version` read as 4, and the
+/// report's `unleased` and `unleased_place` taken out, equals version 4's
+/// file with its descriptions set aside and its observing forms taken
+/// out, each kind's body its working form alone. Version 5's examples are
+/// version 4's but the observing connection's three, and the report of a
+/// place started elsewhere, and each, read as version 4's with
+/// `enroll.json`'s signature set aside, equals version 4's. A failure
+/// names the file and the pointer of the first difference, and no value
+/// (core.11).
+#[test]
+fn version_5_is_version_4_but_for_its_unleased_places() {
+    let (v4, v5) = (common::V4, common::V5);
+    let names = |version: common::Version| -> BTreeSet<&'static str> {
+        version.files.iter().map(|(name, _)| *name).collect()
+    };
+    assert_eq!(names(v5), names(v4), "version 5's files are version 4's");
+    let mut old: BTreeMap<&str, Value> = v4
+        .files()
+        .into_iter()
+        .map(|(name, value)| (name, without_descriptions(&value)))
+        .collect();
+    let hello = old.get_mut("hello.schema.json").unwrap();
+    take_definition(hello, "hello.schema.json", "observing_hello");
+    let report = old.get_mut("report.schema.json").unwrap();
+    take_definition(report, "report.schema.json", "observed_report");
+    take_definition(report, "report.schema.json", "observed_launch");
+    let bodies = old
+        .get_mut("from-runner.schema.json")
+        .unwrap()
+        .pointer_mut("/$defs/body/oneOf")
+        .and_then(Value::as_array_mut)
+        .expect("from-runner.schema.json's body's branches");
+    for branch in bodies {
+        for kind in ["hello", "report"] {
+            if let Some(form) = branch.pointer_mut(&format!("/properties/{kind}")) {
+                let working = form["oneOf"][0].clone();
+                *form = working;
+            }
+        }
+    }
+    for (name, value) in v5.files() {
+        let mut read = without_descriptions(&value);
+        read["$id"] = Value::from(v4.address(name));
+        if read.pointer("/properties/protocol_version").is_some() {
+            let version = read
+                .pointer_mut("/properties/protocol_version/const")
+                .unwrap();
+            assert_eq!(*version, 5, "{name}'s protocol_version is not 5");
+            *version = Value::from(4);
+        }
+        if name == "report.schema.json" {
+            take_definition(&mut read, name, "unleased_place");
+            let report = read.pointer_mut("/$defs/report").unwrap();
+            report["properties"]
+                .as_object_mut()
+                .unwrap()
+                .remove("unleased")
+                .expect("version 5's report names unleased");
+            let required = report["required"].as_array_mut().unwrap();
+            let before = required.len();
+            required.retain(|member| member != "unleased");
+            assert_eq!(
+                required.len() + 1,
+                before,
+                "version 5's report requires unleased"
+            );
+        }
+        if let Some(path) = first_difference(&read, &old[name], "") {
+            panic!("version 5's {name} differs from version 4's at {path}");
+        }
+    }
+
+    let examples = |version: common::Version| -> BTreeSet<String> {
+        let root = version.dir().join("examples");
+        let mut found = Vec::new();
+        files_under(&root, &root, &mut found);
+        found.into_iter().collect()
+    };
+    let observing = [
+        "from-runner/hello-observing.json",
+        "from-runner/report-observed.json",
+        "to-runner/pulled-answering-an-observing-hello.json",
+    ];
+    let mut expected: BTreeSet<String> = examples(v4)
+        .into_iter()
+        .filter(|name| !observing.contains(&name.as_str()))
+        .collect();
+    expected.insert("from-runner/report-a-place-started-elsewhere.json".to_string());
+    assert_eq!(
+        examples(v5),
+        expected,
+        "version 5's examples are version 4's but the observing connection's, and the report of a place started elsewhere"
+    );
+    for name in expected
+        .iter()
+        .filter(|name| !name.ends_with("report-a-place-started-elsewhere.json"))
+    {
+        let (direction, file) = name.split_once('/').unwrap();
+        let mut read = v5.example(direction, file);
+        example_read_as_version_4(&mut read, name);
+        let mut old = v4.example(direction, file);
+        if name == "from-runner/enroll.json" {
+            for example in [&mut read, &mut old] {
+                example["body"]["enroll"]
+                    .as_object_mut()
+                    .and_then(|enroll| enroll.remove("signature"))
+                    .unwrap_or_else(|| panic!("{name} holds no signature"));
+            }
+        }
+        if let Some(path) = first_difference(&read, &old, "") {
+            panic!("version 5's example {name} differs from version 4's at {path}");
         }
     }
 }

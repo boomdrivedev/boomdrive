@@ -240,3 +240,12 @@ GitHub's answer that the App has no installation on a repository, or the control
 
 - **WHEN** `boomdrive forge-token get` runs on a scratch host whose configuration names the hosted control plane at a loopback port with nothing on it, its partition `home` served `agentplot/flume`, the host's store holds no key of `home`, and git asks for `agentplot/flume`
 - **THEN** it exits 2, standard output is empty, and standard error is one line naming `boomdrive enroll home`
+
+### Requirement: A repository's tokens come from the plane of the accounts that serve it
+
+Where an account names a control plane that holds the App, a repository whose every account serving it names that plane SHALL take its tokens from that plane, by `boomdrive forge-token get` and the running runner's fetches alike. Any other repository SHALL be minted from the App `[forge]` names, or, where it names none, fetched with the host's own helpers, as on a host whose control plane does not hold the App (record 0054; core.33).
+
+#### Scenario: crew's repository and a cloud's side by side
+
+- **WHEN** the account `own` names crew and keeps `agentplot/flume`, the account `cloud` names the hosted control plane and keeps `example/app`, `[forge]` names the App, and git asks `get` for each
+- **THEN** `example/app`'s token is asked of the hosted control plane, and `agentplot/flume`'s is minted from the App's key

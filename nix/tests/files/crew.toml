@@ -3,11 +3,11 @@ code_workspaces = true
 fetch_interval = "2m"
 repository_root = "~/Code"
 
+[accounts.own]
+control_plane = "crew"
+
 [accounts.own.drives.home]
 repositories = ["agentplot/flume", "agentplot/sluice"]
-
-[control_plane]
-type = "crew"
 
 [control_plane.crew]
 host = "host-a"

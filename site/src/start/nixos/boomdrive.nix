@@ -23,10 +23,10 @@
     enable = true;
     user = "you";
     accounts.me = {
+      control_plane = "crew";
       state_repository = "your-github-name/drive-state";
       drives.home.repositories.your-github-name = [ "your-repository" ];
     };
-    settings.control_plane.type = "crew";
   };
 
   services.crew = {

@@ -55,9 +55,9 @@ use crate::sluice::{self, Asked, Sluice};
 use crate::terminal::Relays;
 use crate::{clone, facts, inbox};
 use boomdrive_control::{
-    Act, ActSort, Acted, Answer, At, Carrying, Command, CommandSort, Commanded, ControlPlane, Id,
-    Inbox, InboxCarried, InboxFile, KeptRepository, Launched, Lease, Observer, Offer, Outcome,
-    Preview, Previewed, Report, Reported, ToolVersion, Unread, Unsent, Want,
+    Act, ActSort, Acted, Answer, At, Carried, Carrying, Command, CommandSort, Commanded,
+    ControlPlane, Id, Inbox, InboxCarried, InboxFile, KeptRepository, Launched, Lease, Offer,
+    Outcome, Preview, Previewed, Report, Reported, ToolVersion, Unleased, Unread, Unsent, Want,
 };
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -97,6 +97,9 @@ pub trait Clones {
     /// clones is made is given with none, and an address no drive names
     /// is given in none (design Decision 2).
     fn drives(&self) -> BTreeMap<String, Vec<KeptRepository>>;
+    /// Each address whose clone stands, named or dropped, with its clone's
+    /// container, as its clone is found.
+    fn containers(&self) -> Vec<(String, PathBuf)>;
 }
 
 /// The runner's clones against its configuration: `Clones` on a host.
@@ -187,6 +190,13 @@ impl Clones for Configured {
             })
             .collect()
     }
+
+    fn containers(&self) -> Vec<(String, PathBuf)> {
+        self.clones
+            .iter()
+            .map(|(address, container)| (address.to_string(), container.clone()))
+            .collect()
+    }
 }
 
 /// What a control pass of one part runs over.
@@ -218,6 +228,67 @@ pub struct Carrier<'a> {
     pub reach: &'a Reach,
     /// What was last said of Flume's version, kept across passes.
     pub least: &'a Least,
+    /// The places the part was last given that it did not launch, kept
+    /// across passes, so a place carried again as it stood keeps its time.
+    pub elsewhere: &'a Elsewhere,
+}
+
+/// The places in kept repositories a part was last given that it did not
+/// launch, kept across its control passes and never written (record
+/// 0054; core.35).
+#[derive(Debug, Default)]
+pub struct Elsewhere {
+    last: RefCell<BTreeMap<String, Unleased>>,
+}
+
+impl Elsewhere {
+    /// Each place Flume's listing, `text`, holds in a clone of
+    /// `containers`, each an address with its clone's container, whose mark
+    /// is not the runner's of a launch `share` holds: by its location as
+    /// Flume printed it, with the address and its entry as Flume printed
+    /// it, read `now`, or when it was last given where it stands as it
+    /// stood. What it gives is kept for the next pass (record 0054; core.1,
+    /// core.11).
+    fn read(
+        &self,
+        text: &str,
+        containers: &[(String, PathBuf)],
+        share: &Report,
+        now: At,
+    ) -> BTreeMap<String, Unleased> {
+        let launched: Vec<String> = share.launches.keys().map(mark).collect();
+        let mut last = self.last.borrow_mut();
+        let given: BTreeMap<String, Unleased> = facts::raw_places(text)
+            .into_iter()
+            .filter_map(|(entry, raw)| {
+                let place = facts::location(&entry)?.to_string();
+                if facts::mark(&entry).is_some_and(|marked| launched.iter().any(|m| m == marked)) {
+                    return None;
+                }
+                let repository = entry.get("repository")?.as_str()?;
+                let (address, _) = containers
+                    .iter()
+                    .find(|(_, container)| container.as_path() == Path::new(repository))?;
+                let at = match last.get(&place) {
+                    Some(was) if was.status.text == raw && was.repository == *address => {
+                        was.status.at
+                    }
+                    _ => now,
+                };
+                let unleased = Unleased {
+                    repository: address.clone(),
+                    status: Carried {
+                        text: raw,
+                        at,
+                        listed: true,
+                    },
+                };
+                Some((place, unleased))
+            })
+            .collect();
+        *last = given.clone();
+        given
+    }
 }
 
 /// Whether the control plane's last pull was read, kept across control
@@ -321,28 +392,10 @@ impl Carrier<'_> {
     /// started before it carries the statuses and sends, as `run --once`'s
     /// pass does (core.50). Its report is the part's share of the report
     /// file, where the file holds it, else what the pull gives back (design
-    /// Decision 5). The part has no observer.
+    /// Decision 5).
     pub fn pass(&self, plane: &mut dyn ControlPlane, say: &mut dyn FnMut(String)) -> Passed {
-        self.observed_pass(plane, None, say)
-    }
-
-    /// One control pass, as [`Carrier::pass`] makes it, of a part whose
-    /// observer, where it has one, is `observer`: once the pass has sent
-    /// its report and confirmed what it confirms, whatever its control
-    /// plane answered, the observer is handed the pass's hello and the
-    /// part's share as it stands, and the pass waits on nothing of it. A
-    /// pass whose share or pull could not be read carried nothing, and
-    /// hands it nothing (design Decision 7 of
-    /// a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048;
-    /// core.19, core.49).
-    pub fn observed_pass(
-        &self,
-        plane: &mut dyn ControlPlane,
-        observer: Option<&mut dyn Observer>,
-        say: &mut dyn FnMut(String),
-    ) -> Passed {
         hands::carried(self.flume, self.sluice, self.locks, &|| {}, |carrying| {
-            self.carry(plane, observer, carrying, true, say)
+            self.carry(plane, carrying, true, say)
         })
     }
 
@@ -354,11 +407,10 @@ impl Carrier<'_> {
     pub fn carry_pass(
         &self,
         plane: &mut dyn ControlPlane,
-        observer: Option<&mut dyn Observer>,
         carrying: &Underway,
         say: &mut dyn FnMut(String),
     ) -> Passed {
-        self.carry(plane, observer, carrying, false, say)
+        self.carry(plane, carrying, false, say)
     }
 
     /// Takes each answer that came back on `carrying` since the part last
@@ -446,7 +498,6 @@ impl Carrier<'_> {
     fn carry(
         &self,
         plane: &mut dyn ControlPlane,
-        observer: Option<&mut dyn Observer>,
         carrying: &Underway,
         wait: bool,
         say: &mut dyn FnMut(String),
@@ -465,7 +516,7 @@ impl Carrier<'_> {
             }
         };
         let saved = kept.clone().unwrap_or_default();
-        let status = self.flume.status();
+        let mut status = self.flume.status();
         let listing = listing_of(&status, self.label, say);
         let mut hello = hello::hello(
             self.tools,
@@ -541,12 +592,23 @@ impl Carrier<'_> {
         // statuses are carried against its listing as it stands now
         // (record 0027).
         if work.ran {
-            work.listing = listing_of(&self.flume.status(), self.label, say);
+            status = self.flume.status();
+            work.listing = listing_of(&status, self.label, say);
         }
         carrying.keep(work.wants, work.listing.as_ref());
         work.carry_statuses(say);
         work.carry_entries(say);
         work.carry_previews(say);
+        // Every place in a kept repository the part did not launch goes
+        // with its report, with no lease, as Flume's listing gives it
+        // (record 0054).
+        work.report.unleased = match &status {
+            Ok(Reply::Given(text)) => {
+                self.elsewhere
+                    .read(text, &self.clones.containers(), &work.report, At::now())
+            }
+            _ => BTreeMap::new(),
+        };
         work.save(say);
         for terminal in pulled.terminals {
             self.relays.open(terminal, &work.report);
@@ -560,9 +622,6 @@ impl Carrier<'_> {
             if work.below_least.is_none() {
                 work.confirm(answer, say);
             }
-        }
-        if let Some(observer) = observer {
-            observer.observe(&hello, &work.report);
         }
         Passed {
             expires: expires(&work.report, At::now()),
@@ -2401,6 +2460,7 @@ mod tests {
             code_workspaces: false,
             accounts: vec![Account {
                 name: "own".to_string(),
+                control_plane: None,
                 drives: vec![Drive {
                     name: "home".to_string(),
                     repositories: repositories
@@ -2411,7 +2471,6 @@ mod tests {
             }],
             control_plane: None,
             forge: None,
-            observer: None,
             inboxes: Vec::new(),
             local: crate::config::LocalLayer::NoFile,
         }
@@ -2459,6 +2518,7 @@ mod tests {
         let config = Config {
             accounts: vec![Account {
                 name: "own".to_string(),
+                control_plane: None,
                 drives: vec![
                     drive("home", &["agentplot/flume", "example/crew"]),
                     drive("work", &["example/app"]),

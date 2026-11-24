@@ -1,12 +1,15 @@
 # Written by the boomdrive flake's module from services.boomdrive.accounts and services.boomdrive.settings; a change goes there.
 
+[accounts.home]
+control_plane = "hosted"
+
 [accounts.home.drives.garden]
 repositories = ["agentplot/flume"]
 
-[accounts.work.drives]
+[accounts.work]
+control_plane = "hosted"
 
-[control_plane]
-type = "hosted"
+[accounts.work.drives]
 
 [control_plane.hosted]
 url = "https://control.example"

@@ -342,10 +342,12 @@ It exits 2 for a host to fix: a configuration it cannot read, no
 that holds no RSA private key in PEM. No token reaches a file, the data
 directory, a log or standard error.
 
-On a host whose control plane is hosted, the control plane holds the
-App and mints the host's tokens, and no App's key is on the host. There
-`get` reads and checks git's request as above, then asks the hosted
-control plane for the repository's token, by one request of version 4
+A repository whose account is served by a hosted control plane takes
+its tokens from that plane, which holds the App; any other repository's
+are minted from `[forge]`, and a host whose every account is under a
+hosted control plane holds no App's key. For such a repository `get`
+reads and checks git's request as above, then asks the hosted control
+plane for the repository's token, by one request of version 5
 of its protocol to `runner/forge-token`, under the key of a partition
 served the repository, each such partition asked in its table's order
 until one gives it, the asks together stopped at twenty seconds. It
@@ -543,12 +545,13 @@ set up is given nothing: crew has no drive of its name, and the drive's
 repositories are kept, and its stream given where it runs, as any
 drive's. A host writes neither in `services.crew.settings`: one that
 does fails evaluation, crew's failure naming
-`services.boomdrive.accounts` among the places that write it. Where
-`control_plane.type` is `crew` and no `control_plane.crew` is written,
-the module writes the runner's `[control_plane.crew]` from the accounts:
-its `host` is `services.crew.host`, and it holds each drive of this
-host, naming no `machine` or that host, that crew's settings set up,
-under an account that names its `state_repository`, in the accounts'
+`services.boomdrive.accounts` among the places that write it. Where an
+account names `control_plane = "crew"` and no `control_plane.crew` is
+written, the module writes the runner's `[control_plane.crew]` from the
+accounts: its `host` is `services.crew.host`, and it holds each drive of
+this host, naming no `machine` or that host, that crew's settings set
+up, under an account that names crew and its `state_repository`, in the
+accounts'
 order and each account's drives in the order of their names, by its name
 as `label`, with its account's `state_repository`. A table written out
 wins, whole. Under crew, an account with a drive crew's settings set up
@@ -581,13 +584,13 @@ own, written in `services.crew.settings`:
             services.boomdrive = {
               enable = true;
               accounts.own = {
+                control_plane = "crew";
                 state_repository = "example/state";
                 drives.home.repositories.boomdrivedev = [ "flume" "sluice" ];
               };
               settings = {
                 repository_root = "~/Code";
                 code_workspaces = true;
-                control_plane.type = "crew";
               };
             };
             services.crew = {
@@ -1214,12 +1217,16 @@ to, which is why every role runs `standing` unless you say otherwise.
 
 ## Carrying the control plane's work
 
-With a `[control_plane]` table, the runner carries its control plane's
-work into Flume:
+Each account names the control plane that serves it, and the runner
+carries the work of every plane its accounts name into Flume, side by
+side, crew's for some accounts and a hosted one's for others:
 
 ```toml
+# The account `own` is served by the control plane crew, whose table follows.
+[accounts.own]
+control_plane = "crew"
+
 [control_plane]
-type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
@@ -1230,14 +1237,24 @@ label = "home"
 state_repository = "example/home-state"
 ```
 
-`type` names the implementation, and is required. This binary carries
-`crew` and `hosted`. Any other word is named at start with the words it
-carries, and no control pass runs, though the repositories are kept all
-the same. `poll_interval` is how often a control pass is made,
-written as `fetch_interval` is; `1m` where none is named. The table
-`type` names is handed whole to the implementation, whose keys are its
-own. The table is read when the runner starts, so a change to it takes
-effect when the runner starts again.
+An account's `control_plane` names the implementation that serves it.
+This binary carries `crew` and `hosted`; any other word, or one whose
+table `[control_plane]` does not hold, is refused, naming it. An account
+that names none is served by no control plane: its repositories are
+kept, and no work comes for them. `[control_plane]` holds the table of
+each plane an account names, `[control_plane.crew]` and
+`[control_plane.hosted]`, each handed whole to its implementation, whose
+keys are its own, and a table no account names is refused.
+`poll_interval` is how often each part makes a control pass, written as
+`fetch_interval` is; `1m` where none is named. A part's label is given
+once on the host, across every plane. The table is read when the runner
+starts, so a change to it takes effect when the runner starts again.
+
+Each part is told of every place Flume runs in its repositories,
+whoever started it: a place it leased goes with its lease, and any
+other, one a person started by hand or another part leased, goes with no
+lease, its status as Flume's listing printed it. A plane acts on none of
+the places it did not lease.
 
 A control pass runs after the first keeping pass, then each
 `poll_interval` after the start of the one before, sooner, after a pass
@@ -1403,11 +1420,15 @@ repository's launches run in, and where its kinds come from.
 
 ## Dialing the hosted control plane
 
-With `type = "hosted"`, the runner dials a hosted control plane:
+An account that names `hosted` is served by a hosted control plane,
+which the runner dials:
 
 ```toml
+# The account `own` is served by the control plane at `url`, whose table follows.
+[accounts.own]
+control_plane = "hosted"
+
 [control_plane]
-type = "hosted"
 poll_interval = "1m"
 
 [control_plane.hosted]
@@ -1477,21 +1498,23 @@ plane is unreachable: <why>`, and one when it is reached again. A
 terminal the control plane opens is closed at once, since this host's
 Flume relays none.
 
-The runner speaks version 4 of the protocol, `boomdrive.v4`, its schema
-under `crates/boomdrive-hosted/protocol/v4/`, which a control plane takes
-beside the version before it, version 3. Each upgrade asks for
-`boomdrive.v4` alone, and a control plane that answers without it is
-said once, naming `boomdrive.v4`, and tried again at the backoff's cap.
-Version 4 is version 3 but for a forge token's ask and its answers,
-which go by one request of their own to `runner/forge-token` and never
-on a partition's socket (*Giving every tool its forge token*).
+The runner speaks version 5 of the protocol, `boomdrive.v5`, its schema
+under `crates/boomdrive-hosted/protocol/v5/`. Each upgrade asks for
+`boomdrive.v5` alone, and a control plane that answers without it is
+said once, naming `boomdrive.v5`, and tried again at the backoff's cap.
+Version 5 is version 4 but that a report names `unleased`, each place in
+the partition's repositories it did not lease, by its path, with its
+repository and its status as its copy and no lease, and that it holds no
+observing form. A forge token's ask and its answers go by one request
+of their own to `runner/forge-token` and never on a partition's socket
+(*Giving every tool its forge token*).
 Each end of a place goes up with its delivery: its key, its delivery's
 key and expiry, the readers it is owed to and those that confirmed it,
 and each hand-over, the end of the place's work by a drop or a done
-among them. An end version 4 does not name goes up as its delivery
+among them. An end version 5 does not name goes up as its delivery
 alone, or is left out where even that fails, the rest of its status
 going up, with one line naming the launch and each end's path. Only a
-status that went up with every end in a form version 4 names is one the
+status that went up with every end in a form version 5 names is one the
 runner takes its control plane to hold, so it confirms none of the ends
 of a place whose status went up with an end by its delivery alone. A
 control plane's confirm of a reader's ends is an act, given to the
@@ -1503,70 +1526,6 @@ listing as their copies. A control plane's hold of the move a launch's
 place waits on it for is an act, given to the runner under the
 partition's prefix with its words and bound as given, and carried out as
 crew's is, by Flume's hold of that waiting move.
-
-### Reporting to an observer
-
-Beside its control plane, crew's or a hosted one, a runner may report
-each part's work to an observer on its own host, such as a control
-plane's local stage, which it takes nothing from. The managed layer
-names it in `[observer]`, here beside crew's control plane:
-
-```toml
-# An observer on this host, which the runner reports each observed part's work to and takes nothing from.
-[observer]
-# Where it is reached, `http://` or `https://` to a loopback address alone.
-url = "http://localhost:8787"
-
-# The part of the control plane it observes, by its label, and the repositories its observing hello names.
-[[observer.partitions]]
-label = "home"
-repositories = ["boomdrivedev/flume"]
-```
-
-Its keys are the hosted table's, read by the hosted implementation,
-but that `url` is at a loopback address alone: `localhost`,
-`127.0.0.0/8` or `::1`. Each partition's `label` names the part of the
-control plane whose work it observes, under crew a drive's partition,
-and its `repositories` are those its hello names, of those the host
-keeps. `[observer]` is refused where the file names no
-`[control_plane]`, and a local layer that sets it is not taken. It is
-taken when the runner starts, as `[control_plane]` is, and the table
-holds no token and no key. Each partition is enrolled once, as a hosted
-partition is, at the observer's `runner/enroll`, whatever
-`[control_plane]`'s `type`:
-
-    boomdrive enroll --observer [--config <file>] [--json] <label>
-
-Its key is kept in the host's credential store under
-`observer.<label>`, apart from any hosted partition's of that label. It
-answers `observer <label>: enrolled as host <host>`, or with `--json`
-`{"enrolled":{"partition":"<label>","host":"<host>"}}`, and is refused,
-exiting 2, where the file names no `[observer]` or no partition
-`<label>` in it.
-
-Each partition keeps one outgoing WebSocket on `boomdrive.v4`, proved,
-kept and tried again as a hosted partition's is. Its first message is an
-observing hello, `observing` true with the runner's versions, its tools'
-versions and the partition's repositories, and no capacity and no lease,
-since the observer is offered no room and gives none. Once each control
-pass of the part it observes has sent its report, the observer is
-handed an observed report: each launch of the part, by its id as the
-runner holds it, with its answer and its status and entry as version
-4's copies, and no lease, act, command, inbox or preview. Handing it
-returns at once: the newest report goes on a live connection, or after
-the hello of the next one, and no pass waits on the observer, reached
-or not. `run --once` hands it nothing. The runner takes no work from
-it: a `pulled` holding a want or a report, and every message of a
-terminal, is answered with `message_refused`, its words `this connection
-observes, and the runner takes no work from it`, and said in one line,
-`<label>: the observer sent <kind> <id>, which an observer gives none
-of, so it is refused`. Its answers wake nothing and change nothing, so
-no end is confirmed on them. It says one line when it becomes
-unreachable, `<label>: the observer is unreachable: <why>`, and one
-when it is reached again, `<label>: the observer is reached`. An
-observer whose label no part has is said once at start, `boomdrive:
-observer <label>: no part of the control plane is labelled <label>, so
-it observes nothing`.
 
 ## Rules and checks
 

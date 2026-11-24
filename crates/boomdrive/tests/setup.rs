@@ -197,12 +197,12 @@ fn a_second_drive_keeps_the_first() {
     let file: toml::Table =
         toml::from_str(&std::fs::read_to_string(stand.config()).unwrap()).unwrap();
     let want: toml::Table = toml::from_str(
-        "[accounts.own.drives.home]\n\
+        "[accounts.own]\n\
+         control_plane = \"crew\"\n\
+         [accounts.own.drives.home]\n\
          repositories = [\"agentplot/flume\", \"agentplot/sluice\"]\n\
          [accounts.own.drives.work]\n\
          repositories = [\"example/app\"]\n\
-         [control_plane]\n\
-         type = \"crew\"\n\
          [control_plane.crew]\n\
          host = \"host-a\"\n\
          [[control_plane.crew.partitions]]\n\

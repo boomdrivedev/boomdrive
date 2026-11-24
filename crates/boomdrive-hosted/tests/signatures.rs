@@ -5,7 +5,7 @@
 //! the connection's and a forge token's ask's contexts, signatures and
 //! header, made from the worked example's fixed key, token, origin, time,
 //! nonce and repository, are its worked bytes, each starting with
-//! `boomdrive.v4`. The example is
+//! `boomdrive.v5`. The example is
 //! `tests/worked-bytes.json`, of which the protocol's README shows its
 //! own copy, which its writers keep to the file (record 0049).
 
@@ -115,7 +115,7 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
     let values = worked("enrollment");
     let key = worked_key(&values);
     let file =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/v4/examples/from-runner/enroll.json");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/v5/examples/from-runner/enroll.json");
     let example: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(file).expect("the example")).expect("JSON");
     let enroll = &example["body"]["enroll"];
@@ -133,7 +133,7 @@ fn the_examples_enroll_carries_the_worked_key_and_signature() {
 /// (design Decision 2 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
 /// record 0053): the context `forge token` made from the worked key,
 /// origin, time, nonce and the repository `example/app` is the worked
-/// bytes, starting with `boomdrive.v4`; the key's signature over it checks
+/// bytes, starting with `boomdrive.v5`; the key's signature over it checks
 /// and is the worked one; and the ask's header is the worked header.
 #[test]
 fn the_asks_worked_context() {
@@ -159,8 +159,8 @@ fn the_asks_worked_context() {
     );
     assert_eq!(hex(&context), value(&values, "context"));
     assert!(
-        context.starts_with(b"boomdrive.v4 "),
-        "the context starts with boomdrive.v4"
+        context.starts_with(b"boomdrive.v5 "),
+        "the context starts with boomdrive.v5"
     );
     assert_eq!(context.len(), 121, "the count of the context's bytes");
     let signature: [u8; 64] = unhex(value(&values, "signature"))

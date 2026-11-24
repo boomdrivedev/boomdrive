@@ -95,7 +95,7 @@ pub fn answer(
     output: &mut dyn Write,
     forge: &Forge,
 ) -> Result<(), Refused> {
-    if !forge.asks() && config.forge.is_none() {
+    if !forge.asks_any() && config.forge.is_none() {
         return Err(host(
             "the configuration names no [forge], the Boomdrive App's app_id and key_file, and \
              no control plane that holds the App"

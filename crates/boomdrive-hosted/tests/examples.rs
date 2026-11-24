@@ -1,16 +1,14 @@
-//! Version 4's examples, each a whole message under
+//! Version 5's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
 //! back as it was (design Decisions 2, 13 and 14 of
 //! the-runner-dials-the-hosted-control-plane). Version 1's, version 2's
-//! and version 3's examples still pass their own version's envelopes
-//! (records 0037, 0052 and 0053).
+//! version 3's and version 4's examples still pass their own version's
+//! envelopes (records 0037, 0052, 0053 and 0054).
 
 mod common;
 
-use boomdrive_hosted::protocol::v4::{
-    FromRunner, HelloForm, Message, MessageId, ReportForm, ToRunner,
-};
+use boomdrive_hosted::protocol::v5::{FromRunner, Message, MessageId, ToRunner};
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
@@ -89,9 +87,8 @@ fn every_example_passes_its_directions_schema() {
 }
 
 /// The runner-protocol spec's "Every example read and written back":
-/// the observing connection's among them, its hello and its report each
-/// read as its observing form, and the working ones as theirs (design
-/// Decision 1 of a-runner-reports-to-an-observer-it-takes-no-work-from).
+/// each of version 5's, a hello and a report each read as the one form
+/// version 5 has.
 #[test]
 fn every_example_read_and_written_back() {
     read_and_written_back::<FromRunner>("from-runner", &from_runner());
@@ -101,22 +98,15 @@ fn every_example_read_and_written_back() {
             serde_json::from_value(example("from-runner", name)).unwrap();
         message.body
     };
-    assert!(matches!(
-        read("hello-observing.json"),
-        FromRunner::Hello(HelloForm::Observing(_))
-    ));
-    assert!(matches!(
-        read("hello.json"),
-        FromRunner::Hello(HelloForm::Working(_))
-    ));
-    assert!(matches!(
-        read("report-observed.json"),
-        FromRunner::Report(ReportForm::Observed(_))
-    ));
-    assert!(matches!(
-        read("report.json"),
-        FromRunner::Report(ReportForm::Working(_))
-    ));
+    assert!(matches!(read("hello.json"), FromRunner::Hello(_)));
+    assert!(matches!(read("report.json"), FromRunner::Report(_)));
+    let FromRunner::Report(elsewhere) = read("report-a-place-started-elsewhere.json") else {
+        panic!("a report");
+    };
+    assert_eq!(
+        elsewhere.unleased["/home/runner/places/note--by-hand"].repository,
+        "example/app"
+    );
 }
 
 /// The runner-protocol spec's "Every kind has an example": each kind of a
@@ -308,9 +298,37 @@ fn version_3s_examples_still_pass() {
     }
 }
 
+/// The runner-protocol spec's "Version 4's examples still pass": each
+/// example of version 4 passes its direction's envelope of version 4,
+/// which the runner no longer speaks and a control plane may still take
+/// (core.42; record 0054).
+#[test]
+fn version_4s_examples_still_pass() {
+    let v4 = common::V4;
+    let directions = [
+        ("from-runner", v4.messages_from_runner()),
+        ("to-runner", v4.messages_to_runner()),
+    ];
+    for (direction, validator) in directions {
+        let examples = v4.examples(direction);
+        assert!(!examples.is_empty(), "no example of version 4 {direction}");
+        for (name, value) in examples {
+            assert_eq!(
+                value["protocol_version"], 4,
+                "version 4's {direction}/{name}"
+            );
+            passes(
+                &validator,
+                &value,
+                &format!("version 4's {direction}/{name}"),
+            );
+        }
+    }
+}
+
 /// The runner-protocol spec's "A token's Debug names its end alone"
 /// (design Decision 4 of a-cloud-host-gets-its-github-tokens-from-the-cloud;
-/// core.4): version 4's `forge_token_given.json`, read into its type and
+/// core.4): version 5's `forge_token_given.json`, read into its type and
 /// written with `{:?}`, names its ask, its repository and its end, and no
 /// character of its token: the text is the same whatever the token is.
 #[test]

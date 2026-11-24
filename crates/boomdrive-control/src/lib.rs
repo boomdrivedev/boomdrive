@@ -6,11 +6,9 @@
 //! the runner carries on its own (record 0026; core.49). Ids are the
 //! control plane's, and nothing here assumes git, files or a socket. It
 //! depends on no implementation of it, and holds a fake control plane and
-//! the cases every implementation passes. A part may also have an
-//! [`Observer`], which is handed the part's passes and gives nothing back
-//! (record 0048). An implementation whose control plane holds the forge's
-//! App also gives that App's tokens, as [`ForgeTokens`] (record 0053;
-//! core.33).
+//! the cases every implementation passes. An implementation whose control
+//! plane holds the forge's App also gives that App's tokens, as
+//! [`ForgeTokens`] (record 0053; core.33).
 
 pub mod fake;
 pub mod report;
@@ -19,7 +17,7 @@ pub mod want;
 
 pub use report::{
     Acted, Answer, At, Carried, Carrying, Commanded, InboxCarried, InboxFile, Launched, Outcome,
-    Previewed, Report,
+    Previewed, Report, Unleased,
 };
 pub use want::{
     Act, ActSort, AgentSetting, Command, CommandSort, Hold, Id, Inbox, Input, Launch, Lease, Link,
@@ -56,22 +54,6 @@ pub struct Part {
     /// The implementation's name for it, given once among its parts.
     pub label: String,
     pub plane: Box<dyn ControlPlane + Send>,
-}
-
-/// A part's observer: an end on the host that is handed the part's
-/// control passes and gives nothing back, so nothing it holds reaches a
-/// pull, a want, an answer or a timer of the runner's (record 0048;
-/// core.19).
-pub trait Observer {
-    /// Takes a control pass's hello and the part's share of its report,
-    /// returning at once and waiting on nothing.
-    fn observe(&mut self, hello: &Hello, report: &Report);
-}
-
-/// An observer, with the label of the part it observes.
-pub struct Observed {
-    pub label: String,
-    pub observer: Box<dyn Observer + Send>,
 }
 
 /// What gives a served repository's forge token where the control plane

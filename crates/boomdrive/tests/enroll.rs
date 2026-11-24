@@ -33,7 +33,7 @@ fn loopback_with_nothing_on_it() -> String {
 /// partitions `home` and `work`.
 fn hosted(url: &str) -> String {
     format!(
-        "{}[control_plane]\ntype = \"hosted\"\n\n\
+        "{}accounts.own.control_plane = \"hosted\"\n[control_plane]\n\n\
          [control_plane.hosted]\nurl = {url:?}\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"work\"\n\
@@ -147,12 +147,13 @@ fn the_token_never_shown() {
     }
 }
 
-/// The hosted-control-plane spec's "crew's control plane": refused naming
-/// crew's control plane as one that enrolls nothing, exiting 2.
+/// The hosted-control-plane spec's "crew's control plane": where every
+/// account names crew, refused as naming no control plane that enrolls,
+/// exiting 2.
 #[test]
 fn crews_control_plane() {
     let host = Host::configured(&format!(
-        "{}[control_plane]\ntype = \"crew\"\n\n[control_plane.crew]\nhost = \"host-a\"\n\n\
+        "{}accounts.own.control_plane = \"crew\"\n[control_plane]\n\n[control_plane.crew]\nhost = \"host-a\"\n\n\
          [[control_plane.crew.partitions]]\nlabel = \"home\"\n\
          state_repository = \"example/state\"\n",
         keeping(&["example/app"])
@@ -163,7 +164,7 @@ fn crews_control_plane() {
     assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
     let said = stderr(&output);
     assert!(
-        said.contains("`type` is \"crew\", a control plane that enrolls nothing"),
+        said.contains("no account names a control plane that enrolls"),
         "{said}"
     );
     assert_eq!(stdout(&output), "");
@@ -246,7 +247,7 @@ fn no_control_plane() {
 fn a_partition_of_the_local_layer() {
     let url = loopback_with_nothing_on_it();
     let host = Host::configured(&format!(
-        "{}[control_plane]\ntype = \"hosted\"\n\n\
+        "{}accounts.own.control_plane = \"hosted\"\n[control_plane]\n\n\
          [control_plane.hosted]\nurl = {url:?}\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n",
         keeping(&["example/app"])
@@ -264,65 +265,6 @@ fn a_partition_of_the_local_layer() {
         "{}",
         stderr(&output)
     );
-    host.kept_nothing();
-}
-
-/// A configuration of crew's control plane, its partition `home`, with
-/// `[observer]` at `url` observing `home`.
-fn crew_observed(url: &str) -> String {
-    format!(
-        "{}[control_plane]\ntype = \"crew\"\n\n[control_plane.crew]\nhost = \"host-a\"\n\n\
-         [[control_plane.crew.partitions]]\nlabel = \"home\"\n\
-         state_repository = \"example/state\"\n\n\
-         [observer]\nurl = {url:?}\n\n\
-         [[observer.partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n",
-        keeping(&["example/app"])
-    )
-}
-
-/// The hosted-control-plane spec's "An observer enrolled beside crew", the
-/// command's half (design Decision 4 of
-/// a-runner-reports-to-an-observer-it-takes-no-work-from): with crew's
-/// control plane, `boomdrive enroll --observer home` enrolls the
-/// observer's partition, refused as the observer unreachable, exiting 1,
-/// and not as crew's control plane enrolling nothing.
-#[test]
-fn an_observer_enrolled_beside_crew() {
-    let host = Host::configured(&crew_observed(&loopback_with_nothing_on_it()));
-
-    let output = host.enroll(&["--observer", "home"], &format!("{TOKEN}\n"));
-
-    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
-    let said = stderr(&output);
-    assert!(said.contains("is unreachable"), "{said}");
-    assert!(!said.contains("enrolls nothing"), "{said}");
-    assert!(!said.contains(TOKEN), "{said}");
-    assert_eq!(stdout(&output), "");
-
-    let output = host.enroll(&["--observer", "--json", "garden"], &format!("{TOKEN}\n"));
-    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
-    let answer: Value = serde_json::from_str(&stdout(&output)).expect("one JSON object");
-    assert_eq!(
-        answer,
-        serde_json::json!({"refused": {"refusal": {
-            "reason": "[observer] names no partition `garden`: it names `home`"
-        }}})
-    );
-    host.kept_nothing();
-}
-
-/// The hosted-control-plane spec's "No observer named": refused naming
-/// `[observer]`, exiting 2, before the token is asked for.
-#[test]
-fn no_observer_named() {
-    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
-
-    let output = host.enroll(&["--observer", "home"], &format!("{TOKEN}\n"));
-
-    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
-    let said = stderr(&output);
-    assert!(said.contains("names no `[observer]`"), "{said}");
-    assert_eq!(stdout(&output), "");
     host.kept_nothing();
 }
 

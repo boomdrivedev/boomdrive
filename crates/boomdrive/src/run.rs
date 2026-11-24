@@ -16,7 +16,7 @@
 //! once (record 0029). The runner opens no listening socket: every
 //! connection it makes is outgoing (core.3).
 
-use crate::carry::{Carrier, Configured, Least, Passed, Reach};
+use crate::carry::{Carrier, Configured, Elsewhere, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
 use crate::forge::Forge;
 use crate::git::Git;
@@ -28,7 +28,7 @@ use crate::report::{self, ReportFile};
 use crate::settle::{self, Settles};
 use crate::terminal::Relays;
 use crate::{clone, flume, hands, hello, sluice};
-use boomdrive_control::{ControlPlane, Observed, Observer, Part, Wake};
+use boomdrive_control::{ControlPlane, Part, Wake};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use std::collections::BTreeMap;
@@ -281,10 +281,6 @@ struct Control {
     poll_interval: Duration,
     /// The implementation's parts, or why it could not be opened.
     parts: Result<Vec<Part>, String>,
-    /// The observers `[observer]` names, each of the part of its label,
-    /// or why they could not be opened: none where it names none or the
-    /// control plane could not be opened (record 0048).
-    observers: Result<Vec<Observed>, String>,
 }
 
 impl Control {
@@ -292,41 +288,26 @@ impl Control {
     /// keeping what it keeps under `data`, each part woken through its
     /// bell among `bells`, and given `halt`, the runner's, at which every
     /// call to a remote it makes for the runner ends (record 0042 as
-    /// amended on 2026-11-12; core.58); and, once it is opened, the
-    /// observers `observer`, the file's `[observer]`, names, which no
-    /// connection is made for before a pass is handed them (design
-    /// Decision 7 of a-runner-reports-to-an-observer-it-takes-no-work-from).
-    /// An implementation says its lines on standard error.
+    /// amended on 2026-11-12; core.58). An implementation says its lines
+    /// on standard error.
     fn open(
         table: &ControlPlaneTable,
-        observer: Option<&toml::Table>,
         file: &Path,
         data: &Path,
         bells: &Bells,
         halt: &Halt,
     ) -> Control {
         let parts = planes::open(
-            &table.implementation,
-            &table.implementation_table,
+            table,
             file,
             data,
-            table.poll_interval,
             &|_| Box::new(|line| eprintln!("{line}")),
             &|label| bells.waker(label),
             halt,
         );
-        let observers = match (&parts, observer) {
-            (Ok(_), Some(observer)) => {
-                planes::observers(observer, file, table.poll_interval, &|_| {
-                    Box::new(|line| eprintln!("{line}"))
-                })
-            }
-            _ => Ok(Vec::new()),
-        };
         Control {
             poll_interval: table.poll_interval,
             parts,
-            observers,
         }
     }
 }
@@ -489,9 +470,10 @@ impl Runner {
         let (events, waiting) = mpsc::channel();
         let notices = Notices::new(events.clone());
         let bells = Bells::default();
-        let control = config.control_plane.as_ref().map(|table| {
-            Control::open(table, config.observer.as_ref(), &file, &data, &bells, &halt)
-        });
+        let control = config
+            .control_plane
+            .as_ref()
+            .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
         let watch = Watch::new(config.fetch_interval, config.inboxes.clone());
         let forge = Forge::for_runner(&config, &file);
@@ -546,18 +528,6 @@ impl Runner {
         };
         control.parts = Ok(open(&|label| bells.waker(label)));
         self.tools(programs);
-        Ok(())
-    }
-
-    /// Hands each part's passes to the observer of its label among
-    /// `observers`, in place of those the configuration's `[observer]`
-    /// opened: how a test runs the runner with observers of its own.
-    /// Refused where the configuration names no control plane.
-    pub fn observe_with(&mut self, observers: Vec<Observed>) -> Result<(), String> {
-        let Some(control) = &mut self.control else {
-            return Err("the configuration names no control plane".to_string());
-        };
-        control.observers = Ok(observers);
         Ok(())
     }
 
@@ -633,33 +603,6 @@ impl Runner {
         }) = &mut self.control
         {
             *held = parts;
-        }
-    }
-
-    /// The observers the runner hands its parts' passes to, taken from it
-    /// while they are carried, or why they could not be opened.
-    fn take_observers(&mut self) -> Result<Vec<Observed>, String> {
-        match &mut self.control {
-            Some(Control {
-                observers: Ok(observers),
-                ..
-            }) => Ok(std::mem::take(observers)),
-            Some(Control {
-                observers: Err(why),
-                ..
-            }) => Err(why.clone()),
-            None => Ok(Vec::new()),
-        }
-    }
-
-    /// Gives the observers taken back.
-    fn give_back_observers(&mut self, observers: Vec<Observed>) {
-        if let Some(Control {
-            observers: Ok(held),
-            ..
-        }) = &mut self.control
-        {
-            *held = observers;
         }
     }
 
@@ -739,8 +682,15 @@ impl Runner {
                             let (host, config) = (&host, config.clone());
                             scope.spawn(move || {
                                 let relays = host.programs.relays();
-                                let (reach, least) = (Reach::default(), Least::default());
-                                host.carry_once(part, Ok(config), &relays, (&reach, &least), say)
+                                let (reach, least, elsewhere) =
+                                    (Reach::default(), Least::default(), Elsewhere::default());
+                                host.carry_once(
+                                    part,
+                                    Ok(config),
+                                    &relays,
+                                    (&reach, &least, &elsewhere),
+                                    say,
+                                )
                             })
                         })
                         .collect();
@@ -792,46 +742,17 @@ impl Runner {
     /// in flight, its own fetch's or a part's, and begins none, through
     /// its halt (record 0042 as amended on 2026-11-12; core.58), keeps no
     /// further repository, begins no part's pass and no settle, waits for
-    /// each part to end the pass in hand, and says so. Each part's passes
-    /// are handed to the observer of its label, where there is one, and an
-    /// observer of no part's label is said once, at its start (design
-    /// Decision 7 of a-runner-reports-to-an-observer-it-takes-no-work-from;
-    /// record 0048).
+    /// each part to end the pass in hand, and says so.
     pub fn keep(&mut self, say: Say<'_>) {
         let polls = self.polls();
         let mut parts = self.take_parts();
-        let mut unpaired = match self.take_observers() {
-            Ok(observers) => observers,
-            Err(why) => {
-                say(format!("boomdrive: observer: {why}: nothing is observed"));
-                Vec::new()
-            }
-        };
-        let mut observers: Vec<Option<Observed>> = parts
-            .iter()
-            .map(|part| {
-                let at = unpaired
-                    .iter()
-                    .position(|observed| observed.label == part.label)?;
-                Some(unpaired.remove(at))
-            })
-            .collect();
-        if !parts.is_empty() {
-            for observed in &unpaired {
-                say(format!(
-                    "boomdrive: observer {label}: no part of the control plane is labelled \
-                     {label}, so it observes nothing",
-                    label = observed.label
-                ));
-            }
-        }
         let bells: Vec<Arc<Bell>> = parts
             .iter()
             .map(|part| self.bells.of(&part.label))
             .collect();
         let this = &*self;
         let host = this.host();
-        let mut unstarted = Some(parts.iter_mut().zip(observers.iter_mut()).zip(bells.iter()));
+        let mut unstarted = Some(parts.iter_mut().zip(bells.iter()));
         thread::scope(|scope| {
             let mut started = Some(this.config.clone());
             let mut fetch_interval = this.config.fetch_interval;
@@ -871,9 +792,9 @@ impl Runner {
                 }
                 let mut followed = false;
                 if let (Some(host), Some(unstarted)) = (&host, unstarted.take()) {
-                    for ((part, observer), bell) in unstarted {
+                    for (part, bell) in unstarted {
                         followed = true;
-                        scope.spawn(move || host.carry_on(part, observer.as_mut(), bell, say));
+                        scope.spawn(move || host.carry_on(part, bell, say));
                     }
                 }
                 // A keeping pass that each part's first control pass
@@ -906,8 +827,6 @@ impl Runner {
             }
         });
         self.give_back(parts);
-        unpaired.extend(observers.into_iter().flatten());
-        self.give_back_observers(unpaired);
         say("boomdrive: stopped".to_string());
     }
 
@@ -1004,25 +923,19 @@ fn local_line(file: &Path, read: &LocalLayer) -> String {
 impl Host<'_> {
     /// Carries `part` on the thread this runs on until the runner stops
     /// (design Decision 2): a pass at once, then each when its timer or
-    /// its wake, through `bell`, says, its own reach, terminals and word
-    /// of Flume's version kept across its passes, each pass followed by the
-    /// settle of every place (record 0029), and each handed to its
-    /// observer, where it has one (record 0048). Each want's command runs
+    /// its wake, through `bell`, says, its own reach, terminals, word of
+    /// Flume's version and the places it did not launch kept across its
+    /// passes, each pass followed by the settle of every place (record
+    /// 0029). Each want's command runs
     /// on a thread of its own, kept across the part's passes, and each
     /// answer that comes back rings `bell`, so the part takes it, starts
     /// what waited on it and sends it at once, between its passes (record
     /// 0002 as amended on 2026-11-19; core.50). Stopped, it begins no
     /// further pass and no settle, and waits for every command in flight
     /// to end, taking and sending their answers.
-    fn carry_on(
-        &self,
-        part: &mut Part,
-        mut observer: Option<&mut Observed>,
-        bell: &Bell,
-        say: Say<'_>,
-    ) {
+    fn carry_on(&self, part: &mut Part, bell: &Bell, say: Say<'_>) {
         let relays = self.programs.relays();
-        let (reach, least) = (Reach::default(), Least::default());
+        let (reach, least, elsewhere) = (Reach::default(), Least::default(), Elsewhere::default());
         let flume = flume::Cli::new(&self.programs.flume);
         let sluice = sluice::Cli::new(&self.programs.sluice);
         hands::carried(
@@ -1041,7 +954,7 @@ impl Host<'_> {
                                 part,
                                 read,
                                 &relays,
-                                (&reach, &least),
+                                (&reach, &least, &elsewhere),
                                 say,
                                 |carrier, plane| {
                                     carrier.collect(plane, underway, &mut |line| say(line));
@@ -1054,23 +967,14 @@ impl Host<'_> {
                             bell.begin_pass();
                             let read = config::read_layers(self.file, self.local, self.home);
                             let poll_interval = self.poll_interval;
-                            let observer = observer.as_deref_mut();
                             let passed = self.carry(
                                 part,
                                 read,
                                 &relays,
-                                (&reach, &least),
+                                (&reach, &least, &elsewhere),
                                 say,
                                 |carrier, plane| {
-                                    let observer = observer.map(|observed| {
-                                        observed.observer.as_mut() as &mut dyn Observer
-                                    });
-                                    Some(carrier.carry_pass(
-                                        plane,
-                                        observer,
-                                        underway,
-                                        &mut |line| say(line),
-                                    ))
+                                    Some(carrier.carry_pass(plane, underway, &mut |line| say(line)))
                                 },
                             );
                             due = passed.next_due(began, Instant::now(), poll_interval);
@@ -1089,7 +993,7 @@ impl Host<'_> {
                         part,
                         read,
                         &relays,
-                        (&reach, &least),
+                        (&reach, &least, &elsewhere),
                         say,
                         |carrier, plane| {
                             carrier.finish(plane, underway, &mut |line| say(line));
@@ -1111,12 +1015,17 @@ impl Host<'_> {
         part: &mut Part,
         read: Result<Config, String>,
         relays: &Relays,
-        (reach, least): (&Reach, &Least),
+        (reach, least, elsewhere): (&Reach, &Least, &Elsewhere),
         say: Say<'_>,
     ) -> Passed {
-        self.carry(part, read, relays, (reach, least), say, |carrier, plane| {
-            Some(carrier.pass(plane, &mut |line| say(line)))
-        })
+        self.carry(
+            part,
+            read,
+            relays,
+            (reach, least, elsewhere),
+            say,
+            |carrier, plane| Some(carrier.pass(plane, &mut |line| say(line))),
+        )
     }
 
     /// `body` with the carrier of `part` against the configuration as
@@ -1129,7 +1038,7 @@ impl Host<'_> {
         part: &mut Part,
         read: Result<Config, String>,
         relays: &Relays,
-        (reach, least): (&Reach, &Least),
+        (reach, least, elsewhere): (&Reach, &Least, &Elsewhere),
         say: Say<'_>,
         body: impl FnOnce(&Carrier, &mut dyn ControlPlane) -> Option<Passed>,
     ) -> Passed {
@@ -1175,6 +1084,7 @@ impl Host<'_> {
             relays,
             reach,
             least,
+            elsewhere,
         };
         body(&carrier, part.plane.as_mut()).unwrap_or(Passed {
             expires: None,

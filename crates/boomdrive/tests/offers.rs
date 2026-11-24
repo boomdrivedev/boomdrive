@@ -620,7 +620,7 @@ fn two_parts_launch_into_one_clone_at_once() {
         let _ = rang.send(());
     };
     boomdrive::hands::carried(&home.flume, &sluice, &home.locks, &wake, |underway| {
-        carrier.carry_pass(&mut home_plane, None, underway, &mut |_| {});
+        carrier.carry_pass(&mut home_plane, underway, &mut |_| {});
         // home's `flume launch` is running, and holds the clone's lock.
         while !home.flume.launches().iter().any(|args| args.name == "a") {
             thread::sleep(Duration::from_millis(5));

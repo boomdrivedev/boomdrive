@@ -17,7 +17,7 @@ mod fakes;
 #[path = "../../boomdrive-crew/tests/common/mod.rs"]
 mod records;
 
-use boomdrive::carry::{Carrier, Configured, Least, Passed, Reach};
+use boomdrive::carry::{Carrier, Configured, Elsewhere, Least, Passed, Reach};
 use boomdrive::locks::Locks;
 use boomdrive::report::ReportFile;
 use boomdrive::run::Notices;
@@ -158,6 +158,7 @@ impl Host {
         let relays = Relays::new(flume::Cli::new(self.flume.program()), |_| {});
         let reach = Reach::default();
         let least = Least::default();
+        let elsewhere = Elsewhere::default();
         let report = ReportFile::new(&control_dir);
         let locks = Locks::new();
         let carrier = Carrier {
@@ -174,6 +175,7 @@ impl Host {
             relays: &relays,
             reach: &reach,
             least: &least,
+            elsewhere: &elsewhere,
         };
         let mut lines = Vec::new();
         let passed = carrier.pass(crew, &mut |line| lines.push(line));

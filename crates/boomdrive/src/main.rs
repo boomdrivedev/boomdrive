@@ -45,13 +45,7 @@ enum Command {
         /// Answer as one JSON object on standard output.
         #[arg(long)]
         json: bool,
-        /// Enroll a partition of the configuration's `[observer]`, an
-        /// observer on this host that the runner reports to and takes no
-        /// work from, whatever its control plane.
-        #[arg(long)]
-        observer: bool,
-        /// The partition's label, as its control-plane table, or with
-        /// `--observer` its `[observer]`, names it.
+        /// The partition's label, as its control-plane table names it.
         label: String,
     },
     /// Set up one drive of one account on this Mac, which Nix does not
@@ -129,9 +123,8 @@ fn main() -> ExitCode {
         Command::Enroll {
             config,
             json,
-            observer,
             label,
-        } => boomdrive::enroll::main(config.as_deref(), json, observer, &label),
+        } => boomdrive::enroll::main(config.as_deref(), json, &label),
         Command::Setup {
             account,
             drive,

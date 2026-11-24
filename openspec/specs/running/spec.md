@@ -253,7 +253,7 @@ The bound of the settle SHALL be written `<n>s`, in whole seconds: `fetch_interv
 
 #### Scenario: A control plane that could not be opened
 
-- **WHEN** the configuration says `[control_plane]` with `type = "elsewhere"` and names no `fetch_interval`
+- **WHEN** the account `own` names the hosted control plane, whose table names no `url`, and the configuration names no `fetch_interval`
 - **THEN** `boomdrive run --once` runs no `flume` command but `flume --json settle --every 120s`
 
 ### Requirement: The settle is the runner's own and said only when it changes
@@ -288,30 +288,6 @@ Sent SIGTERM or SIGINT, `boomdrive run` and `boomdrive run --once` SHALL end eac
 
 - **WHEN** `boomdrive run --once` keeps `agentplot/flume`, with no clone of it, from an origin that takes the connection and never answers, and is sent SIGINT once the origin has taken it
 - **THEN** it exits 1 within five seconds; the lines after its start are `agentplot/flume: not cloned: git fetch with origin was stopped as its caller asked` and `boomdrive: stopped`; it runs no `flume`; and the origin's connection is closed within a second of its exit
-
-### Requirement: Each part's observer is handed its control passes, and no pass waits on it
-
-Where the configuration names an observer, `boomdrive run` SHALL open it when it starts and give each part the observer of its label. Each control pass of a part that read its pull SHALL hand that observer its hello and the part's share once it has sent its report, whatever its control plane answered, waiting on nothing. An observer of no part SHALL be said once at start. `run --once` SHALL hand no observer anything (core.19, core.49; record 0048).
-
-#### Scenario: A part observed
-
-- **WHEN** the runner carries `home` and `work`, and an observer is opened for `home` alone
-- **THEN** after each of `home`'s control passes, its observer holds that pass's hello and `home`'s share as reported, and no observer is handed `work`'s
-
-#### Scenario: An observer unreachable
-
-- **WHEN** the configuration's observer of `home` names a loopback port with nothing on it, and `home` offers a launch whose stream has room
-- **THEN** `home`'s launch is made and reported within seconds, as with no observer
-
-#### Scenario: An observer of no part
-
-- **WHEN** `[observer]` names the partition `garden`, and the control plane serves `home` alone
-- **THEN** one line at start says `boomdrive: observer garden: no part of the control plane is labelled garden, so it observes nothing`, and `home` is carried as before
-
-#### Scenario: One pass
-
-- **WHEN** `boomdrive run --once` runs with an observer of `home` named
-- **THEN** no connection is made to the observer
 
 ### Requirement: Each line of a part's pass names the part
 
@@ -349,3 +325,17 @@ Where an inbox's tick is refused, or gives no answer, the runner SHALL say so in
 
 - **WHEN** `millpond` cannot be run for two ticks of `home` in a row
 - **THEN** the first says `boomdrive: millpond gave no answer to the tick of the inbox home: ` and why, and the second says nothing
+
+### Requirement: The parts of every plane the accounts name are carried side by side
+
+`boomdrive run` SHALL open, when it starts, each implementation an account names, crew's then the hosted one's, and carry every part of each on a thread of its own, as it carries one implementation's parts. No part of one plane SHALL wait on a part of another. Two parts of one label SHALL be refused at the start, naming the label and both implementations (record 0054; core.19, core.49).
+
+#### Scenario: crew and a cloud side by side
+
+- **WHEN** the account `own` names crew, whose partition `home` offers a launch in `agentplot/flume`, and the account `cloud` names the hosted control plane, whose partition `cloud` offers a launch in `example/app`, each stream with room
+- **THEN** both launches are made, `home`'s reported to crew and `cloud`'s to the hosted control plane
+
+#### Scenario: One label in two planes
+
+- **WHEN** crew's table and the hosted table each name the partition `home`
+- **THEN** `boomdrive run` refuses to start, exiting 2, naming `home`, `crew` and `hosted`

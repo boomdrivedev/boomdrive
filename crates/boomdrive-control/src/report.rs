@@ -1,7 +1,9 @@
 //! The runner's report (design Decision 2): what it answered of each
 //! launch, act, command, inbox and preview, by id, with each tool's answer
 //! carried as the tool printed it (core.11). It is sent whole at every report and
-//! handed whole to every pull.
+//! handed whole to every pull. A part's share also names each place in a
+//! kept repository the part did not launch, with no lease, which is never
+//! written to the report file (record 0054; core.10, core.35).
 
 use crate::want::{Id, Lease};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -22,6 +24,23 @@ pub struct Report {
     /// holding none writes as before (core.36).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub previews: BTreeMap<Id, Previewed>,
+    /// Each place in a repository the runner keeps or drains that the
+    /// part did not launch, by its path as Flume printed it: a place a
+    /// person started, or another part launched. It names no lease, and
+    /// no answer lets go of, refuses or takes any of it. It is the
+    /// pass's own, made again from Flume's listing at every pass, and
+    /// never written (record 0054; core.10, core.35).
+    #[serde(skip)]
+    pub unleased: BTreeMap<String, Unleased>,
+}
+
+/// A place in a kept repository that a part did not launch: its
+/// repository's address, and Flume's entry of it in the listing, carried
+/// as Flume printed it (record 0054; core.11).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Unleased {
+    pub repository: String,
+    pub status: Carried,
 }
 
 /// A launch the runner answered.
