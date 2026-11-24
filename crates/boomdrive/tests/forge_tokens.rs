@@ -1282,7 +1282,7 @@ fn crews_repository_and_a_clouds_side_by_side() {
         None,
         &Address::parse("agentplot/flume").expect("an address"),
     );
-    let refused = minted.err().expect("refused: no [forge] to mint from");
+    let refused = minted.expect_err("refused: no [forge] to mint from");
     assert!(refused.host_to_fix, "{}", refused.words);
     assert!(refused.words.contains("[forge]"), "{}", refused.words);
     assert_eq!(tokens.asks("example/app"), 1);
