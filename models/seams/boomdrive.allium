@@ -1,0 +1,88 @@
+-- allium: 3
+-- Boomdrive at its seams: the cloud's planning and the runner on a host
+-- (flume's runner row; boomdrive's README on the pass). It reads Boom's
+-- approval and flume's ends, and asks flume to launch and confirm.
+
+-- What Boomdrive reads of Boom and flume. Their models, in their own
+-- repositories, state them; these are the fields Boomdrive relies on.
+external entity Approval {
+    hash: String
+    plan: String
+}
+
+-- An end flume owes, named by its place's input: for a unit, the
+-- approval's hash.
+external entity End {
+    input_hash: String
+    recipient: String
+    status: owed | confirmed
+}
+
+-- A unit of an approved plan, in the cloud's planning.
+entity Unit {
+    name: String
+    approval: String
+    status: approved | launched | over
+
+    transitions status {
+        approved -> launched
+        launched -> over
+        terminal: over
+    }
+}
+
+-- The runner's report of a place's end, once the cloud took it.
+entity Report {
+    end: End
+}
+
+-- Planning reads Boom's approval: each unit of the plan is approved.
+rule UnitApproved {
+    when: approval: Approval.created
+    ensures: Unit.created(name: approval.plan, approval: approval.hash, status: approved)
+}
+
+-- The runner asks flume to launch the unit, naming itself recipient.
+rule RunnerLaunches {
+    when: unit: Unit.status becomes approved
+    ensures: unit.status = launched
+    ensures: Launch(unit.name, unit, unit.approval, "runner")
+}
+
+-- Each pass of the runner settles every place (flume settle --every).
+rule RunnerPass {
+    when: PassSettles(place)
+    ensures: Settle(place)
+}
+
+-- The cloud takes the runner's report of an end owed to the runner.
+rule CloudTakesReport {
+    when: end: End.created
+    requires: end.recipient = "runner"
+    ensures: Report.created(end: end)
+}
+
+-- The runner confirms an end only once the cloud took its report (43).
+rule RunnerConfirms {
+    when: report: Report.created
+    ensures: ConfirmEnd(report.end)
+}
+
+rule UnitOver {
+    when: end: End.status transitions_to confirmed
+    for unit in Units where approval = end.input_hash:
+        requires: unit.status = launched
+        ensures: unit.status = over
+}
+
+actor Runner {
+    identified_by: Unit where name != ""
+}
+
+surface RunnerPassSurface {
+    facing runner: Runner
+    exposes:
+        runner.status
+    provides:
+        PassSettles(place)
+}

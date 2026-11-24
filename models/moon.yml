@@ -2,7 +2,8 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # The drive's design model, in Allium: one step shape (step.allium) used
 # at five levels, the portfolio of repositories, the drive's lineage,
-# construction as flume's change@3, and sluice's merge queue. The
+# construction as flume's change@3, and sluice's merge queue; seams/
+# holds Boomdrive's side of the seams between the family's tools. The
 # narrative drive-architecture-model in Boom explains it. Allium has no
 # formatter, lint or test of its own; its checker is the one check, in the
 # fast tier, run by the allium devenv.nix pins.
