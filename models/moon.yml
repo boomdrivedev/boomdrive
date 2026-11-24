@@ -1,0 +1,20 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The drive's design model, in Allium: one step shape (step.allium) used
+# at five levels, the portfolio of repositories, the drive's lineage,
+# construction as flume's change@3, and sluice's merge queue. The
+# narrative drive-architecture-model in Boom explains it. Allium has no
+# formatter, lint or test of its own; its checker is the one check, in the
+# fast tier, run by the allium devenv.nix pins.
+language: 'allium'
+layer: 'configuration'
+
+tasks:
+  # Each model parses and holds the language's structural rules: every
+  # status has a way out, every declared transition has a rule, and no
+  # rule makes a transition the model does not declare. A warning fails it.
+  typecheck:
+    command: 'allium check models'
+    inputs: ['**/*.allium', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}

@@ -1,0 +1,322 @@
+-- allium: 3
+-- Level 3: the merge queue, as sluice's. It refines the drive's merge
+-- queue step: it takes a submitted change and gives a landing, or sends
+-- the work back. sluice keeps every record of it.
+use "./step.allium" as step
+use "./drive.allium" as drive
+use "./change.allium" as change
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+entity Submission {
+    drive: drive/DriveWork
+    -- The change@3 place that submitted it; none for a chore.
+    place: change/ChangeWork?
+    bolt: drive/Bolt?
+    required: Set<String>
+    -- The submissions its combination holds ahead of it.
+    ahead: Set<Submission>
+    status: intake | combine | gate | land | refused
+          | landed | blamed | conflicting | withdrawn
+
+    checks: Check with submission = this
+    all_passed: checks.count > 0 and checks.all(c => c.status = passed)
+
+    transitions status {
+        intake -> combine
+        combine -> gate
+        combine -> conflicting
+        gate -> combine
+        gate -> land
+        gate -> blamed
+        land -> landed
+        land -> refused
+        land -> combine
+        refused -> land
+        refused -> combine
+        intake -> withdrawn
+        combine -> withdrawn
+        gate -> withdrawn
+        refused -> withdrawn
+        blamed -> withdrawn
+        conflicting -> withdrawn
+        terminal: landed, withdrawn
+    }
+}
+
+-- One required check of the combination that holds the submission. The
+-- gate runs its checks side by side.
+entity Check {
+    submission: Submission
+    task: String
+    status: pending | running | passed | failed
+    no_outcome_runs: Integer
+
+    transitions status {
+        pending -> running
+        running -> passed
+        running -> failed
+        running -> pending
+        terminal: passed, failed
+    }
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- Runs in a row with no outcome before a check counts as failed.
+    no_outcome_bound: Integer = 3
+}
+
+------------------------------------------------------------
+-- Defaults
+------------------------------------------------------------
+
+default step/Step intake_step = { name: "intake", level: merge_queue, recorded_by: sluice,
+    input: { name: "change-record" }, output: { name: "queued" },
+    parent: drive/queue_step, next: combine_step, first: true, span: null,
+    capacity: 1, runs: alone }
+default step/Step combine_step = { name: "combine", level: merge_queue, recorded_by: sluice,
+    input: { name: "queued" }, output: { name: "combination" },
+    parent: drive/queue_step, next: gate_step, first: false, span: "sluice.form",
+    capacity: 1, runs: alone }
+default step/Step gate_step = { name: "gate", level: merge_queue, recorded_by: sluice,
+    input: { name: "combination" }, output: { name: "verdict" },
+    parent: drive/queue_step, next: land_step, first: false, span: "sluice.verdict",
+    capacity: 4, runs: in_parallel }
+default step/Step check_step = { name: "check", level: merge_queue, recorded_by: sluice,
+    input: { name: "combination" }, output: { name: "result" },
+    parent: gate_step, next: null, first: true, span: "sluice.claim",
+    capacity: 1, runs: alone }
+default step/Step land_step = { name: "land", level: merge_queue, recorded_by: sluice,
+    input: { name: "verdict" }, output: { name: "landed" },
+    parent: drive/queue_step, next: null, first: false, span: "sluice.land",
+    capacity: 1, runs: alone }
+
+default step/Failure blamed = { step: gate_step, name: "blamed",
+    back_to: change/code_step, span: "sluice.blame" }
+default step/Failure conflicting = { step: combine_step, name: "conflicting",
+    back_to: change/code_step, span: null }
+default step/Failure refused_push = { step: land_step, name: "a refused push",
+    back_to: land_step, span: null }
+default step/Failure no_outcome = { step: check_step, name: "a check with no outcome",
+    back_to: check_step, span: null }
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- flume submits the change@3 place, or a chore's place, to the queue.
+rule ChangeSubmitted {
+    when: change/PlaceSubmitted(place)
+    ensures: Submission.created(drive: place.parent, place: place, status: intake)
+}
+
+rule ChoreSubmitted {
+    when: drive/WorkSubmitted(work)
+    ensures: Submission.created(drive: work, status: intake)
+}
+
+-- A new submission from the same place withdraws the one sent back.
+rule ResubmissionWithdraws {
+    when: SessionResubmits(old)
+    requires: old.status = blamed or old.status = conflicting
+    ensures: old.status = withdrawn
+}
+
+-- A round takes it in once every submission it lands after has landed.
+rule TakenIn {
+    when: RoundTakesIn(s)
+    requires: s.status = intake
+    ensures: s.status = combine
+}
+
+rule Combined {
+    when: CombinationFormed(s)
+    requires: s.status = combine
+    ensures: s.status = gate
+    ensures:
+        for t in s.required:
+            Check.created(submission: s, task: t, status: pending, no_outcome_runs: 0)
+}
+
+rule Conflicts {
+    when: FormConflicts(s)
+    requires: s.status = combine
+    ensures: s.status = conflicting
+    ensures: drive/QueueFails(s.drive)
+    ensures:
+        if s.place != null:
+            change/SubmissionSentBack(s.place)
+}
+
+-- A combination ahead failed, so the chain is formed again.
+rule Reformed {
+    when: ChainReformed(s)
+    requires: s.status = gate
+    requires: s.ahead.any(a => a.status = blamed or a.status = conflicting or a.status = withdrawn)
+    ensures: s.status = combine
+}
+
+rule CheckStarts {
+    when: HostClaimsRun(c)
+    requires: c.status = pending
+    ensures: c.status = running
+}
+
+rule CheckPasses {
+    when: RunPasses(c)
+    requires: c.status = running
+    ensures: c.status = passed
+}
+
+rule CheckFails {
+    when: RunFails(c)
+    requires: c.status = running
+    ensures: c.status = failed
+}
+
+-- A run lost, lapsed, declined or uncounted: no outcome; it runs again.
+rule CheckHasNoOutcome {
+    when: RunHasNoOutcome(c)
+    requires: c.status = running
+    requires: c.no_outcome_runs < config.no_outcome_bound
+    ensures: c.status = pending
+    ensures: c.no_outcome_runs = c.no_outcome_runs + 1
+}
+
+-- Past the bound, a check that could not run counts as failed.
+rule CheckCannotRun {
+    when: RunHasNoOutcome(c)
+    requires: c.status = running
+    requires: c.no_outcome_runs >= config.no_outcome_bound
+    ensures: c.status = failed
+}
+
+-- It lands in order: only once everything ahead of it passed.
+rule GatePasses {
+    when: s: Submission.all_passed
+    requires: s.status = gate
+    requires: s.ahead.all(a => a.status = land or a.status = landed)
+    ensures: s.status = land
+}
+
+rule Blamed {
+    when: c: Check.status transitions_to failed
+    requires: c.submission.status = gate
+    ensures: c.submission.status = blamed
+    ensures: drive/QueueFails(c.submission.drive)
+    ensures:
+        if c.submission.place != null:
+            change/SubmissionSentBack(c.submission.place)
+}
+
+-- A bolt lands on green unless the person holds it.
+rule Landed {
+    when: BranchMoved(s)
+    requires: s.status = land
+    requires: s.bolt = null or s.bolt.status = open
+    ensures: s.status = landed
+    ensures: drive/QueueLands(s.drive)
+    ensures:
+        if s.place != null:
+            change/SubmissionLanded(s.place)
+}
+
+rule ForgeRefusesPush {
+    when: ForgeRefuses(s)
+    requires: s.status = land
+    ensures: s.status = refused
+}
+
+-- Each round pushes a held landing again, as the same landing (152).
+rule PushedAgain {
+    when: RoundPushesHeld(s)
+    requires: s.status = refused
+    ensures: s.status = land
+}
+
+-- One entry of the held landing left: the rest go back to the queue.
+rule HeldLandingDropped {
+    when: HeldLandingLost(s)
+    requires: s.status = refused
+    ensures: s.status = combine
+}
+
+rule BranchFoundElsewhere {
+    when: BranchMovedElsewhere(s)
+    requires: s.status = land
+    ensures: s.status = combine
+}
+
+rule Withdrawn {
+    when: RequesterWithdraws(s)
+    requires: s.status = intake or s.status = combine or s.status = gate
+        or s.status = refused or s.status = blamed or s.status = conflicting
+    ensures: s.status = withdrawn
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+invariant NoOutcomeStaysWithinTheBound {
+    for c in Checks:
+        c.no_outcome_runs <= config.no_outcome_bound
+}
+
+invariant ALandingPassedEveryCheck {
+    for s in Submissions:
+        s.status = landed implies s.all_passed
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor HostProcess {
+    identified_by: Submission where status != landed
+}
+
+actor Requester {
+    identified_by: Submission where status != withdrawn
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- One round of the branch's queue in sluice's host process.
+surface Round {
+    facing host: HostProcess
+    context s: Submission where drive = host.drive
+    exposes:
+        s.status
+    provides:
+        RoundTakesIn(s) when s.status = intake
+        CombinationFormed(s) when s.status = combine
+        FormConflicts(s) when s.status = combine
+        ChainReformed(s) when s.status = gate
+        HostClaimsRun(c)
+        RunPasses(c)
+        RunFails(c)
+        RunHasNoOutcome(c)
+        BranchMoved(s) when s.status = land
+        ForgeRefuses(s) when s.status = land
+        RoundPushesHeld(s) when s.status = refused
+        HeldLandingLost(s) when s.status = refused
+        BranchMovedElsewhere(s) when s.status = land
+}
+
+-- What a session, its planner or the operator may ask of the queue.
+surface SubmitCommand {
+    facing requester: Requester
+    context s: Submission where drive = requester.drive
+    provides:
+        RequesterWithdraws(s)
+        SessionResubmits(s) when s.status = blamed or s.status = conflicting
+}

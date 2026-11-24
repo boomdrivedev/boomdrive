@@ -30,6 +30,7 @@ projects:
   boomdrive-hosted: 'crates/boomdrive-hosted'
   nix: 'nix'
   site: 'site'
+  models: 'models'
   root: '.'
 
 # --affected compares against the merge-base with main.

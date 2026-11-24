@@ -1,0 +1,180 @@
+-- allium: 3
+-- Level 2: construction, as flume's kind change@3. It refines the drive's
+-- construction step: it takes a unit of an approved plan (flume 228) and
+-- gives a change submitted to the merge queue. flume keeps every record.
+use "./step.allium" as step
+use "./drive.allium" as drive
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- One place of change@3.
+entity ChangeWork {
+    parent: drive/DriveWork
+    status: construct | code | verify | queued | waiting_on_caller | landed | dropped
+    -- Goings-back by a failed verify or a failed submission, together
+    -- (flume 131).
+    goings_back: Integer
+
+    transitions status {
+        construct -> code
+        code -> verify
+        verify -> code
+        verify -> queued
+        queued -> code
+        queued -> landed
+        code -> waiting_on_caller
+        waiting_on_caller -> code
+        waiting_on_caller -> dropped
+        terminal: landed, dropped
+    }
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- How many times a place goes back before it waits on its caller.
+    bound: Integer = 3
+}
+
+------------------------------------------------------------
+-- Defaults
+------------------------------------------------------------
+
+default step/Step construct_step = { name: "construct", level: construction, recorded_by: flume,
+    input: { name: "approved" }, output: { name: "change" },
+    parent: drive/construction_step, next: code_step, first: true, span: "construct",
+    capacity: 1, runs: alone }
+default step/Step code_step = { name: "code", level: construction, recorded_by: flume,
+    input: { name: "change" }, output: { name: "tasks" },
+    parent: drive/construction_step, next: verify_step, first: false, span: "code",
+    capacity: 1, runs: alone }
+default step/Step verify_step = { name: "verify", level: construction, recorded_by: flume,
+    input: { name: "tasks" }, output: { name: "change-record" },
+    parent: drive/construction_step, next: null, first: false, span: "verify",
+    capacity: 1, runs: alone }
+
+default step/Failure verify_fails = { step: verify_step, name: "verify found work",
+    back_to: code_step, span: "code" }
+default step/Failure stuck = { step: code_step, name: "the agent asks",
+    back_to: code_step, span: "stuck" }
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- flume launches change@3 with a unit of the approved plan as its input.
+rule PlaceLaunched {
+    when: drive/ConstructionLaunched(work)
+    ensures: ChangeWork.created(parent: work, status: construct, goings_back: 0)
+}
+
+-- construct delivers the OpenSpec change; Boom records its change record.
+rule ChangeWritten {
+    when: StageDelivers(place)
+    requires: place.status = construct
+    ensures: place.status = code
+}
+
+rule TasksDone {
+    when: TasksDelivered(place)
+    requires: place.status = code
+    ensures: place.status = verify
+}
+
+-- verify archives the change, and flume submits the place.
+rule Archived {
+    when: VerifyPasses(place)
+    requires: place.status = verify
+    ensures: place.status = queued
+    ensures: drive/ConstructionDelivers(place.parent)
+    ensures: PlaceSubmitted(place)
+}
+
+-- The fix round: verify found work, within the bound.
+rule VerifyFindsWork {
+    when: VerifyFails(place)
+    requires: place.status = verify
+    requires: place.goings_back < config.bound
+    ensures: place.status = code
+    ensures: place.goings_back = place.goings_back + 1
+}
+
+-- The fix round: the merge queue blamed the place or found it
+-- conflicting; flume reads it from sluice's record.
+rule SubmissionFails {
+    when: SubmissionSentBack(place)
+    requires: place.status = queued
+    requires: place.goings_back < config.bound
+    ensures: place.status = code
+    ensures: place.goings_back = place.goings_back + 1
+}
+
+-- The agent stops short and asks.
+rule WaitsOnCaller {
+    when: AgentAsks(place)
+    requires: place.status = code
+    ensures: place.status = waiting_on_caller
+}
+
+rule CallerAnswers {
+    when: CallerRetries(place)
+    requires: place.status = waiting_on_caller
+    ensures: place.status = code
+}
+
+rule CallerDrops {
+    when: CallerDropsPlace(place)
+    requires: place.status = waiting_on_caller
+    ensures: place.status = dropped
+    ensures: drive/PersonDrops(place.parent)
+}
+
+-- flume reads sluice's landing and the place's work is over.
+rule PlaceLanded {
+    when: SubmissionLanded(place)
+    requires: place.status = queued
+    ensures: place.status = landed
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+invariant GoingsBackStayWithinTheBound {
+    for p in ChangeWorks:
+        p.goings_back <= config.bound
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor Agent {
+    identified_by: ChangeWork where status != landed
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- What the place's agents deliver. What flume reads of sluice, the
+-- merge queue level emits.
+surface Place {
+    facing agent: Agent
+    context place: ChangeWork where parent = agent.parent
+    exposes:
+        place.status
+        place.goings_back
+    provides:
+        StageDelivers(place) when place.status = construct
+        TasksDelivered(place) when place.status = code
+        VerifyPasses(place) when place.status = verify
+        VerifyFails(place) when place.status = verify
+        AgentAsks(place) when place.status = code
+        CallerRetries(place) when place.status = waiting_on_caller
+        CallerDropsPlace(place) when place.status = waiting_on_caller
+}
