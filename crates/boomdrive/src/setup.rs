@@ -160,9 +160,23 @@ fn set_up(flags: &Flags, say: &mut dyn FnMut(&str)) -> Result<Value, Refusal> {
     let table = own.as_ref().and_then(|own| {
         own.control_plane
             .as_ref()
-            .filter(|plane| plane.implementation == entry.word)
-            .map(|plane| plane.implementation_table.clone())
+            .and_then(|plane| plane.table(entry.word))
+            .cloned()
     });
+    // The tables of the other control planes the file's accounts name,
+    // written again as they stand (record 0054).
+    let others: Vec<(String, toml::Table)> = own
+        .as_ref()
+        .and_then(|own| own.control_plane.as_ref())
+        .map(|plane| {
+            plane
+                .implementations
+                .iter()
+                .filter(|(word, _)| word != entry.word)
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default();
     let accounts = own.map(|own| own.accounts).unwrap_or_default();
 
     // The answers: the flags, the host, then a terminal (design Decisions 1
@@ -245,8 +259,8 @@ fn set_up(flags: &Flags, say: &mut dyn FnMut(&str)) -> Result<Value, Refusal> {
     }
 
     // The runner's file (design Decision 6).
-    let accounts = with_drive(accounts, &answers);
-    let text = runner_file(&accounts, entry.word, &done.table);
+    let accounts = with_drive(accounts, &answers, entry.word);
+    let text = runner_file(&accounts, entry.word, &done.table, &others);
     let config = write_runner_file(&managed, &text)?;
     config::read_layers(&managed, &local, &home).map_err(host)?;
     if let Some(aside) = config["aside"].as_str() {
@@ -692,8 +706,9 @@ pub fn sign_ins(find: Find<'_>) -> Vec<Missing> {
 
 /// `written` with the drive of `answers` set: its repositories replaced
 /// where its account names it, and else the drive, and its account where
-/// none is, added.
-fn with_drive(mut written: Vec<Account>, answers: &Answers) -> Vec<Account> {
+/// none is, added; its account served by the control plane `word`, whose
+/// setup sets it up (record 0054).
+fn with_drive(mut written: Vec<Account>, answers: &Answers, word: &str) -> Vec<Account> {
     let drive = Drive {
         name: answers.drive.clone(),
         repositories: answers.repositories.clone(),
@@ -702,16 +717,20 @@ fn with_drive(mut written: Vec<Account>, answers: &Answers) -> Vec<Account> {
         .iter_mut()
         .find(|account| account.name == answers.account)
     {
-        Some(account) => match account
-            .drives
-            .iter_mut()
-            .find(|held| held.name == drive.name)
-        {
-            Some(held) => *held = drive,
-            None => account.drives.push(drive),
-        },
+        Some(account) => {
+            account.control_plane = Some(word.to_string());
+            match account
+                .drives
+                .iter_mut()
+                .find(|held| held.name == drive.name)
+            {
+                Some(held) => *held = drive,
+                None => account.drives.push(drive),
+            }
+        }
         None => written.push(Account {
             name: answers.account.clone(),
+            control_plane: Some(word.to_string()),
             drives: vec![drive],
         }),
     }
@@ -720,12 +739,19 @@ fn with_drive(mut written: Vec<Account>, answers: &Answers) -> Vec<Account> {
 
 /// The runner's managed layer as setup writes it (design Decision 6): its
 /// first line setup's, then `accounts`, each account's drives and each
-/// drive's repositories, owner by owner, and `[control_plane]`, its `type`
-/// `word` and its table `table`, laid out as Nix's module lays out the
+/// drive's repositories, owner by owner, each account's `control_plane`
+/// where it names one, and `[control_plane]`, holding the table `table` of
+/// the control plane `word` and each of `others` as it stood, laid out as
+/// Nix's module lays out the
 /// same keys (`nix/modules/toml.nix`): top-level keys before tables, each
 /// sorted by name, a table holding only tables named by theirs, and TOML's
 /// basic strings.
-pub fn runner_file(accounts: &[Account], word: &str, table: &toml::Table) -> String {
+pub fn runner_file(
+    accounts: &[Account],
+    word: &str,
+    table: &toml::Table,
+    others: &[(String, toml::Table)],
+) -> String {
     let mut settings = toml::Table::new();
     let mut accounts_table = toml::Table::new();
     for account in accounts {
@@ -740,13 +766,21 @@ pub fn runner_file(accounts: &[Account], word: &str, table: &toml::Table) -> Str
             drives.insert(drive.name.clone(), toml::Value::Table(held));
         }
         let mut account_table = toml::Table::new();
+        if let Some(plane) = &account.control_plane {
+            account_table.insert(
+                "control_plane".to_string(),
+                toml::Value::String(plane.clone()),
+            );
+        }
         account_table.insert("drives".to_string(), toml::Value::Table(drives));
         accounts_table.insert(account.name.clone(), toml::Value::Table(account_table));
     }
     settings.insert("accounts".to_string(), toml::Value::Table(accounts_table));
     let mut plane = toml::Table::new();
-    plane.insert("type".to_string(), toml::Value::String(word.to_string()));
     plane.insert(word.to_string(), toml::Value::Table(table.clone()));
+    for (other, own) in others {
+        plane.insert(other.clone(), toml::Value::Table(own.clone()));
+    }
     settings.insert("control_plane".to_string(), toml::Value::Table(plane));
 
     let (keys, sections) = lines_of(&[], &settings);
@@ -1220,6 +1254,7 @@ mod answers {
     fn written(drives: &[(&str, &[&str])]) -> Vec<Account> {
         vec![Account {
             name: "own".to_string(),
+            control_plane: Some("crew".to_string()),
             drives: drives
                 .iter()
                 .map(|(name, repositories)| Drive {

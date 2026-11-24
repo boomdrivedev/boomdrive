@@ -3,8 +3,11 @@
 # writers keep to this file (record 0049); tests/examples.rs reads this
 # one.
 
+# The account `own` is served by the control plane at `url`, whose table follows.
+[accounts.own]
+control_plane = "hosted"
+
 [control_plane]
-type = "hosted"
 poll_interval = "1m"
 
 [control_plane.hosted]

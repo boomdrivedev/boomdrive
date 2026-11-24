@@ -1,10 +1,9 @@
-//! The configuration chooses the implementation (design Decisions 1 and
-//! 4; the configuration spec's "The configuration may name the control
-//! plane"; the control-plane-interface spec's "The configuration chooses
-//! the implementation"): `planes.rs` opens the one its `type` names,
-//! handing it the table of that name and the `poll_interval`, enrolls a
-//! partition of the one that enrolls, and refuses a word this binary does
-//! not carry, naming those it does. The hosted implementation is opened
+//! The configuration chooses the implementations (design Decisions 1 and
+//! 4; record 0054; the control-plane-interface spec's "The configuration
+//! chooses the implementation"): `planes.rs` opens each one an account
+//! names, handing each the table of its name and the `poll_interval`,
+//! refuses a label two of them give, and enrolls a partition of the one
+//! that enrolls. The hosted implementation is opened
 //! here only with a table it refuses, before it looks for the host's
 //! credential store; `control.rs` opens it in the binary, under a
 //! scratch host (design Decision 14).
@@ -18,9 +17,9 @@ const FILE: &str = "/c/config.toml";
 
 /// Design Decision 4's example.
 const EXAMPLE: &str = r#"accounts.own.drives.home.repositories = ["example/crew", "agentplot/flume"]
+accounts.own.control_plane = "crew"
 
 [control_plane]
-type = "crew"
 poll_interval = "1m"
 
 [control_plane.crew]
@@ -37,11 +36,9 @@ fn open(text: &str) -> Result<Vec<Part>, String> {
     let config = config::parse(text, Path::new(FILE), Path::new("/h")).expect("a configuration");
     let table = config.control_plane.expect("a control plane named");
     planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         Path::new(FILE),
         Path::new("/nowhere/boomdrive"),
-        table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
         &weir_bounded::Halt::default(),
@@ -71,11 +68,9 @@ fn each_part_is_handed_its_own_say() {
     let table = config.control_plane.expect("a control plane named");
     let asked = std::cell::RefCell::new(Vec::new());
     let parts = planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         Path::new(FILE),
         Path::new("/nowhere/boomdrive"),
-        table.poll_interval,
         &|label| {
             asked.borrow_mut().push(label.to_string());
             Box::new(|line| panic!("said {line:?} at its opening"))
@@ -89,7 +84,7 @@ fn each_part_is_handed_its_own_say() {
     assert_eq!(asked.into_inner(), ["home", "work"]);
 }
 
-/// The table `type` names is handed to the implementation whole, so its
+/// The table an account names is handed to the implementation whole, so its
 /// keys are the implementation's own to refuse.
 #[test]
 fn the_table_is_the_implementations() {
@@ -118,7 +113,7 @@ fn the_table_is_the_implementations() {
 #[test]
 fn the_hosted_table_is_the_hosted_implementations() {
     let refusal = open(
-        "accounts = {}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+        "accounts.own.drives = {}\naccounts.own.control_plane = \"hosted\"\n[control_plane]\n\n[control_plane.hosted]\n\
          url = \"https://control.example\"\ntoken = \"n0t-a-r34l-t0k3n\"\n\n\
          [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = []\n",
     )
@@ -129,18 +124,23 @@ fn the_hosted_table_is_the_hosted_implementations() {
     assert!(!refusal.contains("n0t-a-r34l-t0k3n"), "{refusal}");
 }
 
-/// The control-plane-interface spec's "A word not carried": `elsewhere`
-/// is refused, naming `crew` and `hosted`, the words this binary carries.
+/// The running spec's "One label in two planes": crew's partition and
+/// the hosted partition of one label are refused at the opening, naming
+/// both implementations, before the hosted one looks for the host's store
+/// (record 0054).
 #[test]
-fn a_word_not_carried() {
-    let refusal = open("accounts = {}\n[control_plane]\ntype = \"elsewhere\"\n")
-        .err()
-        .unwrap();
+fn one_label_in_two_planes() {
+    let text = format!(
+        "accounts.cloud.drives = {{}}\naccounts.cloud.control_plane = \"hosted\"\n{EXAMPLE}\n\
+         [control_plane.hosted]\nurl = \"https://control.example\"\n\n\
+         [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = []\n"
+    );
+    let refusal = open(&text).err().unwrap();
     assert_eq!(
         refusal,
         format!(
-            "{FILE}: `type` is \"elsewhere\", a control plane this binary does not carry: \
-             it carries `crew`, `hosted`"
+            "{FILE}: the partition `home` is named by `[control_plane.crew]` and \
+             `[control_plane.hosted]`: a part's label is given once on the host"
         )
     );
 }
@@ -156,41 +156,23 @@ fn the_list() {
     assert_eq!(words, [("crew", false), ("hosted", true)]);
 }
 
-/// The hosted-control-plane spec's "crew's control plane": crew's
-/// implementation enrolls nothing, and is refused as the host's to fix
-/// before the token is asked for, naming `hosted`, which enrolls.
+/// The hosted-control-plane spec's "crew's control plane": where every
+/// account names crew, nothing enrolls, and it is refused as the host's to
+/// fix before the token is asked for, naming `hosted`, which enrolls.
 #[test]
 fn crews_control_plane_enrolls_nothing() {
-    let refusal = planes::enroll("crew", &toml::Table::new(), Path::new(FILE), "home", || {
+    let config = config::parse(EXAMPLE, Path::new(FILE), Path::new("/h")).expect("a configuration");
+    let table = config.control_plane.expect("a control plane named");
+    let refusal = planes::enroll(&table, Path::new(FILE), "home", || {
         panic!("the token asked for")
     })
     .unwrap_err();
     assert_eq!(
         refusal.words,
         format!(
-            "{FILE}: `type` is \"crew\", a control plane that enrolls nothing: `boomdrive enroll` \
-             enrolls a partition of `hosted`"
+            "{FILE}: no account names a control plane that enrolls: `boomdrive enroll` enrolls a \
+             partition of `hosted`"
         )
-    );
-    assert!(refusal.host_to_fix);
-}
-
-/// A word not carried is refused at enrollment too, naming the words this
-/// binary carries, before the token is asked for.
-#[test]
-fn a_word_not_carried_enrolls_nothing() {
-    let refusal = planes::enroll(
-        "elsewhere",
-        &toml::Table::new(),
-        Path::new(FILE),
-        "home",
-        || panic!("the token asked for"),
-    )
-    .unwrap_err();
-    assert!(
-        refusal.words.ends_with("it carries `crew`, `hosted`"),
-        "{}",
-        refusal.words
     );
     assert!(refusal.host_to_fix);
 }

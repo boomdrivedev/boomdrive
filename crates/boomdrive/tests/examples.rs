@@ -5,9 +5,8 @@
 //! and with it its `[control_plane]` table, which opens crew's
 //! implementation, and its hosted table, which the hosted implementation
 //! reads, the App left out, since the hosted control plane holds it
-//! (record 0007 as amended on 2026-11-11); and the observer table beside
-//! crew's, which the hosted implementation reads (design Decision 10 of
-//! a-runner-reports-to-an-observer-it-takes-no-work-from; record 0048).
+//! (record 0007 as amended on 2026-11-11), each with the account `own`
+//! naming its plane (record 0054).
 
 use boomdrive::config::ForgeApp;
 use boomdrive::{config, planes};
@@ -118,14 +117,12 @@ fn the_control_plane_opens_crews_implementation() {
     let (crew, _) = example("crew");
     let config = config::parse(&format!("{text}\n{crew}"), &file, Path::new("/h")).unwrap();
     let table = config.control_plane.expect("a control plane named");
-    assert_eq!(table.implementation, "crew");
+    assert_eq!(words(&table), ["crew"]);
     assert_eq!(table.poll_interval, Duration::from_secs(60));
     let opened = planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         &file,
         Path::new("/nowhere/boomdrive"),
-        table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
         &weir_bounded::Halt::default(),
@@ -148,13 +145,13 @@ fn the_hosted_table_reads() {
     let written = format!("{}\n{hosted}", without_the_app(&text));
     let config = config::parse(&written, &file, Path::new("/h")).unwrap();
     let table = config.control_plane.clone().expect("a control plane named");
-    assert_eq!(table.implementation, "hosted");
+    assert_eq!(words(&table), ["hosted"]);
     assert_eq!(table.poll_interval, Duration::from_secs(60));
     let kept: Vec<String> = config
         .repositories()
         .map(|address| format!("{}/{}", address.owner(), address.name()))
         .collect();
-    let partitions = table.implementation_table["partitions"]
+    let partitions = table.table("hosted").unwrap()["partitions"]
         .as_array()
         .expect("partitions");
     for partition in partitions {
@@ -166,14 +163,7 @@ fn the_hosted_table_reads() {
             );
         }
     }
-    let refusal = planes::enroll(
-        &table.implementation,
-        &table.implementation_table,
-        &file,
-        "garden",
-        || Ok(String::new()),
-    )
-    .unwrap_err();
+    let refusal = planes::enroll(&table, &file, "garden", || Ok(String::new())).unwrap_err();
     assert_eq!(
         refusal.words,
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"
@@ -181,44 +171,11 @@ fn the_hosted_table_reads() {
     assert!(refusal.host_to_fix);
 }
 
-/// The observer table, written after the configuration's and crew's
-/// tables, reads as the configuration: `Config::observer` is the table as
-/// written, which the hosted implementation's reading takes, and each of
-/// its partitions is a part of crew's and names repositories the host
-/// keeps.
-#[test]
-fn the_observer_table_reads() {
-    let (text, file) = example("configuration");
-    let (crew, _) = example("crew");
-    let (observer, _) = example("observer");
-    let config = config::parse(
-        &format!("{text}\n{crew}\n{observer}"),
-        &file,
-        Path::new("/h"),
-    )
-    .unwrap();
-    let written: toml::Table = observer.parse().expect("the observer table is TOML");
-    let table = config.observer.clone().expect("an observer named");
-    assert_eq!(Some(&table), written["observer"].as_table());
-    assert_eq!(planes::read_observer(&table, &file), Ok(()));
-    let crews = config.control_plane.clone().expect("a control plane named");
-    let kept: Vec<String> = config.repositories().map(ToString::to_string).collect();
-    for partition in table["partitions"].as_array().expect("partitions") {
-        let label = &partition["label"];
-        assert!(
-            crews.implementation_table["partitions"]
-                .as_array()
-                .expect("crew's partitions")
-                .iter()
-                .any(|part| &part["label"] == label),
-            "{label}"
-        );
-        for repository in partition["repositories"].as_array().expect("repositories") {
-            let repository = repository.as_str().expect("an address");
-            assert!(
-                kept.iter().any(|address| address == repository),
-                "{repository}"
-            );
-        }
-    }
+/// The words of each control plane's table `table` holds, in order.
+fn words(table: &config::ControlPlaneTable) -> Vec<&str> {
+    table
+        .implementations
+        .iter()
+        .map(|(word, _)| word.as_str())
+        .collect()
 }

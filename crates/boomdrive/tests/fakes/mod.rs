@@ -11,7 +11,7 @@
 
 #![allow(dead_code)]
 
-use boomdrive::carry::{Carrier, Clones, Keeping, Least, Passed, Reach};
+use boomdrive::carry::{Carrier, Clones, Elsewhere, Keeping, Least, Passed, Reach};
 use boomdrive::flume::{self, Act, Flume, LaunchArgs, Reply, Unrun};
 use boomdrive::git::Git;
 use boomdrive::hello::Tools;
@@ -745,6 +745,20 @@ impl Clones for FakeClones {
         }
         drives
     }
+
+    /// Each address whose clone stands, ready or dropped, with its
+    /// container, in the order set.
+    fn containers(&self) -> Vec<(String, PathBuf)> {
+        let kept = self.kept.borrow();
+        kept.iter()
+            .filter_map(|(address, keeping, _)| match keeping {
+                Keeping::Ready(container) | Keeping::Dropped(container) => {
+                    Some((address.clone(), container.clone()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
 }
 
 /// The tools' versions: each `<tool> 1.0.0`, but as a test names one.
@@ -815,6 +829,7 @@ pub struct Bench {
     /// What was last said of Flume's version, kept across the bench's
     /// passes as the loop keeps it.
     least: Least,
+    elsewhere: Elsewhere,
     /// How long a pass awaits sluice's ask of a preview before it
     /// interrupts it: [`sluice::PREVIEW_PATIENCE`], but where a test sets
     /// another.
@@ -848,6 +863,7 @@ impl Bench {
             report_file,
             reach: Reach::default(),
             least: Least::default(),
+            elsewhere: Elsewhere::default(),
             sluice_patience: Cell::new(sluice::PREVIEW_PATIENCE),
             notices: Notices::new(events),
             events: received,
@@ -935,6 +951,7 @@ impl Bench {
             relays: &self.relays,
             reach: &self.reach,
             least: &self.least,
+            elsewhere: &self.elsewhere,
         }
     }
 

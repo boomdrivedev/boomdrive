@@ -122,15 +122,16 @@ fn the_crew_file_opens_crews_implementation() {
     assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
     assert!(config.code_workspaces);
     let table = config.control_plane.expect("a control plane named");
-    assert_eq!(table.implementation, "crew");
+    assert_eq!(table.implementations.len(), 1);
     assert_eq!(table.poll_interval, Duration::from_secs(60));
-    assert_eq!(table.implementation_table["host"].as_str(), Some("host-a"));
+    assert_eq!(
+        table.table("crew").unwrap()["host"].as_str(),
+        Some("host-a")
+    );
     let opened = planes::open(
-        &table.implementation,
-        &table.implementation_table,
+        &table,
         &file,
         &scratch.data(),
-        table.poll_interval,
         &|_| Box::new(|line| panic!("said {line:?} at its opening")),
         &|_| Box::new(|| panic!("woken at its opening")),
         &weir_bounded::Halt::default(),
@@ -166,12 +167,12 @@ fn the_setup_file_keeps_one_drive_under_crew() {
     assert_eq!(config.fetch_interval, Duration::from_secs(2 * 60));
     assert!(!config.code_workspaces);
     let table = config.control_plane.expect("a control plane named");
-    assert_eq!(table.implementation, "crew");
+    assert_eq!(table.implementations.len(), 1);
     assert_eq!(table.poll_interval, Duration::from_secs(60));
+    let held = table.table("crew").expect("crew's table");
     let crew = planes::carried("crew").expect("crew's implementation");
-    let read = (crew.read)(&table.implementation_table, &file);
+    let read = (crew.read)(held, &file);
     assert!(read.is_ok(), "{:?}", read.err());
-    let held = &table.implementation_table;
     let mut keys: Vec<&String> = held.keys().collect();
     keys.sort();
     assert_eq!(keys, ["host", "partitions"]);
@@ -225,19 +226,12 @@ fn the_hosted_file_names_its_partitions() {
     );
     assert_eq!(kept(&config), ["agentplot/flume"]);
     let table = config.control_plane.expect("a control plane named");
-    assert_eq!(table.implementation, "hosted");
+    assert_eq!(table.implementations.len(), 1);
     assert_eq!(
-        table.implementation_table["url"].as_str(),
+        table.table("hosted").unwrap()["url"].as_str(),
         Some("https://control.example")
     );
-    let refusal = planes::enroll(
-        &table.implementation,
-        &table.implementation_table,
-        &file,
-        "garden",
-        || Ok(String::new()),
-    )
-    .unwrap_err();
+    let refusal = planes::enroll(&table, &file, "garden", || Ok(String::new())).unwrap_err();
     assert_eq!(
         refusal.words,
         "[control_plane.hosted] names no partition `garden`: it names `home`, `work`"

@@ -658,7 +658,7 @@ fn a_configuration_it_cannot_read_must_be_fixed() {
 /// `agentplot/flume` in the drive `home`.
 fn hosted() -> String {
     format!(
-        "{}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+        "{}\naccounts.own.control_plane = \"hosted\"\n[control_plane]\n\n[control_plane.hosted]\n\
          url = \"https://control.example\"\n\n[[control_plane.hosted.partitions]]\n\
          label = \"home\"\nrepositories = [\"agentplot/flume\"]\n",
         keeping(&["agentplot/flume"])
@@ -936,7 +936,7 @@ fn a_cloud_host_with_no_partitions_key() {
     let port = listener.local_addr().expect("its address").port();
     drop(listener);
     scratch.configure(&format!(
-        "{}\n[control_plane]\ntype = \"hosted\"\n\n[control_plane.hosted]\n\
+        "{}\naccounts.own.control_plane = \"hosted\"\n[control_plane]\n\n[control_plane.hosted]\n\
          url = \"http://127.0.0.1:{port}/boomdrive\"\n\n[[control_plane.hosted.partitions]]\n\
          label = \"home\"\nrepositories = [\"agentplot/flume\"]\n",
         keeping(&["agentplot/flume"])
@@ -1231,4 +1231,60 @@ fn the_control_planes_word_that_the_app_is_not_installed_is_kept() {
     };
     assert_eq!((first, second), (nothing.clone(), nothing));
     assert_eq!(tokens.asks("agentplot/flume"), 1);
+}
+
+/// The forge-tokens spec's "crew's repository and a cloud's side by
+/// side": the account `own` under crew keeps `agentplot/flume` and the
+/// account `cloud` under the hosted control plane keeps `example/app`.
+/// The hosted plane's forge tokens are opened for `example/app` alone, so
+/// `example/app`'s token is asked of it, and `agentplot/flume`'s is not:
+/// it is minted, and with no `[forge]` named here, refused as the host's to
+/// fix, naming `[forge]` (record 0054; core.33).
+#[test]
+fn crews_repository_and_a_clouds_side_by_side() {
+    let text = "accounts.own.control_plane = \"crew\"\n\
+                accounts.own.drives.home.repositories = [\"agentplot/flume\"]\n\
+                accounts.cloud.control_plane = \"hosted\"\n\
+                accounts.cloud.drives.garden.repositories = [\"example/app\"]\n\n\
+                [control_plane.crew]\nhost = \"host-a\"\n\n\
+                [[control_plane.crew.partitions]]\nlabel = \"home\"\n\
+                state_repository = \"example/state\"\n\n\
+                [control_plane.hosted]\nurl = \"https://control.example\"\n\n\
+                [[control_plane.hosted.partitions]]\nlabel = \"cloud\"\n\
+                repositories = [\"example/app\"]\n";
+    let file = Path::new("/c/config.toml");
+    let config = boomdrive::config::parse(text, file, Path::new("/h")).expect("a configuration");
+    let (opened, asked) =
+        boomdrive::planes::forge_tokens(&config, file).expect("the hosted plane holds the App");
+    assert!(opened.is_ok(), "{:?}", opened.err());
+    let asked: Vec<String> = asked.iter().map(ToString::to_string).collect();
+    assert_eq!(asked, ["example/app"]);
+
+    let tokens = boomdrive_control::fake::Tokens::new();
+    tokens.set(
+        "example/app",
+        boomdrive_control::TokenAsked::Token(boomdrive_control::ForgeToken::new(
+            "ghs_cloud",
+            boomdrive_control::At::parse("2026-11-18T13:00:00Z")
+                .expect("a time")
+                .time(),
+        )),
+    );
+    let forge = Forge::asking_for(
+        Box::new(tokens.clone()),
+        vec![Address::parse("example/app").expect("an address")],
+    );
+    assert!(matches!(
+        forge.fresh(None, &Address::parse("example/app").expect("an address")),
+        Ok(Minted::Token(_))
+    ));
+    let minted = forge.fresh(
+        None,
+        &Address::parse("agentplot/flume").expect("an address"),
+    );
+    let refused = minted.err().expect("refused: no [forge] to mint from");
+    assert!(refused.host_to_fix, "{}", refused.words);
+    assert!(refused.words.contains("[forge]"), "{}", refused.words);
+    assert_eq!(tokens.asks("example/app"), 1);
+    assert_eq!(tokens.asks("agentplot/flume"), 0);
 }
