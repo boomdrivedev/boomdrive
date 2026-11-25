@@ -32,6 +32,10 @@ flume host serves status and the subscription alone. A place's own status, `flum
 
 The crate's tests that run the runner with a control plane serve a stub flume host on a scratch socket: it answers the hello, a status ask and a subscription from the stub `flume`'s status answer file, sends a new document when that file's answer changes, and records each ask. Tests that hold the pass's Flume as a fake, and the tests of `flume::Cli`, are unchanged.
 
-## Decision 8: No transition
+## Decision 8: The set at Flume v0.36.0 and sluice v0.110.2
+
+The flake's `flume` input moves to `v0.36.0`, the release whose flume host serves `status` and `subscribe` on its socket and whose `flume status` refuses where no flume host answers, and its `sluice` input moves to `v0.110.2`; the lock moves those two nodes alone (core.45). The tests that run the set's Flume, `family` and `quick_start`, start the set's `flume host` on the scratch home as a child of the test, in a process group of its own that the test ends and awaits (`a-leaked-child-fails-its-test`), and wait for its socket before they ask. A place's steps get Flume's login variables alone, so the login `PATH` of `quick_start`'s scratch home finds first a program that runs the set's sluice with `SLUICE_USER_SCRATCH` naming the scratch folder: the gate's sandbox lets no program a test starts write `/tmp/sluice-<uid>`, where sluice 0.110.2's hook would start its host process.
+
+## Decision 9: No transition
 
 The runner asks no `flume --json status` where flume host does not answer. A host whose Flume serves no socket reads no status until it takes a Flume that does.

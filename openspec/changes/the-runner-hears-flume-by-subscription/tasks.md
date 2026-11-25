@@ -15,6 +15,11 @@
 - [x] 3.1 `README.md` says how the runner reads Flume's status, and core.13's details name the subscription. True when `sluice exec main -- moon run root:format` passes.
 - [x] 3.2 The decision `the-runner-hears-flume-host-by-one-subscription` is proposed to Boom, linted with 0 hard findings.
 
-## 4. The specs
+## 4. The set
 
-- [x] 4.1 The change validates and archives into specs that pass OpenSpec's strict check (core.61). True when `sluice exec main -- moon run root:specs root:changes` passes.
+- [x] 4.1 `flake.nix` names Flume `v0.36.0` and sluice `v0.110.2`, and the lock moves those two nodes alone (Decision 8). True when `sluice exec main -- moon run nix:typecheck nix:test` passes.
+- [x] 4.2 `family` and `quick_start` run the set's `flume host` on the scratch home, and the quick start's change lands over it (Decision 8). True when `sluice exec main -- moon run boomdrive:test` passes.
+
+## 5. The specs
+
+- [x] 5.1 The change validates and archives into specs that pass OpenSpec's strict check (core.61). True when `sluice exec main -- moon run root:specs root:changes` passes.

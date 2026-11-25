@@ -10,6 +10,7 @@ Each control pass of `boomdrive run` reads Flume's status by `flume --json statu
 - **A change heard wakes the parts.** Each document that differs from the one held wakes every part, so its control plane hears a change of Flume's places at once, and not at the part's next timer.
 - **`--once` asks once.** `boomdrive run --once` asks flume host `{"ask":"status"}` on its socket for each read, and holds no subscription.
 - **No flume host, no status.** Where no flume host answers, Flume's status cannot be read: the pass says so, launches nothing and acts as it does today when Flume's status is unread. The subscription is tried again on a bounded backoff, and the runner says one line when flume host stops answering and one when it answers again.
+- **The set takes Flume v0.36.0 and sluice v0.110.2.** Flume v0.36.0's flume host serves the socket; the lock moves the `flume` and `sluice` nodes alone. The tests that run the set's Flume start its `flume host` on their scratch home.
 - A place's own status, Flume's launch, its acts and its confirm stay Flume's commands, which flume host does not serve on its socket.
 
 ## Capabilities
@@ -27,6 +28,7 @@ None.
 ## Impact
 
 - `crates/boomdrive/src/flume_host.rs`: the socket, the asks and the subscription. `run.rs`: the subscription's thread and the parts' wake. `Cargo.toml`: `sha1`, for the socket's key as flume makes it.
+- `flake.nix`, `flake.lock`: Flume at v0.36.0, sluice at v0.110.2.
 - The crate's tests: a stub flume host on a scratch socket, which answers from the stub `flume`'s status answer.
 - `README.md`, `docs/architecture/core.md` (core.13's details).
 - Boom: the decision `the-runner-hears-flume-host-by-one-subscription`, proposed for the user to accept.
@@ -34,6 +36,8 @@ None.
 ## Touches
 
 ```
+flake.nix
+flake.lock
 Cargo.toml
 Cargo.lock
 crates/boomdrive/Cargo.toml
