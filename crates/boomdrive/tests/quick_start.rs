@@ -19,7 +19,7 @@ mod records;
 
 #[cfg(target_os = "macos")]
 use common::stand::{refused, Stand};
-use common::Scratch;
+use common::{FlumeHost, Scratch};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -99,49 +99,6 @@ fn on_scratch(scratch: &Scratch, program: impl AsRef<std::ffi::OsStr>, path: &st
         .env("PATH", path)
         .current_dir(&scratch.home);
     command
-}
-
-/// The set's `flume host`, Flume's resident, run on the scratch home as a
-/// child of the test's in a process group of its own, which the runner's
-/// passes and the test's own `flume status` ask on its socket; dropped,
-/// its group is ended and it is awaited, so no process of it outlives the
-/// test (a-leaked-child-fails-its-test).
-#[cfg(target_os = "macos")]
-struct FlumeHost(std::process::Child);
-
-#[cfg(target_os = "macos")]
-impl FlumeHost {
-    fn start(scratch: &Scratch, path: &str) -> FlumeHost {
-        use std::os::unix::process::CommandExt as _;
-        std::fs::create_dir_all(scratch.root.join("flume")).expect("flume's scratch folder");
-        let child = on_scratch(scratch, set_program("flume"), path)
-            .arg("host")
-            .process_group(0)
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .expect("the set's flume host starts");
-        FlumeHost(child)
-    }
-}
-
-#[cfg(target_os = "macos")]
-impl Drop for FlumeHost {
-    fn drop(&mut self) {
-        let group = self.0.id() as i32;
-        // SAFETY: killpg signals the group this test made for its child.
-        unsafe { libc::killpg(group, libc::SIGTERM) };
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        while std::time::Instant::now() < deadline {
-            if let Ok(Some(_)) = self.0.try_wait() {
-                return;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-        unsafe { libc::killpg(group, libc::SIGKILL) };
-        let _ = self.0.wait();
-    }
 }
 
 /// What a run said, for a failing assertion.
@@ -287,6 +244,9 @@ fn flumes_files(scratch: &Scratch) {
 fn flumes_file_opens_agents_in_herdr() {
     let scratch = Scratch::new();
     flumes_files(&scratch);
+    let mut flume_host = on_scratch(&scratch, set_program("flume"), "/usr/bin:/bin");
+    flume_host.arg("host");
+    let _flume_host = FlumeHost::start(flume_host, &scratch.root.join("flume"));
     let output = on_scratch(&scratch, set_program("flume"), "/usr/bin:/bin")
         .args(["--json", "status"])
         .output()
@@ -776,9 +736,33 @@ fn a_change_the_drive_is_given_lands() {
     let path = format!("{}:{}", agent.display(), set_path(&["flume", "sluice"]));
     // Flume runs a place's steps, sluice's among them, under the login
     // shell's PATH, which a reader's nix profile gives the set; the
-    // scratch home's login profile gives it the set's.
+    // scratch home's login profile gives it the set's. A step gets
+    // Flume's login variables alone, so its sluice, and the host process
+    // its git's hook starts, would use `/tmp/sluice-<uid>`, which the
+    // gate's sandbox lets no program a test starts write: the login PATH
+    // finds first a program that runs the set's sluice naming the scratch
+    // folder on_scratch names (sluice's 35 as amended, its rule core.30).
+    let login_bin = scratch.root.join("login-bin");
+    std::fs::create_dir_all(&login_bin).expect("the login folder");
     write_text(
-        &format!("PATH='{}'\nexport PATH\n", set_path(&["flume", "sluice"])),
+        &format!(
+            "#!/bin/sh\nSLUICE_USER_SCRATCH='{}' exec '{}' \"$@\"\n",
+            scratch.root.join("sluice").display(),
+            set_program("sluice").display()
+        ),
+        &login_bin.join("sluice"),
+    );
+    std::fs::set_permissions(
+        login_bin.join("sluice"),
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+    )
+    .expect("the login sluice made runnable");
+    write_text(
+        &format!(
+            "PATH='{}:{}'\nexport PATH\n",
+            login_bin.display(),
+            set_path(&["flume", "sluice"])
+        ),
         &scratch.home.join(".profile"),
     );
     // Those steps get the login environment alone, no GIT_CONFIG_GLOBAL,
@@ -794,7 +778,9 @@ fn a_change_the_drive_is_given_lands() {
     // Flume's status is flume host's, which the runner's passes and the
     // test's own `flume status` ask (the change
     // the-runner-hears-flume-by-subscription).
-    let _flume_host = FlumeHost::start(scratch, &path);
+    let mut flume_host = on_scratch(scratch, set_program("flume"), &path);
+    flume_host.arg("host");
+    let _flume_host = FlumeHost::start(flume_host, &scratch.root.join("flume"));
     let began = std::time::Instant::now();
     let mut said_last = String::new();
     let mut ran: Vec<String> = Vec::new();

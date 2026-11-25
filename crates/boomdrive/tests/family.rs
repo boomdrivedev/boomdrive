@@ -18,7 +18,7 @@ use boomdrive_control::fake::{Fake, Sent};
 use boomdrive_control::{
     shared, Answer, At, Capacity, ControlPlane, Id, Launched, Lease, Report, ToolVersion,
 };
-use common::Scratch;
+use common::{FlumeHost, Scratch};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -158,9 +158,28 @@ impl Family {
                 "SLUICE_USER_SCRATCH".into(),
                 self.scratch.root.join("u").into(),
             ),
+            // Flume's short directory of the user's, where flume host
+            // binds its socket, in the scratch folder for the same reason.
+            (
+                boomdrive::flume_host::USER_SCRATCH.into(),
+                self.flume_scratch().into(),
+            ),
             ("PATH".into(), path),
         ]);
         environment
+    }
+
+    /// The folder `FLUME_USER_SCRATCH` names, where flume host binds.
+    fn flume_scratch(&self) -> PathBuf {
+        self.scratch.root.join("f")
+    }
+
+    /// The set's `flume host` on the scratch host, whose socket Flume's
+    /// status asks (the change the-runner-hears-flume-by-subscription).
+    fn flume_host(&self) -> FlumeHost {
+        let mut command = std::process::Command::new(self.set("flume"));
+        command.arg("host").current_dir(&self.scratch.home);
+        FlumeHost::start(command, &self.flume_scratch())
     }
 
     /// The set's `tool` as the runner's readers are given it: a program
@@ -223,6 +242,7 @@ fn each_tools_version_is_its_tags() {
 #[test]
 fn flumes_status_of_a_scratch_host() {
     let family = Family::new();
+    let _flume_host = family.flume_host();
     let status = flume::Cli::new(family.set("flume")).status();
     let text = match &status {
         Ok(flume::Reply::Given(text)) => text.clone(),
@@ -403,6 +423,7 @@ fn not_the_hosts_tools() {
             ToolVersion::Printed(format!("{tool} {}", locked_version(tool)))
         );
     }
+    let _flume_host = family.flume_host();
     let status = flume::Cli::new(family.set("flume")).status();
     assert!(
         matches!(status, Ok(flume::Reply::Given(_))),
