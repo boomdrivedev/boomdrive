@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive"
-version = "0.0.0"
+version = "0.29.0"
 dependencies = [
  "boomdrive-control",
  "boomdrive-crew",
@@ -183,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive-control"
-version = "0.0.0"
+version = "0.29.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive-crew"
-version = "0.0.0"
+version = "0.29.0"
 dependencies = [
  "boomdrive-control",
  "serde_json",
@@ -206,7 +206,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive-hosted"
-version = "0.0.0"
+version = "0.29.0"
 dependencies = [
  "apple-native-keyring-store",
  "base64 0.22.1",
