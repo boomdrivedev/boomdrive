@@ -35,7 +35,7 @@ use boomdrive_control::{
     Unsent, Wake, Want,
 };
 use common::{keeping, Origin, Scratch};
-use fakes::{offer, CredsStub, HeldFetch, SluiceStub, Stub};
+use fakes::{offer, CredsStub, HeldFetch, SluiceStub, Stub, StubHost};
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
@@ -127,10 +127,12 @@ impl Tools {
 /// `boomdrive run --once` on the scratch host's default configuration
 /// file, with `tools` first on its `PATH`.
 fn once(scratch: &Scratch, tools: &Tools) -> Output {
+    let host = StubHost::under(&scratch.home, tools.flume.dir.path());
     scratch
         .boomdrive()
         .args(["run", "--once"])
         .env("PATH", tools.path())
+        .env(boomdrive::flume_host::USER_SCRATCH, host.dir.path())
         .output()
         .expect("boomdrive runs")
 }
@@ -300,9 +302,10 @@ fn carrying_two() -> String {
 /// The running spec's "A control plane that cannot be read": no
 /// partition's state repository can be read. The runner keeps its
 /// repositories, names each part as unread, launches and acts on nothing,
-/// and exits 1. Each part's pass reads Flume's status and each tool's
-/// version for the hello it hands the pull, before the pull is read
-/// (design Decision 5, step 2): no other Flume command runs.
+/// and exits 1. Each part's pass reads Flume's status, of the stub flume
+/// host, and each tool's version for the hello it hands the pull, before
+/// the pull is read (design Decision 5, step 2): no Flume command but
+/// `--version` runs.
 #[test]
 fn a_control_plane_that_cannot_be_read() {
     let scratch = Scratch::new();
@@ -328,11 +331,7 @@ fn a_control_plane_that_cannot_be_read() {
         assert!(unread[0].contains(&format!("{label}/main")), "{said}");
     }
     for command in tools.flume_commands() {
-        assert!(
-            ["status", "--version"].contains(&command.as_str()),
-            "{:?}",
-            tools.flume_commands()
-        );
+        assert!(command == "--version", "{:?}", tools.flume_commands());
     }
 }
 
@@ -757,6 +756,9 @@ struct Running {
     lines: Receiver<(Instant, String)>,
     thread: JoinHandle<()>,
     tools: Tools,
+    /// The stub flume host the runner subscribes to, answering from the
+    /// stub `flume`'s status answer.
+    host: StubHost,
 }
 
 impl Running {
@@ -792,6 +794,8 @@ impl Running {
                 .map(|(_, value)| value.clone())
         };
         let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let host = StubHost::new(tools.flume.dir.path());
+        runner.flume_socket(host.socket.clone());
         let mut wakes = BTreeMap::new();
         runner
             .carry_for(
@@ -824,6 +828,7 @@ impl Running {
             lines,
             thread,
             tools,
+            host,
         }
     }
 
@@ -998,11 +1003,12 @@ fn passes_back_to_back_share_their_ticks() {
     running.stop();
 }
 
-/// The running spec's "A control pass runs no settle": with
-/// `poll_interval` a second, three control passes each read Flume's
-/// status, and Flume is asked for no settle.
+/// The running spec's "A control pass runs no settle" and "Passes read
+/// the subscription": with `poll_interval` a second, three control passes
+/// read Flume's status from the runner's one subscription to the stub
+/// flume host, and the stub `flume` is asked no status and no settle.
 #[test]
-fn a_control_pass_runs_no_settle() {
+fn passes_read_the_subscription() {
     let scratch = Scratch::new();
     scratch.origin(KEPT);
     scratch.configure(&carrying("1h", "1s"));
@@ -1011,19 +1017,71 @@ fn a_control_pass_runs_no_settle() {
         running.pull();
     }
     let calls = running.tools.flume.calls();
+    let asks = running.host.asks();
     running.stop();
 
-    let statuses = calls
-        .iter()
-        .filter(|call| *call == &words(&["--json", "status"]))
-        .count();
-    assert!(statuses >= 3, "three control passes: {calls:?}");
+    assert_eq!(asks, [r#"{"ask":"subscribe"}"#], "one subscription");
     assert!(
         !calls
             .iter()
-            .any(|call| call.get(1).map(String::as_str) == Some("settle")),
+            .any(|call| matches!(call.get(1).map(String::as_str), Some("status" | "settle"))),
         "{calls:?}"
     );
+}
+
+/// The running spec's "A change heard wakes the parts": with
+/// `poll_interval` an hour, once `home`'s first control pass has ended, a
+/// change of the stub flume host's document makes a control pass within
+/// seconds.
+#[test]
+fn a_change_heard_wakes_the_parts() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1h"));
+    let running = Running::start(&scratch);
+    running.pull();
+    // The first document wakes the part too; the passes it makes come
+    // at once, and then none until the document changes.
+    while running.pulled_within(Duration::from_secs(1)) {}
+
+    let changed = Instant::now();
+    running
+        .tools
+        .flume
+        .answers("status", "status-live-agent.json", 0);
+    let woke = running.pull();
+    assert!(
+        woke - changed < Duration::from_secs(5),
+        "{:?} from the change to the pass",
+        woke - changed
+    );
+    running.stop();
+}
+
+/// The running spec's "flume host stops and comes back": with the stub
+/// flume host stopped, the runner says once that flume host does not
+/// answer, and `home`'s pass says its status could not be read; started
+/// again, the runner says once that it answers again.
+#[test]
+fn flume_host_stops_and_comes_back() {
+    let scratch = Scratch::new();
+    scratch.origin(KEPT);
+    scratch.configure(&carrying("1h", "1s"));
+    let mut running = Running::start(&scratch);
+    running.pull();
+    running.host.stop();
+    let (_, line, _) = running.until_starting("boomdrive: flume host does not answer: ");
+    assert!(line.contains("closed the connection"), "{line}");
+    running.until_starting("boomdrive: home: Flume's status could not be read: ");
+    running.host.start();
+    let (_, _, between) = running.until_starting("boomdrive: flume host answers again");
+    assert!(
+        !between
+            .iter()
+            .any(|line| line.starts_with("boomdrive: flume host does not answer")),
+        "said twice: {between:?}"
+    );
+    running.stop();
 }
 
 /// The running spec's "Woken by the control plane": woken through the

@@ -548,3 +548,69 @@ impl Origin<'_> {
         );
     }
 }
+
+/// The set's `flume host`, Flume's resident, run as a child of the test's
+/// in a process group of its own, which a test's `flume status` and the
+/// runner's passes ask on its socket: Flume's status refuses where no
+/// flume host answers. Dropped, its group is ended and it is awaited, so
+/// no process of it outlives the test (a-leaked-child-fails-its-test).
+pub struct FlumeHost(std::process::Child);
+
+impl FlumeHost {
+    /// `command`, the set's `flume host` under the scratch environment,
+    /// started and awaited until its socket is in `socket_dir`, the
+    /// folder `FLUME_USER_SCRATCH` names.
+    pub fn start(mut command: Command, socket_dir: &Path) -> FlumeHost {
+        use std::os::unix::process::CommandExt as _;
+        std::fs::create_dir_all(socket_dir).expect("flume's scratch folder");
+        let child = command
+            .process_group(0)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("the set's flume host starts");
+        let mut host = FlumeHost(child);
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        loop {
+            let bound = std::fs::read_dir(socket_dir)
+                .expect("flume's scratch folder")
+                .flatten()
+                .any(|entry| {
+                    let name = entry.file_name();
+                    let name = name.to_string_lossy();
+                    name.starts_with("host-") && name.ends_with(".sock")
+                });
+            if bound {
+                return host;
+            }
+            if let Ok(Some(status)) = host.0.try_wait() {
+                panic!("the set's flume host ended before its socket: {status}");
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the set's flume host made no socket in {} within 10s",
+                socket_dir.display()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+}
+
+impl Drop for FlumeHost {
+    fn drop(&mut self) {
+        let group = self.0.id() as i32;
+        // SAFETY: killpg signals the group this test made for its child.
+        unsafe { libc::killpg(group, libc::SIGTERM) };
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            if let Ok(Some(_)) = self.0.try_wait() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        // SAFETY: as above; the group outlived its SIGTERM.
+        unsafe { libc::killpg(group, libc::SIGKILL) };
+        let _ = self.0.wait();
+    }
+}

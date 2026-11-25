@@ -1553,3 +1553,198 @@ impl Drop for HeldFetch {
         self.let_go();
     }
 }
+
+/// A stub flume host on a scratch socket (the change
+/// the-runner-hears-flume-by-subscription, Decision 7): it answers each
+/// hello with protocol 1, and each `{"ask":"status"}` and
+/// `{"ask":"subscribe"}` from the status answer of the stub `flume` in
+/// `answers`, as the stub's `status` would print it, each document on one
+/// line; a subscription is sent a new document each time that answer
+/// changes. It records each ask, and stops serving when dropped.
+pub struct StubHost {
+    pub dir: TempDir,
+    pub socket: PathBuf,
+    asks: Arc<Mutex<Vec<String>>>,
+    answers: PathBuf,
+    stop: Arc<std::sync::atomic::AtomicBool>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl StubHost {
+    /// A stub flume host on a socket in a scratch folder of its own,
+    /// answering from the stub `flume` whose folder is `answers`.
+    pub fn new(answers: &Path) -> StubHost {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let socket = dir.path().join("host.sock");
+        StubHost::at(dir, socket, answers)
+    }
+
+    /// A stub flume host on the socket the runner finds under the scratch
+    /// home `home`, flume's state folder made there, in a scratch folder
+    /// named by `FLUME_USER_SCRATCH`, which the runner's environment must
+    /// hold.
+    pub fn under(home: &Path, answers: &Path) -> StubHost {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        fs::create_dir_all(home.join(".local/state/flume")).expect("flume's state folder");
+        let socket = boomdrive::flume_host::socket_from(|name| match name {
+            "HOME" => Some(home.as_os_str().to_os_string()),
+            boomdrive::flume_host::USER_SCRATCH => Some(dir.path().as_os_str().to_os_string()),
+            _ => None,
+        })
+        .expect("the socket");
+        StubHost::at(dir, socket, answers)
+    }
+
+    fn at(dir: TempDir, socket: PathBuf, answers: &Path) -> StubHost {
+        let mut host = StubHost {
+            dir,
+            socket,
+            asks: Arc::new(Mutex::new(Vec::new())),
+            answers: answers.to_path_buf(),
+            stop: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            thread: None,
+        };
+        host.start();
+        host
+    }
+
+    /// Serves on the socket, as a flume host that starts again does.
+    pub fn start(&mut self) {
+        let listener =
+            std::os::unix::net::UnixListener::bind(&self.socket).expect("the stub's socket");
+        listener
+            .set_nonblocking(true)
+            .expect("a listener that does not block");
+        self.stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (asks, stop, answers) = (
+            Arc::clone(&self.asks),
+            Arc::clone(&self.stop),
+            self.answers.clone(),
+        );
+        self.thread = Some(std::thread::spawn(move || {
+            std::thread::scope(|scope| {
+                while !stop.load(std::sync::atomic::Ordering::SeqCst) {
+                    match listener.accept() {
+                        Ok((stream, _)) => {
+                            let (asks, stop, answers) = (&asks, &stop, &answers);
+                            scope.spawn(move || serve(stream, answers, asks, stop));
+                        }
+                        Err(_) => std::thread::sleep(Duration::from_millis(25)),
+                    }
+                }
+            })
+        }));
+    }
+
+    /// Each ask, as its line read, in order.
+    pub fn asks(&self) -> Vec<String> {
+        self.asks.lock().unwrap().clone()
+    }
+
+    /// Stops serving: every connection is closed.
+    pub fn stop(&mut self) {
+        self.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+        if let Some(thread) = self.thread.take() {
+            thread.join().expect("the stub host ends");
+        }
+        let _ = fs::remove_file(&self.socket);
+    }
+}
+
+impl Drop for StubHost {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+/// The stub `flume`'s status answer in `answers`, as a document on one
+/// line: its answer where it exits 0, else Flume's refusal.
+fn document(answers: &Path) -> String {
+    let read = |name: &str| fs::read_to_string(answers.join(name)).ok();
+    let printed = read("status.stdout")
+        .and_then(|file| fs::read_to_string(file.trim()).ok())
+        .unwrap_or_default();
+    let exit = read("status.exit")
+        .and_then(|exit| exit.trim().parse::<i32>().ok())
+        .unwrap_or(0);
+    match (exit, serde_json::from_str::<Value>(&printed)) {
+        (0, Ok(value)) => value.to_string(),
+        (1, Ok(value)) if value.get("refused").is_some() => value.to_string(),
+        _ => json!({"refused": {"refusal": {"reason": printed.trim()}}}).to_string(),
+    }
+}
+
+/// What the stub `flume`'s status answer in `answers` stands at: the file
+/// it names, that file's time and length, and its exit.
+fn answered(
+    answers: &Path,
+) -> (
+    Option<String>,
+    Option<(std::time::SystemTime, u64)>,
+    Option<String>,
+) {
+    let read = |name: &str| fs::read_to_string(answers.join(name)).ok();
+    let named = read("status.stdout");
+    let stood = named
+        .as_ref()
+        .and_then(|file| fs::metadata(file.trim()).ok())
+        .and_then(|meta| Some((meta.modified().ok()?, meta.len())));
+    (named, stood, read("status.exit"))
+}
+
+/// One connection of the stub flume host's.
+fn serve(
+    stream: std::os::unix::net::UnixStream,
+    answers: &Path,
+    asks: &Mutex<Vec<String>>,
+    stop: &std::sync::atomic::AtomicBool,
+) {
+    use std::io::{BufRead, BufReader, Write};
+    let _ = stream.set_nonblocking(false);
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
+    let mut reader = BufReader::new(stream.try_clone().expect("the stream"));
+    let mut writer = stream;
+    let mut line = String::new();
+    if reader.read_line(&mut line).is_err() || line.is_empty() {
+        return;
+    }
+    let hello = r#"{"version":"0.0.0","protocol":1,"pid":1,"since":"2026-11-24T00:00:00Z"}"#;
+    if writeln!(writer, "{hello}").is_err() {
+        return;
+    }
+    line.clear();
+    if reader.read_line(&mut line).is_err() || line.is_empty() {
+        return;
+    }
+    let ask = line.trim_end().to_string();
+    asks.lock().unwrap().push(ask.clone());
+    let asked: Value = serde_json::from_str(&ask).unwrap_or(Value::Null);
+    match asked["ask"].as_str() {
+        Some("status") => {
+            let _ = writeln!(writer, "{{\"document\":{}}}", document(answers));
+        }
+        Some("subscribe") => {
+            let mut sent = String::new();
+            let mut read = None;
+            while !stop.load(std::sync::atomic::Ordering::SeqCst) {
+                // The document is read again only when the stub's answer
+                // changed, so many stub hosts at once cost little.
+                let now_read = answered(answers);
+                if read.as_ref() != Some(&now_read) {
+                    read = Some(now_read);
+                    let now = document(answers);
+                    if now != sent {
+                        if writeln!(writer, "{{\"document\":{now}}}").is_err() {
+                            return;
+                        }
+                        sent = now;
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+        _ => {
+            let _ = writeln!(writer, "{{\"error\":\"the stub cannot answer {ask}\"}}");
+        }
+    }
+}

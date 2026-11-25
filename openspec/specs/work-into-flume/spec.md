@@ -33,7 +33,7 @@ It SHALL run no multiplexer's `--version`, and name none among its tools (core.2
 
 ### Requirement: Every pull carries Flume's host part as Flume printed it
 
-The hello's capacity SHALL be Flume's host part, `running`, `bound`, `room` and `streams`, each as Flume printed it in the pass's listing, the `flume --json status` it reads before its pull. It SHALL leave out Flume's `pools`, `addresses`, `bases` and `terminal_kept`.
+The hello's capacity SHALL be Flume's host part, `running`, `bound`, `room` and `streams`, each as Flume printed it in the pass's listing, Flume's status as flume host gives it, read before its pull. It SHALL leave out Flume's `pools`, `addresses`, `bases` and `terminal_kept`.
 
 #### Scenario: Streams as Flume printed them
 
@@ -75,7 +75,7 @@ An offer whose `after` names a launch whose place has not read landed in Flume's
 
 ### Requirement: Room is read from Flume's status and counted down within a pass
 
-The runner SHALL read room from the pass's listing, the `flume --json status` it reads before its pull. The host SHALL have room while its `room` is `null` or above zero. A stream SHALL have room while the host has room, its own `room` is `null` or above zero, and its `queue` is empty. Each launch a part's pass makes SHALL count one against its stream's room and the host's, in that pass alone: the runner SHALL keep no count across parts (record 0026; core.9).
+The runner SHALL read room from the pass's listing, Flume's status as flume host gives it, read before its pull. The host SHALL have room while its `room` is `null` or above zero. A stream SHALL have room while the host has room, its own `room` is `null` or above zero, and its `queue` is empty. Each launch a part's pass makes SHALL count one against its stream's room and the host's, in that pass alone: the runner SHALL keep no count across parts (record 0026; core.9).
 
 #### Scenario: Room for one
 
@@ -349,7 +349,7 @@ By the runner's clock at the start of a control pass, an offer whose lease has e
 
 ### Requirement: The statuses are carried against Flume's listing as it stands once the wants are answered
 
-The statuses' listing SHALL be Flume's listing as it stands once the pull's wants are answered. Where answering them ran a `flume launch` or an act of Flume's, it SHALL be a `flume --json status` read then. Where it ran neither, it SHALL be the pass's listing (record 0027). A command runs no tool, so it SHALL NOT make the listing be read again.
+The statuses' listing SHALL be Flume's listing as it stands once the pull's wants are answered. Where answering them ran a `flume launch` or an act of Flume's, it SHALL be Flume's status as flume host gives it then. Where it ran neither, it SHALL be the pass's listing (record 0027). A command runs no tool, so it SHALL NOT make the listing be read again.
 
 #### Scenario: A place tidied while the pass answers its wants
 
@@ -359,12 +359,12 @@ The statuses' listing SHALL be Flume's listing as it stands once the pull's want
 #### Scenario: A quiet pass reads the listing once
 
 - **WHEN** a pass's wants run no `flume` command
-- **THEN** it runs `flume --json status` once, before its pull
+- **THEN** it reads Flume's status once, before its pull
 
 #### Scenario: A pass that answers a command reads the listing once
 
 - **WHEN** the runner holds launch `a` at a place Flume stands, and a pull gives the offer `a` and a branch command, and no other want
-- **THEN** the command is answered `refused`, naming sluice, and the pass runs `flume --json status` once, before its pull
+- **THEN** the command is answered `refused`, naming sluice, and the pass reads Flume's status once, before its pull
 
 ### Requirement: No answer turns on the round a want is taken in
 
