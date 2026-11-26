@@ -81,7 +81,7 @@ pub struct Entry {
     pub word: &'static str,
     pub open: Opener,
     /// Its enrollment, none where its partitions enroll nothing.
-    pub enroll: Option<Enroller>,
+    pub enrolling: Option<Enrolling>,
     /// The keys of its table the runner's local layer may set, each taken
     /// whole (record 0009 as amended 2026-11-07; core.17).
     pub local_keys: &'static [&'static str],
@@ -99,6 +99,40 @@ pub struct Entry {
     /// 0009 as amended 2026-11-11).
     pub set_up: Option<SetUp>,
 }
+
+/// An implementation's enrollment of a partition (design Decisions 3 and
+/// 4 of a-host-enrolls-from-one-command): the enrollment itself, whether
+/// its own table names one, and its own table with a partition set, each
+/// reading and writing its own keys alone (core.2).
+pub struct Enrolling {
+    pub enroll: Enroller,
+    /// Whether its own table `table`, of the configuration file `file`,
+    /// names the enrollment of the partition `label` at the control plane
+    /// `url`, serving each of `repositories`.
+    pub names: fn(
+        table: &toml::Table,
+        file: &Path,
+        url: &str,
+        label: &str,
+        repositories: &[String],
+    ) -> bool,
+    /// Its own table with the partition `label` at the control plane
+    /// `url`, serving `repositories`, set over `held`, the table as it
+    /// stands, where there is one; or why it is refused.
+    pub with_partition: PartitionSetter,
+}
+
+/// An implementation's own table with the partition `label` at the
+/// control plane `url`, serving `repositories`, set over `held`, the
+/// table as it stands, of the configuration file `file`; or why it is
+/// refused.
+pub type PartitionSetter = fn(
+    held: Option<&toml::Table>,
+    url: &str,
+    label: &str,
+    repositories: &[String],
+    file: &Path,
+) -> Result<toml::Table, String>;
 
 /// An implementation's setup of a drive on a host Nix does not manage
 /// (record 0009 as amended 2026-11-11; design Decision 11 of the change
@@ -221,7 +255,7 @@ pub const PLANES: [Entry; 2] = [
     Entry {
         word: "crew",
         open: crew,
-        enroll: None,
+        enrolling: None,
         local_keys: &boomdrive_crew::config::LOCAL_KEYS,
         read: crew_read,
         holds_the_app: None,
@@ -235,7 +269,11 @@ pub const PLANES: [Entry; 2] = [
     Entry {
         word: "hosted",
         open: hosted,
-        enroll: Some(hosted_enroll),
+        enrolling: Some(Enrolling {
+            enroll: hosted_enroll,
+            names: hosted_names,
+            with_partition: boomdrive_hosted::table::with_partition,
+        }),
         local_keys: &boomdrive_hosted::table::LOCAL_KEYS,
         read: hosted_read,
         holds_the_app: Some(hosted_tokens),
@@ -403,6 +441,32 @@ fn hosted_enroll(
         })
 }
 
+/// Whether the hosted table `table` names the enrollment of the partition
+/// `label` at `url`, serving each of `repositories`.
+fn hosted_names(
+    table: &toml::Table,
+    file: &Path,
+    url: &str,
+    label: &str,
+    repositories: &[String],
+) -> bool {
+    let (Ok(read), Ok(url)) = (
+        boomdrive_hosted::table::Table::read(table, file),
+        boomdrive_hosted::table::control_plane_address(url),
+    ) else {
+        return false;
+    };
+    read.names(&url, label, repositories)
+}
+
+/// The one entry that enrolls a partition, with its enrollment, none
+/// where no implementation this binary carries enrolls one.
+pub fn enrolling_entry() -> Option<(&'static Entry, &'static Enrolling)> {
+    PLANES
+        .iter()
+        .find_map(|entry| Some((entry, entry.enrolling.as_ref()?)))
+}
+
 /// The one entry that sets up a drive, with its setup, none where no
 /// implementation this binary carries sets one up.
 pub fn set_up_entry() -> Option<(&'static Entry, &'static SetUp)> {
@@ -522,7 +586,7 @@ pub fn enroll(
     token: impl FnOnce() -> Result<String, String>,
 ) -> Result<Enrolled, Refusal> {
     let enrolling = PLANES.iter().find_map(|entry| {
-        let enroller = entry.enroll?;
+        let enroller = entry.enrolling.as_ref()?.enroll;
         Some((enroller, table.table(entry.word)?))
     });
     let Some((enroller, own)) = enrolling else {
@@ -531,7 +595,7 @@ pub fn enroll(
                 "{}: no account names a control plane that enrolls: `boomdrive enroll` enrolls a \
                  partition of {}",
                 file.display(),
-                listed(PLANES.iter().filter(|entry| entry.enroll.is_some()))
+                listed(PLANES.iter().filter(|entry| entry.enrolling.is_some()))
             ),
             host_to_fix: true,
         });

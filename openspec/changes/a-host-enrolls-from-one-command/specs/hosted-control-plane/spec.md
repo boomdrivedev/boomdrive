@@ -187,7 +187,7 @@ Where enroll wrote the runner's file on macOS, it SHALL write and load setup's a
 
 ### Requirement: The answer names the file and the agent
 
-The answer SHALL keep `partition` and `host`, and add `config`, with `file` and `outcome`, `written` or `unchanged` (core.39). Where enroll wrote the file, the answer SHALL add `service`, with `file` and `outcome`, `loaded`, `restarted` or `running`. Without `--json`, enroll SHALL say one line for each step.
+The answer SHALL keep `partition` and `host`, and add `config`, with `file` and `outcome`, `written` or `unchanged` (core.39). Where enroll wrote the file, the answer SHALL add `service`, with `file` and `outcome`, `loaded`, `reloaded`, `restarted` or `running`. Without `--json`, enroll SHALL say one line for each step.
 
 #### Scenario: The answer
 

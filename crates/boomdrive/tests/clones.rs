@@ -924,7 +924,7 @@ fn a_cloud_hosts_failed_fetch_drops_its_token() {
 /// it, its partition `home` served `agentplot/flume` with no key of `home`
 /// in the host's store, and the fetch of `agentplot/flume` failing: its line
 /// gives git's words, then `; no forge token: ` and words naming `boomdrive
-/// enroll home`.
+/// enroll --control-plane <url> --drive home --repository <each>`.
 #[test]
 fn the_running_runner_asks_its_control_plane() {
     let scratch = Scratch::new();
@@ -971,6 +971,6 @@ fn the_running_runner_asks_its_control_plane() {
         gits.len() > "agentplot/flume: not fetched: ".len(),
         "{line}"
     );
-    assert!(asks.contains("`boomdrive enroll home`"), "{line}");
+    assert!(asks.contains("--drive home --repository "), "{line}");
     assert!(!creds.kept_or_read(), "{:?}", creds.calls());
 }

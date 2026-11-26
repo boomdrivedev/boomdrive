@@ -151,7 +151,7 @@ fn one_label_in_two_planes() {
 fn the_list() {
     let words: Vec<(&str, bool)> = PLANES
         .iter()
-        .map(|entry| (entry.word, entry.enroll.is_some()))
+        .map(|entry| (entry.word, entry.enrolling.is_some()))
         .collect();
     assert_eq!(words, [("crew", false), ("hosted", true)]);
 }

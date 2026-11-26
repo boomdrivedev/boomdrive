@@ -928,7 +928,7 @@ fn nothing_is_left_behind_on_a_cloud_host() {
 /// plane at a loopback port with nothing on it, its partition `home` served
 /// `agentplot/flume` and no key of `home` in the host's store, so it exits
 /// 2, with nothing on standard output and one line naming
-/// `boomdrive enroll home`.
+/// the command that enrolls `home`, `--drive home` with its repositories.
 #[test]
 fn a_cloud_host_with_no_partitions_key() {
     let scratch = Scratch::new();
@@ -968,7 +968,7 @@ fn a_cloud_host_with_no_partitions_key() {
     assert_eq!((code, stdout.as_str()), (Some(2), ""), "{stderr}");
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
     assert!(stderr.starts_with("boomdrive forge-token: "), "{stderr}");
-    assert!(stderr.contains("`boomdrive enroll home`"), "{stderr}");
+    assert!(stderr.contains("--drive home --repository "), "{stderr}");
 }
 
 /// The forge-tokens spec's "A repository no drive serves", by the binary,

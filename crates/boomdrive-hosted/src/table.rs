@@ -172,9 +172,45 @@ impl Table {
         KeyName::new(label, &plane)
     }
 
-    /// The command that enrolls the partition `label` of this table.
+    /// The command that enrolls the partition `label` of this table,
+    /// whole but for its token, which it takes on standard input: its
+    /// control plane, its drive and each of its repositories (design
+    /// Decision 7 of a-host-enrolls-from-one-command).
     pub fn enroll_command(&self, label: &str) -> String {
-        format!("boomdrive enroll {label}")
+        let url = self.url.as_str();
+        let mut words = format!(
+            "boomdrive enroll --control-plane {} --drive {label}",
+            url.strip_suffix('/').unwrap_or(url)
+        );
+        for repository in self
+            .partition(label)
+            .into_iter()
+            .flat_map(|p| &p.repositories)
+        {
+            words.push_str(" --repository ");
+            words.push_str(repository);
+        }
+        words
+    }
+
+    /// Whether this table names the enrollment of the partition `label`
+    /// at the control plane `url`, serving each of `repositories`: its
+    /// `url` enrolls where `url` does, and its partition `label` names each
+    /// repository, by its address ignoring case (design Decision 3 of
+    /// a-host-enrolls-from-one-command).
+    pub fn names(&self, url: &Url, label: &str, repositories: &[String]) -> bool {
+        self.enroll_address()
+            == with_slash(url)
+                .join(ENROLL_PATH)
+                .unwrap_or_else(|_| url.clone())
+            && self.partition(label).is_some_and(|partition| {
+                repositories.iter().all(|wanted| {
+                    partition
+                        .repositories
+                        .iter()
+                        .any(|served| served.eq_ignore_ascii_case(wanted))
+                })
+            })
     }
 
     /// Where an enrollment is sent: `runner/enroll` under the `url`.
@@ -207,14 +243,81 @@ impl Table {
     /// `path` under the `url`, whose path gains a `/` where it ends
     /// without one.
     fn joined(&self, path: &str) -> Url {
-        let mut base = self.url.clone();
-        if !base.path().ends_with('/') {
-            let with_slash = format!("{}/", base.path());
-            base.set_path(&with_slash);
-        }
+        let base = with_slash(&self.url);
         // `path` is relative and holds nothing a join refuses.
         base.join(path).unwrap_or(base)
     }
+}
+
+/// `url`, its path ending in a `/`.
+fn with_slash(url: &Url) -> Url {
+    let mut base = url.clone();
+    if !base.path().ends_with('/') {
+        let path = format!("{}/", base.path());
+        base.set_path(&path);
+    }
+    base
+}
+
+/// The control plane's address `text`, as the table's `url` takes it, or
+/// why it is refused, its value never quoted.
+pub fn control_plane_address(text: &str) -> Result<Url, String> {
+    address(Some(&Value::String(text.to_string())))
+}
+
+/// The hosted table of the configuration file `file` with the partition
+/// `label` serving `repositories`, set over `held`, the table as it
+/// stands, where there is one: its other keys and partitions kept, that
+/// partition replaced where it names one, and else added after them; or
+/// why it is refused, a `held` whose `url` enrolls elsewhere than `url`
+/// among them, since a host serves one hosted control plane (design
+/// Decision 3 of a-host-enrolls-from-one-command).
+pub fn with_partition(
+    held: Option<&toml::Table>,
+    url: &str,
+    label: &str,
+    repositories: &[String],
+    file: &Path,
+) -> Result<toml::Table, String> {
+    let wanted = control_plane_address(url)?;
+    let mut table = toml::Table::new();
+    if let Some(held) = held {
+        let read = Table::read(held, file)?;
+        if read.enroll_address()
+            != with_slash(&wanted)
+                .join(ENROLL_PATH)
+                .unwrap_or(wanted.clone())
+        {
+            return Err(format!(
+                "{TABLE} names the control plane at {}, and the enrollment names {wanted}: a host \
+                 serves one hosted control plane",
+                read.url
+            ));
+        }
+        table = held.clone();
+    } else {
+        table.insert("url".to_string(), Value::String(url.to_string()));
+    }
+    let mut partition = toml::Table::new();
+    partition.insert("label".to_string(), Value::String(label.to_string()));
+    partition.insert(
+        "repositories".to_string(),
+        Value::Array(repositories.iter().cloned().map(Value::String).collect()),
+    );
+    let mut partitions: Vec<Value> = match table.remove("partitions") {
+        Some(Value::Array(partitions)) => partitions,
+        _ => Vec::new(),
+    };
+    match partitions
+        .iter_mut()
+        .find(|held| held.get("label").and_then(Value::as_str) == Some(label))
+    {
+        Some(held) => *held = Value::Table(partition),
+        None => partitions.push(Value::Table(partition)),
+    }
+    table.insert("partitions".to_string(), Value::Array(partitions));
+    Table::read(&table, file)?;
+    Ok(table)
 }
 
 /// The `url` `value` gives, or why it is refused, its value never quoted:
@@ -338,6 +441,99 @@ mod tests {
 
     fn with_url(url: &str) -> String {
         format!("url = {url:?}\n\n{PARTITIONS}")
+    }
+
+    /// The whole command that enrolls a partition names its control
+    /// plane, its drive and each of its repositories (design Decision 7
+    /// of a-host-enrolls-from-one-command).
+    #[test]
+    fn the_command_that_enrolls_a_partition() {
+        let table = read_table(&with_url("https://control.example")).unwrap();
+        assert_eq!(
+            table.enroll_command("work"),
+            "boomdrive enroll --control-plane https://control.example --drive work \
+             --repository example/service --repository example/app"
+        );
+    }
+
+    /// A table names an enrollment where its `url` enrolls where the
+    /// enrollment's does and its partition serves each repository, by
+    /// address ignoring case.
+    #[test]
+    fn a_table_names_an_enrollment() {
+        let table = read_table(&with_url("https://control.example/")).unwrap();
+        let url = |text: &str| Url::parse(text).unwrap();
+        let app = ["Example/App".to_string()];
+        assert!(table.names(&url("https://control.example"), "home", &app));
+        assert!(!table.names(&url("https://other.example"), "home", &app));
+        assert!(!table.names(&url("https://control.example"), "garden", &app));
+        let more = ["example/app".to_string(), "example/crew".to_string()];
+        assert!(!table.names(&url("https://control.example"), "home", &more));
+    }
+
+    /// A partition set over no table makes the table, and over a table
+    /// replaces its partition of the label or adds one, its other keys
+    /// and partitions kept.
+    #[test]
+    fn a_partition_set() {
+        let file = Path::new(FILE);
+        let repositories = ["madswan/atlas".to_string()];
+        let made = with_partition(
+            None,
+            "https://control.example",
+            "atlas",
+            &repositories,
+            file,
+        )
+        .unwrap();
+        let read = Table::read(&made, file).unwrap();
+        assert_eq!(read.partitions.len(), 1);
+        assert!(read.names(&read.url, "atlas", &repositories));
+
+        let held: toml::Table = toml::from_str(&with_url("https://control.example")).unwrap();
+        let added = with_partition(
+            Some(&held),
+            "https://control.example",
+            "atlas",
+            &repositories,
+            file,
+        )
+        .unwrap();
+        let labels: Vec<String> = Table::read(&added, file)
+            .unwrap()
+            .partitions
+            .into_iter()
+            .map(|partition| partition.label)
+            .collect();
+        assert_eq!(labels, ["home", "work", "atlas"]);
+
+        let replaced = with_partition(
+            Some(&held),
+            "https://control.example",
+            "home",
+            &repositories,
+            file,
+        )
+        .unwrap();
+        let read = Table::read(&replaced, file).unwrap();
+        assert_eq!(read.partitions[0].repositories, repositories);
+        assert_eq!(read.partitions.len(), 2);
+    }
+
+    /// A partition is not set over a table at another control plane.
+    #[test]
+    fn a_partition_of_another_control_plane() {
+        let held: toml::Table = toml::from_str(&with_url("https://other.example")).unwrap();
+        let refused = with_partition(
+            Some(&held),
+            "https://control.example",
+            "atlas",
+            &["madswan/atlas".to_string()],
+            Path::new(FILE),
+        )
+        .unwrap_err();
+        assert!(refused.contains("https://other.example"), "{refused}");
+        assert!(refused.contains("https://control.example"), "{refused}");
     }
 
     #[test]

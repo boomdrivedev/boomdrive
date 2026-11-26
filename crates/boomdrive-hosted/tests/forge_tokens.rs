@@ -195,8 +195,8 @@ fn a_control_plane_that_never_answers() {
 
 /// The hosted-control-plane spec's "No key of the partition": `home` is
 /// served `example/app` and the store holds no key of it, so the ask is
-/// the host's to fix, naming `boomdrive enroll home`, and no request is
-/// made.
+/// the host's to fix, naming the whole command that enrolls `home`, and
+/// no request is made.
 #[test]
 fn no_key_of_the_partition() {
     let fake = Fake::start();
@@ -207,7 +207,11 @@ fn no_key_of_the_partition() {
 
     let (words, host_to_fix) = refusal(&asked);
     assert!(host_to_fix, "{words}");
-    assert!(words.contains("`boomdrive enroll home`"), "{words}");
+    let command = format!(
+        "`boomdrive enroll --control-plane {} --drive home --repository example/app`",
+        fake.url()
+    );
+    assert!(words.contains(&command), "{words}");
     assert!(fake.taken().is_empty(), "{:#?}", fake.taken());
 }
 

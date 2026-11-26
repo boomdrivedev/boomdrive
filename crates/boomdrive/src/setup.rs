@@ -290,7 +290,7 @@ fn set_up(flags: &Flags, say: &mut dyn FnMut(&str)) -> Result<Value, Refusal> {
     // The agent (design Decision 9).
     let launchctl =
         find("launchctl").ok_or_else(|| host("`launchctl` is not on setup's PATH".to_string()))?;
-    let service = load_agent(&home, &managed, &launchctl)?;
+    let service = load_agent(&home, &managed, &launchctl, false)?;
     say(&format!(
         "{}: {}",
         service["file"].as_str().unwrap_or_default(),
@@ -656,7 +656,7 @@ pub fn check_host(host_of: &Host<'_>) -> Result<(), Refusal> {
 }
 
 /// Whether the file at `path` is setup's own, its first line setup's.
-fn is_setups(path: &Path) -> bool {
+pub(crate) fn is_setups(path: &Path) -> bool {
     std::fs::read_to_string(path).is_ok_and(|text| text.lines().next() == Some(FIRST_LINE))
 }
 
@@ -900,7 +900,7 @@ fn basic(text: &str) -> String {
 /// moved to `config.toml.before-setup` first (design Decision 6). Gives
 /// the file, its outcome, `written` or `unchanged`, and where a person's
 /// file was moved, or null.
-fn write_runner_file(managed: &Path, text: &str) -> Result<Value, Refusal> {
+pub(crate) fn write_runner_file(managed: &Path, text: &str) -> Result<Value, Refusal> {
     let unwritten = |e: std::io::Error| host(format!("{}: {e}", managed.display()));
     let folder = managed.parent().expect("the file's folder");
     std::fs::create_dir_all(folder).map_err(unwritten)?;
@@ -1148,10 +1148,18 @@ fn xml(text: &str) -> String {
 /// bytes differ, then loads it into the login's domain (design Decision
 /// 9): bootstrapped where `launchctl print` finds no agent, booted out
 /// first where the plist changed and one is loaded, and neither where it
-/// is loaded and unchanged. A refusal of `launchctl`'s is the tool's, with
-/// its words. Gives the plist, whether it was written, and the agent's
-/// outcome, `loaded`, `reloaded` or `running`.
-fn load_agent(home: &Path, config_file: &Path, launchctl: &Path) -> Result<Value, Refusal> {
+/// is loaded and unchanged, but that, where `restart` asks, a loaded and
+/// unchanged agent is restarted by `launchctl kickstart -k`, so it reads a
+/// file changed under it (design Decision 5 of
+/// a-host-enrolls-from-one-command). A refusal of `launchctl`'s is the
+/// tool's, with its words. Gives the plist, whether it was written, and
+/// the agent's outcome, `loaded`, `reloaded`, `restarted` or `running`.
+pub(crate) fn load_agent(
+    home: &Path,
+    config_file: &Path,
+    launchctl: &Path,
+    restart: bool,
+) -> Result<Value, Refusal> {
     let plist = home
         .join("Library/LaunchAgents")
         .join(format!("{LABEL}.plist"));
@@ -1169,7 +1177,17 @@ fn load_agent(home: &Path, config_file: &Path, launchctl: &Path) -> Result<Value
         .status
         .success();
     let plist_text = plist.display().to_string();
-    let outcome = if loaded && !changed {
+    let outcome = if loaded && !changed && restart {
+        let out = run(launchctl, &["kickstart", "-k", service.as_str()], &[]).map_err(tool)?;
+        if !out.status.success() {
+            return Err(tool(format!(
+                "`launchctl kickstart -k {service}` exited {}: {}",
+                exit_of(&out),
+                words_of(&out)
+            )));
+        }
+        "restarted"
+    } else if loaded && !changed {
         "running"
     } else {
         if loaded {

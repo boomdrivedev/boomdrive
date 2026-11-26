@@ -52,7 +52,7 @@ Where enroll wrote the file on macOS, it writes setup's agent, `io.github.agentp
 
 ### Decision 6: The answer gains the file and the agent
 
-The answer keeps its form and gains fields (core.39). It is `{"enrolled":{"partition","host","config":{"file","outcome"},"service":{"file","outcome"}}}`. `config.outcome` is `written` or `unchanged`. `service` is there only where enroll wrote the file. Its outcome is `loaded`, `restarted` or `running`. Without `--json`, enroll says one line for each step. No output holds the token (core.4).
+The answer keeps its form and gains fields (core.39). It is `{"enrolled":{"partition","host","config":{"file","outcome"},"service":{"file","outcome"}}}`. `config.outcome` is `written` or `unchanged`. `service` is there only where enroll wrote the file. Its outcome is `loaded`, `reloaded`, `restarted` or `running`. Without `--json`, enroll says one line for each step. No output holds the token (core.4).
 
 ### Decision 7: The words that name the enrollment name the whole command
 
