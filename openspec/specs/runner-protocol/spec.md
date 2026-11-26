@@ -633,7 +633,7 @@ Version 6's control plane SHALL send `newest_release`, `{"version": …}`, close
 #### Scenario: The upgrade's subprotocol
 
 - **WHEN** a partition's connection is dialed
-- **THEN** its upgrade asks for the subprotocol of the version spoken alone, `boomdrive.v5` while version 5 is marked spoken
+- **THEN** its upgrade asks for the subprotocol of the version spoken alone, `boomdrive.v6` while version 6 is marked spoken
 
 ### Requirement: The runner's code reads and writes versions 5 and 6
 
