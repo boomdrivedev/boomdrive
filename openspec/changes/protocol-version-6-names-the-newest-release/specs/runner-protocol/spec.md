@@ -51,7 +51,7 @@ Version 6's control plane SHALL send `newest_release`, `{"version": …}`, close
 
 ### Requirement: Each direction sends only its own kinds
 
-A runner SHALL send only `enroll`, `hello`, `report`, `terminal_opened`, `terminal_output`, `terminal_closed` and `message_refused`, and in version 4 `forge_token`. A control plane SHALL send only `enrolled`, `enroll_refused`, `pulled`, `reported`, `terminal_open`, `terminal_resume`, `terminal_input`, `terminal_close` and `message_refused`, in version 4 `forge_token_given` and `forge_token_refused`, and in version 6 `newest_release`. Each direction's envelope SHALL take its own kinds alone (core.42, record 0053).
+A runner SHALL send only `enroll`, `hello`, `report`, `terminal_opened`, `terminal_output`, `terminal_closed`, `message_refused` and, from version 4, `forge_token`. A control plane SHALL send only `enrolled`, `enroll_refused`, `pulled`, `reported`, the four `terminal_` kinds and `message_refused`, from version 4 `forge_token_given` and `forge_token_refused`, and from version 6 `newest_release`. Each envelope SHALL take its own kinds alone (core.42).
 
 #### Scenario: A body of the other direction
 

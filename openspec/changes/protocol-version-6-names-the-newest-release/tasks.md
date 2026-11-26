@@ -12,8 +12,8 @@
 
 ## 3. The gate
 
-- [ ] 3.1 The crate's checks and the cloud's lead pass. True when `sluice exec main` passes, `boomdrive-hosted:cloud-protocol` among its tasks.
+- [x] 3.1 The crate's checks and the cloud's lead pass. True when `sluice exec main -- moon run boomdrive-hosted:format boomdrive-hosted:lint boomdrive-hosted:typecheck boomdrive-hosted:test boomdrive-hosted:cloud-protocol` passes.
 
 ## 4. The specs
 
-- [ ] 4.1 The change passes OpenSpec's strict check and archives into specs that pass it (core.61). True when `sluice exec main -- moon run root:specs root:changes` passes.
+- [x] 4.1 The change passes OpenSpec's strict check and archives into specs that pass it (core.61). True when `sluice exec main -- moon run root:specs root:changes` passes.
