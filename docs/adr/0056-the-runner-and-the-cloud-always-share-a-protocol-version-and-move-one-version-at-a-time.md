@@ -1,7 +1,7 @@
 ---
 number: 56
 title: The runner and the cloud always share a protocol version, and move one version at a time
-status: accepted
+status: superseded by the Boom decision the-cloud-leads-the-runners-protocol
 date: 2026-11-19
 decision-makers:
 - Chuck Swanberg
@@ -10,7 +10,7 @@ decision-makers:
 
 # The runner and the cloud always share a protocol version, and move one version at a time
 
-Status: accepted by the user on 2026-11-19, on their card. Point 4 amended on 2026-11-19, below: a runner that speaks several versions tries one version at a time.
+Status: superseded by the Boom decision `the-cloud-leads-the-runners-protocol`, the user's ruling of 2026-11-26 that the cloud leads the runner's protocol. Accepted by the user on 2026-11-19, on their card. Point 4 amended on 2026-11-19, below: a runner that speaks several versions tries one version at a time.
 
 The runner and Boomdrive Cloud always have at least one protocol version they both speak. Each one's merge checks refuse a change that would leave none in common. A side stops speaking a version only once the other has moved past it, and a new version opens only once the other side speaks the one before it. So the two move a version at a time, and a released runner can always reach the cloud.
 
