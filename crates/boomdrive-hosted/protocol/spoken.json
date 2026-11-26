@@ -18,11 +18,11 @@
     },
     {
       "version": 5,
-      "spoken": true
+      "spoken": false
     },
     {
       "version": 6,
-      "spoken": false
+      "spoken": true
     }
   ]
 }
