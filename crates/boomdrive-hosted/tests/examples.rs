@@ -1,14 +1,16 @@
-//! Version 5's examples, each a whole message under
+//! The spoken version's examples, each a whole message under
 //! `examples/from-runner/` or `examples/to-runner/`, pass their
 //! direction's envelope, and the runner's types read each and write it
 //! back as it was (design Decisions 2, 13 and 14 of
 //! the-runner-dials-the-hosted-control-plane). Version 1's, version 2's
 //! version 3's and version 4's examples still pass their own version's
-//! envelopes (records 0037, 0052, 0053 and 0054).
+//! envelopes (records 0037, 0052, 0053 and 0054). Version 6's examples
+//! pass version 6's envelopes and read into the runner's types, its
+//! `newest_release` among them, while the runner speaks version 5.
 
 mod common;
 
-use boomdrive_hosted::protocol::v5::{FromRunner, Message, MessageId, ToRunner};
+use boomdrive_hosted::protocol::v6::{FromRunner, Message, MessageId, ToRunner};
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
@@ -118,7 +120,10 @@ fn every_kind_has_an_example() {
         ("from-runner", &FROM_RUNNER[..]),
         ("to-runner", &TO_RUNNER[..]),
     ] {
-        let listed: BTreeSet<String> = listed.iter().map(|kind| kind.to_string()).collect();
+        let mut listed: BTreeSet<String> = listed.iter().map(|kind| kind.to_string()).collect();
+        if direction == "to-runner" && common::current().number >= 6 {
+            listed.insert("newest_release".to_string());
+        }
         assert_eq!(
             kinds(direction),
             listed,
@@ -357,4 +362,63 @@ fn a_tokens_debug_names_its_end_alone() {
         text,
         "the Debug of a token given turns on its token"
     );
+}
+
+/// The runner-protocol spec's "Version 6's examples read": each example
+/// of version 6 passes its direction's envelope of version 6, reads into
+/// the runner's types and writes back equal, and `newest_release.json`
+/// reads as a newest release naming its version; a `newest_release` that
+/// names a field version 6 does not, names no version, or names one that
+/// is no release's, fails version 6's envelope, as does any of them under
+/// version 5 (design Decision 1 of
+/// protocol-version-6-names-the-newest-release).
+#[test]
+fn version_6s_examples_read() {
+    let (v5, v6) = (common::V5, common::V6);
+    for (direction, validator) in [
+        ("from-runner", v6.messages_from_runner()),
+        ("to-runner", v6.messages_to_runner()),
+    ] {
+        for (name, value) in v6.examples(direction) {
+            let what = format!("version 6's {direction}/{name}");
+            passes(&validator, &value, &what);
+            let written = match direction {
+                "from-runner" => serde_json::to_value(
+                    serde_json::from_value::<Message<FromRunner>>(value.clone())
+                        .unwrap_or_else(|e| panic!("{what} does not read: {e}")),
+                ),
+                _ => serde_json::to_value(
+                    serde_json::from_value::<Message<ToRunner>>(value.clone())
+                        .unwrap_or_else(|e| panic!("{what} does not read: {e}")),
+                ),
+            }
+            .unwrap();
+            assert_eq!(written, value, "{what} written back differs");
+        }
+    }
+
+    let newest = v6.example("to-runner", "newest_release.json");
+    let message: Message<ToRunner> = serde_json::from_value(newest.clone()).unwrap();
+    let ToRunner::NewestRelease(release) = message.body else {
+        panic!("newest_release.json holds no newest_release");
+    };
+    assert_eq!(release.version, "0.32.0");
+
+    let to_v6 = v6.messages_to_runner();
+    let to_v5 = v5.messages_to_runner();
+    let mut as_v5 = newest.clone();
+    as_v5["protocol_version"] = Value::from(5);
+    assert!(!to_v5.is_valid(&as_v5), "version 5 takes a newest_release");
+    for body in [
+        serde_json::json!({ "version": "0.32.0", "url": "https://example.com" }),
+        serde_json::json!({}),
+        serde_json::json!({ "version": "v0.32.0" }),
+        serde_json::json!({ "version": "0.32" }),
+        serde_json::json!({ "version": "0.32.0-rc.1" }),
+        serde_json::json!({ "version": "00.32.0" }),
+    ] {
+        let mut failing = newest.clone();
+        failing["body"]["newest_release"] = body.clone();
+        assert!(!to_v6.is_valid(&failing), "version 6 takes {body}");
+    }
 }

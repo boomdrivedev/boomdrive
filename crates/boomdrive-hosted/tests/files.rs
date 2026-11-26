@@ -1687,3 +1687,79 @@ fn version_5_is_version_4_but_for_its_unleased_places() {
         }
     }
 }
+
+/// The runner-protocol spec's "Version 6 is version 5 but for the newest
+/// release" and "Version 6's examples are version 5's" (design Decision 1
+/// of protocol-version-6-names-the-newest-release): each schema file of
+/// version 6, its descriptions set aside, its `$id` read as version 5's,
+/// its envelope's `protocol_version` read as 5, and `newest_release` taken
+/// out of `to-runner.schema.json`, its branch and its definition, equals
+/// version 5's file with its descriptions set aside. Version 6's examples
+/// are version 5's and `to-runner/newest_release.json`, and each of
+/// version 5's, its `protocol_version` read as 5, equals version 5's,
+/// `enroll.json`'s signature too. A failure names the file and the
+/// pointer of the first difference, and no value (core.11).
+#[test]
+fn version_6_is_version_5_but_for_the_newest_release() {
+    let (v5, v6) = (common::V5, common::V6);
+    let names = |version: common::Version| -> BTreeSet<&'static str> {
+        version.files.iter().map(|(name, _)| *name).collect()
+    };
+    assert_eq!(names(v6), names(v5), "version 6's files are version 5's");
+    let old: BTreeMap<&str, Value> = v5
+        .files()
+        .into_iter()
+        .map(|(name, value)| (name, without_descriptions(&value)))
+        .collect();
+    for (name, value) in v6.files() {
+        let mut read = without_descriptions(&value);
+        read["$id"] = Value::from(v5.address(name));
+        if read.pointer("/properties/protocol_version").is_some() {
+            let version = read
+                .pointer_mut("/properties/protocol_version/const")
+                .unwrap();
+            assert_eq!(*version, 6, "{name}'s protocol_version is not 6");
+            *version = Value::from(5);
+        }
+        if name == "to-runner.schema.json" {
+            take_definition(&mut read, name, "newest_release");
+            let bodies = read
+                .pointer_mut("/$defs/body/oneOf")
+                .and_then(Value::as_array_mut)
+                .expect("to-runner.schema.json's body's branches");
+            let before = bodies.len();
+            bodies.retain(|branch| branch.pointer("/properties/newest_release").is_none());
+            assert_eq!(
+                bodies.len() + 1,
+                before,
+                "version 6's control plane sends newest_release"
+            );
+        }
+        if let Some(path) = first_difference(&read, &old[name], "") {
+            panic!("version 6's {name} differs from version 5's at {path}");
+        }
+    }
+
+    let examples = |version: common::Version| -> BTreeSet<String> {
+        let root = version.dir().join("examples");
+        let mut found = Vec::new();
+        files_under(&root, &root, &mut found);
+        found.into_iter().collect()
+    };
+    let mut expected = examples(v5);
+    expected.insert("to-runner/newest_release.json".to_string());
+    assert_eq!(
+        examples(v6),
+        expected,
+        "version 6's examples are version 5's, and the newest release"
+    );
+    for name in examples(v5) {
+        let (direction, file) = name.split_once('/').unwrap();
+        let mut read = v6.example(direction, file);
+        assert_eq!(read["protocol_version"], 6, "{name}'s protocol_version");
+        read["protocol_version"] = Value::from(5);
+        if let Some(path) = first_difference(&read, &v5.example(direction, file), "") {
+            panic!("version 6's example {name} differs from version 5's at {path}");
+        }
+    }
+}

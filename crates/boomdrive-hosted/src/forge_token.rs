@@ -19,7 +19,8 @@
 
 use crate::check;
 use crate::key::{self, Store};
-use crate::protocol::v5::{self, FromRunner, Message, MessageId, ToRunner, VERSION};
+use crate::protocol::spoken;
+use crate::protocol::v6::{self, FromRunner, Message, MessageId, ToRunner};
 use crate::table::{Partition, Table};
 use boomdrive_control::{ForgeToken, ForgeTokens, TokenAsked};
 use serde_json::Value;
@@ -119,25 +120,29 @@ impl Tokens {
             }
         };
 
+        let version = spoken();
+        let number = version.number;
         let origin = self.table.origin();
         let nonce = key::nonce().map_err(Passed::NotAsked)?;
         let time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|since| since.as_secs())
             .unwrap_or_default();
-        let statement = key::forge_token_statement(&key, &origin, time, &nonce, repository);
+        let statement =
+            key::forge_token_statement(&key, version, &origin, time, &nonce, repository);
         let id = MessageId::new(Uuid::now_v7().to_string());
         let message = Message::new(
+            version,
             id.clone(),
-            FromRunner::ForgeToken(v5::ForgeToken {
+            FromRunner::ForgeToken(v6::ForgeToken {
                 repository: repository.to_string(),
             }),
         );
         let body = serde_json::to_value(&message)
             .map_err(|e| Passed::NotAsked(format!("the ask could not be written: {e}")))?;
-        if let Some(words) = check::failure(check::from_runner(), &body) {
+        if let Some(words) = check::failure(check::from_runner(version), &body) {
             return Err(Passed::NotAsked(format!(
-                "the ask fails version {VERSION}'s check, so is not sent: {words}"
+                "the ask fails version {number}'s check, so is not sent: {words}"
             )));
         }
 
@@ -183,12 +188,12 @@ impl Tokens {
         let answer: Value = serde_json::from_str(&text).map_err(|_| {
             Passed::Refused(format!(
                 "the control plane answered {status} at {PATH} with no message of version \
-                 {VERSION}"
+                 {number}"
             ))
         })?;
-        if let Some(words) = check::failure(check::to_runner(), &answer) {
+        if let Some(words) = check::failure(check::to_runner(version), &answer) {
             return Err(Passed::Refused(format!(
-                "the control plane's answer at {PATH}, {status}, fails version {VERSION}'s \
+                "the control plane's answer at {PATH}, {status}, fails version {number}'s \
                  check: {words}"
             )));
         }

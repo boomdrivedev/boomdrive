@@ -5,8 +5,8 @@
 
 mod common;
 
-use boomdrive_hosted::protocol::v5::{FromRunner, Message, ToRunner};
-use common::{example, examples, from_runner, passes, refused, to_runner, V1, V2, V3, V4, V5};
+use boomdrive_hosted::protocol::v6::{FromRunner, Message, ToRunner};
+use common::{example, examples, from_runner, passes, refused, to_runner, V1, V2, V3, V4, V5, V6};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -38,32 +38,31 @@ fn a_message_with_no_id() {
 }
 
 /// The runner-protocol spec's "A message of another version": every
-/// message of a version names it, so a hello naming 4 is no message of
-/// version 5 and one naming 5 none of version 4, and each older pair
+/// message of a version names it, so a hello naming 5 is no message of
+/// version 6 and one naming 6 none of version 5, and each older pair
 /// likewise; and one naming any other number, or the version as text, is
-/// none of version 5 (core.42; records 0052, 0053 and 0054).
+/// none of the version spoken (core.42; records 0052, 0053 and 0054).
 #[test]
 fn a_message_of_another_version() {
     let validator = from_runner();
-    for version in [
-        json!(1),
-        json!(2),
-        json!(3),
-        json!(4),
-        json!(6),
-        json!(0),
-        json!("5"),
-    ] {
+    let spoken = common::current().number;
+    let others = (0..=7)
+        .filter(|number| *number != spoken)
+        .map(|number| json!(number))
+        .chain([json!(spoken.to_string())]);
+    for version in others {
         let other = altered("from-runner", "hello.json", |hello| {
             hello["protocol_version"] = version.clone();
         });
         refused(
             &validator,
             &other,
-            &format!("a hello naming protocol_version {version}, against version 5"),
+            &format!("a hello naming protocol_version {version}, against version {spoken}"),
         );
     }
     for (version, against) in [
+        (V5, V6),
+        (V6, V5),
         (V4, V5),
         (V5, V4),
         (V3, V4),

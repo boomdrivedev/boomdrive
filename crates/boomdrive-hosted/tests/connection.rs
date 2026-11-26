@@ -11,10 +11,10 @@ mod common;
 
 use boomdrive_hosted::connection::{Connection, Dial, Say, Wake};
 use boomdrive_hosted::key::{Memory, Store};
-use boomdrive_hosted::protocol::v5::Hello;
+use boomdrive_hosted::protocol::v6::Hello;
 use boomdrive_hosted::table::Table;
 use common::example;
-use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
+use common::fake::{kind, subprotocol, Fake, Taken};
 use ed25519_dalek::SigningKey;
 use serde_json::{json, Value};
 use std::path::Path;
@@ -269,7 +269,7 @@ fn a_connection_proved() {
         else {
             unreachable!()
         };
-        assert_eq!(protocols, &[SUBPROTOCOL.to_string()]);
+        assert_eq!(protocols, &[subprotocol().to_string()]);
         // The fake names the partition only where the signature checks
         // over the README's context with an enrolled key.
         assert_eq!(partition.as_deref(), Some("home"), "{upgrade:#?}");
@@ -342,13 +342,16 @@ async fn a_control_plane_that_speaks_version_1_alone() {
     let lines = lines.all();
     assert_eq!(lines.len(), 1, "{lines:#?}");
     assert!(lines[0].starts_with("home: "), "{lines:#?}");
-    assert!(lines[0].contains(SUBPROTOCOL), "{lines:#?}");
-    assert_eq!(SUBPROTOCOL, "boomdrive.v5");
+    assert!(lines[0].contains(subprotocol()), "{lines:#?}");
+    assert_eq!(
+        subprotocol(),
+        format!("boomdrive.v{}", boomdrive_hosted::protocol::spoken().number)
+    );
     for upgrade in upgrades(&taken) {
         let Taken::Upgrade { protocols, .. } = upgrade else {
             unreachable!("an upgrade");
         };
-        assert_eq!(protocols, &[SUBPROTOCOL.to_string()]);
+        assert_eq!(protocols, &[subprotocol().to_string()]);
     }
     assert!(messages(&taken).is_empty(), "{taken:#?}");
     // A subprotocol refused waits at the backoff's cap.
@@ -632,8 +635,9 @@ fn a_pulled_with_a_field_unnamed() {
     let words = refusal["body"]["message_refused"]["words"]
         .as_str()
         .expect("words");
+    let spoken = boomdrive_hosted::protocol::spoken().number;
     assert!(
-        words.starts_with("it fails version 5's check: /"),
+        words.starts_with(&format!("it fails version {spoken}'s check: /")),
         "{words}"
     );
     assert!(!words.contains("n0t-sh0wn"), "{words}");
@@ -660,7 +664,7 @@ fn a_pulled_with_a_field_unnamed() {
     );
 }
 
-/// A `pulled` of `version`, under the id `id`, fails version 5's check,
+/// A `pulled` of `version`, under the id `id`, fails the spoken version's check,
 /// is answered with `message_refused` naming it, its words saying so, and
 /// the pull gives none of its wants (design Decision 4 of
 /// the-hosted-protocol-carries-every-end-of-a-place and of
@@ -697,8 +701,9 @@ fn a_message_of(version: common::Version, id: &str) {
     let words = refusal["body"]["message_refused"]["words"]
         .as_str()
         .expect("words");
+    let spoken = boomdrive_hosted::protocol::spoken().number;
     assert!(
-        words.starts_with("it fails version 5's check: /"),
+        words.starts_with(&format!("it fails version {spoken}'s check: /")),
         "{words}"
     );
 
@@ -902,4 +907,99 @@ fn a_hello_the_control_plane_refuses_is_said_by_its_kind() {
         assert!(std::time::Instant::now() < deadline, "{:#?}", lines.all());
         std::thread::sleep(Duration::from_millis(10));
     }
+}
+
+/// `home`'s connection to `fake` speaking `version`, its hello handed and
+/// its first `pulled` read, with the lines it says.
+fn speaking(
+    fake: &Fake,
+    version: &'static boomdrive_hosted::protocol::Version,
+    runtime: &tokio::runtime::Runtime,
+) -> (Connection, Lines) {
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let mut dial = dial(fake, store(fake, &key), &lines, &wakes);
+    dial.version = version;
+    let connection = Connection::open(runtime.handle(), dial);
+    connection.hand(&hello()).expect("handed");
+    connection.read(PATIENCE).expect("home is read");
+    (connection, lines)
+}
+
+/// The lines that name a newest release.
+fn newest(lines: &[String]) -> Vec<&String> {
+    lines
+        .iter()
+        .filter(|line| line.contains("the newest release is"))
+        .collect()
+}
+
+/// The hosted-control-plane spec's "A newest release is said once on each
+/// connection" (design Decision 4 of
+/// protocol-version-6-names-the-newest-release): on a connection of
+/// version 6, whose upgrade offers `boomdrive.v6` and whose statement the
+/// fake checks over version 6's context, a `newest_release` is said in one
+/// line naming the runner's version from its hello and the release; the
+/// same release again says nothing; another release is said; and after a
+/// reconnect, the same release is said again. Nothing is refused.
+#[test]
+fn a_newest_release_is_said_once_on_each_connection() {
+    let fake = Fake::speaking(&boomdrive_hosted::protocol::V6);
+    let runtime = runtime();
+    let (_connection, lines) = speaking(&fake, &boomdrive_hosted::protocol::V6, &runtime);
+    let protocols = match upgrades(&fake.taken())[0] {
+        Taken::Upgrade { protocols, .. } => protocols.clone(),
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(protocols, ["boomdrive.v6"]);
+
+    for version in ["0.32.0", "0.32.0", "0.33.0"] {
+        fake.send_body("home", "newest_release", json!({ "version": version }))
+            .expect("sent");
+    }
+    let said = runtime.block_on(lines.until("the second release", |l| newest(l).len() == 2));
+    assert_eq!(
+        newest(&said),
+        [
+            "home: this runner is boomdrive 0.1.0, and the newest release is 0.32.0",
+            "home: this runner is boomdrive 0.1.0, and the newest release is 0.33.0",
+        ]
+    );
+
+    fake.drop_connection("home");
+    fake.wait_until("a second hello", |t| sent(t, "hello") == 2);
+    runtime.block_on(lines.until("the control plane reached again", |l| {
+        l.iter().filter(|line| line.ends_with("is reached")).count() == 2
+    }));
+    fake.send_body("home", "newest_release", json!({ "version": "0.33.0" }))
+        .expect("sent");
+    let said = runtime.block_on(lines.until("the release again", |l| newest(l).len() == 3));
+    assert!(newest(&said)[2].ends_with("the newest release is 0.33.0"));
+    assert_eq!(sent(&fake.taken(), "message_refused"), 0);
+}
+
+/// The hosted-control-plane spec's "Version 5 carries no newest release":
+/// a `newest_release` on a connection of version 5 fails its check and is
+/// answered with `message_refused` naming it, and no line names a
+/// release.
+#[test]
+fn version_5_carries_no_newest_release() {
+    let fake = Fake::speaking(&boomdrive_hosted::protocol::V5);
+    let runtime = runtime();
+    let (_connection, lines) = speaking(&fake, &boomdrive_hosted::protocol::V5, &runtime);
+    let id = fake
+        .send_body("home", "newest_release", json!({ "version": "0.32.0" }))
+        .expect("sent");
+
+    let taken = fake.wait_until("a message_refused", |t| sent(t, "message_refused") == 1);
+    let refusal = messages(&taken)
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("message_refused"))
+        .expect("a refusal");
+    assert_eq!(refusal["body"]["message_refused"]["message"], json!(id));
+    assert!(refusal["body"]["message_refused"]["words"]
+        .as_str()
+        .is_some_and(|words| words.starts_with("it fails version 5's check: /")));
+    assert!(newest(&lines.all()).is_empty(), "{:#?}", lines.all());
 }

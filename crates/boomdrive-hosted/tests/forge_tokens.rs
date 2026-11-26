@@ -117,7 +117,10 @@ fn a_token_given() {
     };
     assert_eq!(partition.as_deref(), Some("home"));
     assert_eq!(refused, &None, "the ask passed version 5");
-    assert_eq!(message["protocol_version"], json!(5));
+    assert_eq!(
+        message["protocol_version"],
+        json!(boomdrive_hosted::protocol::spoken().number)
+    );
     assert_eq!(
         message["body"],
         json!({ "forge_token": { "repository": "example/app" } })
