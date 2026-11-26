@@ -207,7 +207,7 @@ The configuration MAY set `code_workspaces`: true where the runner keeps a VS Co
 
 ### Requirement: The local layer sets the repositories and a control plane's partitions alone
 
-The local layer MAY set each drive's `repositories`, `accounts.<account>.drives.<drive>.repositories`, and in a control plane's table, `[control_plane.<type>]`, the keys its implementation lists for it: `partitions`, in crew's table and in the hosted one's. Each SHALL be one key, its value read whole as the managed layer's is read. Every command of the runner SHALL read both layers (record 0009 as amended 2026-11-06; record 0028 as amended 2026-11-07; core.17; flume record 0032).
+The local layer MAY set each drive's `repositories`. In a control plane's table, it MAY set the keys its implementation lists: `partitions`, in crew's table and in the hosted one's. The runner SHALL read each as one key, its value whole. Every command of the runner SHALL read both layers (records 0009 and 0028, core.17 and flume record 0032).
 
 #### Scenario: The local layer's repositories
 
@@ -216,8 +216,8 @@ The local layer MAY set each drive's `repositories`, `accounts.<account>.drives.
 
 #### Scenario: A partition enrolled from the local layer
 
-- **WHEN** `boomdrive enroll work` runs where only the local layer's hosted `partitions` name `work`, and `url` names a loopback port with nothing on it
-- **THEN** it is refused as the control plane unreachable, exiting 1, and not as a label the table does not name
+- **WHEN** the managed layer's account `cloud` names `hosted`, and its hosted table names a loopback port with nothing on it. The local layer names the drive `work` of `cloud` and the hosted partition `work`, each with `example/app`. enroll runs for that `url` and `--drive work --repository example/app`, with a token.
+- **THEN** enroll refuses with the control plane unreachable, exits 1, and writes no file
 
 ### Requirement: The local layer's repositories add to the managed layer's, and its partitions replace them
 

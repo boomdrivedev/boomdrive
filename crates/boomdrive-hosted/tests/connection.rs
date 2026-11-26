@@ -307,7 +307,11 @@ async fn a_key_refused() {
         lines[0].contains("this host's key was revoked"),
         "{lines:#?}"
     );
-    assert!(lines[0].contains("`boomdrive enroll home`"), "{lines:#?}");
+    let command = format!(
+        "`boomdrive enroll --control-plane {} --drive home --repository example/app`",
+        fake.url()
+    );
+    assert!(lines[0].contains(&command), "{lines:#?}");
     // A refused key waits at the backoff's cap.
     assert_eq!(Instant::now() - began, POLL_INTERVAL * 2);
 }

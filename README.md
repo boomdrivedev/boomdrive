@@ -345,7 +345,7 @@ cover the repository exits 1, saying to install the App there, with the
 control plane's words; any other refusal exits 1 with the hosted
 implementation's words, the control plane's as given; and one where no
 partition served the repository has its key in the host's store exits
-2, naming `boomdrive enroll <label>`. `erase` answers nothing, as on any
+2, naming the command that enrolls each such partition. `erase` answers nothing, as on any
 host.
 
 The running runner's own fetches take their token the same way: on a
@@ -1077,9 +1077,10 @@ Pending You's: the modules do. It starts no proxy of portless's. This repository
 devenv's.
 
 Under a hosted control plane, enroll each partition after the switch,
-on the host, as the service's user, the token on standard input:
+on the host, as the service's user, by the command the control plane's
+page gives, the token on standard input:
 
-    boomdrive enroll home
+    echo <token> | boomdrive enroll --control-plane https://control.example --drive home --repository example/app
 
 No option holds a token or a key. On NixOS, a hosted control plane
 needs systemd 256, whose `systemd-creds` keeps the key, and evaluation
@@ -1455,9 +1456,30 @@ which the host keeps in its one clone. The table holds no token and no
 key, and one that names either is refused, saying the key is made by
 `boomdrive enroll`.
 
-Each partition is enrolled once:
+Each partition is enrolled once, by the one whole command the control
+plane's page gives, the token piped to it:
 
-    boomdrive enroll [--config <file>] [--json] <label>
+    echo <token> | boomdrive enroll --control-plane <url> --drive <drive> --repository <owner/name>... [--config <file>] [--json]
+
+The drive's name is the partition's label and its account's name, so no
+one picks a label. `enroll` reads the configuration as `run` does and
+takes one of three ways, each checked before the token is read, so a
+host it cannot set up spends no token:
+
+- Where both layers name the enrollment already, the hosted `url`, the
+  partition and the drive under a hosted account, each serving every
+  repository given, as Nix's module writes them, it writes nothing and
+  enrolls.
+- Where the runner's file is missing, or its first line is setup's, on
+  macOS, it enrolls, then writes the account, the drive and the
+  partition into the file, keeping every other account and table, and
+  loads setup's launchd agent, or restarts it with `launchctl kickstart
+  -k` where it is loaded, since the runner reads `[control_plane]` when
+  it starts.
+- Where the file is a link, as Nix's activation makes it, or one a
+  person wrote, or the host is not macOS, it changes nothing and names
+  the keys to add, as `services.boomdrive` options or as TOML; the same
+  command, run again after the change, enrolls the host.
 
 It reads the partition's one-time token from standard input, asking for
 it without echo where that is a terminal, and never from an argument or
@@ -1467,11 +1489,12 @@ the token. The key is kept only once the control plane has enrolled it,
 and only in the host's credential store: the login keychain on a Mac, or
 on Linux a user's credential encrypted by `systemd-creds` of systemd 256
 or later. It never leaves the host, and no file holds it in the clear.
-`enroll` writes no configuration and nothing in the data directory, and
-takes no lock, so a running runner dials a partition enrolled beside it
-at its next try. It answers `<label>: enrolled as host <host>`, or with
-`--json` `{"enrolled":{"partition":"<label>","host":"<host>"}}`, and
-exits 0. A refusal is its words on standard error, or with `--json`
+`enroll` writes nothing in the data directory, and takes no lock, so a
+running runner dials a partition enrolled beside it at its next try. It
+answers `<label>: enrolled as host <host>`, with a line for the file and
+one for the agent, or with `--json`
+`{"enrolled":{"partition":"<label>","host":"<host>","config":{"file":…,"outcome":…},"service":{"file":…,"outcome":…}}}`,
+`service` only where it wrote the file, and exits 0. A refusal is its words on standard error, or with `--json`
 `{"refused":{"refusal":{"reason":"<words>"}}}`, and exits 1 where the
 control plane refused the enrollment or could not be reached, and 2
 where the host must be fixed first: its configuration, its credential

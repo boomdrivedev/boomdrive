@@ -34,9 +34,11 @@ enum Command {
         #[arg(long)]
         once: bool,
     },
-    /// Enroll a partition of the configuration's control plane once, with
-    /// its one-time token read from standard input, keeping the key made
-    /// for it in the host's credential store.
+    /// Enroll this host with a control plane, by the whole command its
+    /// page gives, the one-time token read from standard input: the drive
+    /// names the partition and its account, and where the runner's file
+    /// is missing or its own, on macOS, enroll writes it and loads the
+    /// runner's agent.
     Enroll {
         /// The configuration file, in place of
         /// `$XDG_CONFIG_HOME/boomdrive/config.toml`.
@@ -45,8 +47,15 @@ enum Command {
         /// Answer as one JSON object on standard output.
         #[arg(long)]
         json: bool,
-        /// The partition's label, as its control-plane table names it.
-        label: String,
+        /// The control plane's address, under which the runner enrolls.
+        #[arg(long = "control-plane", value_name = "URL")]
+        control_plane: String,
+        /// The drive's name, which names the partition and its account.
+        #[arg(long, value_name = "NAME")]
+        drive: String,
+        /// A repository the drive keeps, once for each.
+        #[arg(long = "repository", value_name = "OWNER/NAME", required = true)]
+        repositories: Vec<String>,
     },
     /// Set up one drive of one account on this Mac, which Nix does not
     /// manage: its account's crew state repository made where none
@@ -123,8 +132,18 @@ fn main() -> ExitCode {
         Command::Enroll {
             config,
             json,
-            label,
-        } => boomdrive::enroll::main(config.as_deref(), json, &label),
+            control_plane,
+            drive,
+            repositories,
+        } => boomdrive::enroll::main(
+            config.as_deref(),
+            json,
+            &boomdrive::enroll::Asked {
+                control_plane,
+                drive,
+                repositories,
+            },
+        ),
         Command::Setup {
             account,
             drive,

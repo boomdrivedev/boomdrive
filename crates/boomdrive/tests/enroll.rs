@@ -1,7 +1,10 @@
-//! `boomdrive enroll` (design Decisions 4 and 14; the hosted-control-plane
-//! spec's "A partition is enrolled once by boomdrive enroll", its
-//! scenarios "The answer as JSON" and "The token never shown", and
-//! "boomdrive enroll refuses what it cannot enroll"). The binary runs under
+//! `boomdrive enroll` through the binary (the hosted-control-plane spec's
+//! "A partition is enrolled once by boomdrive enroll", its scenarios "The
+//! answer as JSON" and "The token never shown", "boomdrive enroll refuses
+//! before the token what it cannot set up" and "The token comes on
+//! standard input alone", as the change a-host-enrolls-from-one-command
+//! amends them). Its ways are proved by `enroll`'s own tests, with a fake
+//! enrollment in place of the store. The binary runs under
 //! the scratch host, its token piped to it, with a stub `systemd-creds`
 //! first on its `PATH` and a loopback port with nothing on it as its
 //! control plane, so no test reaches a server, a keychain or a
@@ -29,8 +32,10 @@ fn loopback_with_nothing_on_it() -> String {
     format!("http://127.0.0.1:{port}/boomdrive")
 }
 
-/// A configuration naming the hosted control plane at `url`, with the
-/// partitions `home` and `work`.
+/// A configuration naming the hosted control plane at `url`, served the
+/// account `own`, its drive `home` keeping `example/app` and
+/// `example/service`, with the partitions `home` and `work`: it names the
+/// enrollment of `home` at `url` serving `example/app`.
 fn hosted(url: &str) -> String {
     format!(
         "{}accounts.own.control_plane = \"hosted\"\n[control_plane]\n\n\
@@ -107,14 +112,30 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+/// The flags that enroll `home` at `url`, serving `example/app`, as the
+/// control plane's page gives them, after `before`.
+fn flags<'a>(before: &[&'a str], url: &'a str) -> Vec<&'a str> {
+    let mut flags = before.to_vec();
+    flags.extend([
+        "--control-plane",
+        url,
+        "--drive",
+        "home",
+        "--repository",
+        "example/app",
+    ]);
+    flags
+}
+
 /// The hosted-control-plane spec's "The answer as JSON": standard output
 /// is one object, a refusal naming the control plane as unreachable, and
 /// the command exits 1.
 #[test]
 fn the_answer_as_json() {
-    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
+    let url = loopback_with_nothing_on_it();
+    let host = Host::configured(&hosted(&url));
 
-    let output = host.enroll(&["--json", "home"], &format!("{TOKEN}\n"));
+    let output = host.enroll(&flags(&["--json"], &url), &format!("{TOKEN}\n"));
 
     assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
     let text = stdout(&output);
@@ -136,10 +157,11 @@ fn the_answer_as_json() {
 /// JSON.
 #[test]
 fn the_token_never_shown() {
-    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
+    let url = loopback_with_nothing_on_it();
+    let host = Host::configured(&hosted(&url));
 
-    for args in [&["home"][..], &["--json", "home"]] {
-        let output = host.enroll(args, &format!("{TOKEN}\n"));
+    for before in [&[][..], &["--json"]] {
+        let output = host.enroll(&flags(before, &url), &format!("{TOKEN}\n"));
 
         assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
         assert!(!stdout(&output).contains(TOKEN), "{}", stdout(&output));
@@ -147,50 +169,16 @@ fn the_token_never_shown() {
     }
 }
 
-/// The hosted-control-plane spec's "crew's control plane": where every
-/// account names crew, refused as naming no control plane that enrolls,
-/// exiting 2.
-#[test]
-fn crews_control_plane() {
-    let host = Host::configured(&format!(
-        "{}accounts.own.control_plane = \"crew\"\n[control_plane]\n\n[control_plane.crew]\nhost = \"host-a\"\n\n\
-         [[control_plane.crew.partitions]]\nlabel = \"home\"\n\
-         state_repository = \"example/state\"\n",
-        keeping(&["example/app"])
-    ));
-
-    let output = host.enroll(&["home"], &format!("{TOKEN}\n"));
-
-    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
-    let said = stderr(&output);
-    assert!(
-        said.contains("no account names a control plane that enrolls"),
-        "{said}"
-    );
-    assert_eq!(stdout(&output), "");
-    host.kept_nothing();
-}
-
-/// The hosted-control-plane spec's "An unknown label": refused naming
-/// `garden`, exiting 2, before any request.
-#[test]
-fn an_unknown_label() {
-    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
-
-    let output = host.enroll(&["garden"], &format!("{TOKEN}\n"));
-
-    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
-    assert!(stderr(&output).contains("`garden`"), "{}", stderr(&output));
-    host.kept_nothing();
-}
-
 /// The hosted-control-plane spec's "Nothing listening": refused naming the
-/// control plane as unreachable, exiting 1, with no key written.
+/// control plane as unreachable, exiting 1, with no key and no file
+/// written.
 #[test]
 fn nothing_listening() {
-    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
+    let url = loopback_with_nothing_on_it();
+    let host = Host::configured(&hosted(&url));
+    let before = std::fs::read_to_string(host.scratch.config_file()).unwrap();
 
-    let output = host.enroll(&["home"], &format!("{TOKEN}\n"));
+    let output = host.enroll(&flags(&[], &url), &format!("{TOKEN}\n"));
 
     assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
     assert!(
@@ -199,17 +187,21 @@ fn nothing_listening() {
         stderr(&output)
     );
     assert_eq!(stdout(&output), "");
+    assert_eq!(
+        std::fs::read_to_string(host.scratch.config_file()).unwrap(),
+        before
+    );
     host.kept_nothing();
 }
 
-/// Design Decision 14: an empty token is refused, exiting 2, before any
-/// request.
+/// An empty token is refused, exiting 2, before any request.
 #[test]
 fn an_empty_token() {
-    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
+    let url = loopback_with_nothing_on_it();
+    let host = Host::configured(&hosted(&url));
 
     for given in ["", "\n"] {
-        let output = host.enroll(&["home"], given);
+        let output = host.enroll(&flags(&[], &url), given);
 
         assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
         assert!(
@@ -221,59 +213,49 @@ fn an_empty_token() {
     host.kept_nothing();
 }
 
-/// A configuration naming no control plane has no partition to enroll,
-/// and is refused, exiting 2.
+/// The hosted-control-plane spec's "A flag missing": `--drive` missing is
+/// a usage error naming it, exiting 2, with no token read.
 #[test]
-fn no_control_plane() {
-    let host = Host::configured(&keeping(&["example/app"]));
-
-    let output = host.enroll(&["--json", "home"], &format!("{TOKEN}\n"));
-
-    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
-    let answer: Value = serde_json::from_str(&stdout(&output)).expect("one JSON object");
-    let reason = answer["refused"]["refusal"]["reason"]
-        .as_str()
-        .unwrap_or_else(|| panic!("{answer} is no refusal"));
-    assert!(reason.contains("names no `[control_plane]`"), "{reason}");
-    host.kept_nothing();
-}
-
-/// The configuration spec's "A partition enrolled from the local layer":
-/// `work`, which only the local layer's hosted partitions name, is
-/// enrolled as one the managed layer names would be, refused as the
-/// control plane unreachable, exiting 1, and not as a label the table
-/// does not name.
-#[test]
-fn a_partition_of_the_local_layer() {
-    let url = loopback_with_nothing_on_it();
-    let host = Host::configured(&format!(
-        "{}accounts.own.control_plane = \"hosted\"\n[control_plane]\n\n\
-         [control_plane.hosted]\nurl = {url:?}\n\n\
-         [[control_plane.hosted.partitions]]\nlabel = \"home\"\nrepositories = [\"example/app\"]\n",
-        keeping(&["example/app"])
-    ));
-    host.scratch.configure_local(
-        "[[control_plane.hosted.partitions]]\nlabel = \"work\"\n\
-         repositories = [\"example/service\"]\n",
-    );
-
-    let output = host.enroll(&["work"], &format!("{TOKEN}\n"));
-
-    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
-    assert!(
-        stderr(&output).contains("is unreachable"),
-        "{}",
-        stderr(&output)
-    );
-    host.kept_nothing();
-}
-
-/// A usage error, the label missing, exits 2.
-#[test]
-fn no_label() {
+fn a_flag_missing() {
     let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
 
-    let output = host.enroll(&[], &format!("{TOKEN}\n"));
+    let output = host.enroll(
+        &[
+            "--control-plane",
+            "https://control.example",
+            "--repository",
+            "example/app",
+        ],
+        &format!("{TOKEN}\n"),
+    );
+
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(stderr(&output).contains("--drive"), "{}", stderr(&output));
+    host.kept_nothing();
+}
+
+/// The hosted-control-plane spec's "A token flag": `--token` is a usage
+/// error naming it, and no output holds the token.
+#[test]
+fn a_token_flag() {
+    let url = loopback_with_nothing_on_it();
+    let host = Host::configured(&hosted(&url));
+
+    let output = host.enroll(&flags(&["--token", TOKEN], &url), "");
+
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(stderr(&output).contains("--token"), "{}", stderr(&output));
+    assert!(!stdout(&output).contains(TOKEN), "{}", stdout(&output));
+    assert!(!stderr(&output).contains(TOKEN), "{}", stderr(&output));
+    host.kept_nothing();
+}
+
+/// No positional label is taken: the form of before is a usage error.
+#[test]
+fn a_label_of_before() {
+    let host = Host::configured(&hosted(&loopback_with_nothing_on_it()));
+
+    let output = host.enroll(&["home"], &format!("{TOKEN}\n"));
 
     assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
     host.kept_nothing();

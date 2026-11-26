@@ -94,6 +94,8 @@ pub struct Dial {
     pub origin: String,
     /// What its key is kept under in `store`.
     pub key: KeyName,
+    /// The command that enrolls its partition, which its refusals name.
+    pub enroll: String,
     /// The host's credential store, read again at every attempt.
     pub store: Arc<dyn Store>,
     /// Where the backoff's cap stops (core.22).
@@ -118,6 +120,7 @@ impl Dial {
             address: table.connect_address(),
             origin: table.origin(),
             key: table.key_name(label),
+            enroll: table.enroll_command(label),
             store,
             poll_interval,
             say,
@@ -127,7 +130,7 @@ impl Dial {
 
     /// The command that enrolls its partition.
     fn enroll(&self) -> String {
-        format!("boomdrive enroll {}", self.label)
+        self.enroll.clone()
     }
 }
 
