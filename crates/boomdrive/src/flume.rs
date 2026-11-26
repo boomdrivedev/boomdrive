@@ -2,10 +2,12 @@
 //! reaches Flume (record 0001). Every call puts `--json` first and runs
 //! with `FLUME_RECIPIENT` unset, so a place's recipients are only those
 //! its launch names, and none passes `--force`. A launch that names
-//! recipients names the runner one more, [`RECIPIENT`], so Flume owes it
-//! each end of the place, holding the place's record past its tidy, until
-//! the runner confirms each by `flume confirm` once its control plane has
-//! taken it (core.54; record 0030 as amended on 2026-11-09). A launch
+//! recipients names the runner one more, [`RECIPIENT`], and one that names
+//! none, of a control plane read through the runner, names the runner
+//! alone, so Flume owes it each end of the place, holding the place's
+//! record past its tidy, until the runner confirms each by `flume confirm`
+//! once its control plane has taken it (core.54; record 0030 as amended
+//! on 2026-11-09 and 2026-11-26). A launch
 //! passes its kind to `--kind` as the control plane gave it and never
 //! `--kinds`, since where a host's kinds come from is its Flume
 //! configuration's (core.5), and every other flag only where the launch
@@ -36,11 +38,16 @@ pub const RECIPIENT: &str = "boomdrive";
 /// The recipients a launch naming `given` is launched with: `given`, as
 /// the launch gives them, then the runner's own, [`RECIPIENT`], where
 /// `given` names any and not it already. A launch naming none is given
-/// none, so Flume's default is its recipient, which naming any would drop
-/// (Flume's 7; core.15, core.54).
-pub fn recipients(given: &[String]) -> Vec<String> {
+/// the runner alone where its control plane is `read_through_the_runner`,
+/// since no session or answerer on the host stands for that control
+/// plane; otherwise it is given none, so Flume's default is its
+/// recipient, which naming any would drop (Flume's 7; core.15, core.54;
+/// record 0030 as amended on 2026-11-26).
+pub fn recipients(given: &[String], read_through_the_runner: bool) -> Vec<String> {
     let mut named = given.to_vec();
-    if !given.is_empty() && !given.iter().any(|recipient| recipient == RECIPIENT) {
+    let alone = given.is_empty() && read_through_the_runner;
+    let beside = !given.is_empty() && !given.iter().any(|recipient| recipient == RECIPIENT);
+    if alone || beside {
         named.push(RECIPIENT.to_string());
     }
     named
@@ -101,6 +108,10 @@ pub struct LaunchArgs {
     pub priority: Option<i64>,
     pub intent: Option<String>,
     pub recipients: Vec<String>,
+    /// Whether the launch's control plane is read through the runner
+    /// alone, so a launch naming no recipient names the runner
+    /// ([`recipients`]).
+    pub read_through_the_runner: bool,
     /// Each stage on hold with its words, `--hold <stage>=<words>`.
     pub holds: Vec<(String, String)>,
     pub hold_submission: bool,
@@ -303,7 +314,7 @@ fn launch_args(args: &LaunchArgs, brief_file: Option<&Path>) -> Vec<OsString> {
     if let Some(intent) = &args.intent {
         flag("--intent", intent.clone());
     }
-    for recipient in recipients(&args.recipients) {
+    for recipient in recipients(&args.recipients, args.read_through_the_runner) {
         flag("--recipient", recipient);
     }
     for (stage, hold) in &args.holds {
@@ -448,19 +459,30 @@ mod tests {
 
     #[test]
     fn the_runner_is_named_after_a_launchs_recipients() {
+        for through in [false, true] {
+            assert_eq!(
+                recipients(&named(&["home/planner"]), through),
+                named(&["home/planner", "boomdrive"])
+            );
+            assert_eq!(
+                recipients(&named(&["home/planner", "home/reviewer"]), through),
+                named(&["home/planner", "home/reviewer", "boomdrive"])
+            );
+            assert_eq!(
+                recipients(&named(&["boomdrive", "home/planner"]), through),
+                named(&["boomdrive", "home/planner"]),
+                "the runner named once"
+            );
+        }
+        assert_eq!(recipients(&[], false), named(&[]), "none named, none added");
+    }
+
+    #[test]
+    fn the_runner_alone_where_its_control_plane_is_read_through_it() {
         assert_eq!(
-            recipients(&named(&["home/planner"])),
-            named(&["home/planner", "boomdrive"])
-        );
-        assert_eq!(
-            recipients(&named(&["home/planner", "home/reviewer"])),
-            named(&["home/planner", "home/reviewer", "boomdrive"])
-        );
-        assert_eq!(recipients(&[]), named(&[]), "none named, none added");
-        assert_eq!(
-            recipients(&named(&["boomdrive", "home/planner"])),
-            named(&["boomdrive", "home/planner"]),
-            "the runner named once"
+            recipients(&[], true),
+            named(&["boomdrive"]),
+            "none named: the runner alone"
         );
     }
 

@@ -267,6 +267,18 @@ fn the_hosted_partitions_as_parts() {
     assert_eq!(labels, ["home", "work"]);
 }
 
+/// The control-plane-interface spec's "A hosted control plane is read
+/// through the runner": each part says its readers reach the host only
+/// through the runner.
+#[test]
+fn a_hosted_control_plane_is_read_through_the_runner() {
+    let fake = Fake::start();
+    let parts = Parts::open(&fake);
+    for part in &parts.parts {
+        assert!(part.plane.read_through_the_runner(), "{}", part.label);
+    }
+}
+
 /// The control-plane-interface spec's "The hosted ids by partition":
 /// each part owns its own launch `l-1`, and not the other's.
 #[test]

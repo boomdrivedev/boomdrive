@@ -869,7 +869,12 @@ impl Work<'_> {
         // thread of its own, waiting only on its own clone's keep
         // (record 0002 as amended on 2026-11-19; core.50).
         self.room.take(stream);
-        let args = launch_args(offer, &container, self.priority(offer));
+        let args = launch_args(
+            offer,
+            &container,
+            self.priority(offer),
+            self.plane.read_through_the_runner(),
+        );
         let job = Job::Launch {
             args: Box::new(args),
             briefs: self.carrier.control_dir.join("briefs"),
@@ -2303,10 +2308,16 @@ pub fn mark(id: &Id) -> String {
 }
 
 /// What `flume launch` is given for `offer` in the clone at `container`:
-/// every field as the launch gives it, its priority `priority`, and the
-/// runner's mark. It names no stream, priority or intent of the runner's
-/// own (core.9), and no kinds file (core.5).
-fn launch_args(offer: &Offer, container: &Path, priority: Option<i64>) -> LaunchArgs {
+/// every field as the launch gives it, its priority `priority`, whether
+/// its control plane is `read_through_the_runner`, and the runner's mark.
+/// It names no stream, priority or intent of the runner's own (core.9),
+/// and no kinds file (core.5).
+fn launch_args(
+    offer: &Offer,
+    container: &Path,
+    priority: Option<i64>,
+    read_through_the_runner: bool,
+) -> LaunchArgs {
     let launch = &offer.launch;
     LaunchArgs {
         container_dir: container.to_path_buf(),
@@ -2317,6 +2328,7 @@ fn launch_args(offer: &Offer, container: &Path, priority: Option<i64>) -> Launch
         priority,
         intent: launch.intent.clone(),
         recipients: launch.recipients.clone(),
+        read_through_the_runner,
         holds: launch
             .holds
             .iter()

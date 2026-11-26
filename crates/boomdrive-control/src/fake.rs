@@ -34,6 +34,8 @@ pub struct Fake {
     left_statuses: BTreeSet<Id>,
     /// The prefix of every id it owns, none where it owns every id.
     owning: Option<String>,
+    /// Whether its readers reach the host only through the runner.
+    through_the_runner: bool,
 }
 
 impl Fake {
@@ -56,6 +58,15 @@ impl Fake {
         Fake {
             owning: Some(prefix.to_string()),
             ..Fake::default()
+        }
+    }
+
+    /// This control plane, its readers reaching the host only through the
+    /// runner, as a hosted control plane's do.
+    pub fn reading_through_the_runner(self) -> Fake {
+        Fake {
+            through_the_runner: true,
+            ..self
         }
     }
 
@@ -214,6 +225,10 @@ impl ControlPlane for Fake {
         self.owning
             .as_deref()
             .is_none_or(|prefix| id.as_str().starts_with(prefix))
+    }
+
+    fn read_through_the_runner(&self) -> bool {
+        self.through_the_runner
     }
 }
 

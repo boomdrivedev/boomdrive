@@ -108,3 +108,34 @@ Not taken:
 - Bad: a pass that carries a new end runs one more Flume command for each place.
 - Neutral: crew's role runs name no recipient, so nothing of them is owed to the runner.
 - core.54's rule and details, and core.1's and core.13's details, read with it. The work-into-flume, clones, family-packages, control-plane-interface, crew-control-plane and hosted-control-plane specs say it, in this amendment's change.
+
+## Amendment, 2026-11-26: a launch of a control plane read through the runner names the runner alone
+
+Status: proposed on 2026-11-26 by the fix `the-runner-answers-its-launches`, on its brief from the orchestrator of the first-run walk. How the runner meets the brief is the fix's own choice, made on this record, Flume's statement and this repository's rules, and cheap to change.
+
+Sources: the first-run walk of 2026-11-26, on a host enrolled in a hosted control plane with runner 0.30.1 and Flume 0.36.0, where Flume refused the control plane's launch of `flume/fix@1`: "the launch finds no one to answer it: it names no --recipient, $FLUME_RECIPIENT is unset, the terminal names no session it runs in, and no source of the host declares a role standing behind the stream boomdrive; give it one of the four"; Flume's statement, 4, 7, 43 and 193, at blueprints' main; the narrative `drive-architecture-model`, whose launch of a unit has "the runner its recipient"; rules core.2, core.15 and core.54.
+
+### Context
+
+This record passed a launch that names no recipient with none, so Flume's default stood: the session the command runs in, else the answerer behind the place's stream. Under crew, that default is a role of crew's, which runs on the host. A hosted control plane's members reach the host only through the runner's connection. No session runs the runner's launches, and no source of the host declares an answerer that stands for the hosted control plane. A hosted offer names no recipient, since no session or role of the host's is the cloud's to name. So Flume refused each such launch (Flume's 4), and no place of a hosted control plane could start.
+
+### Decision outcome
+
+- **Before:** a launch that names no recipient was passed with none, whatever its control plane.
+- **Now:** a launch that names no recipient is passed with none where its control plane's readers are on the host, as crew's are, and with the runner alone, `--recipient boomdrive`, where its control plane is read through the runner, as a hosted control plane is. Flume then takes the launch, and owes the runner each end of the place, which the runner carries to its control plane and confirms as this record's first amendment says. A place's question is in its status, which the runner carries as any status.
+- **The control plane says which it is.** The interface's `ControlPlane::read_through_the_runner` answers whether the readers of a control plane's places reach the host only through the runner. The hosted implementation answers yes, and crew's answers no. The runner decides the recipients from that answer alone, so no code outside an implementation names an implementation (core.2).
+- **A launch that names recipients is passed as before,** with the runner one more after them, whatever its control plane.
+
+Not taken:
+
+- **The runner alone on every launch that names none.** Under crew, a role's run names no recipient, and Flume's default gives its ends to the answerer behind its stream. Naming the runner alone would drop that default.
+- **The hosted control plane naming `boomdrive` in its offers.** The name is the runner's own, on the host, and the cloud would name a recipient that only the runner reads.
+- **The hosted implementation adding the name to the launch.** The implementation would hold the runner's own name, which core.2 keeps out of it.
+- **A recipient in the host's settings.** A setting would let a host leave it out, and the refusal would come back.
+
+### Consequences
+
+- Good: each launch of a hosted control plane starts on a host with no answerer for it, and each end and question of its place goes up in the runner's report.
+- Bad: the answerer behind a stream, where a host declares one, hears a hosted place's stalls only, as Flume's 8 and 193 deliver them, and none of its other ends.
+- Neutral: crew's launches are passed as before.
+- core.54's rule and details, and core.15's details, read with it. The work-into-flume and control-plane-interface specs say it, in this amendment's change.

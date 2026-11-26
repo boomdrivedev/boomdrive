@@ -635,6 +635,10 @@ impl ControlPlane for Told {
     fn owns(&self, id: &Id) -> bool {
         self.fake.owns(id)
     }
+
+    fn read_through_the_runner(&self) -> bool {
+        self.fake.read_through_the_runner()
+    }
 }
 
 /// A control plane of the test's own whose pull waits on the test: it
@@ -662,6 +666,10 @@ impl ControlPlane for Slow {
 
     fn owns(&self, id: &Id) -> bool {
         self.fake.owns(id)
+    }
+
+    fn read_through_the_runner(&self) -> bool {
+        self.fake.read_through_the_runner()
     }
 }
 

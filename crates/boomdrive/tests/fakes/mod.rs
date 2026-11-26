@@ -507,9 +507,10 @@ impl Flume for FakeFlume {
             "stream": { "name": args.stream.as_deref().unwrap_or("default"), "from": "launch" },
         });
         self.stand(entry.clone());
-        self.state()
-            .recipients
-            .insert(place_of(&args.name), flume::recipients(&args.recipients));
+        self.state().recipients.insert(
+            place_of(&args.name),
+            flume::recipients(&args.recipients, args.read_through_the_runner),
+        );
         Ok(Reply::Given(printed(
             &json!({ "launched": { "place": entry } }),
         )))
