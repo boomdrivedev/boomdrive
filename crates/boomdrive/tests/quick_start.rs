@@ -19,7 +19,7 @@ mod records;
 
 #[cfg(target_os = "macos")]
 use common::stand::{refused, Stand};
-use common::{FlumeHost, Scratch};
+use common::{Resident, Scratch};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -246,7 +246,7 @@ fn flumes_file_opens_agents_in_herdr() {
     flumes_files(&scratch);
     let mut flume_host = on_scratch(&scratch, set_program("flume"), "/usr/bin:/bin");
     flume_host.arg("host");
-    let _flume_host = FlumeHost::start(flume_host, &scratch.root.join("flume"));
+    let _flume_host = Resident::start(flume_host, &scratch.root.join("flume"));
     let output = on_scratch(&scratch, set_program("flume"), "/usr/bin:/bin")
         .args(["--json", "status"])
         .output()
@@ -780,7 +780,7 @@ fn a_change_the_drive_is_given_lands() {
     // the-runner-hears-flume-by-subscription).
     let mut flume_host = on_scratch(scratch, set_program("flume"), &path);
     flume_host.arg("host");
-    let _flume_host = FlumeHost::start(flume_host, &scratch.root.join("flume"));
+    let _flume_host = Resident::start(flume_host, &scratch.root.join("flume"));
     let began = std::time::Instant::now();
     let mut said_last = String::new();
     let mut ran: Vec<String> = Vec::new();

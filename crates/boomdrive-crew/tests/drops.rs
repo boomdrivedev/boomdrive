@@ -70,6 +70,7 @@ fn answered(
             listed,
         }),
         entry: None,
+        entry_refused: None,
     }
 }
 

@@ -52,6 +52,7 @@ fn launched(launches: &[u64]) -> Report {
                 },
                 status: None,
                 entry: None,
+                entry_refused: None,
             },
         );
     }

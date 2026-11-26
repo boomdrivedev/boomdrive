@@ -82,9 +82,11 @@ impl fmt::Display for Unrun {
 
 /// sluice as the runner reaches it: `Cli` on a host, a stub in a test.
 pub trait Sluice: Sync {
-    /// `sluice status <id> --json`, the submission `id` of the repository
-    /// whose clone is in `container_dir`.
-    fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun>;
+    /// `sluice status <id> --branch <branch> --json`, the submission `id`
+    /// of `branch`'s queue in the repository whose clone is in
+    /// `container_dir`. sluice numbers each branch's queue on its own, so
+    /// the branch is always named and sluice never has to choose.
+    fn entry(&self, container_dir: &Path, id: &str, branch: &str) -> Result<Reply, Unrun>;
     /// `sluice preview <branch> <revision> --json`, in the repository
     /// whose clone is in `container_dir`, awaited no longer than the
     /// patience, then interrupted and awaited (design Decisions 2 and 3).
@@ -186,8 +188,9 @@ impl Cli {
 }
 
 impl Sluice for Cli {
-    fn entry(&self, container_dir: &Path, id: &str) -> Result<Reply, Unrun> {
-        read(&self.run(container_dir, ["status", id, "--json"])?)
+    fn entry(&self, container_dir: &Path, id: &str, branch: &str) -> Result<Reply, Unrun> {
+        let args = ["status", id, "--branch", branch, "--json"];
+        read(&self.run(container_dir, args)?)
     }
 
     fn preview(&self, container_dir: &Path, branch: &str, revision: &str) -> Result<Asked, Unrun> {
@@ -271,7 +274,8 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-/// What the runner carries of `answer`, sluice's `status <id> --json`
+/// What the runner carries of `answer`, sluice's `status <id> --branch
+/// <branch> --json`
 /// (design Decision 13): a JSON object of its `id`, `branch`, `head`,
 /// `state`, `failed` and `landed_as`, each where sluice printed it, each
 /// `failed` row with only its `task`, `hash`, `flaky` and `system`. A
@@ -447,6 +451,13 @@ pub fn id_of(carried: &str) -> Option<String> {
     }
 }
 
+/// The branch a carried entry names, the branch whose queue holds it,
+/// as sluice printed it.
+pub fn branch_of(carried: &str) -> Option<String> {
+    let value = serde_json::from_str::<serde_json::Value>(carried).ok()?;
+    Some(value.get("branch")?.as_str()?.to_string())
+}
+
 /// Whether a carried entry's `state` is one after which it no longer
 /// changes.
 pub fn is_final(carried: &str) -> bool {
@@ -551,6 +562,11 @@ mod tests {
         assert_eq!(id_of(r#"{"id":412}"#).as_deref(), Some("412"));
         assert_eq!(id_of(r#"{"id":"3"}"#).as_deref(), Some("3"));
         assert_eq!(id_of(r#"{"branch":"main"}"#), None);
+        assert_eq!(
+            branch_of(r#"{"id":4,"branch":"bolt/b"}"#).as_deref(),
+            Some("bolt/b")
+        );
+        assert_eq!(branch_of(r#"{"id":4}"#), None);
         for state in FINAL {
             assert!(is_final(&format!(r#"{{"state":"{state}"}}"#)), "{state}");
         }

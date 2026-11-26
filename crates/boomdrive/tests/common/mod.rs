@@ -549,32 +549,41 @@ impl Origin<'_> {
     }
 }
 
-/// The set's `flume host`, Flume's resident, run as a child of the test's
-/// in a process group of its own, which a test's `flume status` and the
-/// runner's passes ask on its socket: Flume's status refuses where no
-/// flume host answers. Dropped, its group is ended and it is awaited, so
-/// no process of it outlives the test (a-leaked-child-fails-its-test).
-pub struct FlumeHost(std::process::Child);
+/// A tool's resident of the set, `flume host` or `sluice host`, run as a
+/// child of the test's in a process group of its own, which a test's
+/// commands and the runner's passes ask on its socket: Flume's status
+/// refuses where no flume host answers, and sluice's commands ask its
+/// host process. Dropped, its group is ended, the runs sluice's started
+/// among it, and it is awaited, so no process of it outlives the test
+/// (a-leaked-child-fails-its-test).
+pub struct Resident(std::process::Child);
 
-impl FlumeHost {
-    /// `command`, the set's `flume host` under the scratch environment,
-    /// started and awaited until its socket is in `socket_dir`, the
-    /// folder `FLUME_USER_SCRATCH` names.
-    pub fn start(mut command: Command, socket_dir: &Path) -> FlumeHost {
+impl Resident {
+    /// `command`, the set's resident under the scratch environment,
+    /// started and awaited until its socket, `host-<…>.sock`, is in
+    /// `socket_dir`, the folder `FLUME_USER_SCRATCH` or
+    /// `SLUICE_USER_SCRATCH` names, made closed to everyone else, as
+    /// sluice asks of it.
+    pub fn start(mut command: Command, socket_dir: &Path) -> Resident {
+        use std::os::unix::fs::DirBuilderExt as _;
         use std::os::unix::process::CommandExt as _;
-        std::fs::create_dir_all(socket_dir).expect("flume's scratch folder");
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(socket_dir)
+            .expect("the resident's scratch folder");
         let child = command
             .process_group(0)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn()
-            .expect("the set's flume host starts");
-        let mut host = FlumeHost(child);
+            .expect("the set's resident starts");
+        let mut host = Resident(child);
         let deadline = std::time::Instant::now() + Duration::from_secs(10);
         loop {
             let bound = std::fs::read_dir(socket_dir)
-                .expect("flume's scratch folder")
+                .expect("the resident's scratch folder")
                 .flatten()
                 .any(|entry| {
                     let name = entry.file_name();
@@ -585,11 +594,11 @@ impl FlumeHost {
                 return host;
             }
             if let Ok(Some(status)) = host.0.try_wait() {
-                panic!("the set's flume host ended before its socket: {status}");
+                panic!("the set's resident ended before its socket: {status}");
             }
             assert!(
                 std::time::Instant::now() < deadline,
-                "the set's flume host made no socket in {} within 10s",
+                "the set's resident made no socket in {} within 10s",
                 socket_dir.display()
             );
             std::thread::sleep(Duration::from_millis(20));
@@ -597,7 +606,7 @@ impl FlumeHost {
     }
 }
 
-impl Drop for FlumeHost {
+impl Drop for Resident {
     fn drop(&mut self) {
         let group = self.0.id() as i32;
         // SAFETY: killpg signals the group this test made for its child.

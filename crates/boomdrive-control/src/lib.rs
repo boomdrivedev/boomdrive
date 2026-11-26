@@ -16,8 +16,8 @@ pub mod shared;
 pub mod want;
 
 pub use report::{
-    Acted, Answer, At, Carried, Carrying, Commanded, InboxCarried, InboxFile, Launched, Outcome,
-    Previewed, Report, Unleased,
+    Acted, Answer, At, Carried, Carrying, Commanded, EntryRefused, InboxCarried, InboxFile,
+    Launched, Outcome, Previewed, Report, Unleased,
 };
 pub use want::{
     Act, ActSort, AgentSetting, Command, CommandSort, Hold, Id, Inbox, Input, Launch, Lease, Link,

@@ -228,6 +228,7 @@ fn launched(ids: &[&str]) -> Report {
                 },
                 status: None,
                 entry: None,
+                entry_refused: None,
             },
         );
     }

@@ -248,7 +248,7 @@ fn a_place_at_each_phase() {
         assert!(facts::live_or_making(entry), "{name}");
         assert_eq!(facts::over(entry), None, "{name}");
         assert!(!facts::waits_delivered(entry), "{name}");
-        assert_eq!(facts::submission_id(entry), None, "{name}");
+        assert_eq!(facts::submission(entry), None, "{name}");
     }
     assert_ne!(construct, code, "the place moved on");
 
@@ -266,7 +266,13 @@ fn a_place_at_each_phase() {
     assert_eq!(facts::over(&delivered), None);
 
     let submitted = only("status-submitted.json");
-    assert_eq!(facts::submission_id(&submitted), Some("3"));
+    assert_eq!(
+        facts::submission(&submitted),
+        Some(facts::Submission {
+            id: "3",
+            branch: "main"
+        })
+    );
     assert!(facts::live_or_making(&submitted));
     assert_eq!(facts::over(&submitted), None);
 
@@ -278,7 +284,13 @@ fn a_place_at_each_phase() {
         )))
     );
     assert!(!facts::live_or_making(&kept));
-    assert_eq!(facts::submission_id(&kept), Some("1"));
+    assert_eq!(
+        facts::submission(&kept),
+        Some(facts::Submission {
+            id: "1",
+            branch: "main"
+        })
+    );
     assert_eq!(
         facts::location(&kept),
         Some(format!("{dir}fix--parser").as_str())
@@ -292,7 +304,7 @@ fn a_place_at_each_phase() {
         )))
     );
     assert!(!facts::live_or_making(&tidied));
-    assert_eq!(facts::submission_id(&tidied), None);
+    assert_eq!(facts::submission(&tidied), None);
     assert_eq!(
         facts::location(&tidied),
         Some(format!("{dir}fix--gate@1793559694").as_str())

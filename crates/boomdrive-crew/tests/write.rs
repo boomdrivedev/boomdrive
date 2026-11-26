@@ -105,6 +105,7 @@ fn launched(answer: Answer, status: Option<(&str, &str)>) -> Launched {
             listed: true,
         }),
         entry: None,
+        entry_refused: None,
     }
 }
 

@@ -137,6 +137,7 @@ fn run(k: u64, outcome: Outcome, place: Option<&str>, status: Option<&str>) -> R
                 listed: true,
             }),
             entry: None,
+            entry_refused: None,
         },
     );
     report
@@ -362,6 +363,7 @@ fn a_roles_work_landed() {
                 listed: true,
             }),
             entry: None,
+            entry_refused: None,
         },
     );
     let given = wants(&state, &report);

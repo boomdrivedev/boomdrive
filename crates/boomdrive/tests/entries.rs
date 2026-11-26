@@ -25,12 +25,22 @@ fn launched() -> (Bench, Fake) {
     (bench, plane)
 }
 
+/// sluice 0.110.2's refusal of a number on two branches, asked with no
+/// branch.
+const AMBIGUOUS: &str = r#"{"error":{"kind":"refused","message":"submission 18 is on more than one branch: bolt/parser, main; name one with --branch, as sluice status 18 --branch bolt/parser","next":["sluice status 18 --branch bolt/parser","sluice status 18 --branch main"]}}"#;
+
 /// The place of `parser` submitted, Flume's status naming sluice's entry
-/// `id`, as Flume 0.4.1 names one (`status-submitted.json`).
+/// `id` on `main`, as Flume 0.4.1 names one (`status-submitted.json`).
 fn submitted(bench: &Bench, id: &str) {
+    submitted_to(bench, id, "main");
+}
+
+/// The place of `parser` submitted, Flume's status naming sluice's entry
+/// `id` in the queue of `target`.
+fn submitted_to(bench: &Bench, id: &str, target: &str) {
     let submission = json!({
         "read": { "found": { "submission": {
-            "id": id, "branch": "fix/parser", "target": "main", "state": "under_test"
+            "id": id, "branch": "fix/parser", "target": target, "state": "under_test"
         } } },
         "submits": 1, "send_backs": 0, "verdict": null, "waiting": null, "held": false
     });
@@ -62,6 +72,16 @@ fn as_if(name: &str, id: u64, state: &str) -> String {
         )
 }
 
+/// sluice's fixture `status-landed.json`, its submission's `id` written
+/// `id`, its `branch` written `branch` and its `state` written `state`.
+fn on(branch: &str, id: u64, state: &str) -> String {
+    as_if("status-landed.json", id, state).replacen(
+        "\"branch\": \"main\"",
+        &format!("\"branch\": \"{branch}\""),
+        1,
+    )
+}
+
 /// The tool-records spec's "An entry carried": sluice is asked in the
 /// clone's container, and what it printed is carried.
 #[test]
@@ -74,7 +94,10 @@ fn an_entry_carried() {
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
     assert_eq!(lines, [] as [String; 0]);
-    assert_eq!(bench.sluice.calls(), [["status", "412", "--json"]]);
+    assert_eq!(
+        bench.sluice.calls(),
+        [["status", "412", "--branch", "main", "--json"]]
+    );
     let container = bench.container(KEPT).canonicalize().unwrap();
     assert_eq!(bench.sluice.dir_of(1), Some(container));
     let entry = entry(&bench).expect("an entry carried");
@@ -231,7 +254,10 @@ fn a_new_submission_is_read() {
         .sluice
         .answers_text("status", &as_if("status-withdrawn.json", 5, "queued"), 0);
     bench.pass(&mut plane);
-    assert_eq!(bench.sluice.calls()[1], ["status", "5", "--json"]);
+    assert_eq!(
+        bench.sluice.calls()[1],
+        ["status", "5", "--branch", "main", "--json"]
+    );
     let carried: Value = serde_json::from_str(&entry(&bench).unwrap().text).unwrap();
     assert_eq!(
         (carried["id"].clone(), carried["state"].clone()),
@@ -240,7 +266,8 @@ fn a_new_submission_is_read() {
 }
 
 /// Where sluice refuses, the entry last carried stands, not listed, and
-/// the refusal is said once.
+/// the refusal is kept and said once: sluice is asked for that entry no
+/// more.
 #[test]
 fn an_entry_sluice_refuses_keeps_what_was_carried() {
     let (bench, mut plane) = launched();
@@ -253,14 +280,115 @@ fn an_entry_sluice_refuses_keeps_what_was_carried() {
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(
         lines,
-        ["scratch/1: sluice's entry 2 is refused: no submission 99"]
+        ["scratch/1: sluice's entry 2 on main is refused, and is asked for no more: no submission 99"]
     );
     let refused = entry(&bench).unwrap();
     assert_eq!((&refused.text, refused.at), (&carried.text, carried.at));
     assert!(!refused.listed);
     let (_, lines) = bench.pass(&mut plane);
     assert_eq!(lines, [] as [String; 0], "the refusal is said again");
-    assert_eq!(bench.sluice.calls().len(), 3);
+    assert_eq!(
+        bench.sluice.calls().len(),
+        2,
+        "a refused entry is asked again"
+    );
+    let kept = bench.report().launches[&Id::new("scratch/1")]
+        .entry_refused
+        .clone()
+        .expect("the refusal kept");
+    assert_eq!(
+        (kept.id.as_str(), kept.branch.as_str(), kept.words.as_str()),
+        ("2", "main", "no submission 99")
+    );
+}
+
+/// The tool-records spec's "A refused entry is asked for no more": a
+/// refusal sluice gives at every ask runs sluice once, however many
+/// passes follow, and another entry the status names is asked for.
+#[test]
+fn a_refused_entry_is_asked_for_no_more() {
+    let (bench, mut plane) = launched();
+    submitted(&bench, "18");
+    bench.sluice.answers("status", "status-missing.json", 1);
+    for _ in 0..5 {
+        bench.pass(&mut plane);
+    }
+    assert_eq!(
+        bench.sluice.calls(),
+        [["status", "18", "--branch", "main", "--json"]]
+    );
+    assert_eq!(entry(&bench), None);
+
+    submitted(&bench, "19");
+    bench
+        .sluice
+        .answers_text("status", &as_if("status-landed.json", 19, "landed"), 0);
+    bench.pass(&mut plane);
+    bench.pass(&mut plane);
+    assert_eq!(
+        bench.sluice.calls()[1..],
+        [["status", "19", "--branch", "main", "--json"]]
+    );
+    let launched = &bench.report().launches[&Id::new("scratch/1")];
+    assert_eq!(launched.entry_refused, None, "the refusal is left");
+    let carried: Value = serde_json::from_str(&launched.entry.as_ref().unwrap().text).unwrap();
+    assert_eq!(
+        (carried["id"].clone(), carried["state"].clone()),
+        (json!(19), json!("landed"))
+    );
+}
+
+/// The tool-records spec's "A number on two branches": sluice is asked
+/// for the entry by its number and the branch whose queue holds it, as
+/// Flume names them, and answers with that branch's entry alone.
+#[test]
+fn a_number_on_two_branches() {
+    let (bench, mut plane) = launched();
+    submitted_to(&bench, "18", "bolt/parser");
+    bench.sluice.answers_text("status", AMBIGUOUS, 1);
+    bench
+        .sluice
+        .answers_on("status", "bolt/parser", &on("bolt/parser", 18, "passed"), 0);
+    bench
+        .sluice
+        .answers_on("status", "main", &on("main", 18, "landed"), 0);
+    let (_, lines) = bench.pass(&mut plane);
+    assert_eq!(lines, [] as [String; 0]);
+    assert_eq!(
+        bench.sluice.calls(),
+        [["status", "18", "--branch", "bolt/parser", "--json"]]
+    );
+    let carried: Value = serde_json::from_str(&entry(&bench).unwrap().text).unwrap();
+    assert_eq!(
+        (carried["branch"].clone(), carried["state"].clone()),
+        (json!("bolt/parser"), json!("passed"))
+    );
+}
+
+/// A final entry on one branch leaves sluice asked for the same number
+/// on another branch, which is another entry.
+#[test]
+fn the_same_number_on_another_branch_is_read() {
+    let (bench, mut plane) = launched();
+    submitted_to(&bench, "18", "bolt/parser");
+    bench
+        .sluice
+        .answers_on("status", "bolt/parser", &on("bolt/parser", 18, "landed"), 0);
+    bench.pass(&mut plane);
+    submitted_to(&bench, "18", "main");
+    bench
+        .sluice
+        .answers_on("status", "main", &on("main", 18, "queued"), 0);
+    bench.pass(&mut plane);
+    assert_eq!(
+        bench.sluice.calls()[1],
+        ["status", "18", "--branch", "main", "--json"]
+    );
+    let carried: Value = serde_json::from_str(&entry(&bench).unwrap().text).unwrap();
+    assert_eq!(
+        (carried["branch"].clone(), carried["state"].clone()),
+        (json!("main"), json!("queued"))
+    );
 }
 
 /// A `sluice` that cannot be run is named, keeps nothing, and is asked
@@ -274,8 +402,9 @@ fn a_sluice_not_there() {
     assert!(passed.reported);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
-        lines[0]
-            .starts_with("scratch/1: sluice's entry 1 could not be read: sluice could not run: "),
+        lines[0].starts_with(
+            "scratch/1: sluice's entry 1 on main could not be read: sluice could not run: "
+        ),
         "{lines:?}"
     );
     assert_eq!(entry(&bench), None);
@@ -307,7 +436,10 @@ fn an_entry_carried_from_a_repository_drained() {
     assert!(passed.reported);
     assert_eq!(lines, [] as [String; 0]);
     assert_eq!(plane.hellos()[1].draining, ["example/kit"]);
-    assert_eq!(bench.sluice.calls(), [["status", "412", "--json"]]);
+    assert_eq!(
+        bench.sluice.calls(),
+        [["status", "412", "--branch", "main", "--json"]]
+    );
     assert_eq!(bench.sluice.dir_of(1), Some(kit.canonicalize().unwrap()));
     let entry = entry(&bench).expect("an entry carried");
     let carried: Value = serde_json::from_str(&entry.text).unwrap();

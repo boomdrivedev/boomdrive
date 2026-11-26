@@ -329,6 +329,7 @@ fn a_report() {
         },
         status: Some(carried(r#"{"status":{"places":[{"phase":"live"}]}}"#)),
         entry: Some(carried(r#"{"id":7,"state":"landed"}"#)),
+        entry_refused: None,
     };
     let held = Launched {
         answer: Answer {
@@ -493,6 +494,7 @@ fn a_previews_lease_among_the_reports_leases() {
                 },
                 status: None,
                 entry: None,
+                entry_refused: None,
             },
         )]),
         previews: BTreeMap::from([(Id::new("p"), previewed(lease_of(5), Outcome::Done))]),

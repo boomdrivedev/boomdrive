@@ -223,6 +223,7 @@ fn launched(id: Id) -> Report {
             listed: true,
         }),
         entry: None,
+        entry_refused: None,
     };
     Report {
         launches: BTreeMap::from([(id, launched)]),

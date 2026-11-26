@@ -196,6 +196,7 @@ fn a_retry_of_the_submission() {
             },
             status: None,
             entry: None,
+            entry_refused: None,
         },
     );
     let pulled = crew.pull(&kept(), &report).expect("a pull");
@@ -1225,6 +1226,7 @@ fn tidied(label: &str) -> Report {
                 listed: false,
             }),
             entry: None,
+            entry_refused: None,
         },
     );
     report.acts.insert(

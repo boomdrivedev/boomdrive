@@ -56,8 +56,9 @@ use crate::terminal::Relays;
 use crate::{clone, facts, inbox};
 use boomdrive_control::{
     Act, ActSort, Acted, Answer, At, Carried, Carrying, Command, CommandSort, Commanded,
-    ControlPlane, Id, Inbox, InboxCarried, InboxFile, KeptRepository, Launched, Lease, Offer,
-    Outcome, Preview, Previewed, Report, Reported, ToolVersion, Unleased, Unread, Unsent, Want,
+    ControlPlane, EntryRefused, Id, Inbox, InboxCarried, InboxFile, KeptRepository, Launched,
+    Lease, Offer, Outcome, Preview, Previewed, Report, Reported, ToolVersion, Unleased, Unread,
+    Unsent, Want,
 };
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -1608,16 +1609,20 @@ impl Work<'_> {
     }
 
     /// Carries sluice's entry of each launch's submission (design
-    /// Decision 13; core.11): of `sluice status <id> --json`, run in the
-    /// clone of the launch's repository, named or dropped, the fields the
-    /// cloud's copy of an entry holds, each
-    /// as sluice printed it, and no log. The entry is the one the status
-    /// carried for the launch names; a launch whose status names none runs
-    /// no sluice. An entry is read again at each pass until its state is
-    /// final, and carried anew only when what is carried of it changes.
-    /// Where sluice refuses, the entry last carried stands, not listed.
-    /// Only the launches the pull gives are read, whose repositories it
-    /// names.
+    /// Decision 13; core.11): of `sluice status <id> --branch <branch>
+    /// --json`, run in the clone of the launch's repository, named or
+    /// dropped, the fields the cloud's copy of an entry holds, each as
+    /// sluice printed it, and no log. The entry is the one the status
+    /// carried for the launch names, by its number and the branch whose
+    /// queue holds it, since sluice numbers each branch's queue on its
+    /// own; a launch whose status names none runs no sluice. An entry is
+    /// read again at each pass until its state is final, and carried anew
+    /// only when what is carried of it changes. Where sluice refuses, the
+    /// entry last carried stands, not listed, and the refusal is kept and
+    /// said once: sluice is asked for that entry no more, and is asked
+    /// again only for another entry the status names. Where sluice could
+    /// not be run, nothing is kept, and the next pass asks again. Only
+    /// the launches the pull gives are read, whose repositories it names.
     fn carry_entries(&mut self, say: &mut dyn FnMut(String)) {
         for offer in offers(self.wants) {
             let id = &offer.id;
@@ -1631,25 +1636,39 @@ impl Work<'_> {
                 continue;
             };
             let entry = carried_entry(launched, place);
-            let Some(submission) = entry.as_ref().and_then(facts::submission_id) else {
+            let Some(facts::Submission { id: number, branch }) =
+                entry.as_ref().and_then(facts::submission)
+            else {
                 continue;
             };
             let held = launched.entry.as_ref().map(|carried| carried.text.as_str());
             if held.is_some_and(|text| {
-                sluice::id_of(text).as_deref() == Some(submission) && sluice::is_final(text)
+                sluice::id_of(text).as_deref() == Some(number)
+                    && sluice::branch_of(text).as_deref() == Some(branch)
+                    && sluice::is_final(text)
             }) {
                 continue;
             }
-            let submission = submission.to_string();
+            if launched
+                .entry_refused
+                .as_ref()
+                .is_some_and(|refused| refused.id == number && refused.branch == branch)
+            {
+                continue;
+            }
+            let (number, branch) = (number.to_string(), branch.to_string());
             let container = match self.carrier.clones.keeping(&offer.launch.repository) {
                 Keeping::Ready(container) | Keeping::Dropped(container) => container,
                 Keeping::NotYet | Keeping::NotNamed => continue,
             };
-            let refused = match self.carrier.sluice.entry(&container, &submission) {
+            let words = match self.carrier.sluice.entry(&container, &number, &branch) {
                 Ok(sluice::Reply::Given(answer)) => match sluice::carried(&answer) {
                     Some(text) => {
                         self.report
                             .carry(id, Carrying::Entry, &text, true, At::now());
+                        if let Some(launched) = self.report.launches.get_mut(id) {
+                            launched.entry_refused = None;
+                        }
                         continue;
                     }
                     None => "sluice's answer is no submission".to_string(),
@@ -1657,16 +1676,23 @@ impl Work<'_> {
                 Ok(sluice::Reply::Refused(words)) => words,
                 Err(sluice::Unrun(words)) => {
                     say(format!(
-                        "{id}: sluice's entry {submission} could not be read: {words}"
+                        "{id}: sluice's entry {number} on {branch} could not be read: {words}"
                     ));
                     continue;
                 }
             };
-            if self.relist(id, Carrying::Entry, false) {
-                say(format!(
-                    "{id}: sluice's entry {submission} is refused: {refused}"
-                ));
+            self.relist(id, Carrying::Entry, false);
+            if let Some(launched) = self.report.launches.get_mut(id) {
+                launched.entry_refused = Some(EntryRefused {
+                    id: number.clone(),
+                    branch: branch.clone(),
+                    words: words.clone(),
+                    at: At::now(),
+                });
             }
+            say(format!(
+                "{id}: sluice's entry {number} on {branch} is refused, and is asked for no more: {words}"
+            ));
         }
     }
 

@@ -113,6 +113,7 @@ fn launched(ids: &[&str]) -> Report {
         },
         status: None,
         entry: None,
+        entry_refused: None,
     };
     Report {
         launches: ids.iter().map(|id| (Id::new(*id), launched(id))).collect(),

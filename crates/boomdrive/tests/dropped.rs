@@ -491,6 +491,7 @@ fn report_holding(scratch: &Scratch, place: &str, phase: Value, listed: bool) {
             listed,
         }),
         entry: None,
+        entry_refused: None,
     };
     let report = Report {
         launches: [(Id::new("a"), a)].into(),
