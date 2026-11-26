@@ -150,9 +150,10 @@ branch requires:
 | `check-fast` | the crate's format (rustfmt), lint (clippy -D warnings), type check and tests; the flake's format (nixfmt), lint (statix, deadnix, actionlint), type check and tests, evaluated and never built, and its Mac scripts read by macOS's /bin/sh (bash 3.2.57); the root's format (treefmt), toolchain, specs, open changes, the commits since the newest release (convco), the release's tests and its workflow's lint (actionlint); the site's type check (astro check), build, tests and its workflow's lint (actionlint) | main |
 
 Run suites through sluice, so the agents on this host take turns under
-its bound: once your work is committed, `sluice exec main` for the
-gate's checks, and while iterating `sluice exec main -- moon run
-<project>:<task>`. The projects are those `.moon/workspace.yml` lists:
+its bound. Run only the tasks of each project you changed, with
+`sluice exec main -- moon run <project>:<task>`, then submit. The merge
+queue runs the full gate one time. Do not run `sluice exec main` alone
+before you submit. The projects are those `.moon/workspace.yml` lists:
 `boomdrive` (`crates/boomdrive`), `boomdrive-control`
 (`crates/boomdrive-control`), `boomdrive-crew` (`crates/boomdrive-crew`),
 `boomdrive-hosted` (`crates/boomdrive-hosted`), `nix` (`nix/`, which
