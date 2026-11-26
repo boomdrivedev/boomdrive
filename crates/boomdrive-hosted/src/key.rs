@@ -9,7 +9,6 @@ use crate::protocol::Version;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
-use keyring_core::{CredentialStore, Error};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -84,7 +83,7 @@ impl<S: Store + ?Sized> Store for Arc<S> {
 /// falls back to a file (core.32).
 #[cfg(target_os = "macos")]
 pub fn store_for_host() -> Result<Box<dyn Store>, String> {
-    Ok(Box::new(Keychain::login()?))
+    Ok(Box::new(Keychain::login()))
 }
 
 /// The host's own store, on Linux the user's `systemd-creds` store, 256
@@ -106,75 +105,184 @@ pub fn store_for_host() -> Result<Box<dyn Store>, String> {
     )
 }
 
-/// The macOS keychain's store, through keyring's: each key a generic
-/// password whose service is [`Keychain::SERVICE`] and whose account is
-/// its [`KeyName::account`].
+/// The macOS keychain's store, through macOS's own `security` command
+/// alone: each key a generic password of the user's keychain whose
+/// service is [`Keychain::SERVICE`] and whose account is its
+/// [`KeyName::account`]. macOS lets a program read an item without asking
+/// only where the item's access names the program's partition, and it
+/// gives code signed by no certificate of Apple's the partition of its own
+/// build's hash, so every new build of the runner would be asked again.
+/// `security` is Apple's, and its partition, `apple-tool:`, is the same at
+/// every build of the runner, so an item it made, or one a person once let
+/// it read, is read with no ask (record 0057). The key's bytes reach it on
+/// standard input and come back on its standard output, never in an
+/// argument.
+#[derive(Clone, Debug)]
 pub struct Keychain {
-    store: Arc<CredentialStore>,
+    program: PathBuf,
 }
 
 impl Keychain {
     /// The service each key's keychain item is under.
     pub const SERVICE: &'static str = "boomdrive";
 
-    /// The user's login keychain, by keyring v4's macOS store.
-    #[cfg(target_os = "macos")]
-    pub fn login() -> Result<Keychain, String> {
-        let store = apple_native_keyring_store::keychain::Store::new()
-            .map_err(|e| format!("the macOS keychain could not be opened: {}", words(&e)))?;
-        Ok(Keychain::over(store))
+    /// macOS's own `security`, by its path, so no program on `PATH` stands
+    /// in for it.
+    pub const PROGRAM: &'static str = "/usr/bin/security";
+
+    /// The exit status of `security find-generic-password` where no item
+    /// matches: the low byte of `errSecItemNotFound`.
+    const NOT_FOUND: i32 = 44;
+
+    /// The user's keychain, through macOS's own `security`.
+    pub fn login() -> Keychain {
+        Keychain::open(PathBuf::from(Keychain::PROGRAM))
     }
 
-    /// Keys kept through `store`, one of keyring's: the macOS keychain's,
-    /// or keyring's mock in a test.
-    pub fn over(store: Arc<CredentialStore>) -> Keychain {
-        Keychain { store }
+    /// The user's keychain, through `program`, which speaks `security`'s
+    /// command line.
+    pub fn open(program: PathBuf) -> Keychain {
+        Keychain { program }
     }
 }
 
 impl Store for Keychain {
     fn read(&self, name: &KeyName) -> Result<Option<SigningKey>, String> {
-        let entry = self
-            .store
-            .build(Keychain::SERVICE, &name.account(), None)
-            .map_err(|e| keychains(name, &e))?;
-        match entry.get_secret() {
-            Ok(bytes) => signing_key(Zeroizing::new(bytes))
-                .map(Some)
-                .map_err(|words| format!("the keychain's item for `{}` {words}", name.label)),
-            Err(Error::NoEntry) => Ok(None),
-            Err(e) => Err(keychains(name, &e)),
+        let output = Command::new(&self.program)
+            .args([
+                "find-generic-password",
+                "-s",
+                Keychain::SERVICE,
+                "-a",
+                &name.account(),
+                "-w",
+            ])
+            .stdin(Stdio::null())
+            .output()
+            .map_err(|e| {
+                keychains(
+                    name,
+                    &format!("`{}` could not be run: {e}", self.program.display()),
+                )
+            })?;
+        let stdout = Zeroizing::new(output.stdout);
+        if output.status.code() == Some(Keychain::NOT_FOUND) {
+            return Ok(None);
         }
+        if !output.status.success() {
+            return Err(keychains(name, &failed(&output.stderr)));
+        }
+        item_bytes(&stdout)
+            .and_then(signing_key)
+            .map(Some)
+            .map_err(|words| format!("the keychain's item for `{}` {words}", name.label))
     }
 
     fn write(&self, name: &KeyName, key: &SigningKey) -> Result<(), String> {
-        let entry = self
-            .store
-            .build(Keychain::SERVICE, &name.account(), None)
-            .map_err(|e| keychains(name, &e))?;
-        entry
-            .set_secret(key.as_bytes())
-            .map_err(|e| keychains(name, &e))
+        let mut child = Command::new(&self.program)
+            .arg("-i")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                keychains(
+                    name,
+                    &format!("`{}` could not be run: {e}", self.program.display()),
+                )
+            })?;
+        let hex: Zeroizing<String> = Zeroizing::new(
+            key.as_bytes()
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect(),
+        );
+        let line = Zeroizing::new(format!(
+            "add-generic-password -U -s {} -a {} -X {}\n",
+            Keychain::SERVICE,
+            quoted(&name.account()),
+            hex.as_str()
+        ));
+        let written = child
+            .stdin
+            .take()
+            .map(|mut stdin| stdin.write_all(line.as_bytes()))
+            .unwrap_or(Ok(()));
+        let output = child.wait_with_output().map_err(|e| {
+            keychains(
+                name,
+                &format!("`{}` could not be run: {e}", self.program.display()),
+            )
+        })?;
+        // In `-i`, `security` says a command that failed as
+        // `<command>: returned <status>` on standard error.
+        if !output.status.success() || !output.stderr.is_empty() {
+            return Err(keychains(name, &failed(&output.stderr)));
+        }
+        written.map_err(|e| keychains(name, &format!("`security` took no key: {e}")))
     }
 }
 
 /// The keychain's words for `name`'s item.
-fn keychains(name: &KeyName, error: &Error) -> String {
+fn keychains(name: &KeyName, words: &str) -> String {
     format!(
-        "the keychain could not keep `{}`'s key: {}",
-        name.label,
-        words(error)
+        "the keychain could not keep `{}`'s key: {words}",
+        name.label
     )
 }
 
-/// keyring's words for `error`, holding none of a secret's bytes.
-fn words(error: &Error) -> String {
-    match error {
-        Error::BadEncoding(_) | Error::BadDataFormat(_, _) => {
-            "its item is not a key the runner made".to_string()
-        }
-        error => error.to_string(),
+/// `security`'s words on standard error, which hold none of a key's bytes.
+fn failed(stderr: &[u8]) -> String {
+    let words = String::from_utf8_lossy(stderr);
+    let words = words.trim();
+    if words.is_empty() {
+        "`security` failed and said nothing".to_string()
+    } else {
+        format!("`security` failed: {words}")
     }
+}
+
+/// `account` as one argument of a line of `security -i`, which splits a
+/// line at spaces outside quotes and takes a backslash's next character as
+/// it is.
+fn quoted(account: &str) -> String {
+    let mut quoted = String::from("'");
+    for c in account.chars() {
+        if c == '\\' || c == '\'' {
+            quoted.push('\\');
+        }
+        quoted.push(c);
+    }
+    quoted.push('\'');
+    quoted
+}
+
+/// The key's bytes from what `security find-generic-password -w` printed
+/// of its item, without the newline after them: where each of the item's
+/// bytes is printable, `security` prints the bytes themselves, and
+/// otherwise each byte as two lowercase hex digits. A key's item holds 32
+/// bytes, so 64 hex digits are its bytes in hex and 32 bytes are its bytes
+/// themselves; anything else is no key's.
+fn item_bytes(printed: &[u8]) -> Result<Zeroizing<Vec<u8>>, String> {
+    let printed = printed.strip_suffix(b"\n").unwrap_or(printed);
+    let digit = |byte: u8| match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        _ => None,
+    };
+    if printed.len() == 2 * KEY_LENGTH {
+        let decoded: Option<Vec<u8>> = printed
+            .chunks(2)
+            .map(|pair| Some(digit(pair[0])? << 4 | digit(pair[1])?))
+            .collect();
+        if let Some(decoded) = decoded {
+            return Ok(Zeroizing::new(decoded));
+        }
+    }
+    if printed.len() == KEY_LENGTH {
+        return Ok(Zeroizing::new(printed.to_vec()));
+    }
+    Err(format!("holds no key's {KEY_LENGTH} bytes"))
 }
 
 /// The store of a user's credentials encrypted by `systemd-creds`, 256 or

@@ -26,7 +26,6 @@ getrandom.workspace = true
 zeroize.workspace = true
 sha2.workspace = true
 base64.workspace = true
-keyring-core.workspace = true
 # Enrollment's one request (design Decision 4).
 ureq.workspace = true
 uuid.workspace = true
@@ -36,9 +35,6 @@ gethostname.workspace = true
 tokio.workspace = true
 tokio-tungstenite.workspace = true
 futures-util.workspace = true
-
-[target.'cfg(target_os = "macos")'.dependencies]
-apple-native-keyring-store.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

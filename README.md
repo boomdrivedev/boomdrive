@@ -1489,6 +1489,10 @@ the token. The key is kept only once the control plane has enrolled it,
 and only in the host's credential store: the login keychain on a Mac, or
 on Linux a user's credential encrypted by `systemd-creds` of systemd 256
 or later. It never leaves the host, and no file holds it in the clear.
+On a Mac the runner reads and writes the key through macOS's own
+`/usr/bin/security`, so a new build of the runner reads it with no ask.
+A key that a runner before 0.32.2 kept asks one more time, for
+`security`: click "Always Allow" once.
 `enroll` writes nothing in the data directory, and takes no lock, so a
 running runner dials a partition enrolled beside it at its next try. It
 answers `<label>: enrolled as host <host>`, with a line for the file and
