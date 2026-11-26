@@ -1,19 +1,16 @@
 //! The host's key is kept only in its credential store (the
 //! hosted-control-plane spec's "The host's key is kept only in its
 //! credential store"; design Decision 3; core.32): the `systemd-creds`
-//! store over a stub program the test writes, and the keychain's over
-//! keyring's mock store. No test runs a real `systemd-creds` or touches a
-//! keychain (design Decision 14).
+//! store and the keychain's, each over a stub program the test writes. No
+//! test runs a real `systemd-creds` or `security`, or touches a keychain
+//! (design Decision 14).
 
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use boomdrive_hosted::key::{self, KeyName, Keychain, Memory, Store, SystemdCreds};
 use ed25519_dalek::SigningKey;
-use keyring_core::api::CredentialStoreApi;
-use keyring_core::{mock, CredentialStore};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 /// A stub of `systemd-creds`, the test's own, reporting systemd
 /// `version`. It writes each call's arguments as a line of `calls`, and
@@ -163,10 +160,42 @@ fn a_credential_that_is_no_key() {
     assert_eq!(refusal, "`home`'s credential holds 5 bytes, not a key's 32");
 }
 
+/// A stub of macOS's `security`, the test's own. It writes each call's
+/// arguments as a line of `calls`, and what `-i` is handed on standard
+/// input to `stdin`. `-i` keeps the hex after `-X` as the item of the
+/// account its line quotes, in `item.<account>`, and says a refusal where
+/// `refuse` is there, as `security -i` does; `find-generic-password` prints
+/// that item's text and a newline, as `security` prints an item that holds
+/// a byte it cannot print, or exits 44, `errSecItemNotFound`'s, where none
+/// is, or 51, `errSecAuthFailed`'s, where `deny` is there. The stub keeps
+/// no keychain, which the real program's is.
+fn security_stub(dir: &Path) -> PathBuf {
+    let program = dir.join("security");
+    let script = "#!/bin/sh\n\
+         dir=\"$(dirname \"$0\")\"\n\
+         printf '%s\\n' \"$*\" >> \"$dir/calls\"\n\
+         case \"$1\" in\n\
+         -i)\n\
+           line=\"$(cat)\"\n\
+           printf '%s\\n' \"$line\" >> \"$dir/stdin\"\n\
+           if [ -e \"$dir/refuse\" ]; then echo 'add-generic-password: returned 25' >&2; exit 25; fi\n\
+           account=\"${line#*-a \\'}\"; account=\"${account%%\\'*}\"\n\
+           printf '%s' \"${line##* -X }\" > \"$dir/item.$account\" ;;\n\
+         find-generic-password)\n\
+           if [ -e \"$dir/deny\" ]; then echo 'security: SecKeychainItemCopyContent: The user name or passphrase you entered is not correct.' >&2; exit 51; fi\n\
+           if [ -e \"$dir/item.$5\" ]; then cat \"$dir/item.$5\"; echo; else echo 'security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.' >&2; exit 44; fi ;;\n\
+         *) echo \"no such command: $1\" >&2; exit 2 ;;\n\
+         esac\n";
+    std::fs::write(&program, script).expect("the stub");
+    std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755))
+        .expect("the stub runs");
+    program
+}
+
 #[test]
 fn kept_in_the_keychain() {
-    let mock = mock::Store::new().expect("keyring's mock store");
-    let keychain = Keychain::over(mock.clone() as Arc<CredentialStore>);
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let keychain = Keychain::open(security_stub(scratch.path()));
     let key = test_key();
 
     assert!(matches!(keychain.read(&home()), Ok(None)));
@@ -177,27 +206,97 @@ fn kept_in_the_keychain() {
         .expect("a key kept");
     assert_eq!(read.to_bytes(), key.to_bytes());
 
-    let item = mock
-        .build("boomdrive", "home@control.example", None)
-        .expect("the item");
-    assert_eq!(item.get_secret().expect("its secret"), key.to_bytes());
-    let other = mock
-        .build("boomdrive", "home@staging.control.example", None)
-        .expect("another control plane's item");
+    let calls = std::fs::read(scratch.path().join("calls")).expect("the stub's calls");
+    let calls_text = String::from_utf8_lossy(&calls);
+    assert_eq!(
+        calls_text,
+        "find-generic-password -s boomdrive -a home@control.example -w\n\
+         -i\n\
+         find-generic-password -s boomdrive -a home@control.example -w\n"
+    );
+    let hex: String = key.to_bytes().iter().map(|b| format!("{b:02x}")).collect();
+    assert_eq!(
+        std::fs::read_to_string(scratch.path().join("stdin")).expect("what it was handed"),
+        format!("add-generic-password -U -s boomdrive -a 'home@control.example' -X {hex}\n"),
+        "the key reaches it on standard input"
+    );
+    for shown in [
+        hex,
+        STANDARD.encode(key.to_bytes()),
+        URL_SAFE_NO_PAD.encode(key.to_bytes()),
+    ] {
+        assert!(
+            !calls_text.contains(&shown),
+            "an argument holds the key: {calls_text}"
+        );
+    }
     assert!(
-        other.get_secret().is_err(),
+        !calls.windows(32).any(|window| window == key.to_bytes()),
+        "an argument holds the key's bytes"
+    );
+
+    let other = KeyName::new("home", "staging.control.example");
+    assert!(
+        matches!(keychain.read(&other), Ok(None)),
         "a key is kept for its control plane alone"
     );
 }
 
 #[test]
 fn a_key_replaced() {
-    let keychain = Keychain::over(mock::Store::new().expect("keyring's mock store"));
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let keychain = Keychain::open(security_stub(scratch.path()));
     keychain.write(&home(), &test_key()).expect("the key kept");
     let again = SigningKey::from_bytes(&[9u8; 32]);
     keychain.write(&home(), &again).expect("the key kept again");
     let read = keychain.read(&home()).unwrap().unwrap();
     assert_eq!(read.to_bytes(), again.to_bytes());
+}
+
+/// `security` prints an item whose every byte is printable as those bytes
+/// themselves, and the runner reads them as the key, even where they are
+/// hex digits; a key with a byte it cannot print it prints in hex.
+#[test]
+fn a_key_of_printable_bytes() {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let keychain = Keychain::open(security_stub(scratch.path()));
+    for bytes in [*b"0123456789abcdef0123456789abcdef", [b'~'; 32]] {
+        std::fs::write(scratch.path().join("item.home@control.example"), bytes).expect("an item");
+        let read = keychain.read(&home()).unwrap().unwrap();
+        assert_eq!(read.to_bytes(), bytes);
+    }
+}
+
+#[test]
+fn an_item_that_is_no_key() {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let keychain = Keychain::open(security_stub(scratch.path()));
+    std::fs::write(scratch.path().join("item.home@control.example"), "0001ff").expect("an item");
+    let refusal = keychain.read(&home()).expect_err("three bytes are no key");
+    assert_eq!(
+        refusal,
+        "the keychain's item for `home` holds no key's 32 bytes"
+    );
+}
+
+#[test]
+fn the_keychain_refuses() {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let keychain = Keychain::open(security_stub(scratch.path()));
+    std::fs::write(scratch.path().join("deny"), "").expect("a denial");
+    assert_eq!(
+        keychain.read(&home()).expect_err("a refused read"),
+        "the keychain could not keep `home`'s key: `security` failed: security: \
+         SecKeychainItemCopyContent: The user name or passphrase you entered is not correct."
+    );
+    std::fs::write(scratch.path().join("refuse"), "").expect("a refusal");
+    assert_eq!(
+        keychain
+            .write(&home(), &test_key())
+            .expect_err("a refused write"),
+        "the keychain could not keep `home`'s key: `security` failed: add-generic-password: \
+         returned 25"
+    );
 }
 
 #[test]

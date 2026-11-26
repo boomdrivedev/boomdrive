@@ -86,11 +86,6 @@ jsonwebtoken = "9"
 # The tests' key for the App, made at run time from the system's randomness
 # and written as PEM, since no key is committed (core.4).
 rsa = { version = "0.9", features = ["getrandom", "pem"] }
-# The host's key in the macOS keychain, by keyring v4's macOS store, and
-# keyring's mock store, which a test keeps it in (design Decisions 3 and
-# 14; core.32).
-keyring-core = "1"
-apple-native-keyring-store = { version = "1", features = ["keychain"] }
 # Each partition's one outgoing socket, on the hosted implementation's
 # runtime of its own, over rustls with the host's own roots (design
 # Decisions 1 and 6; record 0008), and the fake hosted control plane, test
