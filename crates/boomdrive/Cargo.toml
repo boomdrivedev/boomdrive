@@ -79,3 +79,10 @@ base64.workspace = true
 ed25519-dalek.workspace = true
 tempfile.workspace = true
 weir-capture.workspace = true
+# The hosted crate's fake control plane, test code alone on the loopback
+# address, which a pass's report reaches through the hosted
+# implementation, checked against the protocol's version (core.3, core.42).
+jsonschema.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
