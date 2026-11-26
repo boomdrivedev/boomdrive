@@ -7,4 +7,4 @@
 
 ## 2. The gate
 
-- [ ] 2.1 The projects' tasks pass. True when `sluice exec main` passes.
+- [x] 2.1 The projects' tasks pass. True when `sluice exec main` passes.
