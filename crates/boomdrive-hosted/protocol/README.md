@@ -24,17 +24,23 @@ boomdrive-cloud's records and rules by id.
 
 ## Versions
 
-Version 5 is `v5/`. Version 5, which it follows, is `v4/`, version 3,
-which version 5 follows, is `v3/`, version 2, which version 3 follows,
-is `v2/`, and version 1, which version 2 follows, is `v1/` (*Version 5*,
-*Version 3*, *Version 2* and *Version 1*, below). A
+Version 5 is `v5/`. Version 4, which version 5 follows, is `v4/`,
+version 3, which version 4 follows, is `v3/`, version 2, which version 3
+follows, is `v2/`, and version 1, which version 2 follows, is `v1/`
+(*Version 5*, *Version 3*, *Version 2* and *Version 1*, below). A
 version may change until a release of the runner speaks it to a control
 plane. From that release on it never changes, and its directory is
 never removed: every change after it is a new version, in a directory of
-its own beside it. The runner and a control plane always share a
-version they both speak: each side drops a version only once the other
-has moved past it, and opens one only once the other speaks the one
-before it (record 0056).
+its own beside it.
+
+boomdrive-cloud leads the protocol (Boom:
+`the-cloud-leads-the-runners-protocol`). It speaks a new version before
+any release of the runner offers that version, and keeps each older
+version until no enrolled runner speaks it. So an older runner connects
+on its own version and works as before, and the cloud tells it that a
+newer release exists. The runner's half is its gate: it refuses a change
+after which the runner offers a version that boomdrive-cloud's `main`
+does not speak.
 
 The runner speaks version 5 alone. Releases of the runner spoke versions
 4, 3, 2 and 1 before it, so none of them changes. The crate's test
@@ -44,6 +50,15 @@ The runner speaks version 5 alone. Releases of the runner spoke versions
 any of them changed or added. It also holds each file and example of
 `v5/` to version 5's, but for what *Version 5* names, so a change to
 version 5 that is not its unleased places fails there.
+
+`spoken.json`, beside the version directories, names each version once,
+lowest first, and whether the runner speaks it: version 5 alone. The
+crate's test `spoken` holds it to the directories and to the version the
+crate's code checks, sends and offers. The runner's gate, by its task
+`boomdrive-hosted:cloud-protocol`, reads boomdrive-cloud's pin,
+`workers/control-plane/runner-protocol/pin.json`, from its `main` as the
+forge holds it, and fails where `spoken.json` marks spoken a version the
+pin does not, or where it cannot read the pin.
 
 A connection asks for the WebSocket subprotocol `boomdrive.v5` at
 its upgrade, so a control plane that does not accept the version refuses

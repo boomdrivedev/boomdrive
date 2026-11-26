@@ -1,0 +1,24 @@
+{
+  "versions": [
+    {
+      "version": 1,
+      "spoken": false
+    },
+    {
+      "version": 2,
+      "spoken": false
+    },
+    {
+      "version": 3,
+      "spoken": false
+    },
+    {
+      "version": 4,
+      "spoken": false
+    },
+    {
+      "version": 5,
+      "spoken": true
+    }
+  ]
+}

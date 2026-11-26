@@ -2,9 +2,10 @@ $schema: 'https://moonrepo.dev/schemas/project.json'
 
 # The hosted control plane's implementation, boomdrive-hosted, which holds
 # the runner's protocol. Each check is one task, in the fast layer
-# (core.7). Each builds boomdrive-control too, so takes its sources. Its
-# tests cut Flume's and sluice's answers kept as the binary's fixtures, so
-# its test task takes them too.
+# (core.7). Each task takes the crate's sources and boomdrive-control's,
+# which its checks build; the last two run the gate's check against the
+# cloud's pin. Its tests cut Flume's and sluice's answers kept as the
+# binary's fixtures, so its test task takes them too.
 language: 'rust'
 layer: 'library'
 
@@ -27,5 +28,23 @@ tasks:
   test:
     command: 'cargo test -p boomdrive-hosted'
     inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # Each version protocol/spoken.json marks spoken is one boomdrive-cloud's
+  # main marks spoken in its pin, read from main as the forge holds it by
+  # the host's git credentials (Boom: the-cloud-leads-the-runners-protocol;
+  # core.42). It reads outside the tree, so it never replays.
+  cloud-protocol:
+    command: 'sh crates/boomdrive-hosted/check-cloud-protocol.sh https://github.com/boomdrivedev/boomdrive-cloud.git crates/boomdrive-hosted/protocol/spoken.json'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/devenv.nix', '/devenv.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true, cache: false}
+  # check-cloud-protocol.sh against scratch repositories by file://: a
+  # runner whose versions the cloud speaks passes; one offering a version
+  # the cloud does not speak, or none, and a pin that cannot be read are
+  # refused (test-cloud-protocol.sh).
+  cloud-protocol-checks:
+    command: 'sh crates/boomdrive-hosted/test-cloud-protocol.sh'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/devenv.nix', '/devenv.lock']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
