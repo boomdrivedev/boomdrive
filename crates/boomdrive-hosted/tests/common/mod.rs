@@ -2,15 +2,15 @@
 //! version's files alone, each under its `$id`, with every other address
 //! refused, so that nothing is fetched (core.42; design Decision 14), the
 //! version's examples, and the fake hosted control plane. Each version is
-//! a [`Version`]; the free functions are [`CURRENT`]'s, the version the
-//! runner speaks.
+//! a [`Version`]; the free functions are [`current`]'s, the version the
+//! runner speaks, as `protocol/spoken.json` marks it.
 
 #![allow(dead_code)]
 
 pub mod fake;
 pub mod waits;
 
-use boomdrive_hosted::protocol::{v1, v2, v3, v4, v5};
+use boomdrive_hosted::protocol::{self, v1, v2, v3, v4, v5, v6};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -68,11 +68,26 @@ pub const V5: Version = Version {
     files: v5::FILES,
 };
 
-/// Each version, in order.
-pub const VERSIONS: [Version; 5] = [V1, V2, V3, V4, V5];
+/// Version 6, version 5 whole but for the control plane's
+/// `newest_release`.
+pub const V6: Version = Version {
+    number: v6::VERSION,
+    address: v6::ADDRESS,
+    files: v6::FILES,
+};
 
-/// The version the runner speaks, which the free functions check.
-pub const CURRENT: Version = V5;
+/// Each version, in order.
+pub const VERSIONS: [Version; 6] = [V1, V2, V3, V4, V5, V6];
+
+/// The version the runner speaks, as `protocol/spoken.json` marks it,
+/// which the free functions check.
+pub fn current() -> Version {
+    let number = protocol::spoken().number;
+    VERSIONS
+        .into_iter()
+        .find(|version| version.number == number)
+        .expect("the version spoken is one of the crate's")
+}
 
 /// The retriever every registry and validator is given: it refuses every
 /// address, whatever features cargo unifies into `jsonschema`, so a
@@ -116,7 +131,8 @@ impl Version {
 
     /// Every one of its files under its `$id`, and nothing else.
     fn registry(&self) -> &'static Registry<'static> {
-        static REGISTRIES: [OnceLock<Registry<'static>>; 5] = [
+        static REGISTRIES: [OnceLock<Registry<'static>>; 6] = [
+            OnceLock::new(),
             OnceLock::new(),
             OnceLock::new(),
             OnceLock::new(),
@@ -201,38 +217,38 @@ impl Version {
 
 /// The address of `file` in the current version, its `$id`.
 pub fn address(file: &str) -> String {
-    CURRENT.address(file)
+    current().address(file)
 }
 
 /// The address of the definition `name` of `file` in the current version.
 pub fn definition(file: &str, name: &str) -> String {
-    CURRENT.definition(file, name)
+    current().definition(file, name)
 }
 
 /// Each file of the current version by its name, read as JSON.
 pub fn files() -> Vec<(&'static str, Value)> {
-    CURRENT.files()
+    current().files()
 }
 
 /// A validator of what `reference` names in the current version, or why
 /// it could not be built.
 pub fn try_validator(reference: &str) -> Result<Validator, String> {
-    CURRENT.try_validator(reference)
+    current().try_validator(reference)
 }
 
 /// A validator of what `reference` names in the current version.
 pub fn validator(reference: &str) -> Validator {
-    CURRENT.validator(reference)
+    current().validator(reference)
 }
 
 /// The validator of a runner's messages in the current version.
 pub fn from_runner() -> Validator {
-    CURRENT.messages_from_runner()
+    current().messages_from_runner()
 }
 
 /// The validator of a control plane's messages in the current version.
 pub fn to_runner() -> Validator {
-    CURRENT.messages_to_runner()
+    current().messages_to_runner()
 }
 
 /// Why `validator` refuses `value`, one line for each error, or nothing
@@ -257,15 +273,15 @@ pub fn refused(validator: &Validator, value: &Value, what: &str) {
 
 /// The directory of the current version's files.
 pub fn version_dir() -> PathBuf {
-    CURRENT.dir()
+    current().dir()
 }
 
 /// Each example of `direction` in the current version, by its file name.
 pub fn examples(direction: &str) -> Vec<(String, Value)> {
-    CURRENT.examples(direction)
+    current().examples(direction)
 }
 
 /// The example `name` of `direction` in the current version.
 pub fn example(direction: &str, name: &str) -> Value {
-    CURRENT.example(direction, name)
+    current().example(direction, name)
 }

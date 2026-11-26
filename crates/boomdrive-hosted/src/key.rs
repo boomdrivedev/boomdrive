@@ -5,7 +5,7 @@
 //! and never a file in the clear; and the contexts it signs, as the
 //! protocol's README gives their bytes.
 
-use crate::protocol::v5::SUBPROTOCOL;
+use crate::protocol::Version;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
@@ -403,12 +403,12 @@ pub fn base64url(bytes: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
-/// The context `name` over `fields`: the UTF-8 bytes of
-/// `boomdrive.v5`, a space and `name`, then each field after a NUL
-/// byte, with nothing after the last (the protocol's README, *The
-/// signatures*).
-pub fn context(name: &str, fields: &[&[u8]]) -> Vec<u8> {
-    let mut bytes = format!("{SUBPROTOCOL} {name}").into_bytes();
+/// The context `name` of `version` over `fields`: the UTF-8 bytes of the
+/// version's subprotocol, `boomdrive.v5` for version 5, a space and
+/// `name`, then each field after a NUL byte, with nothing after the last
+/// (the protocol's README, *The signatures*).
+pub fn context(version: &Version, name: &str, fields: &[&[u8]]) -> Vec<u8> {
+    let mut bytes = format!("{} {name}", version.subprotocol).into_bytes();
     for field in fields {
         bytes.push(0);
         bytes.extend_from_slice(field);
@@ -424,10 +424,16 @@ pub fn token_digest(token: &str) -> String {
     format!("sha256:{hex}")
 }
 
-/// The enrollment's context: the control plane's `origin`, the token's
-/// digest and the public key's bytes.
-pub fn enrollment_context(origin: &str, token: &str, key: &VerifyingKey) -> Vec<u8> {
+/// `version`'s enrollment context: the control plane's `origin`, the
+/// token's digest and the public key's bytes.
+pub fn enrollment_context(
+    version: &Version,
+    origin: &str,
+    token: &str,
+    key: &VerifyingKey,
+) -> Vec<u8> {
     context(
+        version,
         "enroll",
         &[
             origin.as_bytes(),
@@ -437,15 +443,17 @@ pub fn enrollment_context(origin: &str, token: &str, key: &VerifyingKey) -> Vec<
     )
 }
 
-/// A connection's context: the control plane's `origin`, the public
-/// key's bytes, `time`'s decimal digits and the nonce's bytes.
+/// `version`'s connection context: the control plane's `origin`, the
+/// public key's bytes, `time`'s decimal digits and the nonce's bytes.
 pub fn connection_context(
+    version: &Version,
     origin: &str,
     key: &VerifyingKey,
     time: u64,
     nonce: &[u8; NONCE_LENGTH],
 ) -> Vec<u8> {
     context(
+        version,
         "connect",
         &[
             origin.as_bytes(),
@@ -461,12 +469,22 @@ pub fn signature(key: &SigningKey, context: &[u8]) -> String {
     base64url(&key.sign(context).to_bytes())
 }
 
-/// The `Authorization` header's value for one connection attempt to the
-/// control plane at `origin`, at `time` in Unix seconds with `nonce`:
-/// `BoomdriveHost <key>.<time>.<nonce>.<signature>` (design Decision 5).
-pub fn statement(key: &SigningKey, origin: &str, time: u64, nonce: &[u8; NONCE_LENGTH]) -> String {
+/// The `Authorization` header's value for one connection attempt of
+/// `version` to the control plane at `origin`, at `time` in Unix seconds
+/// with `nonce`: `BoomdriveHost <key>.<time>.<nonce>.<signature>` (design
+/// Decision 5).
+pub fn statement(
+    key: &SigningKey,
+    version: &Version,
+    origin: &str,
+    time: u64,
+    nonce: &[u8; NONCE_LENGTH],
+) -> String {
     let public = key.verifying_key();
-    let signed = signature(key, &connection_context(origin, &public, time, nonce));
+    let signed = signature(
+        key,
+        &connection_context(version, origin, &public, time, nonce),
+    );
     format!(
         "BoomdriveHost {}.{time}.{}.{signed}",
         base64url(public.as_bytes()),
@@ -474,13 +492,14 @@ pub fn statement(key: &SigningKey, origin: &str, time: u64, nonce: &[u8; NONCE_L
     )
 }
 
-/// A forge token's ask's context: the control plane's `origin`, the
+/// `version`'s context of a forge token's ask: the control plane's `origin`, the
 /// public key's bytes, `time`'s decimal digits, the nonce's bytes and the
 /// repository's address, `owner/name`, as its UTF-8 bytes, so a statement
 /// made for one repository is never taken for another, nor an ask's for a
 /// connection's (design Decision 2 of
 /// a-cloud-host-gets-its-github-tokens-from-the-cloud; record 0053).
 pub fn forge_token_context(
+    version: &Version,
     origin: &str,
     key: &VerifyingKey,
     time: u64,
@@ -488,6 +507,7 @@ pub fn forge_token_context(
     repository: &str,
 ) -> Vec<u8> {
     context(
+        version,
         "forge token",
         &[
             origin.as_bytes(),
@@ -506,13 +526,14 @@ pub fn forge_token_context(
 /// a-cloud-host-gets-its-github-tokens-from-the-cloud).
 pub fn forge_token_statement(
     key: &SigningKey,
+    version: &Version,
     origin: &str,
     time: u64,
     nonce: &[u8; NONCE_LENGTH],
     repository: &str,
 ) -> String {
     let public = key.verifying_key();
-    let context = forge_token_context(origin, &public, time, nonce, repository);
+    let context = forge_token_context(version, origin, &public, time, nonce, repository);
     format!(
         "BoomdriveHost {}.{time}.{}.{}",
         base64url(public.as_bytes()),

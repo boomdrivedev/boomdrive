@@ -1,13 +1,16 @@
 //! `protocol/spoken.json` names each version directory once, lowest
-//! first, and marks spoken exactly the version the crate's code checks,
-//! sends and offers, so the file the cloud's gate reads says what the
-//! runner speaks (Boom: `the-cloud-leads-the-runners-protocol`; core.42;
-//! design Decisions 1 and 2 of the-runner-and-the-cloud-share-a-version).
+//! first, and marks spoken exactly one version, the one the crate's code
+//! checks, sends and offers, which `protocol::spoken` reads from the file
+//! itself, so the file the cloud's gate reads says what the runner speaks
+//! and a version is spoken by its mark alone (Boom:
+//! `the-cloud-leads-the-runners-protocol`; core.42; design Decisions 1
+//! and 2 of the-runner-and-the-cloud-share-a-version; design Decision 3 of
+//! protocol-version-6-names-the-newest-release).
 
 mod common;
 
-use boomdrive_hosted::protocol::v5;
-use common::{CURRENT, VERSIONS};
+use boomdrive_hosted::protocol::{self, speakable};
+use common::{current, VERSIONS};
 use serde_json::Value;
 use std::path::Path;
 
@@ -90,15 +93,41 @@ fn the_runner_speaks_what_the_file_marks_spoken() {
         .filter(|(_, spoken)| *spoken)
         .map(|(number, _)| number)
         .collect();
+    let version = protocol::spoken();
     assert_eq!(
         spoken,
-        [u64::from(CURRENT.number)],
+        [u64::from(version.number)],
         "spoken.json marks the version the runner speaks alone"
     );
-    assert_eq!(CURRENT.number, v5::VERSION);
+    assert!(
+        speakable().iter().any(|v| v.number == version.number),
+        "the version marked spoken is one the code speaks"
+    );
+    assert_eq!(current().number, version.number);
     assert_eq!(
-        v5::SUBPROTOCOL,
-        "boomdrive.v5",
+        version.subprotocol,
+        format!("boomdrive.v{}", version.number),
         "the upgrade offers the version spoken"
     );
+}
+
+/// The runner-protocol spec's "Each version the code speaks is its own
+/// files": versions 5 and 6, each with its module's number, subprotocol,
+/// address and files, so a mark in the file alone moves the runner from
+/// one to the other.
+#[test]
+fn each_version_the_code_speaks_is_its_own_files() {
+    use boomdrive_hosted::protocol::{v5, v6};
+    let [five, six] = speakable();
+    assert_eq!(
+        (five.number, five.subprotocol, five.address),
+        (v5::VERSION, v5::SUBPROTOCOL, v5::ADDRESS)
+    );
+    assert_eq!(five.files, v5::FILES);
+    assert_eq!(
+        (six.number, six.subprotocol, six.address),
+        (v6::VERSION, v6::SUBPROTOCOL, v6::ADDRESS)
+    );
+    assert_eq!(six.files, v6::FILES);
+    assert_eq!((five.number, six.number), (5, 6));
 }

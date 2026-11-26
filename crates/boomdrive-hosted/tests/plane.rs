@@ -1239,9 +1239,12 @@ fn an_end_flume_adds() {
         .collect();
     assert_eq!(lines.len(), 1, "{:#?}", plane.lines());
     assert_eq!(
-        lines[0],
-        "home/l-1: its status goes up with ends version 5 does not name: /ends/0 by its \
-         delivery alone, /ends/1 by its delivery alone, /ends/2 left out"
+        lines[0].as_str(),
+        format!(
+            "home/l-1: its status goes up with ends version {} does not name: /ends/0 by its \
+             delivery alone, /ends/1 by its delivery alone, /ends/2 left out",
+            boomdrive_hosted::protocol::spoken().number
+        )
     );
     for value in ["moved", "dreaming", "construct", "scratch/planner"] {
         assert!(!lines[0].contains(value), "{lines:?}");

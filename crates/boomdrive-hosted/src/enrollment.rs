@@ -8,7 +8,8 @@
 
 use crate::check;
 use crate::key::{self, Store};
-use crate::protocol::v5::{Enroll, FromRunner, Message, MessageId, ToRunner, VERSION};
+use crate::protocol::spoken;
+use crate::protocol::v6::{Enroll, FromRunner, Message, MessageId, ToRunner};
 use crate::table::Table;
 use serde_json::Value;
 use std::time::Duration;
@@ -100,23 +101,29 @@ pub fn enroll(
         ));
     }
 
+    let version = spoken();
+    let number = version.number;
     let key = key::made().map_err(Refusal::host)?;
     let public = key.verifying_key();
     let origin = table.origin();
     let id = MessageId::new(Uuid::now_v7().to_string());
     let message = Message::new(
+        version,
         id,
         FromRunner::Enroll(Enroll {
             key: key::base64url(public.as_bytes()),
-            signature: key::signature(&key, &key::enrollment_context(&origin, token, &public)),
+            signature: key::signature(
+                &key,
+                &key::enrollment_context(version, &origin, token, &public),
+            ),
             machine: machine.to_string(),
         }),
     );
     let body = serde_json::to_value(&message)
         .map_err(|e| Refusal::host(format!("the enrollment could not be written: {e}")))?;
-    if let Some(words) = check::failure(check::from_runner(), &body) {
+    if let Some(words) = check::failure(check::from_runner(version), &body) {
         return Err(Refusal::host(format!(
-            "the enrollment fails version {VERSION}'s check, so is not sent: {words}"
+            "the enrollment fails version {number}'s check, so is not sent: {words}"
         )));
     }
 
@@ -152,12 +159,12 @@ pub fn enroll(
         })?;
     let answer: Value = serde_json::from_str(&text).map_err(|_| {
         Refusal::control_plane(format!(
-            "the control plane answered {status} with no message of version {VERSION}"
+            "the control plane answered {status} with no message of version {number}"
         ))
     })?;
-    if let Some(words) = check::failure(check::to_runner(), &answer) {
+    if let Some(words) = check::failure(check::to_runner(version), &answer) {
         return Err(Refusal::control_plane(format!(
-            "the control plane's answer, {status}, fails version {VERSION}'s check: {words}"
+            "the control plane's answer, {status}, fails version {number}'s check: {words}"
         )));
     }
     let kind = answer

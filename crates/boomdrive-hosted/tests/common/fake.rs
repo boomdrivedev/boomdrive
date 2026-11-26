@@ -2,7 +2,8 @@
 //! test code alone, listening on the loopback address. It answers
 //! `runner/enroll` and `runner/forge-token` with HTTP written by hand, and
 //! upgrades `runner/connect` by tokio-tungstenite's handshake. It checks
-//! every message it is sent against version 5, verifies the enrollment's
+//! every message it is sent against the version it speaks, the one the
+//! runner speaks unless a test names another, verifies the enrollment's
 //! and each connection's signature over its context, built here from the
 //! protocol's README and not from the crate's code, and each forge token's
 //! ask's over the context the crate's `key` makes, so it proves the bytes
@@ -18,10 +19,10 @@
 //! tokio's paused clock waits on what the fake takes without blocking its
 //! runtime, by [`Fake::until`].
 
-use super::from_runner;
+use super::VERSIONS;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use boomdrive_hosted::protocol::v5::VERSION;
+use boomdrive_hosted::protocol::{self, Version};
 use ed25519_dalek::{Signature, VerifyingKey};
 use futures_util::{SinkExt, StreamExt};
 use jsonschema::Validator;
@@ -36,8 +37,11 @@ use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::{http, Message as Frame};
 
-/// The subprotocol of version 5, as the README names it.
-pub const SUBPROTOCOL: &str = boomdrive_hosted::protocol::v5::SUBPROTOCOL;
+/// The subprotocol of the version the runner speaks, as the README names
+/// it.
+pub fn subprotocol() -> &'static str {
+    protocol::spoken().subprotocol
+}
 
 /// The path the fake's address holds, under which its two paths go.
 const BASE_PATH: &str = "/boomdrive/";
@@ -56,7 +60,7 @@ pub enum Taken {
         /// The token it bore, as `Authorization: Bearer` carried it.
         bearer: Option<String>,
         message: Value,
-        /// Why the message failed version 5, where it did.
+        /// Why the message failed the fake's version, where it did.
         refused: Option<String>,
         /// Whether its signature checked over the enrollment's context.
         signed: bool,
@@ -72,7 +76,7 @@ pub enum Taken {
         /// The statement's nonce, where it could be read.
         nonce: Option<Vec<u8>>,
         message: Value,
-        /// Why the message failed version 5, where it did.
+        /// Why the message failed the fake's version, where it did.
         refused: Option<String>,
         /// Whether its statement checked over the context `forge token`.
         signed: bool,
@@ -97,7 +101,7 @@ pub enum Taken {
     Message {
         partition: String,
         message: Value,
-        /// Why it failed version 5, where it did.
+        /// Why it failed the fake's version, where it did.
         refused: Option<String>,
     },
     /// A WebSocket ping a partition's connection sent.
@@ -134,10 +138,11 @@ pub fn kind(message: &Value) -> Option<String> {
 /// a status and the answer's text, or none, where it never answers.
 pub type ForgeAnswer = Arc<dyn Fn(&Value) -> Option<(u16, String)> + Send + Sync>;
 
-/// A message of version 5 of `kind` holding `body`, under the id `id`, as
+/// A message of the version the runner speaks, of `kind` holding `body`, under the id `id`, as
 /// text.
 pub fn message_text(id: &str, kind: &str, body: Value) -> String {
-    json!({ "protocol_version": VERSION, "id": id, "body": { kind: body } }).to_string()
+    json!({ "protocol_version": protocol::spoken().number, "id": id, "body": { kind: body } })
+        .to_string()
 }
 
 /// An answer giving `token`, ending at `expires_at`, for the ask and its
@@ -258,6 +263,8 @@ struct State {
     forge_answers: BTreeMap<(String, String), ForgeAnswer>,
     taken: Vec<Taken>,
     next: u64,
+    /// The number of the version the fake speaks.
+    number: u32,
 }
 
 impl State {
@@ -267,9 +274,9 @@ impl State {
         format!("plane:{}", self.next)
     }
 
-    /// A message of version 5 under a new id of the fake's.
+    /// A message of the fake's version under a new id of the fake's.
     fn message(&mut self, kind: &str, body: Value) -> Value {
-        json!({ "protocol_version": VERSION, "id": self.id(), "body": { kind: body } })
+        json!({ "protocol_version": self.number, "id": self.id(), "body": { kind: body } })
     }
 
     /// `partition`'s `pulled`, its wants and the report it holds.
@@ -289,6 +296,8 @@ struct Shared {
     taken: watch::Sender<u64>,
     validator: Validator,
     origin: String,
+    /// The version the fake speaks.
+    version: &'static Version,
 }
 
 impl Shared {
@@ -303,7 +312,7 @@ impl Shared {
         self.taken.send_modify(|count| *count += 1);
     }
 
-    /// Why `message` fails version 5, where it does: each error's path
+    /// Why `message` fails the fake's version, where it does: each error's path
     /// in the message.
     fn refusal(&self, message: &Value) -> Option<String> {
         let errors: Vec<String> = self
@@ -330,19 +339,34 @@ pub struct Fake {
 }
 
 impl Fake {
-    /// A fake listening on a port of the loopback address's own.
+    /// A fake listening on a port of the loopback address's own, speaking
+    /// the version the runner speaks.
     pub fn start() -> Fake {
+        Fake::speaking(protocol::spoken())
+    }
+
+    /// A fake listening on a port of the loopback address's own, speaking
+    /// `version` alone.
+    pub fn speaking(version: &'static Version) -> Fake {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a loopback port");
         listener
             .set_nonblocking(true)
             .expect("a listener that waits on tokio");
         let port = listener.local_addr().expect("its address").port();
+        let checked = VERSIONS
+            .into_iter()
+            .find(|checked| checked.number == version.number)
+            .expect("a version the tests check");
         let shared = Arc::new(Shared {
-            state: Mutex::new(State::default()),
+            state: Mutex::new(State {
+                number: version.number,
+                ..State::default()
+            }),
             changed: Condvar::new(),
             taken: watch::Sender::new(0),
-            validator: from_runner(),
+            validator: checked.messages_from_runner(),
             origin: format!("http://127.0.0.1:{port}"),
+            version,
         });
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -640,9 +664,10 @@ impl Drop for Fake {
     }
 }
 
-/// The README's context `name` over `fields`.
-fn context(name: &str, fields: &[&[u8]]) -> Vec<u8> {
-    let mut bytes = format!("{SUBPROTOCOL} {name}").into_bytes();
+/// The README's context `name` of the version named `subprotocol` over
+/// `fields`.
+fn context(subprotocol: &str, name: &str, fields: &[&[u8]]) -> Vec<u8> {
+    let mut bytes = format!("{subprotocol} {name}").into_bytes();
     for field in fields {
         bytes.push(0);
         bytes.extend_from_slice(field);
@@ -806,6 +831,7 @@ fn enrollment(
         &key,
         &signature,
         &context(
+            shared.version.subprotocol,
             "enroll",
             &[
                 shared.origin.as_bytes(),
@@ -849,7 +875,7 @@ fn enrollment(
     (200, signed, reply)
 }
 
-/// Answers an ask of a forge token: its message checked against version 5,
+/// Answers an ask of a forge token: its message checked against the fake's version,
 /// its statement checked over the context `forge token` the crate's `key`
 /// makes, of the fake's origin, the statement's key, time and nonce and
 /// the ask's repository, its key enrolled, its time within the window and
@@ -885,6 +911,7 @@ async fn forge_token(
         (Some(key), Some(time), Some(nonce), Some(signature)) => VerifyingKey::from_bytes(&key)
             .is_ok_and(|public| {
                 let context = boomdrive_hosted::key::forge_token_context(
+                    shared.version,
                     &shared.origin,
                     &public,
                     time,
@@ -1068,10 +1095,11 @@ fn upgrade(shared: &Shared, request: &Request) -> (Taken, Result<String, (u16, S
         if request.uri().path() != format!("{BASE_PATH}runner/connect") {
             return Err((404, "no such path".to_string()));
         }
-        if !protocols.iter().any(|protocol| protocol == SUBPROTOCOL) {
+        let subprotocol = shared.version.subprotocol;
+        if !protocols.iter().any(|protocol| protocol == subprotocol) {
             return Err((
                 400,
-                format!("{SUBPROTOCOL} is the version this control plane speaks"),
+                format!("{subprotocol} is the version this control plane speaks"),
             ));
         }
         let (Some(key), Some(time), Some(nonce), Some(signature)) =
@@ -1080,6 +1108,7 @@ fn upgrade(shared: &Shared, request: &Request) -> (Taken, Result<String, (u16, S
             return Err((401, "the upgrade holds no statement".to_string()));
         };
         let context = context(
+            subprotocol,
             "connect",
             &[shared.origin.as_bytes(), &key, time.as_bytes(), &nonce],
         );
@@ -1131,7 +1160,7 @@ async fn connect(stream: TcpStream, shared: Arc<Shared>) {
                 if !shared.lock().refuse_subprotocol {
                     response.headers_mut().insert(
                         "sec-websocket-protocol",
-                        http::HeaderValue::from_static(SUBPROTOCOL),
+                        http::HeaderValue::from_static(shared.version.subprotocol),
                     );
                 }
                 proved = Some(partition);

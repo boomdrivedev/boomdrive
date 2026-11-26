@@ -1,14 +1,14 @@
 //! The cut of a tool's answer to its copy (design Decision 9; core.11,
 //! core.27, core.42): a place's status, sluice's entry, sluice's answer
 //! and listing of a preview and its answer to a release, and Flume's host
-//! part, each cut by walking version 5's own definition of its copy, so
+//! part, each cut by walking the spoken version's own definition of its copy, so
 //! the schema is the one list of what goes up, then checked against that
 //! definition before it goes. The cut keeps each value as the tool printed
-//! it and writes none again. Because every object of version 5 is closed,
+//! it and writes none again. Because every object of the spoken version is closed,
 //! the check holds the line and the cut only makes a copy that passes.
 
 use crate::check;
-use crate::protocol::v5::{ADDRESS, FILES};
+use crate::protocol::spoken;
 use boomdrive_control::HostPart;
 use jsonschema::Validator;
 use serde_json::{Map, Value};
@@ -35,7 +35,7 @@ pub const RELEASE: &str = "preview.schema.json#/$defs/release";
 /// its named forms, or its delivery alone.
 pub const END_RECORD: &str = "place-status.schema.json#/$defs/end_record";
 
-/// The definition an end of a form version 5 does not name is cut by: its
+/// The definition an end of a form the spoken version does not name is cut by: its
 /// delivery alone.
 pub const END_DELIVERY: &str = "place-status.schema.json#/$defs/end_delivery";
 
@@ -44,7 +44,7 @@ pub const END_DELIVERY: &str = "place-status.schema.json#/$defs/end_delivery";
 /// the-hosted-protocol-carries-every-end-of-a-place).
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlaceCopy {
-    /// The copy, which passes version 5's `place_status`.
+    /// The copy, which passes the spoken version's `place_status`.
     pub copy: Value,
     /// Each end carried by its delivery alone.
     pub by_delivery: Vec<usize>,
@@ -53,7 +53,7 @@ pub struct PlaceCopy {
 }
 
 impl PlaceCopy {
-    /// Whether every end went up in a form version 5 names.
+    /// Whether every end went up in a form the spoken version names.
     pub fn whole(&self) -> bool {
         self.by_delivery.is_empty() && self.left_out.is_empty()
     }
@@ -62,7 +62,7 @@ impl PlaceCopy {
 /// How one of Flume's ends went into a copy.
 #[derive(Clone, Debug, PartialEq)]
 enum EndCopy {
-    /// Cut by the form version 5 names for its `of`, and passing.
+    /// Cut by the form the spoken version names for its `of`, and passing.
     Named(Value),
     /// Cut to its delivery alone, and passing.
     Delivery(Value),
@@ -75,7 +75,7 @@ enum EndCopy {
 /// ends copied on its own, and checked whole; or why it is none, naming
 /// a path and never a value.
 ///
-/// Each end is cut by the form version 5 names for its `of` and checked;
+/// Each end is cut by the form the spoken version names for its `of` and checked;
 /// where there is none, or the check fails, it is cut to its delivery
 /// alone and checked; and where that fails too, it is left out. The
 /// ends' copies stand in `ends` in Flume's order. A copy that fails with
@@ -118,7 +118,7 @@ fn place_copy(place: &Value) -> Result<PlaceCopy, String> {
         }
         fields.insert("ends".to_string(), Value::Array(copies));
     }
-    checked(check::place_status(), copy).map(|copy| PlaceCopy {
+    checked(check::place_status(spoken()), copy).map(|copy| PlaceCopy {
         copy,
         by_delivery,
         left_out,
@@ -128,7 +128,7 @@ fn place_copy(place: &Value) -> Result<PlaceCopy, String> {
 /// One of Flume's ends, `end`, cut by its named form, else by its delivery
 /// alone, else left out, each cut checked against `end_record`.
 fn end_copy(end: &Value) -> EndCopy {
-    let passes = |copy: &Value| check::end_record().is_valid(copy);
+    let passes = |copy: &Value| check::end_record(spoken()).is_valid(copy);
     let named = end
         .get("of")
         .and_then(Value::as_str)
@@ -146,7 +146,7 @@ fn end_copy(end: &Value) -> EndCopy {
     }
 }
 
-/// Each form of an end version 5 names, by its `of`, as a reference to
+/// Each form of an end the spoken version names, by its `of`, as a reference to
 /// its branch of `end_record`.
 fn named_forms() -> &'static BTreeMap<String, String> {
     static FORMS: OnceLock<BTreeMap<String, String>> = OnceLock::new();
@@ -174,7 +174,10 @@ fn named_forms() -> &'static BTreeMap<String, String> {
 pub fn submission_entry(text: &str) -> Result<Value, String> {
     let entry: Value =
         serde_json::from_str(text).map_err(|_| "sluice's entry is no JSON".to_string())?;
-    checked(check::submission_entry(), cut(SUBMISSION_ENTRY, &entry))
+    checked(
+        check::submission_entry(spoken()),
+        cut(SUBMISSION_ENTRY, &entry),
+    )
 }
 
 /// The copy of a preview, `text` as the runner carries sluice's answer to
@@ -184,7 +187,7 @@ pub fn submission_entry(text: &str) -> Result<Value, String> {
 pub fn preview(text: &str) -> Result<Value, String> {
     let preview: Value =
         serde_json::from_str(text).map_err(|_| "sluice's preview is no JSON".to_string())?;
-    checked(check::preview(), cut(PREVIEW, &preview))
+    checked(check::preview(spoken()), cut(PREVIEW, &preview))
 }
 
 /// The copy of a release, `text` as the runner carries sluice's answer to
@@ -193,7 +196,7 @@ pub fn preview(text: &str) -> Result<Value, String> {
 pub fn release(text: &str) -> Result<Value, String> {
     let release: Value =
         serde_json::from_str(text).map_err(|_| "sluice's release is no JSON".to_string())?;
-    checked(check::release(), cut(RELEASE, &release))
+    checked(check::release(spoken()), cut(RELEASE, &release))
 }
 
 /// The copy of Flume's host part, each of `part`'s texts read as the JSON
@@ -211,7 +214,10 @@ pub fn host_part(part: &HostPart) -> Result<Value, String> {
             .map_err(|_| format!("Flume's host part's `{name}` is no JSON"))?;
         values.insert(name.to_string(), value);
     }
-    checked(check::host_part(), cut(HOST_PART, &Value::Object(values)))
+    checked(
+        check::host_part(spoken()),
+        cut(HOST_PART, &Value::Object(values)),
+    )
 }
 
 /// `copy`, where it passes `validator`; or why not, naming the paths and
@@ -223,7 +229,7 @@ fn checked(validator: &Validator, copy: Value) -> Result<Value, String> {
     }
 }
 
-/// `value` cut by the definition `reference`, a file of version 5 and a
+/// `value` cut by the definition `reference`, a file of the spoken version and a
 /// JSON pointer in it, `<file>#<pointer>`:
 ///
 /// - an object keeps only the properties its definition names, each cut
@@ -233,7 +239,7 @@ fn checked(validator: &Validator, copy: Value) -> Result<Value, String> {
 /// - a `oneOf` cuts by the one branch whose form the value takes: a
 ///   constant by its value, an object by its keys and their constants,
 ///   `null` by its type;
-/// - a `$ref` is followed within version 5's files;
+/// - a `$ref` is followed within the spoken version's files;
 /// - every other value, and one its definition carries whole, is kept as
 ///   the tool printed it.
 ///
@@ -246,11 +252,12 @@ pub fn cut(reference: &str, value: &Value) -> Value {
     }
 }
 
-/// Each of version 5's files by its name, read once.
+/// Each of the spoken version's files by its name, read once.
 fn files() -> &'static BTreeMap<&'static str, Value> {
     static FILES_READ: OnceLock<BTreeMap<&'static str, Value>> = OnceLock::new();
     FILES_READ.get_or_init(|| {
-        FILES
+        spoken()
+            .files
             .iter()
             .map(|(name, text)| {
                 // Each file is the crate's own, read by its tests.
@@ -262,9 +269,11 @@ fn files() -> &'static BTreeMap<&'static str, Value> {
 
 /// What `reference` names, read from the file `from` where it names no
 /// file of its own, with the name of the file it is in; none where it is
-/// outside version 5's files.
+/// outside the spoken version's files.
 fn resolve(from: Option<&'static str>, reference: &str) -> Option<(&'static str, &'static Value)> {
-    let reference = reference.strip_prefix(ADDRESS).unwrap_or(reference);
+    let reference = reference
+        .strip_prefix(spoken().address)
+        .unwrap_or(reference);
     let (file, pointer) = reference.split_once('#').unwrap_or((reference, ""));
     let (name, document) = match file {
         "" => {

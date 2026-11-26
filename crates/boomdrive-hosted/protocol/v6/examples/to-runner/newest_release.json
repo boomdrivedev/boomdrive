@@ -1,0 +1,9 @@
+{
+  "protocol_version": 6,
+  "id": "plane:9",
+  "body": {
+    "newest_release": {
+      "version": "0.32.0"
+    }
+  }
+}

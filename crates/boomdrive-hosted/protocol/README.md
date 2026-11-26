@@ -18,16 +18,19 @@ version 3, `the-hosted-protocol-carries-a-hold` and
 `a-runner-reports-to-an-observer-it-takes-no-work-from`, with record
 0048, which record 0054 supersedes, the change that wrote version 5,
 `a-cloud-host-gets-its-github-tokens-from-the-cloud`, and the change that
-wrote version 5, `the-runner-serves-each-accounts-own-control-plane`.
-They cite
+wrote version 5, `the-runner-serves-each-accounts-own-control-plane`,
+and the change that wrote version 6,
+`protocol-version-6-names-the-newest-release`. They cite
 boomdrive-cloud's records and rules by id.
 
 ## Versions
 
-Version 5 is `v5/`. Version 4, which version 5 follows, is `v4/`,
+Version 6 is `v6/`, and version 5, which version 6 follows, is `v5/`.
+Version 4, which version 5 follows, is `v4/`,
 version 3, which version 4 follows, is `v3/`, version 2, which version 3
 follows, is `v2/`, and version 1, which version 2 follows, is `v1/`
-(*Version 5*, *Version 3*, *Version 2* and *Version 1*, below). A
+(*Version 6*, *Version 4*, *Version 3*, *Version 2* and *Version 1*,
+below). A
 version may change until a release of the runner speaks it to a control
 plane. From that release on it never changes, and its directory is
 never removed: every change after it is a new version, in a directory of
@@ -42,19 +45,26 @@ newer release exists. The runner's half is its gate: it refuses a change
 after which the runner offers a version that boomdrive-cloud's `main`
 does not speak.
 
-The runner speaks version 5 alone. Releases of the runner spoke versions
-4, 3, 2 and 1 before it, so none of them changes. The crate's test
+The runner speaks one version, the one `spoken.json` marks spoken:
+version 5, until boomdrive-cloud's `main` speaks version 6. The
+runner's code reads and writes both, and every message it sends or
+reads names the version marked spoken and is checked against it, so a
+version is spoken by its mark alone. The rest of this page is version
+5's; *Version 6*, below, names what version 6 adds. Releases of the
+runner spoke versions 5, 4, 3, 2 and 1, so none of them changes. The crate's test
 `files` holds each file of `v4/`, schemas and examples, to its digest as
 `v0.21.0` holds it, each of `v3/` to `v0.18.0`'s, each of `v2/` to
 `v0.9.0`'s, and each of `v1/` to `v0.7.3`'s, so the gate fails a file of
 any of them changed or added. It also holds each file and example of
 `v5/` to version 5's, but for what *Version 5* names, so a change to
-version 5 that is not its unleased places fails there.
+version 5 that is not its unleased places fails there, and each file
+and example of `v6/` to version 5's, but for what *Version 6* names.
 
 `spoken.json`, beside the version directories, names each version once,
 lowest first, and whether the runner speaks it: version 5 alone. The
-crate's test `spoken` holds it to the directories and to the version the
-crate's code checks, sends and offers. The runner's gate, by its task
+runner's code reads it, and speaks the version it marks. The crate's
+test `spoken` holds it to the directories, to one version marked
+spoken, and to a version the crate's code can speak, version 5 or 6. The runner's gate, by its task
 `boomdrive-hosted:cloud-protocol`, reads boomdrive-cloud's pin,
 `workers/control-plane/runner-protocol/pin.json`, from its `main` as the
 forge holds it, and fails where `spoken.json` marks spoken a version the
@@ -69,7 +79,7 @@ the connection before any message.
 | file | what it holds |
 |---|---|
 | `from-runner.schema.json` | the envelope of every message a runner sends |
-| `to-runner.schema.json` | the envelope of every message a control plane sends |
+| `to-runner.schema.json` | the envelope of every message a control plane sends, and in version 6 `newest_release` |
 | `shared.schema.json` | what both directions use: ids, a time, integers, a lease, a repository's address, a commit, a digest, bytes, and `message_refused` |
 | `enrollment.schema.json` | `enroll`, and its answers `enrolled` and `enroll_refused` |
 | `hello.schema.json` | the hello, a tool's version, and the copy of Flume's host part |
@@ -135,6 +145,7 @@ alike, so a validator in either language refuses the same strings.
 | `forge_token` | the runner, as the body of `POST runner/forge-token` | the repository whose token it asks |
 | `forge_token_given` | the control plane, answering `forge_token` | the `forge_token` message, by id, the repository, the token and `expires_at`, when it ends |
 | `forge_token_refused` | the control plane, answering `forge_token` | the `forge_token` message, by id, the repository, `not_installed`, and words |
+| `newest_release` | the control plane, in version 6 alone | the newest release of the runner it knows, by its version (*Version 6*) |
 
 On the socket, their order:
 
@@ -580,6 +591,33 @@ them, and neither end keeps them.
 - **Closing.** `terminal_close` closes a terminal from the browser's
   end, and `terminal_closed` says the runner closed it, with its words.
   A terminal is closed with its socket.
+
+## Version 6
+
+Version 6, `v6/`, is version 5 but for these alone:
+
+- **Its name** is `boomdrive.v6`: the subprotocol its connections ask
+  for, every message's `protocol_version` 6, and the start of each
+  context its keys sign, `boomdrive.v6 enroll`, `boomdrive.v6 connect`
+  and `boomdrive.v6 forge token`.
+- **Its files' `$id`s** are under
+  `https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v6/`.
+- **The control plane names the newest release.** `newest_release`, a
+  kind the control plane sends on the socket,
+  `{"newest_release":{"version":"0.32.0"}}`, names the newest release of
+  the runner it knows, as its tag `v<version>` names it, three numbers
+  and nothing else. The control plane sends it once its `pulled` has
+  answered the hello, where the hello's `runner_version` is older; it
+  may send it again when a newer release is made. The runner says it in
+  one line, `<label>: this runner is <its runner_version>, and the newest
+  release is <version>`, once for each release on each connection, and
+  does nothing else with it. Version 5 has no such kind, so a
+  `newest_release` of version 5 is answered with `message_refused`.
+- **Its examples** are version 5's, each naming `protocol_version` 6,
+  and `to-runner/newest_release.json`.
+
+The runner speaks version 6 once `spoken.json` marks it spoken, which
+the runner's gate passes only once boomdrive-cloud's `main` speaks it.
 
 ## Version 4
 

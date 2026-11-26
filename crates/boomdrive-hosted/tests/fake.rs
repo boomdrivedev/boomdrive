@@ -8,9 +8,9 @@
 mod common;
 
 use boomdrive_hosted::key;
-use boomdrive_hosted::protocol::v5::VERSION;
+use boomdrive_hosted::protocol::spoken;
 use common::example;
-use common::fake::{kind, Fake, Taken, SUBPROTOCOL};
+use common::fake::{kind, subprotocol, Fake, Taken};
 use ed25519_dalek::SigningKey;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
@@ -55,7 +55,7 @@ async fn dial(fake: &Fake, statement: &str) -> Result<Socket, Error> {
     let headers = request.headers_mut();
     headers.insert(
         "sec-websocket-protocol",
-        HeaderValue::from_static(SUBPROTOCOL),
+        HeaderValue::from_static(subprotocol()),
     );
     headers.insert(
         "authorization",
@@ -68,7 +68,13 @@ async fn dial(fake: &Fake, statement: &str) -> Result<Socket, Error> {
 
 /// A fresh statement of `key`'s, for `fake`.
 fn statement(fake: &Fake, key: &SigningKey) -> String {
-    key::statement(key, &fake.origin(), now(), &key::nonce().expect("a nonce"))
+    key::statement(
+        key,
+        spoken(),
+        &fake.origin(),
+        now(),
+        &key::nonce().expect("a nonce"),
+    )
 }
 
 /// The next message `socket` is sent, read as JSON, within five seconds.
@@ -87,7 +93,8 @@ async fn next(socket: &mut Socket) -> Option<Value> {
 /// `body` of `kind` as a runner's message under `id`.
 fn message(id: &str, kind: &str, body: Value) -> Frame {
     Frame::text(
-        json!({ "protocol_version": VERSION, "id": id, "body": { kind: body } }).to_string(),
+        json!({ "protocol_version": spoken().number, "id": id, "body": { kind: body } })
+            .to_string(),
     )
 }
 
@@ -136,7 +143,7 @@ fn a_connection_proved_is_taken_and_its_hello_answered() {
         matches!(
             &taken[0],
             Taken::Upgrade { partition: Some(partition), status: 101, protocols, .. }
-                if partition == "home" && protocols == &[SUBPROTOCOL.to_string()]
+                if partition == "home" && protocols == &[subprotocol().to_string()]
         ),
         "{taken:#?}"
     );
@@ -156,6 +163,7 @@ fn a_statement_for_another_control_plane() {
     fake.enrolled("home", &key.verifying_key());
     let elsewhere = key::statement(
         &key,
+        spoken(),
         "https://control.example",
         now(),
         &key::nonce().unwrap(),
@@ -170,7 +178,13 @@ fn a_statement_out_of_time_or_seen() {
     let fake = Fake::start();
     let key = home_key();
     fake.enrolled("home", &key.verifying_key());
-    let old = key::statement(&key, &fake.origin(), now() - 301, &key::nonce().unwrap());
+    let old = key::statement(
+        &key,
+        spoken(),
+        &fake.origin(),
+        now() - 301,
+        &key::nonce().unwrap(),
+    );
     let (status, words) = refused_with(block_on(dial(&fake, &old)));
     assert_eq!(status, 401);
     assert!(words.contains("300 seconds"), "{words}");

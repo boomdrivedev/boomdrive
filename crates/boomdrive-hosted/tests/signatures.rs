@@ -10,6 +10,7 @@
 //! own copy, which its writers keep to the file (record 0049).
 
 use boomdrive_hosted::key;
+use boomdrive_hosted::protocol::V5;
 use boomdrive_hosted::table::Table;
 use ed25519_dalek::SigningKey;
 use serde_json::Value;
@@ -74,7 +75,7 @@ fn the_enrollments_worked_bytes() {
     assert_eq!(table.enroll_address().as_str(), value(&values, "address"));
     assert_eq!(table.origin(), value(&values, "origin"));
     assert_eq!(key::token_digest(token), value(&values, "digest"));
-    let context = key::enrollment_context(&table.origin(), token, &key.verifying_key());
+    let context = key::enrollment_context(&V5, &table.origin(), token, &key.verifying_key());
     assert_eq!(hex(&context), value(&values, "context"));
     assert_eq!(context.len(), 148, "the count of the context's bytes");
     assert_eq!(
@@ -93,7 +94,7 @@ fn the_connections_worked_bytes() {
 
     assert_eq!(table.connect_address().as_str(), value(&values, "address"));
     assert_eq!(table.origin(), value(&values, "origin"));
-    let context = key::connection_context(&table.origin(), &key.verifying_key(), time, &nonce);
+    let context = key::connection_context(&V5, &table.origin(), &key.verifying_key(), time, &nonce);
     assert_eq!(hex(&context), value(&values, "context"));
     assert_eq!(context.len(), 105, "the count of the context's bytes");
     assert_eq!(
@@ -105,7 +106,7 @@ fn the_connections_worked_bytes() {
         value(&values, "header"),
         format!(
             "Authorization: {}",
-            key::statement(&key, &table.origin(), time, &nonce)
+            key::statement(&key, &V5, &table.origin(), time, &nonce)
         )
     );
 }
@@ -151,6 +152,7 @@ fn the_asks_worked_context() {
     );
     assert_eq!(table.origin(), value(&values, "origin"));
     let context = key::forge_token_context(
+        &V5,
         &table.origin(),
         &key.verifying_key(),
         time,
@@ -175,9 +177,10 @@ fn the_asks_worked_context() {
         value(&values, "header"),
         format!(
             "Authorization: {}",
-            key::forge_token_statement(&key, &table.origin(), time, &nonce, repository)
+            key::forge_token_statement(&key, &V5, &table.origin(), time, &nonce, repository)
         )
     );
-    let connection = key::connection_context(&table.origin(), &key.verifying_key(), time, &nonce);
+    let connection =
+        key::connection_context(&V5, &table.origin(), &key.verifying_key(), time, &nonce);
     assert_ne!(context, connection, "an ask's context is no connection's");
 }

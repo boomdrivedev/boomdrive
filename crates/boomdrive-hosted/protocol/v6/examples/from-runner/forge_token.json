@@ -1,0 +1,9 @@
+{
+  "protocol_version": 6,
+  "id": "runner:9",
+  "body": {
+    "forge_token": {
+      "repository": "example/app"
+    }
+  }
+}

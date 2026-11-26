@@ -8,6 +8,7 @@ mod common;
 
 use boomdrive_hosted::enrollment::{enroll, Enrolled, Refusal};
 use boomdrive_hosted::key::{KeyName, Memory, Store, SystemdCreds};
+use boomdrive_hosted::protocol::spoken;
 use boomdrive_hosted::table::Table;
 use common::fake::{Fake, Taken};
 use ed25519_dalek::SigningKey;
@@ -244,7 +245,7 @@ fn the_enrollments_message_refused() {
     fake.answer_enrollment(
         400,
         json!({
-            "protocol_version": 5,
+            "protocol_version": spoken().number,
             "id": "plane:1",
             "body": { "message_refused": { "message": "runner:1", "words": "/body/enroll/machine is too long" } }
         }),
@@ -266,12 +267,12 @@ fn the_enrollments_message_refused() {
 }
 
 #[test]
-fn an_answer_that_fails_version_5() {
+fn an_answer_that_fails_the_spoken_version() {
     let fake = Fake::start();
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 5,
+            "protocol_version": spoken().number,
             "id": "plane:1",
             "body": { "enrolled": { "host": "h-1", "certificate": "n0t-r34d" } }
         }),
@@ -283,9 +284,10 @@ fn an_answer_that_fails_version_5() {
 
     assert!(!refusal.host_to_fix);
     assert!(
-        refusal
-            .words
-            .starts_with("the control plane's answer, 200, fails version 5's check: "),
+        refusal.words.starts_with(&format!(
+            "the control plane's answer, 200, fails version {}'s check: ",
+            spoken().number
+        )),
         "{}",
         refusal.words
     );
@@ -299,7 +301,7 @@ fn an_answer_of_another_kind() {
     fake.answer_enrollment(
         200,
         json!({
-            "protocol_version": 5,
+            "protocol_version": spoken().number,
             "id": "plane:1",
             "body": { "pulled": { "wants": [], "report": null } }
         }),
