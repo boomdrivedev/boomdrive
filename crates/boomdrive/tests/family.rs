@@ -18,7 +18,7 @@ use boomdrive_control::fake::{Fake, Sent};
 use boomdrive_control::{
     shared, Answer, At, Capacity, ControlPlane, Id, Launched, Lease, Report, ToolVersion,
 };
-use common::{FlumeHost, Scratch};
+use common::{Resident, Scratch};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -154,10 +154,7 @@ impl Family {
             // runs these tests under sluice's sandbox, where a program a
             // test starts may write the scratch folder and not
             // `/tmp/sluice-<uid>`, as sluice's own tests name it.
-            (
-                "SLUICE_USER_SCRATCH".into(),
-                self.scratch.root.join("u").into(),
-            ),
+            ("SLUICE_USER_SCRATCH".into(), self.sluice_scratch().into()),
             // Flume's short directory of the user's, where flume host
             // binds its socket, in the scratch folder for the same reason.
             (
@@ -176,10 +173,10 @@ impl Family {
 
     /// The set's `flume host` on the scratch host, whose socket Flume's
     /// status asks (the change the-runner-hears-flume-by-subscription).
-    fn flume_host(&self) -> FlumeHost {
+    fn flume_host(&self) -> Resident {
         let mut command = std::process::Command::new(self.set("flume"));
         command.arg("host").current_dir(&self.scratch.home);
-        FlumeHost::start(command, &self.flume_scratch())
+        Resident::start(command, &self.flume_scratch())
     }
 
     /// The set's `tool` as the runner's readers are given it: a program
@@ -202,6 +199,37 @@ impl Family {
             ),
         );
         file
+    }
+
+    /// The set's `tool` as [`Family::set`] gives it, noting each exit of
+    /// its in the file this gives beside it, one line each.
+    fn set_noting_exits(&self, tool: &str) -> (PathBuf, PathBuf) {
+        let set = self.set(tool);
+        let exits = self.scratch.root.join(format!("{tool}.exits"));
+        let file = self.scratch.root.join(format!("noted-{tool}"));
+        program(
+            &file,
+            &format!(
+                "{} \"$@\"\ncode=$?\necho \"$code\" >> {}\nexit \"$code\"\n",
+                quoted(&set.clone().into_os_string()),
+                quoted(&exits.clone().into_os_string())
+            ),
+        );
+        (file, exits)
+    }
+
+    /// The folder `SLUICE_USER_SCRATCH` names, where sluice host binds.
+    fn sluice_scratch(&self) -> PathBuf {
+        self.scratch.root.join("u")
+    }
+
+    /// The set's `sluice host` on the scratch host, which sluice's
+    /// commands ask, and whose group, the runs it starts among it, ends
+    /// with the test.
+    fn sluice_host(&self) -> Resident {
+        let mut command = std::process::Command::new(self.set("sluice"));
+        command.arg("host").current_dir(&self.scratch.home);
+        Resident::start(command, &self.sluice_scratch())
     }
 
     /// The calls made to the stand-in of `tool`, one line each.
@@ -368,11 +396,11 @@ fn a_submission_sluice_has_no_record_of() {
     let container = scratch.container("example/widgets");
 
     let set = family.set("sluice");
-    let reply = sluice::Cli::new(&set).entry(&container, "99");
+    let reply = sluice::Cli::new(&set).entry(&container, "99", "main");
 
     let printed = scratch
         .command(&set)
-        .args(["status", "99", "--json"])
+        .args(["status", "99", "--branch", "main", "--json"])
         .current_dir(&container)
         .output()
         .expect("the set's sluice runs");
@@ -384,6 +412,208 @@ fn a_submission_sluice_has_no_record_of() {
         .expect("sluice's words")
         .to_string();
     assert_eq!(reply, Ok(sluice::Reply::Refused(message)));
+    family.no_host_tool_ran();
+}
+
+/// The scratch repository's policy for two branches whose submissions
+/// are numbered by two counts: `main`'s records on its remote, which the
+/// signer `a`, whose public key is `public`, makes it keep there, and
+/// `next`'s on the host. So each branch's first submission is 1, as a
+/// bolt's branch and `main` came to hold one number (sluice record 0114).
+fn two_counts_policy(public: &str) -> String {
+    format!(
+        "[signers.a]\n\
+         ssh = \"a {public}\"\n\
+         \n\
+         [branches.main]\n\
+         required = []\n\
+         remote = \"origin\"\n\
+         \n\
+         [branches.next]\n\
+         required = []\n"
+    )
+}
+
+/// A new ed25519 key written at `file` in OpenSSH's form, which sluice's
+/// `[signing] key` reads, readable by its owner alone, and its public key
+/// as one line, `ssh-ed25519 <base64>` (core.4: made at run time).
+fn signing_key(file: &Path) -> String {
+    use base64::engine::general_purpose::STANDARD;
+    use base64::Engine as _;
+    fn string(out: &mut Vec<u8>, bytes: &[u8]) {
+        out.extend_from_slice(
+            &u32::try_from(bytes.len())
+                .expect("a short field")
+                .to_be_bytes(),
+        );
+        out.extend_from_slice(bytes);
+    }
+    let mut seed = [0u8; 32];
+    std::io::Read::read_exact(
+        &mut fs::File::open("/dev/urandom").expect("the host's randomness"),
+        &mut seed,
+    )
+    .expect("32 random bytes");
+    let key = ed25519_dalek::SigningKey::from_bytes(&seed);
+    let public = key.verifying_key().to_bytes();
+    let mut blob = Vec::new();
+    string(&mut blob, b"ssh-ed25519");
+    string(&mut blob, &public);
+    let mut private = Vec::new();
+    let check = u32::from_be_bytes([seed[0], seed[1], seed[2], seed[3]]);
+    private.extend_from_slice(&check.to_be_bytes());
+    private.extend_from_slice(&check.to_be_bytes());
+    string(&mut private, b"ssh-ed25519");
+    string(&mut private, &public);
+    string(&mut private, &[seed.as_slice(), public.as_slice()].concat());
+    string(&mut private, b"a");
+    let mut pad = 1u8;
+    while private.len() % 8 != 0 {
+        private.push(pad);
+        pad += 1;
+    }
+    let mut whole = b"openssh-key-v1\0".to_vec();
+    string(&mut whole, b"none");
+    string(&mut whole, b"none");
+    string(&mut whole, b"");
+    whole.extend_from_slice(&1u32.to_be_bytes());
+    string(&mut whole, &blob);
+    string(&mut whole, &private);
+    let encoded = STANDARD.encode(&whole);
+    let lines: Vec<&str> = encoded
+        .as_bytes()
+        .chunks(70)
+        .map(|line| std::str::from_utf8(line).expect("base64 is ASCII"))
+        .collect();
+    fs::write(
+        file,
+        format!(
+            "-----BEGIN OPENSSH PRIVATE KEY-----\n{}\n-----END OPENSSH PRIVATE KEY-----\n",
+            lines.join("\n")
+        ),
+    )
+    .expect("the signing key");
+    fs::set_permissions(file, fs::Permissions::from_mode(0o600)).expect("its mode");
+    format!("ssh-ed25519 {}", STANDARD.encode(&blob))
+}
+
+/// The family-packages spec's "The set's sluice takes each of the
+/// runner's asks": in the runner's clone of a scratch repository whose
+/// `main` and `next` each hold a submission 1, the set's sluice answers
+/// each ask the runner makes, by the runner's own `sluice::Cli`, with its
+/// arguments as the runner gives them: the entry of 1 on each branch, a
+/// preview, the previews and a release. Each reads its command line,
+/// exiting other than 64, and the entries are each branch's own. An ask
+/// that names no branch is refused here, as sluice 0.92.0 began to refuse
+/// it (sluice record 0114), so this fails where the runner's arguments
+/// fall behind the set's sluice.
+#[test]
+fn the_sets_sluice_takes_each_of_the_runners_asks() {
+    let family = Family::new();
+    let scratch = &family.scratch;
+    let key = scratch.root.join("signing");
+    let public = signing_key(&key);
+    let host_config = scratch.home.join(".config/sluice/config.toml");
+    fs::create_dir_all(host_config.parent().expect("sluice's folder")).expect("sluice's folder");
+    fs::write(
+        &host_config,
+        format!(
+            "[signing]\nsigner = \"a\"\nkey = {:?}\n",
+            key.display().to_string()
+        ),
+    )
+    .expect("sluice's host configuration");
+    let origin = scratch.origin("example/widgets");
+    origin.commit("main", ".config/sluice.toml", &two_counts_policy(&public));
+    origin.commit("next", "next", "the second branch\n");
+    let (outcome, lines) = scratch.pass(&common::keeping(&["example/widgets"]));
+    assert_eq!(outcome, Outcome::Kept, "the clone made: {lines:?}");
+    let container = scratch.container("example/widgets");
+    let clone = scratch.clone_of("example/widgets");
+    let _host = family.sluice_host();
+    let set = family.set("sluice");
+
+    // One submission to each branch, each from a worktree of the
+    // runner's clone, as a place's is. The worktrees and their commits
+    // are made before the first submission, which puts sluice's branch
+    // protection into the clone.
+    // `next` has no remote, so sluice lands on the clone's own branch.
+    scratch.git(&clone, &["branch", "next", "origin/next"]);
+    let works = [("main", "a"), ("next", "b")].map(|(branch, work)| {
+        let dir = scratch.root.join("places").join(work);
+        scratch.git(
+            &clone,
+            &[
+                "worktree",
+                "add",
+                "--quiet",
+                "-b",
+                work,
+                &dir.to_string_lossy(),
+                &format!("origin/{branch}"),
+            ],
+        );
+        fs::write(dir.join(work), "work\n").expect("the work");
+        scratch.git(&dir, &["add", "--all"]);
+        scratch.git(&dir, &["commit", "--quiet", "-m", work]);
+        (branch, dir)
+    });
+    for (branch, dir) in &works {
+        let submitted = scratch
+            .command(&set)
+            .args(["submit", branch, "--no-wait", "--json"])
+            .current_dir(dir)
+            .output()
+            .expect("the set's sluice runs");
+        assert!(submitted.status.success(), "{submitted:?}");
+        let answer: Value = serde_json::from_slice(&submitted.stdout).expect("sluice's answer");
+        assert_eq!(answer["id"], 1, "{branch}: {answer}");
+    }
+    let unnamed = scratch
+        .command(&set)
+        .args(["status", "1", "--json"])
+        .current_dir(&container)
+        .output()
+        .expect("the set's sluice runs");
+    assert!(!unnamed.status.success(), "1 is on one branch: {unnamed:?}");
+
+    let (noted, exits) = family.set_noting_exits("sluice");
+    let cli = sluice::Cli::new(&noted);
+    for branch in ["main", "next"] {
+        let carried = match cli.entry(&container, "1", branch) {
+            Ok(sluice::Reply::Given(answer)) => sluice::carried(&answer),
+            other => {
+                panic!("the set's sluice refused the runner's ask of 1 on {branch}: {other:?}")
+            }
+        };
+        let carried = carried.expect("sluice's answer is a submission");
+        assert_eq!(
+            sluice::branch_of(&carried).as_deref(),
+            Some(branch),
+            "{carried}"
+        );
+        assert_eq!(sluice::id_of(&carried).as_deref(), Some("1"), "{carried}");
+    }
+    let revision = origin.tip("main");
+    let previewed = cli.preview(&container, "main", &revision);
+    assert!(
+        matches!(previewed, Ok(sluice::Asked::Replied(_))),
+        "{previewed:?}"
+    );
+    let listed = cli.previews(&container);
+    assert!(
+        matches!(&listed, Ok(sluice::Reply::Given(answer)) if sluice::listed(answer).is_some()),
+        "{listed:?}"
+    );
+    let released = cli.release(&container, "preview/none-here");
+    assert!(released.is_ok(), "{released:?}");
+    let exits = fs::read_to_string(&exits).expect("each exit noted");
+    let exits: Vec<&str> = exits.lines().collect();
+    assert_eq!(exits.len(), 5, "{exits:?}");
+    assert!(
+        !exits.contains(&"64"),
+        "the set's sluice could not read a command line the runner gives: {exits:?}"
+    );
     family.no_host_tool_ran();
 }
 
@@ -455,6 +685,7 @@ fn the_sets_flume_answers_a_relay() {
         },
         status: None,
         entry: None,
+        entry_refused: None,
     };
     let report = Report {
         launches: BTreeMap::from([(Id::new("l-1"), launched)]),

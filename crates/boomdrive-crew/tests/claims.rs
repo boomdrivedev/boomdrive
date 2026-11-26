@@ -327,6 +327,7 @@ fn reporting_20() -> boomdrive_control::Report {
             },
             status: None,
             entry: None,
+            entry_refused: None,
         },
     );
     report
@@ -471,6 +472,7 @@ fn a_claim_replaced_by_the_runners_answer() {
             },
             status: None,
             entry: None,
+            entry_refused: None,
         },
     );
     host_a.report(&report).expect("a report");

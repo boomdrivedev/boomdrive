@@ -57,6 +57,22 @@ pub struct Launched {
     pub status: Option<Carried>,
     /// sluice's entry of its submission.
     pub entry: Option<Carried>,
+    /// sluice's refusal of the entry Flume names for its submission, which
+    /// the runner asks for no more. Read as none where a report lacks it,
+    /// and written only where it holds one (core.36).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entry_refused: Option<EntryRefused>,
+}
+
+/// sluice's refusal of a submission's entry: the submission's number and
+/// the branch whose queue holds it, as the runner asked for them, and
+/// sluice's words, as sluice gave them (core.11).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntryRefused {
+    pub id: String,
+    pub branch: String,
+    pub words: String,
+    pub at: At,
 }
 
 /// The runner's answer to an offer.
@@ -188,6 +204,7 @@ impl Report {
                     answer,
                     status: None,
                     entry: None,
+                    entry_refused: None,
                 },
             );
             return true;

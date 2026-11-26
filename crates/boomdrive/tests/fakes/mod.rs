@@ -1190,7 +1190,9 @@ impl Stub {
 /// runs at once, and which it ends. Otherwise it prints the file
 /// `<what>.stdout` names, writes `<what>.stderr` on standard error, and
 /// exits with `<what>.exit`'s status, each where the test wrote one,
-/// `<what>` being its command.
+/// `<what>` being its command, or `<command>@<branch>`, each `/` of the
+/// branch written `%`, where the call names `--branch <branch>` and the
+/// test wrote `<command>@<branch>.stdout`.
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
@@ -1199,6 +1201,10 @@ for arg in "$@"; do printf '%s\0' "$arg"; done > "$dir/call-$n.part"
 mv "$dir/call-$n.part" "$dir/call-$n"
 pwd -P > "$dir/dir-$n"
 what=$1
+if [ "$3" = "--branch" ]; then
+  on="$1@$(printf '%s' "$4" | tr / %)"
+  if [ -e "$dir/$on.stdout" ]; then what=$on; fi
+fi
 if [ -e "$dir/$what.wait" ]; then
   sleep 60 </dev/null >/dev/null 2>&1 &
   sleeper=$!
@@ -1213,7 +1219,9 @@ exit 0
 "#;
 
 /// A stub `sluice` in a temporary directory of its own. Unscripted, it
-/// prints nothing.
+/// prints nothing. A call that names `--branch <branch>` as its second
+/// and third arguments is answered as its command on that branch where
+/// the test scripted one, else as its command.
 pub struct SluiceStub {
     pub dir: TempDir,
 }
@@ -1261,6 +1269,12 @@ impl SluiceStub {
         )
         .expect("the stub's answer");
         fs::write(dir.join(format!("{what}.exit")), exit.to_string()).expect("the stub's exit");
+    }
+
+    /// `what`, a command, answered with `text` and the exit `exit` where
+    /// it names `--branch <branch>`.
+    pub fn answers_on(&self, what: &str, branch: &str, text: &str, exit: i32) {
+        self.answers_text(&format!("{what}@{}", branch.replace('/', "%")), text, exit);
     }
 
     /// `what`, a command, waiting until it is interrupted, as sluice's ask

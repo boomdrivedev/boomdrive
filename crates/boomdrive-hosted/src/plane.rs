@@ -705,6 +705,7 @@ impl Partition {
                         answer: launched.answer,
                         status: None,
                         entry: None,
+                        entry_refused: None,
                     };
                     (self.prefixed(&id), launched)
                 })

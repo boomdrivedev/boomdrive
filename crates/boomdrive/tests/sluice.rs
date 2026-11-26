@@ -68,12 +68,15 @@ fn an_entry_is_asked_for_in_the_clones_container() {
     let stub = SluiceStub::new();
     stub.answers("status", "status-landed.json", 0);
     let container = container();
-    let reply = Cli::new(stub.program()).entry(container.path(), "412");
+    let reply = Cli::new(stub.program()).entry(container.path(), "412", "main");
     assert_eq!(
         reply,
         Ok(Reply::Given(sluice_fixture("status-landed.json")))
     );
-    assert_eq!(stub.calls(), [["status", "412", "--json"]]);
+    assert_eq!(
+        stub.calls(),
+        [["status", "412", "--branch", "main", "--json"]]
+    );
     assert_eq!(
         stub.dir_of(1),
         Some(container.path().canonicalize().unwrap())
@@ -84,7 +87,7 @@ fn an_entry_is_asked_for_in_the_clones_container() {
 fn a_refusal_is_sluices_message() {
     let stub = SluiceStub::new();
     stub.answers("status", "status-missing.json", 1);
-    let reply = Cli::new(stub.program()).entry(container().path(), "99");
+    let reply = Cli::new(stub.program()).entry(container().path(), "99", "main");
     assert_eq!(reply, Ok(Reply::Refused("no submission 99".to_string())));
 }
 
@@ -93,7 +96,7 @@ fn a_refusal_with_no_error_answer_is_sluices_standard_error() {
     let stub = SluiceStub::new();
     stub.answers_text("status", "", 2);
     stub.says("status", "error: unexpected argument '--jsn'\n");
-    let reply = Cli::new(stub.program()).entry(container().path(), "1");
+    let reply = Cli::new(stub.program()).entry(container().path(), "1", "main");
     assert_eq!(
         reply,
         Ok(Reply::Refused(
@@ -107,7 +110,7 @@ fn an_answer_that_is_not_json_is_refused_with_sluices_standard_error() {
     let stub = SluiceStub::new();
     stub.answers_text("status", "submission 1: landed\n", 0);
     stub.says("status", "warning: no --json\n");
-    let reply = Cli::new(stub.program()).entry(container().path(), "1");
+    let reply = Cli::new(stub.program()).entry(container().path(), "1", "main");
     assert_eq!(
         reply,
         Ok(Reply::Refused("warning: no --json\n".to_string()))
@@ -118,7 +121,7 @@ fn an_answer_that_is_not_json_is_refused_with_sluices_standard_error() {
 fn a_program_that_is_not_there_gives_no_answer() {
     let stub = SluiceStub::absent();
     let failure = Cli::new(stub.program())
-        .entry(container().path(), "1")
+        .entry(container().path(), "1", "main")
         .expect_err("an answer from no program");
     assert!(failure.0.starts_with("sluice could not run: "), "{failure}");
 }

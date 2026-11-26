@@ -491,6 +491,7 @@ mod tests {
                 listed,
             }),
             entry: None,
+            entry_refused: None,
         }
     }
 

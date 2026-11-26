@@ -821,5 +821,6 @@ pub fn launched(answer: Answer, place: Option<&Record>) -> Launched {
         answer,
         status,
         entry: None,
+        entry_refused: None,
     }
 }

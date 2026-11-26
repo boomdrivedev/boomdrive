@@ -211,12 +211,24 @@ pub fn waits_delivered(entry: &Value) -> bool {
     entry.pointer("/waiting_on/why").and_then(Value::as_str) == Some("delivered")
 }
 
-/// The id of the sluice entry a place's submission is,
-/// `submission.read.found.submission.id`.
-pub fn submission_id(entry: &Value) -> Option<&str> {
-    entry
-        .pointer("/submission/read/found/submission/id")?
-        .as_str()
+/// The sluice entry a place's submission is, as Flume found it at
+/// `submission.read.found.submission`: its number, `id`, and the branch
+/// whose queue holds it, `target`. sluice numbers each branch's queue on
+/// its own, so a number names one entry only with its branch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Submission<'a> {
+    pub id: &'a str,
+    pub branch: &'a str,
+}
+
+/// The sluice entry a place's submission is, or none where Flume names
+/// no number or no branch for it.
+pub fn submission(entry: &Value) -> Option<Submission<'_>> {
+    let found = entry.pointer("/submission/read/found/submission")?;
+    Some(Submission {
+        id: found.get("id")?.as_str()?,
+        branch: found.get("target")?.as_str()?,
+    })
 }
 
 /// Room, as Flume's host part gives it.
@@ -472,7 +484,7 @@ mod tests {
         assert_eq!(over(&entry), None);
         assert!(!live_or_making(&entry));
         assert!(!waits_delivered(&entry));
-        assert_eq!(submission_id(&entry), None);
+        assert_eq!(submission(&entry), None);
         let landed = json!({ "phase": { "over": { "over": { "landed": { "commit": 5 } } } } });
         assert_eq!(over(&landed), Some(Over::Landed(None)));
         assert_eq!(
@@ -486,6 +498,25 @@ mod tests {
     }
 
     #[test]
+    fn a_submission_names_its_number_and_its_branch() {
+        let found = |submission: Value| json!({ "submission": { "read": { "found": { "submission": submission } } } });
+        assert_eq!(
+            submission(&found(
+                json!({ "id": "18", "branch": "fix/a", "target": "bolt/b" })
+            )),
+            Some(Submission {
+                id: "18",
+                branch: "bolt/b"
+            })
+        );
+        assert_eq!(
+            submission(&found(json!({ "id": "18", "branch": "fix/a" }))),
+            None
+        );
+        assert_eq!(submission(&found(json!({ "id": "18", "target": 4 }))), None);
+    }
+
+    #[test]
     fn a_field_absent_reads_as_none() {
         let entry = json!({});
         assert_eq!(location(&entry), None);
@@ -493,7 +524,7 @@ mod tests {
         assert_eq!(over(&entry), None);
         assert!(!live_or_making(&entry));
         assert!(!waits_delivered(&entry));
-        assert_eq!(submission_id(&entry), None);
+        assert_eq!(submission(&entry), None);
         assert_eq!(
             places(&json!({ "status": { "places": {} } })),
             &[] as &[Value]

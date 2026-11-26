@@ -76,6 +76,7 @@ fn launched(outcome: Outcome, place: Option<&str>, listed: Option<bool>) -> Laun
             listed,
         }),
         entry: None,
+        entry_refused: None,
     }
 }
 

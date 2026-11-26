@@ -159,10 +159,12 @@ dependencies = [
 name = "boomdrive"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "boomdrive-control",
  "boomdrive-crew",
  "boomdrive-hosted",
  "clap",
+ "ed25519-dalek",
  "jsonwebtoken",
  "libc",
  "rpassword",

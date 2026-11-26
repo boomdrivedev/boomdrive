@@ -709,6 +709,7 @@ fn a_launchs_repository_kept_with_its_answer() {
         },
         status: None,
         entry: None,
+        entry_refused: None,
     };
     let of_before = Report {
         launches: BTreeMap::from([(id("b"), before)]),

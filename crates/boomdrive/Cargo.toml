@@ -73,5 +73,9 @@ weir-bounded.workspace = true
 # The tests' key for the App, made at run time, since no key is committed
 # (core.4; design Decision 9).
 rsa.workspace = true
+# The set's sluice's signing key, made at run time in OpenSSH's form, so
+# a scratch branch keeps its records on its remote (core.4).
+base64.workspace = true
+ed25519-dalek.workspace = true
 tempfile.workspace = true
 weir-capture.workspace = true
