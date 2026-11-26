@@ -119,6 +119,7 @@ fn every_flag(container_dir: &Path) -> LaunchArgs {
         priority: Some(4),
         intent: Some("home/x".into()),
         recipients: vec!["home/planner".into(), "home/reviewer".into()],
+        read_through_the_runner: false,
         holds: vec![("code".into(), "the user reads the design".into())],
         hold_submission: true,
         brief: Some("Parse the input.\n\nAs words.".into()),
@@ -270,6 +271,44 @@ fn the_runner_is_one_more_recipient() {
             "a",
             "--recipient",
             "home/planner",
+            "--recipient",
+            "boomdrive",
+            "--mark",
+            "boomdrive:home/12",
+        ])
+    );
+}
+
+/// The work-into-flume spec's "A launch read through the runner alone", at
+/// the command line: a launch that names no recipient, of a control plane
+/// read through the runner, names the runner alone, so Flume takes it
+/// where no session or answerer stands behind its stream (core.54; record
+/// 0030 as amended on 2026-11-26).
+#[test]
+fn a_launch_read_through_the_runner_alone() {
+    let stub = Stub::new();
+    stub.answers(Some("launch.json"), None, 0);
+    let cli = stub.cli();
+    let none = LaunchArgs {
+        container_dir: "/d/repositories/example/crew".into(),
+        kind: "fix".into(),
+        name: "a".into(),
+        read_through_the_runner: true,
+        mark: "boomdrive:home/12".into(),
+        ..LaunchArgs::default()
+    };
+    cli.launch(&none, &stub.brief_dir()).expect("flume answers");
+    assert_eq!(
+        stub.calls()[0],
+        argv(&[
+            "--json",
+            "launch",
+            "--repository",
+            "/d/repositories/example/crew",
+            "--kind",
+            "fix",
+            "--name",
+            "a",
             "--recipient",
             "boomdrive",
             "--mark",

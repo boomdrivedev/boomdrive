@@ -505,6 +505,12 @@ impl ControlPlane for Hosted {
             .iter()
             .any(|partition| partition.unprefixed(id).is_some())
     }
+
+    /// Yes: its members reach the host's places only through the runner's
+    /// connection, and no session or role on the host stands for them.
+    fn read_through_the_runner(&self) -> bool {
+        true
+    }
 }
 
 impl Drop for Hosted {

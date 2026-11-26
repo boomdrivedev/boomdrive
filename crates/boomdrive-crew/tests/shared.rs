@@ -6,7 +6,7 @@
 mod common;
 
 use boomdrive_control::shared::{self, Harness};
-use boomdrive_control::{ActSort, Id, Want};
+use boomdrive_control::{ActSort, ControlPlane, Id, Want};
 use boomdrive_crew::Crew;
 use common::{file, plan, rec, State, REQUESTS, ROLES};
 use std::collections::BTreeMap;
@@ -116,6 +116,15 @@ impl Harness for Crews {
     fn seen(&mut self, _plane: &Crew) -> String {
         self.states.last().expect("a state repository").refs()
     }
+}
+
+/// The control-plane-interface spec's "Crew's control plane is read on
+/// the host": crew's roles run on the host, so its launches naming no
+/// recipient keep Flume's default.
+#[test]
+fn crews_control_plane_is_read_on_the_host() {
+    let crew = Crews::default().plane(&[]);
+    assert!(!crew.read_through_the_runner());
 }
 
 #[test]

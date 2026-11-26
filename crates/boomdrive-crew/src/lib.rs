@@ -1139,4 +1139,10 @@ impl ControlPlane for Crew {
             .iter()
             .any(|partition| ids::named(&partition.label, id).is_some())
     }
+
+    /// No: crew's roles run on the host, and a role's run that names no
+    /// recipient has the answerer behind its stream by Flume's default.
+    fn read_through_the_runner(&self) -> bool {
+        false
+    }
 }

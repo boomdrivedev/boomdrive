@@ -45,6 +45,14 @@ pub trait ControlPlane {
     /// carries an id it owns. The runner reads no id, and keeps each
     /// part's share of its report by asking the part (design Decision 1).
     fn owns(&self, id: &Id) -> bool;
+    /// Whether the readers of this control plane's places reach the host
+    /// only through the runner, so no session and no answerer on the host
+    /// stands for it: a hosted control plane's members do, and crew's
+    /// roles, which run on the host, do not. A launch of its that names
+    /// no recipient then names the runner alone, so Flume takes the
+    /// launch and holds each end of the place for the runner (core.54;
+    /// record 0030 as amended on 2026-11-26).
+    fn read_through_the_runner(&self) -> bool;
 }
 
 /// A part of the control plane, which the runner carries on its own: its

@@ -141,6 +141,66 @@ fn the_status_byte_for_byte() {
     assert!(status.at >= before);
 }
 
+/// The work-into-flume spec's "A launch read through the runner alone":
+/// an offer that names no recipient, from a control plane read through
+/// the runner, is launched with the runner alone as its recipient, and the
+/// question its place stops short on, `status-answer.json`'s, reaches the
+/// report the control plane takes, in Flume's status of the place as
+/// Flume gave it (core.54; record 0030 as amended on 2026-11-26).
+#[test]
+fn a_launch_read_through_the_runner_alone() {
+    let bench = Bench::new();
+    let stub = Stub::new();
+    stub.answers("status-of", "status-answer.json", 0);
+    // Flume lists no place of `scratch/4` until it launches it, and its
+    // launch answers with `tabs`'s entry.
+    let mut listing: Value = serde_json::from_str(&fixture("status.json")).unwrap();
+    let places = listing["status"]["places"].as_array_mut().unwrap();
+    let at = places
+        .iter()
+        .position(|entry| entry["mark"] == "boomdrive:scratch/4")
+        .unwrap();
+    let entry = places.remove(at);
+    stub.answers_text("status", &printed(&listing), 0);
+    stub.answers_text(
+        "launch",
+        &printed(&json!({ "launched": { "place": entry } })),
+        0,
+    );
+    let flume = Cli::new(stub.program());
+    let tabs = offer("scratch/4", "tabs");
+    assert!(tabs.launch.recipients.is_empty(), "the offer names none");
+    let mut plane = Fake::holding(vec![Want::Offer(tabs)]).reading_through_the_runner();
+    bench.pass_over(&flume, &mut plane);
+    stub.answers("status", "status.json", 0);
+    bench.pass_over(&flume, &mut plane);
+    let launch = stub
+        .calls()
+        .into_iter()
+        .find(|call| call[1] == "launch")
+        .expect("a launch");
+    let recipients: Vec<&str> = launch
+        .windows(2)
+        .filter(|pair| pair[0] == "--recipient")
+        .map(|pair| pair[1].as_str())
+        .collect();
+    assert_eq!(recipients, ["boomdrive"]);
+    let taken = plane.reports().last().expect("a report taken").clone();
+    let status = taken.launches[&Id::new("scratch/4")]
+        .status
+        .clone()
+        .expect("a status carried");
+    assert_eq!(
+        status.text,
+        fixture("status-answer.json").strip_suffix('\n').unwrap()
+    );
+    let answer: Value = serde_json::from_str(&status.text).unwrap();
+    assert_eq!(
+        answer["status"]["places"][0]["waiting_on"]["words"],
+        "Which width is a tab: 4 or 8?"
+    );
+}
+
 /// The work-into-flume spec's "Only the host changed": `status.json` and
 /// `status-bounded.json` differ only in Flume's host part.
 #[test]
@@ -612,6 +672,10 @@ impl ControlPlane for Forgetting<'_> {
     fn owns(&self, id: &Id) -> bool {
         self.plane.owns(id)
     }
+
+    fn read_through_the_runner(&self) -> bool {
+        self.plane.read_through_the_runner()
+    }
 }
 
 /// The work-into-flume spec's "A record Flume forgot before the confirm":
@@ -679,6 +743,10 @@ impl ControlPlane for Unlisting<'_> {
 
     fn owns(&self, id: &Id) -> bool {
         self.plane.owns(id)
+    }
+
+    fn read_through_the_runner(&self) -> bool {
+        self.plane.read_through_the_runner()
     }
 }
 
