@@ -46,8 +46,8 @@ after which the runner offers a version that boomdrive-cloud's `main`
 does not speak.
 
 The runner speaks one version, the one `spoken.json` marks spoken:
-version 5, until boomdrive-cloud's `main` speaks version 6. The
-runner's code reads and writes both, and every message it sends or
+version 6, which boomdrive-cloud's `main` speaks. The
+runner's code reads and writes versions 5 and 6, and every message it sends or
 reads names the version marked spoken and is checked against it, so a
 version is spoken by its mark alone. The rest of this page is version
 5's; *Version 6*, below, names what version 6 adds. Releases of the
@@ -61,7 +61,7 @@ version 5 that is not its unleased places fails there, and each file
 and example of `v6/` to version 5's, but for what *Version 6* names.
 
 `spoken.json`, beside the version directories, names each version once,
-lowest first, and whether the runner speaks it: version 5 alone. The
+lowest first, and whether the runner speaks it: version 6 alone. The
 runner's code reads it, and speaks the version it marks. The crate's
 test `spoken` holds it to the directories, to one version marked
 spoken, and to a version the crate's code can speak, version 5 or 6. The runner's gate, by its task
@@ -70,8 +70,8 @@ spoken, and to a version the crate's code can speak, version 5 or 6. The runner'
 forge holds it, and fails where `spoken.json` marks spoken a version the
 pin does not, or where it cannot read the pin.
 
-A connection asks for the WebSocket subprotocol `boomdrive.v5` at
-its upgrade, so a control plane that does not accept the version refuses
+A connection asks for the WebSocket subprotocol of the version spoken,
+`boomdrive.v6`, at its upgrade, so a control plane that does not accept the version refuses
 the connection before any message.
 
 ## The files
@@ -616,8 +616,8 @@ Version 6, `v6/`, is version 5 but for these alone:
 - **Its examples** are version 5's, each naming `protocol_version` 6,
   and `to-runner/newest_release.json`.
 
-The runner speaks version 6 once `spoken.json` marks it spoken, which
-the runner's gate passes only once boomdrive-cloud's `main` speaks it.
+The runner speaks version 6, which `spoken.json` marks spoken and
+boomdrive-cloud's `main` speaks.
 
 ## Version 4
 
