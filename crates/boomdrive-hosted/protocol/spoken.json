@@ -22,11 +22,11 @@
     },
     {
       "version": 6,
-      "spoken": true
+      "spoken": false
     },
     {
       "version": 7,
-      "spoken": false
+      "spoken": true
     }
   ]
 }
