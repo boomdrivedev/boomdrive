@@ -313,16 +313,17 @@ The first keeping pass SHALL share the ticks of the parts' first control passes.
 
 ### Requirement: The runner hears Flume's status from flume host
 
-While `boomdrive run` carries a control plane's parts, it SHALL hold one subscription to flume host, `{"ask":"subscribe"}`, keep the latest `document` as flume host sent it, and read each pass's status from it, running no `flume --json status`. A document that differs from the one held SHALL wake every part. `boomdrive run --once` SHALL ask `{"ask":"status"}` for each read. A runner that carries no part SHALL hold none (core.13).
+While `boomdrive run` carries a control plane's parts, it SHALL hold one subscription to flume host and keep the latest `document` as flume host sent it. Each pass SHALL read its status from that document, and run no `flume --json status`. A document that differs from the one held of the same ask SHALL wake every part. `boomdrive run --once` SHALL ask `{"ask":"status"}` for each read. A runner that carries no part SHALL hold none (core.13).
 
 #### Scenario: Passes read the subscription
 
 - **WHEN** the runner carries `home`, `poll_interval` is a second, and a stub flume host answers on the socket
-- **THEN** three control passes run, the stub flume host is asked one subscription, and the stub `flume` is asked no `status`
+- **THEN** three control passes run, the stub flume host is asked one subscription, which names the kept clone's folder, and the stub `flume` is asked no `status`
 
 #### Scenario: A change heard wakes the parts
 
-- **WHEN** the runner carries `home`, `poll_interval` is an hour, its first control pass has ended, and the stub flume host sends a document that differs from the one held
+- **WHEN** the runner carries `home`, `poll_interval` is an hour, and its first control pass ended
+- **AND** the stub flume host sends a document that differs from the one held
 - **THEN** `home` makes a control pass within seconds
 
 #### Scenario: A runner that carries no part
@@ -357,3 +358,13 @@ Where no flume host answers, or the subscription ends, Flume's status SHALL be u
 
 - **WHEN** flume host's document is `{"refused":{"refusal":{"reason":"no store"}}}`
 - **THEN** the pass reads Flume's status as refused with `no store`, as it read the command's refusal
+
+### Requirement: The asks name the folders of the clones read
+
+The subscription SHALL ask `{"ask":"subscribe","repositories":[…]}`, naming the folder of each clone that a pass reads, and no `repositories` where it names none. A read that names other folders SHALL make it ask again on a new connection. A status ask of `boomdrive run --once` SHALL name the same folders. The first document of an ask SHALL wake no part.
+
+#### Scenario: The asks name the folders read
+
+- **WHEN** a status ask names `/r` and `/s`, and a subscription is read first naming `/r`, then naming `/r` and `/s`
+- **THEN** the status ask is `{"ask":"status","repositories":["/r","/s"]}`, and the subscription asks `{"ask":"subscribe","repositories":["/r"]}`
+- **AND** the subscription asks again on a new connection naming `/r` and `/s`, each read gives the document of its own ask, and no part wakes
