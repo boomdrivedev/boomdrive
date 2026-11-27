@@ -6,10 +6,11 @@
 # set-version.sh, so a build from the tag reports it, and tags it; main
 # keeps 0.0.0. It pushes that tag alone, with no branch and no force,
 # through gh's credential helper given to that one push, and publishes the
-# tag's GitHub release with git-cliff's notes. main holds only what the
-# gate passed, so it tests nothing; it builds and attaches nothing, the
-# binaries being the workflow cache's (record 0020) and the attested
-# release's of record 0012. GitHub runs no workflow on a tag this
+# tag's GitHub release with git-cliff's notes and one file, install.sh
+# as the release commit writes it, which GitHub then serves under the
+# release (the install spec; record 0012 as amended on 2026-11-27). main
+# holds only what the gate passed, so it tests nothing; it builds
+# nothing, the binaries being the workflow cache's (record 0020). GitHub runs no workflow on a tag this
 # workflow's token pushed, so it runs cache at the tag itself.
 # root:releases holds this file to the releases spec.
 name: release
@@ -74,6 +75,7 @@ jobs:
         run: |
           nix shell --inputs-from . nixpkgs#git-cliff -c sh release.sh notes "$TAG" >"$RUNNER_TEMP/notes.md"
           sh release.sh commit "$TAG"
+          git cat-file blob "$TAG:install.sh" >"$RUNNER_TEMP/install.sh"
           git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "refs/tags/$TAG"
-          gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP/install.sh"
           gh workflow run cache.yml --ref "$TAG"

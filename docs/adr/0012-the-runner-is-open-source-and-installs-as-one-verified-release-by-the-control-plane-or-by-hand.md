@@ -48,3 +48,24 @@ For the build (F51): dist with our own unit templates; dist with generated units
 - Fleets of hosts managed for an enterprise are a third way in, still to be decided: "we'll need to decide how to do that."
 - The runner protocol's schema has to be somewhere a public runner can build against. The cloud's record 0046 keeps it in a private package, so the cloud is asked to re-read that.
 - The hosts' service units are written by the install or by the flake's module, and no longer by afterthought/swancloud alone.
+
+## Amendment, 2026-11-27: the one install is a script that adds the set from the flake
+
+Status: decided on 2026-11-27 by the orchestrator of the change `one-command-installs-the-runner`, answering the change's question. Its brief had the script fetch a release's binary; no release carries one, so the orchestrator chose the flake's set. Cheap to change.
+
+Sources: the change `a-host-enrolls-from-one-command`, its design's "Out of this change"; records 0020 and 0024 as amended; core.31, core.37, core.47 and core.48; Nix's installer at release 2.36.0 and its published `install.sha256`.
+
+### Before
+
+The decision above has one `curl` install, built by dist, put the host's whole set in place from attested release binaries, which the release workflow builds and publishes beside the shell installer. Records 0020 and 0024 then moved the binaries to the family's cache, and the release workflow builds nothing, so no such install exists.
+
+### Now
+
+- **The one install is `install.sh`,** at the root of this tree. The workflow `release` attaches it to each GitHub release, its version written in by the release commit, so GitHub serves it at `https://github.com/boomdrivedev/boomdrive/releases/latest/download/install.sh` and at `releases/download/v<version>/install.sh`.
+- **It adds the set from the flake.** On a Mac on Apple silicon, it adds the runner, Flume, sluice, herdr with its plugins, and git, at the release's tag, to the person's Nix profile, from the family's cache (core.47). A store path from the cache is no release, so core.37's check of a release's provenance does not bind it.
+- **It installs Nix at the person's asking.** Where the host has none, it says what it will install and asks, and `--yes` answers yes. Nix's installer runs only where its digest is the one the script pins. Nix is the host's own, as git and the multiplexer are.
+- **It enrolls a hosted control plane's host.** It runs the enroll command it was given, the token on its standard input alone (core.31). With no enroll command it enrolls nothing.
+- **It stops where Nix sets up the runner**, on Linux, where `services.boomdrive` does, and where the runner's file links into the Nix store.
+- **Not taken: a release's binaries.** A workflow that builds and attests a binary for each system at each tag would need this record's provenance check in the script, and the runner alone does no work without Flume and sluice.
+- **Still open:** the upgrade, and a Linux host without NixOS.
+

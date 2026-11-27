@@ -18,9 +18,9 @@
 # the release was cut from. Ask for the notes before the release commit
 # is tagged, since the range then starts at the new tag.
 #
-# commit writes the version into HEAD's committed Cargo.toml and
-# Cargo.lock with set-version.sh, beside this script, and commits HEAD's
-# tree with those two files as `chore(release): <tag>`, HEAD its one
+# commit writes the version into HEAD's committed Cargo.toml, Cargo.lock
+# and install.sh with set-version.sh, beside this script, and commits
+# HEAD's tree with those three files as `chore(release): <tag>`, HEAD its one
 # parent, by git's own identity, and tags it <tag>. It reads no file of
 # the working tree, so nothing uncommitted reaches a release, and leaves
 # the working tree, the index and every branch as they were. It refuses a
@@ -48,12 +48,12 @@ release_commit() {
   head=$(git rev-parse --verify "HEAD^{commit}")
   work=$(mktemp -d)
   trap 'rm -rf "$work"' EXIT
-  for file in Cargo.toml Cargo.lock; do
+  for file in Cargo.toml Cargo.lock install.sh; do
     git cat-file blob "$head:$file" >"$work/$file"
   done
   sh "$(dirname "$0")/set-version.sh" "${tag#v}" "$work"
   GIT_INDEX_FILE=$work/index git read-tree "$head"
-  for file in Cargo.toml Cargo.lock; do
+  for file in Cargo.toml Cargo.lock install.sh; do
     mode=$(git ls-tree "$head" -- "$file" | awk '{ print $1 }')
     blob=$(git hash-object -w --no-filters "$work/$file")
     GIT_INDEX_FILE=$work/index git update-index --cacheinfo "$mode,$blob,$file"
