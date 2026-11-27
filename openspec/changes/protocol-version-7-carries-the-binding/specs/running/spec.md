@@ -2,7 +2,7 @@
 
 ### Requirement: The runner hears Flume's status from flume host
 
-While `boomdrive run` carries a control plane's parts, it SHALL hold one subscription to flume host, `{"ask":"subscribe","repositories":[…]}`. The ask SHALL name the folder of each clone that a pass reads, and no `repositories` where it names none. It SHALL keep the latest `document` as flume host sent it, and read each pass's status from it, running no `flume --json status`. A read that names other folders SHALL make it ask again. A document that differs from the one held of the same ask SHALL wake every part. `boomdrive run --once` SHALL ask `{"ask":"status"}`, naming the same folders, for each read. A runner that carries no part SHALL hold none (core.13).
+While `boomdrive run` carries a control plane's parts, it SHALL hold one subscription to flume host and keep the latest `document` as flume host sent it. Each pass SHALL read its status from that document, and run no `flume --json status`. A document that differs from the one held of the same ask SHALL wake every part. `boomdrive run --once` SHALL ask `{"ask":"status"}` for each read. A runner that carries no part SHALL hold none (core.13).
 
 #### Scenario: Passes read the subscription
 
@@ -19,6 +19,12 @@ While `boomdrive run` carries a control plane's parts, it SHALL hold one subscri
 
 - **WHEN** the configuration names no control plane
 - **THEN** the runner makes no connection to flume host's socket
+
+## ADDED Requirements
+
+### Requirement: The asks name the folders of the clones read
+
+The subscription SHALL ask `{"ask":"subscribe","repositories":[…]}`, naming the folder of each clone that a pass reads, and no `repositories` where it names none. A read that names other folders SHALL make it ask again on a new connection. A status ask of `boomdrive run --once` SHALL name the same folders. The first document of an ask SHALL wake no part.
 
 #### Scenario: The asks name the folders read
 
