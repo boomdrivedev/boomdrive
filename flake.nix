@@ -47,7 +47,7 @@
       };
     };
     flume = {
-      url = "github:boomdrivedev/flume/v0.36.0";
+      url = "github:boomdrivedev/flume/v0.37.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         rust-overlay.follows = "rust-overlay";
