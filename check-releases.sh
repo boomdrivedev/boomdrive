@@ -341,12 +341,13 @@ else
   esac
 fi
 
-# A scratch copy `$1` of the tree's Cargo.toml, Cargo.lock and each
-# crate's Cargo.toml, laid out as the tree lays them. It is `$copy`.
+# A scratch copy `$1` of the tree's Cargo.toml, Cargo.lock, install.sh
+# and each crate's Cargo.toml, laid out as the tree lays them. It is
+# `$copy`.
 manifests() {
   copy="$scratch/$1"
   mkdir -p "$copy"
-  cp "$tree/Cargo.toml" "$tree/Cargo.lock" "$copy/"
+  cp "$tree/Cargo.toml" "$tree/Cargo.lock" "$tree/install.sh" "$copy/"
   for manifest in "$tree"/crates/*/Cargo.toml; do
     crate=${manifest%/Cargo.toml}
     crate=${crate##*/}
@@ -392,6 +393,14 @@ if sh "$tree/set-version.sh" 98.76.54 "$copy" 2>>"$copy.log"; then
     pass "set-version.sh 98.76.54 writes Cargo.toml's version and each crate's in Cargo.lock"
   else
     fail "set-version.sh 98.76.54 leaves Cargo.toml giving $(workspace_version "$copy"), or a crate in Cargo.lock another: $others"
+  fi
+  changes=$(diff "$tree/install.sh" "$copy/install.sh" || true)
+  if [ "$(printf '%s\n' "$changes" | grep -c '^[<>]')" -eq 2 ] &&
+    printf '%s\n' "$changes" | grep -qx '> version=98\.76\.54'; then
+    pass "set-version.sh 98.76.54 writes install.sh's version= and changes no other line of it"
+  else
+    fail "set-version.sh 98.76.54 does not write install.sh's version=, or changes another line of it:
+$changes"
   fi
   for file in Cargo.toml Cargo.lock; do
     changes=$(diff "$tree/$file" "$copy/$file" || true)
@@ -477,12 +486,24 @@ else
   esac
 fi
 
+# Scenario: An install of another version.
+manifests install
+sed 's/^version=.*/version=0.8.0/' "$tree/install.sh" >"$copy/install.sh"
+if said=$(sh "$tree/check-versions.sh" "$copy" 2>&1); then
+  fail "check-versions.sh passes an install.sh that gives version=0.8.0"
+else
+  case $said in
+  *install.sh*0.8.0*) pass "check-versions.sh fails an install.sh that gives version=0.8.0, naming it and 0.8.0" ;;
+  *) fail "check-versions.sh fails an install.sh that gives version=0.8.0 without naming it and 0.8.0: $said" ;;
+  esac
+fi
+
 # Scenarios: The release commit, main is left as it was, A tag that
 # exists, What is not a tag. A repository whose main commits the tree's
 # manifests beside a file, and a change to that file left uncommitted.
 repo releasecommit
 manifests releasecommit
-git -C "$dir" add Cargo.toml Cargo.lock crates
+git -C "$dir" add Cargo.toml Cargo.lock install.sh crates
 commit "feat: a start"
 echo "an edit left uncommitted" >>"$dir/file-1"
 # What a release commit leaves as it was: main's tip, the branch checked
@@ -512,13 +533,14 @@ if (cd "$dir" && sh release.sh commit v0.2.0 2>"$dir.log"); then
   if [ -n "$released" ] &&
     [ "$(git -C "$dir" rev-list --parents -n 1 "$released")" = "$released $main_tip" ] &&
     [ "$(git -C "$dir" log -1 --format=%s "$released")" = "chore(release): v0.2.0" ] &&
-    [ "$(git -C "$dir" diff --name-only main "$released" | tr '\n' ' ')" = "Cargo.lock Cargo.toml " ] &&
+    [ "$(git -C "$dir" diff --name-only main "$released" | tr '\n' ' ')" = "Cargo.lock Cargo.toml install.sh " ] &&
+    [ "$(git -C "$dir" cat-file blob "$released:install.sh" | sed -n 's/^version=//p')" = 0.2.0 ] &&
     [ "$(workspace_version "$scratch/released")" = 0.2.0 ] &&
     [ -n "$(lock_crates "$scratch/released")" ] && [ -z "$others" ] &&
     grep -q "release: v0.2.0 names $released, cut from $main_tip" "$dir.log"; then
-    pass "release.sh commit v0.2.0 tags a commit cut from main, chore(release): v0.2.0, changing Cargo.toml and Cargo.lock alone to give 0.2.0, and says so"
+    pass "release.sh commit v0.2.0 tags a commit cut from main, chore(release): v0.2.0, changing Cargo.toml, Cargo.lock and install.sh alone to give 0.2.0, and says so"
   else
-    fail "release.sh commit v0.2.0 does not tag a commit cut from main, chore(release): v0.2.0, changing Cargo.toml and Cargo.lock alone to give 0.2.0, or does not say so: $(cat "$dir.log")"
+    fail "release.sh commit v0.2.0 does not tag a commit cut from main, chore(release): v0.2.0, changing Cargo.toml, Cargo.lock and install.sh alone to give 0.2.0, or does not say so: $(cat "$dir.log")"
   fi
   if [ "$(state)" = "$before" ]; then
     pass "release.sh commit v0.2.0 leaves main, the branch checked out, the index, the working tree and git status as they were"
@@ -596,21 +618,24 @@ commit_line='^          sh release\.sh commit "\$TAG"$'
 # shellcheck disable=SC2016
 push_line='^          git -c credential\.helper= -c '"'"'credential\.helper=!gh auth git-credential'"'"' push origin "refs/tags/\$TAG"$'
 # shellcheck disable=SC2016
-create_line='^          gh release create "\$TAG" --verify-tag --title "\$TAG" --notes-file "\$RUNNER_TEMP/notes\.md"$'
+install_line='^          git cat-file blob "\$TAG:install\.sh" >"\$RUNNER_TEMP/install\.sh"$'
+# shellcheck disable=SC2016
+create_line='^          gh release create "\$TAG" --verify-tag --title "\$TAG" --notes-file "\$RUNNER_TEMP/notes\.md" "\$RUNNER_TEMP/install\.sh"$'
 # shellcheck disable=SC2016
 cache_line='^          gh workflow run cache\.yml --ref "\$TAG"$'
 # shellcheck disable=SC2016
 if once '^          tag=$(nix shell --inputs-from \. nixpkgs#git-cliff -c sh release\.sh next)$' &&
   once "^        if: steps\.next\.outputs\.tag != ''$" &&
   once "$notes_line" && once "$commit_line" && once "$push_line" &&
-  once "$create_line" && once "$cache_line" &&
+  once "$install_line" && once "$create_line" && once "$cache_line" &&
   [ "$(line_of "$notes_line")" -lt "$(line_of "$commit_line")" ] &&
-  [ "$(line_of "$commit_line")" -lt "$(line_of "$push_line")" ] &&
+  [ "$(line_of "$commit_line")" -lt "$(line_of "$install_line")" ] &&
+  [ "$(line_of "$install_line")" -lt "$(line_of "$push_line")" ] &&
   [ "$(line_of "$push_line")" -lt "$(line_of "$create_line")" ] &&
   [ "$(line_of "$create_line")" -lt "$(line_of "$cache_line")" ]; then
-  pass "the workflow release writes release.sh's notes, makes the release commit of its tag, pushes the tag, publishes it with its notes and no file, then runs cache at it"
+  pass "the workflow release writes release.sh's notes, makes the release commit of its tag, takes install.sh from it, pushes the tag, publishes it with its notes and that file, then runs cache at it"
 else
-  fail "the workflow release does not write release.sh's notes, make the release commit of its tag, push the tag, publish it with its notes and no file, then run cache at it, in that order"
+  fail "the workflow release does not write release.sh's notes, make the release commit of its tag, take install.sh from it, push the tag, publish it with its notes and that file, then run cache at it, in that order"
 fi
 if once '^          persist-credentials: false$' &&
   once '^          GIT_AUTHOR_NAME: github-actions\[bot\]$' &&

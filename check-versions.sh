@@ -2,8 +2,9 @@
 # shellcheck disable=SC2016 # awk programs name their own $fields.
 # main's tree names 0.0.0 (record 0024, core.48): Cargo.toml's
 # [workspace.package] gives version 0.0.0, every crate its [workspace]
-# members lists takes it (version.workspace = true), and Cargo.lock's
-# entries with no source are exactly those crates, each giving it. A
+# members lists takes it (version.workspace = true), Cargo.lock's
+# entries with no source are exactly those crates, each giving it, and
+# install.sh's `version=` gives it. A
 # release's version is written into the tree only by its release commit,
 # which `release.sh commit` cuts off main with set-version.sh, so this is
 # a check of a candidate's tree, which the gate runs as root:versions and
@@ -116,7 +117,15 @@ if [ -n "$strays" ]; then
   status=1
 fi
 
+# The install's version, the set it adds.
+installs=$(sed -n 's/^version=//p' "$root/install.sh")
+if [ -z "$installs" ]; then
+  fail "install.sh gives no version=, and main's is $main"
+elif [ "$installs" != "$main" ]; then
+  fail "install.sh gives version=$installs, and main's is $main"
+fi
+
 if [ "$status" -eq 0 ]; then
-  echo "versions: Cargo.toml, its crates and Cargo.lock give $main"
+  echo "versions: Cargo.toml, its crates, Cargo.lock and install.sh give $main"
 fi
 exit "$status"

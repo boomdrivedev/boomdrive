@@ -75,11 +75,11 @@ tasks:
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true, cache: false}
   # main's tree names 0.0.0: Cargo.toml's workspace version, which each
-  # crate takes, and Cargo.lock's entries for the crates
-  # (check-versions.sh; record 0024, core.48).
+  # crate takes, Cargo.lock's entries for the crates and install.sh's
+  # version= (check-versions.sh; record 0024, core.48).
   versions:
     command: 'sh check-versions.sh'
-    inputs: ['/Cargo.toml', '/Cargo.lock', '/crates/*/Cargo.toml', '/check-versions.sh']
+    inputs: ['/Cargo.toml', '/Cargo.lock', '/crates/*/Cargo.toml', '/install.sh', '/check-versions.sh']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # The releases spec: release.sh and check-commits.sh in scratch
@@ -88,7 +88,15 @@ tasks:
   # workflow release read (check-releases.sh).
   releases:
     command: 'sh check-releases.sh'
-    inputs: ['/cliff.toml', '/.versionrc', '/release.sh', '/check-commits.sh', '/set-version.sh', '/check-versions.sh', '/check-releases.sh', '/Cargo.toml', '/Cargo.lock', '/crates/*/Cargo.toml', '/.github/workflows/release.yml', '/devenv.nix', '/devenv.lock', '/flake.lock']
+    inputs: ['/cliff.toml', '/.versionrc', '/release.sh', '/check-commits.sh', '/set-version.sh', '/check-versions.sh', '/check-releases.sh', '/Cargo.toml', '/Cargo.lock', '/crates/*/Cargo.toml', '/install.sh', '/.github/workflows/release.yml', '/devenv.nix', '/devenv.lock', '/flake.lock']
+    tags: [check-fast]
+    options: {runFromWorkspaceRoot: true}
+  # The install spec: install.sh's choices, each run on a scratch home
+  # with stubs of the programs it runs, under the shell's sh and macOS's
+  # /bin/sh, bash 3.2.57 (check-install.sh; core.8).
+  install:
+    command: 'sh check-install.sh'
+    inputs: ['/install.sh', '/check-install.sh', '/devenv.nix', '/devenv.lock']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # actionlint over the workflow release, which the root owns; the nix

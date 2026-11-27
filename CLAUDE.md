@@ -94,8 +94,12 @@ version since the newest tag `v*` by version, and where it is new tags
 its release commit, cut from the commit of `main` that was pushed,
 which writes the version into the tree (`set-version.sh`), so a build
 from the tag reports it. It pushes that tag alone and publishes its
-GitHub release with git-cliff's notes, building nothing, then runs
-`cache` at the tag. `main`'s tree names `0.0.0`, which `root:versions`
+GitHub release with git-cliff's notes and the release commit's
+`install.sh`, building nothing, then runs `cache` at the tag. The
+install, `install.sh` at the root, adds the set at its release's tag to
+a Mac's Nix profile, installing Nix at the person's asking, then runs
+the enroll command it was given (record 0012 as amended on 2026-11-27);
+`root:install` tests its choices. `main`'s tree names `0.0.0`, which `root:versions`
 holds it to. `devenv shell -- release-preview` shows what it would
 release.
 

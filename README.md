@@ -1461,6 +1461,26 @@ plane's page gives, the token piped to it:
 
     echo <token> | boomdrive enroll --control-plane <url> --drive <drive> --repository <owner/name>... [--config <file>] [--json]
 
+On a Mac with no runner yet, the page gives the install's command in
+its place. Each release attaches `install.sh`, which GitHub serves at
+`https://github.com/boomdrivedev/boomdrive/releases/latest/download/install.sh`
+and at `releases/download/v<version>/install.sh` for one release:
+
+    echo <token> | sh -c "$(curl -fsSL https://github.com/boomdrivedev/boomdrive/releases/latest/download/install.sh)" install --yes --control-plane <url> --drive <drive> --repository <owner/name>...
+
+It runs on macOS on Apple silicon. Where the host has no Nix, it
+installs Nix with Nix's own installer, at the release and digest it
+pins, and sets Nix to use the family's cache; where Nix does not use the
+cache, it adds the cache's two lines to Nix's configuration and restarts
+Nix's daemon. It asks before each, and `--yes` answers yes. It then adds
+the runner, flume, sluice, herdr with its plugins, and git, at the
+release's tag, to the person's Nix profile, and runs `boomdrive enroll`
+with the flags after `--yes` and the token on its standard input, which
+no other program it runs reads. It stops, installing nothing and
+spending no token, on Linux, where `services.boomdrive` sets up the
+runner, where the runner's file links into the Nix store, and where
+another version of `boomdrive` is on the `PATH`.
+
 The drive's name is the partition's label and its account's name, so no
 one picks a label. `enroll` reads the configuration as `run` does and
 takes one of three ways, each checked before the token is read, so a

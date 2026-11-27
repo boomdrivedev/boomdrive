@@ -2,8 +2,9 @@
 # shellcheck disable=SC2016 # awk programs name their own $fields.
 # Writes a release's version into every file of the tree that carries
 # Boomdrive's version: the workspace's in Cargo.toml, which each crate
-# takes (version.workspace = true), and Cargo.lock's entries for the
-# crates, the entries with no source. main gives 0.0.0 in each
+# takes (version.workspace = true), Cargo.lock's entries for the crates,
+# the entries with no source, and install.sh's `version=`, the set the
+# install adds (the install spec). main gives 0.0.0 in each
 # (check-versions.sh). `release.sh commit` runs this on a copy of the
 # commit it releases, and its tag names the release commit it makes of
 # what this wrote (record 0024, core.48). It changes no other line, which
@@ -68,4 +69,13 @@ put Cargo.lock '
   /^source = / { sourced = 1 }
   { lines[++n] = $0 }
   END { flush() }
+'
+
+# The install's version, the set it adds.
+put install.sh '
+  /^version=/ && !written {
+    $0 = "version=" v
+    written++
+  }
+  { print }
 '
