@@ -162,6 +162,11 @@ pub struct Hello {
     /// a hello lacks it.
     #[serde(default)]
     pub drives: BTreeMap<String, Vec<KeptRepository>>,
+    /// Flume's status of each repository of `repositories`, by its
+    /// address, as Flume's status gives it for the repository's clone.
+    /// Read as none where a hello lacks it.
+    #[serde(default)]
+    pub repository_statuses: BTreeMap<String, RepositoryStatus>,
     pub capacity: Capacity,
     /// Each launch's, each command's and each preview's id with the lease
     /// number held.
@@ -185,6 +190,19 @@ pub enum ToolVersion {
     /// The first line of its `--version`, as it printed it.
     Printed(String),
     /// The tool could not be run, with the words saying why.
+    Missing(String),
+}
+
+/// A repository's status as Flume's status gives it: whether the merge
+/// queue its binding names lands its default branch, and each kind Flume
+/// would run there with whether it lands.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RepositoryStatus {
+    /// The item of Flume's `status.repositories` for the repository's
+    /// clone, as Flume printed it.
+    Printed(String),
+    /// Flume's status gave none, with the words saying why.
     Missing(String),
 }
 

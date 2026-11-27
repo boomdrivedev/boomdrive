@@ -5,8 +5,10 @@
 
 mod common;
 
-use boomdrive_hosted::protocol::v6::{FromRunner, Message, ToRunner};
-use common::{example, examples, from_runner, passes, refused, to_runner, V1, V2, V3, V4, V5, V6};
+use boomdrive_hosted::protocol::v7::{FromRunner, Message, ToRunner};
+use common::{
+    example, examples, from_runner, passes, refused, to_runner, V1, V2, V3, V4, V5, V6, V7,
+};
 use serde_json::{json, Value};
 
 /// The example `name` of `direction`, altered by `alter`.
@@ -38,15 +40,15 @@ fn a_message_with_no_id() {
 }
 
 /// The runner-protocol spec's "A message of another version": every
-/// message of a version names it, so a hello naming 5 is no message of
-/// version 6 and one naming 6 none of version 5, and each older pair
+/// message of a version names it, so a hello naming 6 is no message of
+/// version 7 and one naming 7 none of version 6, and each older pair
 /// likewise; and one naming any other number, or the version as text, is
 /// none of the version spoken (core.42; records 0052, 0053 and 0054).
 #[test]
 fn a_message_of_another_version() {
     let validator = from_runner();
     let spoken = common::current().number;
-    let others = (0..=7)
+    let others = (0..=8)
         .filter(|number| *number != spoken)
         .map(|number| json!(number))
         .chain([json!(spoken.to_string())]);
@@ -61,6 +63,8 @@ fn a_message_of_another_version() {
         );
     }
     for (version, against) in [
+        (V6, V7),
+        (V7, V6),
         (V5, V6),
         (V6, V5),
         (V4, V5),

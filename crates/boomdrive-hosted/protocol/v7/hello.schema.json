@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v7/hello.schema.json",
+  "description": "The hello, the interface's Hello field for field, but that its capacity's printed part is the copy of Flume's host part, and each repository's status's printed part is the copy of Flume's status of that repository.",
+  "$defs": {
+    "hello": {
+      "description": "What the runner tells the control plane of its host: first at every connection, whole, and again when it changes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interface_version",
+        "runner_version",
+        "tool_versions",
+        "repositories",
+        "repository_statuses",
+        "capacity",
+        "leases"
+      ],
+      "properties": {
+        "interface_version": {
+          "description": "The interface's version, apart from the protocol's.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "runner_version": {
+          "description": "boomdrive --version's text.",
+          "type": "string"
+        },
+        "tool_versions": {
+          "description": "Each tool's version, by the tool's name.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/tool_name"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/tool_version"
+          }
+        },
+        "repositories": {
+          "description": "The addresses of the repositories the runner keeps for this partition, with their clones made.",
+          "type": "array",
+          "items": {
+            "$ref": "shared.schema.json#/$defs/repository"
+          }
+        },
+        "repository_statuses": {
+          "description": "Flume's status of each repository of repositories, by its address, each named once: whether the merge queue it binds lands its default branch, and each kind Flume would run there with whether it lands.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/repository"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/repository_status"
+          }
+        },
+        "capacity": {
+          "$ref": "#/$defs/capacity"
+        },
+        "leases": {
+          "description": "Each launch's, each command's and each preview's id with the lease number held.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "shared.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "shared.schema.json#/$defs/lease_number"
+          }
+        }
+      }
+    },
+    "tool_name": {
+      "description": "A tool's name, as the runner names it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$"
+    },
+    "tool_version": {
+      "description": "A tool's version as the runner read it: the first line of its --version as it printed it, or the words saying why it could not be run.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "printed"
+          ],
+          "properties": {
+            "printed": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "missing"
+          ],
+          "properties": {
+            "missing": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "capacity": {
+      "description": "The host's capacity, as Flume's status gives it, or the words saying why Flume's status could not be read.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "printed"
+          ],
+          "properties": {
+            "printed": {
+              "$ref": "#/$defs/host_part"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "missing"
+          ],
+          "properties": {
+            "missing": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "host_part": {
+      "description": "The copy of flume status --json's host part: its room and its streams', each value as Flume printed it. It holds no stream's queue, and none of Flume's pools, addresses, bases, host queue or watch.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "running",
+        "bound",
+        "room",
+        "streams"
+      ],
+      "properties": {
+        "running": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "bound": {
+          "$ref": "#/$defs/count_or_unbounded"
+        },
+        "room": {
+          "$ref": "#/$defs/count_or_unbounded"
+        },
+        "streams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stream"
+          }
+        }
+      }
+    },
+    "stream": {
+      "description": "One of Flume's streams on the host, without its queue.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "priority",
+        "running",
+        "bound",
+        "room"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "shared.schema.json#/$defs/signed_integer"
+        },
+        "running": {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        "bound": {
+          "$ref": "#/$defs/count_or_unbounded"
+        },
+        "room": {
+          "$ref": "#/$defs/count_or_unbounded"
+        }
+      }
+    },
+    "count_or_unbounded": {
+      "description": "A count as Flume printed it, or null where Flume names no bound.",
+      "oneOf": [
+        {
+          "$ref": "shared.schema.json#/$defs/unsigned_integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "repository_status": {
+      "description": "A repository's status as Flume's status gives it, or the words saying why Flume's status gave none.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "printed"
+          ],
+          "properties": {
+            "printed": {
+              "$ref": "#/$defs/repository_status_copy"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "missing"
+          ],
+          "properties": {
+            "missing": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "repository_status_copy": {
+      "description": "The copy of one item of flume status --json's status.repositories, each value as Flume printed it, without its repository, which is the folder of the runner's clone.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding",
+        "merge_queue",
+        "kinds"
+      ],
+      "properties": {
+        "binding": {
+          "$ref": "#/$defs/binding_held"
+        },
+        "merge_queue": {
+          "$ref": "#/$defs/merge_queue_bound"
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kind_lands"
+          }
+        }
+      }
+    },
+    "binding_held": {
+      "description": "The repository's binding as it holds its default branch, read with no fetch, or why Flume could not read it.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "read"
+          ],
+          "properties": {
+            "read": {
+              "$ref": "#/$defs/binding_read"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "could_not_read"
+          ],
+          "properties": {
+            "could_not_read": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "binding_read": {
+      "description": "The default branch and its revision, where Flume read it, the declaration's path where that revision holds one, and the profile the binding names for each seam.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch",
+        "revision",
+        "from",
+        "declaration",
+        "binding"
+      ],
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "from": {
+          "description": "origin where Flume read origin's copy of the branch as the last fetch left it, local where it read the repository's own branch.",
+          "enum": [
+            "origin",
+            "local"
+          ]
+        },
+        "declaration": {
+          "description": "The declaration's path within the tree, null where the revision holds none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "place",
+            "change",
+            "merge_queue"
+          ],
+          "properties": {
+            "place": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "change": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "merge_queue": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "merge_queue_bound": {
+      "description": "The merge queue the binding names, null where it names none; whether Flume carries its profile and it lands the default branch; and, where not, Flume's words saying what is missing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "ready"
+      ],
+      "properties": {
+        "profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
+    },
+    "kind_lands": {
+      "description": "A kind Flume would run in the repository: its identity, whether it lands, null where Flume could not read the kind, and the words a launch of it there is refused with, absent where the binding refuses it nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "lands"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "lands": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "refused": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

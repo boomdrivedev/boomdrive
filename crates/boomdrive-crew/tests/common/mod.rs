@@ -643,6 +643,7 @@ pub fn hello_of(drives: &[(&str, &[&str])], room: &str) -> Hello {
                 (name.to_string(), kept)
             })
             .collect(),
+        repository_statuses: BTreeMap::new(),
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "null".to_string(),

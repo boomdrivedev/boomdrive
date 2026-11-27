@@ -9,6 +9,7 @@
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use serde_json::Value;
+use std::collections::BTreeMap;
 
 /// The entry of every place an answer of `flume --json status` holds:
 /// the listing's every place, or the one place asked for.
@@ -334,6 +335,42 @@ pub fn host_part(text: &str) -> Option<HostPart> {
         room: host.room.get().to_string(),
         streams: host.streams.get().to_string(),
     })
+}
+
+#[derive(Deserialize)]
+struct Repositories<'a> {
+    #[serde(borrow)]
+    status: RepositoriesPart<'a>,
+}
+
+#[derive(Deserialize)]
+struct RepositoriesPart<'a> {
+    #[serde(borrow, default)]
+    repositories: Vec<&'a RawValue>,
+}
+
+/// The folder an item of `status.repositories` names.
+#[derive(Deserialize)]
+struct Named {
+    repository: String,
+}
+
+/// Each item of `status.repositories`, by the folder it names, sliced
+/// from the text of a `flume --json status` as Flume printed it, the first
+/// where two name one folder; none where the text is not JSON with a
+/// `status`, and none of an item that names no folder. A status that
+/// names no repository gives none.
+pub fn repositories(text: &str) -> Option<BTreeMap<String, String>> {
+    let listing: Repositories = serde_json::from_str(text).ok()?;
+    let mut items = BTreeMap::new();
+    for item in listing.status.repositories {
+        if let Ok(named) = serde_json::from_str::<Named>(item.get()) {
+            items
+                .entry(named.repository)
+                .or_insert_with(|| item.get().to_string());
+        }
+    }
+    Some(items)
 }
 
 #[cfg(test)]

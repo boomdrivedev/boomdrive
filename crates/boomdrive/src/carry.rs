@@ -517,7 +517,9 @@ impl Carrier<'_> {
             }
         };
         let saved = kept.clone().unwrap_or_default();
-        let mut status = self.flume.status();
+        let drives = self.clones.drives();
+        let folders = hello::folders(&drives);
+        let mut status = self.flume.status(&folders);
         let listing = listing_of(&status, self.label, say);
         let mut hello = hello::hello(
             self.tools,
@@ -526,7 +528,8 @@ impl Carrier<'_> {
             &saved,
         );
         hello.draining = hello::draining(self.clones.dropped(), &saved);
-        hello.drives = self.clones.drives();
+        hello.repository_statuses = hello::repository_statuses(&status, &drives);
+        hello.drives = drives;
         let pulled = match plane.pull(&hello, &saved) {
             Ok(pulled) => pulled,
             Err(Unread(words)) => {
@@ -593,7 +596,7 @@ impl Carrier<'_> {
         // statuses are carried against its listing as it stands now
         // (record 0027).
         if work.ran {
-            status = self.flume.status();
+            status = self.flume.status(&folders);
             work.listing = listing_of(&status, self.label, say);
         }
         carrying.keep(work.wants, work.listing.as_ref());
@@ -1763,8 +1766,12 @@ impl Work<'_> {
         if owed.is_empty() {
             return;
         }
-        let Some(listing) = listing_of(&self.carrier.flume.status(), self.carrier.label, say)
-        else {
+        let folders = hello::folders(&self.carrier.clones.drives());
+        let Some(listing) = listing_of(
+            &self.carrier.flume.status(&folders),
+            self.carrier.label,
+            say,
+        ) else {
             return;
         };
         let recipient = flume::RECIPIENT;

@@ -12,6 +12,7 @@ pub mod v3;
 pub mod v4;
 pub mod v5;
 pub mod v6;
+pub mod v7;
 
 use crate::check::Checks;
 use std::sync::OnceLock;
@@ -39,7 +40,7 @@ impl std::fmt::Debug for Version {
     }
 }
 
-/// Version 5, read and written with version 6's types.
+/// Version 5, read and written with version 7's types.
 pub static V5: Version = Version {
     number: v5::VERSION,
     subprotocol: v5::SUBPROTOCOL,
@@ -49,7 +50,7 @@ pub static V5: Version = Version {
 };
 
 /// Version 6, version 5 whole but for the control plane's
-/// `newest_release`.
+/// `newest_release`, read and written with version 7's types.
 pub static V6: Version = Version {
     number: v6::VERSION,
     subprotocol: v6::SUBPROTOCOL,
@@ -58,9 +59,19 @@ pub static V6: Version = Version {
     checks: Checks::new(),
 };
 
+/// Version 7, version 6 whole but for the hello's
+/// `repository_statuses`.
+pub static V7: Version = Version {
+    number: v7::VERSION,
+    subprotocol: v7::SUBPROTOCOL,
+    address: v7::ADDRESS,
+    files: v7::FILES,
+    checks: Checks::new(),
+};
+
 /// Each version the runner's code can speak, oldest first.
-pub fn speakable() -> [&'static Version; 2] {
-    [&V5, &V6]
+pub fn speakable() -> [&'static Version; 3] {
+    [&V5, &V6, &V7]
 }
 
 /// `protocol/spoken.json`, as the crate holds it.

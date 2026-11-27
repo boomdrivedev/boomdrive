@@ -20,7 +20,7 @@
 use crate::check;
 use crate::key::{self, Store};
 use crate::protocol::spoken;
-use crate::protocol::v6::{self, FromRunner, Message, MessageId, ToRunner};
+use crate::protocol::v7::{self, FromRunner, Message, MessageId, ToRunner};
 use crate::table::{Partition, Table};
 use boomdrive_control::{ForgeToken, ForgeTokens, TokenAsked};
 use serde_json::Value;
@@ -134,7 +134,7 @@ impl Tokens {
         let message = Message::new(
             version,
             id.clone(),
-            FromRunner::ForgeToken(v6::ForgeToken {
+            FromRunner::ForgeToken(v7::ForgeToken {
                 repository: repository.to_string(),
             }),
         );

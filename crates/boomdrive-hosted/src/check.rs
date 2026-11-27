@@ -40,6 +40,7 @@ pub(crate) struct Checks {
     preview: OnceLock<Validator>,
     release: OnceLock<Validator>,
     host_part: OnceLock<Validator>,
+    repository_status: OnceLock<Validator>,
 }
 
 impl Checks {
@@ -57,6 +58,7 @@ impl Checks {
             preview: OnceLock::new(),
             release: OnceLock::new(),
             host_part: OnceLock::new(),
+            repository_status: OnceLock::new(),
         }
     }
 }
@@ -192,6 +194,16 @@ pub fn host_part(version: &'static Version) -> &'static Validator {
         .checks
         .host_part
         .get_or_init(|| validator(version, crate::copy::HOST_PART))
+}
+
+/// The validator of Flume's status of a repository as its copy,
+/// `hello.schema.json`'s `repository_status_copy`, which version 7 names
+/// and no version before it.
+pub fn repository_status(version: &'static Version) -> &'static Validator {
+    version
+        .checks
+        .repository_status
+        .get_or_init(|| validator(version, crate::copy::REPOSITORY_STATUS))
 }
 
 /// Why `value` fails `validator`: its first error's path in the value and

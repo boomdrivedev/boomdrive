@@ -112,13 +112,13 @@ fn the_runner_speaks_what_the_file_marks_spoken() {
 }
 
 /// The runner-protocol spec's "Each version the code speaks is its own
-/// files": versions 5 and 6, each with its module's number, subprotocol,
-/// address and files, so a mark in the file alone moves the runner from
-/// one to the other.
+/// files": versions 5, 6 and 7, each with its module's number,
+/// subprotocol, address and files, so a mark in the file alone moves the
+/// runner from one to another.
 #[test]
 fn each_version_the_code_speaks_is_its_own_files() {
-    use boomdrive_hosted::protocol::{v5, v6};
-    let [five, six] = speakable();
+    use boomdrive_hosted::protocol::{v5, v6, v7};
+    let [five, six, seven] = speakable();
     assert_eq!(
         (five.number, five.subprotocol, five.address),
         (v5::VERSION, v5::SUBPROTOCOL, v5::ADDRESS)
@@ -129,5 +129,10 @@ fn each_version_the_code_speaks_is_its_own_files() {
         (v6::VERSION, v6::SUBPROTOCOL, v6::ADDRESS)
     );
     assert_eq!(six.files, v6::FILES);
-    assert_eq!((five.number, six.number), (5, 6));
+    assert_eq!(
+        (seven.number, seven.subprotocol, seven.address),
+        (v7::VERSION, v7::SUBPROTOCOL, v7::ADDRESS)
+    );
+    assert_eq!(seven.files, v7::FILES);
+    assert_eq!((five.number, six.number, seven.number), (5, 6, 7));
 }

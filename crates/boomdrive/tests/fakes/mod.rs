@@ -107,6 +107,11 @@ struct State {
     acts: BTreeMap<String, Result<Reply, Unrun>>,
     /// `status <place>`'s answer, by the place.
     statuses: BTreeMap<String, Result<Reply, Unrun>>,
+    /// Flume's status of a repository, by its clone's folder, which the
+    /// listing gives where its ask names that folder.
+    repositories: BTreeMap<String, Value>,
+    /// The folders each listing's ask named, in order.
+    named: Vec<Vec<String>>,
     /// A confirmation's answer, by its first key.
     confirms: BTreeMap<String, Result<Reply, Unrun>>,
     /// The recipients each place it launched was launched with, by its
@@ -291,6 +296,18 @@ impl FakeFlume {
         self.state().acts.insert(place.to_string(), reply);
     }
 
+    /// Flume's status of the repository whose clone is at `folder`, the
+    /// item a listing that names it gives, its `repository` the folder.
+    pub fn repository_answers(&self, folder: &str, mut item: Value) {
+        item["repository"] = json!(folder);
+        self.state().repositories.insert(folder.to_string(), item);
+    }
+
+    /// The folders each listing's ask named, in order.
+    pub fn named(&self) -> Vec<Vec<String>> {
+        self.state().named.clone()
+    }
+
     /// `status <place>` answered with `reply`.
     pub fn status_answers(&self, place: &str, reply: Result<Reply, Unrun>) {
         self.state().statuses.insert(place.to_string(), reply);
@@ -436,9 +453,18 @@ impl FakeFlume {
             .is_some_and(|named| named.iter().any(|name| name == flume::RECIPIENT))
     }
 
-    fn listing_now(&self) -> Value {
+    fn listing_now(&self, named: &[String]) -> Value {
         let state = self.state();
-        json!({ "status": { "places": state.places, "host": state.host } })
+        let repositories: Vec<&Value> = named
+            .iter()
+            .filter_map(|folder| state.repositories.get(folder))
+            .collect();
+        match repositories.as_slice() {
+            [] => json!({ "status": { "places": state.places, "host": state.host } }),
+            _ => json!({ "status": {
+                "places": state.places, "host": state.host, "repositories": repositories,
+            } }),
+        }
     }
 }
 
@@ -569,14 +595,15 @@ impl Flume for FakeFlume {
         )))
     }
 
-    fn status(&self) -> Result<Reply, Unrun> {
+    fn status(&self, repositories: &[String]) -> Result<Reply, Unrun> {
         if let Some(unrun) = self.call(Call::Status) {
             return Err(unrun);
         }
+        self.state().named.push(repositories.to_vec());
         if let Some(reply) = &self.state().listing {
             return reply.clone();
         }
-        Ok(Reply::Given(printed(&self.listing_now())))
+        Ok(Reply::Given(printed(&self.listing_now(repositories))))
     }
 
     fn confirm(&self, recipient: &str, keys: &[String]) -> Result<Reply, Unrun> {

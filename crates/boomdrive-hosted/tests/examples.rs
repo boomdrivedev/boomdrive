@@ -10,7 +10,7 @@
 
 mod common;
 
-use boomdrive_hosted::protocol::v6::{FromRunner, Message, MessageId, ToRunner};
+use boomdrive_hosted::protocol::v7::{FromRunner, Message, MessageId, ToRunner};
 use common::{example, examples, from_runner, passes, to_runner, version_dir, V1, V2};
 use jsonschema::Validator;
 use serde::de::DeserializeOwned;
@@ -420,5 +420,111 @@ fn version_6s_examples_read() {
         let mut failing = newest.clone();
         failing["body"]["newest_release"] = body.clone();
         assert!(!to_v6.is_valid(&failing), "version 6 takes {body}");
+    }
+}
+
+/// The runner-protocol spec's "Version 7's examples read": each example
+/// of version 7 passes its direction's envelope of version 7, reads into
+/// the runner's types and writes back equal, and its hellos name each of
+/// their repositories' statuses once; a hello of version 7 with no
+/// `repository_statuses`, a status of a form version 7 does not name, a
+/// status that names the clone's folder, and any hello of version 7 under
+/// version 6 fail (design Decision 1 of
+/// protocol-version-7-carries-the-binding).
+#[test]
+fn version_7s_examples_read() {
+    let (v6, v7) = (common::V6, common::V7);
+    for (direction, validator) in [
+        ("from-runner", v7.messages_from_runner()),
+        ("to-runner", v7.messages_to_runner()),
+    ] {
+        for (name, value) in v7.examples(direction) {
+            let what = format!("version 7's {direction}/{name}");
+            passes(&validator, &value, &what);
+            let written = match direction {
+                "from-runner" => serde_json::to_value(
+                    serde_json::from_value::<Message<FromRunner>>(value.clone())
+                        .unwrap_or_else(|e| panic!("{what} does not read: {e}")),
+                ),
+                _ => serde_json::to_value(
+                    serde_json::from_value::<Message<ToRunner>>(value.clone())
+                        .unwrap_or_else(|e| panic!("{what} does not read: {e}")),
+                ),
+            }
+            .unwrap();
+            assert_eq!(written, value, "{what} written back differs");
+            if let Some(hello) = value.pointer("/body/hello") {
+                let named: Vec<&String> = hello["repository_statuses"]
+                    .as_object()
+                    .unwrap_or_else(|| panic!("{what} names no repository_statuses"))
+                    .keys()
+                    .collect();
+                let mut kept: Vec<&str> = hello["repositories"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect();
+                kept.sort_unstable();
+                assert_eq!(named, kept, "{what} names each repository's status once");
+            }
+        }
+    }
+
+    let from_v7 = v7.messages_from_runner();
+    let from_v6 = v6.messages_from_runner();
+    let hello = v7.example("from-runner", "hello.json");
+    let mut as_v6 = hello.clone();
+    as_v6["protocol_version"] = Value::from(6);
+    assert!(
+        !from_v6.is_valid(&as_v6),
+        "version 6 takes repository_statuses"
+    );
+    let mut without = hello.clone();
+    without["body"]["hello"]
+        .as_object_mut()
+        .unwrap()
+        .remove("repository_statuses");
+    assert!(
+        !from_v7.is_valid(&without),
+        "version 7 takes a hello with no statuses"
+    );
+    let app = "/body/hello/repository_statuses/example~1app";
+    for (pointer, value) in [
+        (app.to_string(), serde_json::json!({ "read": {} })),
+        (
+            app.to_string(),
+            serde_json::json!({ "printed": {}, "missing": "both" }),
+        ),
+        (
+            format!("{app}/printed/repository"),
+            serde_json::json!("/data/repositories/example/app"),
+        ),
+        (
+            format!("{app}/printed/binding/read/from"),
+            serde_json::json!("remote"),
+        ),
+        (
+            format!("{app}/printed/merge_queue/ready"),
+            serde_json::json!("yes"),
+        ),
+        (format!("{app}/printed/kinds/0/added"), serde_json::json!(1)),
+        (
+            "/body/hello/repository_statuses/not an address".to_string(),
+            serde_json::json!({ "missing": "words" }),
+        ),
+    ] {
+        let mut failing = hello.clone();
+        let (parent, member) = pointer.rsplit_once('/').unwrap();
+        let member = member.replace("~1", "/");
+        failing
+            .pointer_mut(parent)
+            .and_then(Value::as_object_mut)
+            .unwrap_or_else(|| panic!("hello.json holds {parent}"))
+            .insert(member.clone(), value.clone());
+        assert!(
+            !from_v7.is_valid(&failing),
+            "version 7 takes {member} as {value} at {parent}"
+        );
     }
 }

@@ -19,17 +19,19 @@ version 3, `the-hosted-protocol-carries-a-hold` and
 0048, which record 0054 supersedes, the change that wrote version 5,
 `a-cloud-host-gets-its-github-tokens-from-the-cloud`, and the change that
 wrote version 5, `the-runner-serves-each-accounts-own-control-plane`,
-and the change that wrote version 6,
-`protocol-version-6-names-the-newest-release`. They cite
+the change that wrote version 6,
+`protocol-version-6-names-the-newest-release`, and the change that wrote
+version 7, `protocol-version-7-carries-the-binding`. They cite
 boomdrive-cloud's records and rules by id.
 
 ## Versions
 
-Version 6 is `v6/`, and version 5, which version 6 follows, is `v5/`.
+Version 7 is `v7/`, version 6, which version 7 follows, is `v6/`, and
+version 5, which version 6 follows, is `v5/`.
 Version 4, which version 5 follows, is `v4/`,
 version 3, which version 4 follows, is `v3/`, version 2, which version 3
 follows, is `v2/`, and version 1, which version 2 follows, is `v1/`
-(*Version 6*, *Version 4*, *Version 3*, *Version 2* and *Version 1*,
+(*Version 7*, *Version 6*, *Version 4*, *Version 3*, *Version 2* and *Version 1*,
 below). A
 version may change until a release of the runner speaks it to a control
 plane. From that release on it never changes, and its directory is
@@ -47,10 +49,10 @@ does not speak.
 
 The runner speaks one version, the one `spoken.json` marks spoken:
 version 6, which boomdrive-cloud's `main` speaks. The
-runner's code reads and writes versions 5 and 6, and every message it sends or
+runner's code reads and writes versions 5, 6 and 7, and every message it sends or
 reads names the version marked spoken and is checked against it, so a
 version is spoken by its mark alone. The rest of this page is version
-5's; *Version 6*, below, names what version 6 adds. Releases of the
+5's; *Version 6* and *Version 7*, below, name what each adds. Releases of the
 runner spoke versions 5, 4, 3, 2 and 1, so none of them changes. The crate's test
 `files` holds each file of `v4/`, schemas and examples, to its digest as
 `v0.21.0` holds it, each of `v3/` to `v0.18.0`'s, each of `v2/` to
@@ -58,13 +60,15 @@ runner spoke versions 5, 4, 3, 2 and 1, so none of them changes. The crate's tes
 any of them changed or added. It also holds each file and example of
 `v5/` to version 5's, but for what *Version 5* names, so a change to
 version 5 that is not its unleased places fails there, and each file
-and example of `v6/` to version 5's, but for what *Version 6* names.
+and example of `v6/` to version 5's, but for what *Version 6* names, and
+each of `v7/` to version 6's, but for what *Version 7* names.
 
 `spoken.json`, beside the version directories, names each version once,
-lowest first, and whether the runner speaks it: version 6 alone. The
+lowest first, and whether the runner speaks it: version 6 alone, version
+7 not yet. The
 runner's code reads it, and speaks the version it marks. The crate's
 test `spoken` holds it to the directories, to one version marked
-spoken, and to a version the crate's code can speak, version 5 or 6. The runner's gate, by its task
+spoken, and to a version the crate's code can speak, version 5, 6 or 7. The runner's gate, by its task
 `boomdrive-hosted:cloud-protocol`, reads boomdrive-cloud's pin,
 `workers/control-plane/runner-protocol/pin.json`, from its `main` as the
 forge holds it, and fails where `spoken.json` marks spoken a version the
@@ -82,7 +86,7 @@ the connection before any message.
 | `to-runner.schema.json` | the envelope of every message a control plane sends, and in version 6 `newest_release` |
 | `shared.schema.json` | what both directions use: ids, a time, integers, a lease, a repository's address, a commit, a digest, bytes, and `message_refused` |
 | `enrollment.schema.json` | `enroll`, and its answers `enrolled` and `enroll_refused` |
-| `hello.schema.json` | the hello, a tool's version, and the copy of Flume's host part |
+| `hello.schema.json` | the hello, a tool's version, the copy of Flume's host part, and in version 7 the copy of Flume's status of a repository |
 | `wants.schema.json` | a want, an offer with its launch, an act, a command, an inbox, a preview, and `pulled` |
 | `report.schema.json` | the runner's report, with what it answered of each preview and each place the partition did not lease, and `reported` |
 | `place-status.schema.json` | the copy of a Flume place's status |
@@ -591,6 +595,46 @@ them, and neither end keeps them.
 - **Closing.** `terminal_close` closes a terminal from the browser's
   end, and `terminal_closed` says the runner closed it, with its words.
   A terminal is closed with its socket.
+
+## Version 7
+
+Version 7, `v7/`, is version 6 but for these alone:
+
+- **Its name** is `boomdrive.v7`: the subprotocol its connections ask
+  for, every message's `protocol_version` 7, and the start of each
+  context its keys sign, `boomdrive.v7 enroll`, `boomdrive.v7 connect`
+  and `boomdrive.v7 forge token`.
+- **Its files' `$id`s** are under
+  `https://raw.githubusercontent.com/boomdrivedev/boomdrive/main/crates/boomdrive-hosted/protocol/v7/`.
+- **The hello names each repository's status.** `repository_statuses`,
+  required, is a map that names each address of `repositories` once.
+  Each value is `{"printed": …}`, the copy of Flume's item of
+  `status.repositories` for the repository's clone, or
+  `{"missing": "<words>"}`, the words saying why there is none. The copy
+  holds Flume's `binding`, `merge_queue` and `kinds`, closed, each as
+  Flume printed it, and leaves out Flume's `repository`, the folder of
+  the runner's clone:
+  - `binding` is `{"read": {"branch", "revision", "from", "declaration", "binding"}}`,
+    `from` being `origin` or `local`, `declaration` `null` where the
+    branch holds none, and `binding` naming the profile of each seam,
+    `place`, `change` and `merge_queue`, each `null` where it names none;
+    or `{"could_not_read": {"reason"}}`.
+  - `merge_queue` is `{"profile", "ready"}`, with `words` where it is not
+    ready: whether the merge queue the binding names lands the default
+    branch, and Flume's words saying what is missing.
+  - `kinds` lists each kind Flume would run there, `{"kind", "lands"}`,
+    with `refused` where the binding refuses a launch of it; `lands` is
+    `null` where Flume could not read the kind.
+
+  The runner sends the hello whole at each connection and again when it
+  changes, so a status goes again when Flume's report of it changes.
+- **Its examples** are version 6's, each naming `protocol_version` 7 and
+  each hello naming its statuses, and
+  `from-runner/hello-with-no-merge-queue-ready.json`.
+
+The runner's code writes version 7, which `spoken.json` names and does
+not yet mark spoken, so the runner offers it once boomdrive-cloud's
+`main` speaks it and a change marks it.
 
 ## Version 6
 

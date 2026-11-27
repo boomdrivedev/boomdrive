@@ -271,7 +271,7 @@ fn each_tools_version_is_its_tags() {
 fn flumes_status_of_a_scratch_host() {
     let family = Family::new();
     let _flume_host = family.flume_host();
-    let status = flume::Cli::new(family.set("flume")).status();
+    let status = flume::Cli::new(family.set("flume")).status(&[]);
     let text = match &status {
         Ok(flume::Reply::Given(text)) => text.clone(),
         other => panic!("Flume's status of the scratch host: {other:?}"),
@@ -654,7 +654,7 @@ fn not_the_hosts_tools() {
         );
     }
     let _flume_host = family.flume_host();
-    let status = flume::Cli::new(family.set("flume")).status();
+    let status = flume::Cli::new(family.set("flume")).status(&[]);
     assert!(
         matches!(status, Ok(flume::Reply::Given(_))),
         "the set's Flume answered: {status:?}"

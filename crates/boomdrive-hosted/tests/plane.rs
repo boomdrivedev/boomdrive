@@ -17,7 +17,7 @@ mod common;
 use boomdrive_control::ControlPlane;
 use boomdrive_control::{
     ActSort, Answer, At, Capacity, Carried, Hello, HostPart, Id, KeptRepository, Launched, Lease,
-    Outcome, Part, Previewed, Report, ToolVersion, Want, INTERFACE_VERSION,
+    Outcome, Part, Previewed, Report, RepositoryStatus, ToolVersion, Want, INTERFACE_VERSION,
 };
 use boomdrive_hosted::connection::NO_TERMINAL;
 use boomdrive_hosted::key::{Memory, Store};
@@ -176,6 +176,7 @@ fn hello(report: &Report) -> Hello {
         repositories: vec!["example/app".to_string(), "example/service".to_string()],
         draining: vec![],
         drives: BTreeMap::new(),
+        repository_statuses: BTreeMap::new(),
         capacity: Capacity::Printed(HostPart {
             running: "0".to_string(),
             bound: "4".to_string(),
@@ -601,6 +602,130 @@ fn each_hello_its_own() {
     );
     assert_eq!(work["leases"], json!({ "l-2": 1 }));
     assert_eq!(home["capacity"]["printed"]["streams"][0].get("queue"), None);
+}
+
+/// Flume's item of `status.repositories` for `example/app`'s clone, as
+/// Flume prints it: the clone's folder, a binding whose merge queue does
+/// not land `main`, `flume/fix@1` refused, and a field Flume adds that
+/// the protocol does not name.
+fn app_status() -> Value {
+    json!({
+        "repository": "/data/repositories/example/app",
+        "binding": { "read": {
+            "branch": "main", "revision": "4f1c2a9e0b7d4c3a2f1e0d9c8b7a6f5e4d3c2b1a",
+            "from": "origin", "declaration": ".config/flume.toml",
+            "binding": { "place": null, "change": "openspec", "merge_queue": "sluice" },
+        } },
+        "merge_queue": { "profile": "sluice", "ready": false, "words": "sluice does not land main" },
+        "kinds": [
+            { "kind": "flume/fix@1", "lands": true, "refused": "the kind flume/fix@1 lands, and no merge queue lands it" },
+            { "kind": "flume/chore@1", "lands": true, "refused": "the kind flume/chore@1 lands, and no merge queue lands it", "added": 1 },
+        ],
+    })
+}
+
+/// The hosted-control-plane spec's "Each repository's status goes up in
+/// its own partition's hello": from version 7, `home`'s hello names
+/// `example/app`'s status alone, its copy without the clone's folder or
+/// the field Flume added, and `work`'s names `example/service`'s as
+/// missing, with Flume's words; a version before 7 names none (core.26,
+/// core.27, core.42).
+#[test]
+fn each_repositorys_status_goes_up_in_its_own_partitions_hello() {
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let report = Report::default();
+    let mut hello = hello(&report);
+    hello.repository_statuses = BTreeMap::from([
+        (
+            "example/app".to_string(),
+            RepositoryStatus::Printed(app_status().to_string()),
+        ),
+        (
+            "example/service".to_string(),
+            RepositoryStatus::Missing("flume host gave no status of the repository".to_string()),
+        ),
+    ]);
+    plane.hosted.pull(&hello, &report).expect("read");
+    let taken = fake.taken();
+    let hello_of = |partition: &str| {
+        messages(&taken, partition)
+            .into_iter()
+            .find(|message| kind(message).as_deref() == Some("hello"))
+            .expect("a hello")["body"]["hello"]
+            .clone()
+    };
+    let (home, work) = (hello_of("home"), hello_of("work"));
+    if boomdrive_hosted::protocol::spoken().number < 7 {
+        assert_eq!(home.get("repository_statuses"), None, "{home}");
+        assert_eq!(work.get("repository_statuses"), None, "{work}");
+        return;
+    }
+    let mut copy = app_status();
+    copy.as_object_mut().unwrap().remove("repository");
+    copy["kinds"][1].as_object_mut().unwrap().remove("added");
+    assert_eq!(
+        home["repository_statuses"],
+        json!({ "example/app": { "printed": copy } })
+    );
+    assert_eq!(
+        work["repository_statuses"],
+        json!({
+            "example/app": { "printed": copy },
+            "example/service": { "missing": "flume host gave no status of the repository" },
+        })
+    );
+    assert!(!home.to_string().contains("/data/repositories"), "{home}");
+    assert!(
+        !plane.lines().iter().any(|line| line.contains("fails")),
+        "{:#?}",
+        plane.lines()
+    );
+}
+
+/// The hosted-control-plane spec's "A repository's status whose copy
+/// fails goes up missing": from version 7, a status whose `kinds` is no
+/// list goes up missing, with words naming the path and no value, said
+/// once over two pulls; and a repository the hello gives no status of
+/// goes up missing (core.11, core.42).
+#[test]
+fn a_repositorys_status_whose_copy_fails_goes_up_missing() {
+    if boomdrive_hosted::protocol::spoken().number < 7 {
+        return;
+    }
+    let fake = Fake::start();
+    let mut plane = Plane::open(&fake);
+    let report = Report::default();
+    let mut hello = hello(&report);
+    let mut status = app_status();
+    status["kinds"] = json!("secret words");
+    hello.repository_statuses = BTreeMap::from([(
+        "example/app".to_string(),
+        RepositoryStatus::Printed(status.to_string()),
+    )]);
+    plane.hosted.pull(&hello, &report).expect("read");
+    plane.hosted.pull(&hello, &report).expect("read");
+    let taken = fake.taken();
+    let work = messages(&taken, "work")
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("hello"))
+        .expect("a hello")["body"]["hello"]
+        .clone();
+    let missing = work["repository_statuses"]["example/app"]["missing"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{work}"));
+    assert!(missing.contains("/kinds"), "{missing}");
+    assert!(!missing.contains("secret"), "{missing}");
+    assert_eq!(
+        work["repository_statuses"]["example/service"],
+        json!({ "missing": "the runner read no status of the repository from Flume" })
+    );
+    let said: Vec<String> = plane
+        .lines()
+        .into_iter()
+        .filter(|line| line.contains("example/app fails"))
+        .collect();
+    assert_eq!(said.len(), 1, "{said:#?}");
 }
 
 /// The hosted-control-plane spec's "No drive or folder goes up": the

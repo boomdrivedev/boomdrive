@@ -1,7 +1,7 @@
 //! The cut of a tool's answer to its copy (design Decision 9; core.11,
 //! core.27, core.42): a place's status, sluice's entry, sluice's answer
-//! and listing of a preview and its answer to a release, and Flume's host
-//! part, each cut by walking the spoken version's own definition of its copy, so
+//! and listing of a preview and its answer to a release, Flume's host
+//! part, and from version 7 Flume's status of a repository, each cut by walking the spoken version's own definition of its copy, so
 //! the schema is the one list of what goes up, then checked against that
 //! definition before it goes. The cut keeps each value as the tool printed
 //! it and writes none again. Because every object of the spoken version is closed,
@@ -23,6 +23,10 @@ pub const SUBMISSION_ENTRY: &str = "submission-entry.schema.json#/$defs/submissi
 
 /// The definition Flume's host part is cut by.
 pub const HOST_PART: &str = "hello.schema.json#/$defs/host_part";
+
+/// The definition Flume's status of a repository is cut by, which version
+/// 7 names and no version before it.
+pub const REPOSITORY_STATUS: &str = "hello.schema.json#/$defs/repository_status_copy";
 
 /// The definition sluice's answer to a preview's ask, and each row of its
 /// listing, is cut by.
@@ -217,6 +221,21 @@ pub fn host_part(part: &HostPart) -> Result<Value, String> {
     checked(
         check::host_part(spoken()),
         cut(HOST_PART, &Value::Object(values)),
+    )
+}
+
+/// The copy of Flume's status of one repository, `text` as Flume printed
+/// its item of `status.repositories`: its binding, its merge queue and its
+/// kinds, cut and checked, and its `repository`, the folder of the
+/// runner's clone, left out; or why it is none, naming a path and never a
+/// value. Only a version that names `repository_status_copy`, version 7
+/// and after, cuts it.
+pub fn repository_status(text: &str) -> Result<Value, String> {
+    let item: Value = serde_json::from_str(text)
+        .map_err(|_| "Flume's status of the repository is no JSON".to_string())?;
+    checked(
+        check::repository_status(spoken()),
+        cut(REPOSITORY_STATUS, &item),
     )
 }
 

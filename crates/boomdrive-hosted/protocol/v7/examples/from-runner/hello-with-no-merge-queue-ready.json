@@ -1,0 +1,140 @@
+{
+  "protocol_version": 7,
+  "id": "runner:3",
+  "body": {
+    "hello": {
+      "interface_version": 1,
+      "runner_version": "boomdrive 0.1.0",
+      "tool_versions": {
+        "flume": {
+          "printed": "flume 0.4.1"
+        },
+        "git": {
+          "printed": "git version 2.48.1"
+        },
+        "herdr": {
+          "missing": "herdr is not on PATH"
+        },
+        "sluice": {
+          "printed": "sluice 0.61.1"
+        }
+      },
+      "repositories": [
+        "example/app",
+        "example/tools"
+      ],
+      "repository_statuses": {
+        "example/app": {
+          "printed": {
+            "binding": {
+              "read": {
+                "branch": "main",
+                "revision": "4f1c2a9e0b7d4c3a2f1e0d9c8b7a6f5e4d3c2b1a",
+                "from": "local",
+                "declaration": null,
+                "binding": {
+                  "place": null,
+                  "change": null,
+                  "merge_queue": null
+                }
+              }
+            },
+            "merge_queue": {
+              "profile": null,
+              "ready": false,
+              "words": "main holds no .config/flume.toml, so it binds no merge queue"
+            },
+            "kinds": [
+              {
+                "kind": "flume/change@1",
+                "lands": true,
+                "refused": "the kind flume/change@1 lands, and no merge queue lands it: main holds no .config/flume.toml, so it binds no merge queue"
+              },
+              {
+                "kind": "flume/chore@1",
+                "lands": true,
+                "refused": "the kind flume/chore@1 lands, and no merge queue lands it: main holds no .config/flume.toml, so it binds no merge queue"
+              },
+              {
+                "kind": "flume/fix@1",
+                "lands": true,
+                "refused": "the kind flume/fix@1 lands, and no merge queue lands it: main holds no .config/flume.toml, so it binds no merge queue"
+              },
+              {
+                "kind": "example/review@1",
+                "lands": null,
+                "refused": "the kind example/review@1 could not be read: its source names no package review"
+              }
+            ]
+          }
+        },
+        "example/tools": {
+          "printed": {
+            "binding": {
+              "could_not_read": {
+                "reason": "origin/main is not a commit"
+              }
+            },
+            "merge_queue": {
+              "profile": null,
+              "ready": false,
+              "words": "the binding could not be read: origin/main is not a commit"
+            },
+            "kinds": [
+              {
+                "kind": "flume/change@1",
+                "lands": true,
+                "refused": "the kind flume/change@1 lands, and no merge queue lands it: the binding could not be read: origin/main is not a commit"
+              },
+              {
+                "kind": "flume/chore@1",
+                "lands": true,
+                "refused": "the kind flume/chore@1 lands, and no merge queue lands it: the binding could not be read: origin/main is not a commit"
+              },
+              {
+                "kind": "flume/fix@1",
+                "lands": true,
+                "refused": "the kind flume/fix@1 lands, and no merge queue lands it: the binding could not be read: origin/main is not a commit"
+              }
+            ]
+          }
+        }
+      },
+      "capacity": {
+        "printed": {
+          "running": 3,
+          "bound": 4,
+          "room": 1,
+          "streams": [
+            {
+              "name": "wide",
+              "priority": 5,
+              "running": 2,
+              "bound": 3,
+              "room": 1
+            },
+            {
+              "name": "default",
+              "priority": 0,
+              "running": 1,
+              "bound": null,
+              "room": null
+            },
+            {
+              "name": "work",
+              "priority": 0,
+              "running": 0,
+              "bound": 1,
+              "room": 1
+            }
+          ]
+        }
+      },
+      "leases": {
+        "command-1": 1,
+        "offer-1": 2,
+        "offer-2": 1
+      }
+    }
+  }
+}
