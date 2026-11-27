@@ -25,7 +25,7 @@
 
 use crate::check;
 use crate::key::{self, KeyName, Store};
-use crate::protocol::v6::{Message, MessageId, NewestRelease, Pulled, Report, Reported, ToRunner};
+use crate::protocol::v7::{Message, MessageId, NewestRelease, Pulled, Report, Reported, ToRunner};
 use crate::protocol::{spoken, Version};
 use crate::table::Table;
 use boomdrive_control::Want;
@@ -312,7 +312,7 @@ impl Connection {
     /// every connection, and at once on a live connection where it differs
     /// from the hello it sent; or why the hello fails its version, which
     /// is then not handed. It is written as JSON and checked against its
-    /// version's [`Hello`](crate::protocol::v6::Hello).
+    /// version's [`Hello`](crate::protocol::v7::Hello).
     pub fn hand(&self, hello: &impl Serialize) -> Result<(), String> {
         let hello = serde_json::to_value(hello)
             .map_err(|e| format!("the hello could not be written: {e}"))?;

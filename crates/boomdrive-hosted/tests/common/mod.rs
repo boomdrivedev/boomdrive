@@ -10,7 +10,7 @@
 pub mod fake;
 pub mod waits;
 
-use boomdrive_hosted::protocol::{self, v1, v2, v3, v4, v5, v6};
+use boomdrive_hosted::protocol::{self, v1, v2, v3, v4, v5, v6, v7};
 use jsonschema::{Draft, Registry, Resource, Retrieve, Uri, Validator};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -76,8 +76,16 @@ pub const V6: Version = Version {
     files: v6::FILES,
 };
 
+/// Version 7, version 6 whole but for the hello's
+/// `repository_statuses`.
+pub const V7: Version = Version {
+    number: v7::VERSION,
+    address: v7::ADDRESS,
+    files: v7::FILES,
+};
+
 /// Each version, in order.
-pub const VERSIONS: [Version; 6] = [V1, V2, V3, V4, V5, V6];
+pub const VERSIONS: [Version; 7] = [V1, V2, V3, V4, V5, V6, V7];
 
 /// The version the runner speaks, as `protocol/spoken.json` marks it,
 /// which the free functions check.
@@ -131,7 +139,8 @@ impl Version {
 
     /// Every one of its files under its `$id`, and nothing else.
     fn registry(&self) -> &'static Registry<'static> {
-        static REGISTRIES: [OnceLock<Registry<'static>>; 6] = [
+        static REGISTRIES: [OnceLock<Registry<'static>>; 7] = [
+            OnceLock::new(),
             OnceLock::new(),
             OnceLock::new(),
             OnceLock::new(),

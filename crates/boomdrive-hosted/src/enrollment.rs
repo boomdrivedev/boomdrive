@@ -9,7 +9,7 @@
 use crate::check;
 use crate::key::{self, Store};
 use crate::protocol::spoken;
-use crate::protocol::v6::{Enroll, FromRunner, Message, MessageId, ToRunner};
+use crate::protocol::v7::{Enroll, FromRunner, Message, MessageId, ToRunner};
 use crate::table::Table;
 use serde_json::Value;
 use std::time::Duration;

@@ -1,0 +1,143 @@
+{
+  "protocol_version": 7,
+  "id": "runner:1",
+  "body": {
+    "hello": {
+      "interface_version": 1,
+      "runner_version": "boomdrive 0.1.0",
+      "tool_versions": {
+        "flume": {
+          "printed": "flume 0.4.1"
+        },
+        "git": {
+          "printed": "git version 2.48.1"
+        },
+        "herdr": {
+          "missing": "herdr is not on PATH"
+        },
+        "sluice": {
+          "printed": "sluice 0.61.1"
+        }
+      },
+      "repositories": [
+        "example/app",
+        "example/tools"
+      ],
+      "repository_statuses": {
+        "example/app": {
+          "printed": {
+            "binding": {
+              "read": {
+                "branch": "main",
+                "revision": "4f1c2a9e0b7d4c3a2f1e0d9c8b7a6f5e4d3c2b1a",
+                "from": "origin",
+                "declaration": ".config/flume.toml",
+                "binding": {
+                  "place": null,
+                  "change": "openspec",
+                  "merge_queue": "sluice"
+                }
+              }
+            },
+            "merge_queue": {
+              "profile": "sluice",
+              "ready": true
+            },
+            "kinds": [
+              {
+                "kind": "flume/change@1",
+                "lands": true
+              },
+              {
+                "kind": "flume/chore@1",
+                "lands": true
+              },
+              {
+                "kind": "flume/fix@1",
+                "lands": true
+              },
+              {
+                "kind": "example/release@1",
+                "lands": false
+              }
+            ]
+          }
+        },
+        "example/tools": {
+          "printed": {
+            "binding": {
+              "read": {
+                "branch": "main",
+                "revision": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+                "from": "origin",
+                "declaration": ".config/flume.toml",
+                "binding": {
+                  "place": null,
+                  "change": "openspec",
+                  "merge_queue": "sluice"
+                }
+              }
+            },
+            "merge_queue": {
+              "profile": "sluice",
+              "ready": false,
+              "words": "sluice does not land main: no .config/sluice.toml at main or a remote's main"
+            },
+            "kinds": [
+              {
+                "kind": "flume/change@1",
+                "lands": true,
+                "refused": "the kind flume/change@1 lands, and no merge queue lands it: sluice does not land main: no .config/sluice.toml at main or a remote's main"
+              },
+              {
+                "kind": "flume/chore@1",
+                "lands": true,
+                "refused": "the kind flume/chore@1 lands, and no merge queue lands it: sluice does not land main: no .config/sluice.toml at main or a remote's main"
+              },
+              {
+                "kind": "flume/fix@1",
+                "lands": true,
+                "refused": "the kind flume/fix@1 lands, and no merge queue lands it: sluice does not land main: no .config/sluice.toml at main or a remote's main"
+              }
+            ]
+          }
+        }
+      },
+      "capacity": {
+        "printed": {
+          "running": 3,
+          "bound": 4,
+          "room": 1,
+          "streams": [
+            {
+              "name": "wide",
+              "priority": 5,
+              "running": 2,
+              "bound": 3,
+              "room": 1
+            },
+            {
+              "name": "default",
+              "priority": 0,
+              "running": 1,
+              "bound": null,
+              "room": null
+            },
+            {
+              "name": "work",
+              "priority": 0,
+              "running": 0,
+              "bound": 1,
+              "room": 1
+            }
+          ]
+        }
+      },
+      "leases": {
+        "command-1": 1,
+        "offer-1": 2,
+        "offer-2": 1
+      }
+    }
+  }
+}

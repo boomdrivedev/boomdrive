@@ -11,7 +11,7 @@ mod common;
 
 use boomdrive_hosted::connection::{Connection, Dial, Say, Wake};
 use boomdrive_hosted::key::{Memory, Store};
-use boomdrive_hosted::protocol::v6::Hello;
+use boomdrive_hosted::protocol::v7::Hello;
 use boomdrive_hosted::table::Table;
 use common::example;
 use common::fake::{kind, subprotocol, Fake, Taken};
@@ -909,6 +909,25 @@ fn a_hello_the_control_plane_refuses_is_said_by_its_kind() {
     }
 }
 
+/// `home`'s hello as `version` writes it: version 7 names its
+/// repositories' statuses, and a version before it none.
+fn hello_of(version: &boomdrive_hosted::protocol::Version) -> Hello {
+    let mut hello = hello();
+    match (version.number, &hello.repository_statuses) {
+        (7.., None) => {
+            hello.repository_statuses = serde_json::from_value(
+                common::V7.example("from-runner", "hello.json")["body"]["hello"]
+                    ["repository_statuses"]
+                    .clone(),
+            )
+            .expect("version 7's statuses");
+        }
+        (..7, Some(_)) => hello.repository_statuses = None,
+        _ => {}
+    }
+    hello
+}
+
 /// `home`'s connection to `fake` speaking `version`, its hello handed and
 /// its first `pulled` read, with the lines it says.
 fn speaking(
@@ -922,7 +941,7 @@ fn speaking(
     let mut dial = dial(fake, store(fake, &key), &lines, &wakes);
     dial.version = version;
     let connection = Connection::open(runtime.handle(), dial);
-    connection.hand(&hello()).expect("handed");
+    connection.hand(&hello_of(version)).expect("handed");
     connection.read(PATIENCE).expect("home is read");
     (connection, lines)
 }
@@ -1002,4 +1021,48 @@ fn version_5_carries_no_newest_release() {
         .as_str()
         .is_some_and(|words| words.starts_with("it fails version 5's check: /")));
     assert!(newest(&lines.all()).is_empty(), "{:#?}", lines.all());
+}
+
+/// The hosted-control-plane spec's "A hello of version 7 names its
+/// repositories' statuses" (design Decision 1 of
+/// protocol-version-7-carries-the-binding): a connection of version 7,
+/// whose upgrade offers `boomdrive.v7`, sends its hello with each
+/// repository's status as it was handed, which the fake takes; a
+/// connection of version 6 sends no hello that names a status, and says
+/// why it is not sent.
+#[test]
+fn a_hello_of_version_7_names_its_repositories_statuses() {
+    let fake = Fake::speaking(&boomdrive_hosted::protocol::V7);
+    let runtime = runtime();
+    let (_connection, _lines) = speaking(&fake, &boomdrive_hosted::protocol::V7, &runtime);
+    let taken = fake.taken();
+    let protocols = match upgrades(&taken)[0] {
+        Taken::Upgrade { protocols, .. } => protocols.clone(),
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(protocols, ["boomdrive.v7"]);
+    let sent_hello = messages(&taken)
+        .into_iter()
+        .find(|message| kind(message).as_deref() == Some("hello"))
+        .expect("a hello");
+    assert_eq!(sent_hello["protocol_version"], 7);
+    assert_eq!(
+        sent_hello["body"]["hello"]["repository_statuses"],
+        common::V7.example("from-runner", "hello.json")["body"]["hello"]["repository_statuses"]
+    );
+
+    let fake = Fake::speaking(&boomdrive_hosted::protocol::V6);
+    let key = home_key();
+    fake.enrolled("home", &key.verifying_key());
+    let (lines, wakes) = (Lines::new(), Arc::new(AtomicUsize::new(0)));
+    let mut dial = dial(&fake, store(&fake, &key), &lines, &wakes);
+    dial.version = &boomdrive_hosted::protocol::V6;
+    let connection = Connection::open(runtime.handle(), dial);
+    let words = connection
+        .hand(&hello_of(&boomdrive_hosted::protocol::V7))
+        .expect_err("version 6 sends no status");
+    assert!(
+        words.starts_with("the hello fails version 6's check, so it is not sent"),
+        "{words}"
+    );
 }

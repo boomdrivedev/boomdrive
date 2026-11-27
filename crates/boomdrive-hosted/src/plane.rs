@@ -15,11 +15,11 @@ use crate::connection::{self, Answered, Connection, Dial};
 use crate::copy;
 use crate::key::{self, KeyName, Store};
 use crate::protocol::spoken;
-use crate::protocol::v6::{self, MessageId};
+use crate::protocol::v7::{self, MessageId};
 use crate::table::{self, Table};
 use boomdrive_control::{
     Capacity, Carried, CommandSort, ControlPlane, Hello, Id, Launched, Part, Previewed, Pulled,
-    Report, Reported, Unread, Unsent, Wake, Want,
+    Report, Reported, RepositoryStatus, Unread, Unsent, Wake, Want,
 };
 use ed25519_dalek::SigningKey;
 use serde_json::value::RawValue;
@@ -86,6 +86,9 @@ pub struct Hosted {
     /// Whether the host part's copy failed at the last pull, said once
     /// while it fails.
     host_part_failing: bool,
+    /// Each repository whose status's copy failed at the last pull, said
+    /// once while it fails.
+    repository_status_failing: BTreeSet<String>,
     /// The runtime its connections run on, shared with every part opened
     /// beside it, and stopped once the last of them is dropped.
     runtime: Arc<Shared>,
@@ -287,6 +290,7 @@ impl Hosted {
             partitions,
             say,
             host_part_failing: false,
+            repository_status_failing: BTreeSet::new(),
             runtime,
         })
     }
@@ -324,6 +328,7 @@ impl Hosted {
                     partitions: vec![Partition::open(partition, &runtime, dial)],
                     say,
                     host_part_failing: false,
+                    repository_status_failing: BTreeSet::new(),
                     runtime: runtime.clone(),
                 };
                 Part {
@@ -348,15 +353,15 @@ impl Hosted {
     /// The host's capacity as the spoken version carries it: Flume's host part as
     /// its copy, or `missing` with words naming the path where the copy
     /// fails, said once while it fails (design Decision 9).
-    fn capacity(&mut self, capacity: &Capacity) -> v6::Capacity {
+    fn capacity(&mut self, capacity: &Capacity) -> v7::Capacity {
         let part = match capacity {
-            Capacity::Missing(words) => return v6::Capacity::Missing(words.clone()),
+            Capacity::Missing(words) => return v7::Capacity::Missing(words.clone()),
             Capacity::Printed(part) => part,
         };
         match copy::host_part(part) {
             Ok(copy) => {
                 self.host_part_failing = false;
-                v6::Capacity::Printed(v6::HostPart {
+                v7::Capacity::Printed(v7::HostPart {
                     running: raw(&copy["running"]),
                     bound: raw(&copy["bound"]),
                     room: raw(&copy["room"]),
@@ -371,17 +376,64 @@ impl Hosted {
                 if !std::mem::replace(&mut self.host_part_failing, true) {
                     (self.say)(format!("hosted: {words}, so it goes up missing"));
                 }
-                v6::Capacity::Missing(words)
+                v7::Capacity::Missing(words)
             }
         }
+    }
+
+    /// Flume's status of each repository the hello names, as the spoken
+    /// version carries it: none before version 7, which names none; from
+    /// it, each status's copy, or `missing` with Flume's words, or with
+    /// words naming the path where the copy fails, said once while it
+    /// fails, and `missing` for a repository the hello gives no status of.
+    fn repository_statuses(
+        &mut self,
+        hello: &Hello,
+    ) -> Option<BTreeMap<String, v7::RepositoryStatus>> {
+        if spoken().number < v7::VERSION {
+            return None;
+        }
+        let mut failing = BTreeSet::new();
+        let statuses = hello
+            .repositories
+            .iter()
+            .map(|address| {
+                let status = match hello.repository_statuses.get(address) {
+                    None => v7::RepositoryStatus::Missing(
+                        "the runner read no status of the repository from Flume".to_string(),
+                    ),
+                    Some(RepositoryStatus::Missing(words)) => {
+                        v7::RepositoryStatus::Missing(words.clone())
+                    }
+                    Some(RepositoryStatus::Printed(text)) => match copy::repository_status(text) {
+                        Ok(copy) => v7::RepositoryStatus::Printed(raw(&copy)),
+                        Err(words) => {
+                            let words = format!(
+                                "the copy of Flume's status of {address} fails version {}'s check: {words}",
+                                spoken().number
+                            );
+                            if !self.repository_status_failing.contains(address) {
+                                (self.say)(format!("hosted: {words}, so it goes up missing"));
+                            }
+                            failing.insert(address.clone());
+                            v7::RepositoryStatus::Missing(words)
+                        }
+                    },
+                };
+                (address.clone(), status)
+            })
+            .collect();
+        self.repository_status_failing = failing;
+        Some(statuses)
     }
 }
 
 impl ControlPlane for Hosted {
     fn pull(&mut self, hello: &Hello, _report: &Report) -> Result<Pulled, Unread> {
         let capacity = self.capacity(&hello.capacity);
+        let statuses = self.repository_statuses(hello);
         for partition in &mut self.partitions {
-            let own = partition.hello(hello, capacity.clone());
+            let own = partition.hello(hello, capacity.clone(), statuses.as_ref());
             match partition.connection.hand(&own) {
                 Ok(()) => partition.unhanded = None,
                 Err(words) => {
@@ -594,18 +646,27 @@ impl Partition {
     /// (design Decision 8): only the repositories its table names, of
     /// those kept, and none the runner drains, which the spoken version cannot name
     /// (record 0021), and only its own leases, their prefixes taken off;
-    /// the host's tools and capacity as every partition's.
-    fn hello(&self, hello: &Hello, capacity: v6::Capacity) -> v6::Hello {
-        v6::Hello {
+    /// the host's tools and capacity as every partition's; and from
+    /// version 7, of `statuses`, only those of its own repositories.
+    fn hello(
+        &self,
+        hello: &Hello,
+        capacity: v7::Capacity,
+        statuses: Option<&BTreeMap<String, v7::RepositoryStatus>>,
+    ) -> v7::Hello {
+        let own = |repository: &&String| self.repositories.contains(*repository);
+        v7::Hello {
             interface_version: hello.interface_version,
             runner_version: hello.runner_version.clone(),
             tool_versions: hello.tool_versions.clone(),
-            repositories: hello
-                .repositories
-                .iter()
-                .filter(|repository| self.repositories.contains(*repository))
-                .cloned()
-                .collect(),
+            repositories: hello.repositories.iter().filter(own).cloned().collect(),
+            repository_statuses: statuses.map(|statuses| {
+                statuses
+                    .iter()
+                    .filter(|(address, _)| own(address))
+                    .map(|(address, status)| (address.clone(), status.clone()))
+                    .collect()
+            }),
             capacity,
             leases: hello
                 .leases
@@ -703,7 +764,7 @@ impl Partition {
     /// which the runner reads again from sluice's listing (design Decision
     /// 7 of the-hosted-protocol-carries-land-and-preview; core.10,
     /// core.55).
-    fn taken_back(&self, report: v6::Report) -> Report {
+    fn taken_back(&self, report: v7::Report) -> Report {
         Report {
             launches: report
                 .launches

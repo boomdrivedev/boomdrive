@@ -1763,3 +1763,90 @@ fn version_6_is_version_5_but_for_the_newest_release() {
         }
     }
 }
+
+/// The runner-protocol spec's "Version 7 is version 6 but for the
+/// repositories' statuses" and "Version 7's examples are version 6's"
+/// (design Decision 1 of protocol-version-7-carries-the-binding): each
+/// schema file of version 7, its descriptions set aside, its `$id` read as
+/// version 6's, its envelope's `protocol_version` read as 6, and the
+/// hello's `repository_statuses` taken out of `hello.schema.json`, its
+/// member and its six definitions, equals version 6's file with its
+/// descriptions set aside. Version 7's examples are version 6's and
+/// `from-runner/hello-with-no-merge-queue-ready.json`, and each of version
+/// 6's, its `protocol_version` read as 6 and a hello's
+/// `repository_statuses` taken out, equals version 6's. A failure names
+/// the file and the pointer of the first difference, and no value
+/// (core.11).
+#[test]
+fn version_7_is_version_6_but_for_the_repositories_statuses() {
+    let (v6, v7) = (common::V6, common::V7);
+    let names = |version: common::Version| -> BTreeSet<&'static str> {
+        version.files.iter().map(|(name, _)| *name).collect()
+    };
+    assert_eq!(names(v7), names(v6), "version 7's files are version 6's");
+    let old: BTreeMap<&str, Value> = v6
+        .files()
+        .into_iter()
+        .map(|(name, value)| (name, without_descriptions(&value)))
+        .collect();
+    for (name, value) in v7.files() {
+        let mut read = without_descriptions(&value);
+        read["$id"] = Value::from(v6.address(name));
+        if read.pointer("/properties/protocol_version").is_some() {
+            let version = read
+                .pointer_mut("/properties/protocol_version/const")
+                .unwrap();
+            assert_eq!(*version, 7, "{name}'s protocol_version is not 7");
+            *version = Value::from(6);
+        }
+        if name == "hello.schema.json" {
+            for definition in [
+                "repository_status",
+                "repository_status_copy",
+                "binding_held",
+                "binding_read",
+                "merge_queue_bound",
+                "kind_lands",
+            ] {
+                take_definition(&mut read, name, definition);
+            }
+            read["$defs"]["hello"] =
+                without_members(&read["$defs"]["hello"], &["repository_statuses"]);
+        }
+        if let Some(path) = first_difference(&read, &old[name], "") {
+            panic!("version 7's {name} differs from version 6's at {path}");
+        }
+    }
+
+    let examples = |version: common::Version| -> BTreeSet<String> {
+        let root = version.dir().join("examples");
+        let mut found = Vec::new();
+        files_under(&root, &root, &mut found);
+        found.into_iter().collect()
+    };
+    let mut expected = examples(v6);
+    expected.insert("from-runner/hello-with-no-merge-queue-ready.json".to_string());
+    assert_eq!(
+        examples(v7),
+        expected,
+        "version 7's examples are version 6's, and a hello whose repositories no merge queue lands"
+    );
+    for name in examples(v6) {
+        let (direction, file) = name.split_once('/').unwrap();
+        let mut read = v7.example(direction, file);
+        assert_eq!(read["protocol_version"], 7, "{name}'s protocol_version");
+        read["protocol_version"] = Value::from(6);
+        if let Some(hello) = read
+            .pointer_mut("/body/hello")
+            .and_then(Value::as_object_mut)
+        {
+            assert!(
+                hello.remove("repository_statuses").is_some(),
+                "version 7's {name} names repository_statuses"
+            );
+        }
+        if let Some(path) = first_difference(&read, &v6.example(direction, file), "") {
+            panic!("version 7's example {name} differs from version 6's at {path}");
+        }
+    }
+}

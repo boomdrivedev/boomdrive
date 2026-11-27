@@ -23,6 +23,10 @@
     {
       "version": 6,
       "spoken": true
+    },
+    {
+      "version": 7,
+      "spoken": false
     }
   ]
 }
