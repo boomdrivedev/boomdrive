@@ -48,12 +48,12 @@ after which the runner offers a version that boomdrive-cloud's `main`
 does not speak.
 
 The runner speaks one version, the one `spoken.json` marks spoken:
-version 6, which boomdrive-cloud's `main` speaks. The
+version 7, which boomdrive-cloud's `main` speaks. The
 runner's code reads and writes versions 5, 6 and 7, and every message it sends or
 reads names the version marked spoken and is checked against it, so a
 version is spoken by its mark alone. The rest of this page is version
 5's; *Version 6* and *Version 7*, below, name what each adds. Releases of the
-runner spoke versions 5, 4, 3, 2 and 1, so none of them changes. The crate's test
+runner spoke versions 6, 5, 4, 3, 2 and 1, so none of them changes. The crate's test
 `files` holds each file of `v4/`, schemas and examples, to its digest as
 `v0.21.0` holds it, each of `v3/` to `v0.18.0`'s, each of `v2/` to
 `v0.9.0`'s, and each of `v1/` to `v0.7.3`'s, so the gate fails a file of
@@ -64,8 +64,7 @@ and example of `v6/` to version 5's, but for what *Version 6* names, and
 each of `v7/` to version 6's, but for what *Version 7* names.
 
 `spoken.json`, beside the version directories, names each version once,
-lowest first, and whether the runner speaks it: version 6 alone, version
-7 not yet. The
+lowest first, and whether the runner speaks it: version 7 alone. The
 runner's code reads it, and speaks the version it marks. The crate's
 test `spoken` holds it to the directories, to one version marked
 spoken, and to a version the crate's code can speak, version 5, 6 or 7. The runner's gate, by its task
@@ -75,7 +74,7 @@ forge holds it, and fails where `spoken.json` marks spoken a version the
 pin does not, or where it cannot read the pin.
 
 A connection asks for the WebSocket subprotocol of the version spoken,
-`boomdrive.v6`, at its upgrade, so a control plane that does not accept the version refuses
+`boomdrive.v7`, at its upgrade, so a control plane that does not accept the version refuses
 the connection before any message.
 
 ## The files
@@ -632,9 +631,8 @@ Version 7, `v7/`, is version 6 but for these alone:
   each hello naming its statuses, and
   `from-runner/hello-with-no-merge-queue-ready.json`.
 
-The runner's code writes version 7, which `spoken.json` names and does
-not yet mark spoken, so the runner offers it once boomdrive-cloud's
-`main` speaks it and a change marks it.
+The runner speaks version 7, which `spoken.json` marks spoken and
+boomdrive-cloud's `main` speaks.
 
 ## Version 6
 
@@ -660,8 +658,7 @@ Version 6, `v6/`, is version 5 but for these alone:
 - **Its examples** are version 5's, each naming `protocol_version` 6,
   and `to-runner/newest_release.json`.
 
-The runner speaks version 6, which `spoken.json` marks spoken and
-boomdrive-cloud's `main` speaks.
+A release of the runner spoke version 6, so it never changes.
 
 ## Version 4
 
