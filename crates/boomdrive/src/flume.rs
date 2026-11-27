@@ -182,8 +182,12 @@ pub trait Flume: Sync {
     fn launch(&self, args: &LaunchArgs, brief_dir: &Path) -> Result<Reply, Unrun>;
     /// `act` on the place at `place`.
     fn act(&self, place: &str, act: &Act) -> Result<Reply, Unrun>;
-    /// Every place and the host's part, `flume --json status`.
-    fn status(&self) -> Result<Reply, Unrun>;
+    /// Every place and the host's part, `flume --json status`, with
+    /// Flume's status of each of `repositories`, by its clone's folder,
+    /// where Flume's resident answers the ask: whether the merge queue its
+    /// binding names lands its default branch, and each kind Flume would
+    /// run there with whether it lands. The command line names none.
+    fn status(&self, repositories: &[String]) -> Result<Reply, Unrun>;
     /// The place at `place`, in the repository at `container_dir` where
     /// the runner keeps its clone, else by its location alone.
     fn status_of(&self, container_dir: Option<&Path>, place: &str) -> Result<Reply, Unrun>;
@@ -267,7 +271,7 @@ impl Flume for Cli {
         self.run(act_args(place, act))
     }
 
-    fn status(&self) -> Result<Reply, Unrun> {
+    fn status(&self, _repositories: &[String]) -> Result<Reply, Unrun> {
         self.run(vec!["status".into()])
     }
 

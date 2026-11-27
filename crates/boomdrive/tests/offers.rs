@@ -16,7 +16,7 @@ use boomdrive::flume::{Cli, Reply};
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
     AgentSetting, Answer, At, Capacity, Command, CommandSort, Id, Inbox, KeptRepository, Launched,
-    Lease, Offer, Outcome, Report, ToolVersion, Want,
+    Lease, Offer, Outcome, Report, RepositoryStatus, ToolVersion, Want,
 };
 use fakes::{fixture, offer, place_of, Bench, Call, Stub, KEPT};
 use serde_json::json;
@@ -88,6 +88,80 @@ fn each_drives_repositories_with_their_folders() {
             .flatten()
             .all(|kept| kept.address != "example/kit" && kept.address != "example/crew"),
         "{drives:?}"
+    );
+}
+
+/// The work-into-flume spec's "Each kept repository's status, as Flume
+/// gave it": each status the pass reads names the folder of each clone
+/// made, once each and in order; the hello names `example/crew`'s status
+/// as Flume printed its item, and `example/app`'s, which Flume's status
+/// does not name, missing, with words saying so (design Decision 2 of
+/// protocol-version-7-carries-the-binding; core.11).
+#[test]
+fn each_kept_repositorys_status_as_flume_gave_it() {
+    let bench = Bench::new();
+    bench
+        .clones
+        .ready_in("example/app", &bench.container("example/app"), "work");
+    let folder = |address: &str| bench.container(address).to_string_lossy().into_owned();
+    let item = json!({
+        "binding": { "read": {
+            "branch": "main", "revision": "4f1c2a9e0b7d4c3a2f1e0d9c8b7a6f5e4d3c2b1a",
+            "from": "origin", "declaration": ".config/flume.toml",
+            "binding": { "place": null, "change": "openspec", "merge_queue": "sluice" },
+        } },
+        "merge_queue": { "profile": "sluice", "ready": false, "words": "sluice does not land main" },
+        "kinds": [{ "kind": "flume/fix@1", "lands": true, "refused": "no merge queue lands it" }],
+    });
+    bench.flume.repository_answers(&folder(KEPT), item.clone());
+    let mut plane = Fake::new();
+    bench.pass(&mut plane);
+
+    let mut folders = vec![folder(KEPT), folder("example/app")];
+    folders.sort();
+    let named = bench.flume.named();
+    assert!(!named.is_empty(), "the pass read Flume's status");
+    assert!(named.iter().all(|asked| *asked == folders), "{named:?}");
+    let statuses = &plane.hellos()[0].repository_statuses;
+    assert_eq!(
+        statuses.keys().collect::<Vec<_>>(),
+        [KEPT, "example/app"],
+        "{statuses:?}"
+    );
+    let RepositoryStatus::Printed(text) = &statuses[KEPT] else {
+        panic!("{statuses:?}");
+    };
+    let mut printed = item;
+    printed["repository"] = json!(folder(KEPT));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(text).unwrap(),
+        printed
+    );
+    assert_eq!(
+        statuses["example/app"],
+        RepositoryStatus::Missing(
+            "Flume's status names no status of the repository's clone".to_string()
+        )
+    );
+}
+
+/// The work-into-flume spec's "A status Flume refused gives no
+/// repository's status": where Flume refuses its status, each kept
+/// repository's status is missing, with Flume's words.
+#[test]
+fn a_status_flume_refused_gives_no_repositorys_status() {
+    let bench = Bench::new();
+    bench
+        .flume
+        .listing(Ok(Reply::Refused("no store".to_string())));
+    let mut plane = Fake::new();
+    bench.pass(&mut plane);
+    assert_eq!(
+        plane.hellos()[0].repository_statuses,
+        BTreeMap::from([(
+            KEPT.to_string(),
+            RepositoryStatus::Missing("no store".to_string())
+        )])
     );
 }
 

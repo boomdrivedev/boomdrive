@@ -380,7 +380,7 @@ fn a_kind_named_by_its_identity_is_passed_whole() {
     for act in acts() {
         cli.act("/p", &act).expect("flume answers");
     }
-    cli.status().expect("flume answers");
+    cli.status(&[]).expect("flume answers");
     cli.status_of(Some(Path::new("/d/c")), "/p")
         .expect("flume answers");
     let calls = stub.calls();
@@ -577,7 +577,7 @@ fn status_and_one_places_status() {
     let stub = Stub::new();
     let cli = stub.cli();
     let listing = fs::read_to_string(fixture("status.json")).expect("the fixture");
-    assert_eq!(cli.status(), Ok(Reply::Given(listing)));
+    assert_eq!(cli.status(&[]), Ok(Reply::Given(listing)));
     stub.answers(Some("status-answer.json"), None, 0);
     let one = fs::read_to_string(fixture("status-answer.json")).expect("the fixture");
     assert_eq!(
@@ -616,7 +616,7 @@ fn flume_runs_with_no_recipient_of_the_runners_own() {
     )
     .expect("flume answers");
     cli.act("/p", &Act::Done).expect("flume answers");
-    cli.status().expect("flume answers");
+    cli.status(&[]).expect("flume answers");
     cli.status_of(Some(Path::new("/d/c")), "/p")
         .expect("flume answers");
     for n in 1..=4 {
@@ -652,7 +652,7 @@ fn every_answer_of_exit_zero_is_given_as_printed() {
     ] {
         stub.answers(Some(name), None, 0);
         let printed = fs::read_to_string(fixture(name)).expect("the fixture");
-        assert_eq!(cli.status(), Ok(Reply::Given(printed)), "{name}");
+        assert_eq!(cli.status(&[]), Ok(Reply::Given(printed)), "{name}");
     }
 }
 
@@ -705,7 +705,7 @@ fn an_answer_that_is_not_json_is_refused_with_flumes_standard_error() {
     for exit in [0, 1] {
         stub.answers(Some("README.md"), Some("usage.stderr"), exit);
         assert_eq!(
-            cli.status(),
+            cli.status(&[]),
             Ok(Reply::Refused(stderr.clone())),
             "exit {exit}"
         );
@@ -713,14 +713,14 @@ fn an_answer_that_is_not_json_is_refused_with_flumes_standard_error() {
     // A refusal Flume's JSON gives no reason for is read as one that is
     // not Flume's refused answer.
     stub.answers(Some("status.json"), Some("usage.stderr"), 1);
-    assert_eq!(cli.status(), Ok(Reply::Refused(stderr)));
+    assert_eq!(cli.status(&[]), Ok(Reply::Refused(stderr)));
 }
 
 #[test]
 fn a_program_that_is_not_there_gives_no_answer() {
     let stub = Stub::new();
     let cli = Cli::new(stub.dir.path().join("nosuch"));
-    let failure = cli.status().expect_err("an answer from no program");
+    let failure = cli.status(&[]).expect_err("an answer from no program");
     assert!(failure.0.starts_with("flume could not run: "), "{failure}");
     let failure = cli
         .launch(
@@ -744,7 +744,7 @@ fn a_flume_ended_by_a_signal_gives_no_answer() {
     fs::write(stub.dir.path().join("kill"), "").expect("the stub told to die");
     let failure = stub
         .cli()
-        .status()
+        .status(&[])
         .expect_err("an answer from a killed flume");
     assert!(failure.0.starts_with("flume was ended: "), "{failure}");
 }

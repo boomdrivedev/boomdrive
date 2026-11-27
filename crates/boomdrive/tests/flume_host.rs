@@ -60,7 +60,7 @@ fn a_status_ask() {
             format!(r#"{{"document":{document}}}"#),
         ],
     );
-    assert_eq!(status(&socket), Ok(Reply::Given(document.to_string())));
+    assert_eq!(status(&socket, &[]), Ok(Reply::Given(document.to_string())));
     let asked = served.join().unwrap();
     assert_eq!(
         asked,
@@ -90,7 +90,7 @@ fn another_protocol() {
         reader.read_line(&mut more).unwrap();
         more
     });
-    let Err(Unrun(words)) = status(&socket) else {
+    let Err(Unrun(words)) = status(&socket, &[]) else {
         panic!("a status from protocol 2");
     };
     assert!(words.contains("speaks protocol 2"), "{words}");
@@ -105,7 +105,7 @@ fn another_protocol() {
 fn no_flume_host() {
     let dir = tempfile::tempdir().unwrap();
     let socket = dir.path().join("host.sock");
-    let Err(Unrun(words)) = status(&socket) else {
+    let Err(Unrun(words)) = status(&socket, &[]) else {
         panic!("a status with no flume host");
     };
     assert!(words.starts_with("no flume host answers on "), "{words}");
@@ -123,15 +123,16 @@ fn an_error_line() {
         ],
     );
     assert_eq!(
-        status(&socket),
+        status(&socket, &[]),
         Err(Unrun(
             "flume host refused the ask: unknown variant `x`".to_string()
         ))
     );
 }
 
-/// The subscription keeps the latest document, wakes only on a change,
-/// says when flume host stops answering, and ends at the stop.
+/// The subscription keeps the latest document, wakes only on a change
+/// after its first, says when flume host stops answering, and ends at the
+/// stop.
 #[test]
 fn a_subscription() {
     let dir = tempfile::tempdir().unwrap();
@@ -166,7 +167,7 @@ fn a_subscription() {
         let deadline = Instant::now() + Duration::from_secs(10);
         let mut seen = false;
         while Instant::now() < deadline && !seen {
-            seen = subscription.latest() == Ok(Reply::Given(two.to_string()));
+            seen = subscription.latest(&[]) == Ok(Reply::Given(two.to_string()));
             std::thread::sleep(Duration::from_millis(10));
         }
         close.send(()).unwrap();
@@ -187,12 +188,113 @@ fn a_subscription() {
             r#"{"ask":"subscribe"}"#.to_string()
         ]
     );
-    assert_eq!(wakes.load(Ordering::SeqCst), 2);
+    assert_eq!(
+        wakes.load(Ordering::SeqCst),
+        1,
+        "the second document alone wakes, the first being the first read's"
+    );
     let said = said.into_inner().unwrap();
     assert_eq!(said.len(), 1, "{said:?}");
     assert!(
         said[0].starts_with("boomdrive: flume host does not answer: "),
         "{said:?}"
     );
-    assert!(matches!(subscription.latest(), Err(Unrun(_))));
+    assert!(matches!(subscription.latest(&[]), Err(Unrun(_))));
+}
+
+/// The running spec's "The subscription names the kept clones": a status
+/// ask names each folder it reads, and a subscription asks first at the
+/// first read, naming its folders, and asks again on a new connection
+/// when a read names others, a read waiting for the document of its own
+/// ask; the first document of each ask wakes no part.
+#[test]
+fn the_asks_name_the_folders_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("host.sock");
+    let hello = r#"{"version":"0.37.0","protocol":1,"pid":1,"since":"x"}"#;
+    let document = r#"{"status":{"places":[],"host":{}}}"#;
+    let served = host(
+        &socket,
+        vec![hello.to_string(), format!(r#"{{"document":{document}}}"#)],
+    );
+    assert_eq!(
+        status(&socket, &["/r".to_string(), "/s".to_string()]),
+        Ok(Reply::Given(document.to_string()))
+    );
+    assert_eq!(
+        served.join().unwrap()[1],
+        r#"{"ask":"status","repositories":["/r","/s"]}"#
+    );
+    std::fs::remove_file(&socket).unwrap();
+
+    // A flume host that answers each connection's ask with a document
+    // naming the folders it asked, and keeps each connection open until
+    // the next comes.
+    let listener = UnixListener::bind(&socket).unwrap();
+    let asks = std::sync::Arc::new(Mutex::new(Vec::new()));
+    let kept = asks.clone();
+    std::thread::spawn(move || {
+        let mut open = Vec::new();
+        for stream in listener.incoming() {
+            let Ok(stream) = stream else { return };
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut writer = stream;
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            writer.write_all(format!("{hello}\n").as_bytes()).unwrap();
+            line.clear();
+            reader.read_line(&mut line).unwrap();
+            let asked: serde_json::Value = serde_json::from_str(line.trim_end()).unwrap();
+            kept.lock().unwrap().push(line.trim_end().to_string());
+            let named = asked["repositories"].clone();
+            writer
+                .write_all(
+                    format!(
+                        r#"{{"document":{{"status":{{"places":[],"host":{{}},"named":{named}}}}}}}"#
+                    )
+                    .as_bytes(),
+                )
+                .unwrap();
+            writer.write_all(b"\n").unwrap();
+            open.push(writer);
+        }
+    });
+    let subscription = Subscription::new(Where::At(socket.clone()));
+    let stop = AtomicBool::new(false);
+    let wakes = std::sync::atomic::AtomicUsize::new(0);
+    let (first, second) = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            subscription.hold(
+                &stop,
+                &|| {
+                    wakes.fetch_add(1, Ordering::SeqCst);
+                },
+                &|_| {},
+            )
+        });
+        let first = subscription.latest(&["/r".to_string()]);
+        let second = subscription.latest(&["/r".to_string(), "/s".to_string()]);
+        stop.store(true, Ordering::SeqCst);
+        (first, second)
+    });
+    assert_eq!(
+        first,
+        Ok(Reply::Given(
+            r#"{"status":{"places":[],"host":{},"named":["/r"]}}"#.to_string()
+        ))
+    );
+    assert_eq!(
+        second,
+        Ok(Reply::Given(
+            r#"{"status":{"places":[],"host":{},"named":["/r","/s"]}}"#.to_string()
+        ))
+    );
+    assert_eq!(
+        *asks.lock().unwrap(),
+        [
+            r#"{"ask":"subscribe","repositories":["/r"]}"#,
+            r#"{"ask":"subscribe","repositories":["/r","/s"]}"#,
+        ]
+    );
+    assert_eq!(wakes.load(Ordering::SeqCst), 0);
 }

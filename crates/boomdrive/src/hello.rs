@@ -2,7 +2,8 @@
 //! of the host at every pull. It holds the runner's version and its
 //! tools', the repositories it keeps with their clones made, apart from
 //! them those it drains (record 0021), Flume's host
-//! part as Flume printed it, and the leases it holds. It is the Host
+//! part as Flume printed it, Flume's status of each repository it keeps
+//! as Flume printed it, and the leases it holds. It is the Host
 //! object's copy of the host (cloud record 0005), each part as its tool
 //! gave it (core.11), and registers no repository to anything (cloud
 //! record 0007).
@@ -10,7 +11,10 @@
 use crate::config::Address;
 use crate::flume::{Reply, Unrun};
 use crate::{facts, report};
-use boomdrive_control::{Capacity, Hello, HostPart, Report, ToolVersion, INTERFACE_VERSION};
+use boomdrive_control::{
+    Capacity, Hello, HostPart, KeptRepository, Report, RepositoryStatus, ToolVersion,
+    INTERFACE_VERSION,
+};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -113,10 +117,56 @@ pub fn capacity(status: &Result<Reply, Unrun>) -> Capacity {
     }
 }
 
+/// The folder of each clone of `drives`, once each, in order: the
+/// repositories whose status the pass asks Flume for.
+pub fn folders(drives: &BTreeMap<String, Vec<KeptRepository>>) -> Vec<String> {
+    let mut folders: Vec<String> = drives
+        .values()
+        .flatten()
+        .map(|kept| kept.container_dir.clone())
+        .collect();
+    folders.sort();
+    folders.dedup();
+    folders
+}
+
+/// Flume's status of each repository of `drives`, by its address, from
+/// the status a pass reads before its pull: the item of
+/// `status.repositories` that names its clone's folder, as Flume printed
+/// it; else why there is none, Flume's own words where its status could
+/// not be read.
+pub fn repository_statuses(
+    status: &Result<Reply, Unrun>,
+    drives: &BTreeMap<String, Vec<KeptRepository>>,
+) -> BTreeMap<String, RepositoryStatus> {
+    let items = match status {
+        Ok(Reply::Given(text)) => facts::repositories(text).ok_or_else(|| {
+            "Flume's status is no JSON holding a status, so it gives no repository".to_string()
+        }),
+        Ok(Reply::Refused(words)) => Err(words.clone()),
+        Err(Unrun(words)) => Err(words.clone()),
+    };
+    let mut statuses = BTreeMap::new();
+    for kept in drives.values().flatten() {
+        let status = match &items {
+            Ok(items) => match items.get(&kept.container_dir) {
+                Some(item) => RepositoryStatus::Printed(item.clone()),
+                None => RepositoryStatus::Missing(
+                    "Flume's status names no status of the repository's clone".to_string(),
+                ),
+            },
+            Err(words) => RepositoryStatus::Missing(words.clone()),
+        };
+        statuses.entry(kept.address.clone()).or_insert(status);
+    }
+    statuses
+}
+
 /// The hello for a pull: the tools' versions as `tools` reads them, the
 /// addresses kept with their clones made, the host's capacity, and each
-/// lease `report` holds. It names no repository drained and no drive: the
-/// pass sets them apart, from [`draining`] and the clones' drives.
+/// lease `report` holds. It names no repository drained, no drive and no
+/// repository's status: the pass sets them apart, from [`draining`], the
+/// clones' drives and [`repository_statuses`].
 pub fn hello(
     tools: &dyn Tools,
     repositories: Vec<String>,
@@ -133,6 +183,7 @@ pub fn hello(
         repositories,
         draining: Vec::new(),
         drives: BTreeMap::new(),
+        repository_statuses: BTreeMap::new(),
         capacity,
         leases: report.leases(),
     }

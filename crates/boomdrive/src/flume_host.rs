@@ -1,10 +1,14 @@
 //! flume host, Flume's resident, as the runner asks it: by its socket and
 //! never by a command (residents-ask-each-other-by-socket; core.13). While
 //! the runner carries a control plane's parts it holds one subscription,
-//! `{"ask":"subscribe"}`, and keeps the latest document, which each pass
+//! `{"ask":"subscribe","repositories":[…]}`, naming the folder of each
+//! clone the passes read, and keeps the latest document, which each pass
 //! reads as Flume's status; a document that differs from the one held
-//! wakes every part (one-subscription-per-plugin). `boomdrive run --once`
-//! asks `{"ask":"status"}` once for each read and holds no subscription.
+//! wakes every part (one-subscription-per-plugin). A read that names other
+//! folders than the subscription asked makes it ask again, naming them.
+//! `boomdrive run --once` asks `{"ask":"status"}` once for each read,
+//! naming the folders it reads, and holds no subscription. An ask that
+//! names no folder names no `repositories`.
 //!
 //! The socket is where flume host keeps it: `host-<key>.sock` in the
 //! user's own directory, `/tmp` resolved and `flume-<uid>`, or
@@ -310,12 +314,22 @@ impl Connection {
     }
 }
 
+/// The ask `ask`, `status` or `subscribe`, naming each of `repositories`
+/// by its clone's folder, and no `repositories` where it names none.
+pub fn ask(ask: &str, repositories: &[String]) -> serde_json::Value {
+    match repositories {
+        [] => serde_json::json!({ "ask": ask }),
+        named => serde_json::json!({ "ask": ask, "repositories": named }),
+    }
+}
+
 /// Flume's status, asked once of flume host on `socket`:
-/// `{"ask":"status"}`, as `boomdrive run --once` reads it.
-pub fn status(socket: &Path) -> Result<Reply, Unrun> {
+/// `{"ask":"status"}`, naming each of `repositories` by its clone's
+/// folder, as `boomdrive run --once` reads it.
+pub fn status(socket: &Path, repositories: &[String]) -> Result<Reply, Unrun> {
     let mut connection = Connection::open(socket).map_err(Unrun)?;
     connection
-        .send(&serde_json::json!({ "ask": "status" }))
+        .send(&ask("status", repositories))
         .map_err(Unrun)?;
     let line = connection
         .line_within(ANSWER_WAIT, "the status ask")
@@ -327,18 +341,35 @@ pub fn status(socket: &Path) -> Result<Reply, Unrun> {
 enum Held {
     /// No document yet since the runner started.
     Starting,
-    /// The latest document.
-    Document(Reply),
+    /// The latest document, and the folders its subscription named.
+    Document(Reply, Vec<String>),
     /// The subscription is down, and why.
     Down(String),
+}
+
+/// What the subscription holds, and the folders the last read named, none
+/// before the first read.
+struct State {
+    held: Held,
+    named: Option<Vec<String>>,
 }
 
 /// The runner's one subscription to flume host: the latest document, held
 /// for every part's reads.
 pub struct Subscription {
     socket: Where,
-    held: Mutex<Held>,
+    state: Mutex<State>,
     changed: Condvar,
+}
+
+/// How a subscription ended.
+enum Ended {
+    /// The runner stopped.
+    Stopped,
+    /// A read named other folders than it asked, so it asks again at once.
+    Named,
+    /// flume host stopped answering, and why.
+    Down(String),
 }
 
 impl Subscription {
@@ -346,25 +377,38 @@ impl Subscription {
     pub fn new(socket: Where) -> Subscription {
         Subscription {
             socket,
-            held: Mutex::new(Held::Starting),
+            state: Mutex::new(State {
+                held: Held::Starting,
+                named: None,
+            }),
             changed: Condvar::new(),
         }
     }
 
-    fn held(&self) -> MutexGuard<'_, Held> {
-        self.held.lock().unwrap_or_else(|e| e.into_inner())
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Flume's status, the latest document: waiting up to ten seconds for
-    /// the first, and unread while the subscription is down.
-    pub fn latest(&self) -> Result<Reply, Unrun> {
-        let held = self.held();
-        let (held, _) = self
+    /// Flume's status, the latest document, with Flume's status of each of
+    /// `repositories`, by its clone's folder: waiting up to ten seconds for
+    /// the first document, or for one that names `repositories` where the
+    /// subscription named others, and unread while the subscription is
+    /// down. A document that names other folders is read as it stands.
+    pub fn latest(&self, repositories: &[String]) -> Result<Reply, Unrun> {
+        let mut state = self.state();
+        if state.named.as_deref() != Some(repositories) {
+            state.named = Some(repositories.to_vec());
+        }
+        let (state, _) = self
             .changed
-            .wait_timeout_while(held, FIRST_WAIT, |held| matches!(held, Held::Starting))
+            .wait_timeout_while(state, FIRST_WAIT, |state| match &state.held {
+                Held::Starting => true,
+                Held::Document(_, asked) => state.named.as_ref() != Some(asked),
+                Held::Down(_) => false,
+            })
             .unwrap_or_else(|e| e.into_inner());
-        match &*held {
-            Held::Document(reply) => Ok(reply.clone()),
+        match &state.held {
+            Held::Document(reply, _) => Ok(reply.clone()),
             Held::Down(words) => Err(Unrun(words.clone())),
             Held::Starting => Err(Unrun(
                 "flume host has sent no status since the runner started".to_string(),
@@ -372,23 +416,38 @@ impl Subscription {
         }
     }
 
-    /// Takes `reply`, the latest document, and whether it differs from the
-    /// one held.
-    fn heard(&self, reply: Reply) -> bool {
-        let mut held = self.held();
-        let changed = !matches!(&*held, Held::Document(was) if *was == reply);
-        *held = Held::Document(reply);
+    /// The folders the last read named, none before the first read.
+    fn named(&self) -> Option<Vec<String>> {
+        self.state().named.clone()
+    }
+
+    /// Takes `reply`, the latest document of the subscription that named
+    /// `asked`, and whether it wakes the parts: where it differs from the
+    /// document held of the same ask, or comes after flume host stopped
+    /// answering. The first document, and the first of an ask that names
+    /// other folders, wake none, since the read that named them waits for
+    /// it.
+    fn heard(&self, reply: Reply, asked: &[String]) -> bool {
+        let mut state = self.state();
+        let changed = match &state.held {
+            Held::Starting => false,
+            Held::Document(was, was_asked) => was_asked == asked && *was != reply,
+            Held::Down(_) => true,
+        };
+        state.held = Held::Document(reply, asked.to_vec());
         self.changed.notify_all();
         changed
     }
 
     fn down(&self, words: &str) {
-        *self.held() = Held::Down(words.to_string());
+        self.state().held = Held::Down(words.to_string());
         self.changed.notify_all();
     }
 
-    /// Holds the subscription until `stop` is set: each document that
-    /// differs from the one held is kept and calls `wake`; a subscription
+    /// Holds the subscription until `stop` is set, from the first read,
+    /// which names the folders it asks: each document that differs from
+    /// the one held is kept and calls `wake`; a read that names other
+    /// folders makes it ask again at once, naming them; a subscription
     /// that ends, or cannot be made, is tried again on a bounded backoff.
     /// It says one line when flume host stops answering and one when it
     /// answers again (core.22, core.23).
@@ -396,14 +455,20 @@ impl Subscription {
         let mut backoff = BACKOFF_FIRST;
         let mut said_down = false;
         while !stop.load(Ordering::SeqCst) {
-            let ended = self.follow(stop, wake, &mut |answered| {
+            let Some(named) = self.named() else {
+                std::thread::sleep(TICK);
+                continue;
+            };
+            let ended = self.follow(&named, stop, wake, &mut |answered| {
                 backoff = BACKOFF_FIRST;
                 if answered && std::mem::replace(&mut said_down, false) {
                     say("boomdrive: flume host answers again".to_string());
                 }
             });
-            let Some(why) = ended else {
-                break;
+            let why = match ended {
+                Ended::Stopped => break,
+                Ended::Named => continue,
+                Ended::Down(why) => why,
             };
             self.down(&why);
             if !std::mem::replace(&mut said_down, true) {
@@ -414,41 +479,46 @@ impl Subscription {
         }
     }
 
-    /// One subscription, followed until it ends, giving why, or `stop` is
-    /// set, giving nothing. `answered` is called at each document.
+    /// One subscription naming `named`, followed until it ends, giving
+    /// why, a read names other folders, or `stop` is set. `answered` is
+    /// called at each document.
     fn follow(
         &self,
+        named: &[String],
         stop: &AtomicBool,
         wake: &dyn Fn(),
         answered: &mut dyn FnMut(bool),
-    ) -> Option<String> {
+    ) -> Ended {
         let socket = match self.socket.socket() {
             Ok(socket) => socket,
-            Err(words) => return Some(words),
+            Err(words) => return Ended::Down(words),
         };
         let mut connection = match Connection::open(&socket) {
             Ok(connection) => connection,
-            Err(words) => return Some(words),
+            Err(words) => return Ended::Down(words),
         };
-        if let Err(words) = connection.send(&serde_json::json!({ "ask": "subscribe" })) {
-            return Some(words);
+        if let Err(words) = connection.send(&ask("subscribe", named)) {
+            return Ended::Down(words);
         }
         while !stop.load(Ordering::SeqCst) {
+            if self.named().as_deref() != Some(named) {
+                return Ended::Named;
+            }
             match connection.read(TICK) {
                 Read::Waiting => {}
-                Read::Ended(words) => return Some(words),
+                Read::Ended(words) => return Ended::Down(words),
                 Read::Line(line) => match connection.document(&line) {
                     Ok(reply) => {
                         answered(true);
-                        if self.heard(reply) {
+                        if self.heard(reply, named) {
                             wake();
                         }
                     }
-                    Err(words) => return Some(words),
+                    Err(words) => return Ended::Down(words),
                 },
             }
         }
-        None
+        Ended::Stopped
     }
 }
 
@@ -500,10 +570,10 @@ impl Flume for Resident<'_> {
         self.cli.act(place, act)
     }
 
-    fn status(&self) -> Result<Reply, Unrun> {
+    fn status(&self, repositories: &[String]) -> Result<Reply, Unrun> {
         match &self.source {
-            Source::Subscription(subscription) => subscription.latest(),
-            Source::Ask(socket) => status(&socket.socket().map_err(Unrun)?),
+            Source::Subscription(subscription) => subscription.latest(repositories),
+            Source::Ask(socket) => status(&socket.socket().map_err(Unrun)?, repositories),
         }
     }
 

@@ -1014,7 +1014,8 @@ fn passes_back_to_back_share_their_ticks() {
 /// The running spec's "A control pass runs no settle" and "Passes read
 /// the subscription": with `poll_interval` a second, three control passes
 /// read Flume's status from the runner's one subscription to the stub
-/// flume host, and the stub `flume` is asked no status and no settle.
+/// flume host, which names the kept clone's folder, and the stub `flume`
+/// is asked no status and no settle.
 #[test]
 fn passes_read_the_subscription() {
     let scratch = Scratch::new();
@@ -1028,7 +1029,17 @@ fn passes_read_the_subscription() {
     let asks = running.host.asks();
     running.stop();
 
-    assert_eq!(asks, [r#"{"ask":"subscribe"}"#], "one subscription");
+    assert_eq!(asks.len(), 1, "one subscription: {asks:?}");
+    let asked: serde_json::Value = serde_json::from_str(&asks[0]).expect("an ask");
+    assert_eq!(asked["ask"], "subscribe", "{asked}");
+    let named = asked["repositories"].as_array().expect("the folders named");
+    assert_eq!(named.len(), 1, "{asked}");
+    assert!(
+        named[0]
+            .as_str()
+            .is_some_and(|folder| folder.ends_with(&format!("/repositories/{KEPT}"))),
+        "the kept clone's folder: {asked}"
+    );
     assert!(
         !calls
             .iter()
