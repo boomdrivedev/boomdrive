@@ -116,6 +116,13 @@ fn a_hello() {
             ),
             ("work".to_string(), vec![]),
         ]),
+        repository_statuses: BTreeMap::from([(
+            "example/crew".to_string(),
+            RepositoryStatus::Printed(
+                r#"{"repository":"/data/repositories/example/crew","merge_queue":{"profile":"sluice","ready":true}}"#
+                    .to_string(),
+            ),
+        )]),
         capacity: Capacity::Printed(HostPart {
             running: "2".to_string(),
             bound: "4".to_string(),
@@ -125,6 +132,9 @@ fn a_hello() {
         leases: BTreeMap::from([(Id::new("home/1"), 1)]),
     });
     round_trip(&Capacity::Missing("flume is not on PATH".to_string()));
+    round_trip(&RepositoryStatus::Missing(
+        "flume host gave no status of example/crew".to_string(),
+    ));
 }
 
 #[test]
