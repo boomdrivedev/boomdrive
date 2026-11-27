@@ -571,7 +571,7 @@ Every file under `protocol/v4/`, its schemas and its examples, SHALL stay as rel
 #### Scenario: The file names each version directory
 
 - **WHEN** `spoken.json` is read and `protocol/` listed
-- **THEN** it holds `versions` alone, naming versions 1 to 7 once each, lowest first, and versions 1 to 5 and 7 are not spoken
+- **THEN** it holds `versions` alone, naming versions 1 to 7 once each, lowest first, and versions 1 to 6 are not spoken
 
 #### Scenario: The runner speaks what the file marks spoken
 
@@ -633,7 +633,7 @@ Version 6's control plane SHALL send `newest_release`, `{"version": …}`, close
 #### Scenario: The upgrade's subprotocol
 
 - **WHEN** a partition's connection is dialed
-- **THEN** its upgrade asks for the subprotocol of the version spoken alone, `boomdrive.v6` while version 6 is marked spoken
+- **THEN** its upgrade asks for the subprotocol of the version spoken alone, `boomdrive.v7` while version 7 is marked spoken
 
 ### Requirement: Version 7 is version 6 whole, but for the repositories' statuses
 
