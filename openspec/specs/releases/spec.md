@@ -60,7 +60,7 @@ Boomdrive's versions, tags and release notes, made by git-cliff from the Convent
 
 ### Requirement: Each push to main that git-cliff finds a new version in is released
 
-The workflow `release` SHALL run on a push to `main` alone, one run at a time. Given a tag by `release.sh next`, it SHALL make the notes with `release.sh notes` and the release commit with `release.sh commit`, push the tag alone with no branch and no force, publish the tag's GitHub release with the notes and no file, and then run `cache` at the tag. It SHALL build nothing, make no commit of its own and push no branch.
+The workflow `release` SHALL run on a push to `main` alone, one run at a time. Given a tag by `release.sh next`, it SHALL make the notes with `release.sh notes` and the release commit with `release.sh commit`. It SHALL push the tag alone with no force. It SHALL publish the tag's GitHub release with the notes and the release commit's `install.sh` as its one file, then run `cache` at the tag. It SHALL build nothing, make no commit of its own and push no branch.
 
 #### Scenario: The workflow's trigger
 
@@ -70,7 +70,7 @@ The workflow `release` SHALL run on a push to `main` alone, one run at a time. G
 #### Scenario: A release
 
 - **WHEN** the workflow `release` is read
-- **THEN** it takes the tag from `release.sh next`, writes `release.sh notes`'s notes before it runs `release.sh commit`, pushes `refs/tags/$TAG` alone, publishes it with `gh release create` on the existing tag with the notes and no file, and runs `cache` at the tag with `gh workflow run`
+- **THEN** it takes the tag from `release.sh next`, and writes `release.sh notes`'s notes before it runs `release.sh commit`. It takes `install.sh` from the tag with `git cat-file`, and pushes `refs/tags/$TAG` alone. It publishes the tag with `gh release create` with the notes and `install.sh`, and runs `cache` at the tag with `gh workflow run`
 
 #### Scenario: Nothing built, committed or pushed but the tag
 
@@ -127,12 +127,12 @@ A commit that changes only the site's paths, `site/` and `.github/workflows/page
 
 ### Requirement: A release's tag names its release commit, which writes its version into the tree
 
-`release.sh commit <tag>` SHALL make, from HEAD's committed files, a commit whose one parent is HEAD and whose subject is `chore(release): <tag>`. Its tree SHALL be HEAD's but for the version `set-version.sh` writes, and it SHALL be tagged `<tag>`. It SHALL change no file of the working tree, no entry of the index and no branch. It SHALL refuse a tag that exists, with exit 1, and a tag that is not `v<major>.<minor>.<patch>`, with exit 2, making nothing.
+`release.sh commit <tag>` SHALL make a commit from HEAD's committed files, and tag it `<tag>`. Its one parent SHALL be HEAD, and its subject `chore(release): <tag>`. Its tree SHALL be HEAD's but for the version that `set-version.sh` writes. It SHALL change no working file, index entry or branch. It SHALL refuse a tag that exists, with exit 1, and one that is not `v<major>.<minor>.<patch>`, with exit 2, making nothing.
 
 #### Scenario: The release commit
 
 - **WHEN** `main` holds the tree's `Cargo.toml`, `Cargo.lock` and crates' manifests, and `release.sh commit v0.2.0` runs on it
-- **THEN** the tag `v0.2.0` names a commit whose one parent is `main`'s tip, whose subject is `chore(release): v0.2.0`, which changes `Cargo.toml` and `Cargo.lock` alone, and in which each gives `0.2.0` where Boomdrive's version is
+- **THEN** the tag `v0.2.0` names a commit whose one parent is `main`'s tip, and whose subject is `chore(release): v0.2.0`. The commit changes `Cargo.toml`, `Cargo.lock` and `install.sh` alone, and each gives `0.2.0` where Boomdrive's version is
 
 #### Scenario: main is left as it was
 
@@ -186,3 +186,17 @@ The gate's `root:versions` SHALL fail where `Cargo.toml`'s `[workspace.package]`
 
 - **WHEN** `set-version.sh 98.76.54` runs on a copy whose `Cargo.toml` gives no version under `[workspace.package]`
 - **THEN** it exits 1, naming `Cargo.toml`, and that file is as it was
+
+### Requirement: install.sh carries Boomdrive's version
+
+`install.sh`'s `version=` SHALL carry Boomdrive's version. `set-version.sh` SHALL write it and change no other line of the file. The gate's `root:versions` SHALL fail where it gives a version other than `0.0.0`, or none, naming `install.sh` and both versions (the install spec).
+
+#### Scenario: The install's version written
+
+- **WHEN** `set-version.sh 98.76.54` runs on a copy of the tree's manifests and `install.sh`
+- **THEN** `install.sh` gives `version=98.76.54`, and no other line of it changed
+
+#### Scenario: An install of another version
+
+- **WHEN** `check-versions.sh` runs on a copy of the tree whose `install.sh` gives `version=0.8.0`
+- **THEN** it fails, naming `install.sh` and `0.8.0`
