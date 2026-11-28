@@ -118,6 +118,21 @@ impl Edge {
         Instant::now()
     }
 
+    /// Waits `wait` on the edge's clock, or until `stop` is set, which
+    /// `told` is notified of, whichever is first.
+    pub fn pause(&self, wait: Duration, stop: &AtomicBool, told: &Notify) {
+        let due = self.now() + wait;
+        loop {
+            let notified = told.notified();
+            let mut notified = std::pin::pin!(notified);
+            notified.as_mut().enable();
+            if stop.load(Ordering::SeqCst) || self.now() >= due {
+                return;
+            }
+            self.wait(due, notified);
+        }
+    }
+
     /// Waits until `due`, or until `told` is notified, whichever is first.
     fn wait(&self, due: Instant, told: Pin<&mut Notified<'_>>) {
         self.0.block_on(async {
@@ -909,8 +924,14 @@ impl Runner {
         thread::scope(|scope| {
             if carries && host.is_some() {
                 let (subscription, stop, bells) = (&subscription, &*this.stop, &this.bells);
+                let (edge, told) = (&this.edge, &*this.notices.told);
                 scope.spawn(move || {
-                    subscription.hold(stop, &|| bells.wake_all(), &|line| say(line));
+                    subscription.hold(
+                        stop,
+                        &|wait| edge.pause(wait, stop, told),
+                        &|| bells.wake_all(),
+                        &|line| say(line),
+                    );
                 });
             }
             let mut started = Some(this.config.clone());

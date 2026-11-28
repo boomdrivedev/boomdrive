@@ -450,13 +450,22 @@ impl Subscription {
     /// folders makes it ask again at once, naming them; a subscription
     /// that ends, or cannot be made, is tried again on a bounded backoff.
     /// It says one line when flume host stops answering and one when it
-    /// answers again (core.22, core.23).
-    pub fn hold(&self, stop: &AtomicBool, wake: &dyn Fn(), say: &dyn Fn(String)) {
+    /// answers again (core.22, core.23). Each wait between its tries, and
+    /// its wait for a first read to name folders, is `pause`'s, which
+    /// the runner gives on its edge and ends at its stop
+    /// (a-residents-core-stays-synchronous-behind-a-tokio-edge).
+    pub fn hold(
+        &self,
+        stop: &AtomicBool,
+        pause: &dyn Fn(Duration),
+        wake: &dyn Fn(),
+        say: &dyn Fn(String),
+    ) {
         let mut backoff = BACKOFF_FIRST;
         let mut said_down = false;
         while !stop.load(Ordering::SeqCst) {
             let Some(named) = self.named() else {
-                std::thread::sleep(TICK);
+                pause(TICK);
                 continue;
             };
             let ended = self.follow(&named, stop, wake, &mut |answered| {
@@ -474,7 +483,7 @@ impl Subscription {
             if !std::mem::replace(&mut said_down, true) {
                 say(format!("boomdrive: flume host does not answer: {why}"));
             }
-            sleep_unless(stop, jittered(backoff));
+            pause(jittered(backoff));
             backoff = (backoff * 2).min(BACKOFF_MOST);
         }
     }
@@ -534,18 +543,6 @@ fn jittered(wait: Duration) -> Duration {
     wait - quarter + Duration::from_nanos((u128::from(nanos) % span) as u64)
 }
 
-/// Sleeps `wait`, ending at once where `stop` is set.
-fn sleep_unless(stop: &AtomicBool, wait: Duration) {
-    let deadline = Instant::now() + wait;
-    while !stop.load(Ordering::SeqCst) {
-        let left = deadline.saturating_duration_since(Instant::now());
-        if left.is_zero() {
-            return;
-        }
-        std::thread::sleep(left.min(TICK));
-    }
-}
-
 /// Where a pass reads Flume's status: the runner's subscription, or one
 /// status ask of flume host's socket.
 pub enum Source<'a> {
@@ -589,7 +586,70 @@ impl Flume for Resident<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::run::Edge;
     use std::collections::BTreeMap;
+
+    /// A subscription that cannot be made waits its backoff on the
+    /// runner's edge: with the edge's clock paused, it tries no second
+    /// time, however long it waits in real time, and once the clock moves
+    /// past the backoff it tries again; it says flume host does not
+    /// answer once, and ends at the runner's stop (core.22, core.23;
+    /// the-runtime-flavour-is-chosen-in-main-and-tests-pause-tokios-
+    /// clock). Its socket's path holds nothing at the first try and a
+    /// file that is no socket at the second, so each try's words differ.
+    #[test]
+    fn a_subscription_waits_its_backoff_on_the_edge() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .start_paused(true)
+            .build()
+            .unwrap();
+        let edge = Edge::of(runtime.handle());
+        let dir = tempfile::tempdir().unwrap();
+        let socket = dir.path().join("host.sock");
+        let subscription = Subscription::new(Where::At(socket.clone()));
+        let (stop, told) = (AtomicBool::new(false), tokio::sync::Notify::new());
+        let said = Mutex::new(Vec::new());
+        let named = ["/repositories/a".to_string()];
+        let words = |subscription: &Subscription| match subscription.latest(&named) {
+            Err(Unrun(words)) => words,
+            Ok(reply) => panic!("a document from no flume host: {reply:?}"),
+        };
+
+        let (first, frozen, again) = std::thread::scope(|scope| {
+            scope.spawn(|| {
+                subscription.hold(
+                    &stop,
+                    &|wait| edge.pause(wait, &stop, &told),
+                    &|| {},
+                    &|line| said.lock().unwrap().push(line),
+                );
+            });
+            let first = words(&subscription);
+            std::fs::write(&socket, "").unwrap();
+            // Longer than the first backoff, its jitter among it, in real
+            // time: a wait that slept would have tried again.
+            std::thread::sleep(BACKOFF_FIRST * 3 / 2);
+            let frozen = words(&subscription);
+            runtime.block_on(tokio::time::advance(BACKOFF_FIRST * 2));
+            let deadline = std::time::Instant::now() + Duration::from_secs(60);
+            let mut again = words(&subscription);
+            while again == first && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(10));
+                again = words(&subscription);
+            }
+            stop.store(true, Ordering::SeqCst);
+            told.notify_waiters();
+            (first, frozen, again)
+        });
+
+        assert_eq!(frozen, first, "a second try while the clock stood");
+        assert_ne!(again, first, "no second try once the clock moved");
+        assert_eq!(
+            *said.lock().unwrap(),
+            [format!("boomdrive: flume host does not answer: {first}")]
+        );
+    }
 
     fn env(pairs: &[(&str, &Path)]) -> impl Fn(&str) -> Option<OsString> {
         let map: BTreeMap<String, OsString> = pairs

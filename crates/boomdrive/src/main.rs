@@ -204,10 +204,75 @@ fn with_usage(mut error: clap::Error) -> clap::Error {
 #[cfg(test)]
 mod tests {
     use super::Cli;
-    use clap::CommandFactory as _;
+    use clap::error::ErrorKind;
+    use clap::{CommandFactory as _, Parser as _};
 
     #[test]
     fn the_command_line_is_well_formed() {
         Cli::command().debug_assert();
+    }
+
+    /// A one-time token as a person would paste it.
+    const TOKEN: &str = "secret-enrollment-token";
+
+    /// `boomdrive enroll` parsed with `words` after it, as `main` parses
+    /// it before it reads a token or enrolls anything: a usage error here
+    /// exits 2 having read no token and written nothing.
+    fn enroll(words: &[&str]) -> clap::Error {
+        let parsed = Cli::try_parse_from(["boomdrive", "enroll"].iter().chain(words));
+        parsed.err().expect("a usage error")
+    }
+
+    /// The flags every enrollment names.
+    const FLAGS: [&str; 6] = [
+        "--control-plane",
+        "https://control.example",
+        "--drive",
+        "home",
+        "--repository",
+        "example/app",
+    ];
+
+    /// The hosted-control-plane spec's "A flag missing": `--drive`
+    /// missing is a usage error naming it.
+    #[test]
+    fn a_flag_missing() {
+        let error = enroll(&[
+            "--control-plane",
+            "https://control.example",
+            "--repository",
+            "example/app",
+        ]);
+
+        assert_eq!(error.kind(), ErrorKind::MissingRequiredArgument);
+        assert_eq!(error.exit_code(), 2);
+        assert!(error.to_string().contains("--drive"), "{error}");
+    }
+
+    /// The hosted-control-plane spec's "A token flag": `--token` is a
+    /// usage error naming it, and its words hold no token.
+    #[test]
+    fn a_token_flag() {
+        let mut words = vec!["--token", TOKEN];
+        words.extend(FLAGS);
+
+        let error = enroll(&words);
+
+        assert_eq!(error.kind(), ErrorKind::UnknownArgument);
+        assert_eq!(error.exit_code(), 2);
+        assert!(error.to_string().contains("--token"), "{error}");
+        assert!(!error.to_string().contains(TOKEN), "{error}");
+    }
+
+    /// No positional label is taken: the form of before is a usage error.
+    #[test]
+    fn a_label_of_before() {
+        let mut words = vec!["home"];
+        words.extend(FLAGS);
+
+        let error = enroll(&words);
+
+        assert_eq!(error.kind(), ErrorKind::UnknownArgument);
+        assert_eq!(error.exit_code(), 2);
     }
 }

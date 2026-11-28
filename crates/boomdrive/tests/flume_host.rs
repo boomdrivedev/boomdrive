@@ -7,6 +7,7 @@
 
 use boomdrive::flume::{Reply, Unrun};
 use boomdrive::flume_host::{status, Subscription, Where};
+use boomdrive::run::Edge;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixListener;
 use std::path::Path;
@@ -152,12 +153,17 @@ fn a_subscription() {
     );
     let subscription = Subscription::new(Where::At(socket.clone()));
     let stop = AtomicBool::new(false);
+    // The runner's edge, on real time, whose pause ends at the stop.
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let edge = Edge::of(runtime.handle());
+    let told = tokio::sync::Notify::new();
     let wakes = std::sync::atomic::AtomicUsize::new(0);
     let said = Mutex::new(Vec::new());
     let (seen, down) = std::thread::scope(|scope| {
         scope.spawn(|| {
             subscription.hold(
                 &stop,
+                &|wait| edge.pause(wait, &stop, &told),
                 &|| {
                     wakes.fetch_add(1, Ordering::SeqCst);
                 },
@@ -177,6 +183,7 @@ fn a_subscription() {
             std::thread::sleep(Duration::from_millis(10));
         }
         stop.store(true, Ordering::SeqCst);
+        told.notify_waiters();
         (seen, down)
     });
     assert!(seen, "the second document");
@@ -261,11 +268,16 @@ fn the_asks_name_the_folders_read() {
     });
     let subscription = Subscription::new(Where::At(socket.clone()));
     let stop = AtomicBool::new(false);
+    // The runner's edge, on real time, whose pause ends at the stop.
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let edge = Edge::of(runtime.handle());
+    let told = tokio::sync::Notify::new();
     let wakes = std::sync::atomic::AtomicUsize::new(0);
     let (first, second) = std::thread::scope(|scope| {
         scope.spawn(|| {
             subscription.hold(
                 &stop,
+                &|wait| edge.pause(wait, &stop, &told),
                 &|| {
                     wakes.fetch_add(1, Ordering::SeqCst);
                 },
@@ -275,6 +287,7 @@ fn the_asks_name_the_folders_read() {
         let first = subscription.latest(&["/r".to_string()]);
         let second = subscription.latest(&["/r".to_string(), "/s".to_string()]);
         stop.store(true, Ordering::SeqCst);
+        told.notify_waiters();
         (first, second)
     });
     assert_eq!(
