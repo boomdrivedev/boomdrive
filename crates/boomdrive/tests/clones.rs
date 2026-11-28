@@ -678,8 +678,8 @@ fn a_repository_the_app_is_not_installed_on_is_fetched() {
     let origin = scratch.origin("agentplot/flume");
     let commit = origin.tip("main");
     Key::App.write(&scratch.home, 0o600);
-    let github = GitHub::start();
-    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let github = GitHub::new();
+    let forge = Forge::over(github.api());
     let config = with_the_app(
         &keeping(&["agentplot/flume"]),
         "~/.config/boomdrive/app.pem",
@@ -707,9 +707,9 @@ fn a_repository_the_app_is_not_installed_on_is_fetched() {
 fn a_mint_refused_is_named_after_gits_words() {
     let scratch = Scratch::new();
     let flume = scratch.origin("agentplot/flume");
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
-    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let forge = Forge::over(github.api());
     let key_file = scratch.home.join(".config/boomdrive/app.pem");
     let config = with_the_app(&keeping(&["agentplot/flume"]), &key_file.to_string_lossy());
     let (outcome, _) = scratch.pass_with_forge(&config, &forge);
@@ -739,9 +739,9 @@ fn two_passes_buy_one_token() {
     let scratch = Scratch::new();
     let origin = scratch.origin("agentplot/flume");
     Key::App.write(&scratch.home, 0o600);
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
-    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let forge = Forge::over(github.api());
     let config = with_the_app(
         &keeping(&["agentplot/flume"]),
         "~/.config/boomdrive/app.pem",
@@ -770,9 +770,9 @@ fn a_failed_fetch_drops_its_token() {
     let scratch = Scratch::new();
     let flume = scratch.origin("agentplot/flume");
     Key::App.write(&scratch.home, 0o600);
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
-    let forge = Forge::at(&github.url).calling_for(Duration::from_secs(5));
+    let forge = Forge::over(github.api());
     let config = with_the_app(
         &keeping(&["agentplot/flume"]),
         "~/.config/boomdrive/app.pem",

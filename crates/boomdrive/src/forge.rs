@@ -149,8 +149,8 @@ pub struct Asked {
 /// each call may take, the control plane's tokens that are asked in place
 /// of minting, and what it keeps for the runner's own git calls.
 pub struct Forge {
-    api: String,
-    call_for: Duration,
+    /// GitHub's API, as each mint calls it.
+    github: Box<dyn GitHubApi>,
     asks: Option<Asks>,
     kept: Mutex<Kept>,
 }
@@ -187,16 +187,15 @@ impl Default for Forge {
 impl Forge {
     /// A forge calling GitHub's API, each call stopped at [`CALL_FOR`].
     pub fn new() -> Forge {
-        Forge::at(API)
+        Forge::over(Box::new(Https::at(API)))
     }
 
-    /// A forge calling the API at `api`, a test's fake, each call stopped
-    /// at [`CALL_FOR`]. No configuration key, environment variable or flag
-    /// sets it (core.17).
-    pub fn at(api: &str) -> Forge {
+    /// A forge whose mints call `github`: GitHub's API over HTTPS on a
+    /// host, a test's GitHub otherwise. No configuration key, environment
+    /// variable or flag gives another (core.17).
+    pub fn over(github: Box<dyn GitHubApi>) -> Forge {
         Forge {
-            api: api.trim_end_matches('/').to_string(),
-            call_for: CALL_FOR,
+            github,
             asks: None,
             kept: Mutex::default(),
         }
@@ -244,15 +243,6 @@ impl Forge {
                 repositories: None,
             }),
             ..Forge::new()
-        }
-    }
-
-    /// `self`, each call to GitHub's API stopped at `limit`, a test's
-    /// shorter limit; a forge that asks is as it was.
-    pub fn calling_for(self, limit: Duration) -> Forge {
-        Forge {
-            call_for: limit,
-            ..self
         }
     }
 
@@ -464,11 +454,57 @@ impl Forge {
         body: Option<&str>,
         call: &str,
     ) -> Result<(u16, Value), Refused> {
-        let (api, call_for) = (self.api.as_str(), self.call_for);
+        let (status, text) = self
+            .github
+            .call(path, &format!("Bearer {jwt}"), body)
+            .map_err(|error| {
+                Refused::github(format!("GitHub could not be reached to {call}: {error}"))
+            })?;
+        Ok((status, serde_json::from_str(&text).unwrap_or(Value::Null)))
+    }
+}
+
+/// The runner's seam to GitHub's API: one call, a `GET` of `path` where
+/// it sends no `body` and a `POST` of `body` where it does, under the
+/// bearer `bearer`, answered with its status and its text, or the words
+/// saying why it was not. [`Https`] calls GitHub over HTTPS; a mint
+/// reaches GitHub through it alone.
+pub trait GitHubApi: Send + Sync {
+    fn call(&self, path: &str, bearer: &str, body: Option<&str>) -> Result<(u16, String), String>;
+}
+
+/// GitHub's API over HTTPS at `api`, each call stopped at `call_for`,
+/// over rustls with the host's own roots, reading at most
+/// [`ANSWER_LIMIT`] of an answer.
+pub struct Https {
+    api: String,
+    call_for: Duration,
+}
+
+impl Https {
+    /// The API at `api`, each call stopped at [`CALL_FOR`].
+    pub fn at(api: &str) -> Https {
+        Https {
+            api: api.trim_end_matches('/').to_string(),
+            call_for: CALL_FOR,
+        }
+    }
+
+    /// `self`, each call stopped at `limit`.
+    pub fn calling_for(self, limit: Duration) -> Https {
+        Https {
+            call_for: limit,
+            ..self
+        }
+    }
+}
+
+impl GitHubApi for Https {
+    fn call(&self, path: &str, bearer: &str, body: Option<&str>) -> Result<(u16, String), String> {
         let agent: ureq::Agent = ureq::Agent::config_builder()
             .http_status_as_error(false)
             .max_redirects(0)
-            .timeout_global(Some(call_for))
+            .timeout_global(Some(self.call_for))
             .user_agent("boomdrive")
             .tls_config(
                 TlsConfig::builder()
@@ -477,27 +513,23 @@ impl Forge {
             )
             .build()
             .into();
-        let url = format!("{api}{path}");
-        let bearer = format!("Bearer {jwt}");
-        let unreachable = |error: &dyn fmt::Display| {
-            Refused::github(format!("GitHub could not be reached to {call}: {error}"))
-        };
+        let url = format!("{}{path}", self.api);
         let sent = match body {
             None => agent
                 .get(&url)
                 .header("Accept", "application/vnd.github+json")
                 .header("X-GitHub-Api-Version", "2022-11-28")
-                .header("Authorization", &bearer)
+                .header("Authorization", bearer)
                 .call(),
             Some(body) => agent
                 .post(&url)
                 .header("Accept", "application/vnd.github+json")
                 .header("X-GitHub-Api-Version", "2022-11-28")
-                .header("Authorization", &bearer)
+                .header("Authorization", bearer)
                 .content_type("application/json")
                 .send(body),
         };
-        let mut response = sent.map_err(|error| unreachable(&error))?;
+        let mut response = sent.map_err(|error| error.to_string())?;
         let status = response.status().as_u16();
         let mut text = String::new();
         response
@@ -505,8 +537,8 @@ impl Forge {
             .as_reader()
             .take(ANSWER_LIMIT)
             .read_to_string(&mut text)
-            .map_err(|error| unreachable(&error))?;
-        Ok((status, serde_json::from_str(&text).unwrap_or(Value::Null)))
+            .map_err(|error| error.to_string())?;
+        Ok((status, text))
     }
 }
 
