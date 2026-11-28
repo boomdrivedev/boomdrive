@@ -495,6 +495,7 @@ struct Host<'a> {
     local: &'a Path,
     data: &'a Path,
     poll_interval: Duration,
+    keeper: &'a dyn Keeper,
     edge: &'a Edge,
     toolset: &'a dyn Toolset,
     notices: &'a Notices,
@@ -577,13 +578,37 @@ impl Runner {
         git: Git,
         edge: Edge,
     ) -> Result<Runner, String> {
+        let keeping = git.clone();
+        Runner::start_with(file, var, git, edge, move |config, file, data, halt| {
+            Box::new(Keeping {
+                git: keeping.halted_by(halt.clone()),
+                forge: Forge::for_runner(config, file),
+                data: data.to_path_buf(),
+            })
+        })
+    }
+
+    /// Starts a runner as [`Runner::start`] does, its clones kept by the
+    /// keeper `keeper` makes of the configuration, its file, the data
+    /// directory and the runner's halt, whose readiness the start checks
+    /// where it checks git's version: how a test starts the runner over a
+    /// keeper of its own, which starts no git.
+    pub fn start_with(
+        file: Option<&Path>,
+        var: impl Fn(&str) -> Option<OsString>,
+        git: Git,
+        edge: Edge,
+        keeper: impl FnOnce(&Config, &Path, &Path, &Halt) -> Box<dyn Keeper>,
+    ) -> Result<Runner, String> {
         let flume_socket = Where::from_env(&var);
         let env = Env::read(var)?;
         let file = config::config_path(file, &env);
         let local = config::local_path(&env);
         let config = config::read_layers(&file, &local, &env.home)?;
-        git.check_version()?;
         let data = config::data_dir(&env);
+        let halt = Halt::default();
+        let keeper = keeper(&config, &file, &data, &halt);
+        keeper.ready()?;
         fs::create_dir_all(&data).map_err(|error| {
             format!(
                 "the data directory {} cannot be made: {error}",
@@ -591,7 +616,6 @@ impl Runner {
             )
         })?;
         let lock = lock(&data)?;
-        let halt = Halt::default();
         let git = git.halted_by(halt.clone());
         let (events, waiting) = mpsc::channel();
         let notices = Notices::new(events);
@@ -602,11 +626,6 @@ impl Runner {
             .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
         let ticker = Ticker::new(config.inboxes.clone());
-        let keeper = Box::new(Keeping {
-            git: git.clone(),
-            forge: Forge::for_runner(&config, &file),
-            data: data.clone(),
-        });
         Ok(Runner {
             git,
             home: env.home,
@@ -754,6 +773,7 @@ impl Runner {
             local: &self.local,
             data: &self.data,
             poll_interval: control.poll_interval,
+            keeper: &*self.keeper,
             edge: &self.edge,
             toolset: &*self.toolset,
             notices: &self.notices,
@@ -1182,7 +1202,7 @@ impl Host<'_> {
             Ok(config) => config,
             Err(why) => return unread(why),
         };
-        let clones = match clone::find(self.git, self.data) {
+        let clones = match self.keeper.found() {
             Ok(clones) => Configured::new(&config, clones),
             Err(error) => {
                 let repositories = clone::repositories(self.data);

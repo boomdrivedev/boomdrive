@@ -78,9 +78,18 @@ pub type Between<'a> = &'a mut dyn FnMut() -> bool;
 /// The runner's seam to the keeping of its clones: a keeping pass over a
 /// configuration, and the keeping of one repository alone at a landing
 /// told of it, each repository under its lock among the clones' `locks`
-/// (design 9; design Decision 3). [`Keeping`] keeps the host's clones by
-/// git; the runner's loop and `run --once` reach them through it alone.
+/// (design 9; design Decision 3), the clones it holds, as a part's pass
+/// reads them, and whether it can keep them at all, which the runner's
+/// start checks where design 10 checks git's version. [`Keeping`] keeps
+/// the host's clones by git; the runner's loop, its parts and
+/// `run --once` reach them through it alone.
 pub trait Keeper: Send + Sync {
+    /// Whether the keeper can keep the clones, or why not.
+    fn ready(&self) -> Result<(), String>;
+
+    /// The clones in the data directory, as [`clone::find`] finds them.
+    fn found(&self) -> std::io::Result<Vec<Found>>;
+
     /// One keeping pass over `config`, as [`pass`] makes it.
     fn pass(
         &self,
@@ -110,6 +119,15 @@ pub struct Keeping {
 }
 
 impl Keeper for Keeping {
+    /// git is 2.48 or later (design 10).
+    fn ready(&self) -> Result<(), String> {
+        self.git.check_version()
+    }
+
+    fn found(&self) -> std::io::Result<Vec<Found>> {
+        clone::find(&self.git, &self.data)
+    }
+
     fn pass(
         &self,
         config: &Config,
